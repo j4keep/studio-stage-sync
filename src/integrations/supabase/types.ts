@@ -98,6 +98,41 @@ export type Database = {
         }
         Relationships: []
       }
+      purchases: {
+        Row: {
+          amount: number
+          buyer_id: string
+          created_at: string
+          id: string
+          product_id: string
+          stripe_session_id: string | null
+        }
+        Insert: {
+          amount: number
+          buyer_id: string
+          created_at?: string
+          id?: string
+          product_id: string
+          stripe_session_id?: string | null
+        }
+        Update: {
+          amount?: number
+          buyer_id?: string
+          created_at?: string
+          id?: string
+          product_id?: string
+          stripe_session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchases_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "store_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       songs: {
         Row: {
           audio_url: string | null
@@ -127,6 +162,48 @@ export type Database = {
           id?: string
           plays?: string | null
           title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      store_products: {
+        Row: {
+          cover_url: string | null
+          created_at: string
+          file_name: string | null
+          file_url: string | null
+          id: string
+          price: number
+          sales: number
+          title: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cover_url?: string | null
+          created_at?: string
+          file_name?: string | null
+          file_url?: string | null
+          id?: string
+          price?: number
+          sales?: number
+          title: string
+          type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cover_url?: string | null
+          created_at?: string
+          file_name?: string | null
+          file_url?: string | null
+          id?: string
+          price?: number
+          sales?: number
+          title?: string
+          type?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
