@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { X, Plus, Camera, Trash2, Clock, CalendarDays } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { toast } from "@/hooks/use-toast";
@@ -23,7 +23,8 @@ const CreateStudioSheet = ({ open, onClose, onCreated }: CreateStudioSheetProps)
   const [equipment, setEquipment] = useState<string[]>([]);
   const [engineerAvailable, setEngineerAvailable] = useState(false);
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
-  const [photoInput, setPhotoInput] = useState("");
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [pricingType, setPricingType] = useState<"hourly" | "daily" | "both">("hourly");
   const [blockedDates, setBlockedDates] = useState<string[]>([]);
   const [dateInput, setDateInput] = useState("");
@@ -36,11 +37,41 @@ const CreateStudioSheet = ({ open, onClose, onCreated }: CreateStudioSheetProps)
     }
   };
 
-  const addPhoto = () => {
-    const trimmed = photoInput.trim();
-    if (trimmed && photoUrls.length < 6) {
-      setPhotoUrls([...photoUrls, trimmed]);
-      setPhotoInput("");
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || !user) return;
+    const remaining = 6 - photoUrls.length;
+    const toUpload = Array.from(files).slice(0, remaining);
+    if (toUpload.length === 0) return;
+
+    setUploadingPhoto(true);
+    try {
+      const newUrls: string[] = [];
+      for (const file of toUpload) {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const session = await supabase.auth.getSession();
+        const token = session.data.session?.access_token;
+
+        const res = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-studio-photo`,
+          {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+            body: formData,
+          }
+        );
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || "Upload failed");
+        newUrls.push(json.url);
+      }
+      setPhotoUrls((prev) => [...prev, ...newUrls]);
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    } finally {
+      setUploadingPhoto(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -55,7 +86,7 @@ const CreateStudioSheet = ({ open, onClose, onCreated }: CreateStudioSheetProps)
     setName(""); setLocation(""); setDescription("");
     setHourlyRate(""); setDailyRate(""); setEquipmentInput("");
     setEquipment([]); setEngineerAvailable(false);
-    setPhotoUrls([]); setPhotoInput("");
+    setPhotoUrls([]);
     setPricingType("hourly"); setBlockedDates([]); setDateInput("");
   };
 
@@ -228,21 +259,21 @@ const CreateStudioSheet = ({ open, onClose, onCreated }: CreateStudioSheetProps)
             <span className="text-sm text-foreground">Engineer Available</span>
           </button>
 
-          {/* Photos (URLs) */}
+          {/* Photos */}
           <div>
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Photos ({photoUrls.length}/6)
             </label>
-            <div className="flex gap-2 mt-1.5">
-              <input value={photoInput} onChange={(e) => setPhotoInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addPhoto())}
-                placeholder="Paste image URL..." disabled={photoUrls.length >= 6}
-                className="flex-1 px-4 py-3 rounded-xl bg-card border border-border text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 disabled:opacity-50" />
-              <button onClick={addPhoto} disabled={photoUrls.length >= 6}
-                className="px-3 py-3 rounded-xl gradient-primary text-primary-foreground disabled:opacity-50">
-                <Camera className="w-4 h-4" />
-              </button>
-            </div>
+            <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden"
+              onChange={handlePhotoUpload} />
+            <button onClick={() => fileInputRef.current?.click()} disabled={photoUrls.length >= 6 || uploadingPhoto}
+              className="w-full mt-1.5 py-3 rounded-xl border border-dashed border-border bg-card text-sm text-muted-foreground flex items-center justify-center gap-2 hover:border-primary/50 transition-all disabled:opacity-50">
+              {uploadingPhoto ? (
+                <><div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" /> Uploading...</>
+              ) : (
+                <><Camera className="w-4 h-4" /> Tap to upload photos</>
+              )}
+            </button>
             {photoUrls.length > 0 && (
               <div className="grid grid-cols-3 gap-2 mt-2">
                 {photoUrls.map((url, i) => (
