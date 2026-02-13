@@ -18,6 +18,13 @@ import PlaylistsPage from "./pages/PlaylistsPage";
 import SettingsPage from "./pages/SettingsPage";
 import AuthPage from "./pages/AuthPage";
 import NotFound from "./pages/NotFound";
+import MySongsPage from "./pages/MySongsPage";
+import MyVideosPage from "./pages/MyVideosPage";
+import MyPodcastsPage from "./pages/MyPodcastsPage";
+import MyProjectsPage from "./pages/MyProjectsPage";
+import MyStorePage from "./pages/MyStorePage";
+import EarningsPage from "./pages/EarningsPage";
+import AnalyticsPage from "./pages/AnalyticsPage";
 import TermsAgreementGate from "./components/TermsAgreementGate";
 
 const queryClient = new QueryClient();
@@ -83,6 +90,13 @@ const ProtectedRoutes = () => {
         <Route path="/library" element={<PlaylistsPage />} />
         <Route path="/playlists" element={<PlaylistsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/my-songs" element={<MySongsPage />} />
+        <Route path="/my-videos" element={<MyVideosPage />} />
+        <Route path="/my-podcasts" element={<MyPodcastsPage />} />
+        <Route path="/my-projects" element={<MyProjectsPage />} />
+        <Route path="/my-store" element={<MyStorePage />} />
+        <Route path="/earnings" element={<EarningsPage />} />
+        <Route path="/analytics" element={<AnalyticsPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AppLayout>
