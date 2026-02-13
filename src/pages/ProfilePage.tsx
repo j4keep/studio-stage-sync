@@ -3,10 +3,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   User, Music, FolderHeart, Building2, Heart, Download, Upload, DollarSign,
   Settings, Shield, BarChart3, HelpCircle, Play, Video, Mic2, ShoppingBag,
-  CheckCircle, UserPlus, Share2, MoreHorizontal, ChevronRight
+  CheckCircle, UserPlus, Share2, MoreHorizontal, ChevronRight, ListMusic
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import PlaylistsSection from "@/components/PlaylistsSection";
 import profileBanner from "@/assets/profile-banner.jpg";
 import profileAvatar from "@/assets/profile-avatar.jpg";
 import album1 from "@/assets/album-1.jpg";
@@ -234,16 +233,13 @@ const ArtistProfile = () => {
         </div>
       </div>
 
-      {/* Playlists */}
-      <div className="px-4">
-        <PlaylistsSection />
-      </div>
 
       {/* Quick Actions */}
       <div className="px-4 mt-5">
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Quick Actions</p>
         <div className="flex flex-col gap-1.5">
           {[
+            { icon: ListMusic, label: "Playlists", sub: "3 playlists", action: () => navigate("/playlists") },
             { icon: Upload, label: "Upload Songs", sub: "12 tracks", action: () => {} },
             { icon: Building2, label: "My Studios", sub: "1 listing", action: () => {} },
             { icon: BarChart3, label: "Analytics", sub: "View insights", action: () => {} },
@@ -301,6 +297,7 @@ const FanProfile = () => {
       {/* Menu */}
       <div className="flex flex-col gap-1.5">
         {[
+          { icon: ListMusic, label: "Playlists", count: "3 playlists", action: () => navigate("/playlists") },
           { icon: Heart, label: "Followed Artists", count: "8", action: () => {} },
           { icon: FolderHeart, label: "Contributions", count: "$340", action: () => {} },
           { icon: Building2, label: "Saved Studios", count: "3", action: () => {} },
@@ -321,9 +318,6 @@ const FanProfile = () => {
           </button>
         ))}
       </div>
-
-      {/* Playlists */}
-      <PlaylistsSection />
     </div>
   );
 };
