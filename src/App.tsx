@@ -76,6 +76,7 @@ const App = () => {
               <Route path="/terms" element={<TermsPage />} />
               <Route path="/help" element={<HelpPage />} />
               <Route path="/legal-vault" element={<LegalVaultPage />} />
+              <Route path="/library" element={<PlaylistsPage />} />
               <Route path="/playlists" element={<PlaylistsPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="*" element={<NotFound />} />

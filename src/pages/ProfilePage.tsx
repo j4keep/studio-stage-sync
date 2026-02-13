@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   User, Music, FolderHeart, Building2, Heart, Download, Upload, DollarSign,
   Settings, Shield, BarChart3, HelpCircle, Play, Video, Mic2, ShoppingBag,
-  CheckCircle, UserPlus, Share2, MoreHorizontal, ChevronRight, ListMusic, Camera
+  CheckCircle, UserPlus, Share2, MoreHorizontal, ChevronRight, Library, Edit3
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import profileBanner from "@/assets/profile-banner.jpg";
@@ -14,6 +14,7 @@ import album3 from "@/assets/album-3.jpg";
 import album4 from "@/assets/album-4.jpg";
 import podcast1 from "@/assets/podcast-1.jpg";
 import musicvideo1 from "@/assets/musicvideo-1.jpg";
+import EditProfileSheet from "@/components/EditProfileSheet";
 
 const ProfilePage = () => {
   const navigate = useNavigate();
@@ -62,6 +63,7 @@ const ProfilePage = () => {
 const ArtistProfile = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("songs");
+  const [showEditProfile, setShowEditProfile] = useState(false);
 
   const tabs = [
     { id: "songs", label: "Songs", icon: Music },
@@ -80,28 +82,20 @@ const ArtistProfile = () => {
 
   return (
     <>
-      {/* Banner with upload overlay */}
-      <div className="relative h-44 overflow-hidden group">
+      {/* Banner */}
+      <div className="relative h-44 overflow-hidden">
         <img src={profileBanner} alt="Banner" className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
-        <button className="absolute top-3 right-3 w-8 h-8 rounded-full bg-background/60 backdrop-blur-sm flex items-center justify-center text-foreground">
-          <Camera className="w-4 h-4" />
-        </button>
       </div>
 
       {/* Avatar & Info overlapping banner */}
       <div className="px-4 -mt-12 relative z-10">
         <div className="flex items-end gap-3">
-          <div className="relative group">
-            <img
-              src={profileAvatar}
-              alt="Profile"
-              className="w-20 h-20 rounded-full border-[3px] border-background object-cover"
-            />
-            <button className="absolute bottom-0 right-0 w-6 h-6 rounded-full bg-primary flex items-center justify-center border-2 border-background">
-              <Camera className="w-3 h-3 text-primary-foreground" />
-            </button>
-          </div>
+          <img
+            src={profileAvatar}
+            alt="Profile"
+            className="w-20 h-20 rounded-full border-[3px] border-background object-cover"
+          />
           <div className="flex-1 pb-1">
             <div className="flex items-center gap-1.5">
               <h2 className="text-lg font-display font-bold text-foreground">WHEUAT Artist</h2>
@@ -111,8 +105,16 @@ const ArtistProfile = () => {
           </div>
         </div>
 
+        {/* Edit Profile Button */}
+        <button
+          onClick={() => setShowEditProfile(true)}
+          className="w-full mt-3 py-2.5 rounded-xl bg-card border border-border text-foreground text-xs font-semibold flex items-center justify-center gap-1.5 hover:border-primary/30 transition-all"
+        >
+          <Edit3 className="w-3.5 h-3.5" /> Edit Profile
+        </button>
+
         {/* Action Buttons */}
-        <div className="flex gap-2 mt-4">
+        <div className="flex gap-2 mt-3">
           <button className="flex-1 py-2.5 rounded-xl gradient-primary text-primary-foreground text-xs font-semibold glow-primary flex items-center justify-center gap-1.5">
             <UserPlus className="w-3.5 h-3.5" /> Follow
           </button>
@@ -243,13 +245,12 @@ const ArtistProfile = () => {
         </div>
       </div>
 
-
       {/* Quick Actions */}
       <div className="px-4 mt-5">
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Quick Actions</p>
         <div className="flex flex-col gap-1.5">
           {[
-            { icon: ListMusic, label: "Playlists", sub: "3 playlists", action: () => navigate("/playlists") },
+            { icon: Library, label: "Library", sub: "3 playlists", action: () => navigate("/library") },
             { icon: Upload, label: "Upload Songs", sub: "12 tracks", action: () => {} },
             { icon: Building2, label: "My Studios", sub: "1 listing", action: () => {} },
             { icon: BarChart3, label: "Analytics", sub: "View insights", action: () => {} },
@@ -272,6 +273,21 @@ const ArtistProfile = () => {
           ))}
         </div>
       </div>
+
+      {/* Edit Profile Sheet */}
+      <EditProfileSheet
+        open={showEditProfile}
+        onClose={() => setShowEditProfile(false)}
+        profileData={{
+          name: "WHEUAT Artist",
+          email: "artist@wheuat.com",
+          avatarUrl: profileAvatar,
+          bannerUrl: profileBanner,
+        }}
+        onSave={(data) => {
+          console.log("Profile updated:", data);
+        }}
+      />
     </>
   );
 };
@@ -307,7 +323,7 @@ const FanProfile = () => {
       {/* Menu */}
       <div className="flex flex-col gap-1.5">
         {[
-          { icon: ListMusic, label: "Playlists", count: "3 playlists", action: () => navigate("/playlists") },
+          { icon: Library, label: "Library", count: "3 playlists", action: () => navigate("/library") },
           { icon: Heart, label: "Followed Artists", count: "8", action: () => {} },
           { icon: FolderHeart, label: "Contributions", count: "$340", action: () => {} },
           { icon: Building2, label: "Saved Studios", count: "3", action: () => {} },

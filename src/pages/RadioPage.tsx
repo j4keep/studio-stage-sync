@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, SkipForward, Heart, DollarSign, Radio as RadioIcon, Users, ChevronDown, Shuffle } from "lucide-react";
+import { Play, Pause, SkipForward, Heart, DollarSign, Radio as RadioIcon, Users, ChevronDown, Shuffle, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import artist1 from "@/assets/artist-1.jpg";
 import artist2 from "@/assets/artist-2.jpg";
 import artist3 from "@/assets/artist-3.jpg";
@@ -23,6 +24,7 @@ const playlist = [
 ];
 
 const RadioPage = () => {
+  const navigate = useNavigate();
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTrack, setCurrentTrack] = useState(0);
   const [skipsLeft, setSkipsLeft] = useState(6);
@@ -55,6 +57,9 @@ const RadioPage = () => {
       {/* Header */}
       <div className="flex items-center justify-between w-full mb-4">
         <div className="flex items-center gap-2">
+          <button onClick={() => navigate(-1)} className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground">
+            <ArrowLeft className="w-4 h-4" />
+          </button>
           <RadioIcon className="w-5 h-5 text-primary" />
           <h1 className="text-lg font-display font-bold text-foreground">WHEUAT Radio</h1>
         </div>

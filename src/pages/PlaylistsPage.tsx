@@ -1,5 +1,5 @@
 import PlaylistsSection from "@/components/PlaylistsSection";
-import { ArrowLeft, ListMusic } from "lucide-react";
+import { ArrowLeft, Library } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const PlaylistsPage = () => {
@@ -15,8 +15,8 @@ const PlaylistsPage = () => {
           <ArrowLeft className="w-4 h-4" />
         </button>
         <div className="flex items-center gap-2 flex-1">
-          <ListMusic className="w-5 h-5 text-primary" />
-          <h1 className="text-xl font-display font-bold text-foreground">My Playlists</h1>
+          <Library className="w-5 h-5 text-primary" />
+          <h1 className="text-xl font-display font-bold text-foreground">My Library</h1>
         </div>
       </div>
       <PlaylistsSection />
