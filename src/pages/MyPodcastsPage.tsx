@@ -1,11 +1,11 @@
-import { useState, useRef } from "react";
-import { usePersistedState } from "@/hooks/use-persisted-state";
+import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, Mic2, Play, Pause, Plus, Trash2, Upload, Image, Video, Headphones } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import podcast1 from "@/assets/podcast-1.jpg";
-import podcast2 from "@/assets/podcast-2.jpg";
 
 interface Podcast {
   id: string;
@@ -13,16 +13,10 @@ interface Podcast {
   episode: string;
   duration: string;
   plays: string;
-  img: string;
-  mediaUrl?: string;
-  isVideo?: boolean;
+  cover_url: string;
+  media_url?: string;
+  is_video?: boolean;
 }
-
-const initialPodcasts: Podcast[] = [
-  { id: "1", title: "The Artist Journey", episode: "Episode 5", duration: "32 min", plays: "1.2K", img: podcast1 },
-  { id: "2", title: "Studio Sessions", episode: "Episode 12", duration: "45 min", plays: "890", img: podcast2 },
-  { id: "3", title: "The Artist Journey", episode: "Episode 4", duration: "28 min", plays: "980", img: podcast1 },
-];
 
 const formatDuration = (seconds: number) => {
   const m = Math.floor(seconds / 60);
@@ -31,7 +25,9 @@ const formatDuration = (seconds: number) => {
 
 const MyPodcastsPage = () => {
   const navigate = useNavigate();
-  const [podcasts, setPodcasts] = usePersistedState<Podcast[]>("wheuat_my_podcasts", initialPodcasts);
+  const { user } = useAuth();
+  const [podcasts, setPodcasts] = useState<Podcast[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [playMode, setPlayMode] = useState<Record<string, "video" | "audio">>({});
@@ -42,8 +38,19 @@ const MyPodcastsPage = () => {
   const coverInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
 
-  const removePodcast = (id: string) => {
+  useEffect(() => { if (user) fetchPodcasts(); }, [user]);
+
+  const fetchPodcasts = async () => {
+    const { data, error } = await (supabase as any).from("podcasts").select("*").eq("user_id", user!.id).order("created_at", { ascending: false });
+    if (!error && data) {
+      setPodcasts(data.map((p: any) => ({ id: p.id, title: p.title, episode: p.episode || "New Episode", duration: p.duration || "0 min", plays: p.plays || "0", cover_url: p.cover_url || podcast1, media_url: p.media_url, is_video: p.is_video })));
+    }
+    setLoading(false);
+  };
+
+  const removePodcast = async (id: string) => {
     if (playingId === id) { audioRef.current?.pause(); setPlayingId(null); setExpandedVideo(null); }
+    await (supabase as any).from("podcasts").delete().eq("id", id);
     setPodcasts(prev => prev.filter(p => p.id !== id));
   };
 
@@ -66,7 +73,7 @@ const MyPodcastsPage = () => {
   };
 
   const confirmUpload = () => {
-    if (!pendingFile) return;
+    if (!pendingFile || !user) return;
     const mediaUrl = URL.createObjectURL(pendingFile);
     const isVideo = pendingFile.type.startsWith("video");
     const el = isVideo ? document.createElement("video") : new Audio(mediaUrl);
@@ -74,8 +81,6 @@ const MyPodcastsPage = () => {
 
     const onMeta = () => {
       const dur = isVideo ? (el as HTMLVideoElement).duration : (el as HTMLAudioElement).duration;
-
-      // Generate thumbnail from video if no cover provided
       if (isVideo && !pendingCover) {
         const vidEl = el as HTMLVideoElement;
         vidEl.currentTime = 1;
@@ -84,81 +89,50 @@ const MyPodcastsPage = () => {
           canvas.width = vidEl.videoWidth;
           canvas.height = vidEl.videoHeight;
           canvas.getContext("2d")?.drawImage(vidEl, 0, 0);
-          const thumb = canvas.toDataURL("image/jpeg");
-          addPodcast(dur, mediaUrl, isVideo, thumb);
+          addPodcast(dur, mediaUrl, isVideo, canvas.toDataURL("image/jpeg"));
         }, { once: true });
       } else {
-        addPodcast(dur, mediaUrl, isVideo, pendingCover || podcast1);
+        addPodcast(dur, mediaUrl, isVideo, pendingCover || null);
       }
     };
 
-    const addPodcast = (dur: number, url: string, video: boolean, cover: string) => {
-      const newPodcast: Podcast = {
-        id: Date.now().toString(),
-        title: pendingFile!.name.replace(/\.[^/.]+$/, ""),
-        episode: "New Episode",
-        duration: formatDuration(dur),
-        plays: "0",
-        img: cover,
-        mediaUrl: url,
-        isVideo: video,
-      };
-      setPodcasts(prev => [newPodcast, ...prev]);
-      setPendingFile(null);
-      setPendingCover(null);
-      setShowUpload(false);
-      toast({ title: "Podcast added!", description: `"${newPodcast.title}" has been uploaded` });
+    const addPodcast = async (dur: number, url: string, video: boolean, cover: string | null) => {
+      const title = pendingFile!.name.replace(/\.[^/.]+$/, "");
+      const duration = formatDuration(dur);
+      const { data, error } = await (supabase as any).from("podcasts").insert({ user_id: user!.id, title, episode: "New Episode", duration, cover_url: cover, media_url: null, is_video: video }).select().single();
+      if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+      setPodcasts(prev => [{ id: data.id, title, episode: "New Episode", duration, plays: "0", cover_url: cover || podcast1, media_url: url, is_video: video }, ...prev]);
+      setPendingFile(null); setPendingCover(null); setShowUpload(false);
+      toast({ title: "Podcast added!", description: `"${title}" has been uploaded` });
       if (fileInputRef.current) fileInputRef.current.value = "";
     };
 
     el.addEventListener("loadedmetadata", onMeta);
-    el.addEventListener("error", () => {
-      toast({ title: "Error", description: "Could not read media file", variant: "destructive" });
-    });
+    el.addEventListener("error", () => { toast({ title: "Error", description: "Could not read media file", variant: "destructive" }); });
   };
 
-  const getMode = (p: Podcast): "video" | "audio" => playMode[p.id] || (p.isVideo ? "video" : "audio");
+  const getMode = (p: Podcast): "video" | "audio" => playMode[p.id] || (p.is_video ? "video" : "audio");
 
   const togglePlay = (p: Podcast) => {
-    if (!p.mediaUrl) return;
+    if (!p.media_url) return;
     const mode = getMode(p);
-
-    if (playingId === p.id) {
-      audioRef.current?.pause();
-      setPlayingId(null);
-      setExpandedVideo(null);
-    } else {
-      if (mode === "video" && p.isVideo) {
-        // Stop any audio playing
-        audioRef.current?.pause();
-        setExpandedVideo(p.id);
-        setPlayingId(p.id);
-      } else {
-        setExpandedVideo(null);
-        if (audioRef.current) {
-          audioRef.current.pause();
-          audioRef.current.src = p.mediaUrl;
-          audioRef.current.play().catch(() => {});
-        }
-        setPlayingId(p.id);
-      }
+    if (playingId === p.id) { audioRef.current?.pause(); setPlayingId(null); setExpandedVideo(null); }
+    else {
+      if (mode === "video" && p.is_video) { audioRef.current?.pause(); setExpandedVideo(p.id); setPlayingId(p.id); }
+      else { setExpandedVideo(null); if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = p.media_url; audioRef.current.play().catch(() => {}); } setPlayingId(p.id); }
     }
   };
 
   const switchMode = (p: Podcast, mode: "video" | "audio") => {
     setPlayMode(prev => ({ ...prev, [p.id]: mode }));
-    // Stop current playback when switching
-    if (playingId === p.id) {
-      audioRef.current?.pause();
-      setPlayingId(null);
-      setExpandedVideo(null);
-    }
+    if (playingId === p.id) { audioRef.current?.pause(); setPlayingId(null); setExpandedVideo(null); }
   };
+
+  if (!user) return <div className="px-4 pt-4 text-center text-muted-foreground text-sm">Please log in to view your podcasts.</div>;
 
   return (
     <div className="px-4 pt-4 pb-4">
       <audio ref={audioRef} onEnded={() => setPlayingId(null)} playsInline />
-
       <div className="flex items-center gap-3 mb-5">
         <button onClick={() => navigate("/profile")} className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center">
           <ArrowLeft className="w-4 h-4 text-foreground" />
@@ -186,20 +160,13 @@ const MyPodcastsPage = () => {
             </div>
           ) : (
             <div className="flex flex-col items-center gap-3 py-3">
-              <p className="text-sm text-foreground font-medium truncate max-w-full">
-                {pendingFile.type.startsWith("video") ? "🎬" : "🎙️"} {pendingFile.name}
-              </p>
+              <p className="text-sm text-foreground font-medium truncate max-w-full">{pendingFile.type.startsWith("video") ? "🎬" : "🎙️"} {pendingFile.name}</p>
               <div className="flex items-center gap-3">
                 <div className="w-16 h-16 rounded-lg overflow-hidden border border-border bg-muted flex items-center justify-center">
-                  {pendingCover ? (
-                    <img src={pendingCover} alt="Cover" className="w-full h-full object-cover" />
-                  ) : (
-                    <Mic2 className="w-6 h-6 text-muted-foreground" />
-                  )}
+                  {pendingCover ? <img src={pendingCover} alt="Cover" className="w-full h-full object-cover" /> : <Mic2 className="w-6 h-6 text-muted-foreground" />}
                 </div>
                 <button onClick={() => coverInputRef.current?.click()} className="px-3 py-2 rounded-lg border border-border bg-card text-xs font-medium text-foreground flex items-center gap-1.5">
-                  <Image className="w-3.5 h-3.5" />
-                  {pendingCover ? "Change Cover" : "Add Cover"}
+                  <Image className="w-3.5 h-3.5" /> {pendingCover ? "Change Cover" : "Add Cover"}
                 </button>
               </div>
               <p className="text-[10px] text-muted-foreground">Cover art is optional</p>
@@ -212,64 +179,51 @@ const MyPodcastsPage = () => {
         </motion.div>
       )}
 
-      <div className="flex flex-col gap-2">
-        {podcasts.map((p, i) => {
-          const mode = getMode(p);
-          return (
-            <motion.div key={p.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:border-primary/30 transition-all group">
-                <button onClick={() => togglePlay(p)} className="relative w-11 h-11 rounded-lg overflow-hidden flex-shrink-0" disabled={!p.mediaUrl}>
-                  <img src={p.img} alt={p.title} className="w-full h-full object-cover" />
-                  <div className={`absolute inset-0 bg-black/30 flex items-center justify-center transition-opacity ${playingId === p.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"} ${!p.mediaUrl ? "hidden" : ""}`}>
-                    {playingId === p.id ? <Pause className="w-4 h-4 text-white fill-white" /> : <Play className="w-4 h-4 text-white fill-white" />}
+      {loading ? (
+        <div className="py-12 text-center text-muted-foreground text-sm">Loading...</div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {podcasts.map((p, i) => {
+            const mode = getMode(p);
+            return (
+              <motion.div key={p.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:border-primary/30 transition-all group">
+                  <button onClick={() => togglePlay(p)} className="relative w-11 h-11 rounded-lg overflow-hidden flex-shrink-0" disabled={!p.media_url}>
+                    <img src={p.cover_url} alt={p.title} className="w-full h-full object-cover" />
+                    <div className={`absolute inset-0 bg-black/30 flex items-center justify-center transition-opacity ${playingId === p.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"} ${!p.media_url ? "hidden" : ""}`}>
+                      {playingId === p.id ? <Pause className="w-4 h-4 text-white fill-white" /> : <Play className="w-4 h-4 text-white fill-white" />}
+                    </div>
+                  </button>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{p.title}</p>
+                    <p className="text-[10px] text-muted-foreground">{p.episode} · {p.duration} · {p.plays} plays</p>
                   </div>
-                </button>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{p.title}</p>
-                  <p className="text-[10px] text-muted-foreground">{p.episode} · {p.duration} · {p.plays} plays</p>
+                  {p.is_video && p.media_url && (
+                    <div className="flex rounded-lg border border-border overflow-hidden">
+                      <button onClick={() => switchMode(p, "video")} className={`p-1.5 transition-colors ${mode === "video" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground"}`} title="Play as video">
+                        <Video className="w-3 h-3" />
+                      </button>
+                      <button onClick={() => switchMode(p, "audio")} className={`p-1.5 transition-colors ${mode === "audio" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground"}`} title="Play audio only">
+                        <Headphones className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+                  <button onClick={() => removePodcast(p.id)} className="w-7 h-7 rounded-full bg-destructive/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Trash2 className="w-3 h-3 text-destructive" />
+                  </button>
                 </div>
-                {/* Video/Audio toggle for video podcasts */}
-                {p.isVideo && p.mediaUrl && (
-                  <div className="flex rounded-lg border border-border overflow-hidden">
-                    <button
-                      onClick={() => switchMode(p, "video")}
-                      className={`p-1.5 transition-colors ${mode === "video" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground"}`}
-                      title="Play as video"
-                    >
-                      <Video className="w-3 h-3" />
-                    </button>
-                    <button
-                      onClick={() => switchMode(p, "audio")}
-                      className={`p-1.5 transition-colors ${mode === "audio" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground"}`}
-                      title="Play audio only"
-                    >
-                      <Headphones className="w-3 h-3" />
-                    </button>
-                  </div>
+                {expandedVideo === p.id && p.media_url && p.is_video && mode === "video" && (
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="mt-1 rounded-xl overflow-hidden bg-black">
+                    <video src={p.media_url} controls autoPlay playsInline className="w-full max-h-[280px] object-contain" onEnded={() => { setPlayingId(null); setExpandedVideo(null); }} />
+                  </motion.div>
                 )}
-                <button onClick={() => removePodcast(p.id)} className="w-7 h-7 rounded-full bg-destructive/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Trash2 className="w-3 h-3 text-destructive" />
-                </button>
-              </div>
-              {/* Expanded video player */}
-              {expandedVideo === p.id && p.mediaUrl && p.isVideo && mode === "video" && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="mt-1 rounded-xl overflow-hidden bg-black">
-                  <video
-                    src={p.mediaUrl}
-                    controls
-                    autoPlay
-                    playsInline
-                    className="w-full max-h-[280px] object-contain"
-                    onEnded={() => { setPlayingId(null); setExpandedVideo(null); }}
-                  />
-                </motion.div>
-              )}
-            </motion.div>
-          );
-        })}
-      </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
 
-      {podcasts.length === 0 && (
+      {!loading && podcasts.length === 0 && (
         <div className="py-12 text-center">
           <Mic2 className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
           <p className="text-sm text-muted-foreground">No podcasts uploaded yet</p>

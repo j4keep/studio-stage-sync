@@ -1,21 +1,19 @@
-import { useState, useRef } from "react";
-import { usePersistedState } from "@/hooks/use-persisted-state";
+import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, Video, Play, Pause, Plus, Trash2, Upload, Image } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import musicvideo1 from "@/assets/musicvideo-1.jpg";
-import musicvideo2 from "@/assets/musicvideo-2.jpg";
-import album1 from "@/assets/album-1.jpg";
-import album2 from "@/assets/album-2.jpg";
 
 interface VideoItem {
   id: string;
   title: string;
   views: string;
   duration: string;
-  img: string;
-  videoUrl?: string;
+  cover_url: string;
+  video_url?: string;
 }
 
 const formatDuration = (seconds: number) => {
@@ -24,28 +22,31 @@ const formatDuration = (seconds: number) => {
   return `${m}:${s.toString().padStart(2, "0")}`;
 };
 
-const initialVideos: VideoItem[] = [
-  { id: "1", title: "Behind The Scenes", views: "2.3K", duration: "5:12", img: musicvideo1 },
-  { id: "2", title: "Live Session", views: "4.1K", duration: "8:30", img: album1 },
-  { id: "3", title: "Midnight Glow (Official)", views: "45K", duration: "4:02", img: musicvideo2 },
-  { id: "4", title: "Studio Vlog #3", views: "1.8K", duration: "12:45", img: album2 },
-];
-
 const MyVideosPage = () => {
   const navigate = useNavigate();
-  const [videos, setVideos] = usePersistedState<VideoItem[]>("wheuat_my_videos", initialVideos);
+  const { user } = useAuth();
+  const [videos, setVideos] = useState<VideoItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [pendingVideoFile, setPendingVideoFile] = useState<File | null>(null);
   const [pendingCover, setPendingCover] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
-  const videoPlayerRef = useRef<HTMLVideoElement>(null);
 
-  const removeVideo = (id: string) => {
-    if (playingId === id) {
-      setPlayingId(null);
+  useEffect(() => { if (user) fetchVideos(); }, [user]);
+
+  const fetchVideos = async () => {
+    const { data, error } = await (supabase as any).from("videos").select("*").eq("user_id", user!.id).order("created_at", { ascending: false });
+    if (!error && data) {
+      setVideos(data.map((v: any) => ({ id: v.id, title: v.title, views: v.views || "0", duration: v.duration || "0:00", cover_url: v.cover_url || musicvideo1, video_url: v.video_url })));
     }
+    setLoading(false);
+  };
+
+  const removeVideo = async (id: string) => {
+    if (playingId === id) setPlayingId(null);
+    await (supabase as any).from("videos").delete().eq("id", id);
     setVideos(prev => prev.filter(v => v.id !== id));
   };
 
@@ -67,65 +68,46 @@ const MyVideosPage = () => {
   };
 
   const confirmUpload = () => {
-    if (!pendingVideoFile) return;
+    if (!pendingVideoFile || !user) return;
     const videoUrl = URL.createObjectURL(pendingVideoFile);
     const tempVideo = document.createElement("video");
     tempVideo.preload = "metadata";
     tempVideo.onloadedmetadata = () => {
-      // Generate thumbnail from video if no cover provided
-      if (!pendingCover) {
-        tempVideo.currentTime = 1;
-      }
-      const finalize = (cover: string) => {
-        const newVideo: VideoItem = {
-          id: Date.now().toString(),
-          title: pendingVideoFile.name.replace(/\.[^/.]+$/, ""),
-          views: "0",
-          duration: formatDuration(tempVideo.duration),
-          img: cover,
-          videoUrl,
-        };
-        setVideos(prev => [newVideo, ...prev]);
-        setPendingVideoFile(null);
-        setPendingCover(null);
-        setShowUpload(false);
-        toast({ title: "Video added!", description: `"${newVideo.title}" has been uploaded` });
+      if (!pendingCover) { tempVideo.currentTime = 1; }
+      const finalize = async (cover: string) => {
+        const title = pendingVideoFile.name.replace(/\.[^/.]+$/, "");
+        const duration = formatDuration(tempVideo.duration);
+        const { data, error } = await (supabase as any).from("videos").insert({ user_id: user.id, title, duration, cover_url: cover, video_url: null }).select().single();
+        if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+        setVideos(prev => [{ id: data.id, title, views: "0", duration, cover_url: cover, video_url: videoUrl }, ...prev]);
+        setPendingVideoFile(null); setPendingCover(null); setShowUpload(false);
+        toast({ title: "Video added!", description: `"${title}" has been uploaded` });
         if (fileInputRef.current) fileInputRef.current.value = "";
       };
-
-      if (pendingCover) {
-        finalize(pendingCover);
-      } else {
+      if (pendingCover) { finalize(pendingCover); }
+      else {
         tempVideo.onseeked = () => {
           try {
             const canvas = document.createElement("canvas");
             canvas.width = tempVideo.videoWidth || 320;
             canvas.height = tempVideo.videoHeight || 180;
-            const ctx = canvas.getContext("2d");
-            ctx?.drawImage(tempVideo, 0, 0, canvas.width, canvas.height);
-            const thumb = canvas.toDataURL("image/jpeg", 0.7);
-            finalize(thumb);
-          } catch {
-            finalize(musicvideo1);
-          }
+            canvas.getContext("2d")?.drawImage(tempVideo, 0, 0, canvas.width, canvas.height);
+            finalize(canvas.toDataURL("image/jpeg", 0.7));
+          } catch { finalize(musicvideo1); }
         };
         tempVideo.onerror = () => finalize(musicvideo1);
       }
     };
-    tempVideo.onerror = () => {
-      toast({ title: "Error", description: "Could not read video file", variant: "destructive" });
-    };
+    tempVideo.onerror = () => { toast({ title: "Error", description: "Could not read video file", variant: "destructive" }); };
     tempVideo.src = videoUrl;
   };
 
   const togglePlay = (video: VideoItem) => {
-    if (!video.videoUrl) return;
-    if (playingId === video.id) {
-      setPlayingId(null);
-    } else {
-      setPlayingId(video.id);
-    }
+    if (!video.video_url) return;
+    setPlayingId(playingId === video.id ? null : video.id);
   };
+
+  if (!user) return <div className="px-4 pt-4 text-center text-muted-foreground text-sm">Please log in to view your videos.</div>;
 
   return (
     <div className="px-4 pt-4 pb-4">
@@ -156,90 +138,58 @@ const MyVideosPage = () => {
             </div>
           ) : (
             <div className="flex flex-col items-center gap-3 py-3">
-              <p className="text-sm text-foreground font-medium truncate max-w-full">
-                🎬 {pendingVideoFile.name}
-              </p>
-
+              <p className="text-sm text-foreground font-medium truncate max-w-full">🎬 {pendingVideoFile.name}</p>
               <div className="flex items-center gap-3">
                 <div className="w-16 h-16 rounded-lg overflow-hidden border border-border bg-muted flex items-center justify-center">
-                  {pendingCover ? (
-                    <img src={pendingCover} alt="Cover" className="w-full h-full object-cover" />
-                  ) : (
-                    <Video className="w-6 h-6 text-muted-foreground" />
-                  )}
+                  {pendingCover ? <img src={pendingCover} alt="Cover" className="w-full h-full object-cover" /> : <Video className="w-6 h-6 text-muted-foreground" />}
                 </div>
-                <button
-                  onClick={() => coverInputRef.current?.click()}
-                  className="px-3 py-2 rounded-lg border border-border bg-card text-xs font-medium text-foreground flex items-center gap-1.5"
-                >
-                  <Image className="w-3.5 h-3.5" />
-                  {pendingCover ? "Change Cover" : "Add Cover"}
+                <button onClick={() => coverInputRef.current?.click()} className="px-3 py-2 rounded-lg border border-border bg-card text-xs font-medium text-foreground flex items-center gap-1.5">
+                  <Image className="w-3.5 h-3.5" /> {pendingCover ? "Change Cover" : "Add Cover"}
                 </button>
               </div>
-
               <p className="text-[10px] text-muted-foreground">Cover art is optional · a frame will be used if none selected</p>
-
               <div className="flex gap-2">
-                <button
-                  onClick={() => { setPendingVideoFile(null); setPendingCover(null); }}
-                  className="px-4 py-2 rounded-lg border border-border text-xs font-medium text-muted-foreground"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={confirmUpload}
-                  className="px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-xs font-semibold glow-primary"
-                >
-                  Upload Video
-                </button>
+                <button onClick={() => { setPendingVideoFile(null); setPendingCover(null); }} className="px-4 py-2 rounded-lg border border-border text-xs font-medium text-muted-foreground">Cancel</button>
+                <button onClick={confirmUpload} className="px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-xs font-semibold glow-primary">Upload Video</button>
               </div>
             </div>
           )}
         </motion.div>
       )}
 
-      <div className="grid grid-cols-2 gap-2">
-        {videos.map((v, i) => (
-          <motion.div key={v.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
-            className="relative rounded-xl overflow-hidden bg-card border border-border group"
-          >
-            <div className="relative aspect-video">
-              {playingId === v.id && v.videoUrl ? (
-                <video
-                  src={v.videoUrl}
-                  className="w-full h-full object-cover"
-                  autoPlay
-                  playsInline
-                  controls
-                  onEnded={() => setPlayingId(null)}
-                />
-              ) : (
-                <>
-                  <img src={v.img} alt={v.title} className="w-full h-full object-cover" />
-                  <button
-                    onClick={() => togglePlay(v)}
-                    className="absolute inset-0 bg-black/30 flex items-center justify-center"
-                    disabled={!v.videoUrl}
-                  >
-                    <Play className="w-6 h-6 text-white fill-white" />
-                  </button>
-                </>
-              )}
-              <button onClick={() => removeVideo(v.id)}
-                className="absolute top-2 right-2 w-6 h-6 rounded-full bg-destructive/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
-              >
-                <Trash2 className="w-3 h-3 text-white" />
-              </button>
-            </div>
-            <div className="p-2">
-              <p className="text-xs font-medium text-foreground truncate">{v.title}</p>
-              <p className="text-[10px] text-muted-foreground">{v.views} views · {v.duration}</p>
-            </div>
-          </motion.div>
-        ))}
-      </div>
+      {loading ? (
+        <div className="py-12 text-center text-muted-foreground text-sm">Loading...</div>
+      ) : (
+        <div className="grid grid-cols-2 gap-2">
+          {videos.map((v, i) => (
+            <motion.div key={v.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+              className="relative rounded-xl overflow-hidden bg-card border border-border group"
+            >
+              <div className="relative aspect-video">
+                {playingId === v.id && v.video_url ? (
+                  <video src={v.video_url} className="w-full h-full object-cover" autoPlay playsInline controls onEnded={() => setPlayingId(null)} />
+                ) : (
+                  <>
+                    <img src={v.cover_url} alt={v.title} className="w-full h-full object-cover" />
+                    <button onClick={() => togglePlay(v)} className="absolute inset-0 bg-black/30 flex items-center justify-center" disabled={!v.video_url}>
+                      <Play className="w-6 h-6 text-white fill-white" />
+                    </button>
+                  </>
+                )}
+                <button onClick={() => removeVideo(v.id)} className="absolute top-2 right-2 w-6 h-6 rounded-full bg-destructive/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                  <Trash2 className="w-3 h-3 text-white" />
+                </button>
+              </div>
+              <div className="p-2">
+                <p className="text-xs font-medium text-foreground truncate">{v.title}</p>
+                <p className="text-[10px] text-muted-foreground">{v.views} views · {v.duration}</p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
 
-      {videos.length === 0 && (
+      {!loading && videos.length === 0 && (
         <div className="py-12 text-center">
           <Video className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
           <p className="text-sm text-muted-foreground">No videos uploaded yet</p>

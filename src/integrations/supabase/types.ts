@@ -14,6 +14,123 @@ export type Database = {
   }
   public: {
     Tables: {
+      podcasts: {
+        Row: {
+          cover_url: string | null
+          created_at: string
+          duration: string | null
+          episode: string | null
+          id: string
+          is_video: boolean | null
+          media_url: string | null
+          plays: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          cover_url?: string | null
+          created_at?: string
+          duration?: string | null
+          episode?: string | null
+          id?: string
+          is_video?: boolean | null
+          media_url?: string | null
+          plays?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          cover_url?: string | null
+          created_at?: string
+          duration?: string | null
+          episode?: string | null
+          id?: string
+          is_video?: boolean | null
+          media_url?: string | null
+          plays?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      projects: {
+        Row: {
+          backers: number | null
+          categories: string[] | null
+          cover_url: string | null
+          created_at: string
+          deadline: string | null
+          description: string | null
+          goal: number | null
+          id: string
+          raised: number | null
+          tiers: string[] | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          backers?: number | null
+          categories?: string[] | null
+          cover_url?: string | null
+          created_at?: string
+          deadline?: string | null
+          description?: string | null
+          goal?: number | null
+          id?: string
+          raised?: number | null
+          tiers?: string[] | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          backers?: number | null
+          categories?: string[] | null
+          cover_url?: string | null
+          created_at?: string
+          deadline?: string | null
+          description?: string | null
+          goal?: number | null
+          id?: string
+          raised?: number | null
+          tiers?: string[] | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      songs: {
+        Row: {
+          audio_url: string | null
+          cover_url: string | null
+          created_at: string
+          duration: string | null
+          id: string
+          plays: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          audio_url?: string | null
+          cover_url?: string | null
+          created_at?: string
+          duration?: string | null
+          id?: string
+          plays?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          audio_url?: string | null
+          cover_url?: string | null
+          created_at?: string
+          duration?: string | null
+          id?: string
+          plays?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       studio_availability: {
         Row: {
           created_at: string
@@ -123,6 +240,39 @@ export type Database = {
           reviews_count?: number | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      videos: {
+        Row: {
+          cover_url: string | null
+          created_at: string
+          duration: string | null
+          id: string
+          title: string
+          user_id: string
+          video_url: string | null
+          views: string | null
+        }
+        Insert: {
+          cover_url?: string | null
+          created_at?: string
+          duration?: string | null
+          id?: string
+          title: string
+          user_id: string
+          video_url?: string | null
+          views?: string | null
+        }
+        Update: {
+          cover_url?: string | null
+          created_at?: string
+          duration?: string | null
+          id?: string
+          title?: string
+          user_id?: string
+          video_url?: string | null
+          views?: string | null
         }
         Relationships: []
       }
