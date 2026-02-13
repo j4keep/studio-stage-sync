@@ -6,6 +6,7 @@ import {
   CheckCircle, UserPlus, Share2, MoreHorizontal, ChevronRight
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import PlaylistsSection from "@/components/PlaylistsSection";
 import profileBanner from "@/assets/profile-banner.jpg";
 import profileAvatar from "@/assets/profile-avatar.jpg";
 import album1 from "@/assets/album-1.jpg";
@@ -233,6 +234,11 @@ const ArtistProfile = () => {
         </div>
       </div>
 
+      {/* Playlists */}
+      <div className="px-4">
+        <PlaylistsSection />
+      </div>
+
       {/* Quick Actions */}
       <div className="px-4 mt-5">
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Quick Actions</p>
@@ -315,6 +321,9 @@ const FanProfile = () => {
           </button>
         ))}
       </div>
+
+      {/* Playlists */}
+      <PlaylistsSection />
     </div>
   );
 };
