@@ -79,7 +79,7 @@ const ArtistProfile = () => {
       <div className="relative h-44 overflow-hidden">
         <img src={profileBanner} alt="Banner" className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
-        <button className="absolute top-3 right-3 w-8 h-8 rounded-full bg-background/60 backdrop-blur-sm flex items-center justify-center text-foreground">
+        <button onClick={() => navigate("/settings")} className="absolute top-3 right-3 w-8 h-8 rounded-full bg-background/60 backdrop-blur-sm flex items-center justify-center text-foreground">
           <Settings className="w-4 h-4" />
         </button>
       </div>

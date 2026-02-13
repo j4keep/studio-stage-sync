@@ -14,6 +14,7 @@ import TermsPage from "./pages/TermsPage";
 import HelpPage from "./pages/HelpPage";
 import LegalVaultPage from "./pages/LegalVaultPage";
 import PlaylistsPage from "./pages/PlaylistsPage";
+import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
 import TermsAgreementGate from "./components/TermsAgreementGate";
 
@@ -23,6 +24,19 @@ const App = () => {
   const [termsAccepted, setTermsAccepted] = useState(() => {
     return localStorage.getItem("wheuat_terms_accepted") === "true";
   });
+
+  // Initialize theme on mount
+  useEffect(() => {
+    const theme = localStorage.getItem("wheuat_theme");
+    const root = document.documentElement;
+    if (theme === "light") {
+      root.classList.remove("dark");
+      root.classList.add("light");
+    } else {
+      root.classList.remove("light");
+      root.classList.add("dark");
+    }
+  }, []);
 
   const handleAcceptTerms = () => {
     localStorage.setItem("wheuat_terms_accepted", "true");
@@ -63,6 +77,7 @@ const App = () => {
               <Route path="/help" element={<HelpPage />} />
               <Route path="/legal-vault" element={<LegalVaultPage />} />
               <Route path="/playlists" element={<PlaylistsPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AppLayout>
