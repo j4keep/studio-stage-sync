@@ -133,8 +133,8 @@ const MySongsPage = () => {
             <div className="flex flex-col items-center gap-3 py-3">
               <p className="text-sm text-foreground font-medium truncate max-w-full">🎵 {pendingAudioFile.name}</p>
               <div className="flex items-center gap-3">
-                <div className="w-16 h-16 rounded-lg overflow-hidden border border-border bg-muted flex items-center justify-center">
-                  {pendingCover ? <img src={pendingCover} alt="Cover" className="w-full h-full object-cover" /> : <Music className="w-6 h-6 text-muted-foreground" />}
+                <div className="w-20 h-20 rounded-lg overflow-hidden border border-border bg-muted flex items-center justify-center">
+                  {pendingCover ? <img src={pendingCover} alt="Cover" className="w-full h-full object-contain" /> : <Music className="w-6 h-6 text-muted-foreground" />}
                 </div>
                 <button onClick={() => coverInputRef.current?.click()} className="px-3 py-2 rounded-lg border border-border bg-card text-xs font-medium text-foreground flex items-center gap-1.5">
                   <Image className="w-3.5 h-3.5" /> {pendingCover ? "Change Cover" : "Add Cover"}
