@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Video, Play, Pause, Plus, Trash2, Upload, Image } from "lucide-react";
+import { ArrowLeft, Video, Play, Pause, Plus, Trash2, Upload, Image, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { cacheMediaUrl, getCachedMediaUrl, removeCachedMedia } from "@/lib/media-cache";
 import musicvideo1 from "@/assets/musicvideo-1.jpg";
 
 interface VideoItem {
@@ -33,13 +34,18 @@ const MyVideosPage = () => {
   const [pendingCover, setPendingCover] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
+  const reuploadIdRef = useRef<string | null>(null);
 
   useEffect(() => { if (user) fetchVideos(); }, [user]);
 
   const fetchVideos = async () => {
     const { data, error } = await (supabase as any).from("videos").select("*").eq("user_id", user!.id).order("created_at", { ascending: false });
     if (!error && data) {
-      setVideos(data.map((v: any) => ({ id: v.id, title: v.title, views: v.views || "0", duration: v.duration || "0:00", cover_url: v.cover_url || musicvideo1, video_url: v.video_url })));
+      setVideos(data.map((v: any) => ({
+        id: v.id, title: v.title, views: v.views || "0", duration: v.duration || "0:00",
+        cover_url: v.cover_url || musicvideo1,
+        video_url: v.video_url || getCachedMediaUrl(v.id) || undefined,
+      })));
     }
     setLoading(false);
   };
@@ -47,12 +53,25 @@ const MyVideosPage = () => {
   const removeVideo = async (id: string) => {
     if (playingId === id) setPlayingId(null);
     await (supabase as any).from("videos").delete().eq("id", id);
+    removeCachedMedia(id);
     setVideos(prev => prev.filter(v => v.id !== id));
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (reuploadIdRef.current) {
+      const reuploadId = reuploadIdRef.current;
+      const videoUrl = URL.createObjectURL(file);
+      cacheMediaUrl(reuploadId, videoUrl);
+      setVideos(prev => prev.map(v => v.id === reuploadId ? { ...v, video_url: videoUrl } : v));
+      reuploadIdRef.current = null;
+      toast({ title: "File linked!", description: "Video is now playable this session." });
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
     setPendingVideoFile(file);
     setPendingCover(null);
     toast({ title: "Video selected", description: "Optionally add a cover image, then confirm upload." });
@@ -79,6 +98,7 @@ const MyVideosPage = () => {
         const duration = formatDuration(tempVideo.duration);
         const { data, error } = await (supabase as any).from("videos").insert({ user_id: user.id, title, duration, cover_url: cover, video_url: null }).select().single();
         if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+        cacheMediaUrl(data.id, videoUrl);
         setVideos(prev => [{ id: data.id, title, views: "0", duration, cover_url: cover, video_url: videoUrl }, ...prev]);
         setPendingVideoFile(null); setPendingCover(null); setShowUpload(false);
         toast({ title: "Video added!", description: `"${title}" has been uploaded` });
@@ -100,6 +120,11 @@ const MyVideosPage = () => {
     };
     tempVideo.onerror = () => { toast({ title: "Error", description: "Could not read video file", variant: "destructive" }); };
     tempVideo.src = videoUrl;
+  };
+
+  const handleReupload = (id: string) => {
+    reuploadIdRef.current = id;
+    fileInputRef.current?.click();
   };
 
   const togglePlay = (video: VideoItem) => {
@@ -171,8 +196,15 @@ const MyVideosPage = () => {
                 ) : (
                   <>
                     <img src={v.cover_url} alt={v.title} className="w-full h-full object-cover" />
-                    <button onClick={() => togglePlay(v)} className="absolute inset-0 bg-black/30 flex items-center justify-center" disabled={!v.video_url}>
-                      <Play className="w-6 h-6 text-white fill-white" />
+                    <button onClick={() => v.video_url ? togglePlay(v) : handleReupload(v.id)} className="absolute inset-0 bg-black/30 flex flex-col items-center justify-center gap-1">
+                      {v.video_url ? (
+                        <Play className="w-6 h-6 text-white fill-white" />
+                      ) : (
+                        <>
+                          <RefreshCw className="w-5 h-5 text-white" />
+                          <span className="text-[9px] text-white/80">Re-link file</span>
+                        </>
+                      )}
                     </button>
                   </>
                 )}
@@ -182,7 +214,7 @@ const MyVideosPage = () => {
               </div>
               <div className="p-2">
                 <p className="text-xs font-medium text-foreground truncate">{v.title}</p>
-                <p className="text-[10px] text-muted-foreground">{v.views} views · {v.duration}</p>
+                <p className="text-[10px] text-muted-foreground">{v.video_url ? `${v.views} views · ${v.duration}` : "Tap to re-link"}</p>
               </div>
             </motion.div>
           ))}

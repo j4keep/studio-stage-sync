@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Music, Play, Pause, MoreHorizontal, Plus, Trash2, Upload, Image } from "lucide-react";
+import { ArrowLeft, Music, Play, Pause, MoreHorizontal, Plus, Trash2, Upload, Image, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { cacheMediaUrl, getCachedMediaUrl, removeCachedMedia } from "@/lib/media-cache";
 import album1 from "@/assets/album-1.jpg";
 
 interface Song {
@@ -34,6 +35,7 @@ const MySongsPage = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const reuploadIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (user) fetchSongs();
@@ -42,7 +44,11 @@ const MySongsPage = () => {
   const fetchSongs = async () => {
     const { data, error } = await (supabase as any).from("songs").select("*").eq("user_id", user!.id).order("created_at", { ascending: false });
     if (!error && data) {
-      setSongs(data.map((s: any) => ({ id: s.id, title: s.title, plays: s.plays || "0", duration: s.duration || "0:00", cover_url: s.cover_url || album1, audio_url: s.audio_url })));
+      setSongs(data.map((s: any) => ({
+        id: s.id, title: s.title, plays: s.plays || "0", duration: s.duration || "0:00",
+        cover_url: s.cover_url || album1,
+        audio_url: s.audio_url || getCachedMediaUrl(s.id) || undefined,
+      })));
     }
     setLoading(false);
   };
@@ -50,6 +56,7 @@ const MySongsPage = () => {
   const removeSong = async (id: string) => {
     if (playingId === id) { audioRef.current?.pause(); setPlayingId(null); }
     await (supabase as any).from("songs").delete().eq("id", id);
+    removeCachedMedia(id);
     setSongs(prev => prev.filter(s => s.id !== id));
   };
 
@@ -58,6 +65,19 @@ const MySongsPage = () => {
     if (!file) return;
     setPendingAudioFile(file);
     setPendingCover(null);
+
+    // If re-uploading for an existing song
+    if (reuploadIdRef.current) {
+      const reuploadId = reuploadIdRef.current;
+      const audioUrl = URL.createObjectURL(file);
+      cacheMediaUrl(reuploadId, audioUrl);
+      setSongs(prev => prev.map(s => s.id === reuploadId ? { ...s, audio_url: audioUrl } : s));
+      reuploadIdRef.current = null;
+      setPendingAudioFile(null);
+      toast({ title: "File linked!", description: "Song is now playable this session." });
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
     toast({ title: "Audio selected", description: "Optionally add a cover image, then confirm upload." });
   };
 
@@ -78,16 +98,20 @@ const MySongsPage = () => {
       const title = pendingAudioFile.name.replace(/\.[^/.]+$/, "");
       const duration = formatDuration(audio.duration);
       const cover = pendingCover || null;
-
       const { data, error } = await (supabase as any).from("songs").insert({ user_id: user.id, title, duration, cover_url: cover, audio_url: null }).select().single();
       if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
-
+      cacheMediaUrl(data.id, audioUrl);
       setSongs(prev => [{ id: data.id, title, plays: "0", duration, cover_url: cover || album1, audio_url: audioUrl }, ...prev]);
       setPendingAudioFile(null); setPendingCover(null); setShowUpload(false);
       toast({ title: "Song added!", description: `"${title}" has been uploaded` });
       if (fileInputRef.current) fileInputRef.current.value = "";
     });
     audio.addEventListener("error", () => { toast({ title: "Error", description: "Could not read audio file", variant: "destructive" }); });
+  };
+
+  const handleReupload = (id: string) => {
+    reuploadIdRef.current = id;
+    fileInputRef.current?.click();
   };
 
   const togglePlay = (song: Song) => {
@@ -158,15 +182,23 @@ const MySongsPage = () => {
             <motion.div key={song.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
               className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:border-primary/30 transition-all group"
             >
-              <button onClick={() => togglePlay(song)} className="relative w-11 h-11 rounded-lg overflow-hidden flex-shrink-0" disabled={!song.audio_url}>
+              <button onClick={() => song.audio_url ? togglePlay(song) : handleReupload(song.id)} className="relative w-11 h-11 rounded-lg overflow-hidden flex-shrink-0">
                 <img src={song.cover_url} alt={song.title} className="w-full h-full object-cover" />
-                <div className={`absolute inset-0 bg-black/30 flex items-center justify-center transition-opacity ${playingId === song.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"} ${!song.audio_url ? "hidden" : ""}`}>
-                  {playingId === song.id ? <Pause className="w-4 h-4 text-white fill-white" /> : <Play className="w-4 h-4 text-white fill-white" />}
+                <div className={`absolute inset-0 bg-black/30 flex items-center justify-center transition-opacity ${playingId === song.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
+                  {!song.audio_url ? (
+                    <RefreshCw className="w-4 h-4 text-white" />
+                  ) : playingId === song.id ? (
+                    <Pause className="w-4 h-4 text-white fill-white" />
+                  ) : (
+                    <Play className="w-4 h-4 text-white fill-white" />
+                  )}
                 </div>
               </button>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-foreground truncate">{song.title}</p>
-                <p className="text-[10px] text-muted-foreground">{song.plays} plays · {song.duration}</p>
+                <p className="text-[10px] text-muted-foreground">
+                  {song.audio_url ? `${song.plays} plays · ${song.duration}` : "Tap to re-link file for playback"}
+                </p>
               </div>
               <button onClick={() => removeSong(song.id)} className="w-7 h-7 rounded-full bg-destructive/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <Trash2 className="w-3 h-3 text-destructive" />
