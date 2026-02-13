@@ -1,4 +1,1 @@
 project_id = "cdcdlqbjyptamtleitdp"
-
-[functions.upload-studio-photo]
-verify_jwt = false

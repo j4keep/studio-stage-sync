@@ -37,9 +37,31 @@ const CreateStudioSheet = ({ open, onClose, onCreated }: CreateStudioSheetProps)
     }
   };
 
+  const compressImage = (file: File, maxWidth = 800, quality = 0.7): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const scale = Math.min(1, maxWidth / img.width);
+          canvas.width = img.width * scale;
+          canvas.height = img.height * scale;
+          const ctx = canvas.getContext("2d")!;
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL("image/jpeg", quality));
+        };
+        img.onerror = reject;
+        img.src = ev.target?.result as string;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files || !user) return;
+    if (!files) return;
     const remaining = 6 - photoUrls.length;
     const toUpload = Array.from(files).slice(0, remaining);
     if (toUpload.length === 0) return;
@@ -48,23 +70,8 @@ const CreateStudioSheet = ({ open, onClose, onCreated }: CreateStudioSheetProps)
     try {
       const newUrls: string[] = [];
       for (const file of toUpload) {
-        const formData = new FormData();
-        formData.append("file", file);
-
-        const session = await supabase.auth.getSession();
-        const token = session.data.session?.access_token;
-
-        const res = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-studio-photo`,
-          {
-            method: "POST",
-            headers: { Authorization: `Bearer ${token}` },
-            body: formData,
-          }
-        );
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.error || "Upload failed");
-        newUrls.push(json.url);
+        const compressed = await compressImage(file);
+        newUrls.push(compressed);
       }
       setPhotoUrls((prev) => [...prev, ...newUrls]);
     } catch (err: any) {
