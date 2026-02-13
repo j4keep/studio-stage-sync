@@ -13,6 +13,7 @@ import ProfilePage from "./pages/ProfilePage";
 import TermsPage from "./pages/TermsPage";
 import HelpPage from "./pages/HelpPage";
 import LegalVaultPage from "./pages/LegalVaultPage";
+import PlaylistsPage from "./pages/PlaylistsPage";
 import NotFound from "./pages/NotFound";
 import TermsAgreementGate from "./components/TermsAgreementGate";
 
@@ -61,6 +62,7 @@ const App = () => {
               <Route path="/terms" element={<TermsPage />} />
               <Route path="/help" element={<HelpPage />} />
               <Route path="/legal-vault" element={<LegalVaultPage />} />
+              <Route path="/playlists" element={<PlaylistsPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AppLayout>
