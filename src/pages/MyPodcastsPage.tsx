@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Mic2, Play, Pause, Plus, Trash2, Upload, Image, Video, Headphones } from "lucide-react";
+import { ArrowLeft, Mic2, Play, Pause, Plus, Trash2, Upload, Image, Video, Headphones, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { cacheMediaUrl, getCachedMediaUrl, removeCachedMedia } from "@/lib/media-cache";
 import podcast1 from "@/assets/podcast-1.jpg";
 
 interface Podcast {
@@ -37,13 +38,19 @@ const MyPodcastsPage = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const reuploadIdRef = useRef<string | null>(null);
 
   useEffect(() => { if (user) fetchPodcasts(); }, [user]);
 
   const fetchPodcasts = async () => {
     const { data, error } = await (supabase as any).from("podcasts").select("*").eq("user_id", user!.id).order("created_at", { ascending: false });
     if (!error && data) {
-      setPodcasts(data.map((p: any) => ({ id: p.id, title: p.title, episode: p.episode || "New Episode", duration: p.duration || "0 min", plays: p.plays || "0", cover_url: p.cover_url || podcast1, media_url: p.media_url, is_video: p.is_video })));
+      setPodcasts(data.map((p: any) => ({
+        id: p.id, title: p.title, episode: p.episode || "New Episode", duration: p.duration || "0 min",
+        plays: p.plays || "0", cover_url: p.cover_url || podcast1,
+        media_url: p.media_url || getCachedMediaUrl(p.id) || undefined,
+        is_video: p.is_video,
+      })));
     }
     setLoading(false);
   };
@@ -51,12 +58,25 @@ const MyPodcastsPage = () => {
   const removePodcast = async (id: string) => {
     if (playingId === id) { audioRef.current?.pause(); setPlayingId(null); setExpandedVideo(null); }
     await (supabase as any).from("podcasts").delete().eq("id", id);
+    removeCachedMedia(id);
     setPodcasts(prev => prev.filter(p => p.id !== id));
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (reuploadIdRef.current) {
+      const reuploadId = reuploadIdRef.current;
+      const mediaUrl = URL.createObjectURL(file);
+      cacheMediaUrl(reuploadId, mediaUrl);
+      setPodcasts(prev => prev.map(p => p.id === reuploadId ? { ...p, media_url: mediaUrl } : p));
+      reuploadIdRef.current = null;
+      toast({ title: "File linked!", description: "Podcast is now playable this session." });
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
     setPendingFile(file);
     setPendingCover(null);
     const type = file.type.startsWith("video") ? "video" : "audio";
@@ -101,6 +121,7 @@ const MyPodcastsPage = () => {
       const duration = formatDuration(dur);
       const { data, error } = await (supabase as any).from("podcasts").insert({ user_id: user!.id, title, episode: "New Episode", duration, cover_url: cover, media_url: null, is_video: video }).select().single();
       if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+      cacheMediaUrl(data.id, url);
       setPodcasts(prev => [{ id: data.id, title, episode: "New Episode", duration, plays: "0", cover_url: cover || podcast1, media_url: url, is_video: video }, ...prev]);
       setPendingFile(null); setPendingCover(null); setShowUpload(false);
       toast({ title: "Podcast added!", description: `"${title}" has been uploaded` });
@@ -109,6 +130,11 @@ const MyPodcastsPage = () => {
 
     el.addEventListener("loadedmetadata", onMeta);
     el.addEventListener("error", () => { toast({ title: "Error", description: "Could not read media file", variant: "destructive" }); });
+  };
+
+  const handleReupload = (id: string) => {
+    reuploadIdRef.current = id;
+    fileInputRef.current?.click();
   };
 
   const getMode = (p: Podcast): "video" | "audio" => playMode[p.id] || (p.is_video ? "video" : "audio");
@@ -188,15 +214,23 @@ const MyPodcastsPage = () => {
             return (
               <motion.div key={p.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:border-primary/30 transition-all group">
-                  <button onClick={() => togglePlay(p)} className="relative w-11 h-11 rounded-lg overflow-hidden flex-shrink-0" disabled={!p.media_url}>
+                  <button onClick={() => p.media_url ? togglePlay(p) : handleReupload(p.id)} className="relative w-11 h-11 rounded-lg overflow-hidden flex-shrink-0">
                     <img src={p.cover_url} alt={p.title} className="w-full h-full object-cover" />
-                    <div className={`absolute inset-0 bg-black/30 flex items-center justify-center transition-opacity ${playingId === p.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"} ${!p.media_url ? "hidden" : ""}`}>
-                      {playingId === p.id ? <Pause className="w-4 h-4 text-white fill-white" /> : <Play className="w-4 h-4 text-white fill-white" />}
+                    <div className={`absolute inset-0 bg-black/30 flex items-center justify-center transition-opacity ${playingId === p.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
+                      {!p.media_url ? (
+                        <RefreshCw className="w-4 h-4 text-white" />
+                      ) : playingId === p.id ? (
+                        <Pause className="w-4 h-4 text-white fill-white" />
+                      ) : (
+                        <Play className="w-4 h-4 text-white fill-white" />
+                      )}
                     </div>
                   </button>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">{p.title}</p>
-                    <p className="text-[10px] text-muted-foreground">{p.episode} · {p.duration} · {p.plays} plays</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {p.media_url ? `${p.episode} · ${p.duration} · ${p.plays} plays` : "Tap to re-link file for playback"}
+                    </p>
                   </div>
                   {p.is_video && p.media_url && (
                     <div className="flex rounded-lg border border-border overflow-hidden">
