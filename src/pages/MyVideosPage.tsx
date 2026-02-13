@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, Video, Play, Plus, Trash2, Upload } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "@/hooks/use-toast";
 import musicvideo1 from "@/assets/musicvideo-1.jpg";
 import musicvideo2 from "@/assets/musicvideo-2.jpg";
 import album1 from "@/assets/album-1.jpg";
@@ -18,8 +19,25 @@ const MyVideosPage = () => {
   const navigate = useNavigate();
   const [videos, setVideos] = useState(initialVideos);
   const [showUpload, setShowUpload] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const removeVideo = (id: string) => setVideos(prev => prev.filter(v => v.id !== id));
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const newVideo = {
+      id: Date.now().toString(),
+      title: file.name.replace(/\.[^/.]+$/, ""),
+      views: "0",
+      duration: "0:00",
+      img: musicvideo1,
+    };
+    setVideos(prev => [newVideo, ...prev]);
+    setShowUpload(false);
+    toast({ title: "Video added!", description: `"${newVideo.title}" has been uploaded` });
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
 
   return (
     <div className="px-4 pt-4 pb-4">
@@ -36,13 +54,15 @@ const MyVideosPage = () => {
         </button>
       </div>
 
+      <input ref={fileInputRef} type="file" accept="video/*" className="hidden" onChange={handleFileSelect} />
+
       {showUpload && (
         <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="mb-4 p-4 rounded-xl bg-card border border-dashed border-primary/30">
           <div className="flex flex-col items-center gap-3 py-4">
             <Upload className="w-8 h-8 text-primary" />
             <p className="text-sm text-foreground font-medium">Upload a Video</p>
             <p className="text-[10px] text-muted-foreground text-center">MP4, MOV · Max 500MB</p>
-            <button className="px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-xs font-semibold glow-primary">Choose File</button>
+            <button onClick={() => fileInputRef.current?.click()} className="px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-xs font-semibold glow-primary">Choose File</button>
           </div>
         </motion.div>
       )}

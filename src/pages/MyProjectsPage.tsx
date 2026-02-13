@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, FolderHeart, Plus, Trash2, Users } from "lucide-react";
+import { ArrowLeft, FolderHeart, Plus, Trash2, Users, Upload } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import artist1 from "@/assets/artist-1.jpg";
 import artist5 from "@/assets/artist-5.jpg";
@@ -14,6 +15,11 @@ const MyProjectsPage = () => {
   const navigate = useNavigate();
   const [projects, setProjects] = useState(initialProjects);
   const [showCreate, setShowCreate] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newDesc, setNewDesc] = useState("");
+  const [newGoal, setNewGoal] = useState("");
+  const [newDays, setNewDays] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const removeProject = (id: string) => setProjects(prev => prev.filter(p => p.id !== id));
 
@@ -36,13 +42,31 @@ const MyProjectsPage = () => {
         <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="mb-4 p-4 rounded-xl bg-card border border-dashed border-primary/30">
           <p className="text-sm font-semibold text-foreground mb-3">New Project</p>
           <div className="flex flex-col gap-3">
-            <input placeholder="Project title" className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground" />
-            <textarea placeholder="Description" rows={2} className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground resize-none" />
+            <input placeholder="Project title" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground" />
+            <textarea placeholder="Description" value={newDesc} onChange={(e) => setNewDesc(e.target.value)} rows={2} className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground resize-none" />
             <div className="flex gap-2">
-              <input placeholder="Goal ($)" type="number" className="flex-1 px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground" />
-              <input placeholder="Days" type="number" className="w-20 px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground" />
+              <input placeholder="Goal ($)" type="number" value={newGoal} onChange={(e) => setNewGoal(e.target.value)} className="flex-1 px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground" />
+              <input placeholder="Days" type="number" value={newDays} onChange={(e) => setNewDays(e.target.value)} className="w-20 px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground" />
             </div>
-            <button className="w-full py-2.5 rounded-lg gradient-primary text-primary-foreground text-xs font-semibold glow-primary">Create Project</button>
+            <button onClick={() => {
+              if (!newTitle.trim()) {
+                toast({ title: "Missing title", description: "Please enter a project title", variant: "destructive" });
+                return;
+              }
+              const newProject = {
+                id: Date.now().toString(),
+                title: newTitle.trim(),
+                goal: parseInt(newGoal) || 1000,
+                raised: 0,
+                backers: 0,
+                daysLeft: parseInt(newDays) || 30,
+                img: artist5,
+              };
+              setProjects(prev => [newProject, ...prev]);
+              setNewTitle(""); setNewDesc(""); setNewGoal(""); setNewDays("");
+              setShowCreate(false);
+              toast({ title: "Project created!", description: `"${newProject.title}" is now live` });
+            }} className="w-full py-2.5 rounded-lg gradient-primary text-primary-foreground text-xs font-semibold glow-primary">Create Project</button>
           </div>
         </motion.div>
       )}

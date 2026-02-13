@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, Music, Play, MoreHorizontal, Plus, Trash2, Upload } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "@/hooks/use-toast";
 import album1 from "@/assets/album-1.jpg";
 import album2 from "@/assets/album-2.jpg";
 import album3 from "@/assets/album-3.jpg";
@@ -20,9 +21,26 @@ const MySongsPage = () => {
   const navigate = useNavigate();
   const [songs, setSongs] = useState(initialSongs);
   const [showUpload, setShowUpload] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const removeSong = (id: string) => {
     setSongs(prev => prev.filter(s => s.id !== id));
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const newSong = {
+      id: Date.now().toString(),
+      title: file.name.replace(/\.[^/.]+$/, ""),
+      plays: "0",
+      duration: "0:00",
+      img: album1,
+    };
+    setSongs(prev => [newSong, ...prev]);
+    setShowUpload(false);
+    toast({ title: "Song added!", description: `"${newSong.title}" has been uploaded` });
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   return (
@@ -43,6 +61,8 @@ const MySongsPage = () => {
         </button>
       </div>
 
+      <input ref={fileInputRef} type="file" accept="audio/*" className="hidden" onChange={handleFileSelect} />
+
       {showUpload && (
         <motion.div
           initial={{ opacity: 0, height: 0 }}
@@ -53,7 +73,10 @@ const MySongsPage = () => {
             <Upload className="w-8 h-8 text-primary" />
             <p className="text-sm text-foreground font-medium">Upload a Song</p>
             <p className="text-[10px] text-muted-foreground text-center">MP3, WAV, FLAC · Max 50MB</p>
-            <button className="px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-xs font-semibold glow-primary">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-xs font-semibold glow-primary"
+            >
               Choose File
             </button>
           </div>
