@@ -14,7 +14,118 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      studio_availability: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          is_booked: boolean | null
+          studio_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          id?: string
+          is_booked?: boolean | null
+          studio_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          is_booked?: boolean | null
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_availability_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_photos: {
+        Row: {
+          created_at: string
+          display_order: number | null
+          id: string
+          photo_url: string
+          studio_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          photo_url: string
+          studio_id: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          photo_url?: string
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_photos_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studios: {
+        Row: {
+          created_at: string
+          daily_rate: number | null
+          description: string | null
+          engineer_available: boolean | null
+          equipment: string[] | null
+          hourly_rate: number
+          id: string
+          location: string
+          name: string
+          rating: number | null
+          reviews_count: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          daily_rate?: number | null
+          description?: string | null
+          engineer_available?: boolean | null
+          equipment?: string[] | null
+          hourly_rate?: number
+          id?: string
+          location: string
+          name: string
+          rating?: number | null
+          reviews_count?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          daily_rate?: number | null
+          description?: string | null
+          engineer_available?: boolean | null
+          equipment?: string[] | null
+          hourly_rate?: number
+          id?: string
+          location?: string
+          name?: string
+          rating?: number | null
+          reviews_count?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
