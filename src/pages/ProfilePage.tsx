@@ -198,7 +198,7 @@ const ArtistProfile = () => {
         <div className="flex flex-col gap-1.5">
           {[
             { icon: Library, label: "Library", sub: "3 playlists", action: () => navigate("/library") },
-            { icon: Building2, label: "My Studios", sub: "1 listing", action: () => navigate("/studios") },
+            { icon: Building2, label: "My Studios", sub: "Manage listings", action: () => navigate("/my-studios") },
             { icon: BarChart3, label: "Analytics", sub: "View insights", action: () => navigate("/analytics") },
             { icon: DollarSign, label: "Earnings", sub: "$1,247.00", action: () => navigate("/earnings") },
             { icon: Shield, label: "Legal Vault", sub: "PRO", action: () => navigate("/legal-vault") },
