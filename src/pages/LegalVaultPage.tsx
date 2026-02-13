@@ -1,12 +1,16 @@
 import { motion } from "framer-motion";
-import { ArrowLeft, Shield, FileText, Upload, Users, Key, Lock, ChevronRight, Plus, CheckCircle } from "lucide-react";
+import { ArrowLeft, Shield, FileText, Upload, Users, Key, Lock, ChevronRight, Plus, CheckCircle, Download, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import legalDoc1 from "@/assets/legal-doc-1.jpg";
+import legalDoc2 from "@/assets/legal-doc-2.jpg";
+import legalDoc3 from "@/assets/legal-doc-3.jpg";
+import legalDoc4 from "@/assets/legal-doc-4.jpg";
 
 const documents = [
-  { name: "Master Recording Agreement", date: "Jan 15, 2026", type: "Contract", signed: true },
-  { name: "Publishing Rights — Midnight Flow", date: "Dec 3, 2025", type: "License", signed: true },
-  { name: "Studio Session Release Form", date: "Nov 20, 2025", type: "Release", signed: false },
-  { name: "Radio Streaming Agreement", date: "Oct 8, 2025", type: "Agreement", signed: true },
+  { name: "Master Recording Agreement", date: "Jan 15, 2026", type: "Contract", signed: true, image: legalDoc1 },
+  { name: "Publishing Rights — Midnight Flow", date: "Dec 3, 2025", type: "License", signed: true, image: legalDoc2 },
+  { name: "Studio Session Release Form", date: "Nov 20, 2025", type: "Release", signed: false, image: legalDoc3 },
+  { name: "Radio Streaming Agreement", date: "Oct 8, 2025", type: "Agreement", signed: true, image: legalDoc4 },
 ];
 
 const LegalVaultPage = () => {
@@ -63,31 +67,57 @@ const LegalVaultPage = () => {
         <Plus className="w-4 h-4" /> Upload Document
       </button>
 
-      {/* Documents List */}
+      {/* Documents Grid */}
       <div className="mb-5">
         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Your Documents</h3>
-        <div className="flex flex-col gap-2">
+        <div className="grid grid-cols-2 gap-3">
           {documents.map((doc, i) => (
             <motion.button
               key={doc.name}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05 }}
-              className="flex items-center gap-3 p-4 rounded-xl bg-card border border-border hover:border-primary/30 transition-all w-full text-left"
+              className="group relative overflow-hidden rounded-xl border border-border hover:border-primary/50 transition-all"
             >
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${doc.signed ? "bg-green-500/10" : "bg-yellow-500/10"}`}>
-                <FileText className={`w-5 h-5 ${doc.signed ? "text-green-400" : "text-yellow-400"}`} />
+              {/* Document Preview Image */}
+              <div className="relative w-full h-48 overflow-hidden bg-card">
+                <img
+                  src={doc.image}
+                  alt={doc.name}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+
+                {/* Status Badge */}
+                <div className="absolute top-2 right-2">
+                  {doc.signed ? (
+                    <div className="bg-green-500/90 backdrop-blur-sm px-2 py-1 rounded-lg">
+                      <CheckCircle className="w-3 h-3 text-white inline mr-1" />
+                      <span className="text-[10px] font-semibold text-white">Signed</span>
+                    </div>
+                  ) : (
+                    <div className="bg-yellow-500/90 backdrop-blur-sm px-2 py-1 rounded-lg">
+                      <span className="text-[10px] font-semibold text-white">Pending</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Bottom Info */}
+                <div className="absolute bottom-0 left-0 right-0 p-3">
+                  <p className="text-xs font-semibold text-white truncate">{doc.name}</p>
+                  <p className="text-[10px] text-white/70 mt-0.5">{doc.type} · {doc.date}</p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">{doc.name}</p>
-                <p className="text-[10px] text-muted-foreground">{doc.type} · {doc.date}</p>
+
+              {/* Hover Actions */}
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                <button className="p-2 rounded-lg bg-primary/90 backdrop-blur-sm hover:bg-primary transition-colors">
+                  <Eye className="w-4 h-4 text-primary-foreground" />
+                </button>
+                <button className="p-2 rounded-lg bg-primary/90 backdrop-blur-sm hover:bg-primary transition-colors">
+                  <Download className="w-4 h-4 text-primary-foreground" />
+                </button>
               </div>
-              {doc.signed ? (
-                <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
-              ) : (
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 font-semibold flex-shrink-0">Pending</span>
-              )}
-              <ChevronRight className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
             </motion.button>
           ))}
         </div>
