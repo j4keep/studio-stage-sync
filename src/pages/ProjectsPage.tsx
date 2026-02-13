@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
-import { FolderHeart, Clock, Users, Gift } from "lucide-react";
+import { FolderHeart, Clock, Users, Gift, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const projects = [
   {
@@ -95,9 +96,14 @@ const ProjectCard = ({ project }: { project: typeof projects[0] }) => {
 };
 
 const ProjectsPage = () => {
+  const navigate = useNavigate();
+
   return (
     <div className="px-4 pt-6">
-      <div className="flex items-center gap-2 mb-6">
+      <div className="flex items-center gap-3 mb-6">
+        <button onClick={() => navigate(-1)} className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground">
+          <ArrowLeft className="w-4 h-4" />
+        </button>
         <FolderHeart className="w-5 h-5 text-primary" />
         <h1 className="text-xl font-display font-bold text-foreground">Projects</h1>
       </div>
