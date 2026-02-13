@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, ShoppingBag, Plus, Trash2, Upload, Image, Loader2 } from "lucide-react";
+import { ArrowLeft, ShoppingBag, Plus, Trash2, Upload, Image, Loader2, Edit3, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,21 +22,21 @@ const MyStorePage = () => {
   const { user } = useAuth();
   const [products, setProducts] = useState<StoreProduct[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showAdd, setShowAdd] = useState(false);
+  const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
-  // Add form state
-  const [newTitle, setNewTitle] = useState("");
-  const [newType, setNewType] = useState("Digital Download");
-  const [newPrice, setNewPrice] = useState("");
-  const [newCover, setNewCover] = useState<string | null>(null);
-  const [newFileUrl, setNewFileUrl] = useState<string | null>(null);
-  const [newFileName, setNewFileName] = useState<string | null>(null);
+  // Form state
+  const [formTitle, setFormTitle] = useState("");
+  const [formType, setFormType] = useState("Digital Download");
+  const [formPrice, setFormPrice] = useState("");
+  const [formCover, setFormCover] = useState<string | null>(null);
+  const [formFileUrl, setFormFileUrl] = useState<string | null>(null);
+  const [formFileName, setFormFileName] = useState<string | null>(null);
 
   const coverInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch products
   useEffect(() => {
     if (!user) return;
     const fetchProducts = async () => {
@@ -56,7 +56,6 @@ const MyStorePage = () => {
     fetchProducts();
   }, [user]);
 
-  // Cover image handler — store as base64 data URL
   const handleCoverSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -65,66 +64,110 @@ const MyStorePage = () => {
       return;
     }
     const reader = new FileReader();
-    reader.onload = () => setNewCover(reader.result as string);
+    reader.onload = () => setFormCover(reader.result as string);
     reader.readAsDataURL(file);
     if (coverInputRef.current) coverInputRef.current.value = "";
   };
 
-  // File handler — for now store as blob URL (session-only playback) and keep name
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const blobUrl = URL.createObjectURL(file);
-    setNewFileUrl(blobUrl);
-    setNewFileName(file.name);
+    setFormFileUrl(blobUrl);
+    setFormFileName(file.name);
     toast({ title: "File attached", description: `"${file.name}" ready` });
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const resetForm = () => {
-    setNewTitle("");
-    setNewType("Digital Download");
-    setNewPrice("");
-    setNewCover(null);
-    setNewFileUrl(null);
-    setNewFileName(null);
-    setShowAdd(false);
+    setFormTitle("");
+    setFormType("Digital Download");
+    setFormPrice("");
+    setFormCover(null);
+    setFormFileUrl(null);
+    setFormFileName(null);
+    setShowForm(false);
+    setEditingId(null);
   };
 
-  const handleAddProduct = async () => {
+  const openEdit = (p: StoreProduct) => {
+    setEditingId(p.id);
+    setFormTitle(p.title);
+    setFormType(p.type);
+    setFormPrice(p.price.toString());
+    setFormCover(p.cover_url);
+    setFormFileUrl(p.file_url);
+    setFormFileName(p.file_name);
+    setShowForm(true);
+  };
+
+  const openAdd = () => {
+    resetForm();
+    setShowForm(true);
+  };
+
+  const handleSave = async () => {
     if (!user) return;
-    if (!newTitle.trim()) {
+    if (!formTitle.trim()) {
       toast({ title: "Title required", variant: "destructive" });
       return;
     }
-    const priceNum = parseFloat(newPrice);
+    const priceNum = parseFloat(formPrice);
     if (isNaN(priceNum) || priceNum < 0) {
       toast({ title: "Enter a valid price", variant: "destructive" });
       return;
     }
 
     setSaving(true);
-    const { data, error } = await supabase
-      .from("store_products")
-      .insert({
-        user_id: user.id,
-        title: newTitle.trim(),
-        type: newType,
-        price: priceNum,
-        cover_url: newCover,
-        file_name: newFileName,
-        // file_url stored only in local state for now (blob urls aren't persistent)
-      })
-      .select("id, title, type, price, cover_url, file_url, file_name, sales")
-      .single();
 
-    if (error) {
-      toast({ title: "Error adding product", description: error.message, variant: "destructive" });
-    } else if (data) {
-      // Keep the blob URL in local state so download works this session
-      setProducts(prev => [{ ...data, file_url: newFileUrl }, ...prev]);
-      toast({ title: "Product listed!" });
-      resetForm();
+    if (editingId) {
+      // Update existing product
+      const { error } = await supabase
+        .from("store_products")
+        .update({
+          title: formTitle.trim(),
+          type: formType,
+          price: priceNum,
+          cover_url: formCover,
+          file_name: formFileName,
+        })
+        .eq("id", editingId);
+
+      if (error) {
+        toast({ title: "Error updating product", description: error.message, variant: "destructive" });
+      } else {
+        setProducts(prev =>
+          prev.map(p =>
+            p.id === editingId
+              ? { ...p, title: formTitle.trim(), type: formType, price: priceNum, cover_url: formCover, file_name: formFileName, file_url: formFileUrl }
+              : p
+          )
+        );
+        toast({ title: "Product updated!" });
+        resetForm();
+      }
+    } else {
+      // Insert new product
+      const { data, error } = await supabase
+        .from("store_products")
+        .insert({
+          user_id: user.id,
+          title: formTitle.trim(),
+          type: formType,
+          price: priceNum,
+          cover_url: formCover,
+          file_name: formFileName,
+        })
+        .select("id, title, type, price, cover_url, file_url, file_name, sales")
+        .single();
+
+      if (error) {
+        toast({ title: "Error adding product", description: error.message, variant: "destructive" });
+      } else if (data) {
+        setProducts(prev => [{ ...data, file_url: formFileUrl }, ...prev]);
+        toast({ title: "Product listed!" });
+        resetForm();
+      }
     }
     setSaving(false);
   };
@@ -135,6 +178,7 @@ const MyStorePage = () => {
       toast({ title: "Error removing", description: error.message, variant: "destructive" });
     } else {
       setProducts(prev => prev.filter(p => p.id !== id));
+      if (editingId === id) resetForm();
     }
   };
 
@@ -148,7 +192,6 @@ const MyStorePage = () => {
 
   return (
     <div className="px-4 pt-4 pb-4">
-      {/* Header */}
       <div className="flex items-center gap-3 mb-5">
         <button onClick={() => navigate("/profile")} className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center">
           <ArrowLeft className="w-4 h-4 text-foreground" />
@@ -157,27 +200,29 @@ const MyStorePage = () => {
           <h1 className="text-lg font-display font-bold text-foreground">My Store</h1>
           <p className="text-[10px] text-muted-foreground">{products.length} products listed</p>
         </div>
-        <button onClick={() => setShowAdd(!showAdd)} className="px-3 py-2 rounded-xl gradient-primary text-primary-foreground text-xs font-semibold glow-primary flex items-center gap-1.5">
+        <button onClick={openAdd} className="px-3 py-2 rounded-xl gradient-primary text-primary-foreground text-xs font-semibold glow-primary flex items-center gap-1.5">
           <Plus className="w-3.5 h-3.5" /> Add
         </button>
       </div>
 
-      {/* Hidden file inputs */}
       <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverSelect} />
       <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileSelect} />
 
-      {/* Add Product Form */}
-      {showAdd && (
+      {showForm && (
         <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="mb-4 p-4 rounded-xl bg-card border border-dashed border-primary/30">
-          <p className="text-sm font-semibold text-foreground mb-3">Add Product</p>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-semibold text-foreground">{editingId ? "Edit Product" : "Add Product"}</p>
+            <button onClick={resetForm} className="w-6 h-6 rounded-full bg-muted flex items-center justify-center">
+              <X className="w-3.5 h-3.5 text-muted-foreground" />
+            </button>
+          </div>
           <div className="flex flex-col gap-3">
-            {/* Cover preview / upload */}
             <button
               onClick={() => coverInputRef.current?.click()}
-              className="w-full h-32 rounded-lg bg-background border border-border flex flex-col items-center justify-center gap-1.5 overflow-hidden hover:border-primary/50 transition-all"
+              className="w-full aspect-square max-w-[200px] mx-auto rounded-lg bg-background border border-border flex flex-col items-center justify-center gap-1.5 overflow-hidden hover:border-primary/50 transition-all"
             >
-              {newCover ? (
-                <img src={newCover} alt="Cover" className="w-full h-full object-cover" />
+              {formCover ? (
+                <img src={formCover} alt="Cover" className="w-full h-full object-contain" />
               ) : (
                 <>
                   <Image className="w-5 h-5 text-muted-foreground" />
@@ -188,14 +233,13 @@ const MyStorePage = () => {
 
             <input
               placeholder="Product name"
-              value={newTitle}
-              onChange={e => setNewTitle(e.target.value)}
+              value={formTitle}
+              onChange={e => setFormTitle(e.target.value)}
               className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground"
             />
-
             <select
-              value={newType}
-              onChange={e => setNewType(e.target.value)}
+              value={formType}
+              onChange={e => setFormType(e.target.value)}
               className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground"
             >
               <option>Digital Download</option>
@@ -203,53 +247,51 @@ const MyStorePage = () => {
               <option>Album</option>
               <option>Merchandise</option>
             </select>
-
             <input
               placeholder="Price ($)"
               type="number"
               min="0"
               step="0.01"
-              value={newPrice}
-              onChange={e => setNewPrice(e.target.value)}
+              value={formPrice}
+              onChange={e => setFormPrice(e.target.value)}
               className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground"
             />
-
             <button
               onClick={() => fileInputRef.current?.click()}
               className="w-full py-2 rounded-lg bg-card border border-border text-xs text-muted-foreground flex items-center justify-center gap-1.5 hover:border-primary/50 transition-all"
             >
               <Upload className="w-3.5 h-3.5" />
-              {newFileName ? newFileName : "Upload Downloadable File"}
+              {formFileName ? formFileName : "Upload Downloadable File"}
             </button>
-
             <button
-              onClick={handleAddProduct}
+              onClick={handleSave}
               disabled={saving}
               className="w-full py-2.5 rounded-lg gradient-primary text-primary-foreground text-xs font-semibold glow-primary flex items-center justify-center gap-1.5 disabled:opacity-50"
             >
               {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-              List Product
+              {editingId ? "Save Changes" : "List Product"}
             </button>
           </div>
         </motion.div>
       )}
 
-      {/* Loading state */}
       {loading && (
         <div className="py-12 flex justify-center">
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
       )}
 
-      {/* Product list */}
       {!loading && (
         <div className="flex flex-col gap-2">
           {products.map((p, i) => (
             <motion.div key={p.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
-              className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:border-primary/30 transition-all group"
+              onClick={() => openEdit(p)}
+              className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:border-primary/30 transition-all group cursor-pointer"
             >
               {p.cover_url ? (
-                <img src={p.cover_url} alt={p.title} className="w-11 h-11 rounded-lg object-cover flex-shrink-0" />
+                <div className="w-11 h-11 rounded-lg overflow-hidden flex-shrink-0 bg-muted">
+                  <img src={p.cover_url} alt={p.title} className="w-full h-full object-cover" />
+                </div>
               ) : (
                 <div className="w-11 h-11 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
                   <ShoppingBag className="w-4 h-4 text-muted-foreground" />
@@ -260,7 +302,12 @@ const MyStorePage = () => {
                 <p className="text-[10px] text-muted-foreground">{p.type} · {p.sales} sales</p>
               </div>
               <span className="text-xs font-semibold text-primary">${p.price.toFixed(2)}</span>
-              <button onClick={() => removeProduct(p.id)}
+              <button onClick={(e) => { e.stopPropagation(); openEdit(p); }}
+                className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <Edit3 className="w-3 h-3 text-primary" />
+              </button>
+              <button onClick={(e) => { e.stopPropagation(); removeProduct(p.id); }}
                 className="w-7 h-7 rounded-full bg-destructive/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 <Trash2 className="w-3 h-3 text-destructive" />
@@ -274,7 +321,7 @@ const MyStorePage = () => {
         <div className="py-12 text-center">
           <ShoppingBag className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
           <p className="text-sm text-muted-foreground">No products listed yet</p>
-          <button onClick={() => setShowAdd(true)} className="mt-3 text-xs text-primary font-semibold">Add your first product →</button>
+          <button onClick={openAdd} className="mt-3 text-xs text-primary font-semibold">Add your first product →</button>
         </div>
       )}
     </div>
