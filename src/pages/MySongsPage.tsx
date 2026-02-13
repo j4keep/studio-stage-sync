@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { usePersistedState } from "@/hooks/use-persisted-state";
 import { motion } from "framer-motion";
 import { ArrowLeft, Music, Play, Pause, MoreHorizontal, Plus, Trash2, Upload, Image } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -34,7 +35,7 @@ const formatDuration = (seconds: number) => {
 
 const MySongsPage = () => {
   const navigate = useNavigate();
-  const [songs, setSongs] = useState<Song[]>(initialSongs);
+  const [songs, setSongs] = usePersistedState<Song[]>("wheuat_my_songs", initialSongs);
   const [showUpload, setShowUpload] = useState(false);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [pendingAudioFile, setPendingAudioFile] = useState<File | null>(null);

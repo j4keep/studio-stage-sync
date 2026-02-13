@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { usePersistedState } from "@/hooks/use-persisted-state";
 import { motion } from "framer-motion";
 import { ArrowLeft, FolderHeart, Plus, Trash2, Users, Clock, Gift, ImagePlus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
@@ -87,7 +88,7 @@ const ProjectCard = ({ project, onRemove }: { project: Project; onRemove: (id: s
 
 const MyProjectsPage = () => {
   const navigate = useNavigate();
-  const [projects, setProjects] = useState(initialProjects);
+  const [projects, setProjects] = usePersistedState("wheuat_my_projects", initialProjects);
   const [showCreate, setShowCreate] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newDesc, setNewDesc] = useState("");

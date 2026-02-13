@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { usePersistedState } from "@/hooks/use-persisted-state";
 import { motion } from "framer-motion";
 import { ArrowLeft, Video, Play, Pause, Plus, Trash2, Upload, Image } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -32,7 +33,7 @@ const initialVideos: VideoItem[] = [
 
 const MyVideosPage = () => {
   const navigate = useNavigate();
-  const [videos, setVideos] = useState<VideoItem[]>(initialVideos);
+  const [videos, setVideos] = usePersistedState<VideoItem[]>("wheuat_my_videos", initialVideos);
   const [showUpload, setShowUpload] = useState(false);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [pendingVideoFile, setPendingVideoFile] = useState<File | null>(null);
