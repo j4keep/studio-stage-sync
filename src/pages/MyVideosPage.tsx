@@ -54,7 +54,7 @@ const MyVideosPage = () => {
         </button>
       </div>
 
-      <input ref={fileInputRef} type="file" accept="video/*" className="hidden" onChange={handleFileSelect} />
+      <input ref={fileInputRef} type="file" accept="video/*,.mp4,.mov,.avi,.mkv,.webm" className="hidden" onChange={handleFileSelect} />
 
       {showUpload && (
         <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="mb-4 p-4 rounded-xl bg-card border border-dashed border-primary/30">
