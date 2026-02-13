@@ -7,23 +7,26 @@ const corsHeaders = {
 
 const BUCKET = 'wheuat-media';
 
-function getClient() {
-  const accessKeyId = Deno.env.get('R2_ACCESS_KEY_ID');
-  const secretAccessKey = Deno.env.get('R2_SECRET_ACCESS_KEY');
-  const accountId = Deno.env.get('R2_ACCOUNT_ID');
-  if (!accessKeyId || !secretAccessKey || !accountId) throw new Error('R2 credentials not configured');
-  const r2Url = `https://${accountId}.r2.cloudflarestorage.com`;
-  const client = new AwsClient({ accessKeyId, secretAccessKey, service: 's3', region: 'auto' });
-  return { client, r2Url };
-}
-
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { client, r2Url } = getClient();
+    const accessKeyId = Deno.env.get('R2_ACCESS_KEY_ID')?.trim();
+    const secretAccessKey = Deno.env.get('R2_SECRET_ACCESS_KEY')?.trim();
+    const accountId = Deno.env.get('R2_ACCOUNT_ID')?.trim();
+    
+    console.log('Access Key ID length:', accessKeyId?.length, 'starts with:', accessKeyId?.substring(0, 4));
+    console.log('Secret Access Key length:', secretAccessKey?.length);
+    console.log('Account ID:', accountId);
+
+    if (!accessKeyId || !secretAccessKey || !accountId) {
+      return new Response(JSON.stringify({ success: false, error: 'R2 credentials not configured' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    const client = new AwsClient({ accessKeyId, secretAccessKey, service: 's3', region: 'auto' });
+    const r2Url = `https://${accountId}.r2.cloudflarestorage.com`;
 
     const contentType = req.headers.get('content-type') || '';
     let fileData: ArrayBuffer;
@@ -57,6 +60,7 @@ Deno.serve(async (req) => {
 
     const key = folder ? `${folder}/${fileName}` : fileName;
     const url = `${r2Url}/${BUCKET}/${key}`;
+    console.log('Uploading to:', url);
 
     const r2Response = await client.fetch(url, {
       method: 'PUT',
