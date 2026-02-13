@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { usePersistedState } from "@/hooks/use-persisted-state";
 import { motion } from "framer-motion";
 import { ArrowLeft, Mic2, Play, Pause, Plus, Trash2, Upload, Image, Video, Headphones } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -30,7 +31,7 @@ const formatDuration = (seconds: number) => {
 
 const MyPodcastsPage = () => {
   const navigate = useNavigate();
-  const [podcasts, setPodcasts] = useState<Podcast[]>(initialPodcasts);
+  const [podcasts, setPodcasts] = usePersistedState<Podcast[]>("wheuat_my_podcasts", initialPodcasts);
   const [showUpload, setShowUpload] = useState(false);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [playMode, setPlayMode] = useState<Record<string, "video" | "audio">>({});
