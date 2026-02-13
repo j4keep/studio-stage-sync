@@ -52,7 +52,7 @@ const MyPodcastsPage = () => {
         </button>
       </div>
 
-      <input ref={fileInputRef} type="file" accept="audio/*" className="hidden" onChange={handleFileSelect} />
+      <input ref={fileInputRef} type="file" accept="audio/*,.mp3,.wav,.flac,.aac,.m4a,.ogg" className="hidden" onChange={handleFileSelect} />
 
       {showUpload && (
         <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="mb-4 p-4 rounded-xl bg-card border border-dashed border-primary/30">

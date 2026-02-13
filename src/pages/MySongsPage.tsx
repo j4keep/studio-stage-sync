@@ -61,7 +61,7 @@ const MySongsPage = () => {
         </button>
       </div>
 
-      <input ref={fileInputRef} type="file" accept="audio/*" className="hidden" onChange={handleFileSelect} />
+      <input ref={fileInputRef} type="file" accept="audio/*,.mp3,.wav,.flac,.aac,.m4a,.ogg" className="hidden" onChange={handleFileSelect} />
 
       {showUpload && (
         <motion.div
