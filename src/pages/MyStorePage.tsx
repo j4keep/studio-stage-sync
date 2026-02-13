@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, ShoppingBag, Plus, Trash2, Download, Upload } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "@/hooks/use-toast";
 import album1 from "@/assets/album-1.jpg";
 import album3 from "@/assets/album-3.jpg";
 import album5 from "@/assets/album-5.jpg";
@@ -16,8 +17,16 @@ const MyStorePage = () => {
   const navigate = useNavigate();
   const [products, setProducts] = useState(initialProducts);
   const [showAdd, setShowAdd] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const removeProduct = (id: string) => setProducts(prev => prev.filter(p => p.id !== id));
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    toast({ title: "File selected", description: `"${file.name}" ready to attach` });
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
 
   return (
     <div className="px-4 pt-4 pb-4">
@@ -34,6 +43,8 @@ const MyStorePage = () => {
         </button>
       </div>
 
+      <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileSelect} />
+
       {showAdd && (
         <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="mb-4 p-4 rounded-xl bg-card border border-dashed border-primary/30">
           <p className="text-sm font-semibold text-foreground mb-3">Add Product</p>
@@ -46,7 +57,10 @@ const MyStorePage = () => {
               <option>Merchandise</option>
             </select>
             <input placeholder="Price ($)" type="number" className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground" />
-            <button className="w-full py-2 rounded-lg bg-card border border-border text-xs text-muted-foreground flex items-center justify-center gap-1.5">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full py-2 rounded-lg bg-card border border-border text-xs text-muted-foreground flex items-center justify-center gap-1.5 hover:border-primary/50 transition-all"
+            >
               <Upload className="w-3.5 h-3.5" /> Upload File
             </button>
             <button className="w-full py-2.5 rounded-lg gradient-primary text-primary-foreground text-xs font-semibold glow-primary">List Product</button>
