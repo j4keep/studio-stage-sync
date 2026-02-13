@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   User, Music, FolderHeart, Building2, Heart, Download, Upload, DollarSign,
   Settings, Shield, BarChart3, HelpCircle, Play, Video, Mic2, ShoppingBag,
-  CheckCircle, UserPlus, Share2, MoreHorizontal, ChevronRight, ListMusic
+  CheckCircle, UserPlus, Share2, MoreHorizontal, ChevronRight, ListMusic, Camera
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import profileBanner from "@/assets/profile-banner.jpg";
@@ -16,12 +16,14 @@ import podcast1 from "@/assets/podcast-1.jpg";
 import musicvideo1 from "@/assets/musicvideo-1.jpg";
 
 const ProfilePage = () => {
+  const navigate = useNavigate();
   const [role, setRole] = useState<"artist" | "fan">("artist");
 
   return (
     <div className="pb-4">
-      {/* Role Toggle - small pill at top */}
-      <div className="px-4 pt-4 pb-2 flex justify-center">
+      {/* Role Toggle + Settings */}
+      <div className="px-4 pt-4 pb-2 flex items-center justify-between">
+        <div className="w-8" />
         <div className="flex gap-1 p-1 rounded-full bg-card border border-border">
           {(["artist", "fan"] as const).map((r) => (
             <button
@@ -37,6 +39,9 @@ const ProfilePage = () => {
             </button>
           ))}
         </div>
+        <button onClick={() => navigate("/settings")} className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground">
+          <Settings className="w-4 h-4" />
+        </button>
       </div>
 
       <AnimatePresence mode="wait">
@@ -75,23 +80,28 @@ const ArtistProfile = () => {
 
   return (
     <>
-      {/* Banner */}
-      <div className="relative h-44 overflow-hidden">
+      {/* Banner with upload overlay */}
+      <div className="relative h-44 overflow-hidden group">
         <img src={profileBanner} alt="Banner" className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
-        <button onClick={() => navigate("/settings")} className="absolute top-3 right-3 w-8 h-8 rounded-full bg-background/60 backdrop-blur-sm flex items-center justify-center text-foreground">
-          <Settings className="w-4 h-4" />
+        <button className="absolute top-3 right-3 w-8 h-8 rounded-full bg-background/60 backdrop-blur-sm flex items-center justify-center text-foreground">
+          <Camera className="w-4 h-4" />
         </button>
       </div>
 
       {/* Avatar & Info overlapping banner */}
       <div className="px-4 -mt-12 relative z-10">
         <div className="flex items-end gap-3">
-          <img
-            src={profileAvatar}
-            alt="Profile"
-            className="w-20 h-20 rounded-full border-[3px] border-background object-cover"
-          />
+          <div className="relative group">
+            <img
+              src={profileAvatar}
+              alt="Profile"
+              className="w-20 h-20 rounded-full border-[3px] border-background object-cover"
+            />
+            <button className="absolute bottom-0 right-0 w-6 h-6 rounded-full bg-primary flex items-center justify-center border-2 border-background">
+              <Camera className="w-3 h-3 text-primary-foreground" />
+            </button>
+          </div>
           <div className="flex-1 pb-1">
             <div className="flex items-center gap-1.5">
               <h2 className="text-lg font-display font-bold text-foreground">WHEUAT Artist</h2>
