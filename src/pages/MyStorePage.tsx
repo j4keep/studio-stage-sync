@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { GENRES } from "@/lib/genres";
 
 interface StoreProduct {
   id: string;
@@ -28,7 +29,7 @@ const MyStorePage = () => {
 
   // Form state
   const [formTitle, setFormTitle] = useState("");
-  const [formType, setFormType] = useState("Digital Download");
+  const [formType, setFormType] = useState("Trap");
   const [formPrice, setFormPrice] = useState("");
   const [formCover, setFormCover] = useState<string | null>(null);
   const [formFileUrl, setFormFileUrl] = useState<string | null>(null);
@@ -110,7 +111,7 @@ const MyStorePage = () => {
 
   const resetForm = () => {
     setFormTitle("");
-    setFormType("Digital Download");
+    setFormType("Trap");
     setFormPrice("");
     setFormCover(null);
     setFormFileUrl(null);
@@ -271,10 +272,9 @@ const MyStorePage = () => {
               onChange={e => setFormType(e.target.value)}
               className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground"
             >
-              <option>Digital Download</option>
-              <option>Beat Pack</option>
-              <option>Album</option>
-              <option>Merchandise</option>
+              {GENRES.filter(g => g !== "All Music").map(g => (
+                <option key={g} value={g}>{g}</option>
+              ))}
             </select>
             <input
               placeholder="Price ($)"

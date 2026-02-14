@@ -1,13 +1,36 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft, Search, SlidersHorizontal, Play, Pause, Plus, ShoppingCart,
-  X, Download, Share2, Heart, MoreVertical, Music, Loader2, ChevronDown
+  ArrowLeft, Search, Play, Pause, Plus, ShoppingCart,
+  X, Heart, Share2, MoreVertical, Music, Loader2
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useCart } from "@/contexts/CartContext";
 import { toast } from "@/hooks/use-toast";
+import { GENRES } from "@/lib/genres";
+
+import genreTrap from "@/assets/genre-trap.jpg";
+import genreRnb from "@/assets/genre-rnb.jpg";
+import genreDrill from "@/assets/genre-drill.jpg";
+import genreFuturepop from "@/assets/genre-futurepop.jpg";
+import genreEmorap from "@/assets/genre-emorap.jpg";
+import genreReggaeton from "@/assets/genre-reggaeton.jpg";
+import genreHiphop from "@/assets/genre-hiphop.jpg";
+import genreAfrobeat from "@/assets/genre-afrobeat.jpg";
+import genreIndiernb from "@/assets/genre-indiernb.jpg";
+
+const GENRE_IMAGES: Record<string, string> = {
+  "Trap": genreTrap,
+  "R&B & Soul": genreRnb,
+  "Drill": genreDrill,
+  "Future Pop": genreFuturepop,
+  "Emo Rap": genreEmorap,
+  "Reggaeton": genreReggaeton,
+  "Hip Hop/Rap": genreHiphop,
+  "Afrobeat": genreAfrobeat,
+  "Indie RnB": genreIndiernb,
+};
 
 interface Product {
   id: string;
@@ -21,14 +44,12 @@ interface Product {
   sales: number;
 }
 
-const GENRES = ["All", "Beat Pack", "Digital Download", "Album", "Merchandise"];
-
 const StorePage = () => {
   const navigate = useNavigate();
   const { addItem, isInCart, count, total } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedGenre, setSelectedGenre] = useState("All");
+  const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [playingId, setPlayingId] = useState<string | null>(null);
@@ -50,8 +71,11 @@ const StorePage = () => {
   }, []);
 
   const filtered = products.filter((p) => {
-    const matchesGenre = selectedGenre === "All" || p.type === selectedGenre;
-    const matchesSearch = !searchQuery || p.title.toLowerCase().includes(searchQuery.toLowerCase()) || p.artist_name?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesGenre = !selectedGenre || selectedGenre === "All Music" || p.type === selectedGenre;
+    const matchesSearch =
+      !searchQuery ||
+      p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.artist_name?.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesGenre && matchesSearch;
   });
 
@@ -80,16 +104,112 @@ const StorePage = () => {
     toast({ title: "Added to cart", description: `${p.title} — $${p.price.toFixed(2)}` });
   };
 
+  // Genre grid view (landing)
+  if (!selectedGenre) {
+    return (
+      <div className="px-4 pt-4 pb-24">
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-5">
+          <div className="flex-1">
+            <h1 className="text-xl font-display font-bold text-foreground">Featured Genres</h1>
+          </div>
+          <button onClick={() => setShowSearch(!showSearch)} className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center">
+            <Search className="w-4 h-4 text-muted-foreground" />
+          </button>
+          <button onClick={() => setShowCart(true)} className="relative w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center">
+            <ShoppingCart className="w-4 h-4 text-muted-foreground" />
+            {count > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-primary text-[9px] font-bold text-primary-foreground flex items-center justify-center">
+                {count}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Search */}
+        <AnimatePresence>
+          {showSearch && (
+            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden mb-4">
+              <input
+                autoFocus
+                placeholder="Search for an artist…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && searchQuery.trim()) {
+                    setSelectedGenre("All Music");
+                  }
+                }}
+                className="w-full px-3 py-2.5 rounded-xl bg-card border border-border text-sm text-foreground placeholder:text-muted-foreground"
+              />
+              {searchQuery.trim() && (
+                <button
+                  onClick={() => setSelectedGenre("All Music")}
+                  className="mt-2 w-full py-2 rounded-xl gradient-primary text-primary-foreground text-xs font-semibold"
+                >
+                  Search "{searchQuery}"
+                </button>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Genre grid */}
+        <div className="grid grid-cols-2 gap-3">
+          {GENRES.filter(g => g !== "All Music").map((genre, i) => {
+            const isWide = genre === "Hip Hop/Rap" || genre === "Afrobeat" || genre === "Indie RnB";
+            return (
+              <motion.button
+                key={genre}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.04 }}
+                onClick={() => setSelectedGenre(genre)}
+                className={`relative overflow-hidden rounded-xl ${isWide ? "col-span-2 aspect-[2.5/1]" : "aspect-square"}`}
+              >
+                <img
+                  src={GENRE_IMAGES[genre]}
+                  alt={genre}
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-black/40" />
+                <span className="absolute inset-0 flex items-center justify-center text-white font-display font-bold text-sm tracking-widest uppercase">
+                  {genre}
+                </span>
+              </motion.button>
+            );
+          })}
+
+          {/* All Music button */}
+          <motion.button
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: GENRES.length * 0.04 }}
+            onClick={() => setSelectedGenre("All Music")}
+            className="col-span-2 aspect-[3/1] rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center"
+          >
+            <Music className="w-5 h-5 text-primary mr-2" />
+            <span className="text-primary font-display font-bold text-sm tracking-widest uppercase">All Music</span>
+          </motion.button>
+        </div>
+
+        {/* Cart drawer */}
+        <CartDrawer showCart={showCart} setShowCart={setShowCart} count={count} total={total} />
+      </div>
+    );
+  }
+
+  // Products list view (after selecting a genre)
   return (
     <div className="px-4 pt-4 pb-24">
       {/* Header */}
       <div className="flex items-center gap-3 mb-4">
-        <button onClick={() => navigate(-1)} className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center">
+        <button onClick={() => { setSelectedGenre(null); setSearchQuery(""); }} className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center">
           <ArrowLeft className="w-4 h-4 text-foreground" />
         </button>
         <div className="flex-1">
-          <h1 className="text-lg font-display font-bold text-foreground">Store</h1>
-          <p className="text-[10px] text-muted-foreground">Browse beats, albums & more</p>
+          <h1 className="text-lg font-display font-bold text-foreground">{selectedGenre}</h1>
+          <p className="text-[10px] text-muted-foreground">{filtered.length} products</p>
         </div>
         <button onClick={() => setShowSearch(!showSearch)} className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center">
           <Search className="w-4 h-4 text-muted-foreground" />
@@ -119,28 +239,6 @@ const StorePage = () => {
         )}
       </AnimatePresence>
 
-      {/* Genre filters */}
-      <div className="flex gap-2 overflow-x-auto pb-3 mb-4 scrollbar-hide">
-        {GENRES.map((g) => (
-          <button
-            key={g}
-            onClick={() => setSelectedGenre(g)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
-              selectedGenre === g
-                ? "bg-primary text-primary-foreground"
-                : "bg-card border border-border text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {g}
-          </button>
-        ))}
-      </div>
-
-      {/* Results count */}
-      <p className="text-xs text-muted-foreground mb-3">
-        Showing {filtered.length} {filtered.length === 1 ? "result" : "results"}
-      </p>
-
       {/* Loading */}
       {loading && (
         <div className="py-16 flex justify-center">
@@ -160,7 +258,6 @@ const StorePage = () => {
               className="py-3 border-b border-border/50 last:border-b-0"
             >
               <div className="flex items-center gap-3">
-                {/* Play button */}
                 <button
                   onClick={() => togglePlay(p)}
                   className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center flex-shrink-0 hover:border-primary/50 transition-colors"
@@ -171,17 +268,11 @@ const StorePage = () => {
                     <Play className="w-4 h-4 text-muted-foreground ml-0.5" />
                   )}
                 </button>
-
-                {/* Info */}
                 <div className="flex-1 min-w-0" onClick={() => setSheetProduct(p)}>
                   <p className="text-sm font-medium text-foreground truncate">{p.title}</p>
                   <p className="text-xs text-primary truncate">{p.artist_name || "Unknown Artist"}</p>
                 </div>
-
-                {/* Price */}
                 <span className="text-xs font-bold text-foreground mr-1">${p.price.toFixed(2)}</span>
-
-                {/* Add to cart */}
                 <button
                   onClick={() => handleAddToCart(p)}
                   className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
@@ -190,8 +281,6 @@ const StorePage = () => {
                 >
                   <Plus className="w-3.5 h-3.5" />
                 </button>
-
-                {/* More */}
                 <button
                   onClick={() => setSheetProduct(p)}
                   className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground"
@@ -199,8 +288,6 @@ const StorePage = () => {
                   <MoreVertical className="w-3.5 h-3.5" />
                 </button>
               </div>
-
-              {/* Tags */}
               {p.tags && p.tags.length > 0 && (
                 <div className="flex gap-1.5 mt-2 ml-[52px] flex-wrap">
                   {p.tags.map((tag) => (
@@ -222,7 +309,7 @@ const StorePage = () => {
         </div>
       )}
 
-      {/* Bottom sheet - Product detail */}
+      {/* Product detail sheet */}
       <AnimatePresence>
         {sheetProduct && (
           <>
@@ -260,44 +347,46 @@ const StorePage = () => {
       </AnimatePresence>
 
       {/* Cart drawer */}
-      <AnimatePresence>
-        {showCart && (
-          <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 z-50" onClick={() => setShowCart(false)} />
-            <motion.div
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="fixed top-0 right-0 bottom-0 z-50 w-[85%] max-w-sm bg-card border-l border-border p-5 overflow-y-auto"
-            >
-              <div className="flex items-center justify-between mb-5">
-                <h2 className="text-base font-display font-bold text-foreground">Cart ({count})</h2>
-                <button onClick={() => setShowCart(false)} className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                  <X className="w-4 h-4 text-muted-foreground" />
-                </button>
-              </div>
-
-              <CartItems />
-
-              {count > 0 && (
-                <div className="mt-6 pt-4 border-t border-border">
-                  <div className="flex justify-between mb-4">
-                    <span className="text-sm text-muted-foreground">Total</span>
-                    <span className="text-base font-bold text-foreground">${total.toFixed(2)}</span>
-                  </div>
-                  <button className="w-full py-3 rounded-xl gradient-primary text-primary-foreground text-sm font-semibold glow-primary">
-                    Checkout
-                  </button>
-                </div>
-              )}
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      <CartDrawer showCart={showCart} setShowCart={setShowCart} count={count} total={total} />
     </div>
   );
 };
+
+const CartDrawer = ({ showCart, setShowCart, count, total }: { showCart: boolean; setShowCart: (v: boolean) => void; count: number; total: number }) => (
+  <AnimatePresence>
+    {showCart && (
+      <>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 z-50" onClick={() => setShowCart(false)} />
+        <motion.div
+          initial={{ x: "100%" }}
+          animate={{ x: 0 }}
+          exit={{ x: "100%" }}
+          transition={{ type: "spring", damping: 25, stiffness: 300 }}
+          className="fixed top-0 right-0 bottom-0 z-50 w-[85%] max-w-sm bg-card border-l border-border p-5 overflow-y-auto"
+        >
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-base font-display font-bold text-foreground">Cart ({count})</h2>
+            <button onClick={() => setShowCart(false)} className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+              <X className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </div>
+          <CartItems />
+          {count > 0 && (
+            <div className="mt-6 pt-4 border-t border-border">
+              <div className="flex justify-between mb-4">
+                <span className="text-sm text-muted-foreground">Total</span>
+                <span className="text-base font-bold text-foreground">${total.toFixed(2)}</span>
+              </div>
+              <button className="w-full py-3 rounded-xl gradient-primary text-primary-foreground text-sm font-semibold glow-primary">
+                Checkout
+              </button>
+            </div>
+          )}
+        </motion.div>
+      </>
+    )}
+  </AnimatePresence>
+);
 
 const CartItems = () => {
   const { items, removeItem } = useCart();
