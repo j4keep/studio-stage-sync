@@ -10,26 +10,26 @@ import { useCart } from "@/contexts/CartContext";
 import { toast } from "@/hooks/use-toast";
 import { GENRES, BEAT_SUB_GENRES } from "@/lib/genres";
 
-import genreTrap from "@/assets/genre-trap.jpg";
+import genreCountry from "@/assets/genre-country.jpg";
 import genreRnb from "@/assets/genre-rnb.jpg";
-import genreDrill from "@/assets/genre-drill.jpg";
+import genreRock from "@/assets/genre-rock.jpg";
 import genreFuturepop from "@/assets/genre-futurepop.jpg";
 import genreEmorap from "@/assets/genre-emorap.jpg";
 import genreReggaeton from "@/assets/genre-reggaeton.jpg";
-import genreHiphop from "@/assets/genre-hiphop.jpg";
+import genreHaitian from "@/assets/genre-haitian.jpg";
 import genreAfrobeat from "@/assets/genre-afrobeat.jpg";
 import genreLatin from "@/assets/genre-latin.jpg";
 import genreBeats from "@/assets/genre-beats.jpg";
 
 const GENRE_IMAGES: Record<string, string> = {
   "Beats": genreBeats,
-  "Trap": genreTrap,
+  "Country": genreCountry,
   "R&B & Soul": genreRnb,
-  "Drill": genreDrill,
+  "Rock": genreRock,
   "Future Pop": genreFuturepop,
   "Emo Rap": genreEmorap,
   "Reggaeton": genreReggaeton,
-  "Hip Hop/Rap": genreHiphop,
+  "Haitian": genreHaitian,
   "Afrobeat": genreAfrobeat,
   "Latin Music": genreLatin,
 };
@@ -182,7 +182,7 @@ const StorePage = () => {
           </motion.button>
 
           {GENRES.filter(g => g !== "All Music" && g !== "Beats").map((genre, i) => {
-            const isWide = genre === "Hip Hop/Rap" || genre === "Afrobeat" || genre === "Latin Music";
+            const isWide = genre === "Haitian" || genre === "Afrobeat" || genre === "Latin Music";
             return (
               <motion.button
                 key={genre}

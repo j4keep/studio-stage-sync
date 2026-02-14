@@ -29,7 +29,7 @@ const MyStorePage = () => {
 
   // Form state
   const [formTitle, setFormTitle] = useState("");
-  const [formType, setFormType] = useState("Trap");
+  const [formType, setFormType] = useState("Country");
   const [formPrice, setFormPrice] = useState("");
   const [formCover, setFormCover] = useState<string | null>(null);
   const [formFileUrl, setFormFileUrl] = useState<string | null>(null);
@@ -111,7 +111,7 @@ const MyStorePage = () => {
 
   const resetForm = () => {
     setFormTitle("");
-    setFormType("Trap");
+    setFormType("Country");
     setFormPrice("");
     setFormCover(null);
     setFormFileUrl(null);

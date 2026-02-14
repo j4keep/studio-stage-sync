@@ -1,25 +1,25 @@
 export const GENRES = [
   "Beats",
-  "Trap",
+  "Country",
   "R&B & Soul",
-  "Drill",
+  "Rock",
   "Future Pop",
   "Emo Rap",
   "Reggaeton",
-  "Hip Hop/Rap",
+  "Haitian",
   "Afrobeat",
   "Latin Music",
   "All Music",
 ] as const;
 
 export const BEAT_SUB_GENRES = [
-  "Trap",
+  "Country",
   "R&B & Soul",
-  "Drill",
+  "Rock",
   "Future Pop",
   "Emo Rap",
   "Reggaeton",
-  "Hip Hop/Rap",
+  "Haitian",
   "Afrobeat",
   "Latin Music",
 ] as const;
