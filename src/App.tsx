@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { CartProvider } from "@/contexts/CartContext";
 import AppLayout from "./components/AppLayout";
 import HomePage from "./pages/HomePage";
 import RadioPage from "./pages/RadioPage";
@@ -26,6 +27,7 @@ import MyStorePage from "./pages/MyStorePage";
 import EarningsPage from "./pages/EarningsPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
 import MyStudiosPage from "./pages/MyStudiosPage";
+import StorePage from "./pages/StorePage";
 import TermsAgreementGate from "./components/TermsAgreementGate";
 
 const queryClient = new QueryClient();
@@ -99,6 +101,7 @@ const ProtectedRoutes = () => {
         <Route path="/earnings" element={<EarningsPage />} />
         <Route path="/analytics" element={<AnalyticsPage />} />
         <Route path="/my-studios" element={<MyStudiosPage />} />
+        <Route path="/store" element={<StorePage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AppLayout>
@@ -113,10 +116,12 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
-            <Routes>
-              <Route path="/auth" element={<AuthPage />} />
-              <Route path="/*" element={<ProtectedRoutes />} />
-            </Routes>
+            <CartProvider>
+              <Routes>
+                <Route path="/auth" element={<AuthPage />} />
+                <Route path="/*" element={<ProtectedRoutes />} />
+              </Routes>
+            </CartProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
