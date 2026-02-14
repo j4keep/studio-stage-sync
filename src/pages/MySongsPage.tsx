@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Music, Play, Pause, Plus, Trash2, Upload, Image, Radio, ChevronDown, Loader2, Heart } from "lucide-react";
+import { ArrowLeft, Music, Play, Pause, Plus, Trash2, Upload, Image, Radio, ChevronDown, Loader2, Heart, Edit3, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -45,6 +45,12 @@ const MySongsPage = () => {
   const coverInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editGenre, setEditGenre] = useState("");
+  const [editCover, setEditCover] = useState<string | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const editCoverRef = useRef<HTMLInputElement>(null);
 
   const songIds = songs.map(s => s.id);
   const { toggleLike, isLiked, getLikeCount } = useLikes("song", songIds);
@@ -155,6 +161,43 @@ const MySongsPage = () => {
     toast({ title: "Removed from Radio", description: "Song is no longer on WHEUAT Radio" });
   };
 
+  const openEditSong = (song: Song) => {
+    setEditingId(song.id);
+    setEditTitle(song.title);
+    setEditGenre(song.genre || "");
+    setEditCover(song.cover_url === album1 ? null : song.cover_url);
+  };
+
+  const handleEditCoverSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setEditCover(reader.result as string);
+    reader.readAsDataURL(file);
+    if (editCoverRef.current) editCoverRef.current.value = "";
+  };
+
+  const saveEdit = async () => {
+    if (!editingId || !editTitle.trim()) {
+      toast({ title: "Title required", variant: "destructive" });
+      return;
+    }
+    setSavingEdit(true);
+    const updateData: any = { title: editTitle.trim(), genre: editGenre || null };
+    if (editCover) updateData.cover_url = editCover;
+    else updateData.cover_url = null;
+
+    const { error } = await (supabase as any).from("songs").update(updateData).eq("id", editingId);
+    if (error) {
+      toast({ title: "Error saving", description: error.message, variant: "destructive" });
+    } else {
+      setSongs(prev => prev.map(s => s.id === editingId ? { ...s, title: editTitle.trim(), genre: editGenre || undefined, cover_url: editCover || album1 } : s));
+      toast({ title: "Song updated!" });
+      setEditingId(null);
+    }
+    setSavingEdit(false);
+  };
+
   if (!user) return <div className="px-4 pt-4 text-center text-muted-foreground text-sm">Please log in to view your songs.</div>;
 
   return (
@@ -175,6 +218,7 @@ const MySongsPage = () => {
 
       <input ref={fileInputRef} type="file" accept="audio/*,.mp3,.wav,.flac,.aac,.m4a,.ogg" className="hidden" onChange={handleFileSelect} />
       <input ref={coverInputRef} type="file" accept="image/*,.jpg,.jpeg,.png,.webp" className="hidden" onChange={handleCoverSelect} />
+      <input ref={editCoverRef} type="file" accept="image/*,.jpg,.jpeg,.png,.webp" className="hidden" onChange={handleEditCoverSelect} />
 
       {showUpload && (
         <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="mb-4 p-4 rounded-xl bg-card border border-dashed border-primary/30">
@@ -252,10 +296,54 @@ const MySongsPage = () => {
                     <Radio className="w-3 h-3" /> Radio
                   </button>
                 )}
+                <button onClick={() => openEditSong(song)} className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Edit3 className="w-3 h-3 text-primary" />
+                </button>
                 <button onClick={() => removeSong(song.id)} className="w-7 h-7 rounded-full bg-destructive/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                   <Trash2 className="w-3 h-3 text-destructive" />
                 </button>
               </motion.div>
+
+              {/* Edit Song Panel */}
+              <AnimatePresence>
+                {editingId === song.id && (
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                    <div className="mt-1 p-3 rounded-xl bg-card border border-primary/20">
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                          <Edit3 className="w-3.5 h-3.5 text-primary" /> Edit Song
+                        </p>
+                        <button onClick={() => setEditingId(null)} className="w-5 h-5 rounded-full bg-muted flex items-center justify-center">
+                          <X className="w-3 h-3 text-muted-foreground" />
+                        </button>
+                      </div>
+                      <div className="flex items-start gap-3 mb-3">
+                        <button onClick={() => editCoverRef.current?.click()} className="w-16 h-16 rounded-lg overflow-hidden border border-border bg-muted flex items-center justify-center flex-shrink-0 hover:border-primary/50 transition-all">
+                          {editCover ? <img src={editCover} alt="Cover" className="w-full h-full object-cover" /> : <Image className="w-5 h-5 text-muted-foreground" />}
+                        </button>
+                        <div className="flex-1 flex flex-col gap-2">
+                          <input value={editTitle} onChange={e => setEditTitle(e.target.value)} placeholder="Song title"
+                            className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground" />
+                          <div className="relative">
+                            <select value={editGenre} onChange={e => setEditGenre(e.target.value)}
+                              className="w-full appearance-none px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground">
+                              <option value="">No Genre</option>
+                              {RADIO_GENRES.map(g => <option key={g} value={g}>{g}</option>)}
+                            </select>
+                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => setEditingId(null)} className="flex-1 py-2 rounded-lg border border-border text-xs font-medium text-muted-foreground">Cancel</button>
+                        <button onClick={saveEdit} disabled={savingEdit} className="flex-1 py-2 rounded-lg gradient-primary text-primary-foreground text-xs font-semibold glow-primary flex items-center justify-center gap-1.5 disabled:opacity-50">
+                          {savingEdit && <Loader2 className="w-3 h-3 animate-spin" />} Save
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Publish to Radio Panel */}
               <AnimatePresence>
