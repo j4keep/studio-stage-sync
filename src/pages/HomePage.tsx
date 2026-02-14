@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { motion } from "framer-motion";
-import { Play, Pause, Heart, TrendingUp, Music, Mic2, Video, DollarSign, ChevronRight, Headphones, Eye, X, Radio, Building2, ShoppingBag } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Play, Pause, Heart, TrendingUp, Music, Mic2, Video, DollarSign, ChevronRight, Headphones, Eye, X, Radio, Building2, ShoppingBag, CircleDollarSign } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -28,6 +28,7 @@ import cardSongs from "@/assets/card-songs.jpg";
 import cardVideos from "@/assets/card-videos.jpg";
 import cardPodcasts from "@/assets/card-podcasts.jpg";
 import cardProjects from "@/assets/card-projects.jpg";
+import cardDollarClub from "@/assets/card-dollarclub.jpg";
 
 const fallbackSongs = [
   { id: "fs1", title: "Midnight Glow", artist_name: "Kaia Noir", plays: "12.4K", cover_url: album1, likes_count: 0 },
@@ -236,6 +237,7 @@ const CATEGORY_CARDS = [
   { label: "Music Videos", img: cardVideos, path: null, wide: false, icon: Video },
   { label: "Podcasts", img: cardPodcasts, path: null, wide: true, icon: Mic2 },
   { label: "Projects", img: cardProjects, path: null, wide: true, icon: DollarSign },
+  { label: "Dollar Club", img: cardDollarClub, path: null, wide: true, icon: CircleDollarSign },
 ];
 
 const HomePage = () => {
@@ -432,96 +434,114 @@ const HomePage = () => {
         <div className="grid grid-cols-2 gap-3">
           {CATEGORY_CARDS.map((card, i) => (
             <motion.div key={card.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }} className={card.wide ? "col-span-2" : ""}>
-              <button
-                onClick={() => handleCardClick(card)}
-                className={`relative overflow-hidden rounded-xl w-full ${card.wide ? "aspect-[2.5/1]" : "aspect-square"} ${expandedSection === card.label ? "ring-2 ring-primary" : ""}`}
-              >
-                <img src={card.img} alt={card.label} className="absolute inset-0 w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-black/45" />
-                <span className="absolute inset-0 flex items-center justify-center text-white font-display font-bold text-sm tracking-widest uppercase gap-2">
-                  <card.icon className="w-5 h-5" />
-                  {card.label}
-                </span>
-              </button>
-
-              {/* Expanded content below card */}
-              {expandedSection === card.label && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="mt-2 rounded-xl bg-card border border-border p-3"
+              <div className={`relative overflow-hidden rounded-xl w-full ${expandedSection === card.label ? "ring-2 ring-primary" : ""}`}>
+                {/* Card image header - always visible */}
+                <button
+                  onClick={() => handleCardClick(card)}
+                  className={`relative w-full ${expandedSection === card.label ? "aspect-[3/1]" : (card.wide ? "aspect-[2.5/1]" : "aspect-square")}`}
                 >
-                  {card.label === "New Songs" && (
-                    <div className="flex flex-col gap-2">
-                      {displaySongs.slice(0, 8).map((s) => (
-                        <div key={s.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-all">
-                          <button onClick={() => s.user_id ? navigate(`/profile?user=${s.user_id}`) : null} className="w-10 h-10 rounded-lg overflow-hidden shrink-0">
-                            <img src={s.cover_url} alt={s.title} className="w-full h-full object-cover" />
-                          </button>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-semibold text-foreground truncate">{s.title}</p>
-                            <p className="text-[10px] text-muted-foreground">{s.artist_name}</p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-foreground flex items-center gap-0.5">
-                              <Play className="w-3 h-3" /> {s.plays}
-                            </span>
-                            <button onClick={() => dbSongs.length > 0 && songLikes.toggleLike(s.id)} className="flex items-center gap-0.5">
-                              <Heart className={`w-3.5 h-3.5 transition-colors ${dbSongs.length > 0 && songLikes.isLiked(s.id) ? "text-primary fill-primary" : "text-foreground"}`} />
-                              <span className="text-[10px] text-foreground">{dbSongs.length > 0 ? songLikes.getLikeCount(s.id) : s.likes_count}</span>
-                            </button>
-                            <button onClick={() => handlePlaySong(s)} className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center">
-                              {playingSongId === s.id ? <Pause className="w-3 h-3 text-primary" /> : <Play className="w-3 h-3 text-primary fill-primary" />}
-                            </button>
-                          </div>
+                  <img src={card.img} alt={card.label} className="absolute inset-0 w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/35" />
+                  <span className="absolute inset-0 flex items-center justify-center text-white font-display font-bold text-sm tracking-widest uppercase gap-2">
+                    <card.icon className="w-5 h-5" />
+                    {card.label}
+                  </span>
+                  {expandedSection === card.label && (
+                    <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/40 flex items-center justify-center">
+                      <X className="w-3.5 h-3.5 text-white" />
+                    </div>
+                  )}
+                </button>
+
+                {/* Expanded content inside the card */}
+                <AnimatePresence>
+                  {expandedSection === card.label && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="bg-card border-t border-border p-3"
+                    >
+                      {card.label === "New Songs" && (
+                        <div className="flex flex-col gap-2">
+                          {displaySongs.slice(0, 8).map((s) => (
+                            <div key={s.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-all">
+                              <button onClick={() => s.user_id ? navigate(`/profile?user=${s.user_id}`) : null} className="w-10 h-10 rounded-lg overflow-hidden shrink-0">
+                                <img src={s.cover_url} alt={s.title} className="w-full h-full object-cover" />
+                              </button>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-semibold text-foreground truncate">{s.title}</p>
+                                <p className="text-[10px] text-muted-foreground">{s.artist_name}</p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-foreground flex items-center gap-0.5">
+                                  <Play className="w-3 h-3" /> {s.plays}
+                                </span>
+                                <button onClick={() => dbSongs.length > 0 && songLikes.toggleLike(s.id)} className="flex items-center gap-0.5">
+                                  <Heart className={`w-3.5 h-3.5 transition-colors ${dbSongs.length > 0 && songLikes.isLiked(s.id) ? "text-primary fill-primary" : "text-foreground"}`} />
+                                  <span className="text-[10px] text-foreground">{dbSongs.length > 0 ? songLikes.getLikeCount(s.id) : s.likes_count}</span>
+                                </button>
+                                <button onClick={() => handlePlaySong(s)} className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center">
+                                  {playingSongId === s.id ? <Pause className="w-3 h-3 text-primary" /> : <Play className="w-3 h-3 text-primary fill-primary" />}
+                                </button>
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  )}
+                      )}
 
-                  {card.label === "Music Videos" && (
-                    <AutoCarousel items={videoCarouselItems} interval={5000}
-                      onLike={dbVideos.length > 0 ? videoLikes.toggleLike : undefined}
-                      isLiked={dbVideos.length > 0 ? videoLikes.isLiked : undefined}
-                      getLikeCount={dbVideos.length > 0 ? videoLikes.getLikeCount : undefined}
-                      onPlay={handlePlayVideo} />
-                  )}
+                      {card.label === "Music Videos" && (
+                        <AutoCarousel items={videoCarouselItems} interval={5000}
+                          onLike={dbVideos.length > 0 ? videoLikes.toggleLike : undefined}
+                          isLiked={dbVideos.length > 0 ? videoLikes.isLiked : undefined}
+                          getLikeCount={dbVideos.length > 0 ? videoLikes.getLikeCount : undefined}
+                          onPlay={handlePlayVideo} />
+                      )}
 
-                  {card.label === "Podcasts" && (
-                    <AutoCarousel items={podcastCarouselItems} interval={6000}
-                      onLike={dbPodcasts.length > 0 ? podcastLikes.toggleLike : undefined}
-                      isLiked={dbPodcasts.length > 0 ? podcastLikes.isLiked : undefined}
-                      getLikeCount={dbPodcasts.length > 0 ? podcastLikes.getLikeCount : undefined}
-                      onPlay={handlePlayPodcast} />
-                  )}
+                      {card.label === "Podcasts" && (
+                        <AutoCarousel items={podcastCarouselItems} interval={6000}
+                          onLike={dbPodcasts.length > 0 ? podcastLikes.toggleLike : undefined}
+                          isLiked={dbPodcasts.length > 0 ? podcastLikes.isLiked : undefined}
+                          getLikeCount={dbPodcasts.length > 0 ? podcastLikes.getLikeCount : undefined}
+                          onPlay={handlePlayPodcast} />
+                      )}
 
-                  {card.label === "Projects" && (
-                    <div className="flex flex-col gap-3">
-                      {(dbProjects.length > 0 ? dbProjects : fallbackProjects).map((p) => (
-                        <button key={p.title} onClick={() => navigate("/my-projects")} className="p-3 rounded-lg hover:bg-muted/50 transition-all w-full text-left">
-                          <div className="flex items-center gap-3 mb-2">
-                            <div className="w-8 h-8 rounded-full overflow-hidden shrink-0">
-                              <img src={p.img} alt={p.artist} className="w-full h-full object-cover" />
-                            </div>
-                            <div>
-                              <p className="text-xs font-semibold text-foreground">{p.title}</p>
-                              <p className="text-[10px] text-muted-foreground">by {p.artist}</p>
-                            </div>
-                          </div>
-                          <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden mb-1">
-                            <div className="h-full rounded-full gradient-primary" style={{ width: `${(p.raised / p.goal) * 100}%` }} />
-                          </div>
-                          <div className="flex justify-between text-[10px] text-muted-foreground">
-                            <span>${p.raised.toLocaleString()} raised</span>
-                            <span className="text-primary font-medium">{Math.round((p.raised / p.goal) * 100)}%</span>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
+                      {card.label === "Projects" && (
+                        <div className="flex flex-col gap-3">
+                          {(dbProjects.length > 0 ? dbProjects : fallbackProjects).map((p) => (
+                            <button key={p.title} onClick={() => navigate("/my-projects")} className="p-3 rounded-lg hover:bg-muted/50 transition-all w-full text-left">
+                              <div className="flex items-center gap-3 mb-2">
+                                <div className="w-8 h-8 rounded-full overflow-hidden shrink-0">
+                                  <img src={p.img} alt={p.artist} className="w-full h-full object-cover" />
+                                </div>
+                                <div>
+                                  <p className="text-xs font-semibold text-foreground">{p.title}</p>
+                                  <p className="text-[10px] text-muted-foreground">by {p.artist}</p>
+                                </div>
+                              </div>
+                              <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden mb-1">
+                                <div className="h-full rounded-full gradient-primary" style={{ width: `${(p.raised / p.goal) * 100}%` }} />
+                              </div>
+                              <div className="flex justify-between text-[10px] text-muted-foreground">
+                                <span>${p.raised.toLocaleString()} raised</span>
+                                <span className="text-primary font-medium">{Math.round((p.raised / p.goal) * 100)}%</span>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {card.label === "Dollar Club" && (
+                        <div className="py-6 text-center">
+                          <CircleDollarSign className="w-10 h-10 text-primary mx-auto mb-3" />
+                          <p className="text-sm font-semibold text-foreground mb-1">Dollar Club</p>
+                          <p className="text-xs text-muted-foreground">Sell your products for $1 and build your fanbase. Coming soon!</p>
+                        </div>
+                      )}
+                    </motion.div>
                   )}
-                </motion.div>
-              )}
+                </AnimatePresence>
+              </div>
             </motion.div>
           ))}
         </div>
