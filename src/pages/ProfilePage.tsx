@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   User, Music, FolderHeart, Building2, Heart, Download, DollarSign,
@@ -7,6 +7,8 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import profileBanner from "@/assets/profile-banner.jpg";
 import profileAvatar from "@/assets/profile-avatar.jpg";
 import EditProfileSheet from "@/components/EditProfileSheet";
@@ -57,9 +59,32 @@ const ProfilePage = () => {
 
 const ArtistProfile = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followerCount, setFollowerCount] = useState("1.2K");
+  const [totalPlays, setTotalPlays] = useState("0");
+  const [songCount, setSongCount] = useState("0");
+
+  useEffect(() => {
+    if (!user) return;
+    // Fetch aggregated stats from songs
+    (supabase as any)
+      .from("songs")
+      .select("plays")
+      .eq("user_id", user.id)
+      .then(({ data }: any) => {
+        if (data) {
+          const total = data.reduce((sum: number, s: any) => sum + (parseInt(s.plays) || 0), 0);
+          setSongCount(String(data.length));
+          if (total >= 1000) {
+            setTotalPlays(`${(total / 1000).toFixed(1)}K`);
+          } else {
+            setTotalPlays(String(total));
+          }
+        }
+      });
+  }, [user]);
 
   const tabs = [
     { id: "songs", label: "Songs", icon: Music, route: "/my-songs" },
@@ -119,7 +144,7 @@ const ArtistProfile = () => {
           <Edit3 className="w-3.5 h-3.5" /> Edit Profile
         </button>
 
-        {/* Action Buttons - Now functional */}
+        {/* Action Buttons */}
         <div className="flex gap-2 mt-3">
           <button
             onClick={handleFollow}
@@ -146,12 +171,12 @@ const ArtistProfile = () => {
           </button>
         </div>
 
-        {/* Stats - Earnings visible only to artist (own profile) */}
+        {/* Stats - Connected to real data */}
         <div className="grid grid-cols-4 gap-2 mt-4">
           {[
-            { label: "Songs", value: "12" },
+            { label: "Songs", value: songCount },
             { label: "Followers", value: followerCount },
-            { label: "Plays", value: "48K" },
+            { label: "Plays", value: totalPlays },
             { label: "Earnings", value: "$1.2K" },
           ].map((s) => (
             <div key={s.label} className="p-2.5 rounded-xl bg-card border border-border text-center">
@@ -175,7 +200,7 @@ const ArtistProfile = () => {
         </div>
       </div>
 
-      {/* Content Tabs - Navigate to sub-pages */}
+      {/* Content Tabs */}
       <div className="mt-5 border-t border-border">
         <div className="flex overflow-x-auto scrollbar-hide px-4 gap-1 pt-3">
           {tabs.map((tab) => (
@@ -192,7 +217,7 @@ const ArtistProfile = () => {
         </div>
       </div>
 
-      {/* Quick Actions - Removed Upload Songs (already in tabs above) */}
+      {/* Quick Actions */}
       <div className="px-4 mt-5">
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Quick Actions</p>
         <div className="flex flex-col gap-1.5">
@@ -243,7 +268,7 @@ const FanProfile = () => {
         <p className="text-xs text-muted-foreground">Fan Account</p>
       </div>
 
-      {/* Stats - No Earnings for fans */}
+      {/* Stats */}
       <div className="grid grid-cols-3 gap-2 mb-5">
         {[
           { label: "Following", value: "8" },

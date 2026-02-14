@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Video, Play, Pause, Plus, Trash2, Upload, Image, Loader2 } from "lucide-react";
+import { ArrowLeft, Video, Play, Pause, Plus, Trash2, Upload, Image, Loader2, Heart, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { uploadToR2, getR2DownloadUrl, deleteFromR2 } from "@/lib/r2-storage";
+import { useLikes, incrementVideoViews } from "@/hooks/use-likes";
 import musicvideo1 from "@/assets/musicvideo-1.jpg";
 
 interface VideoItem {
@@ -15,6 +16,7 @@ interface VideoItem {
   duration: string;
   cover_url: string;
   video_url?: string;
+  likes_count: number;
 }
 
 const formatDuration = (seconds: number) => {
@@ -36,6 +38,9 @@ const MyVideosPage = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
 
+  const videoIds = videos.map(v => v.id);
+  const { toggleLike, isLiked, getLikeCount } = useLikes("video", videoIds);
+
   useEffect(() => { if (user) fetchVideos(); }, [user]);
 
   const fetchVideos = async () => {
@@ -45,6 +50,7 @@ const MyVideosPage = () => {
         id: v.id, title: v.title, views: v.views || "0", duration: v.duration || "0:00",
         cover_url: v.cover_url || musicvideo1,
         video_url: v.video_url ? getR2DownloadUrl(v.video_url) : undefined,
+        likes_count: v.likes_count || 0,
       })));
     }
     setLoading(false);
@@ -100,7 +106,7 @@ const MyVideosPage = () => {
         if (error) { setUploading(false); toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
 
         const playbackUrl = getR2DownloadUrl(r2Result.data!.key);
-        setVideos(prev => [{ id: data.id, title, views: "0", duration, cover_url: cover, video_url: playbackUrl }, ...prev]);
+        setVideos(prev => [{ id: data.id, title, views: "0", duration, cover_url: cover, video_url: playbackUrl, likes_count: 0 }, ...prev]);
         setPendingVideoFile(null); setPendingCover(null); setShowUpload(false); setUploading(false);
         toast({ title: "Video uploaded! ☁️", description: `"${title}" is now stored permanently` });
         if (fileInputRef.current) fileInputRef.current.value = "";
@@ -126,7 +132,12 @@ const MyVideosPage = () => {
 
   const togglePlay = (video: VideoItem) => {
     if (!video.video_url) return;
-    setPlayingId(playingId === video.id ? null : video.id);
+    if (playingId === video.id) {
+      setPlayingId(null);
+    } else {
+      setPlayingId(video.id);
+      incrementVideoViews(video.id);
+    }
   };
 
   if (!user) return <div className="px-4 pt-4 text-center text-muted-foreground text-sm">Please log in to view your videos.</div>;
@@ -206,7 +217,15 @@ const MyVideosPage = () => {
               </div>
               <div className="p-2">
                 <p className="text-xs font-medium text-foreground truncate">{v.title}</p>
-                <p className="text-[10px] text-muted-foreground">{`${v.views} views · ${v.duration}`}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                    <Eye className="w-2.5 h-2.5" /> {v.views} views
+                  </span>
+                  <button onClick={() => toggleLike(v.id)} className="flex items-center gap-0.5">
+                    <Heart className={`w-2.5 h-2.5 transition-colors ${isLiked(v.id) ? "text-primary fill-primary" : "text-muted-foreground"}`} />
+                    <span className="text-[10px] text-muted-foreground">{getLikeCount(v.id)}</span>
+                  </button>
+                </div>
               </div>
             </motion.div>
           ))}

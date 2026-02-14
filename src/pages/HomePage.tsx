@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Play, Pause, Heart, TrendingUp, Music, Mic2, Video, DollarSign, ChevronRight, Headphones, Users, ChevronLeft } from "lucide-react";
+import { Play, Pause, Heart, TrendingUp, Music, Mic2, Video, DollarSign, ChevronRight, Headphones, Users, ChevronLeft, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useLikes } from "@/hooks/use-likes";
 import whetuatLogo from "@/assets/wheuat-logo.png";
 import artist1 from "@/assets/artist-1.jpg";
 import artist2 from "@/assets/artist-2.jpg";
@@ -62,9 +63,18 @@ interface CarouselItem {
   subtitle: string;
   img: string;
   extra?: string;
+  likes_count?: number;
+  views?: string;
 }
 
-const AutoCarousel = ({ items, interval = 4000 }: { items: CarouselItem[]; interval?: number }) => {
+const AutoCarousel = ({ items, interval = 4000, contentType, onLike, isLiked, getLikeCount }: { 
+  items: CarouselItem[]; 
+  interval?: number;
+  contentType?: "video" | "podcast";
+  onLike?: (id: string) => void;
+  isLiked?: (id: string) => boolean;
+  getLikeCount?: (id: string) => number;
+}) => {
   const [current, setCurrent] = useState(0);
 
   useEffect(() => {
@@ -90,10 +100,23 @@ const AutoCarousel = ({ items, interval = 4000 }: { items: CarouselItem[]; inter
           transition={{ duration: 0.5 }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent" />
-        <div className="absolute bottom-3 left-3 right-3">
+        <div className="absolute bottom-3 left-3 right-14">
           <p className="text-sm font-display font-bold text-foreground">{item.title}</p>
           <p className="text-xs text-muted-foreground">{item.subtitle}</p>
-          {item.extra && <p className="text-[10px] text-primary mt-0.5">{item.extra}</p>}
+          <div className="flex items-center gap-3 mt-1">
+            {item.extra && <p className="text-[10px] text-primary">{item.extra}</p>}
+            {onLike && getLikeCount && isLiked && (
+              <button onClick={(e) => { e.stopPropagation(); onLike(item.id); }} className="flex items-center gap-1">
+                <Heart className={`w-3 h-3 transition-colors ${isLiked(item.id) ? "text-primary fill-primary" : "text-muted-foreground"}`} />
+                <span className="text-[10px] text-muted-foreground">{getLikeCount(item.id)}</span>
+              </button>
+            )}
+            {item.views && (
+              <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                <Eye className="w-2.5 h-2.5" /> {item.views}
+              </span>
+            )}
+          </div>
         </div>
         <div className="absolute bottom-3 right-3">
           <div className="w-9 h-9 rounded-full gradient-primary flex items-center justify-center glow-primary">
@@ -120,9 +143,17 @@ const AutoCarousel = ({ items, interval = 4000 }: { items: CarouselItem[]; inter
 const HomePage = () => {
   const navigate = useNavigate();
   const [isRadioPlaying, setIsRadioPlaying] = useState(false);
-  const [likedSongs, setLikedSongs] = useState<Set<string>>(new Set());
   const [dbVideos, setDbVideos] = useState<CarouselItem[]>([]);
   const [dbPodcasts, setDbPodcasts] = useState<CarouselItem[]>([]);
+
+  // Likes for songs (static demo songs don't have real IDs, so we use empty for now)
+  const songLikes = useLikes("song", []);
+  
+  // Collect video and podcast IDs for likes
+  const videoIds = dbVideos.map(v => v.id);
+  const podcastIds = dbPodcasts.map(p => p.id);
+  const videoLikes = useLikes("video", videoIds);
+  const podcastLikes = useLikes("podcast", podcastIds);
 
   useEffect(() => {
     // Fetch all videos from DB
@@ -135,6 +166,8 @@ const HomePage = () => {
             subtitle: v.views ? `${v.views} views` : "New",
             img: v.cover_url || musicvideo1,
             extra: v.duration || undefined,
+            likes_count: v.likes_count || 0,
+            views: v.views || "0",
           })));
         }
       });
@@ -148,6 +181,8 @@ const HomePage = () => {
             subtitle: p.episode ? `Episode ${p.episode}` : "New Episode",
             img: p.cover_url || podcast1,
             extra: p.plays ? `${p.plays} plays` : undefined,
+            likes_count: p.likes_count || 0,
+            views: p.plays || "0",
           })));
         }
       });
@@ -160,14 +195,6 @@ const HomePage = () => {
   const podcastCarouselItems: CarouselItem[] = dbPodcasts.length > 0 ? dbPodcasts : fallbackPodcasts.map(p => ({
     id: p.id, title: p.title, subtitle: p.host, img: p.img, extra: p.episodes,
   }));
-
-  const toggleLike = (title: string) => {
-    setLikedSongs(prev => {
-      const next = new Set(prev);
-      next.has(title) ? next.delete(title) : next.add(title);
-      return next;
-    });
-  };
 
   return (
     <div className="px-4 pt-4 pb-4">
@@ -247,7 +274,7 @@ const HomePage = () => {
         </div>
         <div className="flex flex-col gap-2">
           {newSongs.map((s) => (
-            <button key={s.title} onClick={() => toggleLike(s.title)} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:border-primary/30 transition-all group w-full text-left">
+            <div key={s.title} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:border-primary/30 transition-all group w-full text-left">
               <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0">
                 <img src={s.img} alt={s.title} className="w-full h-full object-cover" />
               </div>
@@ -256,13 +283,13 @@ const HomePage = () => {
                 <p className="text-xs text-muted-foreground">{s.artist}</p>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] text-muted-foreground">{s.plays}</span>
-                <Heart className={`w-3.5 h-3.5 transition-colors ${likedSongs.has(s.title) ? "text-primary fill-primary" : "text-muted-foreground"}`} />
+                <span className="text-[10px] text-muted-foreground">{s.plays} plays</span>
+                <Heart className="w-3.5 h-3.5 text-muted-foreground" />
                 <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
                   <Play className="w-3.5 h-3.5 text-primary fill-primary" />
                 </div>
               </div>
-            </button>
+            </div>
           ))}
         </div>
       </motion.section>
@@ -276,7 +303,14 @@ const HomePage = () => {
           </div>
           <button className="text-[10px] text-primary flex items-center gap-0.5">See All <ChevronRight className="w-3 h-3" /></button>
         </div>
-        <AutoCarousel items={videoCarouselItems} interval={5000} />
+        <AutoCarousel 
+          items={videoCarouselItems} 
+          interval={5000} 
+          contentType="video"
+          onLike={dbVideos.length > 0 ? videoLikes.toggleLike : undefined}
+          isLiked={dbVideos.length > 0 ? videoLikes.isLiked : undefined}
+          getLikeCount={dbVideos.length > 0 ? videoLikes.getLikeCount : undefined}
+        />
       </motion.section>
 
       {/* Podcasts Carousel */}
@@ -288,7 +322,14 @@ const HomePage = () => {
           </div>
           <button className="text-[10px] text-primary flex items-center gap-0.5">See All <ChevronRight className="w-3 h-3" /></button>
         </div>
-        <AutoCarousel items={podcastCarouselItems} interval={6000} />
+        <AutoCarousel 
+          items={podcastCarouselItems} 
+          interval={6000}
+          contentType="podcast"
+          onLike={dbPodcasts.length > 0 ? podcastLikes.toggleLike : undefined}
+          isLiked={dbPodcasts.length > 0 ? podcastLikes.isLiked : undefined}
+          getLikeCount={dbPodcasts.length > 0 ? podcastLikes.getLikeCount : undefined}
+        />
       </motion.section>
 
       {/* Projects Seeking Funding */}
