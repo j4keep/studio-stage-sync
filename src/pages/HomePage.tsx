@@ -3,7 +3,8 @@ import { motion } from "framer-motion";
 import { Play, Pause, Heart, TrendingUp, Music, Mic2, Video, DollarSign, ChevronRight, Headphones, Users, ChevronLeft, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useLikes } from "@/hooks/use-likes";
+import { useLikes, incrementSongPlays } from "@/hooks/use-likes";
+import { getR2DownloadUrl } from "@/lib/r2-storage";
 import whetuatLogo from "@/assets/wheuat-logo.png";
 import artist1 from "@/assets/artist-1.jpg";
 import artist2 from "@/assets/artist-2.jpg";
@@ -28,11 +29,11 @@ const trendingArtists = [
   { name: "Aria West", genre: "Pop", img: artist5 },
 ];
 
-const newSongs = [
-  { title: "Midnight Glow", artist: "Kaia Noir", plays: "12.4K", img: album1 },
-  { title: "City Lights", artist: "Zephyr Cole", plays: "8.2K", img: album2 },
-  { title: "Golden Hour", artist: "Luna Ray", plays: "15.1K", img: album3 },
-  { title: "Rise Up", artist: "Dex Marley", plays: "6.7K", img: album4 },
+const fallbackSongs = [
+  { id: "fs1", title: "Midnight Glow", artist: "Kaia Noir", plays: "12.4K", img: album1, likes_count: 0 },
+  { id: "fs2", title: "City Lights", artist: "Zephyr Cole", plays: "8.2K", img: album2, likes_count: 0 },
+  { id: "fs3", title: "Golden Hour", artist: "Luna Ray", plays: "15.1K", img: album3, likes_count: 0 },
+  { id: "fs4", title: "Rise Up", artist: "Dex Marley", plays: "6.7K", img: album4, likes_count: 0 },
 ];
 
 const fallbackPodcasts = [
@@ -83,15 +84,22 @@ const AutoCarousel = ({ items, interval = 4000, contentType, onLike, isLiked, ge
     return () => clearInterval(timer);
   }, [items.length, interval]);
 
+  // Reset current if items shrink
+  useEffect(() => {
+    if (current >= items.length) setCurrent(0);
+  }, [items.length, current]);
+
   if (items.length === 0) return null;
 
-  const item = items[current];
+  const safeIndex = current < items.length ? current : 0;
+  const item = items[safeIndex];
+  if (!item) return null;
 
   return (
     <div className="relative w-full rounded-2xl overflow-hidden bg-card border border-border">
       <div className="relative w-full h-48 overflow-hidden">
         <motion.img
-          key={item.id + current}
+          key={item.id + safeIndex}
           src={item.img}
           alt={item.title}
           className="w-full h-full object-cover"
@@ -104,16 +112,16 @@ const AutoCarousel = ({ items, interval = 4000, contentType, onLike, isLiked, ge
           <p className="text-sm font-display font-bold text-foreground">{item.title}</p>
           <p className="text-xs text-muted-foreground">{item.subtitle}</p>
           <div className="flex items-center gap-3 mt-1">
-            {item.extra && <p className="text-[10px] text-primary">{item.extra}</p>}
+            {item.extra && <p className="text-xs text-primary">{item.extra}</p>}
             {onLike && getLikeCount && isLiked && (
               <button onClick={(e) => { e.stopPropagation(); onLike(item.id); }} className="flex items-center gap-1">
-                <Heart className={`w-3 h-3 transition-colors ${isLiked(item.id) ? "text-primary fill-primary" : "text-muted-foreground"}`} />
-                <span className="text-[10px] text-muted-foreground">{getLikeCount(item.id)}</span>
+                <Heart className={`w-4 h-4 transition-colors ${isLiked(item.id) ? "text-primary fill-primary" : "text-foreground"}`} />
+                <span className="text-xs text-foreground">{getLikeCount(item.id)}</span>
               </button>
             )}
             {item.views && (
-              <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                <Eye className="w-2.5 h-2.5" /> {item.views}
+              <span className="text-xs text-foreground flex items-center gap-1">
+                <Eye className="w-4 h-4" /> {item.views}
               </span>
             )}
           </div>
@@ -131,7 +139,7 @@ const AutoCarousel = ({ items, interval = 4000, contentType, onLike, isLiked, ge
             <button
               key={i}
               onClick={() => setCurrent(i)}
-              className={`w-1.5 h-1.5 rounded-full transition-all ${i === current ? "w-4 bg-primary" : "bg-muted-foreground/30"}`}
+              className={`w-1.5 h-1.5 rounded-full transition-all ${i === safeIndex ? "w-4 bg-primary" : "bg-muted-foreground/30"}`}
             />
           ))}
         </div>
@@ -140,23 +148,56 @@ const AutoCarousel = ({ items, interval = 4000, contentType, onLike, isLiked, ge
   );
 };
 
+interface DbSong {
+  id: string;
+  title: string;
+  artist_name: string;
+  plays: string;
+  cover_url: string;
+  audio_url?: string;
+  likes_count: number;
+}
+
 const HomePage = () => {
   const navigate = useNavigate();
   const [isRadioPlaying, setIsRadioPlaying] = useState(false);
   const [dbVideos, setDbVideos] = useState<CarouselItem[]>([]);
   const [dbPodcasts, setDbPodcasts] = useState<CarouselItem[]>([]);
+  const [dbSongs, setDbSongs] = useState<DbSong[]>([]);
 
-  // Likes for songs (static demo songs don't have real IDs, so we use empty for now)
-  const songLikes = useLikes("song", []);
-  
-  // Collect video and podcast IDs for likes
+  // Collect IDs for likes
+  const songIds = dbSongs.map(s => s.id);
   const videoIds = dbVideos.map(v => v.id);
   const podcastIds = dbPodcasts.map(p => p.id);
+  const songLikes = useLikes("song", songIds);
   const videoLikes = useLikes("video", videoIds);
   const podcastLikes = useLikes("podcast", podcastIds);
 
   useEffect(() => {
-    // Fetch all videos from DB
+    // Fetch songs from DB
+    (supabase as any).from("songs").select("id, title, cover_url, audio_url, plays, user_id, likes_count")
+      .order("created_at", { ascending: false }).limit(20)
+      .then(async ({ data }: any) => {
+        if (data && data.length > 0) {
+          const userIds = [...new Set(data.map((s: any) => s.user_id))];
+          const { data: profiles } = await (supabase as any)
+            .from("profiles").select("id, display_name").in("id", userIds);
+          const profileMap: Record<string, string> = {};
+          (profiles || []).forEach((p: any) => { profileMap[p.id] = p.display_name || "Artist"; });
+
+          setDbSongs(data.map((s: any) => ({
+            id: s.id,
+            title: s.title,
+            artist_name: profileMap[s.user_id] || "Artist",
+            plays: s.plays || "0",
+            cover_url: s.cover_url || album1,
+            audio_url: s.audio_url ? getR2DownloadUrl(s.audio_url) : undefined,
+            likes_count: s.likes_count || 0,
+          })));
+        }
+      });
+
+    // Fetch videos from DB
     (supabase as any).from("videos").select("*").order("created_at", { ascending: false }).limit(20)
       .then(({ data }: any) => {
         if (data && data.length > 0) {
@@ -171,7 +212,8 @@ const HomePage = () => {
           })));
         }
       });
-    // Fetch all podcasts from DB
+
+    // Fetch podcasts from DB
     (supabase as any).from("podcasts").select("*").order("created_at", { ascending: false }).limit(20)
       .then(({ data }: any) => {
         if (data && data.length > 0) {
@@ -194,6 +236,10 @@ const HomePage = () => {
 
   const podcastCarouselItems: CarouselItem[] = dbPodcasts.length > 0 ? dbPodcasts : fallbackPodcasts.map(p => ({
     id: p.id, title: p.title, subtitle: p.host, img: p.img, extra: p.episodes,
+  }));
+
+  const displaySongs = dbSongs.length > 0 ? dbSongs : fallbackSongs.map(s => ({
+    id: s.id, title: s.title, artist_name: s.artist, plays: s.plays, cover_url: s.img, likes_count: s.likes_count,
   }));
 
   return (
@@ -273,18 +319,23 @@ const HomePage = () => {
           <button className="text-[10px] text-primary flex items-center gap-0.5">See All <ChevronRight className="w-3 h-3" /></button>
         </div>
         <div className="flex flex-col gap-2">
-          {newSongs.map((s) => (
-            <div key={s.title} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:border-primary/30 transition-all group w-full text-left">
+          {displaySongs.slice(0, 8).map((s) => (
+            <div key={s.id} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:border-primary/30 transition-all group w-full text-left">
               <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0">
-                <img src={s.img} alt={s.title} className="w-full h-full object-cover" />
+                <img src={s.cover_url} alt={s.title} className="w-full h-full object-cover" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-foreground truncate">{s.title}</p>
-                <p className="text-xs text-muted-foreground">{s.artist}</p>
+                <p className="text-xs text-muted-foreground">{s.artist_name}</p>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-muted-foreground">{s.plays} plays</span>
-                <Heart className="w-3.5 h-3.5 text-muted-foreground" />
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-foreground flex items-center gap-1">
+                  <Play className="w-3.5 h-3.5" /> {s.plays}
+                </span>
+                <button onClick={() => dbSongs.length > 0 && songLikes.toggleLike(s.id)} className="flex items-center gap-1">
+                  <Heart className={`w-4 h-4 transition-colors ${dbSongs.length > 0 && songLikes.isLiked(s.id) ? "text-primary fill-primary" : "text-foreground"}`} />
+                  <span className="text-xs text-foreground">{dbSongs.length > 0 ? songLikes.getLikeCount(s.id) : s.likes_count}</span>
+                </button>
                 <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
                   <Play className="w-3.5 h-3.5 text-primary fill-primary" />
                 </div>

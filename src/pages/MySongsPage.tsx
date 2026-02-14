@@ -240,8 +240,8 @@ const MySongsPage = () => {
                 </div>
                 {/* Like button */}
                 <button onClick={() => toggleLike(song.id)} className="flex items-center gap-1 px-1.5">
-                  <Heart className={`w-3.5 h-3.5 transition-colors ${isLiked(song.id) ? "text-primary fill-primary" : "text-muted-foreground"}`} />
-                  <span className="text-[10px] text-muted-foreground">{getLikeCount(song.id)}</span>
+                  <Heart className={`w-4 h-4 transition-colors ${isLiked(song.id) ? "text-primary fill-primary" : "text-foreground"}`} />
+                  <span className="text-xs text-foreground">{getLikeCount(song.id)}</span>
                 </button>
                 {song.on_radio ? (
                   <button onClick={() => handleRemoveFromRadio(song.id)} className="px-2 py-1.5 rounded-lg border border-primary/30 text-[10px] text-primary font-semibold flex items-center gap-1">

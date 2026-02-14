@@ -218,12 +218,12 @@ const MyVideosPage = () => {
               <div className="p-2">
                 <p className="text-xs font-medium text-foreground truncate">{v.title}</p>
                 <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                    <Eye className="w-2.5 h-2.5" /> {v.views} views
+                  <span className="text-xs text-foreground flex items-center gap-1">
+                    <Eye className="w-4 h-4" /> {v.views} views
                   </span>
-                  <button onClick={() => toggleLike(v.id)} className="flex items-center gap-0.5">
-                    <Heart className={`w-2.5 h-2.5 transition-colors ${isLiked(v.id) ? "text-primary fill-primary" : "text-muted-foreground"}`} />
-                    <span className="text-[10px] text-muted-foreground">{getLikeCount(v.id)}</span>
+                  <button onClick={() => toggleLike(v.id)} className="flex items-center gap-1">
+                    <Heart className={`w-4 h-4 transition-colors ${isLiked(v.id) ? "text-primary fill-primary" : "text-foreground"}`} />
+                    <span className="text-xs text-foreground">{getLikeCount(v.id)}</span>
                   </button>
                 </div>
               </div>
