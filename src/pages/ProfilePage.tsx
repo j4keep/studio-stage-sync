@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   User, Music, FolderHeart, Building2, Heart, Download, DollarSign,
-  Settings, Shield, BarChart3, HelpCircle, Play, Video, Mic2, ShoppingBag,
+  Settings, Shield, BarChart3, HelpCircle, Play, Video, ShoppingBag,
   CheckCircle, UserPlus, Share2, ChevronRight, Library, Edit3, UserCheck, ExternalLink
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -86,10 +86,10 @@ const ArtistProfile = () => {
         }
       });
 
-    // Fetch total likes across songs, videos, and podcasts
+    // Fetch total likes across songs and videos
     const fetchLikes = async () => {
       let total = 0;
-      for (const table of ["songs", "videos", "podcasts"] as const) {
+      for (const table of ["songs", "videos"] as const) {
         const { data } = await (supabase as any)
           .from(table)
           .select("likes_count")
@@ -110,7 +110,6 @@ const ArtistProfile = () => {
   const tabs = [
     { id: "songs", label: "Songs", icon: Music, route: "/my-songs" },
     { id: "videos", label: "Videos", icon: Video, route: "/my-videos" },
-    { id: "podcasts", label: "Podcasts", icon: Mic2, route: "/my-podcasts" },
     { id: "projects", label: "Projects", icon: FolderHeart, route: "/my-projects" },
     { id: "store", label: "Store", icon: ShoppingBag, route: "/my-store" },
   ];
@@ -223,7 +222,7 @@ const ArtistProfile = () => {
 
       {/* Content Tabs */}
       <div className="mt-5 border-t border-border">
-        <div className="grid grid-cols-5 px-4 gap-1.5 pt-3">
+        <div className="grid grid-cols-4 px-4 gap-1.5 pt-3">
           {tabs.map((tab) => (
             <button
               key={tab.id}
