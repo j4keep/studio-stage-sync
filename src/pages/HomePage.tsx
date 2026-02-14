@@ -38,7 +38,7 @@ const fallbackVideos = [
   { id: "f2", title: "Rise Up (Live)", subtitle: "Dex Marley", img: musicvideo2, views: "32K" },
 ];
 
-const projects = [
+const fallbackProjects = [
   { title: "Debut Album Fund", artist: "Aria West", goal: 5000, raised: 3200, img: artist5 },
   { title: "Music Video Production", artist: "Kaia Noir", goal: 8000, raised: 5600, img: artist1 },
 ];
@@ -255,6 +255,27 @@ const HomePage = () => {
     gcTime: 5 * 60_000,
   });
 
+  const { data: dbProjects = [] } = useQuery({
+    queryKey: ["homepage-projects"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from("projects").select("id, title, goal, raised, cover_url, user_id")
+        .order("created_at", { ascending: false }).limit(10);
+      if (error || !data || data.length === 0) return [];
+      const userIds = [...new Set(data.map((p: any) => p.user_id).filter(Boolean))];
+      let profileMap: Record<string, string> = {};
+      if (userIds.length > 0) {
+        const { data: profiles } = await (supabase as any).from("profiles").select("user_id, display_name").in("user_id", userIds);
+        (profiles || []).forEach((p: any) => { profileMap[p.user_id] = p.display_name || "Artist"; });
+      }
+      return data.map((p: any) => ({
+        title: p.title, artist: profileMap[p.user_id] || "Artist",
+        goal: p.goal || 1000, raised: p.raised || 0, img: p.cover_url || artist1,
+      }));
+    },
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+  });
+
   const songIds = dbSongs.map(s => s.id);
   const videoIds = dbVideos.map(v => v.id);
   const podcastIds = dbPodcasts.map(p => p.id);
@@ -462,7 +483,7 @@ const HomePage = () => {
           <button onClick={() => navigate("/projects")} className="text-[10px] text-primary flex items-center gap-0.5">See All <ChevronRight className="w-3 h-3" /></button>
         </div>
         <div className="flex flex-col gap-3">
-          {projects.map((p) => (
+          {(dbProjects.length > 0 ? dbProjects : fallbackProjects).map((p) => (
             <button key={p.title} onClick={() => navigate("/projects")} className="p-4 rounded-xl bg-card border border-border hover:border-primary/30 transition-all w-full text-left">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-10 h-10 rounded-full overflow-hidden shrink-0">
