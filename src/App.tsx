@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { CartProvider } from "@/contexts/CartContext";
 import { RadioProvider } from "@/contexts/RadioContext";
 import AppLayout from "./components/AppLayout";
@@ -35,9 +36,8 @@ const queryClient = new QueryClient();
 
 const ProtectedRoutes = () => {
   const { user, loading } = useAuth();
-  const [termsAccepted, setTermsAccepted] = useState(() => {
-    return localStorage.getItem("wheuat_terms_accepted") === "true";
-  });
+  const [termsAccepted, setTermsAccepted] = useState<boolean | null>(null);
+  const [termsLoading, setTermsLoading] = useState(true);
 
   // Initialize theme on mount
   useEffect(() => {
@@ -52,7 +52,34 @@ const ProtectedRoutes = () => {
     }
   }, []);
 
-  if (loading) {
+  // Check terms acceptance from database
+  useEffect(() => {
+    if (!user) {
+      setTermsLoading(false);
+      return;
+    }
+    const checkTerms = async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("terms_accepted_at")
+        .eq("user_id", user.id)
+        .single();
+      setTermsAccepted(!!data?.terms_accepted_at);
+      setTermsLoading(false);
+    };
+    checkTerms();
+  }, [user]);
+
+  const handleAcceptTerms = useCallback(async () => {
+    if (!user) return;
+    await supabase
+      .from("profiles")
+      .update({ terms_accepted_at: new Date().toISOString() })
+      .eq("user_id", user.id);
+    setTermsAccepted(true);
+  }, [user]);
+
+  if (loading || termsLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -63,11 +90,6 @@ const ProtectedRoutes = () => {
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
-
-  const handleAcceptTerms = () => {
-    localStorage.setItem("wheuat_terms_accepted", "true");
-    setTermsAccepted(true);
-  };
 
   if (!termsAccepted) {
     return (

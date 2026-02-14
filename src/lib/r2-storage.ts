@@ -34,12 +34,10 @@ export async function uploadToR2(
     ? `${options.folder}/${options.fileName || file.name}`
     : options.fileName || file.name;
 
-  console.log(`[R2 Upload] Starting upload: ${file.name}, size: ${file.size}, key: ${key}, method: ${file.size > PROXY_UPLOAD_THRESHOLD ? 'presigned' : 'formdata'}`);
+  console.log(`[R2 Upload] Starting upload: ${file.name}, size: ${file.size}, key: ${key}, method: presigned`);
 
-  if (file.size > PROXY_UPLOAD_THRESHOLD) {
-    return uploadStreamingToR2(file, key, options);
-  }
-  return uploadViaFormData(file, options);
+  // Always use presigned URLs for all file sizes to avoid edge function timeouts
+  return uploadStreamingToR2(file, key, options);
 }
 
 /** Small file upload via multipart form-data */
