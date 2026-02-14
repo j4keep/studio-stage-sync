@@ -30,6 +30,7 @@ import EarningsPage from "./pages/EarningsPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
 import MyStudiosPage from "./pages/MyStudiosPage";
 import StorePage from "./pages/StorePage";
+import MessagesPage from "./pages/MessagesPage";
 import TermsAgreementGate from "./components/TermsAgreementGate";
 
 const queryClient = new QueryClient();
@@ -125,6 +126,7 @@ const ProtectedRoutes = () => {
         <Route path="/analytics" element={<AnalyticsPage />} />
         <Route path="/my-studios" element={<MyStudiosPage />} />
         <Route path="/store" element={<StorePage />} />
+        <Route path="/messages" element={<MessagesPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AppLayout>
