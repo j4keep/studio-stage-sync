@@ -1,25 +1,13 @@
 import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, Heart, TrendingUp, Music, Mic2, Video, DollarSign, ChevronRight, Headphones, Eye, X, Radio, Building2, ShoppingBag, CircleDollarSign } from "lucide-react";
-import { toast } from "sonner";
+import { motion } from "framer-motion";
+import { Play, Pause, TrendingUp, Music, Mic2, Video, DollarSign, Headphones, Radio, Building2, ShoppingBag, CircleDollarSign } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useLikes, incrementSongPlays } from "@/hooks/use-likes";
-import { getR2DownloadUrl } from "@/lib/r2-storage";
 import { useRadio } from "@/contexts/RadioContext";
 import { useAuth } from "@/contexts/AuthContext";
 import whetuatLogo from "@/assets/wheuat-logo.png";
 import album1 from "@/assets/album-1.jpg";
-import album2 from "@/assets/album-2.jpg";
-import album3 from "@/assets/album-3.jpg";
-import album4 from "@/assets/album-4.jpg";
-import podcast1 from "@/assets/podcast-1.jpg";
-import podcast2 from "@/assets/podcast-2.jpg";
-import musicvideo1 from "@/assets/musicvideo-1.jpg";
-import musicvideo2 from "@/assets/musicvideo-2.jpg";
-import artist5 from "@/assets/artist-5.jpg";
-import artist1 from "@/assets/artist-1.jpg";
 
 import cardRadio from "@/assets/card-radio.jpg";
 import cardStore from "@/assets/card-store.jpg";
@@ -30,187 +18,13 @@ import cardPodcasts from "@/assets/card-podcasts.jpg";
 import cardProjects from "@/assets/card-projects.jpg";
 import cardDollarClub from "@/assets/card-dollarclub.jpg";
 
-const fallbackSongs = [
-  { id: "fs1", title: "Midnight Glow", artist_name: "Kaia Noir", plays: "12.4K", cover_url: album1, likes_count: 0 },
-  { id: "fs2", title: "City Lights", artist_name: "Zephyr Cole", plays: "8.2K", cover_url: album2, likes_count: 0 },
-  { id: "fs3", title: "Golden Hour", artist_name: "Luna Ray", plays: "15.1K", cover_url: album3, likes_count: 0 },
-  { id: "fs4", title: "Rise Up", artist_name: "Dex Marley", plays: "6.7K", cover_url: album4, likes_count: 0 },
-];
-
-const fallbackPodcasts = [
-  { id: "f1", title: "The Indie Hustle", subtitle: "Marcus James", img: podcast1 },
-  { id: "f2", title: "Studio Sessions", subtitle: "Ava Monroe", img: podcast2 },
-];
-
-const fallbackVideos = [
-  { id: "f1", title: "Midnight Glow (Official)", subtitle: "Kaia Noir", img: musicvideo1, views: "45K" },
-  { id: "f2", title: "Rise Up (Live)", subtitle: "Dex Marley", img: musicvideo2, views: "32K" },
-];
-
-const fallbackProjects = [
-  { title: "Debut Album Fund", artist: "Aria West", goal: 5000, raised: 3200, img: artist5 },
-  { title: "Music Video Production", artist: "Kaia Noir", goal: 8000, raised: 5600, img: artist1 },
-];
-
 const fadeUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
-
-interface CarouselItem {
-  id: string;
-  title: string;
-  subtitle: string;
-  img: string;
-  likes_count?: number;
-  views?: string;
-  user_id?: string;
-  media_url?: string;
-}
-
-const AutoCarousel = ({ items, interval = 4000, onLike, isLiked, getLikeCount, onPlay }: { 
-  items: CarouselItem[]; interval?: number;
-  onLike?: (id: string) => void; isLiked?: (id: string) => boolean; getLikeCount?: (id: string) => number;
-  onPlay?: (item: CarouselItem) => void;
-}) => {
-  const [current, setCurrent] = useState(0);
-
-  useEffect(() => {
-    if (items.length <= 1) return;
-    const timer = setInterval(() => setCurrent(prev => (prev + 1) % items.length), interval);
-    return () => clearInterval(timer);
-  }, [items.length, interval]);
-
-  useEffect(() => { if (current >= items.length) setCurrent(0); }, [items.length, current]);
-
-  if (items.length === 0) return null;
-  const safeIndex = current < items.length ? current : 0;
-  const item = items[safeIndex];
-  if (!item) return null;
-
-  return (
-    <div className="relative w-full rounded-2xl overflow-hidden bg-card border border-border">
-      <div className="relative w-full h-48 overflow-hidden">
-        <motion.img key={item.id + safeIndex} src={item.img} alt={item.title} className="w-full h-full object-cover" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }} />
-        <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent" />
-        <div className="absolute bottom-3 left-3 right-14">
-          <p className="text-sm font-display font-bold text-foreground">{item.title}</p>
-          <p className="text-xs text-muted-foreground">{item.subtitle}</p>
-          <div className="flex items-center gap-3 mt-1">
-            {onLike && getLikeCount && isLiked && (
-              <button onClick={(e) => { e.stopPropagation(); onLike(item.id); }} className="flex items-center gap-1">
-                <Heart className={`w-4 h-4 transition-colors ${isLiked(item.id) ? "text-primary fill-primary" : "text-foreground"}`} />
-                <span className="text-xs text-foreground">{getLikeCount(item.id)}</span>
-              </button>
-            )}
-            {item.views && (
-              <span className="text-xs text-foreground flex items-center gap-1">
-                <Eye className="w-4 h-4" /> {item.views}
-              </span>
-            )}
-          </div>
-        </div>
-        <div className="absolute bottom-3 right-3">
-          <button onClick={(e) => { e.stopPropagation(); onPlay?.(item); }} className="w-9 h-9 rounded-full gradient-primary flex items-center justify-center glow-primary">
-            <Play className="w-4 h-4 text-primary-foreground fill-primary-foreground ml-0.5" />
-          </button>
-        </div>
-      </div>
-      {items.length > 1 && (
-        <div className="flex justify-center gap-1.5 py-2">
-          {items.map((_, i) => (
-            <button key={i} onClick={() => setCurrent(i)} className={`w-1.5 h-1.5 rounded-full transition-all ${i === safeIndex ? "w-4 bg-primary" : "bg-muted-foreground/30"}`} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
-interface DbSong {
-  id: string;
-  title: string;
-  artist_name: string;
-  plays: string;
-  cover_url: string;
-  audio_url?: string;
-  likes_count: number;
-  user_id?: string;
-}
 
 interface TrendingArtist {
   id: string;
   name: string;
   img: string;
 }
-
-const fetchSongs = async (): Promise<DbSong[]> => {
-  try {
-    const { data, error } = await (supabase as any).from("songs").select("id, title, cover_url, audio_url, plays, user_id, likes_count")
-      .order("created_at", { ascending: false }).limit(20);
-    if (error) { console.error("fetchSongs error:", error); return []; }
-    if (!data || data.length === 0) return [];
-    const userIds = [...new Set(data.map((s: any) => s.user_id).filter(Boolean))];
-    let profileMap: Record<string, string> = {};
-    if (userIds.length > 0) {
-      const { data: profiles } = await (supabase as any).from("profiles").select("user_id, display_name").in("user_id", userIds);
-      (profiles || []).forEach((p: any) => { profileMap[p.user_id] = p.display_name || "Artist"; });
-    }
-    return data.map((s: any) => ({
-      id: s.id, title: s.title, artist_name: profileMap[s.user_id] || "Artist",
-      plays: s.plays || "0",
-      cover_url: (s.cover_url && s.cover_url.length < 500) ? s.cover_url : (s.cover_url?.startsWith("data:") ? s.cover_url : album1),
-      audio_url: s.audio_url ? getR2DownloadUrl(s.audio_url) : undefined,
-      likes_count: s.likes_count || 0, user_id: s.user_id,
-    }));
-  } catch (err) {
-    console.error("fetchSongs exception:", err);
-    return [];
-  }
-};
-
-const fetchVideos = async (): Promise<CarouselItem[]> => {
-  try {
-    const { data, error } = await (supabase as any).from("videos").select("id, title, cover_url, video_url, views, likes_count, user_id")
-      .order("created_at", { ascending: false }).limit(20);
-    if (error) { console.error("fetchVideos error:", error); return []; }
-    if (!data || data.length === 0) return [];
-    const userIds = [...new Set(data.map((v: any) => v.user_id).filter(Boolean))];
-    let profileMap: Record<string, string> = {};
-    if (userIds.length > 0) {
-      const { data: profiles } = await (supabase as any).from("profiles").select("user_id, display_name").in("user_id", userIds);
-      (profiles || []).forEach((p: any) => { profileMap[p.user_id] = p.display_name || ""; });
-    }
-    return data.map((v: any) => ({
-      id: v.id, title: v.title, subtitle: profileMap[v.user_id] || "", img: v.cover_url || musicvideo1,
-      likes_count: v.likes_count || 0, views: v.views || "0", user_id: v.user_id,
-      media_url: v.video_url ? getR2DownloadUrl(v.video_url) : undefined,
-    }));
-  } catch (err) {
-    console.error("fetchVideos exception:", err);
-    return [];
-  }
-};
-
-const fetchPodcasts = async (): Promise<CarouselItem[]> => {
-  try {
-    const { data, error } = await (supabase as any).from("podcasts").select("id, title, cover_url, media_url, plays, likes_count, user_id, is_video")
-      .order("created_at", { ascending: false }).limit(20);
-    if (error) { console.error("fetchPodcasts error:", error); return []; }
-    if (!data || data.length === 0) return [];
-    const userIds = [...new Set(data.map((p: any) => p.user_id).filter(Boolean))];
-    let profileMap: Record<string, string> = {};
-    if (userIds.length > 0) {
-      const { data: profiles } = await (supabase as any).from("profiles").select("user_id, display_name").in("user_id", userIds);
-      (profiles || []).forEach((p: any) => { profileMap[p.user_id] = p.display_name || ""; });
-    }
-    return data.map((p: any) => ({
-      id: p.id, title: p.title, subtitle: profileMap[p.user_id] || "", img: p.cover_url || podcast1,
-      likes_count: p.likes_count || 0, views: p.plays || "0", user_id: p.user_id,
-      media_url: p.media_url ? getR2DownloadUrl(p.media_url) : undefined,
-    }));
-  } catch (err) {
-    console.error("fetchPodcasts exception:", err);
-    return [];
-  }
-};
 
 const fetchTrendingArtists = async (userId?: string): Promise<TrendingArtist[]> => {
   const { data } = await (supabase as any).from("profiles").select("user_id, display_name, avatar_url")
@@ -228,47 +42,22 @@ const fetchTrendingArtists = async (userId?: string): Promise<TrendingArtist[]> 
   return [];
 };
 
-// Category card data
+// All cards now navigate to dedicated pages
 const CATEGORY_CARDS = [
   { label: "Radio", img: cardRadio, path: "/radio", wide: true, icon: Radio },
   { label: "Store", img: cardStore, path: "/store", wide: false, icon: ShoppingBag },
   { label: "Studios", img: cardStudios, path: "/studios", wide: false, icon: Building2 },
-  { label: "New Songs", img: cardSongs, path: null, wide: false, icon: Music },
-  { label: "Music Videos", img: cardVideos, path: null, wide: false, icon: Video },
-  { label: "Podcasts", img: cardPodcasts, path: null, wide: true, icon: Mic2 },
-  { label: "Projects", img: cardProjects, path: null, wide: true, icon: DollarSign },
-  { label: "Dollar Club", img: cardDollarClub, path: null, wide: true, icon: CircleDollarSign },
+  { label: "New Songs", img: cardSongs, path: "/browse-songs", wide: false, icon: Music },
+  { label: "Music Videos", img: cardVideos, path: "/browse-videos", wide: false, icon: Video },
+  { label: "Podcasts", img: cardPodcasts, path: "/browse-podcasts", wide: true, icon: Mic2 },
+  { label: "Projects", img: cardProjects, path: "/my-projects", wide: true, icon: DollarSign },
+  { label: "Dollar Club", img: cardDollarClub, path: "/dollar-club", wide: true, icon: CircleDollarSign },
 ];
 
 const HomePage = () => {
   const navigate = useNavigate();
   const radio = useRadio();
-  const [playingSongId, setPlayingSongId] = useState<string | null>(null);
-  const songAudioRef = useRef<HTMLAudioElement | null>(null);
-  const playTracked = useRef<Set<string>>(new Set());
   const { user } = useAuth();
-  const [expandedSection, setExpandedSection] = useState<string | null>(null);
-
-  const { data: dbSongs = [] } = useQuery({
-    queryKey: ["homepage-songs"],
-    queryFn: fetchSongs,
-    staleTime: 30_000,
-    gcTime: 5 * 60_000,
-  });
-
-  const { data: dbVideos = [] } = useQuery({
-    queryKey: ["homepage-videos"],
-    queryFn: fetchVideos,
-    staleTime: 30_000,
-    gcTime: 5 * 60_000,
-  });
-
-  const { data: dbPodcasts = [] } = useQuery({
-    queryKey: ["homepage-podcasts"],
-    queryFn: fetchPodcasts,
-    staleTime: 30_000,
-    gcTime: 5 * 60_000,
-  });
 
   const { data: trendingArtists = [] } = useQuery({
     queryKey: ["homepage-trending-artists", user?.id],
@@ -277,99 +66,7 @@ const HomePage = () => {
     gcTime: 5 * 60_000,
   });
 
-  const { data: dbProjects = [] } = useQuery({
-    queryKey: ["homepage-projects"],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any).from("projects").select("id, title, goal, raised, cover_url, user_id")
-        .order("created_at", { ascending: false }).limit(10);
-      if (error || !data || data.length === 0) return [];
-      const userIds = [...new Set(data.map((p: any) => p.user_id).filter(Boolean))];
-      let profileMap: Record<string, string> = {};
-      if (userIds.length > 0) {
-        const { data: profiles } = await (supabase as any).from("profiles").select("user_id, display_name").in("user_id", userIds);
-        (profiles || []).forEach((p: any) => { profileMap[p.user_id] = p.display_name || "Artist"; });
-      }
-      return data.map((p: any) => ({
-        title: p.title, artist: profileMap[p.user_id] || "Artist",
-        goal: p.goal || 1000, raised: p.raised || 0, img: p.cover_url || artist1,
-      }));
-    },
-    staleTime: 30_000,
-    gcTime: 5 * 60_000,
-  });
-
-  const songIds = dbSongs.map(s => s.id);
-  const videoIds = dbVideos.map(v => v.id);
-  const podcastIds = dbPodcasts.map(p => p.id);
-  const songLikes = useLikes("song", songIds);
-  const videoLikes = useLikes("video", videoIds);
-  const podcastLikes = useLikes("podcast", podcastIds);
-
-  const displaySongs: DbSong[] = dbSongs.length > 0 ? dbSongs : fallbackSongs;
-
-  const videoCarouselItems: CarouselItem[] = dbVideos.length > 0 ? dbVideos : fallbackVideos.map(v => ({
-    id: v.id, title: v.title, subtitle: v.subtitle, img: v.img, views: v.views,
-  }));
-
-  const podcastCarouselItems: CarouselItem[] = dbPodcasts.length > 0 ? dbPodcasts : fallbackPodcasts.map(p => ({
-    id: p.id, title: p.title, subtitle: p.subtitle, img: p.img,
-  }));
-
-  const handlePlaySong = (song: DbSong) => {
-    if (playingSongId === song.id) {
-      songAudioRef.current?.pause();
-      setPlayingSongId(null);
-      return;
-    }
-    if (!song.audio_url) return;
-    if (!songAudioRef.current) songAudioRef.current = new Audio();
-    songAudioRef.current.src = song.audio_url;
-    songAudioRef.current.play().catch(() => {});
-    setPlayingSongId(song.id);
-    if (!playTracked.current.has(song.id)) {
-      playTracked.current.add(song.id);
-      incrementSongPlays(song.id);
-    }
-    songAudioRef.current.onended = () => setPlayingSongId(null);
-  };
-
-  useEffect(() => {
-    return () => { songAudioRef.current?.pause(); };
-  }, []);
-
   const currentRadioTrack = radio.currentTrack;
-
-  const [playingMediaId, setPlayingMediaId] = useState<string | null>(null);
-  const [playingMediaUrl, setPlayingMediaUrl] = useState<string | null>(null);
-  const [playingMediaItem, setPlayingMediaItem] = useState<CarouselItem | null>(null);
-  const mediaVideoRef = useRef<HTMLVideoElement | null>(null);
-
-  const handlePlayMedia = (item: CarouselItem) => {
-    if (!item.media_url) {
-      toast.info("No media file available for this content yet");
-      return;
-    }
-    if (playingMediaId === item.id) {
-      setPlayingMediaId(null);
-      setPlayingMediaUrl(null);
-      setPlayingMediaItem(null);
-      return;
-    }
-    setPlayingMediaId(item.id);
-    setPlayingMediaUrl(item.media_url);
-    setPlayingMediaItem(item);
-  };
-
-  const handlePlayVideo = (item: CarouselItem) => handlePlayMedia(item);
-  const handlePlayPodcast = (item: CarouselItem) => handlePlayMedia(item);
-
-  const handleCardClick = (card: typeof CATEGORY_CARDS[0]) => {
-    if (card.path) {
-      navigate(card.path);
-    } else {
-      setExpandedSection(expandedSection === card.label ? null : card.label);
-    }
-  };
 
   return (
     <div className="px-4 pt-4 pb-4">
@@ -434,147 +131,21 @@ const HomePage = () => {
         <div className="grid grid-cols-2 gap-3">
           {CATEGORY_CARDS.map((card, i) => (
             <motion.div key={card.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }} className={card.wide ? "col-span-2" : ""}>
-              <div className={`relative overflow-hidden rounded-xl w-full ${expandedSection === card.label ? "ring-2 ring-primary" : ""}`}>
-                {/* Card image header - always visible */}
-                <button
-                  onClick={() => handleCardClick(card)}
-                  className={`relative w-full ${expandedSection === card.label ? "aspect-[3/1]" : (card.wide ? "aspect-[2.5/1]" : "aspect-square")}`}
-                >
-                  <img src={card.img} alt={card.label} className="absolute inset-0 w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-black/35" />
-                  <span className="absolute inset-0 flex items-center justify-center text-white font-display font-bold text-sm tracking-widest uppercase gap-2">
-                    <card.icon className="w-5 h-5" />
-                    {card.label}
-                  </span>
-                  {expandedSection === card.label && (
-                    <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/40 flex items-center justify-center">
-                      <X className="w-3.5 h-3.5 text-white" />
-                    </div>
-                  )}
-                </button>
-
-                {/* Expanded content inside the card */}
-                <AnimatePresence>
-                  {expandedSection === card.label && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="bg-card border-t border-border p-3"
-                    >
-                      {card.label === "New Songs" && (
-                        <div className="flex flex-col gap-2">
-                          {displaySongs.slice(0, 8).map((s) => (
-                            <div key={s.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-all">
-                              <button onClick={() => s.user_id ? navigate(`/profile?user=${s.user_id}`) : null} className="w-10 h-10 rounded-lg overflow-hidden shrink-0">
-                                <img src={s.cover_url} alt={s.title} className="w-full h-full object-cover" />
-                              </button>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-xs font-semibold text-foreground truncate">{s.title}</p>
-                                <p className="text-[10px] text-muted-foreground">{s.artist_name}</p>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-[10px] text-foreground flex items-center gap-0.5">
-                                  <Play className="w-3 h-3" /> {s.plays}
-                                </span>
-                                <button onClick={() => dbSongs.length > 0 && songLikes.toggleLike(s.id)} className="flex items-center gap-0.5">
-                                  <Heart className={`w-3.5 h-3.5 transition-colors ${dbSongs.length > 0 && songLikes.isLiked(s.id) ? "text-primary fill-primary" : "text-foreground"}`} />
-                                  <span className="text-[10px] text-foreground">{dbSongs.length > 0 ? songLikes.getLikeCount(s.id) : s.likes_count}</span>
-                                </button>
-                                <button onClick={() => handlePlaySong(s)} className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center">
-                                  {playingSongId === s.id ? <Pause className="w-3 h-3 text-primary" /> : <Play className="w-3 h-3 text-primary fill-primary" />}
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {card.label === "Music Videos" && (
-                        <AutoCarousel items={videoCarouselItems} interval={5000}
-                          onLike={dbVideos.length > 0 ? videoLikes.toggleLike : undefined}
-                          isLiked={dbVideos.length > 0 ? videoLikes.isLiked : undefined}
-                          getLikeCount={dbVideos.length > 0 ? videoLikes.getLikeCount : undefined}
-                          onPlay={handlePlayVideo} />
-                      )}
-
-                      {card.label === "Podcasts" && (
-                        <AutoCarousel items={podcastCarouselItems} interval={6000}
-                          onLike={dbPodcasts.length > 0 ? podcastLikes.toggleLike : undefined}
-                          isLiked={dbPodcasts.length > 0 ? podcastLikes.isLiked : undefined}
-                          getLikeCount={dbPodcasts.length > 0 ? podcastLikes.getLikeCount : undefined}
-                          onPlay={handlePlayPodcast} />
-                      )}
-
-                      {card.label === "Projects" && (
-                        <div className="flex flex-col gap-3">
-                          {(dbProjects.length > 0 ? dbProjects : fallbackProjects).map((p) => (
-                            <button key={p.title} onClick={() => navigate("/my-projects")} className="p-3 rounded-lg hover:bg-muted/50 transition-all w-full text-left">
-                              <div className="flex items-center gap-3 mb-2">
-                                <div className="w-8 h-8 rounded-full overflow-hidden shrink-0">
-                                  <img src={p.img} alt={p.artist} className="w-full h-full object-cover" />
-                                </div>
-                                <div>
-                                  <p className="text-xs font-semibold text-foreground">{p.title}</p>
-                                  <p className="text-[10px] text-muted-foreground">by {p.artist}</p>
-                                </div>
-                              </div>
-                              <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden mb-1">
-                                <div className="h-full rounded-full gradient-primary" style={{ width: `${(p.raised / p.goal) * 100}%` }} />
-                              </div>
-                              <div className="flex justify-between text-[10px] text-muted-foreground">
-                                <span>${p.raised.toLocaleString()} raised</span>
-                                <span className="text-primary font-medium">{Math.round((p.raised / p.goal) * 100)}%</span>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-
-                      {card.label === "Dollar Club" && (
-                        <div className="py-6 text-center">
-                          <CircleDollarSign className="w-10 h-10 text-primary mx-auto mb-3" />
-                          <p className="text-sm font-semibold text-foreground mb-1">Dollar Club</p>
-                          <p className="text-xs text-muted-foreground">Sell your products for $1 and build your fanbase. Coming soon!</p>
-                        </div>
-                      )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+              <button
+                onClick={() => navigate(card.path)}
+                className={`relative overflow-hidden rounded-xl w-full ${card.wide ? "aspect-[2.5/1]" : "aspect-square"} group`}
+              >
+                <img src={card.img} alt={card.label} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                <div className="absolute inset-0 bg-black/30" />
+                <span className="absolute bottom-3 left-3 flex items-center gap-2 text-white font-display font-bold text-sm tracking-wide drop-shadow-lg">
+                  <card.icon className="w-5 h-5" />
+                  {card.label}
+                </span>
+              </button>
             </motion.div>
           ))}
         </div>
       </motion.section>
-
-      {/* Inline Media Player Overlay */}
-      {playingMediaId && playingMediaUrl && playingMediaItem && (
-        <div className="fixed inset-0 z-50 bg-background/95 flex flex-col">
-          <div className="flex items-center justify-between p-4">
-            <button onClick={() => playingMediaItem.user_id ? navigate(`/profile?user=${playingMediaItem.user_id}`) : null} className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full overflow-hidden bg-muted">
-                <img src={playingMediaItem.img} alt="" className="w-full h-full object-cover" />
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-foreground">{playingMediaItem.title}</p>
-                <p className="text-[10px] text-muted-foreground">{playingMediaItem.subtitle}</p>
-              </div>
-            </button>
-            <button onClick={() => { setPlayingMediaId(null); setPlayingMediaUrl(null); setPlayingMediaItem(null); }} className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center">
-              <X className="w-4 h-4 text-foreground" />
-            </button>
-          </div>
-          <div className="flex-1 flex items-center justify-center px-4">
-            <video
-              ref={mediaVideoRef}
-              src={playingMediaUrl}
-              controls
-              autoPlay
-              className="w-full max-h-[70vh] rounded-xl"
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 };

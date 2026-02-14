@@ -31,6 +31,9 @@ import AnalyticsPage from "./pages/AnalyticsPage";
 import MyStudiosPage from "./pages/MyStudiosPage";
 import StorePage from "./pages/StorePage";
 import MessagesPage from "./pages/MessagesPage";
+import BrowseSongsPage from "./pages/BrowseSongsPage";
+import BrowseVideosPage from "./pages/BrowseVideosPage";
+import BrowsePodcastsPage from "./pages/BrowsePodcastsPage";
 import TermsAgreementGate from "./components/TermsAgreementGate";
 
 const queryClient = new QueryClient();
@@ -127,6 +130,10 @@ const ProtectedRoutes = () => {
         <Route path="/my-studios" element={<MyStudiosPage />} />
         <Route path="/store" element={<StorePage />} />
         <Route path="/messages" element={<MessagesPage />} />
+        <Route path="/browse-songs" element={<BrowseSongsPage />} />
+        <Route path="/browse-videos" element={<BrowseVideosPage />} />
+        <Route path="/browse-podcasts" element={<BrowsePodcastsPage />} />
+        <Route path="/dollar-club" element={<div className="px-4 pt-4 pb-4 text-center"><h1 className="text-lg font-display font-bold text-foreground mb-2">Dollar Club</h1><p className="text-sm text-muted-foreground">Sell your products for $1 and build your fanbase. Coming soon!</p></div>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AppLayout>
