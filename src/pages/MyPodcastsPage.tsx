@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Mic2, Play, Pause, Plus, Trash2, Upload, Image, Video, Headphones, RefreshCw } from "lucide-react";
+import { ArrowLeft, Mic2, Play, Pause, Plus, Trash2, Upload, Image, Video, Headphones, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { cacheMediaUrl, getCachedMediaUrl, removeCachedMedia } from "@/lib/media-cache";
+import { uploadToR2, getR2DownloadUrl, deleteFromR2 } from "@/lib/r2-storage";
 import podcast1 from "@/assets/podcast-1.jpg";
 
 interface Podcast {
@@ -35,10 +35,10 @@ const MyPodcastsPage = () => {
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [pendingCover, setPendingCover] = useState<string | null>(null);
   const [expandedVideo, setExpandedVideo] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
-  const reuploadIdRef = useRef<string | null>(null);
 
   useEffect(() => { if (user) fetchPodcasts(); }, [user]);
 
@@ -48,7 +48,7 @@ const MyPodcastsPage = () => {
       setPodcasts(data.map((p: any) => ({
         id: p.id, title: p.title, episode: p.episode || "New Episode", duration: p.duration || "0 min",
         plays: p.plays || "0", cover_url: p.cover_url || podcast1,
-        media_url: p.media_url || getCachedMediaUrl(p.id) || undefined,
+        media_url: p.media_url ? getR2DownloadUrl(p.media_url) : undefined,
         is_video: p.is_video,
       })));
     }
@@ -57,26 +57,15 @@ const MyPodcastsPage = () => {
 
   const removePodcast = async (id: string) => {
     if (playingId === id) { audioRef.current?.pause(); setPlayingId(null); setExpandedVideo(null); }
+    const { data: podData } = await (supabase as any).from("podcasts").select("media_url").eq("id", id).single();
     await (supabase as any).from("podcasts").delete().eq("id", id);
-    removeCachedMedia(id);
+    if (podData?.media_url) deleteFromR2(podData.media_url).catch(() => {});
     setPodcasts(prev => prev.filter(p => p.id !== id));
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    if (reuploadIdRef.current) {
-      const reuploadId = reuploadIdRef.current;
-      const mediaUrl = URL.createObjectURL(file);
-      cacheMediaUrl(reuploadId, mediaUrl);
-      setPodcasts(prev => prev.map(p => p.id === reuploadId ? { ...p, media_url: mediaUrl } : p));
-      reuploadIdRef.current = null;
-      toast({ title: "File linked!", description: "Podcast is now playable this session." });
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      return;
-    }
-
     setPendingFile(file);
     setPendingCover(null);
     const type = file.type.startsWith("video") ? "video" : "audio";
@@ -116,26 +105,35 @@ const MyPodcastsPage = () => {
       }
     };
 
-    const addPodcast = async (dur: number, url: string, video: boolean, cover: string | null) => {
+    const addPodcast = async (dur: number, localUrl: string, video: boolean, cover: string | null) => {
       const title = pendingFile!.name.replace(/\.[^/.]+$/, "");
       const duration = formatDuration(dur);
-      const { data, error } = await (supabase as any).from("podcasts").insert({ user_id: user!.id, title, episode: "New Episode", duration, cover_url: cover, media_url: null, is_video: video }).select().single();
-      if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
-      cacheMediaUrl(data.id, url);
-      setPodcasts(prev => [{ id: data.id, title, episode: "New Episode", duration, plays: "0", cover_url: cover || podcast1, media_url: url, is_video: video }, ...prev]);
-      setPendingFile(null); setPendingCover(null); setShowUpload(false);
-      toast({ title: "Podcast added!", description: `"${title}" has been uploaded` });
+
+      setUploading(true);
+      toast({ title: "Uploading to cloud...", description: "Your podcast is being stored permanently." });
+
+      const r2Result = await uploadToR2(pendingFile!, { folder: `${user!.id}/podcasts`, fileName: `${Date.now()}-${pendingFile!.name}` });
+      if (!r2Result.success) {
+        setUploading(false);
+        toast({ title: "Upload failed", description: r2Result.error, variant: "destructive" });
+        return;
+      }
+
+      const { data, error } = await (supabase as any).from("podcasts").insert({ user_id: user!.id, title, episode: "New Episode", duration, cover_url: cover, media_url: r2Result.data!.key, is_video: video }).select().single();
+      if (error) { setUploading(false); toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+
+      const playbackUrl = getR2DownloadUrl(r2Result.data!.key);
+      setPodcasts(prev => [{ id: data.id, title, episode: "New Episode", duration, plays: "0", cover_url: cover || podcast1, media_url: playbackUrl, is_video: video }, ...prev]);
+      setPendingFile(null); setPendingCover(null); setShowUpload(false); setUploading(false);
+      toast({ title: "Podcast uploaded! ☁️", description: `"${title}" is now stored permanently` });
       if (fileInputRef.current) fileInputRef.current.value = "";
+      URL.revokeObjectURL(localUrl);
     };
 
     el.addEventListener("loadedmetadata", onMeta);
     el.addEventListener("error", () => { toast({ title: "Error", description: "Could not read media file", variant: "destructive" }); });
   };
 
-  const handleReupload = (id: string) => {
-    reuploadIdRef.current = id;
-    fileInputRef.current?.click();
-  };
 
   const getMode = (p: Podcast): "video" | "audio" => playMode[p.id] || (p.is_video ? "video" : "audio");
 
@@ -198,7 +196,9 @@ const MyPodcastsPage = () => {
               <p className="text-[10px] text-muted-foreground">Cover art is optional</p>
               <div className="flex gap-2">
                 <button onClick={() => { setPendingFile(null); setPendingCover(null); }} className="px-4 py-2 rounded-lg border border-border text-xs font-medium text-muted-foreground">Cancel</button>
-                <button onClick={confirmUpload} className="px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-xs font-semibold glow-primary">Upload Episode</button>
+                <button onClick={confirmUpload} disabled={uploading} className="px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-xs font-semibold glow-primary flex items-center gap-1.5 disabled:opacity-50">
+                  {uploading && <Loader2 className="w-3 h-3 animate-spin" />} {uploading ? "Uploading..." : "Upload Episode"}
+                </button>
               </div>
             </div>
           )}
@@ -214,12 +214,10 @@ const MyPodcastsPage = () => {
             return (
               <motion.div key={p.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:border-primary/30 transition-all group">
-                  <button onClick={() => p.media_url ? togglePlay(p) : handleReupload(p.id)} className="relative w-11 h-11 rounded-lg overflow-hidden flex-shrink-0">
+                  <button onClick={() => togglePlay(p)} className="relative w-11 h-11 rounded-lg overflow-hidden flex-shrink-0">
                     <img src={p.cover_url} alt={p.title} className="w-full h-full object-cover" />
                     <div className={`absolute inset-0 bg-black/30 flex items-center justify-center transition-opacity ${playingId === p.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
-                      {!p.media_url ? (
-                        <RefreshCw className="w-4 h-4 text-white" />
-                      ) : playingId === p.id ? (
+                      {playingId === p.id ? (
                         <Pause className="w-4 h-4 text-white fill-white" />
                       ) : (
                         <Play className="w-4 h-4 text-white fill-white" />
@@ -229,7 +227,7 @@ const MyPodcastsPage = () => {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">{p.title}</p>
                     <p className="text-[10px] text-muted-foreground">
-                      {p.media_url ? `${p.episode} · ${p.duration} · ${p.plays} plays` : "Tap to re-link file for playback"}
+                      {`${p.episode} · ${p.duration} · ${p.plays} plays`}
                     </p>
                   </div>
                   {p.is_video && p.media_url && (
