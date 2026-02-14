@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Music, Play, Pause, MoreHorizontal, Plus, Trash2, Upload, Image, RefreshCw, Radio, ChevronDown } from "lucide-react";
+import { ArrowLeft, Music, Play, Pause, Plus, Trash2, Upload, Image, Radio, ChevronDown, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { cacheMediaUrl, getCachedMediaUrl, removeCachedMedia } from "@/lib/media-cache";
 import { GENRES } from "@/lib/genres";
+import { uploadToR2, getR2DownloadUrl, deleteFromR2 } from "@/lib/r2-storage";
 import album1 from "@/assets/album-1.jpg";
 
 interface Song {
@@ -42,7 +42,7 @@ const MySongsPage = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
-  const reuploadIdRef = useRef<string | null>(null);
+  
 
   useEffect(() => {
     if (user) fetchSongs();
@@ -54,7 +54,7 @@ const MySongsPage = () => {
       setSongs(data.map((s: any) => ({
         id: s.id, title: s.title, plays: s.plays || "0", duration: s.duration || "0:00",
         cover_url: s.cover_url || album1,
-        audio_url: s.audio_url || getCachedMediaUrl(s.id) || undefined,
+        audio_url: s.audio_url ? getR2DownloadUrl(s.audio_url) : undefined,
         on_radio: s.on_radio || false,
         genre: s.genre || undefined,
       })));
@@ -64,8 +64,10 @@ const MySongsPage = () => {
 
   const removeSong = async (id: string) => {
     if (playingId === id) { audioRef.current?.pause(); setPlayingId(null); }
+    // Get R2 key before deleting
+    const { data: songData } = await (supabase as any).from("songs").select("audio_url").eq("id", id).single();
     await (supabase as any).from("songs").delete().eq("id", id);
-    removeCachedMedia(id);
+    if (songData?.audio_url) deleteFromR2(songData.audio_url).catch(() => {});
     setSongs(prev => prev.filter(s => s.id !== id));
   };
 
@@ -74,17 +76,6 @@ const MySongsPage = () => {
     if (!file) return;
     setPendingAudioFile(file);
     setPendingCover(null);
-    if (reuploadIdRef.current) {
-      const reuploadId = reuploadIdRef.current;
-      const audioUrl = URL.createObjectURL(file);
-      cacheMediaUrl(reuploadId, audioUrl);
-      setSongs(prev => prev.map(s => s.id === reuploadId ? { ...s, audio_url: audioUrl } : s));
-      reuploadIdRef.current = null;
-      setPendingAudioFile(null);
-      toast({ title: "File linked!", description: "Song is now playable this session." });
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      return;
-    }
     toast({ title: "Audio selected", description: "Optionally add a cover image, then confirm upload." });
   };
 
@@ -97,6 +88,8 @@ const MySongsPage = () => {
     if (coverInputRef.current) coverInputRef.current.value = "";
   };
 
+  const [uploading, setUploading] = useState(false);
+
   const confirmUpload = () => {
     if (!pendingAudioFile || !user) return;
     const audioUrl = URL.createObjectURL(pendingAudioFile);
@@ -105,21 +98,32 @@ const MySongsPage = () => {
       const title = pendingAudioFile.name.replace(/\.[^/.]+$/, "");
       const duration = formatDuration(audio.duration);
       const cover = pendingCover || null;
-      const { data, error } = await (supabase as any).from("songs").insert({ user_id: user.id, title, duration, cover_url: cover, audio_url: null }).select().single();
-      if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
-      cacheMediaUrl(data.id, audioUrl);
-      setSongs(prev => [{ id: data.id, title, plays: "0", duration, cover_url: cover || album1, audio_url: audioUrl, on_radio: false }, ...prev]);
-      setPendingAudioFile(null); setPendingCover(null); setShowUpload(false);
-      toast({ title: "Song added!", description: `"${title}" has been uploaded` });
+
+      setUploading(true);
+      toast({ title: "Uploading to cloud...", description: "Your song is being stored permanently." });
+
+      // Upload to R2
+      const r2Result = await uploadToR2(pendingAudioFile, { folder: `${user.id}/songs`, fileName: `${Date.now()}-${pendingAudioFile.name}` });
+      if (!r2Result.success) {
+        setUploading(false);
+        toast({ title: "Upload failed", description: r2Result.error, variant: "destructive" });
+        return;
+      }
+
+      // Store R2 key in DB (not a URL, just the key)
+      const { data, error } = await (supabase as any).from("songs").insert({ user_id: user.id, title, duration, cover_url: cover, audio_url: r2Result.data!.key }).select().single();
+      if (error) { setUploading(false); toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+
+      const playbackUrl = getR2DownloadUrl(r2Result.data!.key);
+      setSongs(prev => [{ id: data.id, title, plays: "0", duration, cover_url: cover || album1, audio_url: playbackUrl, on_radio: false }, ...prev]);
+      setPendingAudioFile(null); setPendingCover(null); setShowUpload(false); setUploading(false);
+      toast({ title: "Song uploaded! ☁️", description: `"${title}" is now stored permanently` });
       if (fileInputRef.current) fileInputRef.current.value = "";
+      URL.revokeObjectURL(audioUrl);
     });
     audio.addEventListener("error", () => { toast({ title: "Error", description: "Could not read audio file", variant: "destructive" }); });
   };
 
-  const handleReupload = (id: string) => {
-    reuploadIdRef.current = id;
-    fileInputRef.current?.click();
-  };
 
   const togglePlay = (song: Song) => {
     if (!song.audio_url) return;
@@ -194,7 +198,9 @@ const MySongsPage = () => {
               <p className="text-[10px] text-muted-foreground">Cover art is optional</p>
               <div className="flex gap-2">
                 <button onClick={() => { setPendingAudioFile(null); setPendingCover(null); }} className="px-4 py-2 rounded-lg border border-border text-xs font-medium text-muted-foreground">Cancel</button>
-                <button onClick={confirmUpload} className="px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-xs font-semibold glow-primary">Upload Song</button>
+                <button onClick={confirmUpload} disabled={uploading} className="px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-xs font-semibold glow-primary flex items-center gap-1.5 disabled:opacity-50">
+                  {uploading && <Loader2 className="w-3 h-3 animate-spin" />} {uploading ? "Uploading..." : "Upload Song"}
+                </button>
               </div>
             </div>
           )}
@@ -210,12 +216,10 @@ const MySongsPage = () => {
               <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
                 className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:border-primary/30 transition-all group"
               >
-                <button onClick={() => song.audio_url ? togglePlay(song) : handleReupload(song.id)} className="relative w-11 h-11 rounded-lg overflow-hidden flex-shrink-0">
+                <button onClick={() => togglePlay(song)} className="relative w-11 h-11 rounded-lg overflow-hidden flex-shrink-0">
                   <img src={song.cover_url} alt={song.title} className="w-full h-full object-cover" />
                   <div className={`absolute inset-0 bg-black/30 flex items-center justify-center transition-opacity ${playingId === song.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
-                    {!song.audio_url ? (
-                      <RefreshCw className="w-4 h-4 text-white" />
-                    ) : playingId === song.id ? (
+                    {playingId === song.id ? (
                       <Pause className="w-4 h-4 text-white fill-white" />
                     ) : (
                       <Play className="w-4 h-4 text-white fill-white" />
@@ -225,7 +229,7 @@ const MySongsPage = () => {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-foreground truncate">{song.title}</p>
                   <p className="text-[10px] text-muted-foreground">
-                    {song.audio_url ? `${song.plays} plays · ${song.duration}` : "Tap to re-link file for playback"}
+                    {`${song.plays} plays · ${song.duration}`}
                   </p>
                   {song.on_radio && (
                     <span className="inline-flex items-center gap-1 text-[9px] text-primary font-semibold mt-0.5">

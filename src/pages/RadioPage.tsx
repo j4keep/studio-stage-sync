@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Play, Pause, SkipForward, Heart, DollarSign, Radio as RadioIcon, Users, Shuffle, ArrowLeft, Music } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { getCachedMediaUrl } from "@/lib/media-cache";
+import { getR2DownloadUrl } from "@/lib/r2-storage";
 import { GENRES } from "@/lib/genres";
 import album1 from "@/assets/album-1.jpg";
 import artist1 from "@/assets/artist-1.jpg";
@@ -59,7 +59,7 @@ const RadioPage = () => {
         artist_name: profileMap[s.user_id] || "Artist",
         genre: s.genre || "All Music",
         cover_url: s.cover_url || album1,
-        audio_url: s.audio_url || getCachedMediaUrl(s.id) || undefined,
+        audio_url: s.audio_url ? getR2DownloadUrl(s.audio_url) : undefined,
         plays: s.plays || "0",
       })));
     }
