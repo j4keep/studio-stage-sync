@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
+import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, Mic2, Play, Pause, Plus, Trash2, Upload, Image, Video, Headphones, Loader2, Heart, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -38,6 +39,7 @@ const MyPodcastsPage = () => {
   const [pendingCover, setPendingCover] = useState<string | null>(null);
   const [expandedVideo, setExpandedVideo] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -116,11 +118,17 @@ const MyPodcastsPage = () => {
       const duration = formatDuration(dur);
 
       setUploading(true);
+      setUploadProgress(0);
       toast({ title: "Uploading to cloud...", description: "Your podcast is being stored permanently." });
 
-      const r2Result = await uploadToR2(pendingFile!, { folder: `${user!.id}/podcasts`, fileName: `${Date.now()}-${pendingFile!.name}` });
+      const r2Result = await uploadToR2(pendingFile!, {
+        folder: `${user!.id}/podcasts`,
+        fileName: `${Date.now()}-${pendingFile!.name}`,
+        onProgress: (p) => setUploadProgress(p),
+      });
       if (!r2Result.success) {
         setUploading(false);
+        setUploadProgress(0);
         toast({ title: "Upload failed", description: r2Result.error, variant: "destructive" });
         return;
       }
@@ -130,7 +138,7 @@ const MyPodcastsPage = () => {
 
       const playbackUrl = getR2DownloadUrl(r2Result.data!.key);
       setPodcasts(prev => [{ id: data.id, title, episode: "New Episode", duration, plays: "0", cover_url: cover || podcast1, media_url: playbackUrl, is_video: video, likes_count: 0 }, ...prev]);
-      setPendingFile(null); setPendingCover(null); setShowUpload(false); setUploading(false);
+      setPendingFile(null); setPendingCover(null); setShowUpload(false); setUploading(false); setUploadProgress(0);
       toast({ title: "Podcast uploaded! ☁️", description: `"${title}" is now stored permanently` });
       if (fileInputRef.current) fileInputRef.current.value = "";
       URL.revokeObjectURL(localUrl);
@@ -203,8 +211,9 @@ const MyPodcastsPage = () => {
               <div className="flex gap-2">
                 <button onClick={() => { setPendingFile(null); setPendingCover(null); }} className="px-4 py-2 rounded-lg border border-border text-xs font-medium text-muted-foreground">Cancel</button>
                 <button onClick={confirmUpload} disabled={uploading} className="px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-xs font-semibold glow-primary flex items-center gap-1.5 disabled:opacity-50">
-                  {uploading && <Loader2 className="w-3 h-3 animate-spin" />} {uploading ? "Uploading..." : "Upload Episode"}
+                  {uploading && <Loader2 className="w-3 h-3 animate-spin" />} {uploading ? `Uploading ${uploadProgress}%` : "Upload Episode"}
                 </button>
+                {uploading && <Progress value={uploadProgress} className="w-full h-2 mt-1" />}
               </div>
             </div>
           )}
