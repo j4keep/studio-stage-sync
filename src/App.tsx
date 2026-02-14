@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
+import { RadioProvider } from "@/contexts/RadioContext";
 import AppLayout from "./components/AppLayout";
 import HomePage from "./pages/HomePage";
 import RadioPage from "./pages/RadioPage";
@@ -117,10 +118,12 @@ const App = () => {
         <BrowserRouter>
           <AuthProvider>
             <CartProvider>
-              <Routes>
-                <Route path="/auth" element={<AuthPage />} />
-                <Route path="/*" element={<ProtectedRoutes />} />
-              </Routes>
+              <RadioProvider>
+                <Routes>
+                  <Route path="/auth" element={<AuthPage />} />
+                  <Route path="/*" element={<ProtectedRoutes />} />
+                </Routes>
+              </RadioProvider>
             </CartProvider>
           </AuthProvider>
         </BrowserRouter>
