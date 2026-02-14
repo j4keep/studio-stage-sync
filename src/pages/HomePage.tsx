@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Play, Pause, Heart, TrendingUp, Music, Mic2, Video, DollarSign, ChevronRight, Headphones, Eye, X } from "lucide-react";
+import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -132,43 +133,74 @@ interface TrendingArtist {
 }
 
 const fetchSongs = async (): Promise<DbSong[]> => {
-  const { data } = await (supabase as any).from("songs").select("id, title, cover_url, audio_url, plays, user_id, likes_count")
-    .order("created_at", { ascending: false }).limit(20);
-  if (!data || data.length === 0) return [];
-  const userIds = [...new Set(data.map((s: any) => s.user_id).filter(Boolean))];
-  let profileMap: Record<string, string> = {};
-  if (userIds.length > 0) {
-    const { data: profiles } = await (supabase as any).from("profiles").select("user_id, display_name").in("user_id", userIds);
-    (profiles || []).forEach((p: any) => { profileMap[p.user_id] = p.display_name || "Artist"; });
+  try {
+    const { data, error } = await (supabase as any).from("songs").select("id, title, cover_url, audio_url, plays, user_id, likes_count")
+      .order("created_at", { ascending: false }).limit(20);
+    if (error) { console.error("fetchSongs error:", error); return []; }
+    if (!data || data.length === 0) return [];
+    const userIds = [...new Set(data.map((s: any) => s.user_id).filter(Boolean))];
+    let profileMap: Record<string, string> = {};
+    if (userIds.length > 0) {
+      const { data: profiles } = await (supabase as any).from("profiles").select("user_id, display_name").in("user_id", userIds);
+      (profiles || []).forEach((p: any) => { profileMap[p.user_id] = p.display_name || "Artist"; });
+    }
+    return data.map((s: any) => ({
+      id: s.id, title: s.title, artist_name: profileMap[s.user_id] || "Artist",
+      plays: s.plays || "0",
+      cover_url: (s.cover_url && s.cover_url.length < 500) ? s.cover_url : (s.cover_url?.startsWith("data:") ? s.cover_url : album1),
+      audio_url: s.audio_url ? getR2DownloadUrl(s.audio_url) : undefined,
+      likes_count: s.likes_count || 0, user_id: s.user_id,
+    }));
+  } catch (err) {
+    console.error("fetchSongs exception:", err);
+    return [];
   }
-  return data.map((s: any) => ({
-    id: s.id, title: s.title, artist_name: profileMap[s.user_id] || "Artist",
-    plays: s.plays || "0", cover_url: s.cover_url || album1,
-    audio_url: s.audio_url ? getR2DownloadUrl(s.audio_url) : undefined,
-    likes_count: s.likes_count || 0, user_id: s.user_id,
-  }));
 };
 
 const fetchVideos = async (): Promise<CarouselItem[]> => {
-  const { data } = await (supabase as any).from("videos").select("id, title, cover_url, video_url, views, likes_count, user_id")
-    .order("created_at", { ascending: false }).limit(20);
-  if (!data || data.length === 0) return [];
-  return data.map((v: any) => ({
-    id: v.id, title: v.title, subtitle: "", img: v.cover_url || musicvideo1,
-    likes_count: v.likes_count || 0, views: v.views || "0", user_id: v.user_id,
-    media_url: v.video_url ? getR2DownloadUrl(v.video_url) : undefined,
-  }));
+  try {
+    const { data, error } = await (supabase as any).from("videos").select("id, title, cover_url, video_url, views, likes_count, user_id")
+      .order("created_at", { ascending: false }).limit(20);
+    if (error) { console.error("fetchVideos error:", error); return []; }
+    if (!data || data.length === 0) return [];
+    const userIds = [...new Set(data.map((v: any) => v.user_id).filter(Boolean))];
+    let profileMap: Record<string, string> = {};
+    if (userIds.length > 0) {
+      const { data: profiles } = await (supabase as any).from("profiles").select("user_id, display_name").in("user_id", userIds);
+      (profiles || []).forEach((p: any) => { profileMap[p.user_id] = p.display_name || ""; });
+    }
+    return data.map((v: any) => ({
+      id: v.id, title: v.title, subtitle: profileMap[v.user_id] || "", img: v.cover_url || musicvideo1,
+      likes_count: v.likes_count || 0, views: v.views || "0", user_id: v.user_id,
+      media_url: v.video_url ? getR2DownloadUrl(v.video_url) : undefined,
+    }));
+  } catch (err) {
+    console.error("fetchVideos exception:", err);
+    return [];
+  }
 };
 
 const fetchPodcasts = async (): Promise<CarouselItem[]> => {
-  const { data } = await (supabase as any).from("podcasts").select("id, title, cover_url, media_url, plays, likes_count, user_id, is_video")
-    .order("created_at", { ascending: false }).limit(20);
-  if (!data || data.length === 0) return [];
-  return data.map((p: any) => ({
-    id: p.id, title: p.title, subtitle: "", img: p.cover_url || podcast1,
-    likes_count: p.likes_count || 0, views: p.plays || "0", user_id: p.user_id,
-    media_url: p.media_url ? getR2DownloadUrl(p.media_url) : undefined,
-  }));
+  try {
+    const { data, error } = await (supabase as any).from("podcasts").select("id, title, cover_url, media_url, plays, likes_count, user_id, is_video")
+      .order("created_at", { ascending: false }).limit(20);
+    if (error) { console.error("fetchPodcasts error:", error); return []; }
+    if (!data || data.length === 0) return [];
+    const userIds = [...new Set(data.map((p: any) => p.user_id).filter(Boolean))];
+    let profileMap: Record<string, string> = {};
+    if (userIds.length > 0) {
+      const { data: profiles } = await (supabase as any).from("profiles").select("user_id, display_name").in("user_id", userIds);
+      (profiles || []).forEach((p: any) => { profileMap[p.user_id] = p.display_name || ""; });
+    }
+    return data.map((p: any) => ({
+      id: p.id, title: p.title, subtitle: profileMap[p.user_id] || "", img: p.cover_url || podcast1,
+      likes_count: p.likes_count || 0, views: p.plays || "0", user_id: p.user_id,
+      media_url: p.media_url ? getR2DownloadUrl(p.media_url) : undefined,
+    }));
+  } catch (err) {
+    console.error("fetchPodcasts exception:", err);
+    return [];
+  }
 };
 
 const fetchTrendingArtists = async (userId?: string): Promise<TrendingArtist[]> => {
@@ -271,7 +303,10 @@ const HomePage = () => {
   const mediaVideoRef = useRef<HTMLVideoElement | null>(null);
 
   const handlePlayMedia = (item: CarouselItem) => {
-    if (!item.media_url) return;
+    if (!item.media_url) {
+      toast.info("No media file available for this content yet");
+      return;
+    }
     if (playingMediaId === item.id) {
       setPlayingMediaId(null);
       setPlayingMediaUrl(null);
