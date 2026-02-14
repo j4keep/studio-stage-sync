@@ -92,7 +92,7 @@ const TermsPage = () => {
         <section>
           <h2 className="text-base font-display font-bold text-foreground mb-2">10. Contact</h2>
           <p>
-            For questions about these Terms, or to agree to terms via phone, call: <strong className="text-primary">954-607</strong>
+            For questions about these Terms, contact us through the app's Help section.
           </p>
           <p className="mt-2">
             By using WHEUAT, you acknowledge that you have read, understood, and agree to these Terms of Use.

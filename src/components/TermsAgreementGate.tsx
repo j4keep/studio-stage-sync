@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Shield, Phone } from "lucide-react";
+import { Shield } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useNavigate } from "react-router-dom";
 
@@ -61,14 +61,6 @@ const TermsAgreementGate = ({ onAccept }: { onAccept: () => void }) => {
             I have read and agree to the WHEUAT Terms of Use.
           </span>
         </label>
-
-        {/* Phone agreement option */}
-        <div className="flex items-center gap-2 mb-6 w-full">
-          <Phone className="w-3.5 h-3.5 text-primary shrink-0" />
-          <span className="text-xs text-muted-foreground">
-            Or call <strong className="text-primary">954-607</strong> to agree to terms.
-          </span>
-        </div>
 
         {/* Accept button */}
         <button
