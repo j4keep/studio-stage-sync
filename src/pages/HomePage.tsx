@@ -133,9 +133,9 @@ const HomePage = () => {
                 onClick={() => navigate(card.path)}
                 className={`relative overflow-hidden rounded-xl w-full ${card.wide ? "aspect-[2.5/1]" : "aspect-square"} group`}
               >
-                <img src={card.img} alt={card.label} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                <div className="absolute inset-0 bg-black/20" />
-                <span className="absolute bottom-3 left-3 flex items-center gap-2 text-white font-display font-bold text-sm tracking-wide drop-shadow-lg">
+                <img src={card.img} alt={card.label} className="absolute inset-0 w-full h-full object-contain group-hover:scale-105 transition-transform duration-500" />
+                <div className="absolute inset-0 bg-black/30" />
+                <span className="absolute bottom-3 left-3 flex items-center gap-2 text-white font-display font-bold text-base tracking-wide drop-shadow-lg">
                   <card.icon className="w-5 h-5" />
                   {card.label}
                 </span>
