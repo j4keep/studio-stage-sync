@@ -19,7 +19,7 @@ type UploadOptions = {
   onProgress?: (progress: number) => void;
 };
 
-const PROXY_UPLOAD_THRESHOLD = 500 * 1024 * 1024; // 500MB - route all uploads through edge function proxy
+const PROXY_UPLOAD_THRESHOLD = 5 * 1024 * 1024; // 5MB
 
 /**
  * Upload a file to R2 storage.
@@ -65,29 +65,28 @@ async function uploadViaFormData(
   }
 }
 
-/** Large file upload: get presigned URL and upload directly to R2 */
+/** Large file upload: stream raw body through the edge function proxy */
 async function uploadStreamingToR2(
   file: File,
   key: string,
   options: UploadOptions
 ): Promise<R2Response<UploadResult>> {
   try {
-    // Step 1: Get a presigned PUT URL from the edge function
-    const { data: presignData, error: presignError } = await supabase.functions.invoke('r2-presign', {
-      body: { key, contentType: options.mimeType || file.type || 'application/octet-stream' },
-    });
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    const url = `${supabaseUrl}/functions/v1/r2-upload`;
 
-    if (presignError || !presignData?.success) {
-      return { success: false, error: presignData?.error || presignError?.message || 'Failed to get upload URL' };
-    }
+    // Get the user's auth token if available
+    const { data: { session } } = await supabase.auth.getSession();
+    const authToken = session?.access_token || anonKey;
 
-    const presignedUrl = presignData.url;
-
-    // Step 2: Upload directly to R2 using the presigned URL with XHR for progress
     return new Promise((resolve) => {
       const xhr = new XMLHttpRequest();
-      xhr.open('PUT', presignedUrl, true);
-      xhr.setRequestHeader('Content-Type', options.mimeType || file.type || 'application/octet-stream');
+      xhr.open('PUT', url, true);
+      xhr.setRequestHeader('apikey', anonKey);
+      xhr.setRequestHeader('Authorization', `Bearer ${authToken}`);
+      xhr.setRequestHeader('x-upload-key', key);
+      xhr.setRequestHeader('x-upload-content-type', options.mimeType || file.type || 'application/octet-stream');
 
       if (options.onProgress) {
         xhr.upload.onprogress = (e) => {
@@ -98,9 +97,14 @@ async function uploadStreamingToR2(
       }
 
       xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          resolve({ success: true, data: { key, url: presignedUrl.split('?')[0], size: file.size } });
-        } else {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          if (xhr.status >= 200 && xhr.status < 300 && data.success) {
+            resolve({ success: true, data: { key: data.key, url: data.url, size: data.size || file.size } });
+          } else {
+            resolve({ success: false, error: data.error || `Upload failed: ${xhr.status}` });
+          }
+        } catch {
           resolve({ success: false, error: `Upload failed: ${xhr.status}` });
         }
       };
