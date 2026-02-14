@@ -65,6 +65,7 @@ const ArtistProfile = () => {
   const [followerCount, setFollowerCount] = useState("1.2K");
   const [totalPlays, setTotalPlays] = useState("0");
   const [songCount, setSongCount] = useState("0");
+  const [totalLikes, setTotalLikes] = useState("0");
 
   useEffect(() => {
     if (!user) return;
@@ -84,6 +85,26 @@ const ArtistProfile = () => {
           }
         }
       });
+
+    // Fetch total likes across songs, videos, and podcasts
+    const fetchLikes = async () => {
+      let total = 0;
+      for (const table of ["songs", "videos", "podcasts"] as const) {
+        const { data } = await (supabase as any)
+          .from(table)
+          .select("likes_count")
+          .eq("user_id", user.id);
+        if (data) {
+          total += data.reduce((sum: number, item: any) => sum + (item.likes_count || 0), 0);
+        }
+      }
+      if (total >= 1000) {
+        setTotalLikes(`${(total / 1000).toFixed(1)}K`);
+      } else {
+        setTotalLikes(String(total));
+      }
+    };
+    fetchLikes();
   }, [user]);
 
   const tabs = [
@@ -177,7 +198,7 @@ const ArtistProfile = () => {
             { label: "Songs", value: songCount },
             { label: "Followers", value: followerCount },
             { label: "Plays", value: totalPlays },
-            { label: "Earnings", value: "$1.2K" },
+            { label: "Likes", value: totalLikes },
           ].map((s) => (
             <div key={s.label} className="p-2.5 rounded-xl bg-card border border-border text-center">
               <p className="text-base font-display font-bold text-primary">{s.value}</p>
