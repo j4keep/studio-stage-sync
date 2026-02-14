@@ -22,6 +22,7 @@ export const BEAT_SUB_GENRES = [
   "Haitian",
   "Afrobeat",
   "Latin Music",
+  "All Music",
 ] as const;
 
 export type Genre = (typeof GENRES)[number];
