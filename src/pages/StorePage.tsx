@@ -14,7 +14,7 @@ import genreCountry from "@/assets/genre-country.jpg";
 import genreRnb from "@/assets/genre-rnb.jpg";
 import genreRock from "@/assets/genre-rock.jpg";
 import genreFuturepop from "@/assets/genre-futurepop.jpg";
-import genreEmorap from "@/assets/genre-emorap.jpg";
+import genreHiphop from "@/assets/genre-hiphop.jpg";
 import genreReggaeton from "@/assets/genre-reggaeton.jpg";
 import genreHaitian from "@/assets/genre-haitian.jpg";
 import genreAfrobeat from "@/assets/genre-afrobeat.jpg";
@@ -27,7 +27,7 @@ const GENRE_IMAGES: Record<string, string> = {
   "R&B & Soul": genreRnb,
   "Rock": genreRock,
   "Future Pop": genreFuturepop,
-  "Emo Rap": genreEmorap,
+  "Hip Hop/Rap": genreHiphop,
   "Reggaeton": genreReggaeton,
   "Haitian": genreHaitian,
   "Afrobeat": genreAfrobeat,
