@@ -23,7 +23,7 @@ import AuthPage from "./pages/AuthPage";
 import NotFound from "./pages/NotFound";
 import MySongsPage from "./pages/MySongsPage";
 import MyVideosPage from "./pages/MyVideosPage";
-import MyPodcastsPage from "./pages/MyPodcastsPage";
+
 import MyProjectsPage from "./pages/MyProjectsPage";
 import MyStorePage from "./pages/MyStorePage";
 import EarningsPage from "./pages/EarningsPage";
@@ -33,7 +33,7 @@ import StorePage from "./pages/StorePage";
 import MessagesPage from "./pages/MessagesPage";
 import BrowseSongsPage from "./pages/BrowseSongsPage";
 import BrowseVideosPage from "./pages/BrowseVideosPage";
-import BrowsePodcastsPage from "./pages/BrowsePodcastsPage";
+
 import TermsAgreementGate from "./components/TermsAgreementGate";
 
 const queryClient = new QueryClient();
@@ -122,7 +122,7 @@ const ProtectedRoutes = () => {
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/my-songs" element={<MySongsPage />} />
         <Route path="/my-videos" element={<MyVideosPage />} />
-        <Route path="/my-podcasts" element={<MyPodcastsPage />} />
+        
         <Route path="/my-projects" element={<MyProjectsPage />} />
         <Route path="/my-store" element={<MyStorePage />} />
         <Route path="/earnings" element={<EarningsPage />} />
@@ -132,7 +132,7 @@ const ProtectedRoutes = () => {
         <Route path="/messages" element={<MessagesPage />} />
         <Route path="/browse-songs" element={<BrowseSongsPage />} />
         <Route path="/browse-videos" element={<BrowseVideosPage />} />
-        <Route path="/browse-podcasts" element={<BrowsePodcastsPage />} />
+        
         <Route path="/dollar-club" element={<div className="px-4 pt-4 pb-4 text-center"><h1 className="text-lg font-display font-bold text-foreground mb-2">Dollar Club</h1><p className="text-sm text-muted-foreground">Sell your products for $1 and build your fanbase. Coming soon!</p></div>} />
         <Route path="*" element={<NotFound />} />
       </Routes>

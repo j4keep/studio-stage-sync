@@ -69,7 +69,7 @@ const BrowseVideosPage = () => {
         <button onClick={() => navigate("/")} className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center">
           <ArrowLeft className="w-4 h-4 text-foreground" />
         </button>
-        <h1 className="text-lg font-display font-bold text-foreground">Music Videos</h1>
+        <h1 className="text-lg font-display font-bold text-foreground">Videos</h1>
       </div>
 
       {isLoading ? (
