@@ -2,7 +2,7 @@ import { AwsClient } from "https://esm.sh/aws4fetch@1.0.20";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version, x-upload-key, x-upload-content-type',
 };
 
 const BUCKET = 'wheuat-media';
@@ -16,10 +16,6 @@ Deno.serve(async (req) => {
     const accessKeyId = Deno.env.get('R2_ACCESS_KEY_ID')?.trim();
     const secretAccessKey = Deno.env.get('R2_SECRET_ACCESS_KEY')?.trim();
     const accountId = Deno.env.get('R2_ACCOUNT_ID')?.trim();
-    
-    console.log('Access Key ID length:', accessKeyId?.length, 'starts with:', accessKeyId?.substring(0, 4));
-    console.log('Secret Access Key length:', secretAccessKey?.length);
-    console.log('Account ID:', accountId);
 
     if (!accessKeyId || !secretAccessKey || !accountId) {
       return new Response(JSON.stringify({ success: false, error: 'R2 credentials not configured' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -28,6 +24,35 @@ Deno.serve(async (req) => {
     const client = new AwsClient({ accessKeyId, secretAccessKey, service: 's3', region: 'auto' });
     const r2Url = `https://${accountId}.r2.cloudflarestorage.com`;
 
+    // Check for streaming upload via custom headers (large files)
+    const uploadKey = req.headers.get('x-upload-key');
+    if (uploadKey) {
+      const mimeType = req.headers.get('x-upload-content-type') || 'application/octet-stream';
+      const key = uploadKey;
+      const url = `${r2Url}/${BUCKET}/${key}`;
+      console.log('Streaming upload to:', url);
+
+      // Stream the raw request body directly to R2
+      const r2Response = await client.fetch(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': mimeType },
+        body: req.body,
+      });
+
+      if (!r2Response.ok) {
+        const errorText = await r2Response.text();
+        console.error('R2 streaming upload error:', r2Response.status, errorText);
+        return new Response(JSON.stringify({ success: false, error: `R2 upload failed: ${r2Response.status}` }), { status: r2Response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      await r2Response.text();
+
+      const contentLength = req.headers.get('content-length');
+      const size = contentLength ? parseInt(contentLength) : 0;
+      console.log('Streaming upload successful:', key, size, 'bytes');
+      return new Response(JSON.stringify({ success: true, key, url, size }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // Fallback: multipart/form-data upload (small files < 5MB)
     const contentType = req.headers.get('content-type') || '';
     let fileData: ArrayBuffer;
     let fileName: string;
