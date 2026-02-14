@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Play, Pause, Heart, TrendingUp, Music, Mic2, Video, DollarSign, ChevronRight, Headphones, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useLikes, incrementSongPlays } from "@/hooks/use-likes";
 import { getR2DownloadUrl } from "@/lib/r2-storage";
@@ -129,17 +130,95 @@ interface TrendingArtist {
   img: string;
 }
 
+const fetchSongs = async (): Promise<DbSong[]> => {
+  const { data } = await (supabase as any).from("songs").select("id, title, cover_url, audio_url, plays, user_id, likes_count")
+    .order("created_at", { ascending: false }).limit(20);
+  if (!data || data.length === 0) return [];
+  const userIds = [...new Set(data.map((s: any) => s.user_id).filter(Boolean))];
+  let profileMap: Record<string, string> = {};
+  if (userIds.length > 0) {
+    const { data: profiles } = await (supabase as any).from("profiles").select("user_id, display_name").in("user_id", userIds);
+    (profiles || []).forEach((p: any) => { profileMap[p.user_id] = p.display_name || "Artist"; });
+  }
+  return data.map((s: any) => ({
+    id: s.id, title: s.title, artist_name: profileMap[s.user_id] || "Artist",
+    plays: s.plays || "0", cover_url: s.cover_url || album1,
+    audio_url: s.audio_url ? getR2DownloadUrl(s.audio_url) : undefined,
+    likes_count: s.likes_count || 0, user_id: s.user_id,
+  }));
+};
+
+const fetchVideos = async (): Promise<CarouselItem[]> => {
+  const { data } = await (supabase as any).from("videos").select("id, title, cover_url, views, likes_count, user_id")
+    .order("created_at", { ascending: false }).limit(20);
+  if (!data || data.length === 0) return [];
+  return data.map((v: any) => ({
+    id: v.id, title: v.title, subtitle: "", img: v.cover_url || musicvideo1,
+    likes_count: v.likes_count || 0, views: v.views || "0", user_id: v.user_id,
+  }));
+};
+
+const fetchPodcasts = async (): Promise<CarouselItem[]> => {
+  const { data } = await (supabase as any).from("podcasts").select("id, title, cover_url, plays, likes_count, user_id")
+    .order("created_at", { ascending: false }).limit(20);
+  if (!data || data.length === 0) return [];
+  return data.map((p: any) => ({
+    id: p.id, title: p.title, subtitle: "", img: p.cover_url || podcast1,
+    likes_count: p.likes_count || 0, views: p.plays || "0", user_id: p.user_id,
+  }));
+};
+
+const fetchTrendingArtists = async (userId?: string): Promise<TrendingArtist[]> => {
+  const { data } = await (supabase as any).from("profiles").select("user_id, display_name, avatar_url")
+    .order("created_at", { ascending: false }).limit(10);
+  if (data && data.length > 0) {
+    const filtered = data.filter((p: any) => p.display_name).map((p: any) => ({
+      id: p.user_id, name: p.display_name, img: p.avatar_url || "",
+    }));
+    if (filtered.length > 0) return filtered;
+  }
+  if (userId) {
+    const { data: profile } = await (supabase as any).from("profiles").select("user_id, display_name, avatar_url").eq("user_id", userId).maybeSingle();
+    if (profile) return [{ id: profile.user_id, name: profile.display_name || "You", img: profile.avatar_url || "" }];
+  }
+  return [];
+};
+
 const HomePage = () => {
   const navigate = useNavigate();
   const radio = useRadio();
-  const [dbVideos, setDbVideos] = useState<CarouselItem[]>([]);
-  const [dbPodcasts, setDbPodcasts] = useState<CarouselItem[]>([]);
-  const [dbSongs, setDbSongs] = useState<DbSong[]>([]);
-  const [trendingArtists, setTrendingArtists] = useState<TrendingArtist[]>([]);
   const [playingSongId, setPlayingSongId] = useState<string | null>(null);
   const songAudioRef = useRef<HTMLAudioElement | null>(null);
   const playTracked = useRef<Set<string>>(new Set());
   const { user } = useAuth();
+
+  const { data: dbSongs = [] } = useQuery({
+    queryKey: ["homepage-songs"],
+    queryFn: fetchSongs,
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+  });
+
+  const { data: dbVideos = [] } = useQuery({
+    queryKey: ["homepage-videos"],
+    queryFn: fetchVideos,
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+  });
+
+  const { data: dbPodcasts = [] } = useQuery({
+    queryKey: ["homepage-podcasts"],
+    queryFn: fetchPodcasts,
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+  });
+
+  const { data: trendingArtists = [] } = useQuery({
+    queryKey: ["homepage-trending-artists", user?.id],
+    queryFn: () => fetchTrendingArtists(user?.id),
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+  });
 
   const songIds = dbSongs.map(s => s.id);
   const videoIds = dbVideos.map(v => v.id);
@@ -148,70 +227,15 @@ const HomePage = () => {
   const videoLikes = useLikes("video", videoIds);
   const podcastLikes = useLikes("podcast", podcastIds);
 
-  useEffect(() => {
-    // Fetch songs
-    (supabase as any).from("songs").select("id, title, cover_url, audio_url, plays, user_id, likes_count")
-      .order("created_at", { ascending: false }).limit(20)
-      .then(async ({ data }: any) => {
-        if (data && data.length > 0) {
-          const userIds = [...new Set(data.map((s: any) => s.user_id).filter(Boolean))];
-          let profileMap: Record<string, string> = {};
-          if (userIds.length > 0) {
-            const { data: profiles } = await (supabase as any).from("profiles").select("user_id, display_name").in("user_id", userIds);
-            (profiles || []).forEach((p: any) => { profileMap[p.user_id] = p.display_name || "Artist"; });
-          }
-          setDbSongs(data.map((s: any) => ({
-            id: s.id, title: s.title, artist_name: profileMap[s.user_id] || "Artist",
-            plays: s.plays || "0", cover_url: s.cover_url || album1,
-            audio_url: s.audio_url ? getR2DownloadUrl(s.audio_url) : undefined,
-            likes_count: s.likes_count || 0, user_id: s.user_id,
-          })));
-        }
-      });
+  const displaySongs: DbSong[] = dbSongs.length > 0 ? dbSongs : fallbackSongs;
 
-    // Fetch videos
-    (supabase as any).from("videos").select("id, title, cover_url, views, likes_count, user_id")
-      .order("created_at", { ascending: false }).limit(20)
-      .then(({ data }: any) => {
-        if (data && data.length > 0) {
-          setDbVideos(data.map((v: any) => ({
-            id: v.id, title: v.title, subtitle: "", img: v.cover_url || musicvideo1,
-            likes_count: v.likes_count || 0, views: v.views || "0", user_id: v.user_id,
-          })));
-        }
-      });
+  const videoCarouselItems: CarouselItem[] = dbVideos.length > 0 ? dbVideos : fallbackVideos.map(v => ({
+    id: v.id, title: v.title, subtitle: v.subtitle, img: v.img, views: v.views,
+  }));
 
-    // Fetch podcasts
-    (supabase as any).from("podcasts").select("id, title, cover_url, plays, likes_count, user_id")
-      .order("created_at", { ascending: false }).limit(20)
-      .then(({ data }: any) => {
-        if (data && data.length > 0) {
-          setDbPodcasts(data.map((p: any) => ({
-            id: p.id, title: p.title, subtitle: "", img: p.cover_url || podcast1,
-            likes_count: p.likes_count || 0, views: p.plays || "0", user_id: p.user_id,
-          })));
-        }
-      });
-
-    // Fetch trending artists (profiles with songs)
-    (supabase as any).from("profiles").select("user_id, display_name, avatar_url")
-      .order("created_at", { ascending: false }).limit(10)
-      .then(({ data }: any) => {
-        if (data && data.length > 0) {
-          setTrendingArtists(data.filter((p: any) => p.display_name).map((p: any) => ({
-            id: p.user_id, name: p.display_name, img: p.avatar_url || "",
-          })));
-        } else if (user) {
-          // Show current user as demo trending artist
-          (supabase as any).from("profiles").select("user_id, display_name, avatar_url").eq("user_id", user.id).maybeSingle()
-            .then(({ data: profile }: any) => {
-              if (profile) {
-                setTrendingArtists([{ id: profile.user_id, name: profile.display_name || "You", img: profile.avatar_url || "" }]);
-              }
-            });
-        }
-      });
-  }, [user]);
+  const podcastCarouselItems: CarouselItem[] = dbPodcasts.length > 0 ? dbPodcasts : fallbackPodcasts.map(p => ({
+    id: p.id, title: p.title, subtitle: p.subtitle, img: p.img,
+  }));
 
   // Song playback
   const handlePlaySong = (song: DbSong) => {
@@ -235,16 +259,6 @@ const HomePage = () => {
   useEffect(() => {
     return () => { songAudioRef.current?.pause(); };
   }, []);
-
-  const videoCarouselItems: CarouselItem[] = dbVideos.length > 0 ? dbVideos : fallbackVideos.map(v => ({
-    id: v.id, title: v.title, subtitle: v.subtitle, img: v.img, views: v.views,
-  }));
-
-  const podcastCarouselItems: CarouselItem[] = dbPodcasts.length > 0 ? dbPodcasts : fallbackPodcasts.map(p => ({
-    id: p.id, title: p.title, subtitle: p.subtitle, img: p.img,
-  }));
-
-  const displaySongs: DbSong[] = dbSongs.length > 0 ? dbSongs : fallbackSongs;
 
   const currentRadioTrack = radio.currentTrack;
 
