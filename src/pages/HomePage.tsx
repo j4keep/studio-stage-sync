@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Play, Pause, Heart, TrendingUp, Music, Mic2, Video, DollarSign, ChevronRight, Headphones, Users } from "lucide-react";
+import { Play, Pause, Heart, TrendingUp, Music, Mic2, Video, DollarSign, ChevronRight, Headphones, Users, ChevronLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import whetuatLogo from "@/assets/wheuat-logo.png";
 import artist1 from "@/assets/artist-1.jpg";
 import artist2 from "@/assets/artist-2.jpg";
@@ -33,14 +34,14 @@ const newSongs = [
   { title: "Rise Up", artist: "Dex Marley", plays: "6.7K", img: album4 },
 ];
 
-const podcasts = [
-  { title: "The Indie Hustle", host: "Marcus James", episodes: 24, img: podcast1 },
-  { title: "Studio Sessions", host: "Ava Monroe", episodes: 18, img: podcast2 },
+const fallbackPodcasts = [
+  { id: "f1", title: "The Indie Hustle", host: "Marcus James", episodes: "24 episodes", img: podcast1 },
+  { id: "f2", title: "Studio Sessions", host: "Ava Monroe", episodes: "18 episodes", img: podcast2 },
 ];
 
-const musicVideos = [
-  { title: "Midnight Glow (Official)", artist: "Kaia Noir", views: "45K", img: musicvideo1 },
-  { title: "Rise Up (Live)", artist: "Dex Marley", views: "32K", img: musicvideo2 },
+const fallbackVideos = [
+  { id: "f1", title: "Midnight Glow (Official)", artist: "Kaia Noir", views: "45K", img: musicvideo1 },
+  { id: "f2", title: "Rise Up (Live)", artist: "Dex Marley", views: "32K", img: musicvideo2 },
 ];
 
 const projects = [
@@ -55,10 +56,110 @@ const fadeUp = {
   animate: { opacity: 1, y: 0 },
 };
 
+interface CarouselItem {
+  id: string;
+  title: string;
+  subtitle: string;
+  img: string;
+  extra?: string;
+}
+
+const AutoCarousel = ({ items, interval = 4000 }: { items: CarouselItem[]; interval?: number }) => {
+  const [current, setCurrent] = useState(0);
+
+  useEffect(() => {
+    if (items.length <= 1) return;
+    const timer = setInterval(() => setCurrent(prev => (prev + 1) % items.length), interval);
+    return () => clearInterval(timer);
+  }, [items.length, interval]);
+
+  if (items.length === 0) return null;
+
+  const item = items[current];
+
+  return (
+    <div className="relative w-full rounded-2xl overflow-hidden bg-card border border-border">
+      <div className="relative w-full h-48 overflow-hidden">
+        <motion.img
+          key={item.id + current}
+          src={item.img}
+          alt={item.title}
+          className="w-full h-full object-cover"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5 }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent" />
+        <div className="absolute bottom-3 left-3 right-3">
+          <p className="text-sm font-display font-bold text-foreground">{item.title}</p>
+          <p className="text-xs text-muted-foreground">{item.subtitle}</p>
+          {item.extra && <p className="text-[10px] text-primary mt-0.5">{item.extra}</p>}
+        </div>
+        <div className="absolute bottom-3 right-3">
+          <div className="w-9 h-9 rounded-full gradient-primary flex items-center justify-center glow-primary">
+            <Play className="w-4 h-4 text-primary-foreground fill-primary-foreground ml-0.5" />
+          </div>
+        </div>
+      </div>
+      {/* Dots */}
+      {items.length > 1 && (
+        <div className="flex justify-center gap-1.5 py-2">
+          {items.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setCurrent(i)}
+              className={`w-1.5 h-1.5 rounded-full transition-all ${i === current ? "w-4 bg-primary" : "bg-muted-foreground/30"}`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const HomePage = () => {
   const navigate = useNavigate();
   const [isRadioPlaying, setIsRadioPlaying] = useState(false);
   const [likedSongs, setLikedSongs] = useState<Set<string>>(new Set());
+  const [dbVideos, setDbVideos] = useState<CarouselItem[]>([]);
+  const [dbPodcasts, setDbPodcasts] = useState<CarouselItem[]>([]);
+
+  useEffect(() => {
+    // Fetch all videos from DB
+    (supabase as any).from("videos").select("*").order("created_at", { ascending: false }).limit(20)
+      .then(({ data }: any) => {
+        if (data && data.length > 0) {
+          setDbVideos(data.map((v: any) => ({
+            id: v.id,
+            title: v.title,
+            subtitle: v.views ? `${v.views} views` : "New",
+            img: v.cover_url || musicvideo1,
+            extra: v.duration || undefined,
+          })));
+        }
+      });
+    // Fetch all podcasts from DB
+    (supabase as any).from("podcasts").select("*").order("created_at", { ascending: false }).limit(20)
+      .then(({ data }: any) => {
+        if (data && data.length > 0) {
+          setDbPodcasts(data.map((p: any) => ({
+            id: p.id,
+            title: p.title,
+            subtitle: p.episode ? `Episode ${p.episode}` : "New Episode",
+            img: p.cover_url || podcast1,
+            extra: p.plays ? `${p.plays} plays` : undefined,
+          })));
+        }
+      });
+  }, []);
+
+  const videoCarouselItems: CarouselItem[] = dbVideos.length > 0 ? dbVideos : fallbackVideos.map(v => ({
+    id: v.id, title: v.title, subtitle: v.artist || v.views || "", img: v.img, extra: v.views ? `${v.views} views` : undefined,
+  }));
+
+  const podcastCarouselItems: CarouselItem[] = dbPodcasts.length > 0 ? dbPodcasts : fallbackPodcasts.map(p => ({
+    id: p.id, title: p.title, subtitle: p.host, img: p.img, extra: p.episodes,
+  }));
 
   const toggleLike = (title: string) => {
     setLikedSongs(prev => {
@@ -166,63 +267,28 @@ const HomePage = () => {
         </div>
       </motion.section>
 
-      {/* New Podcasts */}
+      {/* Music Videos Carousel */}
       <motion.section {...fadeUp} transition={{ delay: 0.15 }} className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <Mic2 className="w-4 h-4 text-primary" />
-            <h2 className="text-sm font-display font-bold text-foreground uppercase tracking-wide">New Podcasts</h2>
+            <Video className="w-4 h-4 text-primary" />
+            <h2 className="text-sm font-display font-bold text-foreground uppercase tracking-wide">Music Videos</h2>
           </div>
           <button className="text-[10px] text-primary flex items-center gap-0.5">See All <ChevronRight className="w-3 h-3" /></button>
         </div>
-        <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
-          {podcasts.map((p) => (
-            <button key={p.title} className="min-w-[200px] rounded-xl bg-card border border-border overflow-hidden hover:border-primary/30 transition-all group text-left">
-              <div className="w-full h-28 overflow-hidden">
-                <img src={p.img} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-              </div>
-              <div className="p-3">
-                <p className="text-sm font-semibold text-foreground">{p.title}</p>
-                <p className="text-xs text-muted-foreground">{p.host}</p>
-                <p className="text-[10px] text-primary mt-1">{p.episodes} episodes</p>
-              </div>
-            </button>
-          ))}
-        </div>
+        <AutoCarousel items={videoCarouselItems} interval={5000} />
       </motion.section>
 
-      {/* New Music Videos */}
+      {/* Podcasts Carousel */}
       <motion.section {...fadeUp} transition={{ delay: 0.2 }} className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <Video className="w-4 h-4 text-primary" />
-            <h2 className="text-sm font-display font-bold text-foreground uppercase tracking-wide">New Music Videos</h2>
+            <Mic2 className="w-4 h-4 text-primary" />
+            <h2 className="text-sm font-display font-bold text-foreground uppercase tracking-wide">Podcasts</h2>
           </div>
           <button className="text-[10px] text-primary flex items-center gap-0.5">See All <ChevronRight className="w-3 h-3" /></button>
         </div>
-        <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
-          {musicVideos.map((v) => (
-            <button key={v.title} className="min-w-[240px] rounded-xl bg-card border border-border overflow-hidden hover:border-primary/30 transition-all group text-left">
-              <div className="relative w-full h-32 overflow-hidden">
-                <img src={v.img} alt={v.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
-                <div className="absolute bottom-2 left-2 right-2 flex items-end justify-between">
-                  <div>
-                    <p className="text-xs font-semibold text-foreground">{v.title}</p>
-                    <p className="text-[10px] text-muted-foreground">{v.artist}</p>
-                  </div>
-                  <div className="w-8 h-8 rounded-full bg-primary/80 flex items-center justify-center">
-                    <Play className="w-3.5 h-3.5 text-primary-foreground fill-primary-foreground" />
-                  </div>
-                </div>
-              </div>
-              <div className="px-3 py-2 flex items-center gap-1">
-                <Users className="w-3 h-3 text-muted-foreground" />
-                <span className="text-[10px] text-muted-foreground">{v.views} views</span>
-              </div>
-            </button>
-          ))}
-        </div>
+        <AutoCarousel items={podcastCarouselItems} interval={6000} />
       </motion.section>
 
       {/* Projects Seeking Funding */}
