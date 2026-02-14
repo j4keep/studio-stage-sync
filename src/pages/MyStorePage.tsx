@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { GENRES } from "@/lib/genres";
+import { GENRES, BEAT_SUB_GENRES } from "@/lib/genres";
 
 interface StoreProduct {
   id: string;
@@ -16,6 +16,7 @@ interface StoreProduct {
   file_url: string | null;
   file_name: string | null;
   sales: number;
+  tags: string[] | null;
 }
 
 const MyStorePage = () => {
@@ -30,6 +31,7 @@ const MyStorePage = () => {
   // Form state
   const [formTitle, setFormTitle] = useState("");
   const [formType, setFormType] = useState("Country");
+  const [formSubGenre, setFormSubGenre] = useState("Country");
   const [formPrice, setFormPrice] = useState("");
   const [formCover, setFormCover] = useState<string | null>(null);
   const [formFileUrl, setFormFileUrl] = useState<string | null>(null);
@@ -44,7 +46,7 @@ const MyStorePage = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from("store_products")
-        .select("id, title, type, price, cover_url, file_url, file_name, sales")
+        .select("id, title, type, price, cover_url, file_url, file_name, sales, tags")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
       if (error) {
@@ -112,6 +114,7 @@ const MyStorePage = () => {
   const resetForm = () => {
     setFormTitle("");
     setFormType("Country");
+    setFormSubGenre("Country");
     setFormPrice("");
     setFormCover(null);
     setFormFileUrl(null);
@@ -124,6 +127,7 @@ const MyStorePage = () => {
     setEditingId(p.id);
     setFormTitle(p.title);
     setFormType(p.type);
+    setFormSubGenre(p.tags?.[0] || "Country");
     setFormPrice(p.price.toString());
     setFormCover(p.cover_url);
     setFormFileUrl(p.file_url);
@@ -152,6 +156,7 @@ const MyStorePage = () => {
 
     if (editingId) {
       // Update existing product
+      const tags = formType === "Beats" ? [formSubGenre] : null;
       const { error } = await supabase
         .from("store_products")
         .update({
@@ -160,6 +165,7 @@ const MyStorePage = () => {
           price: priceNum,
           cover_url: formCover,
           file_name: formFileName,
+          tags,
         })
         .eq("id", editingId);
 
@@ -169,7 +175,7 @@ const MyStorePage = () => {
         setProducts(prev =>
           prev.map(p =>
             p.id === editingId
-              ? { ...p, title: formTitle.trim(), type: formType, price: priceNum, cover_url: formCover, file_name: formFileName, file_url: formFileUrl }
+              ? { ...p, title: formTitle.trim(), type: formType, price: priceNum, cover_url: formCover, file_name: formFileName, file_url: formFileUrl, tags }
               : p
           )
         );
@@ -178,6 +184,7 @@ const MyStorePage = () => {
       }
     } else {
       // Insert new product
+      const tags = formType === "Beats" ? [formSubGenre] : null;
       const { data, error } = await supabase
         .from("store_products")
         .insert({
@@ -187,8 +194,9 @@ const MyStorePage = () => {
           price: priceNum,
           cover_url: formCover,
           file_name: formFileName,
+          tags,
         })
-        .select("id, title, type, price, cover_url, file_url, file_name, sales")
+        .select("id, title, type, price, cover_url, file_url, file_name, sales, tags")
         .single();
 
       if (error) {
@@ -269,13 +277,27 @@ const MyStorePage = () => {
             />
             <select
               value={formType}
-              onChange={e => setFormType(e.target.value)}
+              onChange={e => {
+                setFormType(e.target.value);
+                if (e.target.value !== "Beats") setFormSubGenre("Country");
+              }}
               className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground"
             >
               {GENRES.filter(g => g !== "All Music").map(g => (
                 <option key={g} value={g}>{g}</option>
               ))}
             </select>
+            {formType === "Beats" && (
+              <select
+                value={formSubGenre}
+                onChange={e => setFormSubGenre(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground"
+              >
+                {BEAT_SUB_GENRES.map(g => (
+                  <option key={g} value={g}>{g}</option>
+                ))}
+              </select>
+            )}
             <input
               placeholder="Price ($)"
               type="number"
