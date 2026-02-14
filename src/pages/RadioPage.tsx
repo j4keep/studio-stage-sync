@@ -1,60 +1,154 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, SkipForward, Heart, DollarSign, Radio as RadioIcon, Users, ChevronDown, Shuffle, ArrowLeft } from "lucide-react";
+import { Play, Pause, SkipForward, Heart, DollarSign, Radio as RadioIcon, Users, Shuffle, ArrowLeft, Music } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { getCachedMediaUrl } from "@/lib/media-cache";
 import { GENRES } from "@/lib/genres";
-import artist1 from "@/assets/artist-1.jpg";
-import artist2 from "@/assets/artist-2.jpg";
-import artist3 from "@/assets/artist-3.jpg";
-import artist4 from "@/assets/artist-4.jpg";
-import artist5 from "@/assets/artist-5.jpg";
 import album1 from "@/assets/album-1.jpg";
-import album2 from "@/assets/album-2.jpg";
-import album3 from "@/assets/album-3.jpg";
-import album4 from "@/assets/album-4.jpg";
-import album5 from "@/assets/album-5.jpg";
+import artist1 from "@/assets/artist-1.jpg";
 
-const genres = ["All", ...GENRES.filter(g => g !== "All Music")];
+interface RadioSong {
+  id: string;
+  title: string;
+  artist_name: string;
+  genre: string;
+  cover_url: string;
+  audio_url?: string;
+  plays: string;
+}
 
-const playlist = [
-  { title: "Midnight Glow", artist: "Kaia Noir", genre: "R&B", listeners: "1.2K", albumImg: album1, artistImg: artist1 },
-  { title: "City Lights", artist: "Zephyr Cole", genre: "Hip Hop", listeners: "890", albumImg: album2, artistImg: artist2 },
-  { title: "Golden Hour", artist: "Luna Ray", genre: "Neo Soul", listeners: "2.1K", albumImg: album3, artistImg: artist3 },
-  { title: "Rise Up", artist: "Dex Marley", genre: "Reggae", listeners: "1.5K", albumImg: album4, artistImg: artist4 },
-  { title: "Electric Dreams", artist: "Aria West", genre: "Pop", listeners: "3.4K", albumImg: album5, artistImg: artist5 },
-];
+const RADIO_GENRE_FILTERS = ["All", ...GENRES.filter(g => g !== "Beats")];
 
 const RadioPage = () => {
   const navigate = useNavigate();
+  const [songs, setSongs] = useState<RadioSong[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTrack, setCurrentTrack] = useState(0);
   const [skipsLeft, setSkipsLeft] = useState(6);
   const [activeGenre, setActiveGenre] = useState("All");
-  const [liked, setLiked] = useState<Set<number>>(new Set());
+  const [liked, setLiked] = useState<Set<string>>(new Set());
+  const audioRef = useRef<HTMLAudioElement>(null);
 
-  const track = playlist[currentTrack];
+  useEffect(() => {
+    fetchRadioSongs();
+  }, []);
+
+  const fetchRadioSongs = async () => {
+    const { data, error } = await (supabase as any)
+      .from("songs")
+      .select("id, title, cover_url, audio_url, plays, genre, user_id")
+      .eq("on_radio", true)
+      .order("created_at", { ascending: false });
+
+    if (!error && data) {
+      // Fetch profile names for artists
+      const userIds = [...new Set(data.map((s: any) => s.user_id))];
+      const { data: profiles } = await (supabase as any)
+        .from("profiles")
+        .select("id, display_name")
+        .in("id", userIds);
+
+      const profileMap: Record<string, string> = {};
+      (profiles || []).forEach((p: any) => { profileMap[p.id] = p.display_name || "Artist"; });
+
+      setSongs(data.map((s: any) => ({
+        id: s.id,
+        title: s.title,
+        artist_name: profileMap[s.user_id] || "Artist",
+        genre: s.genre || "All Music",
+        cover_url: s.cover_url || album1,
+        audio_url: s.audio_url || getCachedMediaUrl(s.id) || undefined,
+        plays: s.plays || "0",
+      })));
+    }
+    setLoading(false);
+  };
+
+  const filteredSongs = songs.filter(s => activeGenre === "All" || s.genre === activeGenre);
+  const track = filteredSongs[currentTrack] || null;
+  const queue = filteredSongs.filter((_, i) => i !== currentTrack);
+
+  useEffect(() => {
+    if (!track?.audio_url || !audioRef.current) return;
+    if (isPlaying) {
+      audioRef.current.src = track.audio_url;
+      audioRef.current.play().catch(() => {});
+    } else {
+      audioRef.current.pause();
+    }
+  }, [isPlaying, currentTrack, track?.id]);
+
+  // Reset track index when genre filter changes
+  useEffect(() => {
+    setCurrentTrack(0);
+    setIsPlaying(false);
+  }, [activeGenre]);
 
   const handleSkip = () => {
-    if (skipsLeft > 0) {
-      setCurrentTrack((prev) => (prev + 1) % playlist.length);
+    if (skipsLeft > 0 && filteredSongs.length > 1) {
+      setCurrentTrack((prev) => (prev + 1) % filteredSongs.length);
       setSkipsLeft((s) => s - 1);
     }
   };
 
-  const toggleLike = (idx: number) => {
+  const toggleLike = (id: string) => {
     setLiked(prev => {
       const next = new Set(prev);
-      next.has(idx) ? next.delete(idx) : next.add(idx);
+      next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
   };
 
-  const filteredQueue = playlist
-    .map((t, i) => ({ ...t, idx: i }))
-    .filter((t) => t.idx !== currentTrack && (activeGenre === "All" || t.genre === activeGenre));
+  if (loading) {
+    return (
+      <div className="px-4 pt-4 flex flex-col items-center min-h-screen">
+        <div className="py-20 text-center text-muted-foreground text-sm">Loading radio...</div>
+      </div>
+    );
+  }
+
+  if (!track) {
+    return (
+      <div className="px-4 pt-4 flex flex-col items-center min-h-screen">
+        <div className="flex items-center justify-between w-full mb-4">
+          <div className="flex items-center gap-2">
+            <button onClick={() => navigate(-1)} className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground">
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+            <RadioIcon className="w-5 h-5 text-primary" />
+            <h1 className="text-lg font-display font-bold text-foreground">WHEUAT Radio</h1>
+          </div>
+        </div>
+        <div className="flex gap-2 w-full overflow-x-auto scrollbar-hide mb-6 pb-1">
+          {RADIO_GENRE_FILTERS.map((g) => (
+            <button
+              key={g}
+              onClick={() => setActiveGenre(g)}
+              className={`px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
+                activeGenre === g
+                  ? "gradient-primary text-primary-foreground glow-primary"
+                  : "bg-card border border-border text-muted-foreground hover:text-foreground hover:border-primary/30"
+              }`}
+            >
+              {g}
+            </button>
+          ))}
+        </div>
+        <div className="py-16 text-center">
+          <Music className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">No songs on radio{activeGenre !== "All" ? ` for ${activeGenre}` : ""} yet</p>
+          <p className="text-[10px] text-muted-foreground mt-1">Artists can publish songs from their profile</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="px-4 pt-4 flex flex-col items-center min-h-screen">
+      <audio ref={audioRef} onEnded={() => { handleSkip(); }} playsInline />
+
       {/* Header */}
       <div className="flex items-center justify-between w-full mb-4">
         <div className="flex items-center gap-2">
@@ -68,14 +162,14 @@ const RadioPage = () => {
           <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
           <span className="text-[10px] text-primary font-semibold uppercase tracking-wider">LIVE</span>
           <span className="text-[10px] text-muted-foreground ml-1 flex items-center gap-1">
-            <Users className="w-3 h-3" /> {track.listeners} listening
+            <Users className="w-3 h-3" /> {track.plays} plays
           </span>
         </div>
       </div>
 
       {/* Genre Filters */}
       <div className="flex gap-2 w-full overflow-x-auto scrollbar-hide mb-6 pb-1">
-        {genres.map((g) => (
+        {RADIO_GENRE_FILTERS.map((g) => (
           <button
             key={g}
             onClick={() => setActiveGenre(g)}
@@ -93,7 +187,7 @@ const RadioPage = () => {
       {/* Now Playing Card */}
       <AnimatePresence mode="wait">
         <motion.div
-          key={currentTrack}
+          key={track.id}
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
@@ -102,16 +196,12 @@ const RadioPage = () => {
         >
           {/* Album Art */}
           <div className="w-full aspect-square rounded-2xl overflow-hidden relative mb-5">
-            <img src={track.albumImg} alt={track.title} className="w-full h-full object-cover" />
+            <img src={track.cover_url} alt={track.title} className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
-            {/* Floating Artist Badge */}
             <div className="absolute bottom-4 left-4 flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-primary/50">
-                <img src={track.artistImg} alt={track.artist} className="w-full h-full object-cover" />
-              </div>
               <div>
                 <p className="text-sm font-bold text-foreground drop-shadow-lg">{track.title}</p>
-                <p className="text-xs text-foreground/80 drop-shadow-lg">{track.artist}</p>
+                <p className="text-xs text-foreground/80 drop-shadow-lg">{track.artist_name}</p>
               </div>
             </div>
             <div className="absolute top-3 right-3">
@@ -131,10 +221,6 @@ const RadioPage = () => {
                 style={{ width: isPlaying ? undefined : "15%" }}
               />
             </div>
-            <div className="flex justify-between text-[10px] text-muted-foreground mt-1.5">
-              <span>0:45</span>
-              <span>3:22</span>
-            </div>
           </div>
 
           {/* Controls */}
@@ -143,10 +229,10 @@ const RadioPage = () => {
               <Shuffle className="w-4 h-4" />
             </button>
             <button
-              onClick={() => toggleLike(currentTrack)}
+              onClick={() => toggleLike(track.id)}
               className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center transition-all hover:border-primary/30"
             >
-              <Heart className={`w-4 h-4 transition-colors ${liked.has(currentTrack) ? "text-primary fill-primary" : "text-muted-foreground"}`} />
+              <Heart className={`w-4 h-4 transition-colors ${liked.has(track.id) ? "text-primary fill-primary" : "text-muted-foreground"}`} />
             </button>
             <button
               onClick={() => setIsPlaying(!isPlaying)}
@@ -160,8 +246,8 @@ const RadioPage = () => {
             </button>
             <button
               onClick={handleSkip}
-              disabled={skipsLeft === 0}
-              className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/30 transition-all disabled:opacity-30 disabled:hover:text-muted-foreground"
+              disabled={skipsLeft === 0 || filteredSongs.length <= 1}
+              className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/30 transition-all disabled:opacity-30"
             >
               <SkipForward className="w-4 h-4" />
             </button>
@@ -186,33 +272,35 @@ const RadioPage = () => {
       </AnimatePresence>
 
       {/* Up Next */}
-      <div className="w-full mt-2 mb-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-display font-bold text-foreground uppercase tracking-wide">Up Next</h3>
-          <span className="text-[10px] text-muted-foreground">{filteredQueue.length} tracks</span>
+      {queue.length > 0 && (
+        <div className="w-full mt-2 mb-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-display font-bold text-foreground uppercase tracking-wide">Up Next</h3>
+            <span className="text-[10px] text-muted-foreground">{queue.length} tracks</span>
+          </div>
+          <div className="flex flex-col gap-2">
+            {queue.slice(0, 4).map((t) => (
+              <button
+                key={t.id}
+                onClick={() => { setCurrentTrack(filteredSongs.findIndex(s => s.id === t.id)); setIsPlaying(true); }}
+                className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:border-primary/30 transition-all w-full text-left group"
+              >
+                <div className="w-11 h-11 rounded-lg overflow-hidden shrink-0">
+                  <img src={t.cover_url} alt={t.title} className="w-full h-full object-cover" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{t.title}</p>
+                  <p className="text-xs text-muted-foreground">{t.artist_name}</p>
+                </div>
+                <span className="text-[10px] text-primary mr-1">{t.genre}</span>
+                <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Play className="w-3 h-3 text-primary fill-primary" />
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="flex flex-col gap-2">
-          {filteredQueue.slice(0, 4).map((t, i) => (
-            <button
-              key={t.title}
-              onClick={() => { setCurrentTrack(t.idx); setIsPlaying(true); }}
-              className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:border-primary/30 transition-all w-full text-left group"
-            >
-              <div className="w-11 h-11 rounded-lg overflow-hidden shrink-0">
-                <img src={t.albumImg} alt={t.title} className="w-full h-full object-cover" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">{t.title}</p>
-                <p className="text-xs text-muted-foreground">{t.artist}</p>
-              </div>
-              <span className="text-[10px] text-primary mr-1">{t.genre}</span>
-              <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <Play className="w-3 h-3 text-primary fill-primary" />
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
+      )}
     </div>
   );
 };
