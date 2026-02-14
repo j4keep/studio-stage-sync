@@ -5,8 +5,8 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { getR2DownloadUrl } from "@/lib/r2-storage";
 import { GENRES } from "@/lib/genres";
+import { useLikes, incrementSongPlays } from "@/hooks/use-likes";
 import album1 from "@/assets/album-1.jpg";
-import artist1 from "@/assets/artist-1.jpg";
 
 interface RadioSong {
   id: string;
@@ -16,6 +16,7 @@ interface RadioSong {
   cover_url: string;
   audio_url?: string;
   plays: string;
+  likes_count: number;
 }
 
 const RADIO_GENRE_FILTERS = ["All", ...GENRES.filter(g => g !== "Beats")];
@@ -28,8 +29,11 @@ const RadioPage = () => {
   const [currentTrack, setCurrentTrack] = useState(0);
   const [skipsLeft, setSkipsLeft] = useState(6);
   const [activeGenre, setActiveGenre] = useState("All");
-  const [liked, setLiked] = useState<Set<string>>(new Set());
   const audioRef = useRef<HTMLAudioElement>(null);
+  const playTracked = useRef<Set<string>>(new Set());
+
+  const songIds = songs.map(s => s.id);
+  const { toggleLike, isLiked, getLikeCount } = useLikes("song", songIds);
 
   useEffect(() => {
     fetchRadioSongs();
@@ -38,12 +42,11 @@ const RadioPage = () => {
   const fetchRadioSongs = async () => {
     const { data, error } = await (supabase as any)
       .from("songs")
-      .select("id, title, cover_url, audio_url, plays, genre, user_id")
+      .select("id, title, cover_url, audio_url, plays, genre, user_id, likes_count")
       .eq("on_radio", true)
       .order("created_at", { ascending: false });
 
     if (!error && data) {
-      // Fetch profile names for artists
       const userIds = [...new Set(data.map((s: any) => s.user_id))];
       const { data: profiles } = await (supabase as any)
         .from("profiles")
@@ -61,6 +64,7 @@ const RadioPage = () => {
         cover_url: s.cover_url || album1,
         audio_url: s.audio_url ? getR2DownloadUrl(s.audio_url) : undefined,
         plays: s.plays || "0",
+        likes_count: s.likes_count || 0,
       })));
     }
     setLoading(false);
@@ -75,12 +79,16 @@ const RadioPage = () => {
     if (isPlaying) {
       audioRef.current.src = track.audio_url;
       audioRef.current.play().catch(() => {});
+      // Track play
+      if (!playTracked.current.has(track.id)) {
+        playTracked.current.add(track.id);
+        incrementSongPlays(track.id);
+      }
     } else {
       audioRef.current.pause();
     }
   }, [isPlaying, currentTrack, track?.id]);
 
-  // Reset track index when genre filter changes
   useEffect(() => {
     setCurrentTrack(0);
     setIsPlaying(false);
@@ -91,14 +99,6 @@ const RadioPage = () => {
       setCurrentTrack((prev) => (prev + 1) % filteredSongs.length);
       setSkipsLeft((s) => s - 1);
     }
-  };
-
-  const toggleLike = (id: string) => {
-    setLiked(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
   };
 
   if (loading) {
@@ -230,9 +230,14 @@ const RadioPage = () => {
             </button>
             <button
               onClick={() => toggleLike(track.id)}
-              className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center transition-all hover:border-primary/30"
+              className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center transition-all hover:border-primary/30 relative"
             >
-              <Heart className={`w-4 h-4 transition-colors ${liked.has(track.id) ? "text-primary fill-primary" : "text-muted-foreground"}`} />
+              <Heart className={`w-4 h-4 transition-colors ${isLiked(track.id) ? "text-primary fill-primary" : "text-muted-foreground"}`} />
+              {getLikeCount(track.id) > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-primary text-[8px] font-bold text-primary-foreground flex items-center justify-center">
+                  {getLikeCount(track.id)}
+                </span>
+              )}
             </button>
             <button
               onClick={() => setIsPlaying(!isPlaying)}
@@ -291,6 +296,16 @@ const RadioPage = () => {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-foreground truncate">{t.title}</p>
                   <p className="text-xs text-muted-foreground">{t.artist_name}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); toggleLike(t.id); }}
+                    className="flex items-center gap-1"
+                  >
+                    <Heart className={`w-3 h-3 transition-colors ${isLiked(t.id) ? "text-primary fill-primary" : "text-muted-foreground"}`} />
+                    <span className="text-[10px] text-muted-foreground">{getLikeCount(t.id)}</span>
+                  </button>
+                  <span className="text-[10px] text-muted-foreground">{t.plays} plays</span>
                 </div>
                 <span className="text-[10px] text-primary mr-1">{t.genre}</span>
                 <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">

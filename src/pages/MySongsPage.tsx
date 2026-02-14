@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Music, Play, Pause, Plus, Trash2, Upload, Image, Radio, ChevronDown, Loader2 } from "lucide-react";
+import { ArrowLeft, Music, Play, Pause, Plus, Trash2, Upload, Image, Radio, ChevronDown, Loader2, Heart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { GENRES } from "@/lib/genres";
 import { uploadToR2, getR2DownloadUrl, deleteFromR2 } from "@/lib/r2-storage";
+import { useLikes, incrementSongPlays } from "@/hooks/use-likes";
 import album1 from "@/assets/album-1.jpg";
 
 interface Song {
@@ -18,6 +19,7 @@ interface Song {
   audio_url?: string;
   on_radio?: boolean;
   genre?: string;
+  likes_count: number;
 }
 
 const RADIO_GENRES = GENRES.filter(g => g !== "Beats");
@@ -42,7 +44,10 @@ const MySongsPage = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
-  
+  const [uploading, setUploading] = useState(false);
+
+  const songIds = songs.map(s => s.id);
+  const { toggleLike, isLiked, getLikeCount } = useLikes("song", songIds);
 
   useEffect(() => {
     if (user) fetchSongs();
@@ -57,6 +62,7 @@ const MySongsPage = () => {
         audio_url: s.audio_url ? getR2DownloadUrl(s.audio_url) : undefined,
         on_radio: s.on_radio || false,
         genre: s.genre || undefined,
+        likes_count: s.likes_count || 0,
       })));
     }
     setLoading(false);
@@ -64,7 +70,6 @@ const MySongsPage = () => {
 
   const removeSong = async (id: string) => {
     if (playingId === id) { audioRef.current?.pause(); setPlayingId(null); }
-    // Get R2 key before deleting
     const { data: songData } = await (supabase as any).from("songs").select("audio_url").eq("id", id).single();
     await (supabase as any).from("songs").delete().eq("id", id);
     if (songData?.audio_url) deleteFromR2(songData.audio_url).catch(() => {});
@@ -88,8 +93,6 @@ const MySongsPage = () => {
     if (coverInputRef.current) coverInputRef.current.value = "";
   };
 
-  const [uploading, setUploading] = useState(false);
-
   const confirmUpload = () => {
     if (!pendingAudioFile || !user) return;
     const audioUrl = URL.createObjectURL(pendingAudioFile);
@@ -102,7 +105,6 @@ const MySongsPage = () => {
       setUploading(true);
       toast({ title: "Uploading to cloud...", description: "Your song is being stored permanently." });
 
-      // Upload to R2
       const r2Result = await uploadToR2(pendingAudioFile, { folder: `${user.id}/songs`, fileName: `${Date.now()}-${pendingAudioFile.name}` });
       if (!r2Result.success) {
         setUploading(false);
@@ -110,12 +112,11 @@ const MySongsPage = () => {
         return;
       }
 
-      // Store R2 key in DB (not a URL, just the key)
       const { data, error } = await (supabase as any).from("songs").insert({ user_id: user.id, title, duration, cover_url: cover, audio_url: r2Result.data!.key }).select().single();
       if (error) { setUploading(false); toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
 
       const playbackUrl = getR2DownloadUrl(r2Result.data!.key);
-      setSongs(prev => [{ id: data.id, title, plays: "0", duration, cover_url: cover || album1, audio_url: playbackUrl, on_radio: false }, ...prev]);
+      setSongs(prev => [{ id: data.id, title, plays: "0", duration, cover_url: cover || album1, audio_url: playbackUrl, on_radio: false, likes_count: 0 }, ...prev]);
       setPendingAudioFile(null); setPendingCover(null); setShowUpload(false); setUploading(false);
       toast({ title: "Song uploaded! ☁️", description: `"${title}" is now stored permanently` });
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -124,13 +125,13 @@ const MySongsPage = () => {
     audio.addEventListener("error", () => { toast({ title: "Error", description: "Could not read audio file", variant: "destructive" }); });
   };
 
-
   const togglePlay = (song: Song) => {
     if (!song.audio_url) return;
     if (playingId === song.id) { audioRef.current?.pause(); setPlayingId(null); }
     else {
       if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = song.audio_url; audioRef.current.play().catch(() => {}); }
       setPlayingId(song.id);
+      incrementSongPlays(song.id);
     }
   };
 
@@ -237,6 +238,11 @@ const MySongsPage = () => {
                     </span>
                   )}
                 </div>
+                {/* Like button */}
+                <button onClick={() => toggleLike(song.id)} className="flex items-center gap-1 px-1.5">
+                  <Heart className={`w-3.5 h-3.5 transition-colors ${isLiked(song.id) ? "text-primary fill-primary" : "text-muted-foreground"}`} />
+                  <span className="text-[10px] text-muted-foreground">{getLikeCount(song.id)}</span>
+                </button>
                 {song.on_radio ? (
                   <button onClick={() => handleRemoveFromRadio(song.id)} className="px-2 py-1.5 rounded-lg border border-primary/30 text-[10px] text-primary font-semibold flex items-center gap-1">
                     <Radio className="w-3 h-3" /> Live

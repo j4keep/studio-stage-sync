@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Mic2, Play, Pause, Plus, Trash2, Upload, Image, Video, Headphones, Loader2 } from "lucide-react";
+import { ArrowLeft, Mic2, Play, Pause, Plus, Trash2, Upload, Image, Video, Headphones, Loader2, Heart, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { uploadToR2, getR2DownloadUrl, deleteFromR2 } from "@/lib/r2-storage";
+import { useLikes, incrementPodcastPlays } from "@/hooks/use-likes";
 import podcast1 from "@/assets/podcast-1.jpg";
 
 interface Podcast {
@@ -17,6 +18,7 @@ interface Podcast {
   cover_url: string;
   media_url?: string;
   is_video?: boolean;
+  likes_count: number;
 }
 
 const formatDuration = (seconds: number) => {
@@ -40,6 +42,9 @@ const MyPodcastsPage = () => {
   const coverInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
 
+  const podcastIds = podcasts.map(p => p.id);
+  const { toggleLike, isLiked, getLikeCount } = useLikes("podcast", podcastIds);
+
   useEffect(() => { if (user) fetchPodcasts(); }, [user]);
 
   const fetchPodcasts = async () => {
@@ -50,6 +55,7 @@ const MyPodcastsPage = () => {
         plays: p.plays || "0", cover_url: p.cover_url || podcast1,
         media_url: p.media_url ? getR2DownloadUrl(p.media_url) : undefined,
         is_video: p.is_video,
+        likes_count: p.likes_count || 0,
       })));
     }
     setLoading(false);
@@ -123,7 +129,7 @@ const MyPodcastsPage = () => {
       if (error) { setUploading(false); toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
 
       const playbackUrl = getR2DownloadUrl(r2Result.data!.key);
-      setPodcasts(prev => [{ id: data.id, title, episode: "New Episode", duration, plays: "0", cover_url: cover || podcast1, media_url: playbackUrl, is_video: video }, ...prev]);
+      setPodcasts(prev => [{ id: data.id, title, episode: "New Episode", duration, plays: "0", cover_url: cover || podcast1, media_url: playbackUrl, is_video: video, likes_count: 0 }, ...prev]);
       setPendingFile(null); setPendingCover(null); setShowUpload(false); setUploading(false);
       toast({ title: "Podcast uploaded! ☁️", description: `"${title}" is now stored permanently` });
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -134,7 +140,6 @@ const MyPodcastsPage = () => {
     el.addEventListener("error", () => { toast({ title: "Error", description: "Could not read media file", variant: "destructive" }); });
   };
 
-
   const getMode = (p: Podcast): "video" | "audio" => playMode[p.id] || (p.is_video ? "video" : "audio");
 
   const togglePlay = (p: Podcast) => {
@@ -144,6 +149,7 @@ const MyPodcastsPage = () => {
     else {
       if (mode === "video" && p.is_video) { audioRef.current?.pause(); setExpandedVideo(p.id); setPlayingId(p.id); }
       else { setExpandedVideo(null); if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = p.media_url; audioRef.current.play().catch(() => {}); } setPlayingId(p.id); }
+      incrementPodcastPlays(p.id);
     }
   };
 
@@ -227,8 +233,17 @@ const MyPodcastsPage = () => {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">{p.title}</p>
                     <p className="text-[10px] text-muted-foreground">
-                      {`${p.episode} · ${p.duration} · ${p.plays} plays`}
+                      {`${p.episode} · ${p.duration}`}
                     </p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                        <Eye className="w-2.5 h-2.5" /> {p.plays} views
+                      </span>
+                      <button onClick={(e) => { e.stopPropagation(); toggleLike(p.id); }} className="flex items-center gap-0.5">
+                        <Heart className={`w-2.5 h-2.5 transition-colors ${isLiked(p.id) ? "text-primary fill-primary" : "text-muted-foreground"}`} />
+                        <span className="text-[10px] text-muted-foreground">{getLikeCount(p.id)}</span>
+                      </button>
+                    </div>
                   </div>
                   {p.is_video && p.media_url && (
                     <div className="flex rounded-lg border border-border overflow-hidden">

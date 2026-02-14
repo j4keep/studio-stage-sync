@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      likes: {
+        Row: {
+          content_id: string
+          content_type: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          content_id: string
+          content_type: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          content_id?: string
+          content_type?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       podcasts: {
         Row: {
           cover_url: string | null
@@ -22,6 +46,7 @@ export type Database = {
           episode: string | null
           id: string
           is_video: boolean | null
+          likes_count: number
           media_url: string | null
           plays: string | null
           title: string
@@ -34,6 +59,7 @@ export type Database = {
           episode?: string | null
           id?: string
           is_video?: boolean | null
+          likes_count?: number
           media_url?: string | null
           plays?: string | null
           title: string
@@ -46,6 +72,7 @@ export type Database = {
           episode?: string | null
           id?: string
           is_video?: boolean | null
+          likes_count?: number
           media_url?: string | null
           plays?: string | null
           title?: string
@@ -141,6 +168,7 @@ export type Database = {
           duration: string | null
           genre: string | null
           id: string
+          likes_count: number
           on_radio: boolean | null
           plays: string | null
           title: string
@@ -153,6 +181,7 @@ export type Database = {
           duration?: string | null
           genre?: string | null
           id?: string
+          likes_count?: number
           on_radio?: boolean | null
           plays?: string | null
           title: string
@@ -165,6 +194,7 @@ export type Database = {
           duration?: string | null
           genre?: string | null
           id?: string
+          likes_count?: number
           on_radio?: boolean | null
           plays?: string | null
           title?: string
@@ -341,6 +371,7 @@ export type Database = {
           created_at: string
           duration: string | null
           id: string
+          likes_count: number
           title: string
           user_id: string
           video_url: string | null
@@ -351,6 +382,7 @@ export type Database = {
           created_at?: string
           duration?: string | null
           id?: string
+          likes_count?: number
           title: string
           user_id: string
           video_url?: string | null
@@ -361,6 +393,7 @@ export type Database = {
           created_at?: string
           duration?: string | null
           id?: string
+          likes_count?: number
           title?: string
           user_id?: string
           video_url?: string | null
@@ -373,7 +406,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      increment_podcast_plays: {
+        Args: { podcast_id: string }
+        Returns: undefined
+      }
+      increment_song_plays: { Args: { song_id: string }; Returns: undefined }
+      increment_video_views: { Args: { video_id: string }; Returns: undefined }
     }
     Enums: {
       [_ in never]: never
