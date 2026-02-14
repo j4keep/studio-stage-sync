@@ -12,7 +12,7 @@ import AppLayout from "./components/AppLayout";
 import HomePage from "./pages/HomePage";
 import RadioPage from "./pages/RadioPage";
 import StudiosPage from "./pages/StudiosPage";
-import ProjectsPage from "./pages/ProjectsPage";
+
 import ProfilePage from "./pages/ProfilePage";
 import TermsPage from "./pages/TermsPage";
 import HelpPage from "./pages/HelpPage";
@@ -108,7 +108,7 @@ const ProtectedRoutes = () => {
         <Route path="/" element={<HomePage />} />
         <Route path="/radio" element={<RadioPage />} />
         <Route path="/studios" element={<StudiosPage />} />
-        <Route path="/projects" element={<ProjectsPage />} />
+        <Route path="/projects" element={<Navigate to="/my-projects" replace />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/help" element={<HelpPage />} />
