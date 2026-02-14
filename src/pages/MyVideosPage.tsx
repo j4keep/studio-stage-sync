@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
+import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, Video, Play, Pause, Plus, Trash2, Upload, Image, Loader2, Heart, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -35,6 +36,7 @@ const MyVideosPage = () => {
   const [pendingVideoFile, setPendingVideoFile] = useState<File | null>(null);
   const [pendingCover, setPendingCover] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
 
@@ -93,11 +95,17 @@ const MyVideosPage = () => {
         const duration = formatDuration(tempVideo.duration);
 
         setUploading(true);
+        setUploadProgress(0);
         toast({ title: "Uploading to cloud...", description: "Your video is being stored permanently." });
 
-        const r2Result = await uploadToR2(pendingVideoFile, { folder: `${user.id}/videos`, fileName: `${Date.now()}-${pendingVideoFile.name}` });
+        const r2Result = await uploadToR2(pendingVideoFile, {
+          folder: `${user.id}/videos`,
+          fileName: `${Date.now()}-${pendingVideoFile.name}`,
+          onProgress: (p) => setUploadProgress(p),
+        });
         if (!r2Result.success) {
           setUploading(false);
+          setUploadProgress(0);
           toast({ title: "Upload failed", description: r2Result.error, variant: "destructive" });
           return;
         }
@@ -107,7 +115,7 @@ const MyVideosPage = () => {
 
         const playbackUrl = getR2DownloadUrl(r2Result.data!.key);
         setVideos(prev => [{ id: data.id, title, views: "0", duration, cover_url: cover, video_url: playbackUrl, likes_count: 0 }, ...prev]);
-        setPendingVideoFile(null); setPendingCover(null); setShowUpload(false); setUploading(false);
+        setPendingVideoFile(null); setPendingCover(null); setShowUpload(false); setUploading(false); setUploadProgress(0);
         toast({ title: "Video uploaded! ☁️", description: `"${title}" is now stored permanently` });
         if (fileInputRef.current) fileInputRef.current.value = "";
         URL.revokeObjectURL(videoUrl);
@@ -184,8 +192,9 @@ const MyVideosPage = () => {
               <div className="flex gap-2">
                 <button onClick={() => { setPendingVideoFile(null); setPendingCover(null); }} className="px-4 py-2 rounded-lg border border-border text-xs font-medium text-muted-foreground">Cancel</button>
                 <button onClick={confirmUpload} disabled={uploading} className="px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-xs font-semibold glow-primary flex items-center gap-1.5 disabled:opacity-50">
-                  {uploading && <Loader2 className="w-3 h-3 animate-spin" />} {uploading ? "Uploading..." : "Upload Video"}
+                  {uploading && <Loader2 className="w-3 h-3 animate-spin" />} {uploading ? `Uploading ${uploadProgress}%` : "Upload Video"}
                 </button>
+                {uploading && <Progress value={uploadProgress} className="w-full h-2 mt-1" />}
               </div>
             </div>
           )}
