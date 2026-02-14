@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   User, Music, FolderHeart, Building2, Heart, Download, DollarSign,
-  Settings, Shield, BarChart3, HelpCircle, Play, Video, Mic2, ShoppingBag,
+  Settings, Shield, BarChart3, HelpCircle, Play, Video, ShoppingBag,
   CheckCircle, UserPlus, Share2, ChevronRight, Library, Edit3, UserCheck, ExternalLink
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
