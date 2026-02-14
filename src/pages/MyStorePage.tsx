@@ -283,7 +283,7 @@ const MyStorePage = () => {
               }}
               className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground"
             >
-              {GENRES.filter(g => g !== "All Music").map(g => (
+              {GENRES.map(g => (
                 <option key={g} value={g}>{g}</option>
               ))}
             </select>
