@@ -480,11 +480,11 @@ const HomePage = () => {
             <DollarSign className="w-4 h-4 text-primary" />
             <h2 className="text-sm font-display font-bold text-foreground uppercase tracking-wide">Projects Seeking Funding</h2>
           </div>
-          <button onClick={() => navigate("/projects")} className="text-[10px] text-primary flex items-center gap-0.5">See All <ChevronRight className="w-3 h-3" /></button>
+          <button onClick={() => navigate("/my-projects")} className="text-[10px] text-primary flex items-center gap-0.5">See All <ChevronRight className="w-3 h-3" /></button>
         </div>
         <div className="flex flex-col gap-3">
           {(dbProjects.length > 0 ? dbProjects : fallbackProjects).map((p) => (
-            <button key={p.title} onClick={() => navigate("/projects")} className="p-4 rounded-xl bg-card border border-border hover:border-primary/30 transition-all w-full text-left">
+            <button key={p.title} onClick={() => navigate("/my-projects")} className="p-4 rounded-xl bg-card border border-border hover:border-primary/30 transition-all w-full text-left">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-10 h-10 rounded-full overflow-hidden shrink-0">
                   <img src={p.img} alt={p.artist} className="w-full h-full object-cover" />

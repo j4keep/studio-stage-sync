@@ -125,7 +125,7 @@ const ArtistProfile = () => {
   };
 
   const handleContribute = () => {
-    navigate("/projects");
+    navigate("/my-projects");
   };
 
   const handleShare = () => {
@@ -306,7 +306,7 @@ const FanProfile = () => {
         {[
           { icon: Library, label: "Library", count: "3 playlists", action: () => navigate("/library") },
           { icon: Heart, label: "Followed Artists", count: "8", action: () => navigate("/followed-artists") },
-          { icon: FolderHeart, label: "Contributions", count: "$340", action: () => navigate("/projects") },
+          { icon: FolderHeart, label: "Contributions", count: "$340", action: () => navigate("/my-projects") },
           { icon: Building2, label: "Saved Studios", count: "3", action: () => navigate("/studios") },
           { icon: Download, label: "Purchases", count: "5 songs", action: () => navigate("/my-store") },
           { icon: HelpCircle, label: "Help & Support", count: "", action: () => navigate("/help") },
