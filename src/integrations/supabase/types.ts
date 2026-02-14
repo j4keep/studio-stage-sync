@@ -168,39 +168,48 @@ export type Database = {
       }
       store_products: {
         Row: {
+          artist_name: string | null
           cover_url: string | null
           created_at: string
           file_name: string | null
           file_url: string | null
           id: string
+          preview_url: string | null
           price: number
           sales: number
+          tags: string[] | null
           title: string
           type: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          artist_name?: string | null
           cover_url?: string | null
           created_at?: string
           file_name?: string | null
           file_url?: string | null
           id?: string
+          preview_url?: string | null
           price?: number
           sales?: number
+          tags?: string[] | null
           title: string
           type?: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          artist_name?: string | null
           cover_url?: string | null
           created_at?: string
           file_name?: string | null
           file_url?: string | null
           id?: string
+          preview_url?: string | null
           price?: number
           sales?: number
+          tags?: string[] | null
           title?: string
           type?: string
           updated_at?: string

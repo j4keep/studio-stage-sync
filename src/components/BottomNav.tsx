@@ -1,11 +1,11 @@
-import { Home, Radio, Building2, FolderHeart, User } from "lucide-react";
+import { Home, Radio, Building2, ShoppingBag, User } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 const tabs = [
   { path: "/", label: "Home", icon: Home },
   { path: "/radio", label: "Radio", icon: Radio },
   { path: "/studios", label: "Studios", icon: Building2 },
-  { path: "/projects", label: "Projects", icon: FolderHeart },
+  { path: "/store", label: "Store", icon: ShoppingBag },
   { path: "/profile", label: "Profile", icon: User },
 ];
 
