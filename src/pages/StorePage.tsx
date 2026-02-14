@@ -8,7 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useCart } from "@/contexts/CartContext";
 import { toast } from "@/hooks/use-toast";
-import { GENRES } from "@/lib/genres";
+import { GENRES, BEAT_SUB_GENRES } from "@/lib/genres";
 
 import genreTrap from "@/assets/genre-trap.jpg";
 import genreRnb from "@/assets/genre-rnb.jpg";
@@ -18,9 +18,11 @@ import genreEmorap from "@/assets/genre-emorap.jpg";
 import genreReggaeton from "@/assets/genre-reggaeton.jpg";
 import genreHiphop from "@/assets/genre-hiphop.jpg";
 import genreAfrobeat from "@/assets/genre-afrobeat.jpg";
-import genreIndiernb from "@/assets/genre-indiernb.jpg";
+import genreLatin from "@/assets/genre-latin.jpg";
+import genreBeats from "@/assets/genre-beats.jpg";
 
 const GENRE_IMAGES: Record<string, string> = {
+  "Beats": genreBeats,
   "Trap": genreTrap,
   "R&B & Soul": genreRnb,
   "Drill": genreDrill,
@@ -29,7 +31,7 @@ const GENRE_IMAGES: Record<string, string> = {
   "Reggaeton": genreReggaeton,
   "Hip Hop/Rap": genreHiphop,
   "Afrobeat": genreAfrobeat,
-  "Indie RnB": genreIndiernb,
+  "Latin Music": genreLatin,
 };
 
 interface Product {
@@ -55,6 +57,7 @@ const StorePage = () => {
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [sheetProduct, setSheetProduct] = useState<Product | null>(null);
   const [showCart, setShowCart] = useState(false);
+  const [selectedBeatSubGenre, setSelectedBeatSubGenre] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
@@ -71,7 +74,15 @@ const StorePage = () => {
   }, []);
 
   const filtered = products.filter((p) => {
-    const matchesGenre = !selectedGenre || selectedGenre === "All Music" || p.type === selectedGenre;
+    let matchesGenre = false;
+    if (!selectedGenre || selectedGenre === "All Music") {
+      matchesGenre = true;
+    } else if (selectedGenre === "Beats") {
+      // Show all beat types, optionally filtered by sub-genre
+      matchesGenre = !selectedBeatSubGenre || p.type === selectedBeatSubGenre;
+    } else {
+      matchesGenre = p.type === selectedGenre;
+    }
     const matchesSearch =
       !searchQuery ||
       p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -156,14 +167,28 @@ const StorePage = () => {
 
         {/* Genre grid */}
         <div className="grid grid-cols-2 gap-3">
-          {GENRES.filter(g => g !== "All Music").map((genre, i) => {
-            const isWide = genre === "Hip Hop/Rap" || genre === "Afrobeat" || genre === "Indie RnB";
+          {/* Beats hero card at top */}
+          <motion.button
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            onClick={() => setSelectedGenre("Beats")}
+            className="col-span-2 aspect-[3/1] relative overflow-hidden rounded-xl"
+          >
+            <img src={GENRE_IMAGES["Beats"]} alt="Beats" className="absolute inset-0 w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-black/40" />
+            <span className="absolute inset-0 flex items-center justify-center text-white font-display font-bold text-sm tracking-widest uppercase">
+              Beats
+            </span>
+          </motion.button>
+
+          {GENRES.filter(g => g !== "All Music" && g !== "Beats").map((genre, i) => {
+            const isWide = genre === "Hip Hop/Rap" || genre === "Afrobeat" || genre === "Latin Music";
             return (
               <motion.button
                 key={genre}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.04 }}
+                transition={{ delay: (i + 1) * 0.04 }}
                 onClick={() => setSelectedGenre(genre)}
                 className={`relative overflow-hidden rounded-xl ${isWide ? "col-span-2 aspect-[2.5/1]" : "aspect-square"}`}
               >
@@ -204,7 +229,7 @@ const StorePage = () => {
     <div className="px-4 pt-4 pb-24">
       {/* Header */}
       <div className="flex items-center gap-3 mb-4">
-        <button onClick={() => { setSelectedGenre(null); setSearchQuery(""); }} className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center">
+        <button onClick={() => { setSelectedGenre(null); setSearchQuery(""); setSelectedBeatSubGenre(null); }} className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center">
           <ArrowLeft className="w-4 h-4 text-foreground" />
         </button>
         <div className="flex-1">
@@ -223,6 +248,31 @@ const StorePage = () => {
           )}
         </button>
       </div>
+
+      {/* Beat sub-genre chips */}
+      {selectedGenre === "Beats" && (
+        <div className="flex gap-2 mb-3 overflow-x-auto pb-1 scrollbar-none">
+          <button
+            onClick={() => setSelectedBeatSubGenre(null)}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
+              !selectedBeatSubGenre ? "bg-primary text-primary-foreground" : "bg-card border border-border text-muted-foreground"
+            }`}
+          >
+            All Beats
+          </button>
+          {BEAT_SUB_GENRES.map((sub) => (
+            <button
+              key={sub}
+              onClick={() => setSelectedBeatSubGenre(selectedBeatSubGenre === sub ? null : sub)}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
+                selectedBeatSubGenre === sub ? "bg-primary text-primary-foreground" : "bg-card border border-border text-muted-foreground"
+              }`}
+            >
+              {sub}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Search bar */}
       <AnimatePresence>
