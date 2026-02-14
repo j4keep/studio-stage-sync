@@ -154,10 +154,12 @@ const HomePage = () => {
       .order("created_at", { ascending: false }).limit(20)
       .then(async ({ data }: any) => {
         if (data && data.length > 0) {
-          const userIds = [...new Set(data.map((s: any) => s.user_id))];
-          const { data: profiles } = await (supabase as any).from("profiles").select("id, display_name").in("id", userIds);
-          const profileMap: Record<string, string> = {};
-          (profiles || []).forEach((p: any) => { profileMap[p.id] = p.display_name || "Artist"; });
+          const userIds = [...new Set(data.map((s: any) => s.user_id).filter(Boolean))];
+          let profileMap: Record<string, string> = {};
+          if (userIds.length > 0) {
+            const { data: profiles } = await (supabase as any).from("profiles").select("user_id, display_name").in("user_id", userIds);
+            (profiles || []).forEach((p: any) => { profileMap[p.user_id] = p.display_name || "Artist"; });
+          }
           setDbSongs(data.map((s: any) => ({
             id: s.id, title: s.title, artist_name: profileMap[s.user_id] || "Artist",
             plays: s.plays || "0", cover_url: s.cover_url || album1,
@@ -192,19 +194,19 @@ const HomePage = () => {
       });
 
     // Fetch trending artists (profiles with songs)
-    (supabase as any).from("profiles").select("id, display_name, avatar_url")
+    (supabase as any).from("profiles").select("user_id, display_name, avatar_url")
       .order("created_at", { ascending: false }).limit(10)
       .then(({ data }: any) => {
         if (data && data.length > 0) {
           setTrendingArtists(data.filter((p: any) => p.display_name).map((p: any) => ({
-            id: p.id, name: p.display_name, img: p.avatar_url || "",
+            id: p.user_id, name: p.display_name, img: p.avatar_url || "",
           })));
         } else if (user) {
           // Show current user as demo trending artist
-          (supabase as any).from("profiles").select("id, display_name, avatar_url").eq("id", user.id).single()
+          (supabase as any).from("profiles").select("user_id, display_name, avatar_url").eq("user_id", user.id).maybeSingle()
             .then(({ data: profile }: any) => {
               if (profile) {
-                setTrendingArtists([{ id: profile.id, name: profile.display_name || "You", img: profile.avatar_url || "" }]);
+                setTrendingArtists([{ id: profile.user_id, name: profile.display_name || "You", img: profile.avatar_url || "" }]);
               }
             });
         }
