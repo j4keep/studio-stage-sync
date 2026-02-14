@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
 import { Building2, MapPin, Clock, Star, Search, SlidersHorizontal, ChevronLeft, ChevronRight, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -143,6 +145,7 @@ const MiniCalendar = ({ blockedDates = [] }: { blockedDates?: string[] }) => {
 };
 
 const StudiosPage = () => {
+  const navigate = useNavigate();
   const [selectedStudio, setSelectedStudio] = useState<StudioData | null>(null);
   const [activeFilter, setActiveFilter] = useState("All");
   const [studios, setStudios] = useState<StudioData[]>([]);
@@ -254,8 +257,11 @@ const StudiosPage = () => {
 
   return (
     <div className="px-4 pt-6">
-      <div className="flex items-center justify-between mb-5">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3 mb-5">
+        <button onClick={() => navigate("/")} className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center">
+          <ArrowLeft className="w-4 h-4 text-foreground" />
+        </button>
+        <div className="flex items-center gap-2 flex-1">
           <Building2 className="w-5 h-5 text-primary" />
           <h1 className="text-xl font-display font-bold text-foreground">Studios</h1>
         </div>
