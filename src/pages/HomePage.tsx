@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useLikes, incrementSongPlays } from "@/hooks/use-likes";
 import { getR2DownloadUrl } from "@/lib/r2-storage";
 import { useRadio } from "@/contexts/RadioContext";
+import { useAuth } from "@/contexts/AuthContext";
 import whetuatLogo from "@/assets/wheuat-logo.png";
 import album1 from "@/assets/album-1.jpg";
 import album2 from "@/assets/album-2.jpg";
@@ -52,9 +53,10 @@ interface CarouselItem {
   user_id?: string;
 }
 
-const AutoCarousel = ({ items, interval = 4000, onLike, isLiked, getLikeCount }: { 
+const AutoCarousel = ({ items, interval = 4000, onLike, isLiked, getLikeCount, onPlay }: { 
   items: CarouselItem[]; interval?: number;
   onLike?: (id: string) => void; isLiked?: (id: string) => boolean; getLikeCount?: (id: string) => number;
+  onPlay?: (item: CarouselItem) => void;
 }) => {
   const [current, setCurrent] = useState(0);
 
@@ -94,9 +96,9 @@ const AutoCarousel = ({ items, interval = 4000, onLike, isLiked, getLikeCount }:
           </div>
         </div>
         <div className="absolute bottom-3 right-3">
-          <div className="w-9 h-9 rounded-full gradient-primary flex items-center justify-center glow-primary">
+          <button onClick={(e) => { e.stopPropagation(); onPlay?.(item); }} className="w-9 h-9 rounded-full gradient-primary flex items-center justify-center glow-primary">
             <Play className="w-4 h-4 text-primary-foreground fill-primary-foreground ml-0.5" />
-          </div>
+          </button>
         </div>
       </div>
       {items.length > 1 && (
@@ -137,6 +139,7 @@ const HomePage = () => {
   const [playingSongId, setPlayingSongId] = useState<string | null>(null);
   const songAudioRef = useRef<HTMLAudioElement | null>(null);
   const playTracked = useRef<Set<string>>(new Set());
+  const { user } = useAuth();
 
   const songIds = dbSongs.map(s => s.id);
   const videoIds = dbVideos.map(v => v.id);
@@ -196,9 +199,17 @@ const HomePage = () => {
           setTrendingArtists(data.filter((p: any) => p.display_name).map((p: any) => ({
             id: p.id, name: p.display_name, img: p.avatar_url || "",
           })));
+        } else if (user) {
+          // Show current user as demo trending artist
+          (supabase as any).from("profiles").select("id, display_name, avatar_url").eq("id", user.id).single()
+            .then(({ data: profile }: any) => {
+              if (profile) {
+                setTrendingArtists([{ id: profile.id, name: profile.display_name || "You", img: profile.avatar_url || "" }]);
+              }
+            });
         }
       });
-  }, []);
+  }, [user]);
 
   // Song playback
   const handlePlaySong = (song: DbSong) => {
@@ -234,6 +245,15 @@ const HomePage = () => {
   const displaySongs: DbSong[] = dbSongs.length > 0 ? dbSongs : fallbackSongs;
 
   const currentRadioTrack = radio.currentTrack;
+
+  const handlePlayVideo = (item: CarouselItem) => {
+    // Navigate to video or play if has media
+    if (item.user_id) navigate(`/profile?user=${item.user_id}`);
+  };
+
+  const handlePlayPodcast = (item: CarouselItem) => {
+    if (item.user_id) navigate(`/profile?user=${item.user_id}`);
+  };
 
   return (
     <div className="px-4 pt-4 pb-4">
@@ -341,7 +361,8 @@ const HomePage = () => {
         <AutoCarousel items={videoCarouselItems} interval={5000}
           onLike={dbVideos.length > 0 ? videoLikes.toggleLike : undefined}
           isLiked={dbVideos.length > 0 ? videoLikes.isLiked : undefined}
-          getLikeCount={dbVideos.length > 0 ? videoLikes.getLikeCount : undefined} />
+          getLikeCount={dbVideos.length > 0 ? videoLikes.getLikeCount : undefined}
+          onPlay={handlePlayVideo} />
       </motion.section>
 
       {/* Podcasts Carousel */}
@@ -356,7 +377,8 @@ const HomePage = () => {
         <AutoCarousel items={podcastCarouselItems} interval={6000}
           onLike={dbPodcasts.length > 0 ? podcastLikes.toggleLike : undefined}
           isLiked={dbPodcasts.length > 0 ? podcastLikes.isLiked : undefined}
-          getLikeCount={dbPodcasts.length > 0 ? podcastLikes.getLikeCount : undefined} />
+          getLikeCount={dbPodcasts.length > 0 ? podcastLikes.getLikeCount : undefined}
+          onPlay={handlePlayPodcast} />
       </motion.section>
 
       {/* Projects Seeking Funding */}

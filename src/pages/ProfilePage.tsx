@@ -202,16 +202,15 @@ const ArtistProfile = () => {
 
       {/* Content Tabs */}
       <div className="mt-5 border-t border-border">
-        <div className="flex overflow-x-auto scrollbar-hide px-4 gap-1 pt-3">
+        <div className="grid grid-cols-5 px-4 gap-1.5 pt-3">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => navigate(tab.route)}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-all text-muted-foreground bg-card border border-border hover:border-primary/30"
+              className="flex flex-col items-center gap-1 py-2 rounded-lg text-[10px] font-semibold transition-all text-muted-foreground bg-card border border-border hover:border-primary/30"
             >
-              <tab.icon className="w-3 h-3" />
+              <tab.icon className="w-4 h-4" />
               {tab.label}
-              <ExternalLink className="w-2.5 h-2.5 ml-0.5" />
             </button>
           ))}
         </div>
