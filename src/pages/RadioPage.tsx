@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, Pause, SkipForward, Heart, DollarSign, Radio as RadioIcon, Users, ChevronDown, Shuffle, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { GENRES } from "@/lib/genres";
 import artist1 from "@/assets/artist-1.jpg";
 import artist2 from "@/assets/artist-2.jpg";
 import artist3 from "@/assets/artist-3.jpg";
@@ -13,7 +14,7 @@ import album3 from "@/assets/album-3.jpg";
 import album4 from "@/assets/album-4.jpg";
 import album5 from "@/assets/album-5.jpg";
 
-const genres = ["All", "R&B", "Hip Hop", "Neo Soul", "Reggae", "Pop"];
+const genres = ["All", ...GENRES.filter(g => g !== "All Music")];
 
 const playlist = [
   { title: "Midnight Glow", artist: "Kaia Noir", genre: "R&B", listeners: "1.2K", albumImg: album1, artistImg: artist1 },
