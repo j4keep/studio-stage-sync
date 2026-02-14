@@ -20,7 +20,7 @@ interface Song {
   genre?: string;
 }
 
-const RADIO_GENRES = GENRES.filter(g => g !== "All Music" && g !== "Beats");
+const RADIO_GENRES = GENRES.filter(g => g !== "Beats");
 
 const formatDuration = (seconds: number) => {
   const m = Math.floor(seconds / 60);
