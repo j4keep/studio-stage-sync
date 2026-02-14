@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Play, Pause, Heart, TrendingUp, Music, Mic2, Video, DollarSign, ChevronRight, Headphones, Eye } from "lucide-react";
+import { Play, Pause, Heart, TrendingUp, Music, Mic2, Video, DollarSign, ChevronRight, Headphones, Eye, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -52,6 +52,7 @@ interface CarouselItem {
   likes_count?: number;
   views?: string;
   user_id?: string;
+  media_url?: string;
 }
 
 const AutoCarousel = ({ items, interval = 4000, onLike, isLiked, getLikeCount, onPlay }: { 
@@ -149,22 +150,24 @@ const fetchSongs = async (): Promise<DbSong[]> => {
 };
 
 const fetchVideos = async (): Promise<CarouselItem[]> => {
-  const { data } = await (supabase as any).from("videos").select("id, title, cover_url, views, likes_count, user_id")
+  const { data } = await (supabase as any).from("videos").select("id, title, cover_url, video_url, views, likes_count, user_id")
     .order("created_at", { ascending: false }).limit(20);
   if (!data || data.length === 0) return [];
   return data.map((v: any) => ({
     id: v.id, title: v.title, subtitle: "", img: v.cover_url || musicvideo1,
     likes_count: v.likes_count || 0, views: v.views || "0", user_id: v.user_id,
+    media_url: v.video_url ? getR2DownloadUrl(v.video_url) : undefined,
   }));
 };
 
 const fetchPodcasts = async (): Promise<CarouselItem[]> => {
-  const { data } = await (supabase as any).from("podcasts").select("id, title, cover_url, plays, likes_count, user_id")
+  const { data } = await (supabase as any).from("podcasts").select("id, title, cover_url, media_url, plays, likes_count, user_id, is_video")
     .order("created_at", { ascending: false }).limit(20);
   if (!data || data.length === 0) return [];
   return data.map((p: any) => ({
     id: p.id, title: p.title, subtitle: "", img: p.cover_url || podcast1,
     likes_count: p.likes_count || 0, views: p.plays || "0", user_id: p.user_id,
+    media_url: p.media_url ? getR2DownloadUrl(p.media_url) : undefined,
   }));
 };
 
@@ -262,13 +265,30 @@ const HomePage = () => {
 
   const currentRadioTrack = radio.currentTrack;
 
+  const [playingMediaId, setPlayingMediaId] = useState<string | null>(null);
+  const [playingMediaUrl, setPlayingMediaUrl] = useState<string | null>(null);
+  const [playingMediaItem, setPlayingMediaItem] = useState<CarouselItem | null>(null);
+  const mediaVideoRef = useRef<HTMLVideoElement | null>(null);
+
+  const handlePlayMedia = (item: CarouselItem) => {
+    if (!item.media_url) return;
+    if (playingMediaId === item.id) {
+      setPlayingMediaId(null);
+      setPlayingMediaUrl(null);
+      setPlayingMediaItem(null);
+      return;
+    }
+    setPlayingMediaId(item.id);
+    setPlayingMediaUrl(item.media_url);
+    setPlayingMediaItem(item);
+  };
+
   const handlePlayVideo = (item: CarouselItem) => {
-    // Navigate to video or play if has media
-    if (item.user_id) navigate(`/profile?user=${item.user_id}`);
+    handlePlayMedia(item);
   };
 
   const handlePlayPodcast = (item: CarouselItem) => {
-    if (item.user_id) navigate(`/profile?user=${item.user_id}`);
+    handlePlayMedia(item);
   };
 
   return (
@@ -430,6 +450,35 @@ const HomePage = () => {
           ))}
         </div>
       </motion.section>
+
+      {/* Inline Media Player Overlay */}
+      {playingMediaId && playingMediaUrl && playingMediaItem && (
+        <div className="fixed inset-0 z-50 bg-background/95 flex flex-col">
+          <div className="flex items-center justify-between p-4">
+            <button onClick={() => playingMediaItem.user_id ? navigate(`/profile?user=${playingMediaItem.user_id}`) : null} className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full overflow-hidden bg-muted">
+                <img src={playingMediaItem.img} alt="" className="w-full h-full object-cover" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-foreground">{playingMediaItem.title}</p>
+                <p className="text-[10px] text-muted-foreground">{playingMediaItem.subtitle}</p>
+              </div>
+            </button>
+            <button onClick={() => { setPlayingMediaId(null); setPlayingMediaUrl(null); setPlayingMediaItem(null); }} className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center">
+              <X className="w-4 h-4 text-foreground" />
+            </button>
+          </div>
+          <div className="flex-1 flex items-center justify-center px-4">
+            <video
+              ref={mediaVideoRef}
+              src={playingMediaUrl}
+              controls
+              autoPlay
+              className="w-full max-h-[70vh] rounded-xl"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
