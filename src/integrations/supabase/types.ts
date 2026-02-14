@@ -139,7 +139,9 @@ export type Database = {
           cover_url: string | null
           created_at: string
           duration: string | null
+          genre: string | null
           id: string
+          on_radio: boolean | null
           plays: string | null
           title: string
           user_id: string
@@ -149,7 +151,9 @@ export type Database = {
           cover_url?: string | null
           created_at?: string
           duration?: string | null
+          genre?: string | null
           id?: string
+          on_radio?: boolean | null
           plays?: string | null
           title: string
           user_id: string
@@ -159,7 +163,9 @@ export type Database = {
           cover_url?: string | null
           created_at?: string
           duration?: string | null
+          genre?: string | null
           id?: string
+          on_radio?: boolean | null
           plays?: string | null
           title?: string
           user_id?: string

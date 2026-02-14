@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect } from "react";
-import { motion } from "framer-motion";
-import { ArrowLeft, Music, Play, Pause, MoreHorizontal, Plus, Trash2, Upload, Image, RefreshCw } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ArrowLeft, Music, Play, Pause, MoreHorizontal, Plus, Trash2, Upload, Image, RefreshCw, Radio, ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { cacheMediaUrl, getCachedMediaUrl, removeCachedMedia } from "@/lib/media-cache";
+import { GENRES } from "@/lib/genres";
 import album1 from "@/assets/album-1.jpg";
 
 interface Song {
@@ -15,7 +16,11 @@ interface Song {
   duration: string;
   cover_url: string;
   audio_url?: string;
+  on_radio?: boolean;
+  genre?: string;
 }
+
+const RADIO_GENRES = GENRES.filter(g => g !== "All Music" && g !== "Beats");
 
 const formatDuration = (seconds: number) => {
   const m = Math.floor(seconds / 60);
@@ -32,6 +37,8 @@ const MySongsPage = () => {
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [pendingAudioFile, setPendingAudioFile] = useState<File | null>(null);
   const [pendingCover, setPendingCover] = useState<string | null>(null);
+  const [publishingSongId, setPublishingSongId] = useState<string | null>(null);
+  const [selectedGenre, setSelectedGenre] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -48,6 +55,8 @@ const MySongsPage = () => {
         id: s.id, title: s.title, plays: s.plays || "0", duration: s.duration || "0:00",
         cover_url: s.cover_url || album1,
         audio_url: s.audio_url || getCachedMediaUrl(s.id) || undefined,
+        on_radio: s.on_radio || false,
+        genre: s.genre || undefined,
       })));
     }
     setLoading(false);
@@ -65,8 +74,6 @@ const MySongsPage = () => {
     if (!file) return;
     setPendingAudioFile(file);
     setPendingCover(null);
-
-    // If re-uploading for an existing song
     if (reuploadIdRef.current) {
       const reuploadId = reuploadIdRef.current;
       const audioUrl = URL.createObjectURL(file);
@@ -101,7 +108,7 @@ const MySongsPage = () => {
       const { data, error } = await (supabase as any).from("songs").insert({ user_id: user.id, title, duration, cover_url: cover, audio_url: null }).select().single();
       if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
       cacheMediaUrl(data.id, audioUrl);
-      setSongs(prev => [{ id: data.id, title, plays: "0", duration, cover_url: cover || album1, audio_url: audioUrl }, ...prev]);
+      setSongs(prev => [{ id: data.id, title, plays: "0", duration, cover_url: cover || album1, audio_url: audioUrl, on_radio: false }, ...prev]);
       setPendingAudioFile(null); setPendingCover(null); setShowUpload(false);
       toast({ title: "Song added!", description: `"${title}" has been uploaded` });
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -121,6 +128,26 @@ const MySongsPage = () => {
       if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = song.audio_url; audioRef.current.play().catch(() => {}); }
       setPlayingId(song.id);
     }
+  };
+
+  const handlePublishToRadio = async (songId: string) => {
+    if (!selectedGenre) {
+      toast({ title: "Select a genre", description: "Pick a genre before publishing to radio", variant: "destructive" });
+      return;
+    }
+    const { error } = await (supabase as any).from("songs").update({ on_radio: true, genre: selectedGenre }).eq("id", songId);
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    setSongs(prev => prev.map(s => s.id === songId ? { ...s, on_radio: true, genre: selectedGenre } : s));
+    setPublishingSongId(null);
+    setSelectedGenre("");
+    toast({ title: "Published to Radio! 📻", description: `Song is now live on WHEUAT Radio under ${selectedGenre}` });
+  };
+
+  const handleRemoveFromRadio = async (songId: string) => {
+    const { error } = await (supabase as any).from("songs").update({ on_radio: false, genre: null }).eq("id", songId);
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    setSongs(prev => prev.map(s => s.id === songId ? { ...s, on_radio: false, genre: undefined } : s));
+    toast({ title: "Removed from Radio", description: "Song is no longer on WHEUAT Radio" });
   };
 
   if (!user) return <div className="px-4 pt-4 text-center text-muted-foreground text-sm">Please log in to view your songs.</div>;
@@ -179,32 +206,83 @@ const MySongsPage = () => {
       ) : (
         <div className="flex flex-col gap-2">
           {songs.map((song, i) => (
-            <motion.div key={song.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
-              className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:border-primary/30 transition-all group"
-            >
-              <button onClick={() => song.audio_url ? togglePlay(song) : handleReupload(song.id)} className="relative w-11 h-11 rounded-lg overflow-hidden flex-shrink-0">
-                <img src={song.cover_url} alt={song.title} className="w-full h-full object-cover" />
-                <div className={`absolute inset-0 bg-black/30 flex items-center justify-center transition-opacity ${playingId === song.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
-                  {!song.audio_url ? (
-                    <RefreshCw className="w-4 h-4 text-white" />
-                  ) : playingId === song.id ? (
-                    <Pause className="w-4 h-4 text-white fill-white" />
-                  ) : (
-                    <Play className="w-4 h-4 text-white fill-white" />
+            <div key={song.id}>
+              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+                className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:border-primary/30 transition-all group"
+              >
+                <button onClick={() => song.audio_url ? togglePlay(song) : handleReupload(song.id)} className="relative w-11 h-11 rounded-lg overflow-hidden flex-shrink-0">
+                  <img src={song.cover_url} alt={song.title} className="w-full h-full object-cover" />
+                  <div className={`absolute inset-0 bg-black/30 flex items-center justify-center transition-opacity ${playingId === song.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
+                    {!song.audio_url ? (
+                      <RefreshCw className="w-4 h-4 text-white" />
+                    ) : playingId === song.id ? (
+                      <Pause className="w-4 h-4 text-white fill-white" />
+                    ) : (
+                      <Play className="w-4 h-4 text-white fill-white" />
+                    )}
+                  </div>
+                </button>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{song.title}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {song.audio_url ? `${song.plays} plays · ${song.duration}` : "Tap to re-link file for playback"}
+                  </p>
+                  {song.on_radio && (
+                    <span className="inline-flex items-center gap-1 text-[9px] text-primary font-semibold mt-0.5">
+                      <Radio className="w-2.5 h-2.5" /> On Radio · {song.genre}
+                    </span>
                   )}
                 </div>
-              </button>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">{song.title}</p>
-                <p className="text-[10px] text-muted-foreground">
-                  {song.audio_url ? `${song.plays} plays · ${song.duration}` : "Tap to re-link file for playback"}
-                </p>
-              </div>
-              <button onClick={() => removeSong(song.id)} className="w-7 h-7 rounded-full bg-destructive/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <Trash2 className="w-3 h-3 text-destructive" />
-              </button>
-              <button className="text-muted-foreground"><MoreHorizontal className="w-4 h-4" /></button>
-            </motion.div>
+                {song.on_radio ? (
+                  <button onClick={() => handleRemoveFromRadio(song.id)} className="px-2 py-1.5 rounded-lg border border-primary/30 text-[10px] text-primary font-semibold flex items-center gap-1">
+                    <Radio className="w-3 h-3" /> Live
+                  </button>
+                ) : (
+                  <button onClick={() => { setPublishingSongId(publishingSongId === song.id ? null : song.id); setSelectedGenre(""); }} className="px-2 py-1.5 rounded-lg border border-border text-[10px] text-muted-foreground font-semibold flex items-center gap-1 hover:border-primary/30 hover:text-primary transition-all">
+                    <Radio className="w-3 h-3" /> Radio
+                  </button>
+                )}
+                <button onClick={() => removeSong(song.id)} className="w-7 h-7 rounded-full bg-destructive/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Trash2 className="w-3 h-3 text-destructive" />
+                </button>
+              </motion.div>
+
+              {/* Publish to Radio Panel */}
+              <AnimatePresence>
+                {publishingSongId === song.id && !song.on_radio && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="mt-1 p-3 rounded-xl bg-primary/5 border border-primary/20">
+                      <p className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
+                        <Radio className="w-3.5 h-3.5 text-primary" /> Publish to WHEUAT Radio
+                      </p>
+                      <p className="text-[10px] text-muted-foreground mb-3">Select a genre so listeners can find your song in the right station.</p>
+                      <div className="relative mb-3">
+                        <select
+                          value={selectedGenre}
+                          onChange={(e) => setSelectedGenre(e.target.value)}
+                          className="w-full appearance-none px-3 py-2.5 rounded-lg bg-card border border-border text-sm text-foreground focus:border-primary/50 outline-none"
+                        >
+                          <option value="">Select Genre...</option>
+                          {RADIO_GENRES.map(g => (
+                            <option key={g} value={g}>{g}</option>
+                          ))}
+                        </select>
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => setPublishingSongId(null)} className="flex-1 py-2 rounded-lg border border-border text-xs font-medium text-muted-foreground">Cancel</button>
+                        <button onClick={() => handlePublishToRadio(song.id)} className="flex-1 py-2 rounded-lg gradient-primary text-primary-foreground text-xs font-semibold glow-primary">Publish</button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           ))}
         </div>
       )}
