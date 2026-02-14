@@ -19,7 +19,7 @@ type UploadOptions = {
   onProgress?: (progress: number) => void;
 };
 
-const PROXY_UPLOAD_THRESHOLD = 5 * 1024 * 1024; // 5MB
+const PROXY_UPLOAD_THRESHOLD = 500 * 1024 * 1024; // 500MB - route all uploads through edge function proxy
 
 /**
  * Upload a file to R2 storage.
