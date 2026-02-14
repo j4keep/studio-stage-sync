@@ -183,8 +183,16 @@ const MyStorePage = () => {
         resetForm();
       }
     } else {
-      // Insert new product
+      // Insert new product — resolve artist name from profile
       const tags = formType === "Beats" ? [formSubGenre] : null;
+      let artistName: string | null = null;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("display_name")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (profile?.display_name) artistName = profile.display_name;
+
       const { data, error } = await supabase
         .from("store_products")
         .insert({
@@ -195,6 +203,7 @@ const MyStorePage = () => {
           cover_url: formCover,
           file_name: formFileName,
           tags,
+          artist_name: artistName,
         })
         .select("id, title, type, price, cover_url, file_url, file_name, sales, tags")
         .single();

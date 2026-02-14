@@ -65,9 +65,21 @@ const StorePage = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from("store_products")
-        .select("id, title, type, price, cover_url, tags, preview_url, artist_name, sales")
+        .select("id, title, type, price, cover_url, tags, preview_url, artist_name, sales, user_id")
         .order("created_at", { ascending: false });
-      if (!error && data) setProducts(data);
+      if (!error && data) {
+        // Resolve artist names from profiles for any products missing artist_name
+        const missingIds = [...new Set(data.filter((p: any) => !p.artist_name).map((p: any) => p.user_id).filter(Boolean))];
+        let profileMap: Record<string, string> = {};
+        if (missingIds.length > 0) {
+          const { data: profiles } = await (supabase as any).from("profiles").select("user_id, display_name").in("user_id", missingIds);
+          (profiles || []).forEach((p: any) => { profileMap[p.user_id] = p.display_name || ""; });
+        }
+        setProducts(data.map((p: any) => ({
+          ...p,
+          artist_name: p.artist_name || profileMap[p.user_id] || "Artist",
+        })));
+      }
       setLoading(false);
     };
     fetchProducts();
@@ -320,7 +332,7 @@ const StorePage = () => {
                 </button>
                 <div className="flex-1 min-w-0" onClick={() => setSheetProduct(p)}>
                   <p className="text-sm font-medium text-foreground truncate">{p.title}</p>
-                  <p className="text-xs text-primary truncate">{p.artist_name || "Unknown Artist"}</p>
+                  <p className="text-xs text-primary truncate">{p.artist_name || "Artist"}</p>
                 </div>
                 <span className="text-xs font-bold text-foreground mr-1">${p.price.toFixed(2)}</span>
                 <button
