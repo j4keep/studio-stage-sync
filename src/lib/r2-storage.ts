@@ -34,6 +34,8 @@ export async function uploadToR2(
     ? `${options.folder}/${options.fileName || file.name}`
     : options.fileName || file.name;
 
+  console.log(`[R2 Upload] Starting upload: ${file.name}, size: ${file.size}, key: ${key}, method: ${file.size > PROXY_UPLOAD_THRESHOLD ? 'presigned' : 'formdata'}`);
+
   if (file.size > PROXY_UPLOAD_THRESHOLD) {
     return uploadStreamingToR2(file, key, options);
   }
@@ -52,15 +54,18 @@ async function uploadViaFormData(
     if (options.folder) formData.append('folder', options.folder);
     if (options.mimeType) formData.append('mimeType', options.mimeType);
 
+    console.log('[R2 Upload] Invoking r2-upload edge function...');
     const { data, error } = await supabase.functions.invoke('r2-upload', {
       body: formData,
     });
+    console.log('[R2 Upload] Edge function response:', { data, error: error?.message });
 
     if (error) return { success: false, error: error.message };
     if (!data?.success) return { success: false, error: data?.error || 'Upload failed' };
 
     return { success: true, data: { key: data.key, url: data.url, size: data.size } };
   } catch (err) {
+    console.error('[R2 Upload] FormData upload error:', err);
     return { success: false, error: err instanceof Error ? err.message : 'Upload failed' };
   }
 }
@@ -73,9 +78,11 @@ async function uploadStreamingToR2(
 ): Promise<R2Response<UploadResult>> {
   try {
     // Step 1: Get a presigned PUT URL from the edge function
+    console.log('[R2 Upload] Requesting presigned URL for key:', key);
     const { data: presignData, error: presignError } = await supabase.functions.invoke('r2-presign', {
       body: { key, contentType: options.mimeType || file.type || 'application/octet-stream' },
     });
+    console.log('[R2 Upload] Presign response:', { success: presignData?.success, error: presignError?.message || presignData?.error });
 
     if (presignError || !presignData?.success) {
       return { success: false, error: presignData?.error || presignError?.message || 'Failed to get upload URL' };
@@ -84,6 +91,7 @@ async function uploadStreamingToR2(
     const presignedUrl = presignData.url;
 
     // Step 2: Upload directly to R2 using the presigned URL with XHR for progress
+    console.log('[R2 Upload] Starting direct PUT to R2...');
     return new Promise((resolve) => {
       const xhr = new XMLHttpRequest();
       xhr.open('PUT', presignedUrl, true);
@@ -98,20 +106,23 @@ async function uploadStreamingToR2(
       }
 
       xhr.onload = () => {
+        console.log('[R2 Upload] XHR completed, status:', xhr.status);
         if (xhr.status >= 200 && xhr.status < 300) {
           resolve({ success: true, data: { key, url: presignedUrl.split('?')[0], size: file.size } });
         } else {
+          console.error('[R2 Upload] XHR failed:', xhr.status, xhr.responseText);
           resolve({ success: false, error: `Upload failed: ${xhr.status}` });
         }
       };
 
-      xhr.onerror = () => resolve({ success: false, error: 'Network error during upload' });
-      xhr.ontimeout = () => resolve({ success: false, error: 'Upload timed out' });
+      xhr.onerror = () => { console.error('[R2 Upload] XHR network error'); resolve({ success: false, error: 'Network error during upload' }); };
+      xhr.ontimeout = () => { console.error('[R2 Upload] XHR timeout'); resolve({ success: false, error: 'Upload timed out' }); };
       xhr.timeout = 600000; // 10 min timeout
 
       xhr.send(file);
     });
   } catch (err) {
+    console.error('[R2 Upload] Streaming upload error:', err);
     return { success: false, error: err instanceof Error ? err.message : 'Upload failed' };
   }
 }
