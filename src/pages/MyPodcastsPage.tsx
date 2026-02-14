@@ -236,12 +236,12 @@ const MyPodcastsPage = () => {
                       {`${p.episode} · ${p.duration}`}
                     </p>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                        <Eye className="w-2.5 h-2.5" /> {p.plays} views
+                      <span className="text-xs text-foreground flex items-center gap-1">
+                        <Eye className="w-4 h-4" /> {p.plays} views
                       </span>
-                      <button onClick={(e) => { e.stopPropagation(); toggleLike(p.id); }} className="flex items-center gap-0.5">
-                        <Heart className={`w-2.5 h-2.5 transition-colors ${isLiked(p.id) ? "text-primary fill-primary" : "text-muted-foreground"}`} />
-                        <span className="text-[10px] text-muted-foreground">{getLikeCount(p.id)}</span>
+                      <button onClick={(e) => { e.stopPropagation(); toggleLike(p.id); }} className="flex items-center gap-1">
+                        <Heart className={`w-4 h-4 transition-colors ${isLiked(p.id) ? "text-primary fill-primary" : "text-foreground"}`} />
+                        <span className="text-xs text-foreground">{getLikeCount(p.id)}</span>
                       </button>
                     </div>
                   </div>

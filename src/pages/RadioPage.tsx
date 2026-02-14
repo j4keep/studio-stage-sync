@@ -232,9 +232,9 @@ const RadioPage = () => {
               onClick={() => toggleLike(track.id)}
               className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center transition-all hover:border-primary/30 relative"
             >
-              <Heart className={`w-4 h-4 transition-colors ${isLiked(track.id) ? "text-primary fill-primary" : "text-muted-foreground"}`} />
+              <Heart className={`w-5 h-5 transition-colors ${isLiked(track.id) ? "text-primary fill-primary" : "text-foreground"}`} />
               {getLikeCount(track.id) > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-primary text-[8px] font-bold text-primary-foreground flex items-center justify-center">
+                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-[9px] font-bold text-primary-foreground flex items-center justify-center">
                   {getLikeCount(track.id)}
                 </span>
               )}
@@ -298,14 +298,14 @@ const RadioPage = () => {
                   <p className="text-xs text-muted-foreground">{t.artist_name}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button
+              <button
                     onClick={(e) => { e.stopPropagation(); toggleLike(t.id); }}
                     className="flex items-center gap-1"
                   >
-                    <Heart className={`w-3 h-3 transition-colors ${isLiked(t.id) ? "text-primary fill-primary" : "text-muted-foreground"}`} />
-                    <span className="text-[10px] text-muted-foreground">{getLikeCount(t.id)}</span>
+                    <Heart className={`w-4 h-4 transition-colors ${isLiked(t.id) ? "text-primary fill-primary" : "text-foreground"}`} />
+                    <span className="text-xs text-foreground">{getLikeCount(t.id)}</span>
                   </button>
-                  <span className="text-[10px] text-muted-foreground">{t.plays} plays</span>
+                  <span className="text-xs text-foreground">{t.plays} plays</span>
                 </div>
                 <span className="text-[10px] text-primary mr-1">{t.genre}</span>
                 <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
