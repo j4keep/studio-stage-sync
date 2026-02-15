@@ -72,6 +72,8 @@ const PlaylistPlayerSheet = () => {
               transition={{ duration: 0.3 }}
               className="relative flex-1 min-h-0"
               onTouchStart={(e) => {
+                const target = e.target as HTMLElement;
+                if (target.closest('[role="slider"]') || target.closest('.seek-area')) return;
                 swipeStartX.current = e.touches[0].clientX;
                 swipeStartY.current = e.touches[0].clientY;
               }}
@@ -81,12 +83,10 @@ const PlaylistPlayerSheet = () => {
                 const diffY = e.changedTouches[0].clientY - swipeStartY.current;
                 swipeStartX.current = null;
                 swipeStartY.current = null;
-                // Swipe down to minimize
                 if (diffY > 80 && Math.abs(diffX) < Math.abs(diffY)) {
                   setPlayerSheetOpen(false);
                   return;
                 }
-                // Swipe left/right to skip
                 if (Math.abs(diffX) > 60) {
                   if (diffX < 0) skipPlaylistTrack();
                   else prevPlaylistTrack();
@@ -114,9 +114,9 @@ const PlaylistPlayerSheet = () => {
                 </div>
 
                 {/* Seekable progress */}
-                <div className="mb-3">
+                <div className="mb-3 seek-area" onTouchStart={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()}>
                   <Slider
-                    value={[isSeeking ? undefined as any : currentTime]}
+                    value={[currentTime]}
                     max={duration || 100}
                     step={0.5}
                     onValueChange={handleSeek}
@@ -125,7 +125,7 @@ const PlaylistPlayerSheet = () => {
                   />
                   <div className="flex justify-between mt-1">
                     <span className="text-[10px] text-foreground/70">{formatTime(currentTime)}</span>
-                    <span className="text-[10px] text-foreground/70">{duration > 0 ? formatTime(duration) : currentItem.duration}</span>
+                    <span className="text-[10px] text-foreground/70">-{formatTime(Math.max(0, (duration || 0) - currentTime))}</span>
                   </div>
                 </div>
               </div>
