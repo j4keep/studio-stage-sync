@@ -61,17 +61,25 @@ function applyAccentColor(hsl: string) {
 }
 
 function applyBackgroundImage(url: string | null) {
-  const appRoot = document.getElementById("app-bg-layer");
-  if (appRoot) {
+  // Apply to all possible background containers
+  const targets = [
+    document.getElementById("app-bg-layer"),
+    document.getElementById("onboarding-bg-layer"),
+  ].filter(Boolean) as HTMLElement[];
+
+  // Fallback to body if no target found
+  if (targets.length === 0) targets.push(document.body);
+
+  targets.forEach((el) => {
     if (url) {
-      appRoot.style.backgroundImage = `url(${url})`;
-      appRoot.style.backgroundSize = "cover";
-      appRoot.style.backgroundPosition = "center";
-      appRoot.style.backgroundAttachment = "fixed";
+      el.style.backgroundImage = `url(${url})`;
+      el.style.backgroundSize = "cover";
+      el.style.backgroundPosition = "center";
+      el.style.backgroundAttachment = "fixed";
     } else {
-      appRoot.style.backgroundImage = "";
+      el.style.backgroundImage = "";
     }
-  }
+  });
 }
 
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
@@ -117,6 +125,14 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
     };
     load();
   }, [user]);
+
+  // Re-apply background when DOM changes (e.g. onboarding → main app transition)
+  useEffect(() => {
+    if (backgroundImageUrl) {
+      const timer = setTimeout(() => applyBackgroundImage(backgroundImageUrl), 100);
+      return () => clearTimeout(timer);
+    }
+  }, [themeSetupDone, backgroundImageUrl]);
 
   const setThemePreset = useCallback((presetId: string) => {
     setCurrentPreset(presetId);

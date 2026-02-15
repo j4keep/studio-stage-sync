@@ -122,7 +122,7 @@ const ProtectedRoutes = () => {
   // Show theme picker onboarding
   if (showThemePicker) {
     return (
-      <div className="min-h-screen bg-background text-foreground max-w-lg mx-auto relative flex items-center justify-center px-6">
+      <div id="onboarding-bg-layer" className="min-h-screen bg-background text-foreground max-w-lg mx-auto relative flex items-center justify-center px-6">
         <ThemePickerSheet isOnboarding onComplete={() => setShowThemePicker(false)} />
       </div>
     );
