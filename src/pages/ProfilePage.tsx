@@ -62,7 +62,7 @@ const ArtistProfile = () => {
   const { user } = useAuth();
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
-  const [followerCount, setFollowerCount] = useState("1.2K");
+  const [followerCount, setFollowerCount] = useState("0");
   const [totalPlays, setTotalPlays] = useState("0");
   const [songCount, setSongCount] = useState("0");
   const [totalLikes, setTotalLikes] = useState("0");
@@ -83,6 +83,20 @@ const ArtistProfile = () => {
           } else {
             setTotalPlays(String(total));
           }
+        }
+      });
+
+    // Fetch real follower count
+    (supabase as any)
+      .from("follows")
+      .select("id", { count: "exact", head: true })
+      .eq("following_id", user.id)
+      .then(({ count }: any) => {
+        const c = count || 0;
+        if (c >= 1000) {
+          setFollowerCount(`${(c / 1000).toFixed(1)}K`);
+        } else {
+          setFollowerCount(String(c));
         }
       });
 
@@ -241,7 +255,8 @@ const ArtistProfile = () => {
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Quick Actions</p>
         <div className="flex flex-col gap-1.5">
           {[
-            { icon: Library, label: "Library", sub: "3 playlists", action: () => navigate("/library") },
+          { icon: Library, label: "Library", sub: "3 playlists", action: () => navigate("/library") },
+            { icon: ShoppingBag, label: "Purchases", sub: "View history", action: () => navigate("/purchases") },
             { icon: Building2, label: "My Studios", sub: "Manage listings", action: () => navigate("/my-studios") },
             { icon: BarChart3, label: "Analytics", sub: "View insights", action: () => navigate("/analytics") },
             { icon: DollarSign, label: "Earnings", sub: "$1,247.00", action: () => navigate("/earnings") },
@@ -304,10 +319,11 @@ const FanProfile = () => {
       <div className="flex flex-col gap-1.5">
         {[
           { icon: Library, label: "Library", count: "3 playlists", action: () => navigate("/library") },
+          { icon: ShoppingBag, label: "Purchases", count: "View history", action: () => navigate("/purchases") },
           { icon: Heart, label: "Followed Artists", count: "8", action: () => navigate("/followed-artists") },
           { icon: FolderHeart, label: "Contributions", count: "$340", action: () => navigate("/my-projects") },
           { icon: Building2, label: "Saved Studios", count: "3", action: () => navigate("/studios") },
-          { icon: Download, label: "Purchases", count: "5 songs", action: () => navigate("/my-store") },
+          { icon: Download, label: "Downloads", count: "5 songs", action: () => navigate("/my-store") },
           { icon: HelpCircle, label: "Help & Support", count: "", action: () => navigate("/help") },
         ].map((item) => (
           <button

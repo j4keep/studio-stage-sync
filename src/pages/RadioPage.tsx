@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, SkipForward, Heart, DollarSign, Radio as RadioIcon, Users, Shuffle, ArrowLeft, Music } from "lucide-react";
+import { Play, Pause, SkipForward, Heart, DollarSign, Radio as RadioIcon, Users, Shuffle, ArrowLeft, Music, ListPlus } from "lucide-react";
+import { useState } from "react";
+import { toast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { useRadio } from "@/contexts/RadioContext";
 import { GENRES } from "@/lib/genres";
@@ -111,8 +113,13 @@ const RadioPage = () => {
 
           {/* Controls */}
           <div className="flex items-center justify-center gap-8 mb-6">
-            <button className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/30 transition-all">
-              <Shuffle className="w-4 h-4" />
+            <button
+              onClick={() => {
+                toast({ title: "Added to Library", description: `"${track.title}" saved to your playlist` });
+              }}
+              className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/30 transition-all"
+            >
+              <ListPlus className="w-4 h-4" />
             </button>
             <button onClick={() => toggleLike(track.id)} className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center transition-all hover:border-primary/30 relative">
               <Heart className={`w-5 h-5 transition-colors ${isLiked(track.id) ? "text-primary fill-primary" : "text-foreground"}`} />

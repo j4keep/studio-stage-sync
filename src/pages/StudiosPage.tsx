@@ -4,6 +4,8 @@ import { ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
 import { Building2, MapPin, Clock, Star, Search, SlidersHorizontal, ChevronLeft, ChevronRight, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/hooks/use-toast";
 import studio1 from "@/assets/studio-1.jpg";
 import studio2 from "@/assets/studio-2.jpg";
 import studio3 from "@/assets/studio-3.jpg";
@@ -144,6 +146,160 @@ const MiniCalendar = ({ blockedDates = [] }: { blockedDates?: string[] }) => {
   );
 };
 
+// Book studio button with date/hours selection
+const BookStudioButton = ({ studio }: { studio: StudioData }) => {
+  const { user } = useAuth();
+  const [showForm, setShowForm] = useState(false);
+  const [date, setDate] = useState("");
+  const [hours, setHours] = useState(1);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleBook = async () => {
+    if (!user || !date) return;
+    setSubmitting(true);
+    const total = studio.hourly_rate * hours;
+    const { error } = await (supabase as any).from("studio_bookings").insert({
+      studio_id: studio.id,
+      user_id: user.id,
+      booking_date: date,
+      hours,
+      total_amount: total,
+    });
+    setSubmitting(false);
+    if (error) {
+      toast({ title: "Error", description: "Could not book studio", variant: "destructive" });
+    } else {
+      toast({ title: "Booked!", description: `${studio.name} on ${date} for ${hours}h ($${total})` });
+      setShowForm(false);
+    }
+  };
+
+  if (!showForm) {
+    return (
+      <button onClick={() => setShowForm(true)} className="w-full py-3 rounded-xl gradient-primary text-primary-foreground font-semibold text-sm glow-primary">
+        Book This Studio
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2 mt-2">
+      <input type="date" value={date} onChange={(e) => setDate(e.target.value)} min={new Date().toISOString().split("T")[0]}
+        className="w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground text-sm" />
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted-foreground">Hours:</span>
+        <input type="number" value={hours} onChange={(e) => setHours(Math.max(1, parseInt(e.target.value) || 1))} min={1} max={24}
+          className="w-20 px-2 py-1.5 rounded-lg bg-background border border-border text-foreground text-sm" />
+        <span className="text-xs text-muted-foreground ml-auto">Total: ${studio.hourly_rate * hours}</span>
+      </div>
+      <div className="flex gap-2">
+        <button onClick={() => setShowForm(false)} className="flex-1 py-2.5 rounded-xl bg-card border border-border text-foreground text-xs font-semibold">Cancel</button>
+        <button onClick={handleBook} disabled={!date || submitting} className="flex-1 py-2.5 rounded-xl gradient-primary text-primary-foreground text-xs font-semibold glow-primary disabled:opacity-50">
+          {submitting ? "Booking..." : "Confirm"}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// Studio reviews section — only users who booked can leave a review
+const StudioReviews = ({ studioId }: { studioId: string }) => {
+  const { user } = useAuth();
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [userBookings, setUserBookings] = useState<any[]>([]);
+  const [reviewedBookingIds, setReviewedBookingIds] = useState<Set<string>>(new Set());
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState("");
+  const [selectedBooking, setSelectedBooking] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    // Fetch reviews
+    (supabase as any).from("studio_reviews").select("*").eq("studio_id", studioId).order("created_at", { ascending: false })
+      .then(({ data }: any) => {
+        setReviews(data || []);
+        setReviewedBookingIds(new Set((data || []).map((r: any) => r.booking_id)));
+      });
+    // Fetch user's bookings for this studio
+    if (user) {
+      (supabase as any).from("studio_bookings").select("id, booking_date, hours").eq("user_id", user.id).eq("studio_id", studioId)
+        .then(({ data }: any) => setUserBookings(data || []));
+    }
+  }, [studioId, user]);
+
+  const unreviewedBookings = userBookings.filter((b) => !reviewedBookingIds.has(b.id));
+
+  const handleSubmitReview = async () => {
+    if (!user || !selectedBooking) return;
+    setSubmitting(true);
+    const { error } = await (supabase as any).from("studio_reviews").insert({
+      studio_id: studioId, user_id: user.id, booking_id: selectedBooking, rating, comment,
+    });
+    setSubmitting(false);
+    if (error) {
+      toast({ title: "Error", description: "Could not submit review", variant: "destructive" });
+    } else {
+      toast({ title: "Review submitted!", description: `You gave ${rating} stars` });
+      setComment("");
+      setSelectedBooking("");
+      // Refresh reviews
+      const { data } = await (supabase as any).from("studio_reviews").select("*").eq("studio_id", studioId).order("created_at", { ascending: false });
+      setReviews(data || []);
+      setReviewedBookingIds(new Set((data || []).map((r: any) => r.booking_id)));
+    }
+  };
+
+  return (
+    <div className="mt-4">
+      <h3 className="text-sm font-semibold text-foreground mb-2">Reviews</h3>
+      {/* Review form for users who booked */}
+      {unreviewedBookings.length > 0 && (
+        <div className="p-3 rounded-xl bg-primary/5 border border-primary/20 mb-3">
+          <p className="text-xs font-semibold text-foreground mb-2">Rate your session</p>
+          <select value={selectedBooking} onChange={(e) => setSelectedBooking(e.target.value)}
+            className="w-full px-2 py-1.5 rounded-lg bg-background border border-border text-foreground text-xs mb-2">
+            <option value="">Select booking...</option>
+            {unreviewedBookings.map((b) => (
+              <option key={b.id} value={b.id}>{new Date(b.booking_date).toLocaleDateString()} · {b.hours}h</option>
+            ))}
+          </select>
+          <div className="flex gap-1 mb-2">
+            {[1, 2, 3, 4, 5].map((s) => (
+              <button key={s} onClick={() => setRating(s)}>
+                <Star className={`w-5 h-5 ${s <= rating ? "text-primary fill-primary" : "text-muted-foreground"}`} />
+              </button>
+            ))}
+          </div>
+          <input value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Leave a comment (optional)"
+            className="w-full px-2 py-1.5 rounded-lg bg-background border border-border text-foreground text-xs mb-2" />
+          <button onClick={handleSubmitReview} disabled={!selectedBooking || submitting}
+            className="w-full py-2 rounded-lg gradient-primary text-primary-foreground text-xs font-semibold disabled:opacity-50">
+            {submitting ? "Submitting..." : "Submit Review"}
+          </button>
+        </div>
+      )}
+
+      {reviews.length > 0 ? (
+        <div className="flex flex-col gap-2">
+          {reviews.map((r) => (
+            <div key={r.id} className="p-3 rounded-xl bg-card border border-border">
+              <div className="flex items-center gap-1 mb-1">
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <Star key={s} className={`w-3 h-3 ${s <= r.rating ? "text-primary fill-primary" : "text-muted-foreground/30"}`} />
+                ))}
+                <span className="text-[10px] text-muted-foreground ml-2">{new Date(r.created_at).toLocaleDateString()}</span>
+              </div>
+              {r.comment && <p className="text-xs text-foreground">{r.comment}</p>}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground">No reviews yet</p>
+      )}
+    </div>
+  );
+};
+
 const StudiosPage = () => {
   const navigate = useNavigate();
   const [selectedStudio, setSelectedStudio] = useState<StudioData | null>(null);
@@ -247,10 +403,11 @@ const StudiosPage = () => {
             </div>
             <span className="text-[10px] text-muted-foreground">10% platform fee applies</span>
           </div>
-          <button className="w-full py-3 rounded-xl gradient-primary text-primary-foreground font-semibold text-sm glow-primary">
-            Book This Studio
-          </button>
+          <BookStudioButton studio={selectedStudio} />
         </div>
+
+        {/* Reviews */}
+        <StudioReviews studioId={selectedStudio.id} />
       </div>
     );
   }
