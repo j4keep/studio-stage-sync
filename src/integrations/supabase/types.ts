@@ -264,37 +264,46 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          background_image_url: string | null
           banner_url: string | null
           bio: string | null
           created_at: string
+          custom_accent_color: string | null
           display_name: string | null
           email: string | null
           id: string
           terms_accepted_at: string | null
+          theme_preset: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           avatar_url?: string | null
+          background_image_url?: string | null
           banner_url?: string | null
           bio?: string | null
           created_at?: string
+          custom_accent_color?: string | null
           display_name?: string | null
           email?: string | null
           id?: string
           terms_accepted_at?: string | null
+          theme_preset?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           avatar_url?: string | null
+          background_image_url?: string | null
           banner_url?: string | null
           bio?: string | null
           created_at?: string
+          custom_accent_color?: string | null
           display_name?: string | null
           email?: string | null
           id?: string
           terms_accepted_at?: string | null
+          theme_preset?: string | null
           updated_at?: string
           user_id?: string
         }
