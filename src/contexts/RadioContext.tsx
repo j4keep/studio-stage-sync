@@ -31,6 +31,9 @@ interface RadioContextType {
   activeGenre: string;
   loading: boolean;
   fetchRadioSongs: () => Promise<void>;
+  currentTime: number;
+  duration: number;
+  seek: (time: number) => void;
 }
 
 const RadioContext = createContext<RadioContextType | null>(null);
@@ -48,6 +51,8 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [skipsLeft, setSkipsLeft] = useState(6);
   const [activeGenre, setActiveGenre] = useState("All");
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const playTracked = useRef<Set<string>>(new Set());
 
@@ -63,6 +68,18 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
         if (filtered.length <= 1) return prev;
         return (prev + 1) % filtered.length;
       });
+    });
+
+    audio.addEventListener("timeupdate", () => {
+      setCurrentTime(audio.currentTime);
+    });
+
+    audio.addEventListener("loadedmetadata", () => {
+      setDuration(audio.duration);
+    });
+
+    audio.addEventListener("durationchange", () => {
+      setDuration(audio.duration);
     });
 
     return () => {
@@ -164,11 +181,20 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
     setActiveGenre(genre);
   }, []);
 
+  const seek = useCallback((time: number) => {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.currentTime = time;
+      setCurrentTime(time);
+    }
+  }, []);
+
   return (
     <RadioContext.Provider value={{
       isPlaying, currentTrack, queue, allTracks: filteredSongs,
       play, pause, toggle, skip, skipsLeft, playTrack,
       setGenreFilter, activeGenre, loading, fetchRadioSongs,
+      currentTime, duration, seek,
     }}>
       {children}
     </RadioContext.Provider>
