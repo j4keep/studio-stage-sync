@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, Moon, Sun, Bell, BellOff, Globe, Lock, Eye, Trash2, LogOut, Info, ChevronRight, Smartphone } from "lucide-react";
+import { ArrowLeft, Moon, Sun, Bell, BellOff, Globe, Lock, Eye, Trash2, LogOut, Info, ChevronRight, Smartphone, Palette } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
+import ThemePickerSheet from "@/components/ThemePickerSheet";
 
 const SettingsPage = () => {
   const navigate = useNavigate();
+  const [showThemePicker, setShowThemePicker] = useState(false);
 
   const [darkMode, setDarkMode] = useState(() => {
     return localStorage.getItem("wheuat_theme") !== "light";
@@ -47,29 +49,12 @@ const SettingsPage = () => {
     }
   }, [darkMode]);
 
-  useEffect(() => {
-    localStorage.setItem("wheuat_notifications", String(notifications));
-  }, [notifications]);
-
-  useEffect(() => {
-    localStorage.setItem("wheuat_release_alerts", String(newReleaseAlerts));
-  }, [newReleaseAlerts]);
-
-  useEffect(() => {
-    localStorage.setItem("wheuat_autoplay", String(autoplay));
-  }, [autoplay]);
-
-  useEffect(() => {
-    localStorage.setItem("wheuat_quality", streamingQuality);
-  }, [streamingQuality]);
-
-  useEffect(() => {
-    localStorage.setItem("wheuat_private", String(privateProfile));
-  }, [privateProfile]);
-
-  useEffect(() => {
-    localStorage.setItem("wheuat_show_activity", String(showActivity));
-  }, [showActivity]);
+  useEffect(() => { localStorage.setItem("wheuat_notifications", String(notifications)); }, [notifications]);
+  useEffect(() => { localStorage.setItem("wheuat_release_alerts", String(newReleaseAlerts)); }, [newReleaseAlerts]);
+  useEffect(() => { localStorage.setItem("wheuat_autoplay", String(autoplay)); }, [autoplay]);
+  useEffect(() => { localStorage.setItem("wheuat_quality", streamingQuality); }, [streamingQuality]);
+  useEffect(() => { localStorage.setItem("wheuat_private", String(privateProfile)); }, [privateProfile]);
+  useEffect(() => { localStorage.setItem("wheuat_show_activity", String(showActivity)); }, [showActivity]);
 
   return (
     <div className="px-4 pt-6 pb-24">
@@ -93,6 +78,16 @@ const SettingsPage = () => {
         >
           <Switch checked={darkMode} onCheckedChange={setDarkMode} />
         </SettingRow>
+        <ActionRow
+          icon={<Palette className="w-4 h-4" />}
+          label="Theme & Colors"
+          onClick={() => setShowThemePicker(!showThemePicker)}
+        />
+        {showThemePicker && (
+          <div className="mt-1.5 p-4 rounded-xl bg-card border border-border">
+            <ThemePickerSheet onComplete={() => setShowThemePicker(false)} />
+          </div>
+        )}
       </Section>
 
       {/* Notifications */}
@@ -187,15 +182,9 @@ const Section = ({ title, children }: { title: string; children: React.ReactNode
 );
 
 const SettingRow = ({
-  icon,
-  label,
-  description,
-  children,
+  icon, label, description, children,
 }: {
-  icon: React.ReactNode;
-  label: string;
-  description: string;
-  children: React.ReactNode;
+  icon: React.ReactNode; label: string; description: string; children: React.ReactNode;
 }) => (
   <div className="flex items-center gap-3 p-3.5 rounded-xl bg-card border border-border">
     <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">{icon}</div>
@@ -208,15 +197,9 @@ const SettingRow = ({
 );
 
 const ActionRow = ({
-  icon,
-  label,
-  onClick,
-  destructive,
+  icon, label, onClick, destructive,
 }: {
-  icon: React.ReactNode;
-  label: string;
-  onClick?: () => void;
-  destructive?: boolean;
+  icon: React.ReactNode; label: string; onClick?: () => void; destructive?: boolean;
 }) => (
   <button
     onClick={onClick}

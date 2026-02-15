@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { ThemeProvider, useTheme } from "@/contexts/ThemeContext";
 import { supabase } from "@/integrations/supabase/client";
 import { CartProvider } from "@/contexts/CartContext";
 import { RadioProvider } from "@/contexts/RadioContext";
@@ -37,13 +38,16 @@ import BrowseVideosPage from "./pages/BrowseVideosPage";
 import PurchasesPage from "./pages/PurchasesPage";
 
 import TermsAgreementGate from "./components/TermsAgreementGate";
+import ThemePickerSheet from "./components/ThemePickerSheet";
 
 const queryClient = new QueryClient();
 
 const ProtectedRoutes = () => {
   const { user, loading } = useAuth();
+  const { themeSetupDone } = useTheme();
   const [termsAccepted, setTermsAccepted] = useState<boolean | null>(null);
   const [termsLoading, setTermsLoading] = useState(true);
+  const [showThemePicker, setShowThemePicker] = useState(false);
 
   // Initialize theme on mount
   useEffect(() => {
@@ -76,6 +80,13 @@ const ProtectedRoutes = () => {
     checkTerms();
   }, [user]);
 
+  // Show theme picker after terms accepted if not set up
+  useEffect(() => {
+    if (termsAccepted && themeSetupDone === false) {
+      setShowThemePicker(true);
+    }
+  }, [termsAccepted, themeSetupDone]);
+
   const handleAcceptTerms = useCallback(async () => {
     if (!user) return;
     await supabase
@@ -104,6 +115,15 @@ const ProtectedRoutes = () => {
           <Route path="/terms" element={<TermsPage />} />
           <Route path="*" element={<TermsAgreementGate onAccept={handleAcceptTerms} />} />
         </Routes>
+      </div>
+    );
+  }
+
+  // Show theme picker onboarding
+  if (showThemePicker) {
+    return (
+      <div className="min-h-screen bg-background text-foreground max-w-lg mx-auto relative flex items-center justify-center px-6">
+        <ThemePickerSheet isOnboarding onComplete={() => setShowThemePicker(false)} />
       </div>
     );
   }
@@ -151,16 +171,20 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
-            <CartProvider>
-              <PlaylistProvider>
-                <RadioProvider>
-                  <Routes>
-                    <Route path="/auth" element={<AuthPage />} />
-                    <Route path="/*" element={<ProtectedRoutes />} />
-                  </Routes>
-                </RadioProvider>
-              </PlaylistProvider>
-            </CartProvider>
+            <ThemeProvider>
+              <CartProvider>
+                <PlaylistProvider>
+                  <RadioProvider>
+                    <div id="app-bg-layer" className="min-h-screen">
+                      <Routes>
+                        <Route path="/auth" element={<AuthPage />} />
+                        <Route path="/*" element={<ProtectedRoutes />} />
+                      </Routes>
+                    </div>
+                  </RadioProvider>
+                </PlaylistProvider>
+              </CartProvider>
+            </ThemeProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
