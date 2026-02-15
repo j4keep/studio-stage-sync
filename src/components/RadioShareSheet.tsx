@@ -1,5 +1,5 @@
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Send, Copy, QrCode, MessageSquare, Instagram, Share2 } from "lucide-react";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Send, Copy, MessageSquare, Share2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 interface RadioShareSheetProps {
@@ -11,9 +11,7 @@ interface RadioShareSheetProps {
 const SHARE_OPTIONS = [
   { icon: Send, label: "Message", action: "message" },
   { icon: Copy, label: "Copy link", action: "copy" },
-  { icon: QrCode, label: "QR code", action: "qr" },
   { icon: MessageSquare, label: "SMS", action: "sms" },
-  { icon: Instagram, label: "Stories", action: "stories" },
   { icon: Share2, label: "More", action: "more" },
 ];
 
@@ -33,9 +31,6 @@ const RadioShareSheet = ({ open, onOpenChange, track }: RadioShareSheetProps) =>
       case "message":
       case "sms":
         window.open(`sms:?body=${encodeURIComponent(`${shareText}\n${shareUrl}`)}`);
-        break;
-      case "stories":
-        window.open(`https://www.instagram.com/`);
         break;
       case "more":
         if (navigator.share) {

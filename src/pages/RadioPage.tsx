@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, Heart, Share2, MessageCircle, MoreHorizontal, ListMusic, ChevronDown, Music } from "lucide-react";
+import { Play, Pause, Heart, Share2, MessageCircle, MoreHorizontal, ListMusic, ChevronDown, Music, Send } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useRadio } from "@/contexts/RadioContext";
 import { GENRES } from "@/lib/genres";
@@ -12,8 +12,6 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Slider } from "@/components/ui/slider";
 
 const RADIO_GENRE_FILTERS = ["All", ...GENRES.filter(g => g !== "Beats")];
-const EMOJI_REACTIONS = ["🔥", "👏", "🥺"];
-const QUICK_COMMENTS = ["i love this 💖", "on repeat!!!", "this is my vibe 🐍"];
 
 const formatTime = (s: number) => {
   if (!s || !isFinite(s)) return "0:00";
@@ -21,6 +19,15 @@ const formatTime = (s: number) => {
   const sec = Math.floor(s % 60);
   return `${m}:${sec.toString().padStart(2, "0")}`;
 };
+
+// Local comments state type
+interface RadioComment {
+  id: string;
+  text: string;
+  timestamp: number;
+  createdAt: Date;
+  author: string;
+}
 
 const RadioPage = () => {
   const navigate = useNavigate();
@@ -37,6 +44,28 @@ const RadioPage = () => {
   const [moreOpen, setMoreOpen] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [isSeeking, setIsSeeking] = useState(false);
+  const [commentText, setCommentText] = useState("");
+  const [comments, setComments] = useState<Record<string, RadioComment[]>>({});
+  const commentInputRef = useRef<HTMLInputElement>(null);
+
+  const trackComments = currentTrack ? (comments[currentTrack.id] || []) : [];
+
+  const handlePostComment = () => {
+    if (!commentText.trim() || !currentTrack) return;
+    const newComment: RadioComment = {
+      id: `c-${Date.now()}`,
+      text: commentText.trim(),
+      timestamp: currentTime,
+      createdAt: new Date(),
+      author: "You",
+    };
+    setComments(prev => ({
+      ...prev,
+      [currentTrack.id]: [...(prev[currentTrack.id] || []), newComment],
+    }));
+    setCommentText("");
+    toast({ title: "Comment posted!" });
+  };
 
   if (loading) {
     return (
@@ -75,7 +104,6 @@ const RadioPage = () => {
   const track = currentTrack;
   const likeCount = getLikeCount(track.id);
   const liked = isLiked(track.id);
-  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
     <div className="flex flex-col min-h-screen bg-background relative">
@@ -117,7 +145,6 @@ const RadioPage = () => {
 
           {/* Track info overlay */}
           <div className="absolute bottom-0 left-0 right-0 px-4 pb-4 z-10">
-            {/* Title & Artist */}
             <div className="mb-3">
               <h2 className="text-lg font-bold text-foreground drop-shadow-lg leading-tight">{track.title}</h2>
               <p className="text-sm text-foreground/80 drop-shadow-lg">{track.artist_name}</p>
@@ -125,7 +152,7 @@ const RadioPage = () => {
             </div>
 
             {/* Seekable progress bar */}
-            <div className="mb-1">
+            <div className="mb-3">
               <Slider
                 value={[isSeeking ? undefined as any : currentTime]}
                 max={duration || 100}
@@ -138,22 +165,6 @@ const RadioPage = () => {
                 <span className="text-[10px] text-foreground/70">{formatTime(currentTime)}</span>
                 <span className="text-[10px] text-foreground/70">{formatTime(duration)}</span>
               </div>
-            </div>
-
-            {/* Emoji comment bar */}
-            <div className="flex items-center gap-2 mb-3">
-              <div className="flex-1 flex items-center bg-secondary/60 backdrop-blur-sm rounded-full px-4 py-2">
-                <span className="text-xs text-muted-foreground">Drop a comment</span>
-              </div>
-              {EMOJI_REACTIONS.map((emoji) => (
-                <button
-                  key={emoji}
-                  onClick={() => toast({ title: `Reacted ${emoji}`, description: `You reacted to "${track.title}"` })}
-                  className="text-xl hover:scale-125 transition-transform"
-                >
-                  {emoji}
-                </button>
-              ))}
             </div>
           </div>
 
@@ -168,29 +179,23 @@ const RadioPage = () => {
 
       {/* Bottom action bar */}
       <div className="flex items-center justify-around py-3 px-4 bg-background border-t border-border">
-        {/* Like */}
         <button onClick={() => toggleLike(track.id)} className="flex items-center gap-1.5">
           <Heart className={`w-6 h-6 transition-colors ${liked ? "text-primary fill-primary" : "text-foreground"}`} />
           <span className="text-xs text-foreground font-medium">{likeCount}</span>
         </button>
 
-        {/* Comments */}
-        <button onClick={() => setCommentsOpen(true)} className="flex items-center gap-1.5">
+        <button onClick={() => setCommentsOpen(true)}>
           <MessageCircle className="w-6 h-6 text-foreground" />
-          <span className="text-xs text-foreground font-medium">0</span>
         </button>
 
-        {/* Share */}
         <button onClick={() => setShareOpen(true)}>
           <Share2 className="w-6 h-6 text-foreground" />
         </button>
 
-        {/* Queue */}
         <button onClick={skip} disabled={skipsLeft === 0}>
           <ListMusic className="w-6 h-6 text-foreground disabled:opacity-30" />
         </button>
 
-        {/* More */}
         <button onClick={() => setMoreOpen(true)}>
           <MoreHorizontal className="w-6 h-6 text-foreground" />
         </button>
@@ -231,35 +236,49 @@ const RadioPage = () => {
             </div>
           </div>
 
-          {/* Emoji summary */}
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex gap-1">
-              {EMOJI_REACTIONS.map(e => <span key={e} className="text-lg">{e}</span>)}
-            </div>
-            <span className="text-xs text-muted-foreground">{likeCount} reactions</span>
-          </div>
-
-          {/* Empty state */}
-          <div className="flex-1 flex items-center justify-center">
-            <p className="text-sm text-muted-foreground">No comments yet. Be the first!</p>
-          </div>
-
-          {/* Quick comments */}
-          <div className="flex gap-2 overflow-x-auto scrollbar-hide mb-3">
-            {QUICK_COMMENTS.map(c => (
-              <button key={c} onClick={() => toast({ title: "Comment posted!", description: c })}
-                className="px-3 py-1.5 rounded-full bg-secondary text-xs text-foreground whitespace-nowrap hover:bg-secondary/80 transition-colors">
-                {c}
-              </button>
-            ))}
+          {/* Comments list */}
+          <div className="flex-1 overflow-y-auto">
+            {trackComments.length === 0 ? (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-sm text-muted-foreground">No comments yet. Be the first!</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {trackComments.map((c) => (
+                  <div key={c.id} className="flex gap-2">
+                    <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center shrink-0">
+                      <span className="text-[10px] font-bold text-foreground">{c.author[0]}</span>
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-foreground">{c.author}</span>
+                        <span className="text-[9px] text-muted-foreground">at {formatTime(c.timestamp)}</span>
+                      </div>
+                      <p className="text-xs text-foreground/80 mt-0.5">{c.text}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Comment input */}
-          <div className="flex items-center gap-2">
-            <div className="flex-1 flex items-center bg-secondary rounded-full px-4 py-2.5">
-              <span className="text-xs text-muted-foreground">Add a comment at...</span>
-            </div>
-            <span className="text-xs text-muted-foreground">{formatTime(currentTime)}</span>
+          <div className="flex items-center gap-2 pt-3 border-t border-border">
+            <input
+              ref={commentInputRef}
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handlePostComment()}
+              placeholder={`Comment at ${formatTime(currentTime)}...`}
+              className="flex-1 bg-secondary rounded-full px-4 py-2.5 text-xs text-foreground placeholder:text-muted-foreground outline-none"
+            />
+            <button
+              onClick={handlePostComment}
+              disabled={!commentText.trim()}
+              className="w-9 h-9 rounded-full gradient-primary flex items-center justify-center disabled:opacity-40"
+            >
+              <Send className="w-4 h-4 text-primary-foreground" />
+            </button>
           </div>
         </SheetContent>
       </Sheet>
