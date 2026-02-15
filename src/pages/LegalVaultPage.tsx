@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
-import { motion } from "framer-motion";
-import { ArrowLeft, Shield, FileText, Upload, Lock, ChevronRight, Plus, CheckCircle, Download, Trash2, Loader2, File } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ArrowLeft, Shield, FileText, Upload, Lock, ChevronRight, Plus, CheckCircle, Download, Trash2, Loader2, File, Eye, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -241,6 +241,10 @@ const LegalVaultPage = () => {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [viewingTemplate, setViewingTemplate] = useState<typeof TEMPLATES[0] | null>(null);
+  const [viewingDocUrl, setViewingDocUrl] = useState<string | null>(null);
+  const [viewingDocName, setViewingDocName] = useState<string>("");
+  const [loadingView, setLoadingView] = useState(false);
 
   // Fetch user's uploaded documents
   const { data: userDocs, isLoading } = useQuery({
@@ -334,9 +338,32 @@ const LegalVaultPage = () => {
     const a = document.createElement("a");
     a.href = url;
     a.download = `${template.title.replace(/\s+/g, "-").toLowerCase()}.txt`;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
     toast.success(`Downloaded "${template.title}"`);
+  };
+
+  // View user document from R2
+  const viewUserDoc = async (doc: any) => {
+    setLoadingView(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/r2-download?key=${encodeURIComponent(doc.file_url)}`,
+        { headers: { Authorization: `Bearer ${session?.access_token}` } }
+      );
+      if (!res.ok) throw new Error("Failed to load document");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      setViewingDocUrl(url);
+      setViewingDocName(doc.file_name || doc.title);
+    } catch {
+      toast.error("Failed to load document for viewing");
+    } finally {
+      setLoadingView(false);
+    }
   };
 
   // Download user document from R2
@@ -353,8 +380,11 @@ const LegalVaultPage = () => {
       const a = document.createElement("a");
       a.href = url;
       a.download = doc.file_name || "document";
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast.success("Download started");
     } catch {
       toast.error("Failed to download document");
     }
@@ -455,8 +485,16 @@ const LegalVaultPage = () => {
                 <p className="text-[10px] text-muted-foreground">{t.category} · {t.description.slice(0, 50)}...</p>
               </div>
               <button
+                onClick={() => setViewingTemplate(t)}
+                className="p-2 rounded-lg bg-accent/50 hover:bg-accent transition-colors shrink-0"
+                title="View"
+              >
+                <Eye className="w-4 h-4 text-foreground" />
+              </button>
+              <button
                 onClick={() => downloadTemplate(t)}
                 className="p-2 rounded-lg bg-primary/10 hover:bg-primary/20 transition-colors shrink-0"
+                title="Download"
               >
                 <Download className="w-4 h-4 text-primary" />
               </button>
@@ -497,14 +535,24 @@ const LegalVaultPage = () => {
                   </p>
                 </div>
                 <button
+                  onClick={() => viewUserDoc(doc)}
+                  disabled={loadingView}
+                  className="p-2 rounded-lg bg-accent/50 hover:bg-accent transition-colors shrink-0"
+                  title="View"
+                >
+                  <Eye className="w-4 h-4 text-foreground" />
+                </button>
+                <button
                   onClick={() => downloadUserDoc(doc)}
                   className="p-2 rounded-lg bg-primary/10 hover:bg-primary/20 transition-colors shrink-0"
+                  title="Download"
                 >
                   <Download className="w-4 h-4 text-primary" />
                 </button>
                 <button
                   onClick={() => deleteMutation.mutate(doc.id)}
                   className="p-2 rounded-lg bg-destructive/10 hover:bg-destructive/20 transition-colors shrink-0"
+                  title="Delete"
                 >
                   <Trash2 className="w-4 h-4 text-destructive" />
                 </button>
@@ -513,6 +561,73 @@ const LegalVaultPage = () => {
           </div>
         )}
       </div>
+
+      {/* Template Viewer Overlay */}
+      <AnimatePresence>
+        {viewingTemplate && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex flex-col"
+          >
+            <div className="flex items-center justify-between p-4 border-b border-border">
+              <div className="flex-1 min-w-0">
+                <h2 className="text-base font-display font-bold text-foreground truncate">{viewingTemplate.title}</h2>
+                <p className="text-[10px] text-muted-foreground">{viewingTemplate.category}</p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => downloadTemplate(viewingTemplate)}
+                  className="p-2 rounded-lg bg-primary/10 hover:bg-primary/20 transition-colors"
+                >
+                  <Download className="w-4 h-4 text-primary" />
+                </button>
+                <button
+                  onClick={() => setViewingTemplate(null)}
+                  className="p-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
+                >
+                  <X className="w-4 h-4 text-foreground" />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto p-4">
+              <pre className="text-xs text-foreground whitespace-pre-wrap font-mono leading-relaxed">{viewingTemplate.content}</pre>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* User Document Viewer Overlay */}
+      <AnimatePresence>
+        {viewingDocUrl && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex flex-col"
+          >
+            <div className="flex items-center justify-between p-4 border-b border-border">
+              <h2 className="text-base font-display font-bold text-foreground truncate flex-1">{viewingDocName}</h2>
+              <button
+                onClick={() => { URL.revokeObjectURL(viewingDocUrl); setViewingDocUrl(null); }}
+                className="p-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
+              >
+                <X className="w-4 h-4 text-foreground" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto">
+              <iframe src={viewingDocUrl} className="w-full h-full min-h-[80vh]" title={viewingDocName} />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {loadingView && (
+        <div className="fixed inset-0 z-50 bg-background/80 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      )}
     </div>
   );
 };
