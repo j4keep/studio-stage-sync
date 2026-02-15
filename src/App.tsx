@@ -33,6 +33,7 @@ import StorePage from "./pages/StorePage";
 import MessagesPage from "./pages/MessagesPage";
 import BrowseSongsPage from "./pages/BrowseSongsPage";
 import BrowseVideosPage from "./pages/BrowseVideosPage";
+import PurchasesPage from "./pages/PurchasesPage";
 
 import TermsAgreementGate from "./components/TermsAgreementGate";
 
@@ -132,6 +133,7 @@ const ProtectedRoutes = () => {
         <Route path="/messages" element={<MessagesPage />} />
         <Route path="/browse-songs" element={<BrowseSongsPage />} />
         <Route path="/browse-videos" element={<BrowseVideosPage />} />
+        <Route path="/purchases" element={<PurchasesPage />} />
         
         <Route path="/dollar-club" element={<div className="px-4 pt-4 pb-4 text-center"><h1 className="text-lg font-display font-bold text-foreground mb-2">Dollar Club</h1><p className="text-sm text-muted-foreground">Sell your products for $1 and build your fanbase. Coming soon!</p></div>} />
         <Route path="*" element={<NotFound />} />

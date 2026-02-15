@@ -433,6 +433,47 @@ export type Database = {
           },
         ]
       }
+      studio_bookings: {
+        Row: {
+          booking_date: string
+          created_at: string
+          hours: number
+          id: string
+          status: string
+          studio_id: string
+          total_amount: number
+          user_id: string
+        }
+        Insert: {
+          booking_date: string
+          created_at?: string
+          hours?: number
+          id?: string
+          status?: string
+          studio_id: string
+          total_amount?: number
+          user_id: string
+        }
+        Update: {
+          booking_date?: string
+          created_at?: string
+          hours?: number
+          id?: string
+          status?: string
+          studio_id?: string
+          total_amount?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_bookings_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       studio_photos: {
         Row: {
           created_at: string
@@ -458,6 +499,51 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "studio_photos_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_reviews: {
+        Row: {
+          booking_id: string
+          comment: string | null
+          created_at: string
+          id: string
+          rating: number
+          studio_id: string
+          user_id: string
+        }
+        Insert: {
+          booking_id: string
+          comment?: string | null
+          created_at?: string
+          id?: string
+          rating: number
+          studio_id: string
+          user_id: string
+        }
+        Update: {
+          booking_id?: string
+          comment?: string | null
+          created_at?: string
+          id?: string
+          rating?: number
+          studio_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "studio_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_reviews_studio_id_fkey"
             columns: ["studio_id"]
             isOneToOne: false
             referencedRelation: "studios"
