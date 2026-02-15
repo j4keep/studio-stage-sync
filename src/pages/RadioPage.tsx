@@ -48,6 +48,7 @@ const RadioPage = () => {
   const [comments, setComments] = useState<Record<string, RadioComment[]>>({});
   const commentInputRef = useRef<HTMLInputElement>(null);
   const swipeStartX = useRef<number | null>(null);
+  const swipeStartY = useRef<number | null>(null);
 
   const trackComments = currentTrack ? (comments[currentTrack.id] || []) : [];
 
@@ -138,13 +139,22 @@ const RadioPage = () => {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.3 }}
           className="relative flex-1 min-h-0"
-          onTouchStart={(e) => { swipeStartX.current = e.touches[0].clientX; }}
+          onTouchStart={(e) => {
+            swipeStartX.current = e.touches[0].clientX;
+            swipeStartY.current = e.touches[0].clientY;
+          }}
           onTouchEnd={(e) => {
-            if (swipeStartX.current === null) return;
-            const diff = e.changedTouches[0].clientX - swipeStartX.current;
+            if (swipeStartX.current === null || swipeStartY.current === null) return;
+            const diffX = e.changedTouches[0].clientX - swipeStartX.current;
+            const diffY = e.changedTouches[0].clientY - swipeStartY.current;
             swipeStartX.current = null;
-            if (Math.abs(diff) > 60) {
-              if (diff < 0) skip();
+            swipeStartY.current = null;
+            if (diffY > 80 && Math.abs(diffX) < Math.abs(diffY)) {
+              navigate(-1);
+              return;
+            }
+            if (Math.abs(diffX) > 60) {
+              if (diffX < 0) skip();
               else previous();
             }
           }}

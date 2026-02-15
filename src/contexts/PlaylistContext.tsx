@@ -54,6 +54,9 @@ interface PlaylistContextType {
   prevPlaylistTrack: () => void;
   stopPlaylistPlayback: () => void;
   playlistAudioRef: React.MutableRefObject<HTMLAudioElement | null>;
+  // Full-screen player sheet
+  playerSheetOpen: boolean;
+  setPlayerSheetOpen: (open: boolean) => void;
 }
 
 const PlaylistContext = createContext<PlaylistContextType | null>(null);
@@ -177,6 +180,7 @@ export const PlaylistProvider = ({ children }: { children: ReactNode }) => {
   const playlistAudioRef = useRef<HTMLAudioElement | null>(null);
   const [nowPlaying, setNowPlaying] = useState<{ items: PlaylistItem[]; index: number } | null>(null);
   const [isPlaylistPlaying, setIsPlaylistPlaying] = useState(false);
+  const [playerSheetOpen, setPlayerSheetOpen] = useState(false);
 
   // Create persistent audio element
   useEffect(() => {
@@ -208,6 +212,7 @@ export const PlaylistProvider = ({ children }: { children: ReactNode }) => {
     if (!audio) return;
     const item = items[startIndex];
     setNowPlaying({ items, index: startIndex });
+    setPlayerSheetOpen(true);
     if (item?.audioUrl) {
       audio.src = item.audioUrl;
       audio.play().catch(() => {});
@@ -269,6 +274,7 @@ export const PlaylistProvider = ({ children }: { children: ReactNode }) => {
       createPlaylist, deletePlaylist, renamePlaylist, loading,
       nowPlaying, isPlaylistPlaying, playFromPlaylist, togglePlaylistPlayback,
       skipPlaylistTrack, prevPlaylistTrack, stopPlaylistPlayback, playlistAudioRef,
+      playerSheetOpen, setPlayerSheetOpen,
     }}>
       {children}
     </PlaylistContext.Provider>
