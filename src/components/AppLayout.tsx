@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import BottomNav from "./BottomNav";
 import GlobalRadioPlayer from "./GlobalRadioPlayer";
 import GlobalPlaylistPlayer from "./GlobalPlaylistPlayer";
+import PlaylistPlayerSheet from "./PlaylistPlayerSheet";
 
 const AppLayout = ({ children }: { children: ReactNode }) => {
   return (
@@ -9,6 +10,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
       <main className="pb-20">{children}</main>
       <GlobalRadioPlayer />
       <GlobalPlaylistPlayer />
+      <PlaylistPlayerSheet />
       <BottomNav />
     </div>
   );

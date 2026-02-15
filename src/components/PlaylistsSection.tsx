@@ -5,7 +5,6 @@ import {
   ListMusic, ChevronRight, ChevronDown
 } from "lucide-react";
 import { usePlaylists, PlaylistItem } from "@/contexts/PlaylistContext";
-import PlaylistPlayerSheet from "@/components/PlaylistPlayerSheet";
 
 const typeIcon = (type: PlaylistItem["type"]) => {
   switch (type) {
@@ -25,18 +24,8 @@ const PlaylistsSection = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
 
-  // Full-screen player state
-  const [playerOpen, setPlayerOpen] = useState(false);
-  const [playerItems, setPlayerItems] = useState<PlaylistItem[]>([]);
-  const [playerStartIndex, setPlayerStartIndex] = useState(0);
-
   const handlePlayItem = (playlist: { items: PlaylistItem[] }, itemIndex: number) => {
-    // Start global playback so it persists across navigation
     playFromPlaylist(playlist.items, itemIndex);
-    // Also open the full-screen player sheet
-    setPlayerItems(playlist.items);
-    setPlayerStartIndex(itemIndex);
-    setPlayerOpen(true);
   };
 
   const handleCreate = () => {
@@ -190,14 +179,6 @@ const PlaylistsSection = () => {
           <p className="text-[10px] text-muted-foreground mt-1">Create one to save your favorite songs, videos, and podcasts</p>
         </div>
       )}
-
-      {/* Full-screen playlist player */}
-      <PlaylistPlayerSheet
-        open={playerOpen}
-        onOpenChange={setPlayerOpen}
-        items={playerItems}
-        startIndex={playerStartIndex}
-      />
     </div>
   );
 };
