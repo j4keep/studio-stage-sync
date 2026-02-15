@@ -9,6 +9,7 @@ export const GENRES = [
   "Haitian",
   "Afrobeat",
   "Latin Music",
+  "Gospel",
   "All Music",
 ] as const;
 
@@ -22,6 +23,7 @@ export const BEAT_SUB_GENRES = [
   "Haitian",
   "Afrobeat",
   "Latin Music",
+  "Gospel",
   "All Music",
 ] as const;
 
