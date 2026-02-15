@@ -29,7 +29,7 @@ const GENRE_IMAGES: Record<string, string> = {
   "Rock": genreRock,
   "Future Pop": genreFuturepop,
   "Hip Hop/Rap": genreHiphop,
-  "Reggaeton": genreReggaeton,
+  "Reggae": genreReggaeton,
   "Haitian": genreHaitian,
   "Afrobeat": genreAfrobeat,
   "Latin Music": genreLatin,

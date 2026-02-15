@@ -5,11 +5,11 @@ export const GENRES = [
   "Rock",
   "Future Pop",
   "Hip Hop/Rap",
-  "Reggaeton",
+  "Gospel",
   "Haitian",
   "Afrobeat",
   "Latin Music",
-  "Gospel",
+  "Reggae",
   "All Music",
 ] as const;
 
@@ -19,11 +19,11 @@ export const BEAT_SUB_GENRES = [
   "Rock",
   "Future Pop",
   "Hip Hop/Rap",
-  "Reggaeton",
+  "Gospel",
   "Haitian",
   "Afrobeat",
   "Latin Music",
-  "Gospel",
+  "Reggae",
   "All Music",
 ] as const;
 
