@@ -1,11 +1,11 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Plus, Music, Video, Mic2, Play, Pause, Trash2, Edit3, X,
-  ListMusic, ChevronRight, ChevronDown, SkipForward, SkipBack
+  Plus, Music, Video, Mic2, Play, Trash2, Edit3, X,
+  ListMusic, ChevronRight, ChevronDown
 } from "lucide-react";
 import { usePlaylists, PlaylistItem } from "@/contexts/PlaylistContext";
-import { Progress } from "@/components/ui/progress";
+import PlaylistPlayerSheet from "@/components/PlaylistPlayerSheet";
 
 const typeIcon = (type: PlaylistItem["type"]) => {
   switch (type) {
@@ -15,25 +15,9 @@ const typeIcon = (type: PlaylistItem["type"]) => {
   }
 };
 
-const formatTime = (sec: number) => {
-  if (!sec || !isFinite(sec)) return "0:00";
-  const m = Math.floor(sec / 60);
-  const s = Math.floor(sec % 60);
-  return `${m}:${s.toString().padStart(2, "0")}`;
-};
-
 const PlaylistsSection = () => {
   const { playlists, sampleLibrary, addItemToPlaylist, removeItemFromPlaylist, createPlaylist, deletePlaylist, renamePlaylist } = usePlaylists();
 
-  // Independent audio player state
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [activePlaylistId, setActivePlaylistId] = useState<string | null>(null);
-  const [activeItemId, setActiveItemId] = useState<string | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-
-  // UI state
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState("");
@@ -41,108 +25,16 @@ const PlaylistsSection = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
 
-  // Create audio element once
-  useEffect(() => {
-    const audio = new Audio();
-    audio.preload = "auto";
-    audioRef.current = audio;
+  // Full-screen player state
+  const [playerOpen, setPlayerOpen] = useState(false);
+  const [playerItems, setPlayerItems] = useState<PlaylistItem[]>([]);
+  const [playerStartIndex, setPlayerStartIndex] = useState(0);
 
-    audio.addEventListener("timeupdate", () => setCurrentTime(audio.currentTime));
-    audio.addEventListener("loadedmetadata", () => setDuration(audio.duration));
-    audio.addEventListener("durationchange", () => setDuration(audio.duration));
-    audio.addEventListener("ended", () => {
-      // Auto-advance to next item in playlist
-      handleNext();
-    });
-
-    return () => {
-      audio.pause();
-      audio.src = "";
-    };
-  }, []);
-
-  // We need handleNext as a ref-stable callback
-  const handleNext = useCallback(() => {
-    if (!activePlaylistId || !activeItemId) return;
-    const playlist = playlists.find(p => p.id === activePlaylistId);
-    if (!playlist || playlist.items.length === 0) return;
-    const idx = playlist.items.findIndex(i => i.id === activeItemId);
-    const nextIdx = (idx + 1) % playlist.items.length;
-    playItem(activePlaylistId, playlist.items[nextIdx]);
-  }, [activePlaylistId, activeItemId, playlists]);
-
-  const handlePrev = useCallback(() => {
-    if (!activePlaylistId || !activeItemId) return;
-    const playlist = playlists.find(p => p.id === activePlaylistId);
-    if (!playlist || playlist.items.length === 0) return;
-    const idx = playlist.items.findIndex(i => i.id === activeItemId);
-    const prevIdx = (idx - 1 + playlist.items.length) % playlist.items.length;
-    playItem(activePlaylistId, playlist.items[prevIdx]);
-  }, [activePlaylistId, activeItemId, playlists]);
-
-  // Update ended handler when deps change
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    const onEnded = () => handleNext();
-    audio.addEventListener("ended", onEnded);
-    return () => audio.removeEventListener("ended", onEnded);
-  }, [handleNext]);
-
-  const playItem = (playlistId: string, item: PlaylistItem) => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    // If same item, toggle play/pause
-    if (activeItemId === item.id && activePlaylistId === playlistId) {
-      if (isPlaying) {
-        audio.pause();
-        setIsPlaying(false);
-      } else {
-        audio.play().catch(() => {});
-        setIsPlaying(true);
-      }
-      return;
-    }
-
-    // For sample library items we don't have real audio URLs,
-    // but we still set state so the UI reflects the selection
-    setActivePlaylistId(playlistId);
-    setActiveItemId(item.id);
-    setCurrentTime(0);
-    setDuration(0);
-
-    // Try to play - the image field won't work as audio but we handle gracefully
-    // In a real app, PlaylistItem would have an audioUrl field
-    audio.src = ""; // Reset
-    setIsPlaying(true);
-    // Note: Without real audio URLs on playlist items, playback won't produce sound
-    // but the UI controls will work correctly
+  const handlePlayItem = (playlist: { items: PlaylistItem[] }, itemIndex: number) => {
+    setPlayerItems(playlist.items);
+    setPlayerStartIndex(itemIndex);
+    setPlayerOpen(true);
   };
-
-  const togglePlayPause = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (isPlaying) {
-      audio.pause();
-      setIsPlaying(false);
-    } else {
-      audio.play().catch(() => {});
-      setIsPlaying(true);
-    }
-  };
-
-  const seekTo = (e: React.MouseEvent<HTMLDivElement>, itemDuration: number) => {
-    const audio = audioRef.current;
-    if (!audio || !itemDuration) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const pct = (e.clientX - rect.left) / rect.width;
-    const time = pct * (duration || itemDuration);
-    audio.currentTime = time;
-    setCurrentTime(time);
-  };
-
-  const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   const handleCreate = () => {
     if (!newName.trim()) return;
@@ -228,67 +120,22 @@ const PlaylistsSection = () => {
                     <div className="border-t border-border px-3 pb-3">
                       {playlist.items.length > 0 ? (
                         <div className="flex flex-col gap-1 mt-2">
-                          {playlist.items.map((item, i) => {
-                            const isActive = activeItemId === item.id && activePlaylistId === playlist.id;
-                            return (
-                              <div key={item.id} className="flex flex-col">
-                                <div
-                                  onClick={() => playItem(playlist.id, item)}
-                                  className={`flex items-center gap-2.5 p-2 rounded-lg transition-all group cursor-pointer ${isActive ? "bg-primary/10" : "hover:bg-primary/5"}`}
-                                >
-                                  <span className="text-[10px] text-muted-foreground w-4 text-right">{i + 1}</span>
-                                  <div className="relative w-8 h-8 rounded-md overflow-hidden flex-shrink-0">
-                                    <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
-                                    <div className={`absolute inset-0 bg-black/30 flex items-center justify-center transition-opacity ${isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
-                                      {isActive && isPlaying ? (
-                                        <Pause className="w-3 h-3 text-white fill-white" />
-                                      ) : (
-                                        <Play className="w-3 h-3 text-white fill-white" />
-                                      )}
-                                    </div>
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <p className={`text-xs font-medium truncate ${isActive ? "text-primary" : "text-foreground"}`}>{item.title}</p>
-                                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground">{typeIcon(item.type)}<span>{item.artist} · {item.duration}</span></div>
-                                  </div>
-
-                                  {/* Playback controls for active item */}
-                                  {isActive && (
-                                    <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                                      <button onClick={() => handlePrev()} className="p-1 rounded hover:bg-primary/10 text-muted-foreground"><SkipBack className="w-3 h-3" /></button>
-                                      <button onClick={togglePlayPause} className="p-1.5 rounded-full bg-primary text-primary-foreground">
-                                        {isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
-                                      </button>
-                                      <button onClick={() => handleNext()} className="p-1 rounded hover:bg-primary/10 text-muted-foreground"><SkipForward className="w-3 h-3" /></button>
-                                    </div>
-                                  )}
-
-                                  {!isActive && (
-                                    <button onClick={(e) => { e.stopPropagation(); removeItemFromPlaylist(playlist.id, item.id); }} className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-all"><X className="w-3 h-3" /></button>
-                                  )}
-                                </div>
-
-                                {/* Progress bar for active item */}
-                                {isActive && (
-                                  <div className="pl-[26px] pr-2 pb-1">
-                                    <div
-                                      className="relative h-1.5 w-full rounded-full bg-secondary cursor-pointer overflow-hidden"
-                                      onClick={(e) => seekTo(e, 0)}
-                                    >
-                                      <div
-                                        className="absolute inset-y-0 left-0 rounded-full bg-primary transition-all"
-                                        style={{ width: `${progressPercent}%` }}
-                                      />
-                                    </div>
-                                    <div className="flex justify-between mt-0.5">
-                                      <span className="text-[9px] text-muted-foreground">{formatTime(currentTime)}</span>
-                                      <span className="text-[9px] text-muted-foreground">{duration > 0 ? formatTime(duration) : item.duration}</span>
-                                    </div>
-                                  </div>
-                                )}
+                          {playlist.items.map((item, i) => (
+                            <div key={item.id} className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-primary/5 transition-all group cursor-pointer"
+                              onClick={() => handlePlayItem(playlist, i)}
+                            >
+                              <span className="text-[10px] text-muted-foreground w-4 text-right">{i + 1}</span>
+                              <div className="relative w-8 h-8 rounded-md overflow-hidden flex-shrink-0">
+                                <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Play className="w-3 h-3 text-white fill-white" /></div>
                               </div>
-                            );
-                          })}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-medium text-foreground truncate">{item.title}</p>
+                                <div className="flex items-center gap-1 text-[10px] text-muted-foreground">{typeIcon(item.type)}<span>{item.artist} · {item.duration}</span></div>
+                              </div>
+                              <button onClick={(e) => { e.stopPropagation(); removeItemFromPlaylist(playlist.id, item.id); }} className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-all"><X className="w-3 h-3" /></button>
+                            </div>
+                          ))}
                         </div>
                       ) : (
                         <div className="py-4 text-center">
@@ -340,6 +187,14 @@ const PlaylistsSection = () => {
           <p className="text-[10px] text-muted-foreground mt-1">Create one to save your favorite songs, videos, and podcasts</p>
         </div>
       )}
+
+      {/* Full-screen playlist player */}
+      <PlaylistPlayerSheet
+        open={playerOpen}
+        onOpenChange={setPlayerOpen}
+        items={playerItems}
+        startIndex={playerStartIndex}
+      />
     </div>
   );
 };

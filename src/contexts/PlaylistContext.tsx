@@ -14,6 +14,7 @@ export type PlaylistItem = {
   type: "song" | "video" | "podcast";
   image: string;
   duration: string;
+  audioUrl?: string;
 };
 
 export type Playlist = {
