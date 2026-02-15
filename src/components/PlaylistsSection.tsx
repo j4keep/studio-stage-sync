@@ -80,11 +80,12 @@ const PlaylistsSection = () => {
           return (
             <motion.div key={playlist.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl bg-card border border-border overflow-hidden">
               <button onClick={() => setExpandedId(isExpanded ? null : playlist.id)} className="flex items-center gap-3 p-3.5 w-full text-left hover:bg-primary/5 transition-all">
-                <div className="w-11 h-11 rounded-lg overflow-hidden bg-primary/10 flex-shrink-0 grid grid-cols-2 grid-rows-2 gap-px">
-                  {playlist.items.slice(0, 4).map((item, i) => (<img key={i} src={item.image} alt="" className="w-full h-full object-cover" />))}
-                  {Array.from({ length: Math.max(0, 4 - playlist.items.length) }).map((_, i) => (
-                    <div key={`empty-${i}`} className="w-full h-full bg-primary/10 flex items-center justify-center"><Music className="w-2 h-2 text-primary/30" /></div>
-                  ))}
+                <div className="w-11 h-11 rounded-lg overflow-hidden bg-primary/10 flex-shrink-0 flex items-center justify-center">
+                  {playlist.items.length > 0 ? (
+                    <img src={playlist.items[0].image} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <ListMusic className="w-5 h-5 text-primary/40" />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   {isEditing ? (
