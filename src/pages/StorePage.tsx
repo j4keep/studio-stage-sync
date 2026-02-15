@@ -20,6 +20,7 @@ import genreHaitian from "@/assets/genre-haitian.jpg";
 import genreAfrobeat from "@/assets/genre-afrobeat.jpg";
 import genreLatin from "@/assets/genre-latin.jpg";
 import genreBeats from "@/assets/genre-beats.jpg";
+import genreGospel from "@/assets/genre-gospel.jpg";
 
 const GENRE_IMAGES: Record<string, string> = {
   "Beats": genreBeats,
@@ -32,6 +33,7 @@ const GENRE_IMAGES: Record<string, string> = {
   "Haitian": genreHaitian,
   "Afrobeat": genreAfrobeat,
   "Latin Music": genreLatin,
+  "Gospel": genreGospel,
 };
 
 interface Product {
