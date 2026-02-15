@@ -1,31 +1,45 @@
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { Heart, ListEnd, ListStart, ListPlus, Radio, User, MessageCircle } from "lucide-react";
+import { Heart, BookmarkPlus, MessageCircle, UserCircle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 
 interface RadioMoreSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  track: { id: string; title: string; artist_name: string; cover_url: string } | null;
+  track: { id: string; title: string; artist_name: string; cover_url: string; user_id?: string } | null;
   isLiked: boolean;
   onToggleLike: () => void;
   onViewComments: () => void;
 }
 
 const RadioMoreSheet = ({ open, onOpenChange, track, isLiked, onToggleLike, onViewComments }: RadioMoreSheetProps) => {
+  const navigate = useNavigate();
+
   if (!track) return null;
 
-  const actions = [
-    { icon: Heart, label: isLiked ? "Unlike" : "Like", action: () => { onToggleLike(); onOpenChange(false); }, filled: isLiked },
-    { icon: ListStart, label: "Play next", action: () => { toast({ title: "Playing next", description: `"${track.title}" will play next` }); onOpenChange(false); } },
-    { icon: ListEnd, label: "Play last", action: () => { toast({ title: "Added to queue", description: `"${track.title}" added to end of queue` }); onOpenChange(false); } },
-    { icon: ListPlus, label: "Add to playlist", action: () => { toast({ title: "Added to Library", description: `"${track.title}" saved to your playlist` }); onOpenChange(false); } },
-    { icon: Radio, label: "Start station", action: () => { toast({ title: "Starting station", description: `Playing similar tracks to "${track.title}"` }); onOpenChange(false); } },
-  ];
+  const handleGoToProfile = () => {
+    onOpenChange(false);
+    if (track.user_id) {
+      navigate(`/profile/${track.user_id}`);
+    } else {
+      toast({ title: "Profile unavailable" });
+    }
+  };
 
-  const secondaryActions = [
-    { icon: User, label: "Go to profile", action: () => { toast({ title: "Coming soon" }); onOpenChange(false); } },
-    { icon: MessageCircle, label: "View comments", action: () => { onViewComments(); onOpenChange(false); } },
-  ];
+  const handleAddToPlaylist = () => {
+    toast({ title: "Added to Library", description: `"${track.title}" saved to your playlist` });
+    onOpenChange(false);
+  };
+
+  const handleViewComments = () => {
+    onViewComments();
+    onOpenChange(false);
+  };
+
+  const handleToggleLike = () => {
+    onToggleLike();
+    onOpenChange(false);
+  };
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -43,23 +57,27 @@ const RadioMoreSheet = ({ open, onOpenChange, track, isLiked, onToggleLike, onVi
 
         {/* Actions */}
         <div className="flex flex-col">
-          {actions.map((a) => (
-            <button key={a.label} onClick={a.action} className="flex items-center gap-3 py-3 px-1 hover:bg-secondary/50 rounded-lg transition-colors">
-              <a.icon className={`w-5 h-5 ${a.filled ? "text-primary fill-primary" : "text-foreground"}`} />
-              <span className="text-sm text-foreground">{a.label}</span>
-            </button>
-          ))}
-        </div>
+          <button onClick={handleToggleLike} className="flex items-center gap-3 py-3.5 px-2 hover:bg-secondary/50 rounded-lg transition-colors">
+            <Heart className={`w-5 h-5 ${isLiked ? "text-primary fill-primary" : "text-foreground"}`} />
+            <span className="text-sm text-foreground">{isLiked ? "Unlike" : "Like"}</span>
+          </button>
 
-        <div className="h-px bg-border my-2" />
+          <button onClick={handleAddToPlaylist} className="flex items-center gap-3 py-3.5 px-2 hover:bg-secondary/50 rounded-lg transition-colors">
+            <BookmarkPlus className="w-5 h-5 text-foreground" />
+            <span className="text-sm text-foreground">Add to playlist</span>
+          </button>
 
-        <div className="flex flex-col">
-          {secondaryActions.map((a) => (
-            <button key={a.label} onClick={a.action} className="flex items-center gap-3 py-3 px-1 hover:bg-secondary/50 rounded-lg transition-colors">
-              <a.icon className="w-5 h-5 text-foreground" />
-              <span className="text-sm text-foreground">{a.label}</span>
-            </button>
-          ))}
+          <div className="h-px bg-border my-1" />
+
+          <button onClick={handleGoToProfile} className="flex items-center gap-3 py-3.5 px-2 hover:bg-secondary/50 rounded-lg transition-colors">
+            <UserCircle className="w-5 h-5 text-foreground" />
+            <span className="text-sm text-foreground">Go to artist profile</span>
+          </button>
+
+          <button onClick={handleViewComments} className="flex items-center gap-3 py-3.5 px-2 hover:bg-secondary/50 rounded-lg transition-colors">
+            <MessageCircle className="w-5 h-5 text-foreground" />
+            <span className="text-sm text-foreground">View comments</span>
+          </button>
         </div>
       </SheetContent>
     </Sheet>
