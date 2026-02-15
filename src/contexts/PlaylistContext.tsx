@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import album1 from "@/assets/album-1.jpg";
 import album2 from "@/assets/album-2.jpg";
 import album3 from "@/assets/album-3.jpg";
@@ -58,7 +58,17 @@ export const usePlaylists = () => {
 };
 
 export const PlaylistProvider = ({ children }: { children: ReactNode }) => {
-  const [playlists, setPlaylists] = useState<Playlist[]>(defaultPlaylists);
+  const [playlists, setPlaylists] = useState<Playlist[]>(() => {
+    try {
+      const saved = localStorage.getItem("wheuat_playlists");
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return defaultPlaylists;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("wheuat_playlists", JSON.stringify(playlists));
+  }, [playlists]);
 
   const addItemToPlaylist = (playlistId: string, item: PlaylistItem) => {
     setPlaylists(prev => prev.map(p => {
