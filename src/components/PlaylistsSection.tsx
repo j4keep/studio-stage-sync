@@ -16,7 +16,7 @@ const typeIcon = (type: PlaylistItem["type"]) => {
 };
 
 const PlaylistsSection = () => {
-  const { playlists, sampleLibrary, addItemToPlaylist, removeItemFromPlaylist, createPlaylist, deletePlaylist, renamePlaylist } = usePlaylists();
+  const { playlists, sampleLibrary, addItemToPlaylist, removeItemFromPlaylist, createPlaylist, deletePlaylist, renamePlaylist, playFromPlaylist } = usePlaylists();
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -31,6 +31,9 @@ const PlaylistsSection = () => {
   const [playerStartIndex, setPlayerStartIndex] = useState(0);
 
   const handlePlayItem = (playlist: { items: PlaylistItem[] }, itemIndex: number) => {
+    // Start global playback so it persists across navigation
+    playFromPlaylist(playlist.items, itemIndex);
+    // Also open the full-screen player sheet
     setPlayerItems(playlist.items);
     setPlayerStartIndex(itemIndex);
     setPlayerOpen(true);

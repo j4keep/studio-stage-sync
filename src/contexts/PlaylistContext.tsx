@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import album1 from "@/assets/album-1.jpg";
@@ -45,6 +45,15 @@ interface PlaylistContextType {
   deletePlaylist: (id: string) => void;
   renamePlaylist: (id: string, newName: string) => void;
   loading: boolean;
+  // Global playback
+  nowPlaying: { items: PlaylistItem[]; index: number } | null;
+  isPlaylistPlaying: boolean;
+  playFromPlaylist: (items: PlaylistItem[], startIndex: number) => void;
+  togglePlaylistPlayback: () => void;
+  skipPlaylistTrack: () => void;
+  prevPlaylistTrack: () => void;
+  stopPlaylistPlayback: () => void;
+  playlistAudioRef: React.MutableRefObject<HTMLAudioElement | null>;
 }
 
 const PlaylistContext = createContext<PlaylistContextType | null>(null);
@@ -164,8 +173,103 @@ export const PlaylistProvider = ({ children }: { children: ReactNode }) => {
     syncToDb(id, { name: newName });
   }, [syncToDb]);
 
+  // Global playback state
+  const playlistAudioRef = useRef<HTMLAudioElement | null>(null);
+  const [nowPlaying, setNowPlaying] = useState<{ items: PlaylistItem[]; index: number } | null>(null);
+  const [isPlaylistPlaying, setIsPlaylistPlaying] = useState(false);
+
+  // Create persistent audio element
+  useEffect(() => {
+    const audio = new Audio();
+    audio.preload = "auto";
+    playlistAudioRef.current = audio;
+
+    audio.addEventListener("ended", () => {
+      setNowPlaying(prev => {
+        if (!prev || prev.items.length <= 1) {
+          setIsPlaylistPlaying(false);
+          return prev;
+        }
+        const nextIndex = (prev.index + 1) % prev.items.length;
+        const nextItem = prev.items[nextIndex];
+        if (nextItem.audioUrl) {
+          audio.src = nextItem.audioUrl;
+          audio.play().catch(() => {});
+        }
+        return { ...prev, index: nextIndex };
+      });
+    });
+
+    return () => { audio.pause(); audio.src = ""; };
+  }, []);
+
+  const playFromPlaylist = useCallback((items: PlaylistItem[], startIndex: number) => {
+    const audio = playlistAudioRef.current;
+    if (!audio) return;
+    const item = items[startIndex];
+    setNowPlaying({ items, index: startIndex });
+    if (item?.audioUrl) {
+      audio.src = item.audioUrl;
+      audio.play().catch(() => {});
+      setIsPlaylistPlaying(true);
+    } else {
+      audio.src = "";
+      setIsPlaylistPlaying(false);
+    }
+  }, []);
+
+  const togglePlaylistPlayback = useCallback(() => {
+    const audio = playlistAudioRef.current;
+    if (!audio) return;
+    if (isPlaylistPlaying) {
+      audio.pause();
+      setIsPlaylistPlaying(false);
+    } else {
+      audio.play().catch(() => {});
+      setIsPlaylistPlaying(true);
+    }
+  }, [isPlaylistPlaying]);
+
+  const skipPlaylistTrack = useCallback(() => {
+    if (!nowPlaying || nowPlaying.items.length <= 1) return;
+    const nextIndex = (nowPlaying.index + 1) % nowPlaying.items.length;
+    const nextItem = nowPlaying.items[nextIndex];
+    const audio = playlistAudioRef.current;
+    if (audio && nextItem.audioUrl) {
+      audio.src = nextItem.audioUrl;
+      audio.play().catch(() => {});
+      setIsPlaylistPlaying(true);
+    }
+    setNowPlaying({ ...nowPlaying, index: nextIndex });
+  }, [nowPlaying]);
+
+  const prevPlaylistTrack = useCallback(() => {
+    if (!nowPlaying || nowPlaying.items.length <= 1) return;
+    const prevIndex = (nowPlaying.index - 1 + nowPlaying.items.length) % nowPlaying.items.length;
+    const prevItem = nowPlaying.items[prevIndex];
+    const audio = playlistAudioRef.current;
+    if (audio && prevItem.audioUrl) {
+      audio.src = prevItem.audioUrl;
+      audio.play().catch(() => {});
+      setIsPlaylistPlaying(true);
+    }
+    setNowPlaying({ ...nowPlaying, index: prevIndex });
+  }, [nowPlaying]);
+
+  const stopPlaylistPlayback = useCallback(() => {
+    const audio = playlistAudioRef.current;
+    if (audio) { audio.pause(); audio.src = ""; }
+    setIsPlaylistPlaying(false);
+    setNowPlaying(null);
+  }, []);
+
   return (
-    <PlaylistContext.Provider value={{ playlists, setPlaylists, sampleLibrary, addItemToPlaylist, removeItemFromPlaylist, createPlaylist, deletePlaylist, renamePlaylist, loading }}>
+    <PlaylistContext.Provider value={{
+      playlists, setPlaylists, sampleLibrary, addItemToPlaylist, removeItemFromPlaylist,
+      createPlaylist, deletePlaylist, renamePlaylist, loading,
+      nowPlaying, isPlaylistPlaying, playFromPlaylist, togglePlaylistPlayback,
+      skipPlaylistTrack, prevPlaylistTrack, stopPlaylistPlayback, playlistAudioRef,
+    }}>
       {children}
     </PlaylistContext.Provider>
   );
