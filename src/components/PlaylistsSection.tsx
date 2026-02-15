@@ -5,6 +5,7 @@ import {
   ListMusic, ChevronRight, ChevronDown
 } from "lucide-react";
 import { usePlaylists, PlaylistItem } from "@/contexts/PlaylistContext";
+import { useRadio } from "@/contexts/RadioContext";
 
 const typeIcon = (type: PlaylistItem["type"]) => {
   switch (type) {
@@ -16,6 +17,14 @@ const typeIcon = (type: PlaylistItem["type"]) => {
 
 const PlaylistsSection = () => {
   const { playlists, sampleLibrary, addItemToPlaylist, removeItemFromPlaylist, createPlaylist, deletePlaylist, renamePlaylist } = usePlaylists();
+  const { allTracks, playTrack } = useRadio();
+
+  const handlePlayItem = (item: PlaylistItem) => {
+    const radioTrack = allTracks.find(t => t.id === item.id || t.title === item.title);
+    if (radioTrack) {
+      playTrack(radioTrack);
+    }
+  };
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState("");
@@ -108,7 +117,7 @@ const PlaylistsSection = () => {
                       {playlist.items.length > 0 ? (
                         <div className="flex flex-col gap-1 mt-2">
                           {playlist.items.map((item, i) => (
-                            <div key={item.id} className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-primary/5 transition-all group">
+                            <div key={item.id} onClick={() => handlePlayItem(item)} className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-primary/5 transition-all group cursor-pointer">
                               <span className="text-[10px] text-muted-foreground w-4 text-right">{i + 1}</span>
                               <div className="relative w-8 h-8 rounded-md overflow-hidden flex-shrink-0">
                                 <img src={item.image} alt={item.title} className="w-full h-full object-cover" />

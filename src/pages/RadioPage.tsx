@@ -32,7 +32,7 @@ interface RadioComment {
 const RadioPage = () => {
   const navigate = useNavigate();
   const {
-    isPlaying, currentTrack, queue, allTracks, toggle, skip, skipsLeft,
+    isPlaying, currentTrack, queue, allTracks, toggle, skip, previous, skipsLeft,
     playTrack, setGenreFilter, activeGenre, loading,
     currentTime, duration, seek,
   } = useRadio();
@@ -47,6 +47,7 @@ const RadioPage = () => {
   const [commentText, setCommentText] = useState("");
   const [comments, setComments] = useState<Record<string, RadioComment[]>>({});
   const commentInputRef = useRef<HTMLInputElement>(null);
+  const swipeStartX = useRef<number | null>(null);
 
   const trackComments = currentTrack ? (comments[currentTrack.id] || []) : [];
 
@@ -137,6 +138,16 @@ const RadioPage = () => {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.3 }}
           className="relative flex-1 min-h-0"
+          onTouchStart={(e) => { swipeStartX.current = e.touches[0].clientX; }}
+          onTouchEnd={(e) => {
+            if (swipeStartX.current === null) return;
+            const diff = e.changedTouches[0].clientX - swipeStartX.current;
+            swipeStartX.current = null;
+            if (Math.abs(diff) > 60) {
+              if (diff < 0) skip();
+              else previous();
+            }
+          }}
         >
           <div className="absolute inset-0">
             <img src={track.cover_url} alt={track.title} className="w-full h-full object-cover" />

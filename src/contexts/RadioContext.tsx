@@ -25,6 +25,7 @@ interface RadioContextType {
   pause: () => void;
   toggle: () => void;
   skip: () => void;
+  previous: () => void;
   skipsLeft: number;
   playTrack: (track: RadioTrack) => void;
   setGenreFilter: (genre: string) => void;
@@ -169,6 +170,12 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [skipsLeft, filteredSongs.length]);
 
+  const previous = useCallback(() => {
+    if (filteredSongs.length > 1) {
+      setCurrentIndex(prev => (prev - 1 + filteredSongs.length) % filteredSongs.length);
+    }
+  }, [filteredSongs.length]);
+
   const playTrack = useCallback((track: RadioTrack) => {
     const idx = filteredSongs.findIndex(s => s.id === track.id);
     if (idx >= 0) {
@@ -192,7 +199,7 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
   return (
     <RadioContext.Provider value={{
       isPlaying, currentTrack, queue, allTracks: filteredSongs,
-      play, pause, toggle, skip, skipsLeft, playTrack,
+      play, pause, toggle, skip, previous, skipsLeft, playTrack,
       setGenreFilter, activeGenre, loading, fetchRadioSongs,
       currentTime, duration, seek,
     }}>
