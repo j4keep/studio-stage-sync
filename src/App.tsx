@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { CartProvider } from "@/contexts/CartContext";
 import { RadioProvider } from "@/contexts/RadioContext";
+import { PlaylistProvider } from "@/contexts/PlaylistContext";
 import AppLayout from "./components/AppLayout";
 import HomePage from "./pages/HomePage";
 import RadioPage from "./pages/RadioPage";
@@ -151,12 +152,14 @@ const App = () => {
         <BrowserRouter>
           <AuthProvider>
             <CartProvider>
-              <RadioProvider>
-                <Routes>
-                  <Route path="/auth" element={<AuthPage />} />
-                  <Route path="/*" element={<ProtectedRoutes />} />
-                </Routes>
-              </RadioProvider>
+              <PlaylistProvider>
+                <RadioProvider>
+                  <Routes>
+                    <Route path="/auth" element={<AuthPage />} />
+                    <Route path="/*" element={<ProtectedRoutes />} />
+                  </Routes>
+                </RadioProvider>
+              </PlaylistProvider>
             </CartProvider>
           </AuthProvider>
         </BrowserRouter>
