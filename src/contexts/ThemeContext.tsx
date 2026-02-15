@@ -5,8 +5,8 @@ import { useAuth } from "@/contexts/AuthContext";
 export interface ThemePreset {
   id: string;
   label: string;
-  accent: string; // HSL values like "204 100% 50%"
-  gradient: string; // CSS gradient
+  accent: string;
+  gradient: string;
 }
 
 export const THEME_PRESETS: ThemePreset[] = [
@@ -21,10 +21,8 @@ export const THEME_PRESETS: ThemePreset[] = [
 interface ThemeContextType {
   currentPreset: string;
   customAccent: string | null;
-  backgroundImageUrl: string | null;
   setThemePreset: (presetId: string) => void;
   setCustomAccent: (hsl: string | null) => void;
-  setBackgroundImage: (url: string | null) => void;
   saveThemeToProfile: () => Promise<void>;
   themeSetupDone: boolean | null;
 }
@@ -32,10 +30,8 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType>({
   currentPreset: "default",
   customAccent: null,
-  backgroundImageUrl: null,
   setThemePreset: () => {},
   setCustomAccent: () => {},
-  setBackgroundImage: () => {},
   saveThemeToProfile: async () => {},
   themeSetupDone: null,
 });
@@ -50,43 +46,18 @@ function applyAccentColor(hsl: string) {
   root.style.setProperty("--sidebar-primary", hsl);
   root.style.setProperty("--sidebar-ring", hsl);
 
-  // Update glow and gradient
   root.style.setProperty("--glow-primary", `0 0 20px hsl(${hsl} / 0.4)`);
   root.style.setProperty("--glow-primary-strong", `0 0 30px hsl(${hsl} / 0.6)`);
 
-  // Parse hue for gradient secondary
   const hue = parseInt(hsl.split(" ")[0]) || 204;
   const gradientEnd = `hsl(${hue + 16} 100% 60%)`;
   root.style.setProperty("--gradient-primary", `linear-gradient(135deg, hsl(${hsl}), ${gradientEnd})`);
-}
-
-function applyBackgroundImage(url: string | null) {
-  // Apply to all possible background containers
-  const targets = [
-    document.getElementById("app-bg-layer"),
-    document.getElementById("onboarding-bg-layer"),
-  ].filter(Boolean) as HTMLElement[];
-
-  // Fallback to body if no target found
-  if (targets.length === 0) targets.push(document.body);
-
-  targets.forEach((el) => {
-    if (url) {
-      el.style.backgroundImage = `url(${url})`;
-      el.style.backgroundSize = "cover";
-      el.style.backgroundPosition = "center";
-      el.style.backgroundAttachment = "fixed";
-    } else {
-      el.style.backgroundImage = "";
-    }
-  });
 }
 
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   const { user } = useAuth();
   const [currentPreset, setCurrentPreset] = useState("default");
   const [customAccent, setCustomAccentState] = useState<string | null>(null);
-  const [backgroundImageUrl, setBgUrl] = useState<string | null>(null);
   const [themeSetupDone, setThemeSetupDone] = useState<boolean | null>(null);
 
   // Load theme from profile
@@ -98,7 +69,7 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
     const load = async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("theme_preset, custom_accent_color, background_image_url")
+        .select("theme_preset, custom_accent_color")
         .eq("user_id", user.id)
         .single();
 
@@ -106,33 +77,22 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
         const preset = data.theme_preset || "default";
         setCurrentPreset(preset);
         setCustomAccentState(data.custom_accent_color || null);
-        setBgUrl(data.background_image_url || null);
 
-        // Apply
+        // Apply saved accent
         if (data.custom_accent_color) {
           applyAccentColor(data.custom_accent_color);
         } else {
           const found = THEME_PRESETS.find(p => p.id === preset);
           if (found) applyAccentColor(found.accent);
         }
-        applyBackgroundImage(data.background_image_url || null);
 
-        // If theme_preset is still 'default' and no custom color, user hasn't set up
-        setThemeSetupDone(preset !== "default" || !!data.custom_accent_color || !!data.background_image_url);
+        setThemeSetupDone(preset !== "default" || !!data.custom_accent_color);
       } else {
         setThemeSetupDone(false);
       }
     };
     load();
   }, [user]);
-
-  // Re-apply background when DOM changes (e.g. onboarding → main app transition)
-  useEffect(() => {
-    if (backgroundImageUrl) {
-      const timer = setTimeout(() => applyBackgroundImage(backgroundImageUrl), 100);
-      return () => clearTimeout(timer);
-    }
-  }, [themeSetupDone, backgroundImageUrl]);
 
   const setThemePreset = useCallback((presetId: string) => {
     setCurrentPreset(presetId);
@@ -146,11 +106,6 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
     if (hsl) applyAccentColor(hsl);
   }, []);
 
-  const setBackgroundImage = useCallback((url: string | null) => {
-    setBgUrl(url);
-    applyBackgroundImage(url);
-  }, []);
-
   const saveThemeToProfile = useCallback(async () => {
     if (!user) return;
     await supabase
@@ -158,20 +113,17 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
       .update({
         theme_preset: currentPreset,
         custom_accent_color: customAccent,
-        background_image_url: backgroundImageUrl,
       })
       .eq("user_id", user.id);
     setThemeSetupDone(true);
-  }, [user, currentPreset, customAccent, backgroundImageUrl]);
+  }, [user, currentPreset, customAccent]);
 
   return (
     <ThemeContext.Provider value={{
       currentPreset,
       customAccent,
-      backgroundImageUrl,
       setThemePreset,
       setCustomAccent,
-      setBackgroundImage,
       saveThemeToProfile,
       themeSetupDone,
     }}>

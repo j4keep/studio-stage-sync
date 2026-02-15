@@ -49,16 +49,17 @@ const ProtectedRoutes = () => {
   const [termsLoading, setTermsLoading] = useState(true);
   const [showThemePicker, setShowThemePicker] = useState(false);
 
-  // Initialize theme on mount
+  // Initialize theme – default to light mode
   useEffect(() => {
     const theme = localStorage.getItem("wheuat_theme");
     const root = document.documentElement;
-    if (theme === "light") {
-      root.classList.remove("dark");
-      root.classList.add("light");
-    } else {
+    if (theme === "dark") {
       root.classList.remove("light");
       root.classList.add("dark");
+    } else {
+      root.classList.remove("dark");
+      root.classList.add("light");
+      localStorage.setItem("wheuat_theme", "light");
     }
   }, []);
 
@@ -119,10 +120,10 @@ const ProtectedRoutes = () => {
     );
   }
 
-  // Show theme picker onboarding
+  // Show theme picker onboarding – always dark
   if (showThemePicker) {
     return (
-      <div id="onboarding-bg-layer" className="min-h-screen bg-background text-foreground max-w-lg mx-auto relative flex items-center justify-center px-6">
+      <div className="min-h-screen bg-black text-white max-w-lg mx-auto relative flex items-center justify-center px-6 dark">
         <ThemePickerSheet isOnboarding onComplete={() => setShowThemePicker(false)} />
       </div>
     );

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Palette, Check, Upload, X, Info } from "lucide-react";
+import { Palette, Check, Info } from "lucide-react";
 import { useTheme, THEME_PRESETS } from "@/contexts/ThemeContext";
 import { useToast } from "@/hooks/use-toast";
 
@@ -10,7 +10,7 @@ interface ThemePickerSheetProps {
 }
 
 const ThemePickerSheet = ({ isOnboarding = false, onComplete }: ThemePickerSheetProps) => {
-  const { currentPreset, customAccent, backgroundImageUrl, setThemePreset, setCustomAccent, setBackgroundImage, saveThemeToProfile } = useTheme();
+  const { currentPreset, customAccent, setThemePreset, setCustomAccent, saveThemeToProfile } = useTheme();
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [customHue, setCustomHue] = useState(204);
@@ -23,20 +23,6 @@ const ThemePickerSheet = ({ isOnboarding = false, onComplete }: ThemePickerSheet
   const handleCustomHueChange = (hue: number) => {
     setCustomHue(hue);
     setCustomAccent(`${hue} 80% 55%`);
-  };
-
-  const handleBgUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      toast({ title: "File too large", description: "Max 5MB for background images.", variant: "destructive" });
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      setBackgroundImage(reader.result as string);
-    };
-    reader.readAsDataURL(file);
   };
 
   const handleSave = async () => {
@@ -108,28 +94,6 @@ const ThemePickerSheet = ({ isOnboarding = false, onComplete }: ThemePickerSheet
             background: "linear-gradient(to right, hsl(0 80% 55%), hsl(60 80% 55%), hsl(120 80% 55%), hsl(180 80% 55%), hsl(240 80% 55%), hsl(300 80% 55%), hsl(360 80% 55%))",
           }}
         />
-      </div>
-
-      {/* Background Image */}
-      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Background Image (Optional)</p>
-      <div className="p-3 rounded-xl bg-card border border-border mb-5">
-        {backgroundImageUrl ? (
-          <div className="relative">
-            <img src={backgroundImageUrl} alt="Background" className="w-full h-24 rounded-lg object-cover" />
-            <button
-              onClick={() => setBackgroundImage(null)}
-              className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center"
-            >
-              <X className="w-3 h-3 text-white" />
-            </button>
-          </div>
-        ) : (
-          <label className="flex flex-col items-center gap-2 py-4 cursor-pointer text-muted-foreground hover:text-foreground transition-colors">
-            <Upload className="w-5 h-5" />
-            <span className="text-xs">Upload a background image</span>
-            <input type="file" accept="image/*" onChange={handleBgUpload} className="hidden" />
-          </label>
-        )}
       </div>
 
       {/* Info note */}
