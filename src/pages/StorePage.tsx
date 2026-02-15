@@ -196,7 +196,7 @@ const StorePage = () => {
           </motion.button>
 
           {GENRES.filter(g => g !== "All Music" && g !== "Beats").map((genre, i) => {
-            const isWide = genre === "Haitian" || genre === "Afrobeat" || genre === "Latin Music";
+            const isWide = genre === "Haitian" || genre === "Latin Music";
             return (
               <motion.button
                 key={genre}
