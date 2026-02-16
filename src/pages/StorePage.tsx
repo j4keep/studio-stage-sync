@@ -100,7 +100,8 @@ const StorePage = () => {
     const matchesSearch =
       !searchQuery ||
       p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.artist_name?.toLowerCase().includes(searchQuery.toLowerCase());
+      p.artist_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.tags?.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
     return matchesGenre && matchesSearch;
   });
 

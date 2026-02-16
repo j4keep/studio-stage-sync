@@ -13,6 +13,7 @@ import album1 from "@/assets/album-1.jpg";
 interface Song {
   id: string;
   title: string;
+  album: string;
   plays: string;
   duration: string;
   cover_url: string;
@@ -47,9 +48,11 @@ const MySongsPage = () => {
   const [uploading, setUploading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
+  const [editAlbum, setEditAlbum] = useState("");
   const [editGenre, setEditGenre] = useState("");
   const [editCover, setEditCover] = useState<string | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [uploadAlbum, setUploadAlbum] = useState("");
   const editCoverRef = useRef<HTMLInputElement>(null);
 
   const songIds = songs.map(s => s.id);
@@ -63,7 +66,7 @@ const MySongsPage = () => {
     const { data, error } = await (supabase as any).from("songs").select("*").eq("user_id", user!.id).order("created_at", { ascending: false });
     if (!error && data) {
       setSongs(data.map((s: any) => ({
-        id: s.id, title: s.title, plays: s.plays || "0", duration: s.duration || "0:00",
+        id: s.id, title: s.title, album: s.album || "Unknown Album", plays: s.plays || "0", duration: s.duration || "0:00",
         cover_url: s.cover_url || album1,
         audio_url: s.audio_url ? getR2DownloadUrl(s.audio_url) : undefined,
         on_radio: s.on_radio || false,
@@ -118,12 +121,13 @@ const MySongsPage = () => {
         return;
       }
 
-      const { data, error } = await (supabase as any).from("songs").insert({ user_id: user.id, title, duration, cover_url: cover, audio_url: r2Result.data!.key }).select().single();
+      const albumName = uploadAlbum.trim() || "Unknown Album";
+      const { data, error } = await (supabase as any).from("songs").insert({ user_id: user.id, title, duration, cover_url: cover, audio_url: r2Result.data!.key, album: albumName }).select().single();
       if (error) { setUploading(false); toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
 
       const playbackUrl = getR2DownloadUrl(r2Result.data!.key);
-      setSongs(prev => [{ id: data.id, title, plays: "0", duration, cover_url: cover || album1, audio_url: playbackUrl, on_radio: false, likes_count: 0 }, ...prev]);
-      setPendingAudioFile(null); setPendingCover(null); setShowUpload(false); setUploading(false);
+      setSongs(prev => [{ id: data.id, title, album: albumName, plays: "0", duration, cover_url: cover || album1, audio_url: playbackUrl, on_radio: false, likes_count: 0 }, ...prev]);
+      setPendingAudioFile(null); setPendingCover(null); setShowUpload(false); setUploading(false); setUploadAlbum("");
       toast({ title: "Song uploaded! ☁️", description: `"${title}" is now stored permanently` });
       if (fileInputRef.current) fileInputRef.current.value = "";
       URL.revokeObjectURL(audioUrl);
@@ -164,6 +168,7 @@ const MySongsPage = () => {
   const openEditSong = (song: Song) => {
     setEditingId(song.id);
     setEditTitle(song.title);
+    setEditAlbum(song.album || "Unknown Album");
     setEditGenre(song.genre || "");
     setEditCover(song.cover_url === album1 ? null : song.cover_url);
   };
@@ -183,7 +188,8 @@ const MySongsPage = () => {
       return;
     }
     setSavingEdit(true);
-    const updateData: any = { title: editTitle.trim(), genre: editGenre || null };
+    const albumVal = editAlbum.trim() || "Unknown Album";
+    const updateData: any = { title: editTitle.trim(), album: albumVal, genre: editGenre || null };
     if (editCover) updateData.cover_url = editCover;
     else updateData.cover_url = null;
 
@@ -191,7 +197,7 @@ const MySongsPage = () => {
     if (error) {
       toast({ title: "Error saving", description: error.message, variant: "destructive" });
     } else {
-      setSongs(prev => prev.map(s => s.id === editingId ? { ...s, title: editTitle.trim(), genre: editGenre || undefined, cover_url: editCover || album1 } : s));
+      setSongs(prev => prev.map(s => s.id === editingId ? { ...s, title: editTitle.trim(), album: albumVal, genre: editGenre || undefined, cover_url: editCover || album1 } : s));
       toast({ title: "Song updated!" });
       setEditingId(null);
     }
@@ -232,6 +238,9 @@ const MySongsPage = () => {
           ) : (
             <div className="flex flex-col items-center gap-3 py-3">
               <p className="text-sm text-foreground font-medium truncate max-w-full">🎵 {pendingAudioFile.name}</p>
+              <div className="w-full px-2">
+                <input value={uploadAlbum} onChange={e => setUploadAlbum(e.target.value)} placeholder="Album name (optional)" className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground mb-2" />
+              </div>
               <div className="flex items-center gap-3">
                 <div className="w-20 h-20 rounded-lg overflow-hidden border border-border bg-muted flex items-center justify-center">
                   {pendingCover ? <img src={pendingCover} alt="Cover" className="w-full h-full object-contain" /> : <Music className="w-6 h-6 text-muted-foreground" />}
@@ -240,9 +249,9 @@ const MySongsPage = () => {
                   <Image className="w-3.5 h-3.5" /> {pendingCover ? "Change Cover" : "Add Cover"}
                 </button>
               </div>
-              <p className="text-[10px] text-muted-foreground">Cover art is optional</p>
+              <p className="text-[10px] text-muted-foreground">Cover art is optional · Album defaults to "Unknown Album"</p>
               <div className="flex gap-2">
-                <button onClick={() => { setPendingAudioFile(null); setPendingCover(null); }} className="px-4 py-2 rounded-lg border border-border text-xs font-medium text-muted-foreground">Cancel</button>
+                <button onClick={() => { setPendingAudioFile(null); setPendingCover(null); setUploadAlbum(""); }} className="px-4 py-2 rounded-lg border border-border text-xs font-medium text-muted-foreground">Cancel</button>
                 <button onClick={confirmUpload} disabled={uploading} className="px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-xs font-semibold glow-primary flex items-center gap-1.5 disabled:opacity-50">
                   {uploading && <Loader2 className="w-3 h-3 animate-spin" />} {uploading ? "Uploading..." : "Upload Song"}
                 </button>
@@ -273,6 +282,7 @@ const MySongsPage = () => {
                 </button>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-foreground truncate">{song.title}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">{song.album}</p>
                   <p className="text-[10px] text-muted-foreground">
                     {`${song.plays} plays · ${song.duration}`}
                   </p>
@@ -323,6 +333,8 @@ const MySongsPage = () => {
                         </button>
                         <div className="flex-1 flex flex-col gap-2">
                           <input value={editTitle} onChange={e => setEditTitle(e.target.value)} placeholder="Song title"
+                            className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground" />
+                          <input value={editAlbum} onChange={e => setEditAlbum(e.target.value)} placeholder="Album name (optional)"
                             className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground" />
                           <div className="relative">
                             <select value={editGenre} onChange={e => setEditGenre(e.target.value)}

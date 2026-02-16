@@ -12,6 +12,7 @@ interface DbSong {
   id: string;
   title: string;
   artist_name: string;
+  album: string;
   plays: string;
   cover_url: string;
   audio_url?: string;
@@ -22,7 +23,7 @@ interface DbSong {
 const fetchSongs = async (): Promise<DbSong[]> => {
   const { data, error } = await (supabase as any)
     .from("songs")
-    .select("id, title, cover_url, audio_url, plays, user_id, likes_count")
+    .select("id, title, cover_url, audio_url, plays, user_id, likes_count, album")
     .order("created_at", { ascending: false })
     .limit(50);
   if (error || !data || data.length === 0) return [];
@@ -34,6 +35,7 @@ const fetchSongs = async (): Promise<DbSong[]> => {
   }
   return data.map((s: any) => ({
     id: s.id, title: s.title, artist_name: profileMap[s.user_id] || "Artist",
+    album: s.album || "Unknown Album",
     plays: s.plays || "0",
     cover_url: (s.cover_url && s.cover_url.length < 500) ? s.cover_url : (s.cover_url?.startsWith("data:") ? s.cover_url : album1),
     audio_url: s.audio_url ? getR2DownloadUrl(s.audio_url) : undefined,
@@ -105,6 +107,7 @@ const BrowseSongsPage = () => {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground truncate">{s.title}</p>
                   <p className="text-xs text-muted-foreground">{s.artist_name}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">{s.album}</p>
                 </div>
                 <div className="flex items-center gap-2.5">
                   <span className="text-xs text-muted-foreground flex items-center gap-0.5">

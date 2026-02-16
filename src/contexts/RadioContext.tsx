@@ -8,6 +8,7 @@ interface RadioTrack {
   id: string;
   title: string;
   artist_name: string;
+  album: string;
   genre: string;
   cover_url: string;
   audio_url?: string;
@@ -128,7 +129,7 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true);
     const { data, error } = await (supabase as any)
       .from("songs")
-      .select("id, title, cover_url, audio_url, plays, genre, user_id, likes_count")
+      .select("id, title, cover_url, audio_url, plays, genre, user_id, likes_count, album")
       .eq("on_radio", true)
       .order("created_at", { ascending: false });
 
@@ -146,6 +147,7 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
         id: s.id,
         title: s.title,
         artist_name: profileMap[s.user_id] || "Artist",
+        album: s.album || "Unknown Album",
         genre: s.genre || "All Music",
         cover_url: s.cover_url || album1,
         audio_url: s.audio_url ? getR2DownloadUrl(s.audio_url) : undefined,
