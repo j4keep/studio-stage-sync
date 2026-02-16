@@ -8,6 +8,12 @@ import { useRadio } from "@/contexts/RadioContext";
 import { useAuth } from "@/contexts/AuthContext";
 import whetuatLogo from "@/assets/wheuat-logo.png";
 import album1 from "@/assets/album-1.jpg";
+import artistNiaVox from "@/assets/artist-nia-vox.jpg";
+import artistKingMelo from "@/assets/artist-king-melo.jpg";
+import artistZaraBeats from "@/assets/artist-zara-beats.jpg";
+import artistDjOnyx from "@/assets/artist-dj-onyx.jpg";
+import artistLyricSoul from "@/assets/artist-lyric-soul.jpg";
+import artistNovaWave from "@/assets/artist-nova-wave.jpg";
 
 import cardRadio from "@/assets/card-radio.jpg";
 import cardStore from "@/assets/card-store.jpg";
@@ -26,12 +32,12 @@ interface TrendingArtist {
 }
 
 const PLACEHOLDER_ARTISTS: TrendingArtist[] = [
-  { id: "placeholder-1", name: "Nia Vox", img: "" },
-  { id: "placeholder-2", name: "King Melo", img: "" },
-  { id: "placeholder-3", name: "Zara Beats", img: "" },
-  { id: "placeholder-4", name: "DJ Onyx", img: "" },
-  { id: "placeholder-5", name: "Lyric Soul", img: "" },
-  { id: "placeholder-6", name: "Nova Wave", img: "" },
+  { id: "placeholder-1", name: "Nia Vox", img: artistNiaVox },
+  { id: "placeholder-2", name: "King Melo", img: artistKingMelo },
+  { id: "placeholder-3", name: "Zara Beats", img: artistZaraBeats },
+  { id: "placeholder-4", name: "DJ Onyx", img: artistDjOnyx },
+  { id: "placeholder-5", name: "Lyric Soul", img: artistLyricSoul },
+  { id: "placeholder-6", name: "Nova Wave", img: artistNovaWave },
 ];
 
 const fetchTrendingArtists = async (userId?: string): Promise<TrendingArtist[]> => {
@@ -146,7 +152,7 @@ const HomePage = () => {
         </div>
         <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
           {trendingArtists.length > 0 ? trendingArtists.map((a) => (
-            <button key={a.id} onClick={() => navigate(`/profile?user=${a.id}`)} className="flex flex-col items-center gap-2 min-w-[72px] group">
+            <button key={a.id} onClick={() => !a.id.startsWith("placeholder") && navigate(`/profile?user=${a.id}`)} className="flex flex-col items-center gap-2 min-w-[72px] group">
               <div className="w-16 h-16 rounded-full overflow-hidden ring-2 ring-transparent group-hover:ring-primary transition-all bg-muted">
                 {a.img ? <img src={a.img} alt={a.name} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-primary/20 flex items-center justify-center text-primary font-bold text-lg">{a.name[0]}</div>}
               </div>
