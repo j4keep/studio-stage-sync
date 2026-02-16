@@ -25,20 +25,55 @@ interface TrendingArtist {
   img: string;
 }
 
+const PLACEHOLDER_ARTISTS: TrendingArtist[] = [
+  { id: "placeholder-1", name: "Nia Vox", img: "" },
+  { id: "placeholder-2", name: "King Melo", img: "" },
+  { id: "placeholder-3", name: "Zara Beats", img: "" },
+  { id: "placeholder-4", name: "DJ Onyx", img: "" },
+  { id: "placeholder-5", name: "Lyric Soul", img: "" },
+  { id: "placeholder-6", name: "Nova Wave", img: "" },
+];
+
 const fetchTrendingArtists = async (userId?: string): Promise<TrendingArtist[]> => {
-  const { data } = await (supabase as any).from("profiles").select("user_id, display_name, avatar_url")
-    .order("created_at", { ascending: false }).limit(10);
-  if (data && data.length > 0) {
-    const filtered = data.filter((p: any) => p.display_name).map((p: any) => ({
-      id: p.user_id, name: p.display_name, img: p.avatar_url || "",
-    }));
-    if (filtered.length > 0) return filtered;
+  // Fetch artists who have uploaded songs to radio
+  const { data: radioSongs } = await (supabase as any)
+    .from("songs")
+    .select("user_id")
+    .eq("on_radio", true)
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  const realArtists: TrendingArtist[] = [];
+
+  if (radioSongs && radioSongs.length > 0) {
+    const uniqueUserIds = [...new Set(radioSongs.map((s: any) => s.user_id))] as string[];
+    const { data: profiles } = await (supabase as any)
+      .from("profiles")
+      .select("user_id, display_name, avatar_url")
+      .in("user_id", uniqueUserIds);
+
+    if (profiles) {
+      const profileMap = new Map(profiles.map((p: any) => [p.user_id, p]));
+      uniqueUserIds.forEach((uid) => {
+        const p = profileMap.get(uid) as any;
+        if (p && p.display_name) {
+          realArtists.push({ id: p.user_id, name: p.display_name, img: p.avatar_url || "" });
+        }
+      });
+    }
   }
-  if (userId) {
+
+  // Add current user if they have a profile and aren't already listed
+  if (userId && !realArtists.find((a) => a.id === userId)) {
     const { data: profile } = await (supabase as any).from("profiles").select("user_id, display_name, avatar_url").eq("user_id", userId).maybeSingle();
-    if (profile) return [{ id: profile.user_id, name: profile.display_name || "You", img: profile.avatar_url || "" }];
+    if (profile?.display_name) {
+      realArtists.push({ id: profile.user_id, name: profile.display_name, img: profile.avatar_url || "" });
+    }
   }
-  return [];
+
+  // Fill remaining spots with placeholders
+  const needed = Math.max(0, 6 - realArtists.length);
+  return [...realArtists, ...PLACEHOLDER_ARTISTS.slice(0, needed)];
 };
 
 // All cards now navigate to dedicated pages
@@ -69,9 +104,8 @@ const HomePage = () => {
   return (
     <div className="px-4 pt-4 pb-4">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <img src={whetuatLogo} alt="WHEUAT" className="h-8" />
-        <p className="text-[10px] text-muted-foreground italic">Together We Show Up</p>
+      <div className="flex items-center justify-center mb-6">
+        <img src={whetuatLogo} alt="WHEUAT" className="h-8 mix-blend-multiply dark:mix-blend-screen" />
       </div>
 
       {/* WHEUAT Radio Mini Player */}
