@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, Heart, Share2, MessageCircle, MoreHorizontal, ListMusic, ChevronDown, Music, Send } from "lucide-react";
+import { Play, Pause, Heart, Share2, MessageCircle, MoreHorizontal, ListMusic, ChevronDown, Music, Send, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useRadio } from "@/contexts/RadioContext";
 import { GENRES } from "@/lib/genres";
@@ -42,6 +42,8 @@ const RadioPage = () => {
 
   const [shareOpen, setShareOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [radioSearchQuery, setRadioSearchQuery] = useState("");
+  const [showRadioSearch, setShowRadioSearch] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [isSeeking, setIsSeeking] = useState(false);
   const [commentText, setCommentText] = useState("");
@@ -112,14 +114,28 @@ const RadioPage = () => {
       {/* Genre filter bar at top */}
       <div className="absolute top-0 left-0 right-0 z-20 px-3 pt-3 pb-2">
         <div className="flex items-center gap-2 mb-3">
-          <button onClick={() => navigate(-1)} className="w-8 h-8 rounded-full bg-background/60 backdrop-blur-sm flex items-center justify-center">
+           <button onClick={() => navigate(-1)} className="w-8 h-8 rounded-full bg-background/60 backdrop-blur-sm flex items-center justify-center">
             <ChevronDown className="w-5 h-5 text-foreground" />
           </button>
           <div className="flex-1" />
+          <button onClick={() => setShowRadioSearch(!showRadioSearch)} className="w-8 h-8 rounded-full bg-background/60 backdrop-blur-sm flex items-center justify-center mr-2">
+            <Search className="w-4 h-4 text-foreground" />
+          </button>
           <span className="text-[10px] text-primary font-semibold uppercase tracking-wider flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-primary animate-pulse" /> LIVE
           </span>
         </div>
+        {showRadioSearch && (
+          <div className="mb-2">
+            <input
+              autoFocus
+              placeholder="Search by song, artist, or album…"
+              value={radioSearchQuery}
+              onChange={(e) => setRadioSearchQuery(e.target.value)}
+              className="w-full px-3 py-2 rounded-xl bg-background/80 backdrop-blur-sm border border-border text-sm text-foreground placeholder:text-muted-foreground"
+            />
+          </div>
+        )}
         <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
           {RADIO_GENRE_FILTERS.map((g) => (
             <button key={g} onClick={() => setGenreFilter(g)}
@@ -129,6 +145,33 @@ const RadioPage = () => {
           ))}
         </div>
       </div>
+
+      {/* Search results overlay */}
+      {showRadioSearch && radioSearchQuery.trim() && (
+        <div className="absolute top-28 left-0 right-0 z-30 px-3 max-h-60 overflow-y-auto">
+          <div className="bg-card/95 backdrop-blur-xl rounded-xl border border-border shadow-lg">
+            {allTracks.filter(t => {
+              const q = radioSearchQuery.toLowerCase();
+              return t.title.toLowerCase().includes(q) || t.artist_name.toLowerCase().includes(q) || ((t as any).album || "").toLowerCase().includes(q);
+            }).slice(0, 10).map(t => (
+              <button key={t.id} onClick={() => { playTrack(t); setShowRadioSearch(false); setRadioSearchQuery(""); }}
+                className="flex items-center gap-3 p-2.5 w-full text-left hover:bg-primary/5 transition-all">
+                <img src={t.cover_url} alt="" className="w-9 h-9 rounded-lg object-cover" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-foreground truncate">{t.title}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">{t.artist_name} · {(t as any).album || "Unknown Album"}</p>
+                </div>
+              </button>
+            ))}
+            {allTracks.filter(t => {
+              const q = radioSearchQuery.toLowerCase();
+              return t.title.toLowerCase().includes(q) || t.artist_name.toLowerCase().includes(q) || ((t as any).album || "").toLowerCase().includes(q);
+            }).length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-4">No matches found</p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Full-screen album art */}
       <AnimatePresence mode="wait">
@@ -172,6 +215,7 @@ const RadioPage = () => {
             <div className="mb-3">
               <h2 className="text-lg font-bold text-foreground drop-shadow-lg leading-tight">{track.title}</h2>
               <p className="text-sm text-foreground/80 drop-shadow-lg">{track.artist_name}</p>
+              <p className="text-xs text-foreground/60 drop-shadow-lg">{(track as any).album || "Unknown Album"}</p>
               <span className="text-[9px] px-2 py-0.5 rounded-full bg-background/40 backdrop-blur-sm text-primary font-medium mt-1 inline-block">{track.genre}</span>
             </div>
 

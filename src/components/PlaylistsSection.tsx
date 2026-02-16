@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, Music, Video, Mic2, Play, Trash2, Edit3, X,
-  ListMusic, ChevronRight, ChevronDown
+  ListMusic, ChevronRight, ChevronDown, Search
 } from "lucide-react";
 import { usePlaylists, PlaylistItem } from "@/contexts/PlaylistContext";
 
@@ -23,6 +23,8 @@ const PlaylistsSection = () => {
   const [showAddItems, setShowAddItems] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
 
   const handlePlayItem = (playlist: { items: PlaylistItem[] }, itemIndex: number) => {
     playFromPlaylist(playlist.items, itemIndex);
@@ -56,10 +58,27 @@ const PlaylistsSection = () => {
           <ListMusic className="w-4 h-4 text-primary" />
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Playlists</h3>
         </div>
-        <button onClick={() => setShowCreate(!showCreate)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg gradient-primary text-primary-foreground text-[10px] font-semibold glow-primary">
-          <Plus className="w-3 h-3" /> New Playlist
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setShowSearch(!showSearch)} className="w-7 h-7 rounded-full bg-card border border-border flex items-center justify-center">
+            <Search className="w-3 h-3 text-muted-foreground" />
+          </button>
+          <button onClick={() => setShowCreate(!showCreate)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg gradient-primary text-primary-foreground text-[10px] font-semibold glow-primary">
+            <Plus className="w-3 h-3" /> New Playlist
+          </button>
+        </div>
       </div>
+
+      {showSearch && (
+        <div className="mb-3">
+          <input
+            autoFocus
+            placeholder="Search playlists, songs, artists…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full px-3 py-2 rounded-xl bg-card border border-border text-sm text-foreground placeholder:text-muted-foreground"
+          />
+        </div>
+      )}
 
       <AnimatePresence>
         {showCreate && (
@@ -74,7 +93,11 @@ const PlaylistsSection = () => {
       </AnimatePresence>
 
       <div className="flex flex-col gap-2">
-        {playlists.map(playlist => {
+        {playlists.filter(p => {
+          if (!searchQuery) return true;
+          const q = searchQuery.toLowerCase();
+          return p.name.toLowerCase().includes(q) || p.items.some(i => i.title.toLowerCase().includes(q) || i.artist.toLowerCase().includes(q));
+        }).map(playlist => {
           const isExpanded = expandedId === playlist.id;
           const isEditing = editingId === playlist.id;
           return (

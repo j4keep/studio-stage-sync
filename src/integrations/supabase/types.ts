@@ -391,6 +391,7 @@ export type Database = {
       }
       songs: {
         Row: {
+          album: string | null
           audio_url: string | null
           cover_url: string | null
           created_at: string
@@ -404,6 +405,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          album?: string | null
           audio_url?: string | null
           cover_url?: string | null
           created_at?: string
@@ -417,6 +419,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          album?: string | null
           audio_url?: string | null
           cover_url?: string | null
           created_at?: string
