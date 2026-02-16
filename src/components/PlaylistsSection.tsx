@@ -100,6 +100,10 @@ const PlaylistsSection = () => {
         }).map(playlist => {
           const isExpanded = expandedId === playlist.id;
           const isEditing = editingId === playlist.id;
+          const q = searchQuery.toLowerCase();
+          const matchedItems = searchQuery
+            ? playlist.items.filter(i => i.title.toLowerCase().includes(q) || i.artist.toLowerCase().includes(q))
+            : [];
           return (
             <motion.div key={playlist.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl bg-card border border-border overflow-hidden">
               <button onClick={() => setExpandedId(isExpanded ? null : playlist.id)} className="flex items-center gap-3 p-3.5 w-full text-left hover:bg-primary/5 transition-all">
@@ -129,6 +133,29 @@ const PlaylistsSection = () => {
                 </div>
                 {isExpanded ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />}
               </button>
+
+              {/* Show matched songs when searching */}
+              {matchedItems.length > 0 && !isExpanded && (
+                <div className="px-3 pb-2 border-t border-border">
+                  <p className="text-[9px] text-muted-foreground uppercase font-semibold mt-1.5 mb-1">Matched songs</p>
+                  {matchedItems.map((item, i) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center gap-2 py-1.5 cursor-pointer hover:bg-primary/5 rounded-md px-1 transition-all"
+                      onClick={() => handlePlayItem(playlist, playlist.items.findIndex(pi => pi.id === item.id))}
+                    >
+                      <img src={item.image} alt={item.title} className="w-7 h-7 rounded object-cover flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[11px] font-medium text-foreground truncate">{item.title}</p>
+                        <div className="flex items-center gap-1 text-[9px] text-muted-foreground">
+                          {typeIcon(item.type)}<span>{item.artist}</span>
+                        </div>
+                      </div>
+                      <Play className="w-3 h-3 text-primary flex-shrink-0" />
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <AnimatePresence>
                 {isExpanded && (
