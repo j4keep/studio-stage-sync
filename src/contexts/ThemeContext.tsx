@@ -86,7 +86,8 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
           if (found) applyAccentColor(found.accent);
         }
 
-        setThemeSetupDone(preset !== "default" || !!data.custom_accent_color);
+        const dismissed = localStorage.getItem("wheuat_theme_setup_done");
+        setThemeSetupDone(!!dismissed || preset !== "default" || !!data.custom_accent_color);
       } else {
         setThemeSetupDone(false);
       }
@@ -115,6 +116,7 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
         custom_accent_color: customAccent,
       })
       .eq("user_id", user.id);
+    localStorage.setItem("wheuat_theme_setup_done", "true");
     setThemeSetupDone(true);
   }, [user, currentPreset, customAccent]);
 
