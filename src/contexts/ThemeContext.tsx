@@ -58,12 +58,15 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   const { user } = useAuth();
   const [currentPreset, setCurrentPreset] = useState("default");
   const [customAccent, setCustomAccentState] = useState<string | null>(null);
-  const [themeSetupDone, setThemeSetupDone] = useState<boolean | null>(null);
+  const [themeSetupDone, setThemeSetupDone] = useState<boolean | null>(() => {
+    // If localStorage says done, never show onboarding again
+    return localStorage.getItem("wheuat_theme_setup_done") ? true : null;
+  });
 
   // Load theme from profile
   useEffect(() => {
     if (!user) {
-      setThemeSetupDone(null);
+      setThemeSetupDone(prev => prev === true ? true : null);
       return;
     }
     const load = async () => {
