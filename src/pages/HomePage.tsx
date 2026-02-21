@@ -22,6 +22,7 @@ import cardSongs from "@/assets/card-songs.jpg";
 import cardVideos from "@/assets/card-videos.jpg";
 import cardProjects from "@/assets/card-projects.jpg";
 import cardDollarClub from "@/assets/card-dollarclub.jpg";
+import NewsFeed from "@/components/NewsFeed";
 
 const fadeUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
 
@@ -163,6 +164,9 @@ const HomePage = () => {
           )}
         </div>
       </motion.section>
+
+      {/* WHEUAT News Feed */}
+      <NewsFeed />
 
       {/* Category Cards Grid */}
       <motion.section {...fadeUp} transition={{ delay: 0.1 }} className="mb-8">
