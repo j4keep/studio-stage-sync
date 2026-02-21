@@ -256,7 +256,7 @@ const ArtistProfile = () => {
         <div className="flex flex-col gap-1.5">
           {[
           { icon: Library, label: "Library", sub: "3 playlists", action: () => navigate("/library") },
-            { icon: Edit3, label: "News Feed", sub: "Submit article", action: () => navigate("/settings") },
+            { icon: Edit3, label: "News Feed", sub: "Submit article", action: () => navigate("/news-feed") },
             { icon: ShoppingBag, label: "Purchases", sub: "View history", action: () => navigate("/purchases") },
             { icon: Building2, label: "My Studios", sub: "Manage listings", action: () => navigate("/my-studios") },
             { icon: BarChart3, label: "Analytics", sub: "View insights", action: () => navigate("/analytics") },

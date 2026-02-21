@@ -3,7 +3,6 @@ import { ArrowLeft, Moon, Sun, Bell, BellOff, Globe, Lock, Eye, Trash2, LogOut, 
 import { useNavigate } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import ThemePickerSheet from "@/components/ThemePickerSheet";
-import ManageNewsSection from "@/components/ManageNewsSection";
 
 const SettingsPage = () => {
   const navigate = useNavigate();
@@ -161,9 +160,6 @@ const SettingsPage = () => {
           <Switch checked={showActivity} onCheckedChange={setShowActivity} />
         </SettingRow>
       </Section>
-
-      {/* News Feed Management */}
-      <ManageNewsSection />
 
       {/* About & Actions */}
       <Section title="About">
