@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Newspaper } from "lucide-react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { getR2DownloadUrl } from "@/lib/r2-storage";
 
 interface NewsArticle {
   id: string;
@@ -13,6 +14,17 @@ interface NewsArticle {
   published_at: string | null;
   author_name?: string;
 }
+
+// Convert raw R2 bucket URLs to proxied download URLs
+const resolveImageUrl = (url: string | null): string | null => {
+  if (!url) return null;
+  // If it's a raw R2 bucket URL, proxy it through the download edge function
+  if (url.includes('.r2.cloudflarestorage.com/')) {
+    const match = url.match(/r2\.cloudflarestorage\.com\/[^/]+\/(.+)$/);
+    if (match) return getR2DownloadUrl(match[1]);
+  }
+  return url;
+};
 
 const fetchPublishedArticles = async (): Promise<NewsArticle[]> => {
   const { data, error } = await (supabase as any)
@@ -38,7 +50,7 @@ const fetchPublishedArticles = async (): Promise<NewsArticle[]> => {
     title: a.title,
     description: a.description,
     category: a.category,
-    cover_url: a.cover_url,
+    cover_url: resolveImageUrl(a.cover_url),
     published_at: a.published_at,
     author_name: nameMap[a.author_id] || "WHEUAT",
   }));
