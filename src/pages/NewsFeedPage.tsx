@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { ArrowLeft, Newspaper, Plus, Trash2, Check, Clock, X, ImagePlus, Pencil } from "lucide-react";
+import { ArrowLeft, Newspaper, Plus, Trash2, Check, Clock, X, ImagePlus, Pencil, Link2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,6 +36,8 @@ const NewsFeedPage = () => {
   const [category, setCategory] = useState("Featured");
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [coverUrlInput, setCoverUrlInput] = useState("");
+  const [useUrlMode, setUseUrlMode] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -61,6 +63,8 @@ const NewsFeedPage = () => {
     setCategory("Featured");
     setCoverFile(null);
     setCoverPreview(null);
+    setCoverUrlInput("");
+    setUseUrlMode(false);
   };
 
   const startEdit = (article: NewsArticle) => {
@@ -70,6 +74,8 @@ const NewsFeedPage = () => {
     setCategory(article.category || "Featured");
     setCoverPreview(article.cover_url);
     setCoverFile(null);
+    setCoverUrlInput(article.cover_url || "");
+    setUseUrlMode(!!article.cover_url && !article.cover_url.startsWith("blob:"));
     setShowForm(true);
   };
 
@@ -85,15 +91,21 @@ const NewsFeedPage = () => {
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Not authenticated");
-      let coverUrl: string | null = coverPreview || null;
-      if (coverFile) coverUrl = await uploadCover();
+      let coverUrl: string | null = null;
+      if (useUrlMode && coverUrlInput.trim()) {
+        coverUrl = coverUrlInput.trim();
+      } else if (coverFile) {
+        coverUrl = await uploadCover();
+      } else {
+        coverUrl = coverPreview || null;
+      }
 
       if (editingId) {
         const { error } = await (supabase as any).from("news_articles").update({
           title,
           description: description || null,
           category,
-          ...(coverFile ? { cover_url: coverUrl } : {}),
+          cover_url: coverUrl,
         }).eq("id", editingId);
         if (error) throw error;
       } else {
@@ -188,37 +200,72 @@ const NewsFeedPage = () => {
           <Input placeholder="Article title *" value={title} onChange={(e) => setTitle(e.target.value)} className="text-sm" />
           <Textarea placeholder="Description / story..." value={description} onChange={(e) => setDescription(e.target.value)} className="text-sm min-h-[80px]" />
 
-          {/* Cover image */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) {
-                setCoverFile(file);
-                setCoverPreview(URL.createObjectURL(file));
-              }
-            }}
-          />
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="w-full flex items-center gap-3 p-3 rounded-xl border border-dashed border-border hover:border-primary/40 transition-all bg-secondary/30"
-          >
-            {coverPreview ? (
-              <img src={coverPreview} alt="Cover" className="w-12 h-12 rounded-lg object-cover" />
-            ) : (
-              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                <ImagePlus className="w-5 h-5" />
-              </div>
-            )}
-            <div className="flex-1 text-left">
-              <p className="text-xs font-medium text-foreground">{coverFile ? coverFile.name : "Add Cover Image"}</p>
-              <p className="text-[10px] text-muted-foreground">{coverFile ? `${(coverFile.size / 1024).toFixed(0)} KB` : "Tap to upload a photo"}</p>
+          {/* Cover image mode toggle */}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => { setUseUrlMode(false); setCoverUrlInput(""); }}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[10px] font-semibold transition-all ${!useUrlMode ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground"}`}
+            >
+              <ImagePlus className="w-3.5 h-3.5" />
+              Upload Image
+            </button>
+            <button
+              type="button"
+              onClick={() => { setUseUrlMode(true); setCoverFile(null); setCoverPreview(null); }}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[10px] font-semibold transition-all ${useUrlMode ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground"}`}
+            >
+              <Link2 className="w-3.5 h-3.5" />
+              Paste URL
+            </button>
+          </div>
+
+          {useUrlMode ? (
+            <div className="space-y-2">
+              <Input
+                placeholder="Paste image URL (e.g. from Google Images)"
+                value={coverUrlInput}
+                onChange={(e) => setCoverUrlInput(e.target.value)}
+                className="text-sm"
+              />
+              {coverUrlInput.trim() && (
+                <img src={coverUrlInput} alt="Preview" className="w-full h-32 rounded-lg object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+              )}
             </div>
-          </button>
+          ) : (
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    setCoverFile(file);
+                    setCoverPreview(URL.createObjectURL(file));
+                  }
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full flex items-center gap-3 p-3 rounded-xl border border-dashed border-border hover:border-primary/40 transition-all bg-secondary/30"
+              >
+                {coverPreview ? (
+                  <img src={coverPreview} alt="Cover" className="w-12 h-12 rounded-lg object-cover" />
+                ) : (
+                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                    <ImagePlus className="w-5 h-5" />
+                  </div>
+                )}
+                <div className="flex-1 text-left">
+                  <p className="text-xs font-medium text-foreground">{coverFile ? coverFile.name : "Add Cover Image"}</p>
+                  <p className="text-[10px] text-muted-foreground">{coverFile ? `${(coverFile.size / 1024).toFixed(0)} KB` : "Tap to upload a photo"}</p>
+                </div>
+              </button>
+            </>
+          )}
 
           {/* Categories */}
           <div className="flex flex-wrap gap-1.5">
