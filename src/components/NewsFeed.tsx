@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Newspaper } from "lucide-react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 
 interface NewsArticle {
   id: string;
@@ -19,7 +20,7 @@ const fetchPublishedArticles = async (): Promise<NewsArticle[]> => {
     .select("id, title, description, category, cover_url, published_at, author_id")
     .eq("status", "published")
     .order("published_at", { ascending: false })
-    .limit(10);
+    .limit(20);
 
   if (error || !data) return [];
 
@@ -43,7 +44,32 @@ const fetchPublishedArticles = async (): Promise<NewsArticle[]> => {
   }));
 };
 
+// Group articles by category
+const groupByCategory = (articles: NewsArticle[]) => {
+  const groups: Record<string, NewsArticle[]> = {};
+  articles.forEach((a) => {
+    const cat = a.category || "Featured";
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push(a);
+  });
+  return groups;
+};
+
+const CATEGORY_COLORS: Record<string, string> = {
+  "Featured": "text-orange-400",
+  "New Music": "text-pink-400",
+  "Upcoming Artist": "text-purple-400",
+  "Trending": "text-red-400",
+  "Interview": "text-blue-400",
+  "Behind The Scenes": "text-emerald-400",
+  "Crypto": "text-yellow-400",
+  "Sports": "text-green-400",
+  "Finance": "text-cyan-400",
+  "Breaking": "text-red-500",
+};
+
 const NewsFeed = () => {
+  const navigate = useNavigate();
   const { data: articles = [] } = useQuery({
     queryKey: ["news-feed"],
     queryFn: fetchPublishedArticles,
@@ -52,49 +78,85 @@ const NewsFeed = () => {
 
   if (articles.length === 0) return null;
 
+  // WHEUAT articles first, then group the rest by category
+  const wheuatArticles = articles.filter(a => a.category === "Featured" || a.category === "New Music" || a.category === "Upcoming Artist" || a.category === "Behind The Scenes" || a.category === "Interview" || a.category === "Trending");
+  const otherArticles = articles.filter(a => !wheuatArticles.includes(a));
+  
+  const wheuatGrouped = groupByCategory(wheuatArticles);
+  const otherGrouped = groupByCategory(otherArticles);
+
+  const renderArticle = (article: NewsArticle) => (
+    <button
+      key={article.id}
+      onClick={() => navigate(`/article/${article.id}`)}
+      className="flex items-start gap-3 py-4 text-left w-full hover:opacity-80 transition-opacity"
+    >
+      <div className="flex-1 min-w-0">
+        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
+          {article.author_name}
+        </p>
+        <p className="text-[15px] font-bold text-foreground leading-snug line-clamp-3">
+          {article.title}
+        </p>
+        {article.description && (
+          <p className="text-[12px] text-muted-foreground mt-1 line-clamp-2">
+            {article.description}
+          </p>
+        )}
+      </div>
+      {article.cover_url && (
+        <img
+          src={article.cover_url}
+          alt={article.title}
+          className="w-20 h-20 rounded-xl object-cover flex-shrink-0"
+        />
+      )}
+    </button>
+  );
+
+  const renderCategory = (category: string, items: NewsArticle[]) => (
+    <div key={category} className="px-4">
+      <h3 className={`text-lg font-display font-bold mb-1 ${CATEGORY_COLORS[category] || "text-primary"}`}>
+        {category}
+      </h3>
+      <div className="divide-y divide-border">
+        {items.slice(0, 3).map(renderArticle)}
+      </div>
+    </div>
+  );
+
   return (
     <motion.section
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.08 }}
-      className="mb-8"
+      className="mb-8 -mx-4"
     >
-      <div className="flex items-center gap-2 mb-4">
-        <Newspaper className="w-4 h-4 text-primary" />
-        <h2 className="text-sm font-display font-bold text-foreground uppercase tracking-wide">
-          WHEUAT News
-        </h2>
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 mb-2">
+        <div className="flex items-center gap-2">
+          <Newspaper className="w-4 h-4 text-primary" />
+          <h2 className="text-sm font-display font-bold text-foreground uppercase tracking-wide">
+            WHEUAT News
+          </h2>
+        </div>
       </div>
 
-      <div className="rounded-2xl bg-card border border-border overflow-hidden divide-y divide-border">
-        {articles.map((article) => (
-          <div key={article.id} className="flex items-start gap-3 p-3.5 hover:bg-primary/5 transition-all">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5 mb-1">
-                <span className="text-[9px] font-bold text-primary uppercase tracking-wider">
-                  {article.category || "Featured"}
-                </span>
-                <span className="text-[9px] text-muted-foreground">•</span>
-                <span className="text-[9px] text-muted-foreground">{article.author_name}</span>
-              </div>
-              <p className="text-[13px] font-semibold text-foreground leading-snug line-clamp-2">
-                {article.title}
-              </p>
-              {article.description && (
-                <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
-                  {article.description}
-                </p>
-              )}
-            </div>
-            {article.cover_url && (
-              <img
-                src={article.cover_url}
-                alt={article.title}
-                className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
-              />
-            )}
-          </div>
-        ))}
+      <div className="rounded-2xl bg-card border border-border overflow-hidden py-2">
+        {/* Top Stories - WHEUAT first */}
+        {Object.entries(wheuatGrouped).map(([cat, items]) =>
+          renderCategory(cat, items)
+        )}
+
+        {/* Separator if both exist */}
+        {Object.keys(wheuatGrouped).length > 0 && Object.keys(otherGrouped).length > 0 && (
+          <div className="my-2 border-t border-border" />
+        )}
+
+        {/* Other categories */}
+        {Object.entries(otherGrouped).map(([cat, items]) =>
+          renderCategory(cat, items)
+        )}
       </div>
     </motion.section>
   );
