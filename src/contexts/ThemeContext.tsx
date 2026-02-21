@@ -89,8 +89,9 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
           if (found) applyAccentColor(found.accent);
         }
 
-        const dismissed = localStorage.getItem("wheuat_theme_setup_done");
-        setThemeSetupDone(!!dismissed || preset !== "default" || !!data.custom_accent_color);
+        // Always mark as done once we've loaded profile - user already completed onboarding
+        localStorage.setItem("wheuat_theme_setup_done", "true");
+        setThemeSetupDone(true);
       } else {
         setThemeSetupDone(false);
       }
