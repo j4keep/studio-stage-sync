@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Newspaper } from "lucide-react";
+import { Newspaper, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { getR2DownloadUrl } from "@/lib/r2-storage";
@@ -128,11 +128,17 @@ const NewsFeed = () => {
 
   const renderCategory = (category: string, items: NewsArticle[]) => (
     <div key={category} className="px-4">
-      <h3 className={`text-lg font-display font-bold mb-1 ${CATEGORY_COLORS[category] || "text-primary"}`}>
-        {category}
-      </h3>
+      <button
+        onClick={() => navigate(`/news/${encodeURIComponent(category)}`)}
+        className="flex items-center justify-between w-full mb-1"
+      >
+        <h3 className={`text-lg font-display font-bold ${CATEGORY_COLORS[category] || "text-primary"}`}>
+          {category}
+        </h3>
+        <ChevronRight className="w-4 h-4 text-muted-foreground" />
+      </button>
       <div className="divide-y divide-border">
-        {items.slice(0, 3).map(renderArticle)}
+        {items.slice(0, 5).map(renderArticle)}
       </div>
     </div>
   );
