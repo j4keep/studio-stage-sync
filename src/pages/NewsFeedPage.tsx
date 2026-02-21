@@ -103,7 +103,8 @@ const NewsFeedPage = () => {
           description: description || null,
           category,
           cover_url: coverUrl,
-          status: "pending",
+          status: "published",
+          published_at: new Date().toISOString(),
           is_free: true,
         });
         if (error) throw error;
