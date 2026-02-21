@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Newspaper, Plus, Trash2, Check, Clock, X } from "lucide-react";
+import { Newspaper, Plus, Trash2, Check, Clock, X, ImagePlus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { uploadToR2, generateR2Key } from "@/lib/r2-storage";
 
 interface NewsArticle {
   id: string;
@@ -27,7 +28,10 @@ const ManageNewsSection = () => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("Featured");
-  const [coverUrl, setCoverUrl] = useState("");
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: articles = [], isLoading } = useQuery({
     queryKey: ["manage-news", user?.id],
@@ -46,12 +50,23 @@ const ManageNewsSection = () => {
   const createMutation = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Not authenticated");
+      let coverUrl: string | null = null;
+
+      if (coverFile) {
+        setUploading(true);
+        const key = generateR2Key(user.id, "news-covers", coverFile.name);
+        const result = await uploadToR2(coverFile, { folder: "news-covers", fileName: `${Date.now()}-${coverFile.name}` });
+        setUploading(false);
+        if (!result.success) throw new Error(result.error || "Cover upload failed");
+        coverUrl = result.data?.url || null;
+      }
+
       const { error } = await (supabase as any).from("news_articles").insert({
         author_id: user.id,
         title,
         description: description || null,
         category,
-        cover_url: coverUrl || null,
+        cover_url: coverUrl,
         status: "pending",
         is_free: true,
       });
@@ -64,9 +79,10 @@ const ManageNewsSection = () => {
       setShowForm(false);
       setTitle("");
       setDescription("");
-      setCoverUrl("");
+      setCoverFile(null);
+      setCoverPreview(null);
     },
-    onError: () => toast.error("Failed to submit article"),
+    onError: (e: any) => toast.error(e?.message || "Failed to submit article"),
   });
 
   const publishMutation = useMutation({
@@ -123,7 +139,38 @@ const ManageNewsSection = () => {
           <div className="p-4 rounded-xl bg-card border border-border space-y-3">
             <Input placeholder="Article title *" value={title} onChange={(e) => setTitle(e.target.value)} className="text-sm" />
             <Textarea placeholder="Description / story..." value={description} onChange={(e) => setDescription(e.target.value)} className="text-sm min-h-[80px]" />
-            <Input placeholder="Cover image URL (optional)" value={coverUrl} onChange={(e) => setCoverUrl(e.target.value)} className="text-sm" />
+            
+            {/* Cover image upload */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  setCoverFile(file);
+                  setCoverPreview(URL.createObjectURL(file));
+                }
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full flex items-center gap-3 p-3 rounded-xl border border-dashed border-border hover:border-primary/40 transition-all bg-secondary/30"
+            >
+              {coverPreview ? (
+                <img src={coverPreview} alt="Cover preview" className="w-12 h-12 rounded-lg object-cover" />
+              ) : (
+                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                  <ImagePlus className="w-5 h-5" />
+                </div>
+              )}
+              <div className="flex-1 text-left">
+                <p className="text-xs font-medium text-foreground">{coverFile ? coverFile.name : "Add Cover Image"}</p>
+                <p className="text-[10px] text-muted-foreground">{coverFile ? `${(coverFile.size / 1024).toFixed(0)} KB` : "Tap to upload a photo"}</p>
+              </div>
+            </button>
             <div className="flex flex-wrap gap-1.5">
               {CATEGORIES.map((c) => (
                 <button
@@ -137,8 +184,8 @@ const ManageNewsSection = () => {
                 </button>
               ))}
             </div>
-            <Button onClick={() => createMutation.mutate()} disabled={!title.trim() || createMutation.isPending} className="w-full" size="sm">
-              {createMutation.isPending ? "Submitting..." : "Submit Article"}
+            <Button onClick={() => createMutation.mutate()} disabled={!title.trim() || createMutation.isPending || uploading} className="w-full" size="sm">
+              {uploading ? "Uploading cover..." : createMutation.isPending ? "Submitting..." : "Submit Article"}
             </Button>
           </div>
         )}
