@@ -3,6 +3,16 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
+import { getR2DownloadUrl } from "@/lib/r2-storage";
+
+const resolveImageUrl = (url: string | null): string | null => {
+  if (!url) return null;
+  if (url.includes('.r2.cloudflarestorage.com/')) {
+    const match = url.match(/r2\.cloudflarestorage\.com\/[^/]+\/(.+)$/);
+    if (match) return getR2DownloadUrl(match[1]);
+  }
+  return url;
+};
 
 interface FullArticle {
   id: string;
@@ -37,6 +47,7 @@ const ArticlePage = () => {
 
       return {
         ...data,
+        cover_url: resolveImageUrl(data.cover_url),
         author_name: profile?.display_name || "WHEUAT",
       };
     },
