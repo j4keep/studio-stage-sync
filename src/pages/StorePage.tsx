@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Search, Play, Pause, Plus, ShoppingCart,
@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCart } from "@/contexts/CartContext";
 import { toast } from "@/hooks/use-toast";
 import { GENRES, BEAT_SUB_GENRES } from "@/lib/genres";
+import { getR2DownloadUrl } from "@/lib/r2-storage";
 
 import genreCountry from "@/assets/genre-country.jpg";
 import genreRnb from "@/assets/genre-rnb.jpg";
@@ -44,6 +45,7 @@ interface Product {
   cover_url: string | null;
   tags: string[] | null;
   preview_url: string | null;
+  file_url: string | null;
   artist_name: string | null;
   sales: number;
 }
@@ -60,6 +62,7 @@ const StorePage = () => {
   const [sheetProduct, setSheetProduct] = useState<Product | null>(null);
   const [showCart, setShowCart] = useState(false);
   const [selectedBeatSubGenre, setSelectedBeatSubGenre] = useState<string | null>(null);
+  const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
@@ -67,7 +70,7 @@ const StorePage = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from("store_products")
-        .select("id, title, type, price, cover_url, tags, preview_url, artist_name, sales, user_id")
+        .select("id, title, type, price, cover_url, tags, preview_url, file_url, artist_name, sales, user_id")
         .order("created_at", { ascending: false });
       if (!error && data) {
         // Resolve artist names from profiles for any products missing artist_name
@@ -105,21 +108,61 @@ const StorePage = () => {
     return matchesGenre && matchesSearch;
   });
 
-  const togglePlay = (product: Product) => {
-    if (playingId === product.id) {
-      audioRef.current?.pause();
-      setPlayingId(null);
-    } else if (product.preview_url) {
-      if (audioRef.current) audioRef.current.pause();
-      const audio = new Audio(product.preview_url);
-      audio.play();
-      audio.onended = () => setPlayingId(null);
-      audioRef.current = audio;
-      setPlayingId(product.id);
-    } else {
-      toast({ title: "No preview available", description: "This product doesn't have an audio preview yet." });
+  const stopPreview = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
     }
+    if (previewTimerRef.current) {
+      clearTimeout(previewTimerRef.current);
+      previewTimerRef.current = null;
+    }
+    setPlayingId(null);
+  }, []);
+
+  const togglePlay = (product: Product) => {
+    // If already playing this product, stop it
+    if (playingId === product.id) {
+      stopPreview();
+      return;
+    }
+
+    // Determine audio source: prefer preview_url, fall back to file_url (R2)
+    const audioSrc = product.preview_url
+      || (product.file_url ? getR2DownloadUrl(product.file_url) : null);
+
+    if (!audioSrc) {
+      toast({ title: "No preview available", description: "This product doesn't have an audio file uploaded yet." });
+      return;
+    }
+
+    // Stop any current preview
+    stopPreview();
+
+    const audio = new Audio(audioSrc);
+    audio.play().catch((err) => {
+      console.error("Preview playback failed:", err);
+      toast({ title: "Playback failed", description: "Could not play preview." });
+      setPlayingId(null);
+    });
+    audio.onended = () => stopPreview();
+    audioRef.current = audio;
+    setPlayingId(product.id);
+
+    // Auto-stop after 30 seconds
+    previewTimerRef.current = setTimeout(() => {
+      stopPreview();
+      toast({ title: "Preview ended", description: "30-second preview complete." });
+    }, 30000);
   };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+      if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
+    };
+  }, []);
 
   const handleAddToCart = (p: Product) => {
     if (isInCart(p.id)) {
