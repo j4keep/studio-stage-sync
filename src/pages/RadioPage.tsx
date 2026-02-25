@@ -294,7 +294,7 @@ const RadioPage = () => {
             {/* Seekable progress bar */}
             <div
               ref={seekAreaRef}
-              className="mb-3 seek-area relative select-none touch-none"
+              className="mb-3 seek-area relative z-20 select-none touch-none"
               onPointerDown={handleSeekPointerDown}
               onPointerMove={handleSeekPointerMove}
               onPointerUp={handleSeekPointerUp}
@@ -334,8 +334,8 @@ const RadioPage = () => {
           </div>
 
           {/* Play button overlay center */}
-          <div className="absolute inset-0 flex items-center justify-center z-10">
-            <button onClick={toggle} className="w-16 h-16 rounded-full bg-background/30 backdrop-blur-md flex items-center justify-center border border-foreground/10 hover:bg-background/50 transition-all">
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-10">
+            <button onClick={toggle} className="pointer-events-auto w-16 h-16 rounded-full bg-background/30 backdrop-blur-md flex items-center justify-center border border-foreground/10 hover:bg-background/50 transition-all">
               {isPlaying ? <Pause className="w-7 h-7 text-foreground" /> : <Play className="w-7 h-7 text-foreground ml-1" />}
             </button>
           </div>
