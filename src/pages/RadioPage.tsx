@@ -46,13 +46,16 @@ const RadioPage = () => {
   const [showRadioSearch, setShowRadioSearch] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [isSeeking, setIsSeeking] = useState(false);
+  const [seekPreview, setSeekPreview] = useState<number | null>(null);
   const [commentText, setCommentText] = useState("");
   const [comments, setComments] = useState<Record<string, RadioComment[]>>({});
   const commentInputRef = useRef<HTMLInputElement>(null);
   const swipeStartX = useRef<number | null>(null);
   const swipeStartY = useRef<number | null>(null);
+  const seekGestureLockRef = useRef(false);
 
   const trackComments = currentTrack ? (comments[currentTrack.id] || []) : [];
+  const sliderValue = isSeeking ? (seekPreview ?? currentTime) : currentTime;
 
   const handlePostComment = () => {
     if (!commentText.trim() || !currentTrack) return;
@@ -183,13 +186,14 @@ const RadioPage = () => {
           transition={{ duration: 0.3 }}
           className="relative flex-1 min-h-0"
           onTouchStart={(e) => {
+            if (seekGestureLockRef.current) return;
             const target = e.target as HTMLElement;
             if (target.closest('[role="slider"]') || target.closest('.seek-area')) return;
             swipeStartX.current = e.touches[0].clientX;
             swipeStartY.current = e.touches[0].clientY;
           }}
           onTouchMove={(e) => {
-            // Cancel swipe if touch moves into the seek area
+            if (seekGestureLockRef.current) return;
             const target = e.target as HTMLElement;
             if (target.closest('[role="slider"]') || target.closest('.seek-area')) {
               swipeStartX.current = null;
@@ -197,6 +201,11 @@ const RadioPage = () => {
             }
           }}
           onTouchEnd={(e) => {
+            if (seekGestureLockRef.current) {
+              swipeStartX.current = null;
+              swipeStartY.current = null;
+              return;
+            }
             if (swipeStartX.current === null || swipeStartY.current === null) return;
             const diffX = e.changedTouches[0].clientX - swipeStartX.current;
             const diffY = e.changedTouches[0].clientY - swipeStartY.current;
@@ -227,18 +236,31 @@ const RadioPage = () => {
             </div>
 
             {/* Seekable progress bar */}
-            <div className="mb-3 seek-area" onTouchStart={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
+            <div
+              className="mb-3 seek-area"
+              onTouchStart={(e) => { seekGestureLockRef.current = true; e.stopPropagation(); }}
+              onTouchMove={(e) => e.stopPropagation()}
+              onTouchEnd={(e) => { e.stopPropagation(); setTimeout(() => { seekGestureLockRef.current = false; }, 0); }}
+              onPointerDown={(e) => { seekGestureLockRef.current = true; e.stopPropagation(); }}
+              onPointerUp={() => { seekGestureLockRef.current = false; }}
+              onPointerCancel={() => { seekGestureLockRef.current = false; }}
+            >
               <Slider
-                value={[isSeeking ? currentTime : currentTime]}
+                value={[sliderValue]}
                 max={duration || 100}
-                step={0.5}
-                onValueChange={(v) => { setIsSeeking(true); seek(v[0]); }}
-                onValueCommit={(v) => { seek(v[0]); setIsSeeking(false); }}
+                step={0.1}
+                onValueChange={(v) => { setIsSeeking(true); setSeekPreview(v[0]); }}
+                onValueCommit={(v) => {
+                  const targetTime = v[0] ?? 0;
+                  seek(targetTime);
+                  setSeekPreview(null);
+                  setIsSeeking(false);
+                }}
                 className="w-full [&_[role=slider]]:h-4 [&_[role=slider]]:w-4 [&_[role=slider]]:border-primary [&_.relative]:h-1.5"
               />
               <div className="flex justify-between mt-1">
-                <span className="text-[10px] text-foreground/70">{formatTime(currentTime)}</span>
-                <span className="text-[10px] text-foreground/70">-{formatTime(Math.max(0, duration - currentTime))}</span>
+                <span className="text-[10px] text-foreground/70">{formatTime(sliderValue)}</span>
+                <span className="text-[10px] text-foreground/70">-{formatTime(Math.max(0, duration - sliderValue))}</span>
               </div>
             </div>
           </div>
