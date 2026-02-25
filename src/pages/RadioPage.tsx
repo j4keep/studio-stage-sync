@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, Pause, Heart, Share2, MessageCircle, MoreHorizontal, ListMusic, ChevronDown, Music, Send, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -9,9 +9,14 @@ import { toast } from "@/hooks/use-toast";
 import RadioShareSheet from "@/components/RadioShareSheet";
 import RadioMoreSheet from "@/components/RadioMoreSheet";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { Slider } from "@/components/ui/slider";
+
 
 const RADIO_GENRE_FILTERS = ["All", ...GENRES.filter(g => g !== "Beats")];
+
+const SEEK_WAVE_BARS = Array.from({ length: 88 }, (_, index) => {
+  const seed = (index * 17 + 23) % 100;
+  return 28 + (seed % 48);
+});
 
 const formatTime = (s: number) => {
   if (!s || !isFinite(s)) return "0:00";
@@ -56,6 +61,86 @@ const RadioPage = () => {
 
   const trackComments = currentTrack ? (comments[currentTrack.id] || []) : [];
   const sliderValue = isSeeking ? (seekPreview ?? currentTime) : currentTime;
+  const progressRatio = duration > 0 ? Math.min(1, Math.max(0, sliderValue / duration)) : 0;
+  const seekAreaRef = useRef<HTMLDivElement>(null);
+  const waveBars = useMemo(() => SEEK_WAVE_BARS, []);
+
+  const getSeekTimeFromClientX = (clientX: number) => {
+    const rect = seekAreaRef.current?.getBoundingClientRect();
+    if (!rect || !duration) return 0;
+    const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+    return ratio * duration;
+  };
+
+  const startSeeking = (clientX: number) => {
+    seekGestureLockRef.current = true;
+    setIsSeeking(true);
+    const nextTime = getSeekTimeFromClientX(clientX);
+    setSeekPreview(nextTime);
+    seek(nextTime);
+  };
+
+  const moveSeeking = (clientX: number) => {
+    if (!isSeeking) return;
+    const nextTime = getSeekTimeFromClientX(clientX);
+    setSeekPreview(nextTime);
+    seek(nextTime);
+  };
+
+  const finishSeeking = (clientX?: number) => {
+    if (clientX !== undefined) {
+      const nextTime = getSeekTimeFromClientX(clientX);
+      seek(nextTime);
+      setSeekPreview(nextTime);
+    }
+    setTimeout(() => {
+      seekGestureLockRef.current = false;
+    }, 0);
+    setIsSeeking(false);
+    setSeekPreview(null);
+  };
+
+  const handleSeekTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const touch = e.touches[0];
+    if (!touch) return;
+    startSeeking(touch.clientX);
+  };
+
+  const handleSeekTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!isSeeking) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const touch = e.touches[0];
+    if (!touch) return;
+    moveSeeking(touch.clientX);
+  };
+
+  const handleSeekTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const touch = e.changedTouches[0];
+    finishSeeking(touch?.clientX);
+  };
+
+  const handleSeekMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    startSeeking(e.clientX);
+  };
+
+  const handleSeekMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isSeeking) return;
+    e.preventDefault();
+    moveSeeking(e.clientX);
+  };
+
+  const handleSeekMouseUp = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isSeeking) return;
+    e.preventDefault();
+    finishSeeking(e.clientX);
+  };
 
   const handlePostComment = () => {
     if (!commentText.trim() || !currentTrack) return;
@@ -247,30 +332,40 @@ const RadioPage = () => {
 
             {/* Seekable progress bar */}
             <div
-              className="mb-3 seek-area"
-              onTouchStart={(e) => { seekGestureLockRef.current = true; e.stopPropagation(); }}
-              onTouchMove={(e) => e.stopPropagation()}
-              onTouchEnd={(e) => { e.stopPropagation(); setTimeout(() => { seekGestureLockRef.current = false; }, 0); }}
-              onPointerDown={(e) => { seekGestureLockRef.current = true; e.stopPropagation(); }}
-              onPointerUp={() => { seekGestureLockRef.current = false; }}
-              onPointerCancel={() => { seekGestureLockRef.current = false; }}
+              ref={seekAreaRef}
+              className="mb-3 seek-area select-none touch-none"
+              onTouchStart={handleSeekTouchStart}
+              onTouchMove={handleSeekTouchMove}
+              onTouchEnd={handleSeekTouchEnd}
+              onTouchCancel={() => finishSeeking()}
+              onMouseDown={handleSeekMouseDown}
+              onMouseMove={handleSeekMouseMove}
+              onMouseUp={handleSeekMouseUp}
+              onMouseLeave={() => isSeeking && finishSeeking()}
             >
-              <Slider
-                value={[sliderValue]}
-                max={duration || 100}
-                step={0.1}
-                onValueChange={(v) => { setIsSeeking(true); setSeekPreview(v[0]); }}
-                onValueCommit={(v) => {
-                  const targetTime = v[0] ?? 0;
-                  seek(targetTime);
-                  setSeekPreview(null);
-                  setIsSeeking(false);
-                }}
-                className="w-full [&_[role=slider]]:h-4 [&_[role=slider]]:w-4 [&_[role=slider]]:border-primary [&_.relative]:h-1.5"
-              />
-              <div className="flex justify-between mt-1">
-                <span className="text-[10px] text-foreground/70">{formatTime(sliderValue)}</span>
-                <span className="text-[10px] text-foreground/70">-{formatTime(Math.max(0, duration - sliderValue))}</span>
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <span className="text-[11px] font-semibold text-foreground/90">{formatTime(sliderValue)}</span>
+                <span className="text-[11px] text-foreground/40">|</span>
+                <span className="text-[11px] text-foreground/60">{formatTime(duration)}</span>
+              </div>
+
+              <div className="h-14 flex items-center gap-[2px] rounded-lg bg-background/30 px-1.5">
+                {waveBars.map((barHeight, index) => {
+                  const barRatio = (index + 1) / waveBars.length;
+                  const isPlayed = progressRatio >= barRatio;
+                  return (
+                    <div key={index} className="flex-1 flex flex-col items-center justify-center gap-[1px]">
+                      <span
+                        className={`w-full rounded-sm transition-colors ${isPlayed ? "bg-primary" : "bg-muted-foreground/45"}`}
+                        style={{ height: `${barHeight}%` }}
+                      />
+                      <span
+                        className={`w-full rounded-sm transition-colors ${isPlayed ? "bg-primary/70" : "bg-muted-foreground/35"}`}
+                        style={{ height: `${Math.max(20, barHeight * 0.55)}%` }}
+                      />
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
