@@ -187,10 +187,20 @@ const RadioPage = () => {
           className="relative flex-1 min-h-0"
           onTouchStart={(e) => {
             if (seekGestureLockRef.current) return;
+
+            const touch = e.touches[0];
+            const touchY = touch.clientY;
+            const swipeZoneCutoff = window.innerHeight * 0.72;
+
+            // Only allow swipe-track gestures from the upper artwork zone.
+            // This prevents progress-bar drags and bottom controls from changing tracks.
+            if (touchY > swipeZoneCutoff) return;
+
             const target = e.target as HTMLElement;
             if (target.closest('[role="slider"]') || target.closest('.seek-area')) return;
-            swipeStartX.current = e.touches[0].clientX;
-            swipeStartY.current = e.touches[0].clientY;
+
+            swipeStartX.current = touch.clientX;
+            swipeStartY.current = touch.clientY;
           }}
           onTouchMove={(e) => {
             if (seekGestureLockRef.current) return;
