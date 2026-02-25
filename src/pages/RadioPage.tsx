@@ -349,19 +349,25 @@ const RadioPage = () => {
                 <span className="text-[11px] text-foreground/60">{formatTime(duration)}</span>
               </div>
 
-              <div className="h-14 flex items-center gap-[2px] rounded-lg bg-background/30 px-1.5">
+              <div className="h-16 flex items-end gap-[2px] px-1.5 py-2">
                 {waveBars.map((barHeight, index) => {
                   const barRatio = (index + 1) / waveBars.length;
                   const isPlayed = progressRatio >= barRatio;
                   return (
-                    <div key={index} className="flex-1 flex flex-col items-center justify-center gap-[1px]">
+                    <div key={index} className="flex-1 flex flex-col items-center justify-end gap-[1px]" style={{ height: '100%' }}>
                       <span
-                        className={`w-full rounded-sm transition-colors ${isPlayed ? "bg-primary" : "bg-foreground/50"}`}
-                        style={{ height: `${barHeight}%` }}
+                        className="w-full rounded-[1px]"
+                        style={{
+                          height: `${barHeight}%`,
+                          backgroundColor: isPlayed ? 'hsl(var(--primary))' : 'hsl(var(--primary) / 0.3)',
+                        }}
                       />
                       <span
-                        className={`w-full rounded-sm transition-colors ${isPlayed ? "bg-primary/60" : "bg-foreground/30"}`}
-                        style={{ height: `${Math.max(20, barHeight * 0.55)}%` }}
+                        className="w-full rounded-[1px]"
+                        style={{
+                          height: `${Math.max(15, barHeight * 0.45)}%`,
+                          backgroundColor: isPlayed ? 'hsl(var(--primary) / 0.6)' : 'hsl(var(--primary) / 0.15)',
+                        }}
                       />
                     </div>
                   );
