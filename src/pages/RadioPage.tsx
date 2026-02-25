@@ -356,11 +356,11 @@ const RadioPage = () => {
                   return (
                     <div key={index} className="flex-1 flex flex-col items-center justify-center gap-[1px]">
                       <span
-                        className={`w-full rounded-sm transition-colors ${isPlayed ? "bg-primary" : "bg-muted-foreground/45"}`}
+                        className={`w-full rounded-sm transition-colors ${isPlayed ? "bg-primary" : "bg-foreground/50"}`}
                         style={{ height: `${barHeight}%` }}
                       />
                       <span
-                        className={`w-full rounded-sm transition-colors ${isPlayed ? "bg-primary/70" : "bg-muted-foreground/35"}`}
+                        className={`w-full rounded-sm transition-colors ${isPlayed ? "bg-primary/60" : "bg-foreground/30"}`}
                         style={{ height: `${Math.max(20, barHeight * 0.55)}%` }}
                       />
                     </div>
