@@ -63,29 +63,44 @@ const RadioPage = () => {
   const sliderValue = isSeeking ? (seekPreview ?? currentTime) : currentTime;
   const progressRatio = duration > 0 ? Math.min(1, Math.max(0, sliderValue / duration)) : 0;
   const waveBars = useMemo(() => SEEK_WAVE_BARS, []);
+  const seekAreaRef = useRef<HTMLDivElement>(null);
+  const activePointerIdRef = useRef<number | null>(null);
 
-  const handleSeekRangeStart = (e: React.SyntheticEvent) => {
-    e.stopPropagation();
-    seekGestureLockRef.current = true;
-    setIsSeeking(true);
-  };
-
-  const handleSeekRangeInput = (e: React.FormEvent<HTMLInputElement>) => {
-    e.stopPropagation();
-    const value = Number((e.currentTarget as HTMLInputElement).value);
+  const seekByClientX = (clientX: number) => {
+    const rect = seekAreaRef.current?.getBoundingClientRect();
+    if (!rect || !duration) return;
+    const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+    const value = ratio * duration;
     setSeekPreview(value);
     seek(value);
   };
 
-  const handleSeekRangeEnd = (e: React.SyntheticEvent<HTMLInputElement>) => {
+  const handleSeekPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
     e.stopPropagation();
-    const value = Number((e.currentTarget as HTMLInputElement).value);
-    seek(value);
-    setSeekPreview(null);
+    seekGestureLockRef.current = true;
+    activePointerIdRef.current = e.pointerId;
+    seekAreaRef.current?.setPointerCapture(e.pointerId);
+    setIsSeeking(true);
+    seekByClientX(e.clientX);
+  };
+
+  const handleSeekPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isSeeking || activePointerIdRef.current !== e.pointerId) return;
+    e.preventDefault();
+    e.stopPropagation();
+    seekByClientX(e.clientX);
+  };
+
+  const handleSeekPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (activePointerIdRef.current !== e.pointerId) return;
+    e.preventDefault();
+    e.stopPropagation();
+    seekByClientX(e.clientX);
     setIsSeeking(false);
-    setTimeout(() => {
-      seekGestureLockRef.current = false;
-    }, 0);
+    setSeekPreview(null);
+    activePointerIdRef.current = null;
+    seekGestureLockRef.current = false;
   };
 
   const handlePostComment = () => {
@@ -277,25 +292,14 @@ const RadioPage = () => {
             </div>
 
             {/* Seekable progress bar */}
-            <div className="mb-3 seek-area relative select-none" onPointerDown={(e) => e.stopPropagation()} onPointerMove={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()}>
-              <input
-                type="range"
-                min={0}
-                max={Math.max(duration || 0, 0.1)}
-                step={0.1}
-                value={sliderValue}
-                className="seek-range-input absolute inset-0 z-20 w-full h-full opacity-0 cursor-pointer"
-                onPointerDown={handleSeekRangeStart}
-                onPointerUp={handleSeekRangeEnd}
-                onPointerCancel={handleSeekRangeEnd}
-                onTouchStart={handleSeekRangeStart}
-                onTouchEnd={handleSeekRangeEnd}
-                onMouseDown={handleSeekRangeStart}
-                onMouseUp={handleSeekRangeEnd}
-                onInput={handleSeekRangeInput}
-                onChange={handleSeekRangeInput}
-              />
-
+            <div
+              ref={seekAreaRef}
+              className="mb-3 seek-area relative select-none touch-none"
+              onPointerDown={handleSeekPointerDown}
+              onPointerMove={handleSeekPointerMove}
+              onPointerUp={handleSeekPointerUp}
+              onPointerCancel={handleSeekPointerUp}
+            >
               <div className="flex items-center justify-center gap-2 mb-2">
                 <span className="text-[11px] font-semibold text-foreground/90">{formatTime(sliderValue)}</span>
                 <span className="text-[11px] text-foreground/40">|</span>
