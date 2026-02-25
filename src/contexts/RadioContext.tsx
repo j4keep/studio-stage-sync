@@ -36,6 +36,10 @@ interface RadioContextType {
   currentTime: number;
   duration: number;
   seek: (time: number) => void;
+  volume: number;
+  setVolume: (v: number) => void;
+  shuffled: boolean;
+  toggleShuffle: () => void;
 }
 
 const RadioContext = createContext<RadioContextType | null>(null);
@@ -46,6 +50,16 @@ export const useRadio = () => {
   return ctx;
 };
 
+// Fisher-Yates shuffle
+function shuffleArray<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 export const RadioProvider = ({ children }: { children: ReactNode }) => {
   const [songs, setSongs] = useState<RadioTrack[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,8 +69,26 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
   const [activeGenre, setActiveGenre] = useState("All");
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [volume, setVolumeState] = useState(1);
+  const [shuffled, setShuffled] = useState(false);
+  const [shuffleOrder, setShuffleOrder] = useState<number[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const playTracked = useRef<Set<string>>(new Set());
+
+  // Use refs so the ended handler always has fresh state
+  const songsRef = useRef(songs);
+  const activeGenreRef = useRef(activeGenre);
+  const shuffledRef = useRef(shuffled);
+  const shuffleOrderRef = useRef(shuffleOrder);
+
+  useEffect(() => { songsRef.current = songs; }, [songs]);
+  useEffect(() => { activeGenreRef.current = activeGenre; }, [activeGenre]);
+  useEffect(() => { shuffledRef.current = shuffled; }, [shuffled]);
+  useEffect(() => { shuffleOrderRef.current = shuffleOrder; }, [shuffleOrder]);
+
+  const getFilteredFromRef = () => {
+    return songsRef.current.filter(s => activeGenreRef.current === "All" || s.genre === activeGenreRef.current);
+  };
 
   // Create audio element once
   useEffect(() => {
@@ -65,18 +97,17 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
     audioRef.current = audio;
 
     audio.addEventListener("ended", () => {
-      setCurrentIndex(prev => {
-        const filtered = getFiltered();
-        if (filtered.length === 0) return prev;
-        if (filtered.length === 1) {
-          // Replay the same track
-          audio.currentTime = 0;
-          audio.play().catch(() => {});
-          return prev;
-        }
-        return (prev + 1) % filtered.length;
-      });
-      // Ensure playback continues to next track
+      const filtered = getFilteredFromRef();
+      if (filtered.length === 0) return;
+
+      if (filtered.length === 1) {
+        audio.currentTime = 0;
+        audio.play().catch(() => {});
+        return;
+      }
+
+      // Advance to next track (loops back to 0)
+      setCurrentIndex(prev => (prev + 1) % filtered.length);
       setIsPlaying(true);
     });
 
@@ -99,13 +130,22 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const getFiltered = useCallback(() => {
-    return songs.filter(s => activeGenre === "All" || s.genre === activeGenre);
-  }, [songs, activeGenre]);
+    const filtered = songs.filter(s => activeGenre === "All" || s.genre === activeGenre);
+    if (!shuffled || shuffleOrder.length !== filtered.length) return filtered;
+    // Return in shuffle order
+    return shuffleOrder.map(i => filtered[i]).filter(Boolean);
+  }, [songs, activeGenre, shuffled, shuffleOrder]);
 
   const filteredSongs = getFiltered();
   const safeIndex = filteredSongs.length > 0 ? currentIndex % filteredSongs.length : 0;
   const currentTrack = filteredSongs[safeIndex] || null;
   const queue = filteredSongs.filter((_, i) => i !== safeIndex);
+
+  // Generate shuffle order when needed
+  const regenerateShuffle = useCallback((len: number) => {
+    const order = shuffleArray(Array.from({ length: len }, (_, i) => i));
+    setShuffleOrder(order);
+  }, []);
 
   // Handle audio src changes
   useEffect(() => {
@@ -127,11 +167,18 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [isPlaying, currentTrack?.id, currentTrack?.audio_url]);
 
-  // Reset index on genre change
+  // Apply volume changes
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.volume = volume;
+  }, [volume]);
+
+  // Reset index on genre change & regenerate shuffle
   useEffect(() => {
     setCurrentIndex(0);
     setIsPlaying(false);
-  }, [activeGenre]);
+    const filtered = songs.filter(s => activeGenre === "All" || s.genre === activeGenre);
+    if (shuffled && filtered.length > 0) regenerateShuffle(filtered.length);
+  }, [activeGenre, songs, shuffled, regenerateShuffle]);
 
   const fetchRadioSongs = useCallback(async () => {
     setLoading(true);
@@ -206,12 +253,29 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
+  const setVolume = useCallback((v: number) => {
+    setVolumeState(Math.max(0, Math.min(1, v)));
+  }, []);
+
+  const toggleShuffle = useCallback(() => {
+    setShuffled(prev => {
+      const next = !prev;
+      if (next) {
+        const filtered = songsRef.current.filter(s => activeGenreRef.current === "All" || s.genre === activeGenreRef.current);
+        regenerateShuffle(filtered.length);
+      }
+      setCurrentIndex(0);
+      return next;
+    });
+  }, [regenerateShuffle]);
+
   return (
     <RadioContext.Provider value={{
       isPlaying, currentTrack, queue, allTracks: filteredSongs,
       play, pause, toggle, skip, previous, skipsLeft, playTrack,
       setGenreFilter, activeGenre, loading, fetchRadioSongs,
       currentTime, duration, seek,
+      volume, setVolume, shuffled, toggleShuffle,
     }}>
       {children}
     </RadioContext.Provider>
