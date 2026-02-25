@@ -62,84 +62,30 @@ const RadioPage = () => {
   const trackComments = currentTrack ? (comments[currentTrack.id] || []) : [];
   const sliderValue = isSeeking ? (seekPreview ?? currentTime) : currentTime;
   const progressRatio = duration > 0 ? Math.min(1, Math.max(0, sliderValue / duration)) : 0;
-  const seekAreaRef = useRef<HTMLDivElement>(null);
   const waveBars = useMemo(() => SEEK_WAVE_BARS, []);
 
-  const getSeekTimeFromClientX = (clientX: number) => {
-    const rect = seekAreaRef.current?.getBoundingClientRect();
-    if (!rect || !duration) return 0;
-    const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
-    return ratio * duration;
-  };
-
-  const startSeeking = (clientX: number) => {
+  const handleSeekRangeStart = (e: React.SyntheticEvent) => {
+    e.stopPropagation();
     seekGestureLockRef.current = true;
     setIsSeeking(true);
-    const nextTime = getSeekTimeFromClientX(clientX);
-    setSeekPreview(nextTime);
-    seek(nextTime);
   };
 
-  const moveSeeking = (clientX: number) => {
-    if (!isSeeking) return;
-    const nextTime = getSeekTimeFromClientX(clientX);
-    setSeekPreview(nextTime);
-    seek(nextTime);
+  const handleSeekRangeInput = (e: React.FormEvent<HTMLInputElement>) => {
+    e.stopPropagation();
+    const value = Number((e.currentTarget as HTMLInputElement).value);
+    setSeekPreview(value);
+    seek(value);
   };
 
-  const finishSeeking = (clientX?: number) => {
-    if (clientX !== undefined) {
-      const nextTime = getSeekTimeFromClientX(clientX);
-      seek(nextTime);
-      setSeekPreview(nextTime);
-    }
+  const handleSeekRangeEnd = (e: React.SyntheticEvent<HTMLInputElement>) => {
+    e.stopPropagation();
+    const value = Number((e.currentTarget as HTMLInputElement).value);
+    seek(value);
+    setSeekPreview(null);
+    setIsSeeking(false);
     setTimeout(() => {
       seekGestureLockRef.current = false;
     }, 0);
-    setIsSeeking(false);
-    setSeekPreview(null);
-  };
-
-  const handleSeekTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const touch = e.touches[0];
-    if (!touch) return;
-    startSeeking(touch.clientX);
-  };
-
-  const handleSeekTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (!isSeeking) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const touch = e.touches[0];
-    if (!touch) return;
-    moveSeeking(touch.clientX);
-  };
-
-  const handleSeekTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const touch = e.changedTouches[0];
-    finishSeeking(touch?.clientX);
-  };
-
-  const handleSeekMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    startSeeking(e.clientX);
-  };
-
-  const handleSeekMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isSeeking) return;
-    e.preventDefault();
-    moveSeeking(e.clientX);
-  };
-
-  const handleSeekMouseUp = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isSeeking) return;
-    e.preventDefault();
-    finishSeeking(e.clientX);
   };
 
   const handlePostComment = () => {
@@ -331,42 +277,49 @@ const RadioPage = () => {
             </div>
 
             {/* Seekable progress bar */}
-            <div
-              ref={seekAreaRef}
-              className="mb-3 seek-area select-none touch-none"
-              onTouchStart={handleSeekTouchStart}
-              onTouchMove={handleSeekTouchMove}
-              onTouchEnd={handleSeekTouchEnd}
-              onTouchCancel={() => finishSeeking()}
-              onMouseDown={handleSeekMouseDown}
-              onMouseMove={handleSeekMouseMove}
-              onMouseUp={handleSeekMouseUp}
-              onMouseLeave={() => isSeeking && finishSeeking()}
-            >
+            <div className="mb-3 seek-area relative select-none" onPointerDown={(e) => e.stopPropagation()} onPointerMove={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()}>
+              <input
+                type="range"
+                min={0}
+                max={Math.max(duration || 0, 0.1)}
+                step={0.1}
+                value={sliderValue}
+                className="seek-range-input absolute inset-0 z-20 w-full h-full opacity-0 cursor-pointer"
+                onPointerDown={handleSeekRangeStart}
+                onPointerUp={handleSeekRangeEnd}
+                onPointerCancel={handleSeekRangeEnd}
+                onTouchStart={handleSeekRangeStart}
+                onTouchEnd={handleSeekRangeEnd}
+                onMouseDown={handleSeekRangeStart}
+                onMouseUp={handleSeekRangeEnd}
+                onInput={handleSeekRangeInput}
+                onChange={handleSeekRangeInput}
+              />
+
               <div className="flex items-center justify-center gap-2 mb-2">
                 <span className="text-[11px] font-semibold text-foreground/90">{formatTime(sliderValue)}</span>
                 <span className="text-[11px] text-foreground/40">|</span>
                 <span className="text-[11px] text-foreground/60">{formatTime(duration)}</span>
               </div>
 
-              <div className="h-16 flex items-end gap-[2px] px-1.5 py-2">
+              <div className="h-16 flex items-end gap-[2px] px-1.5 py-2 rounded-lg bg-background/20">
                 {waveBars.map((barHeight, index) => {
                   const barRatio = (index + 1) / waveBars.length;
                   const isPlayed = progressRatio >= barRatio;
                   return (
-                    <div key={index} className="flex-1 flex flex-col items-center justify-end gap-[1px]" style={{ height: '100%' }}>
+                    <div key={index} className="flex-1 flex flex-col items-center justify-end gap-[1px]" style={{ height: "100%" }}>
                       <span
                         className="w-full rounded-[1px]"
                         style={{
                           height: `${barHeight}%`,
-                          backgroundColor: isPlayed ? 'hsl(var(--primary))' : 'hsl(var(--primary) / 0.3)',
+                          backgroundColor: isPlayed ? "hsl(var(--primary))" : "hsl(var(--primary) / 0.3)",
                         }}
                       />
                       <span
                         className="w-full rounded-[1px]"
                         style={{
                           height: `${Math.max(15, barHeight * 0.45)}%`,
-                          backgroundColor: isPlayed ? 'hsl(var(--primary) / 0.6)' : 'hsl(var(--primary) / 0.15)',
+                          backgroundColor: isPlayed ? "hsl(var(--primary) / 0.6)" : "hsl(var(--primary) / 0.15)",
                         }}
                       />
                     </div>
