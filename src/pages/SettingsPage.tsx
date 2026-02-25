@@ -115,7 +115,8 @@ const SettingsPage = () => {
         <ProActionRow isPro={isPro} icon={<Crown className="w-4 h-4" />} label="News Feed Publishing" onClick={() => isPro ? navigate("/news-feed") : requirePro("News Feed")} />
         <ProActionRow isPro={isPro} icon={<Crown className="w-4 h-4" />} label="Messenger" onClick={() => isPro ? navigate("/messages") : requirePro("Messenger")} />
         <ProActionRow isPro={isPro} icon={<Crown className="w-4 h-4" />} label="Studio Listings" onClick={() => isPro ? navigate("/my-studios") : requirePro("Studio Listings")} />
-        <ProActionRow isPro={isPro} icon={<Crown className="w-4 h-4" />} label="Upload Songs & Videos" onClick={() => isPro ? navigate("/my-songs") : requirePro("Upload Content")} />
+        <ActionRow icon={<Crown className="w-4 h-4" />} label="My Songs" onClick={() => navigate("/my-songs")} />
+        <ProActionRow isPro={isPro} icon={<Crown className="w-4 h-4" />} label="Upload Videos" onClick={() => isPro ? navigate("/my-videos") : requirePro("Upload Videos")} />
         <ProActionRow isPro={isPro} icon={<Crown className="w-4 h-4" />} label="Store Management" onClick={() => isPro ? navigate("/my-store") : requirePro("Store")} />
       </Section>
 

@@ -183,11 +183,18 @@ const RadioPage = () => {
           transition={{ duration: 0.3 }}
           className="relative flex-1 min-h-0"
           onTouchStart={(e) => {
-            // Don't track swipe if started on the slider area
             const target = e.target as HTMLElement;
             if (target.closest('[role="slider"]') || target.closest('.seek-area')) return;
             swipeStartX.current = e.touches[0].clientX;
             swipeStartY.current = e.touches[0].clientY;
+          }}
+          onTouchMove={(e) => {
+            // Cancel swipe if touch moves into the seek area
+            const target = e.target as HTMLElement;
+            if (target.closest('[role="slider"]') || target.closest('.seek-area')) {
+              swipeStartX.current = null;
+              swipeStartY.current = null;
+            }
           }}
           onTouchEnd={(e) => {
             if (swipeStartX.current === null || swipeStartY.current === null) return;
@@ -220,14 +227,14 @@ const RadioPage = () => {
             </div>
 
             {/* Seekable progress bar */}
-            <div className="mb-3 seek-area" onTouchStart={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()}>
+            <div className="mb-3 seek-area" onTouchStart={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
               <Slider
-                value={[currentTime]}
+                value={[isSeeking ? currentTime : currentTime]}
                 max={duration || 100}
                 step={0.5}
                 onValueChange={(v) => { setIsSeeking(true); seek(v[0]); }}
-                onValueCommit={() => setIsSeeking(false)}
-                className="w-full [&_[role=slider]]:h-3 [&_[role=slider]]:w-3 [&_[role=slider]]:border-primary [&_.relative]:h-1"
+                onValueCommit={(v) => { seek(v[0]); setIsSeeking(false); }}
+                className="w-full [&_[role=slider]]:h-4 [&_[role=slider]]:w-4 [&_[role=slider]]:border-primary [&_.relative]:h-1.5"
               />
               <div className="flex justify-between mt-1">
                 <span className="text-[10px] text-foreground/70">{formatTime(currentTime)}</span>
