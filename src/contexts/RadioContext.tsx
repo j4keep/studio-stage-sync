@@ -67,9 +67,17 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
     audio.addEventListener("ended", () => {
       setCurrentIndex(prev => {
         const filtered = getFiltered();
-        if (filtered.length <= 1) return prev;
+        if (filtered.length === 0) return prev;
+        if (filtered.length === 1) {
+          // Replay the same track
+          audio.currentTime = 0;
+          audio.play().catch(() => {});
+          return prev;
+        }
         return (prev + 1) % filtered.length;
       });
+      // Ensure playback continues to next track
+      setIsPlaying(true);
     });
 
     audio.addEventListener("timeupdate", () => {
