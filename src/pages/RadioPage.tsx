@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, Heart, Share2, MessageCircle, MoreHorizontal, ListMusic, ChevronDown, Music, Send, Search } from "lucide-react";
+import { Play, Pause, Heart, Share2, MessageCircle, MoreHorizontal, ListMusic, ChevronDown, Music, Send, Search, Shuffle, Volume2, VolumeX } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useRadio } from "@/contexts/RadioContext";
 import { GENRES } from "@/lib/genres";
@@ -40,6 +40,7 @@ const RadioPage = () => {
     isPlaying, currentTrack, queue, allTracks, toggle, skip, previous, skipsLeft,
     playTrack, setGenreFilter, activeGenre, loading,
     currentTime, duration, seek,
+    volume, setVolume, shuffled, toggleShuffle,
   } = useRadio();
 
   const songIds = allTracks.map(s => s.id);
@@ -341,6 +342,25 @@ const RadioPage = () => {
           </div>
         </motion.div>
       </AnimatePresence>
+
+      {/* Volume & Shuffle controls */}
+      <div className="flex items-center gap-3 px-4 py-2 bg-background border-t border-border">
+        <button onClick={() => setVolume(volume === 0 ? 1 : 0)} className="shrink-0">
+          {volume === 0 ? <VolumeX className="w-4 h-4 text-muted-foreground" /> : <Volume2 className="w-4 h-4 text-foreground" />}
+        </button>
+        <input
+          type="range"
+          min={0}
+          max={1}
+          step={0.01}
+          value={volume}
+          onChange={(e) => setVolume(Number(e.target.value))}
+          className="flex-1 h-1 accent-primary cursor-pointer"
+        />
+        <button onClick={toggleShuffle} className={`shrink-0 ${shuffled ? "text-primary" : "text-muted-foreground"}`}>
+          <Shuffle className="w-4 h-4" />
+        </button>
+      </div>
 
       {/* Bottom action bar */}
       <div className="flex items-center justify-around py-3 px-4 bg-background border-t border-border">
