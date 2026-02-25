@@ -78,7 +78,7 @@ const ProfilePage = () => {
   };
 
   const contentTabs = [
-    { id: "songs", label: "Songs", icon: Music, route: "/my-songs", pro: true },
+    { id: "songs", label: "Songs", icon: Music, route: "/my-songs", pro: false },
     { id: "videos", label: "Videos", icon: Video, route: "/my-videos", pro: true },
     { id: "projects", label: "Projects", icon: FolderHeart, route: "/my-projects", pro: true },
     { id: "store", label: "Store", icon: ShoppingBag, route: "/my-store", pro: true },
