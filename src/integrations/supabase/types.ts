@@ -814,6 +814,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      increment_boost_clicks: { Args: { boost_id: string }; Returns: undefined }
+      increment_boost_impressions: {
+        Args: { boost_id: string }
+        Returns: undefined
+      }
       increment_podcast_plays: {
         Args: { podcast_id: string }
         Returns: undefined
