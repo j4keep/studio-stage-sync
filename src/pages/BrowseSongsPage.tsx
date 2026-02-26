@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Play, Pause, Heart, Music } from "lucide-react";
+import { ArrowLeft, Play, Pause, Heart, Music, Rocket } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useLikes, incrementSongPlays } from "@/hooks/use-likes";
 import { getR2DownloadUrl } from "@/lib/r2-storage";
+import { useActiveBoosts } from "@/hooks/use-boosts";
+import PromotedBadge from "@/components/PromotedBadge";
 import album1 from "@/assets/album-1.jpg";
 
 interface DbSong {
@@ -57,6 +59,14 @@ const BrowseSongsPage = () => {
 
   const songIds = songs.map(s => s.id);
   const { toggleLike, isLiked, getLikeCount } = useLikes("song", songIds);
+  const { isBoosted, boosts } = useActiveBoosts("song");
+
+  // Sort boosted songs to top
+  const sortedSongs = [...songs].sort((a, b) => {
+    const aB = isBoosted(a.id) ? 1 : 0;
+    const bB = isBoosted(b.id) ? 1 : 0;
+    return bB - aB;
+  });
 
   const handlePlay = (song: DbSong) => {
     if (playingId === song.id) {
@@ -98,14 +108,42 @@ const BrowseSongsPage = () => {
         </div>
       ) : (
         <div className="flex flex-col gap-1">
-          {songs.map((s, i) => (
+          {/* Featured Promoted Banner */}
+          {boosts.length > 0 && (() => {
+            const featuredSong = songs.find(s => isBoosted(s.id));
+            if (!featuredSong) return null;
+            return (
+              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                className="mb-3 p-3 rounded-xl bg-primary/5 border border-primary/20"
+              >
+                <div className="flex items-center gap-1.5 mb-2">
+                  <Rocket className="w-3.5 h-3.5 text-primary" />
+                  <span className="text-[10px] font-bold text-primary uppercase tracking-wider">Featured</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <img src={featuredSong.cover_url} alt={featuredSong.title} className="w-14 h-14 rounded-lg object-cover" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground truncate">{featuredSong.title}</p>
+                    <p className="text-xs text-muted-foreground">{featuredSong.artist_name}</p>
+                  </div>
+                  <button onClick={() => handlePlay(featuredSong)} className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center glow-primary">
+                    {playingId === featuredSong.id ? <Pause className="w-4 h-4 text-primary-foreground" /> : <Play className="w-4 h-4 text-primary-foreground" />}
+                  </button>
+                </div>
+              </motion.div>
+            );
+          })()}
+          {sortedSongs.map((s, i) => (
             <motion.div key={s.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.02 }}>
-              <div className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-muted/50 transition-all">
+              <div className={`flex items-center gap-3 p-2.5 rounded-xl hover:bg-muted/50 transition-all ${isBoosted(s.id) ? "border border-primary/15 bg-primary/5" : ""}`}>
                 <button onClick={() => s.user_id ? navigate(`/profile?user=${s.user_id}`) : null} className="w-12 h-12 rounded-lg overflow-hidden shrink-0 bg-muted">
                   <img src={s.cover_url} alt={s.title} className="w-full h-full object-cover" />
                 </button>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-foreground truncate">{s.title}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-sm font-semibold text-foreground truncate">{s.title}</p>
+                    {isBoosted(s.id) && <PromotedBadge />}
+                  </div>
                   <p className="text-xs text-muted-foreground">{s.artist_name}</p>
                   <p className="text-[10px] text-muted-foreground truncate">{s.album}</p>
                 </div>

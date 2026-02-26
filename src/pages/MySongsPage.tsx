@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Music, Play, Pause, Plus, Trash2, Upload, Image, Radio, ChevronDown, Loader2, Heart, Edit3, X } from "lucide-react";
+import { ArrowLeft, Music, Play, Pause, Plus, Trash2, Upload, Image, Radio, ChevronDown, Loader2, Heart, Edit3, X, Rocket } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +9,7 @@ import { GENRES } from "@/lib/genres";
 import { uploadToR2, getR2DownloadUrl, deleteFromR2 } from "@/lib/r2-storage";
 import { useLikes, incrementSongPlays } from "@/hooks/use-likes";
 import album1 from "@/assets/album-1.jpg";
+import BoostSheet from "@/components/BoostSheet";
 
 interface Song {
   id: string;
@@ -54,7 +55,7 @@ const MySongsPage = () => {
   const [savingEdit, setSavingEdit] = useState(false);
   const [uploadAlbum, setUploadAlbum] = useState("");
   const editCoverRef = useRef<HTMLInputElement>(null);
-
+  const [boostTarget, setBoostTarget] = useState<{ id: string; title: string } | null>(null);
   const songIds = songs.map(s => s.id);
   const { toggleLike, isLiked, getLikeCount } = useLikes("song", songIds);
 
@@ -309,6 +310,9 @@ const MySongsPage = () => {
                 <button onClick={() => openEditSong(song)} className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                   <Edit3 className="w-3 h-3 text-primary" />
                 </button>
+                <button onClick={() => setBoostTarget({ id: song.id, title: song.title })} className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" title="Boost">
+                  <Rocket className="w-3 h-3 text-primary" />
+                </button>
                 <button onClick={() => removeSong(song.id)} className="w-7 h-7 rounded-full bg-destructive/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                   <Trash2 className="w-3 h-3 text-destructive" />
                 </button>
@@ -404,6 +408,14 @@ const MySongsPage = () => {
           <button onClick={() => setShowUpload(true)} className="mt-3 text-xs text-primary font-semibold">Upload your first song →</button>
         </div>
       )}
+
+      <BoostSheet
+        open={!!boostTarget}
+        onClose={() => setBoostTarget(null)}
+        contentType="song"
+        contentId={boostTarget?.id || ""}
+        contentTitle={boostTarget?.title || ""}
+      />
     </div>
   );
 };

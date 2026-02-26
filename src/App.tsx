@@ -39,6 +39,7 @@ import PurchasesPage from "./pages/PurchasesPage";
 import NewsFeedPage from "./pages/NewsFeedPage";
 import ArticlePage from "./pages/ArticlePage";
 import NewsCategoryPage from "./pages/NewsCategoryPage";
+import MyBoostsPage from "./pages/MyBoostsPage";
 
 import TermsAgreementGate from "./components/TermsAgreementGate";
 import ThemePickerSheet from "./components/ThemePickerSheet";
@@ -162,6 +163,7 @@ const ProtectedRoutes = () => {
         <Route path="/news-feed" element={<NewsFeedPage />} />
         <Route path="/article/:id" element={<ArticlePage />} />
         <Route path="/news/:category" element={<NewsCategoryPage />} />
+        <Route path="/my-boosts" element={<MyBoostsPage />} />
         
         <Route path="/dollar-club" element={<div className="px-4 pt-4 pb-4 text-center"><h1 className="text-lg font-display font-bold text-foreground mb-2">Dollar Club</h1><p className="text-sm text-muted-foreground">Sell your products for $1 and build your fanbase. Coming soon!</p></div>} />
         <Route path="*" element={<NotFound />} />

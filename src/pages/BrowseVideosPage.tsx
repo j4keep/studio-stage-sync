@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Play, Heart, Eye, Video } from "lucide-react";
+import { ArrowLeft, Play, Heart, Eye, Video, Rocket } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useLikes, incrementVideoViews } from "@/hooks/use-likes";
 import { getR2DownloadUrl } from "@/lib/r2-storage";
+import { useActiveBoosts } from "@/hooks/use-boosts";
+import PromotedBadge from "@/components/PromotedBadge";
 import musicvideo1 from "@/assets/musicvideo-1.jpg";
 
 interface VideoItem {
@@ -52,6 +54,7 @@ const BrowseVideosPage = () => {
 
   const videoIds = videos.map(v => v.id);
   const { toggleLike, isLiked, getLikeCount } = useLikes("video", videoIds);
+  const { isBoosted } = useActiveBoosts("video");
 
   const togglePlay = (video: VideoItem) => {
     if (!video.video_url) return;
@@ -83,8 +86,9 @@ const BrowseVideosPage = () => {
         <div className="grid grid-cols-2 gap-2">
           {videos.map((v, i) => (
             <motion.div key={v.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
-              className="relative rounded-xl overflow-hidden bg-card border border-border group"
+              className={`relative rounded-xl overflow-hidden bg-card border group ${isBoosted(v.id) ? "border-primary/30 ring-1 ring-primary/20" : "border-border"}`}
             >
+              {isBoosted(v.id) && <div className="absolute top-1.5 left-1.5 z-10"><PromotedBadge /></div>}
               <div className="relative aspect-video">
                 {playingId === v.id && v.video_url ? (
                   <video src={v.video_url} className="w-full h-full object-cover" autoPlay playsInline controls onEnded={() => setPlayingId(null)} />

@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      boosts: {
+        Row: {
+          budget: number
+          clicks: number
+          content_id: string
+          content_type: string
+          created_at: string
+          duration_days: number
+          end_date: string
+          id: string
+          impressions: number
+          start_date: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          budget?: number
+          clicks?: number
+          content_id: string
+          content_type: string
+          created_at?: string
+          duration_days?: number
+          end_date: string
+          id?: string
+          impressions?: number
+          start_date?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          budget?: number
+          clicks?: number
+          content_id?: string
+          content_type?: string
+          created_at?: string
+          duration_days?: number
+          end_date?: string
+          id?: string
+          impressions?: number
+          start_date?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       conversation_participants: {
         Row: {
           conversation_id: string
