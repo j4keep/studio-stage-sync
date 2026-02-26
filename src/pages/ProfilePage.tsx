@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import {
   User, Music, FolderHeart, Building2, Heart, Download, DollarSign,
   Settings, Shield, BarChart3, HelpCircle, Play, Video, ShoppingBag,
-  CheckCircle, UserPlus, Share2, ChevronRight, Library, Edit3, UserCheck, ExternalLink, Crown, Lock
+  CheckCircle, UserPlus, Share2, ChevronRight, Library, Edit3, UserCheck, ExternalLink, Crown, Lock, Rocket
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -91,6 +91,7 @@ const ProfilePage = () => {
     { icon: Building2, label: "My Studios", sub: "Manage listings", action: () => proGatedNav("Studio Listings", "/my-studios"), pro: true },
     { icon: BarChart3, label: "Analytics", sub: "View insights", action: () => proGatedNav("Analytics", "/analytics"), pro: true },
     { icon: DollarSign, label: "Earnings", sub: "Revenue", action: () => proGatedNav("Earnings", "/earnings"), pro: true },
+    { icon: Rocket, label: "My Boosts", sub: "Promotions", action: () => proGatedNav("Boosts", "/my-boosts"), pro: true },
     { icon: Shield, label: "Legal Vault", sub: "Documents", action: () => proGatedNav("Legal Vault", "/legal-vault"), pro: true },
     { icon: HelpCircle, label: "Help & Support", sub: "", action: () => navigate("/help"), pro: false },
   ];
