@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Shield, X, Check, Crown, Zap, Music, Video, BarChart3, MessageCircle, FileText, Building2, ShoppingBag } from "lucide-react";
+import { Shield, X, Check, Crown, Zap, Music, Video, BarChart3, MessageCircle, FileText, Building2, ShoppingBag, Ban } from "lucide-react";
 
 interface ProGateModalProps {
   open: boolean;
@@ -17,6 +17,7 @@ const PRO_FEATURES = [
   { icon: BarChart3, label: "Analytics & Earnings" },
   { icon: FileText, label: "Legal Vault Access" },
   { icon: Crown, label: "News Feed Publishing" },
+  { icon: Ban, label: "Zero Ads Experience" },
 ];
 
 const ProGateModal = ({ open, onClose, featureName }: ProGateModalProps) => {

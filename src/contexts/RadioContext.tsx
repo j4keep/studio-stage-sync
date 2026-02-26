@@ -40,6 +40,10 @@ interface RadioContextType {
   setVolume: (v: number) => void;
   shuffled: boolean;
   toggleShuffle: () => void;
+  /** Number of songs played since last ad was shown */
+  songPlayCount: number;
+  /** Reset the song play counter (called after ad is shown) */
+  resetSongPlayCount: () => void;
 }
 
 const RadioContext = createContext<RadioContextType | null>(null);
@@ -69,6 +73,7 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
   const [activeGenre, setActiveGenre] = useState("All");
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [songPlayCount, setSongPlayCount] = useState(0);
   const [volume, setVolumeState] = useState(1);
   const [shuffled, setShuffled] = useState(false);
   const [shuffleOrder, setShuffleOrder] = useState<number[]>([]);
@@ -108,6 +113,7 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
 
       // Advance to next track (loops back to 0)
       setCurrentIndex(prev => (prev + 1) % filtered.length);
+      setSongPlayCount(prev => prev + 1);
       setIsPlaying(true);
     });
 
@@ -276,6 +282,7 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
       setGenreFilter, activeGenre, loading, fetchRadioSongs,
       currentTime, duration, seek,
       volume, setVolume, shuffled, toggleShuffle,
+      songPlayCount, resetSongPlayCount: () => setSongPlayCount(0),
     }}>
       {children}
     </RadioContext.Provider>

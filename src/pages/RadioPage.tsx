@@ -9,6 +9,7 @@ import { toast } from "@/hooks/use-toast";
 import RadioShareSheet from "@/components/RadioShareSheet";
 import RadioMoreSheet from "@/components/RadioMoreSheet";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import BoostAdOverlay from "@/components/BoostAdOverlay";
 
 
 const RADIO_GENRE_FILTERS = ["All", ...GENRES.filter(g => g !== "Beats")];
@@ -41,6 +42,7 @@ const RadioPage = () => {
     playTrack, setGenreFilter, activeGenre, loading,
     currentTime, duration, seek,
     volume, setVolume, shuffled, toggleShuffle,
+    songPlayCount, resetSongPlayCount,
   } = useRadio();
 
   const songIds = allTracks.map(s => s.id);
@@ -467,6 +469,13 @@ const RadioPage = () => {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Boost Ad Overlay - shows every 3 songs for non-PRO users */}
+      <BoostAdOverlay
+        songPlayCount={songPlayCount}
+        onAdComplete={resetSongPlayCount}
+        interval={3}
+      />
     </div>
   );
 };
