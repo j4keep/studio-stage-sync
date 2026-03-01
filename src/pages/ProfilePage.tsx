@@ -23,7 +23,7 @@ const ProfilePage = () => {
   const [totalPlays, setTotalPlays] = useState("0");
   const [songCount, setSongCount] = useState("0");
   const [totalLikes, setTotalLikes] = useState("0");
-  const { isPro, showProModal, gatedFeature, requirePro, closeProModal } = useProGate();
+  const { isPro, showProModal, gatedFeature, requirePro, closeProModal, activatePro } = useProGate();
 
   useEffect(() => {
     if (!user) return;
@@ -222,7 +222,7 @@ const ProfilePage = () => {
         onSave={(data) => console.log("Profile updated:", data)}
       />
 
-      <ProGateModal open={showProModal} onClose={closeProModal} featureName={gatedFeature} />
+      <ProGateModal open={showProModal} onClose={closeProModal} featureName={gatedFeature} onSubscribe={activatePro} />
     </div>
   );
 };
