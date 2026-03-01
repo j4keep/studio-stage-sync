@@ -10,14 +10,13 @@ interface ProGateModalProps {
 }
 
 const PRO_FEATURES = [
-  { icon: Music, label: "Upload & Sell Music" },
-  { icon: Video, label: "Upload Videos & Projects" },
-  { icon: ShoppingBag, label: "Open Your Store" },
-  { icon: Building2, label: "List & Book Studios" },
   { icon: MessageCircle, label: "Direct Messaging" },
+  { icon: ShoppingBag, label: "Open Your Store" },
   { icon: BarChart3, label: "Analytics & Earnings" },
+  { icon: Building2, label: "List & Book Studios" },
   { icon: FileText, label: "Legal Vault Access" },
-  { icon: Crown, label: "News Feed Publishing" },
+  { icon: Zap, label: "Boosts & Promotions" },
+  { icon: Crown, label: "Ask Jhi AI Assistant" },
   { icon: Ban, label: "Zero Ads Experience" },
 ];
 
