@@ -79,7 +79,7 @@ const ProfilePage = () => {
 
   const contentTabs = [
     { id: "songs", label: "Songs", icon: Music, route: "/my-songs", pro: false },
-    { id: "videos", label: "Videos", icon: Video, route: "/my-videos", pro: true },
+    { id: "videos", label: "Videos", icon: Video, route: "/my-videos", pro: false },
     { id: "projects", label: "Projects", icon: FolderHeart, route: "/my-projects", pro: true },
     { id: "store", label: "Store", icon: ShoppingBag, route: "/my-store", pro: true },
   ];
@@ -87,7 +87,7 @@ const ProfilePage = () => {
   const quickActions = [
     { icon: Library, label: "Library", sub: "Playlists", action: () => navigate("/library"), pro: false },
     { icon: ShoppingBag, label: "Purchases", sub: "View history", action: () => navigate("/purchases"), pro: false },
-    { icon: Edit3, label: "News Feed", sub: "Submit article", action: () => proGatedNav("News Feed", "/news-feed"), pro: true },
+    { icon: Edit3, label: "News Feed", sub: "Read & publish", action: () => navigate("/news-feed"), pro: false },
     { icon: Building2, label: "My Studios", sub: "Manage listings", action: () => proGatedNav("Studio Listings", "/my-studios"), pro: true },
     { icon: BarChart3, label: "Analytics", sub: "View insights", action: () => proGatedNav("Analytics", "/analytics"), pro: true },
     { icon: DollarSign, label: "Earnings", sub: "Revenue", action: () => proGatedNav("Earnings", "/earnings"), pro: true },
