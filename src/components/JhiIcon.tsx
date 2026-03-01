@@ -1,5 +1,5 @@
 const JhiIcon = ({ className = "w-5 h-5", active = false }: { className?: string; active?: boolean }) => (
-  <svg viewBox="0 0 24 24" fill="none" className={className} xmlns="http://www.w3.org/2000/svg">
+  <svg viewBox="-1 -1 26 23" fill="none" className={className} xmlns="http://www.w3.org/2000/svg">
     {/* Head */}
     <circle cx="12" cy="7" r="4.5" stroke={active ? "hsl(204,100%,50%)" : "currentColor"} strokeWidth="1.8" fill={active ? "hsl(204,100%,50%,0.15)" : "none"} />
     {/* Eyes */}
