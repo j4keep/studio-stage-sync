@@ -10,7 +10,7 @@ const BottomNav = () => {
 
   const tabs = [
     { path: "/", label: "Home", icon: Home, pro: false },
-    { path: "/messages", label: "Messages", icon: MessageCircle, pro: false },
+    { path: "/messages", label: "Messages", icon: MessageCircle, pro: true },
     { path: "/profile", label: "Profile", icon: User, pro: false },
   ];
 
