@@ -1,26 +1,30 @@
-const JhiIcon = ({ className = "w-5 h-5", active = false }: { className?: string; active?: boolean }) => (
-  <svg viewBox="-1 -1 26 23" fill="none" className={className} xmlns="http://www.w3.org/2000/svg">
-    {/* Head */}
-    <circle cx="12" cy="7" r="4.5" stroke={active ? "hsl(204,100%,50%)" : "currentColor"} strokeWidth="1.8" fill={active ? "hsl(204,100%,50%,0.15)" : "none"} />
-    {/* Eyes */}
-    <circle cx="10.5" cy="6.5" r="0.8" fill={active ? "hsl(204,100%,50%)" : "currentColor"} />
-    <circle cx="13.5" cy="6.5" r="0.8" fill={active ? "hsl(204,100%,50%)" : "currentColor"} />
-    {/* Smile */}
-    <path d="M10.5 8.5Q12 9.5 13.5 8.5" stroke={active ? "hsl(204,100%,50%)" : "currentColor"} strokeWidth="1" strokeLinecap="round" fill="none" />
-    {/* Body */}
-    <rect x="9" y="12" width="6" height="5" rx="1.5" stroke={active ? "hsl(204,100%,50%)" : "currentColor"} strokeWidth="1.8" fill={active ? "hsl(204,100%,50%,0.1)" : "none"} />
-    {/* Left Arm */}
-    <path d="M9 13.5L6.5 15.5" stroke={active ? "hsl(204,100%,50%)" : "currentColor"} strokeWidth="1.8" strokeLinecap="round" />
-    {/* Right Arm */}
-    <path d="M15 13.5L17.5 15.5" stroke={active ? "hsl(204,100%,50%)" : "currentColor"} strokeWidth="1.8" strokeLinecap="round" />
-    {/* Left Leg */}
-    <path d="M10.5 17L9.5 20" stroke={active ? "hsl(204,100%,50%)" : "currentColor"} strokeWidth="1.8" strokeLinecap="round" />
-    {/* Right Leg */}
-    <path d="M13.5 17L14.5 20" stroke={active ? "hsl(204,100%,50%)" : "currentColor"} strokeWidth="1.8" strokeLinecap="round" />
-    {/* Antenna */}
-    <line x1="12" y1="2.5" x2="12" y2="1" stroke={active ? "hsl(204,100%,50%)" : "currentColor"} strokeWidth="1.5" strokeLinecap="round" />
-    <circle cx="12" cy="0.7" r="0.7" fill={active ? "hsl(204,100%,50%)" : "currentColor"} />
-  </svg>
-);
+const JhiIcon = ({ className = "w-5 h-5", active = false }: { className?: string; active?: boolean }) => {
+  const c = active ? "hsl(204,100%,50%)" : "currentColor";
+  const fill = active ? "hsl(204,100%,50%,0.15)" : "none";
+  return (
+    <svg viewBox="0 0 20 20" fill="none" className={className} xmlns="http://www.w3.org/2000/svg">
+      {/* Antenna */}
+      <line x1="10" y1="3.2" x2="10" y2="1.2" stroke={c} strokeWidth="1.6" strokeLinecap="round" />
+      <circle cx="10" cy="0.8" r="0.8" fill={c} />
+      {/* Head */}
+      <circle cx="10" cy="6.8" r="3.8" stroke={c} strokeWidth="1.8" fill={fill} />
+      {/* Eyes */}
+      <circle cx="8.6" cy="6.2" r="0.9" fill={c} />
+      <circle cx="11.4" cy="6.2" r="0.9" fill={c} />
+      {/* Smile */}
+      <path d="M8.6 8Q10 9.2 11.4 8" stroke={c} strokeWidth="1" strokeLinecap="round" fill="none" />
+      {/* Body */}
+      <rect x="7" y="11.2" width="6" height="4.5" rx="1.5" stroke={c} strokeWidth="1.8" fill={active ? "hsl(204,100%,50%,0.1)" : "none"} />
+      {/* Left Arm */}
+      <path d="M7 12.8L4.2 14.8" stroke={c} strokeWidth="1.8" strokeLinecap="round" />
+      {/* Right Arm */}
+      <path d="M13 12.8L15.8 14.8" stroke={c} strokeWidth="1.8" strokeLinecap="round" />
+      {/* Left Leg */}
+      <path d="M8.8 15.7L7.8 18.8" stroke={c} strokeWidth="1.8" strokeLinecap="round" />
+      {/* Right Leg */}
+      <path d="M11.2 15.7L12.2 18.8" stroke={c} strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+};
 
 export default JhiIcon;
