@@ -6,6 +6,7 @@ interface ProGateModalProps {
   open: boolean;
   onClose: () => void;
   featureName?: string;
+  onSubscribe?: () => void;
 }
 
 const PRO_FEATURES = [
@@ -20,7 +21,7 @@ const PRO_FEATURES = [
   { icon: Ban, label: "Zero Ads Experience" },
 ];
 
-const ProGateModal = ({ open, onClose, featureName }: ProGateModalProps) => {
+const ProGateModal = ({ open, onClose, featureName, onSubscribe }: ProGateModalProps) => {
   const [billing, setBilling] = useState<"monthly" | "yearly">("monthly");
 
   const monthlyPrice = 10;
@@ -112,7 +113,10 @@ const ProGateModal = ({ open, onClose, featureName }: ProGateModalProps) => {
 
           {/* Subscribe Button */}
           <div className="p-5 pt-3">
-            <button className="w-full py-3.5 rounded-xl gradient-primary text-primary-foreground font-semibold text-sm glow-primary flex items-center justify-center gap-2">
+            <button
+              onClick={() => onSubscribe?.()}
+              className="w-full py-3.5 rounded-xl gradient-primary text-primary-foreground font-semibold text-sm glow-primary flex items-center justify-center gap-2"
+            >
               <Zap className="w-4 h-4" />
               Subscribe to PRO
             </button>

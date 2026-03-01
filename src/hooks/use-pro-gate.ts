@@ -1,13 +1,10 @@
 import { useState, useCallback } from "react";
+import { usePersistedState } from "./use-persisted-state";
 
-// For now, pro status is not yet connected to a real subscription.
-// This hook provides the gate UI trigger and a way to check pro status.
 export const useProGate = () => {
   const [showProModal, setShowProModal] = useState(false);
   const [gatedFeature, setGatedFeature] = useState<string | undefined>();
-
-  // TODO: Replace with real subscription check
-  const isPro = false;
+  const [isPro, setIsPro] = usePersistedState<boolean>("wheuat_pro_status", false);
 
   const requirePro = useCallback((featureName: string, onAllowed?: () => void) => {
     if (isPro) {
@@ -24,5 +21,15 @@ export const useProGate = () => {
     setGatedFeature(undefined);
   }, []);
 
-  return { isPro, showProModal, gatedFeature, requirePro, closeProModal };
+  const activatePro = useCallback(() => {
+    setIsPro(true);
+    setShowProModal(false);
+    setGatedFeature(undefined);
+  }, [setIsPro]);
+
+  const deactivatePro = useCallback(() => {
+    setIsPro(false);
+  }, [setIsPro]);
+
+  return { isPro, showProModal, gatedFeature, requirePro, closeProModal, activatePro, deactivatePro };
 };

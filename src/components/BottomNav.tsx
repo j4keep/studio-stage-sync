@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { Home, MessageCircle, User, Crown } from "lucide-react";
+import { Home, MessageCircle, User } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import ProGateModal from "@/components/ProGateModal";
 import { useProGate } from "@/hooks/use-pro-gate";
@@ -7,7 +6,7 @@ import { useProGate } from "@/hooks/use-pro-gate";
 const BottomNav = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { isPro, showProModal, gatedFeature, requirePro, closeProModal } = useProGate();
+  const { isPro, showProModal, gatedFeature, requirePro, closeProModal, activatePro } = useProGate();
 
   const tabs = [
     { path: "/", label: "Home", icon: Home, pro: false },
@@ -48,7 +47,7 @@ const BottomNav = () => {
           })}
         </div>
       </nav>
-      <ProGateModal open={showProModal} onClose={closeProModal} featureName={gatedFeature} />
+      <ProGateModal open={showProModal} onClose={closeProModal} featureName={gatedFeature} onSubscribe={activatePro} />
     </>
   );
 };

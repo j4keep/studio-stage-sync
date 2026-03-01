@@ -6,6 +6,12 @@ const HelpPage = () => {
 
   const helpItems = [
     {
+      icon: MessageCircle,
+      label: "Help Desk",
+      description: "Submit a support ticket",
+      action: () => navigate("/helpdesk"),
+    },
+    {
       icon: FileText,
       label: "Terms of Use",
       description: "Read our terms and conditions",
@@ -21,12 +27,6 @@ const HelpPage = () => {
       icon: Mail,
       label: "Email Support",
       description: "Get help via email",
-      action: () => {},
-    },
-    {
-      icon: MessageCircle,
-      label: "FAQ",
-      description: "Frequently asked questions",
       action: () => {},
     },
   ];
