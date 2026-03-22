@@ -183,7 +183,7 @@ const MusicBattlePlayerPage = () => {
     lastTapSideRef.current = side;
 
     if (isDoubleTap) {
-      setIsBattleExpanded((prev) => !prev);
+      setExpandedSide((prev) => prev === side ? null : side);
       return;
     }
 
