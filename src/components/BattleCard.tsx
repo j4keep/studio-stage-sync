@@ -307,7 +307,7 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
                 <div className="w-14 h-14 rounded-full mx-auto mb-2 bg-muted/50 border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
                   <span className="text-2xl">?</span>
                 </div>
-                <p className="text-xs text-muted-foreground mb-2">Waiting for opponent...</p>
+                <p className="text-xs text-muted-foreground mb-2">{isPending ? "Challenge sent!" : "Waiting for opponent..."}</p>
                 {canAccept && (
                   <button
                     onClick={acceptBattle}
