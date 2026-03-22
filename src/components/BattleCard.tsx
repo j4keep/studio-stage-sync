@@ -63,14 +63,14 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
 
   // Profiles
   const { data: profiles = [] } = useQuery({
-    queryKey: ["battle-profiles", battle.challenger_id, battle.opponent_id],
+    queryKey: ["battle-card-profiles", battle.challenger_id, battle.opponent_id],
     queryFn: async () => {
       const ids = [battle.challenger_id, battle.opponent_id].filter(Boolean);
       const { data } = await supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", ids);
       return data || [];
     },
   });
-  const profileMap = new Map(profiles.map((p: any) => [p.user_id, p]));
+  const profileMap = new Map((Array.isArray(profiles) ? profiles : []).map((p: any) => [p.user_id, p]));
   const challengerName = (profileMap.get(battle.challenger_id) as any)?.display_name || "Challenger";
   const opponentName = battle.opponent_id ? (profileMap.get(battle.opponent_id) as any)?.display_name || "???" : "???";
 
