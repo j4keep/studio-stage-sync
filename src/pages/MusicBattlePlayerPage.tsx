@@ -32,8 +32,10 @@ const MusicBattlePlayerPage = () => {
   const [acceptCoverFile, setAcceptCoverFile] = useState<File | null>(null);
   const [accepting, setAccepting] = useState(false);
 
-  const audioLeftRef = useRef<HTMLAudioElement | null>(null);
-  const audioRightRef = useRef<HTMLAudioElement | null>(null);
+  const audioLeftRef = useRef<HTMLMediaElement | null>(null);
+  const audioRightRef = useRef<HTMLMediaElement | null>(null);
+  const videoLeftRef = useRef<HTMLVideoElement | null>(null);
+  const videoRightRef = useRef<HTMLVideoElement | null>(null);
 
   /* ── data ── */
   const { data: battle } = useQuery({

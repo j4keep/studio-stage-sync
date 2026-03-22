@@ -84,7 +84,7 @@ const NotificationBell = () => {
         </button>
       </SheetTrigger>
       <SheetContent side="right" className="w-full max-w-sm p-0">
-        <SheetHeader className="px-4 pt-4 pb-2 border-b border-border">
+        <SheetHeader className="px-4 pt-4 pb-2 border-b border-border pr-12">
           <div className="flex items-center justify-between">
             <SheetTitle className="text-base font-display">Notifications</SheetTitle>
             {unreadCount > 0 && (
