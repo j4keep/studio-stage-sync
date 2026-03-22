@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, ThumbsUp, Send, Trash2, Upload, Trophy, Clock, MessageCircle, Crown } from "lucide-react";
+import { Play, Pause, ThumbsUp, Send, Trash2, Upload, Trophy, Clock, MessageCircle, Crown, ExternalLink } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
