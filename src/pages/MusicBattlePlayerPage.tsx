@@ -333,7 +333,19 @@ const MusicBattlePlayerPage = () => {
 
             {/* cover image */}
             <div className="w-full aspect-[3/4] bg-muted rounded-2xl overflow-hidden">
-              {battle.challenger_cover_url ? (
+              {battle.media_type === "video" && battle.challenger_media_url ? (
+                <video
+                  ref={(el) => {
+                    videoLeftRef.current = el;
+                    audioLeftRef.current = el;
+                  }}
+                  src={battle.challenger_media_url}
+                  preload="metadata"
+                  playsInline
+                  muted={false}
+                  className="w-full h-full object-cover"
+                />
+              ) : battle.challenger_cover_url ? (
                 <img src={battle.challenger_cover_url} alt="" className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center">
