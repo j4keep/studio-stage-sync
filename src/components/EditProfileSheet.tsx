@@ -154,10 +154,11 @@ const EditProfileSheet = ({ open, onClose, profileData, onSave }: EditProfileShe
                   <Input
                     id="edit-name"
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="pl-10 bg-card border-border"
+                    onChange={(e) => { setName(e.target.value); setNameError(""); }}
+                    className={`pl-10 bg-card ${nameError ? "border-destructive" : "border-border"}`}
                     placeholder="Your display name"
                   />
+                  {nameError && <p className="text-[10px] text-destructive mt-1">{nameError}</p>}
                 </div>
               </div>
 

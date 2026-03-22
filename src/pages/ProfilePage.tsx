@@ -106,6 +106,13 @@ const ProfilePage = () => {
         </button>
       </div>
 
+      {/* Artist Search */}
+      <div className="px-4 pb-3">
+        <ArtistSearchBar onSelectArtist={(artist) => {
+          toast({ title: `Viewing ${artist.display_name}`, description: "Artist profile pages coming soon!" });
+        }} />
+      </div>
+
       {/* Banner */}
       <div className="relative h-44 overflow-hidden">
         <img src={profileBanner} alt="Banner" className="w-full h-full object-cover" />
