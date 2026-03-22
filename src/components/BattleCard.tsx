@@ -337,10 +337,14 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
         <div className="grid grid-cols-2 h-full" style={{ minHeight: 380 }}>
 
           {/* LEFT ARTIST */}
-          <button
+          <motion.button
             onClick={() => handleSideTap("left")}
-            className="relative overflow-hidden text-left border-r border-white/5 transition-all duration-500"
-            style={{ opacity: activeArtist === "right" ? 0.45 : 1 }}
+            animate={{
+              opacity: activeArtist === "right" ? 0.4 : 1,
+              scale: activeArtist === "left" && isPlaying ? 1 : activeArtist === "right" ? 0.97 : 1,
+            }}
+            transition={{ duration: 0.5, ease: "easeInOut" }}
+            className="relative overflow-hidden text-left border-r border-white/5"
           >
             {/* Cover */}
             <div className="absolute inset-0">
