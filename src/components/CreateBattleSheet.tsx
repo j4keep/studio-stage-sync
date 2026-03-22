@@ -75,20 +75,21 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
         }
       }
 
-      // Upload cover file
+      // Upload cover file via R2
       if (coverFile) {
         const ext = coverFile.name.split(".").pop();
-        const path = `battles/covers/${user.id}/${Date.now()}.${ext}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage.from("media").upload(path, coverFile);
-        if (uploadError) {
-          console.error("[Battle] Cover upload failed:", uploadError);
-          toast({ title: "Cover upload failed", description: uploadError.message, variant: "destructive" });
+        const coverResult = await uploadToR2(coverFile, {
+          folder: `battles/covers/${user.id}`,
+          fileName: `${Date.now()}.${ext}`,
+          mimeType: coverFile.type,
+        });
+        if (coverResult.success && coverResult.data) {
+          coverUrl = getR2DownloadUrl(coverResult.data.key);
+        } else {
+          console.error("[Battle] Cover upload failed:", coverResult.error);
+          toast({ title: "Cover upload failed", description: coverResult.error || "Could not upload cover.", variant: "destructive" });
           setLoading(false);
           return;
-        }
-        if (uploadData) {
-          const { data: urlData } = supabase.storage.from("media").getPublicUrl(path);
-          coverUrl = urlData.publicUrl;
         }
       }
 
