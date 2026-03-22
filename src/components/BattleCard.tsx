@@ -282,7 +282,7 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
       </div>
 
       {/* Split covers — tap to open full experience */}
-      <button onClick={handleCoverTap} className="w-full relative block" style={{ minHeight: isFullscreen ? 300 : 220 }}>
+      <button onTouchEnd={handleCoverTap} onClick={handleCoverTap} className="w-full relative block" style={{ minHeight: isFullscreen ? 300 : 220 }}>
         <div className="grid grid-cols-2 h-full" style={{ minHeight: isFullscreen ? 300 : 220 }}>
           {/* Left */}
           <div className="relative overflow-hidden">
