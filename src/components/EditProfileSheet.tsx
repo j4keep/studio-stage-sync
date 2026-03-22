@@ -55,7 +55,23 @@ const EditProfileSheet = ({ open, onClose, profileData, onSave }: EditProfileShe
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (!name.trim()) {
+      setNameError("Name is required");
+      return;
+    }
+    // Check uniqueness
+    const { data: existing } = await supabase
+      .from("profiles")
+      .select("user_id")
+      .ilike("display_name", name.trim())
+      .neq("user_id", user?.id || "")
+      .limit(1);
+    if (existing && existing.length > 0) {
+      setNameError("This username is already taken. Choose a unique name.");
+      return;
+    }
+    setNameError("");
     onSave({ name, email, avatarFile, bannerFile });
     onClose();
   };
