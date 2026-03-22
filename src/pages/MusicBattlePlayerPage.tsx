@@ -547,7 +547,7 @@ const MusicBattlePlayerPage = () => {
               />
             )}
 
-            <div className={`w-full bg-muted rounded-2xl overflow-hidden ${isBattleExpanded ? "h-[72vh]" : "aspect-[3/4]"}`}>
+            <div className={`w-full bg-muted rounded-2xl overflow-hidden ${expandedSide === "right" ? "h-[85vh]" : "aspect-[3/4]"}`}>
               {battle.media_type === "video" && battle.opponent_media_url ? (
                 <video
                   ref={(el) => {
