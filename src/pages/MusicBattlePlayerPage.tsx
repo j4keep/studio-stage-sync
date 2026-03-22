@@ -32,8 +32,10 @@ const MusicBattlePlayerPage = () => {
   const [acceptCoverFile, setAcceptCoverFile] = useState<File | null>(null);
   const [accepting, setAccepting] = useState(false);
 
-  const audioLeftRef = useRef<HTMLAudioElement | null>(null);
-  const audioRightRef = useRef<HTMLAudioElement | null>(null);
+  const audioLeftRef = useRef<HTMLMediaElement | null>(null);
+  const audioRightRef = useRef<HTMLMediaElement | null>(null);
+  const videoLeftRef = useRef<HTMLVideoElement | null>(null);
+  const videoRightRef = useRef<HTMLVideoElement | null>(null);
 
   /* ── data ── */
   const { data: battle } = useQuery({
@@ -265,9 +267,13 @@ const MusicBattlePlayerPage = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* hidden audio elements */}
-      <audio ref={audioLeftRef} src={battle.challenger_media_url || ""} preload="metadata" />
-      <audio ref={audioRightRef} src={battle.opponent_media_url || ""} preload="metadata" />
+      {/* hidden media elements for audio battles */}
+      {battle.media_type !== "video" && (
+        <>
+          <audio ref={audioLeftRef} src={battle.challenger_media_url || ""} preload="metadata" />
+          <audio ref={audioRightRef} src={battle.opponent_media_url || ""} preload="metadata" />
+        </>
+      )}
 
       {/* ── HEADER ── */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
@@ -327,7 +333,19 @@ const MusicBattlePlayerPage = () => {
 
             {/* cover image */}
             <div className="w-full aspect-[3/4] bg-muted rounded-2xl overflow-hidden">
-              {battle.challenger_cover_url ? (
+              {battle.media_type === "video" && battle.challenger_media_url ? (
+                <video
+                  ref={(el) => {
+                    videoLeftRef.current = el;
+                    audioLeftRef.current = el;
+                  }}
+                  src={battle.challenger_media_url}
+                  preload="metadata"
+                  playsInline
+                  muted={false}
+                  className="w-full h-full object-cover"
+                />
+              ) : battle.challenger_cover_url ? (
                 <img src={battle.challenger_cover_url} alt="" className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center">
@@ -417,7 +435,19 @@ const MusicBattlePlayerPage = () => {
             )}
 
             <div className="w-full aspect-[3/4] bg-muted rounded-2xl overflow-hidden">
-              {battle.opponent_cover_url ? (
+              {battle.media_type === "video" && battle.opponent_media_url ? (
+                <video
+                  ref={(el) => {
+                    videoRightRef.current = el;
+                    audioRightRef.current = el;
+                  }}
+                  src={battle.opponent_media_url}
+                  preload="metadata"
+                  playsInline
+                  muted={false}
+                  className="w-full h-full object-cover"
+                />
+              ) : battle.opponent_cover_url ? (
                 <img src={battle.opponent_cover_url} alt="" className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-destructive/30 to-destructive/10 flex items-center justify-center">
