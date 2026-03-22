@@ -12,6 +12,7 @@ import { RadioProvider } from "@/contexts/RadioContext";
 import { PlaylistProvider } from "@/contexts/PlaylistContext";
 import AppLayout from "./components/AppLayout";
 import HomePage from "./pages/HomePage";
+import BattlesPage from "./pages/BattlesPage";
 import RadioPage from "./pages/RadioPage";
 import StudiosPage from "./pages/StudiosPage";
 
