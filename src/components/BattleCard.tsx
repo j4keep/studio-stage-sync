@@ -337,10 +337,14 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
         <div className="grid grid-cols-2 h-full" style={{ minHeight: 380 }}>
 
           {/* LEFT ARTIST */}
-          <button
+          <motion.button
             onClick={() => handleSideTap("left")}
-            className="relative overflow-hidden text-left border-r border-white/5 transition-all duration-500"
-            style={{ opacity: activeArtist === "right" ? 0.45 : 1 }}
+            animate={{
+              opacity: activeArtist === "right" ? 0.4 : 1,
+              scale: activeArtist === "left" && isPlaying ? 1 : activeArtist === "right" ? 0.97 : 1,
+            }}
+            transition={{ duration: 0.5, ease: "easeInOut" }}
+            className="relative overflow-hidden text-left border-r border-white/5"
           >
             {/* Cover */}
             <div className="absolute inset-0">
@@ -358,18 +362,29 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
               <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/30" />
             </div>
 
-            {/* Active glow ring */}
+            {/* Active glow ring — breathing animation */}
             <AnimatePresence>
               {activeArtist === "left" && isPlaying && (
                 <motion.div
                   initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
+                  animate={{ opacity: [0.5, 1, 0.5] }}
                   exit={{ opacity: 0 }}
+                  transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
                   className="absolute inset-0 pointer-events-none z-10"
-                  style={{ boxShadow: "inset 0 0 40px 4px hsl(var(--primary) / 0.4)" }}
+                  style={{ boxShadow: "inset 0 0 60px 8px hsl(var(--primary) / 0.5), inset 0 0 120px 20px hsl(var(--primary) / 0.15)" }}
                 />
               )}
             </AnimatePresence>
+
+            {/* Winning side glow — persistent golden shimmer */}
+            {currentWinner === "left" && totalVotes > 0 && !isPlaying && (
+              <motion.div
+                animate={{ opacity: [0.2, 0.5, 0.2] }}
+                transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+                className="absolute inset-0 pointer-events-none z-10"
+                style={{ boxShadow: "inset 0 0 50px 5px rgba(255,200,0,0.2)" }}
+              />
+            )}
 
             {/* WINNING badge */}
             <AnimatePresence>
@@ -414,13 +429,17 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
               <p className="text-white font-black text-base truncate drop-shadow-lg">{challengerName}</p>
               <p className="text-white/50 text-[11px] truncate mt-0.5">{battle.challenger_title || "Track"}</p>
             </div>
-          </button>
+          </motion.button>
 
           {/* RIGHT ARTIST */}
-          <button
+          <motion.button
             onClick={() => handleSideTap("right")}
-            className="relative overflow-hidden text-left transition-all duration-500"
-            style={{ opacity: activeArtist === "left" ? 0.45 : 1 }}
+            animate={{
+              opacity: activeArtist === "left" ? 0.4 : 1,
+              scale: activeArtist === "right" && isPlaying ? 1 : activeArtist === "left" ? 0.97 : 1,
+            }}
+            transition={{ duration: 0.5, ease: "easeInOut" }}
+            className="relative overflow-hidden text-left"
           >
             <div className="absolute inset-0">
               {battle.opponent_cover_url ? (
@@ -438,12 +457,22 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
 
             <AnimatePresence>
               {activeArtist === "right" && isPlaying && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: [0.5, 1, 0.5] }} exit={{ opacity: 0 }}
+                  transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
                   className="absolute inset-0 pointer-events-none z-10"
-                  style={{ boxShadow: "inset 0 0 40px 4px hsl(var(--primary) / 0.4)" }}
+                  style={{ boxShadow: "inset 0 0 60px 8px hsl(var(--primary) / 0.5), inset 0 0 120px 20px hsl(var(--primary) / 0.15)" }}
                 />
               )}
             </AnimatePresence>
+
+            {currentWinner === "right" && totalVotes > 0 && !isPlaying && (
+              <motion.div
+                animate={{ opacity: [0.2, 0.5, 0.2] }}
+                transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+                className="absolute inset-0 pointer-events-none z-10"
+                style={{ boxShadow: "inset 0 0 50px 5px rgba(255,200,0,0.2)" }}
+              />
+            )}
 
             <AnimatePresence>
               {currentWinner === "right" && totalVotes > 0 && (
@@ -474,7 +503,7 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
               <p className="text-white font-black text-base truncate drop-shadow-lg text-right">{opponentName}</p>
               <p className="text-white/50 text-[11px] truncate mt-0.5 text-right">{battle.opponent_title || "Waiting..."}</p>
             </div>
-          </button>
+          </motion.button>
         </div>
 
         {/* ═══ CENTER PLAY BUTTON ═══ */}
@@ -483,38 +512,46 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
             <motion.button
               onClick={togglePlay}
               whileTap={{ scale: 0.85 }}
+              whileHover={{ scale: 1.08 }}
               className="pointer-events-auto relative"
             >
-              {/* Outer glow rings */}
-              <AnimatePresence>
-                {isPlaying && (
-                  <>
-                    <motion.div
-                      initial={{ scale: 0.8, opacity: 0 }}
-                      animate={{ scale: [1, 1.6], opacity: [0.4, 0] }}
-                      transition={{ repeat: Infinity, duration: 1.5 }}
-                      className="absolute inset-0 rounded-full"
-                      style={{ background: "radial-gradient(circle, hsl(var(--primary) / 0.4), transparent)" }}
-                    />
-                    <motion.div
-                      initial={{ scale: 0.8, opacity: 0 }}
-                      animate={{ scale: [1, 2], opacity: [0.2, 0] }}
-                      transition={{ repeat: Infinity, duration: 2, delay: 0.3 }}
-                      className="absolute inset-0 rounded-full"
-                      style={{ background: "radial-gradient(circle, hsl(var(--primary) / 0.3), transparent)" }}
-                    />
-                  </>
-                )}
-              </AnimatePresence>
-
-              {/* Button */}
+              {/* Outer pulse rings — always visible but stronger when playing */}
               <motion.div
-                animate={isPlaying ? { boxShadow: ["0 0 30px 8px hsl(var(--primary) / 0.3)", "0 0 50px 15px hsl(var(--primary) / 0.5)", "0 0 30px 8px hsl(var(--primary) / 0.3)"] } : { boxShadow: "0 0 30px 8px hsl(var(--primary) / 0.2)" }}
-                transition={isPlaying ? { repeat: Infinity, duration: 1.5 } : {}}
-                className="w-20 h-20 rounded-full flex items-center justify-center border-2 border-primary/30"
+                animate={{ scale: [1, 1.8], opacity: [isPlaying ? 0.5 : 0.15, 0] }}
+                transition={{ repeat: Infinity, duration: isPlaying ? 1.2 : 2.5, ease: "easeOut" }}
+                className="absolute inset-[-20px] rounded-full"
+                style={{ background: "radial-gradient(circle, hsl(var(--primary) / 0.4), transparent 70%)" }}
+              />
+              {isPlaying && (
+                <motion.div
+                  animate={{ scale: [1, 2.2], opacity: [0.3, 0] }}
+                  transition={{ repeat: Infinity, duration: 1.8, delay: 0.4, ease: "easeOut" }}
+                  className="absolute inset-[-30px] rounded-full"
+                  style={{ background: "radial-gradient(circle, hsl(var(--primary) / 0.25), transparent 70%)" }}
+                />
+              )}
+
+              {/* Button body */}
+              <motion.div
+                animate={isPlaying
+                  ? { scale: [1, 1.05, 1], boxShadow: ["0 0 30px 8px hsl(var(--primary) / 0.3)", "0 0 60px 20px hsl(var(--primary) / 0.5)", "0 0 30px 8px hsl(var(--primary) / 0.3)"] }
+                  : { scale: [1, 1.03, 1], boxShadow: ["0 0 20px 5px hsl(var(--primary) / 0.15)", "0 0 35px 10px hsl(var(--primary) / 0.25)", "0 0 20px 5px hsl(var(--primary) / 0.15)"] }
+                }
+                transition={{ repeat: Infinity, duration: isPlaying ? 1.2 : 2.5, ease: "easeInOut" }}
+                className="w-20 h-20 rounded-full flex items-center justify-center border-2 border-primary/40 backdrop-blur-sm"
                 style={{ background: "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.7))" }}
               >
-                {isPlaying ? <Pause className="h-9 w-9 text-primary-foreground fill-primary-foreground" /> : <Play className="h-9 w-9 text-primary-foreground fill-primary-foreground ml-1" />}
+                <AnimatePresence mode="wait">
+                  {isPlaying ? (
+                    <motion.div key="pause" initial={{ scale: 0, rotate: -90 }} animate={{ scale: 1, rotate: 0 }} exit={{ scale: 0, rotate: 90 }} transition={{ duration: 0.2 }}>
+                      <Pause className="h-9 w-9 text-primary-foreground fill-primary-foreground" />
+                    </motion.div>
+                  ) : (
+                    <motion.div key="play" initial={{ scale: 0, rotate: 90 }} animate={{ scale: 1, rotate: 0 }} exit={{ scale: 0, rotate: -90 }} transition={{ duration: 0.2 }}>
+                      <Play className="h-9 w-9 text-primary-foreground fill-primary-foreground ml-1" />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </motion.div>
             </motion.button>
           </div>
@@ -525,9 +562,10 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
       <div className="px-5 py-3" style={{ background: "hsl(240 8% 6%)" }}>
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            <button
+            <motion.button
               onClick={() => canVote && voteMutation.mutate(battle.challenger_id)}
               disabled={!canVote}
+              whileTap={canVote ? { scale: 1.15 } : {}}
               className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all ${
                 userVote?.voted_for === battle.challenger_id
                   ? "bg-blue-500 text-white shadow-[0_0_12px_rgba(59,130,246,0.5)]"
@@ -535,25 +573,34 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
               }`}
             >
               <ThumbsUp className={`h-3 w-3 ${userVote?.voted_for === battle.challenger_id ? "fill-current" : ""}`} />
-              {challengerVotes}
-            </button>
-            <span className="text-lg font-black text-blue-400">{challengerPct}%</span>
+              <motion.span key={challengerVotes} initial={{ y: -8, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: "spring", stiffness: 300 }}>
+                {challengerVotes}
+              </motion.span>
+            </motion.button>
+            <motion.span key={`cp-${challengerPct}`} initial={{ scale: 1.3, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-lg font-black text-blue-400">
+              {challengerPct}%
+            </motion.span>
           </div>
           <span className="text-[10px] font-medium text-muted-foreground">{totalVotes} votes</span>
           <div className="flex items-center gap-2">
-            <span className="text-lg font-black text-red-400">{opponentPct}%</span>
-            <button
+            <motion.span key={`op-${opponentPct}`} initial={{ scale: 1.3, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-lg font-black text-red-400">
+              {opponentPct}%
+            </motion.span>
+            <motion.button
               onClick={() => canVote && battle.opponent_id && voteMutation.mutate(battle.opponent_id)}
               disabled={!canVote || !battle.opponent_id}
+              whileTap={canVote ? { scale: 1.15 } : {}}
               className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all ${
                 userVote?.voted_for === battle.opponent_id
                   ? "bg-red-500 text-white shadow-[0_0_12px_rgba(239,68,68,0.5)]"
                   : canVote ? "bg-red-500/15 text-red-400 hover:bg-red-500/25" : "bg-muted/20 text-muted-foreground"
               }`}
             >
-              {opponentVotes}
+              <motion.span key={opponentVotes} initial={{ y: -8, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: "spring", stiffness: 300 }}>
+                {opponentVotes}
+              </motion.span>
               <ThumbsUp className={`h-3 w-3 ${userVote?.voted_for === battle.opponent_id ? "fill-current" : ""}`} />
-            </button>
+            </motion.button>
           </div>
         </div>
 
