@@ -362,18 +362,29 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
               <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/30" />
             </div>
 
-            {/* Active glow ring */}
+            {/* Active glow ring — breathing animation */}
             <AnimatePresence>
               {activeArtist === "left" && isPlaying && (
                 <motion.div
                   initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
+                  animate={{ opacity: [0.5, 1, 0.5] }}
                   exit={{ opacity: 0 }}
+                  transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
                   className="absolute inset-0 pointer-events-none z-10"
-                  style={{ boxShadow: "inset 0 0 40px 4px hsl(var(--primary) / 0.4)" }}
+                  style={{ boxShadow: "inset 0 0 60px 8px hsl(var(--primary) / 0.5), inset 0 0 120px 20px hsl(var(--primary) / 0.15)" }}
                 />
               )}
             </AnimatePresence>
+
+            {/* Winning side glow — persistent golden shimmer */}
+            {currentWinner === "left" && totalVotes > 0 && !isPlaying && (
+              <motion.div
+                animate={{ opacity: [0.2, 0.5, 0.2] }}
+                transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+                className="absolute inset-0 pointer-events-none z-10"
+                style={{ boxShadow: "inset 0 0 50px 5px rgba(255,200,0,0.2)" }}
+              />
+            )}
 
             {/* WINNING badge */}
             <AnimatePresence>
