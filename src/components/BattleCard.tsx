@@ -304,9 +304,14 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
               </>
             ) : (
               <div className="py-4">
-                <div className="w-14 h-14 rounded-full mx-auto mb-2 bg-muted/50 border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
-                  <span className="text-2xl">?</span>
+                <div className="w-14 h-14 rounded-full mx-auto mb-2 bg-muted/50 border-2 border-dashed border-muted-foreground/30 flex items-center justify-center overflow-hidden">
+                  {opponentAvatar ? (
+                    <img src={opponentAvatar} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-2xl">{battle.opponent_id ? opponentName[0] : "?"}</span>
+                  )}
                 </div>
+                <p className="text-xs font-bold text-foreground truncate">{battle.opponent_id ? opponentName : "???"}</p>
                 <p className="text-xs text-muted-foreground mb-2">{isPending ? "Challenge sent!" : "Waiting for opponent..."}</p>
                 {canAccept && (
                   <button
