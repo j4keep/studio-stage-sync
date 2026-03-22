@@ -206,24 +206,41 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
     }
   };
 
-  // Double-tap to fullscreen, single-tap to navigate
+  // Double-tap to fullscreen, single-tap to navigate (touch-friendly)
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const handleCoverTap = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
+  const isTouchRef = useRef(false);
+
+  const handleTap = useCallback(() => {
     const now = Date.now();
-    if (now - lastTapRef.current < 350) {
-      // Double tap — toggle fullscreen
+    if (now - lastTapRef.current < 450) {
       if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
+      tapTimerRef.current = null;
       setIsFullscreen((prev) => !prev);
       lastTapRef.current = 0;
     } else {
-      // Single tap — navigate after short delay to wait for possible second tap
       lastTapRef.current = now;
       tapTimerRef.current = setTimeout(() => {
         navigate(`/battle/${battle.id}`);
-      }, 350);
+      }, 450);
     }
   }, [navigate, battle.id]);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    isTouchRef.current = true;
+    handleTap();
+  }, [handleTap]);
+
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    // Skip if this was already handled by touch
+    if (isTouchRef.current) {
+      isTouchRef.current = false;
+      return;
+    }
+    handleTap();
+  }, [handleTap]);
 
   return (
     <motion.div
@@ -280,7 +297,7 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
       </div>
 
       {/* Split covers — tap to open full experience */}
-      <button onClick={handleCoverTap} className="w-full relative block" style={{ minHeight: isFullscreen ? 300 : 220 }}>
+      <button onTouchEnd={handleTouchEnd} onClick={handleClick} className="w-full relative block" style={{ minHeight: isFullscreen ? 300 : 220 }}>
         <div className="grid grid-cols-2 h-full" style={{ minHeight: isFullscreen ? 300 : 220 }}>
           {/* Left */}
           <div className="relative overflow-hidden">
