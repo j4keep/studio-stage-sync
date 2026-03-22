@@ -24,6 +24,12 @@ const ProfilePage = () => {
   const [totalPlays, setTotalPlays] = useState("0");
   const [songCount, setSongCount] = useState("0");
   const [totalLikes, setTotalLikes] = useState("0");
+  const [profileInfo, setProfileInfo] = useState<{ display_name: string; email: string; avatar_url: string | null; banner_url: string | null }>({
+    display_name: "",
+    email: "",
+    avatar_url: null,
+    banner_url: null,
+  });
   const { isPro, showProModal, gatedFeature, requirePro, closeProModal, activatePro } = useProGate();
 
   useEffect(() => {
