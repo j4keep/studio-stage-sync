@@ -752,6 +752,14 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
         )}
       </AnimatePresence>
 
+      {/* Open full battle experience */}
+      <button
+        onClick={() => navigate(`/battle/${battle.id}`)}
+        className="w-full py-2.5 mt-2 rounded-xl bg-primary/10 text-primary text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-primary/20 transition-colors"
+      >
+        <ExternalLink className="w-3.5 h-3.5" /> Open Full Battle Experience
+      </button>
+
       {/* Hidden audio */}
       {!isVideo && battle.challenger_media_url && <audio ref={audioLeftRef} src={battle.challenger_media_url} onEnded={handleEnded} />}
       {!isVideo && battle.opponent_media_url && <audio ref={audioRightRef} src={battle.opponent_media_url} onEnded={handleEnded} />}
