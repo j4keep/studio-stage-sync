@@ -179,23 +179,27 @@ const MusicBattlePlayerPage = () => {
 
     const isPhotoBattle = battle.media_type === "photo";
 
-    // Validate duration against battle limit
-    const maxMin = (battle as any).max_duration_minutes || 45;
-    try {
-      const fileDur = await new Promise<number>((resolve, reject) => {
-        const url = URL.createObjectURL(acceptMediaFile);
-        const el = acceptMediaFile.type.startsWith("video") ? document.createElement("video") : document.createElement("audio");
-        el.preload = "metadata";
-        el.onloadedmetadata = () => { resolve(Math.ceil(el.duration / 60)); URL.revokeObjectURL(url); };
-        el.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Cannot read")); };
-        el.src = url;
-      });
-      if (fileDur > maxMin) {
-        toast.error(`Your file is ~${fileDur} min but this battle has a ${maxMin} min limit. Please trim it.`);
-        return;
+    // Validate duration against battle limit (skip for photo battles)
+    if (!isPhotoBattle) {
+      const maxMin = (battle as any).max_duration_minutes || 40;
+      if (maxMin > 0) {
+        try {
+          const fileDur = await new Promise<number>((resolve, reject) => {
+            const url = URL.createObjectURL(acceptMediaFile);
+            const el = acceptMediaFile.type.startsWith("video") ? document.createElement("video") : document.createElement("audio");
+            el.preload = "metadata";
+            el.onloadedmetadata = () => { resolve(Math.ceil(el.duration / 60)); URL.revokeObjectURL(url); };
+            el.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Cannot read")); };
+            el.src = url;
+          });
+          if (fileDur > maxMin) {
+            toast.error(`Your file is ~${fileDur} min but this battle has a ${maxMin} min limit. Please trim it.`);
+            return;
+          }
+        } catch {
+          // can't detect, allow
+        }
       }
-    } catch {
-      // can't detect, allow
     }
 
     setAccepting(true);
