@@ -512,38 +512,46 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
             <motion.button
               onClick={togglePlay}
               whileTap={{ scale: 0.85 }}
+              whileHover={{ scale: 1.08 }}
               className="pointer-events-auto relative"
             >
-              {/* Outer glow rings */}
-              <AnimatePresence>
-                {isPlaying && (
-                  <>
-                    <motion.div
-                      initial={{ scale: 0.8, opacity: 0 }}
-                      animate={{ scale: [1, 1.6], opacity: [0.4, 0] }}
-                      transition={{ repeat: Infinity, duration: 1.5 }}
-                      className="absolute inset-0 rounded-full"
-                      style={{ background: "radial-gradient(circle, hsl(var(--primary) / 0.4), transparent)" }}
-                    />
-                    <motion.div
-                      initial={{ scale: 0.8, opacity: 0 }}
-                      animate={{ scale: [1, 2], opacity: [0.2, 0] }}
-                      transition={{ repeat: Infinity, duration: 2, delay: 0.3 }}
-                      className="absolute inset-0 rounded-full"
-                      style={{ background: "radial-gradient(circle, hsl(var(--primary) / 0.3), transparent)" }}
-                    />
-                  </>
-                )}
-              </AnimatePresence>
-
-              {/* Button */}
+              {/* Outer pulse rings — always visible but stronger when playing */}
               <motion.div
-                animate={isPlaying ? { boxShadow: ["0 0 30px 8px hsl(var(--primary) / 0.3)", "0 0 50px 15px hsl(var(--primary) / 0.5)", "0 0 30px 8px hsl(var(--primary) / 0.3)"] } : { boxShadow: "0 0 30px 8px hsl(var(--primary) / 0.2)" }}
-                transition={isPlaying ? { repeat: Infinity, duration: 1.5 } : {}}
-                className="w-20 h-20 rounded-full flex items-center justify-center border-2 border-primary/30"
+                animate={{ scale: [1, 1.8], opacity: [isPlaying ? 0.5 : 0.15, 0] }}
+                transition={{ repeat: Infinity, duration: isPlaying ? 1.2 : 2.5, ease: "easeOut" }}
+                className="absolute inset-[-20px] rounded-full"
+                style={{ background: "radial-gradient(circle, hsl(var(--primary) / 0.4), transparent 70%)" }}
+              />
+              {isPlaying && (
+                <motion.div
+                  animate={{ scale: [1, 2.2], opacity: [0.3, 0] }}
+                  transition={{ repeat: Infinity, duration: 1.8, delay: 0.4, ease: "easeOut" }}
+                  className="absolute inset-[-30px] rounded-full"
+                  style={{ background: "radial-gradient(circle, hsl(var(--primary) / 0.25), transparent 70%)" }}
+                />
+              )}
+
+              {/* Button body */}
+              <motion.div
+                animate={isPlaying
+                  ? { scale: [1, 1.05, 1], boxShadow: ["0 0 30px 8px hsl(var(--primary) / 0.3)", "0 0 60px 20px hsl(var(--primary) / 0.5)", "0 0 30px 8px hsl(var(--primary) / 0.3)"] }
+                  : { scale: [1, 1.03, 1], boxShadow: ["0 0 20px 5px hsl(var(--primary) / 0.15)", "0 0 35px 10px hsl(var(--primary) / 0.25)", "0 0 20px 5px hsl(var(--primary) / 0.15)"] }
+                }
+                transition={{ repeat: Infinity, duration: isPlaying ? 1.2 : 2.5, ease: "easeInOut" }}
+                className="w-20 h-20 rounded-full flex items-center justify-center border-2 border-primary/40 backdrop-blur-sm"
                 style={{ background: "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.7))" }}
               >
-                {isPlaying ? <Pause className="h-9 w-9 text-primary-foreground fill-primary-foreground" /> : <Play className="h-9 w-9 text-primary-foreground fill-primary-foreground ml-1" />}
+                <AnimatePresence mode="wait">
+                  {isPlaying ? (
+                    <motion.div key="pause" initial={{ scale: 0, rotate: -90 }} animate={{ scale: 1, rotate: 0 }} exit={{ scale: 0, rotate: 90 }} transition={{ duration: 0.2 }}>
+                      <Pause className="h-9 w-9 text-primary-foreground fill-primary-foreground" />
+                    </motion.div>
+                  ) : (
+                    <motion.div key="play" initial={{ scale: 0, rotate: 90 }} animate={{ scale: 1, rotate: 0 }} exit={{ scale: 0, rotate: -90 }} transition={{ duration: 0.2 }}>
+                      <Play className="h-9 w-9 text-primary-foreground fill-primary-foreground ml-1" />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </motion.div>
             </motion.button>
           </div>
