@@ -33,11 +33,15 @@ const MusicBattlePlayerPage = () => {
   const [acceptCoverFile, setAcceptCoverFile] = useState<File | null>(null);
   const [acceptSongFile, setAcceptSongFile] = useState<File | null>(null);
   const [accepting, setAccepting] = useState(false);
+  const [isBattleExpanded, setIsBattleExpanded] = useState(false);
 
   const audioLeftRef = useRef<HTMLMediaElement | null>(null);
   const audioRightRef = useRef<HTMLMediaElement | null>(null);
   const videoLeftRef = useRef<HTMLVideoElement | null>(null);
   const videoRightRef = useRef<HTMLVideoElement | null>(null);
+  const lastTapRef = useRef(0);
+  const lastTapSideRef = useRef<"left" | "right" | null>(null);
+  const touchHandledRef = useRef(false);
 
   /* ── data ── */
   const { data: battle } = useQuery({
@@ -170,6 +174,37 @@ const MusicBattlePlayerPage = () => {
     setIsPlaying(true);
     setCurrentTime(0);
   }, [activeArtist, isPlaying, togglePlay]);
+
+  const handleArtistTap = useCallback((side: "left" | "right") => {
+    const now = Date.now();
+    const isDoubleTap = lastTapSideRef.current === side && now - lastTapRef.current < 350;
+
+    lastTapRef.current = now;
+    lastTapSideRef.current = side;
+
+    if (isDoubleTap) {
+      setIsBattleExpanded((prev) => !prev);
+      return;
+    }
+
+    switchSide(side);
+  }, [switchSide]);
+
+  const handleArtistTouchEnd = useCallback((e: React.TouchEvent, side: "left" | "right") => {
+    e.stopPropagation();
+    e.preventDefault();
+    touchHandledRef.current = true;
+    handleArtistTap(side);
+  }, [handleArtistTap]);
+
+  const handleArtistClick = useCallback((e: React.MouseEvent, side: "left" | "right") => {
+    e.stopPropagation();
+    if (touchHandledRef.current) {
+      touchHandledRef.current = false;
+      return;
+    }
+    handleArtistTap(side);
+  }, [handleArtistTap]);
 
   const handleAcceptBattle = useCallback(async () => {
     if (!user || !battle || !acceptTrackTitle.trim() || !acceptMediaFile) return;
@@ -364,14 +399,19 @@ const MusicBattlePlayerPage = () => {
       </div>
 
       {/* ── MAIN BATTLE AREA ── */}
-      <div className="flex-1 flex flex-col items-center justify-center px-4 relative">
+      <div
+        className={`flex-1 flex flex-col items-center justify-center relative transition-all duration-300 ${
+          isBattleExpanded ? "fixed inset-0 z-50 bg-background px-4 py-6" : "px-4"
+        }`}
+      >
 
         {/* SPLIT SCREEN */}
-        <div className="w-full flex gap-2 relative" style={{ minHeight: 280 }}>
+        <div className={`w-full flex gap-2 relative transition-all duration-300 ${isBattleExpanded ? "min-h-[72vh]" : "min-h-[280px]"}`}>
 
           {/* LEFT ARTIST */}
           <button
-            onClick={() => switchSide("left")}
+            onTouchEnd={(e) => handleArtistTouchEnd(e, "left")}
+            onClick={(e) => handleArtistClick(e, "left")}
             className="flex-1 rounded-2xl overflow-hidden relative transition-all duration-500"
             style={{ opacity: activeArtist === "right" ? 0.5 : 1 }}
           >
@@ -476,7 +516,8 @@ const MusicBattlePlayerPage = () => {
 
           {/* RIGHT ARTIST */}
           <button
-            onClick={() => switchSide("right")}
+            onTouchEnd={(e) => handleArtistTouchEnd(e, "right")}
+            onClick={(e) => handleArtistClick(e, "right")}
             className="flex-1 rounded-2xl overflow-hidden relative transition-all duration-500"
             style={{ opacity: activeArtist === "left" ? 0.5 : 1 }}
           >
