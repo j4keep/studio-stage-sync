@@ -619,7 +619,7 @@ const MusicBattlePlayerPage = () => {
               />
               <div>
                 <label className="mb-1 block text-xs text-muted-foreground">
-                  Upload {battle.media_type === "audio" ? "song" : "video"} (max 45 min)
+                  Upload {battle.media_type === "audio" ? "song" : "video"} (max {(battle as any).max_duration_minutes || 45} min)
                 </label>
                 <input
                   type="file"
