@@ -343,7 +343,7 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
                 <p className="text-xs text-muted-foreground text-center py-3">No comments yet. Be the first!</p>
               )}
               {comments.map((c: any) => {
-                const cp = profileMap.get(c.user_id);
+                const cp = profileMap.get(c.user_id) as any;
                 return (
                   <div key={c.id} className="flex items-start gap-2">
                     <div className="w-6 h-6 rounded-full bg-muted flex-shrink-0 overflow-hidden">

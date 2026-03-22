@@ -71,7 +71,7 @@ const BattlesPage = () => {
       )}
 
       <CreateBattleSheet open={showCreate} onOpenChange={setShowCreate} />
-      <ProGateModal open={showProModal} onClose={closeProModal} onActivate={activatePro} feature={gatedFeature} />
+      <ProGateModal open={showProModal} onClose={closeProModal} onSubscribe={activatePro} featureName={gatedFeature} />
     </div>
   );
 };
