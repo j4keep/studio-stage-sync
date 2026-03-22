@@ -1,0 +1,1 @@
+ALTER TABLE public.battles ADD COLUMN max_duration_minutes integer DEFAULT 45;
