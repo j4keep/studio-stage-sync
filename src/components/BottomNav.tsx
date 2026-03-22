@@ -1,4 +1,4 @@
-import { Home, MessageCircle, User } from "lucide-react";
+import { Home, ImagePlus, User } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import ProGateModal from "@/components/ProGateModal";
 import { useProGate } from "@/hooks/use-pro-gate";
@@ -11,14 +11,14 @@ const BottomNav = () => {
 
   const tabs = [
     { path: "/", label: "Home", icon: Home, pro: false, isJhi: false },
+    { path: "/feed", label: "Feed", icon: ImagePlus, pro: false, isJhi: false },
     { path: "/ask-jhi", label: "Ask Jhi", icon: null, pro: true, isJhi: true },
-    { path: "/messages", label: "Messages", icon: MessageCircle, pro: true, isJhi: false },
     { path: "/profile", label: "Profile", icon: User, pro: false, isJhi: false },
   ];
 
   const handleTabClick = (tab: typeof tabs[0]) => {
     if (tab.pro && !isPro) {
-      requirePro("Messenger");
+      requirePro("Ask Jhi");
     } else {
       navigate(tab.path);
     }
