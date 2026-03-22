@@ -503,7 +503,7 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
               <p className="text-white font-black text-base truncate drop-shadow-lg text-right">{opponentName}</p>
               <p className="text-white/50 text-[11px] truncate mt-0.5 text-right">{battle.opponent_title || "Waiting..."}</p>
             </div>
-          </button>
+          </motion.button>
         </div>
 
         {/* ═══ CENTER PLAY BUTTON ═══ */}
