@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
 
 /* ─── helpers ─── */
 const fmt = (s: number) => {
@@ -26,6 +27,10 @@ const MusicBattlePlayerPage = () => {
   const [activeArtist, setActiveArtist] = useState<"left" | "right">("left");
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [acceptTrackTitle, setAcceptTrackTitle] = useState("");
+  const [acceptMediaFile, setAcceptMediaFile] = useState<File | null>(null);
+  const [acceptCoverFile, setAcceptCoverFile] = useState<File | null>(null);
+  const [accepting, setAccepting] = useState(false);
 
   const audioLeftRef = useRef<HTMLAudioElement | null>(null);
   const audioRightRef = useRef<HTMLAudioElement | null>(null);
@@ -97,9 +102,18 @@ const MusicBattlePlayerPage = () => {
   const userVote = votes.find((v: any) => v.user_id === user?.id);
   const hasVotedLeft = userVote?.voted_for === battle?.challenger_id;
   const hasVotedRight = userVote?.voted_for === battle?.opponent_id;
+  const isPending = battle?.status === "pending" && !!battle?.opponent_id;
+  const canAccept = isPending && user?.id === battle?.opponent_id && !battle?.opponent_media_url;
 
   const leftProfile = profiles[battle?.challenger_id] || {};
   const rightProfile = profiles[battle?.opponent_id] || {};
+
+  const refreshBattleViews = useCallback(() => {
+    qc.invalidateQueries({ queryKey: ["battle", battleId] });
+    qc.invalidateQueries({ queryKey: ["battles"] });
+    qc.invalidateQueries({ queryKey: ["feed-posts"] });
+    qc.invalidateQueries({ queryKey: ["profile-posts"] });
+  }, [battleId, qc]);
 
   /* countdown */
   const [timeLeft, setTimeLeft] = useState("");
@@ -141,7 +155,8 @@ const MusicBattlePlayerPage = () => {
       return;
     }
     if (side === activeArtist) return;
-    inactiveRef.current?.pause();
+    const previous = side === "left" ? audioRightRef.current : audioLeftRef.current;
+    previous?.pause();
     const next = side === "left" ? audioLeftRef.current : audioRightRef.current;
     if (next) {
       next.currentTime = 0;
@@ -150,14 +165,84 @@ const MusicBattlePlayerPage = () => {
     setActiveArtist(side);
     setIsPlaying(true);
     setCurrentTime(0);
-  }, [activeArtist, isPlaying, togglePlay, inactiveRef]);
+  }, [activeArtist, isPlaying, togglePlay]);
+
+  const handleAcceptBattle = useCallback(async () => {
+    if (!user || !battle || !acceptTrackTitle.trim() || !acceptMediaFile) return;
+    if (battle.media_type === "audio" && !acceptCoverFile) {
+      toast.error("Audio battles need cover art");
+      return;
+    }
+
+    setAccepting(true);
+    try {
+      let mediaUrl = "";
+      let coverUrl = "";
+
+      const mediaExt = acceptMediaFile.name.split(".").pop();
+      const mediaPath = `battles/${user.id}/${Date.now()}.${mediaExt}`;
+      const { data: mediaUpload, error: mediaError } = await supabase.storage.from("media").upload(mediaPath, acceptMediaFile);
+      if (mediaError || !mediaUpload) throw mediaError || new Error("Failed to upload media");
+      mediaUrl = supabase.storage.from("media").getPublicUrl(mediaPath).data.publicUrl;
+
+      if (acceptCoverFile) {
+        const coverExt = acceptCoverFile.name.split(".").pop();
+        const coverPath = `battles/covers/${user.id}/${Date.now()}.${coverExt}`;
+        const { data: coverUpload, error: coverError } = await supabase.storage.from("media").upload(coverPath, acceptCoverFile);
+        if (coverError || !coverUpload) throw coverError || new Error("Failed to upload cover");
+        coverUrl = supabase.storage.from("media").getPublicUrl(coverPath).data.publicUrl;
+      }
+
+      const { error } = await (supabase as any)
+        .from("battles")
+        .update({
+          status: "active",
+          opponent_title: acceptTrackTitle.trim(),
+          opponent_media_url: mediaUrl,
+          opponent_cover_url: coverUrl || null,
+        })
+        .eq("id", battle.id)
+        .eq("opponent_id", user.id);
+
+      if (error) throw error;
+
+      setAcceptTrackTitle("");
+      setAcceptMediaFile(null);
+      setAcceptCoverFile(null);
+      toast.success("Challenge accepted");
+      refreshBattleViews();
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to accept challenge");
+    } finally {
+      setAccepting(false);
+    }
+  }, [acceptCoverFile, acceptMediaFile, acceptTrackTitle, battle, refreshBattleViews, user]);
 
   useEffect(() => {
     const el = activeRef.current;
     if (!el) return;
     const onTime = () => setCurrentTime(el.currentTime);
     const onDur = () => setDuration(el.duration || 0);
-    const onEnd = () => setIsPlaying(false);
+    const onEnd = () => {
+      if (battle?.opponent_media_url && battle?.challenger_media_url) {
+        const nextSide = activeArtist === "left" ? "right" : "left";
+        setActiveArtist(nextSide);
+        setCurrentTime(0);
+
+        window.requestAnimationFrame(() => {
+          const next = nextSide === "left" ? audioLeftRef.current : audioRightRef.current;
+          if (!next) {
+            setIsPlaying(false);
+            return;
+          }
+          next.currentTime = 0;
+          next.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+        });
+        return;
+      }
+
+      setIsPlaying(false);
+    };
     el.addEventListener("timeupdate", onTime);
     el.addEventListener("loadedmetadata", onDur);
     el.addEventListener("ended", onEnd);
@@ -166,7 +251,7 @@ const MusicBattlePlayerPage = () => {
       el.removeEventListener("loadedmetadata", onDur);
       el.removeEventListener("ended", onEnd);
     };
-  }, [activeRef, activeArtist]);
+  }, [activeRef, activeArtist, battle?.challenger_media_url, battle?.opponent_media_url]);
 
   if (!battle) {
     return (
@@ -457,6 +542,52 @@ const MusicBattlePlayerPage = () => {
           Vote {rightProfile.display_name?.split(" ")[0] || "B"}
         </motion.button>
       </div>
+
+      {canAccept && (
+        <div className="px-6 pb-8">
+          <div className="rounded-3xl border border-border bg-card/70 p-4 backdrop-blur-sm">
+            <p className="mb-3 text-center text-sm font-semibold text-primary">🥊 You&apos;ve been challenged!</p>
+            <div className="space-y-3">
+              <Input
+                placeholder="Your track title"
+                value={acceptTrackTitle}
+                onChange={(event) => setAcceptTrackTitle(event.target.value)}
+                className="h-11"
+              />
+              <div>
+                <label className="mb-1 block text-xs text-muted-foreground">
+                  Upload {battle.media_type === "audio" ? "song" : "video"} (max 45 min)
+                </label>
+                <input
+                  type="file"
+                  accept={battle.media_type === "audio" ? "audio/*,.mp3,.wav,.flac,.m4a" : "video/*,.mp4,.mov,.webm"}
+                  onChange={(event) => setAcceptMediaFile(event.target.files?.[0] || null)}
+                  className="w-full text-xs file:mr-3 file:rounded-xl file:border-0 file:bg-primary/15 file:px-3 file:py-2 file:font-semibold file:text-primary"
+                />
+              </div>
+              {battle.media_type === "audio" && (
+                <div>
+                  <label className="mb-1 block text-xs text-muted-foreground">Upload cover art</label>
+                  <input
+                    type="file"
+                    accept="image/*,.jpg,.jpeg,.png,.webp"
+                    onChange={(event) => setAcceptCoverFile(event.target.files?.[0] || null)}
+                    className="w-full text-xs file:mr-3 file:rounded-xl file:border-0 file:bg-primary/15 file:px-3 file:py-2 file:font-semibold file:text-primary"
+                  />
+                </div>
+              )}
+              <motion.button
+                whileTap={{ scale: 0.98 }}
+                onClick={handleAcceptBattle}
+                disabled={accepting || !acceptTrackTitle.trim() || !acceptMediaFile || (battle.media_type === "audio" && !acceptCoverFile)}
+                className="w-full rounded-2xl bg-primary py-3 text-sm font-bold text-primary-foreground disabled:opacity-50"
+              >
+                {accepting ? "Uploading..." : "Accept Challenge"}
+              </motion.button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
