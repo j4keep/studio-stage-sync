@@ -31,6 +31,7 @@ const MusicBattlePlayerPage = () => {
   const [acceptTrackTitle, setAcceptTrackTitle] = useState("");
   const [acceptMediaFile, setAcceptMediaFile] = useState<File | null>(null);
   const [acceptCoverFile, setAcceptCoverFile] = useState<File | null>(null);
+  const [acceptSongFile, setAcceptSongFile] = useState<File | null>(null);
   const [accepting, setAccepting] = useState(false);
 
   const audioLeftRef = useRef<HTMLMediaElement | null>(null);
@@ -208,7 +209,7 @@ const MusicBattlePlayerPage = () => {
       let coverUrl = "";
 
       if (isPhotoBattle) {
-        // For photo battles, upload as cover (no media URL needed)
+        // For photo battles, upload photo as cover
         const ext = acceptMediaFile.name.split(".").pop();
         const result = await uploadToR2(acceptMediaFile, {
           folder: `battles/photos/${user.id}`,
@@ -219,6 +220,18 @@ const MusicBattlePlayerPage = () => {
           coverUrl = getR2DownloadUrl(result.data.key);
         } else {
           throw new Error(result.error || "Failed to upload photo");
+        }
+        // Optional song for photo battle
+        if (acceptSongFile) {
+          const songExt = acceptSongFile.name.split(".").pop();
+          const songResult = await uploadToR2(acceptSongFile, {
+            folder: `battles/${user.id}`,
+            fileName: `${Date.now()}.${songExt}`,
+            mimeType: acceptSongFile.type,
+          });
+          if (songResult.success && songResult.data) {
+            mediaUrl = getR2DownloadUrl(songResult.data.key);
+          }
         }
       } else {
         const mediaExt = acceptMediaFile.name.split(".").pop();
@@ -254,7 +267,7 @@ const MusicBattlePlayerPage = () => {
         .update({
           status: "active",
           opponent_title: acceptTrackTitle.trim(),
-          opponent_media_url: isPhotoBattle ? null : mediaUrl,
+          opponent_media_url: mediaUrl || null,
           opponent_cover_url: coverUrl || null,
         })
         .eq("id", battle.id)
@@ -265,6 +278,7 @@ const MusicBattlePlayerPage = () => {
       setAcceptTrackTitle("");
       setAcceptMediaFile(null);
       setAcceptCoverFile(null);
+      setAcceptSongFile(null);
       toast.success("Challenge accepted");
       refreshBattleViews();
     } catch (error: any) {
@@ -639,19 +653,33 @@ const MusicBattlePlayerPage = () => {
                 className="h-11"
               />
               {battle.media_type === "photo" ? (
-                <div>
-                  <label className="mb-1 block text-xs text-muted-foreground">Upload your photo</label>
-                  <input
-                    type="file"
-                    accept="image/*,.jpg,.jpeg,.png,.webp"
-                    onChange={(event) => {
-                      const f = event.target.files?.[0] || null;
-                      setAcceptMediaFile(f);
-                      setAcceptCoverFile(f);
-                    }}
-                    className="w-full text-xs file:mr-3 file:rounded-xl file:border-0 file:bg-primary/15 file:px-3 file:py-2 file:font-semibold file:text-primary"
-                  />
-                </div>
+                <>
+                  <div>
+                    <label className="mb-1 block text-xs text-muted-foreground">Upload your photo</label>
+                    <input
+                      type="file"
+                      accept="image/*,.jpg,.jpeg,.png,.webp"
+                      onChange={(event) => {
+                        const f = event.target.files?.[0] || null;
+                        setAcceptMediaFile(f);
+                        setAcceptCoverFile(f);
+                      }}
+                      className="w-full text-xs file:mr-3 file:rounded-xl file:border-0 file:bg-primary/15 file:px-3 file:py-2 file:font-semibold file:text-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs text-muted-foreground">🎵 Add a song (optional)</label>
+                    <input
+                      type="file"
+                      accept="audio/*,.mp3,.wav,.flac,.m4a"
+                      onChange={(event) => setAcceptSongFile(event.target.files?.[0] || null)}
+                      className="w-full text-xs file:mr-3 file:rounded-xl file:border-0 file:bg-primary/15 file:px-3 file:py-2 file:font-semibold file:text-primary"
+                    />
+                    {acceptSongFile && (
+                      <p className="mt-1 text-[10px] text-muted-foreground">🎵 {acceptSongFile.name}</p>
+                    )}
+                  </div>
+                </>
               ) : (
                 <>
                   <div>

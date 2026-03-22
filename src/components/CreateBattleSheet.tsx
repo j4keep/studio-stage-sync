@@ -41,6 +41,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoSongFile, setPhotoSongFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [opponentSearch, setOpponentSearch] = useState("");
   const [selectedOpponent, setSelectedOpponent] = useState<{ user_id: string; display_name: string; avatar_url: string | null } | null>(null);
@@ -110,7 +111,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
       let coverUrl = "";
 
       if (isPhotoBattle && photoFile) {
-        // For photo battles, the photo IS the cover/media
+        // For photo battles, the photo IS the cover
         const ext = photoFile.name.split(".").pop();
         const result = await uploadToR2(photoFile, {
           folder: `battles/photos/${user.id}`,
@@ -123,6 +124,18 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
           toast({ title: "Upload failed", description: result.error || "Could not upload photo.", variant: "destructive" });
           setLoading(false);
           return;
+        }
+        // Optional song for photo battle
+        if (photoSongFile) {
+          const songExt = photoSongFile.name.split(".").pop();
+          const songResult = await uploadToR2(photoSongFile, {
+            folder: `battles/${user.id}`,
+            fileName: `${Date.now()}.${songExt}`,
+            mimeType: photoSongFile.type,
+          });
+          if (songResult.success && songResult.data) {
+            mediaUrl = getR2DownloadUrl(songResult.data.key);
+          }
         }
       } else {
         if (mediaFile) {
@@ -183,6 +196,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
       setMediaFile(null);
       setCoverFile(null);
       setPhotoFile(null);
+      setPhotoSongFile(null);
       setSelectedOpponent(null);
       setOpponentSearch("");
       setMaxDuration(40);
@@ -298,7 +312,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
                 <Video className="w-3.5 h-3.5" /> Video
               </button>
               <button
-                onClick={() => { setMediaType("photo"); setMediaFile(null); setCoverFile(null); setMediaDurationMin(null); }}
+                onClick={() => { setMediaType("photo"); setMediaFile(null); setCoverFile(null); setMediaDurationMin(null); setPhotoSongFile(null); }}
                 className={`flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 border ${mediaType === "photo" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
               >
                 <Image className="w-3.5 h-3.5" /> Photo
@@ -333,20 +347,36 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
 
           {/* Photo upload for photo battles */}
           {isPhotoBattle && (
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Upload Your Photo</label>
-              <input
-                type="file"
-                accept="image/*,.jpg,.jpeg,.png,.webp"
-                onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
-                className="w-full text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary"
-              />
-              {photoFile && (
-                <div className="mt-2 rounded-lg overflow-hidden max-h-40">
-                  <img src={URL.createObjectURL(photoFile)} alt="Preview" className="w-full h-full object-cover" />
-                </div>
-              )}
-            </div>
+            <>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Upload Your Photo</label>
+                <input
+                  type="file"
+                  accept="image/*,.jpg,.jpeg,.png,.webp"
+                  onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
+                  className="w-full text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary"
+                />
+                {photoFile && (
+                  <div className="mt-2 rounded-lg overflow-hidden max-h-40">
+                    <img src={URL.createObjectURL(photoFile)} alt="Preview" className="w-full h-full object-cover" />
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1.5">
+                  <Music className="w-3.5 h-3.5" /> Add a Song (optional)
+                </label>
+                <input
+                  type="file"
+                  accept="audio/*,.mp3,.wav,.flac,.m4a"
+                  onChange={(e) => setPhotoSongFile(e.target.files?.[0] || null)}
+                  className="w-full text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary"
+                />
+                {photoSongFile && (
+                  <p className="text-[10px] text-muted-foreground mt-1">🎵 {photoSongFile.name}</p>
+                )}
+              </div>
+            </>
           )}
 
           {/* Media upload for audio/video */}
