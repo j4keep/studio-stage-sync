@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, ThumbsUp, Send, Swords, MessageCircle, Trash2, Upload, Clock, Trophy } from "lucide-react";
-import battleCardBg from "@/assets/battle-card-bg.png";
+import { Play, Pause, ThumbsUp, Send, Swords, MessageCircle, Trash2, Upload, Trophy, Clock } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
 
 interface Battle {
   id: string;
@@ -43,14 +43,12 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
   const videoRightRef = useRef<HTMLVideoElement | null>(null);
   const commentsEndRef = useRef<HTMLDivElement>(null);
 
-  // Accept battle state
   const [showUpload, setShowUpload] = useState(false);
   const [acceptTrackTitle, setAcceptTrackTitle] = useState("");
   const [acceptMediaFile, setAcceptMediaFile] = useState<File | null>(null);
   const [acceptCoverFile, setAcceptCoverFile] = useState<File | null>(null);
   const [accepting, setAccepting] = useState(false);
 
-  // Expiry
   const expiresAt = battle.expires_at ? new Date(battle.expires_at) : new Date(new Date(battle.created_at).getTime() + 24 * 60 * 60 * 1000);
   const isExpired = new Date() > expiresAt;
   const isActive = battle.status === "active" && !!battle.opponent_media_url;
@@ -130,6 +128,10 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
     ? (challengerVotes > opponentVotes ? battle.challenger_id : challengerVotes < opponentVotes ? battle.opponent_id : null)
     : null;
 
+  const currentWinner = totalVotes > 0
+    ? (challengerVotes > opponentVotes ? "left" : challengerVotes < opponentVotes ? "right" : "tied")
+    : "tied";
+
   // Realtime
   useEffect(() => {
     const votesChannel = supabase
@@ -194,7 +196,7 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
     },
   });
 
-  // Playback with time tracking
+  // Playback
   const getLeftMedia = () => battle.media_type === "video" ? videoLeftRef.current : audioLeftRef.current;
   const getRightMedia = () => battle.media_type === "video" ? videoRightRef.current : audioRightRef.current;
 
@@ -203,13 +205,13 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
     const rightMedia = getRightMedia();
     if (!leftMedia) return;
 
-    const onLoadedLeft = () => {
+    const onLoaded = () => {
       const leftDur = leftMedia?.duration || 0;
       const rightDur = rightMedia?.duration || 0;
       setTotalDuration(leftDur + rightDur);
     };
-    leftMedia.addEventListener("loadedmetadata", onLoadedLeft);
-    rightMedia?.addEventListener("loadedmetadata", onLoadedLeft);
+    leftMedia.addEventListener("loadedmetadata", onLoaded);
+    rightMedia?.addEventListener("loadedmetadata", onLoaded);
 
     const onTimeUpdate = () => {
       if (currentSide === "left") {
@@ -222,9 +224,9 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
     rightMedia?.addEventListener("timeupdate", onTimeUpdate);
 
     return () => {
-      leftMedia.removeEventListener("loadedmetadata", onLoadedLeft);
+      leftMedia.removeEventListener("loadedmetadata", onLoaded);
       leftMedia.removeEventListener("timeupdate", onTimeUpdate);
-      rightMedia?.removeEventListener("loadedmetadata", onLoadedLeft);
+      rightMedia?.removeEventListener("loadedmetadata", onLoaded);
       rightMedia?.removeEventListener("timeupdate", onTimeUpdate);
     };
   });
@@ -264,7 +266,7 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
     return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   };
 
-  // Accept with upload (max 45 min check)
+  // Accept battle
   const handleAcceptBattle = async () => {
     if (!user || !acceptTrackTitle.trim()) return;
     setAccepting(true);
@@ -300,9 +302,6 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
       queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
       toast.success("Challenge accepted! 🥊");
       setShowUpload(false);
-      setAcceptTrackTitle("");
-      setAcceptMediaFile(null);
-      setAcceptCoverFile(null);
     } catch {
       toast.error("Failed to accept challenge");
     } finally {
@@ -316,12 +315,7 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
       el.preload = "metadata";
       el.onloadedmetadata = () => {
         URL.revokeObjectURL(el.src);
-        if (el.duration > 45 * 60) {
-          toast.error("Max duration is 45 minutes!");
-          resolve(false);
-        } else {
-          resolve(true);
-        }
+        resolve(el.duration <= 45 * 60 || (toast.error("Max duration is 45 minutes!"), false));
       };
       el.src = URL.createObjectURL(file);
     });
@@ -338,91 +332,240 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
   const canAccept = (isOpen && user?.id !== battle.challenger_id) || (isPending && user?.id === battle.opponent_id);
   const bothHaveMedia = !!battle.challenger_media_url && !!battle.opponent_media_url;
   const canVote = isActive && !isExpired && user && user.id !== battle.challenger_id && user.id !== battle.opponent_id;
-
-  const challengerCover = battle.challenger_cover_url;
-  const opponentCover = battle.opponent_cover_url;
   const isVideo = battle.media_type === "video";
 
-  return (
-    <motion.div layout className="overflow-hidden rounded-[2rem] border border-border/40 bg-card shadow-2xl">
-      <div className="relative overflow-hidden">
-        <img src={battleCardBg} alt="Music Battle" className="w-full h-auto block" />
-      </div>
+  const playbackPct = totalDuration > 0 ? (playbackTime / totalDuration) * 100 : 0;
 
-      <div className="border-t border-border/30 bg-card px-4 py-2.5">
+  return (
+    <motion.div layout className="overflow-hidden rounded-2xl bg-[hsl(240,10%,8%)] shadow-2xl border border-border/20">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-[hsl(240,10%,12%)] to-[hsl(240,10%,15%)] px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Swords className="h-4 w-4 text-primary" />
-          <p className="min-w-0 flex-1 truncate text-xs font-bold text-foreground">{battle.title}</p>
-          {isActive && !isExpired && timeLeft && <span className="text-[10px] font-bold text-muted-foreground">Ends in {timeLeft}</span>}
-          {isExpired && isActive ? (
-            <span className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
+          <Swords className="h-5 w-5 text-[hsl(42,100%,58%)]" />
+          <h3 className="font-black text-sm text-white tracking-wide uppercase">Music Battle!</h3>
+        </div>
+        <div className="flex items-center gap-2">
+          {isActive && !isExpired && timeLeft && (
+            <span className="flex items-center gap-1 text-[10px] font-bold text-[hsl(42,100%,58%)]">
+              <Clock className="h-3 w-3" /> {timeLeft}
+            </span>
+          )}
+          {isExpired && isActive && (
+            <span className="flex items-center gap-1 rounded-full bg-muted/30 px-2 py-0.5 text-[10px] font-bold text-[hsl(42,100%,58%)]">
               <Trophy className="h-3 w-3" /> ENDED
             </span>
-          ) : battle.status === "open" ? (
-            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">OPEN</span>
-          ) : isPending ? (
-            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">CHALLENGE SENT</span>
-          ) : isActive ? (
-            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">LIVE</span>
-          ) : null}
+          )}
+          {isOpen && <span className="rounded-full bg-green-500/20 px-2 py-0.5 text-[10px] font-bold text-green-400">OPEN</span>}
+          {isPending && <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-400">PENDING</span>}
+          {isActive && !isExpired && <span className="rounded-full bg-red-500/20 px-2 py-0.5 text-[10px] font-bold text-red-400 animate-pulse">● LIVE</span>}
           {user?.id === battle.challenger_id && (
-            <button onClick={() => deleteBattleMutation.mutate()} className="text-muted-foreground transition-colors hover:text-destructive">
+            <button onClick={() => deleteBattleMutation.mutate()} className="text-muted-foreground hover:text-destructive transition-colors">
               <Trash2 className="h-4 w-4" />
             </button>
           )}
         </div>
       </div>
 
+      {/* Battle Title */}
+      <div className="text-center py-2 bg-[hsl(240,10%,10%)]">
+        <p className="text-xs font-bold text-white/70 truncate px-4">{battle.title}</p>
+      </div>
+
+      {/* Main Battle Area - Split Screen */}
+      <div className="relative">
+        <div className="grid grid-cols-2 gap-0">
+          {/* LEFT - Challenger */}
+          <div className="relative">
+            <div className="aspect-[3/4] bg-[hsl(240,10%,12%)] relative overflow-hidden">
+              {battle.challenger_cover_url ? (
+                <img src={battle.challenger_cover_url} alt={challengerName} className="w-full h-full object-cover" />
+              ) : isVideo && battle.challenger_media_url ? (
+                <video ref={videoLeftRef} src={battle.challenger_media_url} onEnded={handleLeftEnded}
+                  className="w-full h-full object-cover" muted={currentSide !== "left"} />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-900/40 to-blue-600/20">
+                  <span className="text-4xl">🎵</span>
+                </div>
+              )}
+              {/* Gradient overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+
+              {/* Winning badge */}
+              {currentWinner === "left" && totalVotes > 0 && (
+                <div className="absolute top-2 left-2 bg-[hsl(42,100%,58%)] text-black text-[9px] font-black px-2 py-0.5 rounded-full shadow-lg">
+                  👑 WINNING
+                </div>
+              )}
+
+              {/* Artist info at bottom */}
+              <div className="absolute bottom-0 left-0 right-0 p-3">
+                <p className="text-white font-black text-sm truncate">{challengerName}</p>
+                <p className="text-white/60 text-[10px] truncate">{battle.challenger_title || "Track"}</p>
+              </div>
+            </div>
+
+            {/* Challenger stats */}
+            <div className="bg-[hsl(240,10%,10%)] px-3 py-2 flex items-center justify-between">
+              <button
+                onClick={() => canVote && voteMutation.mutate(battle.challenger_id)}
+                disabled={!canVote}
+                className={`flex items-center gap-1.5 text-xs font-bold transition-all ${
+                  userVote?.voted_for === battle.challenger_id
+                    ? "text-[hsl(42,100%,58%)]"
+                    : canVote ? "text-white/60 hover:text-white" : "text-white/30"
+                }`}
+              >
+                <ThumbsUp className={`h-4 w-4 ${userVote?.voted_for === battle.challenger_id ? "fill-[hsl(42,100%,58%)]" : ""}`} />
+                <span>{challengerVotes}</span>
+              </button>
+              <div className="text-right">
+                <p className="text-2xl font-black text-white">{challengerPct}%</p>
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT - Opponent */}
+          <div className="relative">
+            <div className="aspect-[3/4] bg-[hsl(240,10%,12%)] relative overflow-hidden">
+              {battle.opponent_cover_url ? (
+                <img src={battle.opponent_cover_url} alt={opponentName} className="w-full h-full object-cover" />
+              ) : isVideo && battle.opponent_media_url ? (
+                <video ref={videoRightRef} src={battle.opponent_media_url} onEnded={handleRightEnded}
+                  className="w-full h-full object-cover" muted={currentSide !== "right"} />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/40 to-red-600/20">
+                  <span className="text-4xl">{battle.opponent_id ? "🎵" : "❓"}</span>
+                </div>
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+
+              {currentWinner === "right" && totalVotes > 0 && (
+                <div className="absolute top-2 right-2 bg-[hsl(42,100%,58%)] text-black text-[9px] font-black px-2 py-0.5 rounded-full shadow-lg">
+                  👑 WINNING
+                </div>
+              )}
+
+              <div className="absolute bottom-0 left-0 right-0 p-3">
+                <p className="text-white font-black text-sm truncate">{opponentName}</p>
+                <p className="text-white/60 text-[10px] truncate">{battle.opponent_title || "Waiting..."}</p>
+              </div>
+            </div>
+
+            <div className="bg-[hsl(240,10%,10%)] px-3 py-2 flex items-center justify-between">
+              <div className="text-left">
+                <p className="text-2xl font-black text-white">{opponentPct}%</p>
+              </div>
+              <button
+                onClick={() => canVote && battle.opponent_id && voteMutation.mutate(battle.opponent_id)}
+                disabled={!canVote || !battle.opponent_id}
+                className={`flex items-center gap-1.5 text-xs font-bold transition-all ${
+                  userVote?.voted_for === battle.opponent_id
+                    ? "text-[hsl(42,100%,58%)]"
+                    : canVote ? "text-white/60 hover:text-white" : "text-white/30"
+                }`}
+              >
+                <span>{opponentVotes}</span>
+                <ThumbsUp className={`h-4 w-4 ${userVote?.voted_for === battle.opponent_id ? "fill-[hsl(42,100%,58%)]" : ""}`} />
+              </button>
+            </div>
+          </div>
+
+          {/* CENTER - VS Badge + Play Button */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-20">
+            {/* VS */}
+            <div className="mb-2 w-14 h-14 rounded-full bg-gradient-to-br from-[hsl(42,100%,58%)] to-[hsl(30,100%,45%)] flex items-center justify-center shadow-[0_0_30px_rgba(255,200,0,0.5)]">
+              <span className="text-lg font-black text-black tracking-wider">VS</span>
+            </div>
+
+            {/* Play Button */}
+            {bothHaveMedia && (
+              <button
+                onClick={handleCenterPlay}
+                className="pointer-events-auto w-16 h-16 rounded-full bg-gradient-to-br from-[hsl(42,100%,58%)] to-[hsl(30,100%,45%)] flex items-center justify-center shadow-[0_0_40px_rgba(255,200,0,0.4)] hover:shadow-[0_0_60px_rgba(255,200,0,0.6)] transition-all active:scale-95"
+              >
+                {isPlaying ? (
+                  <Pause className="h-7 w-7 text-black fill-black" />
+                ) : (
+                  <Play className="h-7 w-7 text-black fill-black ml-1" />
+                )}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Vote Progress Bar */}
+      <div className="bg-[hsl(240,10%,8%)] px-4 py-2">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-[10px] font-bold text-blue-400">{challengerPct}%</span>
+          <div className="flex-1 h-2.5 rounded-full overflow-hidden bg-red-500/40 relative">
+            <div
+              className="absolute left-0 top-0 h-full rounded-full bg-gradient-to-r from-blue-500 to-blue-400 transition-all duration-500"
+              style={{ width: `${challengerPct}%` }}
+            />
+          </div>
+          <span className="text-[10px] font-bold text-red-400">{opponentPct}%</span>
+        </div>
+        <p className="text-center text-[9px] text-white/40 font-medium">{totalVotes} total votes</p>
+      </div>
+
+      {/* Audio Playback Bar */}
+      {bothHaveMedia && (
+        <div className="bg-[hsl(240,10%,6%)] px-4 py-2 flex items-center gap-3">
+          <span className="text-[10px] font-mono text-white/50 w-10 text-right">{formatTime(playbackTime)}</span>
+          <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-[hsl(42,100%,58%)] transition-all"
+              style={{ width: `${playbackPct}%` }}
+            />
+          </div>
+          <span className="text-[10px] font-mono text-white/50 w-10">{formatTime(totalDuration)}</span>
+        </div>
+      )}
+
+      {/* Winner announcement */}
       {isExpired && winnerId && (
-        <div className="bg-gradient-to-r from-muted via-secondary to-muted px-4 py-2 text-center">
-          <p className="text-sm font-bold text-foreground">
+        <div className="bg-gradient-to-r from-[hsl(42,100%,58%)]/20 to-[hsl(42,100%,58%)]/10 px-4 py-2.5 text-center">
+          <p className="text-sm font-black text-[hsl(42,100%,58%)]">
             🏆 {winnerId === battle.challenger_id ? challengerName : opponentName} wins with {winnerId === battle.challenger_id ? challengerPct : opponentPct}% of votes!
           </p>
         </div>
       )}
       {isExpired && totalVotes > 0 && !winnerId && (
-        <div className="bg-muted/50 px-4 py-2 text-center">
-          <p className="text-sm font-bold text-muted-foreground">It's a tie! 🤝</p>
+        <div className="bg-white/5 px-4 py-2 text-center">
+          <p className="text-sm font-bold text-white/60">It's a tie! 🤝</p>
         </div>
       )}
 
+      {/* Accept Battle */}
       {((isPending && user?.id === battle.opponent_id && !battle.opponent_media_url) || (isOpen && canAccept)) && (
-        <div className="border-t border-border/30 bg-muted/20 px-4 py-3">
+        <div className="border-t border-white/5 bg-[hsl(240,10%,10%)] px-4 py-3">
           {isPending && user?.id === battle.opponent_id && (
-            <p className="mb-2 text-center text-xs font-bold text-foreground">🥊 You've been challenged!</p>
+            <p className="mb-2 text-center text-xs font-bold text-[hsl(42,100%,58%)]">🥊 You've been challenged!</p>
           )}
           {!showUpload ? (
-            <button onClick={() => setShowUpload(true)} className="gradient-primary flex w-full items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-bold text-primary-foreground shadow-lg">
+            <button onClick={() => setShowUpload(true)} className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-[hsl(42,100%,58%)] to-[hsl(30,100%,45%)] py-2.5 text-xs font-bold text-black shadow-lg">
               <Upload className="h-3.5 w-3.5" /> Accept & Upload Your Entry
             </button>
           ) : (
             <div className="space-y-2">
-              <Input placeholder="Your track title" value={acceptTrackTitle} onChange={(e) => setAcceptTrackTitle(e.target.value)} className="h-9 text-xs" />
+              <Input placeholder="Your track title" value={acceptTrackTitle} onChange={(e) => setAcceptTrackTitle(e.target.value)} className="h-9 text-xs bg-white/5 border-white/10 text-white" />
               <div>
-                <label className="mb-1 block text-[10px] text-muted-foreground">Upload {battle.media_type === "audio" ? "Song (max 45 min)" : "Video (max 45 min)"}</label>
-                <input
-                  type="file"
-                  accept={battle.media_type === "audio" ? "audio/*,.mp3,.wav,.flac,.m4a" : "video/*,.mp4,.mov,.webm"}
+                <label className="mb-1 block text-[10px] text-white/50">Upload {battle.media_type === "audio" ? "Song (max 45 min)" : "Video (max 45 min)"}</label>
+                <input type="file" accept={battle.media_type === "audio" ? "audio/*,.mp3,.wav,.flac,.m4a" : "video/*,.mp4,.mov,.webm"}
                   onChange={(e) => handleMediaFileChange(e.target.files?.[0] || null)}
-                  className="w-full text-[10px] file:mr-2 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-[10px] file:font-semibold file:text-primary"
-                />
+                  className="w-full text-[10px] text-white file:mr-2 file:rounded-lg file:border-0 file:bg-[hsl(42,100%,58%)]/20 file:px-3 file:py-1.5 file:text-[10px] file:font-semibold file:text-[hsl(42,100%,58%)]" />
               </div>
               {battle.media_type === "audio" && (
                 <div>
-                  <label className="mb-1 block text-[10px] text-muted-foreground">Cover Art (required)</label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => setAcceptCoverFile(e.target.files?.[0] || null)}
-                    className="w-full text-[10px] file:mr-2 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-[10px] file:font-semibold file:text-primary"
-                  />
+                  <label className="mb-1 block text-[10px] text-white/50">Cover Art (required)</label>
+                  <input type="file" accept="image/*" onChange={(e) => setAcceptCoverFile(e.target.files?.[0] || null)}
+                    className="w-full text-[10px] text-white file:mr-2 file:rounded-lg file:border-0 file:bg-[hsl(42,100%,58%)]/20 file:px-3 file:py-1.5 file:text-[10px] file:font-semibold file:text-[hsl(42,100%,58%)]" />
                 </div>
               )}
-              <button
-                onClick={handleAcceptBattle}
+              <button onClick={handleAcceptBattle}
                 disabled={accepting || !acceptTrackTitle.trim() || !acceptMediaFile || (battle.media_type === "audio" && !acceptCoverFile)}
-                className="gradient-primary w-full rounded-xl py-2.5 text-xs font-bold text-primary-foreground shadow-lg disabled:opacity-50"
-              >
+                className="w-full rounded-xl bg-gradient-to-r from-[hsl(42,100%,58%)] to-[hsl(30,100%,45%)] py-2.5 text-xs font-bold text-black shadow-lg disabled:opacity-50">
                 {accepting ? "Uploading..." : "🥊 Accept Challenge"}
               </button>
             </div>
@@ -430,45 +573,47 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
         </div>
       )}
 
+      {/* Comments toggle */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center justify-center gap-1.5 border-t border-border/30 bg-card px-4 py-2.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+        className="flex w-full items-center justify-center gap-1.5 border-t border-white/5 bg-[hsl(240,10%,8%)] px-4 py-2.5 text-xs text-white/50 hover:text-white/80 transition-colors"
       >
         <MessageCircle className="h-3.5 w-3.5" />
         {comments.length} Comments
-        {totalVotes > 0 && <span className="ml-2 text-muted-foreground/60">•</span>}
-        {totalVotes > 0 && <span className="text-muted-foreground/80">{totalVotes} votes</span>}
+        {totalVotes > 0 && <span className="ml-2 text-white/20">•</span>}
+        {totalVotes > 0 && <span className="text-white/40">{totalVotes} votes</span>}
       </button>
 
+      {/* Comments section */}
       <AnimatePresence>
         {expanded && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden border-t border-border/30 bg-card">
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden border-t border-white/5 bg-[hsl(240,10%,8%)]">
             <div className="max-h-48 space-y-2 overflow-y-auto px-4 py-2">
-              {comments.length === 0 && <p className="py-3 text-center text-xs text-muted-foreground">No comments yet. Be the first!</p>}
+              {comments.length === 0 && <p className="py-3 text-center text-xs text-white/30">No comments yet. Be the first!</p>}
               {comments.map((c: any) => {
                 const cp = profileMap.get(c.user_id) as any;
                 return (
                   <div key={c.id} className="flex items-start gap-2">
-                    <div className="h-6 w-6 flex-shrink-0 overflow-hidden rounded-full bg-muted">
-                      {cp?.avatar_url ? <img src={cp.avatar_url} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-muted-foreground">{(cp?.display_name || "U")[0]}</div>}
+                    <div className="h-6 w-6 flex-shrink-0 overflow-hidden rounded-full bg-white/10">
+                      {cp?.avatar_url ? <img src={cp.avatar_url} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-white/50">{(cp?.display_name || "U")[0]}</div>}
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold text-muted-foreground">{cp?.display_name || "User"}</span>
-                      <p className="text-xs text-foreground">{c.content}</p>
+                      <span className="text-[10px] font-bold text-white/40">{cp?.display_name || "User"}</span>
+                      <p className="text-xs text-white/80">{c.content}</p>
                     </div>
                   </div>
                 );
               })}
               <div ref={commentsEndRef} />
             </div>
-            <div className="scrollbar-hide flex gap-1.5 overflow-x-auto border-t border-border/50 px-4 py-1.5">
+            <div className="scrollbar-hide flex gap-1.5 overflow-x-auto border-t border-white/5 px-4 py-1.5">
               {EMOJIS.map((emoji) => (
-                <button key={emoji} onClick={() => commentMutation.mutate(emoji)} className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-muted/50 text-sm hover:bg-muted">
+                <button key={emoji} onClick={() => commentMutation.mutate(emoji)} className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-white/5 text-sm hover:bg-white/10">
                   {emoji}
                 </button>
               ))}
             </div>
-            <div className="flex gap-2 border-t border-border/50 px-4 py-2">
+            <div className="flex gap-2 border-t border-white/5 px-4 py-2">
               <Input
                 placeholder="Drop a comment..."
                 value={comment}
@@ -476,16 +621,17 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && comment.trim()) commentMutation.mutate(comment.trim());
                 }}
-                className="h-8 text-xs"
+                className="h-8 text-xs bg-white/5 border-white/10 text-white placeholder:text-white/30"
               />
-              <button onClick={() => comment.trim() && commentMutation.mutate(comment.trim())} disabled={!comment.trim()} className="gradient-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-full disabled:opacity-50">
-                <Send className="h-3.5 w-3.5 text-primary-foreground" />
+              <button onClick={() => comment.trim() && commentMutation.mutate(comment.trim())} disabled={!comment.trim()} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-[hsl(42,100%,58%)] to-[hsl(30,100%,45%)] disabled:opacity-50">
+                <Send className="h-3.5 w-3.5 text-black" />
               </button>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
+      {/* Hidden audio elements */}
       {!isVideo && battle.challenger_media_url && <audio ref={audioLeftRef} src={battle.challenger_media_url} onEnded={handleLeftEnded} />}
       {!isVideo && battle.opponent_media_url && <audio ref={audioRightRef} src={battle.opponent_media_url} onEnded={handleRightEnded} />}
     </motion.div>
