@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
 import { Music, Video, Search, X, Check } from "lucide-react";
+import { uploadToR2, generateR2Key, getR2DownloadUrl } from "@/lib/r2-storage";
 
 interface Props {
   open: boolean;
