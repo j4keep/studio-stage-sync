@@ -93,7 +93,7 @@ const EditProfileSheet = ({ open, onClose, profileData, onSave }: EditProfileShe
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed bottom-0 left-0 right-0 z-50 max-w-lg mx-auto bg-background rounded-t-2xl border-t border-border max-h-[90vh] overflow-y-auto"
+            className="fixed bottom-0 left-0 right-0 z-50 max-w-lg mx-auto bg-background rounded-t-2xl border-t border-border max-h-[90vh] flex flex-col"
           >
             {/* Handle */}
             <div className="flex justify-center pt-3 pb-1">
@@ -108,7 +108,7 @@ const EditProfileSheet = ({ open, onClose, profileData, onSave }: EditProfileShe
               </button>
             </div>
 
-            <div className="px-4 py-5 flex flex-col gap-5">
+            <div className="px-4 py-5 flex flex-col gap-5 overflow-y-auto flex-1">
               {/* Banner Upload */}
               <div>
                 <Label className="text-xs text-muted-foreground mb-2 block">Background Picture</Label>
@@ -198,11 +198,13 @@ const EditProfileSheet = ({ open, onClose, profileData, onSave }: EditProfileShe
                   {passwordResetSent ? "Reset Link Sent! Check your email" : "Send Password Reset Email"}
                 </button>
               </div>
+            </div>
 
-              {/* Save Button */}
+            {/* Sticky Save Button */}
+            <div className="px-4 py-4 border-t border-border bg-background">
               <button
                 onClick={handleSave}
-                className="w-full py-3 rounded-xl gradient-primary text-primary-foreground text-sm font-semibold glow-primary mt-2"
+                className="w-full py-3 rounded-xl gradient-primary text-primary-foreground text-sm font-semibold glow-primary"
               >
                 Save Changes
               </button>
