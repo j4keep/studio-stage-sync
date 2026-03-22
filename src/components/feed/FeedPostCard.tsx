@@ -37,14 +37,16 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
       }
     },
     onMutate: () => {
-      setLiked(!liked);
-      setLikesCount((c: number) => liked ? c - 1 : c + 1);
+      const wasLiked = liked;
+      setLiked(!wasLiked);
+      setLikesCount((c: number) => wasLiked ? c - 1 : c + 1);
     },
     onError: () => {
       setLiked(liked);
       setLikesCount(post.likes_count);
     },
     onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
       queryClient.invalidateQueries({ queryKey: ["profile-posts"] });
     },
   });
