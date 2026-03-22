@@ -197,7 +197,8 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
   };
 
   const isOpen = battle.status === "open" && !battle.opponent_id;
-  const canAccept = isOpen && user?.id !== battle.challenger_id;
+  const isPending = battle.status === "pending" && battle.opponent_id;
+  const canAccept = (isOpen && user?.id !== battle.challenger_id) || (isPending && user?.id === battle.opponent_id);
 
   return (
     <motion.div
