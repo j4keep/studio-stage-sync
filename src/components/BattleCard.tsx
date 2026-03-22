@@ -208,24 +208,39 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
 
   // Double-tap to fullscreen, single-tap to navigate (touch-friendly)
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const handleCoverTap = useCallback((e: React.TouchEvent | React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
+  const isTouchRef = useRef(false);
+
+  const handleTap = useCallback(() => {
     const now = Date.now();
     if (now - lastTapRef.current < 450) {
-      // Double tap — toggle fullscreen
       if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
       tapTimerRef.current = null;
       setIsFullscreen((prev) => !prev);
       lastTapRef.current = 0;
     } else {
-      // Single tap — navigate after delay to wait for possible second tap
       lastTapRef.current = now;
       tapTimerRef.current = setTimeout(() => {
         navigate(`/battle/${battle.id}`);
       }, 450);
     }
   }, [navigate, battle.id]);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    isTouchRef.current = true;
+    handleTap();
+  }, [handleTap]);
+
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    // Skip if this was already handled by touch
+    if (isTouchRef.current) {
+      isTouchRef.current = false;
+      return;
+    }
+    handleTap();
+  }, [handleTap]);
 
   return (
     <motion.div
