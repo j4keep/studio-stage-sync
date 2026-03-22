@@ -85,7 +85,7 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
     },
   });
 
-  const { data: comments: battleComments = [] } = useQuery({
+  const { data: battleComments = [] } = useQuery({
     queryKey: ["battle-comments", battle.id],
     queryFn: async () => {
       const { data } = await (supabase as any).from("battle_comments").select("*").eq("battle_id", battle.id).order("created_at", { ascending: true });
