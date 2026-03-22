@@ -343,231 +343,243 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
   const isVideo = battle.media_type === "video";
 
   return (
-    <motion.div layout className="rounded-2xl overflow-hidden shadow-2xl border border-border/30 bg-black">
-      {/* ─── BATTLE TITLE HEADER ─── */}
-      <div className="relative bg-gradient-to-r from-red-900/60 via-black to-blue-900/60 px-4 py-2.5 flex items-center justify-center">
-        <h3 className="text-white font-black text-sm uppercase tracking-widest text-center"
-          style={{ textShadow: "0 0 20px rgba(255,200,0,0.5)" }}>
-          🎵 {battle.title}
-        </h3>
-        {user?.id === battle.challenger_id && (
-          <button onClick={() => deleteBattleMutation.mutate()} className="absolute right-3 text-white/50 hover:text-red-400">
-            <Trash2 className="w-4 h-4" />
-          </button>
-        )}
-      </div>
+    <motion.div layout className="overflow-hidden rounded-[2rem] border border-border/40 bg-card shadow-2xl">
+      <div className="relative overflow-hidden bg-black">
+        <div className="absolute inset-x-0 top-3 z-40 flex justify-center px-4">
+          <div className="rounded-xl border border-white/10 bg-black/75 px-5 py-2 shadow-2xl backdrop-blur-md">
+            <p className="text-center text-lg font-black uppercase tracking-[0.16em] text-white sm:text-xl">
+              Music Battle!
+            </p>
+          </div>
+        </div>
 
-      {/* ─── MAIN BATTLE VISUAL ─── */}
-      <div className="relative">
-        <div className="flex h-64 relative overflow-hidden">
-          {/* LEFT SIDE - Challenger */}
-          <div className="flex-1 relative overflow-hidden">
+        <div className="absolute inset-x-0 top-14 z-30 flex justify-center">
+          <div className="rounded-full bg-black/30 px-3 py-1 backdrop-blur-sm">
+            <p
+              className="text-4xl font-black uppercase tracking-[0.2em]"
+              style={{
+                color: "hsl(42 100% 58%)",
+                textShadow: "0 0 18px hsla(42, 100%, 58%, 0.55), 0 4px 10px rgba(0,0,0,0.9)",
+              }}
+            >
+              VS
+            </p>
+          </div>
+        </div>
+
+        <div className="grid h-[27rem] grid-cols-2">
+          <div className="relative overflow-hidden border-r border-white/10">
             {challengerCover ? (
-              <img src={challengerCover} alt={challengerName} className="w-full h-full object-cover" />
+              <img src={challengerCover} alt={challengerName} className="h-full w-full object-cover" />
             ) : isVideo && battle.challenger_media_url ? (
-              <video ref={videoLeftRef} src={battle.challenger_media_url} className="w-full h-full object-cover" muted={!isPlaying || currentSide !== "left"} onEnded={handleLeftEnded} />
+              <video
+                ref={videoLeftRef}
+                src={battle.challenger_media_url}
+                className="h-full w-full object-cover"
+                muted={!isPlaying || currentSide !== "left"}
+                onEnded={handleLeftEnded}
+              />
             ) : (
-              <div className="w-full h-full bg-gradient-to-br from-neutral-800 to-neutral-900 flex items-center justify-center">
-                <span className="text-6xl font-black text-white/10">{challengerName[0]}</span>
+              <div className="flex h-full w-full items-center justify-center bg-muted">
+                <span className="text-7xl font-black text-foreground/15">{challengerName[0]}</span>
               </div>
             )}
-            {/* Red atmospheric overlay - subtle */}
-            <div className="absolute inset-0 bg-gradient-to-r from-red-600/20 to-transparent pointer-events-none" />
-            {/* Fire/spark particles effect on left edge */}
-            <div className="absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-black/60 to-transparent pointer-events-none" />
-
-            {/* Challenger name at top */}
-            <div className="absolute top-2 left-2 z-20">
-              <p className="text-white font-bold text-xs drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] bg-black/40 px-2 py-0.5 rounded">
-                {challengerName}
-              </p>
+            <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/55" />
+            <div className="absolute left-3 top-24 z-20 max-w-[40%] rounded-md bg-black/55 px-2 py-1 backdrop-blur-sm">
+              <p className="truncate text-xs font-bold text-white">{challengerName}</p>
+              <p className="truncate text-[10px] text-white/70">{battle.challenger_title || "Ready to battle"}</p>
             </div>
+            {currentSide === "left" && (
+              <motion.div
+                className="pointer-events-none absolute inset-0 z-20 border-2"
+                style={{ borderColor: "hsla(8, 90%, 55%, 0.9)", boxShadow: "inset 0 0 40px hsla(8,90%,55%,0.35)" }}
+                animate={{ opacity: [0.45, 1, 0.45] }}
+                transition={{ duration: 1, repeat: Infinity }}
+              />
+            )}
+          </div>
 
-            {/* Vote button bottom-left */}
-            <div className="absolute bottom-2 left-2 right-2 z-20 space-y-1">
+          <div className="relative overflow-hidden">
+            {battle.opponent_id && opponentCover ? (
+              <img src={opponentCover} alt={opponentName} className="h-full w-full object-cover" />
+            ) : isVideo && battle.opponent_media_url ? (
+              <video
+                ref={videoRightRef}
+                src={battle.opponent_media_url}
+                className="h-full w-full object-cover"
+                muted={!isPlaying || currentSide !== "right"}
+                onEnded={handleRightEnded}
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-muted">
+                <span className="text-7xl font-black text-foreground/15">{battle.opponent_id ? opponentName[0] : "?"}</span>
+              </div>
+            )}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/55" />
+            <div className="absolute right-3 top-24 z-20 max-w-[40%] rounded-md bg-black/55 px-2 py-1 text-right backdrop-blur-sm">
+              <p className="truncate text-xs font-bold text-white">{battle.opponent_id ? opponentName : "Waiting..."}</p>
+              <p className="truncate text-[10px] text-white/70">{battle.opponent_title || "Upload to join"}</p>
+            </div>
+            {currentSide === "right" && (
+              <motion.div
+                className="pointer-events-none absolute inset-0 z-20 border-2"
+                style={{ borderColor: "hsla(209, 100%, 56%, 0.9)", boxShadow: "inset 0 0 40px hsla(209,100%,56%,0.35)" }}
+                animate={{ opacity: [0.45, 1, 0.45] }}
+                transition={{ duration: 1, repeat: Infinity }}
+              />
+            )}
+          </div>
+        </div>
+
+        <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center">
+          <div
+            className="absolute inset-y-0 left-1/2 w-1 -translate-x-1/2"
+            style={{ background: "linear-gradient(to bottom, hsla(42,100%,58%,0.15), hsla(0,0%,100%,0.9), hsla(42,100%,58%,0.15))" }}
+          />
+          {bothHaveMedia && (
+            <button
+              onClick={handleCenterPlay}
+              className="pointer-events-auto mt-2 flex h-24 w-24 items-center justify-center rounded-full border-4 border-white/25 transition-transform hover:scale-105 active:scale-95"
+              style={{
+                background:
+                  "radial-gradient(circle at 35% 35%, hsla(0,0%,100%,0.45), transparent 42%), linear-gradient(145deg, hsla(0,0%,58%,1) 0%, hsla(0,0%,22%,1) 48%, hsla(0,0%,12%,1) 100%)",
+                boxShadow: "0 0 30px rgba(0,0,0,0.8), inset 0 2px 8px hsla(0,0%,100%,0.28)",
+              }}
+            >
+              {isPlaying ? (
+                <Pause className="h-10 w-10 text-white drop-shadow-lg" />
+              ) : (
+                <Play className="ml-1 h-10 w-10 text-white drop-shadow-lg" />
+              )}
+            </button>
+          )}
+        </div>
+
+        <div className="absolute inset-x-0 bottom-20 z-40 px-3">
+          <div className="grid grid-cols-[1fr_auto_auto_1fr] items-end gap-2">
+            <div className="space-y-2">
               <button
                 onClick={() => canVote && voteMutation.mutate(battle.challenger_id)}
                 disabled={!canVote}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-[11px] font-bold transition-all ${
-                  userVote?.voted_for === battle.challenger_id
-                    ? "bg-red-600 text-white shadow-lg shadow-red-600/40"
-                    : "bg-black/60 text-white/90 border border-red-500/50 backdrop-blur-sm hover:bg-red-600/60"
-                }`}
-              >
-                <ThumbsUp className="w-3.5 h-3.5" />
-                <span>{challengerVotes.toLocaleString()}</span>
-              </button>
-              {challengerPct >= opponentPct && totalVotes > 0 && (
-                <span className="inline-block px-2 py-0.5 rounded bg-gradient-to-r from-red-700 to-red-600 text-white text-[10px] font-black uppercase tracking-wider shadow-lg">
-                  WINNING
-                </span>
-              )}
-            </div>
-
-            {/* Playing indicator */}
-            {currentSide === "left" && (
-              <motion.div
-                className="absolute inset-0 border-2 border-red-500/70 pointer-events-none z-20"
-                animate={{ opacity: [0.4, 1, 0.4] }}
-                transition={{ duration: 1, repeat: Infinity }}
-              />
-            )}
-          </div>
-
-          {/* CENTER - VS + Play Button */}
-          <div className="absolute inset-0 z-30 flex flex-col items-center justify-center pointer-events-none">
-            {/* Lightning divider */}
-            <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-[3px]"
-              style={{ background: "linear-gradient(to bottom, rgba(255,200,0,0.8), rgba(255,255,255,0.9), rgba(255,200,0,0.8))" }} />
-
-            {/* VS Badge */}
-            <div className="absolute top-4 z-40">
-              <span className="text-3xl font-black tracking-wider"
+                className="flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-black text-white shadow-xl backdrop-blur-md disabled:opacity-70"
                 style={{
-                  color: "#FFD700",
-                  textShadow: "0 0 30px rgba(255,200,0,0.8), 0 0 60px rgba(255,150,0,0.4), 0 4px 8px rgba(0,0,0,0.9)",
-                  WebkitTextStroke: "1px rgba(200,150,0,0.6)",
-                }}>
-                VS
-              </span>
-            </div>
-
-            {/* Big Play Button */}
-            {bothHaveMedia && (
-              <button
-                onClick={handleCenterPlay}
-                className="pointer-events-auto w-20 h-20 rounded-full flex items-center justify-center transition-transform hover:scale-110 active:scale-95 z-40"
-                style={{
-                  background: "radial-gradient(circle at 35% 35%, rgba(255,255,255,0.35), transparent 60%), linear-gradient(145deg, #888 0%, #444 40%, #222 100%)",
-                  border: "4px solid rgba(255,255,255,0.25)",
-                  boxShadow: "0 0 40px rgba(0,0,0,0.7), 0 0 80px rgba(100,100,255,0.15), inset 0 2px 4px rgba(255,255,255,0.3)",
+                  background: userVote?.voted_for === battle.challenger_id ? "hsla(8, 88%, 45%, 0.92)" : "hsla(8, 88%, 45%, 0.72)",
+                  borderColor: "hsla(8, 88%, 62%, 0.45)",
                 }}
               >
-                {isPlaying ? (
-                  <Pause className="w-9 h-9 text-white drop-shadow-lg" />
-                ) : (
-                  <Play className="w-9 h-9 text-white drop-shadow-lg ml-1" />
-                )}
+                <ThumbsUp className="h-4 w-4" />
+                <span>{challengerVotes.toLocaleString()}</span>
               </button>
-            )}
-          </div>
-
-          {/* RIGHT SIDE - Opponent */}
-          <div className="flex-1 relative overflow-hidden">
-            {battle.opponent_id && opponentCover ? (
-              <img src={opponentCover} alt={opponentName} className="w-full h-full object-cover" />
-            ) : isVideo && battle.opponent_media_url ? (
-              <video ref={videoRightRef} src={battle.opponent_media_url} className="w-full h-full object-cover" muted={!isPlaying || currentSide !== "right"} onEnded={handleRightEnded} />
-            ) : (
-              <div className="w-full h-full bg-gradient-to-bl from-neutral-800 to-neutral-900 flex items-center justify-center">
-                <span className="text-6xl font-black text-white/10">{battle.opponent_id ? opponentName[0] : "?"}</span>
+              <div className="rounded-md border border-white/10 bg-black/78 px-3 py-2 text-center shadow-xl backdrop-blur-md">
+                <p
+                  className="text-2xl font-black uppercase tracking-wide"
+                  style={{ color: "hsl(42 100% 58%)", textShadow: "0 0 14px hsla(42,100%,58%,0.35)" }}
+                >
+                  Likes
+                </p>
               </div>
-            )}
-            {/* Blue atmospheric overlay - subtle */}
-            <div className="absolute inset-0 bg-gradient-to-l from-blue-600/20 to-transparent pointer-events-none" />
-            <div className="absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-black/60 to-transparent pointer-events-none" />
+            </div>
 
-            {/* Opponent name at top */}
-            <div className="absolute top-2 right-2 z-20">
-              <p className="text-white font-bold text-xs drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] bg-black/40 px-2 py-0.5 rounded">
-                {battle.opponent_id ? opponentName : "???"}
+            <div className="space-y-2 text-center">
+              <div
+                className="min-w-[7.25rem] rounded-md border border-white/10 bg-black/78 px-3 py-2 shadow-xl backdrop-blur-md"
+                style={{ opacity: challengerPct >= opponentPct && totalVotes > 0 ? 1 : 0.5 }}
+              >
+                <p
+                  className="text-base font-black uppercase tracking-wider"
+                  style={{ color: "hsl(42 100% 58%)", textShadow: "0 0 12px hsla(42,100%,58%,0.35)" }}
+                >
+                  Winning
+                </p>
+              </div>
+              <p
+                className="text-5xl font-black leading-none"
+                style={{ color: "hsl(42 100% 58%)", textShadow: "0 0 18px hsla(42,100%,58%,0.4)" }}
+              >
+                {challengerPct}%
               </p>
             </div>
 
-            {/* Vote button bottom-right */}
-            {battle.opponent_id && isActive && (
-              <div className="absolute bottom-2 left-2 right-2 z-20 space-y-1 flex flex-col items-end">
-                <button
-                  onClick={() => canVote && battle.opponent_id && voteMutation.mutate(battle.opponent_id)}
-                  disabled={!canVote}
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-[11px] font-bold transition-all ${
-                    userVote?.voted_for === battle.opponent_id
-                      ? "bg-blue-600 text-white shadow-lg shadow-blue-600/40"
-                      : "bg-black/60 text-white/90 border border-blue-500/50 backdrop-blur-sm hover:bg-blue-600/60"
-                  }`}
+            <div className="space-y-2 text-center">
+              <div className="h-[3.25rem]" />
+              <p
+                className="text-5xl font-black leading-none"
+                style={{ color: "hsl(42 100% 58%)", textShadow: "0 0 18px hsla(42,100%,58%,0.4)" }}
+              >
+                {opponentPct}%
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <button
+                onClick={() => canVote && battle.opponent_id && voteMutation.mutate(battle.opponent_id)}
+                disabled={!canVote || !battle.opponent_id}
+                className="flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-black text-white shadow-xl backdrop-blur-md disabled:opacity-70"
+                style={{
+                  background: userVote?.voted_for === battle.opponent_id ? "hsla(209, 100%, 46%, 0.92)" : "hsla(209, 100%, 46%, 0.72)",
+                  borderColor: "hsla(209, 100%, 66%, 0.45)",
+                }}
+              >
+                <ThumbsUp className="h-4 w-4" />
+                <span>{opponentVotes.toLocaleString()}</span>
+              </button>
+              <div className="rounded-md border border-white/10 bg-black/78 px-3 py-2 text-center shadow-xl backdrop-blur-md">
+                <p
+                  className="text-2xl font-black uppercase tracking-wide"
+                  style={{ color: "hsl(42 100% 58%)", textShadow: "0 0 14px hsla(42,100%,58%,0.35)", opacity: opponentPct > challengerPct && totalVotes > 0 ? 1 : 0.55 }}
                 >
-                  <ThumbsUp className="w-3.5 h-3.5" />
-                  <span>{opponentVotes.toLocaleString()}</span>
-                </button>
-                {opponentPct > challengerPct && totalVotes > 0 && (
-                  <span className="inline-block px-2 py-0.5 rounded bg-gradient-to-r from-blue-600 to-blue-500 text-white text-[10px] font-black uppercase tracking-wider shadow-lg">
-                    WINNING
-                  </span>
-                )}
+                  Winning
+                </p>
               </div>
-            )}
-
-            {/* Playing indicator */}
-            {currentSide === "right" && (
-              <motion.div
-                className="absolute inset-0 border-2 border-blue-500/70 pointer-events-none z-20"
-                animate={{ opacity: [0.4, 1, 0.4] }}
-                transition={{ duration: 1, repeat: Infinity }}
-              />
-            )}
+            </div>
           </div>
         </div>
 
-        {/* ─── VOTE PERCENTAGES BAR ─── */}
-        <div className="bg-black/90 px-3 py-2 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-red-400 font-black text-base">{challengerPct}%</span>
-            <span className="text-white/50 text-[10px] font-bold uppercase tracking-wider">Votes</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-white/50 text-[10px] font-bold uppercase tracking-wider">Votes</span>
-            <span className="text-blue-400 font-black text-base">{opponentPct}%</span>
+        <div className="absolute inset-x-0 bottom-9 z-40 px-4">
+          <div className="relative h-5 rounded-md border border-white/25 bg-black/70 px-1 py-1 shadow-2xl backdrop-blur-md">
+            <div className="absolute inset-y-1 left-1 rounded-sm" style={{ width: `${challengerPct}%`, background: "linear-gradient(90deg, hsla(8, 88%, 36%, 1), hsla(8, 95%, 56%, 1))" }} />
+            <div className="absolute inset-y-1 right-1 rounded-sm" style={{ width: `${opponentPct}%`, background: "linear-gradient(90deg, hsla(209, 100%, 48%, 1), hsla(209, 100%, 62%, 1))" }} />
+            <div className="absolute inset-y-0 left-1/2 w-3 -translate-x-1/2 rounded-[2px] bg-white/90 shadow-[0_0_18px_rgba(255,255,255,0.4)]" />
           </div>
         </div>
 
-        {/* ─── PROGRESS BAR ─── */}
-        <div className="h-2.5 flex relative bg-neutral-800">
-          <motion.div
-            className="h-full bg-gradient-to-r from-red-700 to-red-500"
-            animate={{ width: `${challengerPct}%` }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-          />
-          <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-white/50 -translate-x-1/2 z-10" />
-          <motion.div className="h-full bg-gradient-to-r from-blue-500 to-blue-700 flex-1" />
-        </div>
-
-        {/* ─── PLAYBACK TIMER ─── */}
         {bothHaveMedia && (
-          <div className="bg-black/90 px-3 py-1.5 flex items-center justify-center gap-2">
-            <Clock className="w-3 h-3 text-white/50" />
-            <span className="text-white/80 text-xs font-mono">
+          <div className="absolute inset-x-0 bottom-2 z-40 flex items-center justify-center gap-3 px-4">
+            <div className="h-px flex-1 bg-white/35" />
+            <div className="rounded-full bg-black/65 px-4 py-1 text-sm font-black tracking-[0.12em] text-white shadow-xl backdrop-blur-md">
               {formatTime(playbackTime)} / {formatTime(totalDuration)}
-            </span>
-            {isActive && !isExpired && timeLeft && (
-              <>
-                <span className="text-white/30 mx-1">•</span>
-                <span className="text-yellow-400/80 text-[10px] font-bold">⏱ {timeLeft} left</span>
-              </>
-            )}
+            </div>
+            <div className="h-px flex-1 bg-white/35" />
           </div>
         )}
       </div>
 
-      {/* ─── STATUS BADGES ─── */}
-      <div className="bg-card px-4 py-2 flex items-center gap-2 border-t border-border/30">
-        <Swords className="w-4 h-4 text-primary flex-shrink-0" />
-        <span className="text-xs font-bold text-foreground flex-1 truncate">{battle.media_type === "video" ? "🎬 Video" : "🎵 Audio"} Battle</span>
-        {isExpired && isActive ? (
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-bold flex items-center gap-1">
-            <Trophy className="w-3 h-3" /> ENDED
-          </span>
-        ) : battle.status === "open" ? (
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-500 font-bold">OPEN</span>
-        ) : isPending ? (
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-500 font-bold">CHALLENGE SENT</span>
-        ) : isActive ? (
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-500 font-bold animate-pulse">🔴 LIVE</span>
-        ) : null}
+      <div className="border-t border-border/30 bg-card px-4 py-2.5">
+        <div className="flex items-center gap-2">
+          <Swords className="h-4 w-4 text-primary" />
+          <p className="min-w-0 flex-1 truncate text-xs font-bold text-foreground">{battle.title}</p>
+          {isActive && !isExpired && timeLeft && <span className="text-[10px] font-bold text-muted-foreground">Ends in {timeLeft}</span>}
+          {isExpired && isActive ? (
+            <span className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
+              <Trophy className="h-3 w-3" /> ENDED
+            </span>
+          ) : battle.status === "open" ? (
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">OPEN</span>
+          ) : isPending ? (
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">CHALLENGE SENT</span>
+          ) : isActive ? (
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">LIVE</span>
+          ) : null}
+          {user?.id === battle.challenger_id && (
+            <button onClick={() => deleteBattleMutation.mutate()} className="text-muted-foreground transition-colors hover:text-destructive">
+              <Trash2 className="h-4 w-4" />
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Winner announcement */}
       {isExpired && winnerId && (
-        <div className="bg-gradient-to-r from-yellow-500/10 via-yellow-500/20 to-yellow-500/10 px-4 py-2 text-center">
+        <div className="bg-gradient-to-r from-muted via-secondary to-muted px-4 py-2 text-center">
           <p className="text-sm font-bold text-foreground">
             🏆 {winnerId === battle.challenger_id ? challengerName : opponentName} wins with {winnerId === battle.challenger_id ? challengerPct : opponentPct}% of votes!
           </p>
@@ -579,34 +591,43 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
         </div>
       )}
 
-      {/* ─── ACCEPT CHALLENGE ─── */}
       {((isPending && user?.id === battle.opponent_id && !battle.opponent_media_url) || (isOpen && canAccept)) && (
-        <div className="px-4 py-3 bg-orange-500/5 border-t border-border/30">
+        <div className="border-t border-border/30 bg-muted/20 px-4 py-3">
           {isPending && user?.id === battle.opponent_id && (
-            <p className="text-xs text-orange-400 font-bold mb-2 text-center">🥊 You've been challenged!</p>
+            <p className="mb-2 text-center text-xs font-bold text-foreground">🥊 You've been challenged!</p>
           )}
           {!showUpload ? (
-            <button onClick={() => setShowUpload(true)} className="w-full py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-blue-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-lg">
-              <Upload className="w-3.5 h-3.5" /> Accept & Upload Your Entry
+            <button onClick={() => setShowUpload(true)} className="gradient-primary flex w-full items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-bold text-primary-foreground shadow-lg">
+              <Upload className="h-3.5 w-3.5" /> Accept & Upload Your Entry
             </button>
           ) : (
             <div className="space-y-2">
-              <Input placeholder="Your track title" value={acceptTrackTitle} onChange={(e) => setAcceptTrackTitle(e.target.value)} className="text-xs h-9" />
+              <Input placeholder="Your track title" value={acceptTrackTitle} onChange={(e) => setAcceptTrackTitle(e.target.value)} className="h-9 text-xs" />
               <div>
-                <label className="text-[10px] text-muted-foreground block mb-1">Upload {battle.media_type === "audio" ? "Song (max 45 min)" : "Video (max 45 min)"}</label>
-                <input type="file" accept={battle.media_type === "audio" ? "audio/*,.mp3,.wav,.flac,.m4a" : "video/*,.mp4,.mov,.webm"}
+                <label className="mb-1 block text-[10px] text-muted-foreground">Upload {battle.media_type === "audio" ? "Song (max 45 min)" : "Video (max 45 min)"}</label>
+                <input
+                  type="file"
+                  accept={battle.media_type === "audio" ? "audio/*,.mp3,.wav,.flac,.m4a" : "video/*,.mp4,.mov,.webm"}
                   onChange={(e) => handleMediaFileChange(e.target.files?.[0] || null)}
-                  className="w-full text-[10px] file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-primary/10 file:text-primary" />
+                  className="w-full text-[10px] file:mr-2 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-[10px] file:font-semibold file:text-primary"
+                />
               </div>
               {battle.media_type === "audio" && (
                 <div>
-                  <label className="text-[10px] text-muted-foreground block mb-1">Cover Art (required)</label>
-                  <input type="file" accept="image/*" onChange={(e) => setAcceptCoverFile(e.target.files?.[0] || null)}
-                    className="w-full text-[10px] file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-primary/10 file:text-primary" />
+                  <label className="mb-1 block text-[10px] text-muted-foreground">Cover Art (required)</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setAcceptCoverFile(e.target.files?.[0] || null)}
+                    className="w-full text-[10px] file:mr-2 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-[10px] file:font-semibold file:text-primary"
+                  />
                 </div>
               )}
-              <button onClick={handleAcceptBattle} disabled={accepting || !acceptTrackTitle.trim() || !acceptMediaFile || (battle.media_type === "audio" && !acceptCoverFile)}
-                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-blue-600 text-white text-xs font-bold disabled:opacity-50 shadow-lg">
+              <button
+                onClick={handleAcceptBattle}
+                disabled={accepting || !acceptTrackTitle.trim() || !acceptMediaFile || (battle.media_type === "audio" && !acceptCoverFile)}
+                className="gradient-primary w-full rounded-xl py-2.5 text-xs font-bold text-primary-foreground shadow-lg disabled:opacity-50"
+              >
                 {accepting ? "Uploading..." : "🥊 Accept Challenge"}
               </button>
             </div>
@@ -614,10 +635,11 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
         </div>
       )}
 
-      {/* ─── COMMENTS ─── */}
-      <button onClick={() => setExpanded(!expanded)}
-        className="w-full px-4 py-2.5 flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors border-t border-border/30 bg-card">
-        <MessageCircle className="w-3.5 h-3.5" />
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="flex w-full items-center justify-center gap-1.5 border-t border-border/30 bg-card px-4 py-2.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <MessageCircle className="h-3.5 w-3.5" />
         {comments.length} Comments
         {totalVotes > 0 && <span className="ml-2 text-muted-foreground/60">•</span>}
         {totalVotes > 0 && <span className="text-muted-foreground/80">{totalVotes} votes</span>}
@@ -625,18 +647,15 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
 
       <AnimatePresence>
         {expanded && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden border-t border-border/30 bg-card">
-            <div className="max-h-48 overflow-y-auto px-4 py-2 space-y-2">
-              {comments.length === 0 && <p className="text-xs text-muted-foreground text-center py-3">No comments yet. Be the first!</p>}
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden border-t border-border/30 bg-card">
+            <div className="max-h-48 space-y-2 overflow-y-auto px-4 py-2">
+              {comments.length === 0 && <p className="py-3 text-center text-xs text-muted-foreground">No comments yet. Be the first!</p>}
               {comments.map((c: any) => {
                 const cp = profileMap.get(c.user_id) as any;
                 return (
                   <div key={c.id} className="flex items-start gap-2">
-                    <div className="w-6 h-6 rounded-full bg-muted flex-shrink-0 overflow-hidden">
-                      {cp?.avatar_url ? <img src={cp.avatar_url} alt="" className="w-full h-full object-cover" /> : (
-                        <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-muted-foreground">{(cp?.display_name || "U")[0]}</div>
-                      )}
+                    <div className="h-6 w-6 flex-shrink-0 overflow-hidden rounded-full bg-muted">
+                      {cp?.avatar_url ? <img src={cp.avatar_url} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-muted-foreground">{(cp?.display_name || "U")[0]}</div>}
                     </div>
                     <div>
                       <span className="text-[10px] font-bold text-muted-foreground">{cp?.display_name || "User"}</span>
@@ -647,29 +666,33 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
               })}
               <div ref={commentsEndRef} />
             </div>
-            <div className="px-4 py-1.5 flex gap-1.5 overflow-x-auto scrollbar-hide border-t border-border/50">
+            <div className="scrollbar-hide flex gap-1.5 overflow-x-auto border-t border-border/50 px-4 py-1.5">
               {EMOJIS.map((emoji) => (
-                <button key={emoji} onClick={() => commentMutation.mutate(emoji)}
-                  className="w-8 h-8 rounded-full bg-muted/50 flex items-center justify-center hover:bg-muted text-sm flex-shrink-0">{emoji}</button>
+                <button key={emoji} onClick={() => commentMutation.mutate(emoji)} className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-muted/50 text-sm hover:bg-muted">
+                  {emoji}
+                </button>
               ))}
             </div>
-            <div className="px-4 py-2 flex gap-2 border-t border-border/50">
-              <Input placeholder="Drop a comment..." value={comment} onChange={(e) => setComment(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter" && comment.trim()) commentMutation.mutate(comment.trim()); }}
-                className="text-xs h-8" />
-              <button onClick={() => comment.trim() && commentMutation.mutate(comment.trim())} disabled={!comment.trim()}
-                className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center shrink-0 disabled:opacity-50">
-                <Send className="w-3.5 h-3.5 text-primary-foreground" />
+            <div className="flex gap-2 border-t border-border/50 px-4 py-2">
+              <Input
+                placeholder="Drop a comment..."
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && comment.trim()) commentMutation.mutate(comment.trim());
+                }}
+                className="h-8 text-xs"
+              />
+              <button onClick={() => comment.trim() && commentMutation.mutate(comment.trim())} disabled={!comment.trim()} className="gradient-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-full disabled:opacity-50">
+                <Send className="h-3.5 w-3.5 text-primary-foreground" />
               </button>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Hidden audio elements (for audio battles) */}
       {!isVideo && battle.challenger_media_url && <audio ref={audioLeftRef} src={battle.challenger_media_url} onEnded={handleLeftEnded} />}
       {!isVideo && battle.opponent_media_url && <audio ref={audioRightRef} src={battle.opponent_media_url} onEnded={handleRightEnded} />}
-      {/* Video elements are inline above */}
     </motion.div>
   );
 };
