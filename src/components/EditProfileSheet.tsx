@@ -26,15 +26,13 @@ interface EditProfileSheetProps {
 const EditProfileSheet = ({ open, onClose, profileData, onSave }: EditProfileSheetProps) => {
   const { user } = useAuth();
   const [name, setName] = useState(profileData.name);
-  const [email, setEmail] = useState(profileData.email);
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+  const [email] = useState(profileData.email);
   const [avatarPreview, setAvatarPreview] = useState(profileData.avatarUrl);
   const [bannerPreview, setBannerPreview] = useState(profileData.bannerUrl);
   const [avatarFile, setAvatarFile] = useState<File | undefined>();
   const [bannerFile, setBannerFile] = useState<File | undefined>();
   const [nameError, setNameError] = useState("");
+  const [passwordResetSent, setPasswordResetSent] = useState(false);
 
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
