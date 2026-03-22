@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
 import { Music, Video, Search, X, Check } from "lucide-react";
+import { uploadToR2, generateR2Key, getR2DownloadUrl } from "@/lib/r2-storage";
 
 interface Props {
   open: boolean;
@@ -55,20 +56,36 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
       let mediaUrl = "";
       let coverUrl = "";
 
+      // Upload media file
       if (mediaFile) {
-        const ext = mediaFile.name.split(".").pop();
-        const path = `battles/${user.id}/${Date.now()}.${ext}`;
-        const { data: uploadData } = await supabase.storage.from("media").upload(path, mediaFile);
-        if (uploadData) {
-          const { data: urlData } = supabase.storage.from("media").getPublicUrl(path);
-          mediaUrl = urlData.publicUrl;
+        const key = generateR2Key(user.id, "battles", mediaFile.name);
+        const result = await uploadToR2(mediaFile, {
+          folder: `battles/${user.id}`,
+          fileName: `${Date.now()}.${mediaFile.name.split(".").pop()}`,
+          mimeType: mediaFile.type,
+          onProgress: (p) => console.log(`[Battle] Media upload: ${p}%`),
+        });
+        if (result.success && result.data) {
+          mediaUrl = getR2DownloadUrl(result.data.key);
+        } else {
+          console.error("[Battle] Media upload failed:", result.error);
+          toast({ title: "Upload failed", description: result.error || "Could not upload media file.", variant: "destructive" });
+          setLoading(false);
+          return;
         }
       }
 
+      // Upload cover file
       if (coverFile) {
         const ext = coverFile.name.split(".").pop();
         const path = `battles/covers/${user.id}/${Date.now()}.${ext}`;
-        const { data: uploadData } = await supabase.storage.from("media").upload(path, coverFile);
+        const { data: uploadData, error: uploadError } = await supabase.storage.from("media").upload(path, coverFile);
+        if (uploadError) {
+          console.error("[Battle] Cover upload failed:", uploadError);
+          toast({ title: "Cover upload failed", description: uploadError.message, variant: "destructive" });
+          setLoading(false);
+          return;
+        }
         if (uploadData) {
           const { data: urlData } = supabase.storage.from("media").getPublicUrl(path);
           coverUrl = urlData.publicUrl;
