@@ -191,7 +191,7 @@ const ProfilePage = () => {
         <div className="grid grid-cols-4 gap-2 mt-4">
           {[
             { label: "Songs", value: songCount },
-            { label: "Followers", value: followerCount },
+            { label: "Followers", value: followerCount, action: () => setShowFollowers(true) },
             { label: "Plays", value: totalPlays },
             { label: "Likes", value: totalLikes },
           ].map((s) => (
