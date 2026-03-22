@@ -162,7 +162,7 @@ const ProfilePage = () => {
               <h2 className="text-lg font-display font-bold text-foreground">{profileInfo.display_name || "Set Artist Name"}</h2>
               {isPro && <CheckCircle className="w-4 h-4 text-primary fill-primary/20" />}
             </div>
-            <p className="text-xs text-muted-foreground">{profileInfo.email}</p>
+            
           </div>
         </div>
 
