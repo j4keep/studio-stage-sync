@@ -69,24 +69,20 @@ const ArtistProfilePage = () => {
       const c = count || 0;
       setFollowerCount(c >= 1000 ? `${(c / 1000).toFixed(1)}K` : String(c));
 
-      const [{ data: songLikes }, { data: videoLikes }, { data: userPosts }] = await Promise.all([
-        (supabase as any).from("songs").select("likes_count").eq("user_id", userId),
-        (supabase as any).from("videos").select("likes_count").eq("user_id", userId),
+      const [{ data: songs }, { data: videos }, { data: userPosts }] = await Promise.all([
+        (supabase as any).from("songs").select("id").eq("user_id", userId),
+        (supabase as any).from("videos").select("id").eq("user_id", userId),
         (supabase as any).from("posts").select("id").eq("user_id", userId),
       ]);
 
+      const allIds = [...(songs || []), ...(videos || []), ...(userPosts || [])].map((i: any) => i.id);
       let likesTotal = 0;
-      likesTotal += (songLikes || []).reduce((sum: number, item: any) => sum + (item.likes_count || 0), 0);
-      likesTotal += (videoLikes || []).reduce((sum: number, item: any) => sum + (item.likes_count || 0), 0);
-
-      const postIds = (userPosts || []).map((post: any) => post.id);
-      if (postIds.length > 0) {
+      if (allIds.length > 0) {
         const { count } = await (supabase as any)
           .from("likes")
           .select("id", { count: "exact", head: true })
-          .eq("content_type", "post")
-          .in("content_id", postIds);
-        likesTotal += count || 0;
+          .in("content_id", allIds);
+        likesTotal = count || 0;
       }
 
       setTotalLikes(likesTotal >= 1000 ? `${(likesTotal / 1000).toFixed(1)}K` : String(likesTotal));
