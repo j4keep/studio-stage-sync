@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, Heart, Send, Trophy, Swords, Music, Users, MessageCircle } from "lucide-react";
+import { Play, Pause, Heart, Send, Trophy, Swords, Music, Users, MessageCircle, Trash2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
@@ -159,6 +160,20 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["battle-votes", battle.id] }),
   });
 
+  const deleteBattleMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await (supabase as any).from("battles").delete().eq("id", battle.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["battles"] });
+      queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
+      queryClient.invalidateQueries({ queryKey: ["profile-posts"] });
+      toast.success("Battle deleted");
+    },
+    onError: () => toast.error("Failed to delete battle"),
+  });
+
   const commentMutation = useMutation({
     mutationFn: async (content: string) => {
       await (supabase as any).from("battle_comments").insert({
@@ -212,6 +227,14 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
         {battle.status === "open" && <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-500 font-bold">OPEN</span>}
         {battle.status === "pending" && <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-500 font-bold">CHALLENGE SENT</span>}
         {battle.status === "active" && <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-500 font-bold animate-pulse">LIVE</span>}
+        {user?.id === battle.challenger_id && (
+          <button
+            onClick={() => deleteBattleMutation.mutate()}
+            className="text-muted-foreground hover:text-destructive ml-1"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       {/* Health Bars - Street Fighter Style */}
