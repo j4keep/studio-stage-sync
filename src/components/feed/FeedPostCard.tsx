@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Heart, MessageCircle, Share2, Trash2 } from "lucide-react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import PostCommentsSheet from "./PostCommentsSheet";
+import FloatingEmojis, { EmojiBar } from "./FloatingEmojis";
 
 interface Props {
   post: any;
@@ -16,6 +17,8 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
   const [liked, setLiked] = useState(post.isLiked);
   const [likesCount, setLikesCount] = useState(post.likes_count);
   const [showComments, setShowComments] = useState(false);
+
+  const { emojis, spawnEmoji, FloatingLayer } = FloatingEmojis({});
 
   const likeMutation = useMutation({
     mutationFn: async () => {
@@ -53,6 +56,7 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
+      queryClient.invalidateQueries({ queryKey: ["profile-posts"] });
       toast.success("Post deleted");
     },
   });
@@ -70,7 +74,10 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
 
   return (
     <>
-      <div className="rounded-xl bg-card border border-border overflow-hidden">
+      <div className="rounded-xl bg-card border border-border overflow-hidden relative">
+        {/* Floating Emojis Layer */}
+        <FloatingLayer />
+
         {/* Author Header */}
         <div className="flex items-center gap-2.5 px-3 py-2.5">
           <div className="w-9 h-9 rounded-full bg-secondary overflow-hidden flex-shrink-0">
@@ -106,6 +113,11 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
             <img src={post.media_url} alt="" className="w-full max-h-[400px] object-cover" />
           )
         )}
+
+        {/* Emoji Reaction Bar */}
+        <div className="border-t border-border">
+          <EmojiBar onEmoji={spawnEmoji} />
+        </div>
 
         {/* Actions */}
         <div className="flex items-center gap-4 px-3 py-2.5 border-t border-border">
