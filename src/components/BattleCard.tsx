@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, ThumbsUp, Send, Trash2, Upload, Trophy, Clock, MessageCircle, Crown } from "lucide-react";
+import { Play, Pause, ThumbsUp, Send, Trash2, Upload, Trophy, Clock, MessageCircle, Crown, ExternalLink } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
@@ -29,6 +30,7 @@ const EMOJIS = ["🔥", "💀", "🎤", "👑", "💪", "😤", "🏆", "⚡"];
 
 const BattleCard = ({ battle }: { battle: Battle }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   // ── Core state ──
@@ -749,6 +751,14 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Open full battle experience */}
+      <button
+        onClick={() => navigate(`/battle/${battle.id}`)}
+        className="w-full py-2.5 mt-2 rounded-xl bg-primary/10 text-primary text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-primary/20 transition-colors"
+      >
+        <ExternalLink className="w-3.5 h-3.5" /> Open Full Battle Experience
+      </button>
 
       {/* Hidden audio */}
       {!isVideo && battle.challenger_media_url && <audio ref={audioLeftRef} src={battle.challenger_media_url} onEnded={handleEnded} />}
