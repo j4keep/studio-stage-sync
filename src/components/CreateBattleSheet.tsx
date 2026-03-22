@@ -79,6 +79,8 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
       });
 
       queryClient.invalidateQueries({ queryKey: ["battles"] });
+      queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
+      queryClient.invalidateQueries({ queryKey: ["profile-posts"] });
       toast({ title: "Challenge sent! 🥊", description: `${selectedOpponent.display_name} has been challenged!` });
       onOpenChange(false);
       setTitle("");

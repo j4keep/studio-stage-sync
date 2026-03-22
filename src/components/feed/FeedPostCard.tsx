@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Heart, MessageCircle, Share2, Trash2 } from "lucide-react";
+import { Edit3, Heart, MessageCircle, Share2, Trash2 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import PostCommentsSheet from "./PostCommentsSheet";
 import FloatingEmojis, { EmojiBar } from "./FloatingEmojis";
+import CreatePostSheet from "./CreatePostSheet";
 
 interface Props {
   post: any;
@@ -17,6 +18,7 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
   const [liked, setLiked] = useState(post.isLiked);
   const [likesCount, setLikesCount] = useState(post.likes_count);
   const [showComments, setShowComments] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
 
   useEffect(() => {
     setLiked(!!post.isLiked);
@@ -29,7 +31,17 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
     mutationFn: async () => {
       if (!currentUserId) throw new Error("Not authenticated");
 
-      if (liked) {
+      const { data: existingLike, error: existingLikeError } = await (supabase as any)
+        .from("likes")
+        .select("id")
+        .eq("user_id", currentUserId)
+        .eq("content_id", post.id)
+        .eq("content_type", "post")
+        .maybeSingle();
+
+      if (existingLikeError) throw existingLikeError;
+
+      if (existingLike) {
         const { error } = await (supabase as any)
           .from("likes")
           .delete()
@@ -109,9 +121,14 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
             <p className="text-[10px] text-muted-foreground">{timeAgo}</p>
           </div>
           {currentUserId === post.user_id && (
-            <button onClick={() => deleteMutation.mutate()} className="text-muted-foreground hover:text-destructive">
-              <Trash2 className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setShowEdit(true)} className="text-muted-foreground hover:text-foreground">
+                <Edit3 className="w-4 h-4" />
+              </button>
+              <button onClick={() => deleteMutation.mutate()} className="text-muted-foreground hover:text-destructive">
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
           )}
         </div>
 
@@ -151,6 +168,7 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
       </div>
 
       <PostCommentsSheet postId={post.id} open={showComments} onClose={() => setShowComments(false)} />
+      <CreatePostSheet open={showEdit} onClose={() => setShowEdit(false)} postToEdit={post} />
     </>
   );
 };

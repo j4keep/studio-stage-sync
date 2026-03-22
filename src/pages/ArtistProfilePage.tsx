@@ -192,7 +192,7 @@ const ArtistProfilePage = () => {
       {/* Artist's Posts Feed */}
       {userId && (
         <div className="px-4 mt-5">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Posts</p>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Feed</p>
           <ProfileFeedSection userId={userId} isOwner={false} />
         </div>
       )}

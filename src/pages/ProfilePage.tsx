@@ -278,7 +278,7 @@ const ProfilePage = () => {
       {/* My Posts */}
       {user && (
         <div className="px-4 mt-5">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">My Posts</p>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">My Feed</p>
           <ProfileFeedSection userId={user.id} isOwner={true} />
         </div>
       )}
