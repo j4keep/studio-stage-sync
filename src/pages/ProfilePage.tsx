@@ -24,10 +24,34 @@ const ProfilePage = () => {
   const [totalPlays, setTotalPlays] = useState("0");
   const [songCount, setSongCount] = useState("0");
   const [totalLikes, setTotalLikes] = useState("0");
+  const [profileInfo, setProfileInfo] = useState<{ display_name: string; email: string; avatar_url: string | null; banner_url: string | null }>({
+    display_name: "",
+    email: "",
+    avatar_url: null,
+    banner_url: null,
+  });
   const { isPro, showProModal, gatedFeature, requirePro, closeProModal, activatePro } = useProGate();
 
   useEffect(() => {
     if (!user) return;
+
+    // Fetch profile info
+    supabase
+      .from("profiles")
+      .select("display_name, email, avatar_url, banner_url")
+      .eq("user_id", user.id)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setProfileInfo({
+            display_name: data.display_name || user.email?.split("@")[0] || "",
+            email: data.email || user.email || "",
+            avatar_url: data.avatar_url,
+            banner_url: data.banner_url,
+          });
+        }
+      });
+
     (supabase as any)
       .from("songs")
       .select("plays")
@@ -115,20 +139,30 @@ const ProfilePage = () => {
 
       {/* Banner */}
       <div className="relative h-44 overflow-hidden">
-        <img src={profileBanner} alt="Banner" className="w-full h-full object-cover" />
+        {profileInfo.banner_url ? (
+          <img src={profileInfo.banner_url} alt="Banner" className="w-full h-full object-cover" />
+        ) : (
+          <img src={profileBanner} alt="Banner" className="w-full h-full object-cover" />
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
       </div>
 
       {/* Avatar & Info */}
       <div className="px-4 -mt-12 relative z-10">
         <div className="flex items-end gap-3">
-          <img src={profileAvatar} alt="Profile" className="w-20 h-20 rounded-full border-[3px] border-background object-cover" />
+          {profileInfo.avatar_url ? (
+            <img src={profileInfo.avatar_url} alt="Profile" className="w-20 h-20 rounded-full border-[3px] border-background object-cover" />
+          ) : (
+            <div className="w-20 h-20 rounded-full border-[3px] border-background bg-primary/20 flex items-center justify-center">
+              <span className="text-2xl font-bold text-primary">{(profileInfo.display_name || "?")[0]?.toUpperCase()}</span>
+            </div>
+          )}
           <div className="flex-1 pb-1">
             <div className="flex items-center gap-1.5">
-              <h2 className="text-lg font-display font-bold text-foreground">WHEUAT Artist</h2>
+              <h2 className="text-lg font-display font-bold text-foreground">{profileInfo.display_name || "Set Artist Name"}</h2>
               {isPro && <CheckCircle className="w-4 h-4 text-primary fill-primary/20" />}
             </div>
-            <p className="text-xs text-muted-foreground">@wheuatartist · Independent</p>
+            <p className="text-xs text-muted-foreground">{profileInfo.email}</p>
           </div>
         </div>
 
@@ -226,8 +260,47 @@ const ProfilePage = () => {
       <EditProfileSheet
         open={showEditProfile}
         onClose={() => setShowEditProfile(false)}
-        profileData={{ name: "WHEUAT Artist", email: "artist@wheuat.com", avatarUrl: profileAvatar, bannerUrl: profileBanner }}
-        onSave={(data) => console.log("Profile updated:", data)}
+        profileData={{
+          name: profileInfo.display_name,
+          email: profileInfo.email,
+          avatarUrl: profileInfo.avatar_url || profileAvatar,
+          bannerUrl: profileInfo.banner_url || profileBanner,
+        }}
+        onSave={async (data) => {
+          if (!user) return;
+          const updates: any = { display_name: data.name, updated_at: new Date().toISOString() };
+          
+          // Upload avatar if changed
+          if (data.avatarFile) {
+            const ext = data.avatarFile.name.split(".").pop();
+            const path = `avatars/${user.id}/${Date.now()}.${ext}`;
+            const { data: uploadData } = await supabase.storage.from("media").upload(path, data.avatarFile);
+            if (uploadData) {
+              const { data: urlData } = supabase.storage.from("media").getPublicUrl(path);
+              updates.avatar_url = urlData.publicUrl;
+            }
+          }
+          
+          // Upload banner if changed
+          if (data.bannerFile) {
+            const ext = data.bannerFile.name.split(".").pop();
+            const path = `banners/${user.id}/${Date.now()}.${ext}`;
+            const { data: uploadData } = await supabase.storage.from("media").upload(path, data.bannerFile);
+            if (uploadData) {
+              const { data: urlData } = supabase.storage.from("media").getPublicUrl(path);
+              updates.banner_url = urlData.publicUrl;
+            }
+          }
+          
+          await supabase.from("profiles").update(updates).eq("user_id", user.id);
+          setProfileInfo(prev => ({
+            ...prev,
+            display_name: data.name,
+            avatar_url: updates.avatar_url || prev.avatar_url,
+            banner_url: updates.banner_url || prev.banner_url,
+          }));
+          toast({ title: "Profile updated!", description: "Your changes have been saved." });
+        }}
       />
 
       <ProGateModal open={showProModal} onClose={closeProModal} featureName={gatedFeature} onSubscribe={activatePro} />
