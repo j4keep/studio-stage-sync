@@ -195,10 +195,10 @@ const ProfilePage = () => {
             { label: "Plays", value: totalPlays },
             { label: "Likes", value: totalLikes },
           ].map((s) => (
-            <div key={s.label} className="p-2.5 rounded-xl bg-card border border-border text-center">
+            <button key={s.label} onClick={(s as any).action} className="p-2.5 rounded-xl bg-card border border-border text-center hover:border-primary/30 transition-all">
               <p className="text-base font-display font-bold text-primary">{s.value}</p>
               <p className="text-[9px] text-muted-foreground">{s.label}</p>
-            </div>
+            </button>
           ))}
         </div>
 
