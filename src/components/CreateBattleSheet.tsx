@@ -347,20 +347,36 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
 
           {/* Photo upload for photo battles */}
           {isPhotoBattle && (
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Upload Your Photo</label>
-              <input
-                type="file"
-                accept="image/*,.jpg,.jpeg,.png,.webp"
-                onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
-                className="w-full text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary"
-              />
-              {photoFile && (
-                <div className="mt-2 rounded-lg overflow-hidden max-h-40">
-                  <img src={URL.createObjectURL(photoFile)} alt="Preview" className="w-full h-full object-cover" />
-                </div>
-              )}
-            </div>
+            <>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Upload Your Photo</label>
+                <input
+                  type="file"
+                  accept="image/*,.jpg,.jpeg,.png,.webp"
+                  onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
+                  className="w-full text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary"
+                />
+                {photoFile && (
+                  <div className="mt-2 rounded-lg overflow-hidden max-h-40">
+                    <img src={URL.createObjectURL(photoFile)} alt="Preview" className="w-full h-full object-cover" />
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1.5">
+                  <Music className="w-3.5 h-3.5" /> Add a Song (optional)
+                </label>
+                <input
+                  type="file"
+                  accept="audio/*,.mp3,.wav,.flac,.m4a"
+                  onChange={(e) => setPhotoSongFile(e.target.files?.[0] || null)}
+                  className="w-full text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary"
+                />
+                {photoSongFile && (
+                  <p className="text-[10px] text-muted-foreground mt-1">🎵 {photoSongFile.name}</p>
+                )}
+              </div>
+            </>
           )}
 
           {/* Media upload for audio/video */}
