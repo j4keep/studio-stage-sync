@@ -139,20 +139,30 @@ const ProfilePage = () => {
 
       {/* Banner */}
       <div className="relative h-44 overflow-hidden">
-        <img src={profileBanner} alt="Banner" className="w-full h-full object-cover" />
+        {profileInfo.banner_url ? (
+          <img src={profileInfo.banner_url} alt="Banner" className="w-full h-full object-cover" />
+        ) : (
+          <img src={profileBanner} alt="Banner" className="w-full h-full object-cover" />
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
       </div>
 
       {/* Avatar & Info */}
       <div className="px-4 -mt-12 relative z-10">
         <div className="flex items-end gap-3">
-          <img src={profileAvatar} alt="Profile" className="w-20 h-20 rounded-full border-[3px] border-background object-cover" />
+          {profileInfo.avatar_url ? (
+            <img src={profileInfo.avatar_url} alt="Profile" className="w-20 h-20 rounded-full border-[3px] border-background object-cover" />
+          ) : (
+            <div className="w-20 h-20 rounded-full border-[3px] border-background bg-primary/20 flex items-center justify-center">
+              <span className="text-2xl font-bold text-primary">{(profileInfo.display_name || "?")[0]?.toUpperCase()}</span>
+            </div>
+          )}
           <div className="flex-1 pb-1">
             <div className="flex items-center gap-1.5">
-              <h2 className="text-lg font-display font-bold text-foreground">WHEUAT Artist</h2>
+              <h2 className="text-lg font-display font-bold text-foreground">{profileInfo.display_name || "Set Artist Name"}</h2>
               {isPro && <CheckCircle className="w-4 h-4 text-primary fill-primary/20" />}
             </div>
-            <p className="text-xs text-muted-foreground">@wheuatartist · Independent</p>
+            <p className="text-xs text-muted-foreground">{profileInfo.email}</p>
           </div>
         </div>
 
