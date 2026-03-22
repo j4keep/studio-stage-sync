@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX profiles_display_name_unique ON public.profiles (lower(display_name)) WHERE display_name IS NOT NULL;

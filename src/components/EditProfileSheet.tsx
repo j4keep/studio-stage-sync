@@ -2,6 +2,8 @@ import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Camera, User, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Label } from "@/components/ui/label";
 
 interface EditProfileSheetProps {
@@ -22,6 +24,7 @@ interface EditProfileSheetProps {
 }
 
 const EditProfileSheet = ({ open, onClose, profileData, onSave }: EditProfileSheetProps) => {
+  const { user } = useAuth();
   const [name, setName] = useState(profileData.name);
   const [email, setEmail] = useState(profileData.email);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -31,6 +34,7 @@ const EditProfileSheet = ({ open, onClose, profileData, onSave }: EditProfileShe
   const [bannerPreview, setBannerPreview] = useState(profileData.bannerUrl);
   const [avatarFile, setAvatarFile] = useState<File | undefined>();
   const [bannerFile, setBannerFile] = useState<File | undefined>();
+  const [nameError, setNameError] = useState("");
 
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
@@ -51,7 +55,23 @@ const EditProfileSheet = ({ open, onClose, profileData, onSave }: EditProfileShe
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (!name.trim()) {
+      setNameError("Name is required");
+      return;
+    }
+    // Check uniqueness
+    const { data: existing } = await supabase
+      .from("profiles")
+      .select("user_id")
+      .ilike("display_name", name.trim())
+      .neq("user_id", user?.id || "")
+      .limit(1);
+    if (existing && existing.length > 0) {
+      setNameError("This username is already taken. Choose a unique name.");
+      return;
+    }
+    setNameError("");
     onSave({ name, email, avatarFile, bannerFile });
     onClose();
   };
@@ -134,10 +154,11 @@ const EditProfileSheet = ({ open, onClose, profileData, onSave }: EditProfileShe
                   <Input
                     id="edit-name"
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="pl-10 bg-card border-border"
+                    onChange={(e) => { setName(e.target.value); setNameError(""); }}
+                    className={`pl-10 bg-card ${nameError ? "border-destructive" : "border-border"}`}
                     placeholder="Your display name"
                   />
+                  {nameError && <p className="text-[10px] text-destructive mt-1">{nameError}</p>}
                 </div>
               </div>
 

@@ -13,6 +13,7 @@ import profileAvatar from "@/assets/profile-avatar.jpg";
 import EditProfileSheet from "@/components/EditProfileSheet";
 import ProGateModal from "@/components/ProGateModal";
 import { useProGate } from "@/hooks/use-pro-gate";
+import ArtistSearchBar from "@/components/ArtistSearchBar";
 
 const ProfilePage = () => {
   const navigate = useNavigate();
@@ -103,6 +104,13 @@ const ProfilePage = () => {
         <button onClick={() => navigate("/settings")} className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground">
           <Settings className="w-4 h-4" />
         </button>
+      </div>
+
+      {/* Artist Search */}
+      <div className="px-4 pb-3">
+        <ArtistSearchBar onSelectArtist={(artist) => {
+          toast({ title: `Viewing ${artist.display_name}`, description: "Artist profile pages coming soon!" });
+        }} />
       </div>
 
       {/* Banner */}
