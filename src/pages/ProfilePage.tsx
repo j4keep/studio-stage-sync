@@ -14,6 +14,8 @@ import EditProfileSheet from "@/components/EditProfileSheet";
 import ProGateModal from "@/components/ProGateModal";
 import { useProGate } from "@/hooks/use-pro-gate";
 import ArtistSearchBar from "@/components/ArtistSearchBar";
+import FollowersSheet from "@/components/FollowersSheet";
+import ProfileFeedSection from "@/components/ProfileFeedSection";
 
 const ProfilePage = () => {
   const navigate = useNavigate();
@@ -24,6 +26,7 @@ const ProfilePage = () => {
   const [totalPlays, setTotalPlays] = useState("0");
   const [songCount, setSongCount] = useState("0");
   const [totalLikes, setTotalLikes] = useState("0");
+  const [showFollowers, setShowFollowers] = useState(false);
   const [profileInfo, setProfileInfo] = useState<{ display_name: string; email: string; avatar_url: string | null; banner_url: string | null }>({
     display_name: "",
     email: "",
@@ -188,14 +191,14 @@ const ProfilePage = () => {
         <div className="grid grid-cols-4 gap-2 mt-4">
           {[
             { label: "Songs", value: songCount },
-            { label: "Followers", value: followerCount },
+            { label: "Followers", value: followerCount, action: () => setShowFollowers(true) },
             { label: "Plays", value: totalPlays },
             { label: "Likes", value: totalLikes },
           ].map((s) => (
-            <div key={s.label} className="p-2.5 rounded-xl bg-card border border-border text-center">
+            <button key={s.label} onClick={(s as any).action} className="p-2.5 rounded-xl bg-card border border-border text-center hover:border-primary/30 transition-all">
               <p className="text-base font-display font-bold text-primary">{s.value}</p>
               <p className="text-[9px] text-muted-foreground">{s.label}</p>
-            </div>
+            </button>
           ))}
         </div>
 
@@ -257,6 +260,14 @@ const ProfilePage = () => {
         </div>
       </div>
 
+      {/* My Posts */}
+      {user && (
+        <div className="px-4 mt-5">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">My Posts</p>
+          <ProfileFeedSection userId={user.id} isOwner={true} />
+        </div>
+      )}
+
       <EditProfileSheet
         open={showEditProfile}
         onClose={() => setShowEditProfile(false)}
@@ -270,7 +281,6 @@ const ProfilePage = () => {
           if (!user) return;
           const updates: any = { display_name: data.name, updated_at: new Date().toISOString() };
           
-          // Upload avatar if changed
           if (data.avatarFile) {
             const ext = data.avatarFile.name.split(".").pop();
             const path = `avatars/${user.id}/${Date.now()}.${ext}`;
@@ -281,7 +291,6 @@ const ProfilePage = () => {
             }
           }
           
-          // Upload banner if changed
           if (data.bannerFile) {
             const ext = data.bannerFile.name.split(".").pop();
             const path = `banners/${user.id}/${Date.now()}.${ext}`;
@@ -303,6 +312,7 @@ const ProfilePage = () => {
         }}
       />
 
+      {user && <FollowersSheet open={showFollowers} onClose={() => setShowFollowers(false)} userId={user.id} isOwner={true} />}
       <ProGateModal open={showProModal} onClose={closeProModal} featureName={gatedFeature} onSubscribe={activatePro} />
     </div>
   );
