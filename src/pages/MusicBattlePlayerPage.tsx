@@ -652,19 +652,33 @@ const MusicBattlePlayerPage = () => {
                 className="h-11"
               />
               {battle.media_type === "photo" ? (
-                <div>
-                  <label className="mb-1 block text-xs text-muted-foreground">Upload your photo</label>
-                  <input
-                    type="file"
-                    accept="image/*,.jpg,.jpeg,.png,.webp"
-                    onChange={(event) => {
-                      const f = event.target.files?.[0] || null;
-                      setAcceptMediaFile(f);
-                      setAcceptCoverFile(f);
-                    }}
-                    className="w-full text-xs file:mr-3 file:rounded-xl file:border-0 file:bg-primary/15 file:px-3 file:py-2 file:font-semibold file:text-primary"
-                  />
-                </div>
+                <>
+                  <div>
+                    <label className="mb-1 block text-xs text-muted-foreground">Upload your photo</label>
+                    <input
+                      type="file"
+                      accept="image/*,.jpg,.jpeg,.png,.webp"
+                      onChange={(event) => {
+                        const f = event.target.files?.[0] || null;
+                        setAcceptMediaFile(f);
+                        setAcceptCoverFile(f);
+                      }}
+                      className="w-full text-xs file:mr-3 file:rounded-xl file:border-0 file:bg-primary/15 file:px-3 file:py-2 file:font-semibold file:text-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs text-muted-foreground">🎵 Add a song (optional)</label>
+                    <input
+                      type="file"
+                      accept="audio/*,.mp3,.wav,.flac,.m4a"
+                      onChange={(event) => setAcceptSongFile(event.target.files?.[0] || null)}
+                      className="w-full text-xs file:mr-3 file:rounded-xl file:border-0 file:bg-primary/15 file:px-3 file:py-2 file:font-semibold file:text-primary"
+                    />
+                    {acceptSongFile && (
+                      <p className="mt-1 text-[10px] text-muted-foreground">🎵 {acceptSongFile.name}</p>
+                    )}
+                  </div>
+                </>
               ) : (
                 <>
                   <div>
