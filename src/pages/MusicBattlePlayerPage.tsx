@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
+import { uploadToR2, getR2DownloadUrl } from "@/lib/r2-storage";
 
 /* ─── helpers ─── */
 const fmt = (s: number) => {
