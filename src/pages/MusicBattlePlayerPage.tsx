@@ -612,32 +612,50 @@ const MusicBattlePlayerPage = () => {
             <p className="mb-3 text-center text-sm font-semibold text-primary">🥊 You&apos;ve been challenged!</p>
             <div className="space-y-3">
               <Input
-                placeholder="Your track title"
+                placeholder={battle.media_type === "photo" ? "Your caption" : "Your track title"}
                 value={acceptTrackTitle}
                 onChange={(event) => setAcceptTrackTitle(event.target.value)}
                 className="h-11"
               />
-              <div>
-                <label className="mb-1 block text-xs text-muted-foreground">
-                  Upload {battle.media_type === "audio" ? "song" : "video"} (max {(battle as any).max_duration_minutes || 45} min)
-                </label>
-                <input
-                  type="file"
-                  accept={battle.media_type === "audio" ? "audio/*,.mp3,.wav,.flac,.m4a" : "video/*,.mp4,.mov,.webm"}
-                  onChange={(event) => setAcceptMediaFile(event.target.files?.[0] || null)}
-                  className="w-full text-xs file:mr-3 file:rounded-xl file:border-0 file:bg-primary/15 file:px-3 file:py-2 file:font-semibold file:text-primary"
-                />
-              </div>
-              {battle.media_type === "audio" && (
+              {battle.media_type === "photo" ? (
                 <div>
-                  <label className="mb-1 block text-xs text-muted-foreground">Upload cover art</label>
+                  <label className="mb-1 block text-xs text-muted-foreground">Upload your photo</label>
                   <input
                     type="file"
                     accept="image/*,.jpg,.jpeg,.png,.webp"
-                    onChange={(event) => setAcceptCoverFile(event.target.files?.[0] || null)}
+                    onChange={(event) => {
+                      const f = event.target.files?.[0] || null;
+                      setAcceptMediaFile(f);
+                      setAcceptCoverFile(f);
+                    }}
                     className="w-full text-xs file:mr-3 file:rounded-xl file:border-0 file:bg-primary/15 file:px-3 file:py-2 file:font-semibold file:text-primary"
                   />
                 </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="mb-1 block text-xs text-muted-foreground">
+                      Upload {battle.media_type === "audio" ? "song" : "video"} (max {(battle as any).max_duration_minutes || 40} min)
+                    </label>
+                    <input
+                      type="file"
+                      accept={battle.media_type === "audio" ? "audio/*,.mp3,.wav,.flac,.m4a" : "video/*,.mp4,.mov,.webm"}
+                      onChange={(event) => setAcceptMediaFile(event.target.files?.[0] || null)}
+                      className="w-full text-xs file:mr-3 file:rounded-xl file:border-0 file:bg-primary/15 file:px-3 file:py-2 file:font-semibold file:text-primary"
+                    />
+                  </div>
+                  {battle.media_type === "audio" && (
+                    <div>
+                      <label className="mb-1 block text-xs text-muted-foreground">Upload cover art</label>
+                      <input
+                        type="file"
+                        accept="image/*,.jpg,.jpeg,.png,.webp"
+                        onChange={(event) => setAcceptCoverFile(event.target.files?.[0] || null)}
+                        className="w-full text-xs file:mr-3 file:rounded-xl file:border-0 file:bg-primary/15 file:px-3 file:py-2 file:font-semibold file:text-primary"
+                      />
+                    </div>
+                  )}
+                </>
               )}
               <motion.button
                 whileTap={{ scale: 0.98 }}
