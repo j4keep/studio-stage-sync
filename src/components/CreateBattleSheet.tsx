@@ -41,6 +41,14 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
 
   const handleSubmit = async () => {
     if (!user || !title.trim() || !trackTitle.trim() || !selectedOpponent) return;
+    if (!mediaFile) {
+      toast({ title: "Missing media", description: `Please upload a ${mediaType === "audio" ? "song" : "video"} first.`, variant: "destructive" });
+      return;
+    }
+    if (mediaType === "audio" && !coverFile) {
+      toast({ title: "Cover art required", description: "Audio battles need a cover image.", variant: "destructive" });
+      return;
+    }
     setLoading(true);
 
     try {
@@ -206,7 +214,9 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
           </div>
 
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Cover Art (optional)</label>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">
+              Cover Art {mediaType === "audio" ? "(required)" : "(optional)"}
+            </label>
             <input
               type="file"
               accept="image/*,.jpg,.jpeg,.png,.webp"
@@ -217,7 +227,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
 
           <button
             onClick={handleSubmit}
-            disabled={loading || !title.trim() || !trackTitle.trim() || !selectedOpponent}
+            disabled={loading || !title.trim() || !trackTitle.trim() || !selectedOpponent || !mediaFile || (mediaType === "audio" && !coverFile)}
             className="w-full py-3 rounded-xl gradient-primary text-primary-foreground font-bold text-sm disabled:opacity-50"
           >
             {loading ? "Creating..." : `🥊 Challenge ${selectedOpponent?.display_name || "an Artist"}`}

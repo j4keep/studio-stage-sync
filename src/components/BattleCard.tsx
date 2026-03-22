@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trash2, Upload, Clock, Trophy, Crown, MessageCircle, Send, Play } from "lucide-react";
+import { Trash2, Clock, Trophy, Crown, MessageCircle, Send, Play } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
@@ -35,11 +35,6 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(false);
   const [comment, setComment] = useState("");
-  const [showUpload, setShowUpload] = useState(false);
-  const [acceptTrackTitle, setAcceptTrackTitle] = useState("");
-  const [acceptMediaFile, setAcceptMediaFile] = useState<File | null>(null);
-  const [acceptCoverFile, setAcceptCoverFile] = useState<File | null>(null);
-  const [accepting, setAccepting] = useState(false);
   const commentsEndRef = useRef<HTMLDivElement>(null);
 
   const expiresAt = battle.expires_at ? new Date(battle.expires_at) : new Date(new Date(battle.created_at).getTime() + 24 * 60 * 60 * 1000);
@@ -133,34 +128,6 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["battle-comments", battle.id] }); setComment(""); },
   });
-
-  const handleAcceptBattle = async () => {
-    if (!user || !acceptTrackTitle.trim()) return;
-    setAccepting(true);
-    try {
-      let mediaUrl = "", coverUrl = "";
-      if (acceptMediaFile) {
-        const ext = acceptMediaFile.name.split(".").pop();
-        const path = `battles/${user.id}/${Date.now()}.${ext}`;
-        const { data: ud } = await supabase.storage.from("media").upload(path, acceptMediaFile);
-        if (ud) { const { data: u } = supabase.storage.from("media").getPublicUrl(path); mediaUrl = u.publicUrl; }
-      }
-      if (acceptCoverFile) {
-        const ext = acceptCoverFile.name.split(".").pop();
-        const path = `battles/covers/${user.id}/${Date.now()}.${ext}`;
-        const { data: ud } = await supabase.storage.from("media").upload(path, acceptCoverFile);
-        if (ud) { const { data: u } = supabase.storage.from("media").getPublicUrl(path); coverUrl = u.publicUrl; }
-      }
-      await (supabase as any).from("battles").update({
-        opponent_id: user.id, status: "active", opponent_title: acceptTrackTitle.trim(),
-        opponent_media_url: mediaUrl || null, opponent_cover_url: coverUrl || null,
-      }).eq("id", battle.id);
-      queryClient.invalidateQueries({ queryKey: ["battles"] });
-      queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
-      toast.success("Challenge accepted! 🥊");
-      setShowUpload(false);
-    } catch { toast.error("Failed to accept"); } finally { setAccepting(false); }
-  };
 
   useEffect(() => { commentsEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [battleComments.length]);
 
@@ -270,34 +237,15 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
           {isPending && user?.id === battle.opponent_id && (
             <p className="mb-2 text-center text-xs font-bold text-primary">🥊 You've been challenged!</p>
           )}
-          {!showUpload ? (
-            <button onClick={() => setShowUpload(true)}
-              className="flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold gradient-primary text-primary-foreground">
-              <Upload className="h-4 w-4" /> Accept & Upload Entry
-            </button>
-          ) : (
-            <div className="space-y-2">
-              <Input placeholder="Track title" value={acceptTrackTitle} onChange={(e) => setAcceptTrackTitle(e.target.value)} className="h-9 text-xs" />
-              <div>
-                <label className="mb-1 block text-[10px] text-muted-foreground">{battle.media_type === "audio" ? "Song" : "Video"} (max 45 min)</label>
-                <input type="file" accept={battle.media_type === "audio" ? "audio/*,.mp3,.wav,.flac,.m4a" : "video/*,.mp4,.mov,.webm"}
-                  onChange={(e) => setAcceptMediaFile(e.target.files?.[0] || null)}
-                  className="w-full text-[10px] file:mr-2 file:rounded-lg file:border-0 file:bg-primary/20 file:px-3 file:py-1.5 file:text-[10px] file:font-semibold file:text-primary" />
-              </div>
-              {battle.media_type === "audio" && (
-                <div>
-                  <label className="mb-1 block text-[10px] text-muted-foreground">Cover Art</label>
-                  <input type="file" accept="image/*" onChange={(e) => setAcceptCoverFile(e.target.files?.[0] || null)}
-                    className="w-full text-[10px] file:mr-2 file:rounded-lg file:border-0 file:bg-primary/20 file:px-3 file:py-1.5 file:text-[10px] file:font-semibold file:text-primary" />
-                </div>
-              )}
-              <button onClick={handleAcceptBattle}
-                disabled={accepting || !acceptTrackTitle.trim() || !acceptMediaFile}
-                className="w-full rounded-xl py-2.5 text-sm font-bold gradient-primary text-primary-foreground disabled:opacity-50">
-                {accepting ? "Uploading..." : "🥊 Accept Challenge"}
-              </button>
-            </div>
-          )}
+          <p className="mb-3 text-center text-[11px] text-muted-foreground">
+            Open the new battle player to upload your entry and respond with the same media type.
+          </p>
+          <button
+            onClick={() => navigate(`/battle/${battle.id}`)}
+            className="flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold gradient-primary text-primary-foreground"
+          >
+            <Play className="h-4 w-4" fill="currentColor" /> Open Battle Player
+          </button>
         </div>
       )}
 
