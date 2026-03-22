@@ -92,7 +92,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
         }
       }
 
-      await (supabase as any).from("battles").insert({
+      const { error: insertError } = await (supabase as any).from("battles").insert({
         challenger_id: user.id,
         opponent_id: selectedOpponent.user_id,
         title: title.trim(),
@@ -102,6 +102,11 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
         challenger_cover_url: coverUrl || null,
         status: "pending",
       });
+
+      if (insertError) {
+        console.error("[Battle] Create battle insert failed:", insertError);
+        throw insertError;
+      }
 
       queryClient.invalidateQueries({ queryKey: ["battles"] });
       queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
