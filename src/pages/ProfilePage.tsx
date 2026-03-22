@@ -13,6 +13,7 @@ import profileAvatar from "@/assets/profile-avatar.jpg";
 import EditProfileSheet from "@/components/EditProfileSheet";
 import ProGateModal from "@/components/ProGateModal";
 import { useProGate } from "@/hooks/use-pro-gate";
+import ArtistSearchBar from "@/components/ArtistSearchBar";
 
 const ProfilePage = () => {
   const navigate = useNavigate();
