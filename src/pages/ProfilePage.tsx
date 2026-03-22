@@ -260,6 +260,14 @@ const ProfilePage = () => {
         </div>
       </div>
 
+      {/* My Posts */}
+      {user && (
+        <div className="px-4 mt-5">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">My Posts</p>
+          <ProfileFeedSection userId={user.id} isOwner={true} />
+        </div>
+      )}
+
       <EditProfileSheet
         open={showEditProfile}
         onClose={() => setShowEditProfile(false)}
@@ -273,7 +281,6 @@ const ProfilePage = () => {
           if (!user) return;
           const updates: any = { display_name: data.name, updated_at: new Date().toISOString() };
           
-          // Upload avatar if changed
           if (data.avatarFile) {
             const ext = data.avatarFile.name.split(".").pop();
             const path = `avatars/${user.id}/${Date.now()}.${ext}`;
@@ -284,7 +291,6 @@ const ProfilePage = () => {
             }
           }
           
-          // Upload banner if changed
           if (data.bannerFile) {
             const ext = data.bannerFile.name.split(".").pop();
             const path = `banners/${user.id}/${Date.now()}.${ext}`;
@@ -306,6 +312,7 @@ const ProfilePage = () => {
         }}
       />
 
+      {user && <FollowersSheet open={showFollowers} onClose={() => setShowFollowers(false)} userId={user.id} isOwner={true} />}
       <ProGateModal open={showProModal} onClose={closeProModal} featureName={gatedFeature} onSubscribe={activatePro} />
     </div>
   );
