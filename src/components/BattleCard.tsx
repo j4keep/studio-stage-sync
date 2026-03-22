@@ -432,10 +432,14 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
           </motion.button>
 
           {/* RIGHT ARTIST */}
-          <button
+          <motion.button
             onClick={() => handleSideTap("right")}
-            className="relative overflow-hidden text-left transition-all duration-500"
-            style={{ opacity: activeArtist === "left" ? 0.45 : 1 }}
+            animate={{
+              opacity: activeArtist === "left" ? 0.4 : 1,
+              scale: activeArtist === "right" && isPlaying ? 1 : activeArtist === "left" ? 0.97 : 1,
+            }}
+            transition={{ duration: 0.5, ease: "easeInOut" }}
+            className="relative overflow-hidden text-left"
           >
             <div className="absolute inset-0">
               {battle.opponent_cover_url ? (
