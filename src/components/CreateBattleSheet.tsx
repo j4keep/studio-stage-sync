@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
 import { Music, Video, Search, X, Check } from "lucide-react";
-import { uploadToR2, generateR2Key, getR2DownloadUrl } from "@/lib/r2-storage";
+import { uploadToR2, getR2DownloadUrl } from "@/lib/r2-storage";
 
 interface Props {
   open: boolean;
@@ -58,18 +58,18 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
 
       // Upload media file
       if (mediaFile) {
-        const key = generateR2Key(user.id, "battles", mediaFile.name);
-        const result = await uploadToR2(mediaFile, {
+        const fileExtension = mediaFile.name.split(".").pop();
+        const uploadResult = await uploadToR2(mediaFile, {
           folder: `battles/${user.id}`,
-          fileName: `${Date.now()}.${mediaFile.name.split(".").pop()}`,
+          fileName: `${Date.now()}.${fileExtension}`,
           mimeType: mediaFile.type,
           onProgress: (p) => console.log(`[Battle] Media upload: ${p}%`),
         });
-        if (result.success && result.data) {
-          mediaUrl = getR2DownloadUrl(result.data.key);
+        if (uploadResult.success && uploadResult.data) {
+          mediaUrl = getR2DownloadUrl(uploadResult.data.key);
         } else {
-          console.error("[Battle] Media upload failed:", result.error);
-          toast({ title: "Upload failed", description: result.error || "Could not upload media file.", variant: "destructive" });
+          console.error("[Battle] Media upload failed:", uploadResult.error);
+          toast({ title: "Upload failed", description: uploadResult.error || "Could not upload media file.", variant: "destructive" });
           setLoading(false);
           return;
         }
@@ -92,7 +92,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
         }
       }
 
-      await (supabase as any).from("battles").insert({
+      const { error: insertError } = await (supabase as any).from("battles").insert({
         challenger_id: user.id,
         opponent_id: selectedOpponent.user_id,
         title: title.trim(),
@@ -102,6 +102,11 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
         challenger_cover_url: coverUrl || null,
         status: "pending",
       });
+
+      if (insertError) {
+        console.error("[Battle] Create battle insert failed:", insertError);
+        throw insertError;
+      }
 
       queryClient.invalidateQueries({ queryKey: ["battles"] });
       queryClient.invalidateQueries({ queryKey: ["feed-posts"] });

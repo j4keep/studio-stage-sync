@@ -75,10 +75,12 @@ async function uploadStreamingToR2(
   options: UploadOptions
 ): Promise<R2Response<UploadResult>> {
   try {
+    const contentType = options.mimeType || file.type || 'application/octet-stream';
+
     // Step 1: Get a presigned PUT URL from the edge function
     console.log('[R2 Upload] Requesting presigned URL for key:', key);
     const { data: presignData, error: presignError } = await supabase.functions.invoke('r2-presign', {
-      body: { key, contentType: options.mimeType || file.type || 'application/octet-stream' },
+      body: { key, contentType },
     });
     console.log('[R2 Upload] Presign response:', { success: presignData?.success, error: presignError?.message || presignData?.error });
 
@@ -87,18 +89,64 @@ async function uploadStreamingToR2(
     }
 
     const presignedUrl = presignData.url;
+    const publicUrl = presignedUrl.split('?')[0];
 
-    // Step 2: Upload directly to R2 using the presigned URL with XHR for progress
+    // Video uploads are more reliable with fetch than XHR on mobile networks.
+    if (contentType.startsWith('video/')) {
+      console.log('[R2 Upload] Starting direct PUT to R2 with fetch for video upload...');
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 15 * 60 * 1000);
+
+      try {
+        const response = await fetch(presignedUrl, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': contentType,
+          },
+          body: file,
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          console.error('[R2 Upload] Fetch upload failed:', response.status, response.statusText);
+          return { success: false, error: `Upload failed: ${response.status}` };
+        }
+
+        options.onProgress?.(100);
+        return { success: true, data: { key, url: publicUrl, size: file.size } };
+      } catch (err) {
+        console.error('[R2 Upload] Fetch upload error:', err);
+        return {
+          success: false,
+          error: err instanceof DOMException && err.name === 'AbortError'
+            ? 'Video upload timed out'
+            : err instanceof Error
+              ? err.message
+              : 'Upload failed',
+        };
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
+    }
+
+    // Step 2: Upload directly to R2 using XHR for progress
     console.log('[R2 Upload] Starting direct PUT to R2...');
     return new Promise((resolve) => {
       const xhr = new XMLHttpRequest();
+      let settled = false;
+      const finish = (result: R2Response<UploadResult>) => {
+        if (settled) return;
+        settled = true;
+        resolve(result);
+      };
+
       xhr.open('PUT', presignedUrl, true);
-      xhr.setRequestHeader('Content-Type', options.mimeType || file.type || 'application/octet-stream');
+      xhr.setRequestHeader('Content-Type', contentType);
 
       if (options.onProgress) {
         xhr.upload.onprogress = (e) => {
           if (e.lengthComputable) {
-            options.onProgress!(Math.round((e.loaded / e.total) * 100));
+            options.onProgress?.(Math.round((e.loaded / e.total) * 100));
           }
         };
       }
@@ -106,15 +154,25 @@ async function uploadStreamingToR2(
       xhr.onload = () => {
         console.log('[R2 Upload] XHR completed, status:', xhr.status);
         if (xhr.status >= 200 && xhr.status < 300) {
-          resolve({ success: true, data: { key, url: presignedUrl.split('?')[0], size: file.size } });
+          finish({ success: true, data: { key, url: publicUrl, size: file.size } });
         } else {
           console.error('[R2 Upload] XHR failed:', xhr.status, xhr.responseText);
-          resolve({ success: false, error: `Upload failed: ${xhr.status}` });
+          finish({ success: false, error: `Upload failed: ${xhr.status}` });
         }
       };
 
-      xhr.onerror = () => { console.error('[R2 Upload] XHR network error'); resolve({ success: false, error: 'Network error during upload' }); };
-      xhr.ontimeout = () => { console.error('[R2 Upload] XHR timeout'); resolve({ success: false, error: 'Upload timed out' }); };
+      xhr.onerror = () => {
+        console.error('[R2 Upload] XHR network error');
+        finish({ success: false, error: 'Network error during upload' });
+      };
+      xhr.onabort = () => {
+        console.error('[R2 Upload] XHR aborted');
+        finish({ success: false, error: 'Upload was interrupted' });
+      };
+      xhr.ontimeout = () => {
+        console.error('[R2 Upload] XHR timeout');
+        finish({ success: false, error: 'Upload timed out' });
+      };
       xhr.timeout = 600000; // 10 min timeout
 
       xhr.send(file);
