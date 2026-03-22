@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { X, ImagePlus, Video } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -11,30 +11,44 @@ import { Textarea } from "@/components/ui/textarea";
 interface Props {
   open: boolean;
   onClose: () => void;
+  postToEdit?: any | null;
 }
 
-const CreatePostSheet = ({ open, onClose }: Props) => {
+const CreatePostSheet = ({ open, onClose, postToEdit = null }: Props) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [caption, setCaption] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<"image" | "video">("image");
+  const [currentMediaUrl, setCurrentMediaUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    setCaption(postToEdit?.caption || "");
+    setFile(null);
+    setMediaType(postToEdit?.media_type === "video" ? "video" : "image");
+    setCurrentMediaUrl(postToEdit?.media_url || null);
+    setPreview(postToEdit?.media_type === "image" ? postToEdit?.media_url || null : null);
+  }, [open, postToEdit]);
 
   const reset = () => {
     setCaption("");
     setFile(null);
     setPreview(null);
     setMediaType("image");
+    setCurrentMediaUrl(null);
     onClose();
   };
 
   const postMutation = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Not authenticated");
-      let mediaUrl: string | null = null;
+      let mediaUrl: string | null = currentMediaUrl;
+      let nextMediaType: "image" | "video" = mediaType;
 
       if (file) {
         setUploading(true);
@@ -47,22 +61,32 @@ const CreatePostSheet = ({ open, onClose }: Props) => {
         if (uploadErr) throw uploadErr;
         const { data: urlData } = supabase.storage.from("media").getPublicUrl(path);
         mediaUrl = urlData.publicUrl;
+        nextMediaType = file.type.startsWith("video/") ? "video" : "image";
       }
 
-      const { error } = await (supabase as any).from("posts").insert({
-        user_id: user.id,
+      const payload = {
         caption: caption.trim() || null,
         media_url: mediaUrl,
-        media_type: file ? mediaType : "image",
-      });
+        media_type: mediaUrl ? nextMediaType : "image",
+      };
+
+      const query = postToEdit
+        ? (supabase as any).from("posts").update(payload).eq("id", postToEdit.id).eq("user_id", user.id)
+        : (supabase as any).from("posts").insert({
+            user_id: user.id,
+            ...payload,
+          });
+
+      const { error } = await query;
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
-      toast.success("Post shared!");
+      queryClient.invalidateQueries({ queryKey: ["profile-posts"] });
+      toast.success(postToEdit ? "Post updated!" : "Post shared!");
       reset();
     },
-    onError: (e: any) => toast.error(e?.message || "Failed to post"),
+    onError: (e: any) => toast.error(e?.message || (postToEdit ? "Failed to update post" : "Failed to post")),
   });
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -71,6 +95,7 @@ const CreatePostSheet = ({ open, onClose }: Props) => {
     setFile(f);
     const isVideo = f.type.startsWith("video/");
     setMediaType(isVideo ? "video" : "image");
+    setCurrentMediaUrl(null);
     if (!isVideo) {
       setPreview(URL.createObjectURL(f));
     } else {
@@ -99,13 +124,13 @@ const CreatePostSheet = ({ open, onClose }: Props) => {
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <button onClick={reset} className="text-muted-foreground"><X className="w-5 h-5" /></button>
-          <h2 className="text-sm font-bold text-foreground">Create Post</h2>
+          <h2 className="text-sm font-bold text-foreground">{postToEdit ? "Edit Post" : "Create Post"}</h2>
           <Button
             size="sm"
             onClick={() => postMutation.mutate()}
             disabled={(!caption.trim() && !file) || postMutation.isPending || uploading}
           >
-            {uploading ? "Uploading..." : postMutation.isPending ? "Posting..." : "Post"}
+            {uploading ? "Uploading..." : postMutation.isPending ? (postToEdit ? "Saving..." : "Posting...") : (postToEdit ? "Save" : "Post")}
           </Button>
         </div>
 
@@ -121,17 +146,17 @@ const CreatePostSheet = ({ open, onClose }: Props) => {
           {preview && (
             <div className="relative">
               <img src={preview} alt="Preview" className="w-full rounded-xl object-cover max-h-64" />
-              <button onClick={() => { setFile(null); setPreview(null); }} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 flex items-center justify-center">
+              <button onClick={() => { setFile(null); setPreview(null); setCurrentMediaUrl(null); }} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 flex items-center justify-center">
                 <X className="w-4 h-4 text-white" />
               </button>
             </div>
           )}
 
-          {file && mediaType === "video" && (
+          {(file || currentMediaUrl) && mediaType === "video" && (
             <div className="relative bg-card rounded-xl p-3 flex items-center gap-2">
               <Video className="w-5 h-5 text-primary" />
-              <span className="text-xs text-foreground truncate">{file.name}</span>
-              <button onClick={() => { setFile(null); setPreview(null); }} className="ml-auto">
+              <span className="text-xs text-foreground truncate">{file?.name || "Current video attached"}</span>
+              <button onClick={() => { setFile(null); setPreview(null); setCurrentMediaUrl(null); }} className="ml-auto">
                 <X className="w-4 h-4 text-muted-foreground" />
               </button>
             </div>
