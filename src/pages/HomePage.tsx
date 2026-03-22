@@ -86,12 +86,12 @@ const fetchTrendingArtists = async (userId?: string): Promise<TrendingArtist[]> 
 // All cards now navigate to dedicated pages
 const CATEGORY_CARDS = [
   { label: "Radio", img: cardRadio, path: "/radio", wide: true, icon: Radio },
+  { label: "Battles", img: cardBattles, path: "/battles", wide: true, icon: Swords },
   { label: "Store", img: cardStore, path: "/store", wide: false, icon: ShoppingBag },
   { label: "Studios", img: cardStudios, path: "/studios", wide: false, icon: Building2 },
   { label: "Songs", img: cardSongs, path: "/browse-songs", wide: false, icon: Music },
   { label: "Videos", img: cardVideos, path: "/browse-videos", wide: false, icon: Video },
   { label: "Projects", img: cardProjects, path: "/my-projects", wide: true, icon: DollarSign },
-  { label: "Dollar Club", img: cardDollarClub, path: "/dollar-club", wide: true, icon: CircleDollarSign },
 ];
 
 const HomePage = () => {
