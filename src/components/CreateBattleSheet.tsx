@@ -312,7 +312,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
                 <Video className="w-3.5 h-3.5" /> Video
               </button>
               <button
-                onClick={() => { setMediaType("photo"); setMediaFile(null); setCoverFile(null); setMediaDurationMin(null); }}
+                onClick={() => { setMediaType("photo"); setMediaFile(null); setCoverFile(null); setMediaDurationMin(null); setPhotoSongFile(null); }}
                 className={`flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 border ${mediaType === "photo" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
               >
                 <Image className="w-3.5 h-3.5" /> Photo
