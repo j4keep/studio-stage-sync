@@ -85,6 +85,7 @@ export type Database = {
           challenger_media_url: string | null
           challenger_title: string | null
           created_at: string
+          expires_at: string | null
           id: string
           media_type: string
           opponent_cover_url: string | null
@@ -102,6 +103,7 @@ export type Database = {
           challenger_media_url?: string | null
           challenger_title?: string | null
           created_at?: string
+          expires_at?: string | null
           id?: string
           media_type?: string
           opponent_cover_url?: string | null
@@ -119,6 +121,7 @@ export type Database = {
           challenger_media_url?: string | null
           challenger_title?: string | null
           created_at?: string
+          expires_at?: string | null
           id?: string
           media_type?: string
           opponent_cover_url?: string | null
