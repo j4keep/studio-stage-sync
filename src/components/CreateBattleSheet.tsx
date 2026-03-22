@@ -196,6 +196,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
       setMediaFile(null);
       setCoverFile(null);
       setPhotoFile(null);
+      setPhotoSongFile(null);
       setSelectedOpponent(null);
       setOpponentSearch("");
       setMaxDuration(40);
