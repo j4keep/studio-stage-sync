@@ -520,8 +520,10 @@ const MusicBattlePlayerPage = () => {
 
           {/* RIGHT ARTIST */}
           <div
-            className="flex-1 rounded-2xl overflow-hidden relative transition-all duration-500"
-            style={{ opacity: activeArtist === "left" ? 0.5 : 1 }}
+            className={`rounded-2xl overflow-hidden relative transition-all duration-500 ${
+              expandedSide === "right" ? "flex-[3]" : expandedSide === "left" ? "hidden" : "flex-1"
+            }`}
+            style={{ opacity: !expandedSide && activeArtist === "left" ? 0.5 : 1 }}
           >
             <AnimatePresence>
               {winner === "right" && total > 0 && (
