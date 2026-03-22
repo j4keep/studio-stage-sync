@@ -457,12 +457,22 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
 
             <AnimatePresence>
               {activeArtist === "right" && isPlaying && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: [0.5, 1, 0.5] }} exit={{ opacity: 0 }}
+                  transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
                   className="absolute inset-0 pointer-events-none z-10"
-                  style={{ boxShadow: "inset 0 0 40px 4px hsl(var(--primary) / 0.4)" }}
+                  style={{ boxShadow: "inset 0 0 60px 8px hsl(var(--primary) / 0.5), inset 0 0 120px 20px hsl(var(--primary) / 0.15)" }}
                 />
               )}
             </AnimatePresence>
+
+            {currentWinner === "right" && totalVotes > 0 && !isPlaying && (
+              <motion.div
+                animate={{ opacity: [0.2, 0.5, 0.2] }}
+                transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+                className="absolute inset-0 pointer-events-none z-10"
+                style={{ boxShadow: "inset 0 0 50px 5px rgba(255,200,0,0.2)" }}
+              />
+            )}
 
             <AnimatePresence>
               {currentWinner === "right" && totalVotes > 0 && (
