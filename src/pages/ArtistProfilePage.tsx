@@ -75,7 +75,7 @@ const ArtistProfilePage = () => {
         (supabase as any).from("posts").select("id").eq("user_id", userId),
       ]);
 
-      const allIds = [...(songs || []), ...(videos || []), ...(userPosts || [])].map((i: any) => i.id);
+      const allIds = [...(songIds || []), ...(videoIds || []), ...(userPosts || [])].map((i: any) => i.id);
       let likesTotal = 0;
       if (allIds.length > 0) {
         const { count } = await (supabase as any)
