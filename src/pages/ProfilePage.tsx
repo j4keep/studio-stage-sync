@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   User, Music, FolderHeart, Building2, Heart, Download, DollarSign,
   Settings, Shield, BarChart3, HelpCircle, Play, Video, ShoppingBag,
@@ -77,30 +77,54 @@ const ProfilePage = () => {
       });
 
     const fetchLikes = async () => {
-      const [{ data: songLikes }, { data: videoLikes }, { data: userPosts }] = await Promise.all([
-        (supabase as any).from("songs").select("likes_count").eq("user_id", user.id),
-        (supabase as any).from("videos").select("likes_count").eq("user_id", user.id),
-        (supabase as any).from("posts").select("id").eq("user_id", user.id),
-      ]);
-
-      let total = 0;
-      total += (songLikes || []).reduce((sum: number, item: any) => sum + (item.likes_count || 0), 0);
-      total += (videoLikes || []).reduce((sum: number, item: any) => sum + (item.likes_count || 0), 0);
-
-      const postIds = (userPosts || []).map((post: any) => post.id);
-      if (postIds.length > 0) {
-        const { count } = await (supabase as any)
-          .from("likes")
-          .select("id", { count: "exact", head: true })
-          .eq("content_type", "post")
-          .in("content_id", postIds);
-        total += count || 0;
-      }
-
+      const { count } = await (supabase as any)
+        .from("likes")
+        .select("id", { count: "exact", head: true })
+        .in("content_type", ["song", "video", "post"])
+        .in("content_id", 
+          await (async () => {
+            const [{ data: songs }, { data: videos }, { data: posts }] = await Promise.all([
+              (supabase as any).from("songs").select("id").eq("user_id", user.id),
+              (supabase as any).from("videos").select("id").eq("user_id", user.id),
+              (supabase as any).from("posts").select("id").eq("user_id", user.id),
+            ]);
+            return [...(songs || []), ...(videos || []), ...(posts || [])].map((i: any) => i.id);
+          })()
+        );
+      const total = count || 0;
       setTotalLikes(total >= 1000 ? `${(total / 1000).toFixed(1)}K` : String(total));
     };
     fetchLikes();
   }, [user]);
+
+  // Refetch likes when page regains focus (e.g. navigating back)
+  const refetchLikes = useCallback(async () => {
+    if (!user) return;
+    const [{ data: songs }, { data: videos }, { data: posts }] = await Promise.all([
+      (supabase as any).from("songs").select("id").eq("user_id", user.id),
+      (supabase as any).from("videos").select("id").eq("user_id", user.id),
+      (supabase as any).from("posts").select("id").eq("user_id", user.id),
+    ]);
+    const allIds = [...(songs || []), ...(videos || []), ...(posts || [])].map((i: any) => i.id);
+    if (allIds.length === 0) { setTotalLikes("0"); return; }
+    const { count } = await (supabase as any)
+      .from("likes")
+      .select("id", { count: "exact", head: true })
+      .in("content_id", allIds);
+    const total = count || 0;
+    setTotalLikes(total >= 1000 ? `${(total / 1000).toFixed(1)}K` : String(total));
+  }, [user]);
+
+  useEffect(() => {
+    const onFocus = () => refetchLikes();
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") refetchLikes();
+    });
+    return () => {
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [refetchLikes]);
 
   const handleFollow = () => {
     setIsFollowing(!isFollowing);
