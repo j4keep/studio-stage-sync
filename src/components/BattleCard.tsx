@@ -98,10 +98,12 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
   });
 
   const profileMap = new Map(profiles.map((p: any) => [p.user_id, p]));
-  const challengerName = profileMap.get(battle.challenger_id)?.display_name || "Challenger";
-  const challengerAvatar = profileMap.get(battle.challenger_id)?.avatar_url;
-  const opponentName = battle.opponent_id ? (profileMap.get(battle.opponent_id)?.display_name || "Opponent") : "???";
-  const opponentAvatar = battle.opponent_id ? profileMap.get(battle.opponent_id)?.avatar_url : null;
+  const challengerProfile = profileMap.get(battle.challenger_id) as any;
+  const opponentProfile = battle.opponent_id ? profileMap.get(battle.opponent_id) as any : null;
+  const challengerName = challengerProfile?.display_name || "Challenger";
+  const challengerAvatar = challengerProfile?.avatar_url;
+  const opponentName = opponentProfile?.display_name || "???";
+  const opponentAvatar = opponentProfile?.avatar_url || null;
 
   const challengerVotes = votes.filter((v: any) => v.voted_for === battle.challenger_id).length;
   const opponentVotes = battle.opponent_id ? votes.filter((v: any) => v.voted_for === battle.opponent_id).length : 0;
