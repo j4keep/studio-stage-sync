@@ -518,6 +518,7 @@ const MusicBattlePlayerPage = () => {
               </AnimatePresence>
             </motion.button>
           </div>
+          )}
 
           {/* RIGHT ARTIST */}
           <div
