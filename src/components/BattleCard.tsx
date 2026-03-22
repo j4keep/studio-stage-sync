@@ -206,14 +206,24 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
     }
   };
 
-  // Double-tap to fullscreen
-  const handleDoubleTap = useCallback(() => {
+  // Double-tap to fullscreen, single-tap to navigate
+  const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleCoverTap = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
     const now = Date.now();
     if (now - lastTapRef.current < 350) {
+      // Double tap — toggle fullscreen
+      if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
       setIsFullscreen((prev) => !prev);
+      lastTapRef.current = 0;
+    } else {
+      // Single tap — navigate after short delay to wait for possible second tap
+      lastTapRef.current = now;
+      tapTimerRef.current = setTimeout(() => {
+        navigate(`/battle/${battle.id}`);
+      }, 350);
     }
-    lastTapRef.current = now;
-  }, []);
+  }, [navigate, battle.id]);
 
   return (
     <motion.div
