@@ -55,6 +55,7 @@ const PostCommentsSheet = ({ postId, open, onClose }: Props) => {
       setText("");
       queryClient.invalidateQueries({ queryKey: ["post-comments", postId] });
       queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
+      queryClient.invalidateQueries({ queryKey: ["profile-posts"] });
     },
     onError: (e: any) => toast.error(e?.message || "Failed to comment"),
   });

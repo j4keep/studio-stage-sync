@@ -41,6 +41,9 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
       setLiked(liked);
       setLikesCount(post.likes_count);
     },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["profile-posts"] });
+    },
   });
 
   const deleteMutation = useMutation({
