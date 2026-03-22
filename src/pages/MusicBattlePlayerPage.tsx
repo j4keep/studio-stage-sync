@@ -209,7 +209,7 @@ const MusicBattlePlayerPage = () => {
       let coverUrl = "";
 
       if (isPhotoBattle) {
-        // For photo battles, upload as cover (no media URL needed)
+        // For photo battles, upload photo as cover
         const ext = acceptMediaFile.name.split(".").pop();
         const result = await uploadToR2(acceptMediaFile, {
           folder: `battles/photos/${user.id}`,
@@ -220,6 +220,18 @@ const MusicBattlePlayerPage = () => {
           coverUrl = getR2DownloadUrl(result.data.key);
         } else {
           throw new Error(result.error || "Failed to upload photo");
+        }
+        // Optional song for photo battle
+        if (acceptSongFile) {
+          const songExt = acceptSongFile.name.split(".").pop();
+          const songResult = await uploadToR2(acceptSongFile, {
+            folder: `battles/${user.id}`,
+            fileName: `${Date.now()}.${songExt}`,
+            mimeType: acceptSongFile.type,
+          });
+          if (songResult.success && songResult.data) {
+            mediaUrl = getR2DownloadUrl(songResult.data.key);
+          }
         }
       } else {
         const mediaExt = acceptMediaFile.name.split(".").pop();
