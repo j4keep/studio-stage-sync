@@ -245,7 +245,7 @@ const MusicBattlePlayerPage = () => {
               {battle.challenger_cover_url ? (
                 <img src={battle.challenger_cover_url} alt="" className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full bg-gradient-to-br from-blue-600/30 to-blue-900/30 flex items-center justify-center">
+                <div className="w-full h-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center">
                   <span className="text-4xl">🎵</span>
                 </div>
               )}
