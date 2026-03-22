@@ -197,7 +197,8 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
   };
 
   const isOpen = battle.status === "open" && !battle.opponent_id;
-  const canAccept = isOpen && user?.id !== battle.challenger_id;
+  const isPending = battle.status === "pending" && battle.opponent_id;
+  const canAccept = (isOpen && user?.id !== battle.challenger_id) || (isPending && user?.id === battle.opponent_id);
 
   return (
     <motion.div
@@ -209,6 +210,7 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
         <Swords className="w-4 h-4 text-primary" />
         <span className="text-sm font-display font-bold text-foreground flex-1">{battle.title}</span>
         {battle.status === "open" && <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-500 font-bold">OPEN</span>}
+        {battle.status === "pending" && <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-500 font-bold">CHALLENGE SENT</span>}
         {battle.status === "active" && <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-500 font-bold animate-pulse">LIVE</span>}
       </div>
 
@@ -302,10 +304,15 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
               </>
             ) : (
               <div className="py-4">
-                <div className="w-14 h-14 rounded-full mx-auto mb-2 bg-muted/50 border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
-                  <span className="text-2xl">?</span>
+                <div className="w-14 h-14 rounded-full mx-auto mb-2 bg-muted/50 border-2 border-dashed border-muted-foreground/30 flex items-center justify-center overflow-hidden">
+                  {opponentAvatar ? (
+                    <img src={opponentAvatar} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-2xl">{battle.opponent_id ? opponentName[0] : "?"}</span>
+                  )}
                 </div>
-                <p className="text-xs text-muted-foreground mb-2">Waiting for opponent...</p>
+                <p className="text-xs font-bold text-foreground truncate">{battle.opponent_id ? opponentName : "???"}</p>
+                <p className="text-xs text-muted-foreground mb-2">{isPending ? "Challenge sent!" : "Waiting for opponent..."}</p>
                 {canAccept && (
                   <button
                     onClick={acceptBattle}
