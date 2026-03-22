@@ -473,7 +473,8 @@ const MusicBattlePlayerPage = () => {
             </div>
           </div>
 
-          {/* CENTER PLAY BUTTON */}
+          {/* CENTER PLAY BUTTON — hidden when a side is expanded */}
+          {!expandedSide && (
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-40">
             {/* outer pulse rings */}
             <motion.div
