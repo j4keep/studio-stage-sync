@@ -77,11 +77,26 @@ const ProfilePage = () => {
       });
 
     const fetchLikes = async () => {
+      const [{ data: songLikes }, { data: videoLikes }, { data: userPosts }] = await Promise.all([
+        (supabase as any).from("songs").select("likes_count").eq("user_id", user.id),
+        (supabase as any).from("videos").select("likes_count").eq("user_id", user.id),
+        (supabase as any).from("posts").select("id").eq("user_id", user.id),
+      ]);
+
       let total = 0;
-      for (const table of ["songs", "videos", "posts"] as const) {
-        const { data } = await (supabase as any).from(table).select("likes_count").eq("user_id", user.id);
-        if (data) total += data.reduce((sum: number, item: any) => sum + (item.likes_count || 0), 0);
+      total += (songLikes || []).reduce((sum: number, item: any) => sum + (item.likes_count || 0), 0);
+      total += (videoLikes || []).reduce((sum: number, item: any) => sum + (item.likes_count || 0), 0);
+
+      const postIds = (userPosts || []).map((post: any) => post.id);
+      if (postIds.length > 0) {
+        const { count } = await (supabase as any)
+          .from("likes")
+          .select("id", { count: "exact", head: true })
+          .eq("content_type", "post")
+          .in("content_id", postIds);
+        total += count || 0;
       }
+
       setTotalLikes(total >= 1000 ? `${(total / 1000).toFixed(1)}K` : String(total));
     };
     fetchLikes();
