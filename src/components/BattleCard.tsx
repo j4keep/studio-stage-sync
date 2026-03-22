@@ -30,6 +30,7 @@ const EMOJIS = ["🔥", "💀", "🎤", "👑", "💪", "😤", "🏆", "⚡"];
 
 const BattleCard = ({ battle }: { battle: Battle }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   // ── Core state ──
