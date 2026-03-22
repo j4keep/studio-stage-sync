@@ -111,7 +111,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
       let coverUrl = "";
 
       if (isPhotoBattle && photoFile) {
-        // For photo battles, the photo IS the cover/media
+        // For photo battles, the photo IS the cover
         const ext = photoFile.name.split(".").pop();
         const result = await uploadToR2(photoFile, {
           folder: `battles/photos/${user.id}`,
@@ -124,6 +124,18 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
           toast({ title: "Upload failed", description: result.error || "Could not upload photo.", variant: "destructive" });
           setLoading(false);
           return;
+        }
+        // Optional song for photo battle
+        if (photoSongFile) {
+          const songExt = photoSongFile.name.split(".").pop();
+          const songResult = await uploadToR2(photoSongFile, {
+            folder: `battles/${user.id}`,
+            fileName: `${Date.now()}.${songExt}`,
+            mimeType: photoSongFile.type,
+          });
+          if (songResult.success && songResult.data) {
+            mediaUrl = getR2DownloadUrl(songResult.data.key);
+          }
         }
       } else {
         if (mediaFile) {
