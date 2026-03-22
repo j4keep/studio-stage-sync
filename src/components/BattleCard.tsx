@@ -375,7 +375,7 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
       <div className="relative">
         <div className="grid grid-cols-2 gap-0">
           {/* LEFT - Challenger */}
-          <div className="relative">
+          <div className={`relative transition-opacity duration-300 ${currentSide === "right" ? "opacity-60" : "opacity-100"}`}>
             <div className="aspect-[3/4] bg-[hsl(240,10%,12%)] relative overflow-hidden">
               {battle.challenger_cover_url ? (
                 <img src={battle.challenger_cover_url} alt={challengerName} className="w-full h-full object-cover" />
@@ -387,24 +387,34 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
                   <span className="text-4xl">🎵</span>
                 </div>
               )}
-              {/* Gradient overlay */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+
+              {/* Active glow border */}
+              {currentSide === "left" && (
+                <div className="absolute inset-0 border-2 border-[hsl(42,100%,58%)] rounded-none animate-pulse pointer-events-none" />
+              )}
 
               {/* Winning badge */}
               {currentWinner === "left" && totalVotes > 0 && (
-                <div className="absolute top-2 left-2 bg-[hsl(42,100%,58%)] text-black text-[9px] font-black px-2 py-0.5 rounded-full shadow-lg">
+                <motion.div
+                  initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 300 }}
+                  className="absolute top-2 left-2 bg-[hsl(42,100%,58%)] text-black text-[9px] font-black px-2 py-0.5 rounded-full shadow-[0_0_15px_rgba(255,200,0,0.5)]"
+                >
                   👑 WINNING
+                </motion.div>
+              )}
+              {currentWinner === "tied" && totalVotes > 0 && (
+                <div className="absolute top-2 left-2 bg-white/20 text-white text-[9px] font-black px-2 py-0.5 rounded-full">
+                  🤝 TIED
                 </div>
               )}
 
-              {/* Artist info at bottom */}
               <div className="absolute bottom-0 left-0 right-0 p-3">
                 <p className="text-white font-black text-sm truncate">{challengerName}</p>
                 <p className="text-white/60 text-[10px] truncate">{battle.challenger_title || "Track"}</p>
               </div>
             </div>
 
-            {/* Challenger stats */}
             <div className="bg-[hsl(240,10%,10%)] px-3 py-2 flex items-center justify-between">
               <button
                 onClick={() => canVote && voteMutation.mutate(battle.challenger_id)}
@@ -425,7 +435,7 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
           </div>
 
           {/* RIGHT - Opponent */}
-          <div className="relative">
+          <div className={`relative transition-opacity duration-300 ${currentSide === "left" ? "opacity-60" : "opacity-100"}`}>
             <div className="aspect-[3/4] bg-[hsl(240,10%,12%)] relative overflow-hidden">
               {battle.opponent_cover_url ? (
                 <img src={battle.opponent_cover_url} alt={opponentName} className="w-full h-full object-cover" />
@@ -439,10 +449,17 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
 
+              {currentSide === "right" && (
+                <div className="absolute inset-0 border-2 border-[hsl(42,100%,58%)] rounded-none animate-pulse pointer-events-none" />
+              )}
+
               {currentWinner === "right" && totalVotes > 0 && (
-                <div className="absolute top-2 right-2 bg-[hsl(42,100%,58%)] text-black text-[9px] font-black px-2 py-0.5 rounded-full shadow-lg">
+                <motion.div
+                  initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 300 }}
+                  className="absolute top-2 right-2 bg-[hsl(42,100%,58%)] text-black text-[9px] font-black px-2 py-0.5 rounded-full shadow-[0_0_15px_rgba(255,200,0,0.5)]"
+                >
                   👑 WINNING
-                </div>
+                </motion.div>
               )}
 
               <div className="absolute bottom-0 left-0 right-0 p-3">
@@ -473,22 +490,40 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
           {/* CENTER - VS Badge + Play Button */}
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-20">
             {/* VS */}
-            <div className="mb-2 w-14 h-14 rounded-full bg-gradient-to-br from-[hsl(42,100%,58%)] to-[hsl(30,100%,45%)] flex items-center justify-center shadow-[0_0_30px_rgba(255,200,0,0.5)]">
+            <motion.div
+              animate={isPlaying ? { scale: [1, 1.1, 1] } : {}}
+              transition={{ repeat: Infinity, duration: 1.5 }}
+              className="mb-2 w-14 h-14 rounded-full bg-gradient-to-br from-[hsl(42,100%,58%)] to-[hsl(30,100%,45%)] flex items-center justify-center shadow-[0_0_30px_rgba(255,200,0,0.5)]"
+            >
               <span className="text-lg font-black text-black tracking-wider">VS</span>
-            </div>
+            </motion.div>
 
             {/* Play Button */}
             {bothHaveMedia && (
-              <button
+              <motion.button
                 onClick={handleCenterPlay}
-                className="pointer-events-auto w-16 h-16 rounded-full bg-gradient-to-br from-[hsl(42,100%,58%)] to-[hsl(30,100%,45%)] flex items-center justify-center shadow-[0_0_40px_rgba(255,200,0,0.4)] hover:shadow-[0_0_60px_rgba(255,200,0,0.6)] transition-all active:scale-95"
+                whileTap={{ scale: 0.9 }}
+                animate={isPlaying ? { boxShadow: ["0 0 20px rgba(255,200,0,0.4)", "0 0 50px rgba(255,200,0,0.8)", "0 0 20px rgba(255,200,0,0.4)"] } : {}}
+                transition={isPlaying ? { repeat: Infinity, duration: 1.5 } : {}}
+                className="pointer-events-auto w-18 h-18 rounded-full bg-gradient-to-br from-[hsl(42,100%,58%)] to-[hsl(30,100%,45%)] flex items-center justify-center shadow-[0_0_40px_rgba(255,200,0,0.4)] hover:shadow-[0_0_60px_rgba(255,200,0,0.6)] transition-all"
+                style={{ width: 72, height: 72 }}
               >
                 {isPlaying ? (
-                  <Pause className="h-7 w-7 text-black fill-black" />
+                  <Pause className="h-8 w-8 text-black fill-black" />
                 ) : (
-                  <Play className="h-7 w-7 text-black fill-black ml-1" />
+                  <Play className="h-8 w-8 text-black fill-black ml-1" />
                 )}
-              </button>
+              </motion.button>
+            )}
+
+            {/* Now playing indicator */}
+            {isPlaying && currentSide && (
+              <motion.p
+                initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}
+                className="mt-2 text-[10px] font-bold text-[hsl(42,100%,58%)] bg-black/60 px-3 py-1 rounded-full backdrop-blur-sm"
+              >
+                🔊 {currentSide === "left" ? challengerName : opponentName}
+              </motion.p>
             )}
           </div>
         </div>
