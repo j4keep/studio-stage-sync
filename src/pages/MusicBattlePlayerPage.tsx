@@ -33,7 +33,7 @@ const MusicBattlePlayerPage = () => {
   const [acceptCoverFile, setAcceptCoverFile] = useState<File | null>(null);
   const [acceptSongFile, setAcceptSongFile] = useState<File | null>(null);
   const [accepting, setAccepting] = useState(false);
-  const [isBattleExpanded, setIsBattleExpanded] = useState(false);
+  const [expandedSide, setExpandedSide] = useState<"left" | "right" | null>(null);
 
   const audioLeftRef = useRef<HTMLMediaElement | null>(null);
   const audioRightRef = useRef<HTMLMediaElement | null>(null);
@@ -183,7 +183,7 @@ const MusicBattlePlayerPage = () => {
     lastTapSideRef.current = side;
 
     if (isDoubleTap) {
-      setIsBattleExpanded((prev) => !prev);
+      setExpandedSide((prev) => prev === side ? null : side);
       return;
     }
 
@@ -401,17 +401,19 @@ const MusicBattlePlayerPage = () => {
       {/* ── MAIN BATTLE AREA ── */}
       <div
         className={`flex-1 flex flex-col items-center justify-center relative transition-all duration-300 ${
-          isBattleExpanded ? "fixed inset-0 z-50 bg-background px-4 py-6" : "px-4"
+          expandedSide ? "fixed inset-0 z-50 bg-background px-4 py-6" : "px-4"
         }`}
       >
 
         {/* SPLIT SCREEN */}
-        <div className={`w-full flex gap-2 relative transition-all duration-300 ${isBattleExpanded ? "min-h-[72vh]" : "min-h-[280px]"}`}>
+        <div className={`w-full flex gap-2 relative transition-all duration-300 ${expandedSide ? "min-h-[85vh]" : "min-h-[280px]"}`}>
 
           {/* LEFT ARTIST */}
           <div
-            className="flex-1 rounded-2xl overflow-hidden relative transition-all duration-500"
-            style={{ opacity: activeArtist === "right" ? 0.5 : 1 }}
+            className={`rounded-2xl overflow-hidden relative transition-all duration-500 ${
+              expandedSide === "left" ? "flex-[3]" : expandedSide === "right" ? "hidden" : "flex-1"
+            }`}
+            style={{ opacity: !expandedSide && activeArtist === "right" ? 0.5 : 1 }}
           >
             <AnimatePresence>
               {winner === "left" && total > 0 && (
@@ -435,7 +437,7 @@ const MusicBattlePlayerPage = () => {
               />
             )}
 
-            <div className={`w-full bg-muted rounded-2xl overflow-hidden ${isBattleExpanded ? "h-[72vh]" : "aspect-[3/4]"}`}>
+            <div className={`w-full bg-muted rounded-2xl overflow-hidden ${expandedSide === "left" ? "h-[85vh]" : "aspect-[3/4]"}`}>
               {battle.media_type === "video" && battle.challenger_media_url ? (
                 <video
                   ref={(el) => {
@@ -471,7 +473,8 @@ const MusicBattlePlayerPage = () => {
             </div>
           </div>
 
-          {/* CENTER PLAY BUTTON */}
+          {/* CENTER PLAY BUTTON — hidden when a side is expanded */}
+          {!expandedSide && (
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-40">
             {/* outer pulse rings */}
             <motion.div
@@ -515,11 +518,14 @@ const MusicBattlePlayerPage = () => {
               </AnimatePresence>
             </motion.button>
           </div>
+          )}
 
           {/* RIGHT ARTIST */}
           <div
-            className="flex-1 rounded-2xl overflow-hidden relative transition-all duration-500"
-            style={{ opacity: activeArtist === "left" ? 0.5 : 1 }}
+            className={`rounded-2xl overflow-hidden relative transition-all duration-500 ${
+              expandedSide === "right" ? "flex-[3]" : expandedSide === "left" ? "hidden" : "flex-1"
+            }`}
+            style={{ opacity: !expandedSide && activeArtist === "left" ? 0.5 : 1 }}
           >
             <AnimatePresence>
               {winner === "right" && total > 0 && (
@@ -543,7 +549,7 @@ const MusicBattlePlayerPage = () => {
               />
             )}
 
-            <div className={`w-full bg-muted rounded-2xl overflow-hidden ${isBattleExpanded ? "h-[72vh]" : "aspect-[3/4]"}`}>
+            <div className={`w-full bg-muted rounded-2xl overflow-hidden ${expandedSide === "right" ? "h-[85vh]" : "aspect-[3/4]"}`}>
               {battle.media_type === "video" && battle.opponent_media_url ? (
                 <video
                   ref={(el) => {
