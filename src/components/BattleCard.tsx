@@ -206,19 +206,29 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
     }
   };
 
-  // Double-tap to fullscreen
-  const handleDoubleTap = useCallback(() => {
+  // Double-tap to fullscreen, single-tap to navigate
+  const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleCoverTap = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
     const now = Date.now();
     if (now - lastTapRef.current < 350) {
+      // Double tap — toggle fullscreen
+      if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
       setIsFullscreen((prev) => !prev);
+      lastTapRef.current = 0;
+    } else {
+      // Single tap — navigate after short delay to wait for possible second tap
+      lastTapRef.current = now;
+      tapTimerRef.current = setTimeout(() => {
+        navigate(`/battle/${battle.id}`);
+      }, 350);
     }
-    lastTapRef.current = now;
-  }, []);
+  }, [navigate, battle.id]);
 
   return (
     <motion.div
       layout
-      onClick={handleDoubleTap}
+      onClick={() => {}}
       className={`rounded-2xl overflow-hidden bg-card border border-border shadow-lg transition-all duration-300 ${
         isFullscreen ? "fixed inset-2 z-50 flex flex-col" : ""
       }`}
@@ -270,7 +280,7 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
       </div>
 
       {/* Split covers — tap to open full experience */}
-      <button onClick={(e) => { e.stopPropagation(); navigate(`/battle/${battle.id}`); }} className="w-full relative block" style={{ minHeight: isFullscreen ? 300 : 220 }}>
+      <button onClick={handleCoverTap} className="w-full relative block" style={{ minHeight: isFullscreen ? 300 : 220 }}>
         <div className="grid grid-cols-2 h-full" style={{ minHeight: isFullscreen ? 300 : 220 }}>
           {/* Left */}
           <div className="relative overflow-hidden">
