@@ -3,9 +3,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
-import { Music, Video } from "lucide-react";
+import { Music, Video, Search, X, Check } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -21,16 +21,32 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const [opponentSearch, setOpponentSearch] = useState("");
+  const [selectedOpponent, setSelectedOpponent] = useState<{ user_id: string; display_name: string; avatar_url: string | null } | null>(null);
+
+  const { data: searchResults = [] } = useQuery({
+    queryKey: ["search-artists", opponentSearch],
+    queryFn: async () => {
+      if (opponentSearch.trim().length < 2) return [];
+      const { data } = await supabase
+        .from("profiles")
+        .select("user_id, display_name, avatar_url")
+        .neq("user_id", user?.id || "")
+        .ilike("display_name", `%${opponentSearch.trim()}%`)
+        .limit(5);
+      return data || [];
+    },
+    enabled: opponentSearch.trim().length >= 2 && !selectedOpponent,
+  });
 
   const handleSubmit = async () => {
-    if (!user || !title.trim() || !trackTitle.trim()) return;
+    if (!user || !title.trim() || !trackTitle.trim() || !selectedOpponent) return;
     setLoading(true);
 
     try {
       let mediaUrl = "";
       let coverUrl = "";
 
-      // Upload media if provided
       if (mediaFile) {
         const ext = mediaFile.name.split(".").pop();
         const path = `battles/${user.id}/${Date.now()}.${ext}`;
@@ -53,21 +69,24 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
 
       await (supabase as any).from("battles").insert({
         challenger_id: user.id,
+        opponent_id: selectedOpponent.user_id,
         title: title.trim(),
         challenger_title: trackTitle.trim(),
         media_type: mediaType,
         challenger_media_url: mediaUrl || null,
         challenger_cover_url: coverUrl || null,
-        status: "open",
+        status: "pending",
       });
 
       queryClient.invalidateQueries({ queryKey: ["battles"] });
-      toast({ title: "Battle created!", description: "Waiting for an opponent to accept." });
+      toast({ title: "Challenge sent! 🥊", description: `${selectedOpponent.display_name} has been challenged!` });
       onOpenChange(false);
       setTitle("");
       setTrackTitle("");
       setMediaFile(null);
       setCoverFile(null);
+      setSelectedOpponent(null);
+      setOpponentSearch("");
     } catch (err) {
       toast({ title: "Error", description: "Failed to create battle", variant: "destructive" });
     } finally {
@@ -85,6 +104,60 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1 block">Battle Title</label>
             <Input placeholder='e.g. "Best Bars of 2026"' value={title} onChange={(e) => setTitle(e.target.value)} />
+          </div>
+
+          {/* Opponent Search */}
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">Challenge an Artist</label>
+            {selectedOpponent ? (
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-primary/10 border border-primary/30">
+                <div className="w-8 h-8 rounded-full bg-primary/20 overflow-hidden flex-shrink-0">
+                  {selectedOpponent.avatar_url ? (
+                    <img src={selectedOpponent.avatar_url} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-xs font-bold text-primary">
+                      {(selectedOpponent.display_name || "?")[0]}
+                    </div>
+                  )}
+                </div>
+                <span className="text-sm font-bold text-foreground flex-1">{selectedOpponent.display_name}</span>
+                <button onClick={() => { setSelectedOpponent(null); setOpponentSearch(""); }} className="w-6 h-6 rounded-full bg-muted flex items-center justify-center">
+                  <X className="w-3 h-3 text-muted-foreground" />
+                </button>
+              </div>
+            ) : (
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Search artist by name..."
+                  value={opponentSearch}
+                  onChange={(e) => setOpponentSearch(e.target.value)}
+                  className="pl-9"
+                />
+                {searchResults.length > 0 && (
+                  <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-card border border-border rounded-lg shadow-lg overflow-hidden">
+                    {searchResults.map((p: any) => (
+                      <button
+                        key={p.user_id}
+                        onClick={() => { setSelectedOpponent(p); setOpponentSearch(""); }}
+                        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted/50 transition-colors text-left"
+                      >
+                        <div className="w-7 h-7 rounded-full bg-muted overflow-hidden flex-shrink-0">
+                          {p.avatar_url ? (
+                            <img src={p.avatar_url} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-muted-foreground">
+                              {(p.display_name || "?")[0]}
+                            </div>
+                          )}
+                        </div>
+                        <span className="text-xs font-medium text-foreground">{p.display_name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div>
@@ -134,10 +207,10 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
 
           <button
             onClick={handleSubmit}
-            disabled={loading || !title.trim() || !trackTitle.trim()}
+            disabled={loading || !title.trim() || !trackTitle.trim() || !selectedOpponent}
             className="w-full py-3 rounded-xl gradient-primary text-primary-foreground font-bold text-sm disabled:opacity-50"
           >
-            {loading ? "Creating..." : "🔥 Throw Down the Challenge"}
+            {loading ? "Creating..." : `🥊 Challenge ${selectedOpponent?.display_name || "an Artist"}`}
           </button>
         </div>
       </SheetContent>
