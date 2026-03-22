@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, Pause, ThumbsUp, Send, Swords, MessageCircle, Trash2, Upload, Clock, Trophy } from "lucide-react";
+import battleCardBg from "@/assets/battle-card-bg.png";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
