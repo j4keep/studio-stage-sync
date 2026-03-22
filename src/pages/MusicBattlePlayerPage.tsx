@@ -207,30 +207,45 @@ const MusicBattlePlayerPage = () => {
       let mediaUrl = "";
       let coverUrl = "";
 
-      const mediaExt = acceptMediaFile.name.split(".").pop();
-      const mediaResult = await uploadToR2(acceptMediaFile, {
-        folder: `battles/${user.id}`,
-        fileName: `${Date.now()}.${mediaExt}`,
-        mimeType: acceptMediaFile.type,
-        onProgress: (p) => console.log(`[Battle Accept] Media upload: ${p}%`),
-      });
-      if (mediaResult.success && mediaResult.data) {
-        mediaUrl = getR2DownloadUrl(mediaResult.data.key);
-      } else {
-        throw new Error(mediaResult.error || "Failed to upload media");
-      }
-
-      if (acceptCoverFile) {
-        const coverExt = acceptCoverFile.name.split(".").pop();
-        const coverResult = await uploadToR2(acceptCoverFile, {
-          folder: `battles/covers/${user.id}`,
-          fileName: `${Date.now()}.${coverExt}`,
-          mimeType: acceptCoverFile.type,
+      if (isPhotoBattle) {
+        // For photo battles, upload as cover (no media URL needed)
+        const ext = acceptMediaFile.name.split(".").pop();
+        const result = await uploadToR2(acceptMediaFile, {
+          folder: `battles/photos/${user.id}`,
+          fileName: `${Date.now()}.${ext}`,
+          mimeType: acceptMediaFile.type,
         });
-        if (coverResult.success && coverResult.data) {
-          coverUrl = getR2DownloadUrl(coverResult.data.key);
+        if (result.success && result.data) {
+          coverUrl = getR2DownloadUrl(result.data.key);
         } else {
-          throw new Error(coverResult.error || "Failed to upload cover");
+          throw new Error(result.error || "Failed to upload photo");
+        }
+      } else {
+        const mediaExt = acceptMediaFile.name.split(".").pop();
+        const mediaResult = await uploadToR2(acceptMediaFile, {
+          folder: `battles/${user.id}`,
+          fileName: `${Date.now()}.${mediaExt}`,
+          mimeType: acceptMediaFile.type,
+          onProgress: (p) => console.log(`[Battle Accept] Media upload: ${p}%`),
+        });
+        if (mediaResult.success && mediaResult.data) {
+          mediaUrl = getR2DownloadUrl(mediaResult.data.key);
+        } else {
+          throw new Error(mediaResult.error || "Failed to upload media");
+        }
+
+        if (acceptCoverFile) {
+          const coverExt = acceptCoverFile.name.split(".").pop();
+          const coverResult = await uploadToR2(acceptCoverFile, {
+            folder: `battles/covers/${user.id}`,
+            fileName: `${Date.now()}.${coverExt}`,
+            mimeType: acceptCoverFile.type,
+          });
+          if (coverResult.success && coverResult.data) {
+            coverUrl = getR2DownloadUrl(coverResult.data.key);
+          } else {
+            throw new Error(coverResult.error || "Failed to upload cover");
+          }
         }
       }
 
@@ -239,7 +254,7 @@ const MusicBattlePlayerPage = () => {
         .update({
           status: "active",
           opponent_title: acceptTrackTitle.trim(),
-          opponent_media_url: mediaUrl,
+          opponent_media_url: isPhotoBattle ? null : mediaUrl,
           opponent_cover_url: coverUrl || null,
         })
         .eq("id", battle.id)
