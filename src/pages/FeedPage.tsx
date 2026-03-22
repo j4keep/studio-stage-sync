@@ -25,30 +25,40 @@ const FeedPage = () => {
       
       if (!data) return [];
 
+      const postIds = data.map((p: any) => p.id);
+
       // Get profiles for all post authors
       const userIds = [...new Set(data.map((p: any) => p.user_id))];
-      const { data: profiles } = await (supabase as any)
-        .from("profiles")
-        .select("user_id, display_name, avatar_url")
-        .in("user_id", userIds);
+      const [{ data: profiles }, { data: postLikes }] = await Promise.all([
+        (supabase as any)
+          .from("profiles")
+          .select("user_id, display_name, avatar_url")
+          .in("user_id", userIds),
+        postIds.length
+          ? (supabase as any)
+              .from("likes")
+              .select("content_id, user_id")
+              .eq("content_type", "post")
+              .in("content_id", postIds)
+          : Promise.resolve({ data: [] }),
+      ]);
 
       const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
+      const likeCounts = new Map<string, number>();
+      const userLikes = new Set<string>();
 
-      // Get current user's likes
-      let userLikes: string[] = [];
-      if (user) {
-        const { data: likes } = await (supabase as any)
-          .from("likes")
-          .select("content_id")
-          .eq("user_id", user.id)
-          .eq("content_type", "post");
-        userLikes = (likes || []).map((l: any) => l.content_id);
-      }
+      (postLikes || []).forEach((like: any) => {
+        likeCounts.set(like.content_id, (likeCounts.get(like.content_id) || 0) + 1);
+        if (user && like.user_id === user.id) {
+          userLikes.add(like.content_id);
+        }
+      });
 
       return data.map((post: any) => ({
         ...post,
+        likes_count: likeCounts.get(post.id) || 0,
         profile: profileMap.get(post.user_id) || { display_name: "Artist", avatar_url: null },
-        isLiked: userLikes.includes(post.id),
+        isLiked: userLikes.has(post.id),
       }));
     },
   });

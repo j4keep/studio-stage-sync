@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Heart, MessageCircle, Share2, Trash2 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,32 +18,45 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
   const [likesCount, setLikesCount] = useState(post.likes_count);
   const [showComments, setShowComments] = useState(false);
 
+  useEffect(() => {
+    setLiked(!!post.isLiked);
+    setLikesCount(post.likes_count || 0);
+  }, [post.id, post.isLiked, post.likes_count]);
+
   const { emojis, spawnEmoji, FloatingLayer } = FloatingEmojis({});
 
   const likeMutation = useMutation({
     mutationFn: async () => {
       if (!currentUserId) throw new Error("Not authenticated");
+
       if (liked) {
-        await (supabase as any).from("likes").delete()
+        const { error } = await (supabase as any)
+          .from("likes")
+          .delete()
           .eq("user_id", currentUserId)
           .eq("content_id", post.id)
           .eq("content_type", "post");
+
+        if (error) throw error;
       } else {
-        await (supabase as any).from("likes").insert({
+        const { error } = await (supabase as any).from("likes").insert({
           user_id: currentUserId,
           content_id: post.id,
           content_type: "post",
         });
+
+        if (error) throw error;
       }
     },
     onMutate: () => {
       const wasLiked = liked;
       setLiked(!wasLiked);
-      setLikesCount((c: number) => wasLiked ? c - 1 : c + 1);
+      setLikesCount((c: number) => (wasLiked ? Math.max(c - 1, 0) : c + 1));
+      return { previousLiked: wasLiked, previousLikesCount: likesCount };
     },
-    onError: () => {
-      setLiked(liked);
-      setLikesCount(post.likes_count);
+    onError: (_error, _variables, context) => {
+      setLiked(context?.previousLiked ?? !!post.isLiked);
+      setLikesCount(context?.previousLikesCount ?? (post.likes_count || 0));
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["feed-posts"] });

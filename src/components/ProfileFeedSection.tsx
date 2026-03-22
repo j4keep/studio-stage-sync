@@ -22,27 +22,34 @@ const ProfileFeedSection = ({ userId, isOwner }: Props) => {
 
       if (!postsData || postsData.length === 0) return [];
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("display_name, avatar_url")
-        .eq("user_id", userId)
-        .single();
-
-      let likedIds: string[] = [];
-      if (user) {
-        const ids = postsData.map((p: any) => p.id);
-        const { data: likes } = await (supabase as any)
+      const ids = postsData.map((p: any) => p.id);
+      const [{ data: profile }, { data: postLikes }] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("display_name, avatar_url")
+          .eq("user_id", userId)
+          .single(),
+        (supabase as any)
           .from("likes")
-          .select("content_id")
-          .eq("user_id", user.id)
+          .select("content_id, user_id")
           .eq("content_type", "post")
-          .in("content_id", ids);
-        likedIds = (likes || []).map((l: any) => l.content_id);
-      }
+          .in("content_id", ids),
+      ]);
+
+      const likeCounts = new Map<string, number>();
+      const likedIds = new Set<string>();
+
+      (postLikes || []).forEach((like: any) => {
+        likeCounts.set(like.content_id, (likeCounts.get(like.content_id) || 0) + 1);
+        if (user && like.user_id === user.id) {
+          likedIds.add(like.content_id);
+        }
+      });
 
       return postsData.map((p: any) => ({
         ...p,
-        isLiked: likedIds.includes(p.id),
+        likes_count: likeCounts.get(p.id) || 0,
+        isLiked: likedIds.has(p.id),
         profile: {
           display_name: profile?.display_name || "Artist",
           avatar_url: profile?.avatar_url || null,
