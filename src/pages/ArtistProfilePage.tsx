@@ -69,7 +69,7 @@ const ArtistProfilePage = () => {
       const c = count || 0;
       setFollowerCount(c >= 1000 ? `${(c / 1000).toFixed(1)}K` : String(c));
 
-      const [{ data: songs }, { data: videos }, { data: userPosts }] = await Promise.all([
+      const [{ data: songIds }, { data: videoIds }, { data: userPosts }] = await Promise.all([
         (supabase as any).from("songs").select("id").eq("user_id", userId),
         (supabase as any).from("videos").select("id").eq("user_id", userId),
         (supabase as any).from("posts").select("id").eq("user_id", userId),
