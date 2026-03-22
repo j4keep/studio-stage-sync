@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
-import { Music, Video, Search, X, Clock } from "lucide-react";
+import { Music, Video, Search, X, Clock, Image } from "lucide-react";
 import { uploadToR2, getR2DownloadUrl } from "@/lib/r2-storage";
 import { Slider } from "@/components/ui/slider";
 
@@ -13,8 +13,6 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
-
-const DURATION_OPTIONS = [5, 10, 15, 20, 25, 30, 35, 40, 45];
 
 const getMediaDuration = (file: File): Promise<number> => {
   return new Promise((resolve, reject) => {
@@ -24,7 +22,7 @@ const getMediaDuration = (file: File): Promise<number> => {
     el.onloadedmetadata = () => {
       const dur = el.duration;
       URL.revokeObjectURL(url);
-      resolve(Math.ceil(dur / 60)); // minutes
+      resolve(Math.ceil(dur / 60));
     };
     el.onerror = () => {
       URL.revokeObjectURL(url);
@@ -39,14 +37,17 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
   const queryClient = useQueryClient();
   const [title, setTitle] = useState("");
   const [trackTitle, setTrackTitle] = useState("");
-  const [mediaType, setMediaType] = useState<"audio" | "video">("audio");
+  const [mediaType, setMediaType] = useState<"audio" | "video" | "photo">("audio");
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [opponentSearch, setOpponentSearch] = useState("");
   const [selectedOpponent, setSelectedOpponent] = useState<{ user_id: string; display_name: string; avatar_url: string | null } | null>(null);
-  const [maxDuration, setMaxDuration] = useState(45);
+  const [maxDuration, setMaxDuration] = useState(40);
   const [mediaDurationMin, setMediaDurationMin] = useState<number | null>(null);
+
+  const isPhotoBattle = mediaType === "photo";
 
   const { data: searchResults = [], isFetching: isSearching } = useQuery({
     queryKey: ["search-artists", opponentSearch],
@@ -81,54 +82,80 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
 
   const handleSubmit = async () => {
     if (!user || !title.trim() || !trackTitle.trim() || !selectedOpponent) return;
-    if (!mediaFile) {
-      toast({ title: "Missing media", description: `Please upload a ${mediaType === "audio" ? "song" : "video"} first.`, variant: "destructive" });
-      return;
+
+    if (isPhotoBattle) {
+      if (!photoFile) {
+        toast({ title: "Missing photo", description: "Please upload your photo for the battle.", variant: "destructive" });
+        return;
+      }
+    } else {
+      if (!mediaFile) {
+        toast({ title: "Missing media", description: `Please upload a ${mediaType === "audio" ? "song" : "video"} first.`, variant: "destructive" });
+        return;
+      }
+      if (mediaType === "audio" && !coverFile) {
+        toast({ title: "Cover art required", description: "Audio battles need a cover image.", variant: "destructive" });
+        return;
+      }
+      if (mediaDurationMin && mediaDurationMin > maxDuration) {
+        toast({ title: "File too long", description: `Your file is ~${mediaDurationMin} min but the battle limit is ${maxDuration} min. Please trim it.`, variant: "destructive" });
+        return;
+      }
     }
-    if (mediaType === "audio" && !coverFile) {
-      toast({ title: "Cover art required", description: "Audio battles need a cover image.", variant: "destructive" });
-      return;
-    }
-    if (mediaDurationMin && mediaDurationMin > maxDuration) {
-      toast({ title: "File too long", description: `Your file is ~${mediaDurationMin} min but the battle limit is ${maxDuration} min. Please trim it.`, variant: "destructive" });
-      return;
-    }
+
     setLoading(true);
 
     try {
       let mediaUrl = "";
       let coverUrl = "";
 
-      if (mediaFile) {
-        const fileExtension = mediaFile.name.split(".").pop();
-        const uploadResult = await uploadToR2(mediaFile, {
-          folder: `battles/${user.id}`,
-          fileName: `${Date.now()}.${fileExtension}`,
-          mimeType: mediaFile.type,
-          onProgress: (p) => console.log(`[Battle] Media upload: ${p}%`),
+      if (isPhotoBattle && photoFile) {
+        // For photo battles, the photo IS the cover/media
+        const ext = photoFile.name.split(".").pop();
+        const result = await uploadToR2(photoFile, {
+          folder: `battles/photos/${user.id}`,
+          fileName: `${Date.now()}.${ext}`,
+          mimeType: photoFile.type,
         });
-        if (uploadResult.success && uploadResult.data) {
-          mediaUrl = getR2DownloadUrl(uploadResult.data.key);
+        if (result.success && result.data) {
+          coverUrl = getR2DownloadUrl(result.data.key);
         } else {
-          toast({ title: "Upload failed", description: uploadResult.error || "Could not upload media file.", variant: "destructive" });
+          toast({ title: "Upload failed", description: result.error || "Could not upload photo.", variant: "destructive" });
           setLoading(false);
           return;
         }
-      }
+      } else {
+        if (mediaFile) {
+          const fileExtension = mediaFile.name.split(".").pop();
+          const uploadResult = await uploadToR2(mediaFile, {
+            folder: `battles/${user.id}`,
+            fileName: `${Date.now()}.${fileExtension}`,
+            mimeType: mediaFile.type,
+            onProgress: (p) => console.log(`[Battle] Media upload: ${p}%`),
+          });
+          if (uploadResult.success && uploadResult.data) {
+            mediaUrl = getR2DownloadUrl(uploadResult.data.key);
+          } else {
+            toast({ title: "Upload failed", description: uploadResult.error || "Could not upload media file.", variant: "destructive" });
+            setLoading(false);
+            return;
+          }
+        }
 
-      if (coverFile) {
-        const ext = coverFile.name.split(".").pop();
-        const coverResult = await uploadToR2(coverFile, {
-          folder: `battles/covers/${user.id}`,
-          fileName: `${Date.now()}.${ext}`,
-          mimeType: coverFile.type,
-        });
-        if (coverResult.success && coverResult.data) {
-          coverUrl = getR2DownloadUrl(coverResult.data.key);
-        } else {
-          toast({ title: "Cover upload failed", description: coverResult.error || "Could not upload cover.", variant: "destructive" });
-          setLoading(false);
-          return;
+        if (coverFile) {
+          const ext = coverFile.name.split(".").pop();
+          const coverResult = await uploadToR2(coverFile, {
+            folder: `battles/covers/${user.id}`,
+            fileName: `${Date.now()}.${ext}`,
+            mimeType: coverFile.type,
+          });
+          if (coverResult.success && coverResult.data) {
+            coverUrl = getR2DownloadUrl(coverResult.data.key);
+          } else {
+            toast({ title: "Cover upload failed", description: coverResult.error || "Could not upload cover.", variant: "destructive" });
+            setLoading(false);
+            return;
+          }
         }
       }
 
@@ -141,7 +168,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
         challenger_media_url: mediaUrl || null,
         challenger_cover_url: coverUrl || null,
         status: "pending",
-        max_duration_minutes: maxDuration,
+        max_duration_minutes: isPhotoBattle ? 0 : maxDuration,
       });
 
       if (insertError) throw insertError;
@@ -155,15 +182,22 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
       setTrackTitle("");
       setMediaFile(null);
       setCoverFile(null);
+      setPhotoFile(null);
       setSelectedOpponent(null);
       setOpponentSearch("");
-      setMaxDuration(45);
+      setMaxDuration(40);
       setMediaDurationMin(null);
     } catch (err) {
       toast({ title: "Error", description: "Failed to create battle", variant: "destructive" });
     } finally {
       setLoading(false);
     }
+  };
+
+  const isSubmitDisabled = () => {
+    if (loading || !title.trim() || !trackTitle.trim() || !selectedOpponent) return true;
+    if (isPhotoBattle) return !photoFile;
+    return !mediaFile || (mediaType === "audio" && !coverFile) || (mediaDurationMin !== null && mediaDurationMin > maxDuration);
   };
 
   return (
@@ -241,81 +275,117 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
           </div>
 
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Your Track Title</label>
-            <Input placeholder="Name your entry" value={trackTitle} onChange={(e) => setTrackTitle(e.target.value)} />
-          </div>
-
-          {/* Battle Duration */}
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5" /> Max Duration Per Entry
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">
+              {isPhotoBattle ? "Caption / Title" : "Your Track Title"}
             </label>
-            <div className="flex items-center gap-3">
-              <Slider
-                value={[maxDuration]}
-                onValueChange={(v) => setMaxDuration(v[0])}
-                min={5}
-                max={45}
-                step={5}
-                className="flex-1"
-              />
-              <span className="text-sm font-bold text-primary min-w-[3rem] text-right">{maxDuration} min</span>
-            </div>
-            <p className="text-[10px] text-muted-foreground mt-1">
-              Each artist's entry must be {maxDuration} min or less. Total battle: up to {maxDuration * 2} min.
-            </p>
+            <Input placeholder={isPhotoBattle ? "e.g. \"Fresh fit 🔥\"" : "Name your entry"} value={trackTitle} onChange={(e) => setTrackTitle(e.target.value)} />
           </div>
 
+          {/* Media Type */}
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Media Type</label>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">Battle Type</label>
             <div className="flex gap-2">
               <button
-                onClick={() => setMediaType("audio")}
+                onClick={() => { setMediaType("audio"); setPhotoFile(null); }}
                 className={`flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 border ${mediaType === "audio" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
               >
                 <Music className="w-3.5 h-3.5" /> Audio
               </button>
               <button
-                onClick={() => setMediaType("video")}
+                onClick={() => { setMediaType("video"); setPhotoFile(null); }}
                 className={`flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 border ${mediaType === "video" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
               >
                 <Video className="w-3.5 h-3.5" /> Video
               </button>
+              <button
+                onClick={() => { setMediaType("photo"); setMediaFile(null); setCoverFile(null); setMediaDurationMin(null); }}
+                className={`flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 border ${mediaType === "photo" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
+              >
+                <Image className="w-3.5 h-3.5" /> Photo
+              </button>
             </div>
           </div>
 
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">
-              Upload {mediaType === "audio" ? "Song" : "Video"}
-            </label>
-            <input
-              type="file"
-              accept={mediaType === "audio" ? "audio/*,.mp3,.wav,.flac,.m4a" : "video/*,.mp4,.mov,.webm"}
-              onChange={(e) => handleMediaFileChange(e.target.files?.[0] || null)}
-              className="w-full text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary"
-            />
-            {mediaDurationMin !== null && (
-              <p className={`text-[10px] mt-1 ${mediaDurationMin > maxDuration ? "text-destructive font-bold" : "text-muted-foreground"}`}>
-                File duration: ~{mediaDurationMin} min {mediaDurationMin > maxDuration ? `(exceeds ${maxDuration} min limit!)` : "✓"}
+          {/* Duration slider — only for audio/video */}
+          {!isPhotoBattle && (
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5" /> Max Duration Per Entry
+              </label>
+              <div className="flex items-center gap-3">
+                <Slider
+                  value={[maxDuration]}
+                  onValueChange={(v) => setMaxDuration(v[0])}
+                  min={0}
+                  max={40}
+                  step={1}
+                  className="flex-1"
+                />
+                <span className="text-sm font-bold text-primary min-w-[3rem] text-right">{maxDuration} min</span>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                {maxDuration === 0
+                  ? "No duration limit set — any length accepted."
+                  : `Each artist's entry must be ${maxDuration} min or less. Total battle: up to ${maxDuration * 2} min.`}
               </p>
-            )}
-          </div>
+            </div>
+          )}
 
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">
-              Cover Art {mediaType === "audio" ? "(required)" : "(optional)"}
-            </label>
-            <input
-              type="file"
-              accept="image/*,.jpg,.jpeg,.png,.webp"
-              onChange={(e) => setCoverFile(e.target.files?.[0] || null)}
-              className="w-full text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary"
-            />
-          </div>
+          {/* Photo upload for photo battles */}
+          {isPhotoBattle && (
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Upload Your Photo</label>
+              <input
+                type="file"
+                accept="image/*,.jpg,.jpeg,.png,.webp"
+                onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
+                className="w-full text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary"
+              />
+              {photoFile && (
+                <div className="mt-2 rounded-lg overflow-hidden max-h-40">
+                  <img src={URL.createObjectURL(photoFile)} alt="Preview" className="w-full h-full object-cover" />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Media upload for audio/video */}
+          {!isPhotoBattle && (
+            <>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                  Upload {mediaType === "audio" ? "Song" : "Video"}
+                </label>
+                <input
+                  type="file"
+                  accept={mediaType === "audio" ? "audio/*,.mp3,.wav,.flac,.m4a" : "video/*,.mp4,.mov,.webm"}
+                  onChange={(e) => handleMediaFileChange(e.target.files?.[0] || null)}
+                  className="w-full text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary"
+                />
+                {mediaDurationMin !== null && maxDuration > 0 && (
+                  <p className={`text-[10px] mt-1 ${mediaDurationMin > maxDuration ? "text-destructive font-bold" : "text-muted-foreground"}`}>
+                    File duration: ~{mediaDurationMin} min {mediaDurationMin > maxDuration ? `(exceeds ${maxDuration} min limit!)` : "✓"}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                  Cover Art {mediaType === "audio" ? "(required)" : "(optional)"}
+                </label>
+                <input
+                  type="file"
+                  accept="image/*,.jpg,.jpeg,.png,.webp"
+                  onChange={(e) => setCoverFile(e.target.files?.[0] || null)}
+                  className="w-full text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary"
+                />
+              </div>
+            </>
+          )}
 
           <button
             onClick={handleSubmit}
-            disabled={loading || !title.trim() || !trackTitle.trim() || !selectedOpponent || !mediaFile || (mediaType === "audio" && !coverFile) || (mediaDurationMin !== null && mediaDurationMin > maxDuration)}
+            disabled={isSubmitDisabled()}
             className="w-full py-3 rounded-xl gradient-primary text-primary-foreground font-bold text-sm disabled:opacity-50"
           >
             {loading ? "Creating..." : `🥊 Challenge ${selectedOpponent?.display_name || "an Artist"}`}
