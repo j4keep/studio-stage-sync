@@ -41,6 +41,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoSongFile, setPhotoSongFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [opponentSearch, setOpponentSearch] = useState("");
   const [selectedOpponent, setSelectedOpponent] = useState<{ user_id: string; display_name: string; avatar_url: string | null } | null>(null);
