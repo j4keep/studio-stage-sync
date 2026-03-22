@@ -174,7 +174,7 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
     onError: () => toast.error("Failed to delete battle"),
   });
 
-
+  const commentMutation = useMutation({
     mutationFn: async (content: string) => {
       await (supabase as any).from("battle_comments").insert({
         battle_id: battle.id,
