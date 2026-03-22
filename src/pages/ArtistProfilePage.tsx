@@ -7,6 +7,8 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import profileBanner from "@/assets/profile-banner.jpg";
+import FollowersSheet from "@/components/FollowersSheet";
+import ProfileFeedSection from "@/components/ProfileFeedSection";
 
 const ArtistProfilePage = () => {
   const navigate = useNavigate();
@@ -18,13 +20,13 @@ const ArtistProfilePage = () => {
   const [songCount, setSongCount] = useState("0");
   const [totalLikes, setTotalLikes] = useState("0");
   const [loading, setLoading] = useState(true);
+  const [showFollowers, setShowFollowers] = useState(false);
   const [profileInfo, setProfileInfo] = useState<{
     display_name: string;
     avatar_url: string | null;
     banner_url: string | null;
   }>({ display_name: "", avatar_url: null, banner_url: null });
 
-  // If viewing own profile, redirect to /profile
   useEffect(() => {
     if (userId && user && userId === user.id) {
       navigate("/profile", { replace: true });
@@ -36,7 +38,6 @@ const ArtistProfilePage = () => {
     const load = async () => {
       setLoading(true);
 
-      // Profile info
       const { data: profile } = await supabase
         .from("profiles")
         .select("display_name, avatar_url, banner_url")
@@ -51,7 +52,6 @@ const ArtistProfilePage = () => {
         });
       }
 
-      // Songs count & plays
       const { data: songs } = await (supabase as any)
         .from("songs")
         .select("plays")
@@ -62,7 +62,6 @@ const ArtistProfilePage = () => {
         setTotalPlays(total >= 1000 ? `${(total / 1000).toFixed(1)}K` : String(total));
       }
 
-      // Followers
       const { count } = await (supabase as any)
         .from("follows")
         .select("id", { count: "exact", head: true })
@@ -70,7 +69,6 @@ const ArtistProfilePage = () => {
       const c = count || 0;
       setFollowerCount(c >= 1000 ? `${(c / 1000).toFixed(1)}K` : String(c));
 
-      // Total likes
       let likesTotal = 0;
       for (const table of ["songs", "videos"] as const) {
         const { data } = await (supabase as any).from(table).select("likes_count").eq("user_id", userId);
@@ -78,7 +76,6 @@ const ArtistProfilePage = () => {
       }
       setTotalLikes(likesTotal >= 1000 ? `${(likesTotal / 1000).toFixed(1)}K` : String(likesTotal));
 
-      // Check if following
       if (user) {
         const { data: followData } = await (supabase as any)
           .from("follows")
@@ -147,7 +144,7 @@ const ArtistProfilePage = () => {
           </div>
         </div>
 
-        {/* Action Buttons — visitor view */}
+        {/* Action Buttons */}
         <div className="flex gap-2 mt-3">
           <button
             onClick={handleFollow}
@@ -165,17 +162,27 @@ const ArtistProfilePage = () => {
         <div className="grid grid-cols-4 gap-2 mt-4">
           {[
             { label: "Songs", value: songCount },
-            { label: "Followers", value: followerCount },
+            { label: "Followers", value: followerCount, action: () => setShowFollowers(true) },
             { label: "Plays", value: totalPlays },
             { label: "Likes", value: totalLikes },
           ].map((s) => (
-            <div key={s.label} className="p-2.5 rounded-xl bg-card border border-border text-center">
+            <button key={s.label} onClick={(s as any).action} className="p-2.5 rounded-xl bg-card border border-border text-center hover:border-primary/30 transition-all">
               <p className="text-base font-display font-bold text-primary">{s.value}</p>
               <p className="text-[9px] text-muted-foreground">{s.label}</p>
-            </div>
+            </button>
           ))}
         </div>
       </div>
+
+      {/* Artist's Posts Feed */}
+      {userId && (
+        <div className="px-4 mt-5">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Posts</p>
+          <ProfileFeedSection userId={userId} isOwner={false} />
+        </div>
+      )}
+
+      {userId && <FollowersSheet open={showFollowers} onClose={() => setShowFollowers(false)} userId={userId} isOwner={false} />}
     </div>
   );
 };
