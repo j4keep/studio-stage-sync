@@ -401,17 +401,19 @@ const MusicBattlePlayerPage = () => {
       {/* ── MAIN BATTLE AREA ── */}
       <div
         className={`flex-1 flex flex-col items-center justify-center relative transition-all duration-300 ${
-          isBattleExpanded ? "fixed inset-0 z-50 bg-background px-4 py-6" : "px-4"
+          expandedSide ? "fixed inset-0 z-50 bg-background px-4 py-6" : "px-4"
         }`}
       >
 
         {/* SPLIT SCREEN */}
-        <div className={`w-full flex gap-2 relative transition-all duration-300 ${isBattleExpanded ? "min-h-[72vh]" : "min-h-[280px]"}`}>
+        <div className={`w-full flex gap-2 relative transition-all duration-300 ${expandedSide ? "min-h-[85vh]" : "min-h-[280px]"}`}>
 
           {/* LEFT ARTIST */}
           <div
-            className="flex-1 rounded-2xl overflow-hidden relative transition-all duration-500"
-            style={{ opacity: activeArtist === "right" ? 0.5 : 1 }}
+            className={`rounded-2xl overflow-hidden relative transition-all duration-500 ${
+              expandedSide === "left" ? "flex-[3]" : expandedSide === "right" ? "hidden" : "flex-1"
+            }`}
+            style={{ opacity: !expandedSide && activeArtist === "right" ? 0.5 : 1 }}
           >
             <AnimatePresence>
               {winner === "left" && total > 0 && (
