@@ -19,8 +19,12 @@ import {
 
 const SettingsPage = () => {
   const navigate = useNavigate();
+  const { user, signOut } = useAuth();
   const [showThemePicker, setShowThemePicker] = useState(false);
-  const { isPro, showProModal, gatedFeature, requirePro, closeProModal } = useProGate();
+  const { isPro, showProModal, gatedFeature, requirePro, closeProModal, deactivatePro } = useProGate();
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem("wheuat_theme") !== "light");
   const [notifications, setNotifications] = useState(() => localStorage.getItem("wheuat_notifications") !== "false");
