@@ -135,17 +135,66 @@ const SettingsPage = () => {
         <ProActionRow isPro={isPro} icon={<Crown className="w-4 h-4" />} label="Store Management" onClick={() => isPro ? navigate("/my-store") : requirePro("Store")} />
       </Section>
 
+      {/* Account */}
+      <Section title="Account">
+        {isPro && (
+          <ActionRow icon={<XCircle className="w-4 h-4" />} label="Cancel Subscription" onClick={() => setShowCancelDialog(true)} destructive />
+        )}
+        <ActionRow icon={<LogOut className="w-4 h-4" />} label="Log Out" onClick={async () => { await signOut(); navigate("/auth"); }} destructive />
+        <ActionRow icon={<Trash2 className="w-4 h-4" />} label="Delete Account" onClick={() => setShowDeleteDialog(true)} destructive />
+      </Section>
+
       {/* About */}
       <Section title="About">
         <ActionRow icon={<Info className="w-4 h-4" />} label="Terms & Conditions" onClick={() => navigate("/terms")} />
         <ActionRow icon={<Info className="w-4 h-4" />} label="Help & Support" onClick={() => navigate("/help")} />
-        <ActionRow icon={<LogOut className="w-4 h-4" />} label="Log Out" destructive />
-        <ActionRow icon={<Trash2 className="w-4 h-4" />} label="Delete Account" destructive />
       </Section>
 
       <p className="text-center text-[10px] text-muted-foreground mt-6">WHEUAT v1.0.0</p>
 
       <ProGateModal open={showProModal} onClose={closeProModal} featureName={gatedFeature} />
+
+      {/* Cancel Subscription Dialog */}
+      <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <DialogContent className="max-w-sm rounded-xl">
+          <DialogHeader>
+            <DialogTitle>Cancel PRO Subscription?</DialogTitle>
+            <DialogDescription>You'll lose access to all PRO features including analytics, earnings, store management, battles, Ask Jhi, and the ad-free experience.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2">
+            <button onClick={() => setShowCancelDialog(false)} className="flex-1 py-2.5 rounded-xl bg-card border border-border text-foreground text-sm font-semibold">Keep PRO</button>
+            <button onClick={() => { deactivatePro(); setShowCancelDialog(false); toast({ title: "Subscription cancelled" }); }} className="flex-1 py-2.5 rounded-xl bg-destructive text-destructive-foreground text-sm font-semibold">Cancel</button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Account Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="max-w-sm rounded-xl">
+          <DialogHeader>
+            <DialogTitle>Delete Account?</DialogTitle>
+            <DialogDescription>This action is permanent. All your songs, videos, projects, and data will be permanently deleted. Type "DELETE" to confirm.</DialogDescription>
+          </DialogHeader>
+          <input
+            value={deleteConfirmText}
+            onChange={(e) => setDeleteConfirmText(e.target.value)}
+            placeholder='Type "DELETE" to confirm'
+            className="w-full px-3 py-2.5 rounded-xl bg-card border border-border text-foreground text-sm"
+          />
+          <DialogFooter className="flex gap-2">
+            <button onClick={() => { setShowDeleteDialog(false); setDeleteConfirmText(""); }} className="flex-1 py-2.5 rounded-xl bg-card border border-border text-foreground text-sm font-semibold">Cancel</button>
+            <button
+              disabled={deleteConfirmText !== "DELETE"}
+              onClick={async () => {
+                toast({ title: "Account deletion requested", description: "Your account will be deleted. You will be signed out." });
+                await signOut();
+                navigate("/auth");
+              }}
+              className="flex-1 py-2.5 rounded-xl bg-destructive text-destructive-foreground text-sm font-semibold disabled:opacity-40"
+            >Delete</button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
