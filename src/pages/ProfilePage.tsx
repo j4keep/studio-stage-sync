@@ -14,6 +14,8 @@ import EditProfileSheet from "@/components/EditProfileSheet";
 import ProGateModal from "@/components/ProGateModal";
 import { useProGate } from "@/hooks/use-pro-gate";
 import ArtistSearchBar from "@/components/ArtistSearchBar";
+import FollowersSheet from "@/components/FollowersSheet";
+import ProfileFeedSection from "@/components/ProfileFeedSection";
 
 const ProfilePage = () => {
   const navigate = useNavigate();
