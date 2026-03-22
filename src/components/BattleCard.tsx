@@ -562,9 +562,10 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
       <div className="px-5 py-3" style={{ background: "hsl(240 8% 6%)" }}>
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            <button
+            <motion.button
               onClick={() => canVote && voteMutation.mutate(battle.challenger_id)}
               disabled={!canVote}
+              whileTap={canVote ? { scale: 1.15 } : {}}
               className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all ${
                 userVote?.voted_for === battle.challenger_id
                   ? "bg-blue-500 text-white shadow-[0_0_12px_rgba(59,130,246,0.5)]"
@@ -572,25 +573,34 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
               }`}
             >
               <ThumbsUp className={`h-3 w-3 ${userVote?.voted_for === battle.challenger_id ? "fill-current" : ""}`} />
-              {challengerVotes}
-            </button>
-            <span className="text-lg font-black text-blue-400">{challengerPct}%</span>
+              <motion.span key={challengerVotes} initial={{ y: -8, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: "spring", stiffness: 300 }}>
+                {challengerVotes}
+              </motion.span>
+            </motion.button>
+            <motion.span key={`cp-${challengerPct}`} initial={{ scale: 1.3, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-lg font-black text-blue-400">
+              {challengerPct}%
+            </motion.span>
           </div>
           <span className="text-[10px] font-medium text-muted-foreground">{totalVotes} votes</span>
           <div className="flex items-center gap-2">
-            <span className="text-lg font-black text-red-400">{opponentPct}%</span>
-            <button
+            <motion.span key={`op-${opponentPct}`} initial={{ scale: 1.3, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-lg font-black text-red-400">
+              {opponentPct}%
+            </motion.span>
+            <motion.button
               onClick={() => canVote && battle.opponent_id && voteMutation.mutate(battle.opponent_id)}
               disabled={!canVote || !battle.opponent_id}
+              whileTap={canVote ? { scale: 1.15 } : {}}
               className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all ${
                 userVote?.voted_for === battle.opponent_id
                   ? "bg-red-500 text-white shadow-[0_0_12px_rgba(239,68,68,0.5)]"
                   : canVote ? "bg-red-500/15 text-red-400 hover:bg-red-500/25" : "bg-muted/20 text-muted-foreground"
               }`}
             >
-              {opponentVotes}
+              <motion.span key={opponentVotes} initial={{ y: -8, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: "spring", stiffness: 300 }}>
+                {opponentVotes}
+              </motion.span>
               <ThumbsUp className={`h-3 w-3 ${userVote?.voted_for === battle.opponent_id ? "fill-current" : ""}`} />
-            </button>
+            </motion.button>
           </div>
         </div>
 
