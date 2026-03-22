@@ -14,6 +14,124 @@ export type Database = {
   }
   public: {
     Tables: {
+      battle_comments: {
+        Row: {
+          battle_id: string
+          content: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          battle_id: string
+          content: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          battle_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "battle_comments_battle_id_fkey"
+            columns: ["battle_id"]
+            isOneToOne: false
+            referencedRelation: "battles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      battle_votes: {
+        Row: {
+          battle_id: string
+          created_at: string
+          id: string
+          user_id: string
+          voted_for: string
+        }
+        Insert: {
+          battle_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+          voted_for: string
+        }
+        Update: {
+          battle_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+          voted_for?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "battle_votes_battle_id_fkey"
+            columns: ["battle_id"]
+            isOneToOne: false
+            referencedRelation: "battles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      battles: {
+        Row: {
+          challenger_cover_url: string | null
+          challenger_id: string
+          challenger_media_url: string | null
+          challenger_title: string | null
+          created_at: string
+          id: string
+          media_type: string
+          opponent_cover_url: string | null
+          opponent_id: string | null
+          opponent_media_url: string | null
+          opponent_title: string | null
+          status: string
+          title: string
+          updated_at: string
+          winner_id: string | null
+        }
+        Insert: {
+          challenger_cover_url?: string | null
+          challenger_id: string
+          challenger_media_url?: string | null
+          challenger_title?: string | null
+          created_at?: string
+          id?: string
+          media_type?: string
+          opponent_cover_url?: string | null
+          opponent_id?: string | null
+          opponent_media_url?: string | null
+          opponent_title?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          winner_id?: string | null
+        }
+        Update: {
+          challenger_cover_url?: string | null
+          challenger_id?: string
+          challenger_media_url?: string | null
+          challenger_title?: string | null
+          created_at?: string
+          id?: string
+          media_type?: string
+          opponent_cover_url?: string | null
+          opponent_id?: string | null
+          opponent_media_url?: string | null
+          opponent_title?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          winner_id?: string | null
+        }
+        Relationships: []
+      }
       boosts: {
         Row: {
           budget: number

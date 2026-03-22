@@ -12,6 +12,7 @@ import { RadioProvider } from "@/contexts/RadioContext";
 import { PlaylistProvider } from "@/contexts/PlaylistContext";
 import AppLayout from "./components/AppLayout";
 import HomePage from "./pages/HomePage";
+import BattlesPage from "./pages/BattlesPage";
 import RadioPage from "./pages/RadioPage";
 import StudiosPage from "./pages/StudiosPage";
 
@@ -170,6 +171,7 @@ const ProtectedRoutes = () => {
         <Route path="/helpdesk" element={<HelpDeskPage />} />
         <Route path="/ask-jhi" element={<AskJhiPage />} />
         <Route path="/admin/tickets" element={<AdminTicketsPage />} />
+        <Route path="/battles" element={<BattlesPage />} />
         <Route path="/dollar-club" element={<div className="px-4 pt-4 pb-4 text-center"><h1 className="text-lg font-display font-bold text-foreground mb-2">Dollar Club</h1><p className="text-sm text-muted-foreground">Sell your products for $1 and build your fanbase. Coming soon!</p></div>} />
         <Route path="*" element={<NotFound />} />
       </Routes>

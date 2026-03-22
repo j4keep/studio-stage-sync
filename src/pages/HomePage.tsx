@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Play, Pause, TrendingUp, Music, Video, DollarSign, Headphones, Radio, Building2, ShoppingBag, CircleDollarSign } from "lucide-react";
+import { Play, Pause, TrendingUp, Music, Video, DollarSign, Headphones, Radio, Building2, ShoppingBag, Swords } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,7 +21,7 @@ import cardStudios from "@/assets/card-studios.jpg";
 import cardSongs from "@/assets/card-songs.jpg";
 import cardVideos from "@/assets/card-videos.jpg";
 import cardProjects from "@/assets/card-projects.jpg";
-import cardDollarClub from "@/assets/card-dollarclub.jpg";
+import cardBattles from "@/assets/card-battles.jpg";
 import NewsFeed from "@/components/NewsFeed";
 
 const fadeUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
@@ -86,12 +86,12 @@ const fetchTrendingArtists = async (userId?: string): Promise<TrendingArtist[]> 
 // All cards now navigate to dedicated pages
 const CATEGORY_CARDS = [
   { label: "Radio", img: cardRadio, path: "/radio", wide: true, icon: Radio },
+  { label: "Battles", img: cardBattles, path: "/battles", wide: true, icon: Swords },
   { label: "Store", img: cardStore, path: "/store", wide: false, icon: ShoppingBag },
   { label: "Studios", img: cardStudios, path: "/studios", wide: false, icon: Building2 },
   { label: "Songs", img: cardSongs, path: "/browse-songs", wide: false, icon: Music },
   { label: "Videos", img: cardVideos, path: "/browse-videos", wide: false, icon: Video },
   { label: "Projects", img: cardProjects, path: "/my-projects", wide: true, icon: DollarSign },
-  { label: "Dollar Club", img: cardDollarClub, path: "/dollar-club", wide: true, icon: CircleDollarSign },
 ];
 
 const HomePage = () => {
