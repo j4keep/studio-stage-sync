@@ -429,7 +429,7 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
               <p className="text-white font-black text-base truncate drop-shadow-lg">{challengerName}</p>
               <p className="text-white/50 text-[11px] truncate mt-0.5">{battle.challenger_title || "Track"}</p>
             </div>
-          </button>
+          </motion.button>
 
           {/* RIGHT ARTIST */}
           <button
