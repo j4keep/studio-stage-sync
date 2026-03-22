@@ -177,6 +177,8 @@ const MusicBattlePlayerPage = () => {
       return;
     }
 
+    const isPhotoBattle = battle.media_type === "photo";
+
     // Validate duration against battle limit
     const maxMin = (battle as any).max_duration_minutes || 45;
     try {
