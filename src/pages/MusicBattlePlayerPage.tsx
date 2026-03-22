@@ -33,11 +33,15 @@ const MusicBattlePlayerPage = () => {
   const [acceptCoverFile, setAcceptCoverFile] = useState<File | null>(null);
   const [acceptSongFile, setAcceptSongFile] = useState<File | null>(null);
   const [accepting, setAccepting] = useState(false);
+  const [isBattleExpanded, setIsBattleExpanded] = useState(false);
 
   const audioLeftRef = useRef<HTMLMediaElement | null>(null);
   const audioRightRef = useRef<HTMLMediaElement | null>(null);
   const videoLeftRef = useRef<HTMLVideoElement | null>(null);
   const videoRightRef = useRef<HTMLVideoElement | null>(null);
+  const lastTapRef = useRef(0);
+  const lastTapSideRef = useRef<"left" | "right" | null>(null);
+  const touchHandledRef = useRef(false);
 
   /* ── data ── */
   const { data: battle } = useQuery({
@@ -170,6 +174,37 @@ const MusicBattlePlayerPage = () => {
     setIsPlaying(true);
     setCurrentTime(0);
   }, [activeArtist, isPlaying, togglePlay]);
+
+  const handleArtistTap = useCallback((side: "left" | "right") => {
+    const now = Date.now();
+    const isDoubleTap = lastTapSideRef.current === side && now - lastTapRef.current < 350;
+
+    lastTapRef.current = now;
+    lastTapSideRef.current = side;
+
+    if (isDoubleTap) {
+      setIsBattleExpanded((prev) => !prev);
+      return;
+    }
+
+    switchSide(side);
+  }, [switchSide]);
+
+  const handleArtistTouchEnd = useCallback((e: React.TouchEvent, side: "left" | "right") => {
+    e.stopPropagation();
+    e.preventDefault();
+    touchHandledRef.current = true;
+    handleArtistTap(side);
+  }, [handleArtistTap]);
+
+  const handleArtistClick = useCallback((e: React.MouseEvent, side: "left" | "right") => {
+    e.stopPropagation();
+    if (touchHandledRef.current) {
+      touchHandledRef.current = false;
+      return;
+    }
+    handleArtistTap(side);
+  }, [handleArtistTap]);
 
   const handleAcceptBattle = useCallback(async () => {
     if (!user || !battle || !acceptTrackTitle.trim() || !acceptMediaFile) return;
@@ -364,32 +399,33 @@ const MusicBattlePlayerPage = () => {
       </div>
 
       {/* ── MAIN BATTLE AREA ── */}
-      <div className="flex-1 flex flex-col items-center justify-center px-4 relative">
+      <div
+        className={`flex-1 flex flex-col items-center justify-center relative transition-all duration-300 ${
+          isBattleExpanded ? "fixed inset-0 z-50 bg-background px-4 py-6" : "px-4"
+        }`}
+      >
 
         {/* SPLIT SCREEN */}
-        <div className="w-full flex gap-2 relative" style={{ minHeight: 280 }}>
+        <div className={`w-full flex gap-2 relative transition-all duration-300 ${isBattleExpanded ? "min-h-[72vh]" : "min-h-[280px]"}`}>
 
           {/* LEFT ARTIST */}
-          <button
-            onClick={() => switchSide("left")}
+          <div
             className="flex-1 rounded-2xl overflow-hidden relative transition-all duration-500"
             style={{ opacity: activeArtist === "right" ? 0.5 : 1 }}
           >
-            {/* winning badge */}
             <AnimatePresence>
               {winner === "left" && total > 0 && (
                 <motion.div
                   initial={{ y: -20, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   exit={{ y: -20, opacity: 0 }}
-                  className="absolute top-2 left-1/2 -translate-x-1/2 z-20 bg-yellow-500/90 text-black text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1"
+                  className="absolute top-2 left-1/2 -translate-x-1/2 z-30 rounded-full bg-secondary/90 px-2 py-0.5 text-[9px] font-black text-foreground shadow-lg flex items-center gap-1"
                 >
-                  <Crown className="w-3 h-3" /> WINNING
+                  <Crown className="w-3 h-3 text-primary" /> WINNING
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* active glow */}
             {activeArtist === "left" && isPlaying && (
               <motion.div
                 animate={{ opacity: [0.4, 0.8, 0.4] }}
@@ -399,8 +435,7 @@ const MusicBattlePlayerPage = () => {
               />
             )}
 
-            {/* cover image */}
-            <div className="w-full aspect-[3/4] bg-muted rounded-2xl overflow-hidden">
+            <div className={`w-full bg-muted rounded-2xl overflow-hidden ${isBattleExpanded ? "h-[72vh]" : "aspect-[3/4]"}`}>
               {battle.media_type === "video" && battle.challenger_media_url ? (
                 <video
                   ref={(el) => {
@@ -411,26 +446,33 @@ const MusicBattlePlayerPage = () => {
                   preload="metadata"
                   playsInline
                   muted={false}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover pointer-events-none"
                 />
               ) : battle.challenger_cover_url ? (
-                <img src={battle.challenger_cover_url} alt="" className="w-full h-full object-cover" />
+                <img src={battle.challenger_cover_url} alt="" className="w-full h-full object-cover pointer-events-none" />
               ) : (
-                <div className="w-full h-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center">
+                <div className="w-full h-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center pointer-events-none">
                   <span className="text-4xl">🎵</span>
                 </div>
               )}
             </div>
 
-            {/* info overlay */}
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 rounded-b-2xl">
+            <button
+              type="button"
+              onTouchEnd={(e) => handleArtistTouchEnd(e, "left")}
+              onClick={(e) => handleArtistClick(e, "left")}
+              className="absolute inset-0 z-20 rounded-2xl"
+              aria-label="Left artist panel"
+            />
+
+            <div className="absolute bottom-0 left-0 right-0 z-30 rounded-b-2xl bg-gradient-to-t from-black/80 to-transparent p-3 pointer-events-none">
               <p className="text-xs font-bold text-white truncate">{leftProfile.display_name || "Artist A"}</p>
               <p className="text-[10px] text-white/60 truncate">{battle.challenger_title || "Track"}</p>
             </div>
-          </button>
+          </div>
 
           {/* CENTER PLAY BUTTON */}
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-30">
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-40">
             {/* outer pulse rings */}
             <motion.div
               animate={isPlaying
@@ -475,8 +517,7 @@ const MusicBattlePlayerPage = () => {
           </div>
 
           {/* RIGHT ARTIST */}
-          <button
-            onClick={() => switchSide("right")}
+          <div
             className="flex-1 rounded-2xl overflow-hidden relative transition-all duration-500"
             style={{ opacity: activeArtist === "left" ? 0.5 : 1 }}
           >
@@ -486,9 +527,9 @@ const MusicBattlePlayerPage = () => {
                   initial={{ y: -20, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   exit={{ y: -20, opacity: 0 }}
-                  className="absolute top-2 left-1/2 -translate-x-1/2 z-20 bg-yellow-500/90 text-black text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1"
+                  className="absolute top-2 left-1/2 -translate-x-1/2 z-30 rounded-full bg-secondary/90 px-2 py-0.5 text-[9px] font-black text-foreground shadow-lg flex items-center gap-1"
                 >
-                  <Crown className="w-3 h-3" /> WINNING
+                  <Crown className="w-3 h-3 text-primary" /> WINNING
                 </motion.div>
               )}
             </AnimatePresence>
@@ -502,7 +543,7 @@ const MusicBattlePlayerPage = () => {
               />
             )}
 
-            <div className="w-full aspect-[3/4] bg-muted rounded-2xl overflow-hidden">
+            <div className={`w-full bg-muted rounded-2xl overflow-hidden ${isBattleExpanded ? "h-[72vh]" : "aspect-[3/4]"}`}>
               {battle.media_type === "video" && battle.opponent_media_url ? (
                 <video
                   ref={(el) => {
@@ -513,22 +554,30 @@ const MusicBattlePlayerPage = () => {
                   preload="metadata"
                   playsInline
                   muted={false}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover pointer-events-none"
                 />
               ) : battle.opponent_cover_url ? (
-                <img src={battle.opponent_cover_url} alt="" className="w-full h-full object-cover" />
+                <img src={battle.opponent_cover_url} alt="" className="w-full h-full object-cover pointer-events-none" />
               ) : (
-                <div className="w-full h-full bg-gradient-to-br from-destructive/30 to-destructive/10 flex items-center justify-center">
+                <div className="w-full h-full bg-gradient-to-br from-destructive/30 to-destructive/10 flex items-center justify-center pointer-events-none">
                   <span className="text-4xl">🎵</span>
                 </div>
               )}
             </div>
 
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 rounded-b-2xl">
+            <button
+              type="button"
+              onTouchEnd={(e) => handleArtistTouchEnd(e, "right")}
+              onClick={(e) => handleArtistClick(e, "right")}
+              className="absolute inset-0 z-20 rounded-2xl"
+              aria-label="Right artist panel"
+            />
+
+            <div className="absolute bottom-0 left-0 right-0 z-30 rounded-b-2xl bg-gradient-to-t from-black/80 to-transparent p-3 pointer-events-none">
               <p className="text-xs font-bold text-white truncate">{rightProfile.display_name || "Artist B"}</p>
               <p className="text-[10px] text-white/60 truncate">{battle.opponent_title || "Waiting..."}</p>
             </div>
-          </button>
+          </div>
         </div>
 
         {/* TIED badge */}
