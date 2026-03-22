@@ -160,7 +160,21 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["battle-votes", battle.id] }),
   });
 
-  const commentMutation = useMutation({
+  const deleteBattleMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await (supabase as any).from("battles").delete().eq("id", battle.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["battles"] });
+      queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
+      queryClient.invalidateQueries({ queryKey: ["profile-posts"] });
+      toast.success("Battle deleted");
+    },
+    onError: () => toast.error("Failed to delete battle"),
+  });
+
+
     mutationFn: async (content: string) => {
       await (supabase as any).from("battle_comments").insert({
         battle_id: battle.id,
