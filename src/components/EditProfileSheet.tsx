@@ -24,6 +24,7 @@ interface EditProfileSheetProps {
 }
 
 const EditProfileSheet = ({ open, onClose, profileData, onSave }: EditProfileSheetProps) => {
+  const { user } = useAuth();
   const [name, setName] = useState(profileData.name);
   const [email, setEmail] = useState(profileData.email);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -33,6 +34,7 @@ const EditProfileSheet = ({ open, onClose, profileData, onSave }: EditProfileShe
   const [bannerPreview, setBannerPreview] = useState(profileData.bannerUrl);
   const [avatarFile, setAvatarFile] = useState<File | undefined>();
   const [bannerFile, setBannerFile] = useState<File | undefined>();
+  const [nameError, setNameError] = useState("");
 
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
