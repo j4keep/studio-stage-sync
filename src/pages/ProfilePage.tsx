@@ -133,7 +133,7 @@ const ProfilePage = () => {
       {/* Artist Search */}
       <div className="px-4 pb-3">
         <ArtistSearchBar onSelectArtist={(artist) => {
-          toast({ title: `Viewing ${artist.display_name}`, description: "Artist profile pages coming soon!" });
+          navigate(`/artist/${artist.user_id}`);
         }} />
       </div>
 
