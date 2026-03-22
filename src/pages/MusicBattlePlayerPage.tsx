@@ -177,23 +177,55 @@ const MusicBattlePlayerPage = () => {
       return;
     }
 
+    // Validate duration against battle limit
+    const maxMin = (battle as any).max_duration_minutes || 45;
+    try {
+      const fileDur = await new Promise<number>((resolve, reject) => {
+        const url = URL.createObjectURL(acceptMediaFile);
+        const el = acceptMediaFile.type.startsWith("video") ? document.createElement("video") : document.createElement("audio");
+        el.preload = "metadata";
+        el.onloadedmetadata = () => { resolve(Math.ceil(el.duration / 60)); URL.revokeObjectURL(url); };
+        el.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Cannot read")); };
+        el.src = url;
+      });
+      if (fileDur > maxMin) {
+        toast.error(`Your file is ~${fileDur} min but this battle has a ${maxMin} min limit. Please trim it.`);
+        return;
+      }
+    } catch {
+      // can't detect, allow
+    }
+
     setAccepting(true);
     try {
       let mediaUrl = "";
       let coverUrl = "";
 
       const mediaExt = acceptMediaFile.name.split(".").pop();
-      const mediaPath = `battles/${user.id}/${Date.now()}.${mediaExt}`;
-      const { data: mediaUpload, error: mediaError } = await supabase.storage.from("media").upload(mediaPath, acceptMediaFile);
-      if (mediaError || !mediaUpload) throw mediaError || new Error("Failed to upload media");
-      mediaUrl = supabase.storage.from("media").getPublicUrl(mediaPath).data.publicUrl;
+      const mediaResult = await uploadToR2(acceptMediaFile, {
+        folder: `battles/${user.id}`,
+        fileName: `${Date.now()}.${mediaExt}`,
+        mimeType: acceptMediaFile.type,
+        onProgress: (p) => console.log(`[Battle Accept] Media upload: ${p}%`),
+      });
+      if (mediaResult.success && mediaResult.data) {
+        mediaUrl = getR2DownloadUrl(mediaResult.data.key);
+      } else {
+        throw new Error(mediaResult.error || "Failed to upload media");
+      }
 
       if (acceptCoverFile) {
         const coverExt = acceptCoverFile.name.split(".").pop();
-        const coverPath = `battles/covers/${user.id}/${Date.now()}.${coverExt}`;
-        const { data: coverUpload, error: coverError } = await supabase.storage.from("media").upload(coverPath, acceptCoverFile);
-        if (coverError || !coverUpload) throw coverError || new Error("Failed to upload cover");
-        coverUrl = supabase.storage.from("media").getPublicUrl(coverPath).data.publicUrl;
+        const coverResult = await uploadToR2(acceptCoverFile, {
+          folder: `battles/covers/${user.id}`,
+          fileName: `${Date.now()}.${coverExt}`,
+          mimeType: acceptCoverFile.type,
+        });
+        if (coverResult.success && coverResult.data) {
+          coverUrl = getR2DownloadUrl(coverResult.data.key);
+        } else {
+          throw new Error(coverResult.error || "Failed to upload cover");
+        }
       }
 
       const { error } = await (supabase as any)
