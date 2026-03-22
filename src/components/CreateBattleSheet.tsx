@@ -24,10 +24,10 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
   const [opponentSearch, setOpponentSearch] = useState("");
   const [selectedOpponent, setSelectedOpponent] = useState<{ user_id: string; display_name: string; avatar_url: string | null } | null>(null);
 
-  const { data: searchResults = [] } = useQuery({
+  const { data: searchResults = [], isFetching: isSearching } = useQuery({
     queryKey: ["search-artists", opponentSearch],
     queryFn: async () => {
-      if (opponentSearch.trim().length < 2) return [];
+      if (opponentSearch.trim().length < 1) return [];
       const { data } = await supabase
         .from("profiles")
         .select("user_id, display_name, avatar_url")
@@ -36,7 +36,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
         .limit(5);
       return data || [];
     },
-    enabled: opponentSearch.trim().length >= 2 && !selectedOpponent,
+    enabled: opponentSearch.trim().length >= 1 && !selectedOpponent,
   });
 
   const handleSubmit = async () => {
