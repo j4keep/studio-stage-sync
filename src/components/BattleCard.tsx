@@ -228,7 +228,7 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
   return (
     <motion.div
       layout
-      onClick={handleDoubleTap}
+      onClick={() => {}}
       className={`rounded-2xl overflow-hidden bg-card border border-border shadow-lg transition-all duration-300 ${
         isFullscreen ? "fixed inset-2 z-50 flex flex-col" : ""
       }`}
