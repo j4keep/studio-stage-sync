@@ -13,6 +13,7 @@ import { PlaylistProvider } from "@/contexts/PlaylistContext";
 import AppLayout from "./components/AppLayout";
 import HomePage from "./pages/HomePage";
 import BattlesPage from "./pages/BattlesPage";
+import MusicBattlePlayerPage from "./pages/MusicBattlePlayerPage";
 import ArtistProfilePage from "./pages/ArtistProfilePage";
 import RadioPage from "./pages/RadioPage";
 import StudiosPage from "./pages/StudiosPage";
