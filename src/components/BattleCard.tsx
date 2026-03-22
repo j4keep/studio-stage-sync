@@ -1,12 +1,11 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, ThumbsUp, Send, Swords, MessageCircle, Trash2, Upload, Trophy, Clock } from "lucide-react";
+import { Play, Pause, ThumbsUp, Send, Trash2, Upload, Trophy, Clock, MessageCircle, Crown } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
 
 interface Battle {
   id: string;
@@ -31,28 +30,36 @@ const EMOJIS = ["🔥", "💀", "🎤", "👑", "💪", "😤", "🏆", "⚡"];
 const BattleCard = ({ battle }: { battle: Battle }) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+
+  // ── Core state ──
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [activeArtist, setActiveArtist] = useState<"left" | "right" | null>(null);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
   const [expanded, setExpanded] = useState(false);
   const [comment, setComment] = useState("");
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentSide, setCurrentSide] = useState<"left" | "right" | null>(null);
-  const [playbackTime, setPlaybackTime] = useState(0);
-  const [totalDuration, setTotalDuration] = useState(0);
-  const audioLeftRef = useRef<HTMLAudioElement | null>(null);
-  const audioRightRef = useRef<HTMLAudioElement | null>(null);
-  const videoLeftRef = useRef<HTMLVideoElement | null>(null);
-  const videoRightRef = useRef<HTMLVideoElement | null>(null);
-  const commentsEndRef = useRef<HTMLDivElement>(null);
 
+  // Accept battle state
   const [showUpload, setShowUpload] = useState(false);
   const [acceptTrackTitle, setAcceptTrackTitle] = useState("");
   const [acceptMediaFile, setAcceptMediaFile] = useState<File | null>(null);
   const [acceptCoverFile, setAcceptCoverFile] = useState<File | null>(null);
   const [accepting, setAccepting] = useState(false);
 
+  // Refs
+  const audioLeftRef = useRef<HTMLAudioElement | null>(null);
+  const audioRightRef = useRef<HTMLAudioElement | null>(null);
+  const videoLeftRef = useRef<HTMLVideoElement | null>(null);
+  const videoRightRef = useRef<HTMLVideoElement | null>(null);
+  const commentsEndRef = useRef<HTMLDivElement>(null);
+
+  const isVideo = battle.media_type === "video";
   const expiresAt = battle.expires_at ? new Date(battle.expires_at) : new Date(new Date(battle.created_at).getTime() + 24 * 60 * 60 * 1000);
   const isExpired = new Date() > expiresAt;
   const isActive = battle.status === "active" && !!battle.opponent_media_url;
+  const bothHaveMedia = !!battle.challenger_media_url && !!battle.opponent_media_url;
 
+  // ── Countdown timer ──
   const [timeLeft, setTimeLeft] = useState("");
   useEffect(() => {
     if (isExpired || !isActive) return;
@@ -69,7 +76,7 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
     return () => clearInterval(interval);
   }, [expiresAt, isActive, isExpired]);
 
-  // Fetch votes
+  // ── Data queries ──
   const { data: votes = [] } = useQuery({
     queryKey: ["battle-votes", battle.id],
     queryFn: async () => {
@@ -78,34 +85,22 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
     },
   });
 
-  // Fetch comments
-  const { data: comments = [] } = useQuery({
+  const { data: battleComments = [] } = useQuery({
     queryKey: ["battle-comments", battle.id],
     queryFn: async () => {
-      const { data } = await (supabase as any)
-        .from("battle_comments")
-        .select("*")
-        .eq("battle_id", battle.id)
-        .order("created_at", { ascending: true });
+      const { data } = await (supabase as any).from("battle_comments").select("*").eq("battle_id", battle.id).order("created_at", { ascending: true });
       return data || [];
     },
   });
 
-  const allUserIds = [
-    battle.challenger_id,
-    ...(battle.opponent_id ? [battle.opponent_id] : []),
-    ...comments.map((c: any) => c.user_id),
-  ];
+  const allUserIds = [battle.challenger_id, ...(battle.opponent_id ? [battle.opponent_id] : []), ...battleComments.map((c: any) => c.user_id)];
   const uniqueIds = [...new Set(allUserIds)];
 
   const { data: profiles = [] } = useQuery({
     queryKey: ["battle-profiles", uniqueIds.join(",")],
     queryFn: async () => {
       if (uniqueIds.length === 0) return [];
-      const { data } = await (supabase as any)
-        .from("profiles")
-        .select("user_id, display_name, avatar_url")
-        .in("user_id", uniqueIds);
+      const { data } = await (supabase as any).from("profiles").select("user_id, display_name, avatar_url").in("user_id", uniqueIds);
       return data || [];
     },
     enabled: uniqueIds.length > 0,
@@ -117,48 +112,38 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
   const challengerName = challengerProfile?.display_name || "Challenger";
   const opponentName = opponentProfile?.display_name || "???";
 
+  // ── Vote calculations ──
   const challengerVotes = votes.filter((v: any) => v.voted_for === battle.challenger_id).length;
   const opponentVotes = battle.opponent_id ? votes.filter((v: any) => v.voted_for === battle.opponent_id).length : 0;
   const totalVotes = challengerVotes + opponentVotes;
   const challengerPct = totalVotes > 0 ? Math.round((challengerVotes / totalVotes) * 100) : 50;
   const opponentPct = totalVotes > 0 ? Math.round((opponentVotes / totalVotes) * 100) : 50;
   const userVote = votes.find((v: any) => v.user_id === user?.id);
+  const currentWinner = totalVotes > 0 ? (challengerVotes > opponentVotes ? "left" : challengerVotes < opponentVotes ? "right" : "tied") : "tied";
+  const winnerId = isExpired && totalVotes > 0 ? (challengerVotes > opponentVotes ? battle.challenger_id : challengerVotes < opponentVotes ? battle.opponent_id : null) : null;
 
-  const winnerId = isExpired && totalVotes > 0
-    ? (challengerVotes > opponentVotes ? battle.challenger_id : challengerVotes < opponentVotes ? battle.opponent_id : null)
-    : null;
+  const canVote = isActive && !isExpired && user && user.id !== battle.challenger_id && user.id !== battle.opponent_id;
+  const isOpen = battle.status === "open" && !battle.opponent_id;
+  const isPending = battle.status === "pending" && battle.opponent_id;
+  const canAccept = (isOpen && user?.id !== battle.challenger_id) || (isPending && user?.id === battle.opponent_id);
 
-  const currentWinner = totalVotes > 0
-    ? (challengerVotes > opponentVotes ? "left" : challengerVotes < opponentVotes ? "right" : "tied")
-    : "tied";
-
-  // Realtime
+  // ── Realtime ──
   useEffect(() => {
-    const votesChannel = supabase
-      .channel(`battle-votes-${battle.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "battle_votes", filter: `battle_id=eq.${battle.id}` }, () => {
-        queryClient.invalidateQueries({ queryKey: ["battle-votes", battle.id] });
-      })
-      .subscribe();
-    const commentsChannel = supabase
-      .channel(`battle-comments-${battle.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "battle_comments", filter: `battle_id=eq.${battle.id}` }, () => {
-        queryClient.invalidateQueries({ queryKey: ["battle-comments", battle.id] });
-      })
-      .subscribe();
-    return () => {
-      supabase.removeChannel(votesChannel);
-      supabase.removeChannel(commentsChannel);
-    };
+    const vCh = supabase.channel(`bv-${battle.id}`).on("postgres_changes", { event: "*", schema: "public", table: "battle_votes", filter: `battle_id=eq.${battle.id}` }, () => {
+      queryClient.invalidateQueries({ queryKey: ["battle-votes", battle.id] });
+    }).subscribe();
+    const cCh = supabase.channel(`bc-${battle.id}`).on("postgres_changes", { event: "*", schema: "public", table: "battle_comments", filter: `battle_id=eq.${battle.id}` }, () => {
+      queryClient.invalidateQueries({ queryKey: ["battle-comments", battle.id] });
+    }).subscribe();
+    return () => { supabase.removeChannel(vCh); supabase.removeChannel(cCh); };
   }, [battle.id, queryClient]);
 
-  useEffect(() => {
-    commentsEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [comments.length]);
+  useEffect(() => { commentsEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [battleComments.length]);
 
+  // ── Mutations ──
   const voteMutation = useMutation({
     mutationFn: async (votedFor: string) => {
-      if (isExpired) { toast.error("This battle has ended!"); return; }
+      if (isExpired) { toast.error("Battle has ended!"); return; }
       if (userVote) {
         if (userVote.voted_for === votedFor) {
           await (supabase as any).from("battle_votes").delete().eq("id", userVote.id);
@@ -180,184 +165,160 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["battles"] });
       queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
-      queryClient.invalidateQueries({ queryKey: ["profile-posts"] });
       toast.success("Battle deleted");
     },
-    onError: () => toast.error("Failed to delete battle"),
   });
 
   const commentMutation = useMutation({
     mutationFn: async (content: string) => {
       await (supabase as any).from("battle_comments").insert({ battle_id: battle.id, user_id: user?.id, content });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["battle-comments", battle.id] });
-      setComment("");
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["battle-comments", battle.id] }); setComment(""); },
   });
 
-  // Playback
-  const getLeftMedia = () => battle.media_type === "video" ? videoLeftRef.current : audioLeftRef.current;
-  const getRightMedia = () => battle.media_type === "video" ? videoRightRef.current : audioRightRef.current;
+  // ── Audio engine ──
+  const getMedia = useCallback((side: "left" | "right") => {
+    if (isVideo) return side === "left" ? videoLeftRef.current : videoRightRef.current;
+    return side === "left" ? audioLeftRef.current : audioRightRef.current;
+  }, [isVideo]);
 
+  const stopAll = useCallback(() => {
+    [audioLeftRef, audioRightRef, videoLeftRef, videoRightRef].forEach(ref => {
+      if (ref.current) { ref.current.pause(); ref.current.currentTime = 0; }
+    });
+  }, []);
+
+  const playSide = useCallback((side: "left" | "right") => {
+    stopAll();
+    const media = getMedia(side);
+    if (media) {
+      media.play().catch(() => {});
+      setActiveArtist(side);
+      setIsPlaying(true);
+    }
+  }, [getMedia, stopAll]);
+
+  const togglePlay = useCallback(() => {
+    if (isPlaying) {
+      const media = activeArtist ? getMedia(activeArtist) : null;
+      media?.pause();
+      setIsPlaying(false);
+    } else {
+      const side = activeArtist || "left";
+      const media = getMedia(side);
+      if (media) {
+        media.play().catch(() => {});
+        setActiveArtist(side);
+        setIsPlaying(true);
+      }
+    }
+  }, [isPlaying, activeArtist, getMedia]);
+
+  const handleSideTap = useCallback((side: "left" | "right") => {
+    if (!bothHaveMedia) return;
+    if (activeArtist === side && isPlaying) {
+      // Already playing this side - pause
+      getMedia(side)?.pause();
+      setIsPlaying(false);
+    } else {
+      playSide(side);
+    }
+  }, [bothHaveMedia, activeArtist, isPlaying, getMedia, playSide]);
+
+  // Time updates
   useEffect(() => {
-    const leftMedia = getLeftMedia();
-    const rightMedia = getRightMedia();
-    if (!leftMedia) return;
-
-    const onLoaded = () => {
-      const leftDur = leftMedia?.duration || 0;
-      const rightDur = rightMedia?.duration || 0;
-      setTotalDuration(leftDur + rightDur);
-    };
-    leftMedia.addEventListener("loadedmetadata", onLoaded);
-    rightMedia?.addEventListener("loadedmetadata", onLoaded);
-
-    const onTimeUpdate = () => {
-      if (currentSide === "left") {
-        setPlaybackTime(leftMedia?.currentTime || 0);
-      } else if (currentSide === "right") {
-        setPlaybackTime((leftMedia?.duration || 0) + (rightMedia?.currentTime || 0));
+    const updateTime = () => {
+      if (!activeArtist) return;
+      const media = getMedia(activeArtist);
+      if (media) {
+        setCurrentTime(media.currentTime || 0);
+        setDuration(media.duration || 0);
       }
     };
-    leftMedia.addEventListener("timeupdate", onTimeUpdate);
-    rightMedia?.addEventListener("timeupdate", onTimeUpdate);
-
+    const leftA = audioLeftRef.current;
+    const rightA = audioRightRef.current;
+    const leftV = videoLeftRef.current;
+    const rightV = videoRightRef.current;
+    [leftA, rightA, leftV, rightV].forEach(el => el?.addEventListener("timeupdate", updateTime));
+    [leftA, rightA, leftV, rightV].forEach(el => el?.addEventListener("loadedmetadata", updateTime));
     return () => {
-      leftMedia.removeEventListener("loadedmetadata", onLoaded);
-      leftMedia.removeEventListener("timeupdate", onTimeUpdate);
-      rightMedia?.removeEventListener("loadedmetadata", onLoaded);
-      rightMedia?.removeEventListener("timeupdate", onTimeUpdate);
+      [leftA, rightA, leftV, rightV].forEach(el => el?.removeEventListener("timeupdate", updateTime));
+      [leftA, rightA, leftV, rightV].forEach(el => el?.removeEventListener("loadedmetadata", updateTime));
     };
-  });
+  }, [activeArtist, getMedia]);
 
-  const handleCenterPlay = () => {
-    if (isPlaying) {
-      getLeftMedia()?.pause();
-      getRightMedia()?.pause();
-      setIsPlaying(false);
-      setCurrentSide(null);
-      return;
-    }
-    setIsPlaying(true);
-    setCurrentSide("left");
-    getLeftMedia()?.play();
-  };
-
-  const handleLeftEnded = () => {
-    if (battle.opponent_media_url) {
-      setCurrentSide("right");
-      getRightMedia()?.play();
-    } else {
-      setIsPlaying(false);
-      setCurrentSide(null);
-    }
-  };
-
-  const handleRightEnded = () => {
+  const handleEnded = useCallback(() => {
     setIsPlaying(false);
-    setCurrentSide(null);
-  };
+    setCurrentTime(0);
+  }, []);
 
   const formatTime = (sec: number) => {
-    if (!sec || isNaN(sec)) return "00:00";
+    if (!sec || isNaN(sec)) return "0:00";
     const m = Math.floor(sec / 60);
     const s = Math.floor(sec % 60);
-    return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+    return `${m}:${String(s).padStart(2, "0")}`;
   };
 
-  // Accept battle
+  const playbackPct = duration > 0 ? (currentTime / duration) * 100 : 0;
+
+  // ── Accept battle ──
+  const validateMediaDuration = (file: File): Promise<boolean> => {
+    return new Promise((resolve) => {
+      const el = document.createElement(file.type.startsWith("video") ? "video" : "audio");
+      el.preload = "metadata";
+      el.onloadedmetadata = () => { URL.revokeObjectURL(el.src); resolve(el.duration <= 45 * 60 || (toast.error("Max 45 min!"), false)); };
+      el.src = URL.createObjectURL(file);
+    });
+  };
+
   const handleAcceptBattle = async () => {
     if (!user || !acceptTrackTitle.trim()) return;
     setAccepting(true);
     try {
-      let mediaUrl = "";
-      let coverUrl = "";
+      let mediaUrl = "", coverUrl = "";
       if (acceptMediaFile) {
         const ext = acceptMediaFile.name.split(".").pop();
         const path = `battles/${user.id}/${Date.now()}.${ext}`;
-        const { data: uploadData } = await supabase.storage.from("media").upload(path, acceptMediaFile);
-        if (uploadData) {
-          const { data: urlData } = supabase.storage.from("media").getPublicUrl(path);
-          mediaUrl = urlData.publicUrl;
-        }
+        const { data: ud } = await supabase.storage.from("media").upload(path, acceptMediaFile);
+        if (ud) { const { data: u } = supabase.storage.from("media").getPublicUrl(path); mediaUrl = u.publicUrl; }
       }
       if (acceptCoverFile) {
         const ext = acceptCoverFile.name.split(".").pop();
         const path = `battles/covers/${user.id}/${Date.now()}.${ext}`;
-        const { data: uploadData } = await supabase.storage.from("media").upload(path, acceptCoverFile);
-        if (uploadData) {
-          const { data: urlData } = supabase.storage.from("media").getPublicUrl(path);
-          coverUrl = urlData.publicUrl;
-        }
+        const { data: ud } = await supabase.storage.from("media").upload(path, acceptCoverFile);
+        if (ud) { const { data: u } = supabase.storage.from("media").getPublicUrl(path); coverUrl = u.publicUrl; }
       }
       await (supabase as any).from("battles").update({
-        opponent_id: user.id,
-        status: "active",
-        opponent_title: acceptTrackTitle.trim(),
-        opponent_media_url: mediaUrl || null,
-        opponent_cover_url: coverUrl || null,
+        opponent_id: user.id, status: "active", opponent_title: acceptTrackTitle.trim(),
+        opponent_media_url: mediaUrl || null, opponent_cover_url: coverUrl || null,
       }).eq("id", battle.id);
       queryClient.invalidateQueries({ queryKey: ["battles"] });
       queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
       toast.success("Challenge accepted! 🥊");
       setShowUpload(false);
-    } catch {
-      toast.error("Failed to accept challenge");
-    } finally {
-      setAccepting(false);
-    }
+    } catch { toast.error("Failed to accept"); } finally { setAccepting(false); }
   };
 
-  const validateMediaDuration = (file: File): Promise<boolean> => {
-    return new Promise((resolve) => {
-      const el = document.createElement(file.type.startsWith("video") ? "video" : "audio");
-      el.preload = "metadata";
-      el.onloadedmetadata = () => {
-        URL.revokeObjectURL(el.src);
-        resolve(el.duration <= 45 * 60 || (toast.error("Max duration is 45 minutes!"), false));
-      };
-      el.src = URL.createObjectURL(file);
-    });
-  };
-
-  const handleMediaFileChange = async (file: File | null) => {
-    if (!file) { setAcceptMediaFile(null); return; }
-    const valid = await validateMediaDuration(file);
-    if (valid) setAcceptMediaFile(file);
-  };
-
-  const isOpen = battle.status === "open" && !battle.opponent_id;
-  const isPending = battle.status === "pending" && battle.opponent_id;
-  const canAccept = (isOpen && user?.id !== battle.challenger_id) || (isPending && user?.id === battle.opponent_id);
-  const bothHaveMedia = !!battle.challenger_media_url && !!battle.opponent_media_url;
-  const canVote = isActive && !isExpired && user && user.id !== battle.challenger_id && user.id !== battle.opponent_id;
-  const isVideo = battle.media_type === "video";
-
-  const playbackPct = totalDuration > 0 ? (playbackTime / totalDuration) * 100 : 0;
-
+  // ── RENDER ──
   return (
-    <motion.div layout className="overflow-hidden rounded-2xl bg-[hsl(240,10%,8%)] shadow-2xl border border-border/20">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-[hsl(240,10%,12%)] to-[hsl(240,10%,15%)] px-4 py-3 flex items-center justify-between">
+    <motion.div layout className="rounded-3xl overflow-hidden shadow-[0_0_60px_rgba(0,0,0,0.8)]" style={{ background: "linear-gradient(180deg, hsl(240 8% 6%) 0%, hsl(240 8% 3%) 100%)" }}>
+
+      {/* ═══ HEADER BAR ═══ */}
+      <div className="flex items-center justify-between px-5 py-3" style={{ background: "linear-gradient(90deg, hsl(240 8% 10%) 0%, hsl(240 8% 8%) 100%)" }}>
         <div className="flex items-center gap-2">
-          <Swords className="h-5 w-5 text-[hsl(42,100%,58%)]" />
-          <h3 className="font-black text-sm text-white tracking-wide uppercase">Music Battle!</h3>
+          <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+          <span className="text-[11px] font-black uppercase tracking-[0.15em] text-foreground/70">Music Battle</span>
         </div>
         <div className="flex items-center gap-2">
           {isActive && !isExpired && timeLeft && (
-            <span className="flex items-center gap-1 text-[10px] font-bold text-[hsl(42,100%,58%)]">
+            <span className="flex items-center gap-1 text-[10px] font-mono font-bold text-primary">
               <Clock className="h-3 w-3" /> {timeLeft}
             </span>
           )}
-          {isExpired && isActive && (
-            <span className="flex items-center gap-1 rounded-full bg-muted/30 px-2 py-0.5 text-[10px] font-bold text-[hsl(42,100%,58%)]">
-              <Trophy className="h-3 w-3" /> ENDED
-            </span>
-          )}
-          {isOpen && <span className="rounded-full bg-green-500/20 px-2 py-0.5 text-[10px] font-bold text-green-400">OPEN</span>}
-          {isPending && <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-400">PENDING</span>}
-          {isActive && !isExpired && <span className="rounded-full bg-red-500/20 px-2 py-0.5 text-[10px] font-bold text-red-400 animate-pulse">● LIVE</span>}
+          {isExpired && <span className="text-[10px] font-bold text-primary flex items-center gap-1"><Trophy className="h-3 w-3" /> ENDED</span>}
+          {isOpen && <span className="px-2 py-0.5 rounded-full bg-green-500/20 text-[10px] font-bold text-green-400">OPEN</span>}
+          {isPending && <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-[10px] font-bold text-amber-400">PENDING</span>}
+          {isActive && !isExpired && <span className="px-2 py-0.5 rounded-full bg-destructive/20 text-[10px] font-bold text-destructive animate-pulse">● LIVE</span>}
           {user?.id === battle.challenger_id && (
             <button onClick={() => deleteBattleMutation.mutate()} className="text-muted-foreground hover:text-destructive transition-colors">
               <Trash2 className="h-4 w-4" />
@@ -366,241 +327,322 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
         </div>
       </div>
 
-      {/* Battle Title */}
-      <div className="text-center py-2 bg-[hsl(240,10%,10%)]">
-        <p className="text-xs font-bold text-white/70 truncate px-4">{battle.title}</p>
+      {/* Battle title */}
+      <div className="text-center py-2">
+        <p className="text-xs font-bold text-foreground/50 truncate px-6">{battle.title}</p>
       </div>
 
-      {/* Main Battle Area - Split Screen */}
-      <div className="relative">
-        <div className="grid grid-cols-2 gap-0">
-          {/* LEFT - Challenger */}
-          <div className={`relative transition-opacity duration-300 ${currentSide === "right" ? "opacity-60" : "opacity-100"}`}>
-            <div className="aspect-[3/4] bg-[hsl(240,10%,12%)] relative overflow-hidden">
+      {/* ═══ IMMERSIVE BATTLE ARENA ═══ */}
+      <div className="relative" style={{ minHeight: 380 }}>
+        <div className="grid grid-cols-2 h-full" style={{ minHeight: 380 }}>
+
+          {/* LEFT ARTIST */}
+          <button
+            onClick={() => handleSideTap("left")}
+            className="relative overflow-hidden text-left border-r border-white/5 transition-all duration-500"
+            style={{ opacity: activeArtist === "right" ? 0.45 : 1 }}
+          >
+            {/* Cover */}
+            <div className="absolute inset-0">
               {battle.challenger_cover_url ? (
-                <img src={battle.challenger_cover_url} alt={challengerName} className="w-full h-full object-cover" />
+                <img src={battle.challenger_cover_url} alt="" className="w-full h-full object-cover" />
               ) : isVideo && battle.challenger_media_url ? (
-                <video ref={videoLeftRef} src={battle.challenger_media_url} onEnded={handleLeftEnded}
-                  className="w-full h-full object-cover" muted={currentSide !== "left"} />
+                <video ref={videoLeftRef} src={battle.challenger_media_url} onEnded={handleEnded} className="w-full h-full object-cover" playsInline muted={activeArtist !== "left"} />
               ) : (
-                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-900/40 to-blue-600/20">
-                  <span className="text-4xl">🎵</span>
+                <div className="w-full h-full bg-gradient-to-br from-blue-900/60 via-blue-800/30 to-transparent flex items-center justify-center">
+                  <span className="text-5xl opacity-30">🎵</span>
                 </div>
               )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+              {/* Gradient overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/30" />
+            </div>
 
-              {/* Active glow border */}
-              {currentSide === "left" && (
-                <div className="absolute inset-0 border-2 border-[hsl(42,100%,58%)] rounded-none animate-pulse pointer-events-none" />
+            {/* Active glow ring */}
+            <AnimatePresence>
+              {activeArtist === "left" && isPlaying && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-0 pointer-events-none z-10"
+                  style={{ boxShadow: "inset 0 0 40px 4px hsl(var(--primary) / 0.4)" }}
+                />
               )}
+            </AnimatePresence>
 
-              {/* Winning badge */}
+            {/* WINNING badge */}
+            <AnimatePresence>
               {currentWinner === "left" && totalVotes > 0 && (
                 <motion.div
-                  initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 300 }}
-                  className="absolute top-2 left-2 bg-[hsl(42,100%,58%)] text-black text-[9px] font-black px-2 py-0.5 rounded-full shadow-[0_0_15px_rgba(255,200,0,0.5)]"
+                  initial={{ scale: 0, y: -20 }}
+                  animate={{ scale: 1, y: 0 }}
+                  exit={{ scale: 0 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 15 }}
+                  className="absolute top-3 left-3 z-20 flex items-center gap-1 px-2.5 py-1 rounded-full shadow-lg"
+                  style={{ background: "linear-gradient(135deg, hsl(42 100% 58%), hsl(30 100% 45%))", boxShadow: "0 0 20px rgba(255,200,0,0.5)" }}
                 >
-                  👑 WINNING
+                  <Crown className="h-3 w-3 text-black" />
+                  <span className="text-[9px] font-black text-black tracking-wide">WINNING</span>
                 </motion.div>
               )}
               {currentWinner === "tied" && totalVotes > 0 && (
-                <div className="absolute top-2 left-2 bg-white/20 text-white text-[9px] font-black px-2 py-0.5 rounded-full">
-                  🤝 TIED
-                </div>
-              )}
-
-              <div className="absolute bottom-0 left-0 right-0 p-3">
-                <p className="text-white font-black text-sm truncate">{challengerName}</p>
-                <p className="text-white/60 text-[10px] truncate">{battle.challenger_title || "Track"}</p>
-              </div>
-            </div>
-
-            <div className="bg-[hsl(240,10%,10%)] px-3 py-2 flex items-center justify-between">
-              <button
-                onClick={() => canVote && voteMutation.mutate(battle.challenger_id)}
-                disabled={!canVote}
-                className={`flex items-center gap-1.5 text-xs font-bold transition-all ${
-                  userVote?.voted_for === battle.challenger_id
-                    ? "text-[hsl(42,100%,58%)]"
-                    : canVote ? "text-white/60 hover:text-white" : "text-white/30"
-                }`}
-              >
-                <ThumbsUp className={`h-4 w-4 ${userVote?.voted_for === battle.challenger_id ? "fill-[hsl(42,100%,58%)]" : ""}`} />
-                <span>{challengerVotes}</span>
-              </button>
-              <div className="text-right">
-                <p className="text-2xl font-black text-white">{challengerPct}%</p>
-              </div>
-            </div>
-          </div>
-
-          {/* RIGHT - Opponent */}
-          <div className={`relative transition-opacity duration-300 ${currentSide === "left" ? "opacity-60" : "opacity-100"}`}>
-            <div className="aspect-[3/4] bg-[hsl(240,10%,12%)] relative overflow-hidden">
-              {battle.opponent_cover_url ? (
-                <img src={battle.opponent_cover_url} alt={opponentName} className="w-full h-full object-cover" />
-              ) : isVideo && battle.opponent_media_url ? (
-                <video ref={videoRightRef} src={battle.opponent_media_url} onEnded={handleRightEnded}
-                  className="w-full h-full object-cover" muted={currentSide !== "right"} />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/40 to-red-600/20">
-                  <span className="text-4xl">{battle.opponent_id ? "🎵" : "❓"}</span>
-                </div>
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-
-              {currentSide === "right" && (
-                <div className="absolute inset-0 border-2 border-[hsl(42,100%,58%)] rounded-none animate-pulse pointer-events-none" />
-              )}
-
-              {currentWinner === "right" && totalVotes > 0 && (
-                <motion.div
-                  initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 300 }}
-                  className="absolute top-2 right-2 bg-[hsl(42,100%,58%)] text-black text-[9px] font-black px-2 py-0.5 rounded-full shadow-[0_0_15px_rgba(255,200,0,0.5)]"
-                >
-                  👑 WINNING
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute top-3 left-3 z-20 px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-sm">
+                  <span className="text-[9px] font-black text-white">🤝 TIED</span>
                 </motion.div>
               )}
-
-              <div className="absolute bottom-0 left-0 right-0 p-3">
-                <p className="text-white font-black text-sm truncate">{opponentName}</p>
-                <p className="text-white/60 text-[10px] truncate">{battle.opponent_title || "Waiting..."}</p>
-              </div>
-            </div>
-
-            <div className="bg-[hsl(240,10%,10%)] px-3 py-2 flex items-center justify-between">
-              <div className="text-left">
-                <p className="text-2xl font-black text-white">{opponentPct}%</p>
-              </div>
-              <button
-                onClick={() => canVote && battle.opponent_id && voteMutation.mutate(battle.opponent_id)}
-                disabled={!canVote || !battle.opponent_id}
-                className={`flex items-center gap-1.5 text-xs font-bold transition-all ${
-                  userVote?.voted_for === battle.opponent_id
-                    ? "text-[hsl(42,100%,58%)]"
-                    : canVote ? "text-white/60 hover:text-white" : "text-white/30"
-                }`}
-              >
-                <span>{opponentVotes}</span>
-                <ThumbsUp className={`h-4 w-4 ${userVote?.voted_for === battle.opponent_id ? "fill-[hsl(42,100%,58%)]" : ""}`} />
-              </button>
-            </div>
-          </div>
-
-          {/* CENTER - VS Badge + Play Button */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-20">
-            {/* VS */}
-            <motion.div
-              animate={isPlaying ? { scale: [1, 1.1, 1] } : {}}
-              transition={{ repeat: Infinity, duration: 1.5 }}
-              className="mb-2 w-14 h-14 rounded-full bg-gradient-to-br from-[hsl(42,100%,58%)] to-[hsl(30,100%,45%)] flex items-center justify-center shadow-[0_0_30px_rgba(255,200,0,0.5)]"
-            >
-              <span className="text-lg font-black text-black tracking-wider">VS</span>
-            </motion.div>
-
-            {/* Play Button */}
-            {bothHaveMedia && (
-              <motion.button
-                onClick={handleCenterPlay}
-                whileTap={{ scale: 0.9 }}
-                animate={isPlaying ? { boxShadow: ["0 0 20px rgba(255,200,0,0.4)", "0 0 50px rgba(255,200,0,0.8)", "0 0 20px rgba(255,200,0,0.4)"] } : {}}
-                transition={isPlaying ? { repeat: Infinity, duration: 1.5 } : {}}
-                className="pointer-events-auto w-18 h-18 rounded-full bg-gradient-to-br from-[hsl(42,100%,58%)] to-[hsl(30,100%,45%)] flex items-center justify-center shadow-[0_0_40px_rgba(255,200,0,0.4)] hover:shadow-[0_0_60px_rgba(255,200,0,0.6)] transition-all"
-                style={{ width: 72, height: 72 }}
-              >
-                {isPlaying ? (
-                  <Pause className="h-8 w-8 text-black fill-black" />
-                ) : (
-                  <Play className="h-8 w-8 text-black fill-black ml-1" />
-                )}
-              </motion.button>
-            )}
+            </AnimatePresence>
 
             {/* Now playing indicator */}
-            {isPlaying && currentSide && (
-              <motion.p
-                initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}
-                className="mt-2 text-[10px] font-bold text-[hsl(42,100%,58%)] bg-black/60 px-3 py-1 rounded-full backdrop-blur-sm"
-              >
-                🔊 {currentSide === "left" ? challengerName : opponentName}
-              </motion.p>
+            {activeArtist === "left" && isPlaying && (
+              <div className="absolute top-3 right-3 z-20">
+                <div className="flex items-end gap-[2px] h-4">
+                  {[1,2,3,4].map(i => (
+                    <motion.div
+                      key={i}
+                      animate={{ height: ["30%", "100%", "50%", "80%", "30%"] }}
+                      transition={{ repeat: Infinity, duration: 0.8, delay: i * 0.1 }}
+                      className="w-[3px] rounded-full bg-primary"
+                    />
+                  ))}
+                </div>
+              </div>
             )}
+
+            {/* Artist info */}
+            <div className="absolute bottom-0 left-0 right-0 p-4 z-10">
+              <p className="text-white font-black text-base truncate drop-shadow-lg">{challengerName}</p>
+              <p className="text-white/50 text-[11px] truncate mt-0.5">{battle.challenger_title || "Track"}</p>
+            </div>
+          </button>
+
+          {/* RIGHT ARTIST */}
+          <button
+            onClick={() => handleSideTap("right")}
+            className="relative overflow-hidden text-left transition-all duration-500"
+            style={{ opacity: activeArtist === "left" ? 0.45 : 1 }}
+          >
+            <div className="absolute inset-0">
+              {battle.opponent_cover_url ? (
+                <img src={battle.opponent_cover_url} alt="" className="w-full h-full object-cover" />
+              ) : isVideo && battle.opponent_media_url ? (
+                <video ref={videoRightRef} src={battle.opponent_media_url} onEnded={handleEnded} className="w-full h-full object-cover" playsInline muted={activeArtist !== "right"} />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-red-900/60 via-red-800/30 to-transparent flex items-center justify-center">
+                  <span className="text-5xl opacity-30">{battle.opponent_id ? "🎵" : "❓"}</span>
+                </div>
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-l from-transparent to-black/30" />
+            </div>
+
+            <AnimatePresence>
+              {activeArtist === "right" && isPlaying && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  className="absolute inset-0 pointer-events-none z-10"
+                  style={{ boxShadow: "inset 0 0 40px 4px hsl(var(--primary) / 0.4)" }}
+                />
+              )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+              {currentWinner === "right" && totalVotes > 0 && (
+                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 400, damping: 15 }}
+                  className="absolute top-3 right-3 z-20 flex items-center gap-1 px-2.5 py-1 rounded-full shadow-lg"
+                  style={{ background: "linear-gradient(135deg, hsl(42 100% 58%), hsl(30 100% 45%))", boxShadow: "0 0 20px rgba(255,200,0,0.5)" }}
+                >
+                  <Crown className="h-3 w-3 text-black" />
+                  <span className="text-[9px] font-black text-black tracking-wide">WINNING</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {activeArtist === "right" && isPlaying && (
+              <div className="absolute top-3 left-3 z-20">
+                <div className="flex items-end gap-[2px] h-4">
+                  {[1,2,3,4].map(i => (
+                    <motion.div key={i} animate={{ height: ["30%", "100%", "50%", "80%", "30%"] }}
+                      transition={{ repeat: Infinity, duration: 0.8, delay: i * 0.1 }}
+                      className="w-[3px] rounded-full bg-primary"
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="absolute bottom-0 left-0 right-0 p-4 z-10">
+              <p className="text-white font-black text-base truncate drop-shadow-lg text-right">{opponentName}</p>
+              <p className="text-white/50 text-[11px] truncate mt-0.5 text-right">{battle.opponent_title || "Waiting..."}</p>
+            </div>
+          </button>
+        </div>
+
+        {/* ═══ CENTER PLAY BUTTON ═══ */}
+        {bothHaveMedia && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30">
+            <motion.button
+              onClick={togglePlay}
+              whileTap={{ scale: 0.85 }}
+              className="pointer-events-auto relative"
+            >
+              {/* Outer glow rings */}
+              <AnimatePresence>
+                {isPlaying && (
+                  <>
+                    <motion.div
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: [1, 1.6], opacity: [0.4, 0] }}
+                      transition={{ repeat: Infinity, duration: 1.5 }}
+                      className="absolute inset-0 rounded-full"
+                      style={{ background: "radial-gradient(circle, hsl(var(--primary) / 0.4), transparent)" }}
+                    />
+                    <motion.div
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: [1, 2], opacity: [0.2, 0] }}
+                      transition={{ repeat: Infinity, duration: 2, delay: 0.3 }}
+                      className="absolute inset-0 rounded-full"
+                      style={{ background: "radial-gradient(circle, hsl(var(--primary) / 0.3), transparent)" }}
+                    />
+                  </>
+                )}
+              </AnimatePresence>
+
+              {/* Button */}
+              <motion.div
+                animate={isPlaying ? { boxShadow: ["0 0 30px 8px hsl(var(--primary) / 0.3)", "0 0 50px 15px hsl(var(--primary) / 0.5)", "0 0 30px 8px hsl(var(--primary) / 0.3)"] } : { boxShadow: "0 0 30px 8px hsl(var(--primary) / 0.2)" }}
+                transition={isPlaying ? { repeat: Infinity, duration: 1.5 } : {}}
+                className="w-20 h-20 rounded-full flex items-center justify-center border-2 border-primary/30"
+                style={{ background: "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.7))" }}
+              >
+                {isPlaying ? <Pause className="h-9 w-9 text-primary-foreground fill-primary-foreground" /> : <Play className="h-9 w-9 text-primary-foreground fill-primary-foreground ml-1" />}
+              </motion.div>
+            </motion.button>
           </div>
+        )}
+      </div>
+
+      {/* ═══ VOTE PROGRESS BAR ═══ */}
+      <div className="px-5 py-3" style={{ background: "hsl(240 8% 6%)" }}>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => canVote && voteMutation.mutate(battle.challenger_id)}
+              disabled={!canVote}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all ${
+                userVote?.voted_for === battle.challenger_id
+                  ? "bg-blue-500 text-white shadow-[0_0_12px_rgba(59,130,246,0.5)]"
+                  : canVote ? "bg-blue-500/15 text-blue-400 hover:bg-blue-500/25" : "bg-muted/20 text-muted-foreground"
+              }`}
+            >
+              <ThumbsUp className={`h-3 w-3 ${userVote?.voted_for === battle.challenger_id ? "fill-current" : ""}`} />
+              {challengerVotes}
+            </button>
+            <span className="text-lg font-black text-blue-400">{challengerPct}%</span>
+          </div>
+          <span className="text-[10px] font-medium text-muted-foreground">{totalVotes} votes</span>
+          <div className="flex items-center gap-2">
+            <span className="text-lg font-black text-red-400">{opponentPct}%</span>
+            <button
+              onClick={() => canVote && battle.opponent_id && voteMutation.mutate(battle.opponent_id)}
+              disabled={!canVote || !battle.opponent_id}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all ${
+                userVote?.voted_for === battle.opponent_id
+                  ? "bg-red-500 text-white shadow-[0_0_12px_rgba(239,68,68,0.5)]"
+                  : canVote ? "bg-red-500/15 text-red-400 hover:bg-red-500/25" : "bg-muted/20 text-muted-foreground"
+              }`}
+            >
+              {opponentVotes}
+              <ThumbsUp className={`h-3 w-3 ${userVote?.voted_for === battle.opponent_id ? "fill-current" : ""}`} />
+            </button>
+          </div>
+        </div>
+
+        {/* Vote bar */}
+        <div className="h-3 rounded-full overflow-hidden flex" style={{ background: "hsl(240 8% 12%)" }}>
+          <motion.div
+            animate={{ width: `${challengerPct}%` }}
+            transition={{ type: "spring", stiffness: 200, damping: 25 }}
+            className="h-full rounded-l-full"
+            style={{ background: "linear-gradient(90deg, hsl(217 91% 50%), hsl(217 91% 60%))" }}
+          />
+          <motion.div
+            animate={{ width: `${opponentPct}%` }}
+            transition={{ type: "spring", stiffness: 200, damping: 25 }}
+            className="h-full rounded-r-full"
+            style={{ background: "linear-gradient(90deg, hsl(0 84% 50%), hsl(0 84% 60%))" }}
+          />
         </div>
       </div>
 
-      {/* Vote Progress Bar */}
-      <div className="bg-[hsl(240,10%,8%)] px-4 py-2">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-[10px] font-bold text-blue-400">{challengerPct}%</span>
-          <div className="flex-1 h-2.5 rounded-full overflow-hidden bg-red-500/40 relative">
-            <div
-              className="absolute left-0 top-0 h-full rounded-full bg-gradient-to-r from-blue-500 to-blue-400 transition-all duration-500"
-              style={{ width: `${challengerPct}%` }}
-            />
-          </div>
-          <span className="text-[10px] font-bold text-red-400">{opponentPct}%</span>
-        </div>
-        <p className="text-center text-[9px] text-white/40 font-medium">{totalVotes} total votes</p>
-      </div>
-
-      {/* Audio Playback Bar */}
+      {/* ═══ AUDIO PLAYBACK BAR ═══ */}
       {bothHaveMedia && (
-        <div className="bg-[hsl(240,10%,6%)] px-4 py-2 flex items-center gap-3">
-          <span className="text-[10px] font-mono text-white/50 w-10 text-right">{formatTime(playbackTime)}</span>
-          <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
-            <div
-              className="h-full rounded-full bg-[hsl(42,100%,58%)] transition-all"
-              style={{ width: `${playbackPct}%` }}
+        <div className="px-5 py-3 flex items-center gap-3 border-t border-white/5" style={{ background: "hsl(240 8% 5%)" }}>
+          {activeArtist && isPlaying && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-end gap-[2px] h-3 shrink-0">
+              {[1,2,3].map(i => (
+                <motion.div key={i} animate={{ height: ["30%", "100%", "30%"] }} transition={{ repeat: Infinity, duration: 0.6, delay: i * 0.15 }}
+                  className="w-[2px] rounded-full bg-primary" />
+              ))}
+            </motion.div>
+          )}
+          <span className="text-[11px] font-mono text-foreground/50 w-9 text-right shrink-0">{formatTime(currentTime)}</span>
+          <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "hsl(var(--primary) / 0.15)" }}>
+            <motion.div
+              className="h-full rounded-full"
+              style={{ width: `${playbackPct}%`, background: "linear-gradient(90deg, hsl(var(--primary)), hsl(var(--primary) / 0.7))" }}
             />
           </div>
-          <span className="text-[10px] font-mono text-white/50 w-10">{formatTime(totalDuration)}</span>
+          <span className="text-[11px] font-mono text-foreground/50 w-9 shrink-0">{formatTime(duration)}</span>
         </div>
       )}
 
-      {/* Winner announcement */}
+      {/* ═══ WINNER ANNOUNCEMENT ═══ */}
       {isExpired && winnerId && (
-        <div className="bg-gradient-to-r from-[hsl(42,100%,58%)]/20 to-[hsl(42,100%,58%)]/10 px-4 py-2.5 text-center">
-          <p className="text-sm font-black text-[hsl(42,100%,58%)]">
-            🏆 {winnerId === battle.challenger_id ? challengerName : opponentName} wins with {winnerId === battle.challenger_id ? challengerPct : opponentPct}% of votes!
+        <motion.div initial={{ height: 0 }} animate={{ height: "auto" }} className="overflow-hidden"
+          style={{ background: "linear-gradient(90deg, hsl(var(--primary) / 0.15), hsl(var(--primary) / 0.05))" }}>
+          <p className="py-3 text-center text-sm font-black text-primary">
+            🏆 {winnerId === battle.challenger_id ? challengerName : opponentName} wins with {winnerId === battle.challenger_id ? challengerPct : opponentPct}%!
           </p>
-        </div>
+        </motion.div>
       )}
       {isExpired && totalVotes > 0 && !winnerId && (
-        <div className="bg-white/5 px-4 py-2 text-center">
-          <p className="text-sm font-bold text-white/60">It's a tie! 🤝</p>
+        <div className="py-3 text-center" style={{ background: "hsl(240 8% 8%)" }}>
+          <p className="text-sm font-bold text-foreground/60">🤝 It's a tie!</p>
         </div>
       )}
 
-      {/* Accept Battle */}
+      {/* ═══ ACCEPT CHALLENGE ═══ */}
       {((isPending && user?.id === battle.opponent_id && !battle.opponent_media_url) || (isOpen && canAccept)) && (
-        <div className="border-t border-white/5 bg-[hsl(240,10%,10%)] px-4 py-3">
+        <div className="border-t border-white/5 px-5 py-4" style={{ background: "hsl(240 8% 7%)" }}>
           {isPending && user?.id === battle.opponent_id && (
-            <p className="mb-2 text-center text-xs font-bold text-[hsl(42,100%,58%)]">🥊 You've been challenged!</p>
+            <p className="mb-3 text-center text-xs font-bold text-primary">🥊 You've been challenged!</p>
           )}
           {!showUpload ? (
-            <button onClick={() => setShowUpload(true)} className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-[hsl(42,100%,58%)] to-[hsl(30,100%,45%)] py-2.5 text-xs font-bold text-black shadow-lg">
-              <Upload className="h-3.5 w-3.5" /> Accept & Upload Your Entry
+            <button onClick={() => setShowUpload(true)}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-bold text-primary-foreground shadow-lg"
+              style={{ background: "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.7))" }}>
+              <Upload className="h-4 w-4" /> Accept & Upload Entry
             </button>
           ) : (
             <div className="space-y-2">
-              <Input placeholder="Your track title" value={acceptTrackTitle} onChange={(e) => setAcceptTrackTitle(e.target.value)} className="h-9 text-xs bg-white/5 border-white/10 text-white" />
+              <Input placeholder="Track title" value={acceptTrackTitle} onChange={(e) => setAcceptTrackTitle(e.target.value)} className="h-9 text-xs bg-white/5 border-white/10 text-white" />
               <div>
-                <label className="mb-1 block text-[10px] text-white/50">Upload {battle.media_type === "audio" ? "Song (max 45 min)" : "Video (max 45 min)"}</label>
+                <label className="mb-1 block text-[10px] text-foreground/50">{battle.media_type === "audio" ? "Song" : "Video"} (max 45 min)</label>
                 <input type="file" accept={battle.media_type === "audio" ? "audio/*,.mp3,.wav,.flac,.m4a" : "video/*,.mp4,.mov,.webm"}
-                  onChange={(e) => handleMediaFileChange(e.target.files?.[0] || null)}
-                  className="w-full text-[10px] text-white file:mr-2 file:rounded-lg file:border-0 file:bg-[hsl(42,100%,58%)]/20 file:px-3 file:py-1.5 file:text-[10px] file:font-semibold file:text-[hsl(42,100%,58%)]" />
+                  onChange={async (e) => { const f = e.target.files?.[0]; if (f && await validateMediaDuration(f)) setAcceptMediaFile(f); }}
+                  className="w-full text-[10px] text-white file:mr-2 file:rounded-lg file:border-0 file:bg-primary/20 file:px-3 file:py-1.5 file:text-[10px] file:font-semibold file:text-primary" />
               </div>
               {battle.media_type === "audio" && (
                 <div>
-                  <label className="mb-1 block text-[10px] text-white/50">Cover Art (required)</label>
+                  <label className="mb-1 block text-[10px] text-foreground/50">Cover Art</label>
                   <input type="file" accept="image/*" onChange={(e) => setAcceptCoverFile(e.target.files?.[0] || null)}
-                    className="w-full text-[10px] text-white file:mr-2 file:rounded-lg file:border-0 file:bg-[hsl(42,100%,58%)]/20 file:px-3 file:py-1.5 file:text-[10px] file:font-semibold file:text-[hsl(42,100%,58%)]" />
+                    className="w-full text-[10px] text-white file:mr-2 file:rounded-lg file:border-0 file:bg-primary/20 file:px-3 file:py-1.5 file:text-[10px] file:font-semibold file:text-primary" />
                 </div>
               )}
               <button onClick={handleAcceptBattle}
                 disabled={accepting || !acceptTrackTitle.trim() || !acceptMediaFile || (battle.media_type === "audio" && !acceptCoverFile)}
-                className="w-full rounded-xl bg-gradient-to-r from-[hsl(42,100%,58%)] to-[hsl(30,100%,45%)] py-2.5 text-xs font-bold text-black shadow-lg disabled:opacity-50">
+                className="w-full rounded-2xl py-3 text-sm font-bold text-primary-foreground shadow-lg disabled:opacity-50"
+                style={{ background: "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.7))" }}>
                 {accepting ? "Uploading..." : "🥊 Accept Challenge"}
               </button>
             </div>
@@ -608,67 +650,62 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
         </div>
       )}
 
-      {/* Comments toggle */}
+      {/* ═══ COMMENTS TOGGLE ═══ */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center justify-center gap-1.5 border-t border-white/5 bg-[hsl(240,10%,8%)] px-4 py-2.5 text-xs text-white/50 hover:text-white/80 transition-colors"
+        className="flex w-full items-center justify-center gap-2 border-t border-white/5 py-3 text-xs text-foreground/40 hover:text-foreground/70 transition-colors"
+        style={{ background: "hsl(240 8% 5%)" }}
       >
         <MessageCircle className="h-3.5 w-3.5" />
-        {comments.length} Comments
-        {totalVotes > 0 && <span className="ml-2 text-white/20">•</span>}
-        {totalVotes > 0 && <span className="text-white/40">{totalVotes} votes</span>}
+        {battleComments.length} Comments
+        {totalVotes > 0 && <span className="text-foreground/20">•</span>}
+        {totalVotes > 0 && <span>{totalVotes} votes</span>}
       </button>
 
-      {/* Comments section */}
+      {/* ═══ COMMENTS SECTION ═══ */}
       <AnimatePresence>
         {expanded && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden border-t border-white/5 bg-[hsl(240,10%,8%)]">
-            <div className="max-h-48 space-y-2 overflow-y-auto px-4 py-2">
-              {comments.length === 0 && <p className="py-3 text-center text-xs text-white/30">No comments yet. Be the first!</p>}
-              {comments.map((c: any) => {
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden border-t border-white/5" style={{ background: "hsl(240 8% 5%)" }}>
+            <div className="max-h-48 space-y-2 overflow-y-auto px-5 py-3">
+              {battleComments.length === 0 && <p className="py-4 text-center text-xs text-foreground/30">No comments yet</p>}
+              {battleComments.map((c: any) => {
                 const cp = profileMap.get(c.user_id) as any;
                 return (
                   <div key={c.id} className="flex items-start gap-2">
-                    <div className="h-6 w-6 flex-shrink-0 overflow-hidden rounded-full bg-white/10">
-                      {cp?.avatar_url ? <img src={cp.avatar_url} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-white/50">{(cp?.display_name || "U")[0]}</div>}
+                    <div className="h-6 w-6 shrink-0 rounded-full bg-muted/30 overflow-hidden">
+                      {cp?.avatar_url ? <img src={cp.avatar_url} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-foreground/40">{(cp?.display_name || "U")[0]}</div>}
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold text-white/40">{cp?.display_name || "User"}</span>
-                      <p className="text-xs text-white/80">{c.content}</p>
+                      <span className="text-[10px] font-bold text-foreground/40">{cp?.display_name || "User"}</span>
+                      <p className="text-xs text-foreground/80">{c.content}</p>
                     </div>
                   </div>
                 );
               })}
               <div ref={commentsEndRef} />
             </div>
-            <div className="scrollbar-hide flex gap-1.5 overflow-x-auto border-t border-white/5 px-4 py-1.5">
-              {EMOJIS.map((emoji) => (
-                <button key={emoji} onClick={() => commentMutation.mutate(emoji)} className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-white/5 text-sm hover:bg-white/10">
-                  {emoji}
-                </button>
+            <div className="flex gap-1.5 overflow-x-auto border-t border-white/5 px-5 py-1.5 scrollbar-hide">
+              {EMOJIS.map(e => (
+                <button key={e} onClick={() => commentMutation.mutate(e)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted/10 text-sm hover:bg-muted/20">{e}</button>
               ))}
             </div>
-            <div className="flex gap-2 border-t border-white/5 px-4 py-2">
-              <Input
-                placeholder="Drop a comment..."
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && comment.trim()) commentMutation.mutate(comment.trim());
-                }}
-                className="h-8 text-xs bg-white/5 border-white/10 text-white placeholder:text-white/30"
-              />
-              <button onClick={() => comment.trim() && commentMutation.mutate(comment.trim())} disabled={!comment.trim()} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-[hsl(42,100%,58%)] to-[hsl(30,100%,45%)] disabled:opacity-50">
-                <Send className="h-3.5 w-3.5 text-black" />
+            <div className="flex gap-2 border-t border-white/5 px-5 py-2">
+              <Input placeholder="Drop a comment..." value={comment} onChange={(e) => setComment(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && comment.trim()) commentMutation.mutate(comment.trim()); }}
+                className="h-8 text-xs bg-white/5 border-white/10 text-white placeholder:text-foreground/30" />
+              <button onClick={() => comment.trim() && commentMutation.mutate(comment.trim())} disabled={!comment.trim()}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary disabled:opacity-50">
+                <Send className="h-3.5 w-3.5 text-primary-foreground" />
               </button>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Hidden audio elements */}
-      {!isVideo && battle.challenger_media_url && <audio ref={audioLeftRef} src={battle.challenger_media_url} onEnded={handleLeftEnded} />}
-      {!isVideo && battle.opponent_media_url && <audio ref={audioRightRef} src={battle.opponent_media_url} onEnded={handleRightEnded} />}
+      {/* Hidden audio */}
+      {!isVideo && battle.challenger_media_url && <audio ref={audioLeftRef} src={battle.challenger_media_url} onEnded={handleEnded} />}
+      {!isVideo && battle.opponent_media_url && <audio ref={audioRightRef} src={battle.opponent_media_url} onEnded={handleEnded} />}
     </motion.div>
   );
 };
