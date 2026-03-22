@@ -278,6 +278,7 @@ const MusicBattlePlayerPage = () => {
       setAcceptTrackTitle("");
       setAcceptMediaFile(null);
       setAcceptCoverFile(null);
+      setAcceptSongFile(null);
       toast.success("Challenge accepted");
       refreshBattleViews();
     } catch (error: any) {
