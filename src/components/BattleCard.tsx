@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, Heart, Send, Trophy, Swords, Music, Users, MessageCircle } from "lucide-react";
+import { Play, Pause, Heart, Send, Trophy, Swords, Music, Users, MessageCircle, Trash2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
