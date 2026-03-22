@@ -162,62 +162,43 @@ const EditProfileSheet = ({ open, onClose, profileData, onSave }: EditProfileShe
                 </div>
               </div>
 
-              {/* Email */}
+              {/* Email (read-only) */}
               <div>
-                <Label htmlFor="edit-email" className="text-xs text-muted-foreground mb-1.5 block">Email Address</Label>
+                <Label className="text-xs text-muted-foreground mb-1.5 block">Email Address</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
-                    id="edit-email"
-                    type="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10 bg-card border-border"
-                    placeholder="your@email.com"
+                    readOnly
+                    className="pl-10 bg-muted/50 border-border text-muted-foreground cursor-not-allowed"
                   />
                 </div>
+                <p className="text-[10px] text-muted-foreground mt-1">Email is linked to your account and cannot be changed here.</p>
               </div>
 
               {/* Password Section */}
               <div className="pt-2 border-t border-border">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Change Password</p>
-                <div className="flex flex-col gap-3">
-                  <div>
-                    <Label htmlFor="current-pw" className="text-xs text-muted-foreground mb-1.5 block">Current Password</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <Input
-                        id="current-pw"
-                        type={showPassword ? "text" : "password"}
-                        value={currentPassword}
-                        onChange={(e) => setCurrentPassword(e.target.value)}
-                        className="pl-10 pr-10 bg-card border-border"
-                        placeholder="Current password"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                      >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="new-pw" className="text-xs text-muted-foreground mb-1.5 block">New Password</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <Input
-                        id="new-pw"
-                        type={showPassword ? "text" : "password"}
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        className="pl-10 bg-card border-border"
-                        placeholder="New password"
-                      />
-                    </div>
-                  </div>
-                </div>
+                <p className="text-[11px] text-muted-foreground mb-3">
+                  We'll send a password reset link to your email address to verify it's you.
+                </p>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setPasswordResetSent(true);
+                    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                      redirectTo: `${window.location.origin}/settings`,
+                    });
+                    if (error) {
+                      setPasswordResetSent(false);
+                    }
+                  }}
+                  disabled={passwordResetSent}
+                  className="w-full py-2.5 rounded-xl bg-card border border-border text-foreground text-xs font-semibold flex items-center justify-center gap-1.5 hover:border-primary/30 transition-all disabled:opacity-50"
+                >
+                  <Lock className="w-3.5 h-3.5" />
+                  {passwordResetSent ? "Reset Link Sent! Check your email" : "Send Password Reset Email"}
+                </button>
               </div>
 
               {/* Save Button */}

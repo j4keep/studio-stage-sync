@@ -260,8 +260,47 @@ const ProfilePage = () => {
       <EditProfileSheet
         open={showEditProfile}
         onClose={() => setShowEditProfile(false)}
-        profileData={{ name: "WHEUAT Artist", email: "artist@wheuat.com", avatarUrl: profileAvatar, bannerUrl: profileBanner }}
-        onSave={(data) => console.log("Profile updated:", data)}
+        profileData={{
+          name: profileInfo.display_name,
+          email: profileInfo.email,
+          avatarUrl: profileInfo.avatar_url || profileAvatar,
+          bannerUrl: profileInfo.banner_url || profileBanner,
+        }}
+        onSave={async (data) => {
+          if (!user) return;
+          const updates: any = { display_name: data.name, updated_at: new Date().toISOString() };
+          
+          // Upload avatar if changed
+          if (data.avatarFile) {
+            const ext = data.avatarFile.name.split(".").pop();
+            const path = `avatars/${user.id}/${Date.now()}.${ext}`;
+            const { data: uploadData } = await supabase.storage.from("media").upload(path, data.avatarFile);
+            if (uploadData) {
+              const { data: urlData } = supabase.storage.from("media").getPublicUrl(path);
+              updates.avatar_url = urlData.publicUrl;
+            }
+          }
+          
+          // Upload banner if changed
+          if (data.bannerFile) {
+            const ext = data.bannerFile.name.split(".").pop();
+            const path = `banners/${user.id}/${Date.now()}.${ext}`;
+            const { data: uploadData } = await supabase.storage.from("media").upload(path, data.bannerFile);
+            if (uploadData) {
+              const { data: urlData } = supabase.storage.from("media").getPublicUrl(path);
+              updates.banner_url = urlData.publicUrl;
+            }
+          }
+          
+          await supabase.from("profiles").update(updates).eq("user_id", user.id);
+          setProfileInfo(prev => ({
+            ...prev,
+            display_name: data.name,
+            avatar_url: updates.avatar_url || prev.avatar_url,
+            banner_url: updates.banner_url || prev.banner_url,
+          }));
+          toast({ title: "Profile updated!", description: "Your changes have been saved." });
+        }}
       />
 
       <ProGateModal open={showProModal} onClose={closeProModal} featureName={gatedFeature} onSubscribe={activatePro} />
