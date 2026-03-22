@@ -78,7 +78,7 @@ const ProfilePage = () => {
 
     const fetchLikes = async () => {
       let total = 0;
-      for (const table of ["songs", "videos"] as const) {
+      for (const table of ["songs", "videos", "posts"] as const) {
         const { data } = await (supabase as any).from(table).select("likes_count").eq("user_id", user.id);
         if (data) total += data.reduce((sum: number, item: any) => sum + (item.likes_count || 0), 0);
       }
