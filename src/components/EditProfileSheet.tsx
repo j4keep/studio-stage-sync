@@ -93,7 +93,7 @@ const EditProfileSheet = ({ open, onClose, profileData, onSave }: EditProfileShe
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed bottom-0 left-0 right-0 z-50 max-w-lg mx-auto bg-background rounded-t-2xl border-t border-border max-h-[90vh] flex flex-col"
+            className="fixed bottom-0 left-0 right-0 z-50 max-w-lg mx-auto bg-background rounded-t-2xl border-t border-border max-h-[85vh] flex flex-col"
           >
             {/* Handle */}
             <div className="flex justify-center pt-3 pb-1">
