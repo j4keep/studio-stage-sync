@@ -24,10 +24,10 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
   const [opponentSearch, setOpponentSearch] = useState("");
   const [selectedOpponent, setSelectedOpponent] = useState<{ user_id: string; display_name: string; avatar_url: string | null } | null>(null);
 
-  const { data: searchResults = [] } = useQuery({
+  const { data: searchResults = [], isFetching: isSearching } = useQuery({
     queryKey: ["search-artists", opponentSearch],
     queryFn: async () => {
-      if (opponentSearch.trim().length < 2) return [];
+      if (opponentSearch.trim().length < 1) return [];
       const { data } = await supabase
         .from("profiles")
         .select("user_id, display_name, avatar_url")
@@ -36,7 +36,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
         .limit(5);
       return data || [];
     },
-    enabled: opponentSearch.trim().length >= 2 && !selectedOpponent,
+    enabled: opponentSearch.trim().length >= 1 && !selectedOpponent,
   });
 
   const handleSubmit = async () => {
@@ -134,26 +134,32 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
                   onChange={(e) => setOpponentSearch(e.target.value)}
                   className="pl-9"
                 />
-                {searchResults.length > 0 && (
+                {opponentSearch.trim().length >= 1 && (
                   <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-card border border-border rounded-lg shadow-lg overflow-hidden">
-                    {searchResults.map((p: any) => (
-                      <button
-                        key={p.user_id}
-                        onClick={() => { setSelectedOpponent(p); setOpponentSearch(""); }}
-                        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted/50 transition-colors text-left"
-                      >
-                        <div className="w-7 h-7 rounded-full bg-muted overflow-hidden flex-shrink-0">
-                          {p.avatar_url ? (
-                            <img src={p.avatar_url} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-muted-foreground">
-                              {(p.display_name || "?")[0]}
-                            </div>
-                          )}
-                        </div>
-                        <span className="text-xs font-medium text-foreground">{p.display_name}</span>
-                      </button>
-                    ))}
+                    {isSearching ? (
+                      <div className="px-3 py-3 text-xs text-muted-foreground text-center">Searching...</div>
+                    ) : searchResults.length > 0 ? (
+                      searchResults.map((p: any) => (
+                        <button
+                          key={p.user_id}
+                          onClick={() => { setSelectedOpponent(p); setOpponentSearch(""); }}
+                          className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted/50 transition-colors text-left"
+                        >
+                          <div className="w-7 h-7 rounded-full bg-muted overflow-hidden flex-shrink-0">
+                            {p.avatar_url ? (
+                              <img src={p.avatar_url} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-muted-foreground">
+                                {(p.display_name || "?")[0]}
+                              </div>
+                            )}
+                          </div>
+                          <span className="text-xs font-medium text-foreground">{p.display_name}</span>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-3 py-3 text-xs text-muted-foreground text-center">No artists found with that name</div>
+                    )}
                   </div>
                 )}
               </div>
