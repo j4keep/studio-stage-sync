@@ -21,7 +21,7 @@ import cardStudios from "@/assets/card-studios.jpg";
 import cardSongs from "@/assets/card-songs.jpg";
 import cardVideos from "@/assets/card-videos.jpg";
 import cardProjects from "@/assets/card-projects.jpg";
-import cardDollarClub from "@/assets/card-dollarclub.jpg";
+import cardBattles from "@/assets/card-battles.jpg";
 import NewsFeed from "@/components/NewsFeed";
 
 const fadeUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
