@@ -267,9 +267,13 @@ const MusicBattlePlayerPage = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* hidden audio elements */}
-      <audio ref={audioLeftRef} src={battle.challenger_media_url || ""} preload="metadata" />
-      <audio ref={audioRightRef} src={battle.opponent_media_url || ""} preload="metadata" />
+      {/* hidden media elements for audio battles */}
+      {battle.media_type !== "video" && (
+        <>
+          <audio ref={audioLeftRef} src={battle.challenger_media_url || ""} preload="metadata" />
+          <audio ref={audioRightRef} src={battle.opponent_media_url || ""} preload="metadata" />
+        </>
+      )}
 
       {/* ── HEADER ── */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
