@@ -267,7 +267,7 @@ const MusicBattlePlayerPage = () => {
         .update({
           status: "active",
           opponent_title: acceptTrackTitle.trim(),
-          opponent_media_url: isPhotoBattle ? null : mediaUrl,
+          opponent_media_url: mediaUrl || null,
           opponent_cover_url: coverUrl || null,
         })
         .eq("id", battle.id)
