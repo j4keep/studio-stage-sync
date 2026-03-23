@@ -76,25 +76,23 @@ const ProfilePage = () => {
         setFollowerCount(c >= 1000 ? `${(c / 1000).toFixed(1)}K` : String(c));
       });
 
-    const fetchLikes = async () => {
-      const { count } = await (supabase as any)
-        .from("likes")
-        .select("id", { count: "exact", head: true })
-        .in("content_type", ["song", "video", "post"])
-        .in("content_id", 
-          await (async () => {
-            const [{ data: songs }, { data: videos }, { data: posts }] = await Promise.all([
-              (supabase as any).from("songs").select("id").eq("user_id", user.id),
-              (supabase as any).from("videos").select("id").eq("user_id", user.id),
-              (supabase as any).from("posts").select("id").eq("user_id", user.id),
-            ]);
-            return [...(songs || []), ...(videos || []), ...(posts || [])].map((i: any) => i.id);
-          })()
-        );
-      const total = count || 0;
-      setTotalLikes(total >= 1000 ? `${(total / 1000).toFixed(1)}K` : String(total));
+    const fetchViews = async () => {
+      const [{ data: songs }, { data: videos }, { data: podcasts }, { data: posts }, { data: battles }] = await Promise.all([
+        (supabase as any).from("songs").select("plays").eq("user_id", user.id),
+        (supabase as any).from("videos").select("views").eq("user_id", user.id),
+        (supabase as any).from("podcasts").select("plays").eq("user_id", user.id),
+        (supabase as any).from("posts").select("views").eq("user_id", user.id),
+        (supabase as any).from("battles").select("views").eq("challenger_id", user.id),
+      ]);
+      let total = 0;
+      (songs || []).forEach((s: any) => { total += parseInt(s.plays) || 0; });
+      (videos || []).forEach((v: any) => { total += parseInt(v.views) || 0; });
+      (podcasts || []).forEach((p: any) => { total += parseInt(p.plays) || 0; });
+      (posts || []).forEach((p: any) => { total += p.views || 0; });
+      (battles || []).forEach((b: any) => { total += b.views || 0; });
+      setTotalViews(total >= 1000 ? `${(total / 1000).toFixed(1)}K` : String(total));
     };
-    fetchLikes();
+    fetchViews();
   }, [user]);
 
   // Refetch likes when page regains focus (e.g. navigating back)
