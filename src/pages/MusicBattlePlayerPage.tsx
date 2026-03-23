@@ -472,8 +472,8 @@ const MusicBattlePlayerPage = () => {
     return (
     <div className="min-h-screen flex flex-col relative overflow-hidden bg-background">
       {/* ── SPEAKERS BACKGROUND IMAGE ── */}
-      <div className="absolute inset-0 z-0 pointer-events-none">
-        <img src={battleSpeakersBg} alt="" className="w-full h-full object-cover opacity-20" />
+      <div className="absolute inset-0 z-0 pointer-events-none flex items-start justify-center" style={{ paddingTop: '8%' }}>
+        <img src={battleSpeakersBg} alt="" className="w-[110%] max-w-none opacity-70" style={{ objectFit: 'contain' }} />
       </div>
       {/* ── EQUALIZER BACKGROUND ── */}
       <AudioEqualizerBackground
