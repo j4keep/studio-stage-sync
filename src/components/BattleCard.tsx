@@ -47,18 +47,16 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
   const [comment, setComment] = useState("");
   const commentsEndRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [battleLiked, setBattleLiked] = useState(false);
+  const [battleLiked, setBattleLiked] = useState(!!(battle as any).isLiked);
   const [battleLikesCount, setBattleLikesCount] = useState(battle.likes_count || 0);
 
-  // Sync likes count when battle prop updates (e.g. after navigation)
+  useEffect(() => {
+    setBattleLiked(!!(battle as any).isLiked);
+  }, [battle.id, (battle as any).isLiked]);
+
   useEffect(() => {
     setBattleLikesCount(battle.likes_count || 0);
-  }, [battle.likes_count]);
-
-  // Sync like status when battle.id changes
-  useEffect(() => {
-    setBattleLiked(false);
-  }, [battle.id]);
+  }, [battle.id, battle.likes_count]);
 
   // Audio playback state for inline preview
   const [isPlaying, setIsPlaying] = useState(false);
