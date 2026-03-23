@@ -9,7 +9,7 @@ import { Music, Video, Search, X, Clock, Image, Mic } from "lucide-react";
 import { uploadToR2, getR2DownloadUrl } from "@/lib/r2-storage";
 import { Slider } from "@/components/ui/slider";
 import VoiceoverRecorder from "@/components/VoiceoverRecorder";
-import { BATTLE_BACKGROUNDS } from "@/lib/battle-backgrounds";
+
 
 interface Props {
   open: boolean;
@@ -51,7 +51,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
   const [mediaDurationMin, setMediaDurationMin] = useState<number | null>(null);
   const [showVoiceover, setShowVoiceover] = useState(false);
   const [hasVoiceover, setHasVoiceover] = useState(false);
-  const [selectedBackground, setSelectedBackground] = useState("none");
+  
   const isPhotoBattle = mediaType === "photo";
 
   const { data: searchResults = [], isFetching: isSearching } = useQuery({
@@ -188,7 +188,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
         challenger_cover_url: coverUrl || null,
         status: "pending",
         max_duration_minutes: isPhotoBattle ? 0 : maxDuration,
-        battle_background: selectedBackground !== "none" ? selectedBackground : null,
+        battle_background: null,
       });
 
       if (insertError) throw insertError;
@@ -208,7 +208,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
       setOpponentSearch("");
       setMaxDuration(20);
       setMediaDurationMin(null);
-      setSelectedBackground("none");
+      
     } catch (err: any) {
       console.error("[Battle] Create failed:", err);
       toast({ title: "Error", description: err?.message || "Failed to create battle", variant: "destructive" });
@@ -446,32 +446,6 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
             </>
           )}
 
-          {/* Battle Background Picker */}
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Battle Background</label>
-            <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">
-              {BATTLE_BACKGROUNDS.map((bg) => (
-                <button
-                  key={bg.id}
-                  onClick={() => setSelectedBackground(bg.id)}
-                  className={`flex-shrink-0 w-16 h-20 rounded-lg overflow-hidden border-2 transition-all ${
-                    selectedBackground === bg.id ? "border-primary ring-2 ring-primary/30 scale-105" : "border-border"
-                  }`}
-                >
-                  {bg.src ? (
-                    <img src={bg.src} alt={bg.label} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full bg-background flex items-center justify-center">
-                      <span className="text-lg">{bg.emoji}</span>
-                    </div>
-                  )}
-                </button>
-              ))}
-            </div>
-            <p className="text-[10px] text-muted-foreground mt-1">
-              {selectedBackground === "none" ? "Default white background" : `Selected: ${BATTLE_BACKGROUNDS.find(b => b.id === selectedBackground)?.label}`}
-            </p>
-          </div>
 
           <button
             onClick={handleSubmit}
