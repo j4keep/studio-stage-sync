@@ -5,9 +5,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
-import { Music, Video, Search, X, Clock, Image } from "lucide-react";
+import { Music, Video, Search, X, Clock, Image, Mic } from "lucide-react";
 import { uploadToR2, getR2DownloadUrl } from "@/lib/r2-storage";
 import { Slider } from "@/components/ui/slider";
+import VoiceoverRecorder from "@/components/VoiceoverRecorder";
 
 interface Props {
   open: boolean;
@@ -47,7 +48,8 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
   const [selectedOpponent, setSelectedOpponent] = useState<{ user_id: string; display_name: string; avatar_url: string | null } | null>(null);
   const [maxDuration, setMaxDuration] = useState(40);
   const [mediaDurationMin, setMediaDurationMin] = useState<number | null>(null);
-
+  const [showVoiceover, setShowVoiceover] = useState(false);
+  const [hasVoiceover, setHasVoiceover] = useState(false);
   const isPhotoBattle = mediaType === "photo";
 
   const { data: searchResults = [], isFetching: isSearching } = useQuery({
@@ -68,6 +70,8 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
   const handleMediaFileChange = async (file: File | null) => {
     setMediaFile(file);
     setMediaDurationMin(null);
+    setHasVoiceover(false);
+    setShowVoiceover(false);
     if (file) {
       try {
         const dur = await getMediaDuration(file);
@@ -398,6 +402,30 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
                   </p>
                 )}
               </div>
+
+              {/* Voiceover option */}
+              {mediaFile && !showVoiceover && (
+                <button
+                  onClick={() => setShowVoiceover(true)}
+                  className="w-full py-2 rounded-lg border border-dashed border-primary/40 text-xs font-bold text-primary flex items-center justify-center gap-1.5 hover:bg-primary/5 transition-colors"
+                >
+                  <Mic className="w-3.5 h-3.5" /> {hasVoiceover ? "Re-record Voiceover ✓" : "Add Voiceover 🎙️"}
+                </button>
+              )}
+
+              {mediaFile && showVoiceover && (
+                <VoiceoverRecorder
+                  mediaFile={mediaFile}
+                  mediaType={mediaType}
+                  onMixedFile={(mixed) => {
+                    setMediaFile(mixed);
+                    setHasVoiceover(true);
+                    setShowVoiceover(false);
+                    toast({ title: "Voiceover applied! 🎙️", description: "Your voice has been mixed with the track." });
+                  }}
+                  onCancel={() => setShowVoiceover(false)}
+                />
+              )}
 
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">
