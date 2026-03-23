@@ -113,8 +113,10 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
       return data || [];
     },
   });
-  const challengerVotes = votes.filter((v: any) => v.voted_for === battle.challenger_id).length;
-  const opponentVotes = battle.opponent_id ? votes.filter((v: any) => v.voted_for === battle.opponent_id).length : 0;
+  const participantIds = [battle.challenger_id, battle.opponent_id].filter(Boolean);
+  const audienceVotes = votes.filter((v: any) => !participantIds.includes(v.user_id));
+  const challengerVotes = audienceVotes.filter((v: any) => v.voted_for === battle.challenger_id).length;
+  const opponentVotes = battle.opponent_id ? audienceVotes.filter((v: any) => v.voted_for === battle.opponent_id).length : 0;
   const totalVotes = challengerVotes + opponentVotes;
   const challengerPct = totalVotes > 0 ? Math.round((challengerVotes / totalVotes) * 100) : 50;
   const opponentPct = totalVotes > 0 ? 100 - challengerPct : 50;
