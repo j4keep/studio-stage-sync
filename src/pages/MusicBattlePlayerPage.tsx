@@ -473,6 +473,9 @@ const MusicBattlePlayerPage = () => {
               aria-label="Left artist panel"
             />
 
+            {/* AI Effects Overlay for left */}
+            {battleId && <BattleEffectsOverlay battleId={battleId} side="left" isExpanded={expandedSide === "left"} />}
+
             <div className="absolute bottom-0 left-0 right-0 z-30 rounded-b-2xl bg-gradient-to-t from-black/80 to-transparent p-3 pointer-events-none">
               <p className="text-xs font-bold text-white truncate">{leftProfile.display_name || "Artist A"}</p>
               <p className="text-[10px] text-white/60 truncate">{battle.challenger_title || "Track"}</p>
