@@ -26,6 +26,8 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const lastTapRef = useRef(0);
 
+  const [showEmojiBar, setShowEmojiBar] = useState(false);
+
   useEffect(() => {
     setLiked(!!post.isLiked);
     setLikesCount(post.likes_count || 0);
@@ -72,6 +74,13 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
       el.removeEventListener("ended", onEnded);
     };
   }, [post.id, post.media_type, startLoop, stopLoop]);
+
+  // Show emoji bar when media starts, hide when stops
+  useEffect(() => {
+    if (isMediaPlaying || isExpanded) {
+      setShowEmojiBar(true);
+    }
+  }, [isMediaPlaying, isExpanded]);
 
   const likeMutation = useMutation({
     mutationFn: async () => {
@@ -185,9 +194,9 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
         )}
 
         {/* Emoji Reaction Bar — visible when expanded OR media is playing */}
-        {(isMediaPlaying || isExpanded) && (
+        {(isMediaPlaying || isExpanded) && showEmojiBar && (
           <div className="border-t border-border">
-            <EmojiBar onEmoji={spawnEmoji} postId={post.id} currentUserId={currentUserId} />
+            <EmojiBar onEmoji={spawnEmoji} postId={post.id} currentUserId={currentUserId} onSent={() => setShowEmojiBar(false)} />
           </div>
         )}
 
