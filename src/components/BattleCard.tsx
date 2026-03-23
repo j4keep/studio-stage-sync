@@ -154,6 +154,32 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
 
   useEffect(() => { commentsEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [battleComments.length]);
 
+  // Check if user liked this battle
+  useEffect(() => {
+    if (!user) return;
+    (supabase as any).from("likes").select("id").eq("user_id", user.id).eq("content_id", battle.id).eq("content_type", "battle").maybeSingle()
+      .then(({ data }: any) => { setBattleLiked(!!data); });
+  }, [user, battle.id]);
+
+  const toggleBattleLike = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user) return;
+    const wasLiked = battleLiked;
+    setBattleLiked(!wasLiked);
+    setBattleLikesCount(c => wasLiked ? Math.max(c - 1, 0) : c + 1);
+    if (wasLiked) {
+      await (supabase as any).from("likes").delete().eq("user_id", user.id).eq("content_id", battle.id).eq("content_type", "battle");
+    } else {
+      await (supabase as any).from("likes").insert({ user_id: user.id, content_id: battle.id, content_type: "battle" });
+    }
+  };
+
+  const handleBattleShare = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(`${window.location.origin}/battle/${battle.id}`);
+    toast.success("Link copied!");
+  };
+
   // Audio playback for inline card
   const activeRef = activeArtist === "left" ? audioLeftRef : audioRightRef;
   const inactiveRef = activeArtist === "left" ? audioRightRef : audioLeftRef;
