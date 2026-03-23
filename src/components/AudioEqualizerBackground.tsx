@@ -58,8 +58,8 @@ const AudioEqualizerBackground = ({ mediaElement, isPlaying }: AudioEqualizerBac
         const y = h - barH;
 
         const grad = c.createLinearGradient(x, y, x, h);
-        grad.addColorStop(0, `hsla(260, 80%, 65%, ${0.25 + barData[i] * 0.35})`);
-        grad.addColorStop(1, `hsla(260, 80%, 65%, 0.02)`);
+        grad.addColorStop(0, `hsla(204, 100%, 50%, ${0.3 + barData[i] * 0.5})`);
+        grad.addColorStop(1, `hsla(204, 100%, 50%, 0.05)`);
 
         c.fillStyle = grad;
         c.fillRect(x + 1, y, barW - 2, barH);
