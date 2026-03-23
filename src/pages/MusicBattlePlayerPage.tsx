@@ -771,6 +771,31 @@ const MusicBattlePlayerPage = () => {
                       className="w-full text-xs file:mr-3 file:rounded-xl file:border-0 file:bg-primary/15 file:px-3 file:py-2 file:font-semibold file:text-primary"
                     />
                   </div>
+
+                  {/* Voiceover option for opponent */}
+                  {acceptMediaFile && !showAcceptVoiceover && (
+                    <button
+                      onClick={() => setShowAcceptVoiceover(true)}
+                      className="w-full py-2 rounded-lg border border-dashed border-primary/40 text-xs font-bold text-primary flex items-center justify-center gap-1.5 hover:bg-primary/5 transition-colors"
+                    >
+                      <Mic className="w-3.5 h-3.5" /> {hasAcceptVoiceover ? "Re-record Voiceover ✓" : "Add Voiceover 🎙️"}
+                    </button>
+                  )}
+
+                  {acceptMediaFile && showAcceptVoiceover && (
+                    <VoiceoverRecorder
+                      mediaFile={acceptMediaFile}
+                      mediaType={battle.media_type as "audio" | "video"}
+                      onMixedFile={(mixed) => {
+                        setAcceptMediaFile(mixed);
+                        setHasAcceptVoiceover(true);
+                        setShowAcceptVoiceover(false);
+                        toast.success("Voiceover applied! 🎙️");
+                      }}
+                      onCancel={() => setShowAcceptVoiceover(false)}
+                    />
+                  )}
+
                   {battle.media_type === "audio" && (
                     <div>
                       <label className="mb-1 block text-xs text-muted-foreground">Upload cover art</label>
