@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, ArrowLeft, Crown, ThumbsUp, Clock } from "lucide-react";
+import { Play, Pause, ArrowLeft, Crown, ThumbsUp, Clock, Mic } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +11,7 @@ import { Slider } from "@/components/ui/slider";
 import { uploadToR2, getR2DownloadUrl } from "@/lib/r2-storage";
 import BattleEffectsOverlay from "@/components/BattleEffectsOverlay";
 import BattleLiveComments from "@/components/BattleLiveComments";
+import VoiceoverRecorder from "@/components/VoiceoverRecorder";
 import { incrementBattleViews } from "@/hooks/use-likes";
 
 /* ─── helpers ─── */
@@ -38,6 +39,8 @@ const MusicBattlePlayerPage = () => {
   const [acceptCoverFile, setAcceptCoverFile] = useState<File | null>(null);
   const [acceptSongFile, setAcceptSongFile] = useState<File | null>(null);
   const [accepting, setAccepting] = useState(false);
+  const [showAcceptVoiceover, setShowAcceptVoiceover] = useState(false);
+  const [hasAcceptVoiceover, setHasAcceptVoiceover] = useState(false);
   const [expandedSide, setExpandedSide] = useState<"left" | "right" | null>(null);
 
   const audioLeftRef = useRef<HTMLMediaElement | null>(null);
@@ -768,6 +771,31 @@ const MusicBattlePlayerPage = () => {
                       className="w-full text-xs file:mr-3 file:rounded-xl file:border-0 file:bg-primary/15 file:px-3 file:py-2 file:font-semibold file:text-primary"
                     />
                   </div>
+
+                  {/* Voiceover option for opponent */}
+                  {acceptMediaFile && !showAcceptVoiceover && (
+                    <button
+                      onClick={() => setShowAcceptVoiceover(true)}
+                      className="w-full py-2 rounded-lg border border-dashed border-primary/40 text-xs font-bold text-primary flex items-center justify-center gap-1.5 hover:bg-primary/5 transition-colors"
+                    >
+                      <Mic className="w-3.5 h-3.5" /> {hasAcceptVoiceover ? "Re-record Voiceover ✓" : "Add Voiceover 🎙️"}
+                    </button>
+                  )}
+
+                  {acceptMediaFile && showAcceptVoiceover && (
+                    <VoiceoverRecorder
+                      mediaFile={acceptMediaFile}
+                      mediaType={battle.media_type as "audio" | "video"}
+                      onMixedFile={(mixed) => {
+                        setAcceptMediaFile(mixed);
+                        setHasAcceptVoiceover(true);
+                        setShowAcceptVoiceover(false);
+                        toast.success("Voiceover applied! 🎙️");
+                      }}
+                      onCancel={() => setShowAcceptVoiceover(false)}
+                    />
+                  )}
+
                   {battle.media_type === "audio" && (
                     <div>
                       <label className="mb-1 block text-xs text-muted-foreground">Upload cover art</label>
