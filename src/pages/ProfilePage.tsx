@@ -25,10 +25,12 @@ const ProfilePage = () => {
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followerCount, setFollowerCount] = useState("0");
-  const [totalPlays, setTotalPlays] = useState("0");
-  const [songCount, setSongCount] = useState("0");
+  const [winsCount, setWinsCount] = useState("0");
+  const [projectsCount, setProjectsCount] = useState("0");
   const [totalViews, setTotalViews] = useState("0");
   const [showFollowers, setShowFollowers] = useState(false);
+  const [showWins, setShowWins] = useState(false);
+  const [showProjects, setShowProjects] = useState(false);
   const [profileInfo, setProfileInfo] = useState<{ display_name: string; email: string; avatar_url: string | null; banner_url: string | null }>({
     display_name: "",
     email: "",
