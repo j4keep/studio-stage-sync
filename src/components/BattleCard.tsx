@@ -45,6 +45,8 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
   const [comment, setComment] = useState("");
   const commentsEndRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [battleLiked, setBattleLiked] = useState(false);
+  const [battleLikesCount, setBattleLikesCount] = useState(battle.likes_count || 0);
 
   // Audio playback state for inline preview
   const [isPlaying, setIsPlaying] = useState(false);
