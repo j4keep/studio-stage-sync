@@ -45,8 +45,11 @@ import dabImg from "@/assets/emojis/dab.png";
 import peaceImg from "@/assets/emojis/peace.png";
 import djImg from "@/assets/emojis/dj.png";
 import danceImg from "@/assets/emojis/dance.png";
+import poopImg from "@/assets/emojis/poop.png";
+import trashImg from "@/assets/emojis/trash.png";
+import thumbsdownImg from "@/assets/emojis/thumbsdown.png";
 
-/* ───────── 30 preset custom character emojis ───────── */
+/* ───────── 33 preset custom character emojis ───────── */
 const PRESET_EMOJIS = [
   { label: "Fire", src: fireImg, id: "fire" },
   { label: "Thumbs Up", src: thumbsupImg, id: "thumbsup" },
@@ -78,6 +81,9 @@ const PRESET_EMOJIS = [
   { label: "Money", src: moneyImg, id: "money" },
   { label: "Peace", src: peaceImg, id: "peace" },
   { label: "Mind Blown", src: mindblownImg, id: "mindblown" },
+  { label: "Poop", src: poopImg, id: "poop" },
+  { label: "Trash", src: trashImg, id: "trash" },
+  { label: "Thumbs Down", src: thumbsdownImg, id: "thumbsdown" },
 ];
 
 // Build a lookup map for receiving effects from other users
