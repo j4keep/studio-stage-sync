@@ -142,6 +142,9 @@ const MusicBattlePlayerPage = () => {
     return () => clearInterval(i);
   }, [battle?.expires_at]);
 
+  // Keep ref in sync with state
+  useEffect(() => { activeArtistRef.current = activeArtist; }, [activeArtist]);
+
   /* ── audio control ── */
   const activeRef = activeArtist === "left" ? audioLeftRef : audioRightRef;
   const inactiveRef = activeArtist === "left" ? audioRightRef : audioLeftRef;
