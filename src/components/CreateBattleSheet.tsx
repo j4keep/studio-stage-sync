@@ -47,7 +47,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
   const [loading, setLoading] = useState(false);
   const [opponentSearch, setOpponentSearch] = useState("");
   const [selectedOpponent, setSelectedOpponent] = useState<{ user_id: string; display_name: string; avatar_url: string | null } | null>(null);
-  const [maxDuration, setMaxDuration] = useState(40);
+  const [maxDuration, setMaxDuration] = useState(20);
   const [mediaDurationMin, setMediaDurationMin] = useState<number | null>(null);
   const [showVoiceover, setShowVoiceover] = useState(false);
   const [hasVoiceover, setHasVoiceover] = useState(false);
@@ -178,7 +178,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
         }
       }
 
-      const { error: insertError } = await (supabase as any).from("battles").insert({
+      const { error: insertError } = await supabase.from("battles").insert({
         challenger_id: user.id,
         opponent_id: selectedOpponent.user_id,
         title: title.trim(),
@@ -206,11 +206,12 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
       setPhotoSongFile(null);
       setSelectedOpponent(null);
       setOpponentSearch("");
-      setMaxDuration(40);
+      setMaxDuration(20);
       setMediaDurationMin(null);
       setSelectedBackground("none");
-    } catch (err) {
-      toast({ title: "Error", description: "Failed to create battle", variant: "destructive" });
+    } catch (err: any) {
+      console.error("[Battle] Create failed:", err);
+      toast({ title: "Error", description: err?.message || "Failed to create battle", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -339,7 +340,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
                   value={[maxDuration]}
                   onValueChange={(v) => setMaxDuration(v[0])}
                   min={0}
-                  max={40}
+                  max={20}
                   step={1}
                   className="flex-1"
                 />
@@ -348,7 +349,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
               <p className="text-[10px] text-muted-foreground mt-1">
                 {maxDuration === 0
                   ? "No duration limit set — any length accepted."
-                  : `Each artist's entry must be ${maxDuration} min or less. Total battle: up to ${maxDuration * 2} min.`}
+                  : `Each artist's entry must be ${maxDuration} min or less. Total battle: up to ${maxDuration * 2} min (max 40 min).`}
               </p>
             </div>
           )}
