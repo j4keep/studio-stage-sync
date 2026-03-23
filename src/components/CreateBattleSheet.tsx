@@ -9,6 +9,7 @@ import { Music, Video, Search, X, Clock, Image, Mic } from "lucide-react";
 import { uploadToR2, getR2DownloadUrl } from "@/lib/r2-storage";
 import { Slider } from "@/components/ui/slider";
 import VoiceoverRecorder from "@/components/VoiceoverRecorder";
+import { BATTLE_BACKGROUNDS } from "@/lib/battle-backgrounds";
 
 interface Props {
   open: boolean;
