@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback } from "react";
+import { useRef, useEffect, useCallback } from "react";
 
 interface AudioEqualizerBackgroundProps {
   mediaElement: HTMLMediaElement | null;
@@ -7,38 +7,76 @@ interface AudioEqualizerBackgroundProps {
 
 const BAR_COUNT = 48;
 
+// Shared AudioContext + source cache to avoid re-creating sources
+const audioCtxCache = {
+  ctx: null as AudioContext | null,
+  sources: new WeakMap<HTMLMediaElement, MediaElementAudioSourceNode>(),
+};
+
+const getOrCreateSource = (el: HTMLMediaElement): { ctx: AudioContext; source: MediaElementAudioSourceNode } => {
+  if (!audioCtxCache.ctx) {
+    audioCtxCache.ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+  }
+  const ctx = audioCtxCache.ctx;
+  let source = audioCtxCache.sources.get(el);
+  if (!source) {
+    source = ctx.createMediaElementSource(el);
+    // Connect source directly to destination so audio always plays
+    source.connect(ctx.destination);
+    audioCtxCache.sources.set(el, source);
+  }
+  return { ctx, source };
+};
+
 const AudioEqualizerBackground = ({ mediaElement, isPlaying }: AudioEqualizerBackgroundProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
-  const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
-  const ctxRef = useRef<AudioContext | null>(null);
   const frameRef = useRef<number>(0);
-  const [connected, setConnected] = useState(false);
+  const lastElementRef = useRef<HTMLMediaElement | null>(null);
 
   const connect = useCallback(() => {
-    if (!mediaElement || connected) return;
+    if (!mediaElement) return;
+
+    // If same element, already connected
+    if (mediaElement === lastElementRef.current && analyserRef.current) return;
+
     try {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const { ctx, source } = getOrCreateSource(mediaElement);
+
+      // Disconnect old analyser if any
+      if (analyserRef.current) {
+        try { analyserRef.current.disconnect(); } catch {}
+      }
+
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 128;
       analyser.smoothingTimeConstant = 0.8;
-      const source = ctx.createMediaElementSource(mediaElement);
       source.connect(analyser);
-      analyser.connect(ctx.destination);
-      ctxRef.current = ctx;
+      // analyser doesn't need to connect to destination; source already does
+
       analyserRef.current = analyser;
-      sourceRef.current = source;
-      setConnected(true);
+      lastElementRef.current = mediaElement;
+
+      if (ctx.state === "suspended") {
+        ctx.resume();
+      }
     } catch {
       /* already connected or unsupported */
     }
-  }, [mediaElement, connected]);
+  }, [mediaElement]);
 
   useEffect(() => {
-    if (isPlaying && mediaElement && !connected) {
+    if (mediaElement) {
       connect();
     }
-  }, [isPlaying, mediaElement, connected, connect]);
+  }, [mediaElement, connect]);
+
+  // Resume AudioContext on play (needed for autoplay policy)
+  useEffect(() => {
+    if (isPlaying && audioCtxCache.ctx?.state === "suspended") {
+      audioCtxCache.ctx.resume();
+    }
+  }, [isPlaying]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -60,49 +98,41 @@ const AudioEqualizerBackground = ({ mediaElement, isPlaying }: AudioEqualizerBac
     let idlePhase = 0;
 
     const draw = () => {
+      frameRef.current = requestAnimationFrame(draw);
       const w = canvas.width;
       const h = canvas.height;
       c.clearRect(0, 0, w, h);
 
-      const barW = w / BAR_COUNT;
-      const gap = 2;
+      let barData: number[] = [];
 
       if (analyser && dataArray && isPlaying) {
         analyser.getByteFrequencyData(dataArray);
-
+        const step = Math.floor(dataArray.length / BAR_COUNT);
         for (let i = 0; i < BAR_COUNT; i++) {
-          const idx = Math.floor((i / BAR_COUNT) * dataArray.length);
-          const val = dataArray[idx] / 255;
-          const barH = Math.max(4, val * h * 0.6);
-
-          /* Gradient from primary color (bottom) to transparent (top) */
-          const grad = c.createLinearGradient(0, h, 0, h - barH);
-          grad.addColorStop(0, "hsla(204, 100%, 50%, 0.35)");
-          grad.addColorStop(0.5, "hsla(204, 100%, 50%, 0.15)");
-          grad.addColorStop(1, "hsla(204, 100%, 50%, 0.02)");
-
-          c.fillStyle = grad;
-          c.beginPath();
-          c.roundRect(i * barW + gap / 2, h - barH, barW - gap, barH, [4, 4, 0, 0]);
-          c.fill();
+          barData.push(dataArray[i * step] / 255);
         }
       } else {
-        /* Idle gentle wave */
-        idlePhase += 0.02;
+        idlePhase += 0.01;
         for (let i = 0; i < BAR_COUNT; i++) {
-          const val = 0.08 + Math.sin(idlePhase + i * 0.3) * 0.05;
-          const barH = val * h;
-          const grad = c.createLinearGradient(0, h, 0, h - barH);
-          grad.addColorStop(0, "hsla(204, 100%, 50%, 0.12)");
-          grad.addColorStop(1, "hsla(204, 100%, 50%, 0.02)");
-          c.fillStyle = grad;
-          c.beginPath();
-          c.roundRect(i * barW + gap / 2, h - barH, barW - gap, barH, [4, 4, 0, 0]);
-          c.fill();
+          barData.push(0.08 + Math.sin(idlePhase + i * 0.25) * 0.06);
         }
       }
 
-      frameRef.current = requestAnimationFrame(draw);
+      const barW = w / BAR_COUNT;
+      const maxH = h * 0.7;
+
+      for (let i = 0; i < BAR_COUNT; i++) {
+        const barH = barData[i] * maxH;
+        const x = i * barW;
+        const y = h - barH;
+
+        const grad = c.createLinearGradient(x, y, x, h);
+        grad.addColorStop(0, `hsla(260, 80%, 65%, ${0.25 + barData[i] * 0.35})`);
+        grad.addColorStop(1, `hsla(260, 80%, 65%, 0.02)`);
+
+        c.fillStyle = grad;
+        c.fillRect(x + 1, y, barW - 2, barH);
+      }
     };
 
     draw();
@@ -111,13 +141,13 @@ const AudioEqualizerBackground = ({ mediaElement, isPlaying }: AudioEqualizerBac
       cancelAnimationFrame(frameRef.current);
       window.removeEventListener("resize", resize);
     };
-  }, [isPlaying, connected]);
+  }, [isPlaying, analyserRef.current]);
 
   return (
     <canvas
       ref={canvasRef}
-      className="absolute inset-0 w-full h-full pointer-events-none z-0"
-      style={{ opacity: 0.9 }}
+      className="absolute inset-0 w-full h-full pointer-events-none z-0 opacity-50"
+      style={{ mixBlendMode: "screen" }}
     />
   );
 };
