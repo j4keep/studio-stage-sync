@@ -34,7 +34,7 @@ const FeedPage = () => {
       </div>
 
       {/* Create Post Button */}
-      <div className="px-4 pt-3">
+      <div className="px-4 pt-3 pb-2">
         <button
           onClick={() => setShowCreate(true)}
           className="w-full flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:border-primary/30 transition-all"
@@ -46,8 +46,8 @@ const FeedPage = () => {
         </button>
       </div>
 
-      {/* Posts Feed */}
-      <div className="mt-3 space-y-3 px-4">
+      {/* Posts Feed - no gaps, Facebook style */}
+      <div>
         {isLoading ? (
           <div className="flex justify-center py-10">
             <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -59,7 +59,9 @@ const FeedPage = () => {
         ) : (
           items.map((item: any) => (
             item.itemType === "battle" ? (
-              <BattleCard key={`battle-${item.id}`} battle={item} />
+              <div key={`battle-${item.id}`} className="px-4 py-2">
+                <BattleCard battle={item} />
+              </div>
             ) : (
               <FeedPostCard key={`post-${item.id}`} post={item} currentUserId={user?.id} />
             )
