@@ -47,18 +47,16 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
   const [comment, setComment] = useState("");
   const commentsEndRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [battleLiked, setBattleLiked] = useState(false);
+  const [battleLiked, setBattleLiked] = useState(!!(battle as any).isLiked);
   const [battleLikesCount, setBattleLikesCount] = useState(battle.likes_count || 0);
 
-  // Sync likes count when battle prop updates (e.g. after navigation)
+  useEffect(() => {
+    setBattleLiked(!!(battle as any).isLiked);
+  }, [battle.id, (battle as any).isLiked]);
+
   useEffect(() => {
     setBattleLikesCount(battle.likes_count || 0);
-  }, [battle.likes_count]);
-
-  // Sync like status when battle.id changes
-  useEffect(() => {
-    setBattleLiked(false);
-  }, [battle.id]);
+  }, [battle.id, battle.likes_count]);
 
   // Audio playback state for inline preview
   const [isPlaying, setIsPlaying] = useState(false);
@@ -164,23 +162,38 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
 
   useEffect(() => { commentsEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [battleComments.length]);
 
-  // Check if user liked this battle
-  useEffect(() => {
-    if (!user) return;
-    (supabase as any).from("likes").select("id").eq("user_id", user.id).eq("content_id", battle.id).eq("content_type", "battle").maybeSingle()
-      .then(({ data }: any) => { setBattleLiked(!!data); });
-  }, [user, battle.id]);
-
   const toggleBattleLike = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!user) return;
+
     const wasLiked = battleLiked;
+    const previousCount = battleLikesCount;
+
     setBattleLiked(!wasLiked);
-    setBattleLikesCount(c => wasLiked ? Math.max(c - 1, 0) : c + 1);
-    if (wasLiked) {
-      await (supabase as any).from("likes").delete().eq("user_id", user.id).eq("content_id", battle.id).eq("content_type", "battle");
-    } else {
-      await (supabase as any).from("likes").insert({ user_id: user.id, content_id: battle.id, content_type: "battle" });
+    setBattleLikesCount((count) => (wasLiked ? Math.max(count - 1, 0) : count + 1));
+
+    try {
+      if (wasLiked) {
+        const { error } = await (supabase as any)
+          .from("likes")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("content_id", battle.id)
+          .eq("content_type", "battle");
+        if (error) throw error;
+      } else {
+        const { error } = await (supabase as any)
+          .from("likes")
+          .insert({ user_id: user.id, content_id: battle.id, content_type: "battle" });
+        if (error) throw error;
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
+      queryClient.invalidateQueries({ queryKey: ["battles"] });
+    } catch {
+      setBattleLiked(wasLiked);
+      setBattleLikesCount(previousCount);
+      toast.error("Could not update battle love");
     }
   };
 
