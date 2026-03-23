@@ -27,6 +27,8 @@ interface Battle {
   created_at: string;
   expires_at?: string;
   max_duration_minutes?: number;
+  views?: number;
+  likes_count?: number;
 }
 
 const EMOJIS = ["🔥", "💀", "🎤", "👑", "💪", "😤", "🏆", "⚡"];
