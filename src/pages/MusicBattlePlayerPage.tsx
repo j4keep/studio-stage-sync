@@ -27,6 +27,7 @@ const MusicBattlePlayerPage = () => {
   /* ── state ── */
   const [isPlaying, setIsPlaying] = useState(false);
   const [activeArtist, setActiveArtist] = useState<"left" | "right">("left");
+  const activeArtistRef = useRef<"left" | "right">("left");
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [acceptTrackTitle, setAcceptTrackTitle] = useState("");

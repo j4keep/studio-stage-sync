@@ -199,8 +199,12 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
     };
   }, [activeRef, activeArtist, battle?.challenger_media_url, battle?.opponent_media_url]);
 
+  // Keep ref in sync
+  useEffect(() => { activeArtistRef.current = activeArtist; }, [activeArtist]);
+
   const handleSeek = (value: number[]) => {
-    const el = activeRef.current;
+    const side = activeArtistRef.current;
+    const el = side === "left" ? audioLeftRef.current : audioRightRef.current;
     if (el && duration > 0) {
       el.currentTime = (value[0] / 100) * duration;
       setCurrentTime(el.currentTime);
