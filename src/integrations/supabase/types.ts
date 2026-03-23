@@ -46,6 +46,44 @@ export type Database = {
           },
         ]
       }
+      battle_effects: {
+        Row: {
+          battle_id: string
+          created_at: string
+          id: string
+          image_url: string
+          prompt: string
+          side: string
+          user_id: string
+        }
+        Insert: {
+          battle_id: string
+          created_at?: string
+          id?: string
+          image_url: string
+          prompt: string
+          side?: string
+          user_id: string
+        }
+        Update: {
+          battle_id?: string
+          created_at?: string
+          id?: string
+          image_url?: string
+          prompt?: string
+          side?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "battle_effects_battle_id_fkey"
+            columns: ["battle_id"]
+            isOneToOne: false
+            referencedRelation: "battles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       battle_votes: {
         Row: {
           battle_id: string

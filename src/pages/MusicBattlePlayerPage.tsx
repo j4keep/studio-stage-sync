@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { uploadToR2, getR2DownloadUrl } from "@/lib/r2-storage";
+import BattleEffectsOverlay from "@/components/BattleEffectsOverlay";
 
 /* ─── helpers ─── */
 const fmt = (s: number) => {
@@ -472,6 +473,9 @@ const MusicBattlePlayerPage = () => {
               aria-label="Left artist panel"
             />
 
+            {/* AI Effects Overlay for left */}
+            {battleId && <BattleEffectsOverlay battleId={battleId} side="left" isExpanded={expandedSide === "left"} />}
+
             <div className="absolute bottom-0 left-0 right-0 z-30 rounded-b-2xl bg-gradient-to-t from-black/80 to-transparent p-3 pointer-events-none">
               <p className="text-xs font-bold text-white truncate">{leftProfile.display_name || "Artist A"}</p>
               <p className="text-[10px] text-white/60 truncate">{battle.challenger_title || "Track"}</p>
@@ -583,6 +587,9 @@ const MusicBattlePlayerPage = () => {
               className="absolute inset-0 z-20 rounded-2xl"
               aria-label="Right artist panel"
             />
+
+            {/* AI Effects Overlay for right */}
+            {battleId && <BattleEffectsOverlay battleId={battleId} side="right" isExpanded={expandedSide === "right"} />}
 
             <div className="absolute bottom-0 left-0 right-0 z-30 rounded-b-2xl bg-gradient-to-t from-black/80 to-transparent p-3 pointer-events-none">
               <p className="text-xs font-bold text-white truncate">{rightProfile.display_name || "Artist B"}</p>
