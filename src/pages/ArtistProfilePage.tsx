@@ -69,23 +69,22 @@ const ArtistProfilePage = () => {
       const c = count || 0;
       setFollowerCount(c >= 1000 ? `${(c / 1000).toFixed(1)}K` : String(c));
 
-      const [{ data: songIds }, { data: videoIds }, { data: userPosts }] = await Promise.all([
-        (supabase as any).from("songs").select("id").eq("user_id", userId),
-        (supabase as any).from("videos").select("id").eq("user_id", userId),
-        (supabase as any).from("posts").select("id").eq("user_id", userId),
+      const [{ data: songData }, { data: videoData }, { data: podcastData }, { data: postData }, { data: battleData }] = await Promise.all([
+        (supabase as any).from("songs").select("plays").eq("user_id", userId),
+        (supabase as any).from("videos").select("views").eq("user_id", userId),
+        (supabase as any).from("podcasts").select("plays").eq("user_id", userId),
+        (supabase as any).from("posts").select("views").eq("user_id", userId),
+        (supabase as any).from("battles").select("views").eq("challenger_id", userId),
       ]);
 
-      const allIds = [...(songIds || []), ...(videoIds || []), ...(userPosts || [])].map((i: any) => i.id);
-      let likesTotal = 0;
-      if (allIds.length > 0) {
-        const { count } = await (supabase as any)
-          .from("likes")
-          .select("id", { count: "exact", head: true })
-          .in("content_id", allIds);
-        likesTotal = count || 0;
-      }
+      let viewsTotal = 0;
+      (songData || []).forEach((s: any) => { viewsTotal += parseInt(s.plays) || 0; });
+      (videoData || []).forEach((v: any) => { viewsTotal += parseInt(v.views) || 0; });
+      (podcastData || []).forEach((p: any) => { viewsTotal += parseInt(p.plays) || 0; });
+      (postData || []).forEach((p: any) => { viewsTotal += p.views || 0; });
+      (battleData || []).forEach((b: any) => { viewsTotal += b.views || 0; });
 
-      setTotalLikes(likesTotal >= 1000 ? `${(likesTotal / 1000).toFixed(1)}K` : String(likesTotal));
+      setTotalViews(viewsTotal >= 1000 ? `${(viewsTotal / 1000).toFixed(1)}K` : String(viewsTotal));
 
       if (user) {
         const { data: followData } = await (supabase as any)
