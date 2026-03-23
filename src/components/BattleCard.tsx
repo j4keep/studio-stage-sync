@@ -50,6 +50,16 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
   const [battleLiked, setBattleLiked] = useState(false);
   const [battleLikesCount, setBattleLikesCount] = useState(battle.likes_count || 0);
 
+  // Sync likes count when battle prop updates (e.g. after navigation)
+  useEffect(() => {
+    setBattleLikesCount(battle.likes_count || 0);
+  }, [battle.likes_count]);
+
+  // Sync like status when battle.id changes
+  useEffect(() => {
+    setBattleLiked(false);
+  }, [battle.id]);
+
   // Audio playback state for inline preview
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
