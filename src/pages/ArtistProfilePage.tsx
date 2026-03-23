@@ -18,7 +18,7 @@ const ArtistProfilePage = () => {
   const [followerCount, setFollowerCount] = useState("0");
   const [totalPlays, setTotalPlays] = useState("0");
   const [songCount, setSongCount] = useState("0");
-  const [totalLikes, setTotalLikes] = useState("0");
+  const [totalViews, setTotalViews] = useState("0");
   const [loading, setLoading] = useState(true);
   const [showFollowers, setShowFollowers] = useState(false);
   const [profileInfo, setProfileInfo] = useState<{
