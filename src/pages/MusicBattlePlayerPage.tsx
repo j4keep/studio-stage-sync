@@ -339,20 +339,43 @@ const MusicBattlePlayerPage = () => {
     }
   }, [acceptCoverFile, acceptMediaFile, acceptTrackTitle, battle, refreshBattleViews, user]);
 
+  // Fix webm Infinity duration by seeking to end trick
+  const resolveWebmDuration = useCallback((el: HTMLMediaElement) => {
+    if (el.duration && isFinite(el.duration)) return;
+    const onSeeked = () => {
+      el.removeEventListener("seeked", onSeeked);
+      if (el.duration && isFinite(el.duration)) {
+        setDuration(el.duration);
+      }
+      el.currentTime = 0;
+    };
+    el.addEventListener("seeked", onSeeked);
+    el.currentTime = 1e10; // seek to a huge time to force duration calculation
+  }, []);
+
   useEffect(() => {
-    const el = activeRef.current;
+    const el = activeArtist === "left" ? audioLeftRef.current : audioRightRef.current;
     if (!el) return;
 
     let frameId: number | null = null;
+    let destroyed = false;
+
+    const getDur = () => {
+      if (el.duration && isFinite(el.duration)) return el.duration;
+      return 0;
+    };
 
     const syncFromElement = () => {
+      if (destroyed) return;
+      const d = getDur();
       setCurrentTime(el.currentTime || 0);
-      setDuration(el.duration && isFinite(el.duration) ? el.duration : 0);
+      if (d > 0) setDuration(d);
     };
 
     const startSyncLoop = () => {
-      if (frameId !== null) return;
+      if (frameId !== null || destroyed) return;
       const tick = () => {
+        if (destroyed) return;
         syncFromElement();
         if (!el.paused && !el.ended) {
           frameId = window.requestAnimationFrame(tick);
@@ -370,7 +393,15 @@ const MusicBattlePlayerPage = () => {
       }
     };
 
+    // Read initial values
     syncFromElement();
+
+    // If duration is still Infinity (webm), try the seek trick
+    if (!el.duration || !isFinite(el.duration)) {
+      if (el.readyState >= 1) {
+        resolveWebmDuration(el);
+      }
+    }
 
     const onPlay = () => startSyncLoop();
     const onPause = () => {
@@ -378,15 +409,19 @@ const MusicBattlePlayerPage = () => {
       stopSyncLoop();
     };
     const onTime = () => syncFromElement();
-    const onDur = () => syncFromElement();
+    const onDur = () => {
+      const d = getDur();
+      if (d > 0) setDuration(d);
+      else if (el.readyState >= 1) resolveWebmDuration(el);
+    };
     const onEnd = () => {
       stopSyncLoop();
       if (battle?.opponent_media_url && battle?.challenger_media_url) {
-        const nextSide = activeArtist === "left" ? "right" : "left";
+        const nextSide = activeArtistRef.current === "left" ? "right" : "left";
         setActiveArtist(nextSide);
         setCurrentTime(0);
 
-        window.requestAnimationFrame(() => {
+        setTimeout(() => {
           const next = nextSide === "left" ? audioLeftRef.current : audioRightRef.current;
           if (!next) {
             setIsPlaying(false);
@@ -394,7 +429,7 @@ const MusicBattlePlayerPage = () => {
           }
           next.currentTime = 0;
           next.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
-        });
+        }, 50);
         return;
       }
 
@@ -411,6 +446,7 @@ const MusicBattlePlayerPage = () => {
     if (!el.paused) startSyncLoop();
 
     return () => {
+      destroyed = true;
       stopSyncLoop();
       el.removeEventListener("play", onPlay);
       el.removeEventListener("pause", onPause);
@@ -419,7 +455,7 @@ const MusicBattlePlayerPage = () => {
       el.removeEventListener("durationchange", onDur);
       el.removeEventListener("ended", onEnd);
     };
-  }, [activeRef, activeArtist, battle?.challenger_media_url, battle?.opponent_media_url]);
+  }, [activeArtist, battle?.challenger_media_url, battle?.opponent_media_url, resolveWebmDuration]);
 
   if (!battle) {
     return (
