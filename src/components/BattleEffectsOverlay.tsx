@@ -174,22 +174,19 @@ const BattleEffectsOverlay = ({ battleId, side, isExpanded }: BattleEffectsOverl
                   top: `${effect.y}%`,
                 }}
               >
-                {effect.imageUrl && effect.imageUrl.startsWith("data:") ? (
+                {effect.imageUrl && (effect.imageUrl.startsWith("data:") || effect.imageUrl.startsWith("http")) ? (
                   <img
                     src={effect.imageUrl}
                     alt="effect"
-                    className="w-24 h-24 md:w-32 md:h-32 object-contain drop-shadow-2xl"
-                    style={{ filter: "drop-shadow(0 0 15px rgba(255,165,0,0.6))" }}
-                  />
-                ) : effect.imageUrl && effect.imageUrl.startsWith("http") ? (
-                  <img
-                    src={effect.imageUrl}
-                    alt="effect"
-                    className="w-24 h-24 md:w-32 md:h-32 object-contain drop-shadow-2xl"
-                    style={{ filter: "drop-shadow(0 0 15px rgba(255,165,0,0.6))" }}
+                    className="w-28 h-28 md:w-36 md:h-36 object-contain"
+                    style={{ 
+                      filter: "drop-shadow(0 0 18px rgba(255,165,0,0.7))",
+                      mixBlendMode: "screen",
+                      background: "transparent",
+                    }}
                   />
                 ) : (
-                  <div className="text-6xl md:text-7xl drop-shadow-2xl" style={{ filter: "drop-shadow(0 0 20px rgba(255,100,0,0.7))" }}>
+                  <div className="text-7xl md:text-8xl" style={{ filter: "drop-shadow(0 0 20px rgba(255,100,0,0.7))" }}>
                     {effect.emoji || "🔥"}
                   </div>
                 )}
