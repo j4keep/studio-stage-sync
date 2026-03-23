@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, ArrowLeft, Crown, ThumbsUp, Clock } from "lucide-react";
+import { Play, Pause, ArrowLeft, Crown, ThumbsUp, Clock, Mic } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
