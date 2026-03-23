@@ -123,6 +123,7 @@ const BattleEffectsOverlay = ({ battleId, side, isExpanded }: BattleEffectsOverl
     addEffect(item.id, item.src);
     setTimeout(() => addEffect(item.id, item.src), 150);
     setTimeout(() => addEffect(item.id, item.src), 350);
+    setShowPicker(false);
 
     await supabase.from("battle_effects" as any).insert({
       battle_id: battleId,

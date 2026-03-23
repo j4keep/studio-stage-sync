@@ -137,10 +137,12 @@ export const EmojiBar = ({
   onEmoji,
   postId,
   currentUserId,
+  onSent,
 }: {
   onEmoji: (emojiId: string) => void;
   postId?: string;
   currentUserId?: string;
+  onSent?: () => void;
 }) => {
   const handleEmoji = async (item: EmojiCharacter) => {
     onEmoji(item.id);
@@ -152,6 +154,7 @@ export const EmojiBar = ({
         emoji_id: item.id,
       });
     }
+    onSent?.();
   };
 
   return (
