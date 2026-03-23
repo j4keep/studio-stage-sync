@@ -116,32 +116,14 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
           <p className="px-3 pb-2 text-sm text-foreground">{post.caption}</p>
         )}
 
-        {/* Media — emojis float INSIDE this container */}
+        {/* Media */}
         {post.media_url && (
-          <div className={`relative overflow-hidden ${isExpanded ? "flex-1" : ""}`} onClick={handleMediaDoubleTap}>
+          <div className="relative overflow-hidden">
             {post.media_type === "video" ? (
-              <video ref={videoRef} src={post.media_url} controls className={`w-full object-cover bg-black ${isExpanded ? "h-full" : "max-h-[400px]"}`} />
+              <video ref={videoRef} src={post.media_url} controls className="w-full object-cover bg-black max-h-[400px]" />
             ) : (
-              <img src={post.media_url} alt="" className={`w-full object-cover ${isExpanded ? "h-full" : "max-h-[400px]"}`} />
+              <img src={post.media_url} alt="" className="w-full object-cover max-h-[400px]" />
             )}
-            {/* Floating emojis constrained inside media */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-              <FloatingLayer />
-            </div>
-
-            {/* Live scrolling comments overlay (only when expanded & playing) */}
-            {isExpanded && isMediaPlaying && (
-              <div className="absolute bottom-20 left-3 right-3 z-[60] pointer-events-none">
-                <div className="max-h-[30vh] overflow-hidden flex flex-col justify-end mb-2" />
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Emoji Reaction Bar — visible when expanded OR media is playing */}
-        {(isMediaPlaying || isExpanded) && showEmojiBar && (
-          <div className="border-t border-border">
-            <EmojiBar onEmoji={spawnEmoji} postId={post.id} currentUserId={currentUserId} onSent={() => setShowEmojiBar(false)} />
           </div>
         )}
 
