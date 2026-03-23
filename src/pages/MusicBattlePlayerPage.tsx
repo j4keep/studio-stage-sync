@@ -39,6 +39,8 @@ const MusicBattlePlayerPage = () => {
   const [acceptCoverFile, setAcceptCoverFile] = useState<File | null>(null);
   const [acceptSongFile, setAcceptSongFile] = useState<File | null>(null);
   const [accepting, setAccepting] = useState(false);
+  const [showAcceptVoiceover, setShowAcceptVoiceover] = useState(false);
+  const [hasAcceptVoiceover, setHasAcceptVoiceover] = useState(false);
   const [expandedSide, setExpandedSide] = useState<"left" | "right" | null>(null);
 
   const audioLeftRef = useRef<HTMLMediaElement | null>(null);
