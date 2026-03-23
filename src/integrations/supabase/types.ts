@@ -125,6 +125,7 @@ export type Database = {
           created_at: string
           expires_at: string | null
           id: string
+          likes_count: number
           max_duration_minutes: number | null
           media_type: string
           opponent_cover_url: string | null
@@ -145,6 +146,7 @@ export type Database = {
           created_at?: string
           expires_at?: string | null
           id?: string
+          likes_count?: number
           max_duration_minutes?: number | null
           media_type?: string
           opponent_cover_url?: string | null
@@ -165,6 +167,7 @@ export type Database = {
           created_at?: string
           expires_at?: string | null
           id?: string
+          likes_count?: number
           max_duration_minutes?: number | null
           media_type?: string
           opponent_cover_url?: string | null
