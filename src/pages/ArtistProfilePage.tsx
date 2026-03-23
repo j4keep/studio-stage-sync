@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import {
-  User, Music, Heart, Play, Video, UserPlus, Share2, UserCheck, DollarSign, FolderHeart, ShoppingBag, CheckCircle
+  User, Music, Heart, Trophy, Video, UserPlus, Share2, UserCheck, DollarSign, FolderHeart, ShoppingBag, CheckCircle
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -9,6 +9,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import profileBanner from "@/assets/profile-banner.jpg";
 import FollowersSheet from "@/components/FollowersSheet";
 import ProfileFeedSection from "@/components/ProfileFeedSection";
+import BattleWinsSheet from "@/components/BattleWinsSheet";
+import UserProjectsSheet from "@/components/UserProjectsSheet";
 
 const ArtistProfilePage = () => {
   const navigate = useNavigate();
@@ -16,11 +18,13 @@ const ArtistProfilePage = () => {
   const { user } = useAuth();
   const [isFollowing, setIsFollowing] = useState(false);
   const [followerCount, setFollowerCount] = useState("0");
-  const [totalPlays, setTotalPlays] = useState("0");
-  const [songCount, setSongCount] = useState("0");
+  const [winsCount, setWinsCount] = useState("0");
+  const [projectsCount, setProjectsCount] = useState("0");
   const [totalViews, setTotalViews] = useState("0");
   const [loading, setLoading] = useState(true);
   const [showFollowers, setShowFollowers] = useState(false);
+  const [showWins, setShowWins] = useState(false);
+  const [showProjects, setShowProjects] = useState(false);
   const [profileInfo, setProfileInfo] = useState<{
     display_name: string;
     avatar_url: string | null;
@@ -52,15 +56,24 @@ const ArtistProfilePage = () => {
         });
       }
 
-      const { data: songs } = await (supabase as any)
-        .from("songs")
-        .select("plays")
-        .eq("user_id", userId);
-      if (songs) {
-        const total = songs.reduce((sum: number, s: any) => sum + (parseInt(s.plays) || 0), 0);
-        setSongCount(String(songs.length));
-        setTotalPlays(total >= 1000 ? `${(total / 1000).toFixed(1)}K` : String(total));
-      }
+      // Fetch wins count
+      const { count: winsC } = await (supabase as any)
+        .from("battle_wins")
+        .select("id", { count: "exact", head: true })
+        .eq("winner_id", userId);
+      const w = winsC || 0;
+      setWinsCount(w >= 1000 ? `${(w / 1000).toFixed(1)}K` : String(w));
+
+      // Fetch projects count
+      const [songsR, videosR, podcastsR, postsR, battlesR] = await Promise.all([
+        (supabase as any).from("songs").select("id", { count: "exact", head: true }).eq("user_id", userId),
+        (supabase as any).from("videos").select("id", { count: "exact", head: true }).eq("user_id", userId),
+        (supabase as any).from("podcasts").select("id", { count: "exact", head: true }).eq("user_id", userId),
+        (supabase as any).from("posts").select("id", { count: "exact", head: true }).eq("user_id", userId),
+        (supabase as any).from("battles").select("id", { count: "exact", head: true }).eq("challenger_id", userId),
+      ]);
+      const projTotal = (songsR.count || 0) + (videosR.count || 0) + (podcastsR.count || 0) + (postsR.count || 0) + (battlesR.count || 0);
+      setProjectsCount(projTotal >= 1000 ? `${(projTotal / 1000).toFixed(1)}K` : String(projTotal));
 
       const { count } = await (supabase as any)
         .from("follows")
@@ -171,9 +184,9 @@ const ArtistProfilePage = () => {
         {/* Stats */}
         <div className="grid grid-cols-4 gap-2 mt-4">
           {[
-            { label: "Songs", value: songCount },
+            { label: "Wins", value: winsCount, action: () => setShowWins(true) },
             { label: "Followers", value: followerCount, action: () => setShowFollowers(true) },
-            { label: "Plays", value: totalPlays },
+            { label: "Projects", value: projectsCount, action: () => setShowProjects(true) },
             { label: "Views", value: totalViews },
           ].map((s) => (
             <button key={s.label} onClick={(s as any).action} className="p-2.5 rounded-xl bg-card border border-border text-center hover:border-primary/30 transition-all">
@@ -193,6 +206,8 @@ const ArtistProfilePage = () => {
       )}
 
       {userId && <FollowersSheet open={showFollowers} onClose={() => setShowFollowers(false)} userId={userId} isOwner={false} />}
+      {userId && <BattleWinsSheet open={showWins} onClose={() => setShowWins(false)} userId={userId} />}
+      {userId && <UserProjectsSheet open={showProjects} onClose={() => setShowProjects(false)} userId={userId} />}
     </div>
   );
 };
