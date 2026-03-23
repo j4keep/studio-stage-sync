@@ -98,9 +98,12 @@ const MusicBattlePlayerPage = () => {
     enabled: !!battleId,
   });
 
+  const isParticipant = user?.id === battle?.challenger_id || user?.id === battle?.opponent_id;
+
   const voteMutation = useMutation({
     mutationFn: async (side: "left" | "right") => {
       if (!user || !battle) return;
+      if (isParticipant) return; // Participants cannot vote in their own battle
       const votedFor = side === "left" ? battle.challenger_id : battle.opponent_id;
       if (!votedFor) return;
       const existing = votes.find((v: any) => v.user_id === user.id);
