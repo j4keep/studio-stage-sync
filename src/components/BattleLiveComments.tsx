@@ -62,6 +62,12 @@ const BattleLiveComments = ({ battleId, isExpanded }: BattleLiveCommentsProps) =
           localId: counterRef.current++,
         }));
         setComments(mapped);
+        // Auto-remove loaded comments after staggered delays
+        mapped.forEach((c, i) => {
+          setTimeout(() => {
+            setComments((prev) => prev.filter((x) => x.localId !== c.localId));
+          }, 3000 + i * 500);
+        });
       }
     };
     loadRecent();

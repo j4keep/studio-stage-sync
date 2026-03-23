@@ -5,9 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import PostCommentsSheet from "./PostCommentsSheet";
-import FloatingEmojis, { EmojiBar } from "./FloatingEmojis";
 import CreatePostSheet from "./CreatePostSheet";
-import BattleLiveComments from "@/components/BattleLiveComments";
 
 interface Props {
   post: any;
