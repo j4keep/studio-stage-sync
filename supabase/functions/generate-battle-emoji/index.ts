@@ -20,8 +20,7 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    // Use Gemini image generation to create an animated-style emoji
-    const imagePrompt = `Create a large, vibrant, animated-style emoji or effect of: "${prompt}". Make it a single expressive character or effect with dynamic motion lines, energy trails, and action poses. Cartoon/anime style with bold colors and glowing effects. Transparent background, no text, centered composition. The image should look like it's in motion - add speed lines, sparkles, flames, or energy effects as appropriate. Make it dramatic and eye-catching.`;
+    const imagePrompt = `Generate a single large, vibrant, cartoon-style image of: "${prompt}". Make it an expressive illustration with bold colors, dynamic motion lines, energy trails, and glowing effects. NO TEXT, NO WORDS, NO LETTERS. Just the visual object/character. Transparent/white background, centered. Anime/cartoon style with action poses and sparkle effects.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -37,6 +36,7 @@ serve(async (req) => {
             content: imagePrompt,
           },
         ],
+        modalities: ["image", "text"],
       }),
     });
 
@@ -63,35 +63,39 @@ serve(async (req) => {
 
     const data = await response.json();
     
-    // Extract image from the response - Gemini image models return inline_data
+    // Extract image from the response - new format uses message.images array
     let imageUrl = "";
     const choice = data.choices?.[0];
-    if (choice?.message?.content) {
-      // Check if content is an array (multimodal response)
-      if (Array.isArray(choice.message.content)) {
-        for (const part of choice.message.content) {
-          if (part.type === "image_url" && part.image_url?.url) {
-            imageUrl = part.image_url.url;
-            break;
-          }
-          if (part.inline_data) {
-            imageUrl = `data:${part.inline_data.mime_type};base64,${part.inline_data.data}`;
-            break;
-          }
+    
+    if (choice?.message?.images && Array.isArray(choice.message.images)) {
+      for (const img of choice.message.images) {
+        if (img.type === "image_url" && img.image_url?.url) {
+          imageUrl = img.image_url.url;
+          break;
         }
-      } else if (typeof choice.message.content === "string") {
-        // Check if it contains a base64 image or URL
-        const urlMatch = choice.message.content.match(/https?:\/\/[^\s"]+\.(png|jpg|jpeg|gif|webp)[^\s"]*/i);
-        if (urlMatch) imageUrl = urlMatch[0];
+      }
+    }
+    
+    // Fallback: check content array format
+    if (!imageUrl && Array.isArray(choice?.message?.content)) {
+      for (const part of choice.message.content) {
+        if (part.type === "image_url" && part.image_url?.url) {
+          imageUrl = part.image_url.url;
+          break;
+        }
+        if (part.inline_data) {
+          imageUrl = `data:${part.inline_data.mime_type};base64,${part.inline_data.data}`;
+          break;
+        }
       }
     }
 
     if (!imageUrl) {
-      // Fallback: return a text-based emoji description for the client to render
+      console.error("No image in response:", JSON.stringify(data).substring(0, 500));
       return new Response(JSON.stringify({ 
         type: "text",
-        emoji: prompt,
-        description: choice?.message?.content || prompt,
+        emoji: "🔥",
+        description: prompt,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
