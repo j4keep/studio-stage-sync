@@ -19,6 +19,7 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
   const [likesCount, setLikesCount] = useState(post.likes_count);
   const [showComments, setShowComments] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  const [isMediaPlaying, setIsMediaPlaying] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
