@@ -206,6 +206,8 @@ const ArtistProfilePage = () => {
       )}
 
       {userId && <FollowersSheet open={showFollowers} onClose={() => setShowFollowers(false)} userId={userId} isOwner={false} />}
+      {userId && <BattleWinsSheet open={showWins} onClose={() => setShowWins(false)} userId={userId} />}
+      {userId && <UserProjectsSheet open={showProjects} onClose={() => setShowProjects(false)} userId={userId} />}
     </div>
   );
 };
