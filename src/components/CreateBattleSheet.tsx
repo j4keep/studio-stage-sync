@@ -178,7 +178,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
         }
       }
 
-      const { error: insertError } = await (supabase as any).from("battles").insert({
+      const { error: insertError } = await supabase.from("battles").insert({
         challenger_id: user.id,
         opponent_id: selectedOpponent.user_id,
         title: title.trim(),
