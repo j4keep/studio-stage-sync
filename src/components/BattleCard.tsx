@@ -458,11 +458,24 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
         </div>
       )}
 
-      {/* Comments toggle */}
-      <button onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
-        className="flex w-full items-center justify-center gap-2 border-t border-border py-2.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-        <MessageCircle className="h-3.5 w-3.5" /> {battleComments.length} Comments
-      </button>
+      {/* Action Bar - Views, Like, Comments, Share */}
+      <div className="flex items-center gap-4 px-3 py-2.5 border-t border-border">
+        <span className="flex items-center gap-1">
+          <Eye className="w-4 h-4 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">{battle.views || 0}</span>
+        </span>
+        <button onClick={toggleBattleLike} className="flex items-center gap-1">
+          <Heart className={`w-5 h-5 ${battleLiked ? "fill-red-500 text-red-500" : "text-muted-foreground"}`} />
+          <span className="text-xs text-muted-foreground">{battleLikesCount}</span>
+        </button>
+        <button onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }} className="flex items-center gap-1">
+          <MessageCircle className="w-5 h-5 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">{battleComments.length}</span>
+        </button>
+        <button onClick={handleBattleShare} className="flex items-center gap-1 ml-auto">
+          <Share2 className="w-5 h-5 text-muted-foreground" />
+        </button>
+      </div>
 
       {/* Comments */}
       <AnimatePresence>
