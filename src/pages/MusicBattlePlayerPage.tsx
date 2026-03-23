@@ -11,6 +11,7 @@ import { Slider } from "@/components/ui/slider";
 import { uploadToR2, getR2DownloadUrl } from "@/lib/r2-storage";
 import BattleEffectsOverlay from "@/components/BattleEffectsOverlay";
 import BattleLiveComments from "@/components/BattleLiveComments";
+import { incrementBattleViews } from "@/hooks/use-likes";
 
 /* ─── helpers ─── */
 const fmt = (s: number) => {
@@ -60,6 +61,11 @@ const MusicBattlePlayerPage = () => {
     },
     enabled: !!battleId,
   });
+
+  // Track battle view once
+  useEffect(() => {
+    if (battleId) incrementBattleViews(battleId);
+  }, [battleId]);
 
   const { data: profiles = {} } = useQuery({
     queryKey: ["battle-profiles", battle?.challenger_id, battle?.opponent_id],

@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
-import { Edit3, Heart, MessageCircle, Share2, Trash2 } from "lucide-react";
+import { Edit3, Eye, Heart, MessageCircle, Share2, Trash2 } from "lucide-react";
+import { incrementPostViews } from "@/hooks/use-likes";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -18,6 +19,7 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
   const [likesCount, setLikesCount] = useState(post.likes_count);
   const [showComments, setShowComments] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  const [viewCounted, setViewCounted] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -26,6 +28,13 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
     setLikesCount(post.likes_count || 0);
   }, [post.id, post.isLiked, post.likes_count]);
 
+  // Count a view when the post card mounts (user scrolls to it)
+  useEffect(() => {
+    if (!viewCounted) {
+      setViewCounted(true);
+      incrementPostViews(post.id);
+    }
+  }, [post.id, viewCounted]);
 
   const likeMutation = useMutation({
     mutationFn: async () => {
@@ -129,6 +138,10 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
 
         {/* Actions */}
         <div className="flex items-center gap-4 px-3 py-2.5 border-t border-border">
+          <span className="flex items-center gap-1">
+            <Eye className="w-4 h-4 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">{post.views || 0}</span>
+          </span>
           <button onClick={() => likeMutation.mutate()} className="flex items-center gap-1">
             <Heart className={`w-5 h-5 ${liked ? "fill-red-500 text-red-500" : "text-muted-foreground"}`} />
             <span className="text-xs text-muted-foreground">{likesCount}</span>

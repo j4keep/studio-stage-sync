@@ -25,7 +25,7 @@ const ProfilePage = () => {
   const [followerCount, setFollowerCount] = useState("0");
   const [totalPlays, setTotalPlays] = useState("0");
   const [songCount, setSongCount] = useState("0");
-  const [totalLikes, setTotalLikes] = useState("0");
+  const [totalViews, setTotalViews] = useState("0");
   const [showFollowers, setShowFollowers] = useState(false);
   const [profileInfo, setProfileInfo] = useState<{ display_name: string; email: string; avatar_url: string | null; banner_url: string | null }>({
     display_name: "",
@@ -76,55 +76,54 @@ const ProfilePage = () => {
         setFollowerCount(c >= 1000 ? `${(c / 1000).toFixed(1)}K` : String(c));
       });
 
-    const fetchLikes = async () => {
-      const { count } = await (supabase as any)
-        .from("likes")
-        .select("id", { count: "exact", head: true })
-        .in("content_type", ["song", "video", "post"])
-        .in("content_id", 
-          await (async () => {
-            const [{ data: songs }, { data: videos }, { data: posts }] = await Promise.all([
-              (supabase as any).from("songs").select("id").eq("user_id", user.id),
-              (supabase as any).from("videos").select("id").eq("user_id", user.id),
-              (supabase as any).from("posts").select("id").eq("user_id", user.id),
-            ]);
-            return [...(songs || []), ...(videos || []), ...(posts || [])].map((i: any) => i.id);
-          })()
-        );
-      const total = count || 0;
-      setTotalLikes(total >= 1000 ? `${(total / 1000).toFixed(1)}K` : String(total));
+    const fetchViews = async () => {
+      const [{ data: songs }, { data: videos }, { data: podcasts }, { data: posts }, { data: battles }] = await Promise.all([
+        (supabase as any).from("songs").select("plays").eq("user_id", user.id),
+        (supabase as any).from("videos").select("views").eq("user_id", user.id),
+        (supabase as any).from("podcasts").select("plays").eq("user_id", user.id),
+        (supabase as any).from("posts").select("views").eq("user_id", user.id),
+        (supabase as any).from("battles").select("views").eq("challenger_id", user.id),
+      ]);
+      let total = 0;
+      (songs || []).forEach((s: any) => { total += parseInt(s.plays) || 0; });
+      (videos || []).forEach((v: any) => { total += parseInt(v.views) || 0; });
+      (podcasts || []).forEach((p: any) => { total += parseInt(p.plays) || 0; });
+      (posts || []).forEach((p: any) => { total += p.views || 0; });
+      (battles || []).forEach((b: any) => { total += b.views || 0; });
+      setTotalViews(total >= 1000 ? `${(total / 1000).toFixed(1)}K` : String(total));
     };
-    fetchLikes();
+    fetchViews();
   }, [user]);
 
   // Refetch likes when page regains focus (e.g. navigating back)
-  const refetchLikes = useCallback(async () => {
+  const refetchViews = useCallback(async () => {
     if (!user) return;
-    const [{ data: songs }, { data: videos }, { data: posts }] = await Promise.all([
-      (supabase as any).from("songs").select("id").eq("user_id", user.id),
-      (supabase as any).from("videos").select("id").eq("user_id", user.id),
-      (supabase as any).from("posts").select("id").eq("user_id", user.id),
+    const [{ data: songs }, { data: videos }, { data: podcasts }, { data: posts }, { data: battles }] = await Promise.all([
+      (supabase as any).from("songs").select("plays").eq("user_id", user.id),
+      (supabase as any).from("videos").select("views").eq("user_id", user.id),
+      (supabase as any).from("podcasts").select("plays").eq("user_id", user.id),
+      (supabase as any).from("posts").select("views").eq("user_id", user.id),
+      (supabase as any).from("battles").select("views").eq("challenger_id", user.id),
     ]);
-    const allIds = [...(songs || []), ...(videos || []), ...(posts || [])].map((i: any) => i.id);
-    if (allIds.length === 0) { setTotalLikes("0"); return; }
-    const { count } = await (supabase as any)
-      .from("likes")
-      .select("id", { count: "exact", head: true })
-      .in("content_id", allIds);
-    const total = count || 0;
-    setTotalLikes(total >= 1000 ? `${(total / 1000).toFixed(1)}K` : String(total));
+    let total = 0;
+    (songs || []).forEach((s: any) => { total += parseInt(s.plays) || 0; });
+    (videos || []).forEach((v: any) => { total += parseInt(v.views) || 0; });
+    (podcasts || []).forEach((p: any) => { total += parseInt(p.plays) || 0; });
+    (posts || []).forEach((p: any) => { total += p.views || 0; });
+    (battles || []).forEach((b: any) => { total += b.views || 0; });
+    setTotalViews(total >= 1000 ? `${(total / 1000).toFixed(1)}K` : String(total));
   }, [user]);
 
   useEffect(() => {
-    const onFocus = () => refetchLikes();
+    const onFocus = () => refetchViews();
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") refetchLikes();
+      if (document.visibilityState === "visible") refetchViews();
     });
     return () => {
       window.removeEventListener("focus", onFocus);
     };
-  }, [refetchLikes]);
+  }, [refetchViews]);
 
   const handleFollow = () => {
     setIsFollowing(!isFollowing);
@@ -232,7 +231,7 @@ const ProfilePage = () => {
             { label: "Songs", value: songCount },
             { label: "Followers", value: followerCount, action: () => setShowFollowers(true) },
             { label: "Plays", value: totalPlays },
-            { label: "Likes", value: totalLikes },
+            { label: "Views", value: totalViews },
           ].map((s) => (
             <button key={s.label} onClick={(s as any).action} className="p-2.5 rounded-xl bg-card border border-border text-center hover:border-primary/30 transition-all">
               <p className="text-base font-display font-bold text-primary">{s.value}</p>
