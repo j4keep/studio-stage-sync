@@ -115,15 +115,15 @@ const ProfilePage = () => {
   }, [user]);
 
   useEffect(() => {
-    const onFocus = () => refetchLikes();
+    const onFocus = () => refetchViews();
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") refetchLikes();
+      if (document.visibilityState === "visible") refetchViews();
     });
     return () => {
       window.removeEventListener("focus", onFocus);
     };
-  }, [refetchLikes]);
+  }, [refetchViews]);
 
   const handleFollow = () => {
     setIsFollowing(!isFollowing);
