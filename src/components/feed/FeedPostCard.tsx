@@ -28,6 +28,13 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
     setLikesCount(post.likes_count || 0);
   }, [post.id, post.isLiked, post.likes_count]);
 
+  // Count a view when the post card mounts (user scrolls to it)
+  useEffect(() => {
+    if (!viewCounted) {
+      setViewCounted(true);
+      incrementPostViews(post.id);
+    }
+  }, [post.id, viewCounted]);
 
   const likeMutation = useMutation({
     mutationFn: async () => {
