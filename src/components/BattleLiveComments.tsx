@@ -36,41 +36,7 @@ const BattleLiveComments = ({ battleId, isExpanded }: BattleLiveCommentsProps) =
   useEffect(() => {
     if (!battleId || !isExpanded) return;
 
-    const loadRecent = async () => {
-      const { data } = await supabase
-        .from("battle_comments")
-        .select("id, content, user_id, created_at")
-        .eq("battle_id", battleId)
-        .order("created_at", { ascending: false })
-        .limit(10);
-
-      if (data && data.length > 0) {
-        // Get profile names
-        const userIds = [...new Set(data.map((c) => c.user_id))];
-        const { data: profiles } = await supabase
-          .from("profiles")
-          .select("user_id, display_name")
-          .in("user_id", userIds);
-        const nameMap: Record<string, string> = {};
-        (profiles || []).forEach((p: any) => { nameMap[p.user_id] = p.display_name || "User"; });
-
-        const mapped = data.reverse().map((c) => ({
-          id: c.id,
-          content: c.content,
-          display_name: nameMap[c.user_id] || "User",
-          created_at: c.created_at,
-          localId: counterRef.current++,
-        }));
-        setComments(mapped);
-        // Auto-remove loaded comments after staggered delays
-        mapped.forEach((c, i) => {
-          setTimeout(() => {
-            setComments((prev) => prev.filter((x) => x.localId !== c.localId));
-          }, 3000 + i * 500);
-        });
-      }
-    };
-    loadRecent();
+    // Only listen for new live comments — no historical load
 
     const channel = supabase
       .channel(`battle-comments-live-${battleId}`)
