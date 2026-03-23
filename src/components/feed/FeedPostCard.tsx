@@ -5,9 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import PostCommentsSheet from "./PostCommentsSheet";
-import FloatingEmojis, { EmojiBar } from "./FloatingEmojis";
 import CreatePostSheet from "./CreatePostSheet";
-import BattleLiveComments from "@/components/BattleLiveComments";
 
 interface Props {
   post: any;
@@ -20,67 +18,14 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
   const [likesCount, setLikesCount] = useState(post.likes_count);
   const [showComments, setShowComments] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
-  const [isMediaPlaying, setIsMediaPlaying] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const lastTapRef = useRef(0);
-
-  const [showEmojiBar, setShowEmojiBar] = useState(false);
 
   useEffect(() => {
     setLiked(!!post.isLiked);
     setLikesCount(post.likes_count || 0);
   }, [post.id, post.isLiked, post.likes_count]);
 
-  const { emojis, spawnEmoji, startLoop, stopLoop, FloatingLayer } = FloatingEmojis({ postId: post.id });
-
-  // Double-tap to expand media fullscreen
-  const handleMediaDoubleTap = () => {
-    const now = Date.now();
-    if (now - lastTapRef.current < 350) {
-      setIsExpanded((prev) => !prev);
-    }
-    lastTapRef.current = now;
-  };
-
-  // Watch for media play/pause to start/stop emoji loop
-  useEffect(() => {
-    const el = post.media_type === "video" ? videoRef.current : audioRef.current;
-    if (!el) return;
-
-    const onPlay = () => {
-      setIsMediaPlaying(true);
-      const loadAndLoop = async () => {
-        const { data } = await (supabase as any)
-          .from("post_reactions")
-          .select("emoji_id")
-          .eq("post_id", post.id);
-        if (data && data.length > 0) {
-          startLoop(data.map((r: any) => r.emoji_id));
-        }
-      };
-      loadAndLoop();
-    };
-    const onPause = () => { setIsMediaPlaying(false); stopLoop(); };
-    const onEnded = () => { setIsMediaPlaying(false); stopLoop(); };
-
-    el.addEventListener("play", onPlay);
-    el.addEventListener("pause", onPause);
-    el.addEventListener("ended", onEnded);
-    return () => {
-      el.removeEventListener("play", onPlay);
-      el.removeEventListener("pause", onPause);
-      el.removeEventListener("ended", onEnded);
-    };
-  }, [post.id, post.media_type, startLoop, stopLoop]);
-
-  // Show emoji bar when media starts, hide when stops
-  useEffect(() => {
-    if (isMediaPlaying || isExpanded) {
-      setShowEmojiBar(true);
-    }
-  }, [isMediaPlaying, isExpanded]);
 
   const likeMutation = useMutation({
     mutationFn: async () => {
@@ -137,7 +82,7 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
 
   return (
     <>
-      <div className={`rounded-xl bg-card border border-border overflow-hidden relative transition-all duration-300 ${isExpanded ? "fixed inset-0 z-[70] rounded-none flex flex-col" : ""}`}>
+      <div className="rounded-xl bg-card border border-border overflow-hidden relative transition-all duration-300">
 
         {/* Author Header */}
         <div className="flex items-center gap-2.5 px-3 py-2.5">
@@ -171,32 +116,14 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
           <p className="px-3 pb-2 text-sm text-foreground">{post.caption}</p>
         )}
 
-        {/* Media — emojis float INSIDE this container */}
+        {/* Media */}
         {post.media_url && (
-          <div className={`relative overflow-hidden ${isExpanded ? "flex-1" : ""}`} onClick={handleMediaDoubleTap}>
+          <div className="relative overflow-hidden">
             {post.media_type === "video" ? (
-              <video ref={videoRef} src={post.media_url} controls className={`w-full object-cover bg-black ${isExpanded ? "h-full" : "max-h-[400px]"}`} />
+              <video ref={videoRef} src={post.media_url} controls className="w-full object-cover bg-black max-h-[400px]" />
             ) : (
-              <img src={post.media_url} alt="" className={`w-full object-cover ${isExpanded ? "h-full" : "max-h-[400px]"}`} />
+              <img src={post.media_url} alt="" className="w-full object-cover max-h-[400px]" />
             )}
-            {/* Floating emojis constrained inside media */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-              <FloatingLayer />
-            </div>
-
-            {/* Live scrolling comments overlay (only when expanded & playing) */}
-            {isExpanded && isMediaPlaying && (
-              <div className="absolute bottom-20 left-3 right-3 z-[60] pointer-events-none">
-                <div className="max-h-[30vh] overflow-hidden flex flex-col justify-end mb-2" />
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Emoji Reaction Bar — visible when expanded OR media is playing */}
-        {(isMediaPlaying || isExpanded) && showEmojiBar && (
-          <div className="border-t border-border">
-            <EmojiBar onEmoji={spawnEmoji} postId={post.id} currentUserId={currentUserId} onSent={() => setShowEmojiBar(false)} />
           </div>
         )}
 

@@ -26,10 +26,10 @@ const BattleLiveComments = ({ battleId, isExpanded }: BattleLiveCommentsProps) =
 
   const addComment = useCallback((comment: LiveComment) => {
     setComments((prev) => [...prev.slice(-20), comment]);
-    // Auto-remove after 8 seconds (fade out)
+    // Auto-remove after 5 seconds (fade out)
     setTimeout(() => {
       setComments((prev) => prev.filter((c) => c.localId !== comment.localId));
-    }, 8000);
+    }, 5000);
   }, []);
 
   // Load recent comments and subscribe to new ones
@@ -62,6 +62,12 @@ const BattleLiveComments = ({ battleId, isExpanded }: BattleLiveCommentsProps) =
           localId: counterRef.current++,
         }));
         setComments(mapped);
+        // Auto-remove loaded comments after staggered delays
+        mapped.forEach((c, i) => {
+          setTimeout(() => {
+            setComments((prev) => prev.filter((x) => x.localId !== c.localId));
+          }, 3000 + i * 500);
+        });
       }
     };
     loadRecent();
