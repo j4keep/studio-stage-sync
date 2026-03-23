@@ -326,7 +326,7 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
       <div className="flex items-center justify-between px-4 py-2.5 bg-muted/30">
         <div className="flex items-center gap-2">
           <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Music Battle</span>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Creators Battle</span>
         </div>
         <div className="flex items-center gap-2">
           {battle.max_duration_minutes && battle.max_duration_minutes < 45 && (

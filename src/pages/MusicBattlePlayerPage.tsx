@@ -482,7 +482,7 @@ const MusicBattlePlayerPage = () => {
         <button onClick={() => navigate(-1)} className="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
           <ArrowLeft className="w-4 h-4 text-foreground" />
         </button>
-        <h1 className="text-lg font-bold text-foreground flex-1">Music Battle</h1>
+        <h1 className="text-lg font-bold text-foreground flex-1">Creators Battle</h1>
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Clock className="w-3.5 h-3.5" />
           <span className="font-mono">{timeLeft || "24:00:00"}</span>
