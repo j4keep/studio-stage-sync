@@ -116,9 +116,11 @@ const MusicBattlePlayerPage = () => {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["battle-votes", battleId] }),
   });
 
-  /* ── derived ── */
-  const leftVotes = votes.filter((v: any) => v.voted_for === battle?.challenger_id).length;
-  const rightVotes = votes.filter((v: any) => v.voted_for === battle?.opponent_id).length;
+  /* ── derived (exclude participant votes) ── */
+  const participantIds = [battle?.challenger_id, battle?.opponent_id].filter(Boolean);
+  const audienceVotes = votes.filter((v: any) => !participantIds.includes(v.user_id));
+  const leftVotes = audienceVotes.filter((v: any) => v.voted_for === battle?.challenger_id).length;
+  const rightVotes = audienceVotes.filter((v: any) => v.voted_for === battle?.opponent_id).length;
   const total = leftVotes + rightVotes;
   const leftPct = total > 0 ? Math.round((leftVotes / total) * 100) : 50;
   const rightPct = total > 0 ? 100 - leftPct : 50;
