@@ -82,7 +82,7 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
 
   return (
     <>
-      <div className={`rounded-xl bg-card border border-border overflow-hidden relative transition-all duration-300 ${isExpanded ? "fixed inset-0 z-[70] rounded-none flex flex-col" : ""}`}>
+      <div className="rounded-xl bg-card border border-border overflow-hidden relative transition-all duration-300">
 
         {/* Author Header */}
         <div className="flex items-center gap-2.5 px-3 py-2.5">
