@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
-import { Edit3, Heart, MessageCircle, Share2, Trash2 } from "lucide-react";
+import { Edit3, Eye, Heart, MessageCircle, Share2, Trash2 } from "lucide-react";
+import { incrementPostViews } from "@/hooks/use-likes";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
