@@ -116,7 +116,6 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
   return (
     <>
       <div className="rounded-xl bg-card border border-border overflow-hidden relative">
-        <FloatingLayer />
 
         {/* Author Header */}
         <div className="flex items-center gap-2.5 px-3 py-2.5">
@@ -150,19 +149,27 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
           <p className="px-3 pb-2 text-sm text-foreground">{post.caption}</p>
         )}
 
-        {/* Media */}
+        {/* Media — emojis float INSIDE this container */}
         {post.media_url && (
-          post.media_type === "video" ? (
-            <video ref={videoRef} src={post.media_url} controls className="w-full max-h-[400px] object-cover bg-black" />
-          ) : (
-            <img src={post.media_url} alt="" className="w-full max-h-[400px] object-cover" />
-          )
+          <div className="relative overflow-hidden">
+            {post.media_type === "video" ? (
+              <video ref={videoRef} src={post.media_url} controls className="w-full max-h-[400px] object-cover bg-black" />
+            ) : (
+              <img src={post.media_url} alt="" className="w-full max-h-[400px] object-cover" />
+            )}
+            {/* Floating emojis constrained inside media */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              <FloatingLayer />
+            </div>
+          </div>
         )}
 
-        {/* Emoji Reaction Bar - custom characters */}
-        <div className="border-t border-border">
-          <EmojiBar onEmoji={spawnEmoji} postId={post.id} currentUserId={currentUserId} />
-        </div>
+        {/* Emoji Reaction Bar — only visible when media is playing */}
+        {isMediaPlaying && (
+          <div className="border-t border-border">
+            <EmojiBar onEmoji={spawnEmoji} postId={post.id} currentUserId={currentUserId} />
+          </div>
+        )}
 
         {/* Actions */}
         <div className="flex items-center gap-4 px-3 py-2.5 border-t border-border">
