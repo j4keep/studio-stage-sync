@@ -9,7 +9,6 @@ import { Music, Video, Search, X, Clock, Image, Mic } from "lucide-react";
 import { uploadToR2, getR2DownloadUrl } from "@/lib/r2-storage";
 import { Slider } from "@/components/ui/slider";
 import VoiceoverRecorder from "@/components/VoiceoverRecorder";
-import { BATTLE_BACKGROUNDS } from "@/lib/battle-backgrounds";
 
 interface Props {
   open: boolean;
@@ -51,7 +50,6 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
   const [mediaDurationMin, setMediaDurationMin] = useState<number | null>(null);
   const [showVoiceover, setShowVoiceover] = useState(false);
   const [hasVoiceover, setHasVoiceover] = useState(false);
-  const [selectedBackground, setSelectedBackground] = useState("none");
   const isPhotoBattle = mediaType === "photo";
 
   const { data: searchResults = [], isFetching: isSearching } = useQuery({
@@ -188,7 +186,6 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
         challenger_cover_url: coverUrl || null,
         status: "pending",
         max_duration_minutes: isPhotoBattle ? 0 : maxDuration,
-        battle_background: selectedBackground,
       });
 
       if (insertError) throw insertError;
@@ -208,7 +205,6 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
       setOpponentSearch("");
       setMaxDuration(40);
       setMediaDurationMin(null);
-      setSelectedBackground("none");
     } catch (err) {
       toast({ title: "Error", description: "Failed to create battle", variant: "destructive" });
     } finally {
@@ -445,32 +441,6 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
             </>
           )}
 
-          {/* Battle Background Picker */}
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-2 block">Battle Background</label>
-            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-              {BATTLE_BACKGROUNDS.map((bg) => (
-                <button
-                  key={bg.id}
-                  onClick={() => setSelectedBackground(bg.id)}
-                  className={`flex-shrink-0 w-14 h-14 rounded-xl border-2 overflow-hidden relative transition-all ${
-                    selectedBackground === bg.id ? "border-primary ring-2 ring-primary/30" : "border-border"
-                  }`}
-                >
-                  {bg.src ? (
-                    <img src={bg.src} alt={bg.label} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full bg-background flex items-center justify-center text-lg">
-                      {bg.emoji}
-                    </div>
-                  )}
-                  <span className="absolute bottom-0 inset-x-0 bg-black/60 text-[8px] text-white text-center py-0.5 font-medium">
-                    {bg.label}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
 
           <button
             onClick={handleSubmit}
