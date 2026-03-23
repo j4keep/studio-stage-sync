@@ -445,6 +445,32 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
             </>
           )}
 
+          {/* Battle Background Picker */}
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">Battle Background</label>
+            <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">
+              {BATTLE_BACKGROUNDS.map((bg) => (
+                <button
+                  key={bg.id}
+                  onClick={() => setSelectedBackground(bg.id)}
+                  className={`flex-shrink-0 w-16 h-20 rounded-lg overflow-hidden border-2 transition-all ${
+                    selectedBackground === bg.id ? "border-primary ring-2 ring-primary/30 scale-105" : "border-border"
+                  }`}
+                >
+                  {bg.src ? (
+                    <img src={bg.src} alt={bg.label} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-background flex items-center justify-center">
+                      <span className="text-lg">{bg.emoji}</span>
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-1">
+              {selectedBackground === "none" ? "Default white background" : `Selected: ${BATTLE_BACKGROUNDS.find(b => b.id === selectedBackground)?.label}`}
+            </p>
+          </div>
 
           <button
             onClick={handleSubmit}
