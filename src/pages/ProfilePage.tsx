@@ -367,6 +367,8 @@ const ProfilePage = () => {
       />
 
       {user && <FollowersSheet open={showFollowers} onClose={() => setShowFollowers(false)} userId={user.id} isOwner={true} />}
+      {user && <BattleWinsSheet open={showWins} onClose={() => setShowWins(false)} userId={user.id} />}
+      {user && <UserProjectsSheet open={showProjects} onClose={() => setShowProjects(false)} userId={user.id} />}
       <ProGateModal open={showProModal} onClose={closeProModal} featureName={gatedFeature} onSubscribe={activatePro} />
     </div>
   );

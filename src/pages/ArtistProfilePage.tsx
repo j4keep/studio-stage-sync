@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import {
-  User, Music, Heart, Play, Video, UserPlus, Share2, UserCheck, DollarSign, FolderHeart, ShoppingBag, CheckCircle
+  User, Music, Heart, Trophy, Video, UserPlus, Share2, UserCheck, DollarSign, FolderHeart, ShoppingBag, CheckCircle
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -9,6 +9,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import profileBanner from "@/assets/profile-banner.jpg";
 import FollowersSheet from "@/components/FollowersSheet";
 import ProfileFeedSection from "@/components/ProfileFeedSection";
+import BattleWinsSheet from "@/components/BattleWinsSheet";
+import UserProjectsSheet from "@/components/UserProjectsSheet";
 
 const ArtistProfilePage = () => {
   const navigate = useNavigate();
