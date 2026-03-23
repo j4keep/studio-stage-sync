@@ -25,7 +25,7 @@ const ProfilePage = () => {
   const [followerCount, setFollowerCount] = useState("0");
   const [totalPlays, setTotalPlays] = useState("0");
   const [songCount, setSongCount] = useState("0");
-  const [totalLikes, setTotalLikes] = useState("0");
+  const [totalViews, setTotalViews] = useState("0");
   const [showFollowers, setShowFollowers] = useState(false);
   const [profileInfo, setProfileInfo] = useState<{ display_name: string; email: string; avatar_url: string | null; banner_url: string | null }>({
     display_name: "",
