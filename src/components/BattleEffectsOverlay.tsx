@@ -81,6 +81,9 @@ const PRESET_EMOJIS = [
   { label: "Money", src: moneyImg, id: "money" },
   { label: "Peace", src: peaceImg, id: "peace" },
   { label: "Mind Blown", src: mindblownImg, id: "mindblown" },
+  { label: "Poop", src: poopImg, id: "poop" },
+  { label: "Trash", src: trashImg, id: "trash" },
+  { label: "Thumbs Down", src: thumbsdownImg, id: "thumbsdown" },
 ];
 
 // Build a lookup map for receiving effects from other users
