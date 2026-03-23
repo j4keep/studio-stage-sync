@@ -26,52 +26,6 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
     setLikesCount(post.likes_count || 0);
   }, [post.id, post.isLiked, post.likes_count]);
 
-  // Double-tap to expand media fullscreen
-  const handleMediaDoubleTap = () => {
-    const now = Date.now();
-    if (now - lastTapRef.current < 350) {
-      setIsExpanded((prev) => !prev);
-    }
-    lastTapRef.current = now;
-  };
-
-  // Watch for media play/pause to start/stop emoji loop
-  useEffect(() => {
-    const el = post.media_type === "video" ? videoRef.current : audioRef.current;
-    if (!el) return;
-
-    const onPlay = () => {
-      setIsMediaPlaying(true);
-      const loadAndLoop = async () => {
-        const { data } = await (supabase as any)
-          .from("post_reactions")
-          .select("emoji_id")
-          .eq("post_id", post.id);
-        if (data && data.length > 0) {
-          startLoop(data.map((r: any) => r.emoji_id));
-        }
-      };
-      loadAndLoop();
-    };
-    const onPause = () => { setIsMediaPlaying(false); stopLoop(); };
-    const onEnded = () => { setIsMediaPlaying(false); stopLoop(); };
-
-    el.addEventListener("play", onPlay);
-    el.addEventListener("pause", onPause);
-    el.addEventListener("ended", onEnded);
-    return () => {
-      el.removeEventListener("play", onPlay);
-      el.removeEventListener("pause", onPause);
-      el.removeEventListener("ended", onEnded);
-    };
-  }, [post.id, post.media_type, startLoop, stopLoop]);
-
-  // Show emoji bar when media starts, hide when stops
-  useEffect(() => {
-    if (isMediaPlaying || isExpanded) {
-      setShowEmojiBar(true);
-    }
-  }, [isMediaPlaying, isExpanded]);
 
   const likeMutation = useMutation({
     mutationFn: async () => {
