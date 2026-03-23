@@ -56,15 +56,24 @@ const ArtistProfilePage = () => {
         });
       }
 
-      const { data: songs } = await (supabase as any)
-        .from("songs")
-        .select("plays")
-        .eq("user_id", userId);
-      if (songs) {
-        const total = songs.reduce((sum: number, s: any) => sum + (parseInt(s.plays) || 0), 0);
-        setSongCount(String(songs.length));
-        setTotalPlays(total >= 1000 ? `${(total / 1000).toFixed(1)}K` : String(total));
-      }
+      // Fetch wins count
+      const { count: winsC } = await (supabase as any)
+        .from("battle_wins")
+        .select("id", { count: "exact", head: true })
+        .eq("winner_id", userId);
+      const w = winsC || 0;
+      setWinsCount(w >= 1000 ? `${(w / 1000).toFixed(1)}K` : String(w));
+
+      // Fetch projects count
+      const [songsR, videosR, podcastsR, postsR, battlesR] = await Promise.all([
+        (supabase as any).from("songs").select("id", { count: "exact", head: true }).eq("user_id", userId),
+        (supabase as any).from("videos").select("id", { count: "exact", head: true }).eq("user_id", userId),
+        (supabase as any).from("podcasts").select("id", { count: "exact", head: true }).eq("user_id", userId),
+        (supabase as any).from("posts").select("id", { count: "exact", head: true }).eq("user_id", userId),
+        (supabase as any).from("battles").select("id", { count: "exact", head: true }).eq("challenger_id", userId),
+      ]);
+      const projTotal = (songsR.count || 0) + (videosR.count || 0) + (podcastsR.count || 0) + (postsR.count || 0) + (battlesR.count || 0);
+      setProjectsCount(projTotal >= 1000 ? `${(projTotal / 1000).toFixed(1)}K` : String(projTotal));
 
       const { count } = await (supabase as any)
         .from("follows")
