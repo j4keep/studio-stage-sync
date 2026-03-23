@@ -339,7 +339,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
                   value={[maxDuration]}
                   onValueChange={(v) => setMaxDuration(v[0])}
                   min={0}
-                  max={40}
+                  max={20}
                   step={1}
                   className="flex-1"
                 />
@@ -348,7 +348,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
               <p className="text-[10px] text-muted-foreground mt-1">
                 {maxDuration === 0
                   ? "No duration limit set — any length accepted."
-                  : `Each artist's entry must be ${maxDuration} min or less. Total battle: up to ${maxDuration * 2} min.`}
+                  : `Each artist's entry must be ${maxDuration} min or less. Total battle: up to ${maxDuration * 2} min (max 40 min).`}
               </p>
             </div>
           )}
