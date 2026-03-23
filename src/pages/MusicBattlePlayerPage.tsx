@@ -342,6 +342,9 @@ const MusicBattlePlayerPage = () => {
   useEffect(() => {
     const el = activeRef.current;
     if (!el) return;
+    // Read current values immediately in case metadata already loaded
+    if (el.duration && isFinite(el.duration)) setDuration(el.duration);
+    if (el.currentTime) setCurrentTime(el.currentTime);
     const onTime = () => setCurrentTime(el.currentTime);
     const onDur = () => setDuration(el.duration || 0);
     const onEnd = () => {
@@ -366,10 +369,12 @@ const MusicBattlePlayerPage = () => {
     };
     el.addEventListener("timeupdate", onTime);
     el.addEventListener("loadedmetadata", onDur);
+    el.addEventListener("durationchange", onDur);
     el.addEventListener("ended", onEnd);
     return () => {
       el.removeEventListener("timeupdate", onTime);
       el.removeEventListener("loadedmetadata", onDur);
+      el.removeEventListener("durationchange", onDur);
       el.removeEventListener("ended", onEnd);
     };
   }, [activeRef, activeArtist, battle?.challenger_media_url, battle?.opponent_media_url]);
