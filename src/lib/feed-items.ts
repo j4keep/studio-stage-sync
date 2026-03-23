@@ -39,6 +39,7 @@ export const fetchFeedItems = async ({ currentUserId, userId }: FetchFeedItemsOp
   const battles = battlesResult.data || [];
 
   let mappedPosts: FeedItem[] = [];
+  let mappedBattles: FeedItem[] = [];
 
   if (posts.length > 0) {
     const postIds = posts.map((post: any) => post.id);
@@ -73,10 +74,31 @@ export const fetchFeedItems = async ({ currentUserId, userId }: FetchFeedItemsOp
     }));
   }
 
-  const mappedBattles: FeedItem[] = battles.map((battle: any) => ({
-    ...battle,
-    itemType: "battle",
-  }));
+  if (battles.length > 0) {
+    const battleIds = battles.map((battle: any) => battle.id);
+    const { data: battleLikes } = await (supabase as any)
+      .from("likes")
+      .select("content_id, user_id")
+      .eq("content_type", "battle")
+      .in("content_id", battleIds);
+
+    const battleLikeCounts = new Map<string, number>();
+    const battleLikedIds = new Set<string>();
+
+    (battleLikes || []).forEach((like: any) => {
+      battleLikeCounts.set(like.content_id, (battleLikeCounts.get(like.content_id) || 0) + 1);
+      if (currentUserId && like.user_id === currentUserId) {
+        battleLikedIds.add(like.content_id);
+      }
+    });
+
+    mappedBattles = battles.map((battle: any) => ({
+      ...battle,
+      itemType: "battle",
+      likes_count: battleLikeCounts.get(battle.id) ?? battle.likes_count ?? 0,
+      isLiked: battleLikedIds.has(battle.id),
+    }));
+  }
 
   return [...mappedPosts, ...mappedBattles].sort(
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
