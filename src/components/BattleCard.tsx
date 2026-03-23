@@ -51,6 +51,7 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [activeArtist, setActiveArtist] = useState<"left" | "right">("left");
+  const activeArtistRef = useRef<"left" | "right">("left");
   const audioLeftRef = useRef<HTMLAudioElement | null>(null);
   const audioRightRef = useRef<HTMLAudioElement | null>(null);
   const lastTapRef = useRef(0);
@@ -198,8 +199,12 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
     };
   }, [activeRef, activeArtist, battle?.challenger_media_url, battle?.opponent_media_url]);
 
+  // Keep ref in sync
+  useEffect(() => { activeArtistRef.current = activeArtist; }, [activeArtist]);
+
   const handleSeek = (value: number[]) => {
-    const el = activeRef.current;
+    const side = activeArtistRef.current;
+    const el = side === "left" ? audioLeftRef.current : audioRightRef.current;
     if (el && duration > 0) {
       el.currentTime = (value[0] / 100) * duration;
       setCurrentTime(el.currentTime);
@@ -370,7 +375,7 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
 
       {/* Seekable audio progress bar */}
       {isActive && battle.media_type === "audio" && (
-        <div className="px-4 py-2 space-y-1" onClick={(e) => e.stopPropagation()}>
+        <div className="px-4 py-2 space-y-1" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()}>
           <div className="flex items-center gap-2">
             <button onClick={togglePlay} className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
               {isPlaying ? <Pause className="w-3 h-3 text-primary" fill="currentColor" /> : <Play className="w-3 h-3 text-primary ml-0.5" fill="currentColor" />}

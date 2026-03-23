@@ -27,6 +27,7 @@ const MusicBattlePlayerPage = () => {
   /* ── state ── */
   const [isPlaying, setIsPlaying] = useState(false);
   const [activeArtist, setActiveArtist] = useState<"left" | "right">("left");
+  const activeArtistRef = useRef<"left" | "right">("left");
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [acceptTrackTitle, setAcceptTrackTitle] = useState("");
@@ -140,6 +141,9 @@ const MusicBattlePlayerPage = () => {
     const i = setInterval(tick, 1000);
     return () => clearInterval(i);
   }, [battle?.expires_at]);
+
+  // Keep ref in sync with state
+  useEffect(() => { activeArtistRef.current = activeArtist; }, [activeArtist]);
 
   /* ── audio control ── */
   const activeRef = activeArtist === "left" ? audioLeftRef : audioRightRef;
@@ -601,13 +605,14 @@ const MusicBattlePlayerPage = () => {
       </div>
 
       {/* ── AUDIO PLAYBACK BAR (SEEKABLE) ── */}
-      <div className="px-6 py-3" onClick={(e) => e.stopPropagation()}>
+      <div className="px-6 py-3" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-mono">
           <span>{fmt(currentTime)}</span>
           <Slider
             value={[duration > 0 ? (currentTime / duration) * 100 : 0]}
             onValueChange={(val) => {
-              const el = activeArtist === "left" ? (audioLeftRef.current || videoLeftRef.current) : (audioRightRef.current || videoRightRef.current);
+              const side = activeArtistRef.current;
+              const el = side === "left" ? (audioLeftRef.current || videoLeftRef.current) : (audioRightRef.current || videoRightRef.current);
               if (el && duration > 0) {
                 el.currentTime = (val[0] / 100) * duration;
                 setCurrentTime(el.currentTime);
