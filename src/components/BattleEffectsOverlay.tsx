@@ -48,8 +48,10 @@ import danceImg from "@/assets/emojis/dance.png";
 import poopImg from "@/assets/emojis/poop.png";
 import trashImg from "@/assets/emojis/trash.png";
 import thumbsdownImg from "@/assets/emojis/thumbsdown.png";
+import stopImg from "@/assets/emojis/stop.png";
+import queenImg from "@/assets/emojis/queen.png";
 
-/* ───────── 33 preset custom character emojis ───────── */
+/* ───────── 35 preset custom character emojis ───────── */
 const PRESET_EMOJIS = [
   { label: "Fire", src: fireImg, id: "fire" },
   { label: "Thumbs Up", src: thumbsupImg, id: "thumbsup" },
