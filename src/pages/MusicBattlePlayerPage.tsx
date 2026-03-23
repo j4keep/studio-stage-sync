@@ -611,7 +611,8 @@ const MusicBattlePlayerPage = () => {
           <Slider
             value={[duration > 0 ? (currentTime / duration) * 100 : 0]}
             onValueChange={(val) => {
-              const el = activeArtist === "left" ? (audioLeftRef.current || videoLeftRef.current) : (audioRightRef.current || videoRightRef.current);
+              const side = activeArtistRef.current;
+              const el = side === "left" ? (audioLeftRef.current || videoLeftRef.current) : (audioRightRef.current || videoRightRef.current);
               if (el && duration > 0) {
                 el.currentTime = (val[0] / 100) * duration;
                 setCurrentTime(el.currentTime);
