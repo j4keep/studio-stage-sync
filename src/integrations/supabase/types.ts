@@ -116,6 +116,54 @@ export type Database = {
           },
         ]
       }
+      battle_wins: {
+        Row: {
+          battle_id: string | null
+          battle_title: string
+          created_at: string
+          declared_at: string
+          id: string
+          loser_id: string | null
+          loser_votes: number
+          media_type: string
+          winner_cover_url: string | null
+          winner_id: string
+          winner_media_url: string | null
+          winner_title: string | null
+          winner_votes: number
+        }
+        Insert: {
+          battle_id?: string | null
+          battle_title: string
+          created_at?: string
+          declared_at?: string
+          id?: string
+          loser_id?: string | null
+          loser_votes?: number
+          media_type?: string
+          winner_cover_url?: string | null
+          winner_id: string
+          winner_media_url?: string | null
+          winner_title?: string | null
+          winner_votes?: number
+        }
+        Update: {
+          battle_id?: string | null
+          battle_title?: string
+          created_at?: string
+          declared_at?: string
+          id?: string
+          loser_id?: string | null
+          loser_votes?: number
+          media_type?: string
+          winner_cover_url?: string | null
+          winner_id?: string
+          winner_media_url?: string | null
+          winner_title?: string | null
+          winner_votes?: number
+        }
+        Relationships: []
+      }
       battles: {
         Row: {
           challenger_cover_url: string | null
