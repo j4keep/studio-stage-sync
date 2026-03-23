@@ -216,7 +216,7 @@ const BattleEffectsOverlay = ({
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 20, opacity: 0 }}
-            className="mb-2 bg-card/95 backdrop-blur-xl border border-border rounded-2xl p-3 shadow-2xl max-h-52 overflow-y-auto"
+            className="mb-2 bg-card/95 backdrop-blur-xl border border-border rounded-2xl p-3 shadow-2xl max-h-72 overflow-y-auto"
           >
             <div className="grid grid-cols-6 gap-2">
               {PRESET_EMOJIS.map((item) => (
