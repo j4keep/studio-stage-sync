@@ -231,7 +231,7 @@ const ProfilePage = () => {
             { label: "Songs", value: songCount },
             { label: "Followers", value: followerCount, action: () => setShowFollowers(true) },
             { label: "Plays", value: totalPlays },
-            { label: "Likes", value: totalLikes },
+            { label: "Views", value: totalViews },
           ].map((s) => (
             <button key={s.label} onClick={(s as any).action} className="p-2.5 rounded-xl bg-card border border-border text-center hover:border-primary/30 transition-all">
               <p className="text-base font-display font-bold text-primary">{s.value}</p>
