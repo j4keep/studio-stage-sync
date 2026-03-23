@@ -784,33 +784,41 @@ const MusicBattlePlayerPage = () => {
 
       {/* ── VOTE BUTTONS ── */}
       <div className="px-6 pb-6 flex gap-3">
-        <motion.button
-          whileTap={{ scale: 0.95 }}
-          onClick={() => !ended && voteMutation.mutate("left")}
-          disabled={ended}
-          className={`flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
-            hasVotedLeft
-              ? "bg-primary text-primary-foreground shadow-lg"
-              : "bg-muted text-foreground hover:bg-primary/20"
-          } ${ended ? "opacity-50" : ""}`}
-        >
-          <ThumbsUp className="w-4 h-4" />
-          Vote {leftProfile.display_name?.split(" ")[0] || "A"}
-        </motion.button>
+        {battle.status !== "active" && battle.status !== "ended" ? (
+          <div className="flex-1 py-3 rounded-xl bg-muted text-muted-foreground text-sm font-bold text-center opacity-60">
+            Voting opens when both artists join
+          </div>
+        ) : (
+          <>
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={() => !ended && voteMutation.mutate("left")}
+              disabled={ended}
+              className={`flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
+                hasVotedLeft
+                  ? "bg-primary text-primary-foreground shadow-lg"
+                  : "bg-muted text-foreground hover:bg-primary/20"
+              } ${ended ? "opacity-50" : ""}`}
+            >
+              <ThumbsUp className="w-4 h-4" />
+              Vote {leftProfile.display_name?.split(" ")[0] || "A"}
+            </motion.button>
 
-        <motion.button
-          whileTap={{ scale: 0.95 }}
-          onClick={() => !ended && voteMutation.mutate("right")}
-          disabled={ended}
-          className={`flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
-            hasVotedRight
-              ? "bg-destructive text-destructive-foreground shadow-lg"
-              : "bg-muted text-foreground hover:bg-destructive/20"
-          } ${ended ? "opacity-50" : ""}`}
-        >
-          <ThumbsUp className="w-4 h-4" />
-          Vote {rightProfile.display_name?.split(" ")[0] || "B"}
-        </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={() => !ended && voteMutation.mutate("right")}
+              disabled={ended}
+              className={`flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
+                hasVotedRight
+                  ? "bg-destructive text-destructive-foreground shadow-lg"
+                  : "bg-muted text-foreground hover:bg-destructive/20"
+              } ${ended ? "opacity-50" : ""}`}
+            >
+              <ThumbsUp className="w-4 h-4" />
+              Vote {rightProfile.display_name?.split(" ")[0] || "B"}
+            </motion.button>
+          </>
+        )}
       </div>
 
       {canAccept && (
