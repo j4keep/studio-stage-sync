@@ -18,11 +18,13 @@ const ArtistProfilePage = () => {
   const { user } = useAuth();
   const [isFollowing, setIsFollowing] = useState(false);
   const [followerCount, setFollowerCount] = useState("0");
-  const [totalPlays, setTotalPlays] = useState("0");
-  const [songCount, setSongCount] = useState("0");
+  const [winsCount, setWinsCount] = useState("0");
+  const [projectsCount, setProjectsCount] = useState("0");
   const [totalViews, setTotalViews] = useState("0");
   const [loading, setLoading] = useState(true);
   const [showFollowers, setShowFollowers] = useState(false);
+  const [showWins, setShowWins] = useState(false);
+  const [showProjects, setShowProjects] = useState(false);
   const [profileInfo, setProfileInfo] = useState<{
     display_name: string;
     avatar_url: string | null;
