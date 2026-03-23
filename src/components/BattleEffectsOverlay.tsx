@@ -178,11 +178,10 @@ const BattleEffectsOverlay = ({ battleId, side, isExpanded }: BattleEffectsOverl
                   <img
                     src={effect.imageUrl}
                     alt="effect"
-                    className="w-28 h-28 md:w-36 md:h-36 object-contain"
+                    className="w-32 h-32 md:w-40 md:h-40 object-contain"
                     style={{ 
-                      filter: "drop-shadow(0 0 18px rgba(255,165,0,0.7))",
-                      mixBlendMode: "screen",
-                      background: "transparent",
+                      filter: "drop-shadow(0 0 20px rgba(255,165,0,0.8)) saturate(1.5) contrast(1.2)",
+                      mixBlendMode: "multiply",
                     }}
                   />
                 ) : (

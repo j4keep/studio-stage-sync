@@ -20,7 +20,7 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const imagePrompt = `Create a single emoji-style sticker of: "${prompt}". Requirements: 3D rendered glossy style like Apple/Samsung emojis. Vibrant saturated colors with shiny reflections. Motion blur trails and energy glow effects around it. The object must look alive and animated mid-action. ABSOLUTELY NO background - must be on a pure clean white background with nothing else. NO text, NO words, NO letters, NO labels. Just the single object/character/element as a glossy 3D emoji sticker.`;
+    const imagePrompt = `Generate a single vivid, high-energy illustration of: "${prompt}". Style: bold neon colors, glowing edges, comic book energy lines radiating outward, dynamic action pose. The object/character should fill the entire frame and look powerful and alive with motion. Use bright saturated colors like orange, cyan, magenta, electric blue. Place it on a PURE WHITE #FFFFFF background with absolutely nothing else. NO text, NO words, NO letters, NO watermarks. Just the single dramatic visual element.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
