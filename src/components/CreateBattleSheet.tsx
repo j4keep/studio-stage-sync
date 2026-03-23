@@ -50,7 +50,6 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
   const [mediaDurationMin, setMediaDurationMin] = useState<number | null>(null);
   const [showVoiceover, setShowVoiceover] = useState(false);
   const [hasVoiceover, setHasVoiceover] = useState(false);
-  const [selectedBackground, setSelectedBackground] = useState("none");
   const isPhotoBattle = mediaType === "photo";
 
   const { data: searchResults = [], isFetching: isSearching } = useQuery({
