@@ -51,6 +51,7 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [activeArtist, setActiveArtist] = useState<"left" | "right">("left");
+  const activeArtistRef = useRef<"left" | "right">("left");
   const audioLeftRef = useRef<HTMLAudioElement | null>(null);
   const audioRightRef = useRef<HTMLAudioElement | null>(null);
   const lastTapRef = useRef(0);
