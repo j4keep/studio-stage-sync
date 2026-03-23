@@ -92,3 +92,13 @@ export const incrementVideoViews = async (videoId: string) => {
 export const incrementPodcastPlays = async (podcastId: string) => {
   await (supabase as any).rpc("increment_podcast_plays", { podcast_id: podcastId });
 };
+
+// Increment view count for a post
+export const incrementPostViews = async (postId: string) => {
+  await (supabase as any).rpc("increment_post_views", { post_id: postId });
+};
+
+// Increment view count for a battle
+export const incrementBattleViews = async (battleId: string) => {
+  await (supabase as any).rpc("increment_battle_views", { battle_id: battleId });
+};
