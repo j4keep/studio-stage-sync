@@ -205,7 +205,6 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
       setOpponentSearch("");
       setMaxDuration(40);
       setMediaDurationMin(null);
-      setSelectedBackground("none");
     } catch (err) {
       toast({ title: "Error", description: "Failed to create battle", variant: "destructive" });
     } finally {
