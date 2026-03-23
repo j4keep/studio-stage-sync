@@ -472,6 +472,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
             </div>
           </div>
 
+          <button
             onClick={handleSubmit}
             disabled={isSubmitDisabled()}
             className="w-full py-3 rounded-xl gradient-primary text-primary-foreground font-bold text-sm disabled:opacity-50"
