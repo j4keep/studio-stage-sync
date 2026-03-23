@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { uploadToR2, getR2DownloadUrl } from "@/lib/r2-storage";
+import BattleEffectsOverlay from "@/components/BattleEffectsOverlay";
 
 /* ─── helpers ─── */
 const fmt = (s: number) => {
