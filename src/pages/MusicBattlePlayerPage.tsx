@@ -12,6 +12,7 @@ import { uploadToR2, getR2DownloadUrl } from "@/lib/r2-storage";
 import BattleEffectsOverlay from "@/components/BattleEffectsOverlay";
 import BattleLiveComments from "@/components/BattleLiveComments";
 import VoiceoverRecorder from "@/components/VoiceoverRecorder";
+import AudioEqualizerBackground from "@/components/AudioEqualizerBackground";
 import { incrementBattleViews } from "@/hooks/use-likes";
 
 /* ─── helpers ─── */
