@@ -469,7 +469,12 @@ const MusicBattlePlayerPage = () => {
   const ended = battle.status === "ended" || timeLeft === "ENDED";
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col relative overflow-hidden">
+      {/* ── EQUALIZER BACKGROUND ── */}
+      <AudioEqualizerBackground
+        mediaElement={activeArtist === "left" ? (audioLeftRef.current || videoLeftRef.current) : (audioRightRef.current || videoRightRef.current)}
+        isPlaying={isPlaying}
+      />
       {/* hidden media elements for audio battles */}
       {battle.media_type !== "video" && (
         <>
