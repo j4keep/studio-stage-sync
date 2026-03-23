@@ -186,7 +186,6 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
         challenger_cover_url: coverUrl || null,
         status: "pending",
         max_duration_minutes: isPhotoBattle ? 0 : maxDuration,
-        battle_background: selectedBackground,
       });
 
       if (insertError) throw insertError;
