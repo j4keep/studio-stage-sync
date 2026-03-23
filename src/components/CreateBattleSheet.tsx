@@ -5,9 +5,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
-import { Music, Video, Search, X, Clock, Image } from "lucide-react";
+import { Music, Video, Search, X, Clock, Image, Mic } from "lucide-react";
 import { uploadToR2, getR2DownloadUrl } from "@/lib/r2-storage";
 import { Slider } from "@/components/ui/slider";
+import VoiceoverRecorder from "@/components/VoiceoverRecorder";
 
 interface Props {
   open: boolean;
