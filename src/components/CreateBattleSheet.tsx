@@ -70,6 +70,8 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
   const handleMediaFileChange = async (file: File | null) => {
     setMediaFile(file);
     setMediaDurationMin(null);
+    setHasVoiceover(false);
+    setShowVoiceover(false);
     if (file) {
       try {
         const dur = await getMediaDuration(file);
