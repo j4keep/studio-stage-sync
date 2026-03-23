@@ -470,7 +470,7 @@ const MusicBattlePlayerPage = () => {
               type="button"
               onTouchEnd={(e) => handleArtistTouchEnd(e, "left")}
               onClick={(e) => handleArtistClick(e, "left")}
-              className="absolute inset-0 z-20 rounded-2xl"
+              className={`absolute inset-0 z-20 rounded-2xl ${expandedSide === "left" ? "bottom-28" : ""}`}
               aria-label="Left artist panel"
             />
 
