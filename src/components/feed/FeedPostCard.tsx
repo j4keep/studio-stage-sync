@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Edit3, Heart, MessageCircle, Share2, Trash2 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,44 +19,58 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
   const [likesCount, setLikesCount] = useState(post.likes_count);
   const [showComments, setShowComments] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     setLiked(!!post.isLiked);
     setLikesCount(post.likes_count || 0);
   }, [post.id, post.isLiked, post.likes_count]);
 
-  const { emojis, spawnEmoji, FloatingLayer } = FloatingEmojis({});
+  const { emojis, spawnEmoji, startLoop, stopLoop, FloatingLayer } = FloatingEmojis({ postId: post.id });
+
+  // Watch for media play/pause to start/stop emoji loop
+  useEffect(() => {
+    const el = post.media_type === "video" ? videoRef.current : audioRef.current;
+    if (!el) return;
+
+    const onPlay = () => {
+      // Start looping stored reactions
+      const loadAndLoop = async () => {
+        const { data } = await (supabase as any)
+          .from("post_reactions")
+          .select("emoji_id")
+          .eq("post_id", post.id);
+        if (data && data.length > 0) {
+          startLoop(data.map((r: any) => r.emoji_id));
+        }
+      };
+      loadAndLoop();
+    };
+    const onPause = () => stopLoop();
+    const onEnded = () => stopLoop();
+
+    el.addEventListener("play", onPlay);
+    el.addEventListener("pause", onPause);
+    el.addEventListener("ended", onEnded);
+    return () => {
+      el.removeEventListener("play", onPlay);
+      el.removeEventListener("pause", onPause);
+      el.removeEventListener("ended", onEnded);
+    };
+  }, [post.id, post.media_type, startLoop, stopLoop]);
 
   const likeMutation = useMutation({
     mutationFn: async () => {
       if (!currentUserId) throw new Error("Not authenticated");
-
       const { data: existingLike, error: existingLikeError } = await (supabase as any)
-        .from("likes")
-        .select("id")
-        .eq("user_id", currentUserId)
-        .eq("content_id", post.id)
-        .eq("content_type", "post")
-        .maybeSingle();
-
+        .from("likes").select("id").eq("user_id", currentUserId).eq("content_id", post.id).eq("content_type", "post").maybeSingle();
       if (existingLikeError) throw existingLikeError;
-
       if (existingLike) {
-        const { error } = await (supabase as any)
-          .from("likes")
-          .delete()
-          .eq("user_id", currentUserId)
-          .eq("content_id", post.id)
-          .eq("content_type", "post");
-
+        const { error } = await (supabase as any).from("likes").delete().eq("user_id", currentUserId).eq("content_id", post.id).eq("content_type", "post");
         if (error) throw error;
       } else {
-        const { error } = await (supabase as any).from("likes").insert({
-          user_id: currentUserId,
-          content_id: post.id,
-          content_type: "post",
-        });
-
+        const { error } = await (supabase as any).from("likes").insert({ user_id: currentUserId, content_id: post.id, content_type: "post" });
         if (error) throw error;
       }
     },
@@ -102,7 +116,6 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
   return (
     <>
       <div className="rounded-xl bg-card border border-border overflow-hidden relative">
-        {/* Floating Emojis Layer */}
         <FloatingLayer />
 
         {/* Author Header */}
@@ -140,15 +153,15 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
         {/* Media */}
         {post.media_url && (
           post.media_type === "video" ? (
-            <video src={post.media_url} controls className="w-full max-h-[400px] object-cover bg-black" />
+            <video ref={videoRef} src={post.media_url} controls className="w-full max-h-[400px] object-cover bg-black" />
           ) : (
             <img src={post.media_url} alt="" className="w-full max-h-[400px] object-cover" />
           )
         )}
 
-        {/* Emoji Reaction Bar */}
+        {/* Emoji Reaction Bar - custom characters */}
         <div className="border-t border-border">
-          <EmojiBar onEmoji={spawnEmoji} />
+          <EmojiBar onEmoji={spawnEmoji} postId={post.id} currentUserId={currentUserId} />
         </div>
 
         {/* Actions */}
