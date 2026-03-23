@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { uploadToR2, getR2DownloadUrl } from "@/lib/r2-storage";
 import BattleEffectsOverlay from "@/components/BattleEffectsOverlay";
+import { getBattleBackground } from "@/lib/battle-backgrounds";
 import BattleLiveComments from "@/components/BattleLiveComments";
 import VoiceoverRecorder from "@/components/VoiceoverRecorder";
 import AudioEqualizerBackground from "@/components/AudioEqualizerBackground";
@@ -468,8 +469,17 @@ const MusicBattlePlayerPage = () => {
 
   const ended = battle.status === "ended" || timeLeft === "ENDED";
 
-  return (
-    <div className="min-h-screen bg-background flex flex-col relative overflow-hidden">
+    const battleBg = getBattleBackground(battle?.battle_background);
+
+    return (
+    <div className="min-h-screen flex flex-col relative overflow-hidden" style={{ background: battleBg ? '#000' : undefined, backgroundColor: battleBg ? undefined : 'hsl(var(--background))' }}>
+      {/* ── BATTLE BACKGROUND IMAGE ── */}
+      {battleBg && (
+        <div className="absolute inset-0 z-0">
+          <img src={battleBg.src} alt="" className="w-full h-full object-cover opacity-40" />
+          <div className="absolute inset-0 bg-black/30" />
+        </div>
+      )}
       {/* ── EQUALIZER BACKGROUND ── */}
       <AudioEqualizerBackground
         mediaElement={activeArtist === "left" ? (audioLeftRef.current || videoLeftRef.current) : (audioRightRef.current || videoRightRef.current)}

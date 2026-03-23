@@ -166,6 +166,7 @@ export type Database = {
       }
       battles: {
         Row: {
+          battle_background: string | null
           challenger_cover_url: string | null
           challenger_id: string
           challenger_media_url: string | null
@@ -187,6 +188,7 @@ export type Database = {
           winner_id: string | null
         }
         Insert: {
+          battle_background?: string | null
           challenger_cover_url?: string | null
           challenger_id: string
           challenger_media_url?: string | null
@@ -208,6 +210,7 @@ export type Database = {
           winner_id?: string | null
         }
         Update: {
+          battle_background?: string | null
           challenger_cover_url?: string | null
           challenger_id?: string
           challenger_media_url?: string | null
