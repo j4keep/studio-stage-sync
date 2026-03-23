@@ -28,17 +28,17 @@ const ANIMATION_VARIANTS = {
   "float-up": {
     initial: { y: "100%", x: 0, opacity: 0, scale: 0.3, rotate: 0 },
     animate: { y: "-120%", x: [0, 30, -20, 40, 0], opacity: [0, 1, 1, 1, 0], scale: [0.3, 1.2, 1, 1.1, 0.8], rotate: [0, -10, 15, -5, 10] },
-    transition: { duration: 4, ease: "easeOut" },
+    transition: { duration: 4, ease: "easeOut" as const },
   },
   "fly-across": {
     initial: { x: "-100%", y: "50%", opacity: 0, scale: 0.5, rotate: -30 },
     animate: { x: "200%", y: ["50%", "30%", "60%", "40%"], opacity: [0, 1, 1, 0], scale: [0.5, 1.3, 1, 0.6], rotate: [-30, 10, -15, 20] },
-    transition: { duration: 3.5, ease: "easeInOut" },
+    transition: { duration: 3.5, ease: "easeInOut" as const },
   },
   "burst": {
     initial: { scale: 0, opacity: 0, rotate: 0 },
     animate: { scale: [0, 2, 1.5, 2.2, 0], opacity: [0, 1, 1, 0.8, 0], rotate: [0, 45, -30, 60, 0] },
-    transition: { duration: 3, ease: "easeOut" },
+    transition: { duration: 3, ease: "easeOut" as const },
   },
   "spiral": {
     initial: { scale: 0, opacity: 0, x: 0, y: 0 },
@@ -49,7 +49,7 @@ const ANIMATION_VARIANTS = {
       y: [0, -40, -100, -160, -250],
       rotate: [0, 180, 360, 540, 720],
     },
-    transition: { duration: 4.5, ease: "easeOut" },
+    transition: { duration: 4.5, ease: "easeOut" as const },
   },
 };
 
