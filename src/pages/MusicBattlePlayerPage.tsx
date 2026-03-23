@@ -62,6 +62,11 @@ const MusicBattlePlayerPage = () => {
     enabled: !!battleId,
   });
 
+  // Track battle view once
+  useEffect(() => {
+    if (battleId) incrementBattleViews(battleId);
+  }, [battleId]);
+
   const { data: profiles = {} } = useQuery({
     queryKey: ["battle-profiles", battle?.challenger_id, battle?.opponent_id],
     queryFn: async () => {

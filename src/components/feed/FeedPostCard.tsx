@@ -138,6 +138,10 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
 
         {/* Actions */}
         <div className="flex items-center gap-4 px-3 py-2.5 border-t border-border">
+          <span className="flex items-center gap-1">
+            <Eye className="w-4 h-4 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">{post.views || 0}</span>
+          </span>
           <button onClick={() => likeMutation.mutate()} className="flex items-center gap-1">
             <Heart className={`w-5 h-5 ${liked ? "fill-red-500 text-red-500" : "text-muted-foreground"}`} />
             <span className="text-xs text-muted-foreground">{likesCount}</span>
