@@ -34,11 +34,15 @@ Deno.serve(async (req) => {
     // Count votes for each side
     const { data: votes } = await supabase
       .from("battle_votes")
-      .select("voted_for")
+      .select("voted_for, user_id")
       .eq("battle_id", battle.id);
 
-    const challengerVotes = (votes || []).filter((v: any) => v.voted_for === battle.challenger_id).length;
-    const opponentVotes = (votes || []).filter((v: any) => v.voted_for === battle.opponent_id).length;
+    // Exclude participant votes
+    const participantIds = [battle.challenger_id, battle.opponent_id].filter(Boolean);
+    const audienceVotes = (votes || []).filter((v: any) => !participantIds.includes(v.user_id));
+
+    const challengerVotes = audienceVotes.filter((v: any) => v.voted_for === battle.challenger_id).length;
+    const opponentVotes = audienceVotes.filter((v: any) => v.voted_for === battle.opponent_id).length;
 
     // Need at least one vote and an opponent to declare winner
     if (!battle.opponent_id || (challengerVotes === 0 && opponentVotes === 0)) {

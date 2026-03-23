@@ -98,9 +98,12 @@ const MusicBattlePlayerPage = () => {
     enabled: !!battleId,
   });
 
+  const isParticipant = user?.id === battle?.challenger_id || user?.id === battle?.opponent_id;
+
   const voteMutation = useMutation({
     mutationFn: async (side: "left" | "right") => {
       if (!user || !battle) return;
+      if (isParticipant) return; // Participants cannot vote in their own battle
       const votedFor = side === "left" ? battle.challenger_id : battle.opponent_id;
       if (!votedFor) return;
       const existing = votes.find((v: any) => v.user_id === user.id);
@@ -113,9 +116,11 @@ const MusicBattlePlayerPage = () => {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["battle-votes", battleId] }),
   });
 
-  /* ── derived ── */
-  const leftVotes = votes.filter((v: any) => v.voted_for === battle?.challenger_id).length;
-  const rightVotes = votes.filter((v: any) => v.voted_for === battle?.opponent_id).length;
+  /* ── derived (exclude participant votes) ── */
+  const participantIds = [battle?.challenger_id, battle?.opponent_id].filter(Boolean);
+  const audienceVotes = votes.filter((v: any) => !participantIds.includes(v.user_id));
+  const leftVotes = audienceVotes.filter((v: any) => v.voted_for === battle?.challenger_id).length;
+  const rightVotes = audienceVotes.filter((v: any) => v.voted_for === battle?.opponent_id).length;
   const total = leftVotes + rightVotes;
   const leftPct = total > 0 ? Math.round((leftVotes / total) * 100) : 50;
   const rightPct = total > 0 ? 100 - leftPct : 50;
@@ -782,6 +787,10 @@ const MusicBattlePlayerPage = () => {
         {battle.status !== "active" && battle.status !== "ended" ? (
           <div className="flex-1 py-3 rounded-xl bg-muted text-muted-foreground text-sm font-bold text-center opacity-60">
             Voting opens when both artists join
+          </div>
+        ) : isParticipant ? (
+          <div className="flex-1 py-3 rounded-xl bg-muted text-muted-foreground text-sm font-bold text-center opacity-60">
+            Participants cannot vote in their own battle
           </div>
         ) : (
           <>
