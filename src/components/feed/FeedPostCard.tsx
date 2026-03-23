@@ -7,6 +7,7 @@ import { formatDistanceToNow } from "date-fns";
 import PostCommentsSheet from "./PostCommentsSheet";
 import FloatingEmojis, { EmojiBar } from "./FloatingEmojis";
 import CreatePostSheet from "./CreatePostSheet";
+import BattleLiveComments from "@/components/BattleLiveComments";
 
 interface Props {
   post: any;
@@ -20,8 +21,10 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
   const [showComments, setShowComments] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [isMediaPlaying, setIsMediaPlaying] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const lastTapRef = useRef(0);
 
   useEffect(() => {
     setLiked(!!post.isLiked);
@@ -30,7 +33,16 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
 
   const { emojis, spawnEmoji, startLoop, stopLoop, FloatingLayer } = FloatingEmojis({ postId: post.id });
 
-  // Watch for media play/pause to start/stop emoji loop and show emoji bar
+  // Double-tap to expand media fullscreen
+  const handleMediaDoubleTap = () => {
+    const now = Date.now();
+    if (now - lastTapRef.current < 350) {
+      setIsExpanded((prev) => !prev);
+    }
+    lastTapRef.current = now;
+  };
+
+  // Watch for media play/pause to start/stop emoji loop
   useEffect(() => {
     const el = post.media_type === "video" ? videoRef.current : audioRef.current;
     if (!el) return;
@@ -116,7 +128,7 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
 
   return (
     <>
-      <div className="rounded-xl bg-card border border-border overflow-hidden relative">
+      <div className={`rounded-xl bg-card border border-border overflow-hidden relative transition-all duration-300 ${isExpanded ? "fixed inset-0 z-[70] rounded-none flex flex-col" : ""}`}>
 
         {/* Author Header */}
         <div className="flex items-center gap-2.5 px-3 py-2.5">
@@ -152,21 +164,28 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
 
         {/* Media — emojis float INSIDE this container */}
         {post.media_url && (
-          <div className="relative overflow-hidden">
+          <div className={`relative overflow-hidden ${isExpanded ? "flex-1" : ""}`} onClick={handleMediaDoubleTap}>
             {post.media_type === "video" ? (
-              <video ref={videoRef} src={post.media_url} controls className="w-full max-h-[400px] object-cover bg-black" />
+              <video ref={videoRef} src={post.media_url} controls className={`w-full object-cover bg-black ${isExpanded ? "h-full" : "max-h-[400px]"}`} />
             ) : (
-              <img src={post.media_url} alt="" className="w-full max-h-[400px] object-cover" />
+              <img src={post.media_url} alt="" className={`w-full object-cover ${isExpanded ? "h-full" : "max-h-[400px]"}`} />
             )}
             {/* Floating emojis constrained inside media */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
               <FloatingLayer />
             </div>
+
+            {/* Live scrolling comments overlay (only when expanded & playing) */}
+            {isExpanded && isMediaPlaying && (
+              <div className="absolute bottom-20 left-3 right-3 z-[60] pointer-events-none">
+                <div className="max-h-[30vh] overflow-hidden flex flex-col justify-end mb-2" />
+              </div>
+            )}
           </div>
         )}
 
-        {/* Emoji Reaction Bar — only visible when media is playing */}
-        {isMediaPlaying && (
+        {/* Emoji Reaction Bar — visible when expanded OR media is playing */}
+        {(isMediaPlaying || isExpanded) && (
           <div className="border-t border-border">
             <EmojiBar onEmoji={spawnEmoji} postId={post.id} currentUserId={currentUserId} />
           </div>
