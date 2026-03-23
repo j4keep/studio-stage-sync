@@ -184,9 +184,9 @@ const ArtistProfilePage = () => {
         {/* Stats */}
         <div className="grid grid-cols-4 gap-2 mt-4">
           {[
-            { label: "Songs", value: songCount },
+            { label: "Wins", value: winsCount, action: () => setShowWins(true) },
             { label: "Followers", value: followerCount, action: () => setShowFollowers(true) },
-            { label: "Plays", value: totalPlays },
+            { label: "Projects", value: projectsCount, action: () => setShowProjects(true) },
             { label: "Views", value: totalViews },
           ].map((s) => (
             <button key={s.label} onClick={(s as any).action} className="p-2.5 rounded-xl bg-card border border-border text-center hover:border-primary/30 transition-all">
