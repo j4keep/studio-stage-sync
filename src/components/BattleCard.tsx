@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trash2, Clock, Trophy, Crown, MessageCircle, Send, Play, Pause } from "lucide-react";
+import { Trash2, Clock, Trophy, Crown, MessageCircle, Send, Play, Pause, Heart, Eye, Share2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
@@ -27,6 +27,8 @@ interface Battle {
   created_at: string;
   expires_at?: string;
   max_duration_minutes?: number;
+  views?: number;
+  likes_count?: number;
 }
 
 const EMOJIS = ["🔥", "💀", "🎤", "👑", "💪", "😤", "🏆", "⚡"];
@@ -45,6 +47,8 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
   const [comment, setComment] = useState("");
   const commentsEndRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [battleLiked, setBattleLiked] = useState(false);
+  const [battleLikesCount, setBattleLikesCount] = useState(battle.likes_count || 0);
 
   // Audio playback state for inline preview
   const [isPlaying, setIsPlaying] = useState(false);
@@ -149,6 +153,32 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
   });
 
   useEffect(() => { commentsEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [battleComments.length]);
+
+  // Check if user liked this battle
+  useEffect(() => {
+    if (!user) return;
+    (supabase as any).from("likes").select("id").eq("user_id", user.id).eq("content_id", battle.id).eq("content_type", "battle").maybeSingle()
+      .then(({ data }: any) => { setBattleLiked(!!data); });
+  }, [user, battle.id]);
+
+  const toggleBattleLike = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user) return;
+    const wasLiked = battleLiked;
+    setBattleLiked(!wasLiked);
+    setBattleLikesCount(c => wasLiked ? Math.max(c - 1, 0) : c + 1);
+    if (wasLiked) {
+      await (supabase as any).from("likes").delete().eq("user_id", user.id).eq("content_id", battle.id).eq("content_type", "battle");
+    } else {
+      await (supabase as any).from("likes").insert({ user_id: user.id, content_id: battle.id, content_type: "battle" });
+    }
+  };
+
+  const handleBattleShare = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(`${window.location.origin}/battle/${battle.id}`);
+    toast.success("Link copied!");
+  };
 
   // Audio playback for inline card
   const activeRef = activeArtist === "left" ? audioLeftRef : audioRightRef;
@@ -428,11 +458,24 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
         </div>
       )}
 
-      {/* Comments toggle */}
-      <button onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
-        className="flex w-full items-center justify-center gap-2 border-t border-border py-2.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-        <MessageCircle className="h-3.5 w-3.5" /> {battleComments.length} Comments
-      </button>
+      {/* Action Bar - Views, Like, Comments, Share */}
+      <div className="flex items-center gap-4 px-3 py-2.5 border-t border-border">
+        <span className="flex items-center gap-1">
+          <Eye className="w-4 h-4 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">{battle.views || 0}</span>
+        </span>
+        <button onClick={toggleBattleLike} className="flex items-center gap-1">
+          <Heart className={`w-5 h-5 ${battleLiked ? "fill-red-500 text-red-500" : "text-muted-foreground"}`} />
+          <span className="text-xs text-muted-foreground">{battleLikesCount}</span>
+        </button>
+        <button onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }} className="flex items-center gap-1">
+          <MessageCircle className="w-5 h-5 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">{battleComments.length}</span>
+        </button>
+        <button onClick={handleBattleShare} className="flex items-center gap-1 ml-auto">
+          <Share2 className="w-5 h-5 text-muted-foreground" />
+        </button>
+      </div>
 
       {/* Comments */}
       <AnimatePresence>
