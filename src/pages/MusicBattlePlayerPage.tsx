@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { uploadToR2, getR2DownloadUrl } from "@/lib/r2-storage";
 import BattleEffectsOverlay from "@/components/BattleEffectsOverlay";
-import BattleSpeakersBackground from "@/components/BattleSpeakersBackground";
+
 import BattleLiveComments from "@/components/BattleLiveComments";
 import VoiceoverRecorder from "@/components/VoiceoverRecorder";
 import AudioEqualizerBackground from "@/components/AudioEqualizerBackground";
@@ -471,8 +471,6 @@ const MusicBattlePlayerPage = () => {
 
     return (
     <div className="min-h-screen flex flex-col relative overflow-hidden bg-background">
-      {/* ── SPEAKERS BACKGROUND ── */}
-      <BattleSpeakersBackground isPlaying={isPlaying} />
       {/* ── EQUALIZER BACKGROUND ── */}
       <AudioEqualizerBackground
         mediaElement={activeArtist === "left" ? (audioLeftRef.current || videoLeftRef.current) : (audioRightRef.current || videoRightRef.current)}
