@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect } from "react";
 
 interface AudioEqualizerBackgroundProps {
   mediaElement: HTMLMediaElement | null;
@@ -7,76 +7,9 @@ interface AudioEqualizerBackgroundProps {
 
 const BAR_COUNT = 48;
 
-// Shared AudioContext + source cache to avoid re-creating sources
-const audioCtxCache = {
-  ctx: null as AudioContext | null,
-  sources: new WeakMap<HTMLMediaElement, MediaElementAudioSourceNode>(),
-};
-
-const getOrCreateSource = (el: HTMLMediaElement): { ctx: AudioContext; source: MediaElementAudioSourceNode } => {
-  if (!audioCtxCache.ctx) {
-    audioCtxCache.ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-  }
-  const ctx = audioCtxCache.ctx;
-  let source = audioCtxCache.sources.get(el);
-  if (!source) {
-    source = ctx.createMediaElementSource(el);
-    // Connect source directly to destination so audio always plays
-    source.connect(ctx.destination);
-    audioCtxCache.sources.set(el, source);
-  }
-  return { ctx, source };
-};
-
 const AudioEqualizerBackground = ({ mediaElement, isPlaying }: AudioEqualizerBackgroundProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
   const frameRef = useRef<number>(0);
-  const lastElementRef = useRef<HTMLMediaElement | null>(null);
-
-  const connect = useCallback(() => {
-    if (!mediaElement) return;
-
-    // If same element, already connected
-    if (mediaElement === lastElementRef.current && analyserRef.current) return;
-
-    try {
-      const { ctx, source } = getOrCreateSource(mediaElement);
-
-      // Disconnect old analyser if any
-      if (analyserRef.current) {
-        try { analyserRef.current.disconnect(); } catch {}
-      }
-
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 128;
-      analyser.smoothingTimeConstant = 0.8;
-      source.connect(analyser);
-      // analyser doesn't need to connect to destination; source already does
-
-      analyserRef.current = analyser;
-      lastElementRef.current = mediaElement;
-
-      if (ctx.state === "suspended") {
-        ctx.resume();
-      }
-    } catch {
-      /* already connected or unsupported */
-    }
-  }, [mediaElement]);
-
-  useEffect(() => {
-    if (mediaElement) {
-      connect();
-    }
-  }, [mediaElement, connect]);
-
-  // Resume AudioContext on play (needed for autoplay policy)
-  useEffect(() => {
-    if (isPlaying && audioCtxCache.ctx?.state === "suspended") {
-      audioCtxCache.ctx.resume();
-    }
-  }, [isPlaying]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -91,11 +24,7 @@ const AudioEqualizerBackground = ({ mediaElement, isPlaying }: AudioEqualizerBac
     resize();
     window.addEventListener("resize", resize);
 
-    const analyser = analyserRef.current;
-    const dataArray = analyser ? new Uint8Array(analyser.frequencyBinCount) : null;
-
-    /* Idle animation fallback */
-    let idlePhase = 0;
+    let phase = 0;
 
     const draw = () => {
       frameRef.current = requestAnimationFrame(draw);
@@ -103,18 +32,20 @@ const AudioEqualizerBackground = ({ mediaElement, isPlaying }: AudioEqualizerBac
       const h = canvas.height;
       c.clearRect(0, 0, w, h);
 
-      let barData: number[] = [];
+      const barData: number[] = [];
 
-      if (analyser && dataArray && isPlaying) {
-        analyser.getByteFrequencyData(dataArray);
-        const step = Math.floor(dataArray.length / BAR_COUNT);
+      if (isPlaying) {
+        phase += 0.06;
         for (let i = 0; i < BAR_COUNT; i++) {
-          barData.push(dataArray[i * step] / 255);
+          const base = 0.15 + Math.sin(phase + i * 0.35) * 0.12;
+          const wave = Math.sin(phase * 1.7 + i * 0.5) * 0.15;
+          const pulse = Math.sin(phase * 0.8) * 0.08;
+          barData.push(Math.min(1, Math.max(0.05, base + wave + pulse + Math.random() * 0.1)));
         }
       } else {
-        idlePhase += 0.01;
+        phase += 0.01;
         for (let i = 0; i < BAR_COUNT; i++) {
-          barData.push(0.08 + Math.sin(idlePhase + i * 0.25) * 0.06);
+          barData.push(0.08 + Math.sin(phase + i * 0.25) * 0.06);
         }
       }
 
@@ -141,7 +72,7 @@ const AudioEqualizerBackground = ({ mediaElement, isPlaying }: AudioEqualizerBac
       cancelAnimationFrame(frameRef.current);
       window.removeEventListener("resize", resize);
     };
-  }, [isPlaying, analyserRef.current]);
+  }, [isPlaying]);
 
   return (
     <canvas
