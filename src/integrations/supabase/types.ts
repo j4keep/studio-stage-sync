@@ -134,6 +134,7 @@ export type Database = {
           status: string
           title: string
           updated_at: string
+          views: number
           winner_id: string | null
         }
         Insert: {
@@ -153,6 +154,7 @@ export type Database = {
           status?: string
           title: string
           updated_at?: string
+          views?: number
           winner_id?: string | null
         }
         Update: {
@@ -172,6 +174,7 @@ export type Database = {
           status?: string
           title?: string
           updated_at?: string
+          views?: number
           winner_id?: string | null
         }
         Relationships: []
@@ -624,6 +627,7 @@ export type Database = {
           media_url: string | null
           updated_at: string
           user_id: string
+          views: number
         }
         Insert: {
           caption?: string | null
@@ -635,6 +639,7 @@ export type Database = {
           media_url?: string | null
           updated_at?: string
           user_id: string
+          views?: number
         }
         Update: {
           caption?: string | null
@@ -646,6 +651,7 @@ export type Database = {
           media_url?: string | null
           updated_at?: string
           user_id?: string
+          views?: number
         }
         Relationships: []
       }
@@ -1177,6 +1183,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      increment_battle_views: {
+        Args: { battle_id: string }
+        Returns: undefined
+      }
       increment_boost_clicks: { Args: { boost_id: string }; Returns: undefined }
       increment_boost_impressions: {
         Args: { boost_id: string }
@@ -1186,6 +1196,7 @@ export type Database = {
         Args: { podcast_id: string }
         Returns: undefined
       }
+      increment_post_views: { Args: { post_id: string }; Returns: undefined }
       increment_song_plays: { Args: { song_id: string }; Returns: undefined }
       increment_video_views: { Args: { video_id: string }; Returns: undefined }
     }
