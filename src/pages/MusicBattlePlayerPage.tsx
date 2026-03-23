@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
 import { uploadToR2, getR2DownloadUrl } from "@/lib/r2-storage";
 
 /* ─── helpers ─── */
@@ -599,26 +600,24 @@ const MusicBattlePlayerPage = () => {
         </AnimatePresence>
       </div>
 
-      {/* ── AUDIO PLAYBACK BAR ── */}
-      <div className="px-6 py-3">
+      {/* ── AUDIO PLAYBACK BAR (SEEKABLE) ── */}
+      <div className="px-6 py-3" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-mono">
           <span>{fmt(currentTime)}</span>
-          <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden relative">
-            <motion.div
-              className="h-full bg-primary rounded-full"
-              animate={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
-              transition={{ duration: 0.3 }}
-            />
-            {/* glow dot at tip */}
-            {isPlaying && duration > 0 && (
-              <motion.div
-                className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-primary"
-                animate={{ left: `${(currentTime / duration) * 100}%`, boxShadow: ["0 0 6px 2px hsl(var(--primary) / 0.6)", "0 0 12px 4px hsl(var(--primary) / 0.9)", "0 0 6px 2px hsl(var(--primary) / 0.6)"] }}
-                transition={{ boxShadow: { repeat: Infinity, duration: 1 }, left: { duration: 0.3 } }}
-                style={{ marginLeft: -5 }}
-              />
-            )}
-          </div>
+          <Slider
+            value={[duration > 0 ? (currentTime / duration) * 100 : 0]}
+            onValueChange={(val) => {
+              const el = activeArtist === "left" ? (audioLeftRef.current || videoLeftRef.current) : (audioRightRef.current || videoRightRef.current);
+              if (el && duration > 0) {
+                el.currentTime = (val[0] / 100) * duration;
+                setCurrentTime(el.currentTime);
+              }
+            }}
+            max={100}
+            step={0.1}
+            className="flex-1 seek-area"
+            role="slider"
+          />
           <span>{fmt(duration)}</span>
         </div>
         <p className="text-center text-[9px] text-muted-foreground mt-1">
