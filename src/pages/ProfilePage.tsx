@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   User, Music, FolderHeart, Building2, Heart, Download, DollarSign,
-  Settings, Shield, BarChart3, HelpCircle, Play, Video, ShoppingBag,
+  Settings, Shield, BarChart3, HelpCircle, Trophy, Video, ShoppingBag,
   CheckCircle, UserPlus, Share2, ChevronRight, Library, Edit3, UserCheck, ExternalLink, Crown, Lock, Rocket
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -16,6 +16,8 @@ import { useProGate } from "@/hooks/use-pro-gate";
 import ArtistSearchBar from "@/components/ArtistSearchBar";
 import FollowersSheet from "@/components/FollowersSheet";
 import ProfileFeedSection from "@/components/ProfileFeedSection";
+import BattleWinsSheet from "@/components/BattleWinsSheet";
+import UserProjectsSheet from "@/components/UserProjectsSheet";
 
 const ProfilePage = () => {
   const navigate = useNavigate();
