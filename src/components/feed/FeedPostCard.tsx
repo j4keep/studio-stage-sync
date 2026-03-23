@@ -18,20 +18,13 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
   const [likesCount, setLikesCount] = useState(post.likes_count);
   const [showComments, setShowComments] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
-  const [isMediaPlaying, setIsMediaPlaying] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const lastTapRef = useRef(0);
-
-  const [showEmojiBar, setShowEmojiBar] = useState(false);
 
   useEffect(() => {
     setLiked(!!post.isLiked);
     setLikesCount(post.likes_count || 0);
   }, [post.id, post.isLiked, post.likes_count]);
-
-  const { emojis, spawnEmoji, startLoop, stopLoop, FloatingLayer } = FloatingEmojis({ postId: post.id });
 
   // Double-tap to expand media fullscreen
   const handleMediaDoubleTap = () => {
