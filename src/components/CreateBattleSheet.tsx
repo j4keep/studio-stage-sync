@@ -47,7 +47,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
   const [loading, setLoading] = useState(false);
   const [opponentSearch, setOpponentSearch] = useState("");
   const [selectedOpponent, setSelectedOpponent] = useState<{ user_id: string; display_name: string; avatar_url: string | null } | null>(null);
-  const [maxDuration, setMaxDuration] = useState(40);
+  const [maxDuration, setMaxDuration] = useState(20);
   const [mediaDurationMin, setMediaDurationMin] = useState<number | null>(null);
   const [showVoiceover, setShowVoiceover] = useState(false);
   const [hasVoiceover, setHasVoiceover] = useState(false);
