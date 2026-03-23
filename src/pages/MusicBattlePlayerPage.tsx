@@ -786,6 +786,10 @@ const MusicBattlePlayerPage = () => {
           <div className="flex-1 py-3 rounded-xl bg-muted text-muted-foreground text-sm font-bold text-center opacity-60">
             Voting opens when both artists join
           </div>
+        ) : isParticipant ? (
+          <div className="flex-1 py-3 rounded-xl bg-muted text-muted-foreground text-sm font-bold text-center opacity-60">
+            Participants cannot vote in their own battle
+          </div>
         ) : (
           <>
             <motion.button
