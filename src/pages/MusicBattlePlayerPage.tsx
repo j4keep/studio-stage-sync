@@ -342,12 +342,45 @@ const MusicBattlePlayerPage = () => {
   useEffect(() => {
     const el = activeRef.current;
     if (!el) return;
-    // Read current values immediately in case metadata already loaded
-    if (el.duration && isFinite(el.duration)) setDuration(el.duration);
-    if (el.currentTime) setCurrentTime(el.currentTime);
-    const onTime = () => setCurrentTime(el.currentTime);
-    const onDur = () => setDuration(el.duration || 0);
+
+    let frameId: number | null = null;
+
+    const syncFromElement = () => {
+      setCurrentTime(el.currentTime || 0);
+      setDuration(el.duration && isFinite(el.duration) ? el.duration : 0);
+    };
+
+    const startSyncLoop = () => {
+      if (frameId !== null) return;
+      const tick = () => {
+        syncFromElement();
+        if (!el.paused && !el.ended) {
+          frameId = window.requestAnimationFrame(tick);
+        } else {
+          frameId = null;
+        }
+      };
+      frameId = window.requestAnimationFrame(tick);
+    };
+
+    const stopSyncLoop = () => {
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId);
+        frameId = null;
+      }
+    };
+
+    syncFromElement();
+
+    const onPlay = () => startSyncLoop();
+    const onPause = () => {
+      syncFromElement();
+      stopSyncLoop();
+    };
+    const onTime = () => syncFromElement();
+    const onDur = () => syncFromElement();
     const onEnd = () => {
+      stopSyncLoop();
       if (battle?.opponent_media_url && battle?.challenger_media_url) {
         const nextSide = activeArtist === "left" ? "right" : "left";
         setActiveArtist(nextSide);
@@ -367,11 +400,20 @@ const MusicBattlePlayerPage = () => {
 
       setIsPlaying(false);
     };
+
+    el.addEventListener("play", onPlay);
+    el.addEventListener("pause", onPause);
     el.addEventListener("timeupdate", onTime);
     el.addEventListener("loadedmetadata", onDur);
     el.addEventListener("durationchange", onDur);
     el.addEventListener("ended", onEnd);
+
+    if (!el.paused) startSyncLoop();
+
     return () => {
+      stopSyncLoop();
+      el.removeEventListener("play", onPlay);
+      el.removeEventListener("pause", onPause);
       el.removeEventListener("timeupdate", onTime);
       el.removeEventListener("loadedmetadata", onDur);
       el.removeEventListener("durationchange", onDur);
