@@ -130,7 +130,7 @@ const BattleLiveComments = ({ battleId, isExpanded }: BattleLiveCommentsProps) =
   if (!isExpanded) return null;
 
   return (
-    <div className="absolute bottom-20 left-3 right-3 z-45 pointer-events-none">
+    <div className="absolute bottom-20 left-3 right-3 z-[60] pointer-events-none">
       {/* Scrolling comments overlay */}
       <div className="max-h-[40vh] overflow-hidden flex flex-col justify-end mb-2">
         <AnimatePresence>
@@ -153,17 +153,23 @@ const BattleLiveComments = ({ battleId, isExpanded }: BattleLiveCommentsProps) =
       </div>
 
       {/* Comment input */}
-      <div className="pointer-events-auto flex items-center gap-2 bg-card/90 backdrop-blur-xl border border-border rounded-2xl px-3 py-2">
+      <div
+        className="pointer-events-auto flex items-center gap-2 bg-card/90 backdrop-blur-xl border border-border rounded-2xl px-3 py-2"
+        onTouchStart={(e) => e.stopPropagation()}
+        onTouchEnd={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+      >
         <input
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSend()}
+          onFocus={(e) => e.stopPropagation()}
           placeholder="Say something..."
           className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
         />
         <button
-          onClick={handleSend}
+          onClick={(e) => { e.stopPropagation(); handleSend(); }}
           disabled={!input.trim() || sending}
           className="w-8 h-8 rounded-full bg-primary flex items-center justify-center disabled:opacity-40"
         >

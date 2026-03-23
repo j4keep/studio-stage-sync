@@ -19,6 +19,7 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
   const [likesCount, setLikesCount] = useState(post.likes_count);
   const [showComments, setShowComments] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  const [isMediaPlaying, setIsMediaPlaying] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -29,13 +30,13 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
 
   const { emojis, spawnEmoji, startLoop, stopLoop, FloatingLayer } = FloatingEmojis({ postId: post.id });
 
-  // Watch for media play/pause to start/stop emoji loop
+  // Watch for media play/pause to start/stop emoji loop and show emoji bar
   useEffect(() => {
     const el = post.media_type === "video" ? videoRef.current : audioRef.current;
     if (!el) return;
 
     const onPlay = () => {
-      // Start looping stored reactions
+      setIsMediaPlaying(true);
       const loadAndLoop = async () => {
         const { data } = await (supabase as any)
           .from("post_reactions")
@@ -47,8 +48,8 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
       };
       loadAndLoop();
     };
-    const onPause = () => stopLoop();
-    const onEnded = () => stopLoop();
+    const onPause = () => { setIsMediaPlaying(false); stopLoop(); };
+    const onEnded = () => { setIsMediaPlaying(false); stopLoop(); };
 
     el.addEventListener("play", onPlay);
     el.addEventListener("pause", onPause);
@@ -116,7 +117,6 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
   return (
     <>
       <div className="rounded-xl bg-card border border-border overflow-hidden relative">
-        <FloatingLayer />
 
         {/* Author Header */}
         <div className="flex items-center gap-2.5 px-3 py-2.5">
@@ -150,19 +150,27 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
           <p className="px-3 pb-2 text-sm text-foreground">{post.caption}</p>
         )}
 
-        {/* Media */}
+        {/* Media — emojis float INSIDE this container */}
         {post.media_url && (
-          post.media_type === "video" ? (
-            <video ref={videoRef} src={post.media_url} controls className="w-full max-h-[400px] object-cover bg-black" />
-          ) : (
-            <img src={post.media_url} alt="" className="w-full max-h-[400px] object-cover" />
-          )
+          <div className="relative overflow-hidden">
+            {post.media_type === "video" ? (
+              <video ref={videoRef} src={post.media_url} controls className="w-full max-h-[400px] object-cover bg-black" />
+            ) : (
+              <img src={post.media_url} alt="" className="w-full max-h-[400px] object-cover" />
+            )}
+            {/* Floating emojis constrained inside media */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              <FloatingLayer />
+            </div>
+          </div>
         )}
 
-        {/* Emoji Reaction Bar - custom characters */}
-        <div className="border-t border-border">
-          <EmojiBar onEmoji={spawnEmoji} postId={post.id} currentUserId={currentUserId} />
-        </div>
+        {/* Emoji Reaction Bar — only visible when media is playing */}
+        {isMediaPlaying && (
+          <div className="border-t border-border">
+            <EmojiBar onEmoji={spawnEmoji} postId={post.id} currentUserId={currentUserId} />
+          </div>
+        )}
 
         {/* Actions */}
         <div className="flex items-center gap-4 px-3 py-2.5 border-t border-border">
