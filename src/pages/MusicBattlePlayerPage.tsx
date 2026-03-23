@@ -471,8 +471,6 @@ const MusicBattlePlayerPage = () => {
 
     return (
     <div className="min-h-screen flex flex-col relative overflow-hidden bg-background">
-      {/* ── SPEAKERS BACKGROUND ── */}
-      <BattleSpeakersBackground isPlaying={isPlaying} />
       {/* ── EQUALIZER BACKGROUND ── */}
       <AudioEqualizerBackground
         mediaElement={activeArtist === "left" ? (audioLeftRef.current || videoLeftRef.current) : (audioRightRef.current || videoRightRef.current)}
