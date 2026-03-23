@@ -30,13 +30,13 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
 
   const { emojis, spawnEmoji, startLoop, stopLoop, FloatingLayer } = FloatingEmojis({ postId: post.id });
 
-  // Watch for media play/pause to start/stop emoji loop
+  // Watch for media play/pause to start/stop emoji loop and show emoji bar
   useEffect(() => {
     const el = post.media_type === "video" ? videoRef.current : audioRef.current;
     if (!el) return;
 
     const onPlay = () => {
-      // Start looping stored reactions
+      setIsMediaPlaying(true);
       const loadAndLoop = async () => {
         const { data } = await (supabase as any)
           .from("post_reactions")
@@ -48,8 +48,8 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
       };
       loadAndLoop();
     };
-    const onPause = () => stopLoop();
-    const onEnded = () => stopLoop();
+    const onPause = () => { setIsMediaPlaying(false); stopLoop(); };
+    const onEnded = () => { setIsMediaPlaying(false); stopLoop(); };
 
     el.addEventListener("play", onPlay);
     el.addEventListener("pause", onPause);
