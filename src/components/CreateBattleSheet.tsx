@@ -401,6 +401,30 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
                 )}
               </div>
 
+              {/* Voiceover option */}
+              {mediaFile && !showVoiceover && (
+                <button
+                  onClick={() => setShowVoiceover(true)}
+                  className="w-full py-2 rounded-lg border border-dashed border-primary/40 text-xs font-bold text-primary flex items-center justify-center gap-1.5 hover:bg-primary/5 transition-colors"
+                >
+                  <Mic className="w-3.5 h-3.5" /> {hasVoiceover ? "Re-record Voiceover ✓" : "Add Voiceover 🎙️"}
+                </button>
+              )}
+
+              {mediaFile && showVoiceover && (
+                <VoiceoverRecorder
+                  mediaFile={mediaFile}
+                  mediaType={mediaType}
+                  onMixedFile={(mixed) => {
+                    setMediaFile(mixed);
+                    setHasVoiceover(true);
+                    setShowVoiceover(false);
+                    toast({ title: "Voiceover applied! 🎙️", description: "Your voice has been mixed with the track." });
+                  }}
+                  onCancel={() => setShowVoiceover(false)}
+                />
+              )}
+
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">
                   Cover Art {mediaType === "audio" ? "(required)" : "(optional)"}
