@@ -39,7 +39,7 @@ const BattlesPage = () => {
           <ArrowLeft className="w-4 h-4 text-foreground" />
         </button>
         <Swords className="w-5 h-5 text-primary" />
-        <h1 className="text-lg font-display font-bold text-foreground">Artist Battles</h1>
+        <h1 className="text-lg font-display font-bold text-foreground">Creators Battle</h1>
         <div className="flex-1" />
         <button onClick={handleCreate} className="px-3 py-1.5 rounded-lg gradient-primary text-primary-foreground text-xs font-bold flex items-center gap-1.5">
           <Plus className="w-3.5 h-3.5" /> Create Battle

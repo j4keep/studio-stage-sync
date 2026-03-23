@@ -12,6 +12,7 @@ import { uploadToR2, getR2DownloadUrl } from "@/lib/r2-storage";
 import BattleEffectsOverlay from "@/components/BattleEffectsOverlay";
 import BattleLiveComments from "@/components/BattleLiveComments";
 import VoiceoverRecorder from "@/components/VoiceoverRecorder";
+import AudioEqualizerBackground from "@/components/AudioEqualizerBackground";
 import { incrementBattleViews } from "@/hooks/use-likes";
 
 /* ─── helpers ─── */
@@ -468,7 +469,12 @@ const MusicBattlePlayerPage = () => {
   const ended = battle.status === "ended" || timeLeft === "ENDED";
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col relative overflow-hidden">
+      {/* ── EQUALIZER BACKGROUND ── */}
+      <AudioEqualizerBackground
+        mediaElement={activeArtist === "left" ? (audioLeftRef.current || videoLeftRef.current) : (audioRightRef.current || videoRightRef.current)}
+        isPlaying={isPlaying}
+      />
       {/* hidden media elements for audio battles */}
       {battle.media_type !== "video" && (
         <>
@@ -482,7 +488,7 @@ const MusicBattlePlayerPage = () => {
         <button onClick={() => navigate(-1)} className="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
           <ArrowLeft className="w-4 h-4 text-foreground" />
         </button>
-        <h1 className="text-lg font-bold text-foreground flex-1">Music Battle</h1>
+        <h1 className="text-lg font-bold text-foreground flex-1">Creators Battle</h1>
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Clock className="w-3.5 h-3.5" />
           <span className="font-mono">{timeLeft || "24:00:00"}</span>
