@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Home, ImagePlus, User } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import ProGateModal from "@/components/ProGateModal";
@@ -8,6 +9,21 @@ const BottomNav = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { isPro, showProModal, gatedFeature, requirePro, closeProModal, activatePro } = useProGate();
+  const [hidden, setHidden] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      setHidden(detail?.hidden ?? false);
+    };
+    window.addEventListener("feed-nav-toggle", handler);
+    return () => window.removeEventListener("feed-nav-toggle", handler);
+  }, []);
+
+  // Reset visibility when leaving feed
+  useEffect(() => {
+    if (location.pathname !== "/feed") setHidden(false);
+  }, [location.pathname]);
 
   const tabs = [
     { path: "/", label: "Home", icon: Home, pro: false, isJhi: false },
@@ -26,7 +42,7 @@ const BottomNav = () => {
 
   return (
     <>
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/90 backdrop-blur-xl safe-area-bottom">
+      <nav className={`fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/90 backdrop-blur-xl safe-area-bottom transition-transform duration-300 ${hidden ? "translate-y-full" : "translate-y-0"}`}>
         <div className="flex items-center justify-around py-2 px-1 max-w-lg mx-auto">
           {tabs.map((tab) => {
             const isActive = location.pathname === tab.path;

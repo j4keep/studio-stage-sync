@@ -174,6 +174,13 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
     },
   });
 
+  const [navHidden, setNavHidden] = useState(false);
+
+  const toggleNav = useCallback((hidden: boolean) => {
+    setNavHidden(hidden);
+    window.dispatchEvent(new CustomEvent("feed-nav-toggle", { detail: { hidden } }));
+  }, []);
+
   const handleContentTap = useCallback(() => {
     const now = Date.now();
     const doubleTapDelay = 300;
@@ -193,13 +200,17 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
         if (videoRef.current.paused) {
           videoRef.current.play();
           setIsPlaying(true);
+          toggleNav(true);
         } else {
           videoRef.current.pause();
           setIsPlaying(false);
+          toggleNav(false);
         }
+      } else if (post.media_type === "image" || post.media_url) {
+        toggleNav(!navHidden);
       }
     }, doubleTapDelay);
-  }, [liked, likeMutation, post.media_type]);
+  }, [liked, likeMutation, post.media_type, post.media_url, navHidden, toggleNav]);
 
   const handleShare = async () => {
     const shareUrl = `${window.location.origin}/feed`;
