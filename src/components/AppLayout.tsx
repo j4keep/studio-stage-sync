@@ -11,7 +11,20 @@ import { useNavigate } from "react-router-dom";
 const AppLayout = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const showTopBar = !["/auth"].includes(location.pathname);
+  const isFullScreenPage = ["/feed"].includes(location.pathname);
+  const showTopBar = !["/auth", "/feed"].includes(location.pathname);
+
+  if (isFullScreenPage) {
+    return (
+      <div className="min-h-screen bg-black text-foreground max-w-lg mx-auto relative">
+        {children}
+        <GlobalRadioPlayer />
+        <GlobalPlaylistPlayer />
+        <PlaylistPlayerSheet />
+        <BottomNav />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground max-w-lg mx-auto relative">
