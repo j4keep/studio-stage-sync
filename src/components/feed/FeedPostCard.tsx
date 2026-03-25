@@ -67,27 +67,29 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
   }, [isMuted]);
 
   useEffect(() => {
-    if (post.media_type !== "video" || !videoRef.current) return;
+    if (post.media_type !== "video" || !videoRef.current || isActive) return;
 
-    const video = videoRef.current;
-
-    if (!isActive) {
-      video.pause();
-      setIsPlaying(false);
-      return;
-    }
-
-    const playVideo = async () => {
-      try {
-        await video.play();
-        setIsPlaying(true);
-      } catch {
-        setIsPlaying(false);
-      }
-    };
-
-    playVideo();
+    videoRef.current.pause();
+    setIsPlaying(false);
   }, [isActive, post.media_type]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || post.media_type !== "video") return;
+
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
+
+    video.addEventListener("play", handlePlay);
+    video.addEventListener("pause", handlePause);
+    video.addEventListener("ended", handlePause);
+
+    return () => {
+      video.removeEventListener("play", handlePlay);
+      video.removeEventListener("pause", handlePause);
+      video.removeEventListener("ended", handlePause);
+    };
+  }, [post.media_type]);
 
   useEffect(() => {
     if (!viewCounted && isActive && post.id) {
@@ -181,6 +183,12 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
       window.removeEventListener("mouseup", onEnd);
     };
   }, [isScrubbing, handleScrubMove, handleScrubEnd]);
+
+  useEffect(() => {
+    return () => {
+      if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (!user || user.id === post.user_id) return;
@@ -290,20 +298,12 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
     lastTapRef.current = now;
     tapTimerRef.current = setTimeout(() => {
       if (post.media_type === "video" && videoRef.current) {
-        if (videoRef.current.paused) {
-          videoRef.current.play();
-          setIsPlaying(true);
-          toggleNav(true);
-        } else {
-          videoRef.current.pause();
-          setIsPlaying(false);
-          toggleNav(false);
-        }
+        void toggleVideoPlayback();
       } else if (post.media_type === "image" || post.media_url) {
         toggleNav(!navHidden);
       }
     }, doubleTapDelay);
-  }, [liked, likeMutation, post.media_type, post.media_url, navHidden, toggleNav]);
+  }, [liked, likeMutation, post.media_type, post.media_url, navHidden, toggleNav, toggleVideoPlayback]);
 
   const handleShare = async () => {
     const shareUrl = `${window.location.origin}/feed`;
@@ -322,6 +322,23 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
   const handleEmojiReaction = (emojiId: string) => {
     spawnEmoji(emojiId);
   };
+
+  const toggleVideoPlayback = useCallback(async () => {
+    if (!videoRef.current) return;
+
+    if (videoRef.current.paused) {
+      try {
+        await videoRef.current.play();
+        toggleNav(true);
+      } catch {
+        setIsPlaying(false);
+      }
+      return;
+    }
+
+    videoRef.current.pause();
+    toggleNav(false);
+  }, [toggleNav]);
 
   const formatCount = (value: number) => {
     if (value >= 1000) return `${(value / 1000).toFixed(1).replace(/\.0$/, "")}K`;
@@ -382,17 +399,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              if (videoRef.current) {
-                if (videoRef.current.paused) {
-                  videoRef.current.play();
-                  setIsPlaying(true);
-                  toggleNav(true);
-                } else {
-                  videoRef.current.pause();
-                  setIsPlaying(false);
-                  toggleNav(false);
-                }
-              }
+              void toggleVideoPlayback();
             }}
             className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-30 flex h-16 w-16 items-center justify-center rounded-full bg-primary/80 backdrop-blur-md shadow-lg transition-all active:scale-90"
             aria-label={isPlaying ? "Pause video" : "Play video"}
