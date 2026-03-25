@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { FEED_EMOJI_SET, EMOJI_MAP, type EmojiCharacter } from "@/lib/emoji-characters";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,7 +32,7 @@ const FloatingEmojis = ({ postId }: FloatingEmojisProps) => {
     }, 5000);
   }, []);
 
-  const FloatingLayer = () => {
+  const floatingLayer = useMemo(() => {
     if (typeof document === "undefined") return null;
 
     return createPortal(
@@ -60,12 +60,11 @@ const FloatingEmojis = ({ postId }: FloatingEmojisProps) => {
       </div>,
       document.body,
     );
-  };
+  }, [emojis]);
 
   return {
-    emojis,
     spawnEmoji,
-    FloatingLayer,
+    floatingLayer,
   };
 };
 
