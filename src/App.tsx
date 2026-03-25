@@ -145,7 +145,7 @@ const ProtectedRoutes = () => {
   }
 
   if (!user) {
-    return <Navigate to="/auth" replace />;
+    return <AuthPage />;
   }
 
   if (!termsAccepted) {
