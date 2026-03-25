@@ -1,5 +1,6 @@
 import { Heart, MessageCircle, Eye } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { useRef, useCallback } from "react";
 
 interface Props {
   post: any;
@@ -8,6 +9,16 @@ interface Props {
 const ProfilePostCard = ({ post }: Props) => {
   const profile = post.profile || { display_name: "Artist", avatar_url: null };
   const timeAgo = formatDistanceToNow(new Date(post.created_at), { addSuffix: true });
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  const handlePlay = useCallback(() => {
+    // Pause all other videos on the page before playing this one
+    document.querySelectorAll("video").forEach((v) => {
+      if (v !== videoRef.current && !v.paused) {
+        v.pause();
+      }
+    });
+  }, []);
 
   return (
     <article className="overflow-hidden rounded-2xl border border-border bg-card">
@@ -15,11 +26,13 @@ const ProfilePostCard = ({ post }: Props) => {
         <div className="aspect-[4/5] bg-secondary overflow-hidden">
           {post.media_type === "video" ? (
             <video
+              ref={videoRef}
               src={post.media_url}
               controls
               muted
               playsInline
               preload="metadata"
+              onPlay={handlePlay}
               className="w-full h-full object-cover"
             />
           ) : (

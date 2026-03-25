@@ -341,12 +341,12 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
             )}
           </div>
 
-          <div className="z-50 mb-2">
-            <EmojiBar onEmoji={handleEmojiReaction} postId={post.id} currentUserId={currentUserId} />
-          </div>
-
           {post.caption && <p className="text-[13px] leading-snug text-white/90 drop-shadow line-clamp-2">{post.caption}</p>}
           <span className="mt-1 block text-[10px] text-white/50">{timeAgo} ago</span>
+
+          <div className="z-50 mt-1.5">
+            <EmojiBar onEmoji={handleEmojiReaction} postId={post.id} currentUserId={currentUserId} />
+          </div>
           {post.media_type === "video" && !isPlaying && (
             <span className="mt-1 block text-[10px] text-white/70">Paused</span>
           )}
