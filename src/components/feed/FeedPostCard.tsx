@@ -21,7 +21,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import PostCommentsSheet from "./PostCommentsSheet";
 import CreatePostSheet from "./CreatePostSheet";
 import FloatingEmojis, { EmojiBar } from "./FloatingEmojis";
-import FeedLiveComments from "./FeedLiveComments";
+
 
 interface Props {
   post: any;
@@ -251,7 +251,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
 
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none" />
         <FloatingLayer />
-        <FeedLiveComments postId={post.id} isActive={isActive} />
+        
 
         {post.media_type === "video" && (
           <button
@@ -275,7 +275,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
           </div>
         )}
 
-        <div className="absolute right-3 bottom-24 z-40 flex flex-col items-center gap-5">
+        <div className="absolute right-3 bottom-16 z-40 flex flex-col items-center gap-5">
           <button onClick={() => likeMutation.mutate()} className="flex flex-col items-center gap-0.5 z-50">
             <Heart className={`w-7 h-7 drop-shadow-lg ${liked ? "fill-red-500 text-red-500" : "text-white"}`} />
             <span className="text-[11px] font-semibold text-white drop-shadow">{formatCount(likesCount)}</span>
