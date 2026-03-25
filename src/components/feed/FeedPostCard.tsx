@@ -275,7 +275,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
           </div>
         )}
 
-        <div className="absolute right-3 bottom-20 z-40 flex flex-col items-center gap-5">
+        <div className="absolute right-3 bottom-8 z-40 flex flex-col items-center gap-5">
           <button onClick={() => likeMutation.mutate()} className="flex flex-col items-center gap-0.5 z-50">
             <Heart className={`w-7 h-7 drop-shadow-lg ${liked ? "fill-red-500 text-red-500" : "text-white"}`} />
             <span className="text-[11px] font-semibold text-white drop-shadow">{formatCount(likesCount)}</span>
@@ -298,8 +298,10 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
             <Eye className="w-6 h-6 text-white drop-shadow-lg" />
             <span className="text-[11px] font-semibold text-white drop-shadow">{formatCount(post.views || 0)}</span>
           </div>
+        </div>
 
-          <button onClick={() => navigate(`/artist/${post.user_id}`)} className="relative z-50">
+        <div className="absolute left-3 right-20 bottom-8 z-40">
+          <button onClick={() => navigate(`/artist/${post.user_id}`)} className="relative z-50 mb-1.5">
             <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-white/40">
               {profile.avatar_url ? (
                 <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
@@ -321,9 +323,6 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
               </button>
             )}
           </button>
-        </div>
-
-        <div className="absolute left-3 right-20 bottom-20 z-40">
           <div className="mb-2 flex items-center gap-2">
             <button
               onClick={() => navigate(`/artist/${post.user_id}`)}

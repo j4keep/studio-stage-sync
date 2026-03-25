@@ -119,18 +119,6 @@ const FeedPage = () => {
         )}
       </div>
 
-      {feedPosts.length > 1 && (
-        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col gap-1.5 z-50">
-          {feedPosts.slice(0, Math.min(feedPosts.length, 8)).map((_: any, index: number) => (
-            <div
-              key={index}
-              className={`w-1.5 rounded-full transition-all ${
-                index === currentIndex ? "h-4 bg-white" : "h-1.5 bg-white/30"
-              }`}
-            />
-          ))}
-        </div>
-      )}
 
       <CreatePostSheet open={showCreate} onClose={() => setShowCreate(false)} />
     </div>
