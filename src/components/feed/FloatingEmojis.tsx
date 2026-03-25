@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { FEED_EMOJI_SET, EMOJI_MAP, type EmojiCharacter } from "@/lib/emoji-characters";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -20,37 +21,51 @@ const FloatingEmojis = ({ postId }: FloatingEmojisProps) => {
   const spawnEmoji = useCallback((emojiId: string) => {
     const src = EMOJI_MAP[emojiId];
     if (!src) return;
+
     const id = counterRef.current++;
-    const x = 10 + Math.random() * 80;
+    const x = 10 + Math.random() * 70;
+
     setEmojis((prev) => [...prev, { id, emojiId, src, x }]);
-    setTimeout(() => {
-      setEmojis((prev) => prev.filter((e) => e.id !== id));
+
+    window.setTimeout(() => {
+      setEmojis((prev) => prev.filter((emoji) => emoji.id !== id));
     }, 5000);
   }, []);
 
-  return {
-    emojis,
-    spawnEmoji,
-    FloatingLayer: () => (
-      <div className="absolute inset-0 pointer-events-none z-[60] overflow-visible" style={{ willChange: "transform", transform: "translateZ(0)" }}>
-        {emojis.map((e) => (
+  const FloatingLayer = () => {
+    if (typeof document === "undefined") return null;
+
+    return createPortal(
+      <div className="pointer-events-none fixed inset-0 z-[120] overflow-hidden">
+        {emojis.map((emoji) => (
           <div
-            key={e.id}
-            className="absolute bottom-16 pointer-events-none animate-emoji-float"
-            style={{ left: `${e.x}%` }}
+            key={emoji.id}
+            className="pointer-events-none fixed bottom-28 animate-emoji-float"
+            style={{
+              left: `${emoji.x}%`,
+              willChange: "transform, opacity",
+              transform: "translate3d(0, 0, 0)",
+            }}
           >
-            <div className="animate-emoji-wobble">
+            <div className="animate-emoji-wobble" style={{ willChange: "transform" }}>
               <img
-                src={e.src}
+                src={emoji.src}
                 alt=""
-                className="w-32 h-32 object-contain drop-shadow-lg"
+                className="h-32 w-32 object-contain drop-shadow-lg"
                 style={{ filter: "drop-shadow(0 0 8px rgba(255,165,0,0.5))" }}
               />
             </div>
           </div>
         ))}
-      </div>
-    ),
+      </div>,
+      document.body,
+    );
+  };
+
+  return {
+    emojis,
+    spawnEmoji,
+    FloatingLayer,
   };
 };
 
@@ -67,31 +82,33 @@ export const EmojiBar = ({
 }) => {
   const handleEmoji = async (item: EmojiCharacter) => {
     onEmoji(item.id);
+
     if (postId && currentUserId) {
       await (supabase as any).from("post_reactions").insert({
         post_id: postId,
         user_id: currentUserId,
         emoji_id: item.id,
       });
-      // Register as a comment using the :id: format so it renders as an emoji image
+
       await (supabase as any).from("post_comments").insert({
         post_id: postId,
         user_id: currentUserId,
         content: `:${item.id}:`,
       });
     }
+
     onSent?.();
   };
 
   return (
-    <div className="flex items-center gap-1 overflow-x-auto py-1 px-1 no-scrollbar">
+    <div className="no-scrollbar flex items-center gap-1 overflow-x-auto px-1 py-1">
       {FEED_EMOJI_SET.map((item) => (
         <button
           key={item.id}
           onClick={() => handleEmoji(item)}
-          className="flex-shrink-0 w-11 h-11 rounded-xl bg-card border border-border flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
+          className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl border border-border bg-card transition-transform hover:scale-110 active:scale-95"
         >
-          <img src={item.src} alt={item.label} className="w-8 h-8 object-contain" />
+          <img src={item.src} alt={item.label} className="h-8 w-8 object-contain" />
         </button>
       ))}
     </div>
