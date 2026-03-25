@@ -197,7 +197,7 @@ const App = () => {
               <CartProvider>
                 <PlaylistProvider>
                   <RadioProvider>
-                    <div id="app-bg-layer" className="min-h-screen">
+                    <div id="app-bg-layer" className="min-h-screen bg-background">
                       <Routes>
                         <Route path="/auth" element={<AuthPage />} />
                         <Route path="/index" element={<Navigate to="/" replace />} />
