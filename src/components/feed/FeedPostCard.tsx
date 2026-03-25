@@ -282,6 +282,23 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
     window.dispatchEvent(new CustomEvent("feed-nav-toggle", { detail: { hidden } }));
   }, []);
 
+  const toggleVideoPlayback = useCallback(async () => {
+    if (!videoRef.current) return;
+
+    if (videoRef.current.paused) {
+      try {
+        await videoRef.current.play();
+        toggleNav(true);
+      } catch {
+        setIsPlaying(false);
+      }
+      return;
+    }
+
+    videoRef.current.pause();
+    toggleNav(false);
+  }, [toggleNav]);
+
   const handleContentTap = useCallback(() => {
     const now = Date.now();
     const doubleTapDelay = 300;
@@ -323,22 +340,6 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
     spawnEmoji(emojiId);
   };
 
-  const toggleVideoPlayback = useCallback(async () => {
-    if (!videoRef.current) return;
-
-    if (videoRef.current.paused) {
-      try {
-        await videoRef.current.play();
-        toggleNav(true);
-      } catch {
-        setIsPlaying(false);
-      }
-      return;
-    }
-
-    videoRef.current.pause();
-    toggleNav(false);
-  }, [toggleNav]);
 
   const formatCount = (value: number) => {
     if (value >= 1000) return `${(value / 1000).toFixed(1).replace(/\.0$/, "")}K`;
