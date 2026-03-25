@@ -522,7 +522,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
         )}
       </div>
 
-      {floatingLayer}
+      
 
       <PostCommentsSheet
         postId={post.id}
