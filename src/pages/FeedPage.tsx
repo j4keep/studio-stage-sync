@@ -42,7 +42,7 @@ const FeedPage = () => {
   }, [items]);
 
   return (
-    <div className="fixed inset-0 bg-black flex flex-col z-30">
+    <div className="h-screen bg-black flex flex-col overflow-hidden">
       {/* Top navigation tabs */}
       <div className="absolute top-0 left-0 right-0 z-50 pt-10 pb-2 px-3 bg-gradient-to-b from-black/70 to-transparent">
         <div className="flex items-center justify-between">
