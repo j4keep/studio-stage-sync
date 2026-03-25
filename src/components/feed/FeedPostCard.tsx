@@ -22,6 +22,7 @@ const FeedPostCard = ({ post, currentUserId, fullScreen }: Props) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
+  const profile = post.profile || { display_name: "Artist", avatar_url: null };
   const [liked, setLiked] = useState(post.isLiked);
   const [likesCount, setLikesCount] = useState(post.likes_count);
   const [showComments, setShowComments] = useState(false);
@@ -159,11 +160,11 @@ const FeedPostCard = ({ post, currentUserId, fullScreen }: Props) => {
               className="relative"
             >
               <div className="w-12 h-12 rounded-full overflow-hidden ring-2 ring-primary/50">
-                {post.profile.avatar_url ? (
-                  <img src={post.profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                {profile.avatar_url ? (
+                  <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full bg-primary/30 flex items-center justify-center text-white text-sm font-bold">
-                    {(post.profile.display_name || "A")[0].toUpperCase()}
+                    {(profile.display_name || "A")[0].toUpperCase()}
                   </div>
                 )}
               </div>
@@ -207,7 +208,7 @@ const FeedPostCard = ({ post, currentUserId, fullScreen }: Props) => {
                 onClick={() => navigate(`/artist/${post.user_id}`)}
                 className="text-[14px] font-bold text-white drop-shadow-lg hover:underline"
               >
-                {post.profile.display_name || "Artist"}
+                  {profile.display_name || "Artist"}
               </button>
               {user?.id !== post.user_id && (
                 <button
@@ -296,16 +297,16 @@ const FeedPostCard = ({ post, currentUserId, fullScreen }: Props) => {
       <div className="bg-card border-b border-border overflow-hidden">
         <div className="flex items-center gap-2.5 px-3 py-2.5">
           <div className="w-9 h-9 rounded-full bg-secondary overflow-hidden flex-shrink-0 ring-1 ring-border">
-            {post.profile.avatar_url ? (
-              <img src={post.profile.avatar_url} alt="" className="w-full h-full object-cover" />
+            {profile.avatar_url ? (
+              <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full bg-primary/20 flex items-center justify-center text-primary text-sm font-bold">
-                {(post.profile.display_name || "A")[0].toUpperCase()}
+                {(profile.display_name || "A")[0].toUpperCase()}
               </div>
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-semibold text-foreground truncate">{post.profile.display_name || "Artist"}</p>
+            <p className="text-[13px] font-semibold text-foreground truncate">{profile.display_name || "Artist"}</p>
             <span className="text-[11px] text-muted-foreground">{timeAgo}</span>
           </div>
         </div>

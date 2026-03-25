@@ -22,6 +22,8 @@ const FeedPage = () => {
     queryFn: () => fetchFeedItems({ currentUserId: user?.id }),
   });
 
+  const feedPosts = items.filter((item: any) => item.itemType === "post");
+
   // Snap scroll observer
   useEffect(() => {
     const container = scrollRef.current;
@@ -39,7 +41,13 @@ const FeedPage = () => {
     );
     container.querySelectorAll("[data-index]").forEach((el) => observer.observe(el));
     return () => observer.disconnect();
-  }, [items]);
+  }, [feedPosts]);
+
+  useEffect(() => {
+    if (currentIndex >= feedPosts.length) {
+      setCurrentIndex(0);
+    }
+  }, [currentIndex, feedPosts.length]);
 
   return (
     <div className="h-screen bg-black flex flex-col overflow-hidden">
@@ -88,7 +96,7 @@ const FeedPage = () => {
           <div className="h-screen flex items-center justify-center snap-start">
             <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
-        ) : items.length === 0 ? (
+        ) : feedPosts.length === 0 ? (
           <div className="h-screen flex flex-col items-center justify-center snap-start gap-3">
             <p className="text-white/60 text-sm">No posts yet</p>
             <button
@@ -99,7 +107,7 @@ const FeedPage = () => {
             </button>
           </div>
         ) : (
-          items.map((item: any, index: number) => (
+          feedPosts.map((item: any, index: number) => (
             <div
               key={item.id}
               data-index={index}
@@ -113,9 +121,9 @@ const FeedPage = () => {
       </div>
 
       {/* Dot indicators */}
-      {items.length > 1 && (
+      {feedPosts.length > 1 && (
         <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col gap-1.5 z-50">
-          {items.slice(0, Math.min(items.length, 8)).map((_: any, i: number) => (
+          {feedPosts.slice(0, Math.min(feedPosts.length, 8)).map((_: any, i: number) => (
             <div
               key={i}
               className={`w-1.5 rounded-full transition-all ${
