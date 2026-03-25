@@ -587,8 +587,8 @@ const MusicBattlePlayerPage = () => {
             </div>
           </div>
 
-          {/* CENTER PLAY BUTTON — hidden when a side is expanded */}
-          {!expandedSide && (
+          {/* CENTER PLAY BUTTON — hidden when a side is expanded or battle not active */}
+          {!expandedSide && battle.status === "active" && (
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-40">
             {/* outer pulse rings */}
             <motion.div
@@ -632,6 +632,15 @@ const MusicBattlePlayerPage = () => {
               </AnimatePresence>
             </motion.button>
           </div>
+          )}
+
+          {/* LOCKED overlay when battle not active */}
+          {!expandedSide && battle.status !== "active" && battle.status !== "ended" && (
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-40">
+              <div className="px-4 py-2 rounded-full bg-muted/80 backdrop-blur-sm border border-border">
+                <span className="text-xs font-bold text-muted-foreground">🔒 Waiting for opponent to accept</span>
+              </div>
+            </div>
           )}
 
           {/* RIGHT ARTIST */}
