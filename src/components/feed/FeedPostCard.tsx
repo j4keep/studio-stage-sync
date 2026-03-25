@@ -45,6 +45,11 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [showHeart, setShowHeart] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [videoProgress, setVideoProgress] = useState(0);
+  const [videoDuration, setVideoDuration] = useState(0);
+  const [isScrubbing, setIsScrubbing] = useState(false);
+  const [scrubTime, setScrubTime] = useState(0);
+  const progressRef = useRef<HTMLDivElement>(null);
   const lastTapRef = useRef(0);
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { spawnEmoji, FloatingLayer } = FloatingEmojis({ postId: post.id });
@@ -88,6 +93,91 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
       incrementPostViews(post.id);
     }
   }, [isActive, post.id, viewCounted]);
+
+  // Video progress tracking
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || post.media_type !== "video") return;
+
+    const onTimeUpdate = () => {
+      if (!isScrubbing && video.duration && isFinite(video.duration)) {
+        setVideoProgress((video.currentTime / video.duration) * 100);
+      }
+    };
+    const onLoadedMetadata = () => {
+      if (video.duration && isFinite(video.duration)) {
+        setVideoDuration(video.duration);
+      }
+    };
+    const onDurationChange = () => {
+      if (video.duration && isFinite(video.duration)) {
+        setVideoDuration(video.duration);
+      }
+    };
+
+    video.addEventListener("timeupdate", onTimeUpdate);
+    video.addEventListener("loadedmetadata", onLoadedMetadata);
+    video.addEventListener("durationchange", onDurationChange);
+    return () => {
+      video.removeEventListener("timeupdate", onTimeUpdate);
+      video.removeEventListener("loadedmetadata", onLoadedMetadata);
+      video.removeEventListener("durationchange", onDurationChange);
+    };
+  }, [post.media_type, isScrubbing]);
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  };
+
+  const handleScrubStart = useCallback((e: React.TouchEvent | React.MouseEvent) => {
+    e.stopPropagation();
+    setIsScrubbing(true);
+    const bar = progressRef.current;
+    if (!bar) return;
+    const rect = bar.getBoundingClientRect();
+    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+    const pct = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+    setScrubTime((pct / 100) * videoDuration);
+    setVideoProgress(pct);
+  }, [videoDuration]);
+
+  const handleScrubMove = useCallback((e: TouchEvent | MouseEvent) => {
+    if (!isScrubbing) return;
+    const bar = progressRef.current;
+    if (!bar) return;
+    const rect = bar.getBoundingClientRect();
+    const clientX = "touches" in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
+    const pct = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+    setScrubTime((pct / 100) * videoDuration);
+    setVideoProgress(pct);
+  }, [isScrubbing, videoDuration]);
+
+  const handleScrubEnd = useCallback(() => {
+    if (!isScrubbing) return;
+    setIsScrubbing(false);
+    const video = videoRef.current;
+    if (video && videoDuration) {
+      video.currentTime = (videoProgress / 100) * videoDuration;
+    }
+  }, [isScrubbing, videoProgress, videoDuration]);
+
+  useEffect(() => {
+    if (!isScrubbing) return;
+    const onMove = (e: TouchEvent | MouseEvent) => handleScrubMove(e);
+    const onEnd = () => handleScrubEnd();
+    window.addEventListener("touchmove", onMove, { passive: false });
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("touchend", onEnd);
+    window.addEventListener("mouseup", onEnd);
+    return () => {
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("touchend", onEnd);
+      window.removeEventListener("mouseup", onEnd);
+    };
+  }, [isScrubbing, handleScrubMove, handleScrubEnd]);
 
   useEffect(() => {
     if (!user || user.id === post.user_id) return;
@@ -359,6 +449,35 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
           <div className="z-50 mt-1.5">
             <EmojiBar onEmoji={handleEmojiReaction} postId={post.id} currentUserId={currentUserId} />
           </div>
+
+          {post.media_type === "video" && (
+            <div className="z-50 mt-2 relative">
+              <div
+                ref={progressRef}
+                className="relative h-[3px] w-full rounded-full bg-white/20 cursor-pointer"
+                onMouseDown={handleScrubStart}
+                onTouchStart={handleScrubStart}
+              >
+                <div
+                  className="absolute left-0 top-0 h-full rounded-full bg-white/80 transition-none"
+                  style={{ width: `${videoProgress}%` }}
+                />
+                <div
+                  className="absolute top-1/2 -translate-y-1/2 h-3 w-3 rounded-full bg-white shadow-lg transition-none"
+                  style={{ left: `calc(${videoProgress}% - 6px)` }}
+                />
+              </div>
+              {isScrubbing && (
+                <div
+                  className="absolute -top-7 left-1/2 -translate-x-1/2 rounded bg-black/80 px-2 py-0.5 text-[11px] font-semibold text-white"
+                  style={{ left: `${videoProgress}%` }}
+                >
+                  {formatTime(scrubTime)}
+                </div>
+              )}
+            </div>
+          )}
+
           {post.media_type === "video" && !isPlaying && (
             <span className="mt-1 block text-[10px] text-white/70">Paused</span>
           )}
