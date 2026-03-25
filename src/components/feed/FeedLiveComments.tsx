@@ -102,6 +102,8 @@ const FeedLiveComments = ({ postId, isActive }: FeedLiveCommentsProps) => {
             .eq("user_id", row.user_id)
             .maybeSingle();
 
+          const displayName = (profile as { display_name?: string } | null)?.display_name || "User";
+
           addComment({
             id: row.id,
             content: row.content,
