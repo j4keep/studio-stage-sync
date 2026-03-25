@@ -1,5 +1,4 @@
 import { useState, useCallback, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { FEED_EMOJI_SET, EMOJI_MAP, type EmojiCharacter } from "@/lib/emoji-characters";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -33,35 +32,24 @@ const FloatingEmojis = ({ postId }: FloatingEmojisProps) => {
     emojis,
     spawnEmoji,
     FloatingLayer: () => (
-      <AnimatePresence>
+      <div className="absolute inset-0 pointer-events-none z-[60] overflow-visible" style={{ willChange: "transform", transform: "translateZ(0)" }}>
         {emojis.map((e) => (
-          <motion.div
+          <div
             key={e.id}
-            initial={{ opacity: 1, y: 0, scale: 0.5 }}
-            animate={{ opacity: 0, y: -350, scale: 1.8 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 4.5, ease: "easeOut" }}
-            className="absolute bottom-16 pointer-events-none z-[60]"
+            className="absolute bottom-16 pointer-events-none animate-emoji-float"
             style={{ left: `${e.x}%` }}
           >
-            <motion.div
-              animate={{
-                rotate: [0, -8, 8, -6, 6, 0],
-                scaleX: [1, 1.05, 0.95, 1],
-                scaleY: [1, 0.95, 1.05, 1],
-              }}
-              transition={{ duration: 0.5, repeat: Infinity, ease: "easeInOut" }}
-            >
+            <div className="animate-emoji-wobble">
               <img
                 src={e.src}
                 alt=""
                 className="w-32 h-32 object-contain drop-shadow-lg"
                 style={{ filter: "drop-shadow(0 0 8px rgba(255,165,0,0.5))" }}
               />
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
         ))}
-      </AnimatePresence>
+      </div>
     ),
   };
 };
