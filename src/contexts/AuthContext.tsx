@@ -24,43 +24,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let isMounted = true;
-
-    const applySession = (nextSession: Session | null) => {
-      if (!isMounted) return;
-      setSession(nextSession);
-      setUser(nextSession?.user ?? null);
-      setLoading(false);
-    };
-
-    const fallbackTimeout = window.setTimeout(() => {
-      if (!isMounted) return;
-      setLoading(false);
-    }, 2500);
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, nextSession) => {
-        window.clearTimeout(fallbackTimeout);
-        applySession(nextSession);
+      (_event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
       }
     );
 
-    supabase.auth
-      .getSession()
-      .then(({ data: { session: nextSession } }) => {
-        window.clearTimeout(fallbackTimeout);
-        applySession(nextSession);
-      })
-      .catch(() => {
-        window.clearTimeout(fallbackTimeout);
-        if (isMounted) setLoading(false);
-      });
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
 
-    return () => {
-      isMounted = false;
-      window.clearTimeout(fallbackTimeout);
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, []);
 
   const signOut = async () => {

@@ -1,82 +1,56 @@
-import { useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { FEED_EMOJI_SET, EMOJI_MAP, type EmojiCharacter } from "@/lib/emoji-characters";
 import { supabase } from "@/integrations/supabase/client";
+
+interface FloatingEmoji {
+  id: number;
+  emojiId: string;
+  src: string;
+  x: number;
+}
 
 interface FloatingEmojisProps {
   postId?: string;
 }
 
 const FloatingEmojis = ({ postId }: FloatingEmojisProps) => {
+  const [emojis, setEmojis] = useState<FloatingEmoji[]>([]);
+  const counterRef = useRef(0);
+
   const spawnEmoji = useCallback((emojiId: string) => {
     const src = EMOJI_MAP[emojiId];
-    if (!src || typeof document === "undefined") return;
-
-    const wrapper = document.createElement("div");
-    const image = document.createElement("img");
-    const left = 10 + Math.random() * 70;
-    const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
-    const duration = prefersReducedMotion ? 2200 : 4500;
-
-    wrapper.setAttribute("data-floating-emoji", emojiId);
-    wrapper.style.position = "fixed";
-    wrapper.style.left = `${left}%`;
-    wrapper.style.bottom = "112px";
-    wrapper.style.zIndex = "140";
-    wrapper.style.pointerEvents = "none";
-    wrapper.style.willChange = "transform, opacity";
-    wrapper.style.transform = "translateX(-50%) translateY(0) scale(0.5)";
-    wrapper.style.opacity = "1";
-
-    image.src = src;
-    image.alt = "";
-    image.style.width = "128px";
-    image.style.height = "128px";
-    image.style.objectFit = "contain";
-    image.style.filter = "drop-shadow(0 0 8px rgba(255,165,0,0.5))";
-    image.style.willChange = "transform";
-
-    wrapper.appendChild(image);
-    document.body.appendChild(wrapper);
-
-    const floatAnimation = wrapper.animate(
-      [
-        { transform: "translateX(-50%) translateY(0) scale(0.5)", opacity: 1 },
-        { transform: "translateX(-50%) translateY(-280px) scale(1.4)", opacity: 0.75, offset: 0.8 },
-        { transform: "translateX(-50%) translateY(-360px) scale(1.8)", opacity: 0 },
-      ],
-      {
-        duration,
-        easing: "cubic-bezier(0.22, 1, 0.36, 1)",
-        fill: "forwards",
-      },
-    );
-
-    const wobbleAnimation = image.animate(
-      [
-        { transform: "rotate(0deg) scaleX(1) scaleY(1)" },
-        { transform: "rotate(-8deg) scaleX(1.05) scaleY(0.95)" },
-        { transform: "rotate(8deg) scaleX(0.95) scaleY(1.05)" },
-        { transform: "rotate(-6deg) scaleX(1) scaleY(1)" },
-        { transform: "rotate(6deg) scaleX(1.02) scaleY(0.98)" },
-        { transform: "rotate(0deg) scaleX(1) scaleY(1)" },
-      ],
-      {
-        duration: 500,
-        iterations: prefersReducedMotion ? 1 : Math.ceil(duration / 500),
-        easing: "ease-in-out",
-      },
-    );
-
-    window.setTimeout(() => {
-      floatAnimation.cancel();
-      wobbleAnimation.cancel();
-      wrapper.remove();
-    }, duration + 150);
+    if (!src) return;
+    const id = counterRef.current++;
+    const x = 10 + Math.random() * 80;
+    setEmojis((prev) => [...prev, { id, emojiId, src, x }]);
+    setTimeout(() => {
+      setEmojis((prev) => prev.filter((e) => e.id !== id));
+    }, 5000);
   }, []);
 
   return {
+    emojis,
     spawnEmoji,
-    floatingLayer: null,
+    FloatingLayer: () => (
+      <div className="absolute inset-0 pointer-events-none z-[60] overflow-visible" style={{ willChange: "transform", transform: "translateZ(0)" }}>
+        {emojis.map((e) => (
+          <div
+            key={e.id}
+            className="absolute bottom-16 pointer-events-none animate-emoji-float"
+            style={{ left: `${e.x}%` }}
+          >
+            <div className="animate-emoji-wobble">
+              <img
+                src={e.src}
+                alt=""
+                className="w-32 h-32 object-contain drop-shadow-lg"
+                style={{ filter: "drop-shadow(0 0 8px rgba(255,165,0,0.5))" }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    ),
   };
 };
 
@@ -93,33 +67,31 @@ export const EmojiBar = ({
 }) => {
   const handleEmoji = async (item: EmojiCharacter) => {
     onEmoji(item.id);
-
     if (postId && currentUserId) {
       await (supabase as any).from("post_reactions").insert({
         post_id: postId,
         user_id: currentUserId,
         emoji_id: item.id,
       });
-
+      // Register as a comment using the :id: format so it renders as an emoji image
       await (supabase as any).from("post_comments").insert({
         post_id: postId,
         user_id: currentUserId,
         content: `:${item.id}:`,
       });
     }
-
     onSent?.();
   };
 
   return (
-    <div className="no-scrollbar flex items-center gap-1 overflow-x-auto px-1 py-1">
+    <div className="flex items-center gap-1 overflow-x-auto py-1 px-1 no-scrollbar">
       {FEED_EMOJI_SET.map((item) => (
         <button
           key={item.id}
           onClick={() => handleEmoji(item)}
-          className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl border border-border bg-card transition-transform hover:scale-110 active:scale-95"
+          className="flex-shrink-0 w-11 h-11 rounded-xl bg-card border border-border flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
         >
-          <img src={item.src} alt={item.label} className="h-8 w-8 object-contain" />
+          <img src={item.src} alt={item.label} className="w-8 h-8 object-contain" />
         </button>
       ))}
     </div>

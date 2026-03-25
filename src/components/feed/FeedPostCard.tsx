@@ -52,7 +52,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
   const progressRef = useRef<HTMLDivElement>(null);
   const lastTapRef = useRef(0);
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { spawnEmoji, floatingLayer } = FloatingEmojis({ postId: post.id });
+  const { spawnEmoji, FloatingLayer } = FloatingEmojis({ postId: post.id });
 
   useEffect(() => {
     setLiked(!!post.isLiked);
@@ -522,7 +522,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
         )}
       </div>
 
-      
+      <FloatingLayer />
 
       <PostCommentsSheet
         postId={post.id}
