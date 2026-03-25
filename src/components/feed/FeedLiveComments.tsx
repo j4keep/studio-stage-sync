@@ -72,13 +72,16 @@ const FeedLiveComments = ({ postId, isActive }: FeedLiveCommentsProps) => {
       setComments(
         [...data]
           .reverse()
-          .map((comment: any) => ({
-            id: comment.id,
-            content: comment.content,
-            display_name: profileMap.get(comment.user_id)?.display_name || "User",
-            created_at: comment.created_at,
-            localId: counterRef.current++,
-          }))
+          .map((comment: any) => {
+            const profile = profileMap.get(comment.user_id) as { display_name?: string } | undefined;
+            return {
+              id: comment.id,
+              content: comment.content,
+              display_name: profile?.display_name || "User",
+              created_at: comment.created_at,
+              localId: counterRef.current++,
+            };
+          })
       );
     };
 
