@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { Mail, Lock, Eye, EyeOff, User, Calendar, ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
@@ -97,87 +96,50 @@ const AuthPage = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 max-w-lg mx-auto relative overflow-hidden">
-      <AnimatePresence mode="wait">
-        {/* SPLASH */}
-        {view === "splash" && (
-          <motion.div
-            key="splash"
-            className="flex flex-col items-center justify-center"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            transition={{ duration: 0.4 }}
-          >
-            <motion.img
-              src={wheuatLogo}
-              alt="WHEUAT"
-              className="w-40 h-40 object-contain"
-              initial={{ scale: 0, rotate: -180 }}
-              animate={{ scale: 1, rotate: 0 }}
-              transition={{
-                type: "spring",
-                damping: 10,
-                stiffness: 200,
-                delay: 0.2,
-              }}
-            />
-            <motion.div
-              className="w-40 h-1 rounded-full gradient-primary mt-6"
-              initial={{ scaleX: 0 }}
-              animate={{ scaleX: 1 }}
-              transition={{ delay: 0.8, duration: 1.2, ease: "easeInOut" }}
-            />
-          </motion.div>
-        )}
+      {/* SPLASH */}
+      {view === "splash" && (
+        <div className="flex flex-col items-center justify-center">
+          <img
+            src={wheuatLogo}
+            alt="WHEUAT"
+            className="w-40 h-40 object-contain"
+          />
+          <div className="w-40 h-1 rounded-full gradient-primary mt-6" />
+        </div>
+      )}
 
-        {/* WELCOME */}
-        {view === "welcome" && (
-          <motion.div
-            key="welcome"
-            className="w-full flex flex-col items-center"
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.5 }}
+      {/* WELCOME */}
+      {view === "welcome" && (
+        <div className="w-full flex flex-col items-center">
+          <img
+            src={wheuatLogo}
+            alt="WHEUAT"
+            className="w-24 h-24 object-contain mb-6"
+          />
+          <h1 className="text-3xl font-display font-bold text-foreground mb-2">
+            Welcome to WHEUAT
+          </h1>
+          <p className="text-sm text-muted-foreground text-center mb-10">
+            Your music. Your platform. Your future.
+          </p>
+          <button
+            onClick={() => setView("login")}
+            className="w-full py-3.5 rounded-xl gradient-primary text-primary-foreground text-sm font-display font-bold glow-primary mb-3"
           >
-            <motion.img
-              src={wheuatLogo}
-              alt="WHEUAT"
-              className="w-24 h-24 object-contain mb-6"
-              initial={{ scale: 0.8 }}
-              animate={{ scale: 1 }}
-            />
-            <h1 className="text-3xl font-display font-bold text-foreground mb-2">
-              Welcome to WHEUAT
-            </h1>
-            <p className="text-sm text-muted-foreground text-center mb-10">
-              Your music. Your platform. Your future.
-            </p>
-            <button
-              onClick={() => setView("login")}
-              className="w-full py-3.5 rounded-xl gradient-primary text-primary-foreground text-sm font-display font-bold glow-primary mb-3"
-            >
-              Log In
-            </button>
-            <button
-              onClick={() => setView("signup")}
-              className="w-full py-3.5 rounded-xl bg-card border border-border text-foreground text-sm font-display font-bold"
-            >
-              Create Account
-            </button>
-          </motion.div>
-        )}
+            Log In
+          </button>
+          <button
+            onClick={() => setView("signup")}
+            className="w-full py-3.5 rounded-xl bg-card border border-border text-foreground text-sm font-display font-bold"
+          >
+            Create Account
+          </button>
+        </div>
+      )}
 
-        {/* LOGIN */}
-        {view === "login" && (
-          <motion.div
-            key="login"
-            className="w-full flex flex-col"
-            initial={{ opacity: 0, x: 40 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -40 }}
-            transition={{ duration: 0.35 }}
-          >
+      {/* LOGIN */}
+      {view === "login" && (
+        <div className="w-full flex flex-col">
             <button onClick={() => setView("welcome")} className="mb-6 text-muted-foreground self-start">
               <ArrowLeft className="w-5 h-5" />
             </button>
@@ -235,19 +197,12 @@ const AuthPage = () => {
                 Sign up
               </button>
             </p>
-          </motion.div>
-        )}
+          </div>
+      )}
 
-        {/* SIGNUP */}
-        {view === "signup" && (
-          <motion.div
-            key="signup"
-            className="w-full flex flex-col"
-            initial={{ opacity: 0, x: 40 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -40 }}
-            transition={{ duration: 0.35 }}
-          >
+      {/* SIGNUP */}
+      {view === "signup" && (
+        <div className="w-full flex flex-col">
             <button onClick={() => setView("welcome")} className="mb-6 text-muted-foreground self-start">
               <ArrowLeft className="w-5 h-5" />
             </button>
@@ -317,19 +272,12 @@ const AuthPage = () => {
                 Sign in
               </button>
             </p>
-          </motion.div>
-        )}
+          </div>
+      )}
 
-        {/* FORGOT PASSWORD */}
-        {view === "forgot" && (
-          <motion.div
-            key="forgot"
-            className="w-full flex flex-col"
-            initial={{ opacity: 0, x: 40 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -40 }}
-            transition={{ duration: 0.35 }}
-          >
+      {/* FORGOT PASSWORD */}
+      {view === "forgot" && (
+        <div className="w-full flex flex-col">
             <button onClick={() => setView("login")} className="mb-6 text-muted-foreground self-start">
               <ArrowLeft className="w-5 h-5" />
             </button>
@@ -356,9 +304,8 @@ const AuthPage = () => {
             >
               {isSubmitting ? "Sending..." : "Send Reset Link"}
             </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+      )}
     </div>
   );
 };
