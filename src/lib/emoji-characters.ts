@@ -45,6 +45,13 @@ import trashImg from "@/assets/emojis/trash.png";
 import thumbsdownImg from "@/assets/emojis/thumbsdown.png";
 import stopImg from "@/assets/emojis/stop.png";
 import queenImg from "@/assets/emojis/queen.png";
+import waterbucket1Img from "@/assets/emojis/waterbucket1.png";
+import waterbucket2Img from "@/assets/emojis/waterbucket2.png";
+import waterbucket3Img from "@/assets/emojis/waterbucket3.png";
+import waterbucket4Img from "@/assets/emojis/waterbucket4.png";
+import waterbucket5Img from "@/assets/emojis/waterbucket5.png";
+import flowersImg from "@/assets/emojis/flowers.png";
+import poopbucketImg from "@/assets/emojis/poopbucket.png";
 
 export interface EmojiCharacter {
   label: string;
