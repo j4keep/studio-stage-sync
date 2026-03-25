@@ -509,9 +509,6 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
             </div>
           )}
 
-          {post.media_type === "video" && !isPlaying && (
-            <span className="mt-1 block text-[10px] text-white/70">Paused</span>
-          )}
         </div>
 
         {currentUserId === post.user_id && (
