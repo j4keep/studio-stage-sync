@@ -95,6 +95,13 @@ export const EMOJI_CHARACTERS: EmojiCharacter[] = [
   { label: "Thumbs Down", src: thumbsdownImg, id: "thumbsdown" },
   { label: "Stop", src: stopImg, id: "stop" },
   { label: "Queen", src: queenImg, id: "queen" },
+  { label: "Water Splash", src: waterbucket1Img, id: "waterbucket1" },
+  { label: "Water Blast", src: waterbucket2Img, id: "waterbucket2" },
+  { label: "Water Cannon", src: waterbucket3Img, id: "waterbucket3" },
+  { label: "Water Fight", src: waterbucket4Img, id: "waterbucket4" },
+  { label: "Water Nerd", src: waterbucket5Img, id: "waterbucket5" },
+  { label: "Flowers", src: flowersImg, id: "flowers" },
+  { label: "Poop Bucket", src: poopbucketImg, id: "poopbucket" },
 ];
 
 // Quick lookup by id
