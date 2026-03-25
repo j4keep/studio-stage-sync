@@ -6,7 +6,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
-import { EMOJI_MAP } from "@/lib/emoji-characters";
+import { EMOJI_MAP, EMOJI_CHARACTERS } from "@/lib/emoji-characters";
+
+// Build a label→src lookup for legacy comments that stored plain labels
+const EMOJI_LABEL_MAP: Record<string, string> = {};
+EMOJI_CHARACTERS.forEach((e) => { EMOJI_LABEL_MAP[e.label] = e.src; });
 
 interface Props {
   postId: string;
@@ -22,6 +26,28 @@ const PostCommentsSheet = ({ postId, open, onClose, currentUserId, onEmojiReacti
   const [text, setText] = useState("");
 
   const renderContent = (content: string) => {
+    // Check if the entire content is a plain emoji label (legacy format)
+    if (EMOJI_LABEL_MAP[content]) {
+      return (
+        <img
+          src={EMOJI_LABEL_MAP[content]}
+          alt={content}
+          className="inline-block w-6 h-6 object-contain align-middle"
+        />
+      );
+    }
+    // Check if it's the :id: format
+    const exactMatch = content.match(/^:([a-z0-9]+):$/);
+    if (exactMatch && EMOJI_MAP[exactMatch[1]]) {
+      return (
+        <img
+          src={EMOJI_MAP[exactMatch[1]]}
+          alt={exactMatch[1]}
+          className="inline-block w-6 h-6 object-contain align-middle"
+        />
+      );
+    }
+    // Mixed content with inline :emoji: codes
     const parts = content.split(/(:[a-z0-9]+:)/g);
     return parts.map((part, index) => {
       const match = part.match(/^:([a-z0-9]+):$/);
