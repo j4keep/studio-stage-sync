@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { FEED_EMOJI_SET, EMOJI_MAP, type EmojiCharacter } from "@/lib/emoji-characters";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -9,13 +9,10 @@ interface FloatingEmoji {
   x: number;
 }
 
-interface FloatingEmojisProps {
-  postId?: string;
-}
-
-const FloatingEmojis = ({ postId }: FloatingEmojisProps) => {
+export const useFloatingEmojis = () => {
   const [emojis, setEmojis] = useState<FloatingEmoji[]>([]);
   const counterRef = useRef(0);
+  const timeoutRefs = useRef<number[]>([]);
 
   const spawnEmoji = useCallback((emojiId: string) => {
     const src = EMOJI_MAP[emojiId];
@@ -23,36 +20,45 @@ const FloatingEmojis = ({ postId }: FloatingEmojisProps) => {
     const id = counterRef.current++;
     const x = 10 + Math.random() * 80;
     setEmojis((prev) => [...prev, { id, emojiId, src, x }]);
-    setTimeout(() => {
+    const timeoutId = window.setTimeout(() => {
       setEmojis((prev) => prev.filter((e) => e.id !== id));
     }, 5000);
+    timeoutRefs.current.push(timeoutId);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      timeoutRefs.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
+      timeoutRefs.current = [];
+    };
   }, []);
 
   return {
     emojis,
     spawnEmoji,
-    FloatingLayer: () => (
-      <div className="absolute inset-0 pointer-events-none z-[60] overflow-visible" style={{ willChange: "transform", transform: "translateZ(0)" }}>
-        {emojis.map((e) => (
-          <div
-            key={e.id}
-            className="absolute bottom-16 pointer-events-none animate-emoji-float"
-            style={{ left: `${e.x}%` }}
-          >
-            <div className="animate-emoji-wobble">
-              <img
-                src={e.src}
-                alt=""
-                className="w-32 h-32 object-contain drop-shadow-lg"
-                style={{ filter: "drop-shadow(0 0 8px rgba(255,165,0,0.5))" }}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
-    ),
   };
 };
+
+export const FloatingEmojiLayer = ({ emojis }: { emojis: FloatingEmoji[] }) => (
+  <div className="absolute inset-0 pointer-events-none z-[60] overflow-visible" style={{ willChange: "transform", transform: "translateZ(0)" }}>
+    {emojis.map((e) => (
+      <div
+        key={e.id}
+        className="absolute bottom-16 pointer-events-none animate-emoji-float"
+        style={{ left: `${e.x}%` }}
+      >
+        <div className="animate-emoji-wobble">
+          <img
+            src={e.src}
+            alt=""
+            className="w-32 h-32 object-contain drop-shadow-lg"
+            style={{ filter: "drop-shadow(0 0 8px rgba(255,165,0,0.5))" }}
+          />
+        </div>
+      </div>
+    ))}
+  </div>
+);
 
 export const EmojiBar = ({
   onEmoji,
@@ -98,4 +104,4 @@ export const EmojiBar = ({
   );
 };
 
-export default FloatingEmojis;
+export default useFloatingEmojis;
