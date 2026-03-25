@@ -7,7 +7,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { EMOJI_MAP } from "@/lib/emoji-characters";
-import { EmojiBar } from "./FloatingEmojis";
 
 interface Props {
   postId: string;
