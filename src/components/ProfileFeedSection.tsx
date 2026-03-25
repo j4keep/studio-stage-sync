@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
-import FeedPostCard from "@/components/feed/FeedPostCard";
 import BattleCard from "@/components/BattleCard";
+import ProfilePostCard from "@/components/ProfilePostCard";
 import { fetchFeedItems } from "@/lib/feed-items";
 
 interface Props {
@@ -9,7 +9,7 @@ interface Props {
   isOwner: boolean;
 }
 
-const ProfileFeedSection = ({ userId, isOwner }: Props) => {
+const ProfileFeedSection = ({ userId }: Props) => {
   const { user } = useAuth();
 
   const { data: items = [], isLoading } = useQuery({
@@ -26,20 +26,18 @@ const ProfileFeedSection = ({ userId, isOwner }: Props) => {
   }
 
   if (items.length === 0) {
-    return (
-      <p className="text-center text-muted-foreground text-sm py-8">No posts yet</p>
-    );
+    return <p className="text-center text-muted-foreground text-sm py-8">No posts yet</p>;
   }
 
   return (
     <div className="flex flex-col gap-3">
-      {items.map((item: any) => (
+      {items.map((item: any) =>
         item.itemType === "battle" ? (
           <BattleCard key={`battle-${item.id}`} battle={item} />
         ) : (
-          <FeedPostCard key={`post-${item.id}`} post={item} currentUserId={isOwner ? user?.id : undefined} />
+          <ProfilePostCard key={`post-${item.id}`} post={item} />
         )
-      ))}
+      )}
     </div>
   );
 };

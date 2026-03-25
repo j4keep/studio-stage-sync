@@ -1,5 +1,16 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { Heart, MessageCircle, Forward, Trash2, MoreHorizontal, Bookmark, Eye, Edit3 } from "lucide-react";
+import {
+  Heart,
+  MessageCircle,
+  Forward,
+  Trash2,
+  MoreHorizontal,
+  Bookmark,
+  Eye,
+  Edit3,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
 import { incrementPostViews } from "@/hooks/use-likes";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,75 +20,117 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import PostCommentsSheet from "./PostCommentsSheet";
 import CreatePostSheet from "./CreatePostSheet";
-import FloatingEmojis from "./FloatingEmojis";
+import FloatingEmojis, { EmojiBar } from "./FloatingEmojis";
+import FeedLiveComments from "./FeedLiveComments";
 
 interface Props {
   post: any;
   currentUserId?: string;
+  isActive?: boolean;
 }
 
-const FeedPostCard = ({ post, currentUserId }: Props) => {
+const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { user } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
   const profile = post.profile || { display_name: "Artist", avatar_url: null };
   const [liked, setLiked] = useState(post.isLiked);
-  const [likesCount, setLikesCount] = useState(post.likes_count);
+  const [likesCount, setLikesCount] = useState(post.likes_count || 0);
   const [showComments, setShowComments] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [viewCounted, setViewCounted] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [showHeart, setShowHeart] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
   const lastTapRef = useRef(0);
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Floating emojis hook
-  const { emojis, spawnEmoji, startLoop, stopLoop, FloatingLayer } = FloatingEmojis({ postId: post.id });
+  const { spawnEmoji, startLoop, stopLoop, FloatingLayer } = FloatingEmojis({ postId: post.id });
 
   useEffect(() => {
     setLiked(!!post.isLiked);
     setLikesCount(post.likes_count || 0);
   }, [post.id, post.isLiked, post.likes_count]);
 
-  // Count view
   useEffect(() => {
-    if (!viewCounted && post.id) {
+    if (!videoRef.current) return;
+    videoRef.current.muted = isMuted;
+  }, [isMuted]);
+
+  useEffect(() => {
+    if (post.media_type !== "video" || !videoRef.current) return;
+
+    const video = videoRef.current;
+
+    if (!isActive) {
+      video.pause();
+      setIsPlaying(false);
+      return;
+    }
+
+    const playVideo = async () => {
+      try {
+        await video.play();
+        setIsPlaying(true);
+      } catch {
+        setIsPlaying(false);
+      }
+    };
+
+    playVideo();
+  }, [isActive, post.media_type]);
+
+  useEffect(() => {
+    if (!viewCounted && isActive && post.id) {
       setViewCounted(true);
       incrementPostViews(post.id);
     }
-  }, [post.id, viewCounted]);
+  }, [isActive, post.id, viewCounted]);
 
-  // Check follow status
   useEffect(() => {
     if (!user || user.id === post.user_id) return;
-    (supabase as any).from("follows").select("id").eq("follower_id", user.id).eq("following_id", post.user_id).maybeSingle()
+    (supabase as any)
+      .from("follows")
+      .select("id")
+      .eq("follower_id", user.id)
+      .eq("following_id", post.user_id)
+      .maybeSingle()
       .then(({ data }: any) => setIsFollowing(!!data));
   }, [user, post.user_id]);
 
-  // Start emoji loop when post is visible
   useEffect(() => {
-    // Load existing reactions and start loop
+    if (!isActive) {
+      stopLoop();
+      return;
+    }
+
     const loadAndLoop = async () => {
       const { data } = await (supabase as any)
         .from("post_reactions")
         .select("emoji_id")
         .eq("post_id", post.id);
-      if (data && data.length > 0) {
-        startLoop(data.map((r: any) => r.emoji_id));
+
+      if (data?.length) {
+        startLoop(data.map((reaction: any) => reaction.emoji_id));
       }
     };
+
     loadAndLoop();
     return () => stopLoop();
-  }, [post.id, startLoop, stopLoop]);
+  }, [isActive, post.id, startLoop, stopLoop]);
 
   const toggleFollow = async () => {
     if (!user) return toast.error("Sign in to follow");
     if (user.id === post.user_id) return;
+
     if (isFollowing) {
-      await (supabase as any).from("follows").delete().eq("follower_id", user.id).eq("following_id", post.user_id);
+      await (supabase as any)
+        .from("follows")
+        .delete()
+        .eq("follower_id", user.id)
+        .eq("following_id", post.user_id);
       setIsFollowing(false);
       toast.success("Unfollowed");
     } else {
@@ -91,17 +144,32 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
     mutationFn: async () => {
       if (!currentUserId) throw new Error("Not authenticated");
       const { data: existingLike } = await (supabase as any)
-        .from("likes").select("id").eq("user_id", currentUserId).eq("content_id", post.id).eq("content_type", "post").maybeSingle();
+        .from("likes")
+        .select("id")
+        .eq("user_id", currentUserId)
+        .eq("content_id", post.id)
+        .eq("content_type", "post")
+        .maybeSingle();
+
       if (existingLike) {
-        await (supabase as any).from("likes").delete().eq("user_id", currentUserId).eq("content_id", post.id).eq("content_type", "post");
+        await (supabase as any)
+          .from("likes")
+          .delete()
+          .eq("user_id", currentUserId)
+          .eq("content_id", post.id)
+          .eq("content_type", "post");
       } else {
-        await (supabase as any).from("likes").insert({ user_id: currentUserId, content_id: post.id, content_type: "post" });
+        await (supabase as any).from("likes").insert({
+          user_id: currentUserId,
+          content_id: post.id,
+          content_type: "post",
+        });
       }
     },
     onMutate: () => {
       const wasLiked = liked;
       setLiked(!wasLiked);
-      setLikesCount((c: number) => (wasLiked ? Math.max(c - 1, 0) : c + 1));
+      setLikesCount((count: number) => (wasLiked ? Math.max(count - 1, 0) : count + 1));
       return { previousLiked: wasLiked, previousLikesCount: likesCount };
     },
     onError: (_error: any, _variables: any, context: any) => {
@@ -126,39 +194,37 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
     },
   });
 
-  // Single tap = play/pause video, Double tap = like
   const handleContentTap = useCallback(() => {
     const now = Date.now();
-    const DOUBLE_TAP_DELAY = 300;
+    const doubleTapDelay = 300;
 
-    if (now - lastTapRef.current < DOUBLE_TAP_DELAY) {
-      // Double tap — like
+    if (now - lastTapRef.current < doubleTapDelay) {
       if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
       if (!liked) likeMutation.mutate();
       setShowHeart(true);
       setTimeout(() => setShowHeart(false), 800);
       lastTapRef.current = 0;
-    } else {
-      // Single tap — wait to confirm it's not a double tap
-      lastTapRef.current = now;
-      tapTimerRef.current = setTimeout(() => {
-        // Single tap confirmed — toggle play/pause
-        if (post.media_type === "video" && videoRef.current) {
-          if (videoRef.current.paused) {
-            videoRef.current.play();
-            setIsPlaying(true);
-          } else {
-            videoRef.current.pause();
-            setIsPlaying(false);
-          }
-        }
-      }, DOUBLE_TAP_DELAY);
+      return;
     }
-  }, [liked, post.media_type]);
+
+    lastTapRef.current = now;
+    tapTimerRef.current = setTimeout(() => {
+      if (post.media_type === "video" && videoRef.current) {
+        if (videoRef.current.paused) {
+          videoRef.current.play();
+          setIsPlaying(true);
+        } else {
+          videoRef.current.pause();
+          setIsPlaying(false);
+        }
+      }
+    }, doubleTapDelay);
+  }, [liked, likeMutation, post.media_type]);
 
   const handleShare = async () => {
     const shareUrl = `${window.location.origin}/feed`;
     const shareText = post.caption || "Check this out!";
+
     try {
       await navigator.share?.({ title: shareText, text: shareText, url: shareUrl });
     } catch {
@@ -171,9 +237,9 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
     spawnEmoji(emojiId);
   };
 
-  const formatCount = (n: number) => {
-    if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
-    return n.toString();
+  const formatCount = (value: number) => {
+    if (value >= 1000) return `${(value / 1000).toFixed(1).replace(/\.0$/, "")}K`;
+    return value.toString();
   };
 
   const timeAgo = formatDistanceToNow(new Date(post.created_at), { addSuffix: false });
@@ -181,152 +247,158 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
   return (
     <>
       <div className="absolute inset-0 bg-black">
-        {/* Media background */}
-        {post.media_url && (
-          post.media_type === "video" ? (
+        {post.media_url &&
+          (post.media_type === "video" ? (
             <video
               ref={videoRef}
               src={post.media_url}
-              className="absolute inset-0 w-full h-full object-cover"
+              className="absolute inset-0 h-full w-full object-cover"
               loop
               playsInline
-              autoPlay
+              preload="metadata"
             />
           ) : (
-            <img src={post.media_url} alt="" className="absolute inset-0 w-full h-full object-cover" />
-          )
-        )}
+            <img src={post.media_url} alt={post.caption || "Feed post"} className="absolute inset-0 h-full w-full object-cover" />
+          ))}
+
         {!post.media_url && (
-          <div className="absolute inset-0 bg-gradient-to-b from-card to-background flex items-center justify-center">
-            <p className="text-foreground text-lg font-semibold px-8 text-center leading-relaxed">{post.caption}</p>
+          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-card to-background">
+            <p className="px-8 text-center text-lg font-semibold leading-relaxed text-foreground">{post.caption}</p>
           </div>
         )}
 
-        {/* Gradient overlays */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none" />
-
-        {/* Floating emojis layer */}
         <FloatingLayer />
+        <FeedLiveComments postId={post.id} isActive={isActive} />
 
-        {/* Tap area for play/pause & double-tap like */}
+        {post.media_type === "video" && (
+          <button
+            onClick={() => setIsMuted((value) => !value)}
+            className="absolute top-16 left-3 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-black/35 backdrop-blur-sm"
+            aria-label={isMuted ? "Unmute video" : "Mute video"}
+          >
+            {isMuted ? <VolumeX className="w-5 h-5 text-white" /> : <Volume2 className="w-5 h-5 text-white" />}
+          </button>
+        )}
+
         <button
           onClick={handleContentTap}
           className="absolute inset-0 z-20"
-          aria-label="Tap to play/pause, double tap to like"
+          aria-label="Tap to play or pause, double tap to like"
         />
 
-        {/* Double-tap heart animation */}
         {showHeart && (
-          <div className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none">
-            <Heart className="w-24 h-24 text-red-500 fill-red-500 animate-ping" />
+          <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none">
+            <Heart className="w-24 h-24 fill-red-500 text-red-500 animate-ping" />
           </div>
         )}
 
-        {/* Right-side action icons */}
-        <div className="absolute right-3 bottom-44 flex flex-col items-center gap-5 z-40">
-          {/* Profile avatar */}
-          <button
-            onClick={() => navigate(`/artist/${post.user_id}`)}
-            className="relative"
-          >
+        <div className="absolute right-3 bottom-44 z-40 flex flex-col items-center gap-5">
+          <button onClick={() => navigate(`/artist/${post.user_id}`)} className="relative z-50">
             <div className="w-12 h-12 rounded-full overflow-hidden ring-2 ring-white/40">
               {profile.avatar_url ? (
                 <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full bg-primary/30 flex items-center justify-center text-white text-sm font-bold">
+                <div className="w-full h-full bg-primary/30 flex items-center justify-center text-sm font-bold text-white">
                   {(profile.display_name || "A")[0].toUpperCase()}
                 </div>
               )}
             </div>
             {user?.id !== post.user_id && !isFollowing && (
               <button
-                onClick={(e) => { e.stopPropagation(); toggleFollow(); }}
-                className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-red-500 flex items-center justify-center"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  toggleFollow();
+                }}
+                className="absolute -bottom-1.5 left-1/2 flex h-5 w-5 -translate-x-1/2 items-center justify-center rounded-full bg-red-500"
               >
-                <span className="text-[10px] text-white font-bold">+</span>
+                <span className="text-[10px] font-bold text-white">+</span>
               </button>
             )}
           </button>
 
-          {/* Like */}
-          <button onClick={() => likeMutation.mutate()} className="flex flex-col items-center gap-0.5">
-            <Heart className={`w-7 h-7 ${liked ? "text-red-500 fill-red-500" : "text-white"} drop-shadow-lg`} />
+          <button onClick={() => likeMutation.mutate()} className="flex flex-col items-center gap-0.5 z-50">
+            <Heart className={`w-7 h-7 drop-shadow-lg ${liked ? "fill-red-500 text-red-500" : "text-white"}`} />
             <span className="text-[11px] font-semibold text-white drop-shadow">{formatCount(likesCount)}</span>
           </button>
 
-          {/* Comment */}
-          <button onClick={() => setShowComments(true)} className="flex flex-col items-center gap-0.5">
+          <button onClick={() => setShowComments(true)} className="flex flex-col items-center gap-0.5 z-50">
             <MessageCircle className="w-7 h-7 text-white drop-shadow-lg" />
             <span className="text-[11px] font-semibold text-white drop-shadow">{post.comments_count || 0}</span>
           </button>
 
-          {/* Bookmark */}
-          <button className="flex flex-col items-center gap-0.5">
+          <button className="flex flex-col items-center gap-0.5 z-50">
             <Bookmark className="w-6 h-6 text-white drop-shadow-lg" />
           </button>
 
-          {/* Share — curved arrow */}
-          <button onClick={handleShare} className="flex flex-col items-center gap-0.5">
+          <button onClick={handleShare} className="flex flex-col items-center gap-0.5 z-50">
             <Forward className="w-7 h-7 text-white drop-shadow-lg" />
           </button>
 
-          {/* Views - white and visible */}
-          <div className="flex flex-col items-center gap-0.5">
+          <div className="flex flex-col items-center gap-0.5 z-50">
             <Eye className="w-6 h-6 text-white drop-shadow-lg" />
             <span className="text-[11px] font-semibold text-white drop-shadow">{formatCount(post.views || 0)}</span>
           </div>
         </div>
 
-        {/* Bottom user info + caption */}
-        <div className="absolute left-3 right-20 bottom-28 z-30">
-          <div className="flex items-center gap-2 mb-2">
+        <div className="absolute left-3 right-20 bottom-20 z-40">
+          <div className="mb-2 flex items-center gap-2">
             <button
               onClick={() => navigate(`/artist/${post.user_id}`)}
-              className="text-[14px] font-bold text-white drop-shadow-lg hover:underline"
+              className="z-50 text-[14px] font-bold text-white drop-shadow-lg hover:underline"
             >
               @{profile.display_name || "Artist"}
             </button>
             {user?.id !== post.user_id && (
               <button
                 onClick={toggleFollow}
-                className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold transition-all ${
-                  isFollowing
-                    ? "bg-white/20 text-white border border-white/30"
-                    : "bg-red-500 text-white"
+                className={`z-50 rounded-md px-2.5 py-0.5 text-[10px] font-bold transition-all ${
+                  isFollowing ? "border border-white/30 bg-white/20 text-white" : "bg-red-500 text-white"
                 }`}
               >
                 {isFollowing ? "Following" : "Follow"}
               </button>
             )}
           </div>
-          {post.caption && (
-            <p className="text-[13px] text-white/90 leading-snug drop-shadow line-clamp-2">{post.caption}</p>
+
+          <div className="z-50 mb-2">
+            <EmojiBar onEmoji={handleEmojiReaction} postId={post.id} currentUserId={currentUserId} />
+          </div>
+
+          {post.caption && <p className="text-[13px] leading-snug text-white/90 drop-shadow line-clamp-2">{post.caption}</p>}
+          <span className="mt-1 block text-[10px] text-white/50">{timeAgo} ago</span>
+          {post.media_type === "video" && !isPlaying && (
+            <span className="mt-1 block text-[10px] text-white/70">Paused</span>
           )}
-          <span className="text-[10px] text-white/50 mt-1 block">{timeAgo} ago</span>
         </div>
 
-        {/* Owner menu */}
         {currentUserId === post.user_id && (
           <div className="absolute top-16 right-3 z-50">
             <button
               onClick={() => setShowMenu(!showMenu)}
-              className="w-9 h-9 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm"
             >
               <MoreHorizontal className="w-5 h-5 text-white" />
             </button>
             {showMenu && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
-                <div className="absolute right-0 top-11 z-50 bg-card border border-border rounded-xl shadow-2xl py-1 min-w-[150px]">
+                <div className="absolute right-0 top-11 z-50 min-w-[150px] rounded-xl border border-border bg-card py-1 shadow-2xl">
                   <button
-                    onClick={() => { setShowMenu(false); setShowEdit(true); }}
-                    className="flex items-center gap-2 w-full px-3 py-2.5 text-sm text-foreground hover:bg-secondary"
+                    onClick={() => {
+                      setShowMenu(false);
+                      setShowEdit(true);
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-foreground hover:bg-secondary"
                   >
                     <Edit3 className="w-4 h-4" /> Edit
                   </button>
                   <button
-                    onClick={() => { setShowMenu(false); deleteMutation.mutate(); }}
-                    className="flex items-center gap-2 w-full px-3 py-2.5 text-sm text-destructive hover:bg-secondary"
+                    onClick={() => {
+                      setShowMenu(false);
+                      deleteMutation.mutate();
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-destructive hover:bg-secondary"
                   >
                     <Trash2 className="w-4 h-4" /> Delete
                   </button>
@@ -341,6 +413,7 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
         postId={post.id}
         open={showComments}
         onClose={() => setShowComments(false)}
+        currentUserId={currentUserId}
         onEmojiReaction={handleEmojiReaction}
       />
       <CreatePostSheet open={showEdit} onClose={() => setShowEdit(false)} postToEdit={post} />
