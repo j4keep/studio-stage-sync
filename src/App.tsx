@@ -191,7 +191,7 @@ const App = () => {
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
+        <HashRouter>
           <AuthProvider>
             <ThemeProvider>
               <CartProvider>
@@ -209,7 +209,7 @@ const App = () => {
               </CartProvider>
             </ThemeProvider>
           </AuthProvider>
-        </BrowserRouter>
+        </HashRouter>
       </TooltipProvider>
     </QueryClientProvider>
   );
