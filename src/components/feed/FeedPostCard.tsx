@@ -133,6 +133,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
 
   const handleScrubStart = useCallback((e: React.TouchEvent | React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault();
     setIsScrubbing(true);
     const bar = progressRef.current;
     if (!bar) return;
