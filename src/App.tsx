@@ -200,6 +200,7 @@ const App = () => {
                     <div id="app-bg-layer" className="min-h-screen">
                       <Routes>
                         <Route path="/auth" element={<AuthPage />} />
+                        <Route path="/index" element={<Navigate to="/" replace />} />
                         <Route path="/*" element={<ProtectedRoutes />} />
                       </Routes>
                     </div>
