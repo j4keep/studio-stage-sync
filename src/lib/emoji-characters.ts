@@ -45,6 +45,13 @@ import trashImg from "@/assets/emojis/trash.png";
 import thumbsdownImg from "@/assets/emojis/thumbsdown.png";
 import stopImg from "@/assets/emojis/stop.png";
 import queenImg from "@/assets/emojis/queen.png";
+import waterbucket1Img from "@/assets/emojis/waterbucket1.png";
+import waterbucket2Img from "@/assets/emojis/waterbucket2.png";
+import waterbucket3Img from "@/assets/emojis/waterbucket3.png";
+import waterbucket4Img from "@/assets/emojis/waterbucket4.png";
+import waterbucket5Img from "@/assets/emojis/waterbucket5.png";
+import flowersImg from "@/assets/emojis/flowers.png";
+import poopbucketImg from "@/assets/emojis/poopbucket.png";
 
 export interface EmojiCharacter {
   label: string;
@@ -88,6 +95,13 @@ export const EMOJI_CHARACTERS: EmojiCharacter[] = [
   { label: "Thumbs Down", src: thumbsdownImg, id: "thumbsdown" },
   { label: "Stop", src: stopImg, id: "stop" },
   { label: "Queen", src: queenImg, id: "queen" },
+  { label: "Water Splash", src: waterbucket1Img, id: "waterbucket1" },
+  { label: "Water Blast", src: waterbucket2Img, id: "waterbucket2" },
+  { label: "Water Cannon", src: waterbucket3Img, id: "waterbucket3" },
+  { label: "Water Fight", src: waterbucket4Img, id: "waterbucket4" },
+  { label: "Water Nerd", src: waterbucket5Img, id: "waterbucket5" },
+  { label: "Flowers", src: flowersImg, id: "flowers" },
+  { label: "Poop Bucket", src: poopbucketImg, id: "poopbucket" },
 ];
 
 // Quick lookup by id
