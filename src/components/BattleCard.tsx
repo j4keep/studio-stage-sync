@@ -420,12 +420,21 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
           </div>
         </div>
 
-        {/* Center play icon overlay */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
-          <div className="w-14 h-14 rounded-full bg-primary/90 flex items-center justify-center shadow-lg backdrop-blur-sm">
-            <Play className="w-6 h-6 text-primary-foreground ml-0.5" fill="currentColor" />
+      {/* Center play icon overlay — only show when active */}
+        {isActive && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+            <div className="w-14 h-14 rounded-full bg-primary/90 flex items-center justify-center shadow-lg backdrop-blur-sm">
+              <Play className="w-6 h-6 text-primary-foreground ml-0.5" fill="currentColor" />
+            </div>
           </div>
-        </div>
+        )}
+        {!isActive && !isExpired && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+            <div className="px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm">
+              <span className="text-[10px] font-bold text-white">🔒 Waiting for opponent</span>
+            </div>
+          </div>
+        )}
       </button>
 
       {/* Seekable audio progress bar — only when active */}
