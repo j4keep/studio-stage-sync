@@ -452,26 +452,26 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
           </div>
 
           {post.media_type === "video" && (
-            <div className="z-50 mt-2 relative">
+            <div className="z-50 mt-2 relative seek-area" role="slider" aria-valuenow={videoProgress} aria-valuemin={0} aria-valuemax={100}>
               <div
                 ref={progressRef}
-                className="relative h-[3px] w-full rounded-full bg-white/20 cursor-pointer"
+                className="relative h-[6px] w-full rounded-full bg-white/20 cursor-pointer touch-none"
                 onMouseDown={handleScrubStart}
                 onTouchStart={handleScrubStart}
               >
                 <div
-                  className="absolute left-0 top-0 h-full rounded-full bg-white/80 transition-none"
+                  className="absolute left-0 top-0 h-full rounded-full bg-white/80 pointer-events-none"
                   style={{ width: `${videoProgress}%` }}
                 />
                 <div
-                  className="absolute top-1/2 -translate-y-1/2 h-3 w-3 rounded-full bg-white shadow-lg transition-none"
-                  style={{ left: `calc(${videoProgress}% - 6px)` }}
+                  className="absolute top-1/2 -translate-y-1/2 h-4 w-4 rounded-full bg-white shadow-lg pointer-events-none"
+                  style={{ left: `calc(${videoProgress}% - 8px)` }}
                 />
               </div>
               {isScrubbing && (
                 <div
-                  className="absolute -top-7 left-1/2 -translate-x-1/2 rounded bg-black/80 px-2 py-0.5 text-[11px] font-semibold text-white"
-                  style={{ left: `${videoProgress}%` }}
+                  className="absolute -top-7 rounded bg-black/80 px-2 py-0.5 text-[11px] font-semibold text-white pointer-events-none"
+                  style={{ left: `${videoProgress}%`, transform: "translateX(-50%)" }}
                 >
                   {formatTime(scrubTime)}
                 </div>
