@@ -396,10 +396,12 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
             <Forward className="w-7 h-7 text-white drop-shadow-lg" />
           </button>
 
-          <div className="flex flex-col items-center gap-0.5 z-50">
-            <Eye className="w-6 h-6 text-white drop-shadow-lg" />
-            <span className="text-[11px] font-semibold text-white drop-shadow">{formatCount(post.views || 0)}</span>
-          </div>
+          {post.media_type === "video" && (
+            <div className="flex flex-col items-center gap-0.5 z-50">
+              <Eye className="w-6 h-6 text-white drop-shadow-lg" />
+              <span className="text-[11px] font-semibold text-white drop-shadow">{formatCount(post.views || 0)}</span>
+            </div>
+          )}
         </div>
 
         <div className="absolute left-3 right-20 bottom-8 z-40">
