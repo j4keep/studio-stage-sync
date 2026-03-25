@@ -6,7 +6,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
-import { EMOJI_MAP } from "@/lib/emoji-characters";
+import { EMOJI_MAP, EMOJI_CHARACTERS } from "@/lib/emoji-characters";
+
+// Build a label→src lookup for legacy comments that stored plain labels
+const EMOJI_LABEL_MAP: Record<string, string> = {};
+EMOJI_CHARACTERS.forEach((e) => { EMOJI_LABEL_MAP[e.label] = e.src; });
 
 interface Props {
   postId: string;
