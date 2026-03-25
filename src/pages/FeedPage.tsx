@@ -1,73 +1,130 @@
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
-import { MessageCircle, Plus } from "lucide-react";
+import { Search, Plus } from "lucide-react";
 import FeedPostCard from "@/components/feed/FeedPostCard";
 import CreatePostSheet from "@/components/feed/CreatePostSheet";
-import BattleCard from "@/components/BattleCard";
 import { fetchFeedItems } from "@/lib/feed-items";
+
+const TABS = ["For You", "Following", "Trending", "New"];
 
 const FeedPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [showCreate, setShowCreate] = useState(false);
+  const [activeTab, setActiveTab] = useState("For You");
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ["feed-posts"],
     queryFn: () => fetchFeedItems({ currentUserId: user?.id }),
   });
 
+  // Snap scroll observer
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const idx = Number(entry.target.getAttribute("data-index"));
+            if (!isNaN(idx)) setCurrentIndex(idx);
+          }
+        });
+      },
+      { root: container, threshold: 0.6 }
+    );
+    container.querySelectorAll("[data-index]").forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [items]);
+
   return (
-    <div className="pb-24">
-      {/* Header */}
-      <div className="sticky top-0 z-40 bg-background/90 backdrop-blur-xl border-b border-border px-4 py-3 flex items-center justify-between">
-        <h1 className="text-lg font-display font-bold text-foreground">Feed</h1>
-        <div className="flex items-center gap-2">
+    <div className="fixed inset-0 bg-black flex flex-col z-30">
+      {/* Top navigation tabs */}
+      <div className="absolute top-0 left-0 right-0 z-50 pt-10 pb-2 px-3 bg-gradient-to-b from-black/70 to-transparent">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => setShowCreate(true)}
+            className="w-9 h-9 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center"
+          >
+            <Plus className="w-5 h-5 text-white" />
+          </button>
+          
+          <div className="flex items-center gap-1">
+            {TABS.map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-3 py-1.5 rounded-full text-[12px] font-semibold transition-all ${
+                  activeTab === tab
+                    ? "text-white border-b-2 border-white"
+                    : "text-white/60"
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+
           <button
             onClick={() => navigate("/messages")}
-            className="w-9 h-9 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-foreground"
+            className="w-9 h-9 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center"
           >
-            <MessageCircle className="w-5 h-5" />
+            <Search className="w-5 h-5 text-white" />
           </button>
         </div>
       </div>
 
-      {/* Create Post Button */}
-      <div className="px-4 pt-3 pb-2">
-        <button
-          onClick={() => setShowCreate(true)}
-          className="w-full flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:border-primary/30 transition-all"
-        >
-          <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-            <Plus className="w-5 h-5" />
-          </div>
-          <span className="text-sm text-muted-foreground">What's on your mind?</span>
-        </button>
-      </div>
-
-      {/* Posts Feed - no gaps, Facebook style */}
-      <div>
+      {/* Full-screen vertical scroll feed */}
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-scroll snap-y snap-mandatory scrollbar-hide"
+        style={{ scrollSnapType: "y mandatory" }}
+      >
         {isLoading ? (
-          <div className="flex justify-center py-10">
-            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <div className="h-screen flex items-center justify-center snap-start">
+            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
         ) : items.length === 0 ? (
-          <div className="text-center py-16">
-            <p className="text-sm text-muted-foreground">No posts yet. Be the first to share!</p>
+          <div className="h-screen flex flex-col items-center justify-center snap-start gap-3">
+            <p className="text-white/60 text-sm">No posts yet</p>
+            <button
+              onClick={() => setShowCreate(true)}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-full text-sm font-semibold"
+            >
+              Create first post
+            </button>
           </div>
         ) : (
-          items.map((item: any) => (
-            item.itemType === "battle" ? (
-              <div key={`battle-${item.id}`} className="px-4 py-2">
-                <BattleCard battle={item} />
-              </div>
-            ) : (
-              <FeedPostCard key={`post-${item.id}`} post={item} currentUserId={user?.id} />
-            )
+          items.map((item: any, index: number) => (
+            <div
+              key={item.id}
+              data-index={index}
+              className="h-screen w-full snap-start snap-always relative"
+              style={{ scrollSnapAlign: "start" }}
+            >
+              <FeedPostCard post={item} currentUserId={user?.id} fullScreen />
+            </div>
           ))
         )}
       </div>
+
+      {/* Dot indicators */}
+      {items.length > 1 && (
+        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col gap-1.5 z-50">
+          {items.slice(0, Math.min(items.length, 8)).map((_: any, i: number) => (
+            <div
+              key={i}
+              className={`w-1.5 rounded-full transition-all ${
+                i === currentIndex ? "h-4 bg-white" : "h-1.5 bg-white/30"
+              }`}
+            />
+          ))}
+        </div>
+      )}
 
       <CreatePostSheet open={showCreate} onClose={() => setShowCreate(false)} />
     </div>
