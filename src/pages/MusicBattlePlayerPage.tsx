@@ -752,6 +752,7 @@ const MusicBattlePlayerPage = () => {
           🎧 Now playing: {activeArtist === "left" ? (leftProfile.display_name || "Artist A") : (rightProfile.display_name || "Artist B")}
         </p>
       </div>
+      )}
 
       {/* ── VOTE PROGRESS BAR ── */}
       <div className="px-6 pb-2">
