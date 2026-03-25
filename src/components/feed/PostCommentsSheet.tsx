@@ -145,17 +145,6 @@ const PostCommentsSheet = ({ postId, open, onClose, currentUserId, onEmojiReacti
           )}
         </div>
 
-        <div className="border-t border-border px-2 pt-2">
-          <EmojiBar
-            onEmoji={(emojiId) => {
-              setText((prev) => `${prev}${prev ? " " : ""}:${emojiId}:`);
-              onEmojiReaction?.(emojiId);
-            }}
-            postId={postId}
-            currentUserId={currentUserId}
-          />
-        </div>
-
         <div className="border-t border-border px-4 py-2 flex items-center gap-2 pb-safe">
           <input
             value={text}

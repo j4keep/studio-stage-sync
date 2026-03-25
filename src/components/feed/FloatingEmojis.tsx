@@ -55,7 +55,7 @@ const FloatingEmojis = ({ postId }: FloatingEmojisProps) => {
               <img
                 src={e.src}
                 alt=""
-                className="w-16 h-16 object-contain drop-shadow-lg"
+                className="w-24 h-24 object-contain drop-shadow-lg"
                 style={{ filter: "drop-shadow(0 0 6px rgba(255,165,0,0.4))" }}
               />
             </motion.div>

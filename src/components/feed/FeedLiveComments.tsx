@@ -126,7 +126,7 @@ const FeedLiveComments = ({ postId, isActive }: FeedLiveCommentsProps) => {
   if (!isActive || comments.length === 0) return null;
 
   return (
-    <div className="absolute left-3 right-24 bottom-44 z-30 pointer-events-none">
+    <div className="absolute left-1/2 -translate-x-1/2 w-[70%] bottom-44 z-30 pointer-events-none">
       <div className="max-h-[22vh] overflow-hidden flex flex-col justify-end gap-1.5">
         <AnimatePresence>
           {comments.map((comment) => (
