@@ -275,30 +275,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
           </div>
         )}
 
-        <div className="absolute right-3 bottom-44 z-40 flex flex-col items-center gap-5">
-          <button onClick={() => navigate(`/artist/${post.user_id}`)} className="relative z-50">
-            <div className="w-12 h-12 rounded-full overflow-hidden ring-2 ring-white/40">
-              {profile.avatar_url ? (
-                <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full bg-primary/30 flex items-center justify-center text-sm font-bold text-white">
-                  {(profile.display_name || "A")[0].toUpperCase()}
-                </div>
-              )}
-            </div>
-            {user?.id !== post.user_id && !isFollowing && (
-              <button
-                onClick={(event) => {
-                  event.stopPropagation();
-                  toggleFollow();
-                }}
-                className="absolute -bottom-1.5 left-1/2 flex h-5 w-5 -translate-x-1/2 items-center justify-center rounded-full bg-red-500"
-              >
-                <span className="text-[10px] font-bold text-white">+</span>
-              </button>
-            )}
-          </button>
-
+        <div className="absolute right-3 bottom-24 z-40 flex flex-col items-center gap-5">
           <button onClick={() => likeMutation.mutate()} className="flex flex-col items-center gap-0.5 z-50">
             <Heart className={`w-7 h-7 drop-shadow-lg ${liked ? "fill-red-500 text-red-500" : "text-white"}`} />
             <span className="text-[11px] font-semibold text-white drop-shadow">{formatCount(likesCount)}</span>
@@ -321,6 +298,29 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
             <Eye className="w-6 h-6 text-white drop-shadow-lg" />
             <span className="text-[11px] font-semibold text-white drop-shadow">{formatCount(post.views || 0)}</span>
           </div>
+
+          <button onClick={() => navigate(`/artist/${post.user_id}`)} className="relative z-50">
+            <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-white/40">
+              {profile.avatar_url ? (
+                <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-primary/30 flex items-center justify-center text-sm font-bold text-white">
+                  {(profile.display_name || "A")[0].toUpperCase()}
+                </div>
+              )}
+            </div>
+            {user?.id !== post.user_id && !isFollowing && (
+              <button
+                onClick={(event) => {
+                  event.stopPropagation();
+                  toggleFollow();
+                }}
+                className="absolute -bottom-1.5 left-1/2 flex h-5 w-5 -translate-x-1/2 items-center justify-center rounded-full bg-red-500"
+              >
+                <span className="text-[10px] font-bold text-white">+</span>
+              </button>
+            )}
+          </button>
         </div>
 
         <div className="absolute left-3 right-20 bottom-20 z-40">
