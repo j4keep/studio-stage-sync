@@ -275,7 +275,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
           </div>
         )}
 
-        <div className="absolute right-3 bottom-16 z-40 flex flex-col items-center gap-5">
+        <div className="absolute right-3 bottom-20 z-40 flex flex-col items-center gap-5">
           <button onClick={() => likeMutation.mutate()} className="flex flex-col items-center gap-0.5 z-50">
             <Heart className={`w-7 h-7 drop-shadow-lg ${liked ? "fill-red-500 text-red-500" : "text-white"}`} />
             <span className="text-[11px] font-semibold text-white drop-shadow">{formatCount(likesCount)}</span>
