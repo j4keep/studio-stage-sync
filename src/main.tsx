@@ -2,15 +2,9 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 
-const bootApp = () => {
-  const { hash, pathname, search } = window.location;
+// Ensure a hash fragment exists so HashRouter resolves to "/"
+if (!window.location.hash) {
+  history.replaceState(null, "", window.location.pathname + window.location.search + "#/");
+}
 
-  if (!hash && (pathname === "/index" || pathname === "/")) {
-    window.location.replace(`${pathname}${search}#/`);
-    return;
-  }
-
-  createRoot(document.getElementById("root")!).render(<App />);
-};
-
-bootApp();
+createRoot(document.getElementById("root")!).render(<App />);
