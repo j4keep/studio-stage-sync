@@ -10,6 +10,8 @@ import {
   Edit3,
   Volume2,
   VolumeX,
+  Play,
+  Pause,
 } from "lucide-react";
 import { incrementPostViews } from "@/hooks/use-likes";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
