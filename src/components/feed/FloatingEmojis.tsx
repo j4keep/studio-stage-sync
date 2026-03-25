@@ -41,7 +41,7 @@ const FloatingEmojis = ({ postId }: FloatingEmojisProps) => {
             animate={{ opacity: 0, y: -350, scale: 1.8 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 4.5, ease: "easeOut" }}
-            className="absolute bottom-16 pointer-events-none z-50"
+            className="absolute bottom-16 pointer-events-none z-[60]"
             style={{ left: `${e.x}%` }}
           >
             <motion.div
