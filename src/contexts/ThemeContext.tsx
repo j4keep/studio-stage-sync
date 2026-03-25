@@ -69,34 +69,48 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
       setThemeSetupDone(prev => prev === true ? true : null);
       return;
     }
+
+    let isActive = true;
+
     const load = async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("theme_preset, custom_accent_color")
-        .eq("user_id", user.id)
-        .single();
+      try {
+        const { data } = await supabase
+          .from("profiles")
+          .select("theme_preset, custom_accent_color")
+          .eq("user_id", user.id)
+          .maybeSingle();
 
-      if (data) {
-        const preset = data.theme_preset || "default";
-        setCurrentPreset(preset);
-        setCustomAccentState(data.custom_accent_color || null);
+        if (!isActive) return;
 
-        // Apply saved accent
-        if (data.custom_accent_color) {
-          applyAccentColor(data.custom_accent_color);
-        } else {
-          const found = THEME_PRESETS.find(p => p.id === preset);
-          if (found) applyAccentColor(found.accent);
+        if (data) {
+          const preset = data.theme_preset || "default";
+          setCurrentPreset(preset);
+          setCustomAccentState(data.custom_accent_color || null);
+
+          if (data.custom_accent_color) {
+            applyAccentColor(data.custom_accent_color);
+          } else {
+            const found = THEME_PRESETS.find(p => p.id === preset);
+            if (found) applyAccentColor(found.accent);
+          }
+
+          localStorage.setItem("wheuat_theme_setup_done", "true");
+          setThemeSetupDone(true);
+          return;
         }
 
-        // Always mark as done once we've loaded profile - user already completed onboarding
-        localStorage.setItem("wheuat_theme_setup_done", "true");
-        setThemeSetupDone(true);
-      } else {
+        setThemeSetupDone(false);
+      } catch {
+        if (!isActive) return;
         setThemeSetupDone(false);
       }
     };
+
     load();
+
+    return () => {
+      isActive = false;
+    };
   }, [user]);
 
   const setThemePreset = useCallback((presetId: string) => {
