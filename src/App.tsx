@@ -52,6 +52,7 @@ import TermsAgreementGate from "./components/TermsAgreementGate";
 import ThemePickerSheet from "./components/ThemePickerSheet";
 
 const queryClient = new QueryClient();
+const STARTUP_TIMEOUT_MS = 2500;
 
 const ProtectedRoutes = () => {
   const { user, loading } = useAuth();
@@ -77,19 +78,46 @@ const ProtectedRoutes = () => {
   // Check terms acceptance from database
   useEffect(() => {
     if (!user) {
+      setTermsAccepted(null);
       setTermsLoading(false);
       return;
     }
+
+    let isActive = true;
+
     const checkTerms = async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("terms_accepted_at")
-        .eq("user_id", user.id)
-        .single();
-      setTermsAccepted(!!data?.terms_accepted_at);
-      setTermsLoading(false);
+      try {
+        const result = await Promise.race([
+          supabase
+            .from("profiles")
+            .select("terms_accepted_at")
+            .eq("user_id", user.id)
+            .maybeSingle(),
+          new Promise<null>((resolve) => window.setTimeout(() => resolve(null), STARTUP_TIMEOUT_MS)),
+        ]);
+
+        if (!isActive) return;
+
+        if (result && "data" in result) {
+          setTermsAccepted(!!result.data?.terms_accepted_at);
+        } else {
+          setTermsAccepted(false);
+        }
+      } catch {
+        if (!isActive) return;
+        setTermsAccepted(false);
+      } finally {
+        if (isActive) {
+          setTermsLoading(false);
+        }
+      }
     };
+
     checkTerms();
+
+    return () => {
+      isActive = false;
+    };
   }, [user]);
 
   // Show theme picker after terms accepted if not set up
@@ -117,7 +145,7 @@ const ProtectedRoutes = () => {
   }
 
   if (!user) {
-    return <Navigate to="/auth" replace />;
+    return <AuthPage />;
   }
 
   if (!termsAccepted) {
