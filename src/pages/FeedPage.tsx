@@ -78,7 +78,7 @@ const FeedPage = () => {
           </div>
 
           <button
-            onClick={() => navigate("/messages")}
+            onClick={() => navigate("/browse-songs")}
             className="w-9 h-9 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center"
           >
             <Search className="w-5 h-5 text-white" />
