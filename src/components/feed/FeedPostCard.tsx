@@ -100,26 +100,6 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
       .then(({ data }: any) => setIsFollowing(!!data));
   }, [user, post.user_id]);
 
-  useEffect(() => {
-    if (!isActive) {
-      stopLoop();
-      return;
-    }
-
-    const loadAndLoop = async () => {
-      const { data } = await (supabase as any)
-        .from("post_reactions")
-        .select("emoji_id")
-        .eq("post_id", post.id);
-
-      if (data?.length) {
-        startLoop(data.map((reaction: any) => reaction.emoji_id));
-      }
-    };
-
-    loadAndLoop();
-    return () => stopLoop();
-  }, [isActive, post.id, startLoop, stopLoop]);
 
   const toggleFollow = async () => {
     if (!user) return toast.error("Sign in to follow");
