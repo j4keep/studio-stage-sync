@@ -726,7 +726,8 @@ const MusicBattlePlayerPage = () => {
         </AnimatePresence>
       </div>
 
-      {/* ── AUDIO PLAYBACK BAR (SEEKABLE) ── */}
+      {/* ── AUDIO PLAYBACK BAR (SEEKABLE) — only when active ── */}
+      {battle.status === "active" && (
       <div className="px-6 py-3" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-mono">
           <span>{fmt(currentTime)}</span>
