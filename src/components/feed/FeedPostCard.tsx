@@ -205,12 +205,14 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
     const shareUrl = `${window.location.origin}/feed`;
     const shareText = post.caption || "Check this out!";
 
-    try {
-      await navigator.share?.({ title: shareText, text: shareText, url: shareUrl });
-    } catch {
-      navigator.clipboard.writeText(shareUrl);
-      toast.success("Link copied!");
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: shareText, text: shareText, url: shareUrl });
+        return;
+      } catch { /* user cancelled */ }
     }
+    navigator.clipboard.writeText(shareUrl);
+    toast.success("Link copied!");
   };
 
   const handleEmojiReaction = (emojiId: string) => {
