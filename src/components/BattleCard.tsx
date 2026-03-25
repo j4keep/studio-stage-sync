@@ -316,8 +316,8 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
         <div className="fixed inset-0 bg-black/80 -z-10" onClick={(e) => { e.stopPropagation(); setIsFullscreen(false); }} />
       )}
 
-      {/* Hidden audio elements */}
-      {battle.media_type !== "video" && (
+      {/* Hidden audio elements — only load when battle is active */}
+      {battle.media_type !== "video" && isActive && (
         <>
           <audio ref={audioLeftRef} src={battle.challenger_media_url || ""} preload="metadata" />
           <audio ref={audioRightRef} src={battle.opponent_media_url || ""} preload="metadata" />
@@ -420,16 +420,25 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
           </div>
         </div>
 
-        {/* Center play icon overlay */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
-          <div className="w-14 h-14 rounded-full bg-primary/90 flex items-center justify-center shadow-lg backdrop-blur-sm">
-            <Play className="w-6 h-6 text-primary-foreground ml-0.5" fill="currentColor" />
+      {/* Center play icon overlay — only show when active */}
+        {isActive && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+            <div className="w-14 h-14 rounded-full bg-primary/90 flex items-center justify-center shadow-lg backdrop-blur-sm">
+              <Play className="w-6 h-6 text-primary-foreground ml-0.5" fill="currentColor" />
+            </div>
           </div>
-        </div>
+        )}
+        {!isActive && !isExpired && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+            <div className="px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm">
+              <span className="text-[10px] font-bold text-white">🔒 Waiting for opponent</span>
+            </div>
+          </div>
+        )}
       </button>
 
-      {/* Seekable audio progress bar */}
-      {isActive && battle.media_type === "audio" && (
+      {/* Seekable audio progress bar — only when active */}
+      {isActive && battle.media_type === "audio" && !isExpired && (
         <div className="px-4 py-2 space-y-1" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()}>
           <div className="flex items-center gap-2">
             <button onClick={togglePlay} className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">

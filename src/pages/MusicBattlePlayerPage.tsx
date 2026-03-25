@@ -480,8 +480,8 @@ const MusicBattlePlayerPage = () => {
         mediaElement={activeArtist === "left" ? (audioLeftRef.current || videoLeftRef.current) : (audioRightRef.current || videoRightRef.current)}
         isPlaying={isPlaying}
       />
-      {/* hidden media elements for audio battles */}
-      {battle.media_type !== "video" && (
+      {/* hidden media elements for audio battles — only load when active */}
+      {battle.media_type !== "video" && battle.status === "active" && (
         <>
           <audio ref={audioLeftRef} src={battle.challenger_media_url || ""} preload="metadata" />
           <audio ref={audioRightRef} src={battle.opponent_media_url || ""} preload="metadata" />
@@ -548,7 +548,7 @@ const MusicBattlePlayerPage = () => {
             )}
 
             <div className={`w-full bg-muted rounded-2xl overflow-hidden ${expandedSide === "left" ? "h-[85vh]" : "aspect-[3/4]"}`}>
-              {battle.media_type === "video" && battle.challenger_media_url ? (
+              {battle.media_type === "video" && battle.challenger_media_url && battle.status === "active" ? (
                 <video
                   ref={(el) => {
                     videoLeftRef.current = el;
@@ -587,8 +587,8 @@ const MusicBattlePlayerPage = () => {
             </div>
           </div>
 
-          {/* CENTER PLAY BUTTON — hidden when a side is expanded */}
-          {!expandedSide && (
+          {/* CENTER PLAY BUTTON — hidden when a side is expanded or battle not active */}
+          {!expandedSide && battle.status === "active" && (
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-40">
             {/* outer pulse rings */}
             <motion.div
@@ -634,6 +634,15 @@ const MusicBattlePlayerPage = () => {
           </div>
           )}
 
+          {/* LOCKED overlay when battle not active */}
+          {!expandedSide && battle.status !== "active" && battle.status !== "ended" && (
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-40">
+              <div className="px-4 py-2 rounded-full bg-muted/80 backdrop-blur-sm border border-border">
+                <span className="text-xs font-bold text-muted-foreground">🔒 Waiting for opponent to accept</span>
+              </div>
+            </div>
+          )}
+
           {/* RIGHT ARTIST */}
           <div
             className={`rounded-2xl overflow-hidden relative transition-all duration-500 ${
@@ -664,7 +673,7 @@ const MusicBattlePlayerPage = () => {
             )}
 
             <div className={`w-full bg-muted rounded-2xl overflow-hidden ${expandedSide === "right" ? "h-[85vh]" : "aspect-[3/4]"}`}>
-              {battle.media_type === "video" && battle.opponent_media_url ? (
+              {battle.media_type === "video" && battle.opponent_media_url && battle.status === "active" ? (
                 <video
                   ref={(el) => {
                     videoRightRef.current = el;
@@ -717,7 +726,8 @@ const MusicBattlePlayerPage = () => {
         </AnimatePresence>
       </div>
 
-      {/* ── AUDIO PLAYBACK BAR (SEEKABLE) ── */}
+      {/* ── AUDIO PLAYBACK BAR (SEEKABLE) — only when active ── */}
+      {battle.status === "active" && (
       <div className="px-6 py-3" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-mono">
           <span>{fmt(currentTime)}</span>
@@ -742,6 +752,7 @@ const MusicBattlePlayerPage = () => {
           🎧 Now playing: {activeArtist === "left" ? (leftProfile.display_name || "Artist A") : (rightProfile.display_name || "Artist B")}
         </p>
       </div>
+      )}
 
       {/* ── VOTE PROGRESS BAR ── */}
       <div className="px-6 pb-2">
