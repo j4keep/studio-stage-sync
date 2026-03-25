@@ -480,8 +480,8 @@ const MusicBattlePlayerPage = () => {
         mediaElement={activeArtist === "left" ? (audioLeftRef.current || videoLeftRef.current) : (audioRightRef.current || videoRightRef.current)}
         isPlaying={isPlaying}
       />
-      {/* hidden media elements for audio battles */}
-      {battle.media_type !== "video" && (
+      {/* hidden media elements for audio battles — only load when active */}
+      {battle.media_type !== "video" && battle.status === "active" && (
         <>
           <audio ref={audioLeftRef} src={battle.challenger_media_url || ""} preload="metadata" />
           <audio ref={audioRightRef} src={battle.opponent_media_url || ""} preload="metadata" />
