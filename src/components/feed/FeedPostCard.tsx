@@ -47,7 +47,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
   const [isMuted, setIsMuted] = useState(false);
   const lastTapRef = useRef(0);
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { spawnEmoji, startLoop, stopLoop, FloatingLayer } = FloatingEmojis({ postId: post.id });
+  const { spawnEmoji, FloatingLayer } = FloatingEmojis({ postId: post.id });
 
   useEffect(() => {
     setLiked(!!post.isLiked);
