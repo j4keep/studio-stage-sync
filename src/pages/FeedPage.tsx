@@ -114,7 +114,7 @@ const FeedPage = () => {
               className="h-screen w-full snap-start snap-always relative"
               style={{ scrollSnapAlign: "start" }}
             >
-              <FeedPostCard post={item} currentUserId={user?.id} fullScreen />
+              <FeedPostCard post={item} currentUserId={user?.id} />
             </div>
           ))
         )}
