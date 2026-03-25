@@ -1,10 +1,16 @@
-import { Heart, MessageCircle, Eye } from "lucide-react";
+import { Heart, MessageCircle, Eye, Bookmark, Forward } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useRef, useCallback } from "react";
+import { toast } from "sonner";
 
 interface Props {
   post: any;
 }
+
+const formatCount = (value: number) => {
+  if (value >= 1000) return `${(value / 1000).toFixed(1).replace(/\.0$/, "")}K`;
+  return value.toString();
+};
 
 const ProfilePostCard = ({ post }: Props) => {
   const profile = post.profile || { display_name: "Artist", avatar_url: null };
@@ -12,13 +18,22 @@ const ProfilePostCard = ({ post }: Props) => {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const handlePlay = useCallback(() => {
-    // Pause all other videos on the page before playing this one
     document.querySelectorAll("video").forEach((v) => {
       if (v !== videoRef.current && !v.paused) {
         v.pause();
       }
     });
   }, []);
+
+  const handleShare = () => {
+    const shareUrl = `${window.location.origin}/feed`;
+    if (navigator.share) {
+      navigator.share({ title: post.caption || "Check this out!", url: shareUrl }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(shareUrl);
+      toast.success("Link copied!");
+    }
+  };
 
   return (
     <article className="overflow-hidden rounded-2xl border border-border bg-card">
@@ -67,16 +82,24 @@ const ProfilePostCard = ({ post }: Props) => {
         <div className="flex items-center gap-4 text-muted-foreground">
           <div className="flex items-center gap-1">
             <Heart className="w-4 h-4" />
-            <span className="text-xs">{post.likes_count || 0}</span>
+            <span className="text-xs">{formatCount(post.likes_count || 0)}</span>
           </div>
           <div className="flex items-center gap-1">
             <MessageCircle className="w-4 h-4" />
             <span className="text-xs">{post.comments_count || 0}</span>
           </div>
           <div className="flex items-center gap-1">
-            <Eye className="w-4 h-4" />
-            <span className="text-xs">{post.views || 0}</span>
+            <Bookmark className="w-4 h-4" />
           </div>
+          <button onClick={handleShare} className="flex items-center gap-1">
+            <Forward className="w-4 h-4" />
+          </button>
+          {post.media_type === "video" && (
+            <div className="flex items-center gap-1">
+              <Eye className="w-4 h-4" />
+              <span className="text-xs">{formatCount(post.views || 0)}</span>
+            </div>
+          )}
         </div>
       </div>
     </article>
