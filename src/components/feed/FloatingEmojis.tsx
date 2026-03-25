@@ -41,7 +41,7 @@ const FloatingEmojis = ({ postId }: FloatingEmojisProps) => {
             animate={{ opacity: 0, y: -350, scale: 1.8 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 4.5, ease: "easeOut" }}
-            className="absolute bottom-16 pointer-events-none z-50"
+            className="absolute bottom-16 pointer-events-none z-[60]"
             style={{ left: `${e.x}%` }}
           >
             <motion.div
@@ -85,11 +85,11 @@ export const EmojiBar = ({
         user_id: currentUserId,
         emoji_id: item.id,
       });
-      // Also register as a comment so it appears in comment section
+      // Register as a comment using the :id: format so it renders as an emoji image
       await (supabase as any).from("post_comments").insert({
         post_id: postId,
         user_id: currentUserId,
-        content: item.label || item.id,
+        content: `:${item.id}:`,
       });
     }
     onSent?.();
