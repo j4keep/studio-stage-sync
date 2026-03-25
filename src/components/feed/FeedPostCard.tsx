@@ -64,7 +64,7 @@ const FeedPostCard = ({ post, currentUserId, fullScreen }: Props) => {
     }
   };
 
-  const likeMutation = useMutation({
+  const likeMutation = useMutation<void, Error, void>({
     mutationFn: async () => {
       if (!currentUserId) throw new Error("Not authenticated");
       const { data: existingLike } = await (supabase as any)
