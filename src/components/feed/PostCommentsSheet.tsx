@@ -26,6 +26,28 @@ const PostCommentsSheet = ({ postId, open, onClose, currentUserId, onEmojiReacti
   const [text, setText] = useState("");
 
   const renderContent = (content: string) => {
+    // Check if the entire content is a plain emoji label (legacy format)
+    if (EMOJI_LABEL_MAP[content]) {
+      return (
+        <img
+          src={EMOJI_LABEL_MAP[content]}
+          alt={content}
+          className="inline-block w-6 h-6 object-contain align-middle"
+        />
+      );
+    }
+    // Check if it's the :id: format
+    const exactMatch = content.match(/^:([a-z0-9]+):$/);
+    if (exactMatch && EMOJI_MAP[exactMatch[1]]) {
+      return (
+        <img
+          src={EMOJI_MAP[exactMatch[1]]}
+          alt={exactMatch[1]}
+          className="inline-block w-6 h-6 object-contain align-middle"
+        />
+      );
+    }
+    // Mixed content with inline :emoji: codes
     const parts = content.split(/(:[a-z0-9]+:)/g);
     return parts.map((part, index) => {
       const match = part.match(/^:([a-z0-9]+):$/);
