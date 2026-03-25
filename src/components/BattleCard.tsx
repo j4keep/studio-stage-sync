@@ -428,8 +428,8 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
         </div>
       </button>
 
-      {/* Seekable audio progress bar */}
-      {isActive && battle.media_type === "audio" && (
+      {/* Seekable audio progress bar — only when active */}
+      {isActive && battle.media_type === "audio" && !isExpired && (
         <div className="px-4 py-2 space-y-1" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()}>
           <div className="flex items-center gap-2">
             <button onClick={togglePlay} className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
