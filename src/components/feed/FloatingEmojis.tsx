@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FEED_EMOJI_SET, EMOJI_MAP, type EmojiCharacter } from "@/lib/emoji-characters";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,9 +17,6 @@ interface FloatingEmojisProps {
 const FloatingEmojis = ({ postId }: FloatingEmojisProps) => {
   const [emojis, setEmojis] = useState<FloatingEmoji[]>([]);
   const counterRef = useRef(0);
-  const loopRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const reactionsRef = useRef<string[]>([]);
-  const loopIndexRef = useRef(0);
 
   const spawnEmoji = useCallback((emojiId: string) => {
     const src = EMOJI_MAP[emojiId];
@@ -29,85 +26,21 @@ const FloatingEmojis = ({ postId }: FloatingEmojisProps) => {
     setEmojis((prev) => [...prev, { id, emojiId, src, x }]);
     setTimeout(() => {
       setEmojis((prev) => prev.filter((e) => e.id !== id));
-    }, 2500);
+    }, 5000);
   }, []);
-
-  // Start continuous loop of stored reactions
-  const startLoop = useCallback((reactions: string[]) => {
-    if (loopRef.current) clearInterval(loopRef.current);
-    if (reactions.length === 0) return;
-    reactionsRef.current = reactions;
-    loopIndexRef.current = 0;
-    loopRef.current = setInterval(() => {
-      const r = reactionsRef.current;
-      if (r.length === 0) return;
-      const emojiId = r[loopIndexRef.current % r.length];
-      loopIndexRef.current++;
-      spawnEmoji(emojiId);
-    }, 800);
-  }, [spawnEmoji]);
-
-  const stopLoop = useCallback(() => {
-    if (loopRef.current) {
-      clearInterval(loopRef.current);
-      loopRef.current = null;
-    }
-  }, []);
-
-  // Load stored reactions for this post
-  useEffect(() => {
-    if (!postId) return;
-    const loadReactions = async () => {
-      const { data } = await (supabase as any)
-        .from("post_reactions")
-        .select("emoji_id")
-        .eq("post_id", postId);
-      if (data && data.length > 0) {
-        reactionsRef.current = data.map((r: any) => r.emoji_id);
-      }
-    };
-    loadReactions();
-
-    // Listen for new reactions in realtime
-    const channel = supabase
-      .channel(`post-reactions-${postId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "post_reactions",
-          filter: `post_id=eq.${postId}`,
-        },
-        (payload: any) => {
-          reactionsRef.current = [...reactionsRef.current, payload.new.emoji_id];
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [postId]);
-
-  useEffect(() => {
-    return () => stopLoop();
-  }, [stopLoop]);
 
   return {
     emojis,
     spawnEmoji,
-    startLoop,
-    stopLoop,
     FloatingLayer: () => (
       <AnimatePresence>
         {emojis.map((e) => (
           <motion.div
             key={e.id}
             initial={{ opacity: 1, y: 0, scale: 0.3 }}
-            animate={{ opacity: 0, y: -280, scale: 1.2 }}
+            animate={{ opacity: 0, y: -350, scale: 1.2 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 2.2, ease: "easeOut" }}
+            transition={{ duration: 4.5, ease: "easeOut" }}
             className="absolute bottom-16 pointer-events-none z-50"
             style={{ left: `${e.x}%` }}
           >
@@ -146,7 +79,6 @@ export const EmojiBar = ({
 }) => {
   const handleEmoji = async (item: EmojiCharacter) => {
     onEmoji(item.id);
-    // Store reaction in DB
     if (postId && currentUserId) {
       await (supabase as any).from("post_reactions").insert({
         post_id: postId,
@@ -158,7 +90,7 @@ export const EmojiBar = ({
   };
 
   return (
-    <div className="flex items-center gap-1 overflow-x-auto py-2 px-1 no-scrollbar">
+    <div className="flex items-center gap-1 overflow-x-auto py-1 px-1 no-scrollbar">
       {FEED_EMOJI_SET.map((item) => (
         <button
           key={item.id}

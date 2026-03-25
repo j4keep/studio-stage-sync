@@ -47,7 +47,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
   const [isMuted, setIsMuted] = useState(false);
   const lastTapRef = useRef(0);
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { spawnEmoji, startLoop, stopLoop, FloatingLayer } = FloatingEmojis({ postId: post.id });
+  const { spawnEmoji, FloatingLayer } = FloatingEmojis({ postId: post.id });
 
   useEffect(() => {
     setLiked(!!post.isLiked);
@@ -100,26 +100,6 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
       .then(({ data }: any) => setIsFollowing(!!data));
   }, [user, post.user_id]);
 
-  useEffect(() => {
-    if (!isActive) {
-      stopLoop();
-      return;
-    }
-
-    const loadAndLoop = async () => {
-      const { data } = await (supabase as any)
-        .from("post_reactions")
-        .select("emoji_id")
-        .eq("post_id", post.id);
-
-      if (data?.length) {
-        startLoop(data.map((reaction: any) => reaction.emoji_id));
-      }
-    };
-
-    loadAndLoop();
-    return () => stopLoop();
-  }, [isActive, post.id, startLoop, stopLoop]);
 
   const toggleFollow = async () => {
     if (!user) return toast.error("Sign in to follow");
@@ -361,12 +341,12 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
             )}
           </div>
 
-          <div className="z-50 mb-2">
-            <EmojiBar onEmoji={handleEmojiReaction} postId={post.id} currentUserId={currentUserId} />
-          </div>
-
           {post.caption && <p className="text-[13px] leading-snug text-white/90 drop-shadow line-clamp-2">{post.caption}</p>}
           <span className="mt-1 block text-[10px] text-white/50">{timeAgo} ago</span>
+
+          <div className="z-50 mt-1.5">
+            <EmojiBar onEmoji={handleEmojiReaction} postId={post.id} currentUserId={currentUserId} />
+          </div>
           {post.media_type === "video" && !isPlaying && (
             <span className="mt-1 block text-[10px] text-white/70">Paused</span>
           )}
