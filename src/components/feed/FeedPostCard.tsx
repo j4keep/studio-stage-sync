@@ -20,7 +20,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import PostCommentsSheet from "./PostCommentsSheet";
 import CreatePostSheet from "./CreatePostSheet";
-import FloatingEmojis, { EmojiBar } from "./FloatingEmojis";
+import useFloatingEmojis, { EmojiBar, FloatingEmojiLayer } from "./FloatingEmojis";
 
 
 interface Props {
@@ -52,7 +52,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
   const progressRef = useRef<HTMLDivElement>(null);
   const lastTapRef = useRef(0);
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { spawnEmoji, FloatingLayer } = FloatingEmojis({ postId: post.id });
+  const { emojis, spawnEmoji } = useFloatingEmojis();
 
   useEffect(() => {
     setLiked(!!post.isLiked);
@@ -404,7 +404,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
         </div>
 
         <div className="absolute left-3 right-20 bottom-8 z-40">
-          <button onClick={() => navigate(`/artist/${post.user_id}`)} className="relative z-50 mb-1.5">
+          <div className="relative z-50 mb-1.5">
             <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-white/40">
               {profile.avatar_url ? (
                 <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
@@ -425,7 +425,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
                 <span className="text-[10px] font-bold text-white">+</span>
               </button>
             )}
-          </button>
+          </div>
           <div className="mb-2 flex items-center gap-2">
             <button
               onClick={() => navigate(`/artist/${post.user_id}`)}
@@ -522,7 +522,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
         )}
       </div>
 
-      <FloatingLayer />
+      <FloatingEmojiLayer emojis={emojis} />
 
       <PostCommentsSheet
         postId={post.id}
