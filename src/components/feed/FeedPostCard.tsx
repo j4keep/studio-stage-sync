@@ -45,6 +45,11 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [showHeart, setShowHeart] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [videoProgress, setVideoProgress] = useState(0);
+  const [videoDuration, setVideoDuration] = useState(0);
+  const [isScrubbing, setIsScrubbing] = useState(false);
+  const [scrubTime, setScrubTime] = useState(0);
+  const progressRef = useRef<HTMLDivElement>(null);
   const lastTapRef = useRef(0);
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { spawnEmoji, FloatingLayer } = FloatingEmojis({ postId: post.id });
