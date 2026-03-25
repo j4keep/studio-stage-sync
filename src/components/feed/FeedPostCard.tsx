@@ -21,7 +21,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import PostCommentsSheet from "./PostCommentsSheet";
 import CreatePostSheet from "./CreatePostSheet";
 import FloatingEmojis, { EmojiBar } from "./FloatingEmojis";
-import FeedLiveComments from "./FeedLiveComments";
+
 
 interface Props {
   post: any;
