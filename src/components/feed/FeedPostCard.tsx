@@ -300,7 +300,29 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
           </div>
         </div>
 
-        <div className="absolute left-3 right-20 bottom-20 z-40">
+        <div className="absolute left-3 right-20 bottom-8 z-40">
+          <button onClick={() => navigate(`/artist/${post.user_id}`)} className="relative z-50 mb-1.5">
+            <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-white/40">
+              {profile.avatar_url ? (
+                <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-primary/30 flex items-center justify-center text-sm font-bold text-white">
+                  {(profile.display_name || "A")[0].toUpperCase()}
+                </div>
+              )}
+            </div>
+            {user?.id !== post.user_id && !isFollowing && (
+              <button
+                onClick={(event) => {
+                  event.stopPropagation();
+                  toggleFollow();
+                }}
+                className="absolute -bottom-1.5 left-1/2 flex h-5 w-5 -translate-x-1/2 items-center justify-center rounded-full bg-red-500"
+              >
+                <span className="text-[10px] font-bold text-white">+</span>
+              </button>
+            )}
+          </button>
           <div className="mb-2 flex items-center gap-2">
             <button
               onClick={() => navigate(`/artist/${post.user_id}`)}
