@@ -330,7 +330,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
 
   return (
     <>
-      <div className="absolute inset-0 bg-black">
+      <div className="absolute inset-0 bg-black overflow-visible">
         {post.media_url &&
           (post.media_type === "video" ? (
             <video
