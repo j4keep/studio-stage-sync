@@ -316,8 +316,8 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
         <div className="fixed inset-0 bg-black/80 -z-10" onClick={(e) => { e.stopPropagation(); setIsFullscreen(false); }} />
       )}
 
-      {/* Hidden audio elements */}
-      {battle.media_type !== "video" && (
+      {/* Hidden audio elements — only load when battle is active */}
+      {battle.media_type !== "video" && isActive && (
         <>
           <audio ref={audioLeftRef} src={battle.challenger_media_url || ""} preload="metadata" />
           <audio ref={audioRightRef} src={battle.opponent_media_url || ""} preload="metadata" />
