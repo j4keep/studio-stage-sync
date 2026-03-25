@@ -9,6 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import PostCommentsSheet from "./PostCommentsSheet";
 import CreatePostSheet from "./CreatePostSheet";
+import FloatingEmojis from "./FloatingEmojis";
 
 interface Props {
   post: any;
@@ -33,13 +34,17 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
   const lastTapRef = useRef(0);
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Floating emojis hook
+  const { emojis, spawnEmoji, startLoop, stopLoop, FloatingLayer } = FloatingEmojis({ postId: post.id });
+
   useEffect(() => {
     setLiked(!!post.isLiked);
     setLikesCount(post.likes_count || 0);
   }, [post.id, post.isLiked, post.likes_count]);
 
+  // Count view
   useEffect(() => {
-    if (!viewCounted) {
+    if (!viewCounted && post.id) {
       setViewCounted(true);
       incrementPostViews(post.id);
     }
@@ -51,6 +56,22 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
     (supabase as any).from("follows").select("id").eq("follower_id", user.id).eq("following_id", post.user_id).maybeSingle()
       .then(({ data }: any) => setIsFollowing(!!data));
   }, [user, post.user_id]);
+
+  // Start emoji loop when post is visible
+  useEffect(() => {
+    // Load existing reactions and start loop
+    const loadAndLoop = async () => {
+      const { data } = await (supabase as any)
+        .from("post_reactions")
+        .select("emoji_id")
+        .eq("post_id", post.id);
+      if (data && data.length > 0) {
+        startLoop(data.map((r: any) => r.emoji_id));
+      }
+    };
+    loadAndLoop();
+    return () => stopLoop();
+  }, [post.id, startLoop, stopLoop]);
 
   const toggleFollow = async () => {
     if (!user) return toast.error("Sign in to follow");
@@ -146,6 +167,10 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
     }
   };
 
+  const handleEmojiReaction = (emojiId: string) => {
+    spawnEmoji(emojiId);
+  };
+
   const formatCount = (n: number) => {
     if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
     return n.toString();
@@ -165,7 +190,6 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
               className="absolute inset-0 w-full h-full object-cover"
               loop
               playsInline
-              muted
               autoPlay
             />
           ) : (
@@ -181,6 +205,9 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
         {/* Gradient overlays */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none" />
 
+        {/* Floating emojis layer */}
+        <FloatingLayer />
+
         {/* Tap area for play/pause & double-tap like */}
         <button
           onClick={handleContentTap}
@@ -195,7 +222,7 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
           </div>
         )}
 
-        {/* Right-side action icons (TikTok style) */}
+        {/* Right-side action icons */}
         <div className="absolute right-3 bottom-44 flex flex-col items-center gap-5 z-40">
           {/* Profile avatar */}
           <button
@@ -243,10 +270,10 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
             <Forward className="w-7 h-7 text-white drop-shadow-lg" />
           </button>
 
-          {/* Views */}
+          {/* Views - white and visible */}
           <div className="flex flex-col items-center gap-0.5">
-            <Eye className="w-5 h-5 text-white/70" />
-            <span className="text-[10px] text-white/70">{post.views || 0}</span>
+            <Eye className="w-6 h-6 text-white drop-shadow-lg" />
+            <span className="text-[11px] font-semibold text-white drop-shadow">{formatCount(post.views || 0)}</span>
           </div>
         </div>
 
@@ -310,7 +337,12 @@ const FeedPostCard = ({ post, currentUserId }: Props) => {
         )}
       </div>
 
-      <PostCommentsSheet postId={post.id} open={showComments} onClose={() => setShowComments(false)} />
+      <PostCommentsSheet
+        postId={post.id}
+        open={showComments}
+        onClose={() => setShowComments(false)}
+        onEmojiReaction={handleEmojiReaction}
+      />
       <CreatePostSheet open={showEdit} onClose={() => setShowEdit(false)} postToEdit={post} />
     </>
   );

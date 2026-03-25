@@ -1,22 +1,26 @@
-import { useState } from "react";
-import { X, Send } from "lucide-react";
+import { useState, useRef } from "react";
+import { X, Send, Smile } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+import { EMOJI_CHARACTERS, EMOJI_MAP } from "@/lib/emoji-characters";
 
 interface Props {
   postId: string;
   open: boolean;
   onClose: () => void;
+  onEmojiReaction?: (emojiId: string) => void;
 }
 
-const PostCommentsSheet = ({ postId, open, onClose }: Props) => {
+const PostCommentsSheet = ({ postId, open, onClose, onEmojiReaction }: Props) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [text, setText] = useState("");
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const { data: comments = [] } = useQuery({
     queryKey: ["post-comments", postId],
@@ -35,8 +39,25 @@ const PostCommentsSheet = ({ postId, open, onClose }: Props) => {
         .select("user_id, display_name, avatar_url")
         .in("user_id", userIds);
 
+      // Also fetch reactions for each comment's user on this post
+      const { data: reactions } = await (supabase as any)
+        .from("post_reactions")
+        .select("user_id, emoji_id")
+        .eq("post_id", postId);
+
       const map = new Map((profiles || []).map((p: any) => [p.user_id, p]));
-      return data.map((c: any) => ({ ...c, profile: map.get(c.user_id) || { display_name: "User" } }));
+      const reactionsByUser = new Map<string, string[]>();
+      (reactions || []).forEach((r: any) => {
+        const existing = reactionsByUser.get(r.user_id) || [];
+        existing.push(r.emoji_id);
+        reactionsByUser.set(r.user_id, existing);
+      });
+
+      return data.map((c: any) => ({
+        ...c,
+        profile: map.get(c.user_id) || { display_name: "User" },
+        userReactions: reactionsByUser.get(c.user_id) || [],
+      }));
     },
     enabled: open,
   });
@@ -53,12 +74,50 @@ const PostCommentsSheet = ({ postId, open, onClose }: Props) => {
     },
     onSuccess: () => {
       setText("");
+      setShowEmojiPicker(false);
       queryClient.invalidateQueries({ queryKey: ["post-comments", postId] });
       queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
       queryClient.invalidateQueries({ queryKey: ["profile-posts"] });
     },
     onError: (e: any) => toast.error(e?.message || "Failed to comment"),
   });
+
+  const handleEmojiSelect = async (emojiId: string) => {
+    // Insert as text in the input
+    const emojiLabel = EMOJI_CHARACTERS.find(e => e.id === emojiId)?.label || emojiId;
+    setText((prev) => prev + ` :${emojiId}: `);
+    setShowEmojiPicker(false);
+    inputRef.current?.focus();
+
+    // Also store as a reaction and trigger floating emoji
+    if (user) {
+      await (supabase as any).from("post_reactions").insert({
+        post_id: postId,
+        user_id: user.id,
+        emoji_id: emojiId,
+      });
+      onEmojiReaction?.(emojiId);
+    }
+  };
+
+  // Render comment content with custom emoji images inline
+  const renderContent = (content: string) => {
+    const parts = content.split(/(:[a-z0-9]+:)/g);
+    return parts.map((part, i) => {
+      const match = part.match(/^:([a-z0-9]+):$/);
+      if (match && EMOJI_MAP[match[1]]) {
+        return (
+          <img
+            key={i}
+            src={EMOJI_MAP[match[1]]}
+            alt={match[1]}
+            className="inline-block w-5 h-5 object-contain align-middle mx-0.5"
+          />
+        );
+      }
+      return <span key={i}>{part}</span>;
+    });
+  };
 
   if (!open) return null;
 
@@ -73,7 +132,7 @@ const PostCommentsSheet = ({ postId, open, onClose }: Props) => {
         className="fixed bottom-0 left-0 right-0 z-[80] mx-auto max-w-lg rounded-t-2xl bg-background border-t border-border max-h-[70vh] flex flex-col"
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <h3 className="text-sm font-bold text-foreground">Comments</h3>
+          <h3 className="text-sm font-bold text-foreground">Comments ({comments.length})</h3>
           <button onClick={onClose}><X className="w-5 h-5 text-muted-foreground" /></button>
         </div>
 
@@ -92,10 +151,22 @@ const PostCommentsSheet = ({ postId, open, onClose }: Props) => {
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[11px]">
-                  <span className="font-semibold text-foreground">{c.profile.display_name || "User"}</span>
-                  <span className="text-muted-foreground ml-1">{c.content}</span>
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-[11px] flex-1">
+                    <span className="font-semibold text-foreground">{c.profile.display_name || "User"}</span>
+                    <span className="text-muted-foreground ml-1">{renderContent(c.content)}</span>
+                  </p>
+                  {/* Show emoji reactions this user sent */}
+                  {c.userReactions.length > 0 && (
+                    <div className="flex items-center gap-0.5 flex-shrink-0">
+                      {c.userReactions.slice(0, 3).map((eid: string, idx: number) => (
+                        EMOJI_MAP[eid] && (
+                          <img key={idx} src={EMOJI_MAP[eid]} alt="" className="w-4 h-4 object-contain" />
+                        )
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <p className="text-[9px] text-muted-foreground mt-0.5">
                   {formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}
                 </p>
@@ -104,9 +175,40 @@ const PostCommentsSheet = ({ postId, open, onClose }: Props) => {
           ))}
         </div>
 
+        {/* Emoji picker */}
+        <AnimatePresence>
+          {showEmojiPicker && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="border-t border-border overflow-hidden"
+            >
+              <div className="grid grid-cols-8 gap-1 p-2 max-h-[180px] overflow-y-auto">
+                {EMOJI_CHARACTERS.map((emoji) => (
+                  <button
+                    key={emoji.id}
+                    onClick={() => handleEmojiSelect(emoji.id)}
+                    className="w-9 h-9 rounded-lg bg-card border border-border flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
+                  >
+                    <img src={emoji.src} alt={emoji.label} className="w-6 h-6 object-contain" />
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Input */}
         <div className="border-t border-border px-4 py-2 flex items-center gap-2 pb-safe">
+          <button
+            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <Smile className="w-5 h-5" />
+          </button>
           <input
+            ref={inputRef}
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="Add a comment..."
