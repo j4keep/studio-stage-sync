@@ -10,6 +10,8 @@ import {
   Edit3,
   Volume2,
   VolumeX,
+  Play,
+  Pause,
 } from "lucide-react";
 import { incrementPostViews } from "@/hooks/use-likes";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -376,6 +378,33 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
           </div>
         )}
 
+        {post.media_type === "video" && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (videoRef.current) {
+                if (videoRef.current.paused) {
+                  videoRef.current.play();
+                  setIsPlaying(true);
+                  toggleNav(true);
+                } else {
+                  videoRef.current.pause();
+                  setIsPlaying(false);
+                  toggleNav(false);
+                }
+              }
+            }}
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-30 flex h-16 w-16 items-center justify-center rounded-full bg-primary/80 backdrop-blur-md shadow-lg transition-all active:scale-90"
+            aria-label={isPlaying ? "Pause video" : "Play video"}
+          >
+            {isPlaying ? (
+              <Pause className="w-7 h-7 text-primary-foreground fill-primary-foreground" />
+            ) : (
+              <Play className="w-7 h-7 text-primary-foreground fill-primary-foreground ml-1" />
+            )}
+          </button>
+        )}
+
         <div className="absolute right-3 bottom-8 z-40 flex flex-col items-center gap-5">
           <button onClick={() => likeMutation.mutate()} className="flex flex-col items-center gap-0.5 z-50">
             <Heart className={`w-7 h-7 drop-shadow-lg ${liked ? "fill-red-500 text-red-500" : "text-white"}`} />
@@ -480,9 +509,6 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
             </div>
           )}
 
-          {post.media_type === "video" && !isPlaying && (
-            <span className="mt-1 block text-[10px] text-white/70">Paused</span>
-          )}
         </div>
 
         {currentUserId === post.user_id && (
