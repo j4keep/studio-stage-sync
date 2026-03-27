@@ -282,9 +282,8 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
     window.dispatchEvent(new CustomEvent("feed-nav-toggle", { detail: { hidden } }));
   }, []);
 
-  const toggleVideoPlayback = useCallback(async () => {
+  const doToggleVideo = useCallback(async () => {
     if (!videoRef.current) return;
-
     if (videoRef.current.paused) {
       try {
         await videoRef.current.play();
@@ -292,11 +291,10 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
       } catch {
         setIsPlaying(false);
       }
-      return;
+    } else {
+      videoRef.current.pause();
+      toggleNav(false);
     }
-
-    videoRef.current.pause();
-    toggleNav(false);
   }, [toggleNav]);
 
   const handleContentTap = useCallback(() => {
@@ -315,12 +313,12 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
     lastTapRef.current = now;
     tapTimerRef.current = setTimeout(() => {
       if (post.media_type === "video" && videoRef.current) {
-        void toggleVideoPlayback();
+        void doToggleVideo();
       } else if (post.media_type === "image" || post.media_url) {
         toggleNav(!navHidden);
       }
     }, doubleTapDelay);
-  }, [liked, likeMutation, post.media_type, post.media_url, navHidden, toggleNav, toggleVideoPlayback]);
+  }, [liked, likeMutation, post.media_type, post.media_url, navHidden, toggleNav, doToggleVideo]);
 
   const handleShare = async () => {
     const shareUrl = `${window.location.origin}/feed`;
@@ -400,7 +398,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              void toggleVideoPlayback();
+              void doToggleVideo();
             }}
             className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-30 flex h-16 w-16 items-center justify-center rounded-full bg-primary/80 backdrop-blur-md shadow-lg transition-all active:scale-90"
             aria-label={isPlaying ? "Pause video" : "Play video"}
