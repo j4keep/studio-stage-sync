@@ -7,10 +7,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import wheuatLogo from "@/assets/wheuat-logo.png";
 
-type AuthView = "splash" | "welcome" | "login" | "signup" | "forgot";
+type AuthView = "welcome" | "login" | "signup" | "forgot";
 
 const AuthPage = () => {
-  const [view, setView] = useState<AuthView>("splash");
+  const [view, setView] = useState<AuthView>("welcome");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -21,27 +21,9 @@ const AuthPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Redirect if already logged in
   useEffect(() => {
     if (user) navigate("/", { replace: true });
   }, [user, navigate]);
-
-  // Splash animation → welcome
-  useEffect(() => {
-    if (view === "splash") {
-      const timer = setTimeout(() => setView("welcome"), 2400);
-      return () => clearTimeout(timer);
-    }
-  }, [view]);
-
-  // Play pop sound on splash
-  useEffect(() => {
-    if (view === "splash") {
-      const audio = new Audio("data:audio/wav;base64,UklGRl4AAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YToAAAA/P0BAQUJDREVGRkdHR0dHRkZFRENCQUA/Pj08Ozo5ODc2NTQzMjEwLy4tLCsqKSgnJiUkIyIhIA==");
-      audio.volume = 0.3;
-      audio.play().catch(() => {});
-    }
-  }, [view]);
 
   const handleLogin = async () => {
     if (!email || !password) return;
@@ -96,18 +78,6 @@ const AuthPage = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 max-w-lg mx-auto relative overflow-hidden">
-      {/* SPLASH */}
-      {view === "splash" && (
-        <div className="flex flex-col items-center justify-center">
-          <img
-            src={wheuatLogo}
-            alt="WHEUAT"
-            className="w-40 h-40 object-contain"
-          />
-          <div className="w-40 h-1 rounded-full gradient-primary mt-6" />
-        </div>
-      )}
-
       {/* WELCOME */}
       {view === "welcome" && (
         <div className="w-full flex flex-col items-center">
