@@ -406,7 +406,9 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
               e.stopPropagation();
               void toggleVideoPlayback();
             }}
-            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-30 flex h-16 w-16 items-center justify-center rounded-full bg-primary/80 backdrop-blur-md shadow-lg transition-all active:scale-90"
+            className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-30 flex h-16 w-16 items-center justify-center rounded-full bg-primary/80 backdrop-blur-md shadow-lg transition-opacity duration-500 active:scale-90 ${
+              isPlaying ? "opacity-0 pointer-events-none" : "opacity-100"
+            }`}
             aria-label={isPlaying ? "Pause video" : "Play video"}
           >
             {isPlaying ? (
