@@ -398,7 +398,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              void toggleVideoPlayback();
+              void doToggleVideo();
             }}
             className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-30 flex h-16 w-16 items-center justify-center rounded-full bg-primary/80 backdrop-blur-md shadow-lg transition-all active:scale-90"
             aria-label={isPlaying ? "Pause video" : "Play video"}
