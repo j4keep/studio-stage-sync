@@ -67,14 +67,10 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
   }, [isMuted]);
 
   useEffect(() => {
-    if (post.media_type !== "video" || !videoRef.current) return;
+    if (post.media_type !== "video" || !videoRef.current || isActive) return;
 
-    if (isActive) {
-      videoRef.current.play().catch(() => setIsPlaying(false));
-    } else {
-      videoRef.current.pause();
-      setIsPlaying(false);
-    }
+    videoRef.current.pause();
+    setIsPlaying(false);
   }, [isActive, post.media_type]);
 
   useEffect(() => {
