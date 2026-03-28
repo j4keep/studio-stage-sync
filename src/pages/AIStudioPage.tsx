@@ -9,7 +9,7 @@ import { useProGate } from "@/hooks/use-pro-gate";
 import ProGateModal from "@/components/ProGateModal";
 
 const tabs = [
-  { id: "music", label: "AI Music", icon: Music },
+  { id: "music", label: "W.Studio", icon: Music },
   { id: "cover", label: "AI Cover", icon: AudioLines },
   { id: "video", label: "AI Video", icon: Video },
   { id: "reverse", label: "Reverse", icon: Rewind },
