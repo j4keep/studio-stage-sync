@@ -114,6 +114,8 @@ const RecordingStudio = () => {
   const [activeEffect, setActiveEffect] = useState<string>("clean");
   const [vocalGain, setVocalGain] = useState(80);
   const [beatGain, setBeatGain] = useState(80);
+  const [beatPan, setBeatPan] = useState(0);
+  const [vocalPan, setVocalPan] = useState(0);
 
   const [exportTitle, setExportTitle] = useState("");
   const [exportArtist, setExportArtist] = useState("");
