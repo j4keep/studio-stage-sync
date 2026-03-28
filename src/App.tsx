@@ -46,6 +46,7 @@ import MyBoostsPage from "./pages/MyBoostsPage";
 import HelpDeskPage from "./pages/HelpDeskPage";
 import AdminTicketsPage from "./pages/AdminTicketsPage";
 import AskJhiPage from "./pages/AskJhiPage";
+import AIStudioPage from "./pages/AIStudioPage";
 import FeedPage from "./pages/FeedPage";
 
 import TermsAgreementGate from "./components/TermsAgreementGate";
