@@ -192,52 +192,92 @@ export const useRecordingEngine = () => {
     }
     if (playbackTimerRef.current) clearInterval(playbackTimerRef.current);
 
-    const audio = new Audio(audioUrl);
-    audio.volume = vocalVolume / 100;
-    playbackAudioRef.current = audio;
+    const hasVocal = audioUrl && audioUrl.length > 0;
+    const hasBeat = beatUrl && beatUrl.length > 0;
 
-    // Seek-to-end workaround for WebM duration
-    audio.addEventListener("loadedmetadata", () => {
-      if (!isFinite(audio.duration) || audio.duration === Infinity) {
-        audio.currentTime = 1e10;
-        audio.addEventListener("timeupdate", function seekBack() {
-          audio.removeEventListener("timeupdate", seekBack);
-          audio.currentTime = 0;
+    // Primary track for time tracking
+    let primaryAudio: HTMLAudioElement | null = null;
+
+    if (hasVocal) {
+      const audio = new Audio(audioUrl);
+      audio.volume = vocalVolume / 100;
+      playbackAudioRef.current = audio;
+      primaryAudio = audio;
+
+      // Seek-to-end workaround for WebM duration
+      audio.addEventListener("loadedmetadata", () => {
+        if (!isFinite(audio.duration) || audio.duration === Infinity) {
+          audio.currentTime = 1e10;
+          audio.addEventListener("timeupdate", function seekBack() {
+            audio.removeEventListener("timeupdate", seekBack);
+            audio.currentTime = 0;
+            setPlaybackDuration(Math.round(audio.duration));
+            audio.play();
+            // Start beat in sync
+            if (beatAudioRef.current) beatAudioRef.current.play().catch(() => {});
+          });
+        } else {
           setPlaybackDuration(Math.round(audio.duration));
           audio.play();
-        });
-      } else {
-        setPlaybackDuration(Math.round(audio.duration));
-        audio.play();
-      }
-    });
+          // Start beat in sync
+          if (beatAudioRef.current) beatAudioRef.current.play().catch(() => {});
+        }
+      });
 
-    audio.load();
+      audio.load();
 
-    if (beatUrl) {
+      audio.onended = () => {
+        setIsPlaying(false);
+        if (playbackTimerRef.current) clearInterval(playbackTimerRef.current);
+        if (beatAudioRef.current) {
+          beatAudioRef.current.pause();
+          beatAudioRef.current = null;
+        }
+      };
+    }
+
+    if (hasBeat) {
       const beat = new Audio(beatUrl);
       beat.volume = beatVolume / 100;
       beatAudioRef.current = beat;
-      beat.play().catch(() => {});
+
+      // If no vocal, beat is the primary audio
+      if (!hasVocal) {
+        primaryAudio = beat;
+
+        beat.addEventListener("loadedmetadata", () => {
+          if (!isFinite(beat.duration) || beat.duration === Infinity) {
+            beat.currentTime = 1e10;
+            beat.addEventListener("timeupdate", function seekBack() {
+              beat.removeEventListener("timeupdate", seekBack);
+              beat.currentTime = 0;
+              setPlaybackDuration(Math.round(beat.duration));
+              beat.play();
+            });
+          } else {
+            setPlaybackDuration(Math.round(beat.duration));
+            beat.play();
+          }
+        });
+
+        beat.load();
+
+        beat.onended = () => {
+          setIsPlaying(false);
+          if (playbackTimerRef.current) clearInterval(playbackTimerRef.current);
+        };
+      }
     }
 
     setIsPlaying(true);
     setPlaybackTime(0);
 
+    const trackingAudio = primaryAudio;
     playbackTimerRef.current = setInterval(() => {
-      if (audio) {
-        setPlaybackTime(Math.round(audio.currentTime));
+      if (trackingAudio) {
+        setPlaybackTime(Math.round(trackingAudio.currentTime));
       }
     }, 250);
-
-    audio.onended = () => {
-      setIsPlaying(false);
-      if (playbackTimerRef.current) clearInterval(playbackTimerRef.current);
-      if (beatAudioRef.current) {
-        beatAudioRef.current.pause();
-        beatAudioRef.current = null;
-      }
-    };
   }, []);
 
   const stopPlayback = useCallback(() => {

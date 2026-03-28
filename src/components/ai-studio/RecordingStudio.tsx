@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import {
   Mic, Play, Pause, Square, Save, Plus, Trash2, Music,
   Upload, Image, Headphones, Download, SkipBack, Settings,
@@ -84,6 +84,31 @@ function getR2Url(key: string): string {
   return `${SUPABASE_URL}/functions/v1/r2-download?key=${encodeURIComponent(key)}`;
 }
 
+/** Generate a waveform from an audio URL using Web Audio API */
+async function generateWaveformFromUrl(url: string): Promise<number[]> {
+  try {
+    const response = await fetch(url);
+    const arrayBuffer = await response.arrayBuffer();
+    const audioCtx = new AudioContext();
+    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+    const channelData = audioBuffer.getChannelData(0);
+    const samples = 120;
+    const blockSize = Math.floor(channelData.length / samples);
+    const peaks: number[] = [];
+    for (let i = 0; i < samples; i++) {
+      let sum = 0;
+      for (let j = 0; j < blockSize; j++) {
+        sum += Math.abs(channelData[i * blockSize + j]);
+      }
+      peaks.push(Math.min((sum / blockSize) * 3, 1));
+    }
+    audioCtx.close();
+    return peaks;
+  } catch {
+    return [];
+  }
+}
+
 const RecordingStudio = () => {
   const { user } = useAuth();
   const engine = useRecordingEngine();
@@ -92,6 +117,7 @@ const RecordingStudio = () => {
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [exports, setExports] = useState<any[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
+  const [deletedSessionIds, setDeletedSessionIds] = useState<string[]>([]);
 
   const [sessionName, setSessionName] = useState("");
   const [beatFile, setBeatFile] = useState<File | null>(null);
@@ -123,9 +149,24 @@ const RecordingStudio = () => {
   const [exportArtworkPreview, setExportArtworkPreview] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
 
+  // Beat waveform (generated from actual audio)
+  const [beatWaveform, setBeatWaveform] = useState<number[]>([]);
+
   const beatInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const artworkInputRef = useRef<HTMLInputElement>(null);
+
+  // Generate beat waveform when beat URL changes
+  useEffect(() => {
+    if (beatUrl) {
+      generateWaveformFromUrl(beatUrl).then(peaks => {
+        if (peaks.length > 0) setBeatWaveform(peaks);
+        else setBeatWaveform(Array.from({ length: 100 }, () => 0.15 + Math.random() * 0.65));
+      });
+    } else {
+      setBeatWaveform([]);
+    }
+  }, [beatUrl]);
 
   // Load sessions from DB
   const loadSessions = useCallback(async () => {
@@ -138,7 +179,6 @@ const RecordingStudio = () => {
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
       if (data) {
-        // Get takes counts
         const sessionIds = (data as any[]).map((s: any) => s.id);
         let takesCounts: Record<string, number> = {};
         if (sessionIds.length > 0) {
@@ -239,14 +279,12 @@ const RecordingStudio = () => {
       return;
     }
 
-    // Upload beat to R2 if provided
     let beatR2Key: string | null = null;
     if (beatFile) {
       const key = await uploadToR2(beatFile, `studio/${user.id}`, `beat-${Date.now()}-${beatFile.name}`);
       beatR2Key = key;
     }
 
-    // Upload cover to R2 if provided
     let coverR2Key: string | null = null;
     if (coverFile) {
       const key = await uploadToR2(coverFile, `studio/${user.id}`, `cover-${Date.now()}-${coverFile.name}`);
@@ -275,7 +313,6 @@ const RecordingStudio = () => {
     setActiveSessionId(session.id);
     setActiveSessionName(session.name);
     setActiveSessionBeatName(session.beat_name);
-    // Keep the local beatUrl for playback during recording
     if (beatR2Key && !beatUrl) {
       setBeatUrl(getR2Url(beatR2Key));
     }
@@ -295,7 +332,18 @@ const RecordingStudio = () => {
     setScreen("record");
   }, [loadTakes]);
 
+  const deleteSession = useCallback(async (sessionId: string) => {
+    if (!user) return;
+    // Delete takes first
+    await supabase.from("recording_takes" as any).delete().eq("session_id", sessionId);
+    await supabase.from("recording_sessions" as any).delete().eq("id", sessionId);
+    setDeletedSessionIds(prev => [...prev, sessionId]);
+    setSessions(prev => prev.filter(s => s.id !== sessionId));
+    toast({ title: "Session deleted" });
+  }, [user]);
+
   const startRecording = useCallback(async () => {
+    if (!beatUrl && !activeSessionId) return;
     const result = engine.startRecording(beatUrl, beatVolume);
     
     const recording = await result;
@@ -304,14 +352,12 @@ const RecordingStudio = () => {
       return;
     }
 
-    // Save take
     if (!activeSessionId || !user) return;
     setSavingTake(true);
 
     const takeNum = takes.length + 1;
     const takeName = `Take ${takeNum}`;
     
-    // Upload audio to R2
     const audioKey = await uploadToR2(
       recording.blob,
       `studio/${user.id}`,
@@ -319,7 +365,6 @@ const RecordingStudio = () => {
     );
 
     if (!audioKey) {
-      // Save locally only
       const localUrl = URL.createObjectURL(recording.blob);
       const newTake: TakeLocal = {
         id: crypto.randomUUID(),
@@ -342,7 +387,6 @@ const RecordingStudio = () => {
       return;
     }
 
-    // Downsample waveform to max 120 points for storage
     const wf = recording.waveform;
     const downsampled = wf.length > 120
       ? Array.from({ length: 120 }, (_, i) => wf[Math.floor(i * wf.length / 120)])
@@ -391,10 +435,41 @@ const RecordingStudio = () => {
     engine.stopRecording();
   }, [engine]);
 
+  // Play all tracks (beat + active take)
+  const playAll = useCallback(() => {
+    if (engine.isPlaying) {
+      engine.pausePlayback();
+      return;
+    }
+    const activeTake = takes.find(t => t.id === activeTakeId);
+    if (activeTake) {
+      engine.playAudio(activeTake.audioUrl, beatUrl, beatVolume, vocalVolume);
+    } else if (beatUrl) {
+      // No takes yet, just play the beat
+      engine.playAudio("", beatUrl, beatVolume, 0);
+    }
+  }, [engine, takes, activeTakeId, beatUrl, beatVolume, vocalVolume]);
+
+  // Play beat only
+  const playBeatOnly = useCallback(() => {
+    if (engine.isPlaying) {
+      engine.pausePlayback();
+      return;
+    }
+    if (beatUrl) {
+      engine.playAudio("", beatUrl, beatVolume, 0);
+    }
+  }, [engine, beatUrl, beatVolume]);
+
+  // Play a specific take (with beat)
   const playTake = useCallback((take: TakeLocal) => {
     if (take.muted) return;
-    engine.playAudio(take.audioUrl, beatUrl, beatVolume, vocalVolume);
+    if (engine.isPlaying) {
+      engine.pausePlayback();
+      return;
+    }
     setActiveTakeId(take.id);
+    engine.playAudio(take.audioUrl, beatUrl, beatVolume, vocalVolume);
   }, [engine, beatUrl, beatVolume, vocalVolume]);
 
   const stopTakePlayback = useCallback(() => {
@@ -480,17 +555,14 @@ const RecordingStudio = () => {
     setIsExporting(true);
 
     try {
-      // Download the take audio for local download
       const downloadResponse = await fetch(take.audioUrl);
       const audioBlob = await downloadResponse.blob();
 
-      // Upload artwork if provided
       let coverKey: string | null = null;
       if (exportArtwork) {
         coverKey = await uploadToR2(exportArtwork, `studio/${user.id}`, `export-cover-${Date.now()}.jpg`);
       }
 
-      // Create export record
       const { error } = await supabase
         .from("recording_exports" as any)
         .insert({
@@ -502,7 +574,6 @@ const RecordingStudio = () => {
           cover_url: coverKey,
         } as any);
 
-      // Also save to ai_generations for library
       await supabase.from("ai_generations").insert({
         user_id: user.id,
         title: exportTitle || activeSessionName || "Untitled",
@@ -510,12 +581,10 @@ const RecordingStudio = () => {
         production_notes: `Recorded in W.Studio. Artist: ${exportArtist || "Unknown"}`,
       });
 
-      // Mark session as not draft
       if (activeSessionId) {
         await supabase.from("recording_sessions" as any).update({ is_draft: false } as any).eq("id", activeSessionId);
       }
 
-      // Trigger download
       const a = document.createElement("a");
       a.href = URL.createObjectURL(audioBlob);
       a.download = `${exportTitle || activeSessionName || "recording"}.webm`;
@@ -539,8 +608,7 @@ const RecordingStudio = () => {
   }, [saveSession]);
 
   const activeTake = takes.find(t => t.id === activeTakeId);
-  const drafts = sessions.filter(s => s.is_draft);
-  const exportsCount = exports.length;
+  const visibleSessions = sessions.filter(s => !deletedSessionIds.includes(s.id));
 
   /* ═══ HOME ═══ */
   if (screen === "home") {
@@ -549,19 +617,20 @@ const RecordingStudio = () => {
         {/* Song Browser header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Settings className="w-5 h-5 text-[#888]" />
+            <button onClick={() => toast({ title: "Studio Settings", description: "Settings panel coming soon" })} className="p-1 hover:bg-[#444] rounded">
+              <Settings className="w-5 h-5 text-[#888]" />
+            </button>
             <h1 className="text-lg font-bold text-[#ddd]">Song Browser</h1>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-[#888] text-sm">?</span>
-            <FolderOpen className="w-5 h-5 text-[#888]" />
-            <button onClick={() => {}} className="w-7 h-7 rounded-full bg-[#555] flex items-center justify-center">
-              <X className="w-4 h-4 text-[#ccc]" />
+            <button onClick={() => toast({ title: "Help", description: "W.Studio Help – Create a new song, upload a beat, and record your vocals!" })} className="text-[#888] text-sm hover:text-[#ccc] transition-colors">?</button>
+            <button onClick={() => toast({ title: "Open Files", description: "Import audio files from your device" })} className="p-1 hover:bg-[#444] rounded">
+              <FolderOpen className="w-5 h-5 text-[#888]" />
             </button>
           </div>
         </div>
 
-        {/* New Song + actions */}
+        {/* New Song + Collab */}
         <div className="grid grid-cols-2 gap-4">
           <button
             onClick={() => { resetForm(); setScreen("create"); }}
@@ -574,6 +643,7 @@ const RecordingStudio = () => {
             <span className="text-sm font-semibold text-[#ddd]">New song</span>
           </button>
           <button
+            onClick={() => toast({ title: "Collab", description: "Collaboration features coming soon!" })}
             className="flex flex-col items-center gap-3 py-6 rounded-xl active:scale-95 transition-all"
             style={{ background: "transparent" }}
           >
@@ -584,60 +654,81 @@ const RecordingStudio = () => {
           </button>
         </div>
 
-        {/* Session grid (project thumbnails like n-Track) */}
-        {sessions.length > 0 && (
-          <div className="grid grid-cols-2 gap-3">
-            {sessions.map(session => (
-              <button
-                key={session.id}
-                onClick={() => openSession(session)}
-                className="flex flex-col items-center gap-2 active:scale-[0.97] transition-all"
-              >
-                {/* Thumbnail */}
-                <div className="w-full aspect-video rounded-lg border border-[#555] overflow-hidden relative"
-                  style={{ background: "#1e1e1e" }}>
-                  {/* Fake DAW thumbnail */}
-                  <div className="absolute inset-0 flex flex-col">
-                    <div className="h-1 w-full" style={{ background: "#4fd1c5" }} />
-                    <div className="flex-1 flex items-center px-1">
-                      {Array.from({ length: 30 }, (_, i) => (
-                        <div key={i} className="flex-1 mx-[0.5px]" style={{
-                          height: `${20 + Math.random() * 50}%`,
-                          background: "#4fd1c5",
-                          opacity: 0.5,
-                          borderRadius: 1,
-                        }} />
-                      ))}
+        {/* Session grid */}
+        {visibleSessions.length > 0 && (
+          <div className="space-y-2">
+            <h2 className="text-xs font-bold text-[#888] uppercase tracking-wider">Your Sessions</h2>
+            <div className="grid grid-cols-2 gap-3">
+              {visibleSessions.map((session, idx) => (
+                <div key={session.id} className="relative group">
+                  <button
+                    onClick={() => openSession(session)}
+                    className="flex flex-col items-center gap-2 w-full active:scale-[0.97] transition-all"
+                  >
+                    {/* Thumbnail with unique color based on index */}
+                    <div className="w-full aspect-video rounded-lg border border-[#555] overflow-hidden relative"
+                      style={{ background: "#1e1e1e" }}>
+                      <div className="absolute inset-0 flex flex-col">
+                        <div className="h-1 w-full" style={{ background: ["#4fd1c5", "#63b3ed", "#b794f4", "#f59e0b"][idx % 4] }} />
+                        <div className="flex-1 flex items-center px-1">
+                          {Array.from({ length: 30 }, (_, i) => {
+                            // Use session name hash for unique waveform per session
+                            const hash = session.name.charCodeAt(i % session.name.length) + idx;
+                            return (
+                              <div key={i} className="flex-1 mx-[0.5px]" style={{
+                                height: `${20 + ((hash * 17 + i * 31) % 50)}%`,
+                                background: ["#4fd1c5", "#63b3ed", "#b794f4", "#f59e0b"][idx % 4],
+                                opacity: 0.5,
+                                borderRadius: 1,
+                              }} />
+                            );
+                          })}
+                        </div>
+                        <div className="flex items-center gap-1 px-1 py-0.5" style={{ background: "#333" }}>
+                          <div className="w-2 h-2 rounded-full" style={{ background: session.is_draft ? "#eab308" : "#22c55e" }} />
+                          <Play className="w-2 h-2 text-[#aaa]" />
+                          <span className="text-[5px] font-mono text-[#888] ml-auto">
+                            {session.takesCount || 0} take{(session.takesCount || 0) !== 1 ? "s" : ""}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    {/* Mini transport */}
-                    <div className="flex items-center gap-1 px-1 py-0.5" style={{ background: "#333" }}>
-                      <div className="w-2 h-2 rounded-full bg-red-500" />
-                      <Play className="w-2 h-2 text-[#aaa]" />
-                      <SkipBack className="w-2 h-2 text-[#aaa]" />
-                      <span className="text-[5px] font-mono text-[#888] ml-auto">
-                        {session.takesCount || 0}T
-                      </span>
-                    </div>
-                  </div>
-                  {session.is_draft && (
-                    <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-yellow-500" />
-                  )}
+                    <span className="text-xs font-semibold text-[#ccc] truncate w-full text-center">{session.name}</span>
+                  </button>
+                  {/* Delete button on hover/long-press */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); deleteSession(session.id); }}
+                    className="absolute top-1 right-1 w-5 h-5 rounded-full bg-[#333]/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="w-3 h-3 text-[#999]" />
+                  </button>
                 </div>
-                <span className="text-xs font-semibold text-[#ccc] truncate w-full text-center">{session.name}</span>
-              </button>
-            ))}
+              ))}
+            </div>
           </div>
         )}
 
         {/* Trash */}
-        <div className="flex flex-col items-center gap-2 pt-4">
-          <Trash2 className="w-8 h-8 text-[#666]" />
-          <span className="text-sm text-[#666]">Trash</span>
-        </div>
+        {deletedSessionIds.length > 0 && (
+          <div className="flex flex-col items-center gap-2 pt-4">
+            <button onClick={() => toast({ title: "Trash", description: `${deletedSessionIds.length} deleted session(s). Permanently removed.` })} className="flex flex-col items-center gap-2 hover:opacity-80 transition-opacity">
+              <Trash2 className="w-8 h-8 text-[#666]" />
+              <span className="text-sm text-[#666]">Trash ({deletedSessionIds.length})</span>
+            </button>
+          </div>
+        )}
 
         {loadingSessions && (
           <div className="text-center py-4">
             <div className="w-6 h-6 border-2 border-[#4fd1c5] border-t-transparent rounded-full animate-spin mx-auto" />
+          </div>
+        )}
+
+        {!loadingSessions && visibleSessions.length === 0 && (
+          <div className="text-center py-8">
+            <Music className="w-10 h-10 mx-auto mb-3 text-[#555]" />
+            <p className="text-sm text-[#888]">No sessions yet</p>
+            <p className="text-xs text-[#666] mt-1">Tap "New song" to get started</p>
           </div>
         )}
       </div>
@@ -671,6 +762,13 @@ const RecordingStudio = () => {
               <p className="text-xs text-[#888]">MP3, WAV, OGG, FLAC</p>
             </div>
           </button>
+          {beatUrl && (
+            <div className="flex items-center gap-2 p-2 rounded-lg" style={{ background: "#333" }}>
+              <Music className="w-4 h-4 text-[#4fd1c5]" />
+              <span className="text-xs text-[#ccc] truncate flex-1">{beatName}</span>
+              <span className="text-[10px] text-[#22c55e]">✓ Loaded</span>
+            </div>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -702,6 +800,7 @@ const RecordingStudio = () => {
       <StudioDAWView
         sessionName={activeSessionName}
         beatName={activeSessionBeatName}
+        beatUrl={beatUrl}
         takes={takes}
         activeTakeId={activeTakeId}
         setActiveTakeId={setActiveTakeId}
@@ -717,16 +816,14 @@ const RecordingStudio = () => {
         setVocalVolume={setVocalVolume}
         onStartRecording={startRecording}
         onStopRecording={stopRecording}
-        onPlayActiveTake={() => {
-          if (activeTake) {
-            if (engine.isPlaying) pauseTakePlayback();
-            else playTake(activeTake);
-          }
-        }}
+        onPlayAll={playAll}
+        onPlayBeatOnly={playBeatOnly}
+        onPlayTake={playTake}
         onStopPlayback={stopTakePlayback}
         onPausePlayback={pauseTakePlayback}
         onToggleMute={toggleMuteTake}
         onToggleSolo={toggleSoloTake}
+        onDeleteTake={deleteTake}
         onSave={saveSession}
         savingTake={savingTake}
         onNavigate={(s) => {
@@ -738,6 +835,7 @@ const RecordingStudio = () => {
         setBeatPan={setBeatPan}
         vocalPan={vocalPan}
         setVocalPan={setVocalPan}
+        beatWaveform={beatWaveform}
       />
     );
   }
