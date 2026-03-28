@@ -60,14 +60,16 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 async function uploadToR2(blob: Blob, folder: string, fileName: string): Promise<string | null> {
   try {
     const key = `${folder}/${fileName}`;
+    const buffer = await blob.arrayBuffer();
     const res = await fetch(`${SUPABASE_URL}/functions/v1/r2-upload`, {
       method: "POST",
       headers: {
         "x-upload-key": key,
         "x-upload-content-type": blob.type || "audio/webm",
+        "Content-Length": buffer.byteLength.toString(),
         "Authorization": `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
       },
-      body: blob,
+      body: buffer,
     });
     if (!res.ok) return null;
     const data = await res.json();
