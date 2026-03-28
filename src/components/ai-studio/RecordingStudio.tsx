@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import {
-  Mic, Play, Pause, Square, Save, Plus, Trash2,  Music,
+  Mic, Play, Pause, Square, Save, Plus, Trash2, Music,
   Upload, Image, Headphones, Download,
   Scissors, Edit3, Check, X, FolderOpen,
   FileText, Clock, Layers, Sliders, ArrowLeft
@@ -11,28 +11,32 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { useRecordingEngine } from "@/hooks/use-recording-engine";
 
-interface Take {
+interface TakeLocal {
   id: string;
   name: string;
-  blob: Blob;
-  url: string;
+  audioUrl: string;
+  blob?: Blob;
   duration: number;
   muted: boolean;
   solo: boolean;
   trimStart: number;
   trimEnd: number;
+  waveform: number[];
+  createdAt: string;
+  persisted: boolean;
 }
 
-interface Session {
+interface SessionRecord {
   id: string;
   name: string;
-  beatUrl: string | null;
-  beatName: string | null;
-  coverUrl: string | null;
-  takes: Take[];
-  createdAt: string;
-  isDraft: boolean;
+  beat_url: string | null;
+  beat_name: string | null;
+  cover_url: string | null;
+  is_draft: boolean;
+  created_at: string;
+  takesCount?: number;
 }
 
 type Screen = "home" | "create" | "record" | "takes" | "effects" | "export";
@@ -51,15 +55,40 @@ const fmt = (s: number) => {
   return `${m}:${sec.toString().padStart(2, "0")}`;
 };
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+
+async function uploadToR2(blob: Blob, folder: string, fileName: string): Promise<string | null> {
+  try {
+    const key = `${folder}/${fileName}`;
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/r2-upload`, {
+      method: "POST",
+      headers: {
+        "x-upload-key": key,
+        "x-upload-content-type": blob.type || "audio/webm",
+        "Authorization": `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+      },
+      body: blob,
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.success ? key : null;
+  } catch {
+    return null;
+  }
+}
+
+function getR2Url(key: string): string {
+  return `${SUPABASE_URL}/functions/v1/r2-download?key=${encodeURIComponent(key)}`;
+}
+
 const RecordingStudio = () => {
   const { user } = useAuth();
+  const engine = useRecordingEngine();
+
   const [screen, setScreen] = useState<Screen>("home");
-  const [sessions, setSessions] = useState<Session[]>(() => {
-    try {
-      const raw = localStorage.getItem("wstudio_sessions");
-      return raw ? JSON.parse(raw) : [];
-    } catch { return []; }
-  });
+  const [sessions, setSessions] = useState<SessionRecord[]>([]);
+  const [exports, setExports] = useState<any[]>([]);
+  const [loadingSessions, setLoadingSessions] = useState(false);
 
   const [sessionName, setSessionName] = useState("");
   const [beatFile, setBeatFile] = useState<File | null>(null);
@@ -67,17 +96,17 @@ const RecordingStudio = () => {
   const [beatName, setBeatName] = useState<string | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
-  const [activeSession, setActiveSession] = useState<Session | null>(null);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [activeSessionName, setActiveSessionName] = useState("");
+  const [activeSessionBeatName, setActiveSessionBeatName] = useState<string | null>(null);
 
-  const [isRecording, setIsRecording] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [recordTime, setRecordTime] = useState(0);
   const [beatVolume, setBeatVolume] = useState(80);
   const [vocalVolume, setVocalVolume] = useState(100);
-  const [takes, setTakes] = useState<Take[]>([]);
+  const [takes, setTakes] = useState<TakeLocal[]>([]);
   const [activeTakeId, setActiveTakeId] = useState<string | null>(null);
   const [editingTakeId, setEditingTakeId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
+  const [savingTake, setSavingTake] = useState(false);
 
   const [activeEffect, setActiveEffect] = useState<string>("clean");
   const [vocalGain, setVocalGain] = useState(80);
@@ -89,22 +118,84 @@ const RecordingStudio = () => {
   const [exportArtworkPreview, setExportArtworkPreview] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
 
-  const beatAudioRef = useRef<HTMLAudioElement | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const playbackAudioRef = useRef<HTMLAudioElement | null>(null);
   const beatInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const artworkInputRef = useRef<HTMLInputElement>(null);
 
+  // Load sessions from DB
+  const loadSessions = useCallback(async () => {
+    if (!user) return;
+    setLoadingSessions(true);
+    try {
+      const { data } = await supabase
+        .from("recording_sessions" as any)
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+      if (data) {
+        // Get takes counts
+        const sessionIds = (data as any[]).map((s: any) => s.id);
+        let takesCounts: Record<string, number> = {};
+        if (sessionIds.length > 0) {
+          const { data: takesData } = await supabase
+            .from("recording_takes" as any)
+            .select("session_id")
+            .in("session_id", sessionIds);
+          if (takesData) {
+            (takesData as any[]).forEach((t: any) => {
+              takesCounts[t.session_id] = (takesCounts[t.session_id] || 0) + 1;
+            });
+          }
+        }
+        setSessions((data as any[]).map((s: any) => ({ ...s, takesCount: takesCounts[s.id] || 0 })));
+      }
+    } catch {}
+    setLoadingSessions(false);
+  }, [user]);
+
+  const loadExports = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("recording_exports" as any)
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+    if (data) setExports(data as any[]);
+  }, [user]);
+
   useEffect(() => {
-    const meta = sessions.map(s => ({
-      ...s,
-      takes: s.takes.map(t => ({ ...t, blob: undefined, url: "" })),
-    }));
-    localStorage.setItem("wstudio_sessions", JSON.stringify(meta));
-  }, [sessions]);
+    if (user && screen === "home") {
+      loadSessions();
+      loadExports();
+    }
+  }, [user, screen, loadSessions, loadExports]);
+
+  // Load takes for active session
+  const loadTakes = useCallback(async (sessionId: string) => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("recording_takes" as any)
+      .select("*")
+      .eq("session_id", sessionId)
+      .order("created_at", { ascending: true });
+    if (data) {
+      const loaded: TakeLocal[] = (data as any[]).map((t: any) => ({
+        id: t.id,
+        name: t.name,
+        audioUrl: t.audio_url ? getR2Url(t.audio_url) : "",
+        duration: t.duration,
+        muted: t.muted,
+        solo: t.solo,
+        trimStart: t.trim_start,
+        trimEnd: t.trim_end,
+        waveform: Array.isArray(t.waveform_data) ? t.waveform_data : [],
+        createdAt: t.created_at,
+        persisted: true,
+      }));
+      setTakes(loaded);
+      setActiveTakeId(loaded[0]?.id || null);
+    }
+  }, [user]);
 
   const handleBeatUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -137,156 +228,244 @@ const RecordingStudio = () => {
     setCoverPreview(null);
   }
 
-  const handleCreateSession = useCallback(() => {
-    if (!sessionName.trim()) {
-      toast({ title: "Enter a session name", variant: "destructive" });
+  const handleCreateSession = useCallback(async () => {
+    if (!sessionName.trim() || !user) {
+      toast({ title: !user ? "Sign in to create sessions" : "Enter a session name", variant: "destructive" });
       return;
     }
-    const session: Session = {
-      id: crypto.randomUUID(),
-      name: sessionName.trim(),
-      beatUrl,
-      beatName,
-      coverUrl: coverPreview,
-      takes: [],
-      createdAt: new Date().toISOString(),
-      isDraft: true,
-    };
-    setActiveSession(session);
-    setSessions(prev => [session, ...prev]);
+
+    // Upload beat to R2 if provided
+    let beatR2Key: string | null = null;
+    if (beatFile) {
+      const key = await uploadToR2(beatFile, `studio/${user.id}`, `beat-${Date.now()}-${beatFile.name}`);
+      beatR2Key = key;
+    }
+
+    // Upload cover to R2 if provided
+    let coverR2Key: string | null = null;
+    if (coverFile) {
+      const key = await uploadToR2(coverFile, `studio/${user.id}`, `cover-${Date.now()}-${coverFile.name}`);
+      coverR2Key = key;
+    }
+
+    const { data, error } = await supabase
+      .from("recording_sessions" as any)
+      .insert({
+        user_id: user.id,
+        name: sessionName.trim(),
+        beat_url: beatR2Key,
+        beat_name: beatName,
+        cover_url: coverR2Key,
+        is_draft: true,
+      } as any)
+      .select()
+      .single();
+
+    if (error || !data) {
+      toast({ title: "Failed to create session", variant: "destructive" });
+      return;
+    }
+
+    const session = data as any;
+    setActiveSessionId(session.id);
+    setActiveSessionName(session.name);
+    setActiveSessionBeatName(session.beat_name);
+    // Keep the local beatUrl for playback during recording
+    if (beatR2Key && !beatUrl) {
+      setBeatUrl(getR2Url(beatR2Key));
+    }
     setTakes([]);
     setActiveTakeId(null);
     setScreen("record");
-  }, [sessionName, beatUrl, beatName, coverPreview]);
+    toast({ title: "Session created!" });
+  }, [sessionName, beatFile, coverFile, beatName, beatUrl, user]);
 
-  const openSession = useCallback((session: Session) => {
-    setActiveSession(session);
-    setTakes(session.takes);
-    setActiveTakeId(session.takes[0]?.id || null);
-    setBeatUrl(session.beatUrl);
-    setBeatName(session.beatName);
+  const openSession = useCallback(async (session: SessionRecord) => {
+    setActiveSessionId(session.id);
+    setActiveSessionName(session.name);
+    setActiveSessionBeatName(session.beat_name);
+    setBeatUrl(session.beat_url ? getR2Url(session.beat_url) : null);
+    setBeatName(session.beat_name);
+    await loadTakes(session.id);
     setScreen("record");
-  }, []);
+  }, [loadTakes]);
 
   const startRecording = useCallback(async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-      if (beatUrl && beatAudioRef.current) {
-        beatAudioRef.current.currentTime = 0;
-        beatAudioRef.current.volume = beatVolume / 100;
-        beatAudioRef.current.play();
-      }
-
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-          ? "audio/webm;codecs=opus"
-          : "audio/webm"
-      });
-      mediaRecorderRef.current = mediaRecorder;
-      chunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data);
-      };
-
-      const takeCount = takes.length;
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
-        const url = URL.createObjectURL(blob);
-        const newTake: Take = {
-          id: crypto.randomUUID(),
-          name: `Take ${takeCount + 1}`,
-          blob,
-          url,
-          duration: recordTime,
-          muted: false,
-          solo: false,
-          trimStart: 0,
-          trimEnd: 100,
-        };
-        setTakes(prev => [...prev, newTake]);
-        setActiveTakeId(newTake.id);
-        stream.getTracks().forEach(t => t.stop());
-      };
-
-      mediaRecorder.start(100);
-      setIsRecording(true);
-      setRecordTime(0);
-      timerRef.current = setInterval(() => setRecordTime(t => t + 1), 1000);
-    } catch {
+    const result = engine.startRecording(beatUrl, beatVolume);
+    
+    const recording = await result;
+    if (!recording) {
       toast({ title: "Mic access denied", description: "Allow microphone to record", variant: "destructive" });
+      return;
     }
-  }, [beatUrl, beatVolume, takes.length, recordTime]);
+
+    // Save take
+    if (!activeSessionId || !user) return;
+    setSavingTake(true);
+
+    const takeNum = takes.length + 1;
+    const takeName = `Take ${takeNum}`;
+    
+    // Upload audio to R2
+    const audioKey = await uploadToR2(
+      recording.blob,
+      `studio/${user.id}`,
+      `take-${activeSessionId}-${Date.now()}.webm`
+    );
+
+    if (!audioKey) {
+      // Save locally only
+      const localUrl = URL.createObjectURL(recording.blob);
+      const newTake: TakeLocal = {
+        id: crypto.randomUUID(),
+        name: takeName,
+        audioUrl: localUrl,
+        blob: recording.blob,
+        duration: recording.duration,
+        muted: false,
+        solo: false,
+        trimStart: 0,
+        trimEnd: 100,
+        waveform: recording.waveform,
+        createdAt: new Date().toISOString(),
+        persisted: false,
+      };
+      setTakes(prev => [...prev, newTake]);
+      setActiveTakeId(newTake.id);
+      setSavingTake(false);
+      toast({ title: "Take saved locally (upload failed)" });
+      return;
+    }
+
+    // Downsample waveform to max 120 points for storage
+    const wf = recording.waveform;
+    const downsampled = wf.length > 120
+      ? Array.from({ length: 120 }, (_, i) => wf[Math.floor(i * wf.length / 120)])
+      : wf;
+
+    const { data, error } = await supabase
+      .from("recording_takes" as any)
+      .insert({
+        session_id: activeSessionId,
+        user_id: user.id,
+        name: takeName,
+        audio_url: audioKey,
+        duration: recording.duration,
+        waveform_data: downsampled,
+      } as any)
+      .select()
+      .single();
+
+    if (error || !data) {
+      toast({ title: "Failed to save take", variant: "destructive" });
+      setSavingTake(false);
+      return;
+    }
+
+    const saved = data as any;
+    const newTake: TakeLocal = {
+      id: saved.id,
+      name: saved.name,
+      audioUrl: getR2Url(audioKey),
+      duration: saved.duration,
+      muted: false,
+      solo: false,
+      trimStart: 0,
+      trimEnd: 100,
+      waveform: downsampled,
+      createdAt: saved.created_at,
+      persisted: true,
+    };
+    setTakes(prev => [...prev, newTake]);
+    setActiveTakeId(newTake.id);
+    setSavingTake(false);
+    toast({ title: `🎙️ ${takeName} saved!` });
+  }, [beatUrl, beatVolume, activeSessionId, user, takes.length, engine]);
 
   const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current?.state === "recording") {
-      mediaRecorderRef.current.stop();
-    }
-    if (beatAudioRef.current) {
-      beatAudioRef.current.pause();
-      beatAudioRef.current.currentTime = 0;
-    }
-    if (timerRef.current) clearInterval(timerRef.current);
-    setIsRecording(false);
-    setIsPlaying(false);
-  }, []);
+    engine.stopRecording();
+  }, [engine]);
 
-  const playTake = useCallback((take: Take) => {
-    if (playbackAudioRef.current) {
-      playbackAudioRef.current.pause();
-    }
-    const audio = new Audio(take.url);
-    playbackAudioRef.current = audio;
-    audio.play();
-    if (beatUrl && beatAudioRef.current) {
-      beatAudioRef.current.currentTime = 0;
-      beatAudioRef.current.volume = beatVolume / 100;
-      beatAudioRef.current.play();
-    }
-    setIsPlaying(true);
-    audio.onended = () => {
-      setIsPlaying(false);
-      if (beatAudioRef.current) beatAudioRef.current.pause();
-    };
-  }, [beatUrl, beatVolume]);
+  const playTake = useCallback((take: TakeLocal) => {
+    if (take.muted) return;
+    engine.playAudio(take.audioUrl, beatUrl, beatVolume, vocalVolume);
+    setActiveTakeId(take.id);
+  }, [engine, beatUrl, beatVolume, vocalVolume]);
 
-  const deleteTake = useCallback((id: string) => {
+  const stopTakePlayback = useCallback(() => {
+    engine.stopPlayback();
+  }, [engine]);
+
+  const pauseTakePlayback = useCallback(() => {
+    engine.pausePlayback();
+  }, [engine]);
+
+  const deleteTake = useCallback(async (id: string) => {
+    const take = takes.find(t => t.id === id);
+    if (!take) return;
+    if (take.persisted) {
+      await supabase.from("recording_takes" as any).delete().eq("id", id);
+    }
     setTakes(prev => prev.filter(t => t.id !== id));
     if (activeTakeId === id) setActiveTakeId(null);
-  }, [activeTakeId]);
+    toast({ title: "Take deleted" });
+  }, [activeTakeId, takes]);
 
-  const toggleMuteTake = useCallback((id: string) => {
-    setTakes(prev => prev.map(t => t.id === id ? { ...t, muted: !t.muted } : t));
+  const toggleMuteTake = useCallback(async (id: string) => {
+    setTakes(prev => prev.map(t => {
+      if (t.id !== id) return t;
+      const updated = { ...t, muted: !t.muted };
+      if (t.persisted) {
+        supabase.from("recording_takes" as any).update({ muted: updated.muted } as any).eq("id", id).then(() => {});
+      }
+      return updated;
+    }));
   }, []);
 
-  const toggleSoloTake = useCallback((id: string) => {
-    setTakes(prev => prev.map(t => t.id === id ? { ...t, solo: !t.solo } : t));
+  const toggleSoloTake = useCallback(async (id: string) => {
+    setTakes(prev => prev.map(t => {
+      if (t.id !== id) return t;
+      const updated = { ...t, solo: !t.solo };
+      if (t.persisted) {
+        supabase.from("recording_takes" as any).update({ solo: updated.solo } as any).eq("id", id).then(() => {});
+      }
+      return updated;
+    }));
   }, []);
 
-  const renameTake = useCallback((id: string, name: string) => {
+  const renameTake = useCallback(async (id: string, name: string) => {
     setTakes(prev => prev.map(t => t.id === id ? { ...t, name } : t));
     setEditingTakeId(null);
-  }, []);
+    const take = takes.find(t => t.id === id);
+    if (take?.persisted) {
+      await supabase.from("recording_takes" as any).update({ name } as any).eq("id", id);
+    }
+  }, [takes]);
 
-  const updateTrimStart = useCallback((id: string, val: number) => {
+  const updateTrimStart = useCallback(async (id: string, val: number) => {
     setTakes(prev => prev.map(t => t.id === id ? { ...t, trimStart: val } : t));
-  }, []);
+    const take = takes.find(t => t.id === id);
+    if (take?.persisted) {
+      supabase.from("recording_takes" as any).update({ trim_start: val } as any).eq("id", id).then(() => {});
+    }
+  }, [takes]);
 
-  const updateTrimEnd = useCallback((id: string, val: number) => {
+  const updateTrimEnd = useCallback(async (id: string, val: number) => {
     setTakes(prev => prev.map(t => t.id === id ? { ...t, trimEnd: val } : t));
-  }, []);
+    const take = takes.find(t => t.id === id);
+    if (take?.persisted) {
+      supabase.from("recording_takes" as any).update({ trim_end: val } as any).eq("id", id).then(() => {});
+    }
+  }, [takes]);
 
-  const saveSession = useCallback(() => {
-    if (!activeSession) return;
-    const updated = { ...activeSession, takes, isDraft: true };
-    setActiveSession(updated);
-    setSessions(prev => prev.map(s => s.id === updated.id ? updated : s));
+  const saveSession = useCallback(async () => {
+    if (!activeSessionId) return;
+    await supabase.from("recording_sessions" as any).update({ is_draft: true, updated_at: new Date().toISOString() } as any).eq("id", activeSessionId);
     toast({ title: "Session saved!" });
-  }, [activeSession, takes]);
+  }, [activeSessionId]);
 
   const handleExport = useCallback(async () => {
-    if (!activeTakeId) {
+    if (!activeTakeId || !user) {
       toast({ title: "Select a take to export", variant: "destructive" });
       return;
     }
@@ -294,36 +473,69 @@ const RecordingStudio = () => {
     if (!take) return;
 
     setIsExporting(true);
-    const a = document.createElement("a");
-    a.href = take.url;
-    a.download = `${exportTitle || activeSession?.name || "recording"}.webm`;
-    a.click();
 
-    if (user) {
-      try {
-        await supabase.from("ai_generations").insert({
-          user_id: user.id,
-          title: exportTitle || activeSession?.name || "Untitled",
-          type: "Recording",
-          genre: null,
-          mood: null,
-          production_notes: `Recorded in W.Studio. Artist: ${exportArtist || "Unknown"}`,
-        });
-        toast({ title: "🎵 Exported & saved to Library!" });
-      } catch {
-        toast({ title: "Exported! (Library save failed)", variant: "destructive" });
+    try {
+      // Download the take audio for local download
+      const downloadResponse = await fetch(take.audioUrl);
+      const audioBlob = await downloadResponse.blob();
+
+      // Upload artwork if provided
+      let coverKey: string | null = null;
+      if (exportArtwork) {
+        coverKey = await uploadToR2(exportArtwork, `studio/${user.id}`, `export-cover-${Date.now()}.jpg`);
       }
+
+      // Create export record
+      const { error } = await supabase
+        .from("recording_exports" as any)
+        .insert({
+          session_id: activeSessionId,
+          user_id: user.id,
+          title: exportTitle || activeSessionName || "Untitled",
+          artist_name: exportArtist || null,
+          audio_url: take.audioUrl.includes("r2-download") ? take.audioUrl.split("key=")[1] : null,
+          cover_url: coverKey,
+        } as any);
+
+      // Also save to ai_generations for library
+      await supabase.from("ai_generations").insert({
+        user_id: user.id,
+        title: exportTitle || activeSessionName || "Untitled",
+        type: "Recording",
+        production_notes: `Recorded in W.Studio. Artist: ${exportArtist || "Unknown"}`,
+      });
+
+      // Mark session as not draft
+      if (activeSessionId) {
+        await supabase.from("recording_sessions" as any).update({ is_draft: false } as any).eq("id", activeSessionId);
+      }
+
+      // Trigger download
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(audioBlob);
+      a.download = `${exportTitle || activeSessionName || "recording"}.webm`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+
+      if (error) {
+        toast({ title: "Exported! (Save to library failed)", variant: "destructive" });
+      } else {
+        toast({ title: "🎵 Exported & saved to Library!" });
+      }
+    } catch (err) {
+      toast({ title: "Export failed", variant: "destructive" });
     }
+
     setIsExporting(false);
-  }, [activeTakeId, takes, exportTitle, exportArtist, activeSession, user]);
+  }, [activeTakeId, takes, exportTitle, exportArtist, exportArtwork, activeSessionId, activeSessionName, user]);
 
   const handleSaveDraft = useCallback(() => {
     saveSession();
   }, [saveSession]);
 
   const activeTake = takes.find(t => t.id === activeTakeId);
-  const drafts = sessions.filter(s => s.isDraft);
-  const exportsCount = sessions.filter(s => !s.isDraft).length;
+  const drafts = sessions.filter(s => s.is_draft);
+  const exportsCount = exports.length;
 
   /* ═══ HOME ═══ */
   if (screen === "home") {
@@ -374,16 +586,22 @@ const RecordingStudio = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-foreground truncate">{session.name}</p>
-                    <p className="text-xs text-muted-foreground">{session.takes.length} takes · {session.beatName || "No beat"}</p>
+                    <p className="text-xs text-muted-foreground">{session.takesCount || 0} takes · {session.beat_name || "No beat"}</p>
                   </div>
                   <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                    session.isDraft ? "bg-yellow-500/20 text-yellow-400" : "bg-green-500/20 text-green-400"
+                    session.is_draft ? "bg-yellow-500/20 text-yellow-400" : "bg-green-500/20 text-green-400"
                   }`}>
-                    {session.isDraft ? "Draft" : "Done"}
+                    {session.is_draft ? "Draft" : "Done"}
                   </span>
                 </button>
               ))}
             </div>
+          </div>
+        )}
+
+        {loadingSessions && (
+          <div className="text-center py-4">
+            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
           </div>
         )}
       </div>
@@ -429,7 +647,7 @@ const RecordingStudio = () => {
           </button>
         </div>
 
-        <Button onClick={handleCreateSession} className="w-full h-12 rounded-xl text-base font-bold" disabled={!sessionName.trim()}>
+        <Button onClick={handleCreateSession} className="w-full h-12 rounded-xl text-base font-bold" disabled={!sessionName.trim() || !user}>
           Continue to Studio
         </Button>
       </div>
@@ -440,21 +658,37 @@ const RecordingStudio = () => {
   if (screen === "record") {
     return (
       <div className="px-4 pt-4 pb-24 space-y-4">
-        {beatUrl && <audio ref={beatAudioRef} src={beatUrl} preload="auto" />}
-
         <div className="flex items-center justify-between">
-          <button onClick={() => setScreen("home")} className="flex items-center gap-1 text-sm text-muted-foreground">
+          <button onClick={() => { engine.stopPlayback(); setScreen("home"); }} className="flex items-center gap-1 text-sm text-muted-foreground">
             <ArrowLeft className="w-4 h-4" /> Back
           </button>
-          <h2 className="text-sm font-bold text-foreground truncate max-w-[50%]">{activeSession?.name}</h2>
+          <h2 className="text-sm font-bold text-foreground truncate max-w-[50%]">{activeSessionName}</h2>
           <button onClick={saveSession} className="text-xs font-bold text-primary">Save</button>
         </div>
 
+        {/* Waveform area */}
         <div className="bg-card border border-border rounded-2xl p-4 h-32 flex items-center justify-center relative overflow-hidden">
-          {isRecording ? (
-            <div className="flex items-end gap-1 h-16">
-              {Array.from({ length: 24 }).map((_, i) => (
-                <div key={i} className="w-1.5 bg-primary rounded-full animate-pulse" style={{ height: `${Math.random() * 100}%`, animationDelay: `${i * 0.05}s`, animationDuration: `${0.3 + Math.random() * 0.5}s` }} />
+          {engine.isRecording ? (
+            <div className="flex items-end gap-0.5 h-16 w-full">
+              {engine.liveWaveform.map((peak, i) => (
+                <div
+                  key={i}
+                  className="flex-1 bg-primary rounded-sm transition-all duration-75"
+                  style={{ height: `${Math.max(peak * 100, 4)}%` }}
+                />
+              ))}
+              {engine.liveWaveform.length === 0 && (
+                <p className="text-sm text-muted-foreground w-full text-center">Listening...</p>
+              )}
+            </div>
+          ) : activeTake && activeTake.waveform.length > 0 ? (
+            <div className="flex items-end gap-0.5 h-16 w-full">
+              {activeTake.waveform.slice(0, 60).map((peak, i) => (
+                <div
+                  key={i}
+                  className="flex-1 bg-primary/40 rounded-sm"
+                  style={{ height: `${Math.max(peak * 100, 4)}%` }}
+                />
               ))}
             </div>
           ) : takes.length > 0 ? (
@@ -467,22 +701,44 @@ const RecordingStudio = () => {
             <p className="text-sm text-muted-foreground">Waveform will appear here</p>
           )}
           <div className="absolute bottom-2 right-3 text-xs font-mono text-muted-foreground bg-background/80 px-2 py-0.5 rounded">
-            {fmt(recordTime)}
+            {engine.isRecording ? fmt(engine.recordTime) : engine.isPlaying ? `${fmt(engine.playbackTime)} / ${fmt(engine.playbackDuration)}` : fmt(0)}
           </div>
+          {engine.isRecording && (
+            <div className="absolute top-2 left-3 flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              <span className="text-[10px] font-bold text-red-400 uppercase">Recording</span>
+            </div>
+          )}
+          {savingTake && (
+            <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                <span className="text-sm text-muted-foreground">Saving take...</span>
+              </div>
+            </div>
+          )}
         </div>
 
+        {/* Transport controls */}
         <div className="flex items-center justify-center gap-6">
-          {!isRecording ? (
+          {!engine.isRecording ? (
             <>
               {activeTake && (
-                <button onClick={() => playTake(activeTake)} className="w-12 h-12 rounded-full bg-card border border-border flex items-center justify-center active:scale-90 transition-all">
-                  {isPlaying ? <Pause className="w-5 h-5 text-foreground" /> : <Play className="w-5 h-5 text-foreground" />}
+                <button
+                  onClick={() => engine.isPlaying ? pauseTakePlayback() : playTake(activeTake)}
+                  className="w-12 h-12 rounded-full bg-card border border-border flex items-center justify-center active:scale-90 transition-all"
+                >
+                  {engine.isPlaying ? <Pause className="w-5 h-5 text-foreground" /> : <Play className="w-5 h-5 text-foreground" />}
                 </button>
               )}
-              <button onClick={startRecording} className="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center shadow-lg shadow-red-500/30 active:scale-90 transition-all">
+              <button
+                onClick={startRecording}
+                disabled={savingTake}
+                className="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center shadow-lg shadow-red-500/30 active:scale-90 transition-all disabled:opacity-50"
+              >
                 <Mic className="w-7 h-7 text-white" />
               </button>
-              <button onClick={() => setRecordTime(0)} className="w-12 h-12 rounded-full bg-card border border-border flex items-center justify-center active:scale-90 transition-all">
+              <button onClick={stopTakePlayback} className="w-12 h-12 rounded-full bg-card border border-border flex items-center justify-center active:scale-90 transition-all">
                 <Square className="w-5 h-5 text-foreground" />
               </button>
             </>
@@ -493,13 +749,14 @@ const RecordingStudio = () => {
           )}
         </div>
 
+        {/* Volume sliders */}
         <div className="bg-card border border-border rounded-2xl p-4 space-y-4">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1"><Music className="w-3 h-3" /> Beat Volume</span>
               <span className="text-xs text-muted-foreground">{beatVolume}%</span>
             </div>
-            <Slider value={[beatVolume]} onValueChange={([v]) => { setBeatVolume(v); if (beatAudioRef.current) beatAudioRef.current.volume = v / 100; }} max={100} step={1} />
+            <Slider value={[beatVolume]} onValueChange={([v]) => setBeatVolume(v)} max={100} step={1} />
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -517,7 +774,7 @@ const RecordingStudio = () => {
           <Button variant="outline" className="flex-1 h-11 rounded-xl text-xs font-bold gap-1" onClick={() => setScreen("effects")}>
             <Sliders className="w-4 h-4" /> Effects
           </Button>
-          <Button variant="outline" className="flex-1 h-11 rounded-xl text-xs font-bold gap-1" onClick={() => { setExportTitle(activeSession?.name || ""); setScreen("export"); }}>
+          <Button variant="outline" className="flex-1 h-11 rounded-xl text-xs font-bold gap-1" onClick={() => { setExportTitle(activeSessionName || ""); setScreen("export"); }}>
             <Download className="w-4 h-4" /> Export
           </Button>
         </div>
@@ -584,6 +841,19 @@ const RecordingStudio = () => {
                     </div>
                   )}
                 </div>
+
+                {/* Waveform preview */}
+                {take.waveform.length > 0 && (
+                  <div className="flex items-end gap-0.5 h-8 w-full">
+                    {take.waveform.slice(0, 60).map((peak, i) => (
+                      <div
+                        key={i}
+                        className={`flex-1 rounded-sm ${activeTakeId === take.id ? "bg-primary/60" : "bg-muted-foreground/30"}`}
+                        style={{ height: `${Math.max(peak * 100, 8)}%` }}
+                      />
+                    ))}
+                  </div>
+                )}
 
                 <div className="flex gap-2">
                   <button onClick={() => toggleMuteTake(take.id)} className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${take.muted ? "bg-red-500/20 text-red-400" : "bg-muted text-muted-foreground"}`}>
@@ -676,7 +946,7 @@ const RecordingStudio = () => {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-foreground truncate">{activeTake.name}</p>
-              <p className="text-xs text-muted-foreground">{fmt(activeTake.duration)} · {activeSession?.beatName || "No beat"}</p>
+              <p className="text-xs text-muted-foreground">{fmt(activeTake.duration)} · {activeSessionBeatName || "No beat"}</p>
             </div>
             <button onClick={() => playTake(activeTake)} className="p-2 rounded-full bg-primary/10">
               <Play className="w-4 h-4 text-primary" />

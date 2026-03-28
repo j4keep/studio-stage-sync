@@ -885,6 +885,136 @@ export type Database = {
           },
         ]
       }
+      recording_exports: {
+        Row: {
+          artist_name: string | null
+          audio_url: string | null
+          cover_url: string | null
+          created_at: string
+          id: string
+          session_id: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          artist_name?: string | null
+          audio_url?: string | null
+          cover_url?: string | null
+          created_at?: string
+          id?: string
+          session_id?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          artist_name?: string | null
+          audio_url?: string | null
+          cover_url?: string | null
+          created_at?: string
+          id?: string
+          session_id?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recording_exports_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "recording_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recording_sessions: {
+        Row: {
+          beat_name: string | null
+          beat_url: string | null
+          cover_url: string | null
+          created_at: string
+          id: string
+          is_draft: boolean
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          beat_name?: string | null
+          beat_url?: string | null
+          cover_url?: string | null
+          created_at?: string
+          id?: string
+          is_draft?: boolean
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          beat_name?: string | null
+          beat_url?: string | null
+          cover_url?: string | null
+          created_at?: string
+          id?: string
+          is_draft?: boolean
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      recording_takes: {
+        Row: {
+          audio_url: string | null
+          created_at: string
+          duration: number
+          id: string
+          muted: boolean
+          name: string
+          session_id: string
+          solo: boolean
+          trim_end: number
+          trim_start: number
+          user_id: string
+          waveform_data: Json | null
+        }
+        Insert: {
+          audio_url?: string | null
+          created_at?: string
+          duration?: number
+          id?: string
+          muted?: boolean
+          name?: string
+          session_id: string
+          solo?: boolean
+          trim_end?: number
+          trim_start?: number
+          user_id: string
+          waveform_data?: Json | null
+        }
+        Update: {
+          audio_url?: string | null
+          created_at?: string
+          duration?: number
+          id?: string
+          muted?: boolean
+          name?: string
+          session_id?: string
+          solo?: boolean
+          trim_end?: number
+          trim_start?: number
+          user_id?: string
+          waveform_data?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recording_takes_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "recording_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       songs: {
         Row: {
           album: string | null
