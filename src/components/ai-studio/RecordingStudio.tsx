@@ -275,53 +275,71 @@ const RecordingStudio = () => {
   }
 
   const handleCreateSession = useCallback(async () => {
-    if (!sessionName.trim() || !user) {
-      toast({ title: !user ? "Sign in to create sessions" : "Enter a session name", variant: "destructive" });
-      return;
-    }
+    if (!sessionName.trim() || !user || isCreating) return;
+    setIsCreating(true);
 
-    let beatR2Key: string | null = null;
-    if (beatFile) {
-      const key = await uploadToR2(beatFile, `studio/${user.id}`, `beat-${Date.now()}-${beatFile.name}`);
-      beatR2Key = key;
-    }
+    try {
+      // 1) Create session in DB immediately (no file upload blocking)
+      const { data, error } = await supabase
+        .from("recording_sessions" as any)
+        .insert({
+          user_id: user.id,
+          name: sessionName.trim(),
+          beat_url: null,
+          beat_name: beatName,
+          cover_url: null,
+          is_draft: true,
+        } as any)
+        .select()
+        .single();
 
-    let coverR2Key: string | null = null;
-    if (coverFile) {
-      const key = await uploadToR2(coverFile, `studio/${user.id}`, `cover-${Date.now()}-${coverFile.name}`);
-      coverR2Key = key;
-    }
+      if (error || !data) {
+        console.error("Session create error:", error);
+        toast({ title: "Failed to create session", variant: "destructive" });
+        setIsCreating(false);
+        return;
+      }
 
-    const { data, error } = await supabase
-      .from("recording_sessions" as any)
-      .insert({
-        user_id: user.id,
-        name: sessionName.trim(),
-        beat_url: beatR2Key,
-        beat_name: beatName,
-        cover_url: coverR2Key,
-        is_draft: true,
-      } as any)
-      .select()
-      .single();
+      const session = data as any;
+      setActiveSessionId(session.id);
+      setActiveSessionName(session.name);
+      setActiveSessionBeatName(session.beat_name);
+      // Use local blob URL for beat so playback works immediately
+      // (beatUrl is already set from the file picker)
+      setTakes([]);
+      setActiveTakeId(null);
+      setScreen("record");
+      toast({ title: "Session created!" });
 
-    if (error || !data) {
+      // 2) Upload files in background and patch the session row
+      const sessionId = session.id;
+      (async () => {
+        try {
+          let beatR2Key: string | null = null;
+          if (beatFile) {
+            beatR2Key = await uploadToR2(beatFile, `studio/${user.id}`, `beat-${Date.now()}-${beatFile.name}`);
+          }
+          let coverR2Key: string | null = null;
+          if (coverFile) {
+            coverR2Key = await uploadToR2(coverFile, `studio/${user.id}`, `cover-${Date.now()}-${coverFile.name}`);
+          }
+          if (beatR2Key || coverR2Key) {
+            const patch: any = {};
+            if (beatR2Key) patch.beat_url = beatR2Key;
+            if (coverR2Key) patch.cover_url = coverR2Key;
+            await supabase.from("recording_sessions" as any).update(patch).eq("id", sessionId);
+          }
+        } catch (e) {
+          console.warn("Background file upload failed:", e);
+        }
+      })();
+    } catch (e) {
+      console.error("Create session error:", e);
       toast({ title: "Failed to create session", variant: "destructive" });
-      return;
+    } finally {
+      setIsCreating(false);
     }
-
-    const session = data as any;
-    setActiveSessionId(session.id);
-    setActiveSessionName(session.name);
-    setActiveSessionBeatName(session.beat_name);
-    if (beatR2Key && !beatUrl) {
-      setBeatUrl(getR2Url(beatR2Key));
-    }
-    setTakes([]);
-    setActiveTakeId(null);
-    setScreen("record");
-    toast({ title: "Session created!" });
-  }, [sessionName, beatFile, coverFile, beatName, beatUrl, user]);
+  }, [sessionName, beatFile, coverFile, beatName, beatUrl, user, isCreating]);
 
   const openSession = useCallback(async (session: SessionRecord) => {
     setActiveSessionId(session.id);
