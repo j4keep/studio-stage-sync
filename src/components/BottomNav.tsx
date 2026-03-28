@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
-import { Home, ImagePlus, User } from "lucide-react";
+import { Home, ImagePlus, User, Music } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import ProGateModal from "@/components/ProGateModal";
 import { useProGate } from "@/hooks/use-pro-gate";
-import JhiIcon from "@/components/JhiIcon";
 
 const BottomNav = () => {
   const location = useLocation();
@@ -26,15 +25,15 @@ const BottomNav = () => {
   }, [location.pathname]);
 
   const tabs = [
-    { path: "/", label: "Home", icon: Home, pro: false, isJhi: false },
-    { path: "/feed", label: "Feed", icon: ImagePlus, pro: false, isJhi: false },
-    { path: "/ask-jhi", label: "Ask Jhi", icon: null, pro: true, isJhi: true },
-    { path: "/profile", label: "Profile", icon: User, pro: false, isJhi: false },
+    { path: "/", label: "Home", icon: Home, pro: false },
+    { path: "/feed", label: "Feed", icon: ImagePlus, pro: false },
+    { path: "/ai-studio", label: "AI Music", icon: Music, pro: true },
+    { path: "/profile", label: "Profile", icon: User, pro: false },
   ];
 
   const handleTabClick = (tab: typeof tabs[0]) => {
     if (tab.pro && !isPro) {
-      requirePro("Ask Jhi");
+      requirePro("AI Music Studio");
     } else {
       navigate(tab.path);
     }
@@ -55,11 +54,7 @@ const BottomNav = () => {
                   isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {tab.isJhi ? (
-                  <JhiIcon className={`w-5 h-5 transition-all`} active={isActive} />
-                ) : (
-                  Icon && <Icon className={`w-5 h-5 transition-all ${isActive ? "drop-shadow-[0_0_8px_hsl(204,100%,50%,0.6)]" : ""}`} />
-                )}
+                <Icon className={`w-5 h-5 transition-all ${isActive ? "drop-shadow-[0_0_8px_hsl(204,100%,50%,0.6)]" : ""}`} />
                 <span className={`text-[10px] font-medium ${isActive ? "text-glow" : ""}`}>{tab.label}</span>
                 {tab.pro && !isPro && (
                   <span className="absolute -top-0.5 -right-0.5 text-[6px] bg-primary text-primary-foreground px-1 py-0.5 rounded-full font-bold leading-none">PRO</span>
