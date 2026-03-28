@@ -1,8 +1,9 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import {
-  ArrowLeft, Mic, Play, Pause, Square, SkipBack, SkipForward,
-  Repeat, Music, Volume2, Layers, Sliders, Download, Save,
-  X, Guitar, AudioWaveform
+  ArrowLeft, Mic, Play, Pause, Square, SkipBack,
+  Repeat, Music, Volume2, Sliders, Download, Save,
+  X, AudioWaveform, Pencil, RotateCcw, Share2, Upload,
+  ChevronRight, Settings
 } from "lucide-react";
 import MixerSheet from "./MixerSheet";
 
@@ -54,105 +55,114 @@ interface StudioDAWViewProps {
   setVocalPan: (v: number) => void;
 }
 
+/* ── colour sets per track ── */
 const TRACK_COLORS = [
-  { bg: "bg-cyan-900/40", wave: "bg-cyan-400/70", border: "border-cyan-500/30" },
-  { bg: "bg-blue-900/40", wave: "bg-blue-400/70", border: "border-blue-500/30" },
-  { bg: "bg-violet-900/40", wave: "bg-violet-400/70", border: "border-violet-500/30" },
-  { bg: "bg-indigo-900/40", wave: "bg-indigo-400/70", border: "border-indigo-500/30" },
-  { bg: "bg-purple-900/40", wave: "bg-purple-400/70", border: "border-purple-500/30" },
+  { bg: "#2a4a4a", wave: "#4fd1c5", border: "#2d6a5e", accent: "#38b2ac" },
+  { bg: "#2a3a5a", wave: "#63b3ed", border: "#2b4a7a", accent: "#4299e1" },
+  { bg: "#3a2a5a", wave: "#b794f4", border: "#4a2d7a", accent: "#9f7aea" },
+  { bg: "#2a2a5a", wave: "#7f9cf5", border: "#3a3a7a", accent: "#667eea" },
 ];
 
 const fmt = (s: number) => {
   const m = Math.floor(s / 60);
-  const sec = s % 60;
-  return `${m}:${String(Math.floor(sec)).padStart(2, "0")}`;
+  const sec = Math.floor(s % 60);
+  const ms = Math.floor(((s % 1) * 1000));
+  return `${m} :${String(sec).padStart(2, "0")} :${String(ms).padStart(3, "0")}`;
 };
 
-const fmtMs = (s: number) => {
-  const m = Math.floor(s / 60);
-  const sec = s % 60;
-  const ms = Math.floor((sec % 1) * 100);
-  return `${m}:${String(Math.floor(sec)).padStart(2, "0")}.${String(ms).padStart(2, "0")}`;
-};
-
+/* ── Level Meter (realistic green→yellow→red) ── */
 function LevelMeter({ active, intensity = 0.5 }: { active: boolean; intensity?: number }) {
   const [level, setLevel] = useState(0);
   const rafRef = useRef<number>(0);
 
   useEffect(() => {
     if (!active) { setLevel(0); return; }
-    let target = intensity;
     const animate = () => {
-      target = intensity + (Math.random() - 0.5) * 0.3;
-      target = Math.max(0.05, Math.min(1, target));
-      setLevel(prev => prev + (target - prev) * 0.3);
+      const target = intensity + (Math.random() - 0.5) * 0.3;
+      setLevel(prev => prev + (Math.max(0.05, Math.min(1, target)) - prev) * 0.3);
       rafRef.current = requestAnimationFrame(animate);
     };
     rafRef.current = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(rafRef.current);
   }, [active, intensity]);
 
-  const pct = Math.round(level * 100);
-  const isHot = pct > 85;
-  const isWarm = pct > 60;
+  const segments = 20;
+  const lit = Math.round(level * segments);
 
   return (
-    <div className="w-2.5 h-full rounded-sm overflow-hidden bg-black/60 relative">
-      <div
-        className="absolute bottom-0 left-0 right-0 rounded-sm transition-[height] duration-75"
-        style={{
-          height: `${pct}%`,
-          background: isHot
-            ? "linear-gradient(to top, #22c55e 0%, #eab308 60%, #ef4444 90%)"
-            : isWarm
-            ? "linear-gradient(to top, #22c55e 0%, #eab308 80%)"
-            : "linear-gradient(to top, #22c55e 0%, #22c55e 100%)",
-        }}
-      />
+    <div className="flex flex-col-reverse gap-[1px] w-[5px]">
+      {Array.from({ length: segments }, (_, i) => {
+        const isLit = i < lit;
+        let color = "#1a1a1a";
+        if (isLit) {
+          if (i < segments * 0.6) color = "#22c55e";
+          else if (i < segments * 0.85) color = "#eab308";
+          else color = "#ef4444";
+        }
+        return (
+          <div
+            key={i}
+            className="rounded-[0.5px]"
+            style={{
+              height: 3,
+              backgroundColor: color,
+              opacity: isLit ? 1 : 0.15,
+              boxShadow: isLit && i >= segments * 0.85 ? "0 0 4px #ef4444" : "none",
+            }}
+          />
+        );
+      })}
     </div>
   );
 }
 
-function WaveformDisplay({ peaks, color, height = 40 }: { peaks: number[]; color: string; height?: number }) {
+/* ── Waveform (mirrored, professional look) ── */
+function WaveformDisplay({ peaks, color, isActive }: { peaks: number[]; color: string; isActive?: boolean }) {
   if (peaks.length === 0) return <div className="h-full w-full" />;
+  const displayed = peaks.length > 120 
+    ? Array.from({ length: 120 }, (_, i) => peaks[Math.floor(i * peaks.length / 120)]) 
+    : peaks;
+  
   return (
-    <div className="flex items-center h-full w-full gap-px px-1">
-      {peaks.slice(0, 100).map((peak, i) => (
-        <div
-          key={i}
-          className={`flex-1 ${color} rounded-[1px]`}
-          style={{
-            height: `${Math.max(peak * 100, 6)}%`,
-            minWidth: 1,
-          }}
-        />
-      ))}
+    <div className="flex items-center h-full w-full gap-[0.5px] px-0.5">
+      {displayed.map((peak, i) => {
+        const h = Math.max(peak * 90, 4);
+        return (
+          <div key={i} className="flex-1 flex flex-col items-center justify-center" style={{ minWidth: 1 }}>
+            <div
+              style={{
+                height: `${h / 2}%`,
+                backgroundColor: color,
+                opacity: isActive ? 0.9 : 0.7,
+                borderRadius: "1px 1px 0 0",
+                width: "100%",
+              }}
+            />
+            <div
+              style={{
+                height: `${h / 2}%`,
+                backgroundColor: color,
+                opacity: isActive ? 0.5 : 0.35,
+                borderRadius: "0 0 1px 1px",
+                width: "100%",
+              }}
+            />
+          </div>
+        );
+      })}
     </div>
   );
 }
 
+/* ── Track Lane (n-Track style) ── */
 function TrackLane({
-  name,
-  icon,
-  colorIndex,
-  waveform,
-  isActive,
-  isMuted,
-  isSolo,
-  isRecordArmed,
-  isRecordingNow,
-  liveWaveform,
-  volume,
-  onVolumeChange,
-  onMute,
-  onSolo,
-  onClick,
-  onDelete,
-  audioActive,
+  name, icon, colorSet, waveform, isActive, isMuted, isSolo,
+  isRecordArmed, isRecordingNow, liveWaveform, volume, onVolumeChange,
+  onMute, onSolo, onClick, onDelete, audioActive, trackNumber,
 }: {
   name: string;
   icon: React.ReactNode;
-  colorIndex: number;
+  colorSet: typeof TRACK_COLORS[0];
   waveform: number[];
   isActive: boolean;
   isMuted: boolean;
@@ -167,89 +177,119 @@ function TrackLane({
   onClick?: () => void;
   onDelete?: () => void;
   audioActive: boolean;
+  trackNumber: number;
 }) {
-  const colors = TRACK_COLORS[colorIndex % TRACK_COLORS.length];
-
   return (
     <div
-      className={`flex border-b border-border/30 min-h-[72px] ${isActive ? "ring-1 ring-primary/40" : ""}`}
+      className={`flex border-b border-[#333] ${isActive ? "ring-1 ring-[#4fd1c5]/40" : ""}`}
+      style={{ minHeight: 100 }}
       onClick={onClick}
     >
-      {/* Track header */}
-      <div className="w-[110px] shrink-0 border-r border-border/30 bg-card/90 p-1.5 flex flex-col gap-1">
+      {/* Track header — n-Track style gray panel */}
+      <div className="w-[130px] shrink-0 border-r border-[#444] flex flex-col p-2 gap-1"
+        style={{ background: "linear-gradient(180deg, #4a4a4a 0%, #3a3a3a 100%)" }}>
+        
+        {/* Track name + delete */}
         <div className="flex items-center gap-1">
           {icon}
-          <span className="text-[9px] font-bold text-foreground truncate flex-1">{name}</span>
+          <span className="text-[10px] font-bold text-[#e0e0e0] truncate flex-1">
+            {trackNumber}: {name}
+          </span>
           {onDelete && (
-            <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="opacity-50 hover:opacity-100">
-              <X className="w-3 h-3 text-muted-foreground" />
+            <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="opacity-40 hover:opacity-100">
+              <X className="w-3 h-3 text-[#999]" />
             </button>
           )}
         </div>
-        <div className="flex items-center gap-1">
+
+        {/* M / S / Record arm / Speaker */}
+        <div className="flex items-center gap-1 mt-1">
           <button
             onClick={(e) => { e.stopPropagation(); onMute?.(); }}
-            className={`w-[22px] h-[18px] text-[8px] font-black rounded flex items-center justify-center transition-colors ${
-              isMuted ? "bg-red-500/80 text-white" : "bg-muted/80 text-muted-foreground"
+            className={`w-[26px] h-[22px] text-[9px] font-black rounded-sm flex items-center justify-center transition-colors border ${
+              isMuted 
+                ? "bg-[#666] text-white border-[#888]" 
+                : "bg-[#555] text-[#ccc] border-[#666] hover:bg-[#666]"
             }`}
-          >
-            M
-          </button>
+          >M</button>
           <button
             onClick={(e) => { e.stopPropagation(); onSolo?.(); }}
-            className={`w-[22px] h-[18px] text-[8px] font-black rounded flex items-center justify-center transition-colors ${
-              isSolo ? "bg-yellow-500/80 text-black" : "bg-muted/80 text-muted-foreground"
+            className={`w-[26px] h-[22px] text-[9px] font-black rounded-sm flex items-center justify-center transition-colors border ${
+              isSolo 
+                ? "bg-[#666] text-white border-[#888]" 
+                : "bg-[#555] text-[#ccc] border-[#666] hover:bg-[#666]"
             }`}
-          >
-            S
-          </button>
+          >S</button>
           {isRecordArmed !== undefined && (
-            <div className={`w-[18px] h-[18px] rounded-full flex items-center justify-center ${
-              isRecordingNow ? "bg-red-500 animate-pulse" : "bg-muted/80"
+            <div className={`w-[22px] h-[22px] rounded-full flex items-center justify-center border ${
+              isRecordingNow 
+                ? "bg-red-500 border-red-400 animate-pulse" 
+                : "bg-[#555] border-[#666]"
             }`}>
-              <div className={`w-2 h-2 rounded-full ${isRecordingNow ? "bg-white" : "bg-muted-foreground/50"}`} />
+              <div className={`w-2.5 h-2.5 rounded-full ${isRecordingNow ? "bg-white" : "bg-[#999]"}`} />
             </div>
           )}
-          {audioActive && (
-            <Volume2 className="w-3 h-3 text-primary ml-auto" />
+          {audioActive && !isMuted && (
+            <Volume2 className="w-3.5 h-3.5 text-[#4fd1c5] ml-auto" />
           )}
         </div>
-        <input
-          type="range"
-          min={0}
-          max={100}
-          value={volume}
-          onChange={(e) => { e.stopPropagation(); onVolumeChange(Number(e.target.value)); }}
-          onClick={(e) => e.stopPropagation()}
-          className="w-full h-1 accent-primary cursor-pointer"
-        />
+
+        {/* Volume slider (horizontal, like n-Track) */}
+        <div className="flex items-center gap-1 mt-1">
+          <div className="relative flex-1 h-[6px] bg-[#333] rounded-sm overflow-hidden">
+            <div
+              className="absolute left-0 top-0 bottom-0 rounded-sm"
+              style={{ width: `${volume}%`, backgroundColor: "#666" }}
+            />
+            <input
+              type="range" min={0} max={100} value={volume}
+              onChange={(e) => { e.stopPropagation(); onVolumeChange(Number(e.target.value)); }}
+              onClick={(e) => e.stopPropagation()}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            />
+          </div>
+          <div className="w-4 h-4 bg-[#555] border border-[#777] rounded-[2px] cursor-grab" />
+        </div>
       </div>
 
       {/* Waveform area */}
-      <div className={`flex-1 ${colors.bg} relative overflow-hidden flex items-center`}>
+      <div className="flex-1 relative overflow-hidden flex items-center"
+        style={{ backgroundColor: colorSet.bg }}>
+        
         {isRecordingNow && liveWaveform && liveWaveform.length > 0 ? (
-          <div className="flex items-center h-full w-full gap-px px-1">
-            {liveWaveform.map((peak, i) => (
-              <div
-                key={i}
-                className={`flex-1 ${colors.wave} rounded-[1px] transition-all duration-75`}
-                style={{ height: `${Math.max(peak * 100, 6)}%`, minWidth: 1 }}
-              />
-            ))}
+          <div className="flex items-center h-full w-full gap-[0.5px] px-0.5">
+            {liveWaveform.map((peak, i) => {
+              const h = Math.max(peak * 90, 4);
+              return (
+                <div key={i} className="flex-1 flex flex-col items-center justify-center" style={{ minWidth: 1 }}>
+                  <div style={{ height: `${h / 2}%`, backgroundColor: colorSet.wave, opacity: 0.9, borderRadius: "1px 1px 0 0", width: "100%" }} />
+                  <div style={{ height: `${h / 2}%`, backgroundColor: colorSet.wave, opacity: 0.5, borderRadius: "0 0 1px 1px", width: "100%" }} />
+                </div>
+              );
+            })}
           </div>
         ) : (
-          <WaveformDisplay peaks={waveform} color={colors.wave} />
+          <WaveformDisplay peaks={waveform} color={colorSet.wave} isActive={isActive} />
         )}
 
-        {/* Level meters (right edge) */}
-        <div className="absolute right-1 top-1 bottom-1 flex gap-0.5">
+        {/* Stereo level meters on right edge */}
+        <div className="absolute right-1 top-2 bottom-2 flex gap-[2px]">
           <LevelMeter active={audioActive && !isMuted} intensity={volume / 100} />
           <LevelMeter active={audioActive && !isMuted} intensity={volume / 120} />
         </div>
 
+        {/* Loop handle icons */}
+        {waveform.length > 0 && (
+          <>
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-5 h-8 bg-[#555]/80 rounded-l-md flex items-center justify-center cursor-pointer hover:bg-[#666]/80">
+              <RotateCcw className="w-3 h-3 text-[#aaa]" />
+            </div>
+          </>
+        )}
+
         {isMuted && (
-          <div className="absolute inset-0 bg-background/40 flex items-center justify-center">
-            <span className="text-[9px] font-bold text-muted-foreground uppercase">Muted</span>
+          <div className="absolute inset-0 bg-[#1a1a1a]/50 flex items-center justify-center">
+            <span className="text-[10px] font-bold text-[#666] uppercase tracking-wider">Muted</span>
           </div>
         )}
       </div>
@@ -257,6 +297,9 @@ function TrackLane({
   );
 }
 
+/* ═══════════════════════════════════════════
+   MAIN DAW VIEW
+   ═══════════════════════════════════════════ */
 export default function StudioDAWView(props: StudioDAWViewProps) {
   const {
     sessionName, beatName, takes, activeTakeId, setActiveTakeId,
@@ -269,7 +312,6 @@ export default function StudioDAWView(props: StudioDAWViewProps) {
 
   const [showMixer, setShowMixer] = useState(false);
   const [loopEnabled, setLoopEnabled] = useState(false);
-  const tracksRef = useRef<HTMLDivElement>(null);
 
   const activeTake = takes.find(t => t.id === activeTakeId);
   const totalDuration = useMemo(() => {
@@ -277,7 +319,6 @@ export default function StudioDAWView(props: StudioDAWViewProps) {
     return Math.max(maxTake, recordTime, playbackDuration, 30);
   }, [takes, recordTime, playbackDuration]);
 
-  // Generate time markers
   const timeMarkers = useMemo(() => {
     const markers: number[] = [];
     const interval = totalDuration > 120 ? 30 : totalDuration > 60 ? 10 : 5;
@@ -288,32 +329,51 @@ export default function StudioDAWView(props: StudioDAWViewProps) {
   const currentTime = isRecording ? recordTime : isPlaying ? playbackTime : 0;
   const playheadPct = totalDuration > 0 ? (currentTime / totalDuration) * 100 : 0;
 
-  // Fake beat waveform for display
   const beatWaveform = useMemo(() =>
-    Array.from({ length: 80 }, () => 0.2 + Math.random() * 0.6),
-  []);
+    Array.from({ length: 100 }, () => 0.15 + Math.random() * 0.65), []);
 
   const isAudioActive = isRecording || isPlaying;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-8rem)] bg-background">
-      {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border/50 bg-card/50 backdrop-blur-sm shrink-0">
-        <button onClick={onBack} className="flex items-center gap-1 text-muted-foreground">
-          <ArrowLeft className="w-4 h-4" />
-        </button>
-        <div className="flex-1 text-center min-w-0 px-2">
-          <span className="text-xs font-bold text-foreground truncate block">{sessionName}</span>
+    <div className="flex flex-col h-full" style={{ background: "#1e1e1e" }}>
+      
+      {/* ── Top toolbar (grid + play arrow) ── */}
+      <div className="flex items-center justify-between px-2 py-1.5 border-b border-[#333]"
+        style={{ background: "linear-gradient(180deg, #4a4a4a 0%, #3a3a3a 100%)" }}>
+        <div className="flex items-center gap-2">
+          <button onClick={onBack} className="p-1 hover:bg-[#555] rounded">
+            <ArrowLeft className="w-4 h-4 text-[#ccc]" />
+          </button>
+          <div className="w-px h-4 bg-[#555]" />
+          <button className="p-1 hover:bg-[#555] rounded">
+            <Settings className="w-4 h-4 text-[#aaa]" />
+          </button>
         </div>
-        <button onClick={onSave} className="text-[10px] font-bold text-primary px-2 py-1 rounded-lg bg-primary/10">
-          <Save className="w-3.5 h-3.5" />
-        </button>
+        <span className="text-[11px] font-bold text-[#ddd] truncate max-w-[180px]">{sessionName}</span>
+        <div className="flex items-center gap-1">
+          <button onClick={onSave} className="p-1 hover:bg-[#555] rounded">
+            <Save className="w-4 h-4 text-[#aaa]" />
+          </button>
+        </div>
       </div>
 
-      {/* Timeline ruler */}
-      <div className="flex h-5 border-b border-border/30 shrink-0 bg-card/30">
-        <div className="w-[110px] shrink-0 border-r border-border/30" />
+      {/* ── Timeline ruler ── */}
+      <div className="flex h-6 border-b border-[#333] shrink-0" style={{ background: "#2a2a2a" }}>
+        <div className="w-[130px] shrink-0 border-r border-[#444]" />
         <div className="flex-1 relative overflow-hidden">
+          {/* Green locator triangle */}
+          <div
+            className="absolute top-0 z-20"
+            style={{ left: `${playheadPct}%`, transform: "translateX(-50%)" }}
+          >
+            <div style={{
+              width: 0, height: 0,
+              borderLeft: "6px solid transparent",
+              borderRight: "6px solid transparent",
+              borderTop: "8px solid #4fd1c5",
+            }} />
+          </div>
+          
           <div className="flex h-full items-end">
             {timeMarkers.map(t => (
               <div
@@ -321,28 +381,40 @@ export default function StudioDAWView(props: StudioDAWViewProps) {
                 className="absolute bottom-0 flex flex-col items-center"
                 style={{ left: `${(t / totalDuration) * 100}%` }}
               >
-                <span className="text-[7px] font-mono text-muted-foreground/70 leading-none mb-0.5">{fmt(t)}</span>
-                <div className="w-px h-1.5 bg-muted-foreground/30" />
+                <span className="text-[7px] font-mono text-[#888] leading-none mb-0.5">
+                  {Math.floor(t / 60)}:{String(Math.floor(t % 60)).padStart(2, "0")}.000
+                </span>
+                <div className="w-px h-2 bg-[#555]" />
               </div>
             ))}
+            {/* Red beat markers */}
+            {Array.from({ length: Math.min(20, Math.ceil(totalDuration / 2)) }, (_, i) => (
+              <div
+                key={`beat-${i}`}
+                className="absolute top-0 w-[2px] h-1.5"
+                style={{
+                  left: `${(i * 2 / totalDuration) * 100}%`,
+                  backgroundColor: "#ef4444",
+                }}
+              />
+            ))}
           </div>
-          {/* Playhead on ruler */}
+
+          {/* Playhead line */}
           <div
-            className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-10 transition-[left] duration-100"
-            style={{ left: `${playheadPct}%` }}
-          >
-            <div className="w-2 h-2 bg-red-500 rounded-b-sm -ml-[3px]" />
-          </div>
+            className="absolute top-0 bottom-0 w-[1px] z-10"
+            style={{ left: `${playheadPct}%`, backgroundColor: "#eab308" }}
+          />
         </div>
       </div>
 
-      {/* Track lanes */}
-      <div ref={tracksRef} className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
+      {/* ── Track Lanes ── */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0" style={{ background: "#1e1e1e" }}>
         {/* Beat Track */}
         <TrackLane
           name={beatName || "Beat Track"}
-          icon={<Music className="w-3 h-3 text-cyan-400" />}
-          colorIndex={0}
+          icon={<Music className="w-3.5 h-3.5 text-[#4fd1c5]" />}
+          colorSet={TRACK_COLORS[0]}
           waveform={beatWaveform}
           isActive={false}
           isMuted={false}
@@ -350,15 +422,16 @@ export default function StudioDAWView(props: StudioDAWViewProps) {
           volume={beatVolume}
           onVolumeChange={setBeatVolume}
           audioActive={isAudioActive}
+          trackNumber={1}
         />
 
-        {/* Vocal takes as tracks */}
+        {/* Vocal takes */}
         {takes.map((take, idx) => (
           <TrackLane
             key={take.id}
             name={take.name}
-            icon={<Mic className="w-3 h-3 text-violet-400" />}
-            colorIndex={idx + 1}
+            icon={<Mic className="w-3.5 h-3.5 text-[#b794f4]" />}
+            colorSet={TRACK_COLORS[(idx + 1) % TRACK_COLORS.length]}
             waveform={take.waveform}
             isActive={activeTakeId === take.id}
             isMuted={take.muted}
@@ -371,16 +444,17 @@ export default function StudioDAWView(props: StudioDAWViewProps) {
             onMute={() => onToggleMute(take.id)}
             onSolo={() => onToggleSolo(take.id)}
             onClick={() => setActiveTakeId(take.id)}
-            audioActive={isAudioActive && !take.muted && (activeTakeId === take.id)}
+            audioActive={isAudioActive && !take.muted && activeTakeId === take.id}
+            trackNumber={idx + 2}
           />
         ))}
 
-        {/* Recording lane (when recording a new take) */}
+        {/* Recording placeholder */}
         {isRecording && takes.length === 0 && (
           <TrackLane
             name="Recording..."
-            icon={<Mic className="w-3 h-3 text-red-400" />}
-            colorIndex={1}
+            icon={<Mic className="w-3.5 h-3.5 text-red-400" />}
+            colorSet={TRACK_COLORS[1]}
             waveform={[]}
             isActive={true}
             isMuted={false}
@@ -391,113 +465,147 @@ export default function StudioDAWView(props: StudioDAWViewProps) {
             volume={vocalVolume}
             onVolumeChange={setVocalVolume}
             audioActive={true}
+            trackNumber={2}
           />
         )}
 
-        {/* Add track placeholder */}
-        <div className="flex min-h-[52px] border-b border-border/20">
-          <div className="w-[110px] shrink-0 border-r border-border/20 p-2 flex items-center justify-center">
+        {/* Add track (dashed box like n-Track) */}
+        <div className="flex" style={{ minHeight: 70 }}>
+          <div className="w-[130px] shrink-0 border-r border-[#333] p-3 flex items-center justify-center"
+            style={{ background: "#2e2e2e" }}>
             <button
               onClick={onStartRecording}
               disabled={isRecording || savingTake}
-              className="w-full border border-dashed border-border/50 rounded-lg py-1 flex items-center justify-center gap-1 text-[9px] text-muted-foreground/60 hover:text-primary hover:border-primary/30 transition-colors disabled:opacity-30"
+              className="w-full border-2 border-dashed border-[#555] rounded-lg py-3 flex items-center justify-center gap-1 text-[#777] hover:text-[#4fd1c5] hover:border-[#4fd1c5]/50 transition-colors disabled:opacity-30"
             >
-              <span className="text-sm">+</span>
+              <span className="text-2xl font-light">+</span>
             </button>
           </div>
-          <div className="flex-1 bg-card/10" />
+          <div className="flex-1" style={{ background: "#1e1e1e" }} />
         </div>
 
-        {/* Spacer */}
+        {/* Right-side toolbar icons */}
+        <div className="absolute right-0 top-[120px] flex flex-col gap-1 z-10">
+          <button onClick={() => setShowMixer(true)} className="w-7 h-7 bg-[#444] hover:bg-[#555] rounded-l flex items-center justify-center border-l border-t border-b border-[#555]">
+            <Sliders className="w-3.5 h-3.5 text-[#bbb]" />
+          </button>
+          <button onClick={() => onNavigate("takes")} className="w-7 h-7 bg-[#444] hover:bg-[#555] rounded-l flex items-center justify-center border-l border-t border-b border-[#555]">
+            <AudioWaveform className="w-3.5 h-3.5 text-[#bbb]" />
+          </button>
+        </div>
+
         <div className="h-20" />
       </div>
 
-      {/* Action buttons */}
-      <div className="flex items-center gap-1.5 px-2 py-1.5 border-t border-border/30 bg-card/50 shrink-0 overflow-x-auto">
-        <button onClick={() => onNavigate("takes")} className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-muted/50 text-[10px] font-bold text-foreground shrink-0">
-          <Layers className="w-3 h-3" /> Takes {takes.length > 0 && `(${takes.length})`}
-        </button>
-        <button onClick={() => onNavigate("effects")} className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-muted/50 text-[10px] font-bold text-foreground shrink-0">
-          <AudioWaveform className="w-3 h-3" /> Effects
-        </button>
-        <button onClick={() => setShowMixer(true)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary/10 text-[10px] font-bold text-primary shrink-0">
-          <Sliders className="w-3 h-3" /> Mixer
-        </button>
-        <button onClick={() => onNavigate("export")} className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-muted/50 text-[10px] font-bold text-foreground shrink-0">
-          <Download className="w-3 h-3" /> Export
-        </button>
-      </div>
-
-      {/* Transport bar */}
-      <div className="flex items-center justify-between px-3 py-2 bg-card border-t border-border/50 shrink-0">
+      {/* ── Transport Bar (bottom — matches n-Track) ── */}
+      <div className="flex items-center justify-between px-2 py-2 border-t border-[#444] shrink-0"
+        style={{ background: "linear-gradient(180deg, #3a3a3a 0%, #2a2a2a 100%)" }}>
+        
+        {/* Left: Record, Play, Rewind, Loop */}
         <div className="flex items-center gap-2">
-          {/* Record button */}
+          {/* Record */}
           <button
             onClick={isRecording ? onStopRecording : onStartRecording}
             disabled={savingTake}
-            className={`w-11 h-11 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-90 ${
-              isRecording
-                ? "bg-red-500 shadow-red-500/40 animate-pulse"
-                : "bg-red-500/90 shadow-red-500/20 hover:bg-red-500"
-            } disabled:opacity-50`}
+            className="w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-90 disabled:opacity-50"
+            style={{
+              background: isRecording
+                ? "radial-gradient(circle, #ef4444 60%, #dc2626 100%)"
+                : "radial-gradient(circle, #ef4444 60%, #b91c1c 100%)",
+              boxShadow: isRecording ? "0 0 12px #ef444480" : "0 2px 6px #00000060",
+            }}
           >
             {isRecording ? (
               <Square className="w-4 h-4 text-white" />
             ) : (
-              <div className="w-4 h-4 rounded-full bg-white" />
+              <div className="w-4 h-4 rounded-full bg-white/90" />
             )}
           </button>
 
-          {/* Play / Pause */}
+          {/* Play */}
           <button
             onClick={isPlaying ? onPausePlayback : onPlayActiveTake}
             disabled={isRecording || (!activeTake && takes.length === 0)}
-            className={`w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90 ${
-              isPlaying ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
-            } disabled:opacity-30`}
+            className="w-10 h-10 rounded-md flex items-center justify-center transition-all active:scale-90 disabled:opacity-30"
+            style={{
+              background: isPlaying
+                ? "linear-gradient(180deg, #22c55e 0%, #16a34a 100%)"
+                : "linear-gradient(180deg, #555 0%, #444 100%)",
+              boxShadow: "0 2px 4px #00000040",
+            }}
           >
-            {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
+            {isPlaying ? <Pause className="w-4 h-4 text-white" /> : <Play className="w-4 h-4 text-white ml-0.5" />}
           </button>
 
           {/* Rewind */}
           <button
             onClick={onStopPlayback}
-            className="w-8 h-8 rounded-full flex items-center justify-center bg-muted/50 text-muted-foreground active:scale-90 transition-all"
+            className="w-8 h-8 rounded-md flex items-center justify-center active:scale-90 transition-all"
+            style={{ background: "linear-gradient(180deg, #555 0%, #444 100%)" }}
           >
-            <SkipBack className="w-3.5 h-3.5" />
+            <SkipBack className="w-3.5 h-3.5 text-[#ccc]" />
           </button>
 
           {/* Loop */}
           <button
             onClick={() => setLoopEnabled(!loopEnabled)}
-            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-90 ${
-              loopEnabled ? "bg-yellow-500/20 text-yellow-400" : "bg-muted/50 text-muted-foreground"
-            }`}
+            className="w-8 h-8 rounded-md flex items-center justify-center transition-all active:scale-90"
+            style={{
+              background: loopEnabled
+                ? "linear-gradient(180deg, #eab308 0%, #ca8a04 100%)"
+                : "linear-gradient(180deg, #555 0%, #444 100%)",
+            }}
           >
-            <Repeat className="w-3.5 h-3.5" />
+            <Repeat className="w-3.5 h-3.5" style={{ color: loopEnabled ? "#000" : "#ccc" }} />
           </button>
         </div>
 
-        {/* Time display */}
+        {/* Center: Time display */}
         <div className="flex items-center gap-2">
-          <div className="bg-background/80 border border-border/50 rounded-lg px-3 py-1.5 font-mono text-sm text-foreground tabular-nums">
-            {fmtMs(currentTime)}
+          <div className="px-3 py-1.5 rounded-md font-mono text-sm tabular-nums border"
+            style={{
+              background: "#111",
+              borderColor: "#444",
+              color: "#e0e0e0",
+              fontFamily: "monospace",
+              letterSpacing: "0.05em",
+            }}>
+            {fmt(currentTime)}
           </div>
           {isRecording && (
             <div className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-              <span className="text-[9px] font-bold text-red-400 uppercase">REC</span>
+              <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
             </div>
           )}
+        </div>
+
+        {/* Right: Tool buttons */}
+        <div className="flex items-center gap-1">
+          <button className="w-7 h-7 rounded-md flex items-center justify-center hover:bg-[#555]"
+            style={{ background: "#444" }} onClick={() => onNavigate("effects")}>
+            <Pencil className="w-3.5 h-3.5 text-[#aaa]" />
+          </button>
+          <button className="w-7 h-7 rounded-md flex items-center justify-center hover:bg-[#555]"
+            style={{ background: "#444" }} onClick={() => setShowMixer(true)}>
+            <Sliders className="w-3.5 h-3.5 text-[#aaa]" />
+          </button>
+          <button className="w-7 h-7 rounded-md flex items-center justify-center hover:bg-[#555]"
+            style={{ background: "#444" }} onClick={() => onNavigate("export")}>
+            <Share2 className="w-3.5 h-3.5 text-[#aaa]" />
+          </button>
+          <button className="w-7 h-7 rounded-md flex items-center justify-center hover:bg-[#555]"
+            style={{ background: "#444" }} onClick={() => onNavigate("export")}>
+            <Upload className="w-3.5 h-3.5 text-[#aaa]" />
+          </button>
         </div>
       </div>
 
       {/* Saving overlay */}
       {savingTake && (
-        <div className="absolute inset-0 bg-background/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="flex items-center gap-3 bg-card border border-border rounded-2xl px-6 py-4">
-            <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            <span className="text-sm font-semibold text-foreground">Saving take...</span>
+        <div className="absolute inset-0 bg-[#000]/60 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="flex items-center gap-3 bg-[#333] border border-[#555] rounded-xl px-6 py-4">
+            <div className="w-5 h-5 border-2 border-[#4fd1c5] border-t-transparent rounded-full animate-spin" />
+            <span className="text-sm font-semibold text-[#ddd]">Saving take...</span>
           </div>
         </div>
       )}

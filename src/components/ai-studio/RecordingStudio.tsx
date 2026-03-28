@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import {
   Mic, Play, Pause, Square, Save, Plus, Trash2, Music,
-  Upload, Image, Headphones, Download,
+  Upload, Image, Headphones, Download, SkipBack, Settings,
   Scissors, Edit3, Check, X, FolderOpen,
   FileText, Clock, Layers, Sliders, ArrowLeft
 } from "lucide-react";
@@ -545,68 +545,99 @@ const RecordingStudio = () => {
   /* ═══ HOME ═══ */
   if (screen === "home") {
     return (
-      <div className="px-4 pt-4 pb-24 space-y-6">
-        <div className="text-center">
-          <h1 className="text-2xl font-display font-bold text-foreground">Recording Studio</h1>
-          <p className="text-sm text-muted-foreground mt-1">Create, record, and mix your music</p>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          {[
-            { label: "New Session", icon: Plus, action: () => { resetForm(); setScreen("create"); }, accent: true },
-            { label: "My Sessions", icon: FolderOpen, action: () => {}, badge: sessions.length },
-            { label: "Drafts", icon: FileText, action: () => {}, badge: drafts.length },
-            { label: "Exports", icon: Download, action: () => {}, badge: exportsCount },
-          ].map(btn => (
-            <button
-              key={btn.label}
-              onClick={btn.action}
-              className={`relative flex flex-col items-center gap-2 p-5 rounded-2xl border transition-all active:scale-95 ${
-                btn.accent ? "bg-primary/10 border-primary/30 text-primary" : "bg-card border-border text-foreground"
-              }`}
-            >
-              <btn.icon className="w-6 h-6" />
-              <span className="text-sm font-semibold">{btn.label}</span>
-              {btn.badge ? (
-                <span className="absolute top-2 right-2 text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full font-bold">{btn.badge}</span>
-              ) : null}
+      <div className="px-4 pt-6 pb-24 space-y-6 h-full overflow-y-auto" style={{ background: "#2a2a2a" }}>
+        {/* Song Browser header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Settings className="w-5 h-5 text-[#888]" />
+            <h1 className="text-lg font-bold text-[#ddd]">Song Browser</h1>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-[#888] text-sm">?</span>
+            <FolderOpen className="w-5 h-5 text-[#888]" />
+            <button onClick={() => {}} className="w-7 h-7 rounded-full bg-[#555] flex items-center justify-center">
+              <X className="w-4 h-4 text-[#ccc]" />
             </button>
-          ))}
+          </div>
         </div>
 
-        {sessions.length > 0 && (
-          <div>
-            <h2 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-muted-foreground" /> Recent Sessions
-            </h2>
-            <div className="space-y-2">
-              {sessions.slice(0, 5).map(session => (
-                <button
-                  key={session.id}
-                  onClick={() => openSession(session)}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl bg-card border border-border active:scale-[0.98] transition-all text-left"
-                >
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                    <Music className="w-5 h-5 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-foreground truncate">{session.name}</p>
-                    <p className="text-xs text-muted-foreground">{session.takesCount || 0} takes · {session.beat_name || "No beat"}</p>
-                  </div>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                    session.is_draft ? "bg-yellow-500/20 text-yellow-400" : "bg-green-500/20 text-green-400"
-                  }`}>
-                    {session.is_draft ? "Draft" : "Done"}
-                  </span>
-                </button>
-              ))}
+        {/* New Song + actions */}
+        <div className="grid grid-cols-2 gap-4">
+          <button
+            onClick={() => { resetForm(); setScreen("create"); }}
+            className="flex flex-col items-center gap-3 py-6 rounded-xl active:scale-95 transition-all"
+            style={{ background: "transparent" }}
+          >
+            <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ background: "#555" }}>
+              <Plus className="w-8 h-8 text-[#ddd]" />
             </div>
+            <span className="text-sm font-semibold text-[#ddd]">New song</span>
+          </button>
+          <button
+            className="flex flex-col items-center gap-3 py-6 rounded-xl active:scale-95 transition-all"
+            style={{ background: "transparent" }}
+          >
+            <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ background: "#555" }}>
+              <Layers className="w-8 h-8 text-[#8ab4f8]" />
+            </div>
+            <span className="text-sm font-semibold text-[#ddd]">Collab</span>
+          </button>
+        </div>
+
+        {/* Session grid (project thumbnails like n-Track) */}
+        {sessions.length > 0 && (
+          <div className="grid grid-cols-2 gap-3">
+            {sessions.map(session => (
+              <button
+                key={session.id}
+                onClick={() => openSession(session)}
+                className="flex flex-col items-center gap-2 active:scale-[0.97] transition-all"
+              >
+                {/* Thumbnail */}
+                <div className="w-full aspect-video rounded-lg border border-[#555] overflow-hidden relative"
+                  style={{ background: "#1e1e1e" }}>
+                  {/* Fake DAW thumbnail */}
+                  <div className="absolute inset-0 flex flex-col">
+                    <div className="h-1 w-full" style={{ background: "#4fd1c5" }} />
+                    <div className="flex-1 flex items-center px-1">
+                      {Array.from({ length: 30 }, (_, i) => (
+                        <div key={i} className="flex-1 mx-[0.5px]" style={{
+                          height: `${20 + Math.random() * 50}%`,
+                          background: "#4fd1c5",
+                          opacity: 0.5,
+                          borderRadius: 1,
+                        }} />
+                      ))}
+                    </div>
+                    {/* Mini transport */}
+                    <div className="flex items-center gap-1 px-1 py-0.5" style={{ background: "#333" }}>
+                      <div className="w-2 h-2 rounded-full bg-red-500" />
+                      <Play className="w-2 h-2 text-[#aaa]" />
+                      <SkipBack className="w-2 h-2 text-[#aaa]" />
+                      <span className="text-[5px] font-mono text-[#888] ml-auto">
+                        {session.takesCount || 0}T
+                      </span>
+                    </div>
+                  </div>
+                  {session.is_draft && (
+                    <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-yellow-500" />
+                  )}
+                </div>
+                <span className="text-xs font-semibold text-[#ccc] truncate w-full text-center">{session.name}</span>
+              </button>
+            ))}
           </div>
         )}
 
+        {/* Trash */}
+        <div className="flex flex-col items-center gap-2 pt-4">
+          <Trash2 className="w-8 h-8 text-[#666]" />
+          <span className="text-sm text-[#666]">Trash</span>
+        </div>
+
         {loadingSessions && (
           <div className="text-center py-4">
-            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+            <div className="w-6 h-6 border-2 border-[#4fd1c5] border-t-transparent rounded-full animate-spin mx-auto" />
           </div>
         )}
       </div>
@@ -616,45 +647,51 @@ const RecordingStudio = () => {
   /* ═══ CREATE SESSION ═══ */
   if (screen === "create") {
     return (
-      <div className="px-4 pt-4 pb-24 space-y-5">
-        <button onClick={() => setScreen("home")} className="flex items-center gap-1 text-sm text-muted-foreground mb-2">
+      <div className="px-4 pt-4 pb-24 space-y-5 h-full overflow-y-auto" style={{ background: "#2a2a2a" }}>
+        <button onClick={() => setScreen("home")} className="flex items-center gap-1 text-sm text-[#888] mb-2">
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
-        <h1 className="text-xl font-display font-bold text-foreground">Create Session</h1>
+        <h1 className="text-xl font-bold text-[#ddd]">Start your song...</h1>
 
         <div className="space-y-2">
-          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Session Name</label>
-          <Input value={sessionName} onChange={e => setSessionName(e.target.value)} placeholder="My New Track" className="bg-card border-border text-foreground h-12 rounded-xl text-base" />
+          <label className="text-xs font-semibold text-[#888] uppercase tracking-wider">Session Name</label>
+          <Input value={sessionName} onChange={e => setSessionName(e.target.value)} placeholder="My New Track" 
+            className="h-12 rounded-xl text-base border-[#555] text-[#ddd] placeholder:text-[#666]"
+            style={{ background: "#333" }} />
         </div>
 
         <div className="space-y-2">
-          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Upload Beat</label>
+          <label className="text-xs font-semibold text-[#888] uppercase tracking-wider">Upload Beat</label>
           <input ref={beatInputRef} type="file" accept="audio/*,.mp3,.wav,.ogg,.flac,.aac,.m4a" onChange={handleBeatUpload} className="hidden" />
-          <button onClick={() => beatInputRef.current?.click()} className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-dashed border-border bg-card active:scale-[0.98] transition-all">
-            <Upload className="w-5 h-5 text-primary" />
+          <button onClick={() => beatInputRef.current?.click()} className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-dashed border-[#555] active:scale-[0.98] transition-all"
+            style={{ background: "#333" }}>
+            <Upload className="w-5 h-5 text-[#4fd1c5]" />
             <div className="text-left">
-              <p className="text-sm font-semibold text-foreground">{beatName || "Choose audio file"}</p>
-              <p className="text-xs text-muted-foreground">MP3, WAV, OGG, FLAC</p>
+              <p className="text-sm font-semibold text-[#ddd]">{beatName || "Choose audio file"}</p>
+              <p className="text-xs text-[#888]">MP3, WAV, OGG, FLAC</p>
             </div>
           </button>
         </div>
 
         <div className="space-y-2">
-          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Cover Image (optional)</label>
+          <label className="text-xs font-semibold text-[#888] uppercase tracking-wider">Cover Image (optional)</label>
           <input ref={coverInputRef} type="file" accept="image/*,.jpg,.jpeg,.png,.webp" onChange={handleCoverUpload} className="hidden" />
-          <button onClick={() => coverInputRef.current?.click()} className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-dashed border-border bg-card active:scale-[0.98] transition-all">
+          <button onClick={() => coverInputRef.current?.click()} className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-dashed border-[#555] active:scale-[0.98] transition-all"
+            style={{ background: "#333" }}>
             {coverPreview ? (
               <img src={coverPreview} alt="Cover" className="w-10 h-10 rounded-lg object-cover" />
             ) : (
-              <Image className="w-5 h-5 text-primary" />
+              <Image className="w-5 h-5 text-[#4fd1c5]" />
             )}
-            <p className="text-sm font-semibold text-foreground">{coverFile ? coverFile.name : "Add cover art"}</p>
+            <p className="text-sm font-semibold text-[#ddd]">{coverFile ? coverFile.name : "Add cover art"}</p>
           </button>
         </div>
 
-        <Button onClick={handleCreateSession} className="w-full h-12 rounded-xl text-base font-bold" disabled={!sessionName.trim() || !user}>
+        <button onClick={handleCreateSession} disabled={!sessionName.trim() || !user}
+          className="w-full h-12 rounded-xl text-base font-bold text-white disabled:opacity-40 active:scale-[0.98] transition-all"
+          style={{ background: "linear-gradient(180deg, #4fd1c5 0%, #38b2ac 100%)" }}>
           Continue to Studio
-        </Button>
+        </button>
       </div>
     );
   }
@@ -708,79 +745,86 @@ const RecordingStudio = () => {
   /* ═══ TAKES MANAGEMENT ═══ */
   if (screen === "takes") {
     return (
-      <div className="px-4 pt-4 pb-24 space-y-4">
-        <button onClick={() => setScreen("record")} className="flex items-center gap-1 text-sm text-muted-foreground mb-2">
+      <div className="px-4 pt-4 pb-24 space-y-4 h-full overflow-y-auto" style={{ background: "#2a2a2a" }}>
+        <button onClick={() => setScreen("record")} className="flex items-center gap-1 text-sm text-[#888] mb-2">
           <ArrowLeft className="w-4 h-4" /> Back to Studio
         </button>
-        <h1 className="text-xl font-display font-bold text-foreground">Takes</h1>
+        <h1 className="text-xl font-bold text-[#ddd]">Takes</h1>
 
         {takes.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
+          <div className="text-center py-12 text-[#666]">
             <Mic className="w-10 h-10 mx-auto mb-2 opacity-30" />
             <p className="text-sm">No takes yet. Go record!</p>
           </div>
         ) : (
           <div className="space-y-3">
             {takes.map(take => (
-              <div key={take.id} className={`p-4 rounded-2xl border space-y-3 ${activeTakeId === take.id ? "bg-primary/5 border-primary/30" : "bg-card border-border"}`}>
+              <div key={take.id} className={`p-4 rounded-xl border space-y-3 ${activeTakeId === take.id ? "border-[#4fd1c5]/40" : "border-[#444]"}`}
+                style={{ background: activeTakeId === take.id ? "#2e3a3a" : "#333" }}>
                 <div className="flex items-center justify-between">
                   {editingTakeId === take.id ? (
                     <div className="flex items-center gap-2 flex-1">
-                      <Input value={editingName} onChange={e => setEditingName(e.target.value)} className="h-8 text-sm bg-background" autoFocus />
+                      <Input value={editingName} onChange={e => setEditingName(e.target.value)} className="h-8 text-sm border-[#555] text-[#ddd]" style={{ background: "#222" }} autoFocus />
                       <button onClick={() => renameTake(take.id, editingName)} className="text-green-400"><Check className="w-4 h-4" /></button>
                       <button onClick={() => setEditingTakeId(null)} className="text-red-400"><X className="w-4 h-4" /></button>
                     </div>
                   ) : (
                     <div className="flex items-center gap-2">
-                      <button onClick={() => setActiveTakeId(take.id)} className={`w-3 h-3 rounded-full ${activeTakeId === take.id ? "bg-primary" : "bg-muted-foreground/30"}`} />
-                      <span className="text-sm font-bold text-foreground">{take.name}</span>
-                      <span className="text-xs text-muted-foreground">{fmt(take.duration)}</span>
+                      <button onClick={() => setActiveTakeId(take.id)} className={`w-3 h-3 rounded-full ${activeTakeId === take.id ? "bg-[#4fd1c5]" : "bg-[#555]"}`} />
+                      <span className="text-sm font-bold text-[#ddd]">{take.name}</span>
+                      <span className="text-xs text-[#888]">{fmt(take.duration)}</span>
                     </div>
                   )}
                   {editingTakeId !== take.id && (
                     <div className="flex items-center gap-1">
-                      <button onClick={() => { setEditingTakeId(take.id); setEditingName(take.name); }} className="p-1.5 rounded-lg hover:bg-muted"><Edit3 className="w-3.5 h-3.5 text-muted-foreground" /></button>
-                      <button onClick={() => deleteTake(take.id)} className="p-1.5 rounded-lg hover:bg-destructive/10"><Trash2 className="w-3.5 h-3.5 text-destructive" /></button>
+                      <button onClick={() => { setEditingTakeId(take.id); setEditingName(take.name); }} className="p-1.5 rounded-lg hover:bg-[#444]"><Edit3 className="w-3.5 h-3.5 text-[#888]" /></button>
+                      <button onClick={() => deleteTake(take.id)} className="p-1.5 rounded-lg hover:bg-red-500/20"><Trash2 className="w-3.5 h-3.5 text-red-400" /></button>
                     </div>
                   )}
                 </div>
 
-                {/* Waveform preview */}
                 {take.waveform.length > 0 && (
                   <div className="flex items-end gap-0.5 h-8 w-full">
                     {take.waveform.slice(0, 60).map((peak, i) => (
                       <div
                         key={i}
-                        className={`flex-1 rounded-sm ${activeTakeId === take.id ? "bg-primary/60" : "bg-muted-foreground/30"}`}
-                        style={{ height: `${Math.max(peak * 100, 8)}%` }}
+                        className="flex-1 rounded-sm"
+                        style={{
+                          height: `${Math.max(peak * 100, 8)}%`,
+                          background: activeTakeId === take.id ? "#4fd1c5" : "#555",
+                          opacity: activeTakeId === take.id ? 0.7 : 0.4,
+                        }}
                       />
                     ))}
                   </div>
                 )}
 
                 <div className="flex gap-2">
-                  <button onClick={() => toggleMuteTake(take.id)} className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${take.muted ? "bg-red-500/20 text-red-400" : "bg-muted text-muted-foreground"}`}>
+                  <button onClick={() => toggleMuteTake(take.id)} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all border ${take.muted ? "bg-red-500/20 text-red-400 border-red-500/30" : "text-[#aaa] border-[#555]"}`}
+                    style={{ background: take.muted ? undefined : "#444" }}>
                     {take.muted ? "Muted" : "Mute"}
                   </button>
-                  <button onClick={() => toggleSoloTake(take.id)} className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${take.solo ? "bg-yellow-500/20 text-yellow-400" : "bg-muted text-muted-foreground"}`}>
+                  <button onClick={() => toggleSoloTake(take.id)} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all border ${take.solo ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" : "text-[#aaa] border-[#555]"}`}
+                    style={{ background: take.solo ? undefined : "#444" }}>
                     {take.solo ? "Solo ✓" : "Solo"}
                   </button>
-                  <button onClick={() => playTake(take)} className="flex-1 py-2 rounded-xl text-xs font-bold bg-primary/10 text-primary">
+                  <button onClick={() => playTake(take)} className="flex-1 py-2 rounded-lg text-xs font-bold text-[#4fd1c5] border border-[#4fd1c5]/30"
+                    style={{ background: "#2a3a3a" }}>
                     Play ▶
                   </button>
                 </div>
 
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1"><Scissors className="w-3 h-3" /> Trim</p>
+                  <p className="text-xs font-semibold text-[#888] flex items-center gap-1"><Scissors className="w-3 h-3" /> Trim</p>
                   <div className="flex items-center gap-3">
-                    <span className="text-[10px] text-muted-foreground w-8">Start</span>
+                    <span className="text-[10px] text-[#888] w-8">Start</span>
                     <Slider value={[take.trimStart]} onValueChange={([v]) => updateTrimStart(take.id, v)} max={100} step={1} className="flex-1" />
-                    <span className="text-[10px] text-muted-foreground w-8">{take.trimStart}%</span>
+                    <span className="text-[10px] text-[#888] w-8">{take.trimStart}%</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-[10px] text-muted-foreground w-8">End</span>
+                    <span className="text-[10px] text-[#888] w-8">End</span>
                     <Slider value={[take.trimEnd]} onValueChange={([v]) => updateTrimEnd(take.id, v)} max={100} step={1} className="flex-1" />
-                    <span className="text-[10px] text-muted-foreground w-8">{take.trimEnd}%</span>
+                    <span className="text-[10px] text-[#888] w-8">{take.trimEnd}%</span>
                   </div>
                 </div>
               </div>
@@ -794,17 +838,21 @@ const RecordingStudio = () => {
   /* ═══ EFFECTS / MIX ═══ */
   if (screen === "effects") {
     return (
-      <div className="px-4 pt-4 pb-24 space-y-5">
-        <button onClick={() => setScreen("record")} className="flex items-center gap-1 text-sm text-muted-foreground mb-2">
+      <div className="px-4 pt-4 pb-24 space-y-5 h-full overflow-y-auto" style={{ background: "#2a2a2a" }}>
+        <button onClick={() => setScreen("record")} className="flex items-center gap-1 text-sm text-[#888] mb-2">
           <ArrowLeft className="w-4 h-4" /> Back to Studio
         </button>
-        <h1 className="text-xl font-display font-bold text-foreground">Effects & Mix</h1>
+        <h1 className="text-xl font-bold text-[#ddd]">Effects & Mix</h1>
 
         <div className="space-y-3">
-          <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Vocal Presets</h3>
+          <h3 className="text-xs font-bold text-[#888] uppercase tracking-wider">Vocal Presets</h3>
           <div className="grid grid-cols-3 gap-2">
             {EFFECT_PRESETS.map(preset => (
-              <button key={preset.id} onClick={() => setActiveEffect(preset.id)} className={`flex flex-col items-center gap-1.5 p-4 rounded-2xl border transition-all active:scale-95 ${activeEffect === preset.id ? "bg-primary/10 border-primary/30 text-primary" : "bg-card border-border text-foreground"}`}>
+              <button key={preset.id} onClick={() => setActiveEffect(preset.id)}
+                className={`flex flex-col items-center gap-1.5 p-4 rounded-xl border transition-all active:scale-95 ${
+                  activeEffect === preset.id ? "border-[#4fd1c5]/50 text-[#4fd1c5]" : "border-[#555] text-[#ccc]"
+                }`}
+                style={{ background: activeEffect === preset.id ? "#2a3a3a" : "#333" }}>
                 <span className="text-xl">{preset.icon}</span>
                 <span className="text-[11px] font-semibold">{preset.label}</span>
               </button>
@@ -812,19 +860,19 @@ const RecordingStudio = () => {
           </div>
         </div>
 
-        <div className="bg-card border border-border rounded-2xl p-5 space-y-5">
-          <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Mix Controls</h3>
+        <div className="rounded-xl p-5 space-y-5 border border-[#444]" style={{ background: "#333" }}>
+          <h3 className="text-xs font-bold text-[#888] uppercase tracking-wider">Mix Controls</h3>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-foreground flex items-center gap-2"><Mic className="w-4 h-4 text-primary" /> Vocal Gain</span>
-              <span className="text-sm text-muted-foreground">{vocalGain}%</span>
+              <span className="text-sm font-medium text-[#ddd] flex items-center gap-2"><Mic className="w-4 h-4 text-[#4fd1c5]" /> Vocal Gain</span>
+              <span className="text-sm text-[#888]">{vocalGain}%</span>
             </div>
             <Slider value={[vocalGain]} onValueChange={([v]) => setVocalGain(v)} max={150} step={1} />
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-foreground flex items-center gap-2"><Music className="w-4 h-4 text-primary" /> Beat Gain</span>
-              <span className="text-sm text-muted-foreground">{beatGain}%</span>
+              <span className="text-sm font-medium text-[#ddd] flex items-center gap-2"><Music className="w-4 h-4 text-[#4fd1c5]" /> Beat Gain</span>
+              <span className="text-sm text-[#888]">{beatGain}%</span>
             </div>
             <Slider value={[beatGain]} onValueChange={([v]) => setBeatGain(v)} max={150} step={1} />
           </div>
@@ -836,74 +884,83 @@ const RecordingStudio = () => {
   /* ═══ EXPORT ═══ */
   if (screen === "export") {
     return (
-      <div className="px-4 pt-4 pb-24 space-y-5">
-        <button onClick={() => setScreen("record")} className="flex items-center gap-1 text-sm text-muted-foreground mb-2">
+      <div className="px-4 pt-4 pb-24 space-y-5 h-full overflow-y-auto" style={{ background: "#2a2a2a" }}>
+        <button onClick={() => setScreen("record")} className="flex items-center gap-1 text-sm text-[#888] mb-2">
           <ArrowLeft className="w-4 h-4" /> Back to Studio
         </button>
-        <h1 className="text-xl font-display font-bold text-foreground">Export Track</h1>
+        <h1 className="text-xl font-bold text-[#ddd]">Export Track</h1>
 
         {activeTake && (
-          <div className="bg-card border border-border rounded-2xl p-4 flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-              <Headphones className="w-6 h-6 text-primary" />
+          <div className="rounded-xl p-4 flex items-center gap-3 border border-[#444]" style={{ background: "#333" }}>
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: "#2a3a3a" }}>
+              <Headphones className="w-6 h-6 text-[#4fd1c5]" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-foreground truncate">{activeTake.name}</p>
-              <p className="text-xs text-muted-foreground">{fmt(activeTake.duration)} · {activeSessionBeatName || "No beat"}</p>
+              <p className="text-sm font-bold text-[#ddd] truncate">{activeTake.name}</p>
+              <p className="text-xs text-[#888]">{fmt(activeTake.duration)} · {activeSessionBeatName || "No beat"}</p>
             </div>
-            <button onClick={() => playTake(activeTake)} className="p-2 rounded-full bg-primary/10">
-              <Play className="w-4 h-4 text-primary" />
+            <button onClick={() => playTake(activeTake)} className="p-2 rounded-full" style={{ background: "#2a3a3a" }}>
+              <Play className="w-4 h-4 text-[#4fd1c5]" />
             </button>
           </div>
         )}
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Song Title</label>
-            <Input value={exportTitle} onChange={e => setExportTitle(e.target.value)} placeholder="My Song" className="h-12 rounded-xl bg-card border-border text-base" />
+            <label className="text-xs font-semibold text-[#888] uppercase tracking-wider">Song Title</label>
+            <Input value={exportTitle} onChange={e => setExportTitle(e.target.value)} placeholder="My Song"
+              className="h-12 rounded-xl text-base border-[#555] text-[#ddd] placeholder:text-[#666]"
+              style={{ background: "#333" }} />
           </div>
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Artist Name</label>
-            <Input value={exportArtist} onChange={e => setExportArtist(e.target.value)} placeholder="Your Name" className="h-12 rounded-xl bg-card border-border text-base" />
+            <label className="text-xs font-semibold text-[#888] uppercase tracking-wider">Artist Name</label>
+            <Input value={exportArtist} onChange={e => setExportArtist(e.target.value)} placeholder="Your Name"
+              className="h-12 rounded-xl text-base border-[#555] text-[#ddd] placeholder:text-[#666]"
+              style={{ background: "#333" }} />
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Artwork (optional)</label>
+            <label className="text-xs font-semibold text-[#888] uppercase tracking-wider">Artwork (optional)</label>
             <input ref={artworkInputRef} type="file" accept="image/*,.jpg,.jpeg,.png,.webp" onChange={handleArtworkUpload} className="hidden" />
-            <button onClick={() => artworkInputRef.current?.click()} className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-dashed border-border bg-card active:scale-[0.98] transition-all">
+            <button onClick={() => artworkInputRef.current?.click()} className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-dashed border-[#555] active:scale-[0.98] transition-all"
+              style={{ background: "#333" }}>
               {exportArtworkPreview ? (
                 <img src={exportArtworkPreview} alt="Art" className="w-10 h-10 rounded-lg object-cover" />
               ) : (
-                <Image className="w-5 h-5 text-primary" />
+                <Image className="w-5 h-5 text-[#4fd1c5]" />
               )}
-              <p className="text-sm font-semibold text-foreground">{exportArtwork ? exportArtwork.name : "Add artwork"}</p>
+              <p className="text-sm font-semibold text-[#ddd]">{exportArtwork ? exportArtwork.name : "Add artwork"}</p>
             </button>
           </div>
 
           <div className="flex gap-2">
-            <div className="flex-1 p-3 rounded-xl bg-card border border-border text-center">
-              <p className="text-xs text-muted-foreground">WebM</p>
-              <p className="text-sm font-bold text-foreground">Available</p>
+            <div className="flex-1 p-3 rounded-xl border border-[#555] text-center" style={{ background: "#333" }}>
+              <p className="text-xs text-[#888]">WebM</p>
+              <p className="text-sm font-bold text-[#ddd]">Available</p>
             </div>
-            <div className="flex-1 p-3 rounded-xl bg-muted border border-border text-center opacity-50">
-              <p className="text-xs text-muted-foreground">WAV</p>
-              <p className="text-sm font-bold text-muted-foreground">Soon</p>
+            <div className="flex-1 p-3 rounded-xl border border-[#444] text-center opacity-50" style={{ background: "#2a2a2a" }}>
+              <p className="text-xs text-[#666]">WAV</p>
+              <p className="text-sm font-bold text-[#666]">Soon</p>
             </div>
-            <div className="flex-1 p-3 rounded-xl bg-muted border border-border text-center opacity-50">
-              <p className="text-xs text-muted-foreground">MP3</p>
-              <p className="text-sm font-bold text-muted-foreground">Soon</p>
+            <div className="flex-1 p-3 rounded-xl border border-[#444] text-center opacity-50" style={{ background: "#2a2a2a" }}>
+              <p className="text-xs text-[#666]">MP3</p>
+              <p className="text-sm font-bold text-[#666]">Soon</p>
             </div>
           </div>
         </div>
 
         <div className="space-y-3">
-          <Button onClick={handleExport} disabled={isExporting || !activeTakeId} className="w-full h-12 rounded-xl text-base font-bold gap-2">
-            {isExporting ? <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" /> : <Download className="w-5 h-5" />}
+          <button onClick={handleExport} disabled={isExporting || !activeTakeId}
+            className="w-full h-12 rounded-xl text-base font-bold text-white flex items-center justify-center gap-2 disabled:opacity-40 active:scale-[0.98] transition-all"
+            style={{ background: "linear-gradient(180deg, #4fd1c5 0%, #38b2ac 100%)" }}>
+            {isExporting ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Download className="w-5 h-5" />}
             Export Audio
-          </Button>
-          <Button variant="outline" onClick={handleSaveDraft} className="w-full h-12 rounded-xl text-base font-bold gap-2">
+          </button>
+          <button onClick={handleSaveDraft}
+            className="w-full h-12 rounded-xl text-base font-bold text-[#ccc] flex items-center justify-center gap-2 border border-[#555] active:scale-[0.98] transition-all"
+            style={{ background: "#333" }}>
             <Save className="w-5 h-5" /> Save Draft
-          </Button>
+          </button>
         </div>
       </div>
     );

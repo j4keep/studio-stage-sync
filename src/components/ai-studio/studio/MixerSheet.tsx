@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { X, Mic, Music, Plus, Volume2 } from "lucide-react";
+import { X, Mic, Music, Plus, Volume2, Play, SkipBack, Repeat } from "lucide-react";
 import type { TakeLocal } from "./StudioDAWView";
 
 interface MixerSheetProps {
@@ -21,7 +21,8 @@ interface MixerSheetProps {
   isAudioActive: boolean;
 }
 
-function VerticalFader({ value, onChange, color }: { value: number; onChange: (v: number) => void; color: string }) {
+/* ── Realistic vertical fader ── */
+function VerticalFader({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
 
@@ -41,31 +42,61 @@ function VerticalFader({ value, onChange, color }: { value: number; onChange: (v
     return () => { window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerup", onUp); };
   }, [dragging]);
 
+  // dB scale markings
+  const dbMarks = [0, -3, -6, -12, -20, -30, -40, -50];
+
   return (
-    <div
-      ref={trackRef}
-      className="relative w-8 h-full rounded-sm bg-black/50 cursor-pointer touch-none"
-      onPointerDown={(e) => { setDragging(true); handlePointer(e.clientY); }}
-    >
-      {/* Fill */}
+    <div className="relative flex">
+      {/* dB labels */}
+      <div className="flex flex-col justify-between h-full mr-1 py-1">
+        {dbMarks.map(db => (
+          <span key={db} className="text-[6px] font-mono text-[#888] leading-none text-right w-5">
+            {db}
+          </span>
+        ))}
+      </div>
+
+      {/* Fader track */}
       <div
-        className="absolute bottom-0 left-0 right-0 rounded-sm opacity-30"
-        style={{ height: `${value}%`, backgroundColor: color }}
-      />
-      {/* Thumb */}
-      <div
-        className="absolute left-0 right-0 h-3 rounded-sm shadow-md border border-white/30"
-        style={{
-          bottom: `${value}%`,
-          transform: "translateY(50%)",
-          backgroundColor: color,
-        }}
-      />
+        ref={trackRef}
+        className="relative w-[18px] h-full cursor-pointer touch-none rounded-sm"
+        style={{ background: "linear-gradient(180deg, #1a1a1a 0%, #222 100%)", border: "1px solid #444" }}
+        onPointerDown={(e) => { setDragging(true); handlePointer(e.clientY); }}
+      >
+        {/* Green fill */}
+        <div
+          className="absolute bottom-0 left-0 right-0"
+          style={{
+            height: `${value}%`,
+            background: "linear-gradient(to top, #22c55e 0%, #22c55e 50%, #eab308 80%, #ef4444 100%)",
+            opacity: 0.5,
+          }}
+        />
+        {/* Thumb */}
+        <div
+          className="absolute left-[-2px] right-[-2px] h-[10px] rounded-[2px]"
+          style={{
+            bottom: `${value}%`,
+            transform: "translateY(50%)",
+            background: "linear-gradient(180deg, #888 0%, #666 50%, #555 100%)",
+            border: "1px solid #999",
+            boxShadow: "0 1px 3px #00000060, inset 0 1px 0 #aaa",
+          }}
+        >
+          {/* Grip lines */}
+          <div className="flex flex-col gap-[1px] items-center justify-center h-full">
+            <div className="w-3 h-[0.5px] bg-[#aaa]" />
+            <div className="w-3 h-[0.5px] bg-[#999]" />
+            <div className="w-3 h-[0.5px] bg-[#aaa]" />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
-function MeterBar({ active, intensity }: { active: boolean; intensity: number }) {
+/* ── Level meter (segmented, realistic) ── */
+function MixerMeter({ active, intensity }: { active: boolean; intensity: number }) {
   const [level, setLevel] = useState(0);
   const rafRef = useRef<number>(0);
 
@@ -80,26 +111,44 @@ function MeterBar({ active, intensity }: { active: boolean; intensity: number })
     return () => cancelAnimationFrame(rafRef.current);
   }, [active, intensity]);
 
+  const segments = 30;
+  const lit = Math.round(level * segments);
+
   return (
-    <div className="w-[6px] h-full rounded-sm overflow-hidden bg-black/60">
-      <div
-        className="absolute bottom-0 left-0 right-0 rounded-sm transition-[height] duration-75 w-full"
-        style={{
-          height: `${Math.round(level * 100)}%`,
-          position: "relative",
-          background: `linear-gradient(to top, #22c55e 0%, #22c55e 50%, #eab308 75%, #ef4444 95%)`,
-        }}
-      />
+    <div className="flex flex-col-reverse gap-[1px] w-[6px]">
+      {Array.from({ length: segments }, (_, i) => {
+        const isLit = i < lit;
+        let color = "#1a1a1a";
+        if (isLit) {
+          if (i < segments * 0.6) color = "#22c55e";
+          else if (i < segments * 0.85) color = "#eab308";
+          else color = "#ef4444";
+        }
+        return (
+          <div
+            key={i}
+            className="rounded-[0.5px]"
+            style={{
+              height: 3,
+              backgroundColor: color,
+              opacity: isLit ? 1 : 0.12,
+              boxShadow: isLit && i >= segments * 0.85 ? "0 0 3px #ef4444" : "none",
+            }}
+          />
+        );
+      })}
     </div>
   );
 }
 
+/* ── Channel Strip (n-Track style) ── */
 function ChannelStrip({
-  name, icon, volume, onVolumeChange, pan, onPanChange,
-  isMuted, isSolo, onMute, onSolo, isActive, color, audioActive,
+  name, icon, iconColor, volume, onVolumeChange, pan, onPanChange,
+  isMuted, isSolo, onMute, onSolo, isRecordArmed, audioActive,
 }: {
   name: string;
   icon: React.ReactNode;
+  iconColor: string;
   volume: number;
   onVolumeChange: (v: number) => void;
   pan: number;
@@ -108,81 +157,125 @@ function ChannelStrip({
   isSolo: boolean;
   onMute?: () => void;
   onSolo?: () => void;
-  isActive: boolean;
-  color: string;
+  isRecordArmed?: boolean;
   audioActive: boolean;
 }) {
   const db = volume > 0 ? ((volume / 100 - 1) * 50).toFixed(1) : "-∞";
 
   return (
-    <div className={`flex flex-col items-center w-[72px] shrink-0 p-2 border-r border-border/30 ${isActive ? "bg-primary/5" : ""}`}>
-      {/* Label */}
-      <span className="text-[8px] font-bold text-foreground truncate w-full text-center mb-1">{name}</span>
-      
-      {/* Icon */}
-      <div className="mb-1">{icon}</div>
+    <div className="flex flex-col items-center w-[80px] shrink-0 border-r border-[#444]"
+      style={{ background: "linear-gradient(180deg, #4a4a4a 0%, #3a3a3a 100%)" }}>
 
-      {/* M / S / Arm */}
-      <div className="flex items-center gap-0.5 mb-1.5">
+      {/* Name + close */}
+      <div className="w-full px-1 pt-2 pb-1 border-b border-[#555] flex items-center gap-1">
+        <span className="text-[8px] font-bold text-[#ccc] truncate flex-1">{name}</span>
+        <X className="w-2.5 h-2.5 text-[#888] cursor-pointer hover:text-[#ccc]" />
+      </div>
+
+      {/* Icon */}
+      <div className="py-2">
+        {icon}
+      </div>
+
+      {/* Input label */}
+      <div className="w-[64px] h-4 rounded-sm mb-1 flex items-center justify-center"
+        style={{ background: iconColor, opacity: 0.7 }}>
+        <span className="text-[6px] font-bold text-white truncate px-1">iPhone Microp...</span>
+      </div>
+
+      {/* M / S / Record */}
+      <div className="flex items-center gap-1 py-1">
         <button
           onClick={onMute}
-          className={`w-[20px] h-[16px] text-[7px] font-black rounded flex items-center justify-center ${
-            isMuted ? "bg-red-500/80 text-white" : "bg-muted/80 text-muted-foreground"
+          className={`w-[24px] h-[20px] text-[9px] font-black rounded-sm flex items-center justify-center border ${
+            isMuted ? "bg-[#888] text-white border-[#999]" : "bg-[#555] text-[#bbb] border-[#666]"
           }`}
         >M</button>
         <button
           onClick={onSolo}
-          className={`w-[20px] h-[16px] text-[7px] font-black rounded flex items-center justify-center ${
-            isSolo ? "bg-yellow-500/80 text-black" : "bg-muted/80 text-muted-foreground"
+          className={`w-[24px] h-[20px] text-[9px] font-black rounded-sm flex items-center justify-center border ${
+            isSolo ? "bg-[#888] text-white border-[#999]" : "bg-[#555] text-[#bbb] border-[#666]"
           }`}
         >S</button>
-        <div className={`w-[16px] h-[16px] rounded-full flex items-center justify-center ${isActive ? "bg-red-500/60" : "bg-muted/80"}`}>
-          <div className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-white" : "bg-muted-foreground/40"}`} />
+        {isRecordArmed !== undefined && (
+          <div className={`w-[20px] h-[20px] rounded-full flex items-center justify-center ${
+            isRecordArmed ? "bg-red-500" : "bg-[#555] border border-[#666]"
+          }`}>
+            <div className={`w-2 h-2 rounded-full ${isRecordArmed ? "bg-white" : "bg-[#888]"}`} />
+          </div>
+        )}
+      </div>
+
+      {/* Pan knob */}
+      <div className="py-1">
+        <div className="w-[20px] h-[20px] rounded-full border-2 border-[#666] flex items-center justify-center cursor-pointer"
+          style={{ background: "#444" }}>
+          <div className="w-[1px] h-2 rounded-full"
+            style={{
+              background: "#ccc",
+              transform: `rotate(${pan * 1.35}deg)`,
+              transformOrigin: "bottom center",
+            }} />
         </div>
       </div>
 
-      {/* Pan */}
-      <input
-        type="range"
-        min={-100}
-        max={100}
-        value={pan}
-        onChange={(e) => onPanChange(Number(e.target.value))}
-        className="w-14 h-1 accent-primary mb-1"
-      />
-      
-      {/* dB label */}
-      <span className="text-[8px] font-mono text-muted-foreground mb-1">{db}</span>
-
-      {/* Fader + Meters */}
-      <div className="flex gap-1 h-32 mb-1">
-        <MeterBar active={audioActive && !isMuted} intensity={volume / 100} />
-        <VerticalFader value={volume} onChange={onVolumeChange} color={color} />
-        <MeterBar active={audioActive && !isMuted} intensity={volume / 120} />
+      {/* dB readout */}
+      <div className="w-[50px] h-4 rounded-sm border border-[#555] flex items-center justify-center mb-1"
+        style={{ background: "#222" }}>
+        <span className="text-[8px] font-mono text-[#ccc]">{db === "-50.0" ? "0" : db}</span>
       </div>
 
-      {/* Gain readout */}
-      <div className="flex items-center gap-1 mb-1.5">
-        <div className="w-4 h-3 rounded-sm bg-muted/50 flex items-center justify-center">
-          <Volume2 className="w-2 h-2 text-muted-foreground" />
+      {/* Fader + meters area */}
+      <div className="flex gap-1 flex-1 py-1 px-1" style={{ height: 180 }}>
+        <MixerMeter active={audioActive && !isMuted} intensity={volume / 100} />
+        <VerticalFader value={volume} onChange={onVolumeChange} />
+        <MixerMeter active={audioActive && !isMuted} intensity={volume / 120} />
+      </div>
+
+      {/* Volume readout */}
+      <div className="flex items-center gap-1 py-1">
+        <div className="w-6 h-4 rounded-sm border border-[#555] flex items-center justify-center"
+          style={{ background: "#333" }}>
+          <Volume2 className="w-2.5 h-2.5 text-[#888]" />
         </div>
-        <span className="text-[8px] font-mono text-muted-foreground">
-          {pan >= 0 ? `+${(pan / 100).toFixed(1)}` : (pan / 100).toFixed(1)}
-        </span>
+        <span className="text-[7px] font-mono text-[#aaa]">+{(pan / 100).toFixed(1)}</span>
       </div>
 
-      {/* EQ / FX buttons */}
-      <button className="text-[7px] w-full py-1 rounded bg-muted/60 font-bold text-muted-foreground mb-0.5">EQ</button>
-      <button className="text-[7px] w-full py-0.5 rounded bg-muted/30 font-bold text-muted-foreground/60 mb-0.5">ADD EFX</button>
-      <div className="w-full h-6 border border-dashed border-muted/30 rounded flex items-center justify-center mb-0.5">
-        <Plus className="w-2.5 h-2.5 text-muted-foreground/30" />
+      {/* EQ button */}
+      <button className="w-[62px] h-5 rounded-sm text-[8px] font-bold border mb-1"
+        style={{ background: "#444", borderColor: "#666", color: "#ccc" }}>
+        EQ
+      </button>
+
+      {/* ADD EFX */}
+      <button className="w-[62px] h-4 rounded-sm text-[7px] font-bold border mb-1"
+        style={{ background: "#3a3a3a", borderColor: "#555", color: "#999" }}>
+        ADD EFX
+      </button>
+
+      {/* Effect slot */}
+      <div className="w-[62px] h-8 border border-dashed border-[#555] rounded-sm flex items-center justify-center mb-1"
+        style={{ background: "#2a2a2a" }}>
+        <Plus className="w-3 h-3 text-[#666]" />
       </div>
-      <button className="text-[7px] w-full py-0.5 rounded bg-muted/40 font-bold text-muted-foreground">Speaker</button>
-      <button className="text-[7px] text-primary/60 w-full mt-0.5">Add send</button>
+
+      {/* Speaker */}
+      <button className="w-[62px] h-4 rounded-sm text-[7px] font-bold border mb-1"
+        style={{ background: "#444", borderColor: "#666", color: "#bbb" }}>
+        Speaker
+      </button>
+
+      {/* Add send */}
+      <button className="text-[7px] text-[#4fd1c5] w-full py-1 mb-1">
+        Add send
+      </button>
     </div>
   );
 }
 
+/* ═══════════════════════════════════════════
+   MIXER SHEET (full-screen overlay)
+   ═══════════════════════════════════════════ */
 export default function MixerSheet({
   open, onClose, beatName, takes, activeTakeId,
   beatVolume, setBeatVolume, vocalVolume, setVocalVolume,
@@ -191,37 +284,36 @@ export default function MixerSheet({
 }: MixerSheetProps) {
   if (!open) return null;
 
-  const CHANNEL_COLORS = ["#06b6d4", "#8b5cf6", "#6366f1", "#a855f7", "#3b82f6"];
+  const ICON_COLORS = ["#38b2ac", "#6366f1", "#8b5cf6", "#a855f7", "#3b82f6"];
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-[#000]/70 backdrop-blur-sm" onClick={onClose} />
 
-      {/* Panel */}
-      <div className="relative mt-auto bg-card border-t border-border/50 rounded-t-2xl overflow-hidden" style={{ maxHeight: "85vh" }}>
-        {/* Handle + close */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border/30">
-          <span className="text-xs font-bold text-foreground">Mixer</span>
-          <button onClick={onClose} className="p-1 rounded-lg bg-muted/50">
-            <X className="w-4 h-4 text-muted-foreground" />
+      <div className="relative mt-auto rounded-t-xl overflow-hidden border-t border-[#555]"
+        style={{ maxHeight: "90vh", background: "#2e2e2e" }}>
+        
+        {/* Close */}
+        <div className="absolute top-2 right-2 z-10">
+          <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center"
+            style={{ background: "#555" }}>
+            <X className="w-4 h-4 text-[#ccc]" />
           </button>
         </div>
 
-        {/* Scrollable channel strips */}
-        <div className="flex overflow-x-auto overflow-y-hidden py-2 px-1" style={{ maxHeight: "calc(85vh - 52px)" }}>
+        {/* Scrollable channels */}
+        <div className="flex overflow-x-auto overflow-y-hidden" style={{ maxHeight: "calc(90vh - 50px)" }}>
           {/* Beat channel */}
           <ChannelStrip
             name={beatName || "Beat"}
-            icon={<Music className="w-4 h-4 text-cyan-400" />}
+            icon={<Music className="w-5 h-5 text-[#4fd1c5]" />}
+            iconColor={ICON_COLORS[0]}
             volume={beatVolume}
             onVolumeChange={setBeatVolume}
             pan={beatPan}
             onPanChange={setBeatPan}
             isMuted={false}
             isSolo={false}
-            isActive={false}
-            color={CHANNEL_COLORS[0]}
             audioActive={isAudioActive}
           />
 
@@ -230,7 +322,8 @@ export default function MixerSheet({
             <ChannelStrip
               key={take.id}
               name={take.name}
-              icon={<Mic className="w-4 h-4 text-violet-400" />}
+              icon={<Mic className="w-5 h-5 text-[#b794f4]" />}
+              iconColor={ICON_COLORS[(idx + 1) % ICON_COLORS.length]}
               volume={vocalVolume}
               onVolumeChange={setVocalVolume}
               pan={vocalPan}
@@ -239,26 +332,45 @@ export default function MixerSheet({
               isSolo={take.solo}
               onMute={() => onToggleMute(take.id)}
               onSolo={() => onToggleSolo(take.id)}
-              isActive={activeTakeId === take.id}
-              color={CHANNEL_COLORS[(idx + 1) % CHANNEL_COLORS.length]}
+              isRecordArmed={activeTakeId === take.id}
               audioActive={isAudioActive && !take.muted}
             />
           ))}
 
-          {/* Master / Speaker channel */}
+          {/* Master/Speaker channel */}
           <ChannelStrip
             name="Speaker"
-            icon={<Volume2 className="w-4 h-4 text-primary" />}
+            icon={<Volume2 className="w-5 h-5 text-[#999]" />}
+            iconColor="#3b82f6"
             volume={Math.round((beatVolume + vocalVolume) / 2)}
             onVolumeChange={() => {}}
             pan={0}
             onPanChange={() => {}}
             isMuted={false}
             isSolo={false}
-            isActive={false}
-            color="#3b82f6"
             audioActive={isAudioActive}
           />
+        </div>
+
+        {/* Bottom transport (in mixer) */}
+        <div className="flex items-center justify-center gap-3 py-2 border-t border-[#444]"
+          style={{ background: "#2a2a2a" }}>
+          <button className="w-9 h-9 rounded-full flex items-center justify-center"
+            style={{ background: "radial-gradient(circle, #ef4444 60%, #b91c1c 100%)" }}>
+            <div className="w-3.5 h-3.5 rounded-full bg-white/90" />
+          </button>
+          <button className="w-9 h-9 rounded-md flex items-center justify-center"
+            style={{ background: "linear-gradient(180deg, #22c55e 0%, #16a34a 100%)" }}>
+            <Play className="w-4 h-4 text-white ml-0.5" />
+          </button>
+          <button className="w-7 h-7 rounded-md flex items-center justify-center"
+            style={{ background: "#444" }}>
+            <SkipBack className="w-3.5 h-3.5 text-[#ccc]" />
+          </button>
+          <button className="w-7 h-7 rounded-md flex items-center justify-center"
+            style={{ background: "#eab308" }}>
+            <Repeat className="w-3.5 h-3.5 text-black" />
+          </button>
         </div>
       </div>
     </div>
