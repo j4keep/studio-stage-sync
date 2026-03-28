@@ -745,79 +745,86 @@ const RecordingStudio = () => {
   /* ═══ TAKES MANAGEMENT ═══ */
   if (screen === "takes") {
     return (
-      <div className="px-4 pt-4 pb-24 space-y-4">
-        <button onClick={() => setScreen("record")} className="flex items-center gap-1 text-sm text-muted-foreground mb-2">
+      <div className="px-4 pt-4 pb-24 space-y-4 h-full overflow-y-auto" style={{ background: "#2a2a2a" }}>
+        <button onClick={() => setScreen("record")} className="flex items-center gap-1 text-sm text-[#888] mb-2">
           <ArrowLeft className="w-4 h-4" /> Back to Studio
         </button>
-        <h1 className="text-xl font-display font-bold text-foreground">Takes</h1>
+        <h1 className="text-xl font-bold text-[#ddd]">Takes</h1>
 
         {takes.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
+          <div className="text-center py-12 text-[#666]">
             <Mic className="w-10 h-10 mx-auto mb-2 opacity-30" />
             <p className="text-sm">No takes yet. Go record!</p>
           </div>
         ) : (
           <div className="space-y-3">
             {takes.map(take => (
-              <div key={take.id} className={`p-4 rounded-2xl border space-y-3 ${activeTakeId === take.id ? "bg-primary/5 border-primary/30" : "bg-card border-border"}`}>
+              <div key={take.id} className={`p-4 rounded-xl border space-y-3 ${activeTakeId === take.id ? "border-[#4fd1c5]/40" : "border-[#444]"}`}
+                style={{ background: activeTakeId === take.id ? "#2e3a3a" : "#333" }}>
                 <div className="flex items-center justify-between">
                   {editingTakeId === take.id ? (
                     <div className="flex items-center gap-2 flex-1">
-                      <Input value={editingName} onChange={e => setEditingName(e.target.value)} className="h-8 text-sm bg-background" autoFocus />
+                      <Input value={editingName} onChange={e => setEditingName(e.target.value)} className="h-8 text-sm border-[#555] text-[#ddd]" style={{ background: "#222" }} autoFocus />
                       <button onClick={() => renameTake(take.id, editingName)} className="text-green-400"><Check className="w-4 h-4" /></button>
                       <button onClick={() => setEditingTakeId(null)} className="text-red-400"><X className="w-4 h-4" /></button>
                     </div>
                   ) : (
                     <div className="flex items-center gap-2">
-                      <button onClick={() => setActiveTakeId(take.id)} className={`w-3 h-3 rounded-full ${activeTakeId === take.id ? "bg-primary" : "bg-muted-foreground/30"}`} />
-                      <span className="text-sm font-bold text-foreground">{take.name}</span>
-                      <span className="text-xs text-muted-foreground">{fmt(take.duration)}</span>
+                      <button onClick={() => setActiveTakeId(take.id)} className={`w-3 h-3 rounded-full ${activeTakeId === take.id ? "bg-[#4fd1c5]" : "bg-[#555]"}`} />
+                      <span className="text-sm font-bold text-[#ddd]">{take.name}</span>
+                      <span className="text-xs text-[#888]">{fmt(take.duration)}</span>
                     </div>
                   )}
                   {editingTakeId !== take.id && (
                     <div className="flex items-center gap-1">
-                      <button onClick={() => { setEditingTakeId(take.id); setEditingName(take.name); }} className="p-1.5 rounded-lg hover:bg-muted"><Edit3 className="w-3.5 h-3.5 text-muted-foreground" /></button>
-                      <button onClick={() => deleteTake(take.id)} className="p-1.5 rounded-lg hover:bg-destructive/10"><Trash2 className="w-3.5 h-3.5 text-destructive" /></button>
+                      <button onClick={() => { setEditingTakeId(take.id); setEditingName(take.name); }} className="p-1.5 rounded-lg hover:bg-[#444]"><Edit3 className="w-3.5 h-3.5 text-[#888]" /></button>
+                      <button onClick={() => deleteTake(take.id)} className="p-1.5 rounded-lg hover:bg-red-500/20"><Trash2 className="w-3.5 h-3.5 text-red-400" /></button>
                     </div>
                   )}
                 </div>
 
-                {/* Waveform preview */}
                 {take.waveform.length > 0 && (
                   <div className="flex items-end gap-0.5 h-8 w-full">
                     {take.waveform.slice(0, 60).map((peak, i) => (
                       <div
                         key={i}
-                        className={`flex-1 rounded-sm ${activeTakeId === take.id ? "bg-primary/60" : "bg-muted-foreground/30"}`}
-                        style={{ height: `${Math.max(peak * 100, 8)}%` }}
+                        className="flex-1 rounded-sm"
+                        style={{
+                          height: `${Math.max(peak * 100, 8)}%`,
+                          background: activeTakeId === take.id ? "#4fd1c5" : "#555",
+                          opacity: activeTakeId === take.id ? 0.7 : 0.4,
+                        }}
                       />
                     ))}
                   </div>
                 )}
 
                 <div className="flex gap-2">
-                  <button onClick={() => toggleMuteTake(take.id)} className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${take.muted ? "bg-red-500/20 text-red-400" : "bg-muted text-muted-foreground"}`}>
+                  <button onClick={() => toggleMuteTake(take.id)} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all border ${take.muted ? "bg-red-500/20 text-red-400 border-red-500/30" : "text-[#aaa] border-[#555]"}`}
+                    style={{ background: take.muted ? undefined : "#444" }}>
                     {take.muted ? "Muted" : "Mute"}
                   </button>
-                  <button onClick={() => toggleSoloTake(take.id)} className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${take.solo ? "bg-yellow-500/20 text-yellow-400" : "bg-muted text-muted-foreground"}`}>
+                  <button onClick={() => toggleSoloTake(take.id)} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all border ${take.solo ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" : "text-[#aaa] border-[#555]"}`}
+                    style={{ background: take.solo ? undefined : "#444" }}>
                     {take.solo ? "Solo ✓" : "Solo"}
                   </button>
-                  <button onClick={() => playTake(take)} className="flex-1 py-2 rounded-xl text-xs font-bold bg-primary/10 text-primary">
+                  <button onClick={() => playTake(take)} className="flex-1 py-2 rounded-lg text-xs font-bold text-[#4fd1c5] border border-[#4fd1c5]/30"
+                    style={{ background: "#2a3a3a" }}>
                     Play ▶
                   </button>
                 </div>
 
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1"><Scissors className="w-3 h-3" /> Trim</p>
+                  <p className="text-xs font-semibold text-[#888] flex items-center gap-1"><Scissors className="w-3 h-3" /> Trim</p>
                   <div className="flex items-center gap-3">
-                    <span className="text-[10px] text-muted-foreground w-8">Start</span>
+                    <span className="text-[10px] text-[#888] w-8">Start</span>
                     <Slider value={[take.trimStart]} onValueChange={([v]) => updateTrimStart(take.id, v)} max={100} step={1} className="flex-1" />
-                    <span className="text-[10px] text-muted-foreground w-8">{take.trimStart}%</span>
+                    <span className="text-[10px] text-[#888] w-8">{take.trimStart}%</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-[10px] text-muted-foreground w-8">End</span>
+                    <span className="text-[10px] text-[#888] w-8">End</span>
                     <Slider value={[take.trimEnd]} onValueChange={([v]) => updateTrimEnd(take.id, v)} max={100} step={1} className="flex-1" />
-                    <span className="text-[10px] text-muted-foreground w-8">{take.trimEnd}%</span>
+                    <span className="text-[10px] text-[#888] w-8">{take.trimEnd}%</span>
                   </div>
                 </div>
               </div>
@@ -831,17 +838,21 @@ const RecordingStudio = () => {
   /* ═══ EFFECTS / MIX ═══ */
   if (screen === "effects") {
     return (
-      <div className="px-4 pt-4 pb-24 space-y-5">
-        <button onClick={() => setScreen("record")} className="flex items-center gap-1 text-sm text-muted-foreground mb-2">
+      <div className="px-4 pt-4 pb-24 space-y-5 h-full overflow-y-auto" style={{ background: "#2a2a2a" }}>
+        <button onClick={() => setScreen("record")} className="flex items-center gap-1 text-sm text-[#888] mb-2">
           <ArrowLeft className="w-4 h-4" /> Back to Studio
         </button>
-        <h1 className="text-xl font-display font-bold text-foreground">Effects & Mix</h1>
+        <h1 className="text-xl font-bold text-[#ddd]">Effects & Mix</h1>
 
         <div className="space-y-3">
-          <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Vocal Presets</h3>
+          <h3 className="text-xs font-bold text-[#888] uppercase tracking-wider">Vocal Presets</h3>
           <div className="grid grid-cols-3 gap-2">
             {EFFECT_PRESETS.map(preset => (
-              <button key={preset.id} onClick={() => setActiveEffect(preset.id)} className={`flex flex-col items-center gap-1.5 p-4 rounded-2xl border transition-all active:scale-95 ${activeEffect === preset.id ? "bg-primary/10 border-primary/30 text-primary" : "bg-card border-border text-foreground"}`}>
+              <button key={preset.id} onClick={() => setActiveEffect(preset.id)}
+                className={`flex flex-col items-center gap-1.5 p-4 rounded-xl border transition-all active:scale-95 ${
+                  activeEffect === preset.id ? "border-[#4fd1c5]/50 text-[#4fd1c5]" : "border-[#555] text-[#ccc]"
+                }`}
+                style={{ background: activeEffect === preset.id ? "#2a3a3a" : "#333" }}>
                 <span className="text-xl">{preset.icon}</span>
                 <span className="text-[11px] font-semibold">{preset.label}</span>
               </button>
@@ -849,19 +860,19 @@ const RecordingStudio = () => {
           </div>
         </div>
 
-        <div className="bg-card border border-border rounded-2xl p-5 space-y-5">
-          <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Mix Controls</h3>
+        <div className="rounded-xl p-5 space-y-5 border border-[#444]" style={{ background: "#333" }}>
+          <h3 className="text-xs font-bold text-[#888] uppercase tracking-wider">Mix Controls</h3>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-foreground flex items-center gap-2"><Mic className="w-4 h-4 text-primary" /> Vocal Gain</span>
-              <span className="text-sm text-muted-foreground">{vocalGain}%</span>
+              <span className="text-sm font-medium text-[#ddd] flex items-center gap-2"><Mic className="w-4 h-4 text-[#4fd1c5]" /> Vocal Gain</span>
+              <span className="text-sm text-[#888]">{vocalGain}%</span>
             </div>
             <Slider value={[vocalGain]} onValueChange={([v]) => setVocalGain(v)} max={150} step={1} />
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-foreground flex items-center gap-2"><Music className="w-4 h-4 text-primary" /> Beat Gain</span>
-              <span className="text-sm text-muted-foreground">{beatGain}%</span>
+              <span className="text-sm font-medium text-[#ddd] flex items-center gap-2"><Music className="w-4 h-4 text-[#4fd1c5]" /> Beat Gain</span>
+              <span className="text-sm text-[#888]">{beatGain}%</span>
             </div>
             <Slider value={[beatGain]} onValueChange={([v]) => setBeatGain(v)} max={150} step={1} />
           </div>
@@ -873,74 +884,83 @@ const RecordingStudio = () => {
   /* ═══ EXPORT ═══ */
   if (screen === "export") {
     return (
-      <div className="px-4 pt-4 pb-24 space-y-5">
-        <button onClick={() => setScreen("record")} className="flex items-center gap-1 text-sm text-muted-foreground mb-2">
+      <div className="px-4 pt-4 pb-24 space-y-5 h-full overflow-y-auto" style={{ background: "#2a2a2a" }}>
+        <button onClick={() => setScreen("record")} className="flex items-center gap-1 text-sm text-[#888] mb-2">
           <ArrowLeft className="w-4 h-4" /> Back to Studio
         </button>
-        <h1 className="text-xl font-display font-bold text-foreground">Export Track</h1>
+        <h1 className="text-xl font-bold text-[#ddd]">Export Track</h1>
 
         {activeTake && (
-          <div className="bg-card border border-border rounded-2xl p-4 flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-              <Headphones className="w-6 h-6 text-primary" />
+          <div className="rounded-xl p-4 flex items-center gap-3 border border-[#444]" style={{ background: "#333" }}>
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: "#2a3a3a" }}>
+              <Headphones className="w-6 h-6 text-[#4fd1c5]" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-foreground truncate">{activeTake.name}</p>
-              <p className="text-xs text-muted-foreground">{fmt(activeTake.duration)} · {activeSessionBeatName || "No beat"}</p>
+              <p className="text-sm font-bold text-[#ddd] truncate">{activeTake.name}</p>
+              <p className="text-xs text-[#888]">{fmt(activeTake.duration)} · {activeSessionBeatName || "No beat"}</p>
             </div>
-            <button onClick={() => playTake(activeTake)} className="p-2 rounded-full bg-primary/10">
-              <Play className="w-4 h-4 text-primary" />
+            <button onClick={() => playTake(activeTake)} className="p-2 rounded-full" style={{ background: "#2a3a3a" }}>
+              <Play className="w-4 h-4 text-[#4fd1c5]" />
             </button>
           </div>
         )}
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Song Title</label>
-            <Input value={exportTitle} onChange={e => setExportTitle(e.target.value)} placeholder="My Song" className="h-12 rounded-xl bg-card border-border text-base" />
+            <label className="text-xs font-semibold text-[#888] uppercase tracking-wider">Song Title</label>
+            <Input value={exportTitle} onChange={e => setExportTitle(e.target.value)} placeholder="My Song"
+              className="h-12 rounded-xl text-base border-[#555] text-[#ddd] placeholder:text-[#666]"
+              style={{ background: "#333" }} />
           </div>
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Artist Name</label>
-            <Input value={exportArtist} onChange={e => setExportArtist(e.target.value)} placeholder="Your Name" className="h-12 rounded-xl bg-card border-border text-base" />
+            <label className="text-xs font-semibold text-[#888] uppercase tracking-wider">Artist Name</label>
+            <Input value={exportArtist} onChange={e => setExportArtist(e.target.value)} placeholder="Your Name"
+              className="h-12 rounded-xl text-base border-[#555] text-[#ddd] placeholder:text-[#666]"
+              style={{ background: "#333" }} />
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Artwork (optional)</label>
+            <label className="text-xs font-semibold text-[#888] uppercase tracking-wider">Artwork (optional)</label>
             <input ref={artworkInputRef} type="file" accept="image/*,.jpg,.jpeg,.png,.webp" onChange={handleArtworkUpload} className="hidden" />
-            <button onClick={() => artworkInputRef.current?.click()} className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-dashed border-border bg-card active:scale-[0.98] transition-all">
+            <button onClick={() => artworkInputRef.current?.click()} className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-dashed border-[#555] active:scale-[0.98] transition-all"
+              style={{ background: "#333" }}>
               {exportArtworkPreview ? (
                 <img src={exportArtworkPreview} alt="Art" className="w-10 h-10 rounded-lg object-cover" />
               ) : (
-                <Image className="w-5 h-5 text-primary" />
+                <Image className="w-5 h-5 text-[#4fd1c5]" />
               )}
-              <p className="text-sm font-semibold text-foreground">{exportArtwork ? exportArtwork.name : "Add artwork"}</p>
+              <p className="text-sm font-semibold text-[#ddd]">{exportArtwork ? exportArtwork.name : "Add artwork"}</p>
             </button>
           </div>
 
           <div className="flex gap-2">
-            <div className="flex-1 p-3 rounded-xl bg-card border border-border text-center">
-              <p className="text-xs text-muted-foreground">WebM</p>
-              <p className="text-sm font-bold text-foreground">Available</p>
+            <div className="flex-1 p-3 rounded-xl border border-[#555] text-center" style={{ background: "#333" }}>
+              <p className="text-xs text-[#888]">WebM</p>
+              <p className="text-sm font-bold text-[#ddd]">Available</p>
             </div>
-            <div className="flex-1 p-3 rounded-xl bg-muted border border-border text-center opacity-50">
-              <p className="text-xs text-muted-foreground">WAV</p>
-              <p className="text-sm font-bold text-muted-foreground">Soon</p>
+            <div className="flex-1 p-3 rounded-xl border border-[#444] text-center opacity-50" style={{ background: "#2a2a2a" }}>
+              <p className="text-xs text-[#666]">WAV</p>
+              <p className="text-sm font-bold text-[#666]">Soon</p>
             </div>
-            <div className="flex-1 p-3 rounded-xl bg-muted border border-border text-center opacity-50">
-              <p className="text-xs text-muted-foreground">MP3</p>
-              <p className="text-sm font-bold text-muted-foreground">Soon</p>
+            <div className="flex-1 p-3 rounded-xl border border-[#444] text-center opacity-50" style={{ background: "#2a2a2a" }}>
+              <p className="text-xs text-[#666]">MP3</p>
+              <p className="text-sm font-bold text-[#666]">Soon</p>
             </div>
           </div>
         </div>
 
         <div className="space-y-3">
-          <Button onClick={handleExport} disabled={isExporting || !activeTakeId} className="w-full h-12 rounded-xl text-base font-bold gap-2">
-            {isExporting ? <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" /> : <Download className="w-5 h-5" />}
+          <button onClick={handleExport} disabled={isExporting || !activeTakeId}
+            className="w-full h-12 rounded-xl text-base font-bold text-white flex items-center justify-center gap-2 disabled:opacity-40 active:scale-[0.98] transition-all"
+            style={{ background: "linear-gradient(180deg, #4fd1c5 0%, #38b2ac 100%)" }}>
+            {isExporting ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Download className="w-5 h-5" />}
             Export Audio
-          </Button>
-          <Button variant="outline" onClick={handleSaveDraft} className="w-full h-12 rounded-xl text-base font-bold gap-2">
+          </button>
+          <button onClick={handleSaveDraft}
+            className="w-full h-12 rounded-xl text-base font-bold text-[#ccc] flex items-center justify-center gap-2 border border-[#555] active:scale-[0.98] transition-all"
+            style={{ background: "#333" }}>
             <Save className="w-5 h-5" /> Save Draft
-          </Button>
+          </button>
         </div>
       </div>
     );
