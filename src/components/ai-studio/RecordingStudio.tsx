@@ -545,68 +545,99 @@ const RecordingStudio = () => {
   /* ═══ HOME ═══ */
   if (screen === "home") {
     return (
-      <div className="px-4 pt-4 pb-24 space-y-6">
-        <div className="text-center">
-          <h1 className="text-2xl font-display font-bold text-foreground">Recording Studio</h1>
-          <p className="text-sm text-muted-foreground mt-1">Create, record, and mix your music</p>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          {[
-            { label: "New Session", icon: Plus, action: () => { resetForm(); setScreen("create"); }, accent: true },
-            { label: "My Sessions", icon: FolderOpen, action: () => {}, badge: sessions.length },
-            { label: "Drafts", icon: FileText, action: () => {}, badge: drafts.length },
-            { label: "Exports", icon: Download, action: () => {}, badge: exportsCount },
-          ].map(btn => (
-            <button
-              key={btn.label}
-              onClick={btn.action}
-              className={`relative flex flex-col items-center gap-2 p-5 rounded-2xl border transition-all active:scale-95 ${
-                btn.accent ? "bg-primary/10 border-primary/30 text-primary" : "bg-card border-border text-foreground"
-              }`}
-            >
-              <btn.icon className="w-6 h-6" />
-              <span className="text-sm font-semibold">{btn.label}</span>
-              {btn.badge ? (
-                <span className="absolute top-2 right-2 text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full font-bold">{btn.badge}</span>
-              ) : null}
+      <div className="px-4 pt-6 pb-24 space-y-6 h-full overflow-y-auto" style={{ background: "#2a2a2a" }}>
+        {/* Song Browser header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Settings className="w-5 h-5 text-[#888]" />
+            <h1 className="text-lg font-bold text-[#ddd]">Song Browser</h1>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-[#888] text-sm">?</span>
+            <FolderOpen className="w-5 h-5 text-[#888]" />
+            <button onClick={() => {}} className="w-7 h-7 rounded-full bg-[#555] flex items-center justify-center">
+              <X className="w-4 h-4 text-[#ccc]" />
             </button>
-          ))}
+          </div>
         </div>
 
-        {sessions.length > 0 && (
-          <div>
-            <h2 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-muted-foreground" /> Recent Sessions
-            </h2>
-            <div className="space-y-2">
-              {sessions.slice(0, 5).map(session => (
-                <button
-                  key={session.id}
-                  onClick={() => openSession(session)}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl bg-card border border-border active:scale-[0.98] transition-all text-left"
-                >
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                    <Music className="w-5 h-5 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-foreground truncate">{session.name}</p>
-                    <p className="text-xs text-muted-foreground">{session.takesCount || 0} takes · {session.beat_name || "No beat"}</p>
-                  </div>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                    session.is_draft ? "bg-yellow-500/20 text-yellow-400" : "bg-green-500/20 text-green-400"
-                  }`}>
-                    {session.is_draft ? "Draft" : "Done"}
-                  </span>
-                </button>
-              ))}
+        {/* New Song + actions */}
+        <div className="grid grid-cols-2 gap-4">
+          <button
+            onClick={() => { resetForm(); setScreen("create"); }}
+            className="flex flex-col items-center gap-3 py-6 rounded-xl active:scale-95 transition-all"
+            style={{ background: "transparent" }}
+          >
+            <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ background: "#555" }}>
+              <Plus className="w-8 h-8 text-[#ddd]" />
             </div>
+            <span className="text-sm font-semibold text-[#ddd]">New song</span>
+          </button>
+          <button
+            className="flex flex-col items-center gap-3 py-6 rounded-xl active:scale-95 transition-all"
+            style={{ background: "transparent" }}
+          >
+            <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ background: "#555" }}>
+              <Layers className="w-8 h-8 text-[#8ab4f8]" />
+            </div>
+            <span className="text-sm font-semibold text-[#ddd]">Collab</span>
+          </button>
+        </div>
+
+        {/* Session grid (project thumbnails like n-Track) */}
+        {sessions.length > 0 && (
+          <div className="grid grid-cols-2 gap-3">
+            {sessions.map(session => (
+              <button
+                key={session.id}
+                onClick={() => openSession(session)}
+                className="flex flex-col items-center gap-2 active:scale-[0.97] transition-all"
+              >
+                {/* Thumbnail */}
+                <div className="w-full aspect-video rounded-lg border border-[#555] overflow-hidden relative"
+                  style={{ background: "#1e1e1e" }}>
+                  {/* Fake DAW thumbnail */}
+                  <div className="absolute inset-0 flex flex-col">
+                    <div className="h-1 w-full" style={{ background: "#4fd1c5" }} />
+                    <div className="flex-1 flex items-center px-1">
+                      {Array.from({ length: 30 }, (_, i) => (
+                        <div key={i} className="flex-1 mx-[0.5px]" style={{
+                          height: `${20 + Math.random() * 50}%`,
+                          background: "#4fd1c5",
+                          opacity: 0.5,
+                          borderRadius: 1,
+                        }} />
+                      ))}
+                    </div>
+                    {/* Mini transport */}
+                    <div className="flex items-center gap-1 px-1 py-0.5" style={{ background: "#333" }}>
+                      <div className="w-2 h-2 rounded-full bg-red-500" />
+                      <Play className="w-2 h-2 text-[#aaa]" />
+                      <SkipBack className="w-2 h-2 text-[#aaa]" />
+                      <span className="text-[5px] font-mono text-[#888] ml-auto">
+                        {session.takesCount || 0}T
+                      </span>
+                    </div>
+                  </div>
+                  {session.is_draft && (
+                    <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-yellow-500" />
+                  )}
+                </div>
+                <span className="text-xs font-semibold text-[#ccc] truncate w-full text-center">{session.name}</span>
+              </button>
+            ))}
           </div>
         )}
 
+        {/* Trash */}
+        <div className="flex flex-col items-center gap-2 pt-4">
+          <Trash2 className="w-8 h-8 text-[#666]" />
+          <span className="text-sm text-[#666]">Trash</span>
+        </div>
+
         {loadingSessions && (
           <div className="text-center py-4">
-            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+            <div className="w-6 h-6 border-2 border-[#4fd1c5] border-t-transparent rounded-full animate-spin mx-auto" />
           </div>
         )}
       </div>
