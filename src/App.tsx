@@ -46,6 +46,7 @@ import MyBoostsPage from "./pages/MyBoostsPage";
 import HelpDeskPage from "./pages/HelpDeskPage";
 import AdminTicketsPage from "./pages/AdminTicketsPage";
 import AskJhiPage from "./pages/AskJhiPage";
+import AIStudioPage from "./pages/AIStudioPage";
 import FeedPage from "./pages/FeedPage";
 
 import TermsAgreementGate from "./components/TermsAgreementGate";
@@ -201,6 +202,7 @@ const ProtectedRoutes = () => {
         <Route path="/my-boosts" element={<MyBoostsPage />} />
         <Route path="/helpdesk" element={<HelpDeskPage />} />
         <Route path="/ask-jhi" element={<AskJhiPage />} />
+        <Route path="/ai-studio" element={<AIStudioPage />} />
         <Route path="/admin/tickets" element={<AdminTicketsPage />} />
         <Route path="/battles" element={<BattlesPage />} />
         <Route path="/battle/:battleId" element={<MusicBattlePlayerPage />} />
