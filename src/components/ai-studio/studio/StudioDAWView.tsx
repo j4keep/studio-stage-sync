@@ -3,7 +3,7 @@ import {
   ArrowLeft, Mic, Play, Pause, Square, SkipBack,
   Repeat, Music, Volume2, Sliders, Download, Save,
   X, AudioWaveform, Pencil, RotateCcw, Share2, Upload,
-  ChevronRight, Settings
+  ChevronRight, Settings, Trash2
 } from "lucide-react";
 import MixerSheet from "./MixerSheet";
 
@@ -25,6 +25,7 @@ export interface TakeLocal {
 interface StudioDAWViewProps {
   sessionName: string;
   beatName: string | null;
+  beatUrl: string | null;
   takes: TakeLocal[];
   activeTakeId: string | null;
   setActiveTakeId: (id: string | null) => void;
@@ -40,11 +41,14 @@ interface StudioDAWViewProps {
   setVocalVolume: (v: number) => void;
   onStartRecording: () => void;
   onStopRecording: () => void;
-  onPlayActiveTake: () => void;
+  onPlayAll: () => void;
+  onPlayBeatOnly: () => void;
+  onPlayTake: (take: TakeLocal) => void;
   onStopPlayback: () => void;
   onPausePlayback: () => void;
   onToggleMute: (id: string) => void;
   onToggleSolo: (id: string) => void;
+  onDeleteTake: (id: string) => void;
   onSave: () => void;
   savingTake: boolean;
   onNavigate: (screen: string) => void;
@@ -53,6 +57,7 @@ interface StudioDAWViewProps {
   setBeatPan: (v: number) => void;
   vocalPan: number;
   setVocalPan: (v: number) => void;
+  beatWaveform: number[];
 }
 
 /* ── colour sets per track ── */
@@ -70,7 +75,7 @@ const fmt = (s: number) => {
   return `${m} :${String(sec).padStart(2, "0")} :${String(ms).padStart(3, "0")}`;
 };
 
-/* ── Level Meter (realistic green→yellow→red) ── */
+/* ── Level Meter ── */
 function LevelMeter({ active, intensity = 0.5 }: { active: boolean; intensity?: number }) {
   const [level, setLevel] = useState(0);
   const rafRef = useRef<number>(0);
@@ -116,9 +121,15 @@ function LevelMeter({ active, intensity = 0.5 }: { active: boolean; intensity?: 
   );
 }
 
-/* ── Waveform (mirrored, professional look) ── */
+/* ── Waveform Display ── */
 function WaveformDisplay({ peaks, color, isActive }: { peaks: number[]; color: string; isActive?: boolean }) {
-  if (peaks.length === 0) return <div className="h-full w-full" />;
+  if (peaks.length === 0) {
+    return (
+      <div className="h-full w-full flex items-center justify-center">
+        <span className="text-[9px] text-[#555] italic">No audio</span>
+      </div>
+    );
+  }
   const displayed = peaks.length > 120 
     ? Array.from({ length: 120 }, (_, i) => peaks[Math.floor(i * peaks.length / 120)]) 
     : peaks;
@@ -154,11 +165,12 @@ function WaveformDisplay({ peaks, color, isActive }: { peaks: number[]; color: s
   );
 }
 
-/* ── Track Lane (n-Track style) ── */
+/* ── Track Lane ── */
 function TrackLane({
   name, icon, colorSet, waveform, isActive, isMuted, isSolo,
   isRecordArmed, isRecordingNow, liveWaveform, volume, onVolumeChange,
-  onMute, onSolo, onClick, onDelete, audioActive, trackNumber,
+  onMute, onSolo, onClick, onDelete, onPlay, audioActive, trackNumber,
+  isPlaying,
 }: {
   name: string;
   icon: React.ReactNode;
@@ -176,8 +188,10 @@ function TrackLane({
   onSolo?: () => void;
   onClick?: () => void;
   onDelete?: () => void;
+  onPlay?: () => void;
   audioActive: boolean;
   trackNumber: number;
+  isPlaying?: boolean;
 }) {
   return (
     <div
@@ -185,7 +199,7 @@ function TrackLane({
       style={{ minHeight: 100 }}
       onClick={onClick}
     >
-      {/* Track header — n-Track style gray panel */}
+      {/* Track header */}
       <div className="w-[130px] shrink-0 border-r border-[#444] flex flex-col p-2 gap-1"
         style={{ background: "linear-gradient(180deg, #4a4a4a 0%, #3a3a3a 100%)" }}>
         
@@ -202,7 +216,7 @@ function TrackLane({
           )}
         </div>
 
-        {/* M / S / Record arm / Speaker */}
+        {/* M / S / Record arm / Play */}
         <div className="flex items-center gap-1 mt-1">
           <button
             onClick={(e) => { e.stopPropagation(); onMute?.(); }}
@@ -229,12 +243,27 @@ function TrackLane({
               <div className={`w-2.5 h-2.5 rounded-full ${isRecordingNow ? "bg-white" : "bg-[#999]"}`} />
             </div>
           )}
-          {audioActive && !isMuted && (
+          {/* Per-track play button */}
+          {onPlay && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onPlay(); }}
+              className={`w-[22px] h-[22px] rounded-sm flex items-center justify-center border ml-auto transition-colors ${
+                isPlaying ? "bg-green-600 border-green-500" : "bg-[#555] border-[#666] hover:bg-[#666]"
+              }`}
+            >
+              {isPlaying ? (
+                <Pause className="w-2.5 h-2.5 text-white" />
+              ) : (
+                <Play className="w-2.5 h-2.5 text-[#ccc] ml-[1px]" />
+              )}
+            </button>
+          )}
+          {!onPlay && audioActive && !isMuted && (
             <Volume2 className="w-3.5 h-3.5 text-[#4fd1c5] ml-auto" />
           )}
         </div>
 
-        {/* Volume slider (horizontal, like n-Track) */}
+        {/* Volume slider */}
         <div className="flex items-center gap-1 mt-1">
           <div className="relative flex-1 h-[6px] bg-[#333] rounded-sm overflow-hidden">
             <div
@@ -272,20 +301,11 @@ function TrackLane({
           <WaveformDisplay peaks={waveform} color={colorSet.wave} isActive={isActive} />
         )}
 
-        {/* Stereo level meters on right edge */}
+        {/* Level meters */}
         <div className="absolute right-1 top-2 bottom-2 flex gap-[2px]">
           <LevelMeter active={audioActive && !isMuted} intensity={volume / 100} />
           <LevelMeter active={audioActive && !isMuted} intensity={volume / 120} />
         </div>
-
-        {/* Loop handle icons */}
-        {waveform.length > 0 && (
-          <>
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-5 h-8 bg-[#555]/80 rounded-l-md flex items-center justify-center cursor-pointer hover:bg-[#666]/80">
-              <RotateCcw className="w-3 h-3 text-[#aaa]" />
-            </div>
-          </>
-        )}
 
         {isMuted && (
           <div className="absolute inset-0 bg-[#1a1a1a]/50 flex items-center justify-center">
@@ -302,12 +322,14 @@ function TrackLane({
    ═══════════════════════════════════════════ */
 export default function StudioDAWView(props: StudioDAWViewProps) {
   const {
-    sessionName, beatName, takes, activeTakeId, setActiveTakeId,
+    sessionName, beatName, beatUrl, takes, activeTakeId, setActiveTakeId,
     isRecording, isPlaying, recordTime, playbackTime, playbackDuration,
     liveWaveform, beatVolume, setBeatVolume, vocalVolume, setVocalVolume,
-    onStartRecording, onStopRecording, onPlayActiveTake, onStopPlayback,
-    onPausePlayback, onToggleMute, onToggleSolo, onSave, savingTake,
+    onStartRecording, onStopRecording, onPlayAll, onPlayBeatOnly, onPlayTake,
+    onStopPlayback, onPausePlayback, onToggleMute, onToggleSolo,
+    onDeleteTake, onSave, savingTake,
     onNavigate, onBack, beatPan, setBeatPan, vocalPan, setVocalPan,
+    beatWaveform,
   } = props;
 
   const [showMixer, setShowMixer] = useState(false);
@@ -329,15 +351,12 @@ export default function StudioDAWView(props: StudioDAWViewProps) {
   const currentTime = isRecording ? recordTime : isPlaying ? playbackTime : 0;
   const playheadPct = totalDuration > 0 ? (currentTime / totalDuration) * 100 : 0;
 
-  const beatWaveform = useMemo(() =>
-    Array.from({ length: 100 }, () => 0.15 + Math.random() * 0.65), []);
-
   const isAudioActive = isRecording || isPlaying;
 
   return (
     <div className="flex flex-col h-full" style={{ background: "#1e1e1e" }}>
       
-      {/* ── Top toolbar (grid + play arrow) ── */}
+      {/* ── Top toolbar ── */}
       <div className="flex items-center justify-between px-2 py-1.5 border-b border-[#333]"
         style={{ background: "linear-gradient(180deg, #4a4a4a 0%, #3a3a3a 100%)" }}>
         <div className="flex items-center gap-2">
@@ -345,13 +364,13 @@ export default function StudioDAWView(props: StudioDAWViewProps) {
             <ArrowLeft className="w-4 h-4 text-[#ccc]" />
           </button>
           <div className="w-px h-4 bg-[#555]" />
-          <button className="p-1 hover:bg-[#555] rounded">
+          <button onClick={() => onNavigate("effects")} className="p-1 hover:bg-[#555] rounded" title="Effects & Settings">
             <Settings className="w-4 h-4 text-[#aaa]" />
           </button>
         </div>
         <span className="text-[11px] font-bold text-[#ddd] truncate max-w-[180px]">{sessionName}</span>
         <div className="flex items-center gap-1">
-          <button onClick={onSave} className="p-1 hover:bg-[#555] rounded">
+          <button onClick={onSave} className="p-1 hover:bg-[#555] rounded" title="Save Session">
             <Save className="w-4 h-4 text-[#aaa]" />
           </button>
         </div>
@@ -361,7 +380,7 @@ export default function StudioDAWView(props: StudioDAWViewProps) {
       <div className="flex h-6 border-b border-[#333] shrink-0" style={{ background: "#2a2a2a" }}>
         <div className="w-[130px] shrink-0 border-r border-[#444]" />
         <div className="flex-1 relative overflow-hidden">
-          {/* Green locator triangle */}
+          {/* Playhead triangle */}
           <div
             className="absolute top-0 z-20"
             style={{ left: `${playheadPct}%`, transform: "translateX(-50%)" }}
@@ -421,8 +440,10 @@ export default function StudioDAWView(props: StudioDAWViewProps) {
           isSolo={false}
           volume={beatVolume}
           onVolumeChange={setBeatVolume}
+          onPlay={beatUrl ? onPlayBeatOnly : undefined}
           audioActive={isAudioActive}
           trackNumber={1}
+          isPlaying={isPlaying}
         />
 
         {/* Vocal takes */}
@@ -444,12 +465,15 @@ export default function StudioDAWView(props: StudioDAWViewProps) {
             onMute={() => onToggleMute(take.id)}
             onSolo={() => onToggleSolo(take.id)}
             onClick={() => setActiveTakeId(take.id)}
+            onPlay={() => onPlayTake(take)}
+            onDelete={() => onDeleteTake(take.id)}
             audioActive={isAudioActive && !take.muted && activeTakeId === take.id}
             trackNumber={idx + 2}
+            isPlaying={isPlaying && activeTakeId === take.id}
           />
         ))}
 
-        {/* Recording placeholder */}
+        {/* Recording placeholder when no takes yet */}
         {isRecording && takes.length === 0 && (
           <TrackLane
             name="Recording..."
@@ -469,7 +493,7 @@ export default function StudioDAWView(props: StudioDAWViewProps) {
           />
         )}
 
-        {/* Add track (dashed box like n-Track) */}
+        {/* Add track button */}
         <div className="flex" style={{ minHeight: 70 }}>
           <div className="w-[130px] shrink-0 border-r border-[#333] p-3 flex items-center justify-center"
             style={{ background: "#2e2e2e" }}>
@@ -484,7 +508,7 @@ export default function StudioDAWView(props: StudioDAWViewProps) {
           <div className="flex-1" style={{ background: "#1e1e1e" }} />
         </div>
 
-        {/* Right-side toolbar icons */}
+        {/* Right-side toolbar */}
         <div className="absolute right-0 top-[120px] flex flex-col gap-1 z-10">
           <button onClick={() => setShowMixer(true)} className="w-7 h-7 bg-[#444] hover:bg-[#555] rounded-l flex items-center justify-center border-l border-t border-b border-[#555]">
             <Sliders className="w-3.5 h-3.5 text-[#bbb]" />
@@ -497,13 +521,13 @@ export default function StudioDAWView(props: StudioDAWViewProps) {
         <div className="h-20" />
       </div>
 
-      {/* ── Transport Bar (bottom — matches n-Track) ── */}
+      {/* ── Transport Bar ── */}
       <div className="flex items-center justify-between px-2 py-2 border-t border-[#444] shrink-0"
         style={{ background: "linear-gradient(180deg, #3a3a3a 0%, #2a2a2a 100%)" }}>
         
         {/* Left: Record, Play, Rewind, Loop */}
         <div className="flex items-center gap-2">
-          {/* Record */}
+          {/* Record - only red/pulsing when actively recording */}
           <button
             onClick={isRecording ? onStopRecording : onStartRecording}
             disabled={savingTake}
@@ -511,21 +535,21 @@ export default function StudioDAWView(props: StudioDAWViewProps) {
             style={{
               background: isRecording
                 ? "radial-gradient(circle, #ef4444 60%, #dc2626 100%)"
-                : "radial-gradient(circle, #ef4444 60%, #b91c1c 100%)",
+                : "radial-gradient(circle, #777 60%, #555 100%)",
               boxShadow: isRecording ? "0 0 12px #ef444480" : "0 2px 6px #00000060",
             }}
           >
             {isRecording ? (
               <Square className="w-4 h-4 text-white" />
             ) : (
-              <div className="w-4 h-4 rounded-full bg-white/90" />
+              <div className="w-4 h-4 rounded-full bg-red-500" />
             )}
           </button>
 
-          {/* Play */}
+          {/* Play - plays all tracks together */}
           <button
-            onClick={isPlaying ? onPausePlayback : onPlayActiveTake}
-            disabled={isRecording || (!activeTake && takes.length === 0)}
+            onClick={isPlaying ? onPausePlayback : onPlayAll}
+            disabled={isRecording}
             className="w-10 h-10 rounded-md flex items-center justify-center transition-all active:scale-90 disabled:opacity-30"
             style={{
               background: isPlaying
@@ -591,11 +615,7 @@ export default function StudioDAWView(props: StudioDAWViewProps) {
           </button>
           <button className="w-7 h-7 rounded-md flex items-center justify-center hover:bg-[#555]"
             style={{ background: "#444" }} onClick={() => onNavigate("export")}>
-            <Share2 className="w-3.5 h-3.5 text-[#aaa]" />
-          </button>
-          <button className="w-7 h-7 rounded-md flex items-center justify-center hover:bg-[#555]"
-            style={{ background: "#444" }} onClick={() => onNavigate("export")}>
-            <Upload className="w-3.5 h-3.5 text-[#aaa]" />
+            <Download className="w-3.5 h-3.5 text-[#aaa]" />
           </button>
         </div>
       </div>
