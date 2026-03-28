@@ -36,16 +36,16 @@ const AIVideoTab = () => {
   return (
     <div className="px-4 pt-4 pb-4">
       {/* Hero section with gradient */}
-      <div className="relative rounded-2xl overflow-hidden mb-6 bg-gradient-to-b from-purple-600/30 to-background p-6 pt-10">
+      <div className="relative rounded-2xl overflow-hidden mb-6 bg-gradient-to-b from-primary/20 to-background p-6 pt-10">
         <div className="flex justify-center gap-3 mb-4">
           <div className="w-20 h-24 rounded-xl bg-card/50 border border-border overflow-hidden">
-            <div className="w-full h-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center">
+            <div className="w-full h-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
               <Upload className="w-6 h-6 text-muted-foreground/50" />
             </div>
           </div>
           <div className="flex items-center text-muted-foreground text-lg">+</div>
           <div className="w-20 h-24 rounded-xl bg-card/50 border border-border overflow-hidden">
-            <div className="w-full h-full bg-gradient-to-br from-orange-500/20 to-red-500/20 flex items-center justify-center">
+            <div className="w-full h-full bg-gradient-to-br from-accent/20 to-destructive/20 flex items-center justify-center">
               <Upload className="w-6 h-6 text-muted-foreground/50" />
             </div>
           </div>
