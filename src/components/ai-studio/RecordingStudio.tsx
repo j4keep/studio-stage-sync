@@ -647,45 +647,51 @@ const RecordingStudio = () => {
   /* ═══ CREATE SESSION ═══ */
   if (screen === "create") {
     return (
-      <div className="px-4 pt-4 pb-24 space-y-5">
-        <button onClick={() => setScreen("home")} className="flex items-center gap-1 text-sm text-muted-foreground mb-2">
+      <div className="px-4 pt-4 pb-24 space-y-5 h-full overflow-y-auto" style={{ background: "#2a2a2a" }}>
+        <button onClick={() => setScreen("home")} className="flex items-center gap-1 text-sm text-[#888] mb-2">
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
-        <h1 className="text-xl font-display font-bold text-foreground">Create Session</h1>
+        <h1 className="text-xl font-bold text-[#ddd]">Start your song...</h1>
 
         <div className="space-y-2">
-          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Session Name</label>
-          <Input value={sessionName} onChange={e => setSessionName(e.target.value)} placeholder="My New Track" className="bg-card border-border text-foreground h-12 rounded-xl text-base" />
+          <label className="text-xs font-semibold text-[#888] uppercase tracking-wider">Session Name</label>
+          <Input value={sessionName} onChange={e => setSessionName(e.target.value)} placeholder="My New Track" 
+            className="h-12 rounded-xl text-base border-[#555] text-[#ddd] placeholder:text-[#666]"
+            style={{ background: "#333" }} />
         </div>
 
         <div className="space-y-2">
-          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Upload Beat</label>
+          <label className="text-xs font-semibold text-[#888] uppercase tracking-wider">Upload Beat</label>
           <input ref={beatInputRef} type="file" accept="audio/*,.mp3,.wav,.ogg,.flac,.aac,.m4a" onChange={handleBeatUpload} className="hidden" />
-          <button onClick={() => beatInputRef.current?.click()} className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-dashed border-border bg-card active:scale-[0.98] transition-all">
-            <Upload className="w-5 h-5 text-primary" />
+          <button onClick={() => beatInputRef.current?.click()} className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-dashed border-[#555] active:scale-[0.98] transition-all"
+            style={{ background: "#333" }}>
+            <Upload className="w-5 h-5 text-[#4fd1c5]" />
             <div className="text-left">
-              <p className="text-sm font-semibold text-foreground">{beatName || "Choose audio file"}</p>
-              <p className="text-xs text-muted-foreground">MP3, WAV, OGG, FLAC</p>
+              <p className="text-sm font-semibold text-[#ddd]">{beatName || "Choose audio file"}</p>
+              <p className="text-xs text-[#888]">MP3, WAV, OGG, FLAC</p>
             </div>
           </button>
         </div>
 
         <div className="space-y-2">
-          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Cover Image (optional)</label>
+          <label className="text-xs font-semibold text-[#888] uppercase tracking-wider">Cover Image (optional)</label>
           <input ref={coverInputRef} type="file" accept="image/*,.jpg,.jpeg,.png,.webp" onChange={handleCoverUpload} className="hidden" />
-          <button onClick={() => coverInputRef.current?.click()} className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-dashed border-border bg-card active:scale-[0.98] transition-all">
+          <button onClick={() => coverInputRef.current?.click()} className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-dashed border-[#555] active:scale-[0.98] transition-all"
+            style={{ background: "#333" }}>
             {coverPreview ? (
               <img src={coverPreview} alt="Cover" className="w-10 h-10 rounded-lg object-cover" />
             ) : (
-              <Image className="w-5 h-5 text-primary" />
+              <Image className="w-5 h-5 text-[#4fd1c5]" />
             )}
-            <p className="text-sm font-semibold text-foreground">{coverFile ? coverFile.name : "Add cover art"}</p>
+            <p className="text-sm font-semibold text-[#ddd]">{coverFile ? coverFile.name : "Add cover art"}</p>
           </button>
         </div>
 
-        <Button onClick={handleCreateSession} className="w-full h-12 rounded-xl text-base font-bold" disabled={!sessionName.trim() || !user}>
+        <button onClick={handleCreateSession} disabled={!sessionName.trim() || !user}
+          className="w-full h-12 rounded-xl text-base font-bold text-white disabled:opacity-40 active:scale-[0.98] transition-all"
+          style={{ background: "linear-gradient(180deg, #4fd1c5 0%, #38b2ac 100%)" }}>
           Continue to Studio
-        </Button>
+        </button>
       </div>
     );
   }
