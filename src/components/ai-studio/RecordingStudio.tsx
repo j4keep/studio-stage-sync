@@ -804,10 +804,10 @@ const RecordingStudio = () => {
           </button>
         </div>
 
-        <button onClick={handleCreateSession} disabled={!sessionName.trim() || !user}
+        <button onClick={handleCreateSession} disabled={!sessionName.trim() || !user || isCreating}
           className="w-full h-12 rounded-xl text-base font-bold text-white disabled:opacity-40 active:scale-[0.98] transition-all"
           style={{ background: "linear-gradient(180deg, #4fd1c5 0%, #38b2ac 100%)" }}>
-          Continue to Studio
+          {isCreating ? "Creating…" : "Continue to Studio"}
         </button>
       </div>
     );
