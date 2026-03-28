@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Play, Settings, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Trash2, Music, Mic } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,6 +14,9 @@ type Generation = {
   lyrics: string | null;
   genre: string | null;
   mood: string | null;
+  production_notes: string | null;
+  bpm: number | null;
+  musical_key: string | null;
   created_at: string;
 };
 
@@ -22,12 +25,13 @@ const AILibraryTab = () => {
   const [activeFilter, setActiveFilter] = useState("All");
   const [songs, setSongs] = useState<Generation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const fetchGenerations = async () => {
     if (!user) { setLoading(false); return; }
     const { data, error } = await supabase
       .from("ai_generations")
-      .select("id, title, type, cover_url, lyrics, genre, mood, created_at")
+      .select("id, title, type, cover_url, lyrics, genre, mood, production_notes, bpm, musical_key, created_at")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
     if (!error && data) setSongs(data as Generation[]);
@@ -43,6 +47,11 @@ const AILibraryTab = () => {
   };
 
   const filtered = activeFilter === "All" ? songs : songs.filter((s) => s.type === activeFilter);
+
+  const formatDate = (dateStr: string) => {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  };
 
   return (
     <div className="px-4 pt-4 pb-4">
@@ -77,24 +86,89 @@ const AILibraryTab = () => {
       ) : (
         <div className="space-y-1">
           {filtered.map((song) => (
-            <div key={song.id} className="flex items-center gap-3 py-3 border-b border-border/50">
-              <div className="w-10 h-10 rounded-lg bg-card border border-border flex items-center justify-center shrink-0">
-                {song.cover_url ? (
-                  <img src={song.cover_url} alt={song.title} className="w-full h-full object-cover rounded-lg" />
+            <div key={song.id} className="border-b border-border/50">
+              {/* Song row */}
+              <div
+                className="flex items-center gap-3 py-3 cursor-pointer"
+                onClick={() => setExpandedId(expandedId === song.id ? null : song.id)}
+              >
+                <div className="w-10 h-10 rounded-lg bg-card border border-border flex items-center justify-center shrink-0">
+                  {song.cover_url ? (
+                    <img src={song.cover_url} alt={song.title} className="w-full h-full object-cover rounded-lg" />
+                  ) : (
+                    <Music className="w-4 h-4 text-primary" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm font-medium text-foreground truncate block">{song.title}</span>
+                  <span className="text-xs text-muted-foreground">{song.genre || song.type} · {song.mood || ""}</span>
+                </div>
+                {expandedId === song.id ? (
+                  <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" />
                 ) : (
-                  <span className="text-lg">🎵</span>
+                  <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
                 )}
               </div>
-              <div className="flex-1 min-w-0">
-                <span className="text-sm font-medium text-foreground truncate block">{song.title}</span>
-                <span className="text-xs text-muted-foreground">{song.genre || song.type} · {song.mood || ""}</span>
-              </div>
-              <button
-                onClick={() => handleDelete(song.id)}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+
+              {/* Expanded details */}
+              {expandedId === song.id && (
+                <div className="pb-4 pl-13 space-y-3 animate-in slide-in-from-top-2 duration-200">
+                  {/* Meta chips */}
+                  <div className="flex flex-wrap gap-1.5 pl-[52px]">
+                    {song.genre && (
+                      <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-medium">
+                        {song.genre}
+                      </span>
+                    )}
+                    {song.mood && (
+                      <span className="px-2 py-0.5 rounded-full bg-accent/50 text-accent-foreground text-[10px] font-medium">
+                        {song.mood}
+                      </span>
+                    )}
+                    {song.bpm && (
+                      <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px] font-medium">
+                        {song.bpm} BPM
+                      </span>
+                    )}
+                    {song.musical_key && (
+                      <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px] font-medium">
+                        Key: {song.musical_key}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Lyrics */}
+                  {song.lyrics && (
+                    <div className="pl-[52px]">
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1">
+                        <Mic className="w-3 h-3" /> Lyrics
+                      </p>
+                      <div className="bg-card rounded-xl border border-border p-3 max-h-48 overflow-y-auto">
+                        <p className="text-xs text-foreground whitespace-pre-wrap leading-relaxed">{song.lyrics}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Production notes */}
+                  {song.production_notes && (
+                    <div className="pl-[52px]">
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Production Notes</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed">{song.production_notes}</p>
+                    </div>
+                  )}
+
+                  {/* Date + delete */}
+                  <div className="flex items-center justify-between pl-[52px]">
+                    <span className="text-[10px] text-muted-foreground">{formatDate(song.created_at)}</span>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDelete(song.id); }}
+                      className="px-3 py-1 rounded-full text-xs text-destructive bg-destructive/10 hover:bg-destructive/20 transition-colors flex items-center gap-1"
+                    >
+                      <Trash2 className="w-3 h-3" /> Delete
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
