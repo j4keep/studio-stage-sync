@@ -279,6 +279,14 @@ const RecordingStudio = () => {
     setIsCreating(true);
 
     try {
+      // Ensure auth token is fresh before insert
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        toast({ title: "Session expired — please sign in again", variant: "destructive" });
+        setIsCreating(false);
+        return;
+      }
+
       // 1) Create session in DB immediately (no file upload blocking)
       const { data, error } = await supabase
         .from("recording_sessions" as any)
