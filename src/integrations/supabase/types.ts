@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_generations: {
+        Row: {
+          audio_url: string | null
+          bpm: number | null
+          cover_url: string | null
+          created_at: string
+          genre: string | null
+          id: string
+          lyrics: string | null
+          mood: string | null
+          musical_key: string | null
+          production_notes: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          audio_url?: string | null
+          bpm?: number | null
+          cover_url?: string | null
+          created_at?: string
+          genre?: string | null
+          id?: string
+          lyrics?: string | null
+          mood?: string | null
+          musical_key?: string | null
+          production_notes?: string | null
+          title: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          audio_url?: string | null
+          bpm?: number | null
+          cover_url?: string | null
+          created_at?: string
+          genre?: string | null
+          id?: string
+          lyrics?: string | null
+          mood?: string | null
+          musical_key?: string | null
+          production_notes?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       battle_comments: {
         Row: {
           battle_id: string
