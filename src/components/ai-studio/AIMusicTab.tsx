@@ -79,6 +79,32 @@ const AIMusicTab = () => {
 
   return (
     <div className="px-4 pt-4 pb-4">
+      {/* Studio/AI Mode Toggle */}
+      <div className="bg-card rounded-2xl border border-border p-1 mb-4">
+        <div className="flex">
+          <button
+            onClick={() => setStudioMode("studio")}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-all ${
+              studioMode === "studio" ? "bg-foreground text-background" : "text-muted-foreground"
+            }`}
+          >
+            <Mic className="w-4 h-4" /> Recording Studio
+          </button>
+          <button
+            onClick={() => setStudioMode("ai")}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-all ${
+              studioMode === "ai" ? "bg-foreground text-background" : "text-muted-foreground"
+            }`}
+          >
+            <Sparkles className="w-4 h-4" /> AI Generate
+          </button>
+        </div>
+      </div>
+
+      {studioMode === "studio" ? (
+        <RecordingStudio />
+      ) : (
+      <>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-display font-bold text-foreground">Create Music</h1>
