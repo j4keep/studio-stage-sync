@@ -118,6 +118,7 @@ const RecordingStudio = () => {
   const [exports, setExports] = useState<any[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [deletedSessionIds, setDeletedSessionIds] = useState<string[]>([]);
+  const [isCreating, setIsCreating] = useState(false);
 
   const [sessionName, setSessionName] = useState("");
   const [beatFile, setBeatFile] = useState<File | null>(null);
