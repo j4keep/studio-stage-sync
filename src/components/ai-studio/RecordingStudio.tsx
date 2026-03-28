@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import {
   Mic, Play, Pause, Square, Save, Plus, Trash2, Music,
-  Upload, Image, Headphones, Download,
+  Upload, Image, Headphones, Download, SkipBack, Settings,
   Scissors, Edit3, Check, X, FolderOpen,
   FileText, Clock, Layers, Sliders, ArrowLeft
 } from "lucide-react";
