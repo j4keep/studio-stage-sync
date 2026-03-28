@@ -665,7 +665,7 @@ const RecordingStudio = () => {
       <StudioDAWView
         sessionName={activeSessionName}
         beatName={activeSessionBeatName}
-        beatUrl={beatUrl}
+        beatName={activeSessionBeatName}
         takes={takes}
         activeTakeId={activeTakeId}
         setActiveTakeId={setActiveTakeId}
