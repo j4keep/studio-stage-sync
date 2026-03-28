@@ -659,151 +659,50 @@ const RecordingStudio = () => {
     );
   }
 
-  /* ═══ RECORDING SCREEN ═══ */
+  /* ═══ RECORDING SCREEN (DAW View) ═══ */
   if (screen === "record") {
     return (
-      <div className="px-4 pt-4 pb-24 space-y-4">
-        <div className="flex items-center justify-between">
-          <button onClick={() => { engine.stopPlayback(); setScreen("home"); }} className="flex items-center gap-1 text-sm text-muted-foreground">
-            <ArrowLeft className="w-4 h-4" /> Back
-          </button>
-          <h2 className="text-sm font-bold text-foreground truncate max-w-[50%]">{activeSessionName}</h2>
-          <button onClick={saveSession} className="text-xs font-bold text-primary">Save</button>
-        </div>
-
-        {/* Waveform area */}
-        <div className="bg-card border border-border rounded-2xl p-4 h-32 flex items-center justify-center relative overflow-hidden">
-          {engine.isRecording ? (
-            <div className="flex items-end gap-0.5 h-16 w-full">
-              {engine.liveWaveform.map((peak, i) => (
-                <div
-                  key={i}
-                  className="flex-1 bg-primary rounded-sm transition-all duration-75"
-                  style={{ height: `${Math.max(peak * 100, 4)}%` }}
-                />
-              ))}
-              {engine.liveWaveform.length === 0 && (
-                <p className="text-sm text-muted-foreground w-full text-center">Listening...</p>
-              )}
-            </div>
-          ) : activeTake && activeTake.waveform.length > 0 ? (
-            <div className="flex items-end gap-0.5 h-16 w-full">
-              {activeTake.waveform.slice(0, 60).map((peak, i) => (
-                <div
-                  key={i}
-                  className="flex-1 bg-primary/40 rounded-sm"
-                  style={{ height: `${Math.max(peak * 100, 4)}%` }}
-                />
-              ))}
-            </div>
-          ) : takes.length > 0 ? (
-            <div className="flex items-end gap-0.5 h-16 w-full">
-              {Array.from({ length: 60 }).map((_, i) => (
-                <div key={i} className="flex-1 bg-primary/40 rounded-sm" style={{ height: `${20 + Math.random() * 80}%` }} />
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">Waveform will appear here</p>
-          )}
-          <div className="absolute bottom-2 right-3 text-xs font-mono text-muted-foreground bg-background/80 px-2 py-0.5 rounded">
-            {engine.isRecording ? fmt(engine.recordTime) : engine.isPlaying ? `${fmt(engine.playbackTime)} / ${fmt(engine.playbackDuration)}` : fmt(0)}
-          </div>
-          {engine.isRecording && (
-            <div className="absolute top-2 left-3 flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-              <span className="text-[10px] font-bold text-red-400 uppercase">Recording</span>
-            </div>
-          )}
-          {savingTake && (
-            <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
-              <div className="flex items-center gap-2">
-                <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                <span className="text-sm text-muted-foreground">Saving take...</span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Transport controls */}
-        <div className="flex items-center justify-center gap-6">
-          {!engine.isRecording ? (
-            <>
-              {activeTake && (
-                <button
-                  onClick={() => engine.isPlaying ? pauseTakePlayback() : playTake(activeTake)}
-                  className="w-12 h-12 rounded-full bg-card border border-border flex items-center justify-center active:scale-90 transition-all"
-                >
-                  {engine.isPlaying ? <Pause className="w-5 h-5 text-foreground" /> : <Play className="w-5 h-5 text-foreground" />}
-                </button>
-              )}
-              <button
-                onClick={startRecording}
-                disabled={savingTake}
-                className="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center shadow-lg shadow-red-500/30 active:scale-90 transition-all disabled:opacity-50"
-              >
-                <Mic className="w-7 h-7 text-white" />
-              </button>
-              <button onClick={stopTakePlayback} className="w-12 h-12 rounded-full bg-card border border-border flex items-center justify-center active:scale-90 transition-all">
-                <Square className="w-5 h-5 text-foreground" />
-              </button>
-            </>
-          ) : (
-            <button onClick={stopRecording} className="w-20 h-20 rounded-full bg-red-500 flex items-center justify-center shadow-lg shadow-red-500/30 animate-pulse active:scale-90 transition-all">
-              <Square className="w-8 h-8 text-white" />
-            </button>
-          )}
-        </div>
-
-        {/* Volume sliders */}
-        <div className="bg-card border border-border rounded-2xl p-4 space-y-4">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1"><Music className="w-3 h-3" /> Beat Volume</span>
-              <span className="text-xs text-muted-foreground">{beatVolume}%</span>
-            </div>
-            <Slider value={[beatVolume]} onValueChange={([v]) => setBeatVolume(v)} max={100} step={1} />
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1"><Mic className="w-3 h-3" /> Vocal Volume</span>
-              <span className="text-xs text-muted-foreground">{vocalVolume}%</span>
-            </div>
-            <Slider value={[vocalVolume]} onValueChange={([v]) => setVocalVolume(v)} max={100} step={1} />
-          </div>
-        </div>
-
-        <div className="flex gap-2">
-          <Button variant="outline" className="flex-1 h-11 rounded-xl text-xs font-bold gap-1" onClick={() => setScreen("takes")}>
-            <Layers className="w-4 h-4" /> Takes ({takes.length})
-          </Button>
-          <Button variant="outline" className="flex-1 h-11 rounded-xl text-xs font-bold gap-1" onClick={() => setScreen("effects")}>
-            <Sliders className="w-4 h-4" /> Effects
-          </Button>
-          <Button variant="outline" className="flex-1 h-11 rounded-xl text-xs font-bold gap-1" onClick={() => { setExportTitle(activeSessionName || ""); setScreen("export"); }}>
-            <Download className="w-4 h-4" /> Export
-          </Button>
-        </div>
-
-        {takes.length > 0 && (
-          <div className="space-y-2">
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Takes</h3>
-            {takes.map(take => (
-              <button key={take.id} onClick={() => setActiveTakeId(take.id)} className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${activeTakeId === take.id ? "bg-primary/10 border-primary/30" : "bg-card border-border"}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${activeTakeId === take.id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-                  <Mic className="w-4 h-4" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-foreground truncate">{take.name}</p>
-                  <p className="text-xs text-muted-foreground">{fmt(take.duration)}</p>
-                </div>
-                <button onClick={(e) => { e.stopPropagation(); playTake(take); }} className="p-2">
-                  <Play className="w-4 h-4 text-primary" />
-                </button>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      <StudioDAWView
+        sessionName={activeSessionName}
+        beatName={activeSessionBeatName}
+        beatUrl={beatUrl}
+        takes={takes}
+        activeTakeId={activeTakeId}
+        setActiveTakeId={setActiveTakeId}
+        isRecording={engine.isRecording}
+        isPlaying={engine.isPlaying}
+        recordTime={engine.recordTime}
+        playbackTime={engine.playbackTime}
+        playbackDuration={engine.playbackDuration}
+        liveWaveform={engine.liveWaveform}
+        beatVolume={beatVolume}
+        setBeatVolume={setBeatVolume}
+        vocalVolume={vocalVolume}
+        setVocalVolume={setVocalVolume}
+        onStartRecording={startRecording}
+        onStopRecording={stopRecording}
+        onPlayActiveTake={() => {
+          if (activeTake) {
+            if (engine.isPlaying) pauseTakePlayback();
+            else playTake(activeTake);
+          }
+        }}
+        onStopPlayback={stopTakePlayback}
+        onPausePlayback={pauseTakePlayback}
+        onToggleMute={toggleMuteTake}
+        onToggleSolo={toggleSoloTake}
+        onSave={saveSession}
+        savingTake={savingTake}
+        onNavigate={(s) => {
+          if (s === "export") setExportTitle(activeSessionName || "");
+          setScreen(s as Screen);
+        }}
+        onBack={() => { engine.stopPlayback(); setScreen("home"); }}
+        beatPan={beatPan}
+        setBeatPan={setBeatPan}
+        vocalPan={vocalPan}
+        setVocalPan={setVocalPan}
+      />
     );
   }
 
