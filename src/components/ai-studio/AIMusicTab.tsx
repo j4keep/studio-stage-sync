@@ -50,7 +50,22 @@ const AIMusicTab = () => {
 
       if (error) throw error;
 
-      toast({ title: "🎵 Song generated!", description: data?.title || "Check your library" });
+      // Save to database
+      if (data?.title && user) {
+        await supabase.from("ai_generations" as any).insert({
+          user_id: user.id,
+          title: data.title,
+          lyrics: data.lyrics || null,
+          genre: data.genre || null,
+          mood: data.mood || null,
+          production_notes: data.production_notes || null,
+          bpm: data.bpm || null,
+          musical_key: data.key || null,
+          type: mode === "lyrics" ? "AI Music" : "AI Music",
+        } as any);
+      }
+
+      toast({ title: "🎵 Song generated!", description: `"${data?.title}" saved to your Library` });
       setPrompt("");
     } catch (e: any) {
       console.error("Generate music error:", e);
