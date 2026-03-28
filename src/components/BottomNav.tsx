@@ -27,7 +27,7 @@ const BottomNav = () => {
   const tabs = [
     { path: "/", label: "Home", icon: Home, pro: false },
     { path: "/feed", label: "Feed", icon: ImagePlus, pro: false },
-    { path: "/ai-studio", label: "AI Music", icon: Music, pro: true },
+    { path: "/ai-studio", label: "W.Studio", icon: Music, pro: true },
     { path: "/profile", label: "Profile", icon: User, pro: false },
   ];
 
