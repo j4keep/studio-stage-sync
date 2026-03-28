@@ -207,6 +207,8 @@ const AIMusicTab = () => {
       />
 
       <ProGateModal open={showProModal} onClose={closeProModal} featureName={gatedFeature} onSubscribe={activatePro} />
+      </>
+      )}
     </div>
   );
 };
