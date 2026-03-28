@@ -110,7 +110,7 @@ async function generateWaveformFromUrl(url: string): Promise<number[]> {
 }
 
 const RecordingStudio = () => {
-  const { user } = useAuth();
+  const { user, session, loading: authLoading } = useAuth();
   const engine = useRecordingEngine();
 
   const [screen, setScreen] = useState<Screen>("home");
