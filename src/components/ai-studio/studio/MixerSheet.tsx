@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { X, Mic, Music, Plus, Volume2 } from "lucide-react";
+import { X, Mic, Music, Plus, Volume2, Play, SkipBack, Repeat } from "lucide-react";
 import type { TakeLocal } from "./StudioDAWView";
 
 interface MixerSheetProps {
