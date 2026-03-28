@@ -33,11 +33,12 @@ Deno.serve(async (req) => {
       const url = `${r2Url}/${BUCKET}/${key}`;
       console.log('Streaming upload to:', url);
 
-      // Stream the raw request body directly to R2
+      // Buffer the body so we can send Content-Length to R2
+      const bodyBuffer = await req.arrayBuffer();
       const r2Response = await client.fetch(url, {
         method: 'PUT',
-        headers: { 'Content-Type': mimeType },
-        body: req.body,
+        headers: { 'Content-Type': mimeType, 'Content-Length': bodyBuffer.byteLength.toString() },
+        body: bodyBuffer,
       });
 
       if (!r2Response.ok) {
