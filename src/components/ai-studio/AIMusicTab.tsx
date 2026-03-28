@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Music, Sparkles } from "lucide-react";
+import { Music, Sparkles, Mic } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import AIMusicSettingsSheet from "./AIMusicSettingsSheet";
@@ -8,12 +8,14 @@ import { useProGate } from "@/hooks/use-pro-gate";
 import ProGateModal from "@/components/ProGateModal";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import RecordingStudio from "./RecordingStudio";
 
 const MOODS = ["Suggest me", "Happy", "Chill", "Confident", "Sad", "Energetic", "Romantic"];
 
 const AIMusicTab = () => {
   const { user } = useAuth();
   const { isPro, requirePro, showProModal, gatedFeature, closeProModal, activatePro } = useProGate();
+  const [studioMode, setStudioMode] = useState<"studio" | "ai">("studio");
   const [mode, setMode] = useState<"description" | "lyrics">("description");
   const [prompt, setPrompt] = useState("");
   const [instrumental, setInstrumental] = useState(false);
