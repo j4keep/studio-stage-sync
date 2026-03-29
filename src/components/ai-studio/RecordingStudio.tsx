@@ -19,17 +19,18 @@ const EFFECT_SETTINGS: Record<string, {
   eqLow: number;
   eqMid: number;
   eqHigh: number;
+  compressionAmount: number;
   reverbMix: number;
   reverbDecay: number;
   delayTime: number;
   delayFeedback: number;
   delayMix: number;
 }> = {
-  clean: { eqLow: 0, eqMid: 0, eqHigh: 1, reverbMix: 8, reverbDecay: 1.1, delayTime: 0.2, delayFeedback: 10, delayMix: 0 },
-  warm: { eqLow: 2, eqMid: 1, eqHigh: -1, reverbMix: 14, reverbDecay: 1.5, delayTime: 0.22, delayFeedback: 12, delayMix: 4 },
-  reverb: { eqLow: 0, eqMid: 0, eqHigh: 2, reverbMix: 32, reverbDecay: 2.8, delayTime: 0.25, delayFeedback: 10, delayMix: 0 },
-  delay: { eqLow: 0, eqMid: 1, eqHigh: 1, reverbMix: 10, reverbDecay: 1.4, delayTime: 0.32, delayFeedback: 28, delayMix: 24 },
-  punchy: { eqLow: 1, eqMid: 3, eqHigh: 2, reverbMix: 6, reverbDecay: 0.9, delayTime: 0.18, delayFeedback: 8, delayMix: 0 },
+  clean: { eqLow: 0, eqMid: 0, eqHigh: 1, compressionAmount: 18, reverbMix: 8, reverbDecay: 1.1, delayTime: 0.2, delayFeedback: 10, delayMix: 0 },
+  warm: { eqLow: 2, eqMid: 1, eqHigh: -1, compressionAmount: 28, reverbMix: 14, reverbDecay: 1.5, delayTime: 0.22, delayFeedback: 12, delayMix: 4 },
+  reverb: { eqLow: 0, eqMid: 0, eqHigh: 2, compressionAmount: 12, reverbMix: 32, reverbDecay: 2.8, delayTime: 0.25, delayFeedback: 10, delayMix: 0 },
+  delay: { eqLow: 0, eqMid: 1, eqHigh: 1, compressionAmount: 22, reverbMix: 10, reverbDecay: 1.4, delayTime: 0.32, delayFeedback: 28, delayMix: 24 },
+  punchy: { eqLow: 1, eqMid: 3, eqHigh: 2, compressionAmount: 44, reverbMix: 6, reverbDecay: 0.9, delayTime: 0.18, delayFeedback: 8, delayMix: 0 },
 };
 
 interface SessionRecord {
@@ -150,6 +151,7 @@ const RecordingStudio = () => {
   const [eqLow, setEqLow] = useState(0);
   const [eqMid, setEqMid] = useState(0);
   const [eqHigh, setEqHigh] = useState(0);
+  const [compressionAmount, setCompressionAmount] = useState(18);
   const [reverbMix, setReverbMix] = useState(8);
   const [delayMix, setDelayMix] = useState(0);
 
@@ -171,6 +173,7 @@ const RecordingStudio = () => {
       eqLow,
       eqMid,
       eqHigh,
+      compressionAmount,
       reverbMix,
       reverbDecay: EFFECT_SETTINGS[activeEffect]?.reverbDecay ?? 1.1,
       delayTime: EFFECT_SETTINGS[activeEffect]?.delayTime ?? 0.2,
@@ -178,7 +181,11 @@ const RecordingStudio = () => {
       delayMix,
       outputGain: vocalGain,
     };
-  }, [activeEffect, vocalGain, eqLow, eqMid, eqHigh, reverbMix, delayMix]);
+  }, [activeEffect, vocalGain, eqLow, eqMid, eqHigh, compressionAmount, reverbMix, delayMix]);
+
+  useEffect(() => {
+    setBeatGain(beatVolume);
+  }, [beatVolume]);
 
   /** Build playable takes list using each take's OWN volume and pan */
   const getPlayableTakes = useCallback((sourceTakes: TakeLocal[]) => {
@@ -513,7 +520,7 @@ const RecordingStudio = () => {
   }, [engine]);
 
   // Play all tracks (beat + all audible takes) with per-track volumes
-  const playAll = useCallback(() => {
+  const playAll = useCallback((loop = false) => {
     if (engine.isPlaying) {
       engine.pausePlayback();
       return;
@@ -524,6 +531,7 @@ const RecordingStudio = () => {
         beatUrl,
         beatVolume,
         beatPan,
+        loop,
         masterVolume,
         takes: playableTakes,
         effects: playbackEffects,
@@ -1063,6 +1071,7 @@ const RecordingStudio = () => {
         setEqLow(p.eqLow);
         setEqMid(p.eqMid);
         setEqHigh(p.eqHigh);
+        setCompressionAmount(p.compressionAmount);
         setReverbMix(p.reverbMix);
         setDelayMix(p.delayMix);
       }
@@ -1139,6 +1148,17 @@ const RecordingStudio = () => {
           </div>
         </div>
 
+        <div className="rounded-xl p-5 space-y-4 border border-[#444]" style={{ background: "#333" }}>
+          <h3 className="text-xs font-bold text-[#888] uppercase tracking-wider">Dynamics</h3>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-[#ddd]">Compression</span>
+              <span className="text-sm text-[#888]">{compressionAmount}%</span>
+            </div>
+            <Slider value={[compressionAmount]} onValueChange={([v]) => setCompressionAmount(v)} max={100} step={1} />
+          </div>
+        </div>
+
         {/* Effects */}
         <div className="rounded-xl p-5 space-y-4 border border-[#444]" style={{ background: "#333" }}>
           <h3 className="text-xs font-bold text-[#888] uppercase tracking-wider">Effects</h3>
@@ -1176,7 +1196,7 @@ const RecordingStudio = () => {
                 <span className="text-sm font-medium text-[#ddd] flex items-center gap-2"><Music className="w-4 h-4 text-[#4fd1c5]" /> Beat Gain</span>
                 <span className="text-sm text-[#888]">{beatGain}%</span>
               </div>
-              <Slider value={[beatGain]} onValueChange={([v]) => setBeatGain(v)} max={150} step={1} />
+              <Slider value={[beatGain]} onValueChange={([v]) => { setBeatGain(v); setBeatVolume(v); }} max={100} step={1} />
             </div>
             <div className="space-y-1">
               <div className="flex items-center justify-between">
