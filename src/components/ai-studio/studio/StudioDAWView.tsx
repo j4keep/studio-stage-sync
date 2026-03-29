@@ -39,6 +39,8 @@ interface StudioDAWViewProps {
   setBeatVolume: (v: number) => void;
   vocalVolume: number;
   setVocalVolume: (v: number) => void;
+  masterVolume: number;
+  setMasterVolume: (v: number) => void;
   onStartRecording: () => void;
   onStopRecording: () => void;
   onPlayAll: () => void;
