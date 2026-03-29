@@ -40,10 +40,22 @@ interface DAWScreenProps {
   onStopRecording: () => void;
   onPlayAll: (loop?: boolean) => void;
   onStopPlayback: () => void;
+  onSeekPlayback?: (time: number) => void;
   onBack: () => void;
   onAddTrack?: () => void;
   onDeleteTake?: (id: string) => void;
   onImportAudio?: () => void;
+  bpm: number;
+  onBpmChange: (bpm: number) => void;
+  gridMode: "Measure" | "Beat" | "Free";
+  onGridModeChange: (mode: "Measure" | "Beat" | "Free") => void;
+  musicalKey: string;
+  onMusicalKeyChange: (key: string) => void;
+  loopEnabled: boolean;
+  onLoopEnabledChange: (enabled: boolean) => void;
+  loopStart: number | null;
+  loopEnd: number | null;
+  onLoopRangeChange: (start: number | null, end: number | null) => void;
 }
 
 /* ── Time formatting ── */
@@ -192,31 +204,53 @@ export default function DAWScreen(props: DAWScreenProps) {
     sessionName, beatName, beatUrl, beatWaveform, takes,
     isRecording, isPlaying, recordTime, playbackTime, playbackDuration,
     liveWaveform,
-    onStartRecording, onStopRecording, onPlayAll, onStopPlayback, onBack,
+    onStartRecording, onStopRecording, onPlayAll, onStopPlayback, onSeekPlayback, onBack,
     onAddTrack, onDeleteTake, onImportAudio,
+    bpm, onBpmChange,
+    gridMode, onGridModeChange,
+    musicalKey, onMusicalKeyChange,
+    loopEnabled, onLoopEnabledChange,
+    loopStart, loopEnd, onLoopRangeChange,
   } = props;
 
-  const [loopOn, setLoopOn] = useState(false);
   const [showAddMenu, setShowAddMenu] = useState(false);
-  const [bpm, setBpm] = useState(120);
-  const [gridMode, setGridMode] = useState<"Measure" | "Beat" | "Free">("Measure");
-  const [loopStart, setLoopStart] = useState<number | null>(null);
-  const [loopEnd, setLoopEnd] = useState<number | null>(null);
   const [selectedTrack, setSelectedTrack] = useState<string | null>(null);
+   const [isDraggingLoop, setIsDraggingLoop] = useState(false);
   const timelineRef = useRef<HTMLDivElement>(null);
 
   const currentTime = isRecording ? recordTime : playbackTime;
   const totalDuration = Math.max(...takes.map(t => t.duration), playbackDuration, 30);
   const playPct = totalDuration > 0 ? (currentTime / totalDuration) * 100 : 0;
+  const keyOptions = ["/", "C", "Dm", "Em", "F", "G", "Am", "Bb"];
+
+  const getTimeFromClientX = useCallback((clientX: number) => {
+    const el = timelineRef.current;
+    if (!el) return 0;
+    const rect = el.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    return pct * totalDuration;
+  }, [totalDuration]);
 
   // Timeline scrubbing
   const handleTimelineScrub = useCallback((clientX: number) => {
-    const el = timelineRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    // Could seek here if engine supports it
-  }, []);
+    onSeekPlayback?.(getTimeFromClientX(clientX));
+  }, [getTimeFromClientX, onSeekPlayback]);
+
+  useEffect(() => {
+    if (!isDraggingLoop) return;
+    const handleMove = (e: PointerEvent) => {
+      const next = getTimeFromClientX(e.clientX);
+      const start = loopStart ?? next;
+      onLoopRangeChange(Math.min(start, next), Math.max(start, next));
+    };
+    const handleUp = () => setIsDraggingLoop(false);
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
+    return () => {
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+    };
+  }, [getTimeFromClientX, isDraggingLoop, loopStart, onLoopRangeChange]);
 
   const handleRecord = () => {
     if (isRecording) onStopRecording();
@@ -225,7 +259,7 @@ export default function DAWScreen(props: DAWScreenProps) {
 
   const handlePlay = () => {
     if (isPlaying) onStopPlayback();
-    else onPlayAll(loopOn);
+    else onPlayAll(loopEnabled);
   };
 
   return (
@@ -290,10 +324,10 @@ export default function DAWScreen(props: DAWScreenProps) {
               style={{ background: "#2a2a3e" }}>
               <SkipBack className="w-3.5 h-3.5 text-[#888]" />
             </button>
-            <button onClick={() => setLoopOn(!loopOn)}
+              <button onClick={() => onLoopEnabledChange(!loopEnabled)}
               className="w-8 h-8 rounded-lg flex items-center justify-center border border-[#444]"
-              style={{ background: loopOn ? "#2a3a5a" : "#2a2a3e" }}>
-              <Repeat className={`w-3.5 h-3.5 ${loopOn ? "text-[#63b3ed]" : "text-[#888]"}`} />
+                style={{ background: loopEnabled ? "#2a3a5a" : "#2a2a3e" }}>
+                <Repeat className={`w-3.5 h-3.5 ${loopEnabled ? "text-[#63b3ed]" : "text-[#888]"}`} />
             </button>
           </div>
 
@@ -319,18 +353,27 @@ export default function DAWScreen(props: DAWScreenProps) {
           <div className="flex flex-col gap-1 py-2 px-1 text-center border-b border-[#333]">
             <div>
               <span className="text-[7px] text-[#888]">Grid</span>
-              <button onClick={() => setGridMode(gridMode === "Measure" ? "Beat" : gridMode === "Beat" ? "Free" : "Measure")}
+              <button onClick={() => onGridModeChange(gridMode === "Measure" ? "Beat" : gridMode === "Beat" ? "Free" : "Measure")}
                 className="text-[8px] font-bold block w-full" style={{ color: "#63b3ed" }}>
                 {gridMode}
               </button>
             </div>
             <div>
               <span className="text-[7px] text-[#888]">Bpm</span>
-              <span className="text-[8px] font-mono text-[#ccc] block">{bpm}</span>
+              <div className="flex items-center justify-center gap-1 mt-0.5">
+                <button onClick={() => onBpmChange(Math.max(60, bpm - 1))} className="text-[8px] text-[#888]">-</button>
+                <span className="text-[8px] font-mono text-[#ccc] block min-w-7">{bpm}</span>
+                <button onClick={() => onBpmChange(Math.min(220, bpm + 1))} className="text-[8px] text-[#888]">+</button>
+              </div>
             </div>
             <div>
               <span className="text-[7px] text-[#888]">Key</span>
-              <span className="text-[8px] font-mono text-[#ccc] block">/</span>
+              <button
+                onClick={() => onMusicalKeyChange(keyOptions[(keyOptions.indexOf(musicalKey) + 1) % keyOptions.length])}
+                className="text-[8px] font-mono text-[#ccc] block w-full"
+              >
+                {musicalKey}
+              </button>
             </div>
           </div>
 
@@ -427,9 +470,18 @@ export default function DAWScreen(props: DAWScreenProps) {
           <div ref={timelineRef}
             className="h-5 border-b border-[#333] relative overflow-hidden shrink-0 touch-none"
             style={{ background: "#151525" }}
-            onPointerDown={(e) => handleTimelineScrub(e.clientX)}>
-            {Array.from({ length: Math.ceil(totalDuration / 5) + 1 }, (_, i) => {
-              const t = i * 5;
+            onPointerDown={(e) => {
+              if (loopEnabled && e.shiftKey) {
+                const next = getTimeFromClientX(e.clientX);
+                onLoopRangeChange(next, next);
+                setIsDraggingLoop(true);
+                return;
+              }
+              handleTimelineScrub(e.clientX);
+            }}>
+            {Array.from({ length: Math.ceil(totalDuration / (gridMode === "Measure" ? 2 : gridMode === "Beat" ? 1 : 5)) + 1 }, (_, i) => {
+              const step = gridMode === "Measure" ? 2 : gridMode === "Beat" ? 1 : 5;
+              const t = i * step;
               return (
                 <div key={i} className="absolute bottom-0 flex flex-col items-center"
                   style={{ left: `${(t / totalDuration) * 100}%` }}>
@@ -439,7 +491,7 @@ export default function DAWScreen(props: DAWScreenProps) {
               );
             })}
             {/* Loop region */}
-            {loopOn && loopStart !== null && loopEnd !== null && (
+            {loopEnabled && loopStart !== null && loopEnd !== null && (
               <div className="absolute top-0 bottom-0 z-5"
                 style={{
                   left: `${(loopStart / totalDuration) * 100}%`,
@@ -448,6 +500,23 @@ export default function DAWScreen(props: DAWScreenProps) {
                   borderLeft: "2px solid #63b3ed",
                   borderRight: "2px solid #63b3ed",
                 }} />
+            )}
+            {loopEnabled && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (loopStart === null || loopEnd === null) {
+                    onLoopRangeChange(0, Math.min(totalDuration, 8));
+                  } else {
+                    onLoopRangeChange(null, null);
+                  }
+                }}
+                className="absolute right-1 top-0.5 text-[7px] px-1 py-0.5 rounded border border-[#335] text-[#63b3ed]"
+                style={{ background: "#1a1a2e" }}
+              >
+                {loopStart === null || loopEnd === null ? "SET LOOP" : "CLEAR"}
+              </button>
             )}
             {/* Playhead */}
             <div className="absolute top-0 bottom-0 w-[2px] z-10"
