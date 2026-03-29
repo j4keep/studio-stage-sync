@@ -38,6 +38,8 @@ export interface PlaybackEffectsInput {
 export interface PlaybackRequest {
   beatUrl: string | null;
   startAt?: number;
+  loopStart?: number | null;
+  loopEnd?: number | null;
   beatVolume: number;
   beatPan: number;
   loop?: boolean;
@@ -362,6 +364,8 @@ export const useRecordingEngine = () => {
   const playAudio = useCallback(async ({
     beatUrl,
     startAt = 0,
+    loopStart = null,
+    loopEnd = null,
     beatVolume,
     beatPan,
     loop = false,
@@ -374,6 +378,8 @@ export const useRecordingEngine = () => {
     const playableTakes = takes.filter((take) => take.audioUrl);
     const hasBeat = Boolean(beatUrl);
     if (!hasBeat && playableTakes.length === 0) return;
+
+    const boundedStartAt = Math.max(0, startAt);
 
     const ctx = new AudioContext();
     audioCtxRef.current = ctx;
@@ -465,7 +471,7 @@ export const useRecordingEngine = () => {
 
       takeDurations.forEach((track) => {
         try {
-          track.audio.currentTime = Math.min(track.trimEndTime, track.trimStartTime + startAt);
+          track.audio.currentTime = Math.min(track.trimEndTime, track.trimStartTime + boundedStartAt);
         } catch {}
         playbackTracks.push({ ...track, isBeat: false });
       });
@@ -513,7 +519,7 @@ export const useRecordingEngine = () => {
       beatSource.connect(beatGainNode).connect(beatPanNode).connect(masterGain);
       beatNodesRef.current = { gain: beatGainNode, pan: beatPanNode };
       try {
-        beatAudio.currentTime = Math.min(beatDuration, startAt);
+          beatAudio.currentTime = Math.min(beatDuration, boundedStartAt);
       } catch {}
       playbackTracks.push({ id: "beat", audio: beatAudio, trimStartTime: 0, trimEndTime: beatDuration, isBeat: true });
     }
@@ -525,8 +531,16 @@ export const useRecordingEngine = () => {
       return Math.max(longest, duration);
     }, 0);
 
+    const boundedLoopStart = loop ? Math.min(loopStart ?? boundedStartAt, maxDuration) : 0;
+    const boundedLoopEnd = loop
+      ? Math.min(
+          Math.max(loopEnd ?? maxDuration, boundedLoopStart + 0.05),
+          maxDuration
+        )
+      : maxDuration;
+
     setPlaybackDuration(Math.round(maxDuration));
-    setPlaybackTime(Math.min(startAt, maxDuration));
+    setPlaybackTime(Math.min(boundedStartAt, maxDuration));
     setIsPlaying(true);
 
     await ctx.resume();
@@ -538,7 +552,7 @@ export const useRecordingEngine = () => {
       })
     );
 
-    playbackStartedAtRef.current = ctx.currentTime - Math.min(startAt, maxDuration);
+    playbackStartedAtRef.current = ctx.currentTime - Math.min(boundedStartAt, maxDuration);
 
     playbackTimerRef.current = setInterval(() => {
       const elapsed = Math.max(0, ctx.currentTime - playbackStartedAtRef.current);
@@ -558,16 +572,18 @@ export const useRecordingEngine = () => {
         return !track.audio.paused && track.audio.currentTime < track.trimEndTime - 0.03;
       });
 
-        if (loop && maxDuration > 0 && (!anyTrackStillPlaying || elapsed >= maxDuration + 0.05)) {
+        if (loop && boundedLoopEnd > boundedLoopStart && (!anyTrackStillPlaying || elapsed >= boundedLoopEnd + 0.05)) {
         playbackTracksRef.current.forEach((track) => {
           track.audio.pause();
           try {
-            track.audio.currentTime = track.isBeat ? 0 : track.trimStartTime;
+            track.audio.currentTime = track.isBeat
+              ? boundedLoopStart
+              : Math.min(track.trimEndTime, track.trimStartTime + boundedLoopStart);
           } catch {}
         });
 
-        playbackStartedAtRef.current = ctx.currentTime;
-        setPlaybackTime(0);
+        playbackStartedAtRef.current = ctx.currentTime - boundedLoopStart;
+        setPlaybackTime(boundedLoopStart);
 
         playbackTracksRef.current.forEach(({ audio }) => {
           void audio.play().catch(() => {});
