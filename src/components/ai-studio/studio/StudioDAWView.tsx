@@ -648,9 +648,13 @@ export default function StudioDAWView(props: StudioDAWViewProps) {
         setBeatPan={setBeatPan}
         vocalPan={vocalPan}
         setVocalPan={setVocalPan}
+        masterVolume={masterVolume}
+        setMasterVolume={setMasterVolume}
         onToggleMute={onToggleMute}
         onToggleSolo={onToggleSolo}
         isAudioActive={isAudioActive}
+        onPlayAll={onPlayAll}
+        onStopPlayback={onStopPlayback}
       />
     </div>
   );
