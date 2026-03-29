@@ -522,7 +522,7 @@ const RecordingStudio = () => {
     engine.stopRecording();
   }, [engine]);
 
-  // Play all tracks (beat + active take)
+  // Play all tracks (beat + all audible takes)
   const playAll = useCallback(() => {
     if (engine.isPlaying) {
       engine.pausePlayback();
@@ -532,14 +532,14 @@ const RecordingStudio = () => {
     if (playableTakes.length > 0 || beatUrl) {
       engine.playAudio({
         beatUrl,
-        beatVolume: beatGain,
+        beatVolume,
         beatPan,
-        masterVolume: 100,
+        masterVolume,
         takes: playableTakes,
         effects: playbackEffects,
       });
     }
-  }, [engine, takes, beatUrl, beatGain, beatPan, getPlayableTakes, playbackEffects]);
+  }, [engine, takes, beatUrl, beatVolume, beatPan, masterVolume, getPlayableTakes, playbackEffects]);
 
   // Play beat only
   const playBeatOnly = useCallback(() => {
