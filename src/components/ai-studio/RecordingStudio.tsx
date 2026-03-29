@@ -160,6 +160,14 @@ const RecordingStudio = () => {
   const [beatGain, setBeatGain] = useState(80);
   const [beatPan, setBeatPan] = useState(0);
   const [vocalPan, setVocalPan] = useState(0);
+  const [masterVolume, setMasterVolume] = useState(100);
+  
+  // EQ state (allow manual override beyond presets)
+  const [eqLow, setEqLow] = useState(0);
+  const [eqMid, setEqMid] = useState(0);
+  const [eqHigh, setEqHigh] = useState(0);
+  const [reverbMix, setReverbMix] = useState(8);
+  const [delayMix, setDelayMix] = useState(0);
 
   const [exportTitle, setExportTitle] = useState("");
   const [exportArtist, setExportArtist] = useState("");
@@ -175,12 +183,18 @@ const RecordingStudio = () => {
   const artworkInputRef = useRef<HTMLInputElement>(null);
 
   const playbackEffects = useMemo(() => {
-    const preset = EFFECT_SETTINGS[activeEffect] ?? EFFECT_SETTINGS.clean;
     return {
-      ...preset,
+      eqLow,
+      eqMid,
+      eqHigh,
+      reverbMix,
+      reverbDecay: EFFECT_SETTINGS[activeEffect]?.reverbDecay ?? 1.1,
+      delayTime: EFFECT_SETTINGS[activeEffect]?.delayTime ?? 0.2,
+      delayFeedback: EFFECT_SETTINGS[activeEffect]?.delayFeedback ?? 10,
+      delayMix,
       outputGain: vocalGain,
     };
-  }, [activeEffect, vocalGain]);
+  }, [activeEffect, vocalGain, eqLow, eqMid, eqHigh, reverbMix, delayMix]);
 
   const getPlayableTakes = useCallback((sourceTakes: TakeLocal[]) => {
     const soloed = sourceTakes.filter((take) => !take.muted && take.solo);
@@ -508,7 +522,7 @@ const RecordingStudio = () => {
     engine.stopRecording();
   }, [engine]);
 
-  // Play all tracks (beat + active take)
+  // Play all tracks (beat + all audible takes)
   const playAll = useCallback(() => {
     if (engine.isPlaying) {
       engine.pausePlayback();
@@ -518,14 +532,14 @@ const RecordingStudio = () => {
     if (playableTakes.length > 0 || beatUrl) {
       engine.playAudio({
         beatUrl,
-        beatVolume: beatGain,
+        beatVolume,
         beatPan,
-        masterVolume: 100,
+        masterVolume,
         takes: playableTakes,
         effects: playbackEffects,
       });
     }
-  }, [engine, takes, beatUrl, beatGain, beatPan, getPlayableTakes, playbackEffects]);
+  }, [engine, takes, beatUrl, beatVolume, beatPan, masterVolume, getPlayableTakes, playbackEffects]);
 
   // Play beat only
   const playBeatOnly = useCallback(() => {
@@ -536,14 +550,14 @@ const RecordingStudio = () => {
     if (beatUrl) {
       engine.playAudio({
         beatUrl,
-        beatVolume: beatGain,
+        beatVolume,
         beatPan,
-        masterVolume: 100,
+        masterVolume,
         takes: [],
         effects: playbackEffects,
       });
     }
-  }, [engine, beatUrl, beatGain, beatPan, playbackEffects]);
+  }, [engine, beatUrl, beatVolume, beatPan, masterVolume, playbackEffects]);
 
   // Play a specific take (with beat)
   const playTake = useCallback((take: TakeLocal) => {
@@ -555,13 +569,13 @@ const RecordingStudio = () => {
     setActiveTakeId(take.id);
     engine.playAudio({
       beatUrl,
-      beatVolume: beatGain,
+      beatVolume,
       beatPan,
-      masterVolume: 100,
+      masterVolume,
       takes: getPlayableTakes([take]),
       effects: playbackEffects,
     });
-  }, [engine, beatUrl, beatGain, beatPan, getPlayableTakes, playbackEffects]);
+  }, [engine, beatUrl, beatVolume, beatPan, masterVolume, getPlayableTakes, playbackEffects]);
 
   const stopTakePlayback = useCallback(() => {
     engine.stopPlayback();
@@ -905,6 +919,8 @@ const RecordingStudio = () => {
         setBeatVolume={setBeatVolume}
         vocalVolume={vocalVolume}
         setVocalVolume={setVocalVolume}
+        masterVolume={masterVolume}
+        setMasterVolume={setMasterVolume}
         onStartRecording={startRecording}
         onStopRecording={stopRecording}
         onPlayAll={playAll}
@@ -1026,6 +1042,18 @@ const RecordingStudio = () => {
 
   /* ═══ EFFECTS / MIX ═══ */
   if (screen === "effects") {
+    const applyPreset = (presetId: string) => {
+      setActiveEffect(presetId);
+      const p = EFFECT_SETTINGS[presetId];
+      if (p) {
+        setEqLow(p.eqLow);
+        setEqMid(p.eqMid);
+        setEqHigh(p.eqHigh);
+        setReverbMix(p.reverbMix);
+        setDelayMix(p.delayMix);
+      }
+    };
+
     return (
       <div className="px-4 pt-4 pb-24 space-y-5 h-full overflow-y-auto" style={{ background: "#2a2a2a" }}>
         <button onClick={() => setScreen("record")} className="flex items-center gap-1 text-sm text-[#888] mb-2">
@@ -1033,11 +1061,12 @@ const RecordingStudio = () => {
         </button>
         <h1 className="text-xl font-bold text-[#ddd]">Effects & Mix</h1>
 
+        {/* Vocal Presets */}
         <div className="space-y-3">
           <h3 className="text-xs font-bold text-[#888] uppercase tracking-wider">Vocal Presets</h3>
           <div className="grid grid-cols-3 gap-2">
             {EFFECT_PRESETS.map(preset => (
-              <button key={preset.id} onClick={() => setActiveEffect(preset.id)}
+              <button key={preset.id} onClick={() => applyPreset(preset.id)}
                 className={`flex flex-col items-center gap-1.5 p-4 rounded-xl border transition-all active:scale-95 ${
                   activeEffect === preset.id ? "border-[#4fd1c5]/50 text-[#4fd1c5]" : "border-[#555] text-[#ccc]"
                 }`}
@@ -1049,21 +1078,80 @@ const RecordingStudio = () => {
           </div>
         </div>
 
-        <div className="rounded-xl p-5 space-y-5 border border-[#444]" style={{ background: "#333" }}>
-          <h3 className="text-xs font-bold text-[#888] uppercase tracking-wider">Mix Controls</h3>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-[#ddd] flex items-center gap-2"><Mic className="w-4 h-4 text-[#4fd1c5]" /> Vocal Gain</span>
-              <span className="text-sm text-[#888]">{vocalGain}%</span>
+        {/* 3-Band EQ */}
+        <div className="rounded-xl p-5 space-y-4 border border-[#444]" style={{ background: "#333" }}>
+          <h3 className="text-xs font-bold text-[#888] uppercase tracking-wider">3-Band EQ</h3>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-[#ddd]">Low (320 Hz)</span>
+                <span className="text-sm text-[#888]">{eqLow > 0 ? "+" : ""}{eqLow} dB</span>
+              </div>
+              <Slider value={[eqLow]} onValueChange={([v]) => setEqLow(v)} min={-12} max={12} step={0.5} />
             </div>
-            <Slider value={[vocalGain]} onValueChange={([v]) => setVocalGain(v)} max={150} step={1} />
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-[#ddd]">Mid (1.2 kHz)</span>
+                <span className="text-sm text-[#888]">{eqMid > 0 ? "+" : ""}{eqMid} dB</span>
+              </div>
+              <Slider value={[eqMid]} onValueChange={([v]) => setEqMid(v)} min={-12} max={12} step={0.5} />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-[#ddd]">High (4.2 kHz)</span>
+                <span className="text-sm text-[#888]">{eqHigh > 0 ? "+" : ""}{eqHigh} dB</span>
+              </div>
+              <Slider value={[eqHigh]} onValueChange={([v]) => setEqHigh(v)} min={-12} max={12} step={0.5} />
+            </div>
           </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-[#ddd] flex items-center gap-2"><Music className="w-4 h-4 text-[#4fd1c5]" /> Beat Gain</span>
-              <span className="text-sm text-[#888]">{beatGain}%</span>
+        </div>
+
+        {/* Effects */}
+        <div className="rounded-xl p-5 space-y-4 border border-[#444]" style={{ background: "#333" }}>
+          <h3 className="text-xs font-bold text-[#888] uppercase tracking-wider">Effects</h3>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-[#ddd]">🏛️ Reverb</span>
+                <span className="text-sm text-[#888]">{reverbMix}%</span>
+              </div>
+              <Slider value={[reverbMix]} onValueChange={([v]) => setReverbMix(v)} max={100} step={1} />
             </div>
-            <Slider value={[beatGain]} onValueChange={([v]) => setBeatGain(v)} max={150} step={1} />
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-[#ddd]">🔁 Delay</span>
+                <span className="text-sm text-[#888]">{delayMix}%</span>
+              </div>
+              <Slider value={[delayMix]} onValueChange={([v]) => setDelayMix(v)} max={100} step={1} />
+            </div>
+          </div>
+        </div>
+
+        {/* Mix Controls */}
+        <div className="rounded-xl p-5 space-y-4 border border-[#444]" style={{ background: "#333" }}>
+          <h3 className="text-xs font-bold text-[#888] uppercase tracking-wider">Mix Controls</h3>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-[#ddd] flex items-center gap-2"><Mic className="w-4 h-4 text-[#4fd1c5]" /> Vocal Gain</span>
+                <span className="text-sm text-[#888]">{vocalGain}%</span>
+              </div>
+              <Slider value={[vocalGain]} onValueChange={([v]) => setVocalGain(v)} max={150} step={1} />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-[#ddd] flex items-center gap-2"><Music className="w-4 h-4 text-[#4fd1c5]" /> Beat Gain</span>
+                <span className="text-sm text-[#888]">{beatGain}%</span>
+              </div>
+              <Slider value={[beatGain]} onValueChange={([v]) => setBeatGain(v)} max={150} step={1} />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-[#ddd] flex items-center gap-2"><Headphones className="w-4 h-4 text-[#4fd1c5]" /> Master Volume</span>
+                <span className="text-sm text-[#888]">{masterVolume}%</span>
+              </div>
+              <Slider value={[masterVolume]} onValueChange={([v]) => setMasterVolume(v)} max={150} step={1} />
+            </div>
           </div>
         </div>
       </div>

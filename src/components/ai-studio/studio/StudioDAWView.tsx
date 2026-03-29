@@ -39,6 +39,8 @@ interface StudioDAWViewProps {
   setBeatVolume: (v: number) => void;
   vocalVolume: number;
   setVocalVolume: (v: number) => void;
+  masterVolume: number;
+  setMasterVolume: (v: number) => void;
   onStartRecording: () => void;
   onStopRecording: () => void;
   onPlayAll: () => void;
@@ -325,6 +327,7 @@ export default function StudioDAWView(props: StudioDAWViewProps) {
     sessionName, beatName, beatUrl, takes, activeTakeId, setActiveTakeId,
     isRecording, isPlaying, recordTime, playbackTime, playbackDuration,
     liveWaveform, beatVolume, setBeatVolume, vocalVolume, setVocalVolume,
+    masterVolume, setMasterVolume,
     onStartRecording, onStopRecording, onPlayAll, onPlayBeatOnly, onPlayTake,
     onStopPlayback, onPausePlayback, onToggleMute, onToggleSolo,
     onDeleteTake, onSave, savingTake,
@@ -467,9 +470,9 @@ export default function StudioDAWView(props: StudioDAWViewProps) {
             onClick={() => setActiveTakeId(take.id)}
             onPlay={() => onPlayTake(take)}
             onDelete={() => onDeleteTake(take.id)}
-            audioActive={isAudioActive && !take.muted && activeTakeId === take.id}
+            audioActive={isAudioActive && !take.muted}
             trackNumber={idx + 2}
-            isPlaying={isPlaying && activeTakeId === take.id}
+            isPlaying={isPlaying && !take.muted}
           />
         ))}
 
@@ -645,9 +648,13 @@ export default function StudioDAWView(props: StudioDAWViewProps) {
         setBeatPan={setBeatPan}
         vocalPan={vocalPan}
         setVocalPan={setVocalPan}
+        masterVolume={masterVolume}
+        setMasterVolume={setMasterVolume}
         onToggleMute={onToggleMute}
         onToggleSolo={onToggleSolo}
         isAudioActive={isAudioActive}
+        onPlayAll={onPlayAll}
+        onStopPlayback={onStopPlayback}
       />
     </div>
   );
