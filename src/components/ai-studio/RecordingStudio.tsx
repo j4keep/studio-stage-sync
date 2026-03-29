@@ -489,6 +489,33 @@ const RecordingStudio = () => {
             setTakes(prev => prev.filter(t => t.id !== id));
             if (activeTakeId === id) setActiveTakeId(null);
           }}
+          onImportAudio={() => {
+            // Trigger the beat file input for importing additional audio
+            const input = document.createElement("input");
+            input.type = "file";
+            input.accept = "audio/*,.mp3,.wav,.ogg,.flac,.aac,.m4a";
+            input.onchange = async (e) => {
+              const file = (e.target as HTMLInputElement).files?.[0];
+              if (!file || !user || !activeSessionId) return;
+              const blobUrl = URL.createObjectURL(file);
+              const wf = await generateWaveformFromUrl(blobUrl);
+              const audio = new Audio(blobUrl);
+              audio.onloadedmetadata = () => {
+                const dur = audio.duration === Infinity ? 30 : audio.duration;
+                const newTake: TakeLocal = {
+                  id: crypto.randomUUID(), name: file.name.replace(/\.[^.]+$/, ""),
+                  audioUrl: blobUrl, blob: file, duration: dur,
+                  muted: false, solo: false, trimStart: 0, trimEnd: 100,
+                  waveform: wf.length > 0 ? wf : Array.from({ length: 100 }, () => Math.random() * 0.8),
+                  createdAt: new Date().toISOString(), persisted: false, volume: 100, pan: 0,
+                };
+                setTakes(prev => [...prev, newTake]);
+                setActiveTakeId(newTake.id);
+                toast({ title: `🎵 Imported ${file.name}` });
+              };
+            };
+            input.click();
+          }}
         />
       )}
 
