@@ -26,6 +26,7 @@ export interface PlaybackEffectsInput {
   eqLow: number;
   eqMid: number;
   eqHigh: number;
+  compressionAmount: number;
   reverbMix: number;
   reverbDecay: number;
   delayTime: number;
@@ -38,6 +39,7 @@ export interface PlaybackRequest {
   beatUrl: string | null;
   beatVolume: number;
   beatPan: number;
+  loop?: boolean;
   masterVolume: number;
   takes: PlaybackTakeInput[];
   effects: PlaybackEffectsInput;
@@ -311,6 +313,7 @@ export const useRecordingEngine = () => {
     beatUrl,
     beatVolume,
     beatPan,
+    loop = false,
     masterVolume,
     takes,
     effects,
@@ -384,7 +387,20 @@ export const useRecordingEngine = () => {
         delayMixGain.connect(vocalOutput);
       }
 
-      vocalOutput.connect(masterGain);
+      const compressor = ctx.createDynamicsCompressor();
+      const compressionMix = Math.max(0, Math.min(100, effects.compressionAmount));
+      compressor.threshold.value = -36 + compressionMix * 0.24;
+      compressor.knee.value = 20;
+      compressor.ratio.value = 1 + compressionMix * 0.08;
+      compressor.attack.value = 0.01;
+      compressor.release.value = 0.18;
+
+      if (compressionMix > 0) {
+        vocalOutput.connect(compressor);
+        compressor.connect(masterGain);
+      } else {
+        vocalOutput.connect(masterGain);
+      }
 
       const takeDurations = await Promise.all(
         playableTakes.map(async (take) => {
@@ -471,6 +487,23 @@ export const useRecordingEngine = () => {
 
         return !track.audio.paused && track.audio.currentTime < track.trimEndTime - 0.03;
       });
+
+      if (loop && maxDuration > 0 && (!anyTrackStillPlaying || elapsed >= maxDuration + 0.05)) {
+        playbackTracksRef.current.forEach((track) => {
+          track.audio.pause();
+          try {
+            track.audio.currentTime = track.isBeat ? 0 : track.trimStartTime;
+          } catch {}
+        });
+
+        playbackStartedAtRef.current = ctx.currentTime;
+        setPlaybackTime(0);
+
+        playbackTracksRef.current.forEach(({ audio }) => {
+          void audio.play().catch(() => {});
+        });
+        return;
+      }
 
       if (!anyTrackStillPlaying || elapsed >= maxDuration + 0.05) {
         stopPlaybackGraph(false);

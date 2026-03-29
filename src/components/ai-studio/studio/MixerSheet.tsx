@@ -368,10 +368,10 @@ export default function MixerSheet({
         <div className="flex items-center justify-center gap-3 py-2 border-t border-[#444]"
           style={{ background: "#2a2a2a" }}>
           <button
-            onClick={onPlayAll}
+            onClick={onStopPlayback}
             className="w-9 h-9 rounded-full flex items-center justify-center"
             style={{ background: "radial-gradient(circle, #ef4444 60%, #b91c1c 100%)" }}>
-            <div className="w-3.5 h-3.5 rounded-full bg-white/90" />
+            <div className="w-3.5 h-3.5 bg-white/90 rounded-[2px]" />
           </button>
           <button
             onClick={onPlayAll}

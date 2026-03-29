@@ -43,7 +43,7 @@ interface StudioDAWViewProps {
   setMasterVolume: (v: number) => void;
   onStartRecording: () => void;
   onStopRecording: () => void;
-  onPlayAll: () => void;
+  onPlayAll: (loop?: boolean) => void;
   onPlayBeatOnly: () => void;
   onPlayTake: (take: TakeLocal) => void;
   onStopPlayback: () => void;
@@ -575,7 +575,7 @@ export default function StudioDAWView(props: StudioDAWViewProps) {
 
           {/* Play */}
           <button
-            onClick={isPlaying ? onPausePlayback : onPlayAll}
+            onClick={isPlaying ? onPausePlayback : () => onPlayAll(loopEnabled)}
             disabled={isRecording}
             className="w-10 h-10 rounded-md flex items-center justify-center transition-all active:scale-90 disabled:opacity-30"
             style={{
