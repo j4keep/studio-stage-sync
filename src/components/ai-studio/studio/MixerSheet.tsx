@@ -21,6 +21,13 @@ interface MixerSheetProps {
   isAudioActive: boolean;
   onPlayAll?: () => void;
   onStopPlayback?: () => void;
+  onOpenEffects?: () => void;
+  eqLow: number;
+  eqMid: number;
+  eqHigh: number;
+  compressionAmount: number;
+  reverbMix: number;
+  delayMix: number;
 }
 
 /* ── Realistic vertical fader ── */
@@ -182,7 +189,7 @@ function MixerMeter({ active, intensity }: { active: boolean; intensity: number 
 /* ── Channel Strip ── */
 function ChannelStrip({
   name, icon, iconColor, volume, onVolumeChange, pan, onPanChange,
-  isMuted, isSolo, onMute, onSolo, isRecordArmed, audioActive, isMaster,
+  isMuted, isSolo, onMute, onSolo, isRecordArmed, audioActive, isMaster, isSelected, onSelect,
 }: {
   name: string;
   icon: React.ReactNode;
@@ -198,11 +205,14 @@ function ChannelStrip({
   isRecordArmed?: boolean;
   audioActive: boolean;
   isMaster?: boolean;
+  isSelected?: boolean;
+  onSelect?: () => void;
 }) {
   const db = volume > 0 ? ((volume / 100 - 1) * 50).toFixed(1) : "-∞";
 
   return (
-    <div className="flex flex-col items-center w-[80px] shrink-0 border-r border-[#444]"
+    <div className={`flex flex-col items-center w-[80px] shrink-0 border-r border-[#444] ${isSelected ? "ring-1 ring-inset ring-primary/50" : ""}`}
+      onClick={onSelect}
       style={{ background: isMaster
         ? "linear-gradient(180deg, #3a4a5a 0%, #2a3a4a 100%)"
         : "linear-gradient(180deg, #4a4a4a 0%, #3a3a3a 100%)" }}>
@@ -294,10 +304,26 @@ export default function MixerSheet({
   onUpdateTakeVolume, onUpdateTakePan,
   isAudioActive,
   onPlayAll, onStopPlayback,
+  onOpenEffects,
+  eqLow, eqMid, eqHigh, compressionAmount, reverbMix, delayMix,
 }: MixerSheetProps) {
   if (!open) return null;
 
   const ICON_COLORS = ["#38b2ac", "#6366f1", "#8b5cf6", "#a855f7", "#3b82f6"];
+  const [selectedStripId, setSelectedStripId] = useState<string>(activeTakeId || "beat");
+
+  useEffect(() => {
+    if (activeTakeId) setSelectedStripId(activeTakeId);
+  }, [activeTakeId]);
+
+  const selectedTake = takes.find((take) => take.id === selectedStripId) ?? null;
+  const selectedLabel = selectedStripId === "master"
+    ? "Master"
+    : selectedStripId === "beat"
+      ? (beatName || "Beat")
+      : (selectedTake?.name || "Track");
+  const selectedPan = selectedStripId === "master" ? 0 : selectedStripId === "beat" ? beatPan : (selectedTake?.pan ?? 0);
+  const selectedVolume = selectedStripId === "master" ? masterVolume : selectedStripId === "beat" ? beatVolume : (selectedTake?.volume ?? 0);
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col">
@@ -326,6 +352,8 @@ export default function MixerSheet({
             isMuted={false}
             isSolo={false}
             audioActive={isAudioActive}
+            isSelected={selectedStripId === "beat"}
+            onSelect={() => setSelectedStripId("beat")}
           />
 
           {/* Vocal channels - each with its OWN volume and pan */}
@@ -345,6 +373,8 @@ export default function MixerSheet({
               onSolo={() => onToggleSolo(take.id)}
               isRecordArmed={activeTakeId === take.id}
               audioActive={isAudioActive && !take.muted}
+              isSelected={selectedStripId === take.id}
+              onSelect={() => setSelectedStripId(take.id)}
             />
           ))}
 
@@ -361,7 +391,64 @@ export default function MixerSheet({
             isSolo={false}
             audioActive={isAudioActive}
             isMaster
+            isSelected={selectedStripId === "master"}
+            onSelect={() => setSelectedStripId("master")}
           />
+        </div>
+
+        <div className="border-t border-[#444] px-3 py-3 space-y-3" style={{ background: "#252525" }}>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#7dd3fc]">Selected Channel</p>
+              <p className="text-sm font-semibold text-white">{selectedLabel}</p>
+            </div>
+            <button
+              onClick={onOpenEffects}
+              className="rounded-md border border-[#555] px-3 py-2 text-[11px] font-semibold text-[#ddd]"
+              style={{ background: "#333" }}
+            >
+              Open FX Rack
+            </button>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 text-[10px]">
+            <div className="rounded-md border border-[#444] p-2" style={{ background: "#2f2f2f" }}>
+              <p className="text-[#888] uppercase">Level</p>
+              <p className="mt-1 text-sm font-bold text-white">{selectedVolume}%</p>
+            </div>
+            <div className="rounded-md border border-[#444] p-2" style={{ background: "#2f2f2f" }}>
+              <p className="text-[#888] uppercase">Pan</p>
+              <p className="mt-1 text-sm font-bold text-white">{selectedPan === 0 ? "C" : selectedPan > 0 ? `R${selectedPan}` : `L${Math.abs(selectedPan)}`}</p>
+            </div>
+            <div className="rounded-md border border-[#444] p-2" style={{ background: "#2f2f2f" }}>
+              <p className="text-[#888] uppercase">Comp</p>
+              <p className="mt-1 text-sm font-bold text-white">{compressionAmount}%</p>
+            </div>
+            <div className="rounded-md border border-[#444] p-2" style={{ background: "#2f2f2f" }}>
+              <p className="text-[#888] uppercase">Low EQ</p>
+              <p className="mt-1 text-sm font-bold text-white">{eqLow > 0 ? "+" : ""}{eqLow} dB</p>
+            </div>
+            <div className="rounded-md border border-[#444] p-2" style={{ background: "#2f2f2f" }}>
+              <p className="text-[#888] uppercase">Mid EQ</p>
+              <p className="mt-1 text-sm font-bold text-white">{eqMid > 0 ? "+" : ""}{eqMid} dB</p>
+            </div>
+            <div className="rounded-md border border-[#444] p-2" style={{ background: "#2f2f2f" }}>
+              <p className="text-[#888] uppercase">High EQ</p>
+              <p className="mt-1 text-sm font-bold text-white">{eqHigh > 0 ? "+" : ""}{eqHigh} dB</p>
+            </div>
+            <div className="rounded-md border border-[#444] p-2" style={{ background: "#2f2f2f" }}>
+              <p className="text-[#888] uppercase">Reverb</p>
+              <p className="mt-1 text-sm font-bold text-white">{reverbMix}%</p>
+            </div>
+            <div className="rounded-md border border-[#444] p-2" style={{ background: "#2f2f2f" }}>
+              <p className="text-[#888] uppercase">Delay</p>
+              <p className="mt-1 text-sm font-bold text-white">{delayMix}%</p>
+            </div>
+            <div className="rounded-md border border-[#444] p-2" style={{ background: "#2f2f2f" }}>
+              <p className="text-[#888] uppercase">Mode</p>
+              <p className="mt-1 text-sm font-bold text-white">{selectedStripId === "master" ? "Bus" : "Track"}</p>
+            </div>
+          </div>
         </div>
 
         {/* Bottom transport */}

@@ -190,12 +190,13 @@ const RecordingStudio = () => {
   /** Build playable takes list using each take's OWN volume and pan */
   const getPlayableTakes = useCallback((sourceTakes: TakeLocal[]) => {
     const soloed = sourceTakes.filter((take) => !take.muted && take.solo);
-    const audible = soloed.length > 0 ? soloed : sourceTakes.filter((take) => !take.muted);
+    const soloedIds = new Set(soloed.map((take) => take.id));
+    const hasSolo = soloedIds.size > 0;
 
-    return audible.map((take) => ({
+    return sourceTakes.map((take) => ({
       id: take.id,
       audioUrl: take.audioUrl,
-      volume: take.volume,
+      volume: hasSolo ? (soloedIds.has(take.id) ? take.volume : 0) : (take.muted ? 0 : take.volume),
       pan: take.pan,
       trimStart: take.trimStart,
       trimEnd: take.trimEnd,
@@ -520,7 +521,7 @@ const RecordingStudio = () => {
   }, [engine]);
 
   // Play all tracks (beat + all audible takes) with per-track volumes
-  const playAll = useCallback((loop = false) => {
+  const playAll = useCallback((loop = false, startAt = engine.playbackTime) => {
     if (engine.isPlaying) {
       engine.pausePlayback();
       return;
@@ -529,6 +530,7 @@ const RecordingStudio = () => {
     if (playableTakes.length > 0 || beatUrl) {
       engine.playAudio({
         beatUrl,
+        startAt,
         beatVolume,
         beatPan,
         loop,
@@ -964,6 +966,12 @@ const RecordingStudio = () => {
         onSave={saveSession}
         savingTake={savingTake}
         onSeekPlayback={engine.seekPlayback}
+        eqLow={eqLow}
+        eqMid={eqMid}
+        eqHigh={eqHigh}
+        compressionAmount={compressionAmount}
+        reverbMix={reverbMix}
+        delayMix={delayMix}
         onNavigate={(s) => {
           if (s === "export") setExportTitle(activeSessionName || "");
           setScreen(s as Screen);

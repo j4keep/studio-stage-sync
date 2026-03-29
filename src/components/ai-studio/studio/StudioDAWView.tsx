@@ -43,11 +43,12 @@ interface StudioDAWViewProps {
   setMasterVolume: (v: number) => void;
   onStartRecording: () => void;
   onStopRecording: () => void;
-  onPlayAll: (loop?: boolean) => void;
+  onPlayAll: (loop?: boolean, startAt?: number) => void;
   onPlayBeatOnly: () => void;
   onPlayTake: (take: TakeLocal) => void;
   onStopPlayback: () => void;
   onPausePlayback: () => void;
+  onSeekPlayback: (time: number) => void;
   onToggleMute: (id: string) => void;
   onToggleSolo: (id: string) => void;
   onDeleteTake: (id: string) => void;
@@ -60,6 +61,12 @@ interface StudioDAWViewProps {
   beatPan: number;
   setBeatPan: (v: number) => void;
   beatWaveform: number[];
+  eqLow: number;
+  eqMid: number;
+  eqHigh: number;
+  compressionAmount: number;
+  reverbMix: number;
+  delayMix: number;
 }
 
 /* ── colour sets per track ── */
@@ -186,7 +193,7 @@ function TrackLane({
   name, icon, colorSet, waveform, isActive, isMuted, isSolo,
   isRecordArmed, isRecordingNow, liveWaveform, volume, onVolumeChange,
   onMute, onSolo, onClick, onDelete, onPlay, audioActive, trackNumber,
-  isPlaying, playheadPct,
+  isPlaying, playheadPct, onScrub,
 }: {
   name: string;
   icon: React.ReactNode;
@@ -209,6 +216,7 @@ function TrackLane({
   trackNumber: number;
   isPlaying?: boolean;
   playheadPct?: number;
+  onScrub?: (time: number, event: React.PointerEvent<HTMLDivElement>) => void;
 }) {
   return (
     <div
@@ -301,7 +309,11 @@ function TrackLane({
 
       {/* Waveform area */}
       <div className="flex-1 relative overflow-hidden flex items-center"
-        style={{ backgroundColor: colorSet.bg }}>
+        style={{ backgroundColor: colorSet.bg, touchAction: "pan-y" }}
+        onPointerDown={(e) => onScrub?.(0, e)}
+        onPointerMove={(e) => {
+          if (e.buttons === 1) onScrub?.(0, e);
+        }}>
         
         {isRecordingNow && liveWaveform && liveWaveform.length > 0 ? (
           <div className="flex items-center h-full w-full gap-[0.5px] px-0.5">
@@ -350,15 +362,16 @@ export default function StudioDAWView(props: StudioDAWViewProps) {
     liveWaveform, beatVolume, setBeatVolume,
     masterVolume, setMasterVolume,
     onStartRecording, onStopRecording, onPlayAll, onPlayBeatOnly, onPlayTake,
-    onStopPlayback, onPausePlayback, onToggleMute, onToggleSolo,
+    onStopPlayback, onPausePlayback, onSeekPlayback, onToggleMute, onToggleSolo,
     onDeleteTake, onUpdateTakeVolume, onUpdateTakePan,
     onSave, savingTake,
     onNavigate, onBack, beatPan, setBeatPan,
-    beatWaveform,
+    beatWaveform, eqLow, eqMid, eqHigh, compressionAmount, reverbMix, delayMix,
   } = props;
 
   const [showMixer, setShowMixer] = useState(false);
   const [loopEnabled, setLoopEnabled] = useState(false);
+  const [isScrubbing, setIsScrubbing] = useState(false);
 
   const activeTake = takes.find(t => t.id === activeTakeId);
   const totalDuration = useMemo(() => {
@@ -373,10 +386,16 @@ export default function StudioDAWView(props: StudioDAWViewProps) {
     return markers;
   }, [totalDuration]);
 
-  const currentTime = isRecording ? recordTime : isPlaying ? playbackTime : 0;
+  const currentTime = isRecording ? recordTime : playbackTime;
   const playheadPct = totalDuration > 0 ? (currentTime / totalDuration) * 100 : 0;
 
   const isAudioActive = isRecording || isPlaying;
+
+  const scrubFromPointer = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+    onSeekPlayback(totalDuration * pct);
+  }, [onSeekPlayback, totalDuration]);
 
   return (
     <div className="flex flex-col h-full" style={{ background: "#1e1e1e" }}>
@@ -404,7 +423,19 @@ export default function StudioDAWView(props: StudioDAWViewProps) {
       {/* ── Timeline ruler ── */}
       <div className="flex h-6 border-b border-[#333] shrink-0" style={{ background: "#2a2a2a" }}>
         <div className="w-[130px] shrink-0 border-r border-[#444]" />
-        <div className="flex-1 relative overflow-hidden">
+        <div
+          className="flex-1 relative overflow-hidden"
+          style={{ touchAction: "none" }}
+          onPointerDown={(e) => {
+            setIsScrubbing(true);
+            scrubFromPointer(e);
+          }}
+          onPointerMove={(e) => {
+            if (isScrubbing || e.buttons === 1) scrubFromPointer(e);
+          }}
+          onPointerUp={() => setIsScrubbing(false)}
+          onPointerLeave={() => setIsScrubbing(false)}
+        >
           {/* Playhead triangle */}
           <div
             className="absolute top-0 z-20"
@@ -497,6 +528,7 @@ export default function StudioDAWView(props: StudioDAWViewProps) {
             trackNumber={idx + 2}
             isPlaying={isPlaying && !take.muted}
             playheadPct={playheadPct}
+            onScrub={(_, event) => scrubFromPointer(event)}
           />
         ))}
 
@@ -575,7 +607,7 @@ export default function StudioDAWView(props: StudioDAWViewProps) {
 
           {/* Play */}
           <button
-            onClick={isPlaying ? onPausePlayback : () => onPlayAll(loopEnabled)}
+            onClick={isPlaying ? onPausePlayback : () => onPlayAll(loopEnabled, playbackTime)}
             disabled={isRecording}
             className="w-10 h-10 rounded-md flex items-center justify-center transition-all active:scale-90 disabled:opacity-30"
             style={{
@@ -677,6 +709,16 @@ export default function StudioDAWView(props: StudioDAWViewProps) {
         isAudioActive={isAudioActive}
         onPlayAll={onPlayAll}
         onStopPlayback={onStopPlayback}
+        onOpenEffects={() => {
+          setShowMixer(false);
+          onNavigate("effects");
+        }}
+        eqLow={eqLow}
+        eqMid={eqMid}
+        eqHigh={eqHigh}
+        compressionAmount={compressionAmount}
+        reverbMix={reverbMix}
+        delayMix={delayMix}
       />
     </div>
   );
