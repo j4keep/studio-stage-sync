@@ -37,6 +37,7 @@ export interface PlaybackEffectsInput {
 
 export interface PlaybackRequest {
   beatUrl: string | null;
+  startAt?: number;
   beatVolume: number;
   beatPan: number;
   loop?: boolean;
@@ -46,10 +47,29 @@ export interface PlaybackRequest {
 }
 
 interface ManagedPlaybackTrack {
+  id: string;
   audio: HTMLAudioElement;
   trimEndTime: number;
   trimStartTime: number;
   isBeat: boolean;
+}
+
+interface ManagedPlaybackTrackNodes {
+  gain: GainNode;
+  pan: StereoPannerNode;
+}
+
+interface ManagedPlaybackEffectsNodes {
+  eqLow: BiquadFilterNode | null;
+  eqMid: BiquadFilterNode | null;
+  eqHigh: BiquadFilterNode | null;
+  vocalOutput: GainNode | null;
+  dryGain: GainNode | null;
+  reverbGain: GainNode | null;
+  delayNode: DelayNode | null;
+  delayFeedback: GainNode | null;
+  delayMixGain: GainNode | null;
+  compressor: DynamicsCompressorNode | null;
 }
 
 function createImpulseResponse(ctx: AudioContext, decay: number): AudioBuffer {
@@ -133,6 +153,21 @@ export const useRecordingEngine = () => {
   const recordStartRef = useRef<number>(0);
   const playbackTracksRef = useRef<ManagedPlaybackTrack[]>([]);
   const playbackStartedAtRef = useRef<number>(0);
+  const masterGainRef = useRef<GainNode | null>(null);
+  const beatNodesRef = useRef<ManagedPlaybackTrackNodes | null>(null);
+  const trackNodesRef = useRef<Record<string, ManagedPlaybackTrackNodes>>({});
+  const playbackEffectsNodesRef = useRef<ManagedPlaybackEffectsNodes>({
+    eqLow: null,
+    eqMid: null,
+    eqHigh: null,
+    vocalOutput: null,
+    dryGain: null,
+    reverbGain: null,
+    delayNode: null,
+    delayFeedback: null,
+    delayMixGain: null,
+    compressor: null,
+  });
 
   const closeAudioContext = useCallback(() => {
     if (audioCtxRef.current?.state !== "closed") {
@@ -155,6 +190,21 @@ export const useRecordingEngine = () => {
       audio.src = "";
     });
     playbackTracksRef.current = [];
+    trackNodesRef.current = {};
+    beatNodesRef.current = null;
+    masterGainRef.current = null;
+    playbackEffectsNodesRef.current = {
+      eqLow: null,
+      eqMid: null,
+      eqHigh: null,
+      vocalOutput: null,
+      dryGain: null,
+      reverbGain: null,
+      delayNode: null,
+      delayFeedback: null,
+      delayMixGain: null,
+      compressor: null,
+    };
 
     setIsPlaying(false);
     if (resetTime) {
@@ -311,6 +361,7 @@ export const useRecordingEngine = () => {
 
   const playAudio = useCallback(async ({
     beatUrl,
+    startAt = 0,
     beatVolume,
     beatPan,
     loop = false,
@@ -330,8 +381,11 @@ export const useRecordingEngine = () => {
     const masterGain = ctx.createGain();
     masterGain.gain.value = masterVolume / 100;
     masterGain.connect(ctx.destination);
+    masterGainRef.current = masterGain;
 
     const playbackTracks: ManagedPlaybackTrack[] = [];
+    trackNodesRef.current = {};
+    beatNodesRef.current = null;
 
     if (playableTakes.length > 0) {
       const vocalInput = ctx.createGain();
@@ -395,12 +449,21 @@ export const useRecordingEngine = () => {
       compressor.attack.value = 0.01;
       compressor.release.value = 0.18;
 
-      if (compressionMix > 0) {
-        vocalOutput.connect(compressor);
-        compressor.connect(masterGain);
-      } else {
-        vocalOutput.connect(masterGain);
-      }
+      vocalOutput.connect(compressor);
+      compressor.connect(masterGain);
+
+      playbackEffectsNodesRef.current = {
+        eqLow,
+        eqMid,
+        eqHigh,
+        vocalOutput,
+        dryGain,
+        reverbGain: effects.reverbMix > 0 ? null : null,
+        delayNode: effects.delayMix > 0 ? null : null,
+        delayFeedback: effects.delayMix > 0 ? null : null,
+        delayMixGain: effects.delayMix > 0 ? null : null,
+        compressor,
+      };
 
       const takeDurations = await Promise.all(
         playableTakes.map(async (take) => {
@@ -420,16 +483,44 @@ export const useRecordingEngine = () => {
 
           source.connect(gain).connect(pan).connect(vocalInput);
 
-          return { audio, trimStartTime, trimEndTime };
+          trackNodesRef.current[take.id] = { gain, pan };
+
+          return { id: take.id, audio, trimStartTime, trimEndTime };
         })
       );
 
       takeDurations.forEach((track) => {
         try {
-          track.audio.currentTime = track.trimStartTime;
+          track.audio.currentTime = Math.min(track.trimEndTime, track.trimStartTime + startAt);
         } catch {}
         playbackTracks.push({ ...track, isBeat: false });
       });
+
+      const reverbGain = ctx.createGain();
+      reverbGain.gain.value = effects.reverbMix / 100;
+      playbackEffectsNodesRef.current.reverbGain = reverbGain;
+
+      const convolver = ctx.createConvolver();
+      convolver.buffer = createImpulseResponse(ctx, effects.reverbDecay);
+      eqHigh.connect(convolver);
+      convolver.connect(reverbGain);
+      reverbGain.connect(vocalOutput);
+
+      const delayNode = ctx.createDelay(2);
+      delayNode.delayTime.value = effects.delayTime;
+      const delayFeedback = ctx.createGain();
+      delayFeedback.gain.value = effects.delayFeedback / 100;
+      const delayMixGain = ctx.createGain();
+      delayMixGain.gain.value = effects.delayMix / 100;
+      eqHigh.connect(delayNode);
+      delayNode.connect(delayFeedback);
+      delayFeedback.connect(delayNode);
+      delayNode.connect(delayMixGain);
+      delayMixGain.connect(vocalOutput);
+
+      playbackEffectsNodesRef.current.delayNode = delayNode;
+      playbackEffectsNodesRef.current.delayFeedback = delayFeedback;
+      playbackEffectsNodesRef.current.delayMixGain = delayMixGain;
     }
 
     if (beatUrl) {
@@ -445,7 +536,11 @@ export const useRecordingEngine = () => {
       beatPanNode.pan.value = beatPan / 100;
 
       beatSource.connect(beatGainNode).connect(beatPanNode).connect(masterGain);
-      playbackTracks.push({ audio: beatAudio, trimStartTime: 0, trimEndTime: beatDuration, isBeat: true });
+      beatNodesRef.current = { gain: beatGainNode, pan: beatPanNode };
+      try {
+        beatAudio.currentTime = Math.min(beatDuration, startAt);
+      } catch {}
+      playbackTracks.push({ id: "beat", audio: beatAudio, trimStartTime: 0, trimEndTime: beatDuration, isBeat: true });
     }
 
     playbackTracksRef.current = playbackTracks;
@@ -456,7 +551,7 @@ export const useRecordingEngine = () => {
     }, 0);
 
     setPlaybackDuration(Math.round(maxDuration));
-    setPlaybackTime(0);
+    setPlaybackTime(Math.min(startAt, maxDuration));
     setIsPlaying(true);
 
     await ctx.resume();
@@ -468,7 +563,7 @@ export const useRecordingEngine = () => {
       })
     );
 
-    playbackStartedAtRef.current = ctx.currentTime;
+    playbackStartedAtRef.current = ctx.currentTime - Math.min(startAt, maxDuration);
 
     playbackTimerRef.current = setInterval(() => {
       const elapsed = Math.max(0, ctx.currentTime - playbackStartedAtRef.current);
@@ -488,7 +583,7 @@ export const useRecordingEngine = () => {
         return !track.audio.paused && track.audio.currentTime < track.trimEndTime - 0.03;
       });
 
-      if (loop && maxDuration > 0 && (!anyTrackStillPlaying || elapsed >= maxDuration + 0.05)) {
+        if (loop && maxDuration > 0 && (!anyTrackStillPlaying || elapsed >= maxDuration + 0.05)) {
         playbackTracksRef.current.forEach((track) => {
           track.audio.pause();
           try {
@@ -522,6 +617,71 @@ export const useRecordingEngine = () => {
     setIsPlaying(false);
   }, []);
 
+  const seekPlayback = useCallback((nextTime: number) => {
+    const ctx = audioCtxRef.current;
+    const boundedTime = Math.max(0, Math.min(nextTime, playbackDuration || nextTime));
+
+    playbackTracksRef.current.forEach((track) => {
+      try {
+        track.audio.currentTime = track.isBeat
+          ? boundedTime
+          : Math.min(track.trimEndTime, track.trimStartTime + boundedTime);
+      } catch {}
+    });
+
+    if (ctx) {
+      playbackStartedAtRef.current = ctx.currentTime - boundedTime;
+    }
+
+    setPlaybackTime(boundedTime);
+  }, [playbackDuration]);
+
+  const updatePlaybackMix = useCallback((params: {
+    masterVolume?: number;
+    beatVolume?: number;
+    beatPan?: number;
+    takes?: PlaybackTakeInput[];
+    effects?: PlaybackEffectsInput;
+  }) => {
+    if (typeof params.masterVolume === "number" && masterGainRef.current) {
+      masterGainRef.current.gain.value = params.masterVolume / 100;
+    }
+
+    if (typeof params.beatVolume === "number" && beatNodesRef.current) {
+      beatNodesRef.current.gain.gain.value = params.beatVolume / 100;
+    }
+
+    if (typeof params.beatPan === "number" && beatNodesRef.current) {
+      beatNodesRef.current.pan.pan.value = params.beatPan / 100;
+    }
+
+    if (params.takes) {
+      params.takes.forEach((take) => {
+        const nodes = trackNodesRef.current[take.id];
+        if (!nodes) return;
+        nodes.gain.gain.value = take.volume / 100;
+        nodes.pan.pan.value = take.pan / 100;
+      });
+    }
+
+    if (params.effects) {
+      const nodes = playbackEffectsNodesRef.current;
+      if (nodes.eqLow) nodes.eqLow.gain.value = params.effects.eqLow;
+      if (nodes.eqMid) nodes.eqMid.gain.value = params.effects.eqMid;
+      if (nodes.eqHigh) nodes.eqHigh.gain.value = params.effects.eqHigh;
+      if (nodes.vocalOutput) nodes.vocalOutput.gain.value = params.effects.outputGain / 100;
+      if (nodes.reverbGain) nodes.reverbGain.gain.value = params.effects.reverbMix / 100;
+      if (nodes.delayNode) nodes.delayNode.delayTime.value = params.effects.delayTime;
+      if (nodes.delayFeedback) nodes.delayFeedback.gain.value = params.effects.delayFeedback / 100;
+      if (nodes.delayMixGain) nodes.delayMixGain.gain.value = params.effects.delayMix / 100;
+      if (nodes.compressor) {
+        const compressionMix = Math.max(0, Math.min(100, params.effects.compressionAmount));
+        nodes.compressor.threshold.value = -36 + compressionMix * 0.24;
+        nodes.compressor.ratio.value = 1 + compressionMix * 0.08;
+      }
+    }
+  }, [playbackEffectsNodesRef]);
+
   return {
     isRecording,
     isPlaying,
@@ -534,5 +694,7 @@ export const useRecordingEngine = () => {
     playAudio,
     stopPlayback,
     pausePlayback,
+    seekPlayback,
+    updatePlaybackMix,
   };
 };
