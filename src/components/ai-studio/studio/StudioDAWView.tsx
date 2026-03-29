@@ -470,9 +470,9 @@ export default function StudioDAWView(props: StudioDAWViewProps) {
             onClick={() => setActiveTakeId(take.id)}
             onPlay={() => onPlayTake(take)}
             onDelete={() => onDeleteTake(take.id)}
-            audioActive={isAudioActive && !take.muted && activeTakeId === take.id}
+            audioActive={isAudioActive && !take.muted}
             trackNumber={idx + 2}
-            isPlaying={isPlaying && activeTakeId === take.id}
+            isPlaying={isPlaying && !take.muted}
           />
         ))}
 
