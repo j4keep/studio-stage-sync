@@ -919,6 +919,8 @@ const RecordingStudio = () => {
         setBeatVolume={setBeatVolume}
         vocalVolume={vocalVolume}
         setVocalVolume={setVocalVolume}
+        masterVolume={masterVolume}
+        setMasterVolume={setMasterVolume}
         onStartRecording={startRecording}
         onStopRecording={stopRecording}
         onPlayAll={playAll}
