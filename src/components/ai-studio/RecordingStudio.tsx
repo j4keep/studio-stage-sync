@@ -103,6 +103,12 @@ const RecordingStudio = () => {
   const [beatVolume, setBeatVolume] = useState(80);
   const [beatPan, setBeatPan] = useState(0);
   const [masterVolume, setMasterVolume] = useState(100);
+  const [bpm, setBpm] = useState(120);
+  const [gridMode, setGridMode] = useState<"Measure" | "Beat" | "Free">("Measure");
+  const [musicalKey, setMusicalKey] = useState("/");
+  const [loopEnabled, setLoopEnabled] = useState(false);
+  const [loopStart, setLoopStart] = useState<number | null>(null);
+  const [loopEnd, setLoopEnd] = useState<number | null>(null);
 
   // Export
   const [isExporting, setIsExporting] = useState(false);
@@ -296,9 +302,9 @@ const RecordingStudio = () => {
     if (engine.isPlaying) { engine.pausePlayback(); return; }
     const playable = getPlayableTakes(takes);
     if (playable.length > 0 || beatUrl) {
-      engine.playAudio({ beatUrl, beatVolume, beatPan, loop, masterVolume, takes: playable, effects: { eqLow: 0, eqMid: 0, eqHigh: 0, compressionAmount: 18, reverbMix: 8, reverbDecay: 1.1, delayTime: 0.2, delayFeedback: 10, delayMix: 0, outputGain: 80 } });
+      engine.playAudio({ beatUrl, beatVolume, beatPan, loop, loopStart, loopEnd, masterVolume, takes: playable, effects: { eqLow: 0, eqMid: 0, eqHigh: 0, compressionAmount: 18, reverbMix: 8, reverbDecay: 1.1, delayTime: 0.2, delayFeedback: 10, delayMix: 0, outputGain: 80 } });
     }
-  }, [engine, takes, beatUrl, beatVolume, beatPan, masterVolume, getPlayableTakes]);
+  }, [engine, takes, beatUrl, beatVolume, beatPan, masterVolume, getPlayableTakes, loopStart, loopEnd]);
 
   // Sync mixer changes during playback
   useEffect(() => {
@@ -480,7 +486,22 @@ const RecordingStudio = () => {
           onStopRecording={() => engine.stopRecording()}
           onPlayAll={playAll}
           onStopPlayback={() => engine.stopPlayback()}
+          onSeekPlayback={engine.seekPlayback}
           onBack={() => setScreen("home")}
+          bpm={bpm}
+          onBpmChange={setBpm}
+          gridMode={gridMode}
+          onGridModeChange={setGridMode}
+          musicalKey={musicalKey}
+          onMusicalKeyChange={setMusicalKey}
+          loopEnabled={loopEnabled}
+          onLoopEnabledChange={setLoopEnabled}
+          loopStart={loopStart}
+          loopEnd={loopEnd}
+          onLoopRangeChange={(start, end) => {
+            setLoopStart(start);
+            setLoopEnd(end);
+          }}
           onAddTrack={() => {
             if (!activeSessionId) { toast({ title: "Create a session first" }); return; }
             startRecording();

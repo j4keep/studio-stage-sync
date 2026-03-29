@@ -471,7 +471,7 @@ export default function DAWScreen(props: DAWScreenProps) {
             className="h-5 border-b border-[#333] relative overflow-hidden shrink-0 touch-none"
             style={{ background: "#151525" }}
             onPointerDown={(e) => {
-              if (loopEnabled && e.shiftKey) {
+              if (loopEnabled) {
                 const next = getTimeFromClientX(e.clientX);
                 onLoopRangeChange(next, next);
                 setIsDraggingLoop(true);
