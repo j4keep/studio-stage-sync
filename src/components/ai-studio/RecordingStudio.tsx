@@ -539,6 +539,26 @@ const RecordingStudio = () => {
     }
   }, [engine, takes, beatUrl, beatVolume, beatPan, masterVolume, getPlayableTakes, playbackEffects]);
 
+  useEffect(() => {
+    if (!engine.isPlaying) return;
+
+    engine.updatePlaybackMix({
+      masterVolume,
+      beatVolume,
+      beatPan,
+      takes: getPlayableTakes(takes),
+      effects: playbackEffects,
+    });
+  }, [
+    engine,
+    masterVolume,
+    beatVolume,
+    beatPan,
+    takes,
+    getPlayableTakes,
+    playbackEffects,
+  ]);
+
   // Play beat only
   const playBeatOnly = useCallback(() => {
     if (engine.isPlaying) {
@@ -943,6 +963,7 @@ const RecordingStudio = () => {
         onUpdateTakePan={updateTakePan}
         onSave={saveSession}
         savingTake={savingTake}
+        onSeekPlayback={engine.seekPlayback}
         onNavigate={(s) => {
           if (s === "export") setExportTitle(activeSessionName || "");
           setScreen(s as Screen);
