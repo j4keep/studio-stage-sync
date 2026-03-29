@@ -550,14 +550,14 @@ const RecordingStudio = () => {
     if (beatUrl) {
       engine.playAudio({
         beatUrl,
-        beatVolume: beatGain,
+        beatVolume,
         beatPan,
-        masterVolume: 100,
+        masterVolume,
         takes: [],
         effects: playbackEffects,
       });
     }
-  }, [engine, beatUrl, beatGain, beatPan, playbackEffects]);
+  }, [engine, beatUrl, beatVolume, beatPan, masterVolume, playbackEffects]);
 
   // Play a specific take (with beat)
   const playTake = useCallback((take: TakeLocal) => {
