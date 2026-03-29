@@ -1087,7 +1087,7 @@ const RecordingStudio = () => {
         {/* Preview: Play with current effects */}
         <div className="flex gap-2">
           <button
-            onClick={playAll}
+            onClick={() => playAll(false)}
             className="flex-1 h-10 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2"
             style={{ background: engine.isPlaying ? "linear-gradient(180deg, #22c55e 0%, #16a34a 100%)" : "linear-gradient(180deg, #555 0%, #444 100%)" }}
           >
