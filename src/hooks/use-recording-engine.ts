@@ -415,32 +415,6 @@ export const useRecordingEngine = () => {
       eqHigh.connect(dryGain);
       dryGain.connect(vocalOutput);
 
-      if (effects.reverbMix > 0) {
-        const convolver = ctx.createConvolver();
-        convolver.buffer = createImpulseResponse(ctx, effects.reverbDecay);
-        const reverbGain = ctx.createGain();
-        reverbGain.gain.value = effects.reverbMix / 100;
-        dryGain.gain.value = Math.max(0.2, 1 - effects.reverbMix / 130);
-        eqHigh.connect(convolver);
-        convolver.connect(reverbGain);
-        reverbGain.connect(vocalOutput);
-      }
-
-      if (effects.delayMix > 0) {
-        const delayNode = ctx.createDelay(2);
-        delayNode.delayTime.value = effects.delayTime;
-        const delayFeedback = ctx.createGain();
-        delayFeedback.gain.value = effects.delayFeedback / 100;
-        const delayMixGain = ctx.createGain();
-        delayMixGain.gain.value = effects.delayMix / 100;
-
-        eqHigh.connect(delayNode);
-        delayNode.connect(delayFeedback);
-        delayFeedback.connect(delayNode);
-        delayNode.connect(delayMixGain);
-        delayMixGain.connect(vocalOutput);
-      }
-
       const compressor = ctx.createDynamicsCompressor();
       const compressionMix = Math.max(0, Math.min(100, effects.compressionAmount));
       compressor.threshold.value = -36 + compressionMix * 0.24;
@@ -499,6 +473,7 @@ export const useRecordingEngine = () => {
       const reverbGain = ctx.createGain();
       reverbGain.gain.value = effects.reverbMix / 100;
       playbackEffectsNodesRef.current.reverbGain = reverbGain;
+      dryGain.gain.value = Math.max(0.2, 1 - effects.reverbMix / 130);
 
       const convolver = ctx.createConvolver();
       convolver.buffer = createImpulseResponse(ctx, effects.reverbDecay);
