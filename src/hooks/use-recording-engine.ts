@@ -13,6 +13,102 @@ export interface RecordingEngineState {
   liveWaveform: number[];
 }
 
+export interface PlaybackTakeInput {
+  id: string;
+  audioUrl: string;
+  volume: number;
+  pan: number;
+  trimStart: number;
+  trimEnd: number;
+}
+
+export interface PlaybackEffectsInput {
+  eqLow: number;
+  eqMid: number;
+  eqHigh: number;
+  reverbMix: number;
+  reverbDecay: number;
+  delayTime: number;
+  delayFeedback: number;
+  delayMix: number;
+  outputGain: number;
+}
+
+export interface PlaybackRequest {
+  beatUrl: string | null;
+  beatVolume: number;
+  beatPan: number;
+  masterVolume: number;
+  takes: PlaybackTakeInput[];
+  effects: PlaybackEffectsInput;
+}
+
+interface ManagedPlaybackTrack {
+  audio: HTMLAudioElement;
+  trimEndTime: number;
+  trimStartTime: number;
+  isBeat: boolean;
+}
+
+function createImpulseResponse(ctx: AudioContext, decay: number): AudioBuffer {
+  const rate = ctx.sampleRate;
+  const length = Math.max(1, Math.floor(rate * Math.max(decay, 0.15)));
+  const buffer = ctx.createBuffer(2, length, rate);
+
+  for (let channel = 0; channel < 2; channel++) {
+    const data = buffer.getChannelData(channel);
+    for (let i = 0; i < length; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, decay);
+    }
+  }
+
+  return buffer;
+}
+
+function resolveAudioDuration(audio: HTMLAudioElement): Promise<number> {
+  return new Promise((resolve) => {
+    const finish = (duration: number) => {
+      audio.removeEventListener("loadedmetadata", onLoadedMetadata);
+      audio.removeEventListener("error", onError);
+      resolve(Number.isFinite(duration) ? duration : 0);
+    };
+
+    const onError = () => finish(0);
+
+    const onLoadedMetadata = () => {
+      if (Number.isFinite(audio.duration) && audio.duration > 0) {
+        finish(audio.duration);
+        return;
+      }
+
+      const onTimeUpdate = () => {
+        audio.removeEventListener("timeupdate", onTimeUpdate);
+        const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
+        try {
+          audio.currentTime = 0;
+        } catch {}
+        finish(duration);
+      };
+
+      audio.addEventListener("timeupdate", onTimeUpdate, { once: true });
+      try {
+        audio.currentTime = 1e10;
+      } catch {
+        finish(0);
+      }
+    };
+
+    audio.addEventListener("loadedmetadata", onLoadedMetadata, { once: true });
+    audio.addEventListener("error", onError, { once: true });
+
+    if (audio.readyState >= 1) {
+      onLoadedMetadata();
+    } else {
+      audio.load();
+    }
+  });
+}
+
 export const useRecordingEngine = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -33,20 +129,49 @@ export const useRecordingEngine = () => {
   const playbackAudioRef = useRef<HTMLAudioElement | null>(null);
   const playbackTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recordStartRef = useRef<number>(0);
+  const playbackTracksRef = useRef<ManagedPlaybackTrack[]>([]);
+  const playbackStartedAtRef = useRef<number>(0);
+
+  const closeAudioContext = useCallback(() => {
+    if (audioCtxRef.current?.state !== "closed") {
+      try {
+        audioCtxRef.current?.close();
+      } catch {}
+    }
+    audioCtxRef.current = null;
+  }, []);
+
+  const stopPlaybackGraph = useCallback((resetTime = true) => {
+    if (playbackTimerRef.current) clearInterval(playbackTimerRef.current);
+    playbackTimerRef.current = null;
+
+    playbackTracksRef.current.forEach(({ audio, trimStartTime }) => {
+      audio.pause();
+      try {
+        audio.currentTime = resetTime ? trimStartTime : audio.currentTime;
+      } catch {}
+      audio.src = "";
+    });
+    playbackTracksRef.current = [];
+
+    setIsPlaying(false);
+    if (resetTime) {
+      setPlaybackTime(0);
+    }
+
+    closeAudioContext();
+  }, [closeAudioContext]);
 
   const cleanup = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
     if (waveformRafRef.current) cancelAnimationFrame(waveformRafRef.current);
-    if (playbackTimerRef.current) clearInterval(playbackTimerRef.current);
     streamRef.current?.getTracks().forEach(t => t.stop());
-    if (audioCtxRef.current?.state !== "closed") {
-      try { audioCtxRef.current?.close(); } catch {}
-    }
-    audioCtxRef.current = null;
+    stopPlaybackGraph();
+    closeAudioContext();
     analyserRef.current = null;
     streamRef.current = null;
     mediaRecorderRef.current = null;
-  }, []);
+  }, [closeAudioContext, stopPlaybackGraph]);
 
   useEffect(() => () => cleanup(), []);
 
@@ -81,6 +206,7 @@ export const useRecordingEngine = () => {
     beatVolume: number
   ): Promise<{ blob: Blob; duration: number; waveform: number[] } | null> => {
     try {
+      stopPlaybackGraph();
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
@@ -129,6 +255,7 @@ export const useRecordingEngine = () => {
           }
           if (timerRef.current) clearInterval(timerRef.current);
           if (waveformRafRef.current) cancelAnimationFrame(waveformRafRef.current);
+          closeAudioContext();
           
           setIsRecording(false);
           resolve({ blob, duration, waveform });
@@ -178,125 +305,186 @@ export const useRecordingEngine = () => {
     }
     if (timerRef.current) clearInterval(timerRef.current);
     if (waveformRafRef.current) cancelAnimationFrame(waveformRafRef.current);
-  }, []);
+  }, [closeAudioContext, stopPlaybackGraph]);
 
-  const playAudio = useCallback((audioUrl: string, beatUrl: string | null, beatVolume: number, vocalVolume: number) => {
-    // Stop any existing playback
-    if (playbackAudioRef.current) {
-      playbackAudioRef.current.pause();
-      playbackAudioRef.current = null;
+  const playAudio = useCallback(async ({
+    beatUrl,
+    beatVolume,
+    beatPan,
+    masterVolume,
+    takes,
+    effects,
+  }: PlaybackRequest) => {
+    stopPlaybackGraph();
+
+    const playableTakes = takes.filter((take) => take.audioUrl);
+    const hasBeat = Boolean(beatUrl);
+    if (!hasBeat && playableTakes.length === 0) return;
+
+    const ctx = new AudioContext();
+    audioCtxRef.current = ctx;
+
+    const masterGain = ctx.createGain();
+    masterGain.gain.value = masterVolume / 100;
+    masterGain.connect(ctx.destination);
+
+    const playbackTracks: ManagedPlaybackTrack[] = [];
+
+    if (playableTakes.length > 0) {
+      const vocalInput = ctx.createGain();
+      const eqLow = ctx.createBiquadFilter();
+      eqLow.type = "lowshelf";
+      eqLow.frequency.value = 320;
+      eqLow.gain.value = effects.eqLow;
+
+      const eqMid = ctx.createBiquadFilter();
+      eqMid.type = "peaking";
+      eqMid.frequency.value = 1200;
+      eqMid.Q.value = 0.8;
+      eqMid.gain.value = effects.eqMid;
+
+      const eqHigh = ctx.createBiquadFilter();
+      eqHigh.type = "highshelf";
+      eqHigh.frequency.value = 4200;
+      eqHigh.gain.value = effects.eqHigh;
+
+      const vocalOutput = ctx.createGain();
+      vocalOutput.gain.value = effects.outputGain / 100;
+
+      const dryGain = ctx.createGain();
+      dryGain.gain.value = 1;
+
+      vocalInput.connect(eqLow).connect(eqMid).connect(eqHigh);
+      eqHigh.connect(dryGain);
+      dryGain.connect(vocalOutput);
+
+      if (effects.reverbMix > 0) {
+        const convolver = ctx.createConvolver();
+        convolver.buffer = createImpulseResponse(ctx, effects.reverbDecay);
+        const reverbGain = ctx.createGain();
+        reverbGain.gain.value = effects.reverbMix / 100;
+        dryGain.gain.value = Math.max(0.2, 1 - effects.reverbMix / 130);
+        eqHigh.connect(convolver);
+        convolver.connect(reverbGain);
+        reverbGain.connect(vocalOutput);
+      }
+
+      if (effects.delayMix > 0) {
+        const delayNode = ctx.createDelay(2);
+        delayNode.delayTime.value = effects.delayTime;
+        const delayFeedback = ctx.createGain();
+        delayFeedback.gain.value = effects.delayFeedback / 100;
+        const delayMixGain = ctx.createGain();
+        delayMixGain.gain.value = effects.delayMix / 100;
+
+        eqHigh.connect(delayNode);
+        delayNode.connect(delayFeedback);
+        delayFeedback.connect(delayNode);
+        delayNode.connect(delayMixGain);
+        delayMixGain.connect(vocalOutput);
+      }
+
+      vocalOutput.connect(masterGain);
+
+      const takeDurations = await Promise.all(
+        playableTakes.map(async (take) => {
+          const audio = new Audio(take.audioUrl);
+          audio.crossOrigin = "anonymous";
+          audio.preload = "auto";
+
+          const duration = await resolveAudioDuration(audio);
+          const trimStartTime = duration * (take.trimStart / 100);
+          const trimEndTime = duration * (take.trimEnd / 100);
+
+          const source = ctx.createMediaElementSource(audio);
+          const gain = ctx.createGain();
+          gain.gain.value = take.volume / 100;
+          const pan = ctx.createStereoPanner();
+          pan.pan.value = take.pan / 100;
+
+          source.connect(gain).connect(pan).connect(vocalInput);
+
+          return { audio, trimStartTime, trimEndTime };
+        })
+      );
+
+      takeDurations.forEach((track) => {
+        try {
+          track.audio.currentTime = track.trimStartTime;
+        } catch {}
+        playbackTracks.push({ ...track, isBeat: false });
+      });
     }
-    if (beatAudioRef.current) {
-      beatAudioRef.current.pause();
-      beatAudioRef.current = null;
+
+    if (beatUrl) {
+      const beatAudio = new Audio(beatUrl);
+      beatAudio.crossOrigin = "anonymous";
+      beatAudio.preload = "auto";
+      const beatDuration = await resolveAudioDuration(beatAudio);
+
+      const beatSource = ctx.createMediaElementSource(beatAudio);
+      const beatGainNode = ctx.createGain();
+      beatGainNode.gain.value = beatVolume / 100;
+      const beatPanNode = ctx.createStereoPanner();
+      beatPanNode.pan.value = beatPan / 100;
+
+      beatSource.connect(beatGainNode).connect(beatPanNode).connect(masterGain);
+      playbackTracks.push({ audio: beatAudio, trimStartTime: 0, trimEndTime: beatDuration, isBeat: true });
     }
-    if (playbackTimerRef.current) clearInterval(playbackTimerRef.current);
 
-    const hasVocal = audioUrl && audioUrl.length > 0;
-    const hasBeat = beatUrl && beatUrl.length > 0;
+    playbackTracksRef.current = playbackTracks;
 
-    // Primary track for time tracking
-    let primaryAudio: HTMLAudioElement | null = null;
+    const maxDuration = playbackTracks.reduce((longest, track) => {
+      const duration = Math.max(0, track.trimEndTime - track.trimStartTime);
+      return Math.max(longest, duration);
+    }, 0);
 
-    if (hasVocal) {
-      const audio = new Audio(audioUrl);
-      audio.volume = vocalVolume / 100;
-      playbackAudioRef.current = audio;
-      primaryAudio = audio;
+    setPlaybackDuration(Math.round(maxDuration));
+    setPlaybackTime(0);
+    setIsPlaying(true);
 
-      // Seek-to-end workaround for WebM duration
-      audio.addEventListener("loadedmetadata", () => {
-        if (!isFinite(audio.duration) || audio.duration === Infinity) {
-          audio.currentTime = 1e10;
-          audio.addEventListener("timeupdate", function seekBack() {
-            audio.removeEventListener("timeupdate", seekBack);
-            audio.currentTime = 0;
-            setPlaybackDuration(Math.round(audio.duration));
-            audio.play();
-            // Start beat in sync
-            if (beatAudioRef.current) beatAudioRef.current.play().catch(() => {});
-          });
-        } else {
-          setPlaybackDuration(Math.round(audio.duration));
-          audio.play();
-          // Start beat in sync
-          if (beatAudioRef.current) beatAudioRef.current.play().catch(() => {});
+    await ctx.resume();
+    await Promise.all(
+      playbackTracks.map(async ({ audio }) => {
+        try {
+          await audio.play();
+        } catch {}
+      })
+    );
+
+    playbackStartedAtRef.current = ctx.currentTime;
+
+    playbackTimerRef.current = setInterval(() => {
+      const elapsed = Math.max(0, ctx.currentTime - playbackStartedAtRef.current);
+      setPlaybackTime(Math.min(elapsed, maxDuration));
+
+      playbackTracksRef.current.forEach((track) => {
+        if (!track.isBeat && !track.audio.paused && track.audio.currentTime >= track.trimEndTime - 0.03) {
+          track.audio.pause();
         }
       });
 
-      audio.load();
-
-      audio.onended = () => {
-        setIsPlaying(false);
-        if (playbackTimerRef.current) clearInterval(playbackTimerRef.current);
-        if (beatAudioRef.current) {
-          beatAudioRef.current.pause();
-          beatAudioRef.current = null;
+      const anyTrackStillPlaying = playbackTracksRef.current.some((track) => {
+        if (track.isBeat) {
+          return !track.audio.paused && !track.audio.ended;
         }
-      };
-    }
 
-    if (hasBeat) {
-      const beat = new Audio(beatUrl);
-      beat.volume = beatVolume / 100;
-      beatAudioRef.current = beat;
+        return !track.audio.paused && track.audio.currentTime < track.trimEndTime - 0.03;
+      });
 
-      // If no vocal, beat is the primary audio
-      if (!hasVocal) {
-        primaryAudio = beat;
-
-        beat.addEventListener("loadedmetadata", () => {
-          if (!isFinite(beat.duration) || beat.duration === Infinity) {
-            beat.currentTime = 1e10;
-            beat.addEventListener("timeupdate", function seekBack() {
-              beat.removeEventListener("timeupdate", seekBack);
-              beat.currentTime = 0;
-              setPlaybackDuration(Math.round(beat.duration));
-              beat.play();
-            });
-          } else {
-            setPlaybackDuration(Math.round(beat.duration));
-            beat.play();
-          }
-        });
-
-        beat.load();
-
-        beat.onended = () => {
-          setIsPlaying(false);
-          if (playbackTimerRef.current) clearInterval(playbackTimerRef.current);
-        };
+      if (!anyTrackStillPlaying || elapsed >= maxDuration + 0.05) {
+        stopPlaybackGraph(false);
+        setPlaybackTime(maxDuration);
       }
-    }
-
-    setIsPlaying(true);
-    setPlaybackTime(0);
-
-    const trackingAudio = primaryAudio;
-    playbackTimerRef.current = setInterval(() => {
-      if (trackingAudio) {
-        setPlaybackTime(Math.round(trackingAudio.currentTime));
-      }
-    }, 250);
-  }, []);
+    }, 100);
+  }, [stopPlaybackGraph]);
 
   const stopPlayback = useCallback(() => {
-    if (playbackAudioRef.current) {
-      playbackAudioRef.current.pause();
-      playbackAudioRef.current = null;
-    }
-    if (beatAudioRef.current) {
-      beatAudioRef.current.pause();
-      beatAudioRef.current = null;
-    }
-    if (playbackTimerRef.current) clearInterval(playbackTimerRef.current);
-    setIsPlaying(false);
-    setPlaybackTime(0);
-  }, []);
+    stopPlaybackGraph();
+  }, [stopPlaybackGraph]);
 
   const pausePlayback = useCallback(() => {
-    playbackAudioRef.current?.pause();
-    beatAudioRef.current?.pause();
+    playbackTracksRef.current.forEach(({ audio }) => audio.pause());
     if (playbackTimerRef.current) clearInterval(playbackTimerRef.current);
     setIsPlaying(false);
   }, []);
