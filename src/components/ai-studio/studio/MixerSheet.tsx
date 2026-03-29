@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { X, Mic, Music, Plus, Volume2, Play, SkipBack, Repeat } from "lucide-react";
+import { X, Mic, Music, Plus, Volume2, Play, SkipBack, Repeat, Pause } from "lucide-react";
 import type { TakeLocal } from "./StudioDAWView";
 
 interface MixerSheetProps {
@@ -10,16 +10,14 @@ interface MixerSheetProps {
   activeTakeId: string | null;
   beatVolume: number;
   setBeatVolume: (v: number) => void;
-  vocalVolume: number;
-  setVocalVolume: (v: number) => void;
   beatPan: number;
   setBeatPan: (v: number) => void;
-  vocalPan: number;
-  setVocalPan: (v: number) => void;
   masterVolume: number;
   setMasterVolume: (v: number) => void;
   onToggleMute: (id: string) => void;
   onToggleSolo: (id: string) => void;
+  onUpdateTakeVolume: (id: string, volume: number) => void;
+  onUpdateTakePan: (id: string, pan: number) => void;
   isAudioActive: boolean;
   onPlayAll?: () => void;
   onStopPlayback?: () => void;
@@ -88,6 +86,49 @@ function VerticalFader({ value, onChange }: { value: number; onChange: (v: numbe
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ── Pan Knob ── */
+function PanKnob({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const knobRef = useRef<HTMLDivElement>(null);
+  const [dragging, setDragging] = useState(false);
+  const startYRef = useRef(0);
+  const startValRef = useRef(0);
+
+  useEffect(() => {
+    if (!dragging) return;
+    const onMove = (e: PointerEvent) => {
+      const dy = startYRef.current - e.clientY;
+      const newVal = Math.round(Math.max(-100, Math.min(100, startValRef.current + dy)));
+      onChange(newVal);
+    };
+    const onUp = () => setDragging(false);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    return () => { window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerup", onUp); };
+  }, [dragging, onChange]);
+
+  const angle = (value / 100) * 135; // -135 to +135 degrees
+
+  return (
+    <div
+      ref={knobRef}
+      className="w-[24px] h-[24px] rounded-full border-2 border-[#666] flex items-center justify-center cursor-ns-resize touch-none"
+      style={{ background: "#444" }}
+      onPointerDown={(e) => {
+        setDragging(true);
+        startYRef.current = e.clientY;
+        startValRef.current = value;
+      }}
+    >
+      <div className="w-[1px] h-[8px] rounded-full"
+        style={{
+          background: "#ccc",
+          transform: `rotate(${angle}deg)`,
+          transformOrigin: "bottom center",
+        }} />
     </div>
   );
 }
@@ -207,19 +248,12 @@ function ChannelStrip({
       </div>
 
       {/* Pan knob */}
-      {!isMaster && (
-        <div className="py-1">
-          <div className="w-[20px] h-[20px] rounded-full border-2 border-[#666] flex items-center justify-center cursor-pointer"
-            style={{ background: "#444" }}>
-            <div className="w-[1px] h-2 rounded-full"
-              style={{
-                background: "#ccc",
-                transform: `rotate(${pan * 1.35}deg)`,
-                transformOrigin: "bottom center",
-              }} />
-          </div>
-        </div>
-      )}
+      <div className="py-1 flex flex-col items-center gap-0.5">
+        <PanKnob value={pan} onChange={onPanChange} />
+        <span className="text-[6px] font-mono text-[#888]">
+          {pan === 0 ? "C" : pan > 0 ? `R${pan}` : `L${Math.abs(pan)}`}
+        </span>
+      </div>
 
       {/* dB readout */}
       <div className="w-[50px] h-4 rounded-sm border border-[#555] flex items-center justify-center mb-1"
@@ -253,10 +287,12 @@ function ChannelStrip({
 /* ═══ MIXER SHEET ═══ */
 export default function MixerSheet({
   open, onClose, beatName, takes, activeTakeId,
-  beatVolume, setBeatVolume, vocalVolume, setVocalVolume,
-  beatPan, setBeatPan, vocalPan, setVocalPan,
+  beatVolume, setBeatVolume,
+  beatPan, setBeatPan,
   masterVolume, setMasterVolume,
-  onToggleMute, onToggleSolo, isAudioActive,
+  onToggleMute, onToggleSolo,
+  onUpdateTakeVolume, onUpdateTakePan,
+  isAudioActive,
   onPlayAll, onStopPlayback,
 }: MixerSheetProps) {
   if (!open) return null;
@@ -292,17 +328,17 @@ export default function MixerSheet({
             audioActive={isAudioActive}
           />
 
-          {/* Vocal channels */}
+          {/* Vocal channels - each with its OWN volume and pan */}
           {takes.map((take, idx) => (
             <ChannelStrip
               key={take.id}
               name={take.name}
               icon={<Mic className="w-5 h-5 text-[#b794f4]" />}
               iconColor={ICON_COLORS[(idx + 1) % ICON_COLORS.length]}
-              volume={vocalVolume}
-              onVolumeChange={setVocalVolume}
-              pan={vocalPan}
-              onPanChange={setVocalPan}
+              volume={take.volume}
+              onVolumeChange={(v) => onUpdateTakeVolume(take.id, v)}
+              pan={take.pan}
+              onPanChange={(v) => onUpdateTakePan(take.id, v)}
               isMuted={take.muted}
               isSolo={take.solo}
               onMute={() => onToggleMute(take.id)}
