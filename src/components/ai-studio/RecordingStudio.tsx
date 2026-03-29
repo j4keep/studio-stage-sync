@@ -481,6 +481,14 @@ const RecordingStudio = () => {
           onPlayAll={playAll}
           onStopPlayback={() => engine.stopPlayback()}
           onBack={() => setScreen("home")}
+          onAddTrack={() => {
+            if (!activeSessionId) { toast({ title: "Create a session first" }); return; }
+            startRecording();
+          }}
+          onDeleteTake={(id: string) => {
+            setTakes(prev => prev.filter(t => t.id !== id));
+            if (activeTakeId === id) setActiveTakeId(null);
+          }}
         />
       )}
 
