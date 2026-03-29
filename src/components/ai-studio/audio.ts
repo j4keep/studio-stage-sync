@@ -600,7 +600,7 @@ export function mergeFloatChunks(chunks: Float32Array[]): Float32Array {
 
 export function audioBufferFromMonoFloat(ctx: BaseAudioContext, data: Float32Array, sampleRate: number): AudioBuffer {
   const buf = ctx.createBuffer(1, data.length, sampleRate);
-  buf.copyToChannel(data, 0, 0);
+  buf.copyToChannel(data as any, 0, 0);
   return buf;
 }
 
