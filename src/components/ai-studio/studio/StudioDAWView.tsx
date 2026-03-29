@@ -20,6 +20,8 @@ export interface TakeLocal {
   waveform: number[];
   createdAt: string;
   persisted: boolean;
+  volume: number;
+  pan: number;
 }
 
 interface StudioDAWViewProps {
@@ -37,8 +39,6 @@ interface StudioDAWViewProps {
   liveWaveform: number[];
   beatVolume: number;
   setBeatVolume: (v: number) => void;
-  vocalVolume: number;
-  setVocalVolume: (v: number) => void;
   masterVolume: number;
   setMasterVolume: (v: number) => void;
   onStartRecording: () => void;
@@ -51,14 +51,14 @@ interface StudioDAWViewProps {
   onToggleMute: (id: string) => void;
   onToggleSolo: (id: string) => void;
   onDeleteTake: (id: string) => void;
+  onUpdateTakeVolume: (id: string, volume: number) => void;
+  onUpdateTakePan: (id: string, pan: number) => void;
   onSave: () => void;
   savingTake: boolean;
   onNavigate: (screen: string) => void;
   onBack: () => void;
   beatPan: number;
   setBeatPan: (v: number) => void;
-  vocalPan: number;
-  setVocalPan: (v: number) => void;
   beatWaveform: number[];
 }
 
@@ -123,8 +123,8 @@ function LevelMeter({ active, intensity = 0.5 }: { active: boolean; intensity?: 
   );
 }
 
-/* ── Waveform Display ── */
-function WaveformDisplay({ peaks, color, isActive }: { peaks: number[]; color: string; isActive?: boolean }) {
+/* ── Waveform Display with Playhead ── */
+function WaveformDisplay({ peaks, color, isActive, playheadPct }: { peaks: number[]; color: string; isActive?: boolean; playheadPct?: number }) {
   if (peaks.length === 0) {
     return (
       <div className="h-full w-full flex items-center justify-center">
@@ -136,17 +136,20 @@ function WaveformDisplay({ peaks, color, isActive }: { peaks: number[]; color: s
     ? Array.from({ length: 120 }, (_, i) => peaks[Math.floor(i * peaks.length / 120)]) 
     : peaks;
   
+  const playheadIdx = playheadPct !== undefined ? Math.floor((playheadPct / 100) * displayed.length) : -1;
+  
   return (
-    <div className="flex items-center h-full w-full gap-[0.5px] px-0.5">
+    <div className="flex items-center h-full w-full gap-[0.5px] px-0.5 relative">
       {displayed.map((peak, i) => {
         const h = Math.max(peak * 90, 4);
+        const isPast = playheadIdx >= 0 && i <= playheadIdx;
         return (
           <div key={i} className="flex-1 flex flex-col items-center justify-center" style={{ minWidth: 1 }}>
             <div
               style={{
                 height: `${h / 2}%`,
-                backgroundColor: color,
-                opacity: isActive ? 0.9 : 0.7,
+                backgroundColor: isPast ? color : color,
+                opacity: isPast ? 1 : (isActive ? 0.7 : 0.5),
                 borderRadius: "1px 1px 0 0",
                 width: "100%",
               }}
@@ -154,8 +157,8 @@ function WaveformDisplay({ peaks, color, isActive }: { peaks: number[]; color: s
             <div
               style={{
                 height: `${h / 2}%`,
-                backgroundColor: color,
-                opacity: isActive ? 0.5 : 0.35,
+                backgroundColor: isPast ? color : color,
+                opacity: isPast ? 0.7 : (isActive ? 0.35 : 0.25),
                 borderRadius: "0 0 1px 1px",
                 width: "100%",
               }}
@@ -163,6 +166,17 @@ function WaveformDisplay({ peaks, color, isActive }: { peaks: number[]; color: s
           </div>
         );
       })}
+      {/* Playhead line on waveform */}
+      {playheadIdx >= 0 && (
+        <div
+          className="absolute top-0 bottom-0 w-[2px] z-10 pointer-events-none"
+          style={{
+            left: `${(playheadIdx / displayed.length) * 100}%`,
+            backgroundColor: "#fff",
+            boxShadow: "0 0 4px rgba(255,255,255,0.5)",
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -172,7 +186,7 @@ function TrackLane({
   name, icon, colorSet, waveform, isActive, isMuted, isSolo,
   isRecordArmed, isRecordingNow, liveWaveform, volume, onVolumeChange,
   onMute, onSolo, onClick, onDelete, onPlay, audioActive, trackNumber,
-  isPlaying,
+  isPlaying, playheadPct,
 }: {
   name: string;
   icon: React.ReactNode;
@@ -194,6 +208,7 @@ function TrackLane({
   audioActive: boolean;
   trackNumber: number;
   isPlaying?: boolean;
+  playheadPct?: number;
 }) {
   return (
     <div
@@ -224,7 +239,7 @@ function TrackLane({
             onClick={(e) => { e.stopPropagation(); onMute?.(); }}
             className={`w-[26px] h-[22px] text-[9px] font-black rounded-sm flex items-center justify-center transition-colors border ${
               isMuted 
-                ? "bg-[#666] text-white border-[#888]" 
+                ? "bg-red-600 text-white border-red-500" 
                 : "bg-[#555] text-[#ccc] border-[#666] hover:bg-[#666]"
             }`}
           >M</button>
@@ -232,7 +247,7 @@ function TrackLane({
             onClick={(e) => { e.stopPropagation(); onSolo?.(); }}
             className={`w-[26px] h-[22px] text-[9px] font-black rounded-sm flex items-center justify-center transition-colors border ${
               isSolo 
-                ? "bg-[#666] text-white border-[#888]" 
+                ? "bg-yellow-500 text-black border-yellow-400" 
                 : "bg-[#555] text-[#ccc] border-[#666] hover:bg-[#666]"
             }`}
           >S</button>
@@ -267,6 +282,7 @@ function TrackLane({
 
         {/* Volume slider */}
         <div className="flex items-center gap-1 mt-1">
+          <span className="text-[7px] text-[#888] w-4">{volume}%</span>
           <div className="relative flex-1 h-[6px] bg-[#333] rounded-sm overflow-hidden">
             <div
               className="absolute left-0 top-0 bottom-0 rounded-sm"
@@ -300,7 +316,12 @@ function TrackLane({
             })}
           </div>
         ) : (
-          <WaveformDisplay peaks={waveform} color={colorSet.wave} isActive={isActive} />
+          <WaveformDisplay 
+            peaks={waveform} 
+            color={colorSet.wave} 
+            isActive={isActive}
+            playheadPct={isPlaying && !isMuted ? playheadPct : undefined}
+          />
         )}
 
         {/* Level meters */}
@@ -326,12 +347,13 @@ export default function StudioDAWView(props: StudioDAWViewProps) {
   const {
     sessionName, beatName, beatUrl, takes, activeTakeId, setActiveTakeId,
     isRecording, isPlaying, recordTime, playbackTime, playbackDuration,
-    liveWaveform, beatVolume, setBeatVolume, vocalVolume, setVocalVolume,
+    liveWaveform, beatVolume, setBeatVolume,
     masterVolume, setMasterVolume,
     onStartRecording, onStopRecording, onPlayAll, onPlayBeatOnly, onPlayTake,
     onStopPlayback, onPausePlayback, onToggleMute, onToggleSolo,
-    onDeleteTake, onSave, savingTake,
-    onNavigate, onBack, beatPan, setBeatPan, vocalPan, setVocalPan,
+    onDeleteTake, onUpdateTakeVolume, onUpdateTakePan,
+    onSave, savingTake,
+    onNavigate, onBack, beatPan, setBeatPan,
     beatWaveform,
   } = props;
 
@@ -447,6 +469,7 @@ export default function StudioDAWView(props: StudioDAWViewProps) {
           audioActive={isAudioActive}
           trackNumber={1}
           isPlaying={isPlaying}
+          playheadPct={playheadPct}
         />
 
         {/* Vocal takes */}
@@ -463,8 +486,8 @@ export default function StudioDAWView(props: StudioDAWViewProps) {
             isRecordArmed={activeTakeId === take.id}
             isRecordingNow={isRecording && activeTakeId === take.id}
             liveWaveform={activeTakeId === take.id ? liveWaveform : undefined}
-            volume={vocalVolume}
-            onVolumeChange={setVocalVolume}
+            volume={take.volume}
+            onVolumeChange={(v) => onUpdateTakeVolume(take.id, v)}
             onMute={() => onToggleMute(take.id)}
             onSolo={() => onToggleSolo(take.id)}
             onClick={() => setActiveTakeId(take.id)}
@@ -473,6 +496,7 @@ export default function StudioDAWView(props: StudioDAWViewProps) {
             audioActive={isAudioActive && !take.muted}
             trackNumber={idx + 2}
             isPlaying={isPlaying && !take.muted}
+            playheadPct={playheadPct}
           />
         ))}
 
@@ -489,8 +513,8 @@ export default function StudioDAWView(props: StudioDAWViewProps) {
             isRecordArmed={true}
             isRecordingNow={true}
             liveWaveform={liveWaveform}
-            volume={vocalVolume}
-            onVolumeChange={setVocalVolume}
+            volume={100}
+            onVolumeChange={() => {}}
             audioActive={true}
             trackNumber={2}
           />
@@ -530,7 +554,7 @@ export default function StudioDAWView(props: StudioDAWViewProps) {
         
         {/* Left: Record, Play, Rewind, Loop */}
         <div className="flex items-center gap-2">
-          {/* Record - only red/pulsing when actively recording */}
+          {/* Record */}
           <button
             onClick={isRecording ? onStopRecording : onStartRecording}
             disabled={savingTake}
@@ -549,7 +573,7 @@ export default function StudioDAWView(props: StudioDAWViewProps) {
             )}
           </button>
 
-          {/* Play - plays all tracks together */}
+          {/* Play */}
           <button
             onClick={isPlaying ? onPausePlayback : onPlayAll}
             disabled={isRecording}
@@ -642,16 +666,14 @@ export default function StudioDAWView(props: StudioDAWViewProps) {
         activeTakeId={activeTakeId}
         beatVolume={beatVolume}
         setBeatVolume={setBeatVolume}
-        vocalVolume={vocalVolume}
-        setVocalVolume={setVocalVolume}
         beatPan={beatPan}
         setBeatPan={setBeatPan}
-        vocalPan={vocalPan}
-        setVocalPan={setVocalPan}
         masterVolume={masterVolume}
         setMasterVolume={setMasterVolume}
         onToggleMute={onToggleMute}
         onToggleSolo={onToggleSolo}
+        onUpdateTakeVolume={onUpdateTakeVolume}
+        onUpdateTakePan={onUpdateTakePan}
         isAudioActive={isAudioActive}
         onPlayAll={onPlayAll}
         onStopPlayback={onStopPlayback}

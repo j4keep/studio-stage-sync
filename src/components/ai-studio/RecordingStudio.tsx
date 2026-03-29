@@ -13,21 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useRecordingEngine } from "@/hooks/use-recording-engine";
 import StudioDAWView from "./studio/StudioDAWView";
-
-interface TakeLocal {
-  id: string;
-  name: string;
-  audioUrl: string;
-  blob?: Blob;
-  duration: number;
-  muted: boolean;
-  solo: boolean;
-  trimStart: number;
-  trimEnd: number;
-  waveform: number[];
-  createdAt: string;
-  persisted: boolean;
-}
+import type { TakeLocal } from "./studio/StudioDAWView";
 
 const EFFECT_SETTINGS: Record<string, {
   eqLow: number;
@@ -148,7 +134,6 @@ const RecordingStudio = () => {
   const [activeSessionBeatName, setActiveSessionBeatName] = useState<string | null>(null);
 
   const [beatVolume, setBeatVolume] = useState(80);
-  const [vocalVolume, setVocalVolume] = useState(100);
   const [takes, setTakes] = useState<TakeLocal[]>([]);
   const [activeTakeId, setActiveTakeId] = useState<string | null>(null);
   const [editingTakeId, setEditingTakeId] = useState<string | null>(null);
@@ -159,10 +144,9 @@ const RecordingStudio = () => {
   const [vocalGain, setVocalGain] = useState(80);
   const [beatGain, setBeatGain] = useState(80);
   const [beatPan, setBeatPan] = useState(0);
-  const [vocalPan, setVocalPan] = useState(0);
   const [masterVolume, setMasterVolume] = useState(100);
   
-  // EQ state (allow manual override beyond presets)
+  // EQ state
   const [eqLow, setEqLow] = useState(0);
   const [eqMid, setEqMid] = useState(0);
   const [eqHigh, setEqHigh] = useState(0);
@@ -175,7 +159,7 @@ const RecordingStudio = () => {
   const [exportArtworkPreview, setExportArtworkPreview] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
 
-  // Beat waveform (generated from actual audio)
+  // Beat waveform
   const [beatWaveform, setBeatWaveform] = useState<number[]>([]);
 
   const beatInputRef = useRef<HTMLInputElement>(null);
@@ -196,6 +180,7 @@ const RecordingStudio = () => {
     };
   }, [activeEffect, vocalGain, eqLow, eqMid, eqHigh, reverbMix, delayMix]);
 
+  /** Build playable takes list using each take's OWN volume and pan */
   const getPlayableTakes = useCallback((sourceTakes: TakeLocal[]) => {
     const soloed = sourceTakes.filter((take) => !take.muted && take.solo);
     const audible = soloed.length > 0 ? soloed : sourceTakes.filter((take) => !take.muted);
@@ -203,12 +188,12 @@ const RecordingStudio = () => {
     return audible.map((take) => ({
       id: take.id,
       audioUrl: take.audioUrl,
-      volume: vocalVolume,
-      pan: vocalPan,
+      volume: take.volume,
+      pan: take.pan,
       trimStart: take.trimStart,
       trimEnd: take.trimEnd,
     }));
-  }, [vocalPan, vocalVolume]);
+  }, []);
 
   // Generate beat waveform when beat URL changes
   useEffect(() => {
@@ -290,6 +275,8 @@ const RecordingStudio = () => {
         waveform: Array.isArray(t.waveform_data) ? t.waveform_data : [],
         createdAt: t.created_at,
         persisted: true,
+        volume: 100,
+        pan: 0,
       }));
       setTakes(loaded);
       setActiveTakeId(loaded[0]?.id || null);
@@ -421,7 +408,6 @@ const RecordingStudio = () => {
 
   const deleteSession = useCallback(async (sessionId: string) => {
     if (!user) return;
-    // Delete takes first
     await supabase.from("recording_takes" as any).delete().eq("session_id", sessionId);
     await supabase.from("recording_sessions" as any).delete().eq("id", sessionId);
     setDeletedSessionIds(prev => [...prev, sessionId]);
@@ -430,7 +416,7 @@ const RecordingStudio = () => {
   }, [user]);
 
   const startRecording = useCallback(async () => {
-    if (!beatUrl && !activeSessionId) return;
+    if (!activeSessionId) return;
     const result = engine.startRecording(beatUrl, beatVolume);
     
     const recording = await result;
@@ -466,6 +452,8 @@ const RecordingStudio = () => {
         waveform: recording.waveform,
         createdAt: new Date().toISOString(),
         persisted: false,
+        volume: 100,
+        pan: 0,
       };
       setTakes(prev => [...prev, newTake]);
       setActiveTakeId(newTake.id);
@@ -511,6 +499,8 @@ const RecordingStudio = () => {
       waveform: downsampled,
       createdAt: saved.created_at,
       persisted: true,
+      volume: 100,
+      pan: 0,
     };
     setTakes(prev => [...prev, newTake]);
     setActiveTakeId(newTake.id);
@@ -522,7 +512,7 @@ const RecordingStudio = () => {
     engine.stopRecording();
   }, [engine]);
 
-  // Play all tracks (beat + all audible takes)
+  // Play all tracks (beat + all audible takes) with per-track volumes
   const playAll = useCallback(() => {
     if (engine.isPlaying) {
       engine.pausePlayback();
@@ -572,10 +562,17 @@ const RecordingStudio = () => {
       beatVolume,
       beatPan,
       masterVolume,
-      takes: getPlayableTakes([take]),
+      takes: [{
+        id: take.id,
+        audioUrl: take.audioUrl,
+        volume: take.volume,
+        pan: take.pan,
+        trimStart: take.trimStart,
+        trimEnd: take.trimEnd,
+      }],
       effects: playbackEffects,
     });
-  }, [engine, beatUrl, beatVolume, beatPan, masterVolume, getPlayableTakes, playbackEffects]);
+  }, [engine, beatUrl, beatVolume, beatPan, masterVolume, playbackEffects]);
 
   const stopTakePlayback = useCallback(() => {
     engine.stopPlayback();
@@ -616,6 +613,14 @@ const RecordingStudio = () => {
       }
       return updated;
     }));
+  }, []);
+
+  const updateTakeVolume = useCallback((id: string, volume: number) => {
+    setTakes(prev => prev.map(t => t.id === id ? { ...t, volume } : t));
+  }, []);
+
+  const updateTakePan = useCallback((id: string, pan: number) => {
+    setTakes(prev => prev.map(t => t.id === id ? { ...t, pan } : t));
   }, []);
 
   const renameTake = useCallback(async (id: string, name: string) => {
@@ -770,14 +775,12 @@ const RecordingStudio = () => {
                     onClick={() => openSession(session)}
                     className="flex flex-col items-center gap-2 w-full active:scale-[0.97] transition-all"
                   >
-                    {/* Thumbnail with unique color based on index */}
                     <div className="w-full aspect-video rounded-lg border border-[#555] overflow-hidden relative"
                       style={{ background: "#1e1e1e" }}>
                       <div className="absolute inset-0 flex flex-col">
                         <div className="h-1 w-full" style={{ background: ["#4fd1c5", "#63b3ed", "#b794f4", "#f59e0b"][idx % 4] }} />
                         <div className="flex-1 flex items-center px-1">
                           {Array.from({ length: 30 }, (_, i) => {
-                            // Use session name hash for unique waveform per session
                             const hash = session.name.charCodeAt(i % session.name.length) + idx;
                             return (
                               <div key={i} className="flex-1 mx-[0.5px]" style={{
@@ -800,7 +803,6 @@ const RecordingStudio = () => {
                     </div>
                     <span className="text-xs font-semibold text-[#ccc] truncate w-full text-center">{session.name}</span>
                   </button>
-                  {/* Delete button on hover/long-press */}
                   <button
                     onClick={(e) => { e.stopPropagation(); deleteSession(session.id); }}
                     className="absolute top-1 right-1 w-5 h-5 rounded-full bg-[#333]/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
@@ -917,8 +919,6 @@ const RecordingStudio = () => {
         liveWaveform={engine.liveWaveform}
         beatVolume={beatVolume}
         setBeatVolume={setBeatVolume}
-        vocalVolume={vocalVolume}
-        setVocalVolume={setVocalVolume}
         masterVolume={masterVolume}
         setMasterVolume={setMasterVolume}
         onStartRecording={startRecording}
@@ -931,6 +931,8 @@ const RecordingStudio = () => {
         onToggleMute={toggleMuteTake}
         onToggleSolo={toggleSoloTake}
         onDeleteTake={deleteTake}
+        onUpdateTakeVolume={updateTakeVolume}
+        onUpdateTakePan={updateTakePan}
         onSave={saveSession}
         savingTake={savingTake}
         onNavigate={(s) => {
@@ -940,8 +942,6 @@ const RecordingStudio = () => {
         onBack={() => { engine.stopPlayback(); setScreen("home"); }}
         beatPan={beatPan}
         setBeatPan={setBeatPan}
-        vocalPan={vocalPan}
-        setVocalPan={setVocalPan}
         beatWaveform={beatWaveform}
       />
     );
@@ -1004,6 +1004,20 @@ const RecordingStudio = () => {
                   </div>
                 )}
 
+                {/* Per-take volume and pan controls */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] text-[#888] w-8">Vol</span>
+                    <Slider value={[take.volume]} onValueChange={([v]) => updateTakeVolume(take.id, v)} max={100} step={1} className="flex-1" />
+                    <span className="text-[10px] text-[#888] w-8">{take.volume}%</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] text-[#888] w-8">Pan</span>
+                    <Slider value={[take.pan]} onValueChange={([v]) => updateTakePan(take.id, v)} min={-100} max={100} step={1} className="flex-1" />
+                    <span className="text-[10px] text-[#888] w-8">{take.pan === 0 ? "C" : take.pan > 0 ? `R${take.pan}` : `L${Math.abs(take.pan)}`}</span>
+                  </div>
+                </div>
+
                 <div className="flex gap-2">
                   <button onClick={() => toggleMuteTake(take.id)} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all border ${take.muted ? "bg-red-500/20 text-red-400 border-red-500/30" : "text-[#aaa] border-[#555]"}`}
                     style={{ background: take.muted ? undefined : "#444" }}>
@@ -1060,6 +1074,25 @@ const RecordingStudio = () => {
           <ArrowLeft className="w-4 h-4" /> Back to Studio
         </button>
         <h1 className="text-xl font-bold text-[#ddd]">Effects & Mix</h1>
+
+        {/* Preview: Play with current effects */}
+        <div className="flex gap-2">
+          <button
+            onClick={playAll}
+            className="flex-1 h-10 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2"
+            style={{ background: engine.isPlaying ? "linear-gradient(180deg, #22c55e 0%, #16a34a 100%)" : "linear-gradient(180deg, #555 0%, #444 100%)" }}
+          >
+            {engine.isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+            {engine.isPlaying ? "Pause" : "Preview"}
+          </button>
+          <button
+            onClick={stopTakePlayback}
+            className="h-10 px-4 rounded-xl text-sm font-bold text-[#ccc] border border-[#555]"
+            style={{ background: "#333" }}
+          >
+            Stop
+          </button>
+        </div>
 
         {/* Vocal Presets */}
         <div className="space-y-3">
