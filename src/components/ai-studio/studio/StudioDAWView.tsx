@@ -327,6 +327,7 @@ export default function StudioDAWView(props: StudioDAWViewProps) {
     sessionName, beatName, beatUrl, takes, activeTakeId, setActiveTakeId,
     isRecording, isPlaying, recordTime, playbackTime, playbackDuration,
     liveWaveform, beatVolume, setBeatVolume, vocalVolume, setVocalVolume,
+    masterVolume, setMasterVolume,
     onStartRecording, onStopRecording, onPlayAll, onPlayBeatOnly, onPlayTake,
     onStopPlayback, onPausePlayback, onToggleMute, onToggleSolo,
     onDeleteTake, onSave, savingTake,
