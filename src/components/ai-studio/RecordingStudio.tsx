@@ -160,6 +160,14 @@ const RecordingStudio = () => {
   const [beatGain, setBeatGain] = useState(80);
   const [beatPan, setBeatPan] = useState(0);
   const [vocalPan, setVocalPan] = useState(0);
+  const [masterVolume, setMasterVolume] = useState(100);
+  
+  // EQ state (allow manual override beyond presets)
+  const [eqLow, setEqLow] = useState(0);
+  const [eqMid, setEqMid] = useState(0);
+  const [eqHigh, setEqHigh] = useState(0);
+  const [reverbMix, setReverbMix] = useState(8);
+  const [delayMix, setDelayMix] = useState(0);
 
   const [exportTitle, setExportTitle] = useState("");
   const [exportArtist, setExportArtist] = useState("");
