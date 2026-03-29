@@ -183,12 +183,18 @@ const RecordingStudio = () => {
   const artworkInputRef = useRef<HTMLInputElement>(null);
 
   const playbackEffects = useMemo(() => {
-    const preset = EFFECT_SETTINGS[activeEffect] ?? EFFECT_SETTINGS.clean;
     return {
-      ...preset,
+      eqLow,
+      eqMid,
+      eqHigh,
+      reverbMix,
+      reverbDecay: EFFECT_SETTINGS[activeEffect]?.reverbDecay ?? 1.1,
+      delayTime: EFFECT_SETTINGS[activeEffect]?.delayTime ?? 0.2,
+      delayFeedback: EFFECT_SETTINGS[activeEffect]?.delayFeedback ?? 10,
+      delayMix,
       outputGain: vocalGain,
     };
-  }, [activeEffect, vocalGain]);
+  }, [activeEffect, vocalGain, eqLow, eqMid, eqHigh, reverbMix, delayMix]);
 
   const getPlayableTakes = useCallback((sourceTakes: TakeLocal[]) => {
     const soloed = sourceTakes.filter((take) => !take.muted && take.solo);
