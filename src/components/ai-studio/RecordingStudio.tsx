@@ -29,6 +29,23 @@ interface TakeLocal {
   persisted: boolean;
 }
 
+const EFFECT_SETTINGS: Record<string, {
+  eqLow: number;
+  eqMid: number;
+  eqHigh: number;
+  reverbMix: number;
+  reverbDecay: number;
+  delayTime: number;
+  delayFeedback: number;
+  delayMix: number;
+}> = {
+  clean: { eqLow: 0, eqMid: 0, eqHigh: 1, reverbMix: 8, reverbDecay: 1.1, delayTime: 0.2, delayFeedback: 10, delayMix: 0 },
+  warm: { eqLow: 2, eqMid: 1, eqHigh: -1, reverbMix: 14, reverbDecay: 1.5, delayTime: 0.22, delayFeedback: 12, delayMix: 4 },
+  reverb: { eqLow: 0, eqMid: 0, eqHigh: 2, reverbMix: 32, reverbDecay: 2.8, delayTime: 0.25, delayFeedback: 10, delayMix: 0 },
+  delay: { eqLow: 0, eqMid: 1, eqHigh: 1, reverbMix: 10, reverbDecay: 1.4, delayTime: 0.32, delayFeedback: 28, delayMix: 24 },
+  punchy: { eqLow: 1, eqMid: 3, eqHigh: 2, reverbMix: 6, reverbDecay: 0.9, delayTime: 0.18, delayFeedback: 8, delayMix: 0 },
+};
+
 interface SessionRecord {
   id: string;
   name: string;
@@ -156,6 +173,28 @@ const RecordingStudio = () => {
   const beatInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const artworkInputRef = useRef<HTMLInputElement>(null);
+
+  const playbackEffects = useMemo(() => {
+    const preset = EFFECT_SETTINGS[activeEffect] ?? EFFECT_SETTINGS.clean;
+    return {
+      ...preset,
+      outputGain: vocalGain,
+    };
+  }, [activeEffect, vocalGain]);
+
+  const getPlayableTakes = useCallback((sourceTakes: TakeLocal[]) => {
+    const soloed = sourceTakes.filter((take) => !take.muted && take.solo);
+    const audible = soloed.length > 0 ? soloed : sourceTakes.filter((take) => !take.muted);
+
+    return audible.map((take) => ({
+      id: take.id,
+      audioUrl: take.audioUrl,
+      volume: vocalVolume,
+      pan: vocalPan,
+      trimStart: take.trimStart,
+      trimEnd: take.trimEnd,
+    }));
+  }, [vocalPan, vocalVolume]);
 
   // Generate beat waveform when beat URL changes
   useEffect(() => {
@@ -475,14 +514,18 @@ const RecordingStudio = () => {
       engine.pausePlayback();
       return;
     }
-    const activeTake = takes.find(t => t.id === activeTakeId);
-    if (activeTake) {
-      engine.playAudio(activeTake.audioUrl, beatUrl, beatVolume, vocalVolume);
-    } else if (beatUrl) {
-      // No takes yet, just play the beat
-      engine.playAudio("", beatUrl, beatVolume, 0);
+    const playableTakes = getPlayableTakes(takes);
+    if (playableTakes.length > 0 || beatUrl) {
+      engine.playAudio({
+        beatUrl,
+        beatVolume: beatGain,
+        beatPan,
+        masterVolume: 100,
+        takes: playableTakes,
+        effects: playbackEffects,
+      });
     }
-  }, [engine, takes, activeTakeId, beatUrl, beatVolume, vocalVolume]);
+  }, [engine, takes, beatUrl, beatGain, beatPan, getPlayableTakes, playbackEffects]);
 
   // Play beat only
   const playBeatOnly = useCallback(() => {
@@ -491,9 +534,16 @@ const RecordingStudio = () => {
       return;
     }
     if (beatUrl) {
-      engine.playAudio("", beatUrl, beatVolume, 0);
+      engine.playAudio({
+        beatUrl,
+        beatVolume: beatGain,
+        beatPan,
+        masterVolume: 100,
+        takes: [],
+        effects: playbackEffects,
+      });
     }
-  }, [engine, beatUrl, beatVolume]);
+  }, [engine, beatUrl, beatGain, beatPan, playbackEffects]);
 
   // Play a specific take (with beat)
   const playTake = useCallback((take: TakeLocal) => {
@@ -503,8 +553,15 @@ const RecordingStudio = () => {
       return;
     }
     setActiveTakeId(take.id);
-    engine.playAudio(take.audioUrl, beatUrl, beatVolume, vocalVolume);
-  }, [engine, beatUrl, beatVolume, vocalVolume]);
+    engine.playAudio({
+      beatUrl,
+      beatVolume: beatGain,
+      beatPan,
+      masterVolume: 100,
+      takes: getPlayableTakes([take]),
+      effects: playbackEffects,
+    });
+  }, [engine, beatUrl, beatGain, beatPan, getPlayableTakes, playbackEffects]);
 
   const stopTakePlayback = useCallback(() => {
     engine.stopPlayback();
