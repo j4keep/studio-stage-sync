@@ -1,4 +1,4 @@
-import { Home, Music, Sliders, Download } from "lucide-react";
+import { LayoutGrid, Music, Sliders, Download } from "lucide-react";
 
 export type WStudioScreen = "home" | "studio" | "mixer" | "export";
 
@@ -7,8 +7,8 @@ interface WStudioNavProps {
   onNavigate: (screen: WStudioScreen) => void;
 }
 
-const tabs: { id: WStudioScreen; label: string; icon: typeof Home }[] = [
-  { id: "home", label: "Home", icon: Home },
+const tabs: { id: WStudioScreen; label: string; icon: typeof LayoutGrid }[] = [
+  { id: "home", label: "Sessions", icon: LayoutGrid },
   { id: "studio", label: "Studio", icon: Music },
   { id: "mixer", label: "Mixer", icon: Sliders },
   { id: "export", label: "Export", icon: Download },

@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import {
   ArrowLeft, Play, Pause, SkipBack, SkipForward, Repeat,
-  Mic, Music, Plus, X, MoreHorizontal
+  Mic, Music, Plus, X, MoreHorizontal, Scissors, Move, ChevronRight
 } from "lucide-react";
 
 export interface TakeLocal {
@@ -39,6 +39,8 @@ interface DAWScreenProps {
   onPlayAll: (loop?: boolean) => void;
   onStopPlayback: () => void;
   onBack: () => void;
+  onAddTrack?: () => void;
+  onDeleteTake?: (id: string) => void;
 }
 
 function formatTime(s: number) {
@@ -53,40 +55,41 @@ function formatRemaining(current: number, total: number) {
   return `-${formatTime(remaining)}`;
 }
 
-/* ── Waveform ── */
-function Waveform({ peaks, color, playPct }: { peaks: number[]; color: string; playPct?: number }) {
+/* ── Multitrack Waveform ── */
+function TrackWaveform({ peaks, color, playPct, height }: { peaks: number[]; color: string; playPct?: number; height: number }) {
   if (peaks.length === 0) return (
     <div className="h-full w-full flex items-center justify-center">
-      <span className="text-[10px] text-[#555] italic">Empty</span>
+      <span className="text-[10px] text-[#555] italic">Empty track</span>
     </div>
   );
-  const displayed = peaks.length > 100
-    ? Array.from({ length: 100 }, (_, i) => peaks[Math.floor(i * peaks.length / 100)])
+  const displayed = peaks.length > 120
+    ? Array.from({ length: 120 }, (_, i) => peaks[Math.floor(i * peaks.length / 120)])
     : peaks;
   const playIdx = playPct !== undefined ? Math.floor((playPct / 100) * displayed.length) : -1;
 
   return (
-    <div className="flex items-center h-full w-full gap-[0.5px] px-1 relative">
+    <div className="flex items-center h-full w-full gap-[0.3px] px-0.5 relative" style={{ height }}>
       {displayed.map((peak, i) => {
-        const h = Math.max(peak * 85, 3);
+        const h = Math.max(peak * 90, 2);
         const past = playIdx >= 0 && i <= playIdx;
         return (
           <div key={i} className="flex-1 flex flex-col items-center justify-center" style={{ minWidth: 1 }}>
-            <div style={{ height: `${h / 2}%`, background: color, opacity: past ? 1 : 0.5, borderRadius: "1px 1px 0 0", width: "100%" }} />
-            <div style={{ height: `${h / 2}%`, background: color, opacity: past ? 0.6 : 0.25, borderRadius: "0 0 1px 1px", width: "100%" }} />
+            <div style={{ height: `${h / 2}%`, background: color, opacity: past ? 1 : 0.55, borderRadius: "1px 1px 0 0", width: "100%" }} />
+            <div style={{ height: `${h / 2}%`, background: color, opacity: past ? 0.7 : 0.25, borderRadius: "0 0 1px 1px", width: "100%" }} />
           </div>
         );
       })}
+      {/* Red playhead line */}
       {playIdx >= 0 && (
-        <div className="absolute top-0 bottom-0 w-[2px] pointer-events-none"
-          style={{ left: `${(playIdx / displayed.length) * 100}%`, background: "#ff4444", boxShadow: "0 0 6px #ff4444" }} />
+        <div className="absolute top-0 bottom-0 w-[2px] pointer-events-none z-10"
+          style={{ left: `${(playIdx / displayed.length) * 100}%`, background: "#ff4444", boxShadow: "0 0 8px #ff4444" }} />
       )}
     </div>
   );
 }
 
-/* ── VU Meter ── */
-function VUMeter({ active }: { active: boolean }) {
+/* ── VU Meter (vertical LED) ── */
+function VUMeter({ active, color }: { active: boolean; color?: string }) {
   const [level, setLevel] = useState(0);
   const raf = useRef(0);
 
@@ -101,13 +104,13 @@ function VUMeter({ active }: { active: boolean }) {
   }, [active]);
 
   return (
-    <div className="flex flex-col-reverse gap-[1px] w-[6px]">
-      {Array.from({ length: 24 }, (_, i) => {
-        const lit = i < Math.round(level * 24);
-        const color = lit
-          ? i < 14 ? "#22c55e" : i < 20 ? "#eab308" : "#ef4444"
-          : "#222";
-        return <div key={i} style={{ height: 3, borderRadius: 0.5, background: color, opacity: lit ? 1 : 0.15 }} />;
+    <div className="flex flex-col-reverse gap-[0.5px] w-[8px]" style={{ height: 80 }}>
+      {Array.from({ length: 20 }, (_, i) => {
+        const lit = i < Math.round(level * 20);
+        const c = lit
+          ? (color || (i < 12 ? "#22c55e" : i < 17 ? "#eab308" : "#ef4444"))
+          : "#1a1a2e";
+        return <div key={i} style={{ flex: 1, borderRadius: 0.5, background: c, opacity: lit ? 1 : 0.12 }} />;
       })}
     </div>
   );
@@ -119,6 +122,7 @@ export default function DAWScreen(props: DAWScreenProps) {
     isRecording, isPlaying, recordTime, playbackTime, playbackDuration,
     liveWaveform,
     onStartRecording, onStopRecording, onPlayAll, onStopPlayback, onBack,
+    onAddTrack, onDeleteTake,
   } = props;
 
   const [loopOn, setLoopOn] = useState(false);
@@ -138,71 +142,87 @@ export default function DAWScreen(props: DAWScreenProps) {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      {/* Top bar with timer */}
+      {/* ── Top bar: back + timer ── */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-[#333]"
         style={{ background: "#1a1a2e" }}>
-        <button onClick={onBack} className="p-1">
+        <button onClick={onBack} className="flex items-center gap-1 p-1">
           <ArrowLeft className="w-5 h-5 text-[#888]" />
+          <span className="text-xs text-[#666]">-</span>
         </button>
         <div className="flex items-center gap-4">
-          <span className="text-xl font-mono font-bold text-white tracking-wider">
+          <span className="text-2xl font-mono font-bold text-white tracking-wider">
             {formatTime(currentTime)}
           </span>
           <span className="text-sm font-mono text-[#666]">
             {formatRemaining(currentTime, totalDuration)}
           </span>
         </div>
-        <div className="w-6" />
+        <div className="w-8" />
       </div>
 
-      {/* Timeline ruler */}
-      <div className="h-5 border-b border-[#333] relative overflow-hidden" style={{ background: "#151525" }}>
-        {Array.from({ length: Math.ceil(totalDuration / 5) }, (_, i) => {
+      {/* ── Timeline ruler with red playhead ── */}
+      <div className="h-6 border-b border-[#333] relative overflow-hidden" style={{ background: "#151525" }}>
+        {Array.from({ length: Math.ceil(totalDuration / 5) + 1 }, (_, i) => {
           const t = i * 5;
           return (
             <div key={i} className="absolute bottom-0 flex flex-col items-center"
               style={{ left: `${(t / totalDuration) * 100}%` }}>
-              <span className="text-[6px] font-mono text-[#555]">{Math.floor(t / 60)}:{String(t % 60).padStart(2, "0")}</span>
-              <div className="w-px h-1.5 bg-[#444]" />
+              <span className="text-[7px] font-mono text-[#555]">{t}s</span>
+              <div className="w-px h-2 bg-[#444]" />
             </div>
           );
         })}
-        {/* Playhead */}
+        {/* Playhead marker */}
         <div className="absolute top-0 bottom-0 w-[2px] z-10"
-          style={{ left: `${playPct}%`, background: "#ef4444", boxShadow: "0 0 6px #ef4444" }}>
-          <div style={{ width: 0, height: 0, borderLeft: "4px solid transparent", borderRight: "4px solid transparent", borderTop: "5px solid #ef4444", position: "absolute", top: 0, left: -3 }} />
+          style={{ left: `${playPct}%`, background: "#ef4444", boxShadow: "0 0 8px #ef4444" }}>
+          <div className="w-3 h-3 rounded-full bg-red-500 absolute -top-0.5 -left-[5px]" 
+            style={{ boxShadow: "0 0 6px #ef4444" }} />
         </div>
       </div>
 
-      {/* Track lanes */}
+      {/* ── Full-width master waveform (overview) ── */}
+      <div className="h-16 border-b border-[#333]" style={{ background: "#0d1520" }}>
+        <TrackWaveform
+          peaks={beatWaveform.length > 0 ? beatWaveform : Array.from({ length: 100 }, () => 0.1)}
+          color="#63b3ed"
+          playPct={isPlaying || isRecording ? playPct : undefined}
+          height={64}
+        />
+      </div>
+
+      {/* ── Track lanes (scrollable) ── */}
       <div className="flex-1 overflow-y-auto" style={{ background: "#111122" }}>
         {/* Beat Track */}
         <div className="border-b border-[#333]">
-          <div className="flex items-center gap-2 px-3 py-1.5" style={{ background: "#1a1a2e" }}>
+          <div className="flex items-center gap-2 px-3 py-1.5" style={{ background: "#1a2a3a" }}>
             <div className="w-6 h-6 rounded flex items-center justify-center" style={{ background: "#2a4a5a" }}>
-              <Music className="w-3.5 h-3.5 text-[#63b3ed]" />
+              <Music className="w-3.5 h-3.5 text-[#4fd1c5]" />
             </div>
             <span className="text-xs font-bold text-white flex-1">Beat Track</span>
             <button className="p-0.5"><MoreHorizontal className="w-4 h-4 text-[#555]" /></button>
           </div>
-          <div className="h-20 px-1" style={{ background: "#0d1520" }}>
-            <Waveform peaks={beatWaveform} color="#63b3ed" playPct={isPlaying ? playPct : undefined} />
+          <div className="h-20 relative" style={{ background: "#0d1822" }}>
+            <TrackWaveform peaks={beatWaveform} color="#63b3ed" playPct={isPlaying ? playPct : undefined} height={80} />
           </div>
         </div>
 
-        {/* Vocal Tracks */}
+        {/* Vocal / Take Tracks */}
         {takes.map((take, idx) => (
           <div key={take.id} className="border-b border-[#333]">
-            <div className="flex items-center gap-2 px-3 py-1.5" style={{ background: "#1a1a2e" }}>
-              <div className="w-6 h-6 rounded flex items-center justify-center" style={{ background: "#3a2a4a" }}>
+            <div className="flex items-center gap-2 px-3 py-1.5" style={{ background: "#2a1a3a" }}>
+              <div className="w-6 h-6 rounded flex items-center justify-center" style={{ background: "#3a2a5a" }}>
                 <Mic className="w-3.5 h-3.5 text-[#b794f4]" />
               </div>
+              <span className="text-[10px] text-[#b794f4]">◇</span>
               <span className="text-xs font-bold text-white flex-1">{take.name}</span>
-              <span className="text-[10px] text-[#666] font-mono">{Math.round(take.duration)}s</span>
+              {/* Track controls */}
+              <button className="p-0.5" title="Trim/Edit">
+                <Scissors className="w-3.5 h-3.5 text-[#666]" />
+              </button>
               <button className="p-0.5"><MoreHorizontal className="w-4 h-4 text-[#555]" /></button>
             </div>
-            <div className="h-16 px-1" style={{ background: "#150d20" }}>
-              <Waveform peaks={take.waveform} color="#b794f4" playPct={isPlaying && !take.muted ? playPct : undefined} />
+            <div className="h-16 relative" style={{ background: "#180d22" }}>
+              <TrackWaveform peaks={take.waveform} color="#b794f4" playPct={isPlaying && !take.muted ? playPct : undefined} height={64} />
             </div>
           </div>
         ))}
@@ -217,8 +237,8 @@ export default function DAWScreen(props: DAWScreenProps) {
               <span className="text-xs font-bold text-red-300 flex-1">Recording...</span>
               <span className="text-[10px] text-red-400 font-mono">{formatTime(recordTime)}</span>
             </div>
-            <div className="h-16 px-1" style={{ background: "#200d0d" }}>
-              <Waveform peaks={liveWaveform} color="#ef4444" />
+            <div className="h-16" style={{ background: "#200d0d" }}>
+              <TrackWaveform peaks={liveWaveform} color="#ef4444" height={64} />
             </div>
           </div>
         )}
@@ -231,62 +251,76 @@ export default function DAWScreen(props: DAWScreenProps) {
         )}
       </div>
 
-      {/* Transport + Record */}
-      <div className="border-t border-[#333] pt-3 pb-4 px-4 space-y-3" style={{ background: "#1a1a2e" }}>
-        {/* Transport controls */}
-        <div className="flex items-center justify-center gap-6">
-          <button onClick={() => setLoopOn(!loopOn)} className="p-2">
-            <Repeat className={`w-5 h-5 ${loopOn ? "text-[#63b3ed]" : "text-[#555]"}`} />
+      {/* ── Transport bar ── */}
+      <div className="border-t border-[#333]" style={{ background: "#1a1a2e" }}>
+        {/* Transport controls row */}
+        <div className="flex items-center justify-center gap-4 px-4 py-2 border-b border-[#222]"
+          style={{ background: "#222238" }}>
+          <button onClick={() => setLoopOn(!loopOn)} className="p-1.5 rounded-lg" style={{ background: loopOn ? "#2a3a5a" : "transparent" }}>
+            <Repeat className={`w-4 h-4 ${loopOn ? "text-[#63b3ed]" : "text-[#555]"}`} />
           </button>
-          <button className="p-2"><SkipBack className="w-5 h-5 text-[#888]" /></button>
+          <button className="p-1.5 rounded-lg" style={{ background: "#2a2a3e" }}>
+            <div className="w-4 h-0.5 bg-[#888] rounded" />
+          </button>
+          <button className="p-1.5"><SkipBack className="w-4 h-4 text-[#888]" /></button>
           <button onClick={handlePlay}
-            className="w-10 h-10 rounded-full flex items-center justify-center border border-[#444]"
-            style={{ background: "#2a2a3e" }}>
+            className="p-1.5 rounded-lg" style={{ background: "#2a2a3e" }}>
             {isPlaying
               ? <Pause className="w-5 h-5 text-white" />
               : <Play className="w-5 h-5 text-white ml-0.5" />}
           </button>
-          <button className="p-2"><SkipForward className="w-5 h-5 text-[#888]" /></button>
-          <button className="p-2"><SkipForward className="w-5 h-5 text-[#555]" /></button>
+          <button className="p-1.5"><SkipForward className="w-4 h-4 text-[#888]" /></button>
+          <button className="p-1.5"><ChevronRight className="w-4 h-4 text-[#555]" /></button>
         </div>
 
-        {/* Record button row */}
-        <div className="flex items-center justify-center gap-4">
-          <button className="w-8 h-8 rounded-full border border-[#444] flex items-center justify-center"
-            style={{ background: "#2a2a3e" }}>
+        {/* Record button row with VU meters */}
+        <div className="flex items-center justify-center gap-3 px-4 py-3">
+          {/* Add track button */}
+          <button
+            onClick={onAddTrack}
+            className="w-9 h-9 rounded-full border border-[#444] flex items-center justify-center"
+            style={{ background: "#2a2a3e" }}
+          >
             <Plus className="w-4 h-4 text-[#888]" />
           </button>
 
-          {/* VU meters + Record button */}
-          <div className="flex items-center gap-2">
-            <VUMeter active={isRecording || isPlaying} />
-            <VUMeter active={isRecording || isPlaying} />
-
-            <button
-              onClick={handleRecord}
-              className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${
-                isRecording ? "animate-pulse" : ""
-              }`}
-              style={{
-                background: isRecording
-                  ? "radial-gradient(circle, #ff2222 40%, #cc0000 100%)"
-                  : "radial-gradient(circle, #ff4444 30%, #991111 70%, #661111 100%)",
-                boxShadow: isRecording
-                  ? "0 0 30px #ff000080, inset 0 0 15px #ffffff30"
-                  : "0 0 15px #ff000040, inset 0 0 10px #ffffff20",
-                border: "3px solid #88333380",
-              }}
-            >
-              <div className={`w-6 h-6 rounded-full ${isRecording ? "bg-white" : "bg-white/80"}`}
-                style={{ boxShadow: "0 0 10px #ffffff60" }} />
-            </button>
-
-            <VUMeter active={isRecording || isPlaying} />
-            <VUMeter active={isRecording || isPlaying} />
+          {/* Left VU meters */}
+          <div className="flex gap-[2px]">
+            <VUMeter active={isRecording || isPlaying} color="#22c55e" />
+            <VUMeter active={isRecording || isPlaying} color="#63b3ed" />
           </div>
 
-          <button className="w-8 h-8 rounded-full border border-[#444] flex items-center justify-center"
-            style={{ background: "#2a2a3e" }}>
+          {/* Record button */}
+          <button
+            onClick={handleRecord}
+            className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${
+              isRecording ? "animate-pulse" : ""
+            }`}
+            style={{
+              background: isRecording
+                ? "radial-gradient(circle, #ff2222 40%, #cc0000 100%)"
+                : "radial-gradient(circle, #ff4444 30%, #991111 70%, #661111 100%)",
+              boxShadow: isRecording
+                ? "0 0 30px #ff000080, inset 0 0 15px #ffffff30"
+                : "0 0 15px #ff000040, inset 0 0 10px #ffffff20",
+              border: "3px solid #88333380",
+            }}
+          >
+            <div className={`w-5 h-5 rounded-full ${isRecording ? "bg-white" : "bg-white/80"}`}
+              style={{ boxShadow: "0 0 10px #ffffff60" }} />
+          </button>
+
+          {/* Right VU meters */}
+          <div className="flex gap-[2px]">
+            <VUMeter active={isRecording || isPlaying} color="#63b3ed" />
+            <VUMeter active={isRecording || isPlaying} color="#22c55e" />
+          </div>
+
+          {/* Delete/Cancel button */}
+          <button
+            className="w-9 h-9 rounded-full border border-[#444] flex items-center justify-center"
+            style={{ background: "#2a2a3e" }}
+          >
             <X className="w-4 h-4 text-[#888]" />
           </button>
         </div>
