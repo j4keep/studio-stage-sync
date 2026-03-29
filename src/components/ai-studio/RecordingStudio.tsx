@@ -569,13 +569,13 @@ const RecordingStudio = () => {
     setActiveTakeId(take.id);
     engine.playAudio({
       beatUrl,
-      beatVolume: beatGain,
+      beatVolume,
       beatPan,
-      masterVolume: 100,
+      masterVolume,
       takes: getPlayableTakes([take]),
       effects: playbackEffects,
     });
-  }, [engine, beatUrl, beatGain, beatPan, getPlayableTakes, playbackEffects]);
+  }, [engine, beatUrl, beatVolume, beatPan, masterVolume, getPlayableTakes, playbackEffects]);
 
   const stopTakePlayback = useCallback(() => {
     engine.stopPlayback();
