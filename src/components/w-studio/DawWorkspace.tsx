@@ -1,16 +1,16 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import type { TrackKind } from './types';
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { TrackKind } from "./types";
 import {
   EFFECT_PRESET_LABELS,
   EQ_PRESET_LABELS,
   LIBRARY_BY_CATEGORY,
   SPACE_PRESET_LABELS,
   faderToDbLabel,
-} from './audio';
-import { MIC_CHAIN_PRESETS } from './micPresets';
-import { REMOTE_LIBRARY_BY_CATEGORY } from './remoteLibrary';
-import { DawProvider, INPUT_SOURCE_OPTIONS, useDaw } from './DawContext';
-import { WaveformCanvas } from './WaveformCanvas';
+} from "./audio";
+import { MIC_CHAIN_PRESETS } from "./micPresets";
+import { REMOTE_LIBRARY_BY_CATEGORY } from "./remoteLibrary";
+import { DawProvider, INPUT_SOURCE_OPTIONS, useDaw } from "./DawContext";
+import { WaveformCanvas } from "./WaveformCanvas";
 
 const PX_PER_SEC = 52;
 
@@ -20,7 +20,7 @@ function formatBBT(sec: number, bpm: number, beatsPerBar: number) {
   const bar = Math.floor(whole / beatsPerBar) + 1;
   const beat = (whole % beatsPerBar) + 1;
   const tick = Math.min(479, Math.floor((beats % 1) * 480));
-  return `${bar}:${beat}:${String(tick).padStart(3, '0')}`;
+  return `${bar}:${beat}:${String(tick).padStart(3, "0")}`;
 }
 
 function IconPlay() {
@@ -58,7 +58,7 @@ function IconRewind() {
 function IconLoop({ active }: { active: boolean }) {
   return (
     <svg
-      className={`h-5 w-5 ${active ? 'text-[#facc15]' : 'text-[#9ca3af]'}`}
+      className={`h-5 w-5 ${active ? "text-[#facc15]" : "text-[#9ca3af]"}`}
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -73,7 +73,7 @@ function IconLoop({ active }: { active: boolean }) {
 function IconMetronome({ off }: { off: boolean }) {
   return (
     <svg
-      className={`h-5 w-5 ${off ? 'text-[#52525b] line-through decoration-2' : 'text-[#d4d4d8]'}`}
+      className={`h-5 w-5 ${off ? "text-[#52525b] line-through decoration-2" : "text-[#d4d4d8]"}`}
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -91,12 +91,12 @@ const MODAL_CELLS: {
   hint: string;
   color: string;
 }[] = [
-  { kind: 'record_audio', label: 'Record audio', hint: 'Mic / line', color: '#60a5fa' },
-  { kind: 'create_beat', label: 'Create a beat', hint: 'Pattern + drums', color: '#fb7185' },
-  { kind: 'instrument', label: 'Instrument', hint: 'Keys / synth', color: '#f8fafc' },
-  { kind: 'use_loops', label: 'Use loops', hint: 'Library', color: '#fb923c' },
-  { kind: 'import_audio', label: 'Import audio file', hint: 'WAV / MP3', color: '#4ade80' },
-  { kind: 'play_drums', label: 'Play drums', hint: 'Pads', color: '#2dd4bf' },
+  { kind: "record_audio", label: "Record audio", hint: "Mic / line", color: "#60a5fa" },
+  { kind: "create_beat", label: "Create a beat", hint: "Pattern + drums", color: "#fb7185" },
+  { kind: "instrument", label: "Instrument", hint: "Keys / synth", color: "#f8fafc" },
+  { kind: "use_loops", label: "Use loops", hint: "Library", color: "#fb923c" },
+  { kind: "import_audio", label: "Import audio file", hint: "WAV / MP3", color: "#4ade80" },
+  { kind: "play_drums", label: "Play drums", hint: "Pads", color: "#2dd4bf" },
 ];
 
 type ClipSelection = { trackId: string; clipId: string } | null;
@@ -185,7 +185,10 @@ function MixerStrip({
           ×
         </button>
       </div>
-      <div className="border-b border-[#25252b] px-1.5 py-1" style={{ borderBottomColor: tr.color, borderBottomWidth: 2 }}>
+      <div
+        className="border-b border-[#25252b] px-1.5 py-1"
+        style={{ borderBottomColor: tr.color, borderBottomWidth: 2 }}
+      >
         <input
           value={tr.name}
           onChange={(e) => daw.renameTrack(tr.id, e.target.value)}
@@ -209,7 +212,7 @@ function MixerStrip({
           type="button"
           title="Mute"
           onClick={() => daw.toggleMute(tr.id)}
-          className={`h-7 w-7 rounded border text-[10px] font-bold ${tr.muted ? 'border-[#6b2a2a] bg-[#3f1f1f] text-[#fca5a5]' : 'border-[#333] bg-[#1e1e22] text-[#a1a1aa]'}`}
+          className={`h-7 w-7 rounded border text-[10px] font-bold ${tr.muted ? "border-[#6b2a2a] bg-[#3f1f1f] text-[#fca5a5]" : "border-[#333] bg-[#1e1e22] text-[#a1a1aa]"}`}
         >
           M
         </button>
@@ -217,7 +220,7 @@ function MixerStrip({
           type="button"
           title="Solo"
           onClick={() => daw.toggleSolo(tr.id)}
-          className={`h-7 w-7 rounded border text-[10px] font-bold ${tr.solo ? 'border-[#6b5a2a] bg-[#3a3420] text-[#fde047]' : 'border-[#333] bg-[#1e1e22] text-[#a1a1aa]'}`}
+          className={`h-7 w-7 rounded border text-[10px] font-bold ${tr.solo ? "border-[#6b5a2a] bg-[#3a3420] text-[#fde047]" : "border-[#333] bg-[#1e1e22] text-[#a1a1aa]"}`}
         >
           S
         </button>
@@ -225,7 +228,7 @@ function MixerStrip({
           type="button"
           title="Record arm"
           onClick={() => daw.toggleRecordArm(tr.id)}
-          className={`h-7 w-7 rounded-full border text-[10px] font-bold ${tr.recordArm ? 'border-red-500 bg-[#4a1515] text-red-300' : 'border-[#444] bg-[#252528] text-[#888]'}`}
+          className={`h-7 w-7 rounded-full border text-[10px] font-bold ${tr.recordArm ? "border-red-500 bg-[#4a1515] text-red-300" : "border-[#444] bg-[#252528] text-[#888]"}`}
         >
           R
         </button>
@@ -247,7 +250,7 @@ function MixerStrip({
       </div>
       <select
         value={tr.eqPreset}
-        onChange={(e) => daw.setTrackEq(tr.id, e.target.value as (typeof tr)['eqPreset'])}
+        onChange={(e) => daw.setTrackEq(tr.id, e.target.value as (typeof tr)["eqPreset"])}
         className="mx-1 mt-1 rounded border border-[#2a2a32] bg-[#0e0e10] px-0.5 py-0.5 text-[8px] text-[#c4c4c4]"
         title="EQ"
       >
@@ -259,7 +262,7 @@ function MixerStrip({
       </select>
       <select
         value={tr.effectPreset}
-        onChange={(e) => daw.setTrackEffect(tr.id, e.target.value as (typeof tr)['effectPreset'])}
+        onChange={(e) => daw.setTrackEffect(tr.id, e.target.value as (typeof tr)["effectPreset"])}
         className="mx-1 mt-0.5 rounded border border-[#2a2a32] bg-[#0e0e10] px-0.5 py-0.5 text-[8px] text-[#c4c4c4]"
         title="Dynamics / effects"
       >
@@ -271,7 +274,7 @@ function MixerStrip({
       </select>
       <select
         value={tr.spacePreset}
-        onChange={(e) => daw.setTrackSpace(tr.id, e.target.value as (typeof tr)['spacePreset'])}
+        onChange={(e) => daw.setTrackSpace(tr.id, e.target.value as (typeof tr)["spacePreset"])}
         className="mx-1 mt-0.5 rounded border border-[#2a2a32] bg-[#0e0e10] px-0.5 py-0.5 text-[8px] text-[#c4c4c4]"
         title="Reverb / space (post dynamics)"
       >
@@ -331,41 +334,33 @@ function MixerStrip({
 
 function DawChrome() {
   const daw = useDaw();
-  const [editorTab, setEditorTab] = useState<'clip' | 'piano'>('clip');
+  const [editorTab, setEditorTab] = useState<"clip" | "piano">("clip");
   const [selection, setSelection] = useState<ClipSelection>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [mainView, setMainView] = useState<'arrange' | 'mixer'>('arrange');
+  const [mainView, setMainView] = useState<"arrange" | "mixer">("arrange");
   const fileRef = useRef<HTMLInputElement>(null);
-  const importTrackRef = useRef<string>('');
+  const importTrackRef = useRef<string>("");
 
   const end = useMemo(() => {
     if (daw.tracks.length === 0) return 90;
-    return Math.max(
-      90,
-      ...daw.tracks.flatMap((t) => t.clips.map((c) => c.startTime + c.buffer.duration)),
-    );
+    return Math.max(90, ...daw.tracks.flatMap((t) => t.clips.map((c) => c.startTime + c.buffer.duration)));
   }, [daw.tracks]);
 
   const widthPx = Math.ceil(end * PX_PER_SEC) + 160;
 
   const selectedClip =
-    selection &&
-    daw.tracks
-      .find((t) => t.id === selection.trackId)
-      ?.clips.find((c) => c.id === selection.clipId);
+    selection && daw.tracks.find((t) => t.id === selection.trackId)?.clips.find((c) => c.id === selection.clipId);
 
-  const selectedTrack = daw.selectedTrackId
-    ? daw.tracks.find((t) => t.id === daw.selectedTrackId)
-    : null;
+  const selectedTrack = daw.selectedTrackId ? daw.tracks.find((t) => t.id === daw.selectedTrackId) : null;
 
-  const targetTrackId = daw.selectedTrackId ?? daw.tracks[0]?.id ?? '';
+  const targetTrackId = daw.selectedTrackId ?? daw.tracks[0]?.id ?? "";
 
   const [editorWavWidth, setEditorWavWidth] = useState(880);
   useEffect(() => {
     const w = () => setEditorWavWidth(Math.max(320, window.innerWidth - 360));
     w();
-    window.addEventListener('resize', w);
-    return () => window.removeEventListener('resize', w);
+    window.addEventListener("resize", w);
+    return () => window.removeEventListener("resize", w);
   }, []);
 
   const openImport = (trackId: string) => {
@@ -384,7 +379,7 @@ function DawChrome() {
           const f = e.target.files?.[0];
           const tid = importTrackRef.current || targetTrackId;
           if (f && tid) void daw.importAudioFile(tid, f);
-          e.target.value = '';
+          e.target.value = "";
         }}
       />
 
@@ -399,28 +394,30 @@ function DawChrome() {
         <div className="flex items-center gap-0.5">
           <button
             type="button"
-            title="Record"
-            className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-[#7f1d1d] bg-[#292020] text-[#f87171] hover:bg-[#3f2020]"
-            onClick={() => void daw.startRecord()}
-            disabled={daw.isRecording}
+            title={daw.isRecording ? "Stop recording" : "Record"}
+            className={`flex h-11 w-11 items-center justify-center rounded-full border-2 text-[#f87171] hover:bg-[#3f2020] ${
+              daw.isRecording ? "border-red-500 bg-[#4a1818] ring-2 ring-red-500/60" : "border-[#7f1d1d] bg-[#292020]"
+            }`}
+            onClick={() => {
+              if (daw.isRecording) daw.stopRecord();
+              else void daw.startRecord();
+            }}
           >
             <IconRec />
           </button>
           <button
             type="button"
-            title="Play"
-            className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#333] bg-[#222226] text-[#e5e5e5] hover:bg-[#2a2a30] disabled:opacity-40"
+            title="Play (works while recording — hear backing tracks)"
+            className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#333] bg-[#222226] text-[#e5e5e5] hover:bg-[#2a2a30]"
             onClick={() => daw.play()}
-            disabled={daw.isRecording}
           >
             <IconPlay />
           </button>
           <button
             type="button"
-            title="Stop"
-            className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#333] bg-[#222226] text-[#a3a3a3] hover:bg-[#2a2a30] disabled:opacity-40"
+            title="Stop playback (recording continues until you stop Record)"
+            className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#333] bg-[#222226] text-[#a3a3a3] hover:bg-[#2a2a30]"
             onClick={() => daw.stopTransport()}
-            disabled={daw.isRecording}
           >
             <IconStop />
           </button>
@@ -434,8 +431,8 @@ function DawChrome() {
           </button>
           <button
             type="button"
-            title={daw.loopEnabled ? 'Loop on' : 'Loop off'}
-            className={`flex h-10 w-10 items-center justify-center rounded-lg border ${daw.loopEnabled ? 'border-[#854d0e] bg-[#422006]' : 'border-[#333] bg-[#222226]'}`}
+            title={daw.loopEnabled ? "Loop on" : "Loop off"}
+            className={`flex h-10 w-10 items-center justify-center rounded-lg border ${daw.loopEnabled ? "border-[#854d0e] bg-[#422006]" : "border-[#333] bg-[#222226]"}`}
             onClick={() => daw.setLoopEnabled(!daw.loopEnabled)}
           >
             <IconLoop active={daw.loopEnabled} />
@@ -453,7 +450,7 @@ function DawChrome() {
 
         <button
           type="button"
-          title={daw.metronomeOn ? 'Metronome on' : 'Metronome off'}
+          title={daw.metronomeOn ? "Metronome on" : "Metronome off"}
           className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#333] bg-[#222226] hover:bg-[#2a2a30]"
           onClick={() => daw.setMetronomeOn(!daw.metronomeOn)}
         >
@@ -488,15 +485,15 @@ function DawChrome() {
         <div className="flex items-center gap-1 border-l border-[#333] pl-2">
           <button
             type="button"
-            className={`rounded px-2 py-2 text-[10px] font-medium uppercase ${mainView === 'arrange' ? 'bg-[#2a2a32] text-white' : 'text-[#888] hover:bg-[#222]'}`}
-            onClick={() => setMainView('arrange')}
+            className={`rounded px-2 py-2 text-[10px] font-medium uppercase ${mainView === "arrange" ? "bg-[#2a2a32] text-white" : "text-[#888] hover:bg-[#222]"}`}
+            onClick={() => setMainView("arrange")}
           >
             Timeline
           </button>
           <button
             type="button"
-            className={`rounded px-2 py-2 text-[10px] font-medium uppercase ${mainView === 'mixer' ? 'bg-[#2a2a32] text-white' : 'text-[#888] hover:bg-[#222]'}`}
-            onClick={() => setMainView('mixer')}
+            className={`rounded px-2 py-2 text-[10px] font-medium uppercase ${mainView === "mixer" ? "bg-[#2a2a32] text-white" : "text-[#888] hover:bg-[#222]"}`}
+            onClick={() => setMainView("mixer")}
           >
             Mixer
           </button>
@@ -526,7 +523,7 @@ function DawChrome() {
         </button>
       </header>
 
-      {mainView === 'mixer' ? (
+      {mainView === "mixer" ? (
         <div className="flex min-h-0 flex-1 overflow-x-auto overflow-y-hidden bg-[#101012]">
           {daw.tracks.map((t) => (
             <MixerStrip
@@ -553,8 +550,9 @@ function DawChrome() {
                   disabled={!targetTrackId}
                   onChange={(e) => {
                     const v = e.target.value;
-                    if (v && targetTrackId) daw.applyMicChainPreset(targetTrackId, v as (typeof MIC_CHAIN_PRESETS)[number]['id']);
-                    e.target.value = '';
+                    if (v && targetTrackId)
+                      daw.applyMicChainPreset(targetTrackId, v as (typeof MIC_CHAIN_PRESETS)[number]["id"]);
+                    e.target.value = "";
                   }}
                 >
                   <option value="">Apply mic preset…</option>
@@ -587,8 +585,7 @@ function DawChrome() {
               {REMOTE_LIBRARY_BY_CATEGORY.map((grp) => (
                 <div key={grp.category} className="mb-3">
                   <div className="mb-1 px-1 text-[10px] text-[#9ca3af]">
-                    {grp.category}{' '}
-                    <span className="text-[#52525b]">(web)</span>
+                    {grp.category} <span className="text-[#52525b]">(web)</span>
                   </div>
                   <ul className="space-y-0.5">
                     {grp.items.map((item) => (
@@ -597,9 +594,7 @@ function DawChrome() {
                           type="button"
                           disabled={!targetTrackId}
                           className="w-full rounded px-2 py-1.5 text-left text-[11px] text-[#d1d5db] hover:bg-[#1a1a1f] disabled:opacity-40"
-                          onClick={() =>
-                            targetTrackId && void daw.addRemoteLibraryClip(targetTrackId!, item.id)
-                          }
+                          onClick={() => targetTrackId && void daw.addRemoteLibraryClip(targetTrackId!, item.id)}
                           title={item.source}
                         >
                           {item.name}
@@ -611,7 +606,7 @@ function DawChrome() {
               ))}
             </div>
             <p className="border-t border-[#25252b] p-2 text-[10px] leading-snug text-[#6b7280]">
-              Built-in sounds are synthesized. Web samples need CORS; if one fails, try another or use{' '}
+              Built-in sounds are synthesized. Web samples need CORS; if one fails, try another or use{" "}
               <strong className="text-[#9ca3af]">Import file</strong>.
             </p>
           </aside>
@@ -642,7 +637,7 @@ function DawChrome() {
               {daw.tracks.map((tr) => (
                 <div
                   key={tr.id}
-                  className={`flex border-b border-[#1a1a1e] ${daw.selectedTrackId === tr.id ? 'bg-[#0f141c]' : 'bg-[#0a0a0c]'}`}
+                  className={`flex border-b border-[#1a1a1e] ${daw.selectedTrackId === tr.id ? "bg-[#0f141c]" : "bg-[#0a0a0c]"}`}
                 >
                   <div className="flex w-[188px] shrink-0 border-r border-[#25252b]">
                     <div className="w-1 shrink-0" style={{ backgroundColor: tr.color }} />
@@ -655,21 +650,21 @@ function DawChrome() {
                       <div className="flex flex-wrap gap-1">
                         <button
                           type="button"
-                          className={`h-6 w-6 rounded text-[10px] font-bold ${tr.muted ? 'bg-[#3f1f1f] text-[#fca5a5]' : 'bg-[#1a1a1f] text-[#9ca3af]'}`}
+                          className={`h-6 w-6 rounded text-[10px] font-bold ${tr.muted ? "bg-[#3f1f1f] text-[#fca5a5]" : "bg-[#1a1a1f] text-[#9ca3af]"}`}
                           onClick={() => daw.toggleMute(tr.id)}
                         >
                           M
                         </button>
                         <button
                           type="button"
-                          className={`h-6 w-6 rounded text-[10px] font-bold ${tr.solo ? 'bg-[#3a3420] text-[#fde047]' : 'bg-[#1a1a1f] text-[#9ca3af]'}`}
+                          className={`h-6 w-6 rounded text-[10px] font-bold ${tr.solo ? "bg-[#3a3420] text-[#fde047]" : "bg-[#1a1a1f] text-[#9ca3af]"}`}
                           onClick={() => daw.toggleSolo(tr.id)}
                         >
                           S
                         </button>
                         <button
                           type="button"
-                          className={`h-6 w-6 rounded-full text-[9px] font-bold ${tr.recordArm ? 'bg-[#4a1515] text-red-300' : 'bg-[#1a1a1f] text-[#9ca3af]'}`}
+                          className={`h-6 w-6 rounded-full text-[9px] font-bold ${tr.recordArm ? "bg-[#4a1515] text-red-300" : "bg-[#1a1a1f] text-[#9ca3af]"}`}
                           onClick={() => daw.toggleRecordArm(tr.id)}
                         >
                           R
@@ -709,8 +704,8 @@ function DawChrome() {
                             tabIndex={0}
                             className={`group absolute top-1 cursor-pointer overflow-hidden rounded-sm border text-left shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-[#60a5fa] ${
                               isSel
-                                ? 'border-[#93c5fd] ring-1 ring-[#60a5fa]/50'
-                                : 'border-[#2a2a32] hover:border-[#404040]'
+                                ? "border-[#93c5fd] ring-1 ring-[#60a5fa]/50"
+                                : "border-[#2a2a32] hover:border-[#404040]"
                             }`}
                             style={{
                               left: c.startTime * PX_PER_SEC,
@@ -720,8 +715,7 @@ function DawChrome() {
                             }}
                             onClick={() => setSelection({ trackId: tr.id, clipId: c.id })}
                             onKeyDown={(e) => {
-                              if (e.key === 'Enter' || e.key === ' ')
-                                setSelection({ trackId: tr.id, clipId: c.id });
+                              if (e.key === "Enter" || e.key === " ") setSelection({ trackId: tr.id, clipId: c.id });
                             }}
                           >
                             <WaveformCanvas
@@ -738,9 +732,7 @@ function DawChrome() {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 daw.deleteClip(tr.id, c.id);
-                                setSelection((s) =>
-                                  s?.clipId === c.id && s.trackId === tr.id ? null : s,
-                                );
+                                setSelection((s) => (s?.clipId === c.id && s.trackId === tr.id ? null : s));
                               }}
                             >
                               ×
@@ -761,21 +753,21 @@ function DawChrome() {
         <div className="flex border-b border-[#25252b] text-[11px]">
           <button
             type="button"
-            className={`px-4 py-1.5 font-medium ${editorTab === 'clip' ? 'bg-[#1a1a1f] text-white' : 'text-[#9ca3af] hover:bg-[#16161a]'}`}
-            onClick={() => setEditorTab('clip')}
+            className={`px-4 py-1.5 font-medium ${editorTab === "clip" ? "bg-[#1a1a1f] text-white" : "text-[#9ca3af] hover:bg-[#16161a]"}`}
+            onClick={() => setEditorTab("clip")}
           >
             Clip / waveform
           </button>
           <button
             type="button"
-            className={`px-4 py-1.5 font-medium ${editorTab === 'piano' ? 'bg-[#1a1a1f] text-white' : 'text-[#9ca3af] hover:bg-[#16161a]'}`}
-            onClick={() => setEditorTab('piano')}
+            className={`px-4 py-1.5 font-medium ${editorTab === "piano" ? "bg-[#1a1a1f] text-white" : "text-[#9ca3af] hover:bg-[#16161a]"}`}
+            onClick={() => setEditorTab("piano")}
           >
             Piano roll
           </button>
         </div>
         <div className="flex min-h-0 flex-1 items-stretch">
-          {editorTab === 'clip' && selectedClip && selectedTrack ? (
+          {editorTab === "clip" && selectedClip && selectedTrack ? (
             <div className="flex flex-1 items-center gap-3 p-3">
               <div className="h-1 w-10 shrink-0 rounded" style={{ backgroundColor: selectedTrack.color }} />
               <div className="min-h-0 flex-1 rounded border border-[#25252b] bg-[#0a0a0c]">
@@ -788,7 +780,7 @@ function DawChrome() {
                 />
               </div>
             </div>
-          ) : editorTab === 'clip' ? (
+          ) : editorTab === "clip" ? (
             <p className="flex flex-1 items-center px-4 text-[12px] text-[#6b7280]">
               Select a clip in the timeline for a zoomed waveform.
             </p>
@@ -798,8 +790,8 @@ function DawChrome() {
                 className="flex-1 rounded border border-[#1f1f24] bg-[#0a0a0c]"
                 style={{
                   backgroundImage:
-                    'linear-gradient(#1a1a1e 1px, transparent 1px), linear-gradient(90deg, #141418 1px, transparent 1px)',
-                  backgroundSize: '100% 14px, 32px 100%',
+                    "linear-gradient(#1a1a1e 1px, transparent 1px), linear-gradient(90deg, #141418 1px, transparent 1px)",
+                  backgroundSize: "100% 14px, 32px 100%",
                 }}
               />
             </div>
