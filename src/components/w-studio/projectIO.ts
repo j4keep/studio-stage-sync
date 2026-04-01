@@ -129,7 +129,7 @@ export async function hydrateProject(data: SerializedProjectV1, ctx: AudioContex
             id: sc.id,
             startTime: sc.startTime,
             buffer: buf,
-            sourceMeta: { type: 'remote', remoteId: sc.source.remoteId },
+            sourceMeta: { type: 'remote', remoteId: remoteSource.remoteId },
           });
         }
       } catch {
