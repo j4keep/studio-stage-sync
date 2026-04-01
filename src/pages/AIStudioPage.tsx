@@ -1,4 +1,4 @@
-import RecordingStudio from "@/components/ai-studio/RecordingStudio";
+import RecordingStudio from "@/components/w-studio/RecordingStudio";
 import { useProGate } from "@/hooks/use-pro-gate";
 import ProGateModal from "@/components/ProGateModal";
 
