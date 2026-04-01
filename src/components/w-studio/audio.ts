@@ -791,6 +791,7 @@ export function audioBufferFromMonoFloat(
 ): AudioBuffer {
   const buf = ctx.createBuffer(1, data.length, sampleRate);
   buf.copyToChannel(data, 0, 0);
+  // @ts-ignore -- Float32Array<ArrayBufferLike> compat
   return buf;
 }
 
