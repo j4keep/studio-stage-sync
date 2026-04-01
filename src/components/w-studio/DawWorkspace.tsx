@@ -16,6 +16,20 @@ import { WaveformCanvas } from './WaveformCanvas';
 
 const PX_PER_SEC = 52;
 
+function isAudioDropFile(file: File): boolean {
+  if (file.type.startsWith('audio/')) return true;
+  return /\.(wav|mp3|ogg|m4a|aac|flac|webm)$/i.test(file.name);
+}
+
+function firstAudioFileFromDataTransfer(dt: DataTransfer): File | undefined {
+  const { files } = dt;
+  for (let i = 0; i < files.length; i++) {
+    const f = files.item(i);
+    if (f && isAudioDropFile(f)) return f;
+  }
+  return undefined;
+}
+
 function formatBBT(sec: number, bpm: number, beatsPerBar: number) {
   const beats = sec * (bpm / 60);
   const whole = Math.floor(beats + 1e-9);
@@ -390,6 +404,32 @@ function MixerStrip({
           onChange={(e) => daw.setTrackPan(tr.id, Number(e.target.value))}
           className="h-1 w-full accent-[#a78bfa]"
         />
+        <div className="mt-1 flex justify-center gap-0.5">
+          {(
+            [
+              { lbl: 'L' as const, val: -1, title: 'Pan full left' },
+              { lbl: 'C' as const, val: 0, title: 'Pan center' },
+              { lbl: 'R' as const, val: 1, title: 'Pan full right' },
+            ] as const
+          ).map(({ lbl, val, title }) => {
+            const active = Math.abs(tr.pan - val) < 0.08;
+            return (
+              <button
+                key={lbl}
+                type="button"
+                title={title}
+                onClick={() => daw.setTrackPan(tr.id, val)}
+                className={`min-w-[1.75rem] rounded border px-1 py-0.5 text-[9px] font-bold ${
+                  active
+                    ? 'border-[#a78bfa] bg-[#2e2640] text-[#e9d5ff]'
+                    : 'border-[#333] bg-[#1e1e22] text-[#9ca3af]'
+                }`}
+              >
+                {lbl}
+              </button>
+            );
+          })}
+        </div>
       </div>
       <select
         value={tr.eqPreset}
@@ -470,6 +510,58 @@ function MixerStrip({
       </div>
       <div className="border-t border-[#25252b] py-1 text-center font-mono text-[9px] tabular-nums text-[#94a3b8]">
         {faderToDbLabel(tr.volume)}
+      </div>
+    </div>
+  );
+}
+
+function MasterMixerStrip() {
+  const daw = useDaw();
+  const peak = daw.meterPeaks.__master__ ?? 0;
+  return (
+    <div
+      className="flex w-[108px] shrink-0 flex-col border-l-2 border-[#3b82f6] bg-[#14161c]"
+      style={{ borderTopColor: '#3b82f6', borderTopWidth: 3 }}
+    >
+      <div className="border-b border-[#25252b] px-1.5 py-1.5 text-center">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-[#93c5fd]">Master</span>
+        <p className="mt-0.5 text-[8px] text-[#6b7280]">Stereo out</p>
+      </div>
+      <div className="mt-2 flex flex-1 items-stretch justify-center gap-1.5 px-1 pb-2">
+        <div className="flex flex-col items-end justify-between py-1 pr-0.5 text-[8px] font-mono leading-tight text-[#52525b]">
+          <span>0</span>
+          <span>-10</span>
+          <span>-20</span>
+          <span>-30</span>
+          <span>-40</span>
+          <span>-∞</span>
+        </div>
+        <div className="relative flex w-5 flex-col justify-end">
+          <div className="relative h-[140px] w-full overflow-hidden rounded-sm bg-[#0a0a0c]">
+            <div
+              className="absolute bottom-0 left-0 right-0 opacity-90 transition-[height] duration-75"
+              style={{
+                height: `${Math.min(100, peak * 115)}%`,
+                background: `linear-gradient(to top, #16a34a 0%, #eab308 70%, #dc2626 100%)`,
+              }}
+            />
+          </div>
+        </div>
+        <div className="relative flex h-[148px] w-9 items-center justify-center">
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.005}
+            value={daw.masterVolume}
+            onChange={(e) => daw.setMasterVolume(Number(e.target.value))}
+            className="absolute w-[120px] -rotate-90 cursor-pointer accent-[#3b82f6]"
+            aria-label="Master volume"
+          />
+        </div>
+      </div>
+      <div className="border-t border-[#25252b] py-1 text-center font-mono text-[9px] tabular-nums text-[#94a3b8]">
+        {faderToDbLabel(daw.masterVolume)}
       </div>
     </div>
   );
@@ -620,6 +712,24 @@ function DawChrome() {
           </button>
         </div>
 
+        {daw.isRecording ? (
+          <div className="flex flex-col items-center justify-center px-1">
+            <span className="text-[8px] font-semibold uppercase tracking-wide text-[#f87171]">Mic</span>
+            <div
+              className="relative mt-0.5 h-14 w-4 overflow-hidden rounded bg-[#0a0a0c] ring-1 ring-[#3f3f46]"
+              title="Input level"
+            >
+              <div
+                className="absolute bottom-0 left-0 right-0 opacity-90 transition-[height] duration-75"
+                style={{
+                  height: `${Math.min(100, (daw.meterPeaks.__mic__ ?? 0) * 115)}%`,
+                  background: 'linear-gradient(to top, #16a34a 0%, #eab308 70%, #dc2626 100%)',
+                }}
+              />
+            </div>
+          </div>
+        ) : null}
+
         <div className="mx-1 hidden h-8 w-px bg-[#333] sm:block" />
 
         <div className="flex flex-col items-center px-2">
@@ -769,7 +879,8 @@ function DawChrome() {
               fileInputTrigger={() => openImport(t.id)}
             />
           ))}
-          <div className="min-w-[120px] flex-1 bg-[#0c0c0e]" aria-hidden />
+          <MasterMixerStrip />
+          <div className="min-w-[48px] flex-1 bg-[#0c0c0e]" aria-hidden />
         </div>
       ) : (
         <div className="daw-main flex min-h-0 flex-1 flex-col lg:flex-row [@media(orientation:landscape)]:flex-row">
@@ -928,12 +1039,41 @@ function DawChrome() {
                     </div>
                   </div>
 
-                  <div className="relative min-h-[64px] min-w-0 flex-1">
+                  <div
+                    className="relative min-h-[64px] min-w-0 flex-1"
+                    onDragOver={(e) => {
+                      if ([...e.dataTransfer.types].includes('Files')) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.dataTransfer.dropEffect = 'copy';
+                      }
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const file = firstAudioFileFromDataTransfer(e.dataTransfer);
+                      if (file) void daw.importAudioFile(tr.id, file);
+                    }}
+                  >
                     <div
                       className="pointer-events-none absolute bottom-0 left-0 top-0 z-10 w-px bg-[#4d9fff]"
                       style={{ left: daw.currentTime * PX_PER_SEC }}
                     />
-                    <div className="relative h-full min-h-[64px]" style={{ width: widthPx }}>
+                    <div
+                      className="relative h-full min-h-[64px]"
+                      style={{ width: widthPx }}
+                      onDragOver={(e) => {
+                        if ([...e.dataTransfer.types].includes('Files')) {
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = 'copy';
+                        }
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const file = firstAudioFileFromDataTransfer(e.dataTransfer);
+                        if (file) void daw.importAudioFile(tr.id, file);
+                      }}
+                    >
                       {(() => {
                         const spb = 60 / Math.max(40, daw.tempo);
                         return tr.midiNotes.map((n) => {
@@ -974,6 +1114,17 @@ function DawChrome() {
                               width: w,
                               height: h,
                               backgroundColor: `${tr.color}22`,
+                            }}
+                            onDragOver={(e) => {
+                              if ([...e.dataTransfer.types].includes('Files')) {
+                                e.preventDefault();
+                                e.dataTransfer.dropEffect = 'copy';
+                              }
+                            }}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              const file = firstAudioFileFromDataTransfer(e.dataTransfer);
+                              if (file) void daw.importAudioFile(tr.id, file);
                             }}
                             onClick={() => setSelection({ trackId: tr.id, clipId: c.id })}
                             onKeyDown={(e) => {

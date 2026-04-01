@@ -10,7 +10,8 @@ import {
 } from 'react';
 import {
   anySolo,
-  audioBufferFromMonoFloat,
+  audioBufferFromStereoFloat,
+  audioBufferToStereo,
   configureCompressor,
   configureEq,
   configureSpace,
@@ -18,7 +19,7 @@ import {
   encodeWavFromAudioBuffer,
   faderToGain,
   getTimelineEndSec,
-  mergeFloatChunks,
+  mergeStereoChunks,
   midiNoteToFreq,
   offlineRenderMix,
   trackAudible,
@@ -76,8 +77,10 @@ type DawContextValue = {
   tempo: number;
   setTempo: (bpm: number) => void;
   beatsPerBar: number;
-  /** Normalized 0–1 peaks for mixer meters */
+  /** Normalized 0–1 peaks for mixer meters (per track id + `__master__` + `__mic__` when active) */
   meterPeaks: Record<string, number>;
+  masterVolume: number;
+  setMasterVolume: (v: number) => void;
   status: string;
   addTrackWithKind: (kind: TrackKind) => void;
   removeTrack: (id: string) => void;
@@ -143,6 +146,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
   const [tempo, setTempo] = useState(120);
   const [beatsPerBar, setBeatsPerBar] = useState(4);
   const [meterPeaks, setMeterPeaks] = useState<Record<string, number>>({});
+  const [masterVolume, setMasterVolumeState] = useState(1);
   const [status, setStatus] = useState('');
 
   const loopEnabledRef = useRef(loopEnabled);
@@ -151,7 +155,8 @@ export function DawProvider({ children }: { children: ReactNode }) {
   }, [loopEnabled]);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
-  const masterRef = useRef<GainNode | null>(null);
+  const masterGainRef = useRef<GainNode | null>(null);
+  const masterAnalyserRef = useRef<AnalyserNode | null>(null);
   const trackNodesRef = useRef(new Map<string, TrackNodes>());
   const activeSourcesRef = useRef<AudioScheduledSourceNode[]>([]);
   const playSessionRef = useRef<PlaySession | null>(null);
@@ -173,11 +178,21 @@ export function DawProvider({ children }: { children: ReactNode }) {
     tempoRef.current = tempo;
   }, [tempo]);
 
+  const masterVolumeRef = useRef(masterVolume);
+  useEffect(() => {
+    masterVolumeRef.current = masterVolume;
+  }, [masterVolume]);
+
   useEffect(() => {
     if (tracks.length && !selectedTrackId) {
       setSelectedTrackId(tracks[0].id);
     }
   }, [tracks, selectedTrackId]);
+
+  const isRecordingRef = useRef(isRecording);
+  useEffect(() => {
+    isRecordingRef.current = isRecording;
+  }, [isRecording]);
 
   const disposeTrackNodes = useCallback((ctx: AudioContext) => {
     for (const n of trackNodesRef.current.values()) {
@@ -197,17 +212,29 @@ export function DawProvider({ children }: { children: ReactNode }) {
       }
     }
     trackNodesRef.current.clear();
-    masterRef.current = null;
+    try {
+      masterGainRef.current?.disconnect();
+      masterAnalyserRef.current?.disconnect();
+    } catch {
+      /* ignore */
+    }
+    masterGainRef.current = null;
+    masterAnalyserRef.current = null;
   }, []);
 
   const ensureMaster = useCallback((ctx: AudioContext) => {
-    if (!masterRef.current) {
-      const g = ctx.createGain();
-      g.gain.value = 1;
-      g.connect(ctx.destination);
-      masterRef.current = g;
+    if (!masterGainRef.current || !masterAnalyserRef.current) {
+      const mg = ctx.createGain();
+      mg.gain.value = Math.max(0, Math.min(1, masterVolumeRef.current));
+      const ma = ctx.createAnalyser();
+      ma.fftSize = 1024;
+      ma.smoothingTimeConstant = 0.55;
+      mg.connect(ma);
+      ma.connect(ctx.destination);
+      masterGainRef.current = mg;
+      masterAnalyserRef.current = ma;
     }
-    return masterRef.current;
+    return masterGainRef.current;
   }, []);
 
   const ensureTrackNodes = useCallback(
@@ -446,6 +473,36 @@ export function DawProvider({ children }: { children: ReactNode }) {
         meterHoldRef.current[tid] = v;
         out[tid] = v;
       }
+      const ma = masterAnalyserRef.current;
+      if (ma) {
+        const buf = new Uint8Array(ma.fftSize);
+        ma.getByteTimeDomainData(buf);
+        let peak = 0;
+        for (let i = 0; i < buf.length; i++) {
+          const v = Math.abs(buf[i]! - 128) / 128;
+          if (v > peak) peak = v;
+        }
+        const prev = meterHoldRef.current.__master__ ?? 0;
+        const v = Math.max(peak, prev * 0.88);
+        meterHoldRef.current.__master__ = v;
+        out.__master__ = v;
+      }
+      const micA = micInputAnalyserRef.current;
+      if (micA && isRecordingRef.current) {
+        const buf = new Uint8Array(micA.fftSize);
+        micA.getByteTimeDomainData(buf);
+        let peak = 0;
+        for (let i = 0; i < buf.length; i++) {
+          const v = Math.abs(buf[i]! - 128) / 128;
+          if (v > peak) peak = v;
+        }
+        const prev = meterHoldRef.current.__mic__ ?? 0;
+        const v = Math.max(peak, prev * 0.85);
+        meterHoldRef.current.__mic__ = v;
+        out.__mic__ = v;
+      } else {
+        meterHoldRef.current.__mic__ = 0;
+      }
       setMeterPeaks(out);
       id = requestAnimationFrame(sample);
     };
@@ -466,10 +523,12 @@ export function DawProvider({ children }: { children: ReactNode }) {
   }, [seek]);
 
   const micStreamRef = useRef<MediaStream | null>(null);
-  const recordChunksRef = useRef<Float32Array[]>([]);
+  const recordStereoChunksRef = useRef<{ L: Float32Array; R: Float32Array }[]>([]);
   const recordProcessorRef = useRef<ScriptProcessorNode | null>(null);
   const recordSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const recordMuteRef = useRef<GainNode | null>(null);
+  const micInputAnalyserRef = useRef<AnalyserNode | null>(null);
+  const micInputSilentRef = useRef<GainNode | null>(null);
   const recordStartTimeRef = useRef(0);
   const recordingActiveRef = useRef(false);
 
@@ -479,15 +538,19 @@ export function DawProvider({ children }: { children: ReactNode }) {
       recordProcessorRef.current?.disconnect();
       recordSourceRef.current?.disconnect();
       recordMuteRef.current?.disconnect();
+      micInputAnalyserRef.current?.disconnect();
+      micInputSilentRef.current?.disconnect();
     } catch {
       /* ignore */
     }
     recordProcessorRef.current = null;
     recordSourceRef.current = null;
     recordMuteRef.current = null;
+    micInputAnalyserRef.current = null;
+    micInputSilentRef.current = null;
     micStreamRef.current?.getTracks().forEach((x) => x.stop());
     micStreamRef.current = null;
-    recordChunksRef.current = [];
+    recordStereoChunksRef.current = [];
   }, []);
 
   const startRecord = useCallback(async () => {
@@ -498,27 +561,47 @@ export function DawProvider({ children }: { children: ReactNode }) {
       setStatus('No track to record. Arm a track (R) or select one.');
       return;
     }
-    if (isPlaying) stopTransport();
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          channelCount: { ideal: 2 },
+        },
+        video: false,
+      });
       const ctx = ensureAudioCtx(audioCtxRef);
       if (ctx.state === 'suspended') await ctx.resume();
 
       ensureMaster(ctx);
       recordStartTimeRef.current = currentTimeRef.current;
-      recordChunksRef.current = [];
+      recordStereoChunksRef.current = [];
 
       const src = ctx.createMediaStreamSource(stream);
-      const proc = ctx.createScriptProcessor(4096, 1, 1);
+      const proc = ctx.createScriptProcessor(4096, 2, 2);
       const mute = ctx.createGain();
       mute.gain.value = 0;
 
       proc.onaudioprocess = (e) => {
         if (!recordingActiveRef.current) return;
-        const ch0 = e.inputBuffer.getChannelData(0);
-        recordChunksRef.current.push(new Float32Array(ch0));
+        const ib = e.inputBuffer;
+        const L = new Float32Array(ib.getChannelData(0));
+        const R =
+          ib.numberOfChannels > 1
+            ? new Float32Array(ib.getChannelData(1))
+            : new Float32Array(L);
+        recordStereoChunksRef.current.push({ L, R });
       };
+
+      const inputAnalyser = ctx.createAnalyser();
+      inputAnalyser.fftSize = 512;
+      inputAnalyser.smoothingTimeConstant = 0.45;
+      const inputSilent = ctx.createGain();
+      inputSilent.gain.value = 0;
+      src.connect(inputAnalyser);
+      inputAnalyser.connect(inputSilent);
+      inputSilent.connect(ctx.destination);
 
       src.connect(proc);
       proc.connect(mute);
@@ -528,13 +611,15 @@ export function DawProvider({ children }: { children: ReactNode }) {
       recordSourceRef.current = src;
       recordProcessorRef.current = proc;
       recordMuteRef.current = mute;
+      micInputAnalyserRef.current = inputAnalyser;
+      micInputSilentRef.current = inputSilent;
       recordingActiveRef.current = true;
 
       setIsRecording(true);
       setStatus(
         isPlaying
-          ? 'Recording… (other tracks playing — overdub)'
-          : 'Recording… Press Play to hear other tracks while you record.',
+          ? 'Recording… (stereo where supported; meter shows input).'
+          : 'Recording… Use Play for overdub. Watch input meter.',
       );
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -548,6 +633,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
     const armed = tracksRef.current.find((x) => x.recordArm);
     const targetId = armed?.id ?? selectedTrackId ?? tracksRef.current[0]?.id;
     const startSec = recordStartTimeRef.current;
+    const chunks = recordStereoChunksRef.current.slice();
     recordingActiveRef.current = false;
     teardownMicGraph();
     setIsRecording(false);
@@ -557,13 +643,18 @@ export function DawProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const merged = mergeFloatChunks(recordChunksRef.current);
-    if (merged.length < 64) {
+    if (chunks.length === 0) {
+      setStatus('No audio captured — check mic permission.');
+      return;
+    }
+
+    const merged = mergeStereoChunks(chunks);
+    if (merged.L.length < 64) {
       setStatus('Take too short — nothing saved.');
       return;
     }
 
-    const buf = audioBufferFromMonoFloat(ctx, merged, ctx.sampleRate);
+    const buf = audioBufferFromStereoFloat(ctx, merged.L, merged.R, ctx.sampleRate);
     const clip: Clip = {
       id: crypto.randomUUID(),
       startTime: startSec,
@@ -574,8 +665,23 @@ export function DawProvider({ children }: { children: ReactNode }) {
       prev.map((tr) => (tr.id === targetId ? { ...tr, clips: [...tr.clips, clip] } : tr)),
     );
     const nm = tracksRef.current.find((t) => t.id === targetId)?.name ?? 'track';
-    setStatus(`Saved clip (${buf.duration.toFixed(2)}s) on ${nm}.`);
+    setStatus(`Saved stereo clip (${buf.duration.toFixed(2)}s) on ${nm}.`);
   }, [isRecording, selectedTrackId, teardownMicGraph]);
+
+  const setMasterVolume = useCallback((v: number) => {
+    const nv = Math.max(0, Math.min(1, v));
+    setMasterVolumeState(nv);
+    masterVolumeRef.current = nv;
+    const ctx = audioCtxRef.current;
+    const g = masterGainRef.current;
+    if (ctx && g) {
+      try {
+        g.gain.setValueAtTime(nv, ctx.currentTime);
+      } catch {
+        g.gain.value = nv;
+      }
+    }
+  }, []);
 
   const addTrackWithKind = useCallback((kind: TrackKind) => {
     setTracks((prev) => [...prev, newTrack('', prev.length, kind)]);
@@ -803,7 +909,8 @@ export function DawProvider({ children }: { children: ReactNode }) {
         const res = await fetch(item.url, { mode: 'cors' });
         if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
         const ab = await res.arrayBuffer();
-        const buf = await ctx.decodeAudioData(ab.slice(0));
+        const raw = await ctx.decodeAudioData(ab.slice(0));
+        const buf = audioBufferToStereo(ctx, raw);
         addClipFromBuffer(trackId, buf, undefined, { type: 'remote', remoteId: item.id });
         setStatus(`Added: ${item.name} (${item.source})`);
       } catch (e) {
@@ -820,8 +927,10 @@ export function DawProvider({ children }: { children: ReactNode }) {
         const ctx = ensureAudioCtx(audioCtxRef);
         await ctx.resume();
         const ab = await file.arrayBuffer();
-        const buf = await ctx.decodeAudioData(ab.slice(0));
+        const raw = await ctx.decodeAudioData(ab.slice(0));
+        const buf = audioBufferToStereo(ctx, raw);
         addClipFromBuffer(trackId, buf, currentTimeRef.current);
+        setStatus(`Imported ${file.name} (${buf.numberOfChannels} ch) at playhead.`);
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         setStatus(`Import failed: ${msg}`);
@@ -964,6 +1073,8 @@ export function DawProvider({ children }: { children: ReactNode }) {
       setTempo,
       beatsPerBar,
       meterPeaks,
+      masterVolume,
+      setMasterVolume,
       status,
       addTrackWithKind,
       removeTrack,
@@ -1008,6 +1119,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
       tempo,
       beatsPerBar,
       meterPeaks,
+      masterVolume,
       status,
       addTrackWithKind,
       removeTrack,
@@ -1040,6 +1152,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
       removeMidiNote,
       updateMidiNote,
       setBeatsPerBar,
+      setMasterVolume,
     ],
   );
 
