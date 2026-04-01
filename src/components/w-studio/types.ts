@@ -1,10 +1,25 @@
+/** For project save/load — clips from library/remote can be rebuilt */
+export type ClipSourceMeta =
+  | { type: 'library'; soundId: string }
+  | { type: 'remote'; remoteId: string };
+
 export type Clip = {
   id: string;
   startTime: number;
   buffer: AudioBuffer;
+  sourceMeta?: ClipSourceMeta;
 };
 
-/** Matches the “Start your song…” style picker */
+/** Piano-roll note; times in quarter-note beats (480 ticks = 1 beat if you scale later) */
+export type MidiNote = {
+  id: string;
+  pitch: number;
+  startBeats: number;
+  durationBeats: number;
+  velocity: number;
+};
+
+/** Matches the "Start your song…" style picker */
 export type TrackKind =
   | 'record_audio'
   | 'create_beat'
@@ -67,7 +82,7 @@ export type Track = {
   kind: TrackKind;
   /** Shown in mixer input dropdown (UI + future routing) */
   inputSource: string;
-  /** Single red “R” arm at a time recommended */
+  /** Single red "R" arm at a time recommended */
   recordArm: boolean;
   /** 0 = off (≈−∞ dB), 1 ≈ +6 dB on fader scale (see `faderToGain`) */
   volume: number;
@@ -78,6 +93,7 @@ export type Track = {
   effectPreset: EffectPresetId;
   spacePreset: SpacePresetId;
   clips: Clip[];
+  midiNotes: MidiNote[];
 };
 
 const KIND_DEFAULT_NAMES: Record<TrackKind, string> = {
@@ -106,5 +122,6 @@ export function newTrack(name: string, index: number, kind: TrackKind = 'record_
     effectPreset: 'none',
     spacePreset: 'off',
     clips: [],
+    midiNotes: [],
   };
 }

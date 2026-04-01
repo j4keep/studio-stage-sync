@@ -1,4 +1,9 @@
-import type { EffectPresetId, EqPresetId, SpacePresetId, Track } from './types';
+import type { EffectPresetId, EqPresetId, MidiNote, SpacePresetId, Track } from './types';
+
+export function midiNoteToFreq(midi: number): number {
+  const m = Math.max(0, Math.min(127, midi));
+  return 440 * Math.pow(2, (m - 69) / 12);
+}
 
 export function faderToGain(t: number): number {
   const p = Math.max(0, Math.min(1, t));
@@ -794,11 +799,18 @@ export function audioBufferFromMonoFloat(
   return buf;
 }
 
-export function getTimelineEndSec(tracks: { clips: { startTime: number; buffer: AudioBuffer }[] }[]): number {
+export function getTimelineEndSec(
+  tracks: { clips: { startTime: number; buffer: AudioBuffer }[]; midiNotes?: MidiNote[] }[],
+  tempoBpm = 120,
+): number {
+  const spb = 60 / Math.max(40, tempoBpm);
   let end = 8;
   for (const t of tracks) {
     for (const c of t.clips) {
       end = Math.max(end, c.startTime + c.buffer.duration);
+    }
+    for (const m of t.midiNotes ?? []) {
+      end = Math.max(end, m.startBeats * spb + m.durationBeats * spb);
     }
   }
   return end;
@@ -883,6 +895,7 @@ export async function offlineRenderMix(
   tracks: Track[],
   durationSec: number,
   sampleRate: number,
+  tempoBpm = 120,
 ): Promise<AudioBuffer> {
   const length = Math.max(1, Math.ceil(durationSec * sampleRate));
   const offline = new OfflineAudioContext(2, length, sampleRate);
@@ -897,6 +910,8 @@ export async function offlineRenderMix(
     if (g) inputs.set(track.id, g);
   }
 
+  const spb = 60 / Math.max(40, tempoBpm);
+
   for (const track of tracks) {
     const g = inputs.get(track.id);
     if (!g) continue;
@@ -909,6 +924,30 @@ export async function offlineRenderMix(
       const dur = Math.min(clip.buffer.duration, maxDur);
       if (dur <= 0) continue;
       src.start(clip.startTime, 0, dur);
+    }
+    if (!trackAudible(track, soloAny)) continue;
+    for (const note of track.midiNotes ?? []) {
+      const ns = note.startBeats * spb;
+      const ne = ns + note.durationBeats * spb;
+      if (ne <= 0 || ns >= durationSec) continue;
+      const playFrom = Math.max(0, ns);
+      const playEnd = Math.min(ne, durationSec);
+      const dur = playEnd - playFrom;
+      if (dur <= 0) continue;
+      const osc = offline.createOscillator();
+      const env = offline.createGain();
+      const vel = Math.max(0.08, Math.min(1, note.velocity)) * 0.14;
+      osc.type = 'triangle';
+      osc.frequency.value = midiNoteToFreq(note.pitch);
+      osc.connect(env);
+      env.connect(g);
+      const t0 = playFrom;
+      env.gain.setValueAtTime(0, t0);
+      env.gain.linearRampToValueAtTime(vel, t0 + 0.01);
+      env.gain.setValueAtTime(vel, t0 + Math.max(0.02, dur - 0.03));
+      env.gain.exponentialRampToValueAtTime(0.0008, t0 + dur);
+      osc.start(t0);
+      osc.stop(t0 + dur + 0.03);
     }
   }
 

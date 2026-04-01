@@ -7,7 +7,15 @@ export default function RecordingStudio() {
 export { DawWorkspacePage } from "./DawWorkspace";
 export { DawProvider, useDaw, INPUT_SOURCE_OPTIONS } from "./DawContext";
 export { WaveformCanvas } from "./WaveformCanvas";
-export type { Track, Clip, TrackKind, EqPresetId, EffectPresetId, SpacePresetId } from "./types";
+export { PianoRoll } from "./PianoRoll";
+export {
+  serializeProject,
+  parseProjectJSON,
+  hydrateProject,
+  PROJECT_FILE_VERSION,
+  type SerializedProjectV1,
+} from "./projectIO";
+export type { Track, Clip, ClipSourceMeta, MidiNote, TrackKind, EqPresetId, EffectPresetId, SpacePresetId } from "./types";
 export type { LibrarySoundId } from "./audio";
 export type { MicChainPresetId } from "./micPresets";
 export type { RemoteLibraryItem } from "./remoteLibrary";

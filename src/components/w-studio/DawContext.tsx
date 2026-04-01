@@ -1,4 +1,13 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import {
   anySolo,
   audioBufferFromMonoFloat,
@@ -10,21 +19,25 @@ import {
   faderToGain,
   getTimelineEndSec,
   mergeFloatChunks,
+  midiNoteToFreq,
   offlineRenderMix,
   trackAudible,
   type LibrarySoundId,
-} from "./audio";
-import { MIC_CHAIN_PRESETS, type MicChainPresetId } from "./micPresets";
-import { REMOTE_LIBRARY_FLAT } from "./remoteLibrary";
+} from './audio';
+import { MIC_CHAIN_PRESETS, type MicChainPresetId } from './micPresets';
+import { hydrateProject, parseProjectJSON, serializeProject } from './projectIO';
+import { REMOTE_LIBRARY_FLAT } from './remoteLibrary';
 import {
   newTrack,
   type Clip,
+  type ClipSourceMeta,
   type EffectPresetId,
   type EqPresetId,
+  type MidiNote,
   type SpacePresetId,
   type Track,
   type TrackKind,
-} from "./types";
+} from './types';
 
 type PlaySession = { t0: number; p0: number };
 
@@ -42,11 +55,11 @@ type TrackNodes = {
 };
 
 export const INPUT_SOURCE_OPTIONS = [
-  "Built-in microphone",
-  "Default input",
-  "USB microphone",
-  "Line in",
-  "Aggregate device",
+  'Built-in microphone',
+  'Default input',
+  'USB microphone',
+  'Line in',
+  'Aggregate device',
 ] as const;
 
 type DawContextValue = {
@@ -86,11 +99,22 @@ type DawContextValue = {
   startRecord: () => Promise<void>;
   stopRecord: () => void;
   deleteClip: (trackId: string, clipId: string) => void;
-  addClipFromBuffer: (trackId: string, buffer: AudioBuffer, startTime?: number) => void;
+  addClipFromBuffer: (
+    trackId: string,
+    buffer: AudioBuffer,
+    startTime?: number,
+    sourceMeta?: ClipSourceMeta,
+  ) => void;
   addLibraryClip: (trackId: string, preset: LibrarySoundId) => void;
   addRemoteLibraryClip: (trackId: string, remoteId: string) => Promise<void>;
   importAudioFile: (trackId: string, file: File) => Promise<void>;
   exportMixWav: () => Promise<void>;
+  exportProjectJson: () => void;
+  importProjectJson: (json: string) => Promise<void>;
+  addMidiNote: (trackId: string, note: Omit<MidiNote, 'id'>) => void;
+  removeMidiNote: (trackId: string, noteId: string) => void;
+  updateMidiNote: (trackId: string, noteId: string, patch: Partial<Omit<MidiNote, 'id'>>) => void;
+  setBeatsPerBar: (n: number) => void;
 };
 
 const DawContext = createContext<DawContextValue | null>(null);
@@ -98,7 +122,8 @@ const DawContext = createContext<DawContextValue | null>(null);
 function ensureAudioCtx(ref: React.MutableRefObject<AudioContext | null>) {
   if (!ref.current) {
     const Ctx =
-      window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     ref.current = new Ctx();
   }
   return ref.current;
@@ -106,8 +131,8 @@ function ensureAudioCtx(ref: React.MutableRefObject<AudioContext | null>) {
 
 export function DawProvider({ children }: { children: ReactNode }) {
   const [tracks, setTracks] = useState<Track[]>(() => [
-    newTrack("Audio 1", 0, "record_audio"),
-    newTrack("Audio 2", 1, "import_audio"),
+    newTrack('Audio 1', 0, 'record_audio'),
+    newTrack('Audio 2', 1, 'import_audio'),
   ]);
   const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
@@ -116,9 +141,9 @@ export function DawProvider({ children }: { children: ReactNode }) {
   const [loopEnabled, setLoopEnabled] = useState(false);
   const [metronomeOn, setMetronomeOn] = useState(false);
   const [tempo, setTempo] = useState(120);
-  const [beatsPerBar] = useState(4);
+  const [beatsPerBar, setBeatsPerBar] = useState(4);
   const [meterPeaks, setMeterPeaks] = useState<Record<string, number>>({});
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = useState('');
 
   const loopEnabledRef = useRef(loopEnabled);
   useEffect(() => {
@@ -128,7 +153,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
   const audioCtxRef = useRef<AudioContext | null>(null);
   const masterRef = useRef<GainNode | null>(null);
   const trackNodesRef = useRef(new Map<string, TrackNodes>());
-  const activeSourcesRef = useRef<AudioBufferSourceNode[]>([]);
+  const activeSourcesRef = useRef<AudioScheduledSourceNode[]>([]);
   const playSessionRef = useRef<PlaySession | null>(null);
   const rafRef = useRef<number>(0);
   const metroIntervalRef = useRef<number>(0);
@@ -237,6 +262,8 @@ export function DawProvider({ children }: { children: ReactNode }) {
   const schedulePlayback = useCallback(
     (ctx: AudioContext, t0: number, p0: number) => {
       const soloAny = anySolo(tracksRef.current);
+      const tempo = Math.max(40, tempoRef.current);
+      const spb = 60 / tempo;
       for (const tr of tracksRef.current) {
         syncTrackNodeParams(ctx, tr, soloAny);
         if (!trackAudible(tr, soloAny)) continue;
@@ -253,6 +280,29 @@ export function DawProvider({ children }: { children: ReactNode }) {
           src.connect(nodes.fader);
           src.start(when, offset, duration);
           activeSourcesRef.current.push(src);
+        }
+        for (const note of tr.midiNotes) {
+          const ns = note.startBeats * spb;
+          const ne = ns + note.durationBeats * spb;
+          if (ne <= p0) continue;
+          const playFrom = Math.max(p0, ns);
+          const dur = ne - playFrom;
+          if (dur <= 0) continue;
+          const when = t0 + (playFrom - p0);
+          const osc = ctx.createOscillator();
+          const env = ctx.createGain();
+          const vel = Math.max(0.08, Math.min(1, note.velocity)) * 0.12;
+          osc.type = 'triangle';
+          osc.frequency.value = midiNoteToFreq(note.pitch);
+          osc.connect(env);
+          env.connect(nodes.fader);
+          env.gain.setValueAtTime(0, when);
+          env.gain.linearRampToValueAtTime(vel, when + 0.008);
+          env.gain.setValueAtTime(vel, when + Math.max(0.012, dur - 0.025));
+          env.gain.exponentialRampToValueAtTime(0.0008, when + dur);
+          osc.start(when);
+          osc.stop(when + dur + 0.03);
+          activeSourcesRef.current.push(osc);
         }
       }
     },
@@ -281,7 +331,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
     const sess = playSessionRef.current;
     if (!ctx || !sess) return;
     const t = sess.p0 + (ctx.currentTime - sess.t0);
-    const end = getTimelineEndSec(tracksRef.current);
+    const end = getTimelineEndSec(tracksRef.current, tempoRef.current);
     if (end > 0.02 && t >= end) {
       if (loopEnabledRef.current) {
         stopPlaybackSources();
@@ -290,7 +340,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
         playSessionRef.current = { t0, p0 };
         schedulePlayback(ctx, t0, p0);
         setCurrentTime(0);
-        setStatus("Loop…");
+        setStatus('Loop…');
         rafRef.current = requestAnimationFrame(tickPlayhead);
         return;
       }
@@ -308,7 +358,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
       playSessionRef.current = null;
       setIsPlaying(false);
       setCurrentTime(end);
-      setStatus("End of timeline.");
+      setStatus('End of timeline.');
       return;
     }
     setCurrentTime(t);
@@ -334,7 +384,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
 
   const play = useCallback(async () => {
     const ctx = ensureAudioCtx(audioCtxRef);
-    if (ctx.state === "suspended") await ctx.resume();
+    if (ctx.state === 'suspended') await ctx.resume();
     stopTransport();
 
     const t0 = ctx.currentTime;
@@ -343,7 +393,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
     schedulePlayback(ctx, t0, p0);
 
     setIsPlaying(true);
-    setStatus((s) => (s.startsWith("Recording") ? "Recording + playback…" : ""));
+    setStatus((s) => (s.startsWith('Recording') ? 'Recording + playback…' : ''));
     rafRef.current = requestAnimationFrame(tickPlayhead);
   }, [schedulePlayback, stopTransport, tickPlayhead]);
 
@@ -360,7 +410,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
     const tick = () => {
       const o = ctx.createOscillator();
       const g = ctx.createGain();
-      o.type = "sine";
+      o.type = 'sine';
       o.frequency.value = 1100;
       g.gain.value = 0.07;
       o.connect(g);
@@ -445,7 +495,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
     const armed = tracksRef.current.find((x) => x.recordArm);
     const targetId = armed?.id ?? selectedTrackId ?? tracksRef.current[0]?.id;
     if (!targetId) {
-      setStatus("No track to record. Arm a track (R) or select one.");
+      setStatus('No track to record. Arm a track (R) or select one.');
       return;
     }
     if (isPlaying) stopTransport();
@@ -453,7 +503,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       const ctx = ensureAudioCtx(audioCtxRef);
-      if (ctx.state === "suspended") await ctx.resume();
+      if (ctx.state === 'suspended') await ctx.resume();
 
       ensureMaster(ctx);
       recordStartTimeRef.current = currentTimeRef.current;
@@ -483,8 +533,8 @@ export function DawProvider({ children }: { children: ReactNode }) {
       setIsRecording(true);
       setStatus(
         isPlaying
-          ? "Recording… (other tracks playing — overdub)"
-          : "Recording… Press Play to hear other tracks while you record.",
+          ? 'Recording… (other tracks playing — overdub)'
+          : 'Recording… Press Play to hear other tracks while you record.',
       );
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -503,13 +553,13 @@ export function DawProvider({ children }: { children: ReactNode }) {
     setIsRecording(false);
 
     if (!ctx || !targetId) {
-      setStatus("Recording stopped.");
+      setStatus('Recording stopped.');
       return;
     }
 
     const merged = mergeFloatChunks(recordChunksRef.current);
     if (merged.length < 64) {
-      setStatus("Take too short — nothing saved.");
+      setStatus('Take too short — nothing saved.');
       return;
     }
 
@@ -520,13 +570,15 @@ export function DawProvider({ children }: { children: ReactNode }) {
       buffer: buf,
     };
 
-    setTracks((prev) => prev.map((tr) => (tr.id === targetId ? { ...tr, clips: [...tr.clips, clip] } : tr)));
-    const nm = tracksRef.current.find((t) => t.id === targetId)?.name ?? "track";
+    setTracks((prev) =>
+      prev.map((tr) => (tr.id === targetId ? { ...tr, clips: [...tr.clips, clip] } : tr)),
+    );
+    const nm = tracksRef.current.find((t) => t.id === targetId)?.name ?? 'track';
     setStatus(`Saved clip (${buf.duration.toFixed(2)}s) on ${nm}.`);
   }, [isRecording, selectedTrackId, teardownMicGraph]);
 
   const addTrackWithKind = useCallback((kind: TrackKind) => {
-    setTracks((prev) => [...prev, newTrack("", prev.length, kind)]);
+    setTracks((prev) => [...prev, newTrack('', prev.length, kind)]);
   }, []);
 
   const removeTrack = useCallback((id: string) => {
@@ -647,7 +699,9 @@ export function DawProvider({ children }: { children: ReactNode }) {
       const ctx = audioCtxRef.current;
       setTracks((prev) => {
         const next = prev.map((t) =>
-          t.id === trackId ? { ...t, eqPreset: chain.eq, effectPreset: chain.fx, spacePreset: chain.space } : t,
+          t.id === trackId
+            ? { ...t, eqPreset: chain.eq, effectPreset: chain.fx, spacePreset: chain.space }
+            : t,
         );
         if (ctx) {
           const tr = next.find((t) => t.id === trackId);
@@ -702,27 +756,35 @@ export function DawProvider({ children }: { children: ReactNode }) {
 
   const deleteClip = useCallback((trackId: string, clipId: string) => {
     setTracks((prev) =>
-      prev.map((t) => (t.id === trackId ? { ...t, clips: t.clips.filter((c) => c.id !== clipId) } : t)),
+      prev.map((t) =>
+        t.id === trackId ? { ...t, clips: t.clips.filter((c) => c.id !== clipId) } : t,
+      ),
     );
   }, []);
 
-  const addClipFromBuffer = useCallback((trackId: string, buffer: AudioBuffer, startTime?: number) => {
-    const at = startTime ?? currentTimeRef.current;
-    const clip: Clip = {
-      id: crypto.randomUUID(),
-      startTime: Math.max(0, at),
-      buffer,
-    };
-    setTracks((prev) => prev.map((t) => (t.id === trackId ? { ...t, clips: [...t.clips, clip] } : t)));
-    setStatus(`Added clip (${buffer.duration.toFixed(2)}s) at ${at.toFixed(2)}s.`);
-  }, []);
+  const addClipFromBuffer = useCallback(
+    (trackId: string, buffer: AudioBuffer, startTime?: number, sourceMeta?: ClipSourceMeta) => {
+      const at = startTime ?? currentTimeRef.current;
+      const clip: Clip = {
+        id: crypto.randomUUID(),
+        startTime: Math.max(0, at),
+        buffer,
+        ...(sourceMeta ? { sourceMeta } : {}),
+      };
+      setTracks((prev) =>
+        prev.map((t) => (t.id === trackId ? { ...t, clips: [...t.clips, clip] } : t)),
+      );
+      setStatus(`Added clip (${buffer.duration.toFixed(2)}s) at ${at.toFixed(2)}s.`);
+    },
+    [],
+  );
 
   const addLibraryClip = useCallback(
     (trackId: string, preset: LibrarySoundId) => {
       const ctx = ensureAudioCtx(audioCtxRef);
       void ctx.resume();
       const buf = createLibrarySound(ctx, preset);
-      addClipFromBuffer(trackId, buf);
+      addClipFromBuffer(trackId, buf, undefined, { type: 'library', soundId: preset });
     },
     [addClipFromBuffer],
   );
@@ -731,18 +793,18 @@ export function DawProvider({ children }: { children: ReactNode }) {
     async (trackId: string, remoteId: string) => {
       const item = REMOTE_LIBRARY_FLAT.find((x) => x.id === remoteId);
       if (!item) {
-        setStatus("Unknown remote sample.");
+        setStatus('Unknown remote sample.');
         return;
       }
       try {
         setStatus(`Loading ${item.name}…`);
         const ctx = ensureAudioCtx(audioCtxRef);
         await ctx.resume();
-        const res = await fetch(item.url, { mode: "cors" });
+        const res = await fetch(item.url, { mode: 'cors' });
         if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
         const ab = await res.arrayBuffer();
         const buf = await ctx.decodeAudioData(ab.slice(0));
-        addClipFromBuffer(trackId, buf);
+        addClipFromBuffer(trackId, buf, undefined, { type: 'remote', remoteId: item.id });
         setStatus(`Added: ${item.name} (${item.source})`);
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
@@ -768,26 +830,105 @@ export function DawProvider({ children }: { children: ReactNode }) {
     [addClipFromBuffer],
   );
 
-  const exportMixWav = useCallback(async () => {
-    const list = tracksRef.current;
-    const end = getTimelineEndSec(list);
-    if (end <= 0.05) {
-      setStatus("Nothing to export.");
-      return;
-    }
-    setStatus("Exporting…");
+  const addMidiNote = useCallback((trackId: string, note: Omit<MidiNote, 'id'>) => {
+    const id = crypto.randomUUID();
+    setTracks((prev) =>
+      prev.map((t) =>
+        t.id === trackId ? { ...t, midiNotes: [...t.midiNotes, { ...note, id }] } : t,
+      ),
+    );
+  }, []);
+
+  const removeMidiNote = useCallback((trackId: string, noteId: string) => {
+    setTracks((prev) =>
+      prev.map((t) =>
+        t.id === trackId ? { ...t, midiNotes: t.midiNotes.filter((n) => n.id !== noteId) } : t,
+      ),
+    );
+  }, []);
+
+  const updateMidiNote = useCallback(
+    (trackId: string, noteId: string, patch: Partial<Omit<MidiNote, 'id'>>) => {
+      setTracks((prev) =>
+        prev.map((t) =>
+          t.id === trackId
+            ? {
+                ...t,
+                midiNotes: t.midiNotes.map((n) =>
+                  n.id === noteId ? { ...n, ...patch, id: noteId } : n,
+                ),
+              }
+            : t,
+        ),
+      );
+    },
+    [],
+  );
+
+  const exportProjectJson = useCallback(() => {
     try {
-      const sr = audioCtxRef.current?.sampleRate ?? 48000;
-      const rendered = await offlineRenderMix(list, end + 0.1, sr);
-      const wav = encodeWavFromAudioBuffer(rendered);
-      const blob = new Blob([wav], { type: "audio/wav" });
+      const json = serializeProject(tracksRef.current, tempoRef.current, beatsPerBar);
+      const blob = new Blob([json], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
+      const a = document.createElement('a');
       a.href = url;
-      a.download = `mix-${new Date().toISOString().replace(/[:.]/g, "-")}.wav`;
+      a.download = `daw-project-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
       a.click();
       URL.revokeObjectURL(url);
-      setStatus("Mix downloaded.");
+      setStatus('Project JSON downloaded.');
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setStatus(`Export project failed: ${msg}`);
+    }
+  }, [beatsPerBar]);
+
+  const importProjectJson = useCallback(
+    async (json: string) => {
+      const data = parseProjectJSON(json);
+      if (!data) {
+        setStatus('Invalid or unsupported project file.');
+        return;
+      }
+      stopTransport();
+      const ctx = ensureAudioCtx(audioCtxRef);
+      if (ctx) disposeTrackNodes(ctx);
+      await ctx.resume();
+      try {
+        const next = await hydrateProject(data, ctx);
+        setTracks(next);
+        setSelectedTrackId(next[0]?.id ?? null);
+        setTempo(data.tempo);
+        setBeatsPerBar(Math.min(12, Math.max(1, data.beatsPerBar || 4)));
+        setCurrentTime(0);
+        setStatus(`Loaded project (${next.length} tracks).`);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        setStatus(`Import failed: ${msg}`);
+      }
+    },
+    [disposeTrackNodes, stopTransport],
+  );
+
+  const exportMixWav = useCallback(async () => {
+    const list = tracksRef.current;
+    const end = getTimelineEndSec(list, tempoRef.current);
+    if (end <= 0.05) {
+      setStatus('Nothing to export.');
+      return;
+    }
+    setStatus('Exporting…');
+    try {
+      const sr = audioCtxRef.current?.sampleRate ?? 48000;
+      const rendered = await offlineRenderMix(list, end + 0.1, sr, tempoRef.current);
+      const wav = encodeWavFromAudioBuffer(rendered);
+      const blob = new Blob([wav], { type: 'audio/wav' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `mix-${new Date().toISOString().replace(/[:.]/g, '-')}.wav`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setStatus('Mix downloaded.');
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setStatus(`Export failed: ${msg}`);
@@ -849,6 +990,12 @@ export function DawProvider({ children }: { children: ReactNode }) {
       addRemoteLibraryClip,
       importAudioFile,
       exportMixWav,
+      exportProjectJson,
+      importProjectJson,
+      addMidiNote,
+      removeMidiNote,
+      updateMidiNote,
+      setBeatsPerBar,
     }),
     [
       tracks,
@@ -887,6 +1034,12 @@ export function DawProvider({ children }: { children: ReactNode }) {
       addRemoteLibraryClip,
       importAudioFile,
       exportMixWav,
+      exportProjectJson,
+      importProjectJson,
+      addMidiNote,
+      removeMidiNote,
+      updateMidiNote,
+      setBeatsPerBar,
     ],
   );
 
@@ -895,6 +1048,6 @@ export function DawProvider({ children }: { children: ReactNode }) {
 
 export function useDaw() {
   const v = useContext(DawContext);
-  if (!v) throw new Error("useDaw must be used inside DawProvider");
+  if (!v) throw new Error('useDaw must be used inside DawProvider');
   return v;
 }
