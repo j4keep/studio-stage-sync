@@ -118,7 +118,8 @@ export async function hydrateProject(data: SerializedProjectV1, ctx: AudioContex
             sourceMeta: sc.source,
           });
         } else if (sc.source.type === 'remote') {
-          const item = REMOTE_LIBRARY_FLAT.find((x) => x.id === sc.source.remoteId);
+          const remoteSource = sc.source as { type: 'remote'; remoteId: string };
+          const item = REMOTE_LIBRARY_FLAT.find((x) => x.id === remoteSource.remoteId);
           if (!item) continue;
           const res = await fetch(item.url, { mode: 'cors' });
           if (!res.ok) continue;
