@@ -1,33 +1,25 @@
-/**
- * Project serialization / deserialization for DAW sessions.
- * Saves track layout, settings, clip metadata (library/remote refs), and MIDI notes.
- * Audio buffers from recordings are NOT saved (only library/remote refs are restorable).
- */
-
 import { createLibrarySound, type LibrarySoundId } from './audio';
 import { REMOTE_LIBRARY_FLAT } from './remoteLibrary';
-import {
-  newTrack,
-  type Clip,
-  type ClipSourceMeta,
-  type EffectPresetId,
-  type EqPresetId,
-  type MidiNote,
-  type SpacePresetId,
-  type Track,
-  type TrackKind,
+import type {
+  ClipSourceMeta,
+  EffectPresetId,
+  EqPresetId,
+  MidiNote,
+  SpacePresetId,
+  Track,
+  TrackKind,
 } from './types';
 
-export const PROJECT_FILE_VERSION = 1;
+export const PROJECT_FILE_VERSION = 1 as const;
 
-type SerializedClip = {
+export type SerializedClipV1 = {
   id: string;
   startTime: number;
   durationSec: number;
-  sourceMeta?: ClipSourceMeta;
+  source: ClipSourceMeta;
 };
 
-type SerializedTrack = {
+export type SerializedTrackV1 = {
   id: string;
   name: string;
   color: string;
@@ -37,26 +29,21 @@ type SerializedTrack = {
   pan: number;
   muted: boolean;
   solo: boolean;
-  recordArm: boolean;
   eqPreset: EqPresetId;
   effectPreset: EffectPresetId;
   spacePreset: SpacePresetId;
-  clips: SerializedClip[];
+  clips: SerializedClipV1[];
   midiNotes: MidiNote[];
 };
 
 export type SerializedProjectV1 = {
-  version: number;
+  version: typeof PROJECT_FILE_VERSION;
   tempo: number;
   beatsPerBar: number;
-  tracks: SerializedTrack[];
+  tracks: SerializedTrackV1[];
 };
 
-export function serializeProject(
-  tracks: Track[],
-  tempo: number,
-  beatsPerBar: number,
-): string {
+export function serializeProject(tracks: Track[], tempo: number, beatsPerBar: number): string {
   const data: SerializedProjectV1 = {
     version: PROJECT_FILE_VERSION,
     tempo,
@@ -71,95 +58,84 @@ export function serializeProject(
       pan: t.pan,
       muted: t.muted,
       solo: t.solo,
-      recordArm: t.recordArm,
       eqPreset: t.eqPreset,
       effectPreset: t.effectPreset,
       spacePreset: t.spacePreset,
-      clips: t.clips.map((c) => ({
-        id: c.id,
-        startTime: c.startTime,
-        durationSec: c.buffer.duration,
-        sourceMeta: c.sourceMeta,
-      })),
-      midiNotes: t.midiNotes,
+      clips: t.clips
+        .filter((c): c is typeof c & { sourceMeta: ClipSourceMeta } => Boolean(c.sourceMeta))
+        .map((c) => ({
+          id: c.id,
+          startTime: c.startTime,
+          durationSec: c.buffer.duration,
+          source: c.sourceMeta,
+        })),
+      midiNotes: t.midiNotes.map((m) => ({ ...m })),
     })),
   };
   return JSON.stringify(data, null, 2);
 }
 
-export function parseProjectJSON(json: string): SerializedProjectV1 | null {
+export function parseProjectJSON(str: string): SerializedProjectV1 | null {
   try {
-    const data = JSON.parse(json);
-    if (!data || typeof data !== 'object') return null;
-    if (data.version !== PROJECT_FILE_VERSION) return null;
-    if (!Array.isArray(data.tracks)) return null;
-    return data as SerializedProjectV1;
+    const o = JSON.parse(str) as unknown;
+    if (!o || typeof o !== 'object') return null;
+    const v = o as { version?: number; tracks?: unknown };
+    if (v.version !== PROJECT_FILE_VERSION || !Array.isArray(v.tracks)) return null;
+    return o as SerializedProjectV1;
   } catch {
     return null;
   }
 }
 
-export async function hydrateProject(
-  data: SerializedProjectV1,
-  ctx: AudioContext,
-): Promise<Track[]> {
-  const result: Track[] = [];
-
-  for (let i = 0; i < data.tracks.length; i++) {
-    const st = data.tracks[i];
-    const track = newTrack(st.name, i, st.kind);
-    track.id = st.id;
-    track.color = st.color;
-    track.inputSource = st.inputSource;
-    track.volume = st.volume;
-    track.pan = st.pan;
-    track.muted = st.muted;
-    track.solo = st.solo;
-    track.recordArm = st.recordArm;
-    track.eqPreset = st.eqPreset;
-    track.effectPreset = st.effectPreset;
-    track.spacePreset = st.spacePreset;
-    track.midiNotes = st.midiNotes ?? [];
-
-    const clips: Clip[] = [];
+export async function hydrateProject(data: SerializedProjectV1, ctx: BaseAudioContext): Promise<Track[]> {
+  const out: Track[] = [];
+  for (const st of data.tracks) {
+    const tr: Track = {
+      id: st.id,
+      name: st.name,
+      color: st.color,
+      kind: st.kind,
+      inputSource: st.inputSource,
+      recordArm: false,
+      volume: st.volume,
+      pan: st.pan,
+      muted: st.muted,
+      solo: st.solo,
+      eqPreset: st.eqPreset,
+      effectPreset: st.effectPreset,
+      spacePreset: st.spacePreset,
+      clips: [],
+      midiNotes: st.midiNotes.map((m) => ({ ...m })),
+    };
     for (const sc of st.clips) {
-      let buffer: AudioBuffer | null = null;
-
-      if (sc.sourceMeta?.type === 'library') {
-        try {
-          buffer = createLibrarySound(ctx, sc.sourceMeta.soundId as LibrarySoundId);
-        } catch {
-          /* skip unresolvable */
+      try {
+        if (sc.source.type === 'library') {
+          const buf = createLibrarySound(ctx, sc.source.soundId as LibrarySoundId);
+          tr.clips.push({
+            id: sc.id,
+            startTime: sc.startTime,
+            buffer: buf,
+            sourceMeta: sc.source,
+          });
+        } else if (sc.source.type === 'remote') {
+          const item = REMOTE_LIBRARY_FLAT.find((x) => x.id === sc.source.remoteId);
+          if (!item) continue;
+          const res = await fetch(item.url, { mode: 'cors' });
+          if (!res.ok) continue;
+          const ab = await res.arrayBuffer();
+          const buf = await ctx.decodeAudioData(ab.slice(0));
+          tr.clips.push({
+            id: sc.id,
+            startTime: sc.startTime,
+            buffer: buf,
+            sourceMeta: { type: 'remote', remoteId: sc.source.remoteId },
+          });
         }
-      } else if (sc.sourceMeta?.type === 'remote') {
-        const meta = sc.sourceMeta as { type: 'remote'; remoteId: string };
-        const item = REMOTE_LIBRARY_FLAT.find((x) => x.id === meta.remoteId);
-        if (item) {
-          try {
-            const res = await fetch(item.url, { mode: 'cors' });
-            if (res.ok) {
-              const ab = await res.arrayBuffer();
-              buffer = await ctx.decodeAudioData(ab.slice(0));
-            }
-          } catch {
-            /* skip */
-          }
-        }
-      }
-
-      if (buffer) {
-        clips.push({
-          id: sc.id,
-          startTime: sc.startTime,
-          buffer,
-          sourceMeta: sc.sourceMeta,
-        });
+      } catch {
+        /* skip broken clip */
       }
     }
-
-    track.clips = clips;
-    result.push(track);
+    out.push(tr);
   }
-
-  return result;
+  return out;
 }

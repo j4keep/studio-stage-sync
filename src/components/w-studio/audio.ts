@@ -428,7 +428,7 @@ export const LIBRARY_BY_CATEGORY: {
   },
 ];
 
-export function createLibrarySound(ctx: AudioContext, id: LibrarySoundId): AudioBuffer {
+function createLibrarySoundMono(ctx: AudioContext, id: LibrarySoundId): AudioBuffer {
   const sr = ctx.sampleRate;
 
   const noise = (len: number, amp: number) => {
@@ -789,13 +789,58 @@ export function mergeFloatChunks(chunks: Float32Array[]): Float32Array {
   return out;
 }
 
+/** One stereo slice from the recorder (L/R same length). */
+export type StereoFloatChunk = { L: Float32Array; R: Float32Array };
+
+export function mergeStereoChunks(chunks: StereoFloatChunk[]): StereoFloatChunk {
+  let n = 0;
+  for (const c of chunks) n += c.L.length;
+  const L = new Float32Array(n);
+  const R = new Float32Array(n);
+  let o = 0;
+  for (const c of chunks) {
+    L.set(c.L, o);
+    R.set(c.R, o);
+    o += c.L.length;
+  }
+  return { L, R };
+}
+
 export function audioBufferFromMonoFloat(
   ctx: BaseAudioContext,
   data: Float32Array,
   sampleRate: number,
 ): AudioBuffer {
   const buf = ctx.createBuffer(1, data.length, sampleRate);
-  buf.copyToChannel(data as unknown as Float32Array<ArrayBuffer>, 0, 0);
+  buf.copyToChannel(data, 0, 0);
+  return buf;
+}
+
+/** Duplicate mono to L/R for stereo mixer + pan. */
+export function audioBufferToStereo(ctx: BaseAudioContext, buf: AudioBuffer): AudioBuffer {
+  if (buf.numberOfChannels >= 2) return buf;
+  const n = buf.length;
+  const out = ctx.createBuffer(2, n, buf.sampleRate);
+  const m = buf.getChannelData(0);
+  out.copyToChannel(m, 0, 0);
+  out.copyToChannel(m, 1, 0);
+  return out;
+}
+
+export function createLibrarySound(ctx: AudioContext, id: LibrarySoundId): AudioBuffer {
+  return audioBufferToStereo(ctx, createLibrarySoundMono(ctx, id));
+}
+
+export function audioBufferFromStereoFloat(
+  ctx: BaseAudioContext,
+  L: Float32Array,
+  R: Float32Array,
+  sampleRate: number,
+): AudioBuffer {
+  const len = Math.min(L.length, R.length);
+  const buf = ctx.createBuffer(2, len, sampleRate);
+  buf.copyToChannel(L.subarray(0, len), 0, 0);
+  buf.copyToChannel(R.subarray(0, len), 1, 0);
   return buf;
 }
 
