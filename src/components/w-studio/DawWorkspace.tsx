@@ -1,16 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { TrackKind } from "./types";
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { TrackKind } from './types';
 import {
   EFFECT_PRESET_LABELS,
   EQ_PRESET_LABELS,
   LIBRARY_BY_CATEGORY,
   SPACE_PRESET_LABELS,
   faderToDbLabel,
-} from "./audio";
-import { MIC_CHAIN_PRESETS } from "./micPresets";
-import { REMOTE_LIBRARY_BY_CATEGORY } from "./remoteLibrary";
-import { DawProvider, INPUT_SOURCE_OPTIONS, useDaw } from "./DawContext";
-import { WaveformCanvas } from "./WaveformCanvas";
+  getTimelineEndSec,
+} from './audio';
+import { MIC_CHAIN_PRESETS } from './micPresets';
+import { REMOTE_LIBRARY_BY_CATEGORY } from './remoteLibrary';
+import { DawProvider, INPUT_SOURCE_OPTIONS, useDaw } from './DawContext';
+import { PianoRoll } from './PianoRoll';
+import { WaveformCanvas } from './WaveformCanvas';
 
 const PX_PER_SEC = 52;
 
@@ -20,7 +22,151 @@ function formatBBT(sec: number, bpm: number, beatsPerBar: number) {
   const bar = Math.floor(whole / beatsPerBar) + 1;
   const beat = (whole % beatsPerBar) + 1;
   const tick = Math.min(479, Math.floor((beats % 1) * 480));
-  return `${bar}:${beat}:${String(tick).padStart(3, "0")}`;
+  return `${bar}:${beat}:${String(tick).padStart(3, '0')}`;
+}
+
+function formatMs(sec: number) {
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  const cs = Math.floor((sec % 1) * 100);
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}:${String(cs).padStart(2, '0')}`;
+}
+
+function IconPanelLeft({ open }: { open: boolean }) {
+  return (
+    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d={open ? 'M9 4v16' : 'M9 4v16M15 12h5'} strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IconInspector({ open }: { open: boolean }) {
+  return (
+    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <rect x="3" y="4" width="12" height="16" rx="2" />
+      <path d={open ? 'M21 8l-4 4 4 4' : 'M17 8v8'} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconExpand() {
+  return (
+    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+    </svg>
+  );
+}
+
+function TrackInspector({ trackId }: { trackId: string | null }) {
+  const daw = useDaw();
+  const tr = trackId ? daw.tracks.find((t) => t.id === trackId) : null;
+  if (!tr) {
+    return <p className="p-3 text-[11px] text-[#6b7280]">Select a track in the timeline to edit EQ, dynamics, and space.</p>;
+  }
+  return (
+    <div className="space-y-3 p-3">
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-[#6b7280]">Inspector</div>
+      <label className="block text-[10px] text-[#9ca3af]">
+        Name
+        <input
+          value={tr.name}
+          onChange={(e) => daw.renameTrack(tr.id, e.target.value)}
+          className="mt-0.5 w-full rounded border border-[#2a2a32] bg-[#141416] px-2 py-1 text-[12px] text-white"
+        />
+      </label>
+      <label className="block text-[10px] text-[#9ca3af]">
+        Input
+        <select
+          value={tr.inputSource}
+          onChange={(e) => daw.setTrackInputSource(tr.id, e.target.value)}
+          className="mt-0.5 w-full rounded border border-[#2a2a32] bg-[#141416] px-2 py-1 text-[11px] text-[#d4d4d8]"
+        >
+          {INPUT_SOURCE_OPTIONS.map((opt) => (
+            <option key={opt} value={opt}>
+              {opt}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div>
+        <div className="mb-1 flex justify-between text-[10px] text-[#9ca3af]">
+          <span>Volume</span>
+          <span className="font-mono">{faderToDbLabel(tr.volume)}</span>
+        </div>
+        <input
+          type="range"
+          min={0}
+          max={1}
+          step={0.01}
+          value={tr.volume}
+          onChange={(e) => daw.setTrackVolume(tr.id, Number(e.target.value))}
+          className="w-full accent-[#3b82f6]"
+        />
+      </div>
+      <div>
+        <div className="mb-1 flex justify-between text-[10px] text-[#9ca3af]">
+          <span>Pan</span>
+          <span className="font-mono">{tr.pan.toFixed(2)}</span>
+        </div>
+        <input
+          type="range"
+          min={-1}
+          max={1}
+          step={0.01}
+          value={tr.pan}
+          onChange={(e) => daw.setTrackPan(tr.id, Number(e.target.value))}
+          className="w-full accent-[#a78bfa]"
+        />
+      </div>
+      <label className="block text-[10px] text-[#9ca3af]">
+        EQ
+        <select
+          value={tr.eqPreset}
+          onChange={(e) => daw.setTrackEq(tr.id, e.target.value as (typeof tr)['eqPreset'])}
+          className="mt-0.5 w-full rounded border border-[#2a2a32] bg-[#141416] px-2 py-1 text-[11px] text-[#d4d4d8]"
+        >
+          {EQ_PRESET_LABELS.map((o) => (
+            <option key={o.id} value={o.id}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="block text-[10px] text-[#9ca3af]">
+        Dynamics
+        <select
+          value={tr.effectPreset}
+          onChange={(e) => daw.setTrackEffect(tr.id, e.target.value as (typeof tr)['effectPreset'])}
+          className="mt-0.5 w-full rounded border border-[#2a2a32] bg-[#141416] px-2 py-1 text-[11px] text-[#d4d4d8]"
+        >
+          {EFFECT_PRESET_LABELS.map((o) => (
+            <option key={o.id} value={o.id}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="block text-[10px] text-[#9ca3af]">
+        Space
+        <select
+          value={tr.spacePreset}
+          onChange={(e) => daw.setTrackSpace(tr.id, e.target.value as (typeof tr)['spacePreset'])}
+          className="mt-0.5 w-full rounded border border-[#2a2a32] bg-[#141416] px-2 py-1 text-[11px] text-[#d4d4d8]"
+        >
+          {SPACE_PRESET_LABELS.map((o) => (
+            <option key={o.id} value={o.id}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <p className="text-[10px] leading-snug text-[#52525b]">
+        MIDI notes on this track appear in the piano roll and as blocks on the timeline. Use M / S / R on the track header
+        for mute, solo, record arm.
+      </p>
+    </div>
+  );
 }
 
 function IconPlay() {
@@ -58,7 +204,7 @@ function IconRewind() {
 function IconLoop({ active }: { active: boolean }) {
   return (
     <svg
-      className={`h-5 w-5 ${active ? "text-[#facc15]" : "text-[#9ca3af]"}`}
+      className={`h-5 w-5 ${active ? 'text-[#facc15]' : 'text-[#9ca3af]'}`}
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -73,7 +219,7 @@ function IconLoop({ active }: { active: boolean }) {
 function IconMetronome({ off }: { off: boolean }) {
   return (
     <svg
-      className={`h-5 w-5 ${off ? "text-[#52525b] line-through decoration-2" : "text-[#d4d4d8]"}`}
+      className={`h-5 w-5 ${off ? 'text-[#52525b] line-through decoration-2' : 'text-[#d4d4d8]'}`}
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -91,12 +237,12 @@ const MODAL_CELLS: {
   hint: string;
   color: string;
 }[] = [
-  { kind: "record_audio", label: "Record audio", hint: "Mic / line", color: "#60a5fa" },
-  { kind: "create_beat", label: "Create a beat", hint: "Pattern + drums", color: "#fb7185" },
-  { kind: "instrument", label: "Instrument", hint: "Keys / synth", color: "#f8fafc" },
-  { kind: "use_loops", label: "Use loops", hint: "Library", color: "#fb923c" },
-  { kind: "import_audio", label: "Import audio file", hint: "WAV / MP3", color: "#4ade80" },
-  { kind: "play_drums", label: "Play drums", hint: "Pads", color: "#2dd4bf" },
+  { kind: 'record_audio', label: 'Record audio', hint: 'Mic / line', color: '#60a5fa' },
+  { kind: 'create_beat', label: 'Create a beat', hint: 'Pattern + drums', color: '#fb7185' },
+  { kind: 'instrument', label: 'Instrument', hint: 'Keys / synth', color: '#f8fafc' },
+  { kind: 'use_loops', label: 'Use loops', hint: 'Library', color: '#fb923c' },
+  { kind: 'import_audio', label: 'Import audio file', hint: 'WAV / MP3', color: '#4ade80' },
+  { kind: 'play_drums', label: 'Play drums', hint: 'Pads', color: '#2dd4bf' },
 ];
 
 type ClipSelection = { trackId: string; clipId: string } | null;
@@ -185,10 +331,7 @@ function MixerStrip({
           ×
         </button>
       </div>
-      <div
-        className="border-b border-[#25252b] px-1.5 py-1"
-        style={{ borderBottomColor: tr.color, borderBottomWidth: 2 }}
-      >
+      <div className="border-b border-[#25252b] px-1.5 py-1" style={{ borderBottomColor: tr.color, borderBottomWidth: 2 }}>
         <input
           value={tr.name}
           onChange={(e) => daw.renameTrack(tr.id, e.target.value)}
@@ -212,7 +355,7 @@ function MixerStrip({
           type="button"
           title="Mute"
           onClick={() => daw.toggleMute(tr.id)}
-          className={`h-7 w-7 rounded border text-[10px] font-bold ${tr.muted ? "border-[#6b2a2a] bg-[#3f1f1f] text-[#fca5a5]" : "border-[#333] bg-[#1e1e22] text-[#a1a1aa]"}`}
+          className={`h-7 w-7 rounded border text-[10px] font-bold ${tr.muted ? 'border-[#6b2a2a] bg-[#3f1f1f] text-[#fca5a5]' : 'border-[#333] bg-[#1e1e22] text-[#a1a1aa]'}`}
         >
           M
         </button>
@@ -220,7 +363,7 @@ function MixerStrip({
           type="button"
           title="Solo"
           onClick={() => daw.toggleSolo(tr.id)}
-          className={`h-7 w-7 rounded border text-[10px] font-bold ${tr.solo ? "border-[#6b5a2a] bg-[#3a3420] text-[#fde047]" : "border-[#333] bg-[#1e1e22] text-[#a1a1aa]"}`}
+          className={`h-7 w-7 rounded border text-[10px] font-bold ${tr.solo ? 'border-[#6b5a2a] bg-[#3a3420] text-[#fde047]' : 'border-[#333] bg-[#1e1e22] text-[#a1a1aa]'}`}
         >
           S
         </button>
@@ -228,7 +371,7 @@ function MixerStrip({
           type="button"
           title="Record arm"
           onClick={() => daw.toggleRecordArm(tr.id)}
-          className={`h-7 w-7 rounded-full border text-[10px] font-bold ${tr.recordArm ? "border-red-500 bg-[#4a1515] text-red-300" : "border-[#444] bg-[#252528] text-[#888]"}`}
+          className={`h-7 w-7 rounded-full border text-[10px] font-bold ${tr.recordArm ? 'border-red-500 bg-[#4a1515] text-red-300' : 'border-[#444] bg-[#252528] text-[#888]'}`}
         >
           R
         </button>
@@ -250,7 +393,7 @@ function MixerStrip({
       </div>
       <select
         value={tr.eqPreset}
-        onChange={(e) => daw.setTrackEq(tr.id, e.target.value as (typeof tr)["eqPreset"])}
+        onChange={(e) => daw.setTrackEq(tr.id, e.target.value as (typeof tr)['eqPreset'])}
         className="mx-1 mt-1 rounded border border-[#2a2a32] bg-[#0e0e10] px-0.5 py-0.5 text-[8px] text-[#c4c4c4]"
         title="EQ"
       >
@@ -262,7 +405,7 @@ function MixerStrip({
       </select>
       <select
         value={tr.effectPreset}
-        onChange={(e) => daw.setTrackEffect(tr.id, e.target.value as (typeof tr)["effectPreset"])}
+        onChange={(e) => daw.setTrackEffect(tr.id, e.target.value as (typeof tr)['effectPreset'])}
         className="mx-1 mt-0.5 rounded border border-[#2a2a32] bg-[#0e0e10] px-0.5 py-0.5 text-[8px] text-[#c4c4c4]"
         title="Dynamics / effects"
       >
@@ -274,7 +417,7 @@ function MixerStrip({
       </select>
       <select
         value={tr.spacePreset}
-        onChange={(e) => daw.setTrackSpace(tr.id, e.target.value as (typeof tr)["spacePreset"])}
+        onChange={(e) => daw.setTrackSpace(tr.id, e.target.value as (typeof tr)['spacePreset'])}
         className="mx-1 mt-0.5 rounded border border-[#2a2a32] bg-[#0e0e10] px-0.5 py-0.5 text-[8px] text-[#c4c4c4]"
         title="Reverb / space (post dynamics)"
       >
@@ -334,33 +477,49 @@ function MixerStrip({
 
 function DawChrome() {
   const daw = useDaw();
-  const [editorTab, setEditorTab] = useState<"clip" | "piano">("clip");
+  const [editorTab, setEditorTab] = useState<'clip' | 'piano'>('clip');
   const [selection, setSelection] = useState<ClipSelection>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [mainView, setMainView] = useState<"arrange" | "mixer">("arrange");
+  const [mainView, setMainView] = useState<'arrange' | 'mixer'>('arrange');
+  const [libraryOpen, setLibraryOpen] = useState(true);
+  const [inspectorOpen, setInspectorOpen] = useState(true);
+  const [focusWorkbench, setFocusWorkbench] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const importTrackRef = useRef<string>("");
+  const projectFileRef = useRef<HTMLInputElement>(null);
+  const importTrackRef = useRef<string>('');
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (window.matchMedia('(max-width: 767px)').matches) {
+      setLibraryOpen(false);
+      setInspectorOpen(false);
+    }
+  }, []);
 
   const end = useMemo(() => {
-    if (daw.tracks.length === 0) return 90;
-    return Math.max(90, ...daw.tracks.flatMap((t) => t.clips.map((c) => c.startTime + c.buffer.duration)));
-  }, [daw.tracks]);
+    return Math.max(90, getTimelineEndSec(daw.tracks, daw.tempo));
+  }, [daw.tracks, daw.tempo]);
 
   const widthPx = Math.ceil(end * PX_PER_SEC) + 160;
 
   const selectedClip =
-    selection && daw.tracks.find((t) => t.id === selection.trackId)?.clips.find((c) => c.id === selection.clipId);
+    selection &&
+    daw.tracks
+      .find((t) => t.id === selection.trackId)
+      ?.clips.find((c) => c.id === selection.clipId);
 
-  const selectedTrack = daw.selectedTrackId ? daw.tracks.find((t) => t.id === daw.selectedTrackId) : null;
+  const selectedTrack = daw.selectedTrackId
+    ? daw.tracks.find((t) => t.id === daw.selectedTrackId)
+    : null;
 
-  const targetTrackId = daw.selectedTrackId ?? daw.tracks[0]?.id ?? "";
+  const targetTrackId = daw.selectedTrackId ?? daw.tracks[0]?.id ?? '';
 
   const [editorWavWidth, setEditorWavWidth] = useState(880);
   useEffect(() => {
     const w = () => setEditorWavWidth(Math.max(320, window.innerWidth - 360));
     w();
-    window.addEventListener("resize", w);
-    return () => window.removeEventListener("resize", w);
+    window.addEventListener('resize', w);
+    return () => window.removeEventListener('resize', w);
   }, []);
 
   const openImport = (trackId: string) => {
@@ -369,7 +528,13 @@ function DawChrome() {
   };
 
   return (
-    <div className="flex h-screen min-h-[640px] flex-col bg-[#0a0a0c] text-[#e4e4e8]">
+    <div
+      className={`flex flex-col bg-[#0a0a0c] text-[#e4e4e8] [@media(orientation:landscape)]:[.daw-main]:min-h-0 ${
+        focusWorkbench
+          ? 'fixed inset-0 z-[140] min-h-[100dvh] min-w-0'
+          : 'h-screen min-h-[640px] min-w-0'
+      }`}
+    >
       <input
         ref={fileRef}
         type="file"
@@ -379,7 +544,21 @@ function DawChrome() {
           const f = e.target.files?.[0];
           const tid = importTrackRef.current || targetTrackId;
           if (f && tid) void daw.importAudioFile(tid, f);
-          e.target.value = "";
+          e.target.value = '';
+        }}
+      />
+      <input
+        ref={projectFileRef}
+        type="file"
+        accept="application/json,.json"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f)
+            void f.text().then((t) => {
+              void daw.importProjectJson(t);
+            });
+          e.target.value = '';
         }}
       />
 
@@ -394,9 +573,11 @@ function DawChrome() {
         <div className="flex items-center gap-0.5">
           <button
             type="button"
-            title={daw.isRecording ? "Stop recording" : "Record"}
+            title={daw.isRecording ? 'Stop recording' : 'Record'}
             className={`flex h-11 w-11 items-center justify-center rounded-full border-2 text-[#f87171] hover:bg-[#3f2020] ${
-              daw.isRecording ? "border-red-500 bg-[#4a1818] ring-2 ring-red-500/60" : "border-[#7f1d1d] bg-[#292020]"
+              daw.isRecording
+                ? 'border-red-500 bg-[#4a1818] ring-2 ring-red-500/60'
+                : 'border-[#7f1d1d] bg-[#292020]'
             }`}
             onClick={() => {
               if (daw.isRecording) daw.stopRecord();
@@ -431,8 +612,8 @@ function DawChrome() {
           </button>
           <button
             type="button"
-            title={daw.loopEnabled ? "Loop on" : "Loop off"}
-            className={`flex h-10 w-10 items-center justify-center rounded-lg border ${daw.loopEnabled ? "border-[#854d0e] bg-[#422006]" : "border-[#333] bg-[#222226]"}`}
+            title={daw.loopEnabled ? 'Loop on' : 'Loop off'}
+            className={`flex h-10 w-10 items-center justify-center rounded-lg border ${daw.loopEnabled ? 'border-[#854d0e] bg-[#422006]' : 'border-[#333] bg-[#222226]'}`}
             onClick={() => daw.setLoopEnabled(!daw.loopEnabled)}
           >
             <IconLoop active={daw.loopEnabled} />
@@ -446,11 +627,25 @@ function DawChrome() {
           <span className="font-mono text-[15px] font-medium tabular-nums text-[#93c5fd]">
             {formatBBT(daw.currentTime, daw.tempo, daw.beatsPerBar)}
           </span>
+          <span className="font-mono text-[10px] tabular-nums text-[#6b7280]">{formatMs(daw.currentTime)}</span>
         </div>
+
+        <label className="hidden items-center gap-1 text-[10px] text-[#6b7280] sm:flex">
+          Time sig
+          <input
+            type="number"
+            min={1}
+            max={12}
+            value={daw.beatsPerBar}
+            onChange={(e) => daw.setBeatsPerBar(Math.min(12, Math.max(1, Number(e.target.value) || 4)))}
+            className="w-10 rounded border border-[#333] bg-[#1a1a1c] px-1 py-0.5 font-mono text-[11px] text-white"
+          />
+          <span className="text-[#52525b]">/4</span>
+        </label>
 
         <button
           type="button"
-          title={daw.metronomeOn ? "Metronome on" : "Metronome off"}
+          title={daw.metronomeOn ? 'Metronome on' : 'Metronome off'}
           className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#333] bg-[#222226] hover:bg-[#2a2a30]"
           onClick={() => daw.setMetronomeOn(!daw.metronomeOn)}
         >
@@ -485,15 +680,15 @@ function DawChrome() {
         <div className="flex items-center gap-1 border-l border-[#333] pl-2">
           <button
             type="button"
-            className={`rounded px-2 py-2 text-[10px] font-medium uppercase ${mainView === "arrange" ? "bg-[#2a2a32] text-white" : "text-[#888] hover:bg-[#222]"}`}
-            onClick={() => setMainView("arrange")}
+            className={`rounded px-2 py-2 text-[10px] font-medium uppercase ${mainView === 'arrange' ? 'bg-[#2a2a32] text-white' : 'text-[#888] hover:bg-[#222]'}`}
+            onClick={() => setMainView('arrange')}
           >
             Timeline
           </button>
           <button
             type="button"
-            className={`rounded px-2 py-2 text-[10px] font-medium uppercase ${mainView === "mixer" ? "bg-[#2a2a32] text-white" : "text-[#888] hover:bg-[#222]"}`}
-            onClick={() => setMainView("mixer")}
+            className={`rounded px-2 py-2 text-[10px] font-medium uppercase ${mainView === 'mixer' ? 'bg-[#2a2a32] text-white' : 'text-[#888] hover:bg-[#222]'}`}
+            onClick={() => setMainView('mixer')}
           >
             Mixer
           </button>
@@ -521,9 +716,50 @@ function DawChrome() {
         >
           Import
         </button>
+
+        <div className="flex w-full flex-wrap items-center justify-end gap-1 border-t border-[#2a2a32] pt-2 sm:w-auto sm:border-0 sm:pt-0">
+          <button
+            type="button"
+            title={libraryOpen ? 'Hide sound library (more timeline on phone)' : 'Show sound library'}
+            className={`flex h-9 w-9 items-center justify-center rounded border ${libraryOpen ? 'border-[#3f3f46] bg-[#222226] text-[#e4e4e8]' : 'border-[#333] text-[#6b7280]'}`}
+            onClick={() => setLibraryOpen((v) => !v)}
+          >
+            <IconPanelLeft open={libraryOpen} />
+          </button>
+          <button
+            type="button"
+            title={inspectorOpen ? 'Hide inspector' : 'Show inspector'}
+            className={`flex h-9 w-9 items-center justify-center rounded border ${inspectorOpen ? 'border-[#3f3f46] bg-[#222226] text-[#e4e4e8]' : 'border-[#333] text-[#6b7280]'}`}
+            onClick={() => setInspectorOpen((v) => !v)}
+          >
+            <IconInspector open={inspectorOpen} />
+          </button>
+          <button
+            type="button"
+            title={focusWorkbench ? 'Exit full workspace' : 'Full workspace (desktop)'}
+            className={`hidden h-9 w-9 items-center justify-center rounded border lg:flex ${focusWorkbench ? 'border-amber-700/50 bg-[#422006] text-amber-200' : 'border-[#333] text-[#6b7280]'}`}
+            onClick={() => setFocusWorkbench((v) => !v)}
+          >
+            <IconExpand />
+          </button>
+          <button
+            type="button"
+            className="rounded border border-[#2a4a2a] bg-[#152018] px-2 py-1.5 text-[10px] text-[#86efac] hover:bg-[#1a2820]"
+            onClick={() => daw.exportProjectJson()}
+          >
+            Save project
+          </button>
+          <button
+            type="button"
+            className="rounded border border-[#2a2a32] px-2 py-1.5 text-[10px] text-[#9ca3af] hover:bg-[#1a1a1e]"
+            onClick={() => projectFileRef.current?.click()}
+          >
+            Load project
+          </button>
+        </div>
       </header>
 
-      {mainView === "mixer" ? (
+      {mainView === 'mixer' ? (
         <div className="flex min-h-0 flex-1 overflow-x-auto overflow-y-hidden bg-[#101012]">
           {daw.tracks.map((t) => (
             <MixerStrip
@@ -536,8 +772,10 @@ function DawChrome() {
           <div className="min-w-[120px] flex-1 bg-[#0c0c0e]" aria-hidden />
         </div>
       ) : (
-        <div className="flex min-h-0 flex-1">
-          <aside className="flex w-[200px] shrink-0 flex-col border-r border-[#25252b] bg-[#0e0e10]">
+        <div className="daw-main flex min-h-0 flex-1 flex-col lg:flex-row [@media(orientation:landscape)]:flex-row">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-row">
+          {libraryOpen ? (
+          <aside className="flex w-[min(200px,42vw)] shrink-0 flex-col border-r border-[#25252b] bg-[#0e0e10] sm:w-[200px]">
             <div className="border-b border-[#25252b] px-2 py-2 text-[10px] font-semibold uppercase tracking-widest text-[#6b7280]">
               Sound library
             </div>
@@ -550,9 +788,8 @@ function DawChrome() {
                   disabled={!targetTrackId}
                   onChange={(e) => {
                     const v = e.target.value;
-                    if (v && targetTrackId)
-                      daw.applyMicChainPreset(targetTrackId, v as (typeof MIC_CHAIN_PRESETS)[number]["id"]);
-                    e.target.value = "";
+                    if (v && targetTrackId) daw.applyMicChainPreset(targetTrackId, v as (typeof MIC_CHAIN_PRESETS)[number]['id']);
+                    e.target.value = '';
                   }}
                 >
                   <option value="">Apply mic preset…</option>
@@ -585,7 +822,8 @@ function DawChrome() {
               {REMOTE_LIBRARY_BY_CATEGORY.map((grp) => (
                 <div key={grp.category} className="mb-3">
                   <div className="mb-1 px-1 text-[10px] text-[#9ca3af]">
-                    {grp.category} <span className="text-[#52525b]">(web)</span>
+                    {grp.category}{' '}
+                    <span className="text-[#52525b]">(web)</span>
                   </div>
                   <ul className="space-y-0.5">
                     {grp.items.map((item) => (
@@ -594,7 +832,9 @@ function DawChrome() {
                           type="button"
                           disabled={!targetTrackId}
                           className="w-full rounded px-2 py-1.5 text-left text-[11px] text-[#d1d5db] hover:bg-[#1a1a1f] disabled:opacity-40"
-                          onClick={() => targetTrackId && void daw.addRemoteLibraryClip(targetTrackId!, item.id)}
+                          onClick={() =>
+                            targetTrackId && void daw.addRemoteLibraryClip(targetTrackId!, item.id)
+                          }
                           title={item.source}
                         >
                           {item.name}
@@ -606,10 +846,11 @@ function DawChrome() {
               ))}
             </div>
             <p className="border-t border-[#25252b] p-2 text-[10px] leading-snug text-[#6b7280]">
-              Built-in sounds are synthesized. Web samples need CORS; if one fails, try another or use{" "}
+              Built-in sounds are synthesized. Web samples need CORS; if one fails, try another or use{' '}
               <strong className="text-[#9ca3af]">Import file</strong>.
             </p>
           </aside>
+          ) : null}
 
           <section className="flex min-w-0 flex-1 flex-col bg-[#0a0a0c]">
             <div className="sticky top-0 z-20 flex h-7 shrink-0 items-end border-b border-[#25252b] bg-[#0c0c0f]">
@@ -637,7 +878,7 @@ function DawChrome() {
               {daw.tracks.map((tr) => (
                 <div
                   key={tr.id}
-                  className={`flex border-b border-[#1a1a1e] ${daw.selectedTrackId === tr.id ? "bg-[#0f141c]" : "bg-[#0a0a0c]"}`}
+                  className={`flex min-h-[64px] border-b border-[#1a1a1e] ${daw.selectedTrackId === tr.id ? 'bg-[#0f141c]' : 'bg-[#0a0a0c]'}`}
                 >
                   <div className="flex w-[188px] shrink-0 border-r border-[#25252b]">
                     <div className="w-1 shrink-0" style={{ backgroundColor: tr.color }} />
@@ -650,21 +891,21 @@ function DawChrome() {
                       <div className="flex flex-wrap gap-1">
                         <button
                           type="button"
-                          className={`h-6 w-6 rounded text-[10px] font-bold ${tr.muted ? "bg-[#3f1f1f] text-[#fca5a5]" : "bg-[#1a1a1f] text-[#9ca3af]"}`}
+                          className={`h-6 w-6 rounded text-[10px] font-bold ${tr.muted ? 'bg-[#3f1f1f] text-[#fca5a5]' : 'bg-[#1a1a1f] text-[#9ca3af]'}`}
                           onClick={() => daw.toggleMute(tr.id)}
                         >
                           M
                         </button>
                         <button
                           type="button"
-                          className={`h-6 w-6 rounded text-[10px] font-bold ${tr.solo ? "bg-[#3a3420] text-[#fde047]" : "bg-[#1a1a1f] text-[#9ca3af]"}`}
+                          className={`h-6 w-6 rounded text-[10px] font-bold ${tr.solo ? 'bg-[#3a3420] text-[#fde047]' : 'bg-[#1a1a1f] text-[#9ca3af]'}`}
                           onClick={() => daw.toggleSolo(tr.id)}
                         >
                           S
                         </button>
                         <button
                           type="button"
-                          className={`h-6 w-6 rounded-full text-[9px] font-bold ${tr.recordArm ? "bg-[#4a1515] text-red-300" : "bg-[#1a1a1f] text-[#9ca3af]"}`}
+                          className={`h-6 w-6 rounded-full text-[9px] font-bold ${tr.recordArm ? 'bg-[#4a1515] text-red-300' : 'bg-[#1a1a1f] text-[#9ca3af]'}`}
                           onClick={() => daw.toggleRecordArm(tr.id)}
                         >
                           R
@@ -687,12 +928,33 @@ function DawChrome() {
                     </div>
                   </div>
 
-                  <div className="relative min-h-[56px] min-w-0 flex-1">
+                  <div className="relative min-h-[64px] min-w-0 flex-1">
                     <div
                       className="pointer-events-none absolute bottom-0 left-0 top-0 z-10 w-px bg-[#4d9fff]"
                       style={{ left: daw.currentTime * PX_PER_SEC }}
                     />
-                    <div className="relative h-full min-h-[56px]" style={{ width: widthPx }}>
+                    <div className="relative h-full min-h-[64px]" style={{ width: widthPx }}>
+                      {(() => {
+                        const spb = 60 / Math.max(40, daw.tempo);
+                        return tr.midiNotes.map((n) => {
+                          const left = n.startBeats * spb * PX_PER_SEC;
+                          const w = Math.max(8, n.durationBeats * spb * PX_PER_SEC);
+                          return (
+                            <div
+                              key={n.id}
+                              className="pointer-events-none absolute rounded-sm opacity-85"
+                              style={{
+                                left,
+                                top: 52,
+                                width: w,
+                                height: 10,
+                                backgroundColor: tr.color,
+                              }}
+                              title="MIDI"
+                            />
+                          );
+                        });
+                      })()}
                       {tr.clips.map((c) => {
                         const w = Math.max(24, c.buffer.duration * PX_PER_SEC);
                         const h = 48;
@@ -704,8 +966,8 @@ function DawChrome() {
                             tabIndex={0}
                             className={`group absolute top-1 cursor-pointer overflow-hidden rounded-sm border text-left shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-[#60a5fa] ${
                               isSel
-                                ? "border-[#93c5fd] ring-1 ring-[#60a5fa]/50"
-                                : "border-[#2a2a32] hover:border-[#404040]"
+                                ? 'border-[#93c5fd] ring-1 ring-[#60a5fa]/50'
+                                : 'border-[#2a2a32] hover:border-[#404040]'
                             }`}
                             style={{
                               left: c.startTime * PX_PER_SEC,
@@ -715,7 +977,8 @@ function DawChrome() {
                             }}
                             onClick={() => setSelection({ trackId: tr.id, clipId: c.id })}
                             onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === " ") setSelection({ trackId: tr.id, clipId: c.id });
+                              if (e.key === 'Enter' || e.key === ' ')
+                                setSelection({ trackId: tr.id, clipId: c.id });
                             }}
                           >
                             <WaveformCanvas
@@ -732,7 +995,9 @@ function DawChrome() {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 daw.deleteClip(tr.id, c.id);
-                                setSelection((s) => (s?.clipId === c.id && s.trackId === tr.id ? null : s));
+                                setSelection((s) =>
+                                  s?.clipId === c.id && s.trackId === tr.id ? null : s,
+                                );
                               }}
                             >
                               ×
@@ -746,28 +1011,39 @@ function DawChrome() {
               ))}
             </div>
           </section>
+          </div>
+
+          {inspectorOpen ? (
+            <aside className="flex max-h-[38vh] w-full shrink-0 flex-col overflow-y-auto border-t border-[#25252b] bg-[#0e0e10] lg:max-h-none lg:w-[min(260px,32vw)] lg:border-l lg:border-t-0 xl:w-[280px]">
+              <TrackInspector trackId={targetTrackId} />
+            </aside>
+          ) : null}
         </div>
       )}
 
-      <footer className="flex h-[140px] shrink-0 flex-col border-t border-[#25252b] bg-[#101012]">
+      <footer
+        className={`flex shrink-0 flex-col border-t border-[#25252b] bg-[#101012] ${
+          editorTab === 'piano' ? 'min-h-[240px] flex-1 lg:h-[min(320px,40vh)] lg:max-h-[420px]' : 'h-[140px]'
+        }`}
+      >
         <div className="flex border-b border-[#25252b] text-[11px]">
           <button
             type="button"
-            className={`px-4 py-1.5 font-medium ${editorTab === "clip" ? "bg-[#1a1a1f] text-white" : "text-[#9ca3af] hover:bg-[#16161a]"}`}
-            onClick={() => setEditorTab("clip")}
+            className={`px-4 py-1.5 font-medium ${editorTab === 'clip' ? 'bg-[#1a1a1f] text-white' : 'text-[#9ca3af] hover:bg-[#16161a]'}`}
+            onClick={() => setEditorTab('clip')}
           >
             Clip / waveform
           </button>
           <button
             type="button"
-            className={`px-4 py-1.5 font-medium ${editorTab === "piano" ? "bg-[#1a1a1f] text-white" : "text-[#9ca3af] hover:bg-[#16161a]"}`}
-            onClick={() => setEditorTab("piano")}
+            className={`px-4 py-1.5 font-medium ${editorTab === 'piano' ? 'bg-[#1a1a1f] text-white' : 'text-[#9ca3af] hover:bg-[#16161a]'}`}
+            onClick={() => setEditorTab('piano')}
           >
             Piano roll
           </button>
         </div>
         <div className="flex min-h-0 flex-1 items-stretch">
-          {editorTab === "clip" && selectedClip && selectedTrack ? (
+          {editorTab === 'clip' && selectedClip && selectedTrack ? (
             <div className="flex flex-1 items-center gap-3 p-3">
               <div className="h-1 w-10 shrink-0 rounded" style={{ backgroundColor: selectedTrack.color }} />
               <div className="min-h-0 flex-1 rounded border border-[#25252b] bg-[#0a0a0c]">
@@ -780,21 +1056,12 @@ function DawChrome() {
                 />
               </div>
             </div>
-          ) : editorTab === "clip" ? (
+          ) : editorTab === 'clip' ? (
             <p className="flex flex-1 items-center px-4 text-[12px] text-[#6b7280]">
               Select a clip in the timeline for a zoomed waveform.
             </p>
           ) : (
-            <div className="flex flex-1 flex-col p-2">
-              <div
-                className="flex-1 rounded border border-[#1f1f24] bg-[#0a0a0c]"
-                style={{
-                  backgroundImage:
-                    "linear-gradient(#1a1a1e 1px, transparent 1px), linear-gradient(90deg, #141418 1px, transparent 1px)",
-                  backgroundSize: "100% 14px, 32px 100%",
-                }}
-              />
-            </div>
+            <PianoRoll trackId={targetTrackId} playheadSec={daw.currentTime} tempo={daw.tempo} />
           )}
         </div>
       </footer>

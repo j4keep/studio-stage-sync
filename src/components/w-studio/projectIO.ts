@@ -132,7 +132,8 @@ export async function hydrateProject(
           /* skip unresolvable */
         }
       } else if (sc.sourceMeta?.type === 'remote') {
-        const item = REMOTE_LIBRARY_FLAT.find((x) => x.id === sc.sourceMeta!.remoteId);
+        const meta = sc.sourceMeta as { type: 'remote'; remoteId: string };
+        const item = REMOTE_LIBRARY_FLAT.find((x) => x.id === meta.remoteId);
         if (item) {
           try {
             const res = await fetch(item.url, { mode: 'cors' });
