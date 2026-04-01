@@ -4,7 +4,6 @@ export default function RecordingStudio() {
   return <DawWorkspacePage />;
 }
 
-// Re-exports for external consumers
 export { DawWorkspacePage } from "./DawWorkspace";
 export { DawProvider, useDaw, INPUT_SOURCE_OPTIONS } from "./DawContext";
 export { WaveformCanvas } from "./WaveformCanvas";
