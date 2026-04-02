@@ -1033,6 +1033,171 @@ function MasterMixerStrip() {
   );
 }
 
+/** Cycle Range + Ruler with draggable playhead thumb */
+function CycleRangeRuler({
+  barW, widthPx, end, tempo, beatsPerBar, currentTime, loopEnabled, onSeek,
+}: {
+  barW: number; widthPx: number; end: number; tempo: number; beatsPerBar: number;
+  currentTime: number; loopEnabled: boolean; onSeek: (t: number) => void;
+}) {
+  const [cycleStart, setCycleStart] = useState(0); // in bars (0-indexed)
+  const [cycleEnd, setCycleEnd] = useState(4);     // in bars (0-indexed), so 4 bars = bars 1-4
+  const [dragging, setDragging] = useState<'playhead' | 'cycleLeft' | 'cycleRight' | 'cycleBody' | null>(null);
+  const dragStartRef = useRef({ x: 0, cycleStart: 0, cycleEnd: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const totalBars = Math.ceil(end / secPerBar(tempo, beatsPerBar)) + 2;
+  const maxBars = Math.min(127, totalBars);
+
+  const pxToBar = (px: number) => Math.max(0, Math.min(maxBars, px / barW));
+  const pxToSec = (px: number) => Math.max(0, px / PX_PER_SEC);
+
+  const handleMouseDown = (e: React.MouseEvent, type: 'playhead' | 'cycleLeft' | 'cycleRight' | 'cycleBody') => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragging(type);
+    dragStartRef.current = { x: e.clientX, cycleStart, cycleEnd };
+
+    const onMove = (ev: MouseEvent) => {
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const relX = ev.clientX - rect.left;
+
+      if (type === 'playhead') {
+        onSeek(pxToSec(relX));
+      } else if (type === 'cycleLeft') {
+        const newStart = Math.round(pxToBar(relX));
+        if (newStart < cycleEnd) setCycleStart(Math.max(0, newStart));
+      } else if (type === 'cycleRight') {
+        const newEnd = Math.round(pxToBar(relX));
+        if (newEnd > cycleStart) setCycleEnd(Math.min(maxBars, newEnd));
+      } else if (type === 'cycleBody') {
+        const dx = ev.clientX - dragStartRef.current.x;
+        const dBars = Math.round(dx / barW);
+        const len = dragStartRef.current.cycleEnd - dragStartRef.current.cycleStart;
+        let newStart = dragStartRef.current.cycleStart + dBars;
+        newStart = Math.max(0, Math.min(maxBars - len, newStart));
+        setCycleStart(newStart);
+        setCycleEnd(newStart + len);
+      }
+    };
+
+    const onUp = () => {
+      setDragging(null);
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
+
+  const cycleLeftPx = cycleStart * barW;
+  const cycleRightPx = cycleEnd * barW;
+  const playheadPx = currentTime * PX_PER_SEC;
+
+  return (
+    <div
+      ref={containerRef}
+      className="sticky top-0 z-20 flex shrink-0 flex-col border-b shadow-[inset_0_-1px_0_rgba(0,0,0,0.25)]"
+      style={{ borderColor: LP.border }}
+    >
+      {/* Cycle range row */}
+      <div className="flex h-5 items-stretch" style={{ background: '#5a5a5e' }}>
+        <div className="shrink-0 border-r" style={{ width: TRACK_HEADER_W, borderColor: '#8a7028', background: 'rgba(0,0,0,0.08)' }} />
+        <div className="relative min-w-0 flex-1 overflow-hidden">
+          <div className="relative h-5" style={{ width: widthPx }}>
+            {/* Cycle range yellow bar */}
+            {loopEnabled && (
+              <div
+                className="absolute top-0 bottom-0 cursor-move"
+                style={{
+                  left: cycleLeftPx,
+                  width: cycleRightPx - cycleLeftPx,
+                  background: 'linear-gradient(180deg, #d4a82a 0%, #c49820 100%)',
+                  borderRadius: '2px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                }}
+                onMouseDown={(e) => handleMouseDown(e, 'cycleBody')}
+              >
+                {/* Left resize handle */}
+                <div
+                  className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize"
+                  onMouseDown={(e) => handleMouseDown(e, 'cycleLeft')}
+                  style={{ borderLeft: '2px solid #8a7028' }}
+                />
+                {/* Right resize handle */}
+                <div
+                  className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize"
+                  onMouseDown={(e) => handleMouseDown(e, 'cycleRight')}
+                  style={{ borderRight: '2px solid #8a7028' }}
+                />
+                {/* Bar numbers inside cycle */}
+                {Array.from({ length: cycleEnd - cycleStart }).map((_, i) => (
+                  <span
+                    key={i}
+                    className="absolute top-0.5 font-mono text-[9px] font-bold text-[#5a3a10]"
+                    style={{ left: i * barW + 4 }}
+                  >
+                    {cycleStart + i + 1}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      {/* Ruler row with bar numbers and playhead thumb */}
+      <div className="flex h-5 items-stretch" style={{ background: `linear-gradient(180deg, ${LP.ruler}dd 0%, ${LP.ruler}88 100%)` }}>
+        <div
+          className="flex shrink-0 items-center border-r px-1 text-[9px] font-bold text-[#2a2418]"
+          style={{ width: TRACK_HEADER_W, borderColor: '#8a7028', background: 'rgba(0,0,0,0.08)' }}
+        >
+          Ruler
+        </div>
+        <div
+          className="relative min-w-0 flex-1 overflow-hidden cursor-pointer"
+          onClick={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            onSeek(pxToSec(e.clientX - rect.left));
+          }}
+        >
+          <div className="relative h-5" style={{ width: widthPx }}>
+            {/* Bar markers */}
+            {Array.from({ length: totalBars }).map((_, i) => (
+              <div
+                key={i}
+                className="absolute bottom-0 top-0 border-l border-[#6a5a28]/60 pl-1"
+                style={{ left: i * barW }}
+              >
+                <span className="inline-block translate-y-0.5 font-mono text-[9px] font-semibold tabular-nums text-[#1a1508]">
+                  {i + 1}
+                </span>
+              </div>
+            ))}
+            {/* Playhead line */}
+            <div
+              className="pointer-events-none absolute bottom-0 top-0 w-0.5 bg-white shadow-[0_0_6px_rgba(255,255,255,0.8)]"
+              style={{ left: playheadPx, zIndex: 10 }}
+            />
+            {/* Playhead thumb (draggable triangle) */}
+            <div
+              className="absolute z-20 cursor-grab active:cursor-grabbing"
+              style={{ left: playheadPx - 6, top: -2 }}
+              onMouseDown={(e) => handleMouseDown(e, 'playhead')}
+            >
+              <svg width="13" height="12" viewBox="0 0 13 12">
+                <polygon points="6.5,0 13,10 0,10" fill="#f0f0f0" stroke="#333" strokeWidth="1" />
+                <line x1="6.5" y1="10" x2="6.5" y2="12" stroke="white" strokeWidth="1" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DawChrome() {
   const daw = useDaw();
   const [editorTab, setEditorTab] = useState<'clip' | 'piano'>('clip');
@@ -1449,7 +1614,7 @@ function DawChrome() {
               </aside>
             )}
             <div
-              className="flex min-h-0 flex-1 items-stretch overflow-x-auto overflow-y-hidden lg:min-h-[min(640px,72vh)]"
+              className="flex min-h-0 flex-1 items-stretch overflow-x-auto overflow-y-auto"
               style={{ background: LP.panelLo }}
             >
               {/* Label column */}
@@ -1574,42 +1739,17 @@ function DawChrome() {
           ) : null}
 
           <section className="flex min-w-0 flex-1 flex-col" style={{ background: LP.panelLo }}>
-            <div
-              className="sticky top-0 z-20 flex h-9 shrink-0 items-stretch border-b shadow-[inset_0_-1px_0_rgba(0,0,0,0.25)]"
-              style={{ borderColor: LP.border, background: `linear-gradient(180deg, ${LP.ruler}dd 0%, ${LP.ruler}88 100%)` }}
-            >
-              <div
-                className="flex shrink-0 items-center border-r px-1 text-[9px] font-bold text-[#2a2418]"
-                style={{ width: TRACK_HEADER_W, borderColor: '#8a7028', background: 'rgba(0,0,0,0.08)' }}
-              >
-                Ruler
-              </div>
-              <div className="relative min-w-0 flex-1 overflow-hidden">
-                {daw.loopEnabled ? (
-                  <div
-                    className="pointer-events-none absolute bottom-0 left-0 right-0 z-20 h-[3px] rounded-t-sm bg-[#e0b82a]/90 shadow-[0_-1px_6px_rgba(224,184,42,0.55)]"
-                    title="Cycle / loop active"
-                  />
-                ) : null}
-                <div className="relative h-9" style={{ width: widthPx }}>
-                  {Array.from({ length: Math.ceil(end / secPerBar(daw.tempo, daw.beatsPerBar)) + 2 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="absolute bottom-0 top-0 border-l border-[#6a5a28]/60 pl-1"
-                      style={{ left: i * barW }}
-                    >
-                      <span className="inline-block translate-y-1 font-mono text-[11px] font-semibold tabular-nums text-[#1a1508]">
-                        {i + 1}
-                      </span>
-                    </div>
-                  ))}
-                  <div
-                    className="pointer-events-none absolute bottom-0 top-0 w-0.5 bg-white shadow-[0_0_6px_rgba(255,255,255,0.8)]"
-                    style={{ left: daw.currentTime * PX_PER_SEC, zIndex: 10 }}
-                  />
-                </div>
-              </div>
-            </div>
+            {/* Cycle Range + Ruler */}
+            <CycleRangeRuler
+              barW={barW}
+              widthPx={widthPx}
+              end={end}
+              tempo={daw.tempo}
+              beatsPerBar={daw.beatsPerBar}
+              currentTime={daw.currentTime}
+              loopEnabled={daw.loopEnabled}
+              onSeek={(t) => daw.seek(t)}
+            />
 
             {/* +/Save/Dropdown row above tracks — matches Logic Pro */}
             <div className="flex shrink-0 items-center border-b" style={{ borderColor: LP.border, background: LP.panel }}>
@@ -1651,11 +1791,24 @@ function DawChrome() {
                          <button type="button" title="Mute" className="h-5 w-5 rounded-sm border text-[8px] font-bold" style={{ borderColor: '#444', background: tr.muted ? LP.muteOn : '#404040', color: tr.muted ? '#022' : '#ccc' }} onClick={() => daw.toggleMute(tr.id)}>M</button>
                          <button type="button" title="Solo" className="h-5 w-5 rounded-sm border text-[8px] font-bold" style={{ borderColor: '#444', background: tr.solo ? LP.solo : '#404040', color: tr.solo ? '#111' : '#ccc' }} onClick={() => daw.toggleSolo(tr.id)}>S</button>
                          <button type="button" title="Record arm" className="h-5 w-5 rounded-sm border text-[8px] font-bold" style={{ borderColor: '#444', background: tr.recordArm ? LP.record : '#404040', color: tr.recordArm ? '#fff' : '#ccc' }} onClick={() => daw.toggleRecordArm(tr.id)}>R</button>
-                         <div className="relative mx-1 h-5 min-w-[60px] flex-1 overflow-hidden rounded-full" style={{ background: '#2a2a2a', boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.6)' }}>
-                           <div className="absolute left-0 top-0 bottom-0 rounded-full" style={{ width: `${tr.volume * 100}%`, background: 'linear-gradient(to right, #3a8a3a, #5cb85c)' }} />
-                           <input type="range" min={0} max={1} step={0.01} value={tr.volume} onChange={(e) => daw.setTrackVolume(tr.id, Number(e.target.value))} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
-                           <div className="pointer-events-none absolute top-1/2 h-3.5 w-3.5 -translate-y-1/2 rounded-full border border-[#888] bg-gradient-to-b from-[#ccc] to-[#888] shadow" style={{ left: `calc(${tr.volume * 100}% - 7px)` }} />
-                         </div>
+                         {/* Volume fader with signal-dependent green fill */}
+                         {(() => {
+                           const peak = daw.meterPeaks[tr.id] ?? 0;
+                           const signalPct = Math.min(100, peak * 110);
+                           const volPct = tr.volume * 100;
+                           return (
+                             <div className="relative mx-1 h-5 min-w-[60px] flex-1 overflow-hidden rounded-full" style={{ background: '#2a2a2a', boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.6)' }}>
+                               {/* Signal-level green fill (only shows when audio is flowing) */}
+                               {signalPct > 0.5 && (
+                                 <div className="absolute left-0 top-0 bottom-0 rounded-full transition-[width] duration-75" style={{ width: `${Math.min(volPct, signalPct)}%`, background: 'linear-gradient(to right, #3a8a3a, #5cb85c)' }} />
+                               )}
+                               {/* Gray volume bar background showing fader position */}
+                               <div className="absolute left-0 top-0 bottom-0 rounded-full" style={{ width: `${volPct}%`, background: signalPct > 0.5 ? 'transparent' : 'linear-gradient(to right, #4a4a4e, #5a5a5e)', opacity: signalPct > 0.5 ? 0 : 0.6 }} />
+                               <input type="range" min={0} max={1} step={0.01} value={tr.volume} onChange={(e) => daw.setTrackVolume(tr.id, Number(e.target.value))} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
+                               <div className="pointer-events-none absolute top-1/2 h-3.5 w-3.5 -translate-y-1/2 rounded-full border border-[#888] bg-gradient-to-b from-[#ccc] to-[#888] shadow" style={{ left: `calc(${volPct}% - 7px)` }} />
+                             </div>
+                           );
+                         })()}
                          <PanKnob value={tr.pan} onChange={(v) => daw.setTrackPan(tr.id, v)} size={32} />
                        </div>
                      </div>
