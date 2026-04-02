@@ -1102,93 +1102,103 @@ function CycleRangeRuler({
       className="sticky top-0 z-20 flex shrink-0 flex-col border-b shadow-[inset_0_-1px_0_rgba(0,0,0,0.25)]"
       style={{ borderColor: LP.border }}
     >
-      {/* Cycle range row */}
-      <div className="flex h-5 items-stretch" style={{ background: '#5a5a5e' }}>
+      {/* Cycle range row — always visible */}
+      <div className="flex h-[18px] items-stretch" style={{ background: '#5a5a5e' }}>
         <div className="shrink-0 border-r" style={{ width: TRACK_HEADER_W, borderColor: '#8a7028', background: 'rgba(0,0,0,0.08)' }} />
-        <div className="relative min-w-0 flex-1 overflow-hidden">
-          <div className="relative h-5" style={{ width: widthPx }}>
-            {/* Cycle range yellow bar */}
-            {loopEnabled && (
+        <div className="relative min-w-0 flex-1" style={{ overflow: 'visible' }}>
+          <div className="relative h-[18px]" style={{ width: widthPx }}>
+            {/* Cycle range yellow bar — always shown, brighter when loop enabled */}
+            <div
+              className="absolute top-0 bottom-0 cursor-move"
+              style={{
+                left: cycleLeftPx,
+                width: Math.max(8, cycleRightPx - cycleLeftPx),
+                background: loopEnabled
+                  ? 'linear-gradient(180deg, #d4a82a 0%, #c49820 100%)'
+                  : 'linear-gradient(180deg, #8a7828 0%, #7a6820 100%)',
+                borderRadius: '2px',
+                boxShadow: loopEnabled ? '0 1px 3px rgba(0,0,0,0.3)' : 'none',
+                opacity: loopEnabled ? 1 : 0.6,
+              }}
+              onMouseDown={(e) => handleMouseDown(e, 'cycleBody')}
+            >
+              {/* Left resize handle */}
               <div
-                className="absolute top-0 bottom-0 cursor-move"
-                style={{
-                  left: cycleLeftPx,
-                  width: cycleRightPx - cycleLeftPx,
-                  background: 'linear-gradient(180deg, #d4a82a 0%, #c49820 100%)',
-                  borderRadius: '2px',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
-                }}
-                onMouseDown={(e) => handleMouseDown(e, 'cycleBody')}
-              >
-                {/* Left resize handle */}
-                <div
-                  className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize"
-                  onMouseDown={(e) => handleMouseDown(e, 'cycleLeft')}
-                  style={{ borderLeft: '2px solid #8a7028' }}
-                />
-                {/* Right resize handle */}
-                <div
-                  className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize"
-                  onMouseDown={(e) => handleMouseDown(e, 'cycleRight')}
-                  style={{ borderRight: '2px solid #8a7028' }}
-                />
-                {/* Bar numbers inside cycle */}
-                {Array.from({ length: cycleEnd - cycleStart }).map((_, i) => (
-                  <span
-                    key={i}
-                    className="absolute top-0.5 font-mono text-[9px] font-bold text-[#5a3a10]"
-                    style={{ left: i * barW + 4 }}
-                  >
-                    {cycleStart + i + 1}
-                  </span>
-                ))}
-              </div>
-            )}
+                className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize"
+                onMouseDown={(e) => { e.stopPropagation(); handleMouseDown(e, 'cycleLeft'); }}
+                style={{ borderLeft: '2px solid #8a7028' }}
+              />
+              {/* Right resize handle */}
+              <div
+                className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize"
+                onMouseDown={(e) => { e.stopPropagation(); handleMouseDown(e, 'cycleRight'); }}
+                style={{ borderRight: '2px solid #8a7028' }}
+              />
+              {/* Bar numbers inside cycle */}
+              {Array.from({ length: cycleEnd - cycleStart }).map((_, i) => (
+                <span
+                  key={i}
+                  className="absolute top-0 font-mono text-[9px] font-bold"
+                  style={{ left: i * barW + 4, color: loopEnabled ? '#5a3a10' : '#444' }}
+                >
+                  {cycleStart + i + 1}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       </div>
-      {/* Ruler row with bar numbers and playhead thumb */}
-      <div className="flex h-5 items-stretch" style={{ background: `linear-gradient(180deg, ${LP.ruler}dd 0%, ${LP.ruler}88 100%)` }}>
+      {/* Ruler row with bar numbers, tick marks, and playhead thumb */}
+      <div className="flex h-[22px] items-stretch" style={{ background: `linear-gradient(180deg, ${LP.ruler}dd 0%, ${LP.ruler}88 100%)` }}>
         <div
           className="flex shrink-0 items-center border-r px-1 text-[9px] font-bold text-[#2a2418]"
           style={{ width: TRACK_HEADER_W, borderColor: '#8a7028', background: 'rgba(0,0,0,0.08)' }}
-        >
-          Ruler
-        </div>
+        />
         <div
-          className="relative min-w-0 flex-1 overflow-hidden cursor-pointer"
+          className="relative min-w-0 flex-1 cursor-pointer"
+          style={{ overflow: 'visible' }}
           onClick={(e) => {
             const rect = e.currentTarget.getBoundingClientRect();
             onSeek(pxToSec(e.clientX - rect.left));
           }}
         >
-          <div className="relative h-5" style={{ width: widthPx }}>
-            {/* Bar markers */}
+          <div className="relative h-[22px]" style={{ width: widthPx }}>
+            {/* Bar markers with tick subdivisions */}
             {Array.from({ length: totalBars }).map((_, i) => (
-              <div
-                key={i}
-                className="absolute bottom-0 top-0 border-l border-[#6a5a28]/60 pl-1"
-                style={{ left: i * barW }}
-              >
-                <span className="inline-block translate-y-0.5 font-mono text-[9px] font-semibold tabular-nums text-[#1a1508]">
+              <div key={i} className="absolute bottom-0 top-0" style={{ left: i * barW }}>
+                {/* Main bar line */}
+                <div className="absolute top-0 bottom-0 w-px bg-[#6a5a28]/70" />
+                {/* Bar number */}
+                <span className="absolute left-1 top-0.5 font-mono text-[9px] font-semibold tabular-nums text-[#1a1508]">
                   {i + 1}
                 </span>
+                {/* Beat subdivisions (tick marks) */}
+                {Array.from({ length: beatsPerBar - 1 }).map((_, b) => {
+                  const tickLeft = ((b + 1) / beatsPerBar) * barW;
+                  return (
+                    <div
+                      key={b}
+                      className="absolute bottom-0 w-px bg-[#6a5a28]/40"
+                      style={{ left: tickLeft, height: b === Math.floor(beatsPerBar / 2) - 1 ? '60%' : '35%' }}
+                    />
+                  );
+                })}
               </div>
             ))}
             {/* Playhead line */}
             <div
-              className="pointer-events-none absolute bottom-0 top-0 w-0.5 bg-white shadow-[0_0_6px_rgba(255,255,255,0.8)]"
-              style={{ left: playheadPx, zIndex: 10 }}
+              className="pointer-events-none absolute bottom-0 w-0.5 bg-white shadow-[0_0_6px_rgba(255,255,255,0.8)]"
+              style={{ left: playheadPx, top: 0, zIndex: 10 }}
             />
-            {/* Playhead thumb (draggable triangle) */}
+            {/* Playhead thumb (draggable triangle) — positioned above ruler */}
             <div
-              className="absolute z-20 cursor-grab active:cursor-grabbing"
-              style={{ left: playheadPx - 6, top: -2 }}
-              onMouseDown={(e) => handleMouseDown(e, 'playhead')}
+              className="absolute z-30 cursor-grab active:cursor-grabbing"
+              style={{ left: playheadPx - 6, top: -4 }}
+              onMouseDown={(e) => { e.stopPropagation(); handleMouseDown(e, 'playhead'); }}
             >
-              <svg width="13" height="12" viewBox="0 0 13 12">
-                <polygon points="6.5,0 13,10 0,10" fill="#f0f0f0" stroke="#333" strokeWidth="1" />
-                <line x1="6.5" y1="10" x2="6.5" y2="12" stroke="white" strokeWidth="1" />
+              <svg width="13" height="16" viewBox="0 0 13 16">
+                <polygon points="6.5,0 13,8 0,8" fill="#e0e0e0" stroke="#222" strokeWidth="0.8" />
+                <line x1="6.5" y1="8" x2="6.5" y2="16" stroke="white" strokeWidth="1.5" />
               </svg>
             </div>
           </div>
