@@ -17,8 +17,8 @@ import { WaveformCanvas } from './WaveformCanvas';
 const PX_PER_SEC = 52;
 const TRACK_HEADER_W = 292;
 const TIMELINE_BAR_LIMIT = 127;
-const INSPECTOR_PANEL_W = 240;
-const INSPECTOR_STRIP_W = 118;
+const INSPECTOR_PANEL_W = 160;
+const INSPECTOR_STRIP_W = 74;
 /** Mixer layout — compact, aligned with classic console strips */
 const MIXER_LABEL_W = 82;
 const MIXER_STRIP_W = 74;
