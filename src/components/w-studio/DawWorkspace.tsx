@@ -994,8 +994,8 @@ function MixerStrip({
         </button>
       </div>
       <div
-        className="mt-auto flex items-center justify-center truncate border-t px-1 text-center text-[10px] font-semibold"
-        style={{ backgroundColor: tr.color, borderColor: LP.border, color: '#111', minHeight: 28 }}
+        className="mt-auto flex items-center justify-center truncate border-t px-1 text-center text-[9px] font-semibold"
+        style={{ backgroundColor: tr.color, borderColor: LP.border, color: '#111', minHeight: 24 }}
         title={tr.name}
       >
         {tr.name || 'Track'}
