@@ -1574,42 +1574,17 @@ function DawChrome() {
           ) : null}
 
           <section className="flex min-w-0 flex-1 flex-col" style={{ background: LP.panelLo }}>
-            <div
-              className="sticky top-0 z-20 flex h-9 shrink-0 items-stretch border-b shadow-[inset_0_-1px_0_rgba(0,0,0,0.25)]"
-              style={{ borderColor: LP.border, background: `linear-gradient(180deg, ${LP.ruler}dd 0%, ${LP.ruler}88 100%)` }}
-            >
-              <div
-                className="flex shrink-0 items-center border-r px-1 text-[9px] font-bold text-[#2a2418]"
-                style={{ width: TRACK_HEADER_W, borderColor: '#8a7028', background: 'rgba(0,0,0,0.08)' }}
-              >
-                Ruler
-              </div>
-              <div className="relative min-w-0 flex-1 overflow-hidden">
-                {daw.loopEnabled ? (
-                  <div
-                    className="pointer-events-none absolute bottom-0 left-0 right-0 z-20 h-[3px] rounded-t-sm bg-[#e0b82a]/90 shadow-[0_-1px_6px_rgba(224,184,42,0.55)]"
-                    title="Cycle / loop active"
-                  />
-                ) : null}
-                <div className="relative h-9" style={{ width: widthPx }}>
-                  {Array.from({ length: Math.ceil(end / secPerBar(daw.tempo, daw.beatsPerBar)) + 2 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="absolute bottom-0 top-0 border-l border-[#6a5a28]/60 pl-1"
-                      style={{ left: i * barW }}
-                    >
-                      <span className="inline-block translate-y-1 font-mono text-[11px] font-semibold tabular-nums text-[#1a1508]">
-                        {i + 1}
-                      </span>
-                    </div>
-                  ))}
-                  <div
-                    className="pointer-events-none absolute bottom-0 top-0 w-0.5 bg-white shadow-[0_0_6px_rgba(255,255,255,0.8)]"
-                    style={{ left: daw.currentTime * PX_PER_SEC, zIndex: 10 }}
-                  />
-                </div>
-              </div>
-            </div>
+            {/* Cycle Range + Ruler */}
+            <CycleRangeRuler
+              barW={barW}
+              widthPx={widthPx}
+              end={end}
+              tempo={daw.tempo}
+              beatsPerBar={daw.beatsPerBar}
+              currentTime={daw.currentTime}
+              loopEnabled={daw.loopEnabled}
+              onSeek={(t) => daw.seek(t)}
+            />
 
             {/* +/Save/Dropdown row above tracks — matches Logic Pro */}
             <div className="flex shrink-0 items-center border-b" style={{ borderColor: LP.border, background: LP.panel }}>
