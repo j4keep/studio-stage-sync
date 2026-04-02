@@ -950,85 +950,58 @@ function MasterMixerStrip() {
   const peak = daw.meterPeaks.__master__ ?? 0;
   return (
     <div
-      className="flex min-h-full shrink-0 flex-col border-l bg-gradient-to-b from-[#4e4e4e] to-[#323232] shadow-[inset_1px_0_0_rgba(255,255,255,0.05)]"
-      style={{ width: MIXER_OUT_STRIP_W, borderColor: LP.border }}
+      className="flex min-h-full shrink-0 flex-col border-l"
+      style={{ width: MIXER_STRIP_W, borderColor: LP.border, background: LP.stripBg }}
     >
-      <div className="border-b px-0.5 py-1 text-center text-[8px] font-bold uppercase tracking-wide text-[#eee]">
-        Master
-      </div>
-      <div className="mx-1 mt-1 h-5 rounded-sm border border-[#333] bg-[#252525] shadow-inner" title="Master chain" />
-      <div className="mx-1 mt-1 rounded-sm border border-[#555] bg-[#383838] py-0.5 text-center text-[8px] font-medium text-[#ddd]">
-        Master
-      </div>
-      <button
-        type="button"
-        className="mx-1 mt-1 rounded-sm border border-[#2d5a2d] py-0.5 text-[7px] font-bold text-[#d8ffd8]"
-        style={{ background: LP.readAuto }}
-        title="Automation"
-      >
-        Read
-      </button>
-      <div className="min-h-[6px] flex-1" aria-hidden />
-      <div className="mx-1 mb-1 grid grid-cols-2 gap-0.5">
-        <div
-          className="rounded border px-0.5 py-0.5 text-center font-mono text-[7px] tabular-nums text-[#7dd87d]"
-          style={{ borderColor: '#222', background: '#0a0a0a' }}
+      <MixerSlotRow label="Setting">
+        <div className="h-4 rounded-sm bg-[#3a3a3e]" />
+      </MixerSlotRow>
+      <MixerSlotRow label="EQ">
+        <div className="h-4 rounded-sm bg-[#3a3a3e]" />
+      </MixerSlotRow>
+      <MixerSlotRow label="Automation">
+        <button
+          type="button"
+          className="w-full rounded-[2px] border border-[#2d5a2d] px-1 py-[3px] text-[9px] font-bold text-[#c8ffc8]"
+          style={{ background: LP.readAuto }}
         >
+          Read
+        </button>
+      </MixerSlotRow>
+      <div className="flex justify-center py-1">
+        <div className="flex h-8 w-8 items-center justify-center rounded-[3px] border border-[#3060a0] bg-gradient-to-b from-[#4a6fa8] to-[#355a8a]">
+          <IconWaveInst />
+        </div>
+      </div>
+      <div className="flex flex-col items-center border-t py-1" style={{ borderColor: '#4a4a4e' }}>
+        <span className="text-[8px] text-[#b0b0b4]">Pan</span>
+        <PanKnob value={0} onChange={() => {}} size={42} />
+      </div>
+      <div className="flex items-center justify-center gap-1 border-t px-1 py-1" style={{ borderColor: '#4a4a4e' }}>
+        <span className="rounded border border-[#222] bg-[#0a0a0a] px-1 py-0.5 font-mono text-[9px] tabular-nums text-[#e0e0e0]">
           {faderToDbLabel(daw.masterVolume)}
-        </div>
-        <div
-          className="rounded border px-0.5 py-0.5 text-center font-mono text-[7px] tabular-nums text-[#7dd87d]"
-          style={{ borderColor: '#222', background: '#0a0a0a' }}
-        >
+        </span>
+        <span className="rounded border border-[#222] bg-[#0a0a0a] px-1 py-0.5 font-mono text-[9px] tabular-nums text-[#4eca4e]">
           {peakToDbDisplay(peak)}
-        </div>
+        </span>
       </div>
-      <div
-        className="mx-1 flex items-stretch justify-center gap-1.5 pb-2"
-        style={{ minHeight: MIXER_METER_H + 8 }}
-      >
-        <div className="flex flex-col items-end justify-between py-1 pr-0.5 text-[7px] font-mono text-[#8a8a8a]">
-          <span>0</span>
-          <span>-6</span>
-          <span>-12</span>
-          <span>-18</span>
-          <span>-24</span>
+      <div className="flex items-stretch justify-center gap-1 px-1 py-1" style={{ minHeight: MIXER_METER_H + 16 }}>
+        <div className="flex flex-col items-end justify-between py-1 pr-0.5 font-mono text-[7px] leading-tight text-[#999]">
+          {['6','3','0','-3','-6','-9','-12','-15','-18','-21','-24','-30','-35','-40','-45','-50','-60'].map(v => (
+            <span key={v}>{v}</span>
+          ))}
         </div>
         <DualPeakMeters peak={peak} height={MIXER_METER_H} />
-        <div className="relative flex w-9 items-center justify-center">
-          <div
-            className="absolute rounded-full border border-[#1a1a1a] shadow-[inset_0_2px_6px_rgba(0,0,0,0.85)]"
-            style={{
-              height: MIXER_METER_H,
-              width: 10,
-              background: 'linear-gradient(90deg, #505050 0%, #303030 50%, #1a1a1a 100%)',
-            }}
-          />
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.005}
-            value={daw.masterVolume}
-            onChange={(e) => daw.setMasterVolume(Number(e.target.value))}
-            className="absolute cursor-pointer"
-            style={{
-              width: MIXER_METER_H,
-              height: 28,
-              transform: 'rotate(-90deg)',
-              accentColor: '#f0f0f0',
-            }}
-            aria-label="Master volume"
-          />
+        <div className="relative flex w-8 items-center justify-center">
+          <div className="absolute rounded-sm border border-[#1a1a1a]" style={{ height: MIXER_METER_H, width: 8, background: 'linear-gradient(90deg, #5a5a5a 0%, #3a3a3a 50%, #2a2a2a 100%)' }} />
+          <input type="range" min={0} max={1} step={0.005} value={daw.masterVolume} onChange={(e) => daw.setMasterVolume(Number(e.target.value))} className="absolute cursor-pointer" style={{ width: MIXER_METER_H, height: 24, transform: 'rotate(-90deg)', accentColor: '#f0f0f0' }} aria-label="Master volume" />
         </div>
       </div>
-      <div className="border-t py-1 text-center font-mono text-[9px] tabular-nums text-[#ccc]">
-        {faderToDbLabel(daw.masterVolume)}
+      <div className="flex justify-center gap-1 py-0.5">
+        <button type="button" className="h-6 w-7 rounded-sm border border-[#555] bg-[#4a4a4e] text-[10px] font-bold text-[#ddd]">M</button>
+        <button type="button" className="h-6 w-7 rounded-sm border border-[#555] bg-[#4a4a4e] text-[10px] font-bold text-[#ddd]">D</button>
       </div>
-      <div
-        className="mt-auto truncate border-t px-0.5 py-1.5 text-center text-[9px] font-semibold text-[#111]"
-        style={{ backgroundColor: '#c73d9e', borderColor: LP.border }}
-      >
+      <div className="mt-auto truncate border-t px-1 py-1.5 text-center text-[10px] font-semibold text-white" style={{ backgroundColor: '#9b4d96', borderColor: LP.border }}>
         Master
       </div>
     </div>
