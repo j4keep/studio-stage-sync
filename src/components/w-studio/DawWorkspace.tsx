@@ -1600,93 +1600,33 @@ function DawChrome() {
                     background: daw.selectedTrackId === tr.id ? 'rgba(60,120,200,0.14)' : LP.panel,
                   }}
                 >
-                  <div className="flex shrink-0 border-r" style={{ width: TRACK_HEADER_W, borderColor: LP.border }}>
-                    <div className="w-1 shrink-0" style={{ backgroundColor: tr.color }} />
-                    <div className="flex min-w-0 flex-1 flex-col gap-1 px-1.5 py-1">
-                      <div className="flex items-center gap-1">
-                        <span className="w-4 text-center font-mono text-[9px] text-[#888]">{ti + 1}</span>
-                        <IconWaveInst />
-                        <input
-                          className="min-w-0 flex-1 truncate border border-transparent bg-transparent text-[11px] font-semibold outline-none"
-                          style={{ color: LP.text }}
-                          value={tr.name}
-                          onChange={(e) => daw.renameTrack(tr.id, e.target.value)}
-                          onClick={() => daw.setSelectedTrackId(tr.id)}
-                        />
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          title="Mute"
-                          className="h-5 w-5 rounded-sm border text-[8px] font-bold"
-                          style={{
-                            borderColor: '#444',
-                            background: tr.muted ? LP.muteOn : '#404040',
-                            color: tr.muted ? '#022' : '#ccc',
-                          }}
-                          onClick={() => daw.toggleMute(tr.id)}
-                        >
-                          M
-                        </button>
-                        <button
-                          type="button"
-                          title="Solo"
-                          className="h-5 w-5 rounded-sm border text-[8px] font-bold"
-                          style={{
-                            borderColor: '#444',
-                            background: tr.solo ? LP.solo : '#404040',
-                            color: tr.solo ? '#111' : '#ccc',
-                          }}
-                          onClick={() => daw.toggleSolo(tr.id)}
-                        >
-                          S
-                        </button>
-                        <button
-                          type="button"
-                          title="Record arm"
-                          className="h-5 w-5 rounded-sm border text-[8px] font-bold"
-                          style={{
-                            borderColor: '#444',
-                            background: tr.recordArm ? LP.record : '#404040',
-                            color: tr.recordArm ? '#fff' : '#ccc',
-                          }}
-                          onClick={() => daw.toggleRecordArm(tr.id)}
-                        >
-                          R
-                        </button>
-                        <div className="relative mx-0.5 h-4 min-w-[48px] flex-1">
-                          <input
-                            type="range"
-                            min={0}
-                            max={1}
-                            step={0.01}
-                            value={tr.volume}
-                            onChange={(e) => daw.setTrackVolume(tr.id, Number(e.target.value))}
-                            className="absolute inset-0 h-full w-full cursor-pointer opacity-90"
-                            style={{ accentColor: '#888' }}
-                          />
-                        </div>
-                        <div className="relative h-4 w-1.5 overflow-hidden rounded-sm bg-black" title="Level">
-                          <div
-                            className="absolute bottom-0 left-0 right-0 transition-[height] duration-75"
-                            style={{
-                              height: `${Math.min(100, (daw.meterPeaks[tr.id] ?? 0) * 100)}%`,
-                              background: `linear-gradient(to top, ${LP.meterGreen}, ${LP.meterYel})`,
-                            }}
-                          />
-                        </div>
-                        <PanKnob value={tr.pan} onChange={(v) => daw.setTrackPan(tr.id, v)} size={32} />
-                      </div>
-                      <div className="flex justify-between text-[8px]" style={{ color: LP.textMuted }}>
-                        <button type="button" className="hover:underline" onClick={() => daw.setSelectedTrackId(tr.id)}>
-                          Select
-                        </button>
-                        <button type="button" className="hover:underline" onClick={() => daw.removeTrack(tr.id)}>
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                   <div className="flex shrink-0 border-r" style={{ width: TRACK_HEADER_W, borderColor: LP.border }}>
+                     <div className="w-1 shrink-0" style={{ backgroundColor: tr.color }} />
+                     <div className="flex min-w-0 flex-1 flex-col justify-center gap-1 px-1.5 py-1.5">
+                       <div className="flex items-center gap-1">
+                         <span className="w-4 text-center font-mono text-[9px] text-[#888]">{ti + 1}</span>
+                         <IconWaveInst />
+                         <input
+                           className="min-w-0 flex-1 truncate border border-transparent bg-transparent text-[11px] font-semibold outline-none"
+                           style={{ color: LP.text }}
+                           value={tr.name}
+                           onChange={(e) => daw.renameTrack(tr.id, e.target.value)}
+                           onClick={() => daw.setSelectedTrackId(tr.id)}
+                         />
+                       </div>
+                       <div className="flex items-center gap-1">
+                         <button type="button" title="Mute" className="h-5 w-5 rounded-sm border text-[8px] font-bold" style={{ borderColor: '#444', background: tr.muted ? LP.muteOn : '#404040', color: tr.muted ? '#022' : '#ccc' }} onClick={() => daw.toggleMute(tr.id)}>M</button>
+                         <button type="button" title="Solo" className="h-5 w-5 rounded-sm border text-[8px] font-bold" style={{ borderColor: '#444', background: tr.solo ? LP.solo : '#404040', color: tr.solo ? '#111' : '#ccc' }} onClick={() => daw.toggleSolo(tr.id)}>S</button>
+                         <button type="button" title="Record arm" className="h-5 w-5 rounded-sm border text-[8px] font-bold" style={{ borderColor: '#444', background: tr.recordArm ? LP.record : '#404040', color: tr.recordArm ? '#fff' : '#ccc' }} onClick={() => daw.toggleRecordArm(tr.id)}>R</button>
+                         <div className="relative mx-1 h-5 min-w-[60px] flex-1 overflow-hidden rounded-full" style={{ background: '#2a2a2a', boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.6)' }}>
+                           <div className="absolute left-0 top-0 bottom-0 rounded-full" style={{ width: `${tr.volume * 100}%`, background: 'linear-gradient(to right, #3a8a3a, #5cb85c)' }} />
+                           <input type="range" min={0} max={1} step={0.01} value={tr.volume} onChange={(e) => daw.setTrackVolume(tr.id, Number(e.target.value))} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
+                           <div className="pointer-events-none absolute top-1/2 h-3.5 w-3.5 -translate-y-1/2 rounded-full border border-[#888] bg-gradient-to-b from-[#ccc] to-[#888] shadow" style={{ left: `calc(${tr.volume * 100}% - 7px)` }} />
+                         </div>
+                         <PanKnob value={tr.pan} onChange={(v) => daw.setTrackPan(tr.id, v)} size={32} />
+                       </div>
+                     </div>
+                   </div>
 
                   <div
                     className="relative min-w-0 flex-1"
