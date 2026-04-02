@@ -1019,27 +1019,33 @@ function StereoOutStrip() {
   return (
     <div className="flex min-h-full shrink-0 flex-col border-l" style={{ width: MIXER_STRIP_W, borderColor: LP.border, background: LP.stripBg }}>
       <MixerSlotRow label="Setting"><div className={mixerFieldDark}>Stereo Out</div></MixerSlotRow>
+      <MixerSlotRow label="Gain Reduction"><div className="h-3 w-full rounded-[2px] border border-[#454549] bg-[#3a3a3e]" /></MixerSlotRow>
       <MixerSlotRow label="EQ"><div className={mixerFieldDark}>Output EQ</div></MixerSlotRow>
-      <MixerSlotRow label="Input"><div className="text-[8px] text-[#ccc]">∞</div></MixerSlotRow>
+      <MixerSlotRow label="MIDI FX"><div className="h-4 w-full rounded-[2px] border border-[#454549] bg-[#4a4a4e]" /></MixerSlotRow>
+      <MixerSlotRow label="Input"><div className="text-[9px] text-[#ccc]">∞</div></MixerSlotRow>
       <MixerSlotRow label="Audio FX"><MixerStack items={['Space D']} tone="blue" /></MixerSlotRow>
       <MixerSlotRow label="Sends"><MixerStack items={[]} tone="gray" /></MixerSlotRow>
       <MixerSlotRow label="Output"><div className={mixerFieldDark}>St Out</div></MixerSlotRow>
       <MixerSlotRow label="Group"><div className="h-4 w-full rounded-[2px] border border-[#454549] bg-[#4a4a4e]" /></MixerSlotRow>
       <MixerSlotRow label="Automation"><button type="button" className={`${mixerFieldGreen} font-bold`}>Read</button></MixerSlotRow>
-      <div className="flex items-center justify-center border-b" style={{ borderColor: '#4a4a4e', minHeight: 34, height: 34 }}>
-        <PanKnob value={0} onChange={() => {}} size={24} showValueLabel={false} />
+      {/* Icon area */}
+      <div className="flex items-center justify-center border-b" style={{ borderColor: '#4a4a4e', minHeight: 40, height: 40 }}>
+        <svg style={{ color: '#4a9a4a', width: 28, height: 28 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="7"/><path d="M9 9l6 6M15 9l-6 6" strokeLinecap="round"/></svg>
       </div>
-      <div className="flex items-center justify-center gap-0.5 border-b px-[2px]" style={{ borderColor: '#4a4a4e', minHeight: 22, height: 22 }}>
-        <span className="rounded border border-[#222] bg-[#0a0a0a] px-0.5 py-0.5 font-mono text-[8px] tabular-nums text-[#e0e0e0]">0.0</span>
-        <span className="rounded border border-[#222] bg-[#0a0a0a] px-0.5 py-0.5 font-mono text-[8px] tabular-nums text-[#4eca4e]">{peakToDbDisplay(peak)}</span>
+      <div className="flex items-center justify-center border-b" style={{ borderColor: '#4a4a4e', minHeight: 36, height: 36 }}>
+        <PanKnob value={0} onChange={() => {}} size={28} showValueLabel={false} />
+      </div>
+      <div className="flex items-center justify-center gap-0.5 border-b px-[2px]" style={{ borderColor: '#4a4a4e', minHeight: 24, height: 24 }}>
+        <span className="rounded border border-[#222] bg-[#0a0a0a] px-1 py-0.5 font-mono text-[9px] tabular-nums text-[#e0e0e0]">0.0</span>
+        <span className="rounded border border-[#222] bg-[#0a0a0a] px-1 py-0.5 font-mono text-[9px] tabular-nums text-[#4eca4e]">{peakToDbDisplay(peak)}</span>
       </div>
       <div className="border-b" style={{ borderColor: '#4a4a4e', minHeight: MIXER_METER_H + 10, height: MIXER_METER_H + 10 }}>
         <VerticalMixerFader value={daw.masterVolume} peak={peak} onChange={(value) => daw.setMasterVolume(value)} ariaLabel="Stereo out level" />
       </div>
-      <div className="flex items-center justify-center border-b py-[2px]" style={{ borderColor: '#4a4a4e', minHeight: 20, height: 20 }}>
-        <span className="text-[7px] text-[#999]">Bnce</span>
+      <div className="flex items-center justify-center border-b py-[2px]" style={{ borderColor: '#4a4a4e', minHeight: 22, height: 22 }}>
+        <span className="text-[8px] text-[#999]">Bnce</span>
       </div>
-      <div className="flex items-center justify-center gap-0.5 border-b py-[2px]" style={{ borderColor: '#4a4a4e', minHeight: 24, height: 24 }}>
+      <div className="flex items-center justify-center gap-0.5 border-b py-[2px]" style={{ borderColor: '#4a4a4e', minHeight: 28, height: 28 }}>
         <button type="button" className="h-5 w-6 rounded-sm border border-[#555] bg-[#4a4a4e] text-[9px] font-bold text-[#ddd]">M</button>
       </div>
       <div className="mt-auto flex items-center justify-center truncate border-t px-1 text-center text-[9px] font-semibold text-white" style={{ backgroundColor: '#4a9a4a', borderColor: LP.border, minHeight: 24 }}>
