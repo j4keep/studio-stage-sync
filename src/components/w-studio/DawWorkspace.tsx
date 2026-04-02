@@ -1075,13 +1075,7 @@ function DawChrome() {
   const projectFileRef = useRef<HTMLInputElement>(null);
   const importTrackRef = useRef<string>('');
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (window.matchMedia('(max-width: 767px)').matches) {
-      setLibraryOpen(false);
-      setInspectorOpen(false);
-    }
-  }, []);
+  /* responsive defaults handled in useState initializers above */
 
   const end = useMemo(() => {
     return Math.max(90, getTimelineEndSec(daw.tracks, daw.tempo));
