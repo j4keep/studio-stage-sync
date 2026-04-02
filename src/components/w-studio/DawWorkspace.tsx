@@ -17,28 +17,26 @@ import { WaveformCanvas } from './WaveformCanvas';
 const PX_PER_SEC = 52;
 const TRACK_HEADER_W = 438;
 const TIMELINE_BAR_LIMIT = 127;
-/** Mixer layout — aligned with classic console strips */
-const MIXER_LABEL_W = 92;
-const MIXER_STRIP_W = 78;
-const MIXER_METER_H = 166;
+/** Mixer layout — compact, aligned with classic console strips */
+const MIXER_LABEL_W = 72;
+const MIXER_STRIP_W = 64;
+const MIXER_METER_H = 130;
 const TRACK_ROW_MIN_H = 68;
 const MIXER_LABEL_ROWS = [
-  { label: 'Setting', height: 26 },
-  { label: 'Gain Reduction', height: 16 },
-  { label: 'EQ', height: 22 },
-  { label: 'Input', height: 24 },
-  { label: 'Audio FX', height: 74 },
-  { label: 'Sends', height: 40 },
-  { label: 'Output', height: 24 },
-  { label: 'Group', height: 22 },
-  { label: 'Automation', height: 24 },
-  { label: '', height: 40 },
-  { label: 'Pan', height: 38 },
-  { label: 'dB', height: 24 },
-  { label: '', height: MIXER_METER_H + 14 },
-  { label: '', height: 22 },
-  { label: '', height: 28 },
-  { label: '', height: 28 },
+  { label: 'Setting', height: 22 },
+  { label: 'EQ', height: 20 },
+  { label: 'Input', height: 20 },
+  { label: 'Audio FX', height: 56 },
+  { label: 'Sends', height: 30 },
+  { label: 'Output', height: 20 },
+  { label: 'Group', height: 20 },
+  { label: 'Automation', height: 22 },
+  { label: 'Pan', height: 34 },
+  { label: 'dB', height: 22 },
+  { label: '', height: MIXER_METER_H + 10 },
+  { label: '', height: 20 },
+  { label: '', height: 24 },
+  { label: '', height: 24 },
 ] as const;
 const MIXER_SCALE_MARKS = ['6', '3', '0', '-3', '-6', '-9', '-12', '-18', '-24', '-30', '-40', '-50', '-60'];
 
