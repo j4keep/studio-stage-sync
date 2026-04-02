@@ -52,9 +52,9 @@ const LP = {
 } as const;
 
 const ctrlBtn =
-  'flex h-8 w-8 shrink-0 items-center justify-center rounded-[3px] border text-[#f2f2f2] shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_1px_2px_rgba(0,0,0,0.35)] active:translate-y-[0.5px]';
-const ctrlBtnBase = `${ctrlBtn} border-[#4a4a4a] bg-gradient-to-b from-[#5f5f5f] to-[#484848] hover:from-[#686868] hover:to-[#505050]`;
-const ctrlBtnActive = `${ctrlBtn} border-[#3d7dcc] bg-gradient-to-b from-[#4a6a9a] to-[#355080]`;
+  'flex h-7 w-7 shrink-0 items-center justify-center rounded-[3px] border text-[#eee] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_1px_2px_rgba(0,0,0,0.25)] active:translate-y-[0.5px]';
+const ctrlBtnBase = `${ctrlBtn} border-[#5a5a5e] bg-gradient-to-b from-[#727276] to-[#5a5a5e] hover:from-[#7e7e82] hover:to-[#636366]`;
+const ctrlBtnActive = `${ctrlBtn} border-[#3478f6] bg-gradient-to-b from-[#4a78c8] to-[#3060a0]`;
 
 function formatSMPTE(sec: number) {
   const h = Math.floor(sec / 3600);
