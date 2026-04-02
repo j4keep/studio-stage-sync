@@ -1212,7 +1212,7 @@ function DawChrome() {
           ) : null}
 
           <div
-            className="mx-1 flex min-h-[48px] min-w-[200px] max-w-[min(100%,480px)] flex-1 flex-col justify-center gap-1 rounded border px-2.5 py-1.5 shadow-[inset_0_2px_14px_rgba(0,0,0,0.72)] sm:min-w-[300px]"
+            className="mx-1 flex min-h-[48px] min-w-[200px] max-w-[min(100%,480px)] flex-1 items-center rounded border shadow-[inset_0_2px_14px_rgba(0,0,0,0.72)] sm:min-w-[300px]"
             style={{
               borderColor: '#05080c',
               background: LP.lcdBg,
@@ -1220,88 +1220,45 @@ function DawChrome() {
                 'repeating-linear-gradient(180deg, transparent, transparent 2px, rgba(110,200,255,0.04) 2px, rgba(110,200,255,0.04) 3px)',
             }}
           >
-            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0 font-mono text-[10px] tabular-nums sm:text-[11px]" style={{ color: LP.lcdText }}>
-              <span>{formatSMPTE(daw.currentTime)}</span>
-              <span style={{ color: LP.lcdDim }}>{formatLogicBars(daw.currentTime, daw.tempo, daw.beatsPerBar)}</span>
+            {/* BAR / BEAT section */}
+            <div className="flex flex-1 items-baseline gap-1 px-2">
+              <div className="flex flex-col items-center">
+                <span className="font-mono text-[22px] font-bold leading-none tabular-nums" style={{ color: '#e0e8f0' }}>
+                  {String(Math.floor((daw.currentTime * (daw.tempo / 60)) / daw.beatsPerBar) + 1).padStart(3, '0')}
+                </span>
+                <span className="text-[7px] font-semibold uppercase tracking-wider" style={{ color: LP.lcdDim }}>Bar</span>
+              </div>
+              <div className="flex flex-col items-center">
+                <span className="font-mono text-[22px] font-bold leading-none tabular-nums" style={{ color: '#e0e8f0' }}>
+                  {Math.floor((daw.currentTime * (daw.tempo / 60)) % daw.beatsPerBar) + 1}
+                </span>
+                <span className="text-[7px] font-semibold uppercase tracking-wider" style={{ color: LP.lcdDim }}>Beat</span>
+              </div>
             </div>
-            <div className="flex flex-wrap justify-between gap-2 text-[9px]" style={{ color: LP.lcdDim }}>
-              <span>
-                Tempo <span className="font-mono text-[10px]" style={{ color: LP.lcdText }}>{daw.tempo.toFixed(2)}</span>
+            {/* Divider */}
+            <div className="h-8 w-px bg-[#1a2a3a]" />
+            {/* TEMPO section */}
+            <div className="flex flex-col items-center px-3">
+              <span className="font-mono text-[18px] font-bold leading-none tabular-nums" style={{ color: '#e0e8f0' }}>
+                {Math.round(daw.tempo)}
               </span>
-              <span>
-                Sig <span className="font-mono text-[10px]" style={{ color: LP.lcdText }}>{daw.beatsPerBar}/4</span>
+              <span className="text-[7px] font-semibold uppercase tracking-wider" style={{ color: LP.lcdDim }}>
+                Keep
               </span>
-              <span className="hidden sm:inline">Key C maj</span>
+              <span className="text-[6px] uppercase tracking-widest" style={{ color: LP.lcdDim }}>Tempo</span>
             </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-0.5 border-l pl-2" style={{ borderColor: LP.border }}>
-            <button type="button" title="Metronome" onClick={() => daw.setMetronomeOn(!daw.metronomeOn)} className={ctrlBtnBase}>
-              <IconMetronome off={!daw.metronomeOn} />
-            </button>
-            <button type="button" title="Count-in (reserved)" className={ctrlBtnBase}>
-              <IconCountIn />
-            </button>
-            <div className="hidden h-8 flex-col justify-between px-1 sm:flex" title="CPU / HD (decorative)">
-              <div className="h-1 w-4 rounded-sm bg-[#2a4a2a]" />
-              <div className="h-1 w-3 rounded-sm bg-[#3a4a6a]" />
+            {/* Divider */}
+            <div className="h-8 w-px bg-[#1a2a3a]" />
+            {/* TIME SIG / KEY section */}
+            <div className="flex flex-col items-center px-3">
+              <span className="font-mono text-[16px] font-bold leading-none" style={{ color: '#e0e8f0' }}>
+                {daw.beatsPerBar}/4
+              </span>
+              <span className="text-[8px] font-medium" style={{ color: LP.lcdDim }}>Cmaj</span>
             </div>
-            <button type="button" title="List editors" className={ctrlBtnBase}>
-              <IconListDoc />
-            </button>
-            <button type="button" title="Notepad" className={ctrlBtnBase}>
-              <IconNotePad />
-            </button>
-            <button type="button" title="Loop browser" className={ctrlBtnBase}>
-              <IconLoopBrowser />
-            </button>
-            <button type="button" title="Media browser" className={ctrlBtnBase}>
-              <IconMediaBrowser />
-            </button>
+            {/* Dropdown arrow */}
+            <button type="button" className="px-1 text-[8px]" style={{ color: LP.lcdDim }} title="Display mode">▾</button>
           </div>
-
-          <div className="flex min-w-[120px] max-w-[180px] flex-col gap-0.5 px-1">
-            <span className="text-[8px] font-semibold uppercase tracking-wide text-[#aaa]">Master</span>
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.01}
-              value={daw.masterVolume}
-              onChange={(e) => daw.setMasterVolume(Number(e.target.value))}
-              className="h-1.5 w-full cursor-pointer"
-              style={{ accentColor: LP.accentBlueHi }}
-            />
-          </div>
-
-          <label className="flex min-w-[100px] items-center gap-1 text-[9px] text-[#aaa]">
-            BPM
-            <input
-              type="number"
-              min={40}
-              max={240}
-              value={daw.tempo}
-              onChange={(e) => daw.setTempo(Number(e.target.value) || 120)}
-              className="w-12 rounded border px-1 py-0.5 font-mono text-[10px]"
-              style={{ borderColor: LP.border, background: LP.panelLo, color: LP.text }}
-            />
-          </label>
-
-          <label className="flex min-w-[72px] flex-col gap-0.5 text-[8px] text-[#aaa]">
-            <span>Time sig</span>
-            <div className="flex items-center gap-0.5">
-              <input
-                type="number"
-                min={1}
-                max={12}
-                value={daw.beatsPerBar}
-                onChange={(e) => daw.setBeatsPerBar(Math.min(12, Math.max(1, Number(e.target.value) || 4)))}
-                className="w-8 rounded border px-0.5 py-0.5 font-mono text-[10px]"
-                style={{ borderColor: LP.border, background: LP.panelLo, color: LP.text }}
-              />
-              <span>/4</span>
-            </div>
-          </label>
 
           <div className="ml-auto flex flex-wrap items-center gap-1">
             <button
