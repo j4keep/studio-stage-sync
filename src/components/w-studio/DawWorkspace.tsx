@@ -632,19 +632,7 @@ const slotBtn = 'w-full truncate rounded-[2px] border px-1 py-[3px] text-[9px] t
 const slotEmpty = `${slotBtn} border-[${LP.slotBorder}] bg-[${LP.slotBg}]`;
 
 function LogicMixerFilterBar({ active, onPick }: { active: string; onPick: (s: string) => void }) {
-  const items = [
-    'Single',
-    'Tracks',
-    'All',
-    'Audio',
-    'Inst',
-    'Aux',
-    'Bus',
-    'Input',
-    'Output',
-    'Master/VCA',
-    'MIDI',
-  ] as const;
+  const filterItems = ['Single', 'Tracks', 'All', 'Audio', 'Inst', 'Aux', 'Bus', 'Input', 'Output', 'Master/VCA', 'MIDI'] as const;
   return (
     <div
       className="flex shrink-0 flex-wrap items-center gap-1 border-b px-2 py-1.5"
@@ -654,11 +642,21 @@ function LogicMixerFilterBar({ active, onPick }: { active: string; onPick: (s: s
         boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)',
       }}
     >
-      {items.map((x) => (
+      {/* Undo arrow */}
+      <button type="button" className={`${ctrlBtnBase} h-6 w-6 text-[10px]`} title="Undo">↺</button>
+      {/* Edit / Options / View dropdowns */}
+      {['Edit', 'Options', 'View'].map((m) => (
+        <button key={m} type="button" className="flex items-center gap-0.5 rounded px-2 py-1 text-[10px] font-medium text-[#e4e4e4] hover:bg-black/20">
+          {m} <span className="text-[7px]">▾</span>
+        </button>
+      ))}
+      <div className="mx-2 h-4 w-px bg-[#555]" />
+      {/* Filter buttons */}
+      {filterItems.map((x) => (
         <button
           key={x}
           type="button"
-          title={`Mixer: ${x} (view filter)`}
+          title={`Mixer: ${x}`}
           onClick={() => onPick(x)}
           className={`rounded-[3px] px-2 py-1 text-[9px] font-semibold tracking-tight ${
             active === x ? `${ctrlBtnActive} min-h-[26px]` : 'text-[#e4e4e4] hover:bg-black/20'
@@ -667,6 +665,15 @@ function LogicMixerFilterBar({ active, onPick }: { active: string; onPick: (s: s
           {x}
         </button>
       ))}
+      <div className="ml-auto flex items-center gap-1">
+        {/* Two view toggle icons */}
+        <button type="button" className={ctrlBtnBase} title="Narrow strips">
+          <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="2" width="3" height="12" rx="0.5" /><rect x="5" y="2" width="3" height="12" rx="0.5" /><rect x="9" y="2" width="3" height="12" rx="0.5" /></svg>
+        </button>
+        <button type="button" className={ctrlBtnBase} title="Wide strips">
+          <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="2" width="5" height="12" rx="0.5" /><rect x="7" y="2" width="5" height="12" rx="0.5" /></svg>
+        </button>
+      </div>
     </div>
   );
 }
