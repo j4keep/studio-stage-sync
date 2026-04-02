@@ -1348,6 +1348,48 @@ function DawChrome() {
           </div>
         </div>
 
+        {/* Row 2: Icon+Label toolbar — matches Logic Pro screenshot exactly */}
+        <div
+          className="flex flex-wrap items-end gap-3 border-t px-3 py-1 overflow-x-auto"
+          style={{ borderColor: LP.border, background: `linear-gradient(180deg, ${LP.panel} 0%, ${LP.panelLo} 100%)` }}
+        >
+          {[
+            { icon: '∿λ', label: 'Articulation' },
+            { icon: '⊞↕', label: 'Track Zoom' },
+            { icon: '♫↻', label: 'Note Repeat' },
+            { icon: '⊘', label: 'Spot Erase' },
+            { icon: '✂▎', label: 'Split by Playhead' },
+            { icon: '✂⟨⟩', label: 'Split by Locators' },
+            { icon: '⤓', label: 'Bounce Regions' },
+          ].map((b) => (
+            <button key={b.label} type="button" title={b.label} className="flex flex-col items-center gap-0.5 rounded px-1.5 py-0.5 text-[#ccc] hover:bg-black/15">
+              <span className="text-[14px] leading-none">{b.icon}</span>
+              <span className="text-[8px] whitespace-nowrap">{b.label}</span>
+            </button>
+          ))}
+          <div className="mx-1 h-8 w-px bg-[#555] self-center" />
+          {/* Nudge Value */}
+          <div className="flex items-center gap-1">
+            <button type="button" className="text-[12px] text-[#aaa] hover:text-white">‹</button>
+            <span className="rounded border border-[#555] bg-[#3a3a3e] px-3 py-0.5 text-[10px] text-[#ddd]">Tick</span>
+            <button type="button" className="text-[12px] text-[#aaa] hover:text-white">›</button>
+            <span className="ml-0.5 text-[8px] text-[#999]">Nudge Value</span>
+          </div>
+          <div className="mx-1 h-8 w-px bg-[#555] self-center" />
+          {[
+            { icon: '⟳§', label: 'Repeat Section' },
+            { icon: '✂§', label: 'Cut Section' },
+            { icon: '⟨⟩', label: 'Set Locators' },
+            { icon: '🔍', label: 'Zoom' },
+            { icon: '🎨', label: 'Colors' },
+          ].map((b) => (
+            <button key={b.label} type="button" title={b.label} className="flex flex-col items-center gap-0.5 rounded px-1.5 py-0.5 text-[#ccc] hover:bg-black/15">
+              <span className="text-[14px] leading-none">{b.icon}</span>
+              <span className="text-[8px] whitespace-nowrap">{b.label}</span>
+            </button>
+          ))}
+        </div>
+
         <div
           className="flex min-h-[36px] flex-wrap items-center gap-x-1 gap-y-1 border-t px-2 py-1"
           style={{ borderColor: LP.border, background: LP.panelLo }}
