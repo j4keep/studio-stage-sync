@@ -19,7 +19,7 @@ export type MidiNote = {
   velocity: number;
 };
 
-/** Matches the "Start your song…" style picker */
+/** Matches the “Start your song…” style picker */
 export type TrackKind =
   | 'record_audio'
   | 'create_beat'
@@ -82,7 +82,7 @@ export type Track = {
   kind: TrackKind;
   /** Shown in mixer input dropdown (UI + future routing) */
   inputSource: string;
-  /** Single red "R" arm at a time recommended */
+  /** Single red “R” arm at a time recommended */
   recordArm: boolean;
   /** 0 = off (≈−∞ dB), 1 ≈ +6 dB on fader scale (see `faderToGain`) */
   volume: number;

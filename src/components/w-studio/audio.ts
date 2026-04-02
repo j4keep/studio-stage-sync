@@ -812,7 +812,7 @@ export function audioBufferFromMonoFloat(
   sampleRate: number,
 ): AudioBuffer {
   const buf = ctx.createBuffer(1, data.length, sampleRate);
-  buf.copyToChannel(data as unknown as Float32Array<ArrayBuffer>, 0, 0);
+  buf.copyToChannel(Float32Array.from(data), 0, 0);
   return buf;
 }
 
@@ -821,9 +821,9 @@ export function audioBufferToStereo(ctx: BaseAudioContext, buf: AudioBuffer): Au
   if (buf.numberOfChannels >= 2) return buf;
   const n = buf.length;
   const out = ctx.createBuffer(2, n, buf.sampleRate);
-  const m = buf.getChannelData(0);
-  out.copyToChannel(m as unknown as Float32Array<ArrayBuffer>, 0, 0);
-  out.copyToChannel(m as unknown as Float32Array<ArrayBuffer>, 1, 0);
+  const m = new Float32Array(buf.getChannelData(0));
+  out.copyToChannel(m, 0, 0);
+  out.copyToChannel(m, 1, 0);
   return out;
 }
 
@@ -839,8 +839,8 @@ export function audioBufferFromStereoFloat(
 ): AudioBuffer {
   const len = Math.min(L.length, R.length);
   const buf = ctx.createBuffer(2, len, sampleRate);
-  buf.copyToChannel(L.subarray(0, len) as unknown as Float32Array<ArrayBuffer>, 0, 0);
-  buf.copyToChannel(R.subarray(0, len) as unknown as Float32Array<ArrayBuffer>, 1, 0);
+  buf.copyToChannel(Float32Array.from(L.subarray(0, len)), 0, 0);
+  buf.copyToChannel(Float32Array.from(R.subarray(0, len)), 1, 0);
   return buf;
 }
 

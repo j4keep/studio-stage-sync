@@ -118,8 +118,8 @@ export async function hydrateProject(data: SerializedProjectV1, ctx: AudioContex
             sourceMeta: sc.source,
           });
         } else if (sc.source.type === 'remote') {
-          const remoteSource = sc.source as { type: 'remote'; remoteId: string };
-          const item = REMOTE_LIBRARY_FLAT.find((x) => x.id === remoteSource.remoteId);
+          const rid = (sc.source as { type: 'remote'; remoteId: string }).remoteId;
+          const item = REMOTE_LIBRARY_FLAT.find((x) => x.id === rid);
           if (!item) continue;
           const res = await fetch(item.url, { mode: 'cors' });
           if (!res.ok) continue;
@@ -129,7 +129,7 @@ export async function hydrateProject(data: SerializedProjectV1, ctx: AudioContex
             id: sc.id,
             startTime: sc.startTime,
             buffer: buf,
-            sourceMeta: { type: 'remote', remoteId: remoteSource.remoteId },
+            sourceMeta: { type: 'remote', remoteId: rid },
           });
         }
       } catch {
