@@ -821,7 +821,7 @@ export function audioBufferToStereo(ctx: BaseAudioContext, buf: AudioBuffer): Au
   if (buf.numberOfChannels >= 2) return buf;
   const n = buf.length;
   const out = ctx.createBuffer(2, n, buf.sampleRate);
-  const m = buf.getChannelData(0);
+  const m = new Float32Array(buf.getChannelData(0));
   out.copyToChannel(m, 0, 0);
   out.copyToChannel(m, 1, 0);
   return out;

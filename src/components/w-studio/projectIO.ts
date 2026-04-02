@@ -87,7 +87,7 @@ export function parseProjectJSON(str: string): SerializedProjectV1 | null {
   }
 }
 
-export async function hydrateProject(data: SerializedProjectV1, ctx: BaseAudioContext): Promise<Track[]> {
+export async function hydrateProject(data: SerializedProjectV1, ctx: AudioContext): Promise<Track[]> {
   const out: Track[] = [];
   for (const st of data.tracks) {
     const tr: Track = {
