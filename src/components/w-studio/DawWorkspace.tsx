@@ -20,27 +20,30 @@ const TIMELINE_BAR_LIMIT = 127;
 const INSPECTOR_PANEL_W = 240;
 const INSPECTOR_STRIP_W = 118;
 /** Mixer layout — compact, aligned with classic console strips */
-const MIXER_LABEL_W = 72;
-const MIXER_STRIP_W = 64;
-const MIXER_METER_H = 130;
+const MIXER_LABEL_W = 82;
+const MIXER_STRIP_W = 74;
+const MIXER_METER_H = 160;
 const TRACK_ROW_MIN_H = 56;
 const MIXER_LABEL_ROWS = [
   { label: 'Setting', height: 22 },
+  { label: 'Gain Reduction', height: 20 },
   { label: 'EQ', height: 20 },
-  { label: 'Input', height: 20 },
-  { label: 'Audio FX', height: 56 },
-  { label: 'Sends', height: 30 },
-  { label: 'Output', height: 20 },
+  { label: 'MIDI FX', height: 20 },
+  { label: 'Input', height: 22 },
+  { label: 'Audio FX', height: 60 },
+  { label: 'Sends', height: 34 },
+  { label: 'Output', height: 22 },
   { label: 'Group', height: 20 },
-  { label: 'Automation', height: 22 },
-  { label: 'Pan', height: 34 },
-  { label: 'dB', height: 22 },
+  { label: 'Automation', height: 24 },
+  { label: '', height: 40 },  // instrument icon area
+  { label: 'Pan', height: 36 },
+  { label: 'dB', height: 24 },
   { label: '', height: MIXER_METER_H + 10 },
-  { label: '', height: 20 },
-  { label: '', height: 24 },
+  { label: '', height: 22 },
+  { label: '', height: 28 },
   { label: '', height: 24 },
 ] as const;
-const MIXER_SCALE_MARKS = ['6', '3', '0', '-3', '-6', '-9', '-12', '-18', '-24', '-30', '-40', '-50', '-60'];
+const MIXER_SCALE_MARKS = ['6', '3', '0', '-3', '-6', '-9', '-12', '-15', '-18', '-21', '-24', '-30', '-40', '-50', '-60'];
 
 /** Logic Pro X faithful palette — medium gray, not dark */
 const LP = {
