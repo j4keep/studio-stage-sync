@@ -1308,6 +1308,7 @@ function DawChrome() {
             <button type="button" title="Save project JSON" className={`${ctrlBtnBase} px-2 text-[9px] text-[#9d9]`} onClick={() => daw.exportProjectJson()}>Save</button>
             <button type="button" title="Load project" className={`${ctrlBtnBase} px-2 text-[9px]`} onClick={() => projectFileRef.current?.click()}>Load</button>
           </div>
+        </div>
 
         {/* Row 2: Icon+Label toolbar — matches Logic Pro screenshot exactly */}
         <div
