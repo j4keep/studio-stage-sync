@@ -839,8 +839,8 @@ export function audioBufferFromStereoFloat(
 ): AudioBuffer {
   const len = Math.min(L.length, R.length);
   const buf = ctx.createBuffer(2, len, sampleRate);
-  buf.copyToChannel(L.subarray(0, len), 0, 0);
-  buf.copyToChannel(R.subarray(0, len), 1, 0);
+  buf.copyToChannel(new Float32Array(L.buffer.slice(L.byteOffset, L.byteOffset + len * 4)), 0, 0);
+  buf.copyToChannel(new Float32Array(R.buffer.slice(R.byteOffset, R.byteOffset + len * 4)), 1, 0);
   return buf;
 }
 
