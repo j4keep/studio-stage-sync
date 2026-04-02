@@ -1260,49 +1260,54 @@ function DawChrome() {
             <button type="button" className="px-1 text-[8px]" style={{ color: LP.lcdDim }} title="Display mode">▾</button>
           </div>
 
-          <div className="ml-auto flex flex-wrap items-center gap-1">
-            <button
-              type="button"
-              title="Arrange / Edit"
-              onClick={() => setMainView('arrange')}
-              className={mainView === 'arrange' ? `${ctrlBtnActive} px-2 text-[9px] font-semibold` : `${ctrlBtnBase} px-2 text-[9px]`}
-            >
-              Edit
+          {/* Right of LCD: Metronome, 1234 purple, flag */}
+          <div className="flex items-center gap-0.5 border-l pl-2" style={{ borderColor: LP.border }}>
+            <button type="button" title="Metronome" onClick={() => daw.setMetronomeOn(!daw.metronomeOn)} className={ctrlBtnBase}>
+              <IconMetronome off={!daw.metronomeOn} />
             </button>
-            <button
-              type="button"
-              title="Mixer view"
-              onClick={() => setMainView('mixer')}
-              className={mainView === 'mixer' ? `${ctrlBtnActive} px-2 text-[9px] font-semibold` : `${ctrlBtnBase} px-2 text-[9px]`}
-            >
-              Mix
+            <button type="button" title="Count-in" className={ctrlBtnBase}>
+              <IconCountIn />
             </button>
-            <button type="button" title="Export mix (WAV)" className={`${ctrlBtnBase} px-2 text-[9px]`} onClick={() => void daw.exportMixWav()}>
-              Bnc
+            <button type="button" title="MIDI activity" className={`${ctrlBtn} border-[#6a3eaa] bg-gradient-to-b from-[#7a4eba] to-[#5a2ea0] text-[10px] font-bold`} style={{ minWidth: 36 }}>
+              1234
             </button>
-            <button type="button" title="New track" className={`${ctrlBtnBase} px-2 text-[9px]`} onClick={() => setModalOpen(true)}>
-              +Tr
-            </button>
-            <button
-              type="button"
-              title="Import audio"
-              className={`${ctrlBtnBase} px-2 text-[9px]`}
-              onClick={() => targetTrackId && openImport(targetTrackId)}
-              disabled={!targetTrackId}
-            >
-              Imp
-            </button>
-            <button type="button" title="Fullscreen workspace" className={`${ctrlBtnBase} hidden lg:flex`} onClick={() => setFocusWorkbench((v) => !v)}>
-              <IconExpand />
-            </button>
-            <button type="button" title="Save project JSON" className={`${ctrlBtnBase} px-2 text-[9px] text-[#9d9]`} onClick={() => daw.exportProjectJson()}>
-              Save
-            </button>
-            <button type="button" title="Load project" className={`${ctrlBtnBase} px-2 text-[9px]`} onClick={() => projectFileRef.current?.click()}>
-              Load
+            <button type="button" title="Notifications" className={ctrlBtnBase}>
+              <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1l1 3h3l-2.5 2 1 3L8 7.5 5.5 9l1-3L4 4h3z"/></svg>
             </button>
           </div>
-        </div>
+
+          {/* Master volume slider */}
+          <div className="flex min-w-[100px] max-w-[160px] items-center px-2">
+            <input type="range" min={0} max={1} step={0.01} value={daw.masterVolume} onChange={(e) => daw.setMasterVolume(Number(e.target.value))} className="h-1.5 w-full cursor-pointer" style={{ accentColor: '#d0d0d0' }} />
+          </div>
+
+          {/* Far right 4 icons — matches Logic Pro */}
+          <div className="flex items-center gap-0.5 border-l pl-2" style={{ borderColor: LP.border }}>
+            <button type="button" title="List editors" className={ctrlBtnBase}>
+              <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M4 6h16M4 10h16M4 14h16M4 18h16" strokeLinecap="round" /></svg>
+            </button>
+            <button type="button" title="Notepad" className={ctrlBtnBase}>
+              <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="5" y="3" width="14" height="18" rx="1.5" /><path d="M9 7h6M9 11h6M9 15h3" strokeLinecap="round" /></svg>
+            </button>
+            <button type="button" title="Comments" className={ctrlBtnBase}>
+              <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></svg>
+            </button>
+            <button type="button" title="Lock" className={ctrlBtnBase}>
+              <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="5" y="11" width="14" height="10" rx="1.5" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
+            </button>
+          </div>
+
+          {/* Functional buttons - kept for DAW features */}
+          <div className="ml-1 flex flex-wrap items-center gap-0.5">
+            <button type="button" title="Arrange / Edit" onClick={() => setMainView('arrange')} className={mainView === 'arrange' ? `${ctrlBtnActive} px-2 text-[9px] font-semibold` : `${ctrlBtnBase} px-2 text-[9px]`}>Edit</button>
+            <button type="button" title="Mixer view" onClick={() => setMainView('mixer')} className={mainView === 'mixer' ? `${ctrlBtnActive} px-2 text-[9px] font-semibold` : `${ctrlBtnBase} px-2 text-[9px]`}>Mix</button>
+            <button type="button" title="Export mix (WAV)" className={`${ctrlBtnBase} px-2 text-[9px]`} onClick={() => void daw.exportMixWav()}>Bnc</button>
+            <button type="button" title="New track" className={`${ctrlBtnBase} px-2 text-[9px]`} onClick={() => setModalOpen(true)}>+Tr</button>
+            <button type="button" title="Import audio" className={`${ctrlBtnBase} px-2 text-[9px]`} onClick={() => targetTrackId && openImport(targetTrackId)} disabled={!targetTrackId}>Imp</button>
+            <button type="button" title="Fullscreen workspace" className={`${ctrlBtnBase} hidden lg:flex`} onClick={() => setFocusWorkbench((v) => !v)}><IconExpand /></button>
+            <button type="button" title="Save project JSON" className={`${ctrlBtnBase} px-2 text-[9px] text-[#9d9]`} onClick={() => daw.exportProjectJson()}>Save</button>
+            <button type="button" title="Load project" className={`${ctrlBtnBase} px-2 text-[9px]`} onClick={() => projectFileRef.current?.click()}>Load</button>
+          </div>
 
         {/* Row 2: Icon+Label toolbar — matches Logic Pro screenshot exactly */}
         <div
