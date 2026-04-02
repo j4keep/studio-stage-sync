@@ -57,7 +57,7 @@ export function PianoRoll({ trackId, playheadSec, tempo }: PianoRollProps) {
 
   if (!trackId || !tr) {
     return (
-      <p className="px-4 py-6 text-[12px] text-[#6b7280]">
+      <p className="px-4 py-6 text-[12px] text-[#a0a0a0]">
         Select a track to edit MIDI in the piano roll. Click the grid to add notes (1/16 snap). Double-click a note to
         delete.
       </p>
@@ -67,9 +67,9 @@ export function PianoRoll({ trackId, playheadSec, tempo }: PianoRollProps) {
   const playheadPx = (playheadSec / (60 / tempo)) * PX_PER_BEAT;
 
   return (
-    <div className="flex min-h-[200px] min-w-0 flex-1 flex-col border-t border-[#25252b] bg-[#0c0c0e]">
-      <div className="flex items-center gap-2 border-b border-[#25252b] px-2 py-1 text-[10px] text-[#6b7280]">
-        <span className="font-medium text-[#9ca3af]">{tr.name}</span>
+    <div className="flex min-h-[200px] min-w-0 flex-1 flex-col border-t border-[#2c2c2c] bg-[#3a3a3a]">
+      <div className="flex items-center gap-2 border-b border-[#2c2c2c] px-2 py-1 text-[10px] text-[#a8a8a8]">
+        <span className="font-medium text-[#ececec]">{tr.name}</span>
         <span>·</span>
         <span>Snap 1/16</span>
         <span>·</span>
@@ -86,13 +86,13 @@ export function PianoRoll({ trackId, playheadSec, tempo }: PianoRollProps) {
       >
         <div className="relative" style={{ width: gridW + 48, minHeight: gridH }}>
           <div
-            className="absolute left-0 top-0 flex flex-col border-r border-[#2a2a32] bg-[#101012]"
+            className="absolute left-0 top-0 flex flex-col border-r border-[#2c2c2c] bg-[#353535]"
             style={{ width: 44, height: gridH }}
           >
             {Array.from({ length: PITCH_HIGH - PITCH_LOW + 1 }, (_, i) => PITCH_HIGH - i).map((p) => (
               <div
                 key={p}
-                className="flex shrink-0 items-center justify-end border-b border-[#1a1a1e] pr-1 font-mono text-[8px] text-[#52525b]"
+                className="flex shrink-0 items-center justify-end border-b border-[#2a2a2a] pr-1 font-mono text-[8px] text-[#888]"
                 style={{ height: ROW_H }}
               >
                 {p % 12 === 0 ? p : ''}
@@ -103,14 +103,14 @@ export function PianoRoll({ trackId, playheadSec, tempo }: PianoRollProps) {
             {Array.from({ length: Math.ceil(totalBeats) + 1 }).map((_, b) => (
               <div
                 key={b}
-                className="pointer-events-none absolute top-0 border-l border-[#1f1f24]"
+                className="pointer-events-none absolute top-0 border-l border-[#333]"
                 style={{ left: b * PX_PER_BEAT, height: gridH }}
               />
             ))}
             {Array.from({ length: PITCH_HIGH - PITCH_LOW + 1 }).map((_, i) => (
               <div
                 key={i}
-                className="pointer-events-none absolute left-0 border-t border-[#161618]"
+                className="pointer-events-none absolute left-0 border-t border-[#333]"
                 style={{ top: i * ROW_H, width: gridW, height: ROW_H }}
               />
             ))}
