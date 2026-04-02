@@ -15,12 +15,12 @@ import { PianoRoll } from './PianoRoll';
 import { WaveformCanvas } from './WaveformCanvas';
 
 const PX_PER_SEC = 52;
-const TRACK_HEADER_W = 236;
+const TRACK_HEADER_W = 438;
 /** Mixer layout — aligned with classic console strips */
-const MIXER_STRIP_W = 108;
+const MIXER_STRIP_W = 92;
 const MIXER_OUT_STRIP_W = 102;
-const MIXER_METER_H = 160;
-const TRACK_ROW_MIN_H = 86;
+const MIXER_METER_H = 182;
+const TRACK_ROW_MIN_H = 68;
 
 /** Logic Pro X faithful palette — medium gray, not dark */
 const LP = {
@@ -1039,12 +1039,11 @@ function DawChrome() {
   const [selection, setSelection] = useState<ClipSelection>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [mainView, setMainView] = useState<'arrange' | 'mixer'>('arrange');
-  const [libraryOpen, setLibraryOpen] = useState(
-    () => (typeof window !== 'undefined' ? window.innerWidth >= 1200 : true),
-  );
-  const [inspectorOpen, setInspectorOpen] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [inspectorOpen, setInspectorOpen] = useState(true);
+  const [editorsOpen, setEditorsOpen] = useState(false);
   const [focusWorkbench, setFocusWorkbench] = useState(false);
-  const [mixerFilter, setMixerFilter] = useState('All');
+  const [mixerFilter, setMixerFilter] = useState('Tracks');
   const fileRef = useRef<HTMLInputElement>(null);
   const projectFileRef = useRef<HTMLInputElement>(null);
   const importTrackRef = useRef<string>('');
@@ -1155,7 +1154,7 @@ function DawChrome() {
             >
               <IconMixerConsole />
             </button>
-            <button type="button" title="Editors" className={ctrlBtnBase}>
+            <button type="button" title="Editors" onClick={() => setEditorsOpen((v) => !v)} className={editorsOpen ? ctrlBtnActive : ctrlBtnBase}>
               <IconEditorsWin />
             </button>
           </div>
@@ -1475,7 +1474,7 @@ function DawChrome() {
           <div className="flex min-h-0 flex-1 overflow-hidden">
             {/* Inspector in mixer view */}
             {inspectorOpen && (
-              <aside className="flex shrink-0 overflow-y-auto border-r" style={{ borderColor: LP.border, background: LP.panel, width: 200 }}>
+              <aside className="flex shrink-0 overflow-y-auto border-r" style={{ borderColor: LP.border, background: LP.panel, width: 304 }}>
                 <div className="flex min-h-0 flex-1">
                   <div className="flex-1 border-r" style={{ borderColor: LP.border }}>
                     <InspectorChannelStrip trackId={targetTrackId} />
@@ -1511,8 +1510,16 @@ function DawChrome() {
           </div>
         </div>
       ) : (
-        <div className="daw-main flex min-h-0 flex-1 flex-col lg:flex-row [@media(orientation:landscape)]:flex-row">
-          <div className="flex min-h-0 min-w-0 flex-1 flex-row">
+        <div className="daw-main flex min-h-0 flex-1 flex-row overflow-hidden">
+          {inspectorOpen ? (
+            <aside
+              className="flex w-[304px] shrink-0 flex-col overflow-y-auto border-r"
+              style={{ borderColor: LP.border, background: LP.panel }}
+            >
+              <TrackInspector trackId={targetTrackId} />
+            </aside>
+          ) : null}
+          <div className="flex min-h-0 min-w-0 flex-1 flex-row overflow-hidden">
           {libraryOpen ? (
           <aside
             className="flex w-[min(236px,42vw)] shrink-0 flex-col border-r sm:w-[236px]"
@@ -1823,18 +1830,10 @@ function DawChrome() {
           </section>
           </div>
 
-          {inspectorOpen ? (
-            <aside
-              className="flex max-h-[38vh] w-full shrink-0 flex-col overflow-y-auto border-t lg:max-h-none lg:w-[min(280px,32vw)] lg:border-l lg:border-t-0 xl:w-[300px]"
-              style={{ borderColor: LP.border, background: LP.panel }}
-            >
-              <TrackInspector trackId={targetTrackId} />
-            </aside>
-          ) : null}
         </div>
       )}
 
-      <footer
+      {editorsOpen ? <footer
         className={`flex shrink-0 flex-col border-t ${
           editorTab === 'piano' ? 'min-h-[240px] flex-1 lg:h-[min(320px,40vh)] lg:max-h-[420px]' : 'h-[148px]'
         }`}
@@ -1904,6 +1903,7 @@ function DawChrome() {
           {daw.status}
         </div>
       ) : null}
+      </footer> : null}
     </div>
   );
 }
