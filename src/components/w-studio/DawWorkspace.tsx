@@ -1063,8 +1063,12 @@ function DawChrome() {
   const [selection, setSelection] = useState<ClipSelection>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [mainView, setMainView] = useState<'arrange' | 'mixer'>('arrange');
-  const [libraryOpen, setLibraryOpen] = useState(true);
-  const [inspectorOpen, setInspectorOpen] = useState(true);
+  const [libraryOpen, setLibraryOpen] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth >= 1024 : false,
+  );
+  const [inspectorOpen, setInspectorOpen] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth >= 1024 : false,
+  );
   const [focusWorkbench, setFocusWorkbench] = useState(false);
   const [mixerFilter, setMixerFilter] = useState('All');
   const fileRef = useRef<HTMLInputElement>(null);
