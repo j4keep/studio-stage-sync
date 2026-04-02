@@ -1349,65 +1349,80 @@ function DawChrome() {
         </div>
 
         <div
-          className="flex min-h-[36px] flex-wrap items-center gap-x-2 gap-y-1 border-t px-2 py-1"
+          className="flex min-h-[36px] flex-wrap items-center gap-x-1 gap-y-1 border-t px-2 py-1"
           style={{ borderColor: LP.border, background: LP.panelLo }}
         >
-          <span className="text-[9px] font-semibold text-[#888]">Edit</span>
-          <span className="text-[9px] font-semibold text-[#888]">Functions</span>
-          <span className="text-[9px] font-semibold text-[#888]">View</span>
+          {/* Undo arrow */}
+          <button type="button" className={`${ctrlBtnBase} h-6 w-6 text-[10px]`} title="Undo">↺</button>
+          {/* Edit / Functions / View dropdowns */}
+          {['Edit', 'Functions', 'View'].map((m) => (
+            <button key={m} type="button" className="flex items-center gap-0.5 rounded px-2 py-1 text-[10px] font-medium text-[#e4e4e4] hover:bg-black/20">
+              {m} <span className="text-[7px]">▾</span>
+            </button>
+          ))}
           <div className="mx-1 h-4 w-px bg-[#555]" />
-          <button type="button" title="Articulation (reserved)" className={`${ctrlBtnBase} px-1.5 py-1 text-[8px]`}>
-            Artic
+          {/* Grid / List / Linear view icons */}
+          <button type="button" title="Grid view" className={ctrlBtnBase}>
+            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="4" height="4" rx="0.5"/><rect x="6" y="1" width="4" height="4" rx="0.5"/><rect x="11" y="1" width="4" height="4" rx="0.5"/><rect x="1" y="6" width="4" height="4" rx="0.5"/><rect x="6" y="6" width="4" height="4" rx="0.5"/><rect x="11" y="6" width="4" height="4" rx="0.5"/></svg>
           </button>
-          <button type="button" title="Track zoom" className={`${ctrlBtnBase} px-1.5 py-1 text-[8px]`}>
-            TrkZm
+          <button type="button" title="List view" className={ctrlBtnActive}>
+            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="2" width="14" height="3" rx="0.5"/><rect x="1" y="6" width="14" height="3" rx="0.5"/><rect x="1" y="10" width="14" height="3" rx="0.5"/></svg>
           </button>
-          <button type="button" title="Note repeat" className={`${ctrlBtnBase} px-1.5 py-1 text-[8px]`}>
-            Rpt
-          </button>
-          <button type="button" title="Spot erase" className={`${ctrlBtnBase} px-1.5 py-1 text-[8px]`}>
-            Spot
-          </button>
-          <button type="button" title="Split by playhead" className={ctrlBtnBase}>
-            <IconScissors />
-          </button>
-          <button type="button" title="Glue (reserved)" className={ctrlBtnBase}>
-            <IconGlue />
-          </button>
-          <button type="button" title="Bounce regions" className={`${ctrlBtnBase} px-1.5 py-1 text-[8px]`} onClick={() => void daw.exportMixWav()}>
-            Bounce
-          </button>
-          <button type="button" title="Colors (reserved)" className={`${ctrlBtnBase} px-1.5 py-1 text-[8px]`}>
-            Colors
+          <button type="button" title="Linear view" className={ctrlBtnBase}>
+            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 8h12" strokeLinecap="round"/><path d="M2 4h12M2 12h12" strokeLinecap="round" opacity="0.4"/></svg>
           </button>
           <div className="mx-1 h-4 w-px bg-[#555]" />
+          {/* Pen / Auto / Flex tool icons */}
+          <button type="button" title="Pencil tool" className={ctrlBtnBase}>
+            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M10 2l4 4-9 9H1v-4z" strokeLinejoin="round"/></svg>
+          </button>
+          <button type="button" title="Automation" className={ctrlBtnBase}>
+            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M1 12l4-8 4 6 6-8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
+          <button type="button" title="Flex" className={ctrlBtnBase}>
+            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M2 8c2-4 4-4 6 0s4 4 6 0" strokeLinecap="round"/></svg>
+          </button>
+          <div className="mx-1 h-4 w-px bg-[#555]" />
+          {/* Pointer / Crosshair / Plus tools */}
+          <button type="button" title="Pointer tool" className={ctrlBtnBase}>
+            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor"><path d="M3 1l9 6-4 1 2 5-2 1-2-5-3 3z"/></svg>
+          </button>
+          <button type="button" title="Crosshair / Marquee" className={ctrlBtnBase}>
+            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M8 1v14M1 8h14" strokeLinecap="round"/></svg>
+          </button>
+          <button type="button" title="Zoom tool" className={ctrlBtnBase}>
+            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><circle cx="7" cy="7" r="4"/><path d="M10 10l4 4" strokeLinecap="round"/><path d="M5 7h4M7 5v4" strokeLinecap="round"/></svg>
+          </button>
+          <div className="mx-1 h-4 w-px bg-[#555]" />
+          {/* Gear / waveform / quantize */}
+          <button type="button" title="Settings" className={ctrlBtnBase}>
+            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2"><circle cx="8" cy="8" r="2.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.5 1.5M11.5 11.5L13 13M13 3l-1.5 1.5M4.5 11.5L3 13" strokeLinecap="round"/></svg>
+          </button>
+          <button type="button" title="Audio analysis" className={ctrlBtnBase}><IconWaveInst /></button>
+          <button type="button" title="Quantize" className={ctrlBtnBase}>
+            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor"><rect x="2" y="3" width="1.5" height="10"/><rect x="5.5" y="3" width="1.5" height="10"/><rect x="9" y="3" width="1.5" height="10"/><rect x="12.5" y="3" width="1.5" height="10"/></svg>
+          </button>
+          <div className="mx-1 h-4 w-px bg-[#555]" />
+          {/* Zoom vertical/horizontal with delta arrows */}
+          <button type="button" title="Zoom out vertical" className={`${ctrlBtnBase} h-6 w-5 text-[10px]`}>↕</button>
+          <button type="button" title="Zoom out horizontal" className={`${ctrlBtnBase} h-6 w-5 text-[10px]`}>↔</button>
+          <div className="mx-1 h-4 w-px bg-[#555]" />
+          {/* Snap / Drag */}
           <label className="flex items-center gap-1 text-[8px] text-[#aaa]">
             Snap
             <select className="rounded border px-1 py-0.5 text-[8px]" style={{ borderColor: LP.border, background: '#3a3a3a', color: LP.text }}>
-              <option>Smart</option>
-              <option>Bar</option>
-              <option>Beat</option>
+              <option>Smart</option><option>Bar</option><option>Beat</option>
             </select>
           </label>
           <label className="flex items-center gap-1 text-[8px] text-[#aaa]">
             Drag
             <select className="rounded border px-1 py-0.5 text-[8px]" style={{ borderColor: LP.border, background: '#3a3a3a', color: LP.text }}>
-              <option>No Overlap</option>
-              <option>X-Fade</option>
+              <option>No Overlap</option><option>X-Fade</option>
             </select>
           </label>
           <label className="ml-auto flex min-w-[120px] max-w-[240px] flex-1 items-center gap-2 sm:max-w-md">
             <span className="text-[8px] text-[#888]">Pos</span>
-            <input
-              type="range"
-              min={0}
-              max={Math.max(1, end)}
-              step={0.01}
-              value={Math.min(daw.currentTime, end)}
-              onChange={(e) => daw.seek(Number(e.target.value))}
-              className="h-1 w-full cursor-pointer"
-              style={{ accentColor: LP.accentBlueHi }}
-            />
+            <input type="range" min={0} max={Math.max(1, end)} step={0.01} value={Math.min(daw.currentTime, end)} onChange={(e) => daw.seek(Number(e.target.value))} className="h-1 w-full cursor-pointer" style={{ accentColor: LP.accentBlueHi }} />
           </label>
         </div>
       </header>
