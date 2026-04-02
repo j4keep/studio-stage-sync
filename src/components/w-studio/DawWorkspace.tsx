@@ -15,6 +15,68 @@ import { PianoRoll } from './PianoRoll';
 import { WaveformCanvas } from './WaveformCanvas';
 
 const PX_PER_SEC = 52;
+const TRACK_HEADER_W = 236;
+/** Mixer layout — aligned with classic console strips */
+const MIXER_STRIP_W = 108;
+const MIXER_OUT_STRIP_W = 102;
+const MIXER_METER_H = 160;
+const TRACK_ROW_MIN_H = 86;
+
+/** Logic-style charcoal / metal palette (readable on desktop, not pitch black) */
+const LP = {
+  appBg: '#3e3e3e',
+  panel: '#454545',
+  panelHi: '#4f4f4f',
+  panelLo: '#3a3a3a',
+  border: '#2c2c2c',
+  borderHi: '#5a5a5a',
+  text: '#ececec',
+  textMuted: '#a8a8a8',
+  lcdBg: '#0c1018',
+  lcdText: '#6ec8ff',
+  lcdDim: '#4a8aba',
+  accentBlue: '#3d7dcc',
+  accentBlueHi: '#5a9eef',
+  ruler: '#d4a84b',
+  meterGreen: '#5cb85c',
+  meterYel: '#d4c44a',
+  meterRed: '#c94c4c',
+  solo: '#e8d44a',
+  muteOn: '#5ab0b0',
+  record: '#d93030',
+  readAuto: '#4a9a5a',
+} as const;
+
+const ctrlBtn =
+  'flex h-8 w-8 shrink-0 items-center justify-center rounded-[3px] border text-[#f2f2f2] shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_1px_2px_rgba(0,0,0,0.35)] active:translate-y-[0.5px]';
+const ctrlBtnBase = `${ctrlBtn} border-[#4a4a4a] bg-gradient-to-b from-[#5f5f5f] to-[#484848] hover:from-[#686868] hover:to-[#505050]`;
+const ctrlBtnActive = `${ctrlBtn} border-[#3d7dcc] bg-gradient-to-b from-[#4a6a9a] to-[#355080]`;
+
+function formatSMPTE(sec: number) {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = Math.floor(sec % 60);
+  const f = Math.min(29, Math.floor((sec % 1) * 30));
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}:${String(f).padStart(2, '0')}`;
+}
+
+function formatLogicBars(sec: number, bpm: number, beatsPerBar: number) {
+  const beats = sec * (bpm / 60);
+  const bar = Math.floor(beats / beatsPerBar) + 1;
+  const beatInBar = Math.floor(beats % beatsPerBar) + 1;
+  const tick = Math.min(479, Math.floor((beats % 1) * 480));
+  return `${String(bar).padStart(4, '0')} ${beatInBar} 1 ${String(tick).padStart(3, '0')}`;
+}
+
+function secPerBar(bpm: number, beatsPerBar: number) {
+  return (60 / Math.max(40, bpm)) * beatsPerBar;
+}
+
+function peakToDbDisplay(p: number) {
+  if (p < 0.001) return '-∞';
+  const db = 20 * Math.log10(Math.max(p, 0.0001));
+  return db >= 0 ? `+${db.toFixed(1)}` : db.toFixed(1);
+}
 
 function isAudioDropFile(file: File): boolean {
   if (file.type.startsWith('audio/')) return true;
@@ -46,15 +108,6 @@ function formatMs(sec: number) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}:${String(cs).padStart(2, '0')}`;
 }
 
-function IconPanelLeft({ open }: { open: boolean }) {
-  return (
-    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-      <rect x="3" y="4" width="18" height="16" rx="2" />
-      <path d={open ? 'M9 4v16' : 'M9 4v16M15 12h5'} strokeLinecap="round" />
-    </svg>
-  );
-}
-
 function IconInspector({ open }: { open: boolean }) {
   return (
     <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
@@ -76,25 +129,33 @@ function TrackInspector({ trackId }: { trackId: string | null }) {
   const daw = useDaw();
   const tr = trackId ? daw.tracks.find((t) => t.id === trackId) : null;
   if (!tr) {
-    return <p className="p-3 text-[11px] text-[#6b7280]">Select a track in the timeline to edit EQ, dynamics, and space.</p>;
+    return (
+      <p className="p-3 text-[11px]" style={{ color: LP.textMuted }}>
+        Select a track in the timeline to edit EQ, dynamics, and space.
+      </p>
+    );
   }
   return (
     <div className="space-y-3 p-3">
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-[#6b7280]">Inspector</div>
-      <label className="block text-[10px] text-[#9ca3af]">
+      <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: LP.textMuted }}>
+        Inspector
+      </div>
+      <label className="block text-[10px]" style={{ color: LP.textMuted }}>
         Name
         <input
           value={tr.name}
           onChange={(e) => daw.renameTrack(tr.id, e.target.value)}
-          className="mt-0.5 w-full rounded border border-[#2a2a32] bg-[#141416] px-2 py-1 text-[12px] text-white"
+          className="mt-0.5 w-full rounded border px-2 py-1 text-[12px]"
+          style={{ borderColor: LP.border, background: LP.panelLo, color: LP.text }}
         />
       </label>
-      <label className="block text-[10px] text-[#9ca3af]">
+      <label className="block text-[10px]" style={{ color: LP.textMuted }}>
         Input
         <select
           value={tr.inputSource}
           onChange={(e) => daw.setTrackInputSource(tr.id, e.target.value)}
-          className="mt-0.5 w-full rounded border border-[#2a2a32] bg-[#141416] px-2 py-1 text-[11px] text-[#d4d4d8]"
+          className="mt-0.5 w-full rounded border px-2 py-1 text-[11px]"
+          style={{ borderColor: LP.border, background: LP.panelLo, color: LP.text }}
         >
           {INPUT_SOURCE_OPTIONS.map((opt) => (
             <option key={opt} value={opt}>
@@ -104,7 +165,7 @@ function TrackInspector({ trackId }: { trackId: string | null }) {
         </select>
       </label>
       <div>
-        <div className="mb-1 flex justify-between text-[10px] text-[#9ca3af]">
+        <div className="mb-1 flex justify-between text-[10px]" style={{ color: LP.textMuted }}>
           <span>Volume</span>
           <span className="font-mono">{faderToDbLabel(tr.volume)}</span>
         </div>
@@ -115,11 +176,12 @@ function TrackInspector({ trackId }: { trackId: string | null }) {
           step={0.01}
           value={tr.volume}
           onChange={(e) => daw.setTrackVolume(tr.id, Number(e.target.value))}
-          className="w-full accent-[#3b82f6]"
+          className="w-full"
+          style={{ accentColor: LP.accentBlueHi }}
         />
       </div>
       <div>
-        <div className="mb-1 flex justify-between text-[10px] text-[#9ca3af]">
+        <div className="mb-1 flex justify-between text-[10px]" style={{ color: LP.textMuted }}>
           <span>Pan</span>
           <span className="font-mono">{tr.pan.toFixed(2)}</span>
         </div>
@@ -130,15 +192,17 @@ function TrackInspector({ trackId }: { trackId: string | null }) {
           step={0.01}
           value={tr.pan}
           onChange={(e) => daw.setTrackPan(tr.id, Number(e.target.value))}
-          className="w-full accent-[#a78bfa]"
+          className="w-full"
+          style={{ accentColor: '#8fdf7a' }}
         />
       </div>
-      <label className="block text-[10px] text-[#9ca3af]">
+      <label className="block text-[10px]" style={{ color: LP.textMuted }}>
         EQ
         <select
           value={tr.eqPreset}
           onChange={(e) => daw.setTrackEq(tr.id, e.target.value as (typeof tr)['eqPreset'])}
-          className="mt-0.5 w-full rounded border border-[#2a2a32] bg-[#141416] px-2 py-1 text-[11px] text-[#d4d4d8]"
+          className="mt-0.5 w-full rounded border px-2 py-1 text-[11px]"
+          style={{ borderColor: LP.border, background: LP.panelLo, color: LP.text }}
         >
           {EQ_PRESET_LABELS.map((o) => (
             <option key={o.id} value={o.id}>
@@ -147,12 +211,13 @@ function TrackInspector({ trackId }: { trackId: string | null }) {
           ))}
         </select>
       </label>
-      <label className="block text-[10px] text-[#9ca3af]">
+      <label className="block text-[10px]" style={{ color: LP.textMuted }}>
         Dynamics
         <select
           value={tr.effectPreset}
           onChange={(e) => daw.setTrackEffect(tr.id, e.target.value as (typeof tr)['effectPreset'])}
-          className="mt-0.5 w-full rounded border border-[#2a2a32] bg-[#141416] px-2 py-1 text-[11px] text-[#d4d4d8]"
+          className="mt-0.5 w-full rounded border px-2 py-1 text-[11px]"
+          style={{ borderColor: LP.border, background: LP.panelLo, color: LP.text }}
         >
           {EFFECT_PRESET_LABELS.map((o) => (
             <option key={o.id} value={o.id}>
@@ -161,12 +226,13 @@ function TrackInspector({ trackId }: { trackId: string | null }) {
           ))}
         </select>
       </label>
-      <label className="block text-[10px] text-[#9ca3af]">
+      <label className="block text-[10px]" style={{ color: LP.textMuted }}>
         Space
         <select
           value={tr.spacePreset}
           onChange={(e) => daw.setTrackSpace(tr.id, e.target.value as (typeof tr)['spacePreset'])}
-          className="mt-0.5 w-full rounded border border-[#2a2a32] bg-[#141416] px-2 py-1 text-[11px] text-[#d4d4d8]"
+          className="mt-0.5 w-full rounded border px-2 py-1 text-[11px]"
+          style={{ borderColor: LP.border, background: LP.panelLo, color: LP.text }}
         >
           {SPACE_PRESET_LABELS.map((o) => (
             <option key={o.id} value={o.id}>
@@ -175,7 +241,7 @@ function TrackInspector({ trackId }: { trackId: string | null }) {
           ))}
         </select>
       </label>
-      <p className="text-[10px] leading-snug text-[#52525b]">
+      <p className="text-[10px] leading-snug" style={{ color: LP.textMuted }}>
         MIDI notes on this track appear in the piano roll and as blocks on the timeline. Use M / S / R on the track header
         for mute, solo, record arm.
       </p>
@@ -245,6 +311,221 @@ function IconMetronome({ off }: { off: boolean }) {
   );
 }
 
+function IconLibraryDrawer() {
+  return (
+    <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+      <rect x="3" y="4" width="18" height="16" rx="1.5" />
+      <path d="M3 9h18M9 4v16" strokeLinecap="round" />
+    </svg>
+  );
+}
+function IconHelpQ() {
+  return (
+    <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.5 9.5a2.5 2.5 0 0 1 5 .2c0 2-2.5 1.8-2.5 3.8M12 17h.01" strokeLinecap="round" />
+    </svg>
+  );
+}
+function IconSmartSliders() {
+  return (
+    <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+      <path d="M4 8h4M10 8h10M4 16h10M16 16h4" strokeLinecap="round" />
+      <circle cx="7" cy="8" r="2" fill="currentColor" />
+      <circle cx="14" cy="16" r="2" fill="currentColor" />
+    </svg>
+  );
+}
+function IconMixerConsole() {
+  return (
+    <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+      <rect x="4" y="3" width="16" height="18" rx="1" />
+      <path d="M8 7v8M12 5v10M16 8v7" strokeLinecap="round" />
+    </svg>
+  );
+}
+function IconEditorsWin() {
+  return (
+    <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+      <rect x="3" y="5" width="18" height="14" rx="1" />
+      <path d="M3 9h18M9 5v14" strokeLinecap="round" />
+    </svg>
+  );
+}
+function IconToolbarRows() {
+  return (
+    <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+      <path d="M4 7h16M4 12h16M4 17h10" strokeLinecap="round" />
+    </svg>
+  );
+}
+function IconListDoc() {
+  return (
+    <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+      <path d="M8 6h12M8 10h12M8 14h8M8 18h8" strokeLinecap="round" />
+      <rect x="4" y="5" width="2" height="2" fill="currentColor" />
+      <rect x="4" y="9" width="2" height="2" fill="currentColor" />
+      <rect x="4" y="13" width="2" height="2" fill="currentColor" />
+    </svg>
+  );
+}
+function IconNotePad() {
+  return (
+    <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+      <path d="M6 4h9l3 3v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" />
+      <path d="M14 4v4h4" />
+    </svg>
+  );
+}
+function IconLoopBrowser() {
+  return (
+    <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+      <circle cx="12" cy="12" r="7" />
+      <path d="M12 8v4l3 2" strokeLinecap="round" />
+    </svg>
+  );
+}
+function IconMediaBrowser() {
+  return (
+    <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+      <rect x="3" y="5" width="18" height="14" rx="1" />
+      <circle cx="9" cy="11" r="2.5" />
+      <path d="M21 15l-4-4-6 6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function IconForwardEnd() {
+  return (
+    <svg className="h-[16px] w-[16px]" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M6 6h2v12H6zm4 0l10 6-10 6z" />
+    </svg>
+  );
+}
+function IconCountIn() {
+  return (
+    <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <rect x="3" y="14" width="3.5" height="6" rx="0.5" />
+      <rect x="8" y="10" width="3.5" height="10" rx="0.5" />
+      <rect x="13" y="12" width="3.5" height="8" rx="0.5" />
+      <rect x="18" y="8" width="3.5" height="12" rx="0.5" />
+    </svg>
+  );
+}
+function IconScissors() {
+  return (
+    <svg className="h-[16px] w-[16px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+      <circle cx="7" cy="7" r="2.5" />
+      <circle cx="7" cy="17" r="2.5" />
+      <path d="M9 9l8 4-8 4M9 15l8-4" strokeLinecap="round" />
+    </svg>
+  );
+}
+function IconGlue() {
+  return (
+    <svg className="h-[16px] w-[16px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+      <path d="M8 12h8M10 8v8M14 8v8" strokeLinecap="round" />
+    </svg>
+  );
+}
+function IconWaveInst() {
+  return (
+    <svg className="h-[14px] w-[14px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+      <path d="M3 12h2l2-6 3 12 3-8 3 6h4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function IconStereoLink() {
+  return (
+    <svg className="h-[10px] w-[14px]" viewBox="0 0 24 12" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden>
+      <circle cx="7" cy="6" r="4" />
+      <circle cx="15" cy="6" r="4" />
+    </svg>
+  );
+}
+
+function PanKnob({
+  value,
+  onChange,
+  size = 36,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  size?: number;
+}) {
+  const deg = value * 48;
+  return (
+    <div className="relative flex flex-col items-center" style={{ width: size }}>
+      <div
+        className="relative rounded-full border border-[#333] shadow-[inset_0_2px_4px_rgba(0,0,0,0.45),0_1px_0_rgba(255,255,255,0.08)]"
+        style={{
+          width: size,
+          height: size,
+          background: 'linear-gradient(160deg, #5a5a5a 0%, #3a3a3a 55%, #323232 100%)',
+        }}
+      >
+        <input
+          type="range"
+          min={-1}
+          max={1}
+          step={0.01}
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className="absolute inset-0 z-10 cursor-pointer opacity-0"
+          aria-label="Pan"
+        />
+        <div
+          className="pointer-events-none absolute left-1/2 top-1/2 h-[42%] w-[3px] origin-bottom rounded-full"
+          style={{
+            background: '#8fdf7a',
+            transform: `translate(-50%, -100%) rotate(${deg}deg)`,
+            boxShadow: '0 0 2px rgba(0,0,0,0.5)',
+          }}
+        />
+      </div>
+      <span className="mt-0.5 font-mono text-[7px] tabular-nums text-[#c8c8c8]">
+        {Math.abs(value) < 0.05 ? '0.0' : value < 0 ? `-${Math.round(Math.abs(value) * 100)}` : `+${Math.round(value * 100)}`}
+      </span>
+    </div>
+  );
+}
+
+function DualPeakMeters({ peak, height = MIXER_METER_H }: { peak: number; height?: number }) {
+  const h = Math.min(100, peak * 112);
+  const bar = (k: string) => (
+    <div
+      key={k}
+      className="relative overflow-hidden rounded-[2px] bg-[#0a0a0a]"
+      style={{
+        height,
+        width: 8,
+        boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.95), inset 0 -1px 0 rgba(255,255,255,0.04)',
+      }}
+    >
+      {[12, 28, 44, 60, 76].map((pct) => (
+        <div
+          key={pct}
+          className="pointer-events-none absolute left-0 right-0 border-t border-[#1f1f1f]"
+          style={{ bottom: `${pct}%` }}
+        />
+      ))}
+      <div
+        className="absolute bottom-0 left-0 right-0 transition-[height] duration-75"
+        style={{
+          height: `${h}%`,
+          background: `linear-gradient(to top, ${LP.meterGreen} 0%, ${LP.meterYel} 68%, ${LP.meterRed} 100%)`,
+          boxShadow: '0 0 4px rgba(90,200,90,0.25)',
+        }}
+      />
+    </div>
+  );
+  return (
+    <div className="flex items-end gap-[3px]" style={{ height }}>
+      {bar('L')}
+      {bar('R')}
+    </div>
+  );
+}
+
 const MODAL_CELLS: {
   kind: TrackKind;
   label: string;
@@ -273,29 +554,35 @@ function StartSongModal({
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.55)' }}
       role="dialog"
       aria-modal="true"
       aria-labelledby="start-song-title"
     >
-      <div className="relative w-full max-w-md rounded-2xl border border-[#2a2a32] bg-[#121214] p-5 shadow-2xl">
+      <div
+        className="relative w-full max-w-md rounded-lg border p-5 shadow-2xl"
+        style={{ borderColor: LP.border, background: LP.panel, color: LP.text }}
+      >
         <button
           type="button"
-          className="absolute right-3 top-3 rounded p-1 text-[#6b7280] hover:bg-[#1a1a1f] hover:text-white"
+          className="absolute right-3 top-3 rounded p-1 hover:bg-black/25"
+          style={{ color: LP.textMuted }}
           onClick={onClose}
           aria-label="Close"
         >
           ✕
         </button>
-        <h2 id="start-song-title" className="mb-4 text-center text-lg font-semibold text-white">
-          Start your song…
+        <h2 id="start-song-title" className="mb-4 text-center text-lg font-semibold">
+          New track
         </h2>
         <div className="grid grid-cols-2 gap-3">
           {MODAL_CELLS.map((c) => (
             <button
               key={c.kind}
               type="button"
-              className="flex flex-col items-center rounded-xl border border-[#2a2a32] bg-[#18181c] px-3 py-4 text-center transition hover:border-[#404048] hover:bg-[#1f1f24]"
+              className="flex flex-col items-center rounded-lg border px-3 py-4 text-center transition hover:brightness-110"
+              style={{ borderColor: LP.border, background: LP.panelLo }}
               onClick={() => {
                 onPick(c.kind);
                 onClose();
@@ -304,12 +591,57 @@ function StartSongModal({
               <span className="mb-2 text-2xl" style={{ color: c.color }} aria-hidden>
                 ●
               </span>
-              <span className="text-[13px] font-medium text-white">{c.label}</span>
-              <span className="mt-0.5 text-[10px] text-[#6b7280]">{c.hint}</span>
+              <span className="text-[13px] font-medium">{c.label}</span>
+              <span className="mt-0.5 text-[10px]" style={{ color: LP.textMuted }}>
+                {c.hint}
+              </span>
             </button>
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+const slotBlue =
+  'mb-0.5 w-full truncate rounded-sm border border-[#2a5080] bg-gradient-to-b from-[#4a6fa8] to-[#355a8a] px-0.5 py-0.5 text-[7px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]';
+
+function LogicMixerFilterBar({ active, onPick }: { active: string; onPick: (s: string) => void }) {
+  const items = [
+    'Single',
+    'Tracks',
+    'All',
+    'Audio',
+    'Inst',
+    'Aux',
+    'Bus',
+    'Input',
+    'Output',
+    'Mstr/VCA',
+    'MIDI',
+  ] as const;
+  return (
+    <div
+      className="flex shrink-0 flex-wrap items-center gap-1 border-b px-2 py-1.5"
+      style={{
+        borderColor: LP.border,
+        background: `linear-gradient(180deg, #434343 0%, ${LP.panelLo} 100%)`,
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)',
+      }}
+    >
+      {items.map((x) => (
+        <button
+          key={x}
+          type="button"
+          title={`Mixer: ${x} (view filter)`}
+          onClick={() => onPick(x)}
+          className={`rounded-[3px] px-2 py-1 text-[9px] font-semibold tracking-tight ${
+            active === x ? `${ctrlBtnActive} min-h-[26px]` : 'text-[#e4e4e4] hover:bg-black/20'
+          }`}
+        >
+          {x}
+        </button>
+      ))}
     </div>
   );
 }
@@ -329,34 +661,28 @@ function MixerStrip({
 
   return (
     <div
-      className="flex w-[108px] shrink-0 flex-col border-r border-[#25252b] bg-[#141416]"
-      style={{ borderTopColor: tr.color, borderTopWidth: 3 }}
+      className="flex min-h-full shrink-0 flex-col border-r bg-gradient-to-b from-[#4c4c4c] to-[#363636] shadow-[inset_-1px_0_0_rgba(0,0,0,0.35)]"
+      style={{ width: MIXER_STRIP_W, borderColor: LP.border, borderTopWidth: 3, borderTopColor: tr.color }}
     >
-      <div className="flex items-start justify-between border-b border-[#25252b] px-1 py-1">
-        <span className="mt-0.5 text-[10px] opacity-70" aria-hidden>
-          ♪
-        </span>
+      <div className="flex items-center justify-between border-b px-0.5 py-0.5" style={{ borderColor: LP.border }}>
+        <span className="text-[6px] font-bold uppercase tracking-wider text-[#aaa]">Setting</span>
         <button
           type="button"
-          className="rounded px-1 text-[12px] text-[#6b7280] hover:bg-[#2a1a1a] hover:text-red-400"
-          title="Remove track"
+          className="rounded px-0.5 text-[11px] leading-none text-[#888] hover:bg-black/30 hover:text-[#f66]"
+          title="Delete track"
           onClick={() => daw.removeTrack(tr.id)}
         >
           ×
         </button>
       </div>
-      <div className="border-b border-[#25252b] px-1.5 py-1" style={{ borderBottomColor: tr.color, borderBottomWidth: 2 }}>
-        <input
-          value={tr.name}
-          onChange={(e) => daw.renameTrack(tr.id, e.target.value)}
-          className="w-full truncate bg-transparent text-[11px] font-semibold text-white outline-none placeholder:text-[#52525b]"
-          placeholder="Name…"
-        />
+      <div className="mx-0.5 mt-0.5 h-5 rounded-sm border border-[#333] bg-[#2a2a2a] shadow-inner" title="EQ curve display">
+        <div className="h-full w-full bg-gradient-to-r from-transparent via-[#4a7ab0]/40 to-transparent opacity-80" />
       </div>
       <select
         value={tr.inputSource}
         onChange={(e) => daw.setTrackInputSource(tr.id, e.target.value)}
-        className="mx-1 mt-1 truncate rounded border border-[#2a2a32] bg-[#0e0e10] px-0.5 py-1 text-[9px] text-[#d4d4d8]"
+        className="mx-0.5 mt-0.5 w-[calc(100%-4px)] truncate rounded border border-[#333] bg-[#2f2f2f] px-0.5 py-0.5 text-[7px] text-[#e8e8e8]"
+        title="Input / instrument"
       >
         {INPUT_SOURCE_OPTIONS.map((opt) => (
           <option key={opt} value={opt}>
@@ -364,138 +690,102 @@ function MixerStrip({
           </option>
         ))}
       </select>
-      <div className="mt-1.5 flex justify-center gap-1 px-1">
-        <button
-          type="button"
-          title="Mute"
-          onClick={() => daw.toggleMute(tr.id)}
-          className={`h-7 w-7 rounded border text-[10px] font-bold ${tr.muted ? 'border-[#6b2a2a] bg-[#3f1f1f] text-[#fca5a5]' : 'border-[#333] bg-[#1e1e22] text-[#a1a1aa]'}`}
-        >
-          M
-        </button>
-        <button
-          type="button"
-          title="Solo"
-          onClick={() => daw.toggleSolo(tr.id)}
-          className={`h-7 w-7 rounded border text-[10px] font-bold ${tr.solo ? 'border-[#6b5a2a] bg-[#3a3420] text-[#fde047]' : 'border-[#333] bg-[#1e1e22] text-[#a1a1aa]'}`}
-        >
-          S
-        </button>
-        <button
-          type="button"
-          title="Record arm"
-          onClick={() => daw.toggleRecordArm(tr.id)}
-          className={`h-7 w-7 rounded-full border text-[10px] font-bold ${tr.recordArm ? 'border-red-500 bg-[#4a1515] text-red-300' : 'border-[#444] bg-[#252528] text-[#888]'}`}
-        >
-          R
-        </button>
-      </div>
-      <div className="mt-2 px-1">
-        <div className="mb-0.5 flex justify-between text-[9px] text-[#6b7280]">
-          <span>Pan</span>
-          <span className="font-mono tabular-nums text-[#9ca3af]">{tr.pan.toFixed(1)}</span>
-        </div>
-        <input
-          type="range"
-          min={-1}
-          max={1}
-          step={0.01}
-          value={tr.pan}
-          onChange={(e) => daw.setTrackPan(tr.id, Number(e.target.value))}
-          className="h-1 w-full accent-[#a78bfa]"
-        />
-        <div className="mt-1 flex justify-center gap-0.5">
-          {(
-            [
-              { lbl: 'L' as const, val: -1, title: 'Pan full left' },
-              { lbl: 'C' as const, val: 0, title: 'Pan center' },
-              { lbl: 'R' as const, val: 1, title: 'Pan full right' },
-            ] as const
-          ).map(({ lbl, val, title }) => {
-            const active = Math.abs(tr.pan - val) < 0.08;
-            return (
-              <button
-                key={lbl}
-                type="button"
-                title={title}
-                onClick={() => daw.setTrackPan(tr.id, val)}
-                className={`min-w-[1.75rem] rounded border px-1 py-0.5 text-[9px] font-bold ${
-                  active
-                    ? 'border-[#a78bfa] bg-[#2e2640] text-[#e9d5ff]'
-                    : 'border-[#333] bg-[#1e1e22] text-[#9ca3af]'
-                }`}
-              >
-                {lbl}
-              </button>
-            );
-          })}
-        </div>
-      </div>
       <select
         value={tr.eqPreset}
         onChange={(e) => daw.setTrackEq(tr.id, e.target.value as (typeof tr)['eqPreset'])}
-        className="mx-1 mt-1 rounded border border-[#2a2a32] bg-[#0e0e10] px-0.5 py-0.5 text-[8px] text-[#c4c4c4]"
-        title="EQ"
+        className={slotBlue}
+        title="Channel EQ"
       >
         {EQ_PRESET_LABELS.map((o) => (
           <option key={o.id} value={o.id}>
-            EQ: {o.label}
+            Chan EQ · {o.label}
           </option>
         ))}
       </select>
       <select
         value={tr.effectPreset}
         onChange={(e) => daw.setTrackEffect(tr.id, e.target.value as (typeof tr)['effectPreset'])}
-        className="mx-1 mt-0.5 rounded border border-[#2a2a32] bg-[#0e0e10] px-0.5 py-0.5 text-[8px] text-[#c4c4c4]"
-        title="Dynamics / effects"
+        className={slotBlue}
+        title="Audio FX"
       >
         {EFFECT_PRESET_LABELS.map((o) => (
           <option key={o.id} value={o.id}>
-            FX: {o.label}
+            {o.label}
           </option>
         ))}
       </select>
       <select
         value={tr.spacePreset}
         onChange={(e) => daw.setTrackSpace(tr.id, e.target.value as (typeof tr)['spacePreset'])}
-        className="mx-1 mt-0.5 rounded border border-[#2a2a32] bg-[#0e0e10] px-0.5 py-0.5 text-[8px] text-[#c4c4c4]"
-        title="Reverb / space (post dynamics)"
+        className={slotBlue}
+        title="Space / reverb"
       >
         {SPACE_PRESET_LABELS.map((o) => (
           <option key={o.id} value={o.id}>
-            Space: {o.label}
+            {o.label}
           </option>
         ))}
       </select>
+      <div className="mx-0.5 mt-0.5 space-y-0.5">
+        <button
+          type="button"
+          className="w-full truncate rounded-sm border border-[#3a3a3a] bg-[#333] py-0.5 text-[6px] text-[#9dbee8]"
+          title="Send (reserved)"
+        >
+          Bus 1
+        </button>
+        <button
+          type="button"
+          className="w-full truncate rounded-sm border border-[#3a3a3a] bg-[#333] py-0.5 text-[6px] text-[#9dbee8]"
+          title="Send (reserved)"
+        >
+          Bus 2
+        </button>
+      </div>
+      <div className="mx-0.5 mt-0.5 rounded-sm border border-[#444] bg-[#353535] py-0.5 text-center text-[7px] font-medium text-[#ccc]">
+        St Out
+      </div>
       <button
         type="button"
-        className="mx-1 mt-1 rounded border border-[#333] py-0.5 text-[8px] text-[#93c5fd] hover:bg-[#1a1a1f]"
-        onClick={fileInputTrigger}
+        className="mx-0.5 mt-0.5 rounded-sm border border-[#2d5a2d] py-0.5 text-[7px] font-bold text-[#b8e8b8]"
+        style={{ background: LP.readAuto }}
+        title="Automation mode (Read)"
       >
-        Import file
+        Read
       </button>
-
-      <div className="mt-2 flex flex-1 items-stretch justify-center gap-1.5 px-1 pb-2">
-        <div className="flex flex-col items-end justify-between py-1 pr-0.5 text-[8px] font-mono leading-tight text-[#52525b]">
+      <div className="min-h-[6px] flex-1" aria-hidden />
+      <div className="flex justify-center text-[#ccc]">
+        <IconWaveInst />
+      </div>
+      <div className="mt-0.5 flex justify-center">
+        <PanKnob value={tr.pan} onChange={(v) => daw.setTrackPan(tr.id, v)} size={38} />
+      </div>
+      <div className="mx-0.5 flex items-center justify-between text-[#aaa]">
+        <IconStereoLink />
+        <span className="font-mono text-[6px] tabular-nums">{peakToDbDisplay(peak)}</span>
+      </div>
+      <div
+        className="mt-1 flex items-stretch justify-center gap-1.5 px-1 pb-1"
+        style={{ minHeight: MIXER_METER_H + 8 }}
+      >
+        <div className="flex flex-col items-end justify-between py-1 pr-0.5 text-[7px] font-mono leading-[1.15] text-[#8a8a8a]">
           <span>0</span>
-          <span>-10</span>
-          <span>-20</span>
-          <span>-30</span>
-          <span>-40</span>
+          <span>-6</span>
+          <span>-12</span>
+          <span>-18</span>
+          <span>-24</span>
           <span>-∞</span>
         </div>
-        <div className="relative flex w-5 flex-col justify-end">
-          <div className="relative h-[140px] w-full overflow-hidden rounded-sm bg-[#0a0a0c]">
-            <div
-              className="absolute bottom-0 left-0 right-0 opacity-90 transition-[height] duration-75"
-              style={{
-                height: `${Math.min(100, peak * 115)}%`,
-                background: `linear-gradient(to top, #16a34a 0%, #eab308 70%, #dc2626 100%)`,
-              }}
-            />
-          </div>
-        </div>
-        <div className="relative flex h-[148px] w-9 items-center justify-center">
+        <DualPeakMeters peak={peak} height={MIXER_METER_H} />
+        <div className="relative flex w-9 items-center justify-center">
+          <div
+            className="absolute rounded-full border border-[#1a1a1a] shadow-[inset_0_2px_6px_rgba(0,0,0,0.85)]"
+            style={{
+              height: MIXER_METER_H,
+              width: 10,
+              background: 'linear-gradient(90deg, #4a4a4a 0%, #2a2a2a 45%, #1e1e1e 100%)',
+            }}
+          />
           <input
             type="range"
             min={0}
@@ -503,13 +793,175 @@ function MixerStrip({
             step={0.005}
             value={tr.volume}
             onChange={(e) => daw.setTrackVolume(tr.id, Number(e.target.value))}
-            className="absolute w-[120px] -rotate-90 cursor-pointer accent-[#3b82f6]"
+            className="absolute cursor-pointer opacity-90"
+            style={{
+              width: MIXER_METER_H,
+              height: 28,
+              transform: 'rotate(-90deg)',
+              accentColor: '#d8d8d8',
+            }}
             aria-label="Volume fader"
           />
         </div>
       </div>
-      <div className="border-t border-[#25252b] py-1 text-center font-mono text-[9px] tabular-nums text-[#94a3b8]">
-        {faderToDbLabel(tr.volume)}
+      <div className="mx-0.5 flex justify-center gap-0.5">
+        <button
+          type="button"
+          title="Record enable"
+          onClick={() => daw.toggleRecordArm(tr.id)}
+          className={`h-5 w-5 rounded-sm border text-[8px] font-bold ${
+            tr.recordArm ? 'border-[#a22] text-white' : 'border-[#444] text-[#888]'
+          }`}
+          style={{ background: tr.recordArm ? LP.record : '#3a3a3a' }}
+        >
+          R
+        </button>
+        <button
+          type="button"
+          title="Input monitoring (reserved)"
+          className="h-5 w-5 rounded-sm border border-[#444] bg-[#3a3a3a] text-[8px] font-bold text-[#888]"
+        >
+          I
+        </button>
+      </div>
+      <div className="mx-0.5 mt-0.5 flex justify-center gap-0.5">
+        <button
+          type="button"
+          title="Mute"
+          onClick={() => daw.toggleMute(tr.id)}
+          className={`h-5 w-5 rounded-sm border text-[8px] font-bold ${
+            tr.muted ? 'border-[#3a7a7a] text-[#022]' : 'border-[#444] text-[#bbb]'
+          }`}
+          style={{ background: tr.muted ? LP.muteOn : '#3a3a3a' }}
+        >
+          M
+        </button>
+        <button
+          type="button"
+          title="Solo"
+          onClick={() => daw.toggleSolo(tr.id)}
+          className={`h-5 w-5 rounded-sm border text-[8px] font-bold ${
+            tr.solo ? 'border-[#886600] text-[#111]' : 'border-[#444] text-[#bbb]'
+          }`}
+          style={{ background: tr.solo ? LP.solo : '#3a3a3a' }}
+        >
+          S
+        </button>
+      </div>
+      <button
+        type="button"
+        className="mx-0.5 mt-0.5 rounded-sm border border-[#3a5a80] py-0.5 text-[6px] text-[#9dc4ff]"
+        style={{ background: 'linear-gradient(to bottom,#3a4a5a,#2a3540)' }}
+        onClick={fileInputTrigger}
+        title="Import audio"
+      >
+        Import
+      </button>
+      <div
+        className="mt-auto truncate border-t px-0.5 py-1 text-center text-[8px] font-semibold text-[#111]"
+        style={{ backgroundColor: tr.color, borderColor: LP.border }}
+        title={tr.name}
+      >
+        {tr.name || 'Track'}
+      </div>
+    </div>
+  );
+}
+
+function StereoOutStrip() {
+  const daw = useDaw();
+  const peak = daw.meterPeaks.__master__ ?? 0;
+  return (
+    <div
+      className="flex min-h-full shrink-0 flex-col border-l bg-gradient-to-b from-[#524a55] to-[#3a343d] shadow-[inset_1px_0_0_rgba(255,255,255,0.04)]"
+      style={{ width: MIXER_OUT_STRIP_W, borderColor: LP.border }}
+    >
+      <div className="border-b px-0.5 py-1 text-center text-[8px] font-bold uppercase tracking-wide text-[#f0e8f4]">
+        Stereo Out
+      </div>
+      <button
+        type="button"
+        className="mx-1 mt-1 rounded-sm border border-[#7a6288] py-1 text-[8px] font-bold text-white shadow-sm"
+        style={{ background: 'linear-gradient(180deg,#6b5678,#4a3d52)' }}
+        title="Bounce project mix"
+        onClick={() => void daw.exportMixWav()}
+      >
+        Bnc
+      </button>
+      <div className="mx-1 mt-1 rounded-sm border border-[#555] bg-[#383838] py-0.5 text-center text-[8px] font-medium text-[#ddd]">
+        St Out
+      </div>
+      <button
+        type="button"
+        className="mx-1 mt-1 rounded-sm border border-[#2d5a2d] py-0.5 text-[7px] font-bold text-[#d8ffd8]"
+        style={{ background: LP.readAuto }}
+        title="Automation"
+      >
+        Read
+      </button>
+      <div className="min-h-[6px] flex-1" aria-hidden />
+      <div className="mx-1 mb-1 grid grid-cols-2 gap-0.5">
+        <div
+          className="rounded border px-0.5 py-0.5 text-center font-mono text-[7px] tabular-nums text-[#7dd87d]"
+          style={{ borderColor: '#222', background: '#0a0a0a' }}
+        >
+          0.0
+        </div>
+        <div
+          className="rounded border px-0.5 py-0.5 text-center font-mono text-[7px] tabular-nums text-[#7dd87d]"
+          style={{ borderColor: '#222', background: '#0a0a0a' }}
+        >
+          {peakToDbDisplay(peak)}
+        </div>
+      </div>
+      <div
+        className="mx-1 flex items-stretch justify-center gap-1.5 pb-2"
+        style={{ minHeight: MIXER_METER_H + 8 }}
+      >
+        <div className="flex flex-col items-end justify-between py-1 pr-0.5 text-[7px] font-mono text-[#8a8a8a]">
+          <span>0</span>
+          <span>-6</span>
+          <span>-12</span>
+          <span>-18</span>
+          <span>-24</span>
+        </div>
+        <DualPeakMeters peak={peak} height={MIXER_METER_H} />
+        <div className="relative flex w-9 items-center justify-center">
+          <div
+            className="absolute rounded-full border border-[#1a1a1a] shadow-[inset_0_2px_6px_rgba(0,0,0,0.85)]"
+            style={{
+              height: MIXER_METER_H,
+              width: 10,
+              background: 'linear-gradient(90deg, #4a4a4a 0%, #2a2a2a 45%, #1e1e1e 100%)',
+            }}
+          />
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.005}
+            value={daw.masterVolume}
+            onChange={(e) => daw.setMasterVolume(Number(e.target.value))}
+            className="absolute cursor-pointer opacity-90"
+            style={{
+              width: MIXER_METER_H,
+              height: 28,
+              transform: 'rotate(-90deg)',
+              accentColor: '#e8e8e8',
+            }}
+            aria-label="Stereo out level"
+          />
+        </div>
+      </div>
+      <div className="mx-1 mb-1 flex justify-center gap-0.5">
+        <span className="h-5 w-5 rounded-sm border border-[#444] bg-[#353535]" title="Output mute (reserved)" />
+        <span className="h-5 w-5 rounded-sm border border-[#444] bg-[#353535]" title="Output solo (reserved)" />
+      </div>
+      <div
+        className="mt-auto truncate border-t px-0.5 py-1.5 text-center text-[9px] font-semibold text-white"
+        style={{ backgroundColor: '#9b4d96', borderColor: LP.border }}
+      >
+        Stereo Out
       </div>
     </div>
   );
@@ -520,34 +972,60 @@ function MasterMixerStrip() {
   const peak = daw.meterPeaks.__master__ ?? 0;
   return (
     <div
-      className="flex w-[108px] shrink-0 flex-col border-l-2 border-[#3b82f6] bg-[#14161c]"
-      style={{ borderTopColor: '#3b82f6', borderTopWidth: 3 }}
+      className="flex min-h-full shrink-0 flex-col border-l bg-gradient-to-b from-[#4e4e4e] to-[#323232] shadow-[inset_1px_0_0_rgba(255,255,255,0.05)]"
+      style={{ width: MIXER_OUT_STRIP_W, borderColor: LP.border }}
     >
-      <div className="border-b border-[#25252b] px-1.5 py-1.5 text-center">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-[#93c5fd]">Master</span>
-        <p className="mt-0.5 text-[8px] text-[#6b7280]">Stereo out</p>
+      <div className="border-b px-0.5 py-1 text-center text-[8px] font-bold uppercase tracking-wide text-[#eee]">
+        Master
       </div>
-      <div className="mt-2 flex flex-1 items-stretch justify-center gap-1.5 px-1 pb-2">
-        <div className="flex flex-col items-end justify-between py-1 pr-0.5 text-[8px] font-mono leading-tight text-[#52525b]">
+      <div className="mx-1 mt-1 h-5 rounded-sm border border-[#333] bg-[#252525] shadow-inner" title="Master chain" />
+      <div className="mx-1 mt-1 rounded-sm border border-[#555] bg-[#383838] py-0.5 text-center text-[8px] font-medium text-[#ddd]">
+        Master
+      </div>
+      <button
+        type="button"
+        className="mx-1 mt-1 rounded-sm border border-[#2d5a2d] py-0.5 text-[7px] font-bold text-[#d8ffd8]"
+        style={{ background: LP.readAuto }}
+        title="Automation"
+      >
+        Read
+      </button>
+      <div className="min-h-[6px] flex-1" aria-hidden />
+      <div className="mx-1 mb-1 grid grid-cols-2 gap-0.5">
+        <div
+          className="rounded border px-0.5 py-0.5 text-center font-mono text-[7px] tabular-nums text-[#7dd87d]"
+          style={{ borderColor: '#222', background: '#0a0a0a' }}
+        >
+          {faderToDbLabel(daw.masterVolume)}
+        </div>
+        <div
+          className="rounded border px-0.5 py-0.5 text-center font-mono text-[7px] tabular-nums text-[#7dd87d]"
+          style={{ borderColor: '#222', background: '#0a0a0a' }}
+        >
+          {peakToDbDisplay(peak)}
+        </div>
+      </div>
+      <div
+        className="mx-1 flex items-stretch justify-center gap-1.5 pb-2"
+        style={{ minHeight: MIXER_METER_H + 8 }}
+      >
+        <div className="flex flex-col items-end justify-between py-1 pr-0.5 text-[7px] font-mono text-[#8a8a8a]">
           <span>0</span>
-          <span>-10</span>
-          <span>-20</span>
-          <span>-30</span>
-          <span>-40</span>
-          <span>-∞</span>
+          <span>-6</span>
+          <span>-12</span>
+          <span>-18</span>
+          <span>-24</span>
         </div>
-        <div className="relative flex w-5 flex-col justify-end">
-          <div className="relative h-[140px] w-full overflow-hidden rounded-sm bg-[#0a0a0c]">
-            <div
-              className="absolute bottom-0 left-0 right-0 opacity-90 transition-[height] duration-75"
-              style={{
-                height: `${Math.min(100, peak * 115)}%`,
-                background: `linear-gradient(to top, #16a34a 0%, #eab308 70%, #dc2626 100%)`,
-              }}
-            />
-          </div>
-        </div>
-        <div className="relative flex h-[148px] w-9 items-center justify-center">
+        <DualPeakMeters peak={peak} height={MIXER_METER_H} />
+        <div className="relative flex w-9 items-center justify-center">
+          <div
+            className="absolute rounded-full border border-[#1a1a1a] shadow-[inset_0_2px_6px_rgba(0,0,0,0.85)]"
+            style={{
+              height: MIXER_METER_H,
+              width: 10,
+              background: 'linear-gradient(90deg, #505050 0%, #303030 50%, #1a1a1a 100%)',
+            }}
+          />
           <input
             type="range"
             min={0}
@@ -555,13 +1033,25 @@ function MasterMixerStrip() {
             step={0.005}
             value={daw.masterVolume}
             onChange={(e) => daw.setMasterVolume(Number(e.target.value))}
-            className="absolute w-[120px] -rotate-90 cursor-pointer accent-[#3b82f6]"
+            className="absolute cursor-pointer"
+            style={{
+              width: MIXER_METER_H,
+              height: 28,
+              transform: 'rotate(-90deg)',
+              accentColor: '#f0f0f0',
+            }}
             aria-label="Master volume"
           />
         </div>
       </div>
-      <div className="border-t border-[#25252b] py-1 text-center font-mono text-[9px] tabular-nums text-[#94a3b8]">
+      <div className="border-t py-1 text-center font-mono text-[9px] tabular-nums text-[#ccc]">
         {faderToDbLabel(daw.masterVolume)}
+      </div>
+      <div
+        className="mt-auto truncate border-t px-0.5 py-1.5 text-center text-[9px] font-semibold text-[#111]"
+        style={{ backgroundColor: '#c73d9e', borderColor: LP.border }}
+      >
+        Master
       </div>
     </div>
   );
@@ -576,6 +1066,7 @@ function DawChrome() {
   const [libraryOpen, setLibraryOpen] = useState(true);
   const [inspectorOpen, setInspectorOpen] = useState(true);
   const [focusWorkbench, setFocusWorkbench] = useState(false);
+  const [mixerFilter, setMixerFilter] = useState('All');
   const fileRef = useRef<HTMLInputElement>(null);
   const projectFileRef = useRef<HTMLInputElement>(null);
   const importTrackRef = useRef<string>('');
@@ -619,13 +1110,16 @@ function DawChrome() {
     fileRef.current?.click();
   };
 
+  const barW = secPerBar(daw.tempo, daw.beatsPerBar) * PX_PER_SEC;
+
   return (
     <div
-      className={`flex flex-col bg-[#0a0a0c] text-[#e4e4e8] [@media(orientation:landscape)]:[.daw-main]:min-h-0 ${
+      className={`flex flex-col [@media(orientation:landscape)]:[.daw-main]:min-h-0 ${
         focusWorkbench
           ? 'fixed inset-0 z-[140] min-h-[100dvh] min-w-0'
           : 'h-screen min-h-[640px] min-w-0'
       }`}
+      style={{ background: LP.appBg, color: LP.text }}
     >
       <input
         ref={fileRef}
@@ -660,241 +1154,334 @@ function DawChrome() {
         onPick={(kind) => daw.addTrackWithKind(kind)}
       />
 
-      {/* Transport — n-Track style */}
-      <header className="flex shrink-0 flex-wrap items-center gap-2 border-b border-[#25252b] bg-[#161618] px-2 py-2">
-        <div className="flex items-center gap-0.5">
-          <button
-            type="button"
-            title={daw.isRecording ? 'Stop recording' : 'Record'}
-            className={`flex h-11 w-11 items-center justify-center rounded-full border-2 text-[#f87171] hover:bg-[#3f2020] ${
-              daw.isRecording
-                ? 'border-red-500 bg-[#4a1818] ring-2 ring-red-500/60'
-                : 'border-[#7f1d1d] bg-[#292020]'
-            }`}
-            onClick={() => {
-              if (daw.isRecording) daw.stopRecord();
-              else void daw.startRecord();
+      <header
+        className="flex shrink-0 flex-col border-b shadow-[0_1px_0_rgba(255,255,255,0.06)]"
+        style={{ borderColor: LP.border, background: `linear-gradient(180deg, ${LP.panelHi} 0%, ${LP.panel} 100%)` }}
+      >
+        <div className="flex min-h-[52px] flex-wrap items-center gap-1.5 px-2 py-1.5">
+          <div className="flex flex-wrap items-center gap-0.5 border-r pr-2" style={{ borderColor: LP.border }}>
+            <button type="button" title="Library" onClick={() => setLibraryOpen((v) => !v)} className={libraryOpen ? ctrlBtnActive : ctrlBtnBase}>
+              <IconLibraryDrawer />
+            </button>
+            <button type="button" title="Inspector" onClick={() => setInspectorOpen((v) => !v)} className={inspectorOpen ? ctrlBtnActive : ctrlBtnBase}>
+              <IconInspector open={inspectorOpen} />
+            </button>
+            <button type="button" title="Quick Help" className={ctrlBtnBase}>
+              <IconHelpQ />
+            </button>
+            <button type="button" title="Toolbar" className={ctrlBtnBase}>
+              <IconToolbarRows />
+            </button>
+            <button type="button" title="Smart Controls" className={ctrlBtnBase}>
+              <IconSmartSliders />
+            </button>
+            <button
+              type="button"
+              title="Mixer"
+              onClick={() => setMainView('mixer')}
+              className={mainView === 'mixer' ? ctrlBtnActive : ctrlBtnBase}
+            >
+              <IconMixerConsole />
+            </button>
+            <button type="button" title="Editors" className={ctrlBtnBase}>
+              <IconEditorsWin />
+            </button>
+          </div>
+
+          <div className="flex items-center gap-0.5">
+            <button type="button" title="Go to beginning" onClick={() => daw.rewindToStart()} className={ctrlBtnBase}>
+              <IconRewind />
+            </button>
+            <button type="button" title="Go to end" onClick={() => daw.seek(end)} className={ctrlBtnBase}>
+              <IconForwardEnd />
+            </button>
+            <button type="button" title="Stop" onClick={() => daw.stopTransport()} className={ctrlBtnBase}>
+              <IconStop />
+            </button>
+            <button type="button" title="Play" onClick={() => daw.play()} className={`${ctrlBtnBase} min-w-[40px]`}>
+              <IconPlay />
+            </button>
+            <button
+              type="button"
+              title={daw.isRecording ? 'Stop recording' : 'Record'}
+              onClick={() => {
+                if (daw.isRecording) daw.stopRecord();
+                else void daw.startRecord();
+              }}
+              className={`${ctrlBtnBase} text-[#ffb0b0] ${daw.isRecording ? 'ring-1 ring-red-500' : ''}`}
+            >
+              <IconRec />
+            </button>
+            <button
+              type="button"
+              title="Cycle / Loop"
+              onClick={() => daw.setLoopEnabled(!daw.loopEnabled)}
+              className={daw.loopEnabled ? `${ctrlBtnActive} min-w-[36px]` : ctrlBtnBase}
+            >
+              <IconLoop active={daw.loopEnabled} />
+            </button>
+          </div>
+
+          {daw.isRecording ? (
+            <div className="flex flex-col items-center px-1">
+              <span className="text-[7px] font-bold uppercase text-[#faa]">In</span>
+              <div
+                className="relative mt-0.5 h-12 w-3 overflow-hidden rounded-sm border border-[#333] bg-black"
+                title="Input level"
+              >
+                <div
+                  className="absolute bottom-0 left-0 right-0 transition-[height] duration-75"
+                  style={{
+                    height: `${Math.min(100, (daw.meterPeaks.__mic__ ?? 0) * 110)}%`,
+                    background: `linear-gradient(to top, ${LP.meterGreen}, ${LP.meterYel}, ${LP.meterRed})`,
+                  }}
+                />
+              </div>
+            </div>
+          ) : null}
+
+          <div
+            className="mx-1 flex min-h-[48px] min-w-[200px] max-w-[min(100%,480px)] flex-1 flex-col justify-center gap-1 rounded border px-2.5 py-1.5 shadow-[inset_0_2px_14px_rgba(0,0,0,0.72)] sm:min-w-[300px]"
+            style={{
+              borderColor: '#05080c',
+              background: LP.lcdBg,
+              backgroundImage:
+                'repeating-linear-gradient(180deg, transparent, transparent 2px, rgba(110,200,255,0.04) 2px, rgba(110,200,255,0.04) 3px)',
             }}
           >
-            <IconRec />
-          </button>
-          <button
-            type="button"
-            title="Play (works while recording — hear backing tracks)"
-            className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#333] bg-[#222226] text-[#e5e5e5] hover:bg-[#2a2a30]"
-            onClick={() => daw.play()}
-          >
-            <IconPlay />
-          </button>
-          <button
-            type="button"
-            title="Stop playback (recording continues until you stop Record)"
-            className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#333] bg-[#222226] text-[#a3a3a3] hover:bg-[#2a2a30]"
-            onClick={() => daw.stopTransport()}
-          >
-            <IconStop />
-          </button>
-          <button
-            type="button"
-            title="Return to start"
-            className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#333] bg-[#222226] text-[#a3a3a3] hover:bg-[#2a2a30]"
-            onClick={() => daw.rewindToStart()}
-          >
-            <IconRewind />
-          </button>
-          <button
-            type="button"
-            title={daw.loopEnabled ? 'Loop on' : 'Loop off'}
-            className={`flex h-10 w-10 items-center justify-center rounded-lg border ${daw.loopEnabled ? 'border-[#854d0e] bg-[#422006]' : 'border-[#333] bg-[#222226]'}`}
-            onClick={() => daw.setLoopEnabled(!daw.loopEnabled)}
-          >
-            <IconLoop active={daw.loopEnabled} />
-          </button>
-        </div>
-
-        {daw.isRecording ? (
-          <div className="flex flex-col items-center justify-center px-1">
-            <span className="text-[8px] font-semibold uppercase tracking-wide text-[#f87171]">Mic</span>
-            <div
-              className="relative mt-0.5 h-14 w-4 overflow-hidden rounded bg-[#0a0a0c] ring-1 ring-[#3f3f46]"
-              title="Input level"
-            >
-              <div
-                className="absolute bottom-0 left-0 right-0 opacity-90 transition-[height] duration-75"
-                style={{
-                  height: `${Math.min(100, (daw.meterPeaks.__mic__ ?? 0) * 115)}%`,
-                  background: 'linear-gradient(to top, #16a34a 0%, #eab308 70%, #dc2626 100%)',
-                }}
-              />
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0 font-mono text-[10px] tabular-nums sm:text-[11px]" style={{ color: LP.lcdText }}>
+              <span>{formatSMPTE(daw.currentTime)}</span>
+              <span style={{ color: LP.lcdDim }}>{formatLogicBars(daw.currentTime, daw.tempo, daw.beatsPerBar)}</span>
+            </div>
+            <div className="flex flex-wrap justify-between gap-2 text-[9px]" style={{ color: LP.lcdDim }}>
+              <span>
+                Tempo <span className="font-mono text-[10px]" style={{ color: LP.lcdText }}>{daw.tempo.toFixed(2)}</span>
+              </span>
+              <span>
+                Sig <span className="font-mono text-[10px]" style={{ color: LP.lcdText }}>{daw.beatsPerBar}/4</span>
+              </span>
+              <span className="hidden sm:inline">Key C maj</span>
             </div>
           </div>
-        ) : null}
 
-        <div className="mx-1 hidden h-8 w-px bg-[#333] sm:block" />
+          <div className="flex flex-wrap items-center gap-0.5 border-l pl-2" style={{ borderColor: LP.border }}>
+            <button type="button" title="Metronome" onClick={() => daw.setMetronomeOn(!daw.metronomeOn)} className={ctrlBtnBase}>
+              <IconMetronome off={!daw.metronomeOn} />
+            </button>
+            <button type="button" title="Count-in (reserved)" className={ctrlBtnBase}>
+              <IconCountIn />
+            </button>
+            <div className="hidden h-8 flex-col justify-between px-1 sm:flex" title="CPU / HD (decorative)">
+              <div className="h-1 w-4 rounded-sm bg-[#2a4a2a]" />
+              <div className="h-1 w-3 rounded-sm bg-[#3a4a6a]" />
+            </div>
+            <button type="button" title="List editors" className={ctrlBtnBase}>
+              <IconListDoc />
+            </button>
+            <button type="button" title="Notepad" className={ctrlBtnBase}>
+              <IconNotePad />
+            </button>
+            <button type="button" title="Loop browser" className={ctrlBtnBase}>
+              <IconLoopBrowser />
+            </button>
+            <button type="button" title="Media browser" className={ctrlBtnBase}>
+              <IconMediaBrowser />
+            </button>
+          </div>
 
-        <div className="flex flex-col items-center px-2">
-          <span className="text-[9px] uppercase tracking-wider text-[#6b7280]">Bars : beats : ticks</span>
-          <span className="font-mono text-[15px] font-medium tabular-nums text-[#93c5fd]">
-            {formatBBT(daw.currentTime, daw.tempo, daw.beatsPerBar)}
-          </span>
-          <span className="font-mono text-[10px] tabular-nums text-[#6b7280]">{formatMs(daw.currentTime)}</span>
+          <div className="flex min-w-[120px] max-w-[180px] flex-col gap-0.5 px-1">
+            <span className="text-[8px] font-semibold uppercase tracking-wide text-[#aaa]">Master</span>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={daw.masterVolume}
+              onChange={(e) => daw.setMasterVolume(Number(e.target.value))}
+              className="h-1.5 w-full cursor-pointer"
+              style={{ accentColor: LP.accentBlueHi }}
+            />
+          </div>
+
+          <label className="flex min-w-[100px] items-center gap-1 text-[9px] text-[#aaa]">
+            BPM
+            <input
+              type="number"
+              min={40}
+              max={240}
+              value={daw.tempo}
+              onChange={(e) => daw.setTempo(Number(e.target.value) || 120)}
+              className="w-12 rounded border px-1 py-0.5 font-mono text-[10px]"
+              style={{ borderColor: LP.border, background: LP.panelLo, color: LP.text }}
+            />
+          </label>
+
+          <label className="flex min-w-[72px] flex-col gap-0.5 text-[8px] text-[#aaa]">
+            <span>Time sig</span>
+            <div className="flex items-center gap-0.5">
+              <input
+                type="number"
+                min={1}
+                max={12}
+                value={daw.beatsPerBar}
+                onChange={(e) => daw.setBeatsPerBar(Math.min(12, Math.max(1, Number(e.target.value) || 4)))}
+                className="w-8 rounded border px-0.5 py-0.5 font-mono text-[10px]"
+                style={{ borderColor: LP.border, background: LP.panelLo, color: LP.text }}
+              />
+              <span>/4</span>
+            </div>
+          </label>
+
+          <div className="ml-auto flex flex-wrap items-center gap-1">
+            <button
+              type="button"
+              title="Arrange / Edit"
+              onClick={() => setMainView('arrange')}
+              className={mainView === 'arrange' ? `${ctrlBtnActive} px-2 text-[9px] font-semibold` : `${ctrlBtnBase} px-2 text-[9px]`}
+            >
+              Edit
+            </button>
+            <button
+              type="button"
+              title="Mixer view"
+              onClick={() => setMainView('mixer')}
+              className={mainView === 'mixer' ? `${ctrlBtnActive} px-2 text-[9px] font-semibold` : `${ctrlBtnBase} px-2 text-[9px]`}
+            >
+              Mix
+            </button>
+            <button type="button" title="Export mix (WAV)" className={`${ctrlBtnBase} px-2 text-[9px]`} onClick={() => void daw.exportMixWav()}>
+              Bnc
+            </button>
+            <button type="button" title="New track" className={`${ctrlBtnBase} px-2 text-[9px]`} onClick={() => setModalOpen(true)}>
+              +Tr
+            </button>
+            <button
+              type="button"
+              title="Import audio"
+              className={`${ctrlBtnBase} px-2 text-[9px]`}
+              onClick={() => targetTrackId && openImport(targetTrackId)}
+              disabled={!targetTrackId}
+            >
+              Imp
+            </button>
+            <button type="button" title="Fullscreen workspace" className={`${ctrlBtnBase} hidden lg:flex`} onClick={() => setFocusWorkbench((v) => !v)}>
+              <IconExpand />
+            </button>
+            <button type="button" title="Save project JSON" className={`${ctrlBtnBase} px-2 text-[9px] text-[#9d9]`} onClick={() => daw.exportProjectJson()}>
+              Save
+            </button>
+            <button type="button" title="Load project" className={`${ctrlBtnBase} px-2 text-[9px]`} onClick={() => projectFileRef.current?.click()}>
+              Load
+            </button>
+          </div>
         </div>
 
-        <label className="hidden items-center gap-1 text-[10px] text-[#6b7280] sm:flex">
-          Time sig
-          <input
-            type="number"
-            min={1}
-            max={12}
-            value={daw.beatsPerBar}
-            onChange={(e) => daw.setBeatsPerBar(Math.min(12, Math.max(1, Number(e.target.value) || 4)))}
-            className="w-10 rounded border border-[#333] bg-[#1a1a1c] px-1 py-0.5 font-mono text-[11px] text-white"
-          />
-          <span className="text-[#52525b]">/4</span>
-        </label>
-
-        <button
-          type="button"
-          title={daw.metronomeOn ? 'Metronome on' : 'Metronome off'}
-          className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#333] bg-[#222226] hover:bg-[#2a2a30]"
-          onClick={() => daw.setMetronomeOn(!daw.metronomeOn)}
+        <div
+          className="flex min-h-[36px] flex-wrap items-center gap-x-2 gap-y-1 border-t px-2 py-1"
+          style={{ borderColor: LP.border, background: LP.panelLo }}
         >
-          <IconMetronome off={!daw.metronomeOn} />
-        </button>
-
-        <label className="flex items-center gap-1 text-[10px] text-[#6b7280]">
-          BPM
-          <input
-            type="number"
-            min={40}
-            max={240}
-            value={daw.tempo}
-            onChange={(e) => daw.setTempo(Number(e.target.value) || 120)}
-            className="w-14 rounded border border-[#333] bg-[#1a1a1c] px-1 py-0.5 font-mono text-[11px] text-white"
-          />
-        </label>
-
-        <label className="ml-auto flex min-w-[140px] max-w-[200px] flex-1 items-center gap-2 sm:max-w-xs">
-          <span className="text-[9px] text-[#6b7280]">Pos</span>
-          <input
-            type="range"
-            min={0}
-            max={Math.max(1, end)}
-            step={0.01}
-            value={Math.min(daw.currentTime, end)}
-            onChange={(e) => daw.seek(Number(e.target.value))}
-            className="h-1 w-full cursor-pointer grow accent-[#4d9fff]"
-          />
-        </label>
-
-        <div className="flex items-center gap-1 border-l border-[#333] pl-2">
-          <button
-            type="button"
-            className={`rounded px-2 py-2 text-[10px] font-medium uppercase ${mainView === 'arrange' ? 'bg-[#2a2a32] text-white' : 'text-[#888] hover:bg-[#222]'}`}
-            onClick={() => setMainView('arrange')}
-          >
-            Timeline
+          <span className="text-[9px] font-semibold text-[#888]">Edit</span>
+          <span className="text-[9px] font-semibold text-[#888]">Functions</span>
+          <span className="text-[9px] font-semibold text-[#888]">View</span>
+          <div className="mx-1 h-4 w-px bg-[#555]" />
+          <button type="button" title="Articulation (reserved)" className={`${ctrlBtnBase} px-1.5 py-1 text-[8px]`}>
+            Artic
           </button>
-          <button
-            type="button"
-            className={`rounded px-2 py-2 text-[10px] font-medium uppercase ${mainView === 'mixer' ? 'bg-[#2a2a32] text-white' : 'text-[#888] hover:bg-[#222]'}`}
-            onClick={() => setMainView('mixer')}
-          >
-            Mixer
+          <button type="button" title="Track zoom" className={`${ctrlBtnBase} px-1.5 py-1 text-[8px]`}>
+            TrkZm
           </button>
-        </div>
-
-        <button
-          type="button"
-          className="rounded border border-[#31318a] bg-[#252542] px-2 py-2 text-[10px] font-medium text-[#c7d2fe] hover:bg-[#2f2f55]"
-          onClick={() => void daw.exportMixWav()}
-        >
-          Export
-        </button>
-        <button
-          type="button"
-          className="rounded border border-[#2a2a32] px-2 py-2 text-[10px] text-[#9ca3af] hover:bg-[#1a1a1e]"
-          onClick={() => setModalOpen(true)}
-        >
-          + Track
-        </button>
-        <button
-          type="button"
-          className="rounded border border-[#333] px-2 py-2 text-[10px] text-[#93c5fd]"
-          onClick={() => targetTrackId && openImport(targetTrackId)}
-          disabled={!targetTrackId}
-        >
-          Import
-        </button>
-
-        <div className="flex w-full flex-wrap items-center justify-end gap-1 border-t border-[#2a2a32] pt-2 sm:w-auto sm:border-0 sm:pt-0">
-          <button
-            type="button"
-            title={libraryOpen ? 'Hide sound library (more timeline on phone)' : 'Show sound library'}
-            className={`flex h-9 w-9 items-center justify-center rounded border ${libraryOpen ? 'border-[#3f3f46] bg-[#222226] text-[#e4e4e8]' : 'border-[#333] text-[#6b7280]'}`}
-            onClick={() => setLibraryOpen((v) => !v)}
-          >
-            <IconPanelLeft open={libraryOpen} />
+          <button type="button" title="Note repeat" className={`${ctrlBtnBase} px-1.5 py-1 text-[8px]`}>
+            Rpt
           </button>
-          <button
-            type="button"
-            title={inspectorOpen ? 'Hide inspector' : 'Show inspector'}
-            className={`flex h-9 w-9 items-center justify-center rounded border ${inspectorOpen ? 'border-[#3f3f46] bg-[#222226] text-[#e4e4e8]' : 'border-[#333] text-[#6b7280]'}`}
-            onClick={() => setInspectorOpen((v) => !v)}
-          >
-            <IconInspector open={inspectorOpen} />
+          <button type="button" title="Spot erase" className={`${ctrlBtnBase} px-1.5 py-1 text-[8px]`}>
+            Spot
           </button>
-          <button
-            type="button"
-            title={focusWorkbench ? 'Exit full workspace' : 'Full workspace (desktop)'}
-            className={`hidden h-9 w-9 items-center justify-center rounded border lg:flex ${focusWorkbench ? 'border-amber-700/50 bg-[#422006] text-amber-200' : 'border-[#333] text-[#6b7280]'}`}
-            onClick={() => setFocusWorkbench((v) => !v)}
-          >
-            <IconExpand />
+          <button type="button" title="Split by playhead" className={ctrlBtnBase}>
+            <IconScissors />
           </button>
-          <button
-            type="button"
-            className="rounded border border-[#2a4a2a] bg-[#152018] px-2 py-1.5 text-[10px] text-[#86efac] hover:bg-[#1a2820]"
-            onClick={() => daw.exportProjectJson()}
-          >
-            Save project
+          <button type="button" title="Glue (reserved)" className={ctrlBtnBase}>
+            <IconGlue />
           </button>
-          <button
-            type="button"
-            className="rounded border border-[#2a2a32] px-2 py-1.5 text-[10px] text-[#9ca3af] hover:bg-[#1a1a1e]"
-            onClick={() => projectFileRef.current?.click()}
-          >
-            Load project
+          <button type="button" title="Bounce regions" className={`${ctrlBtnBase} px-1.5 py-1 text-[8px]`} onClick={() => void daw.exportMixWav()}>
+            Bounce
           </button>
+          <button type="button" title="Colors (reserved)" className={`${ctrlBtnBase} px-1.5 py-1 text-[8px]`}>
+            Colors
+          </button>
+          <div className="mx-1 h-4 w-px bg-[#555]" />
+          <label className="flex items-center gap-1 text-[8px] text-[#aaa]">
+            Snap
+            <select className="rounded border px-1 py-0.5 text-[8px]" style={{ borderColor: LP.border, background: '#3a3a3a', color: LP.text }}>
+              <option>Smart</option>
+              <option>Bar</option>
+              <option>Beat</option>
+            </select>
+          </label>
+          <label className="flex items-center gap-1 text-[8px] text-[#aaa]">
+            Drag
+            <select className="rounded border px-1 py-0.5 text-[8px]" style={{ borderColor: LP.border, background: '#3a3a3a', color: LP.text }}>
+              <option>No Overlap</option>
+              <option>X-Fade</option>
+            </select>
+          </label>
+          <label className="ml-auto flex min-w-[120px] max-w-[240px] flex-1 items-center gap-2 sm:max-w-md">
+            <span className="text-[8px] text-[#888]">Pos</span>
+            <input
+              type="range"
+              min={0}
+              max={Math.max(1, end)}
+              step={0.01}
+              value={Math.min(daw.currentTime, end)}
+              onChange={(e) => daw.seek(Number(e.target.value))}
+              className="h-1 w-full cursor-pointer"
+              style={{ accentColor: LP.accentBlueHi }}
+            />
+          </label>
         </div>
       </header>
 
       {mainView === 'mixer' ? (
-        <div className="flex min-h-0 flex-1 overflow-x-auto overflow-y-hidden bg-[#101012]">
-          {daw.tracks.map((t) => (
-            <MixerStrip
-              key={t.id}
-              trackId={t.id}
-              peak={daw.meterPeaks[t.id] ?? 0}
-              fileInputTrigger={() => openImport(t.id)}
-            />
-          ))}
-          <MasterMixerStrip />
-          <div className="min-w-[48px] flex-1 bg-[#0c0c0e]" aria-hidden />
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden" style={{ background: LP.panel }}>
+          <LogicMixerFilterBar active={mixerFilter} onPick={setMixerFilter} />
+          <div
+            className="flex min-h-0 flex-1 items-stretch overflow-x-auto overflow-y-hidden lg:min-h-[min(640px,72vh)]"
+            style={{ background: LP.panelLo }}
+          >
+            {daw.tracks.map((t) => (
+              <MixerStrip
+                key={t.id}
+                trackId={t.id}
+                peak={daw.meterPeaks[t.id] ?? 0}
+                fileInputTrigger={() => openImport(t.id)}
+              />
+            ))}
+            <StereoOutStrip />
+            <MasterMixerStrip />
+            <div className="min-w-[32px] flex-1" style={{ background: LP.panelLo }} aria-hidden />
+          </div>
         </div>
       ) : (
         <div className="daw-main flex min-h-0 flex-1 flex-col lg:flex-row [@media(orientation:landscape)]:flex-row">
           <div className="flex min-h-0 min-w-0 flex-1 flex-row">
           {libraryOpen ? (
-          <aside className="flex w-[min(200px,42vw)] shrink-0 flex-col border-r border-[#25252b] bg-[#0e0e10] sm:w-[200px]">
-            <div className="border-b border-[#25252b] px-2 py-2 text-[10px] font-semibold uppercase tracking-widest text-[#6b7280]">
-              Sound library
+          <aside
+            className="flex w-[min(236px,42vw)] shrink-0 flex-col border-r sm:w-[236px]"
+            style={{ borderColor: LP.border, background: LP.panel }}
+          >
+            <div
+              className="border-b px-2 py-2 text-[10px] font-semibold uppercase tracking-widest"
+              style={{ borderColor: LP.border, color: LP.textMuted }}
+            >
+              Library
             </div>
             <div className="flex-1 overflow-y-auto p-2">
-              <div className="mb-3 border-b border-[#25252b] pb-2">
-                <div className="mb-1 px-1 text-[10px] text-[#9ca3af]">Mic / input chain (selected track)</div>
+              <div className="mb-3 border-b pb-2" style={{ borderColor: LP.border }}>
+                <div className="mb-1 px-1 text-[10px]" style={{ color: LP.textMuted }}>
+                  Mic / input chain (selected track)
+                </div>
                 <select
-                  className="mb-2 w-full rounded border border-[#2a2a32] bg-[#141416] px-1 py-1 text-[10px] text-[#d4d4d8]"
+                  className="mb-2 w-full rounded border px-1 py-1 text-[10px]"
+                  style={{ borderColor: LP.border, background: LP.panelLo, color: LP.text }}
                   value=""
                   disabled={!targetTrackId}
                   onChange={(e) => {
@@ -913,14 +1500,17 @@ function DawChrome() {
               </div>
               {LIBRARY_BY_CATEGORY.map((grp) => (
                 <div key={grp.category} className="mb-3">
-                  <div className="mb-1 px-1 text-[10px] text-[#9ca3af]">{grp.category}</div>
+                  <div className="mb-1 px-1 text-[10px]" style={{ color: LP.textMuted }}>
+                    {grp.category}
+                  </div>
                   <ul className="space-y-0.5">
                     {grp.items.map((item) => (
                       <li key={item.id}>
                         <button
                           type="button"
                           disabled={!targetTrackId}
-                          className="w-full rounded px-2 py-1.5 text-left text-[11px] text-[#d1d5db] hover:bg-[#1a1a1f] disabled:opacity-40"
+                          className="w-full rounded px-2 py-1.5 text-left text-[11px] hover:bg-black/20 disabled:opacity-40"
+                          style={{ color: LP.text }}
                           onClick={() => targetTrackId && daw.addLibraryClip(targetTrackId!, item.id)}
                         >
                           {item.name}
@@ -932,9 +1522,8 @@ function DawChrome() {
               ))}
               {REMOTE_LIBRARY_BY_CATEGORY.map((grp) => (
                 <div key={grp.category} className="mb-3">
-                  <div className="mb-1 px-1 text-[10px] text-[#9ca3af]">
-                    {grp.category}{' '}
-                    <span className="text-[#52525b]">(web)</span>
+                  <div className="mb-1 px-1 text-[10px]" style={{ color: LP.textMuted }}>
+                    {grp.category} <span style={{ opacity: 0.65 }}>(web)</span>
                   </div>
                   <ul className="space-y-0.5">
                     {grp.items.map((item) => (
@@ -942,7 +1531,8 @@ function DawChrome() {
                         <button
                           type="button"
                           disabled={!targetTrackId}
-                          className="w-full rounded px-2 py-1.5 text-left text-[11px] text-[#d1d5db] hover:bg-[#1a1a1f] disabled:opacity-40"
+                          className="w-full rounded px-2 py-1.5 text-left text-[11px] hover:bg-black/20 disabled:opacity-40"
+                          style={{ color: LP.text }}
                           onClick={() =>
                             targetTrackId && void daw.addRemoteLibraryClip(targetTrackId!, item.id)
                           }
@@ -956,29 +1546,45 @@ function DawChrome() {
                 </div>
               ))}
             </div>
-            <p className="border-t border-[#25252b] p-2 text-[10px] leading-snug text-[#6b7280]">
+            <p className="border-t p-2 text-[10px] leading-snug" style={{ borderColor: LP.border, color: LP.textMuted }}>
               Built-in sounds are synthesized. Web samples need CORS; if one fails, try another or use{' '}
-              <strong className="text-[#9ca3af]">Import file</strong>.
+              <strong style={{ color: LP.text }}>Import</strong>.
             </p>
           </aside>
           ) : null}
 
-          <section className="flex min-w-0 flex-1 flex-col bg-[#0a0a0c]">
-            <div className="sticky top-0 z-20 flex h-7 shrink-0 items-end border-b border-[#25252b] bg-[#0c0c0f]">
-              <div className="w-[188px] shrink-0 border-r border-[#25252b] bg-[#0c0c0f]" />
+          <section className="flex min-w-0 flex-1 flex-col" style={{ background: LP.panelLo }}>
+            <div
+              className="sticky top-0 z-20 flex h-9 shrink-0 items-stretch border-b shadow-[inset_0_-1px_0_rgba(0,0,0,0.25)]"
+              style={{ borderColor: LP.border, background: `linear-gradient(180deg, ${LP.ruler}dd 0%, ${LP.ruler}88 100%)` }}
+            >
+              <div
+                className="flex shrink-0 items-center border-r px-1 text-[9px] font-bold text-[#2a2418]"
+                style={{ width: TRACK_HEADER_W, borderColor: '#8a7028', background: 'rgba(0,0,0,0.08)' }}
+              >
+                Ruler
+              </div>
               <div className="relative min-w-0 flex-1 overflow-hidden">
-                <div className="relative h-7" style={{ width: widthPx }}>
-                  {Array.from({ length: Math.ceil(end / 4) + 1 }).map((_, i) => (
+                {daw.loopEnabled ? (
+                  <div
+                    className="pointer-events-none absolute bottom-0 left-0 right-0 z-20 h-[3px] rounded-t-sm bg-[#e0b82a]/90 shadow-[0_-1px_6px_rgba(224,184,42,0.55)]"
+                    title="Cycle / loop active"
+                  />
+                ) : null}
+                <div className="relative h-9" style={{ width: widthPx }}>
+                  {Array.from({ length: Math.ceil(end / secPerBar(daw.tempo, daw.beatsPerBar)) + 2 }).map((_, i) => (
                     <div
                       key={i}
-                      className="absolute bottom-0 top-0 border-l border-[#1f1f24] pl-1 text-[9px] leading-none text-[#52525b]"
-                      style={{ left: i * 4 * PX_PER_SEC }}
+                      className="absolute bottom-0 top-0 border-l border-[#6a5a28]/60 pl-1"
+                      style={{ left: i * barW }}
                     >
-                      <span className="inline-block translate-y-0.5">{i * 4}s</span>
+                      <span className="inline-block translate-y-1 font-mono text-[11px] font-semibold tabular-nums text-[#1a1508]">
+                        {i + 1}
+                      </span>
                     </div>
                   ))}
                   <div
-                    className="pointer-events-none absolute bottom-0 top-0 w-px bg-[#4d9fff]"
+                    className="pointer-events-none absolute bottom-0 top-0 w-0.5 bg-white shadow-[0_0_6px_rgba(255,255,255,0.8)]"
                     style={{ left: daw.currentTime * PX_PER_SEC, zIndex: 10 }}
                   />
                 </div>
@@ -986,61 +1592,107 @@ function DawChrome() {
             </div>
 
             <div className="min-h-0 flex-1 overflow-auto">
-              {daw.tracks.map((tr) => (
+              {daw.tracks.map((tr, ti) => (
                 <div
                   key={tr.id}
-                  className={`flex min-h-[64px] border-b border-[#1a1a1e] ${daw.selectedTrackId === tr.id ? 'bg-[#0f141c]' : 'bg-[#0a0a0c]'}`}
+                  className="flex border-b"
+                  style={{
+                    minHeight: TRACK_ROW_MIN_H,
+                    borderColor: LP.border,
+                    background: daw.selectedTrackId === tr.id ? 'rgba(60,120,200,0.14)' : LP.panel,
+                  }}
                 >
-                  <div className="flex w-[188px] shrink-0 border-r border-[#25252b]">
+                  <div className="flex shrink-0 border-r" style={{ width: TRACK_HEADER_W, borderColor: LP.border }}>
                     <div className="w-1 shrink-0" style={{ backgroundColor: tr.color }} />
-                    <div className="flex min-w-0 flex-1 flex-col gap-1 px-2 py-1.5">
-                      <input
-                        className="w-full truncate border border-transparent bg-transparent text-[12px] font-medium text-white outline-none focus:border-[#2a2a32]"
-                        value={tr.name}
-                        onChange={(e) => daw.renameTrack(tr.id, e.target.value)}
-                      />
-                      <div className="flex flex-wrap gap-1">
+                    <div className="flex min-w-0 flex-1 flex-col gap-1 px-1.5 py-1">
+                      <div className="flex items-center gap-1">
+                        <span className="w-4 text-center font-mono text-[9px] text-[#888]">{ti + 1}</span>
+                        <IconWaveInst />
+                        <input
+                          className="min-w-0 flex-1 truncate border border-transparent bg-transparent text-[11px] font-semibold outline-none"
+                          style={{ color: LP.text }}
+                          value={tr.name}
+                          onChange={(e) => daw.renameTrack(tr.id, e.target.value)}
+                          onClick={() => daw.setSelectedTrackId(tr.id)}
+                        />
+                      </div>
+                      <div className="flex items-center gap-1">
                         <button
                           type="button"
-                          className={`h-6 w-6 rounded text-[10px] font-bold ${tr.muted ? 'bg-[#3f1f1f] text-[#fca5a5]' : 'bg-[#1a1a1f] text-[#9ca3af]'}`}
+                          title="Mute"
+                          className="h-5 w-5 rounded-sm border text-[8px] font-bold"
+                          style={{
+                            borderColor: '#444',
+                            background: tr.muted ? LP.muteOn : '#404040',
+                            color: tr.muted ? '#022' : '#ccc',
+                          }}
                           onClick={() => daw.toggleMute(tr.id)}
                         >
                           M
                         </button>
                         <button
                           type="button"
-                          className={`h-6 w-6 rounded text-[10px] font-bold ${tr.solo ? 'bg-[#3a3420] text-[#fde047]' : 'bg-[#1a1a1f] text-[#9ca3af]'}`}
+                          title="Solo"
+                          className="h-5 w-5 rounded-sm border text-[8px] font-bold"
+                          style={{
+                            borderColor: '#444',
+                            background: tr.solo ? LP.solo : '#404040',
+                            color: tr.solo ? '#111' : '#ccc',
+                          }}
                           onClick={() => daw.toggleSolo(tr.id)}
                         >
                           S
                         </button>
                         <button
                           type="button"
-                          className={`h-6 w-6 rounded-full text-[9px] font-bold ${tr.recordArm ? 'bg-[#4a1515] text-red-300' : 'bg-[#1a1a1f] text-[#9ca3af]'}`}
+                          title="Record arm"
+                          className="h-5 w-5 rounded-sm border text-[8px] font-bold"
+                          style={{
+                            borderColor: '#444',
+                            background: tr.recordArm ? LP.record : '#404040',
+                            color: tr.recordArm ? '#fff' : '#ccc',
+                          }}
                           onClick={() => daw.toggleRecordArm(tr.id)}
                         >
                           R
                         </button>
-                        <button
-                          type="button"
-                          className="ml-auto text-[9px] text-[#6b7280] hover:text-white"
-                          onClick={() => daw.setSelectedTrackId(tr.id)}
-                        >
+                        <div className="relative mx-0.5 h-4 min-w-[48px] flex-1">
+                          <input
+                            type="range"
+                            min={0}
+                            max={1}
+                            step={0.01}
+                            value={tr.volume}
+                            onChange={(e) => daw.setTrackVolume(tr.id, Number(e.target.value))}
+                            className="absolute inset-0 h-full w-full cursor-pointer opacity-90"
+                            style={{ accentColor: '#888' }}
+                          />
+                        </div>
+                        <div className="relative h-4 w-1.5 overflow-hidden rounded-sm bg-black" title="Level">
+                          <div
+                            className="absolute bottom-0 left-0 right-0 transition-[height] duration-75"
+                            style={{
+                              height: `${Math.min(100, (daw.meterPeaks[tr.id] ?? 0) * 100)}%`,
+                              background: `linear-gradient(to top, ${LP.meterGreen}, ${LP.meterYel})`,
+                            }}
+                          />
+                        </div>
+                        <PanKnob value={tr.pan} onChange={(v) => daw.setTrackPan(tr.id, v)} size={32} />
+                      </div>
+                      <div className="flex justify-between text-[8px]" style={{ color: LP.textMuted }}>
+                        <button type="button" className="hover:underline" onClick={() => daw.setSelectedTrackId(tr.id)}>
                           Select
                         </button>
+                        <button type="button" className="hover:underline" onClick={() => daw.removeTrack(tr.id)}>
+                          Delete
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        className="text-left text-[9px] text-[#6b7280] hover:text-[#a1a1aa]"
-                        onClick={() => daw.removeTrack(tr.id)}
-                      >
-                        Delete track
-                      </button>
                     </div>
                   </div>
 
                   <div
-                    className="relative min-h-[64px] min-w-0 flex-1"
+                    className="relative min-w-0 flex-1"
+                    style={{ minHeight: TRACK_ROW_MIN_H }}
                     onDragOver={(e) => {
                       if ([...e.dataTransfer.types].includes('Files')) {
                         e.preventDefault();
@@ -1056,12 +1708,17 @@ function DawChrome() {
                     }}
                   >
                     <div
-                      className="pointer-events-none absolute bottom-0 left-0 top-0 z-10 w-px bg-[#4d9fff]"
+                      className="pointer-events-none absolute bottom-0 left-0 top-0 z-10 w-px bg-white shadow-[0_0_4px_rgba(255,255,255,0.7)]"
                       style={{ left: daw.currentTime * PX_PER_SEC }}
                     />
                     <div
-                      className="relative h-full min-h-[64px]"
-                      style={{ width: widthPx }}
+                      className="relative h-full"
+                      style={{
+                        width: widthPx,
+                        minHeight: TRACK_ROW_MIN_H,
+                        backgroundColor: LP.panelLo,
+                        backgroundImage: `repeating-linear-gradient(90deg, transparent 0, transparent ${Math.max(1, barW - 1)}px, rgba(0,0,0,0.12) ${Math.max(1, barW - 1)}px, rgba(0,0,0,0.12) ${barW}px)`,
+                      }}
                       onDragOver={(e) => {
                         if ([...e.dataTransfer.types].includes('Files')) {
                           e.preventDefault();
@@ -1085,7 +1742,7 @@ function DawChrome() {
                               className="pointer-events-none absolute rounded-sm opacity-85"
                               style={{
                                 left,
-                                top: 52,
+                                top: 62,
                                 width: w,
                                 height: 10,
                                 backgroundColor: tr.color,
@@ -1097,23 +1754,24 @@ function DawChrome() {
                       })()}
                       {tr.clips.map((c) => {
                         const w = Math.max(24, c.buffer.duration * PX_PER_SEC);
-                        const h = 48;
+                        const h = 54;
                         const isSel = selection?.trackId === tr.id && selection?.clipId === c.id;
                         return (
                           <div
                             key={c.id}
                             role="button"
                             tabIndex={0}
-                            className={`group absolute top-1 cursor-pointer overflow-hidden rounded-sm border text-left shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-[#60a5fa] ${
+                            className={`group absolute top-1.5 cursor-pointer overflow-hidden rounded-[3px] border text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] outline-none focus-visible:ring-2 ${
                               isSel
-                                ? 'border-[#93c5fd] ring-1 ring-[#60a5fa]/50'
-                                : 'border-[#2a2a32] hover:border-[#404040]'
+                                ? 'ring-2 ring-[#5a9eef]/80'
+                                : 'hover:brightness-105'
                             }`}
                             style={{
                               left: c.startTime * PX_PER_SEC,
                               width: w,
                               height: h,
                               backgroundColor: `${tr.color}22`,
+                              borderColor: isSel ? LP.accentBlueHi : LP.border,
                             }}
                             onDragOver={(e) => {
                               if ([...e.dataTransfer.types].includes('Files')) {
@@ -1165,7 +1823,10 @@ function DawChrome() {
           </div>
 
           {inspectorOpen ? (
-            <aside className="flex max-h-[38vh] w-full shrink-0 flex-col overflow-y-auto border-t border-[#25252b] bg-[#0e0e10] lg:max-h-none lg:w-[min(260px,32vw)] lg:border-l lg:border-t-0 xl:w-[280px]">
+            <aside
+              className="flex max-h-[38vh] w-full shrink-0 flex-col overflow-y-auto border-t lg:max-h-none lg:w-[min(280px,32vw)] lg:border-l lg:border-t-0 xl:w-[300px]"
+              style={{ borderColor: LP.border, background: LP.panel }}
+            >
               <TrackInspector trackId={targetTrackId} />
             </aside>
           ) : null}
@@ -1173,43 +1834,63 @@ function DawChrome() {
       )}
 
       <footer
-        className={`flex shrink-0 flex-col border-t border-[#25252b] bg-[#101012] ${
-          editorTab === 'piano' ? 'min-h-[240px] flex-1 lg:h-[min(320px,40vh)] lg:max-h-[420px]' : 'h-[140px]'
+        className={`flex shrink-0 flex-col border-t ${
+          editorTab === 'piano' ? 'min-h-[240px] flex-1 lg:h-[min(320px,40vh)] lg:max-h-[420px]' : 'h-[148px]'
         }`}
+        style={{ borderColor: LP.border, background: LP.panelLo }}
       >
-        <div className="flex border-b border-[#25252b] text-[11px]">
-          <button
-            type="button"
-            className={`px-4 py-1.5 font-medium ${editorTab === 'clip' ? 'bg-[#1a1a1f] text-white' : 'text-[#9ca3af] hover:bg-[#16161a]'}`}
-            onClick={() => setEditorTab('clip')}
-          >
-            Clip / waveform
-          </button>
-          <button
-            type="button"
-            className={`px-4 py-1.5 font-medium ${editorTab === 'piano' ? 'bg-[#1a1a1f] text-white' : 'text-[#9ca3af] hover:bg-[#16161a]'}`}
-            onClick={() => setEditorTab('piano')}
-          >
-            Piano roll
-          </button>
+        <div className="flex border-b text-[10px]" style={{ borderColor: LP.border, background: LP.panel }}>
+          {(
+            [
+              { id: 'clip' as const, label: 'Audio editor' },
+              { id: 'piano' as const, label: 'Piano Roll' },
+              { id: 'score' as const, label: 'Score' },
+              { id: 'step' as const, label: 'Step Seq.' },
+              { id: 'smart' as const, label: 'Smart Tempo' },
+            ] as const
+          ).map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              disabled={t.id !== 'clip' && t.id !== 'piano'}
+              title={t.id !== 'clip' && t.id !== 'piano' ? 'Reserved for future editor' : undefined}
+              className={`border-r px-3 py-1.5 font-medium ${
+                (t.id === 'clip' && editorTab === 'clip') || (t.id === 'piano' && editorTab === 'piano')
+                  ? 'text-white'
+                  : 'text-[#999] hover:bg-black/15 disabled:opacity-35'
+              }`}
+              style={{
+                borderColor: LP.border,
+                background:
+                  (t.id === 'clip' && editorTab === 'clip') || (t.id === 'piano' && editorTab === 'piano')
+                    ? LP.accentBlue
+                    : 'transparent',
+              }}
+              onClick={() => {
+                if (t.id === 'clip' || t.id === 'piano') setEditorTab(t.id);
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
         <div className="flex min-h-0 flex-1 items-stretch">
           {editorTab === 'clip' && selectedClip && selectedTrack ? (
             <div className="flex flex-1 items-center gap-3 p-3">
               <div className="h-1 w-10 shrink-0 rounded" style={{ backgroundColor: selectedTrack.color }} />
-              <div className="min-h-0 flex-1 rounded border border-[#25252b] bg-[#0a0a0c]">
+              <div className="min-h-0 flex-1 rounded border" style={{ borderColor: LP.border, background: '#2a2a2a' }}>
                 <WaveformCanvas
                   buffer={selectedClip.buffer}
                   width={Math.min(1200, editorWavWidth)}
                   height={96}
-                  color="#e2e8f0"
-                  fill="rgba(0,0,0,0.5)"
+                  color="#e8e8e8"
+                  fill="rgba(0,0,0,0.45)"
                 />
               </div>
             </div>
           ) : editorTab === 'clip' ? (
-            <p className="flex flex-1 items-center px-4 text-[12px] text-[#6b7280]">
-              Select a clip in the timeline for a zoomed waveform.
+            <p className="flex flex-1 items-center px-4 text-[12px]" style={{ color: LP.textMuted }}>
+              Select a clip in the timeline for the audio editor.
             </p>
           ) : (
             <PianoRoll trackId={targetTrackId} playheadSec={daw.currentTime} tempo={daw.tempo} />
@@ -1218,7 +1899,7 @@ function DawChrome() {
       </footer>
 
       {daw.status ? (
-        <div className="border-t border-[#25252b] bg-[#0e0e10] px-3 py-1.5 text-[11px] text-[#9ca3af]">
+        <div className="border-t px-3 py-1.5 text-[11px]" style={{ borderColor: LP.border, background: LP.panel, color: LP.textMuted }}>
           {daw.status}
         </div>
       ) : null}
