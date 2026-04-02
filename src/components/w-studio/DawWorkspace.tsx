@@ -868,6 +868,19 @@ function MixerSlotRow({ label, children }: { label: string; children?: React.Rea
   );
 }
 
+/** Instrument icon SVGs for mixer strip display */
+function InstrumentIcon({ kind, color }: { kind: string; color: string }) {
+  const iconStyle = { color, width: 28, height: 28 };
+  if (kind === 'instrument' || kind === 'create_beat') {
+    return <svg style={iconStyle} viewBox="0 0 24 24" fill="currentColor"><path d="M19.5 3.5L18 2l-1.5 1.5L15 2l-1.5 1.5L12 2l-1.5 1.5L9 2 7.5 3.5 6 2v14a3 3 0 003 3h6a3 3 0 003-3V2l-1.5 1.5zM15 18H9a1 1 0 01-1-1v-1h8v1a1 1 0 01-1 1z"/></svg>;
+  }
+  if (kind === 'play_drums') {
+    return <svg style={iconStyle} viewBox="0 0 24 24" fill="currentColor"><ellipse cx="12" cy="14" rx="8" ry="4"/><path d="M4 14V9c0-2.2 3.6-4 8-4s8 1.8 8 4v5"/></svg>;
+  }
+  // Default: waveform / audio icon
+  return <svg style={iconStyle} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 12h2l2-6 3 12 3-8 3 6h4" strokeLinecap="round" strokeLinejoin="round"/></svg>;
+}
+
 function MixerStrip({
   trackId,
   peak,
@@ -897,6 +910,9 @@ function MixerStrip({
       <MixerSlotRow label="Setting">
         <div className={mixerFieldDark} title={tr.name}>{tr.name}</div>
       </MixerSlotRow>
+      <MixerSlotRow label="Gain Reduction">
+        <div className="h-3 w-full rounded-[2px] border border-[#454549] bg-[#3a3a3e]" />
+      </MixerSlotRow>
       <MixerSlotRow label="EQ">
         <select
           value={tr.eqPreset}
@@ -908,6 +924,9 @@ function MixerStrip({
             <option key={o.id} value={o.id}>{o.label}</option>
           ))}
         </select>
+      </MixerSlotRow>
+      <MixerSlotRow label="MIDI FX">
+        <div className="h-4 w-full rounded-[2px] border border-[#454549] bg-[#4a4a4e]" />
       </MixerSlotRow>
       <MixerSlotRow label="Input">
         <div className={mixerFieldDark}>In 1</div>
@@ -939,21 +958,25 @@ function MixerStrip({
       <MixerSlotRow label="Automation">
         <button type="button" className={`${mixerFieldGreen} font-bold`} title="Automation mode">Read</button>
       </MixerSlotRow>
+      {/* Instrument icon */}
+      <div className="flex items-center justify-center border-b" style={{ borderColor: '#4a4a4e', minHeight: 40, height: 40 }}>
+        <InstrumentIcon kind={tr.kind} color={tr.color} />
+      </div>
       {/* Pan */}
-      <div className="flex items-center justify-center border-b" style={{ borderColor: '#4a4a4e', minHeight: 34, height: 34 }}>
-        <PanKnob value={tr.pan} onChange={(v) => daw.setTrackPan(tr.id, v)} size={24} showValueLabel={false} />
+      <div className="flex items-center justify-center border-b" style={{ borderColor: '#4a4a4e', minHeight: 36, height: 36 }}>
+        <PanKnob value={tr.pan} onChange={(v) => daw.setTrackPan(tr.id, v)} size={28} showValueLabel={false} />
       </div>
       {/* dB */}
-      <div className="flex items-center justify-center gap-0.5 border-b px-[2px]" style={{ borderColor: '#4a4a4e', minHeight: 22, height: 22 }}>
-        <span className="rounded border border-[#222] bg-[#0a0a0a] px-0.5 py-0.5 font-mono text-[8px] tabular-nums text-[#e0e0e0]">{dbLabel}</span>
-        <span className="rounded border border-[#222] bg-[#0a0a0a] px-0.5 py-0.5 font-mono text-[8px] tabular-nums text-[#4eca4e]">{peakDb}</span>
+      <div className="flex items-center justify-center gap-0.5 border-b px-[2px]" style={{ borderColor: '#4a4a4e', minHeight: 24, height: 24 }}>
+        <span className="rounded border border-[#222] bg-[#0a0a0a] px-1 py-0.5 font-mono text-[9px] tabular-nums text-[#e0e0e0]">{dbLabel}</span>
+        <span className="rounded border border-[#222] bg-[#0a0a0a] px-1 py-0.5 font-mono text-[9px] tabular-nums text-[#4eca4e]">{peakDb}</span>
       </div>
       {/* Fader + meters */}
       <div className="border-b" style={{ borderColor: '#4a4a4e', minHeight: MIXER_METER_H + 10, height: MIXER_METER_H + 10 }}>
         <VerticalMixerFader value={tr.volume} peak={peak} onChange={(value) => daw.setTrackVolume(tr.id, value)} ariaLabel={`${tr.name} level`} />
       </div>
       {/* R I */}
-      <div className="flex items-center justify-center gap-0.5 border-b py-[2px]" style={{ borderColor: '#4a4a4e', minHeight: 20, height: 20 }}>
+      <div className="flex items-center justify-center gap-0.5 border-b py-[2px]" style={{ borderColor: '#4a4a4e', minHeight: 22, height: 22 }}>
         <button type="button" onClick={() => daw.toggleRecordArm(tr.id)} className={`h-4 w-5 rounded-sm border text-[8px] font-bold ${tr.recordArm ? 'border-[#a22] bg-[#e03030] text-white' : 'border-[#555] bg-[#4a4a4e] text-[#999]'}`}>R</button>
         <button type="button" className="h-4 w-5 rounded-sm border border-[#555] bg-[#4a4a4e] text-[8px] font-bold text-[#999]">I</button>
       </div>
