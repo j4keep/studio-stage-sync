@@ -1212,7 +1212,7 @@ function DawChrome() {
           ) : null}
 
           <div
-            className="mx-1 flex min-h-[48px] min-w-[200px] max-w-[min(100%,480px)] flex-1 flex-col justify-center gap-1 rounded border px-2.5 py-1.5 shadow-[inset_0_2px_14px_rgba(0,0,0,0.72)] sm:min-w-[300px]"
+            className="mx-1 flex min-h-[48px] min-w-[200px] max-w-[min(100%,480px)] flex-1 items-center rounded border shadow-[inset_0_2px_14px_rgba(0,0,0,0.72)] sm:min-w-[300px]"
             style={{
               borderColor: '#05080c',
               background: LP.lcdBg,
@@ -1220,130 +1220,93 @@ function DawChrome() {
                 'repeating-linear-gradient(180deg, transparent, transparent 2px, rgba(110,200,255,0.04) 2px, rgba(110,200,255,0.04) 3px)',
             }}
           >
-            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0 font-mono text-[10px] tabular-nums sm:text-[11px]" style={{ color: LP.lcdText }}>
-              <span>{formatSMPTE(daw.currentTime)}</span>
-              <span style={{ color: LP.lcdDim }}>{formatLogicBars(daw.currentTime, daw.tempo, daw.beatsPerBar)}</span>
+            {/* BAR / BEAT section */}
+            <div className="flex flex-1 items-baseline gap-1 px-2">
+              <div className="flex flex-col items-center">
+                <span className="font-mono text-[22px] font-bold leading-none tabular-nums" style={{ color: '#e0e8f0' }}>
+                  {String(Math.floor((daw.currentTime * (daw.tempo / 60)) / daw.beatsPerBar) + 1).padStart(3, '0')}
+                </span>
+                <span className="text-[7px] font-semibold uppercase tracking-wider" style={{ color: LP.lcdDim }}>Bar</span>
+              </div>
+              <div className="flex flex-col items-center">
+                <span className="font-mono text-[22px] font-bold leading-none tabular-nums" style={{ color: '#e0e8f0' }}>
+                  {Math.floor((daw.currentTime * (daw.tempo / 60)) % daw.beatsPerBar) + 1}
+                </span>
+                <span className="text-[7px] font-semibold uppercase tracking-wider" style={{ color: LP.lcdDim }}>Beat</span>
+              </div>
             </div>
-            <div className="flex flex-wrap justify-between gap-2 text-[9px]" style={{ color: LP.lcdDim }}>
-              <span>
-                Tempo <span className="font-mono text-[10px]" style={{ color: LP.lcdText }}>{daw.tempo.toFixed(2)}</span>
+            {/* Divider */}
+            <div className="h-8 w-px bg-[#1a2a3a]" />
+            {/* TEMPO section */}
+            <div className="flex flex-col items-center px-3">
+              <span className="font-mono text-[18px] font-bold leading-none tabular-nums" style={{ color: '#e0e8f0' }}>
+                {Math.round(daw.tempo)}
               </span>
-              <span>
-                Sig <span className="font-mono text-[10px]" style={{ color: LP.lcdText }}>{daw.beatsPerBar}/4</span>
+              <span className="text-[7px] font-semibold uppercase tracking-wider" style={{ color: LP.lcdDim }}>
+                Keep
               </span>
-              <span className="hidden sm:inline">Key C maj</span>
+              <span className="text-[6px] uppercase tracking-widest" style={{ color: LP.lcdDim }}>Tempo</span>
             </div>
+            {/* Divider */}
+            <div className="h-8 w-px bg-[#1a2a3a]" />
+            {/* TIME SIG / KEY section */}
+            <div className="flex flex-col items-center px-3">
+              <span className="font-mono text-[16px] font-bold leading-none" style={{ color: '#e0e8f0' }}>
+                {daw.beatsPerBar}/4
+              </span>
+              <span className="text-[8px] font-medium" style={{ color: LP.lcdDim }}>Cmaj</span>
+            </div>
+            {/* Dropdown arrow */}
+            <button type="button" className="px-1 text-[8px]" style={{ color: LP.lcdDim }} title="Display mode">▾</button>
           </div>
 
-          <div className="flex flex-wrap items-center gap-0.5 border-l pl-2" style={{ borderColor: LP.border }}>
+          {/* Right of LCD: Metronome, 1234 purple, flag */}
+          <div className="flex items-center gap-0.5 border-l pl-2" style={{ borderColor: LP.border }}>
             <button type="button" title="Metronome" onClick={() => daw.setMetronomeOn(!daw.metronomeOn)} className={ctrlBtnBase}>
               <IconMetronome off={!daw.metronomeOn} />
             </button>
-            <button type="button" title="Count-in (reserved)" className={ctrlBtnBase}>
+            <button type="button" title="Count-in" className={ctrlBtnBase}>
               <IconCountIn />
             </button>
-            <div className="hidden h-8 flex-col justify-between px-1 sm:flex" title="CPU / HD (decorative)">
-              <div className="h-1 w-4 rounded-sm bg-[#2a4a2a]" />
-              <div className="h-1 w-3 rounded-sm bg-[#3a4a6a]" />
-            </div>
+            <button type="button" title="MIDI activity" className={`${ctrlBtn} border-[#6a3eaa] bg-gradient-to-b from-[#7a4eba] to-[#5a2ea0] text-[10px] font-bold`} style={{ minWidth: 36 }}>
+              1234
+            </button>
+            <button type="button" title="Notifications" className={ctrlBtnBase}>
+              <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1l1 3h3l-2.5 2 1 3L8 7.5 5.5 9l1-3L4 4h3z"/></svg>
+            </button>
+          </div>
+
+          {/* Master volume slider */}
+          <div className="flex min-w-[100px] max-w-[160px] items-center px-2">
+            <input type="range" min={0} max={1} step={0.01} value={daw.masterVolume} onChange={(e) => daw.setMasterVolume(Number(e.target.value))} className="h-1.5 w-full cursor-pointer" style={{ accentColor: '#d0d0d0' }} />
+          </div>
+
+          {/* Far right 4 icons — matches Logic Pro */}
+          <div className="flex items-center gap-0.5 border-l pl-2" style={{ borderColor: LP.border }}>
             <button type="button" title="List editors" className={ctrlBtnBase}>
-              <IconListDoc />
+              <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M4 6h16M4 10h16M4 14h16M4 18h16" strokeLinecap="round" /></svg>
             </button>
             <button type="button" title="Notepad" className={ctrlBtnBase}>
-              <IconNotePad />
+              <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="5" y="3" width="14" height="18" rx="1.5" /><path d="M9 7h6M9 11h6M9 15h3" strokeLinecap="round" /></svg>
             </button>
-            <button type="button" title="Loop browser" className={ctrlBtnBase}>
-              <IconLoopBrowser />
+            <button type="button" title="Comments" className={ctrlBtnBase}>
+              <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></svg>
             </button>
-            <button type="button" title="Media browser" className={ctrlBtnBase}>
-              <IconMediaBrowser />
+            <button type="button" title="Lock" className={ctrlBtnBase}>
+              <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="5" y="11" width="14" height="10" rx="1.5" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
             </button>
           </div>
 
-          <div className="flex min-w-[120px] max-w-[180px] flex-col gap-0.5 px-1">
-            <span className="text-[8px] font-semibold uppercase tracking-wide text-[#aaa]">Master</span>
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.01}
-              value={daw.masterVolume}
-              onChange={(e) => daw.setMasterVolume(Number(e.target.value))}
-              className="h-1.5 w-full cursor-pointer"
-              style={{ accentColor: LP.accentBlueHi }}
-            />
-          </div>
-
-          <label className="flex min-w-[100px] items-center gap-1 text-[9px] text-[#aaa]">
-            BPM
-            <input
-              type="number"
-              min={40}
-              max={240}
-              value={daw.tempo}
-              onChange={(e) => daw.setTempo(Number(e.target.value) || 120)}
-              className="w-12 rounded border px-1 py-0.5 font-mono text-[10px]"
-              style={{ borderColor: LP.border, background: LP.panelLo, color: LP.text }}
-            />
-          </label>
-
-          <label className="flex min-w-[72px] flex-col gap-0.5 text-[8px] text-[#aaa]">
-            <span>Time sig</span>
-            <div className="flex items-center gap-0.5">
-              <input
-                type="number"
-                min={1}
-                max={12}
-                value={daw.beatsPerBar}
-                onChange={(e) => daw.setBeatsPerBar(Math.min(12, Math.max(1, Number(e.target.value) || 4)))}
-                className="w-8 rounded border px-0.5 py-0.5 font-mono text-[10px]"
-                style={{ borderColor: LP.border, background: LP.panelLo, color: LP.text }}
-              />
-              <span>/4</span>
-            </div>
-          </label>
-
-          <div className="ml-auto flex flex-wrap items-center gap-1">
-            <button
-              type="button"
-              title="Arrange / Edit"
-              onClick={() => setMainView('arrange')}
-              className={mainView === 'arrange' ? `${ctrlBtnActive} px-2 text-[9px] font-semibold` : `${ctrlBtnBase} px-2 text-[9px]`}
-            >
-              Edit
-            </button>
-            <button
-              type="button"
-              title="Mixer view"
-              onClick={() => setMainView('mixer')}
-              className={mainView === 'mixer' ? `${ctrlBtnActive} px-2 text-[9px] font-semibold` : `${ctrlBtnBase} px-2 text-[9px]`}
-            >
-              Mix
-            </button>
-            <button type="button" title="Export mix (WAV)" className={`${ctrlBtnBase} px-2 text-[9px]`} onClick={() => void daw.exportMixWav()}>
-              Bnc
-            </button>
-            <button type="button" title="New track" className={`${ctrlBtnBase} px-2 text-[9px]`} onClick={() => setModalOpen(true)}>
-              +Tr
-            </button>
-            <button
-              type="button"
-              title="Import audio"
-              className={`${ctrlBtnBase} px-2 text-[9px]`}
-              onClick={() => targetTrackId && openImport(targetTrackId)}
-              disabled={!targetTrackId}
-            >
-              Imp
-            </button>
-            <button type="button" title="Fullscreen workspace" className={`${ctrlBtnBase} hidden lg:flex`} onClick={() => setFocusWorkbench((v) => !v)}>
-              <IconExpand />
-            </button>
-            <button type="button" title="Save project JSON" className={`${ctrlBtnBase} px-2 text-[9px] text-[#9d9]`} onClick={() => daw.exportProjectJson()}>
-              Save
-            </button>
-            <button type="button" title="Load project" className={`${ctrlBtnBase} px-2 text-[9px]`} onClick={() => projectFileRef.current?.click()}>
-              Load
-            </button>
+          {/* Functional buttons - kept for DAW features */}
+          <div className="ml-1 flex flex-wrap items-center gap-0.5">
+            <button type="button" title="Arrange / Edit" onClick={() => setMainView('arrange')} className={mainView === 'arrange' ? `${ctrlBtnActive} px-2 text-[9px] font-semibold` : `${ctrlBtnBase} px-2 text-[9px]`}>Edit</button>
+            <button type="button" title="Mixer view" onClick={() => setMainView('mixer')} className={mainView === 'mixer' ? `${ctrlBtnActive} px-2 text-[9px] font-semibold` : `${ctrlBtnBase} px-2 text-[9px]`}>Mix</button>
+            <button type="button" title="Export mix (WAV)" className={`${ctrlBtnBase} px-2 text-[9px]`} onClick={() => void daw.exportMixWav()}>Bnc</button>
+            <button type="button" title="New track" className={`${ctrlBtnBase} px-2 text-[9px]`} onClick={() => setModalOpen(true)}>+Tr</button>
+            <button type="button" title="Import audio" className={`${ctrlBtnBase} px-2 text-[9px]`} onClick={() => targetTrackId && openImport(targetTrackId)} disabled={!targetTrackId}>Imp</button>
+            <button type="button" title="Fullscreen workspace" className={`${ctrlBtnBase} hidden lg:flex`} onClick={() => setFocusWorkbench((v) => !v)}><IconExpand /></button>
+            <button type="button" title="Save project JSON" className={`${ctrlBtnBase} px-2 text-[9px] text-[#9d9]`} onClick={() => daw.exportProjectJson()}>Save</button>
+            <button type="button" title="Load project" className={`${ctrlBtnBase} px-2 text-[9px]`} onClick={() => projectFileRef.current?.click()}>Load</button>
           </div>
         </div>
 
