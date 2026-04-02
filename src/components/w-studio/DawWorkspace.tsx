@@ -1685,7 +1685,11 @@ function DawChrome() {
                           Delete
                         </button>
                       </div>
-                       <div className="flex items-center gap-1">
+                      </div>
+                    </div>
+                    <div className="flex min-w-0 flex-1 flex-col gap-1 px-1.5 py-1" style={{ display: 'none' }}>
+                      {/* removed old duplicate - keeping only new styled controls */}
+                    </div>
                          <button
                            type="button"
                            title="Mute"
