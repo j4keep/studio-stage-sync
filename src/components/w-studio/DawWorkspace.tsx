@@ -593,8 +593,7 @@ function StartSongModal({
   );
 }
 
-const slotBlue =
-  'mb-0.5 w-full truncate rounded-sm border border-[#2a5080] bg-gradient-to-b from-[#4a6fa8] to-[#355a8a] px-0.5 py-0.5 text-[7px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]';
+
 
 const slotBtn = 'w-full truncate rounded-[2px] border px-1 py-[3px] text-[9px] text-[#ddd] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]';
 const slotEmpty = `${slotBtn} border-[${LP.slotBorder}] bg-[${LP.slotBg}]`;
