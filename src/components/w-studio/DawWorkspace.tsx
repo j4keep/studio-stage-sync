@@ -873,12 +873,7 @@ function MixerStrip({
     </div>
   );
 }
-      >
-        {tr.name || 'Track'}
-      </div>
-    </div>
-  );
-}
+
 
 function StereoOutStrip() {
   const daw = useDaw();
