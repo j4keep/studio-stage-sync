@@ -129,17 +129,119 @@ function IconExpand() {
   );
 }
 
-function TrackInspector({ trackId }: { trackId: string | null }) {
+function InspectorChannelStrip({ trackId, isStereoOut }: { trackId: string | null; isStereoOut?: boolean }) {
   const daw = useDaw();
-  const tr = trackId ? daw.tracks.find((t) => t.id === trackId) : null;
-  if (!tr) {
-    return (
-      <p className="p-3 text-[11px]" style={{ color: LP.textMuted }}>
-        Select a track to show channel strip.
-      </p>
-    );
-  }
-  const peak = daw.meterPeaks[tr.id] ?? 0;
+  const tr = !isStereoOut && trackId ? daw.tracks.find((t) => t.id === trackId) : null;
+  const peak = isStereoOut ? (daw.meterPeaks.__master__ ?? 0) : (tr ? (daw.meterPeaks[tr.id] ?? 0) : 0);
+  const vol = isStereoOut ? daw.masterVolume : (tr?.volume ?? 0.8);
+  const pan = tr?.pan ?? 0;
+  const name = isStereoOut ? 'Stereo Out' : (tr?.name ?? 'Track');
+  const labelColor = isStereoOut ? '#4a9a4a' : (tr?.color ?? '#60a5fa');
+
+  return (
+    <div className="flex flex-col text-[10px]" style={{ color: LP.text, minWidth: 80 }}>
+      {/* Number + pan knob */}
+      <div className="flex items-center gap-2 border-b px-2 py-1.5" style={{ borderColor: LP.border }}>
+        <span className="rounded border border-[#555] bg-[#3a3a3e] px-2 py-0.5 font-mono text-[10px]">0</span>
+        {!isStereoOut ? <PanKnob value={pan} onChange={(v) => tr && daw.setTrackPan(tr.id, v)} size={24} /> : <PanKnob value={0} onChange={() => {}} size={24} />}
+      </div>
+      {/* Slot rows */}
+      <SlotRow label="Setting"><div className="h-4 rounded-sm bg-[#3a3a3e]" /></SlotRow>
+      <SlotRow label="EQ">
+        {!isStereoOut && tr ? (
+          <select value={tr.eqPreset} onChange={(e) => daw.setTrackEq(tr.id, e.target.value as any)} className="w-full rounded-[2px] border border-[#4e4e52] bg-[#555558] px-1 py-[2px] text-[9px] text-[#ddd]">
+            {EQ_PRESET_LABELS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+          </select>
+        ) : <div className="h-4 rounded-sm bg-[#3a3a3e]" />}
+      </SlotRow>
+      {!isStereoOut ? (
+        <SlotRow label="Input">
+          <div className="flex items-center gap-1">
+            <span className="text-[9px] text-[#999]">○</span>
+            <span className="text-[9px] text-[#ddd]">Input 1</span>
+          </div>
+        </SlotRow>
+      ) : (
+        <SlotRow label="">
+          <div className="flex h-4 w-4 items-center justify-center text-[10px] text-[#ccc]">∞</div>
+        </SlotRow>
+      )}
+      <SlotRow label="Audio FX">
+        {!isStereoOut && tr ? (
+          <select value={tr.effectPreset} onChange={(e) => daw.setTrackEffect(tr.id, e.target.value as any)} className="w-full rounded-[2px] border border-[#4e4e52] bg-[#555558] px-1 py-[2px] text-[9px] text-[#ddd]">
+            {EFFECT_PRESET_LABELS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+          </select>
+        ) : <div className="h-4 rounded-sm bg-[#3a3a3e]" />}
+      </SlotRow>
+      {!isStereoOut && (
+        <SlotRow label="Sends">
+          <div className="flex items-center gap-1"><div className="h-3 flex-1 rounded-sm bg-[#3a3a3e]" /><span className="h-3 w-3 rounded-full bg-[#555]" /></div>
+        </SlotRow>
+      )}
+      {!isStereoOut && <SlotRow label="Stereo Out"><div className="h-4 rounded-sm bg-[#3a3a3e]" /></SlotRow>}
+      <SlotRow label="Group"><div className="h-4 rounded-sm bg-[#3a3a3e]" /></SlotRow>
+      {/* Read automation */}
+      <div className="flex items-center border-b px-2 py-[3px]" style={{ borderColor: '#4a4a4e' }}>
+        <button type="button" className="w-full rounded-[2px] border border-[#2d5a2d] px-3 py-[2px] text-[9px] font-bold text-[#c8ffc8]" style={{ background: LP.readAuto }}>Read</button>
+      </div>
+      {/* Pan knob large */}
+      <div className="flex flex-col items-center py-2">
+        {!isStereoOut ? <PanKnob value={pan} onChange={(v) => tr && daw.setTrackPan(tr.id, v)} size={44} /> : <PanKnob value={0} onChange={() => {}} size={44} />}
+      </div>
+      {/* dB display */}
+      <div className="flex items-center justify-center gap-1 px-2 py-1">
+        <span className="rounded border border-[#222] bg-[#0a0a0a] px-1.5 py-0.5 font-mono text-[10px] tabular-nums text-[#e0e0e0]">{isStereoOut ? '0.0' : faderToDbLabel(vol)}</span>
+        <span className="rounded border border-[#222] bg-[#0a0a0a] px-1.5 py-0.5 font-mono text-[10px] tabular-nums text-[#4eca4e]">{peakToDbDisplay(peak)}</span>
+      </div>
+      {/* Fader + meters */}
+      <div className="flex items-stretch justify-center gap-1 px-2 py-1" style={{ minHeight: 140 }}>
+        <div className="flex flex-col items-end justify-between py-1 pr-0.5 font-mono text-[6px] leading-tight text-[#999]">
+          {['0','3','6','9','12','15','18','21','24','30','35','40','45','50','60'].map(v => <span key={v}>{v}</span>)}
+        </div>
+        <DualPeakMeters peak={peak} height={120} />
+        <div className="relative flex w-8 items-center justify-center">
+          <div className="absolute rounded-sm border border-[#1a1a1a]" style={{ height: 120, width: 8, background: 'linear-gradient(90deg, #5a5a5a 0%, #3a3a3a 50%, #2a2a2a 100%)' }} />
+          <input type="range" min={0} max={1} step={0.005} value={vol} onChange={(e) => { const v = Number(e.target.value); if (isStereoOut) daw.setMasterVolume(v); else if (tr) daw.setTrackVolume(tr.id, v); }} className="absolute cursor-pointer" style={{ width: 120, height: 24, transform: 'rotate(-90deg)', accentColor: '#d8d8d8' }} aria-label="Volume" />
+        </div>
+      </div>
+      {/* R I / M S buttons */}
+      {!isStereoOut ? (
+        <>
+          <div className="flex justify-center gap-1 py-0.5">
+            <button type="button" onClick={() => tr && daw.toggleRecordArm(tr.id)} className={`h-5 w-6 rounded-sm border text-[9px] font-bold ${tr?.recordArm ? 'border-[#a22] bg-[#e03030] text-white' : 'border-[#555] bg-[#4a4a4e] text-[#999]'}`}>R</button>
+            <button type="button" className="h-5 w-6 rounded-sm border border-[#555] bg-[#4a4a4e] text-[9px] font-bold text-[#999]">I</button>
+          </div>
+          <div className="flex justify-center gap-1 py-0.5">
+            <button type="button" onClick={() => tr && daw.toggleMute(tr.id)} className={`h-6 w-7 rounded-sm border text-[10px] font-bold ${tr?.muted ? 'border-[#3a7a7a] bg-[#5ab0b0] text-[#022]' : 'border-[#555] bg-[#4a4a4e] text-[#ddd]'}`}>M</button>
+            <button type="button" onClick={() => tr && daw.toggleSolo(tr.id)} className={`h-6 w-7 rounded-sm border text-[10px] font-bold ${tr?.solo ? 'border-[#886600] bg-[#e8d44a] text-[#111]' : 'border-[#555] bg-[#4a4a4e] text-[#ddd]'}`}>S</button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="flex justify-center py-0.5"><span className="text-[8px] text-[#999]">Bnce</span></div>
+          <div className="flex justify-center gap-1 py-0.5">
+            <button type="button" className="h-6 w-7 rounded-sm border border-[#555] bg-[#4a4a4e] text-[10px] font-bold text-[#ddd]">M</button>
+          </div>
+        </>
+      )}
+      {/* Track name */}
+      <div className="mt-auto truncate border-t px-1 py-1.5 text-center text-[10px] font-semibold" style={{ backgroundColor: labelColor, borderColor: LP.border, color: isStereoOut ? '#fff' : '#111' }}>
+        {name}
+      </div>
+    </div>
+  );
+}
+
+function SlotRow({ label, children }: { label: string; children?: React.ReactNode }) {
+  return (
+    <div className="flex items-center border-b px-2 py-[3px]" style={{ borderColor: '#4a4a4e' }}>
+      {label && <span className="w-[50px] shrink-0 text-right pr-1 text-[9px] text-[#b0b0b4]">{label}</span>}
+      <div className="min-w-0 flex-1">{children}</div>
+    </div>
+  );
+}
+
+function TrackInspector({ trackId }: { trackId: string | null }) {
   return (
     <div className="flex flex-col text-[10px]" style={{ color: LP.text }}>
       {/* Region / Track headers */}
@@ -154,86 +256,17 @@ function TrackInspector({ trackId }: { trackId: string | null }) {
         <div className="flex items-center gap-1 text-[10px]">
           <span className="text-[#888]">▶</span>
           <span className="font-semibold">Track:</span>
-          <span className="text-[#b0b0b4]">{tr.name}</span>
+          <span className="text-[#b0b0b4]">Audio 1</span>
         </div>
       </div>
-      {/* Channel strip */}
-      <div className="flex flex-col items-center gap-1 border-b px-2 py-2" style={{ borderColor: LP.border }}>
-        <div className="flex items-center gap-2">
-          <span className="rounded border border-[#555] bg-[#3a3a3e] px-2 py-0.5 font-mono text-[10px]">0</span>
-          <PanKnob value={tr.pan} onChange={(v) => daw.setTrackPan(tr.id, v)} size={28} />
+      {/* Two channel strips side by side */}
+      <div className="flex min-h-0 flex-1 overflow-y-auto">
+        <div className="flex-1 border-r" style={{ borderColor: LP.border }}>
+          <InspectorChannelStrip trackId={trackId} />
         </div>
-        <div className="flex items-center gap-0.5 text-[7px] text-[#999]">
-          <span>L</span>
-          <span className="mx-1">R</span>
+        <div className="flex-1">
+          <InspectorChannelStrip trackId={null} isStereoOut />
         </div>
-      </div>
-      {/* Slot rows */}
-      {[
-        { label: 'Setting', content: null },
-        { label: 'EQ', content: (
-          <select value={tr.eqPreset} onChange={(e) => daw.setTrackEq(tr.id, e.target.value as any)} className="w-full rounded-[2px] border border-[#4e4e52] bg-[#555558] px-1 py-[2px] text-[9px] text-[#ddd]">
-            {EQ_PRESET_LABELS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-          </select>
-        )},
-        { label: 'Input', content: (
-          <div className="flex items-center gap-1">
-            <span className="text-[9px] text-[#999]">○</span>
-            <select value={tr.inputSource} onChange={(e) => daw.setTrackInputSource(tr.id, e.target.value)} className="flex-1 rounded-[2px] border border-[#4e4e52] bg-[#555558] px-1 py-[2px] text-[9px] text-[#ddd]">
-              {INPUT_SOURCE_OPTIONS.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
-            </select>
-          </div>
-        )},
-        { label: 'Audio FX', content: (
-          <select value={tr.effectPreset} onChange={(e) => daw.setTrackEffect(tr.id, e.target.value as any)} className="w-full rounded-[2px] border border-[#4e4e52] bg-[#555558] px-1 py-[2px] text-[9px] text-[#ddd]">
-            {EFFECT_PRESET_LABELS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-          </select>
-        )},
-        { label: 'Sends', content: <div className="flex items-center gap-1"><div className="h-3 flex-1 rounded-sm bg-[#3a3a3e]" /><span className="h-3 w-3 rounded-full bg-[#555]" /></div> },
-        { label: 'Stereo Out', content: null },
-        { label: 'Group', content: null },
-      ].map((row) => (
-        <div key={row.label} className="flex items-center border-b px-2 py-[3px]" style={{ borderColor: '#4a4a4e' }}>
-          <span className="w-[58px] shrink-0 text-right pr-2 text-[9px] text-[#b0b0b4]">{row.label}</span>
-          <div className="min-w-0 flex-1">
-            {row.content || <div className="h-4 rounded-sm bg-[#3a3a3e]" />}
-          </div>
-        </div>
-      ))}
-      {/* Read automation */}
-      <div className="flex items-center border-b px-2 py-[3px]" style={{ borderColor: '#4a4a4e' }}>
-        <span className="w-[58px] shrink-0" />
-        <button type="button" className="rounded-[2px] border border-[#2d5a2d] px-3 py-[2px] text-[9px] font-bold text-[#c8ffc8]" style={{ background: LP.readAuto }}>Read</button>
-      </div>
-      {/* Pan knob large */}
-      <div className="flex flex-col items-center py-2">
-        <PanKnob value={tr.pan} onChange={(v) => daw.setTrackPan(tr.id, v)} size={48} />
-      </div>
-      {/* dB display */}
-      <div className="flex items-center justify-center gap-1 px-2 py-1">
-        <span className="rounded border border-[#222] bg-[#0a0a0a] px-1.5 py-0.5 font-mono text-[10px] tabular-nums text-[#e0e0e0]">{faderToDbLabel(tr.volume)}</span>
-        <span className="rounded border border-[#222] bg-[#0a0a0a] px-1.5 py-0.5 font-mono text-[10px] tabular-nums text-[#4eca4e]">{peakToDbDisplay(peak)}</span>
-      </div>
-      {/* Fader + meters */}
-      <div className="flex items-stretch justify-center gap-1 px-2 py-1" style={{ minHeight: 140 }}>
-        <DualPeakMeters peak={peak} height={120} />
-        <div className="relative flex w-8 items-center justify-center">
-          <div className="absolute rounded-sm border border-[#1a1a1a]" style={{ height: 120, width: 8, background: 'linear-gradient(90deg, #5a5a5a 0%, #3a3a3a 50%, #2a2a2a 100%)' }} />
-          <input type="range" min={0} max={1} step={0.005} value={tr.volume} onChange={(e) => daw.setTrackVolume(tr.id, Number(e.target.value))} className="absolute cursor-pointer" style={{ width: 120, height: 24, transform: 'rotate(-90deg)', accentColor: '#d8d8d8' }} aria-label="Volume" />
-        </div>
-      </div>
-      {/* R I / M S buttons */}
-      <div className="flex justify-center gap-1 py-0.5">
-        <button type="button" onClick={() => daw.toggleRecordArm(tr.id)} className={`h-5 w-6 rounded-sm border text-[9px] font-bold ${tr.recordArm ? 'border-[#a22] bg-[#e03030] text-white' : 'border-[#555] bg-[#4a4a4e] text-[#999]'}`}>R</button>
-        <button type="button" className="h-5 w-6 rounded-sm border border-[#555] bg-[#4a4a4e] text-[9px] font-bold text-[#999]">I</button>
-      </div>
-      <div className="flex justify-center gap-1 py-0.5">
-        <button type="button" onClick={() => daw.toggleMute(tr.id)} className={`h-6 w-7 rounded-sm border text-[10px] font-bold ${tr.muted ? 'border-[#3a7a7a] bg-[#5ab0b0] text-[#022]' : 'border-[#555] bg-[#4a4a4e] text-[#ddd]'}`}>M</button>
-        <button type="button" onClick={() => daw.toggleSolo(tr.id)} className={`h-6 w-7 rounded-sm border text-[10px] font-bold ${tr.solo ? 'border-[#886600] bg-[#e8d44a] text-[#111]' : 'border-[#555] bg-[#4a4a4e] text-[#ddd]'}`}>S</button>
-      </div>
-      {/* Track name */}
-      <div className="mt-1 truncate border-t px-1 py-1 text-center text-[10px] font-semibold" style={{ backgroundColor: tr.color, borderColor: LP.border, color: '#111' }}>
-        {tr.name}
       </div>
     </div>
   );
@@ -599,19 +632,7 @@ const slotBtn = 'w-full truncate rounded-[2px] border px-1 py-[3px] text-[9px] t
 const slotEmpty = `${slotBtn} border-[${LP.slotBorder}] bg-[${LP.slotBg}]`;
 
 function LogicMixerFilterBar({ active, onPick }: { active: string; onPick: (s: string) => void }) {
-  const items = [
-    'Single',
-    'Tracks',
-    'All',
-    'Audio',
-    'Inst',
-    'Aux',
-    'Bus',
-    'Input',
-    'Output',
-    'Master/VCA',
-    'MIDI',
-  ] as const;
+  const filterItems = ['Single', 'Tracks', 'All', 'Audio', 'Inst', 'Aux', 'Bus', 'Input', 'Output', 'Master/VCA', 'MIDI'] as const;
   return (
     <div
       className="flex shrink-0 flex-wrap items-center gap-1 border-b px-2 py-1.5"
@@ -621,11 +642,21 @@ function LogicMixerFilterBar({ active, onPick }: { active: string; onPick: (s: s
         boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)',
       }}
     >
-      {items.map((x) => (
+      {/* Undo arrow */}
+      <button type="button" className={`${ctrlBtnBase} h-6 w-6 text-[10px]`} title="Undo">↺</button>
+      {/* Edit / Options / View dropdowns */}
+      {['Edit', 'Options', 'View'].map((m) => (
+        <button key={m} type="button" className="flex items-center gap-0.5 rounded px-2 py-1 text-[10px] font-medium text-[#e4e4e4] hover:bg-black/20">
+          {m} <span className="text-[7px]">▾</span>
+        </button>
+      ))}
+      <div className="mx-2 h-4 w-px bg-[#555]" />
+      {/* Filter buttons */}
+      {filterItems.map((x) => (
         <button
           key={x}
           type="button"
-          title={`Mixer: ${x} (view filter)`}
+          title={`Mixer: ${x}`}
           onClick={() => onPick(x)}
           className={`rounded-[3px] px-2 py-1 text-[9px] font-semibold tracking-tight ${
             active === x ? `${ctrlBtnActive} min-h-[26px]` : 'text-[#e4e4e4] hover:bg-black/20'
@@ -634,6 +665,15 @@ function LogicMixerFilterBar({ active, onPick }: { active: string; onPick: (s: s
           {x}
         </button>
       ))}
+      <div className="ml-auto flex items-center gap-1">
+        {/* Two view toggle icons */}
+        <button type="button" className={ctrlBtnBase} title="Narrow strips">
+          <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="2" width="3" height="12" rx="0.5" /><rect x="5" y="2" width="3" height="12" rx="0.5" /><rect x="9" y="2" width="3" height="12" rx="0.5" /></svg>
+        </button>
+        <button type="button" className={ctrlBtnBase} title="Wide strips">
+          <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="2" width="5" height="12" rx="0.5" /><rect x="7" y="2" width="5" height="12" rx="0.5" /></svg>
+        </button>
+      </div>
     </div>
   );
 }
@@ -1308,66 +1348,123 @@ function DawChrome() {
           </div>
         </div>
 
+        {/* Row 2: Icon+Label toolbar — matches Logic Pro screenshot exactly */}
         <div
-          className="flex min-h-[36px] flex-wrap items-center gap-x-2 gap-y-1 border-t px-2 py-1"
+          className="flex flex-wrap items-end gap-3 border-t px-3 py-1 overflow-x-auto"
+          style={{ borderColor: LP.border, background: `linear-gradient(180deg, ${LP.panel} 0%, ${LP.panelLo} 100%)` }}
+        >
+          {[
+            { icon: '∿λ', label: 'Articulation' },
+            { icon: '⊞↕', label: 'Track Zoom' },
+            { icon: '♫↻', label: 'Note Repeat' },
+            { icon: '⊘', label: 'Spot Erase' },
+            { icon: '✂▎', label: 'Split by Playhead' },
+            { icon: '✂⟨⟩', label: 'Split by Locators' },
+            { icon: '⤓', label: 'Bounce Regions' },
+          ].map((b) => (
+            <button key={b.label} type="button" title={b.label} className="flex flex-col items-center gap-0.5 rounded px-1.5 py-0.5 text-[#ccc] hover:bg-black/15">
+              <span className="text-[14px] leading-none">{b.icon}</span>
+              <span className="text-[8px] whitespace-nowrap">{b.label}</span>
+            </button>
+          ))}
+          <div className="mx-1 h-8 w-px bg-[#555] self-center" />
+          {/* Nudge Value */}
+          <div className="flex items-center gap-1">
+            <button type="button" className="text-[12px] text-[#aaa] hover:text-white">‹</button>
+            <span className="rounded border border-[#555] bg-[#3a3a3e] px-3 py-0.5 text-[10px] text-[#ddd]">Tick</span>
+            <button type="button" className="text-[12px] text-[#aaa] hover:text-white">›</button>
+            <span className="ml-0.5 text-[8px] text-[#999]">Nudge Value</span>
+          </div>
+          <div className="mx-1 h-8 w-px bg-[#555] self-center" />
+          {[
+            { icon: '⟳§', label: 'Repeat Section' },
+            { icon: '✂§', label: 'Cut Section' },
+            { icon: '⟨⟩', label: 'Set Locators' },
+            { icon: '🔍', label: 'Zoom' },
+            { icon: '🎨', label: 'Colors' },
+          ].map((b) => (
+            <button key={b.label} type="button" title={b.label} className="flex flex-col items-center gap-0.5 rounded px-1.5 py-0.5 text-[#ccc] hover:bg-black/15">
+              <span className="text-[14px] leading-none">{b.icon}</span>
+              <span className="text-[8px] whitespace-nowrap">{b.label}</span>
+            </button>
+          ))}
+        </div>
+
+        <div
+          className="flex min-h-[36px] flex-wrap items-center gap-x-1 gap-y-1 border-t px-2 py-1"
           style={{ borderColor: LP.border, background: LP.panelLo }}
         >
-          <span className="text-[9px] font-semibold text-[#888]">Edit</span>
-          <span className="text-[9px] font-semibold text-[#888]">Functions</span>
-          <span className="text-[9px] font-semibold text-[#888]">View</span>
+          {/* Undo arrow */}
+          <button type="button" className={`${ctrlBtnBase} h-6 w-6 text-[10px]`} title="Undo">↺</button>
+          {/* Edit / Functions / View dropdowns */}
+          {['Edit', 'Functions', 'View'].map((m) => (
+            <button key={m} type="button" className="flex items-center gap-0.5 rounded px-2 py-1 text-[10px] font-medium text-[#e4e4e4] hover:bg-black/20">
+              {m} <span className="text-[7px]">▾</span>
+            </button>
+          ))}
           <div className="mx-1 h-4 w-px bg-[#555]" />
-          <button type="button" title="Articulation (reserved)" className={`${ctrlBtnBase} px-1.5 py-1 text-[8px]`}>
-            Artic
+          {/* Grid / List / Linear view icons */}
+          <button type="button" title="Grid view" className={ctrlBtnBase}>
+            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="4" height="4" rx="0.5"/><rect x="6" y="1" width="4" height="4" rx="0.5"/><rect x="11" y="1" width="4" height="4" rx="0.5"/><rect x="1" y="6" width="4" height="4" rx="0.5"/><rect x="6" y="6" width="4" height="4" rx="0.5"/><rect x="11" y="6" width="4" height="4" rx="0.5"/></svg>
           </button>
-          <button type="button" title="Track zoom" className={`${ctrlBtnBase} px-1.5 py-1 text-[8px]`}>
-            TrkZm
+          <button type="button" title="List view" className={ctrlBtnActive}>
+            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="2" width="14" height="3" rx="0.5"/><rect x="1" y="6" width="14" height="3" rx="0.5"/><rect x="1" y="10" width="14" height="3" rx="0.5"/></svg>
           </button>
-          <button type="button" title="Note repeat" className={`${ctrlBtnBase} px-1.5 py-1 text-[8px]`}>
-            Rpt
-          </button>
-          <button type="button" title="Spot erase" className={`${ctrlBtnBase} px-1.5 py-1 text-[8px]`}>
-            Spot
-          </button>
-          <button type="button" title="Split by playhead" className={ctrlBtnBase}>
-            <IconScissors />
-          </button>
-          <button type="button" title="Glue (reserved)" className={ctrlBtnBase}>
-            <IconGlue />
-          </button>
-          <button type="button" title="Bounce regions" className={`${ctrlBtnBase} px-1.5 py-1 text-[8px]`} onClick={() => void daw.exportMixWav()}>
-            Bounce
-          </button>
-          <button type="button" title="Colors (reserved)" className={`${ctrlBtnBase} px-1.5 py-1 text-[8px]`}>
-            Colors
+          <button type="button" title="Linear view" className={ctrlBtnBase}>
+            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 8h12" strokeLinecap="round"/><path d="M2 4h12M2 12h12" strokeLinecap="round" opacity="0.4"/></svg>
           </button>
           <div className="mx-1 h-4 w-px bg-[#555]" />
+          {/* Pen / Auto / Flex tool icons */}
+          <button type="button" title="Pencil tool" className={ctrlBtnBase}>
+            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M10 2l4 4-9 9H1v-4z" strokeLinejoin="round"/></svg>
+          </button>
+          <button type="button" title="Automation" className={ctrlBtnBase}>
+            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M1 12l4-8 4 6 6-8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
+          <button type="button" title="Flex" className={ctrlBtnBase}>
+            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M2 8c2-4 4-4 6 0s4 4 6 0" strokeLinecap="round"/></svg>
+          </button>
+          <div className="mx-1 h-4 w-px bg-[#555]" />
+          {/* Pointer / Crosshair / Plus tools */}
+          <button type="button" title="Pointer tool" className={ctrlBtnBase}>
+            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor"><path d="M3 1l9 6-4 1 2 5-2 1-2-5-3 3z"/></svg>
+          </button>
+          <button type="button" title="Crosshair / Marquee" className={ctrlBtnBase}>
+            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M8 1v14M1 8h14" strokeLinecap="round"/></svg>
+          </button>
+          <button type="button" title="Zoom tool" className={ctrlBtnBase}>
+            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><circle cx="7" cy="7" r="4"/><path d="M10 10l4 4" strokeLinecap="round"/><path d="M5 7h4M7 5v4" strokeLinecap="round"/></svg>
+          </button>
+          <div className="mx-1 h-4 w-px bg-[#555]" />
+          {/* Gear / waveform / quantize */}
+          <button type="button" title="Settings" className={ctrlBtnBase}>
+            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2"><circle cx="8" cy="8" r="2.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.5 1.5M11.5 11.5L13 13M13 3l-1.5 1.5M4.5 11.5L3 13" strokeLinecap="round"/></svg>
+          </button>
+          <button type="button" title="Audio analysis" className={ctrlBtnBase}><IconWaveInst /></button>
+          <button type="button" title="Quantize" className={ctrlBtnBase}>
+            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor"><rect x="2" y="3" width="1.5" height="10"/><rect x="5.5" y="3" width="1.5" height="10"/><rect x="9" y="3" width="1.5" height="10"/><rect x="12.5" y="3" width="1.5" height="10"/></svg>
+          </button>
+          <div className="mx-1 h-4 w-px bg-[#555]" />
+          {/* Zoom vertical/horizontal with delta arrows */}
+          <button type="button" title="Zoom out vertical" className={`${ctrlBtnBase} h-6 w-5 text-[10px]`}>↕</button>
+          <button type="button" title="Zoom out horizontal" className={`${ctrlBtnBase} h-6 w-5 text-[10px]`}>↔</button>
+          <div className="mx-1 h-4 w-px bg-[#555]" />
+          {/* Snap / Drag */}
           <label className="flex items-center gap-1 text-[8px] text-[#aaa]">
             Snap
             <select className="rounded border px-1 py-0.5 text-[8px]" style={{ borderColor: LP.border, background: '#3a3a3a', color: LP.text }}>
-              <option>Smart</option>
-              <option>Bar</option>
-              <option>Beat</option>
+              <option>Smart</option><option>Bar</option><option>Beat</option>
             </select>
           </label>
           <label className="flex items-center gap-1 text-[8px] text-[#aaa]">
             Drag
             <select className="rounded border px-1 py-0.5 text-[8px]" style={{ borderColor: LP.border, background: '#3a3a3a', color: LP.text }}>
-              <option>No Overlap</option>
-              <option>X-Fade</option>
+              <option>No Overlap</option><option>X-Fade</option>
             </select>
           </label>
           <label className="ml-auto flex min-w-[120px] max-w-[240px] flex-1 items-center gap-2 sm:max-w-md">
             <span className="text-[8px] text-[#888]">Pos</span>
-            <input
-              type="range"
-              min={0}
-              max={Math.max(1, end)}
-              step={0.01}
-              value={Math.min(daw.currentTime, end)}
-              onChange={(e) => daw.seek(Number(e.target.value))}
-              className="h-1 w-full cursor-pointer"
-              style={{ accentColor: LP.accentBlueHi }}
-            />
+            <input type="range" min={0} max={Math.max(1, end)} step={0.01} value={Math.min(daw.currentTime, end)} onChange={(e) => daw.seek(Number(e.target.value))} className="h-1 w-full cursor-pointer" style={{ accentColor: LP.accentBlueHi }} />
           </label>
         </div>
       </header>
@@ -1375,21 +1472,42 @@ function DawChrome() {
       {mainView === 'mixer' ? (
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden" style={{ background: LP.panel }}>
           <LogicMixerFilterBar active={mixerFilter} onPick={setMixerFilter} />
-          <div
-            className="flex min-h-0 flex-1 items-stretch overflow-x-auto overflow-y-hidden lg:min-h-[min(640px,72vh)]"
-            style={{ background: LP.panelLo }}
-          >
-            {daw.tracks.map((t) => (
-              <MixerStrip
-                key={t.id}
-                trackId={t.id}
-                peak={daw.meterPeaks[t.id] ?? 0}
-                fileInputTrigger={() => openImport(t.id)}
-              />
-            ))}
-            <StereoOutStrip />
-            <MasterMixerStrip />
-            <div className="min-w-[32px] flex-1" style={{ background: LP.panelLo }} aria-hidden />
+          <div className="flex min-h-0 flex-1 overflow-hidden">
+            {/* Inspector in mixer view */}
+            {inspectorOpen && (
+              <aside className="flex shrink-0 overflow-y-auto border-r" style={{ borderColor: LP.border, background: LP.panel, width: 200 }}>
+                <div className="flex min-h-0 flex-1">
+                  <div className="flex-1 border-r" style={{ borderColor: LP.border }}>
+                    <InspectorChannelStrip trackId={targetTrackId} />
+                  </div>
+                  <div className="flex-1">
+                    <InspectorChannelStrip trackId={null} isStereoOut />
+                  </div>
+                </div>
+              </aside>
+            )}
+            <div
+              className="flex min-h-0 flex-1 items-stretch overflow-x-auto overflow-y-hidden lg:min-h-[min(640px,72vh)]"
+              style={{ background: LP.panelLo }}
+            >
+              {/* Label column */}
+              <div className="flex shrink-0 flex-col border-r text-right text-[9px] text-[#b0b0b4]" style={{ width: 80, borderColor: LP.border, background: LP.panel }}>
+                {['Setting', 'Gain Reduction', 'EQ', 'Input', 'Audio FX', 'Sends', 'Output', 'Group', 'Automation', '', 'Pan', 'dB', '', '', ''].map((l, i) => (
+                  <div key={i} className="border-b px-2 py-[3px]" style={{ borderColor: '#4a4a4e', minHeight: l === '' ? (i >= 12 ? 40 : 20) : 20 }}>{l}</div>
+                ))}
+              </div>
+              {daw.tracks.map((t) => (
+                <MixerStrip
+                  key={t.id}
+                  trackId={t.id}
+                  peak={daw.meterPeaks[t.id] ?? 0}
+                  fileInputTrigger={() => openImport(t.id)}
+                />
+              ))}
+              <StereoOutStrip />
+              <MasterMixerStrip />
+              <div className="min-w-[32px] flex-1" style={{ background: LP.panelLo }} aria-hidden />
+            </div>
           </div>
         </div>
       ) : (
@@ -1520,6 +1638,17 @@ function DawChrome() {
                     style={{ left: daw.currentTime * PX_PER_SEC, zIndex: 10 }}
                   />
                 </div>
+              </div>
+            </div>
+
+            {/* +/Save/Dropdown row above tracks — matches Logic Pro */}
+            <div className="flex shrink-0 items-center border-b" style={{ borderColor: LP.border, background: LP.panel }}>
+              <div className="flex shrink-0 items-center gap-1 px-2 py-1" style={{ width: TRACK_HEADER_W }}>
+                <button type="button" title="New track" onClick={() => setModalOpen(true)} className="flex h-5 w-5 items-center justify-center rounded border border-[#555] bg-[#4a4a4e] text-[12px] text-[#ccc] hover:bg-[#555]">+</button>
+                <button type="button" title="Save" className="flex h-5 w-5 items-center justify-center rounded border border-[#555] bg-[#4a4a4e] text-[10px] text-[#ccc] hover:bg-[#555]">
+                  <svg className="h-3 w-3" viewBox="0 0 16 16" fill="currentColor"><path d="M2 1h9l3 3v10a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zm3 0v4h5V1zm1 8a2 2 0 1 0 4 0 2 2 0 0 0-4 0z"/></svg>
+                </button>
+                <button type="button" title="Options" className="flex h-5 w-5 items-center justify-center rounded border border-[#555] bg-[#4a4a4e] text-[9px] text-[#ccc] hover:bg-[#555]">▾</button>
               </div>
             </div>
 
