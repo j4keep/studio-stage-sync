@@ -15,8 +15,9 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isPro, requirePro, showProModal, gatedFeature, closeProModal, activatePro } = useProGate();
+  const isStudioPage = location.pathname === "/ai-studio";
   const isFullScreenPage = ["/feed"].includes(location.pathname);
-  const showTopBar = !["/auth", "/feed"].includes(location.pathname);
+  const showTopBar = !["/auth", "/feed", "/ai-studio"].includes(location.pathname);
 
   const handleAskJhi = () => {
     if (!isPro) {
@@ -25,6 +26,14 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
       navigate("/ask-jhi");
     }
   };
+
+  if (isStudioPage) {
+    return (
+      <div className="relative min-h-screen overflow-hidden bg-black text-foreground">
+        {children}
+      </div>
+    );
+  }
 
   if (isFullScreenPage) {
     return (

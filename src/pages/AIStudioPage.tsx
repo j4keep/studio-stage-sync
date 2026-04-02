@@ -6,7 +6,7 @@ const AIStudioPage = () => {
   const { showProModal, gatedFeature, closeProModal, activatePro } = useProGate();
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] bg-[#1a1a1a]">
+    <div className="flex h-screen min-h-screen flex-col overflow-hidden bg-background">
       <RecordingStudio />
       <ProGateModal open={showProModal} onClose={closeProModal} featureName={gatedFeature} onSubscribe={activatePro} />
     </div>
