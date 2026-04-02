@@ -1449,7 +1449,7 @@ function DawChrome() {
               </aside>
             )}
             <div
-              className="flex min-h-0 flex-1 items-stretch overflow-x-auto overflow-y-hidden lg:min-h-[min(640px,72vh)]"
+              className="flex min-h-0 flex-1 items-stretch overflow-x-auto overflow-y-auto"
               style={{ background: LP.panelLo }}
             >
               {/* Label column */}
