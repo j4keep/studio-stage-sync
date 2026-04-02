@@ -1430,21 +1430,42 @@ function DawChrome() {
       {mainView === 'mixer' ? (
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden" style={{ background: LP.panel }}>
           <LogicMixerFilterBar active={mixerFilter} onPick={setMixerFilter} />
-          <div
-            className="flex min-h-0 flex-1 items-stretch overflow-x-auto overflow-y-hidden lg:min-h-[min(640px,72vh)]"
-            style={{ background: LP.panelLo }}
-          >
-            {daw.tracks.map((t) => (
-              <MixerStrip
-                key={t.id}
-                trackId={t.id}
-                peak={daw.meterPeaks[t.id] ?? 0}
-                fileInputTrigger={() => openImport(t.id)}
-              />
-            ))}
-            <StereoOutStrip />
-            <MasterMixerStrip />
-            <div className="min-w-[32px] flex-1" style={{ background: LP.panelLo }} aria-hidden />
+          <div className="flex min-h-0 flex-1 overflow-hidden">
+            {/* Inspector in mixer view */}
+            {inspectorOpen && (
+              <aside className="flex shrink-0 overflow-y-auto border-r" style={{ borderColor: LP.border, background: LP.panel, width: 200 }}>
+                <div className="flex min-h-0 flex-1">
+                  <div className="flex-1 border-r" style={{ borderColor: LP.border }}>
+                    <InspectorChannelStrip trackId={targetTrackId} />
+                  </div>
+                  <div className="flex-1">
+                    <InspectorChannelStrip trackId={null} isStereoOut />
+                  </div>
+                </div>
+              </aside>
+            )}
+            <div
+              className="flex min-h-0 flex-1 items-stretch overflow-x-auto overflow-y-hidden lg:min-h-[min(640px,72vh)]"
+              style={{ background: LP.panelLo }}
+            >
+              {/* Label column */}
+              <div className="flex shrink-0 flex-col border-r text-right text-[9px] text-[#b0b0b4]" style={{ width: 80, borderColor: LP.border, background: LP.panel }}>
+                {['Setting', 'Gain Reduction', 'EQ', 'Input', 'Audio FX', 'Sends', 'Output', 'Group', 'Automation', '', 'Pan', 'dB', '', '', ''].map((l, i) => (
+                  <div key={i} className="border-b px-2 py-[3px]" style={{ borderColor: '#4a4a4e', minHeight: l === '' ? (i >= 12 ? 40 : 20) : 20 }}>{l}</div>
+                ))}
+              </div>
+              {daw.tracks.map((t) => (
+                <MixerStrip
+                  key={t.id}
+                  trackId={t.id}
+                  peak={daw.meterPeaks[t.id] ?? 0}
+                  fileInputTrigger={() => openImport(t.id)}
+                />
+              ))}
+              <StereoOutStrip />
+              <MasterMixerStrip />
+              <div className="min-w-[32px] flex-1" style={{ background: LP.panelLo }} aria-hidden />
+            </div>
           </div>
         </div>
       ) : (
