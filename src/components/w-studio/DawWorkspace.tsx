@@ -1063,21 +1063,19 @@ function DawChrome() {
   const [selection, setSelection] = useState<ClipSelection>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [mainView, setMainView] = useState<'arrange' | 'mixer'>('arrange');
-  const [libraryOpen, setLibraryOpen] = useState(true);
-  const [inspectorOpen, setInspectorOpen] = useState(true);
+  const [libraryOpen, setLibraryOpen] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth >= 1024 : false,
+  );
+  const [inspectorOpen, setInspectorOpen] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth >= 1024 : false,
+  );
   const [focusWorkbench, setFocusWorkbench] = useState(false);
   const [mixerFilter, setMixerFilter] = useState('All');
   const fileRef = useRef<HTMLInputElement>(null);
   const projectFileRef = useRef<HTMLInputElement>(null);
   const importTrackRef = useRef<string>('');
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (window.matchMedia('(max-width: 767px)').matches) {
-      setLibraryOpen(false);
-      setInspectorOpen(false);
-    }
-  }, []);
+  /* responsive defaults handled in useState initializers above */
 
   const end = useMemo(() => {
     return Math.max(90, getTimelineEndSec(daw.tracks, daw.tempo));
