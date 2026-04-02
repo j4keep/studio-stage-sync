@@ -1159,6 +1159,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
   return <DawContext.Provider value={value}>{children}</DawContext.Provider>;
 }
 
+/** Hook to access DawProvider state */
 export function useDaw() {
   const v = useContext(DawContext);
   if (!v) throw new Error('useDaw must be used inside DawProvider');

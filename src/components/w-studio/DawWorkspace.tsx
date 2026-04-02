@@ -1,3 +1,4 @@
+/* W.Studio DAW Workspace */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { TrackKind } from './types';
 import {
