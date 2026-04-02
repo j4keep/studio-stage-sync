@@ -844,13 +844,18 @@ function LogicMixerFilterBar({ active, onPick }: { active: string; onPick: (s: s
 function MixerSlotRow({ label, children }: { label: string; children?: React.ReactNode }) {
   const rowHeights: Record<string, number> = {
     Setting: 22,
+    'Gain Reduction': 20,
     EQ: 20,
-    Input: 20,
-    'Audio FX': 56,
-    Sends: 30,
-    Output: 20,
+    'MIDI FX': 20,
+    Input: 22,
+    'Audio FX': 60,
+    Sends: 34,
+    Output: 22,
     Group: 20,
-    Automation: 22,
+    Automation: 24,
+    Icon: 40,
+    Pan: 36,
+    dB: 24,
   };
   const rowHeight = rowHeights[label] ?? 20;
   return (
