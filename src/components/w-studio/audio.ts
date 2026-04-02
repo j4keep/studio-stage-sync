@@ -812,7 +812,7 @@ export function audioBufferFromMonoFloat(
   sampleRate: number,
 ): AudioBuffer {
   const buf = ctx.createBuffer(1, data.length, sampleRate);
-  buf.copyToChannel(new Float32Array(data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength)), 0, 0);
+  buf.copyToChannel(Float32Array.from(data), 0, 0);
   return buf;
 }
 
