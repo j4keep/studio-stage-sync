@@ -22,29 +22,33 @@ const MIXER_OUT_STRIP_W = 102;
 const MIXER_METER_H = 160;
 const TRACK_ROW_MIN_H = 86;
 
-/** Logic-style charcoal / metal palette (readable on desktop, not pitch black) */
+/** Logic Pro X faithful palette — medium gray, not dark */
 const LP = {
-  appBg: '#3e3e3e',
-  panel: '#454545',
-  panelHi: '#4f4f4f',
-  panelLo: '#3a3a3a',
-  border: '#2c2c2c',
-  borderHi: '#5a5a5a',
-  text: '#ececec',
-  textMuted: '#a8a8a8',
-  lcdBg: '#0c1018',
+  appBg: '#56565a',
+  panel: '#636366',
+  panelHi: '#6e6e72',
+  panelLo: '#4a4a4e',
+  border: '#333336',
+  borderHi: '#7a7a7e',
+  text: '#f0f0f0',
+  textMuted: '#b0b0b4',
+  lcdBg: '#0c1420',
   lcdText: '#6ec8ff',
   lcdDim: '#4a8aba',
-  accentBlue: '#3d7dcc',
+  accentBlue: '#3478f6',
   accentBlueHi: '#5a9eef',
-  ruler: '#d4a84b',
-  meterGreen: '#5cb85c',
+  ruler: '#8a8a70',
+  meterGreen: '#4eca4e',
   meterYel: '#d4c44a',
-  meterRed: '#c94c4c',
+  meterRed: '#e24444',
   solo: '#e8d44a',
   muteOn: '#5ab0b0',
-  record: '#d93030',
-  readAuto: '#4a9a5a',
+  record: '#e03030',
+  readAuto: '#4a9a4a',
+  slotBg: '#505054',
+  slotBorder: '#3e3e42',
+  stripBg: 'linear-gradient(180deg, #636366 0%, #505054 100%)',
+  channelLabelBg: '#3a3a3e',
 } as const;
 
 const ctrlBtn =
