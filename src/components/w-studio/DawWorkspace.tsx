@@ -152,7 +152,7 @@ function IconExpand() {
   );
 }
 
-/** Compact inspector channel strip matching Logic Pro reference */
+/** Inspector channel strip — uses identical MixerSlotRow grid as mixer strips for perfect alignment */
 function InspectorChannelStrip({ trackId, isStereoOut }: { trackId: string | null; isStereoOut?: boolean }) {
   const daw = useDaw();
   const tr = !isStereoOut && trackId ? daw.tracks.find((t) => t.id === trackId) : null;
@@ -166,103 +166,126 @@ function InspectorChannelStrip({ trackId, isStereoOut }: { trackId: string | nul
     else if (tr) daw.setTrackVolume(tr.id, value);
   };
 
-  const inspSlot = 'flex items-center border-b px-1 py-[3px] text-[8px]';
-  const inspField = 'flex h-5 w-full items-center justify-center truncate rounded-[2px] border border-[#4e4e52] bg-[#555558] px-1 text-[8px] text-[#ddd]';
-  const inspFieldBlue = 'flex h-5 w-full items-center justify-center truncate rounded-[2px] border border-[#3568a8] bg-gradient-to-b from-[#5384c5] to-[#355f99] px-1 text-[8px] text-white';
+  const eqLabel = tr ? (EQ_PRESET_LABELS.find((o) => o.id === tr.eqPreset)?.label ?? 'Chan EQ') : 'Output EQ';
+  const effectLabel = tr ? (EFFECT_PRESET_LABELS.find((o) => o.id === tr.effectPreset)?.label ?? 'Off') : '';
+  const spaceLabel = tr ? (SPACE_PRESET_LABELS.find((o) => o.id === tr.spacePreset)?.label ?? '') : 'Space D';
 
   return (
-    <div className="flex h-full flex-col text-[8px]" style={{ color: LP.text, width: INSPECTOR_STRIP_W, minWidth: INSPECTOR_STRIP_W }}>
-      <div className="flex items-center gap-1 border-b px-1 py-1" style={{ borderColor: '#4a4a4e', minHeight: 34 }}>
-        <div className="flex-1 rounded-[2px] border border-[#333] bg-[#3a3a3e] p-1">
-          <div className="h-5 w-full rounded-[1px] bg-[#26262a]" />
-        </div>
-        <div className="flex h-7 w-[42px] items-center justify-center rounded-[2px] border border-[#4e4e52] bg-[#555558] text-[8px] text-[#222]">EQ</div>
-      </div>
-
-      <div className={inspSlot} style={{ borderColor: '#4a4a4e' }}>
-        {!isStereoOut ? (
-          <>
-            <span className="mr-1 text-[#999]">○</span>
-            <span className={inspField}>Input 1</span>
-          </>
-        ) : (
-          <span className="mx-auto text-[9px] text-[#999]">∞</span>
-        )}
-      </div>
-
-      <div className="flex flex-col gap-[2px] border-b px-1 py-1" style={{ borderColor: '#4a4a4e' }}>
-        {!isStereoOut && tr ? (
-          <>
-            {EFFECT_PRESET_LABELS.filter((_, i) => i < 5).map((o, i) => (
-              <div key={o.id} className={i === 0 && tr.effectPreset !== 'none' ? inspFieldBlue : inspField}>
-                {i === 0 ? (EFFECT_PRESET_LABELS.find((x) => x.id === tr.effectPreset)?.label ?? 'Off') : i === 3 ? 'Channel EQ' : ''}
-              </div>
+    <div className="flex min-h-full shrink-0 flex-col" style={{ color: LP.text, width: INSPECTOR_STRIP_W, minWidth: INSPECTOR_STRIP_W }}>
+      {/* Setting */}
+      <MixerSlotRow label="Setting">
+        <div className={mixerFieldDark} title={name}>{name}</div>
+      </MixerSlotRow>
+      {/* Gain Reduction */}
+      <MixerSlotRow label="Gain Reduction">
+        <div className="h-3 w-full rounded-[2px] border border-[#454549] bg-[#3a3a3e]" />
+      </MixerSlotRow>
+      {/* EQ */}
+      <MixerSlotRow label="EQ">
+        {tr ? (
+          <select
+            value={tr.eqPreset}
+            onChange={(e) => daw.setTrackEq(tr.id, e.target.value as (typeof tr)['eqPreset'])}
+            className={`${mixerFieldGray} appearance-none outline-none`}
+            title="Channel EQ"
+          >
+            {EQ_PRESET_LABELS.map((o) => (
+              <option key={o.id} value={o.id}>{o.label}</option>
             ))}
-          </>
+          </select>
         ) : (
-          <div className="flex min-h-[88px] items-center justify-center rounded-[2px] border border-[#4e4e52] bg-[#555558] text-[8px] text-[#222]">Audio FX</div>
+          <div className={mixerFieldDark}>Output EQ</div>
+        )}
+      </MixerSlotRow>
+      {/* MIDI FX */}
+      <MixerSlotRow label="MIDI FX">
+        <div className="h-4 w-full rounded-[2px] border border-[#454549] bg-[#4a4a4e]" />
+      </MixerSlotRow>
+      {/* Input */}
+      <MixerSlotRow label="Input">
+        {!isStereoOut ? <div className={mixerFieldDark}>Input 1</div> : <div className="text-[9px] text-[#ccc]">∞</div>}
+      </MixerSlotRow>
+      {/* Audio FX */}
+      <MixerSlotRow label="Audio FX">
+        {tr ? (
+          <div className="flex w-full flex-col gap-[2px]">
+            <select
+              value={tr.effectPreset}
+              onChange={(e) => daw.setTrackEffect(tr.id, e.target.value as (typeof tr)['effectPreset'])}
+              className={`${mixerFieldBlue} appearance-none outline-none`}
+              title="Audio FX"
+            >
+              {EFFECT_PRESET_LABELS.map((o) => (
+                <option key={o.id} value={o.id}>{o.label}</option>
+              ))}
+            </select>
+            <MixerStack items={[spaceLabel !== 'Dry' ? spaceLabel : '']} tone="blue" />
+          </div>
+        ) : (
+          <MixerStack items={['Space D']} tone="blue" />
+        )}
+      </MixerSlotRow>
+      {/* Sends */}
+      <MixerSlotRow label="Sends">
+        <MixerStack items={!isStereoOut ? ['Sends'] : []} tone="gray" />
+      </MixerSlotRow>
+      {/* Output */}
+      <MixerSlotRow label="Output">
+        <div className={mixerFieldDark}>{isStereoOut ? 'Output' : 'St Out'}</div>
+      </MixerSlotRow>
+      {/* Group */}
+      <MixerSlotRow label="Group">
+        <div className="h-4 w-full rounded-[2px] border border-[#454549] bg-[#4a4a4e]" />
+      </MixerSlotRow>
+      {/* Automation */}
+      <MixerSlotRow label="Automation">
+        <button type="button" className={`${mixerFieldGreen} font-bold`}>Read</button>
+      </MixerSlotRow>
+      {/* Instrument icon */}
+      <div className="flex items-center justify-center border-b" style={{ borderColor: '#4a4a4e', minHeight: 40, height: 40 }}>
+        {!isStereoOut && tr ? (
+          <InstrumentIcon kind={tr.kind} color={tr.color} />
+        ) : (
+          <svg style={{ color: '#4a9a4a', width: 28, height: 28 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="7"/><path d="M9 9l6 6M15 9l-6 6" strokeLinecap="round"/></svg>
         )}
       </div>
-
-      <div className={inspSlot} style={{ borderColor: '#4a4a4e' }}>
-        {!isStereoOut ? (
-          <>
-            <span className={inspField}>Sends</span>
-            <span className="ml-1 h-3.5 w-3.5 rounded-full bg-[#555]" />
-          </>
-        ) : (
-          <span className={inspField}>Group</span>
-        )}
+      {/* Pan */}
+      <div className="flex items-center justify-center border-b" style={{ borderColor: '#4a4a4e', minHeight: 36, height: 36 }}>
+        <PanKnob value={isStereoOut ? 0 : pan} onChange={(v) => !isStereoOut && tr && daw.setTrackPan(tr.id, v)} size={28} showValueLabel={false} />
       </div>
-
-      <div className={inspSlot} style={{ borderColor: '#4a4a4e' }}>
-        <span className={inspField}>{isStereoOut ? 'Output' : 'Stereo Out'}</span>
+      {/* dB */}
+      <div className="flex items-center justify-center gap-0.5 border-b px-[2px]" style={{ borderColor: '#4a4a4e', minHeight: 24, height: 24 }}>
+        <span className="rounded border border-[#222] bg-[#0a0a0a] px-1 py-0.5 font-mono text-[9px] tabular-nums text-[#e0e0e0]">{isStereoOut ? '0.0' : faderToDbLabel(vol)}</span>
+        <span className="rounded border border-[#222] bg-[#0a0a0a] px-1 py-0.5 font-mono text-[9px] tabular-nums text-[#4eca4e]">{peakToDbDisplay(peak)}</span>
       </div>
-
-      <div className={inspSlot} style={{ borderColor: '#4a4a4e' }}>
-        <span className={inspField}>Group</span>
-      </div>
-
-      <div className={inspSlot} style={{ borderColor: '#4a4a4e' }}>
-        <button type="button" className="h-5 w-full rounded-[2px] border border-[#2d5a2d] bg-[#4a9a4a] px-2 text-[8px] font-bold text-[#c8ffc8]">Read</button>
-      </div>
-
-      <div className="flex flex-col items-center border-b py-1" style={{ borderColor: '#4a4a4e' }}>
-        {!isStereoOut ? <PanKnob value={pan} onChange={(v) => tr && daw.setTrackPan(tr.id, v)} size={32} /> : <PanKnob value={0} onChange={() => {}} size={32} />}
-      </div>
-
-      <div className="flex items-center justify-center gap-1 border-b px-1 py-1" style={{ borderColor: '#4a4a4e' }}>
-        <span className="rounded border border-[#222] bg-[#0a0a0a] px-1 py-0.5 font-mono text-[8px] tabular-nums text-[#e0e0e0]">{isStereoOut ? '0.0' : faderToDbLabel(vol)}</span>
-        <span className="rounded border border-[#222] bg-[#0a0a0a] px-1 py-0.5 font-mono text-[8px] tabular-nums text-[#4eca4e]">{peakToDbDisplay(peak)}</span>
-      </div>
-
+      {/* Fader + meters */}
       <div className="border-b" style={{ borderColor: '#4a4a4e', minHeight: MIXER_METER_H + 10, height: MIXER_METER_H + 10 }}>
         <VerticalMixerFader value={vol} peak={peak} onChange={updateVolume} ariaLabel={`${name} level`} />
       </div>
-
+      {/* R I / Bnce */}
       {!isStereoOut ? (
-        <>
-          <div className="flex justify-center gap-1 border-b py-[3px]" style={{ borderColor: '#4a4a4e' }}>
-            <button type="button" onClick={() => tr && daw.toggleRecordArm(tr.id)} className={`h-5 w-6 rounded-sm border text-[8px] font-bold ${tr?.recordArm ? 'border-[#a22] bg-[#e03030] text-white' : 'border-[#555] bg-[#4a4a4e] text-[#999]'}`}>R</button>
-            <button type="button" className="h-5 w-6 rounded-sm border border-[#555] bg-[#4a4a4e] text-[8px] font-bold text-[#999]">I</button>
-          </div>
-          <div className="flex justify-center gap-1 border-b py-[3px]" style={{ borderColor: '#4a4a4e' }}>
-            <button type="button" onClick={() => tr && daw.toggleMute(tr.id)} className={`h-6 w-7 rounded-sm border text-[9px] font-bold ${tr?.muted ? 'border-[#3a7a7a] bg-[#5ab0b0] text-[#022]' : 'border-[#555] bg-[#4a4a4e] text-[#ddd]'}`}>M</button>
-            <button type="button" onClick={() => tr && daw.toggleSolo(tr.id)} className={`h-6 w-7 rounded-sm border text-[9px] font-bold ${tr?.solo ? 'border-[#886600] bg-[#e8d44a] text-[#111]' : 'border-[#555] bg-[#4a4a4e] text-[#ddd]'}`}>S</button>
-          </div>
-        </>
+        <div className="flex items-center justify-center gap-0.5 border-b py-[2px]" style={{ borderColor: '#4a4a4e', minHeight: 22, height: 22 }}>
+          <button type="button" onClick={() => tr && daw.toggleRecordArm(tr.id)} className={`h-4 w-5 rounded-sm border text-[8px] font-bold ${tr?.recordArm ? 'border-[#a22] bg-[#e03030] text-white' : 'border-[#555] bg-[#4a4a4e] text-[#999]'}`}>R</button>
+          <button type="button" className="h-4 w-5 rounded-sm border border-[#555] bg-[#4a4a4e] text-[8px] font-bold text-[#999]">I</button>
+        </div>
       ) : (
-        <>
-          <div className="flex justify-center border-b py-[3px]" style={{ borderColor: '#4a4a4e' }}>
-            <button type="button" className="h-5 rounded-sm border border-[#555] bg-[#4a4a4e] px-2 text-[8px] font-bold text-[#ddd]">Bnce</button>
-          </div>
-          <div className="flex justify-center gap-1 border-b py-[3px]" style={{ borderColor: '#4a4a4e' }}>
-            <button type="button" className="h-6 w-7 rounded-sm border border-[#555] bg-[#4a4a4e] text-[9px] font-bold text-[#ddd]">M</button>
-          </div>
-        </>
+        <div className="flex items-center justify-center border-b py-[2px]" style={{ borderColor: '#4a4a4e', minHeight: 22, height: 22 }}>
+          <span className="text-[8px] text-[#999]">Bnce</span>
+        </div>
       )}
-
-      <div className="mt-auto truncate px-1 py-1 text-center text-[8px] font-semibold" style={{ backgroundColor: labelColor, color: isStereoOut ? '#fff' : '#111' }}>
+      {/* M S */}
+      <div className="flex items-center justify-center gap-1 border-b py-0.5" style={{ borderColor: '#4a4a4e', minHeight: 28, height: 28 }}>
+        <button type="button" onClick={() => !isStereoOut && tr && daw.toggleMute(tr.id)} className={`h-6 w-7 rounded-sm border text-[10px] font-bold ${!isStereoOut && tr?.muted ? 'border-[#3a7a7a] bg-[#5ab0b0] text-[#022]' : 'border-[#555] bg-[#4a4a4e] text-[#ddd]'}`}>M</button>
+        {!isStereoOut && (
+          <button type="button" onClick={() => tr && daw.toggleSolo(tr.id)} className={`h-6 w-7 rounded-sm border text-[10px] font-bold ${tr?.solo ? 'border-[#886600] bg-[#e8d44a] text-[#111]' : 'border-[#555] bg-[#4a4a4e] text-[#ddd]'}`}>S</button>
+        )}
+      </div>
+      {/* Track name label */}
+      <div
+        className="mt-auto flex items-center justify-center truncate border-t px-1 text-center text-[9px] font-semibold"
+        style={{ backgroundColor: labelColor, borderColor: LP.border, color: isStereoOut ? '#fff' : '#111', minHeight: 24 }}
+        title={name}
+      >
         {name}
       </div>
     </div>
