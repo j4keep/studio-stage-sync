@@ -1896,13 +1896,11 @@ function DawChrome() {
             <PianoRoll trackId={targetTrackId} playheadSec={daw.currentTime} tempo={daw.tempo} />
           )}
         </div>
-      </footer>
-
-      {daw.status ? (
-        <div className="border-t px-3 py-1.5 text-[11px]" style={{ borderColor: LP.border, background: LP.panel, color: LP.textMuted }}>
-          {daw.status}
-        </div>
-      ) : null}
+        {daw.status ? (
+          <div className="border-t px-3 py-1.5 text-[11px]" style={{ borderColor: LP.border, background: LP.panel, color: LP.textMuted }}>
+            {daw.status}
+          </div>
+        ) : null}
       </footer> : null}
     </div>
   );
