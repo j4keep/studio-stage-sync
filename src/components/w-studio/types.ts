@@ -93,6 +93,7 @@ export type Track = {
   effectPreset: EffectPresetId;
   spacePreset: SpacePresetId;
   clips: Clip[];
+  midiNotes: MidiNote[];
 };
 
 const KIND_DEFAULT_NAMES: Record<TrackKind, string> = {
