@@ -1599,6 +1599,17 @@ function DawChrome() {
               </div>
             </div>
 
+            {/* +/Save/Dropdown row above tracks — matches Logic Pro */}
+            <div className="flex shrink-0 items-center border-b" style={{ borderColor: LP.border, background: LP.panel }}>
+              <div className="flex shrink-0 items-center gap-1 px-2 py-1" style={{ width: TRACK_HEADER_W }}>
+                <button type="button" title="New track" onClick={() => setModalOpen(true)} className="flex h-5 w-5 items-center justify-center rounded border border-[#555] bg-[#4a4a4e] text-[12px] text-[#ccc] hover:bg-[#555]">+</button>
+                <button type="button" title="Save" className="flex h-5 w-5 items-center justify-center rounded border border-[#555] bg-[#4a4a4e] text-[10px] text-[#ccc] hover:bg-[#555]">
+                  <svg className="h-3 w-3" viewBox="0 0 16 16" fill="currentColor"><path d="M2 1h9l3 3v10a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zm3 0v4h5V1zm1 8a2 2 0 1 0 4 0 2 2 0 0 0-4 0z"/></svg>
+                </button>
+                <button type="button" title="Options" className="flex h-5 w-5 items-center justify-center rounded border border-[#555] bg-[#4a4a4e] text-[9px] text-[#ccc] hover:bg-[#555]">▾</button>
+              </div>
+            </div>
+
             <div className="min-h-0 flex-1 overflow-auto">
               {daw.tracks.map((tr, ti) => (
                 <div
