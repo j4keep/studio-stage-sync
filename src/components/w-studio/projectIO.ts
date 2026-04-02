@@ -87,7 +87,7 @@ export function parseProjectJSON(str: string): SerializedProjectV1 | null {
   }
 }
 
-export async function hydrateProject(data: SerializedProjectV1, ctx: AudioContext): Promise<Track[]> {
+export async function hydrateProject(data: SerializedProjectV1, ctx: BaseAudioContext): Promise<Track[]> {
   const out: Track[] = [];
   for (const st of data.tracks) {
     const tr: Track = {
@@ -118,8 +118,7 @@ export async function hydrateProject(data: SerializedProjectV1, ctx: AudioContex
             sourceMeta: sc.source,
           });
         } else if (sc.source.type === 'remote') {
-          const remoteSource = sc.source as { type: 'remote'; remoteId: string };
-          const item = REMOTE_LIBRARY_FLAT.find((x) => x.id === remoteSource.remoteId);
+          const item = REMOTE_LIBRARY_FLAT.find((x) => x.id === sc.source.remoteId);
           if (!item) continue;
           const res = await fetch(item.url, { mode: 'cors' });
           if (!res.ok) continue;
@@ -129,7 +128,7 @@ export async function hydrateProject(data: SerializedProjectV1, ctx: AudioContex
             id: sc.id,
             startTime: sc.startTime,
             buffer: buf,
-            sourceMeta: { type: 'remote', remoteId: remoteSource.remoteId },
+            sourceMeta: { type: 'remote', remoteId: sc.source.remoteId },
           });
         }
       } catch {
