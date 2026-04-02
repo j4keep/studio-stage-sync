@@ -135,120 +135,106 @@ function TrackInspector({ trackId }: { trackId: string | null }) {
   if (!tr) {
     return (
       <p className="p-3 text-[11px]" style={{ color: LP.textMuted }}>
-        Select a track in the timeline to edit EQ, dynamics, and space.
+        Select a track to show channel strip.
       </p>
     );
   }
+  const peak = daw.meterPeaks[tr.id] ?? 0;
   return (
-    <div className="space-y-3 p-3">
-      <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: LP.textMuted }}>
-        Inspector
-      </div>
-      <label className="block text-[10px]" style={{ color: LP.textMuted }}>
-        Name
-        <input
-          value={tr.name}
-          onChange={(e) => daw.renameTrack(tr.id, e.target.value)}
-          className="mt-0.5 w-full rounded border px-2 py-1 text-[12px]"
-          style={{ borderColor: LP.border, background: LP.panelLo, color: LP.text }}
-        />
-      </label>
-      <label className="block text-[10px]" style={{ color: LP.textMuted }}>
-        Input
-        <select
-          value={tr.inputSource}
-          onChange={(e) => daw.setTrackInputSource(tr.id, e.target.value)}
-          className="mt-0.5 w-full rounded border px-2 py-1 text-[11px]"
-          style={{ borderColor: LP.border, background: LP.panelLo, color: LP.text }}
-        >
-          {INPUT_SOURCE_OPTIONS.map((opt) => (
-            <option key={opt} value={opt}>
-              {opt}
-            </option>
-          ))}
-        </select>
-      </label>
-      <div>
-        <div className="mb-1 flex justify-between text-[10px]" style={{ color: LP.textMuted }}>
-          <span>Volume</span>
-          <span className="font-mono">{faderToDbLabel(tr.volume)}</span>
+    <div className="flex flex-col text-[10px]" style={{ color: LP.text }}>
+      {/* Region / Track headers */}
+      <div className="border-b px-2 py-1.5" style={{ borderColor: LP.border }}>
+        <div className="flex items-center gap-1 text-[10px]">
+          <span className="text-[#888]">▶</span>
+          <span className="font-semibold">Region:</span>
+          <span className="text-[#b0b0b4]">Audio Defaults</span>
         </div>
-        <input
-          type="range"
-          min={0}
-          max={1}
-          step={0.01}
-          value={tr.volume}
-          onChange={(e) => daw.setTrackVolume(tr.id, Number(e.target.value))}
-          className="w-full"
-          style={{ accentColor: LP.accentBlueHi }}
-        />
       </div>
-      <div>
-        <div className="mb-1 flex justify-between text-[10px]" style={{ color: LP.textMuted }}>
-          <span>Pan</span>
-          <span className="font-mono">{tr.pan.toFixed(2)}</span>
+      <div className="border-b px-2 py-1.5" style={{ borderColor: LP.border }}>
+        <div className="flex items-center gap-1 text-[10px]">
+          <span className="text-[#888]">▶</span>
+          <span className="font-semibold">Track:</span>
+          <span className="text-[#b0b0b4]">{tr.name}</span>
         </div>
-        <input
-          type="range"
-          min={-1}
-          max={1}
-          step={0.01}
-          value={tr.pan}
-          onChange={(e) => daw.setTrackPan(tr.id, Number(e.target.value))}
-          className="w-full"
-          style={{ accentColor: '#8fdf7a' }}
-        />
       </div>
-      <label className="block text-[10px]" style={{ color: LP.textMuted }}>
-        EQ
-        <select
-          value={tr.eqPreset}
-          onChange={(e) => daw.setTrackEq(tr.id, e.target.value as (typeof tr)['eqPreset'])}
-          className="mt-0.5 w-full rounded border px-2 py-1 text-[11px]"
-          style={{ borderColor: LP.border, background: LP.panelLo, color: LP.text }}
-        >
-          {EQ_PRESET_LABELS.map((o) => (
-            <option key={o.id} value={o.id}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="block text-[10px]" style={{ color: LP.textMuted }}>
-        Dynamics
-        <select
-          value={tr.effectPreset}
-          onChange={(e) => daw.setTrackEffect(tr.id, e.target.value as (typeof tr)['effectPreset'])}
-          className="mt-0.5 w-full rounded border px-2 py-1 text-[11px]"
-          style={{ borderColor: LP.border, background: LP.panelLo, color: LP.text }}
-        >
-          {EFFECT_PRESET_LABELS.map((o) => (
-            <option key={o.id} value={o.id}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="block text-[10px]" style={{ color: LP.textMuted }}>
-        Space
-        <select
-          value={tr.spacePreset}
-          onChange={(e) => daw.setTrackSpace(tr.id, e.target.value as (typeof tr)['spacePreset'])}
-          className="mt-0.5 w-full rounded border px-2 py-1 text-[11px]"
-          style={{ borderColor: LP.border, background: LP.panelLo, color: LP.text }}
-        >
-          {SPACE_PRESET_LABELS.map((o) => (
-            <option key={o.id} value={o.id}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      </label>
-      <p className="text-[10px] leading-snug" style={{ color: LP.textMuted }}>
-        MIDI notes on this track appear in the piano roll and as blocks on the timeline. Use M / S / R on the track header
-        for mute, solo, record arm.
-      </p>
+      {/* Channel strip */}
+      <div className="flex flex-col items-center gap-1 border-b px-2 py-2" style={{ borderColor: LP.border }}>
+        <div className="flex items-center gap-2">
+          <span className="rounded border border-[#555] bg-[#3a3a3e] px-2 py-0.5 font-mono text-[10px]">0</span>
+          <PanKnob value={tr.pan} onChange={(v) => daw.setTrackPan(tr.id, v)} size={28} />
+        </div>
+        <div className="flex items-center gap-0.5 text-[7px] text-[#999]">
+          <span>L</span>
+          <span className="mx-1">R</span>
+        </div>
+      </div>
+      {/* Slot rows */}
+      {[
+        { label: 'Setting', content: null },
+        { label: 'EQ', content: (
+          <select value={tr.eqPreset} onChange={(e) => daw.setTrackEq(tr.id, e.target.value as any)} className="w-full rounded-[2px] border border-[#4e4e52] bg-[#555558] px-1 py-[2px] text-[9px] text-[#ddd]">
+            {EQ_PRESET_LABELS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+          </select>
+        )},
+        { label: 'Input', content: (
+          <div className="flex items-center gap-1">
+            <span className="text-[9px] text-[#999]">○</span>
+            <select value={tr.inputSource} onChange={(e) => daw.setTrackInputSource(tr.id, e.target.value)} className="flex-1 rounded-[2px] border border-[#4e4e52] bg-[#555558] px-1 py-[2px] text-[9px] text-[#ddd]">
+              {INPUT_SOURCE_OPTIONS.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+            </select>
+          </div>
+        )},
+        { label: 'Audio FX', content: (
+          <select value={tr.effectPreset} onChange={(e) => daw.setTrackEffect(tr.id, e.target.value as any)} className="w-full rounded-[2px] border border-[#4e4e52] bg-[#555558] px-1 py-[2px] text-[9px] text-[#ddd]">
+            {EFFECT_PRESET_LABELS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+          </select>
+        )},
+        { label: 'Sends', content: <div className="flex items-center gap-1"><div className="h-3 flex-1 rounded-sm bg-[#3a3a3e]" /><span className="h-3 w-3 rounded-full bg-[#555]" /></div> },
+        { label: 'Stereo Out', content: null },
+        { label: 'Group', content: null },
+      ].map((row) => (
+        <div key={row.label} className="flex items-center border-b px-2 py-[3px]" style={{ borderColor: '#4a4a4e' }}>
+          <span className="w-[58px] shrink-0 text-right pr-2 text-[9px] text-[#b0b0b4]">{row.label}</span>
+          <div className="min-w-0 flex-1">
+            {row.content || <div className="h-4 rounded-sm bg-[#3a3a3e]" />}
+          </div>
+        </div>
+      ))}
+      {/* Read automation */}
+      <div className="flex items-center border-b px-2 py-[3px]" style={{ borderColor: '#4a4a4e' }}>
+        <span className="w-[58px] shrink-0" />
+        <button type="button" className="rounded-[2px] border border-[#2d5a2d] px-3 py-[2px] text-[9px] font-bold text-[#c8ffc8]" style={{ background: LP.readAuto }}>Read</button>
+      </div>
+      {/* Pan knob large */}
+      <div className="flex flex-col items-center py-2">
+        <PanKnob value={tr.pan} onChange={(v) => daw.setTrackPan(tr.id, v)} size={48} />
+      </div>
+      {/* dB display */}
+      <div className="flex items-center justify-center gap-1 px-2 py-1">
+        <span className="rounded border border-[#222] bg-[#0a0a0a] px-1.5 py-0.5 font-mono text-[10px] tabular-nums text-[#e0e0e0]">{faderToDbLabel(tr.volume)}</span>
+        <span className="rounded border border-[#222] bg-[#0a0a0a] px-1.5 py-0.5 font-mono text-[10px] tabular-nums text-[#4eca4e]">{peakToDbDisplay(peak)}</span>
+      </div>
+      {/* Fader + meters */}
+      <div className="flex items-stretch justify-center gap-1 px-2 py-1" style={{ minHeight: 140 }}>
+        <DualPeakMeters peak={peak} height={120} />
+        <div className="relative flex w-8 items-center justify-center">
+          <div className="absolute rounded-sm border border-[#1a1a1a]" style={{ height: 120, width: 8, background: 'linear-gradient(90deg, #5a5a5a 0%, #3a3a3a 50%, #2a2a2a 100%)' }} />
+          <input type="range" min={0} max={1} step={0.005} value={tr.volume} onChange={(e) => daw.setTrackVolume(tr.id, Number(e.target.value))} className="absolute cursor-pointer" style={{ width: 120, height: 24, transform: 'rotate(-90deg)', accentColor: '#d8d8d8' }} aria-label="Volume" />
+        </div>
+      </div>
+      {/* R I / M S buttons */}
+      <div className="flex justify-center gap-1 py-0.5">
+        <button type="button" onClick={() => daw.toggleRecordArm(tr.id)} className={`h-5 w-6 rounded-sm border text-[9px] font-bold ${tr.recordArm ? 'border-[#a22] bg-[#e03030] text-white' : 'border-[#555] bg-[#4a4a4e] text-[#999]'}`}>R</button>
+        <button type="button" className="h-5 w-6 rounded-sm border border-[#555] bg-[#4a4a4e] text-[9px] font-bold text-[#999]">I</button>
+      </div>
+      <div className="flex justify-center gap-1 py-0.5">
+        <button type="button" onClick={() => daw.toggleMute(tr.id)} className={`h-6 w-7 rounded-sm border text-[10px] font-bold ${tr.muted ? 'border-[#3a7a7a] bg-[#5ab0b0] text-[#022]' : 'border-[#555] bg-[#4a4a4e] text-[#ddd]'}`}>M</button>
+        <button type="button" onClick={() => daw.toggleSolo(tr.id)} className={`h-6 w-7 rounded-sm border text-[10px] font-bold ${tr.solo ? 'border-[#886600] bg-[#e8d44a] text-[#111]' : 'border-[#555] bg-[#4a4a4e] text-[#ddd]'}`}>S</button>
+      </div>
+      {/* Track name */}
+      <div className="mt-1 truncate border-t px-1 py-1 text-center text-[10px] font-semibold" style={{ backgroundColor: tr.color, borderColor: LP.border, color: '#111' }}>
+        {tr.name}
+      </div>
     </div>
   );
 }
