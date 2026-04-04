@@ -1,5 +1,13 @@
 /* W.Studio DAW Workspace */
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type MouseEvent,
+  type ReactNode,
+} from "react";
 import type { BusId, TrackKind } from "./types";
 import { clipTrimEnd, clipTrimStart, MIXER_BUS_STRIPS, ROUTING_BUS_IDS } from "./types";
 import {
@@ -964,7 +972,7 @@ function VerticalMixerFader({
     onChange(Math.max(0, Math.min(1, ratio)));
   };
 
-  const startDrag = (event: React.MouseEvent<HTMLDivElement>) => {
+  const startDrag = (event: MouseEvent<HTMLDivElement>) => {
     event.preventDefault();
     updateFromClientY(event.clientY);
 
@@ -1145,7 +1153,7 @@ function LogicMixerFilterBar({ active, onPick }: { active: string; onPick: (s: s
   );
 }
 
-function MixerSlotRow({ label, children }: { label: string; children?: React.ReactNode }) {
+function MixerSlotRow({ label, children }: { label: string; children?: ReactNode }) {
   const rowHeights: Record<string, number> = {
     Setting: 22,
     "Gain Reduction": 20,
@@ -1777,7 +1785,7 @@ function CycleRangeRuler({
 
   const pxToSec = (px: number) => Math.max(0, px / PX_PER_SEC);
 
-  const handleMouseDown = (e: React.MouseEvent, type: "playhead" | "cycleLeft" | "cycleRight" | "cycleBody") => {
+  const handleMouseDown = (e: MouseEvent, type: "playhead" | "cycleLeft" | "cycleRight" | "cycleBody") => {
     e.preventDefault();
     e.stopPropagation();
     dragStartRef.current = { x: e.clientX, loopStart: loopStartSec, loopEnd: loopEndSec };

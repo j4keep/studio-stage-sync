@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type MutableRefObject,
   type ReactNode,
 } from 'react';
 import {
@@ -161,7 +162,7 @@ type DawContextValue = {
 
 const DawContext = createContext<DawContextValue | null>(null);
 
-function ensureAudioCtx(ref: React.MutableRefObject<AudioContext | null>) {
+function ensureAudioCtx(ref: MutableRefObject<AudioContext | null>) {
   if (!ref.current) {
     const Ctx =
       window.AudioContext ||
