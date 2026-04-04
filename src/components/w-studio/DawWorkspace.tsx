@@ -16,8 +16,6 @@ import { PianoRoll } from "./PianoRoll";
 import { WaveformCanvas } from "./WaveformCanvas";
 
 const PX_PER_SEC = 52;
-/** Git → GitHub → Lovable sync check — remove once you are done verifying pushes. */
-const W_STUDIO_SYNC_TAG = "GH sync A2";
 const TRACK_HEADER_W = 292;
 const TIMELINE_BAR_LIMIT = 127;
 const INSPECTOR_STRIP_W = 74;
@@ -2061,19 +2059,6 @@ function DawChrome() {
               </svg>
             </button>
           </div>
-
-          <span
-            className="select-none whitespace-nowrap rounded px-1.5 py-0.5 text-[10px] font-semibold tabular-nums tracking-tight"
-            style={{
-              color: LP.lcdText,
-              background: "rgba(10, 24, 40, 0.95)",
-              border: `1px solid ${LP.lcdDim}`,
-              boxShadow: "inset 0 1px 0 rgba(110,200,255,0.12)",
-            }}
-            title="Shows in Lovable only after this commit is pushed to GitHub (main)."
-          >
-            {W_STUDIO_SYNC_TAG}
-          </span>
 
           {/* Master volume slider */}
           <div className="flex min-w-[100px] max-w-[160px] items-center px-2">
