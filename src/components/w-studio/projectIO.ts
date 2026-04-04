@@ -4,6 +4,7 @@ import {
   clipTrimEnd,
   clipTrimStart,
   clipVisibleDuration,
+  type BusId,
   type ClipSourceMeta,
   type EffectPresetId,
   type EqPresetId,
@@ -40,6 +41,8 @@ export type SerializedTrackV1 = {
   eqPreset: EqPresetId;
   effectPreset: EffectPresetId;
   spacePreset: SpacePresetId;
+  outputBus?: BusId;
+  sendReverb?: number;
   clips: SerializedClipV1[];
   midiNotes: MidiNote[];
 };
@@ -69,6 +72,8 @@ export function serializeProject(tracks: Track[], tempo: number, beatsPerBar: nu
       eqPreset: t.eqPreset,
       effectPreset: t.effectPreset,
       spacePreset: t.spacePreset,
+      outputBus: t.outputBus,
+      sendReverb: t.sendReverb,
       clips: t.clips
         .filter((c): c is typeof c & { sourceMeta: ClipSourceMeta } => Boolean(c.sourceMeta))
         .map((c) => ({
@@ -115,6 +120,8 @@ export async function hydrateProject(data: SerializedProjectV1, ctx: AudioContex
       eqPreset: st.eqPreset,
       effectPreset: st.effectPreset,
       spacePreset: st.spacePreset,
+      outputBus: st.outputBus ?? 'master',
+      sendReverb: st.sendReverb ?? 0.18,
       clips: [],
       midiNotes: st.midiNotes.map((m) => ({ ...m })),
     };

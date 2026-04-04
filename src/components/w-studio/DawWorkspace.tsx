@@ -1,7 +1,7 @@
 /* W.Studio DAW Workspace */
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import type { TrackKind } from "./types";
-import { clipTrimEnd, clipTrimStart } from "./types";
+import type { BusId, TrackKind } from "./types";
+import { clipTrimEnd, clipTrimStart, MIXER_BUS_STRIPS, ROUTING_BUS_IDS } from "./types";
 import {
   EFFECT_PRESET_LABELS,
   EQ_PRESET_LABELS,
@@ -19,6 +19,25 @@ import { LivePeaksCanvas } from "./LivePeaksCanvas";
 import { WaveformCanvas } from "./WaveformCanvas";
 
 const PX_PER_SEC = 52;
+/** Timeline clip move snap (seconds). */
+const SNAP_MOVE_SEC = 0.125;
+const pxToSec = (px: number) => px / PX_PER_SEC;
+const secToPx = (sec: number) => sec * PX_PER_SEC;
+function snapMoveTime(t: number) {
+  return Math.round(t / SNAP_MOVE_SEC) * SNAP_MOVE_SEC;
+}
+const BUS_LABELS: Record<BusId, string> = {
+  master: "Master",
+  reverbA: "Reverb A",
+  drumBus: "Drum bus",
+  vocalBus: "Vocal bus",
+};
+function timelineSecFromClient(clientX: number, scrollLeft: number, laneEl: HTMLElement | null) {
+  if (!laneEl) return 0;
+  const lr = laneEl.getBoundingClientRect();
+  const x = scrollLeft + (clientX - lr.left);
+  return Math.max(0, pxToSec(x));
+}
 const TRACK_HEADER_W = 292;
 const TIMELINE_BAR_LIMIT = 127;
 const INSPECTOR_STRIP_W = 74;
@@ -1254,10 +1273,35 @@ function MixerStrip({
         </div>
       </MixerSlotRow>
       <MixerSlotRow label="Sends">
-        <MixerStack items={sendItems} tone="blue" />
+        <div className="flex w-full flex-col gap-[2px]">
+          <label className="flex min-h-[22px] items-center gap-1 px-0.5" title="Reverb send level">
+            <span className="shrink-0 text-[8px] text-[#aaa]">Rv</span>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={Math.round((tr.sendReverb ?? 0.18) * 100)}
+              onChange={(e) => daw.setTrackSendReverb(tr.id, Number(e.target.value) / 100)}
+              className="h-1 min-w-0 flex-1 cursor-pointer"
+              style={{ accentColor: LP.accentBlueHi }}
+            />
+          </label>
+          {sendItems.length > 0 ? <MixerStack items={sendItems} tone="blue" /> : null}
+        </div>
       </MixerSlotRow>
       <MixerSlotRow label="Output">
-        <div className={mixerFieldDark}>St Out</div>
+        <select
+          value={tr.outputBus ?? "master"}
+          onChange={(e) => daw.setTrackOutputBus(tr.id, e.target.value as BusId)}
+          className={`${mixerFieldGray} max-w-full appearance-none outline-none text-[9px]`}
+          title="Output bus"
+        >
+          {ROUTING_BUS_IDS.map((id) => (
+            <option key={id} value={id}>
+              {BUS_LABELS[id]}
+            </option>
+          ))}
+        </select>
       </MixerSlotRow>
       <MixerSlotRow label="Group">
         <div className="h-4 w-full rounded-[2px] border border-[#454549] bg-[#4a4a4e]" />
@@ -1355,6 +1399,118 @@ function MixerStrip({
         title={tr.name}
       >
         {tr.name || "Track"}
+      </div>
+    </div>
+  );
+}
+
+function BusMixerStrip({ busId }: { busId: Exclude<BusId, "master"> }) {
+  const daw = useDaw();
+  const peak = daw.meterPeaks[`bus:${busId}`] ?? 0;
+  const bm = daw.busMixer[busId];
+  const title = BUS_LABELS[busId];
+  const dbLabel = faderToDbLabel(bm.volume);
+  return (
+    <div
+      className="flex min-h-full shrink-0 flex-col border-l"
+      style={{ width: MIXER_STRIP_W, borderColor: LP.border, background: LP.stripBg }}
+    >
+      <MixerSlotRow label="Setting">
+        <div className={mixerFieldDark} title={title}>
+          {title}
+        </div>
+      </MixerSlotRow>
+      <MixerSlotRow label="Gain Reduction">
+        <div className="h-3 w-full rounded-[2px] border border-[#454549] bg-[#3a3a3e]" />
+      </MixerSlotRow>
+      <MixerSlotRow label="EQ">
+        <div className={mixerFieldDark}>—</div>
+      </MixerSlotRow>
+      <MixerSlotRow label="MIDI FX">
+        <div className="h-4 w-full rounded-[2px] border border-[#454549] bg-[#4a4a4e]" />
+      </MixerSlotRow>
+      <MixerSlotRow label="Input">
+        <div className="text-[9px] text-[#ccc]">Tracks</div>
+      </MixerSlotRow>
+      <MixerSlotRow label="Audio FX">
+        <MixerStack items={[]} tone="gray" />
+      </MixerSlotRow>
+      <MixerSlotRow label="Sends">
+        <MixerStack items={[]} tone="gray" />
+      </MixerSlotRow>
+      <MixerSlotRow label="Output">
+        <div className={mixerFieldDark}>Master</div>
+      </MixerSlotRow>
+      <MixerSlotRow label="Group">
+        <div className="h-4 w-full rounded-[2px] border border-[#454549] bg-[#4a4a4e]" />
+      </MixerSlotRow>
+      <MixerSlotRow label="Automation">
+        <button type="button" className={`${mixerFieldGreen} font-bold`}>
+          Read
+        </button>
+      </MixerSlotRow>
+      <div
+        className="flex items-center justify-center border-b"
+        style={{ borderColor: "#4a4a4e", minHeight: 40, height: 40 }}
+      >
+        <svg style={{ color: "#6b8cbc", width: 26, height: 26 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <path d="M4 16v2M8 16v4M12 6v14M16 12v8M20 8v12" strokeLinecap="round" />
+        </svg>
+      </div>
+      <div
+        className="flex items-center justify-center border-b"
+        style={{ borderColor: "#4a4a4e", minHeight: 36, height: 36 }}
+      >
+        <PanKnob value={0} onChange={() => {}} size={28} showValueLabel={false} />
+      </div>
+      <div
+        className="flex items-center justify-center gap-0.5 border-b px-[2px]"
+        style={{ borderColor: "#4a4a4e", minHeight: 24, height: 24 }}
+      >
+        <span className="rounded border border-[#222] bg-[#0a0a0a] px-1 py-0.5 font-mono text-[9px] tabular-nums text-[#e0e0e0]">
+          {dbLabel}
+        </span>
+        <span className="rounded border border-[#222] bg-[#0a0a0a] px-1 py-0.5 font-mono text-[9px] tabular-nums text-[#4eca4e]">
+          {peakToDbDisplay(peak)}
+        </span>
+      </div>
+      <div
+        className="border-b"
+        style={{ borderColor: "#4a4a4e", minHeight: MIXER_METER_H + 10, height: MIXER_METER_H + 10 }}
+      >
+        <VerticalMixerFader
+          value={bm.volume}
+          peak={peak}
+          onChange={(value) => daw.setBusVolume(busId, value)}
+          ariaLabel={`${title} level`}
+        />
+      </div>
+      <div
+        className="flex items-center justify-center border-b py-[2px]"
+        style={{ borderColor: "#4a4a4e", minHeight: 22, height: 22 }}
+      >
+        <span className="text-[8px] text-[#999]">Aux</span>
+      </div>
+      <div
+        className="flex items-center justify-center gap-0.5 border-b py-[2px]"
+        style={{ borderColor: "#4a4a4e", minHeight: 28, height: 28 }}
+      >
+        <button
+          type="button"
+          title="Mute bus"
+          onClick={() => daw.toggleBusMute(busId)}
+          className={`h-5 w-6 rounded-sm border text-[9px] font-bold ${
+            bm.muted ? "border-[#3a7a7a] bg-[#5ab0b0] text-[#022]" : "border-[#555] bg-[#4a4a4e] text-[#ddd]"
+          }`}
+        >
+          M
+        </button>
+      </div>
+      <div
+        className="mt-auto flex items-center justify-center truncate border-t px-1 text-center text-[9px] font-semibold text-white"
+        style={{ backgroundColor: "#4a5a78", borderColor: LP.border, minHeight: 24 }}
+      >
+        {title}
       </div>
     </div>
   );
@@ -1829,6 +1985,7 @@ function DawChrome() {
     startClientX: number;
     scroll0: number;
     previewStart: number;
+    grabOffsetSec: number;
   } | null>(null);
   const trimDragRef = useRef<{
     clipId: string;
@@ -1882,24 +2039,23 @@ function DawChrome() {
   };
 
   useEffect(() => {
-    const quarterBeatSec = (60 / Math.max(40, daw.tempo)) * 0.25;
-    const snap = (sec: number) => Math.round(sec / quarterBeatSec) * quarterBeatSec;
     const onMove = (e: MouseEvent) => {
       const d = clipDragRef.current;
       if (!d) return;
-      const sc = arrangeScrollRef.current?.scrollLeft ?? 0;
-      const dxPx = e.clientX - d.startClientX + (sc - d.scroll0);
-      const raw = Math.max(0, d.origStart + dxPx / PX_PER_SEC);
-      d.previewStart = snap(raw);
+      const scrollEl = arrangeScrollRef.current;
+      if (!scrollEl) return;
+      const lane = document.querySelector(`[data-timeline-lane="${d.trackId}"]`) as HTMLElement | null;
+      const sc = scrollEl.scrollLeft;
+      const pointerSec = timelineSecFromClient(e.clientX, sc, lane);
+      d.previewStart = Math.max(0, pointerSec - d.grabOffsetSec);
       setClipDragTick((t) => t + 1);
     };
     const onUp = () => {
       const d = clipDragRef.current;
       clipDragRef.current = null;
       if (d) {
-        const quarterBeatSecUp = (60 / Math.max(40, daw.tempo)) * 0.25;
-        const snapUp = (sec: number) => Math.round(sec / quarterBeatSecUp) * quarterBeatSecUp;
-        daw.moveClip(d.trackId, d.clipId, snapUp(d.previewStart));
+        const nextStart = Math.max(0, snapMoveTime(d.previewStart));
+        daw.moveClip(d.trackId, d.clipId, nextStart);
       }
       setClipDragTick((t) => t + 1);
     };
@@ -1909,7 +2065,7 @@ function DawChrome() {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
-  }, [daw, daw.tempo]);
+  }, [daw]);
 
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
@@ -1917,7 +2073,7 @@ function DawChrome() {
       if (!d) return;
       const sc = arrangeScrollRef.current?.scrollLeft ?? 0;
       const dxPx = e.clientX - d.startClientX + (sc - d.scroll0);
-      d.previewDeltaSec = dxPx / PX_PER_SEC;
+      d.previewDeltaSec = pxToSec(dxPx);
       setTrimDragTick((t) => t + 1);
     };
     const onUp = () => {
@@ -2593,6 +2749,9 @@ function DawChrome() {
                   fileInputTrigger={() => openImport(t.id)}
                 />
               ))}
+              {MIXER_BUS_STRIPS.map((bid) => (
+                <BusMixerStrip key={bid} busId={bid} />
+              ))}
               <StereoOutStrip />
               <MasterMixerStrip />
               <div className="min-w-[32px] flex-1" style={{ background: LP.panelLo }} aria-hidden />
@@ -2882,6 +3041,7 @@ function DawChrome() {
 
                     <div
                       className="relative shrink-0"
+                      data-timeline-lane={tr.id}
                       style={{ width: widthPx, minHeight: TRACK_ROW_MIN_H }}
                       onDragOver={(e) => {
                         if ([...e.dataTransfer.types].includes("Files")) {
@@ -3002,28 +3162,15 @@ function DawChrome() {
                               key={c.id}
                               role="button"
                               tabIndex={0}
-                              className={`group absolute top-1.5 cursor-grab overflow-hidden rounded-[3px] border text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] outline-none focus-visible:ring-2 active:cursor-grabbing ${
+                              className={`group absolute top-1.5 cursor-default overflow-hidden rounded-[3px] border text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] outline-none focus-visible:ring-2 ${
                                 isSel ? "ring-2 ring-[#5a9eef]/80" : "hover:brightness-105"
                               }`}
                               style={{
-                                left: clipLeftSec * PX_PER_SEC,
+                                left: secToPx(clipLeftSec),
                                 width: w,
                                 height: h,
                                 backgroundColor: `${tr.color}22`,
                                 borderColor: isSel ? LP.accentBlueHi : LP.border,
-                              }}
-                              onMouseDown={(e) => {
-                                if (e.button !== 0) return;
-                                e.stopPropagation();
-                                clipDragRef.current = {
-                                  trackId: tr.id,
-                                  clipId: c.id,
-                                  origStart: c.startTime,
-                                  startClientX: e.clientX,
-                                  scroll0: arrangeScrollRef.current?.scrollLeft ?? 0,
-                                  previewStart: c.startTime,
-                                };
-                                setClipDragTick((t) => t + 1);
                               }}
                               onDragOver={(e) => {
                                 if ([...e.dataTransfer.types].includes("Files")) {
@@ -3049,6 +3196,30 @@ function DawChrome() {
                                 fill="rgba(0,0,0,0.35)"
                                 viewStartSec={dispTs}
                                 viewEndSec={dispTe}
+                              />
+                              <div
+                                className="absolute left-2 right-12 top-0 z-[15] cursor-grab active:cursor-grabbing"
+                                style={{ height: h }}
+                                onMouseDown={(e) => {
+                                  if (e.button !== 0) return;
+                                  e.stopPropagation();
+                                  const lane = (e.currentTarget as HTMLElement).closest(
+                                    "[data-timeline-lane]",
+                                  ) as HTMLElement | null;
+                                  const sc = arrangeScrollRef.current?.scrollLeft ?? 0;
+                                  const pointerSec = timelineSecFromClient(e.clientX, sc, lane);
+                                  const grabOff = pointerSec - clipLeftSec;
+                                  clipDragRef.current = {
+                                    trackId: tr.id,
+                                    clipId: c.id,
+                                    origStart: c.startTime,
+                                    startClientX: e.clientX,
+                                    scroll0: sc,
+                                    previewStart: clipLeftSec,
+                                    grabOffsetSec: grabOff,
+                                  };
+                                  setClipDragTick((t) => t + 1);
+                                }}
                               />
                               <div
                                 className="absolute left-0 top-0 z-20 h-full w-2 cursor-ew-resize bg-white/20 hover:bg-white/35"
@@ -3086,7 +3257,7 @@ function DawChrome() {
                               />
                               <button
                                 type="button"
-                                className="absolute right-2 top-0 z-10 hidden rounded-bl bg-black/55 px-1.5 py-0.5 text-[11px] text-white group-hover:inline"
+                                className="absolute right-2 top-0 z-30 hidden rounded-bl bg-black/55 px-1.5 py-0.5 text-[11px] text-white group-hover:inline"
                                 aria-label="Remove clip"
                                 onClick={(e) => {
                                   e.stopPropagation();

@@ -1,4 +1,13 @@
-import type { Clip, EffectPresetId, EqPresetId, MidiNote, SpacePresetId, Track } from './types';
+import type {
+  BusId,
+  Clip,
+  EffectPresetId,
+  EqPresetId,
+  MidiNote,
+  SpacePresetId,
+  Track,
+} from './types';
+import { MIXER_BUS_STRIPS } from './types';
 import { clipTimelineEnd, clipTrimEnd, clipTrimStart } from './types';
 
 /**
@@ -339,6 +348,30 @@ export function configureSpace(
     revWet.gain.value = 0.28;
   } else {
     revDry.gain.value = 1;
+    revWet.gain.value = 0;
+  }
+}
+
+/** Reverb send path: sets IR on `conv` and wet tail level on `revWet` (after convolver). */
+export function configureReverbSend(
+  conv: ConvolverNode,
+  revWet: GainNode,
+  preset: SpacePresetId,
+  ctx: BaseAudioContext,
+) {
+  if (preset === 'off') {
+    revWet.gain.value = 0;
+    return;
+  }
+  const ir = getOrCreateImpulse(ctx, preset);
+  if (ir) conv.buffer = ir;
+  if (preset === 'room_small') {
+    revWet.gain.value = 0.34;
+  } else if (preset === 'hall_med') {
+    revWet.gain.value = 0.42;
+  } else if (preset === 'plate') {
+    revWet.gain.value = 0.28;
+  } else {
     revWet.gain.value = 0;
   }
 }
@@ -938,13 +971,15 @@ function connectOfflineTrack(
   track: Track,
   master: GainNode,
   soloAny: boolean,
+  busTargets: Map<BusId, GainNode>,
 ): BiquadFilterNode | null {
   if (!trackAudible(track, soloAny)) return null;
   const low = offline.createBiquadFilter();
   const mid = offline.createBiquadFilter();
   const high = offline.createBiquadFilter();
   const comp = offline.createDynamicsCompressor();
-  const revDry = offline.createGain();
+  const dryGain = offline.createGain();
+  const sendGain = offline.createGain();
   const conv = offline.createConvolver();
   const revWet = offline.createGain();
   const pan = offline.createStereoPanner();
@@ -953,17 +988,23 @@ function connectOfflineTrack(
   pan.pan.value = track.pan;
   configureEq(low, mid, high, track.eqPreset, offline);
   configureCompressor(comp, track.effectPreset);
-  configureSpace(conv, revDry, revWet, track.spacePreset, offline);
+  configureReverbSend(conv, revWet, track.spacePreset, offline);
+  sendGain.gain.value = track.spacePreset === 'off' ? 0 : (track.sendReverb ?? 0.18);
+  dryGain.gain.value = 1;
   low.connect(mid);
   mid.connect(high);
   high.connect(comp);
-  comp.connect(revDry);
-  revDry.connect(pan);
-  comp.connect(conv);
+  comp.connect(dryGain);
+  dryGain.connect(pan);
+  comp.connect(sendGain);
+  sendGain.connect(conv);
   conv.connect(revWet);
   revWet.connect(pan);
   pan.connect(fader);
-  fader.connect(master);
+  const busId = track.outputBus ?? 'master';
+  const dest =
+    busId !== 'master' && busTargets.has(busId) ? busTargets.get(busId)! : master;
+  fader.connect(dest);
   return low;
 }
 
@@ -979,10 +1020,17 @@ export async function offlineRenderMix(
   master.gain.value = 1;
   master.connect(offline.destination);
   const soloAny = anySolo(tracks);
+  const busTargets = new Map<BusId, GainNode>();
+  for (const id of MIXER_BUS_STRIPS) {
+    const g = offline.createGain();
+    g.gain.value = 1;
+    g.connect(master);
+    busTargets.set(id, g);
+  }
   const inputs = new Map<string, BiquadFilterNode>();
 
   for (const track of tracks) {
-    const eqIn = connectOfflineTrack(offline, track, master, soloAny);
+    const eqIn = connectOfflineTrack(offline, track, master, soloAny, busTargets);
     if (eqIn) inputs.set(track.id, eqIn);
   }
 

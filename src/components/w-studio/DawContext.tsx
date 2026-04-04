@@ -14,7 +14,7 @@ import {
   audioBufferToStereo,
   configureCompressor,
   configureEq,
-  configureSpace,
+  configureReverbSend,
   createLibrarySound,
   createWaveformData,
   encodeWavFromAudioBuffer,
@@ -34,6 +34,7 @@ import {
   clipTrimEnd,
   clipTrimStart,
   newTrack,
+  type BusId,
   type Clip,
   type ClipSourceMeta,
   type EffectPresetId,
@@ -52,12 +53,22 @@ type TrackNodes = {
   mid: BiquadFilterNode;
   high: BiquadFilterNode;
   comp: DynamicsCompressorNode;
-  revDry: GainNode;
+  dryGain: GainNode;
+  sendGain: GainNode;
   conv: ConvolverNode;
   revWet: GainNode;
   pan: StereoPannerNode;
   analyser: AnalyserNode;
 };
+
+type BusNodes = {
+  gain: GainNode;
+  analyser: AnalyserNode;
+};
+
+type NonMasterBus = Exclude<BusId, 'master'>;
+
+type BusMixerState = Record<NonMasterBus, { volume: number; muted: boolean }>;
 
 export const INPUT_SOURCE_OPTIONS = [
   'Built-in microphone',
@@ -84,8 +95,12 @@ type DawContextValue = {
   tempo: number;
   setTempo: (bpm: number) => void;
   beatsPerBar: number;
-  /** Normalized 0–1 peaks for mixer meters (per track id + `__master__` + `__mic__` when active) */
+  /** Normalized 0–1 peaks (track ids, `__master__`, `__mic__`, `bus:<id>`) */
   meterPeaks: Record<string, number>;
+  /** Per-sub-bus fader + mute (vocal, drum, reverb aux). */
+  busMixer: BusMixerState;
+  setBusVolume: (busId: NonMasterBus, v: number) => void;
+  toggleBusMute: (busId: NonMasterBus) => void;
   masterVolume: number;
   setMasterVolume: (v: number) => void;
   /** Hard-mutes the main mix at the master gain (Logic-style control-bar M). */
@@ -103,6 +118,8 @@ type DawContextValue = {
   setTrackEq: (id: string, preset: EqPresetId) => void;
   setTrackEffect: (id: string, preset: EffectPresetId) => void;
   setTrackSpace: (id: string, preset: SpacePresetId) => void;
+  setTrackOutputBus: (trackId: string, busId: BusId) => void;
+  setTrackSendReverb: (trackId: string, amount: number) => void;
   applyMicChainPreset: (trackId: string, preset: MicChainPresetId) => void;
   toggleMute: (id: string) => void;
   toggleSolo: (id: string) => void;
@@ -176,6 +193,11 @@ export function DawProvider({ children }: { children: ReactNode }) {
   const [recordingLivePeaks, setRecordingLivePeaks] = useState<number[]>([]);
   const [recordingPunchInTime, setRecordingPunchInTime] = useState<number | null>(null);
   const [status, setStatus] = useState('');
+  const [busMixer, setBusMixer] = useState<BusMixerState>(() => ({
+    reverbA: { volume: 0.88, muted: false },
+    drumBus: { volume: 0.88, muted: false },
+    vocalBus: { volume: 0.88, muted: false },
+  }));
 
   const loopEnabledRef = useRef(loopEnabled);
   useEffect(() => {
@@ -202,6 +224,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
   const masterGainRef = useRef<GainNode | null>(null);
   const masterAnalyserRef = useRef<AnalyserNode | null>(null);
   const trackNodesRef = useRef(new Map<string, TrackNodes>());
+  const busNodesRef = useRef(new Map<string, BusNodes>());
   const activeSourcesRef = useRef<AudioScheduledSourceNode[]>([]);
   const playSessionRef = useRef<PlaySession | null>(null);
   const rafRef = useRef<number>(0);
@@ -231,6 +254,21 @@ export function DawProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     masterMutedRef.current = masterMuted;
   }, [masterMuted]);
+
+  const busMixerRef = useRef(busMixer);
+  useEffect(() => {
+    busMixerRef.current = busMixer;
+  }, [busMixer]);
+
+  useEffect(() => {
+    const ctx = audioCtxRef.current;
+    if (!ctx) return;
+    for (const [busId, nodes] of busNodesRef.current.entries()) {
+      const bm = busMixer[busId as NonMasterBus];
+      if (!bm) continue;
+      nodes.gain.gain.value = bm.muted ? 0 : faderToGain(bm.volume);
+    }
+  }, [busMixer]);
 
   useEffect(() => {
     if (tracks.length && !selectedTrackId) {
@@ -287,7 +325,8 @@ export function DawProvider({ children }: { children: ReactNode }) {
         n.mid.disconnect();
         n.high.disconnect();
         n.comp.disconnect();
-        n.revDry.disconnect();
+        n.dryGain.disconnect();
+        n.sendGain.disconnect();
         n.conv.disconnect();
         n.revWet.disconnect();
         n.pan.disconnect();
@@ -297,6 +336,15 @@ export function DawProvider({ children }: { children: ReactNode }) {
       }
     }
     trackNodesRef.current.clear();
+    for (const b of busNodesRef.current.values()) {
+      try {
+        b.gain.disconnect();
+        b.analyser.disconnect();
+      } catch {
+        /* ignore */
+      }
+    }
+    busNodesRef.current.clear();
     try {
       masterGainRef.current?.disconnect();
       masterAnalyserRef.current?.disconnect();
@@ -336,41 +384,52 @@ export function DawProvider({ children }: { children: ReactNode }) {
     return masterGainRef.current;
   }, []);
 
-  const ensureTrackNodes = useCallback(
-    (ctx: AudioContext, trackId: string) => {
-      const master = ensureMaster(ctx);
-      let t = trackNodesRef.current.get(trackId);
-      if (!t) {
-        const fader = ctx.createGain();
-        const low = ctx.createBiquadFilter();
-        const mid = ctx.createBiquadFilter();
-        const high = ctx.createBiquadFilter();
-        const comp = ctx.createDynamicsCompressor();
-        const revDry = ctx.createGain();
-        const conv = ctx.createConvolver();
-        const revWet = ctx.createGain();
-        const pan = ctx.createStereoPanner();
-        const analyser = ctx.createAnalyser();
-        analyser.fftSize = 512;
-        analyser.smoothingTimeConstant = 0.62;
-        low.connect(mid);
-        mid.connect(high);
-        high.connect(comp);
-        comp.connect(revDry);
-        revDry.connect(pan);
-        comp.connect(conv);
-        conv.connect(revWet);
-        revWet.connect(pan);
-        pan.connect(fader);
-        fader.connect(analyser);
-        analyser.connect(master);
-        t = { fader, low, mid, high, comp, revDry, conv, revWet, pan, analyser };
-        trackNodesRef.current.set(trackId, t);
-      }
-      return t;
-    },
-    [ensureMaster],
-  );
+  const ensureBusNodes = useCallback((ctx: AudioContext, busId: NonMasterBus, master: GainNode) => {
+    const existing = busNodesRef.current.get(busId);
+    if (existing) return existing;
+    const gain = ctx.createGain();
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 256;
+    gain.connect(analyser);
+    analyser.connect(master);
+    const nodes = { gain, analyser };
+    busNodesRef.current.set(busId, nodes);
+    return nodes;
+  }, []);
+
+  const ensureTrackNodes = useCallback((ctx: AudioContext, trackId: string) => {
+    let t = trackNodesRef.current.get(trackId);
+    if (!t) {
+      void ensureMaster(ctx);
+      const fader = ctx.createGain();
+      const low = ctx.createBiquadFilter();
+      const mid = ctx.createBiquadFilter();
+      const high = ctx.createBiquadFilter();
+      const comp = ctx.createDynamicsCompressor();
+      const dryGain = ctx.createGain();
+      const sendGain = ctx.createGain();
+      const conv = ctx.createConvolver();
+      const revWet = ctx.createGain();
+      const pan = ctx.createStereoPanner();
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 512;
+      analyser.smoothingTimeConstant = 0.62;
+      low.connect(mid);
+      mid.connect(high);
+      high.connect(comp);
+      comp.connect(dryGain);
+      dryGain.connect(pan);
+      comp.connect(sendGain);
+      sendGain.connect(conv);
+      conv.connect(revWet);
+      revWet.connect(pan);
+      pan.connect(fader);
+      fader.connect(analyser);
+      t = { fader, low, mid, high, comp, dryGain, sendGain, conv, revWet, pan, analyser };
+      trackNodesRef.current.set(trackId, t);
+    }
+    return t;
+  }, [ensureMaster]);
 
   const syncTrackNodeParams = useCallback(
     (ctx: AudioContext, track: Track, soloAny: boolean) => {
@@ -380,9 +439,24 @@ export function DawProvider({ children }: { children: ReactNode }) {
       nodes.pan.pan.value = track.pan;
       configureEq(nodes.low, nodes.mid, nodes.high, track.eqPreset, ctx);
       configureCompressor(nodes.comp, track.effectPreset);
-      configureSpace(nodes.conv, nodes.revDry, nodes.revWet, track.spacePreset, ctx);
+      configureReverbSend(nodes.conv, nodes.revWet, track.spacePreset, ctx);
+      nodes.sendGain.gain.value = track.spacePreset === 'off' ? 0 : (track.sendReverb ?? 0.18);
+      nodes.dryGain.gain.value = 1;
+
+      const masterIn = masterGainRef.current;
+      if (!masterIn) return;
+      nodes.analyser.disconnect();
+      const busId = track.outputBus ?? 'master';
+      if (busId === 'master') {
+        nodes.analyser.connect(masterIn);
+      } else {
+        const bus = ensureBusNodes(ctx, busId, masterIn);
+        const bm = busMixerRef.current[busId];
+        nodes.analyser.connect(bus.gain);
+        bus.gain.gain.value = bm.muted ? 0 : faderToGain(bm.volume);
+      }
     },
-    [ensureTrackNodes],
+    [ensureTrackNodes, ensureBusNodes],
   );
 
   const schedulePlayback = useCallback(
@@ -580,6 +654,21 @@ export function DawProvider({ children }: { children: ReactNode }) {
         const v = Math.max(peak, prev * 0.88);
         meterHoldRef.current.__master__ = v;
         out.__master__ = v;
+      }
+      for (const [bid, bnodes] of busNodesRef.current.entries()) {
+        const a = bnodes.analyser;
+        const buf = new Uint8Array(a.fftSize);
+        a.getByteTimeDomainData(buf);
+        let peak = 0;
+        for (let i = 0; i < buf.length; i++) {
+          const v = Math.abs(buf[i]! - 128) / 128;
+          if (v > peak) peak = v;
+        }
+        const key = `bus:${bid}`;
+        const prev = meterHoldRef.current[key] ?? 0;
+        const v = Math.max(peak, prev * 0.88);
+        meterHoldRef.current[key] = v;
+        out[key] = v;
       }
       const micA = micInputAnalyserRef.current;
       if (micA && isRecordingRef.current) {
@@ -847,7 +936,8 @@ export function DawProvider({ children }: { children: ReactNode }) {
         nodes.mid.disconnect();
         nodes.high.disconnect();
         nodes.comp.disconnect();
-        nodes.revDry.disconnect();
+        nodes.dryGain.disconnect();
+        nodes.sendGain.disconnect();
         nodes.conv.disconnect();
         nodes.revWet.disconnect();
         nodes.pan.disconnect();
@@ -943,6 +1033,52 @@ export function DawProvider({ children }: { children: ReactNode }) {
     },
     [syncTrackNodeParams],
   );
+
+  const setTrackOutputBus = useCallback(
+    (id: string, busId: BusId) => {
+      const ctx = audioCtxRef.current;
+      setTracks((prev) => {
+        const next = prev.map((t) => (t.id === id ? { ...t, outputBus: busId } : t));
+        if (ctx) {
+          const tr = next.find((t) => t.id === id);
+          if (tr) syncTrackNodeParams(ctx, tr, anySolo(next));
+        }
+        return next;
+      });
+    },
+    [syncTrackNodeParams],
+  );
+
+  const setTrackSendReverb = useCallback(
+    (id: string, amount: number) => {
+      const v = Math.max(0, Math.min(1, amount));
+      const ctx = audioCtxRef.current;
+      setTracks((prev) => {
+        const next = prev.map((t) => (t.id === id ? { ...t, sendReverb: v } : t));
+        if (ctx) {
+          const tr = next.find((t) => t.id === id);
+          if (tr) syncTrackNodeParams(ctx, tr, anySolo(next));
+        }
+        return next;
+      });
+    },
+    [syncTrackNodeParams],
+  );
+
+  const setBusVolume = useCallback((busId: NonMasterBus, vol: number) => {
+    const v = Math.max(0, Math.min(1, vol));
+    setBusMixer((prev) => ({
+      ...prev,
+      [busId]: { ...prev[busId], volume: v },
+    }));
+  }, []);
+
+  const toggleBusMute = useCallback((busId: NonMasterBus) => {
+    setBusMixer((prev) => ({
+      ...prev,
+      [busId]: { ...prev[busId], muted: !prev[busId].muted },
+    }));
+  }, []);
 
   const applyMicChainPreset = useCallback(
     (trackId: string, micId: MicChainPresetId) => {
@@ -1305,6 +1441,9 @@ export function DawProvider({ children }: { children: ReactNode }) {
       setTempo,
       beatsPerBar,
       meterPeaks,
+      busMixer,
+      setBusVolume,
+      toggleBusMute,
       masterVolume,
       setMasterVolume,
       masterMuted,
@@ -1319,6 +1458,8 @@ export function DawProvider({ children }: { children: ReactNode }) {
       setTrackEq,
       setTrackEffect,
       setTrackSpace,
+      setTrackOutputBus,
+      setTrackSendReverb,
       applyMicChainPreset,
       toggleMute,
       toggleSolo,
@@ -1366,6 +1507,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
       tempo,
       beatsPerBar,
       meterPeaks,
+      busMixer,
       masterVolume,
       masterMuted,
       status,
@@ -1378,7 +1520,11 @@ export function DawProvider({ children }: { children: ReactNode }) {
       setTrackEq,
       setTrackEffect,
       setTrackSpace,
+      setTrackOutputBus,
+      setTrackSendReverb,
       applyMicChainPreset,
+      setBusVolume,
+      toggleBusMute,
       toggleMute,
       toggleSolo,
       toggleExclusiveSoloSelection,

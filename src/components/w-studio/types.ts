@@ -101,6 +101,13 @@ export const TRACK_PALETTE = [
   '#e0579d',
 ] as const;
 
+/** Sub / aux bus destinations (before master). `master` = direct to main. */
+export type BusId = 'master' | 'reverbA' | 'drumBus' | 'vocalBus';
+
+export const ROUTING_BUS_IDS: BusId[] = ['master', 'reverbA', 'drumBus', 'vocalBus'];
+
+export const MIXER_BUS_STRIPS: Exclude<BusId, 'master'>[] = ['vocalBus', 'drumBus', 'reverbA'];
+
 export type Track = {
   id: string;
   name: string;
@@ -119,6 +126,10 @@ export type Track = {
   eqPreset: EqPresetId;
   effectPreset: EffectPresetId;
   spacePreset: SpacePresetId;
+  /** Post-fader chain destination (default main). */
+  outputBus?: BusId;
+  /** Reverb send level 0…1 (pre-pan, summed with dry). */
+  sendReverb?: number;
   clips: Clip[];
   midiNotes: MidiNote[];
 };
@@ -148,6 +159,8 @@ export function newTrack(name: string, index: number, kind: TrackKind = 'record_
     eqPreset: 'flat',
     effectPreset: 'none',
     spacePreset: 'off',
+    outputBus: 'master',
+    sendReverb: 0.18,
     clips: [],
     midiNotes: [],
   };
