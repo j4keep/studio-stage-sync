@@ -8,7 +8,7 @@ import {
   type MouseEvent,
   type ReactNode,
 } from "react";
-import type { BusId, TrackKind } from "./types";
+import type { BusId, Track, TrackKind } from "./types";
 import { clipTrimEnd, clipTrimStart, MIXER_BUS_STRIPS, ROUTING_BUS_IDS } from "./types";
 import {
   EFFECT_PRESET_LABELS,
@@ -1206,18 +1206,14 @@ function InstrumentIcon({ kind, color }: { kind: string; color: string }) {
   );
 }
 
-function MixerStrip({
-  trackId,
-  peak,
-  fileInputTrigger,
-}: {
-  trackId: string;
+type MixerStripProps = {
+  track: Track;
   peak: number;
   fileInputTrigger: () => void;
-}) {
+};
+
+function MixerStrip({ track: tr, peak, fileInputTrigger }: MixerStripProps) {
   const daw = useDaw();
-  const tr = daw.tracks.find((t) => t.id === trackId);
-  if (!tr) return null;
 
   const dbLabel = faderToDbLabel(tr.volume);
   const peakDb = peakToDbDisplay(peak);
@@ -1412,7 +1408,11 @@ function MixerStrip({
   );
 }
 
-function BusMixerStrip({ busId }: { busId: Exclude<BusId, "master"> }) {
+type BusMixerStripProps = {
+  busId: Exclude<BusId, "master">;
+};
+
+function BusMixerStrip({ busId }: BusMixerStripProps) {
   const daw = useDaw();
   const peak = daw.meterPeaks[`bus:${busId}`] ?? 0;
   const bm = daw.busMixer[busId];
@@ -2752,7 +2752,7 @@ function DawChrome() {
               {daw.tracks.map((t) => (
                 <MixerStrip
                   key={t.id}
-                  trackId={t.id}
+                  track={t}
                   peak={daw.meterPeaks[t.id] ?? 0}
                   fileInputTrigger={() => openImport(t.id)}
                 />
