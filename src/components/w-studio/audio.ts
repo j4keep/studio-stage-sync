@@ -938,10 +938,8 @@ function connectOfflineTrack(
   track: Track,
   master: GainNode,
   soloAny: boolean,
-): GainNode | null {
+): BiquadFilterNode | null {
   if (!trackAudible(track, soloAny)) return null;
-  const g = offline.createGain();
-  g.gain.value = faderToGain(track.volume);
   const low = offline.createBiquadFilter();
   const mid = offline.createBiquadFilter();
   const high = offline.createBiquadFilter();
@@ -950,11 +948,12 @@ function connectOfflineTrack(
   const conv = offline.createConvolver();
   const revWet = offline.createGain();
   const pan = offline.createStereoPanner();
+  const fader = offline.createGain();
+  fader.gain.value = faderToGain(track.volume);
   pan.pan.value = track.pan;
   configureEq(low, mid, high, track.eqPreset, offline);
   configureCompressor(comp, track.effectPreset);
   configureSpace(conv, revDry, revWet, track.spacePreset, offline);
-  g.connect(low);
   low.connect(mid);
   mid.connect(high);
   high.connect(comp);
@@ -963,8 +962,9 @@ function connectOfflineTrack(
   comp.connect(conv);
   conv.connect(revWet);
   revWet.connect(pan);
-  pan.connect(master);
-  return g;
+  pan.connect(fader);
+  fader.connect(master);
+  return low;
 }
 
 export async function offlineRenderMix(
@@ -979,18 +979,18 @@ export async function offlineRenderMix(
   master.gain.value = 1;
   master.connect(offline.destination);
   const soloAny = anySolo(tracks);
-  const inputs = new Map<string, GainNode>();
+  const inputs = new Map<string, BiquadFilterNode>();
 
   for (const track of tracks) {
-    const g = connectOfflineTrack(offline, track, master, soloAny);
-    if (g) inputs.set(track.id, g);
+    const eqIn = connectOfflineTrack(offline, track, master, soloAny);
+    if (eqIn) inputs.set(track.id, eqIn);
   }
 
   const spb = 60 / Math.max(40, tempoBpm);
 
   for (const track of tracks) {
-    const g = inputs.get(track.id);
-    if (!g) continue;
+    const eqIn = inputs.get(track.id);
+    if (!eqIn) continue;
     for (const clip of track.clips) {
       const ts = clipTrimStart(clip);
       const te = clipTrimEnd(clip);
@@ -1002,7 +1002,7 @@ export async function offlineRenderMix(
       const cg = offline.createGain();
       cg.gain.value = Math.max(0, clip.clipGain ?? 1);
       src.connect(cg);
-      cg.connect(g);
+      cg.connect(eqIn);
       const maxDur = durationSec - clip.startTime;
       const dur = Math.min(vis, maxDur);
       if (dur <= 0) continue;
@@ -1023,7 +1023,7 @@ export async function offlineRenderMix(
       osc.type = 'triangle';
       osc.frequency.value = midiNoteToFreq(note.pitch);
       osc.connect(env);
-      env.connect(g);
+      env.connect(eqIn);
       const t0 = playFrom;
       env.gain.setValueAtTime(0, t0);
       env.gain.linearRampToValueAtTime(vel, t0 + 0.01);

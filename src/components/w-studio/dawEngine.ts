@@ -2,12 +2,13 @@ import type { Clip } from './types';
 import { clipTrimEnd, clipTrimStart } from './types';
 
 /**
- * Multitrack clip scheduling helpers. UI and track FX stay outside;
- * this only computes Web Audio start time / offset / duration and wires clip gain.
+ * Multitrack clip scheduling helpers.
+ * `dest` must be the **EQ input** (first band): signal chain is
+ * clip gain → EQ → comp → reverb → pan → fader → master.
  */
 export class DAWEngine {
   /**
-   * Schedules one trimmed region from `clip.buffer` into `dest` (e.g. track fader).
+   * Schedules one trimmed region from `clip.buffer` into `dest` (track EQ in).
    * Returns the `AudioBufferSourceNode` for transport stop(), or null if inaudible at `p0`.
    */
   static scheduleClipIfAudible(

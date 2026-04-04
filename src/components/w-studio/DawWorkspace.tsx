@@ -1882,18 +1882,25 @@ function DawChrome() {
   };
 
   useEffect(() => {
+    const quarterBeatSec = (60 / Math.max(40, daw.tempo)) * 0.25;
+    const snap = (sec: number) => Math.round(sec / quarterBeatSec) * quarterBeatSec;
     const onMove = (e: MouseEvent) => {
       const d = clipDragRef.current;
       if (!d) return;
       const sc = arrangeScrollRef.current?.scrollLeft ?? 0;
       const dxPx = e.clientX - d.startClientX + (sc - d.scroll0);
-      d.previewStart = Math.max(0, d.origStart + dxPx / PX_PER_SEC);
+      const raw = Math.max(0, d.origStart + dxPx / PX_PER_SEC);
+      d.previewStart = snap(raw);
       setClipDragTick((t) => t + 1);
     };
     const onUp = () => {
       const d = clipDragRef.current;
       clipDragRef.current = null;
-      if (d) daw.moveClip(d.trackId, d.clipId, d.previewStart);
+      if (d) {
+        const quarterBeatSecUp = (60 / Math.max(40, daw.tempo)) * 0.25;
+        const snapUp = (sec: number) => Math.round(sec / quarterBeatSecUp) * quarterBeatSecUp;
+        daw.moveClip(d.trackId, d.clipId, snapUp(d.previewStart));
+      }
       setClipDragTick((t) => t + 1);
     };
     window.addEventListener("mousemove", onMove);
@@ -1902,7 +1909,7 @@ function DawChrome() {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
-  }, [daw]);
+  }, [daw, daw.tempo]);
 
   useEffect(() => {
     const onMove = (e: MouseEvent) => {

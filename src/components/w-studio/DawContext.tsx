@@ -353,7 +353,6 @@ export function DawProvider({ children }: { children: ReactNode }) {
         const analyser = ctx.createAnalyser();
         analyser.fftSize = 512;
         analyser.smoothingTimeConstant = 0.62;
-        fader.connect(low);
         low.connect(mid);
         mid.connect(high);
         high.connect(comp);
@@ -362,7 +361,8 @@ export function DawProvider({ children }: { children: ReactNode }) {
         comp.connect(conv);
         conv.connect(revWet);
         revWet.connect(pan);
-        pan.connect(analyser);
+        pan.connect(fader);
+        fader.connect(analyser);
         analyser.connect(master);
         t = { fader, low, mid, high, comp, revDry, conv, revWet, pan, analyser };
         trackNodesRef.current.set(trackId, t);
@@ -395,7 +395,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
         if (!trackAudible(tr, soloAny)) continue;
         const nodes = ensureTrackNodes(ctx, tr.id);
         for (const clip of tr.clips) {
-          const src = DAWEngine.scheduleClipIfAudible(ctx, clip, nodes.fader, t0, p0);
+          const src = DAWEngine.scheduleClipIfAudible(ctx, clip, nodes.low, t0, p0);
           if (src) activeSourcesRef.current.push(src);
         }
         for (const note of tr.midiNotes) {
@@ -412,7 +412,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
           osc.type = 'triangle';
           osc.frequency.value = midiNoteToFreq(note.pitch);
           osc.connect(env);
-          env.connect(nodes.fader);
+          env.connect(nodes.low);
           env.gain.setValueAtTime(0, when);
           env.gain.linearRampToValueAtTime(vel, when + 0.008);
           env.gain.setValueAtTime(vel, when + Math.max(0.012, dur - 0.025));
@@ -443,57 +443,62 @@ export function DawProvider({ children }: { children: ReactNode }) {
     rafRef.current = 0;
   }, []);
 
+  const restartPlaybackAt = useCallback(
+    async (p0: number) => {
+      const ctx = ensureAudioCtx(audioCtxRef);
+      if (ctx.state === 'suspended') await ctx.resume();
+
+      stopPlaybackSources();
+
+      const t0 = ctx.currentTime + 0.01;
+      playSessionRef.current = { t0, p0 };
+      schedulePlayback(ctx, t0, p0);
+      setCurrentTime(p0);
+    },
+    [schedulePlayback, stopPlaybackSources],
+  );
+
   const tickPlayhead = useCallback(() => {
     const ctx = audioCtxRef.current;
     const sess = playSessionRef.current;
     if (!ctx || !sess) return;
-    const t = sess.p0 + (ctx.currentTime - sess.t0);
-    const end = getTimelineEndSec(tracksRef.current, tempoRef.current);
+
+    const raw = sess.p0 + (ctx.currentTime - sess.t0);
+    const safeRaw = Math.max(0, raw);
     const ls = loopStartSecRef.current;
     const le = loopEndSecRef.current;
-    if (loopEnabledRef.current && le > ls + 0.01 && t >= le) {
-      stopPlaybackSources();
-      const t0 = ctx.currentTime;
-      const p0 = ls;
-      playSessionRef.current = { t0, p0 };
-      schedulePlayback(ctx, t0, p0);
-      setCurrentTime(ls);
-      setStatus('Loop…');
+    const end = getTimelineEndSec(tracksRef.current, tempoRef.current);
+
+    if (loopEnabledRef.current && le > ls + 0.01) {
+      if (safeRaw >= le) {
+        void restartPlaybackAt(ls);
+        setStatus('Loop…');
+        rafRef.current = requestAnimationFrame(tickPlayhead);
+        return;
+      }
+      setCurrentTime(Math.min(safeRaw, le));
       rafRef.current = requestAnimationFrame(tickPlayhead);
       return;
     }
-    if (end > 0.02 && t >= end) {
-      for (const s of activeSourcesRef.current) {
-        try {
-          s.stop();
-          s.disconnect();
-        } catch {
-          /* ignore */
-        }
-      }
-      activeSourcesRef.current = [];
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      rafRef.current = 0;
+
+    if (end > 0.02 && safeRaw >= end) {
+      stopPlaybackSources();
+      stopPlayheadRaf();
       playSessionRef.current = null;
       setIsPlaying(false);
       setCurrentTime(end);
       setStatus('End of timeline.');
       return;
     }
-    setCurrentTime(t);
+
+    setCurrentTime(safeRaw);
     rafRef.current = requestAnimationFrame(tickPlayhead);
-  }, [schedulePlayback, stopPlaybackSources]);
+  }, [restartPlaybackAt, stopPlaybackSources, stopPlayheadRaf]);
 
   const stopTransport = useCallback(() => {
     if (metroIntervalRef.current) {
       clearInterval(metroIntervalRef.current);
       metroIntervalRef.current = 0;
-    }
-    const ctx = audioCtxRef.current;
-    const sess = playSessionRef.current;
-    if (ctx && sess) {
-      const t = sess.p0 + (ctx.currentTime - sess.t0);
-      setCurrentTime(Math.max(0, t));
     }
     playSessionRef.current = null;
     stopPlaybackSources();
@@ -501,20 +506,17 @@ export function DawProvider({ children }: { children: ReactNode }) {
     setIsPlaying(false);
   }, [stopPlaybackSources, stopPlayheadRaf]);
 
-  const play = useCallback(async () => {
-    const ctx = ensureAudioCtx(audioCtxRef);
-    if (ctx.state === 'suspended') await ctx.resume();
-    stopTransport();
-
-    const t0 = ctx.currentTime;
-    const p0 = currentTimeRef.current;
-    playSessionRef.current = { t0, p0 };
-    schedulePlayback(ctx, t0, p0);
-
-    setIsPlaying(true);
-    setStatus((s) => (s.startsWith('Recording') ? 'Recording + playback…' : ''));
-    rafRef.current = requestAnimationFrame(tickPlayhead);
-  }, [schedulePlayback, stopTransport, tickPlayhead]);
+  const play = useCallback(() => {
+    void (async () => {
+      const ctx = ensureAudioCtx(audioCtxRef);
+      if (ctx.state === 'suspended') await ctx.resume();
+      stopTransport();
+      await restartPlaybackAt(currentTimeRef.current);
+      setIsPlaying(true);
+      setStatus((s) => (s.startsWith('Recording') ? 'Recording + playback…' : ''));
+      rafRef.current = requestAnimationFrame(tickPlayhead);
+    })();
+  }, [restartPlaybackAt, stopTransport, tickPlayhead]);
 
   useEffect(() => {
     if (!isPlaying || !metronomeOn) {
@@ -619,10 +621,16 @@ export function DawProvider({ children }: { children: ReactNode }) {
 
   const seek = useCallback(
     (t: number) => {
-      if (isPlaying) stopTransport();
-      setCurrentTime(Math.max(0, t));
+      void (async () => {
+        const next = Math.max(0, t);
+        if (isPlayingRef.current) {
+          await restartPlaybackAt(next);
+        } else {
+          setCurrentTime(next);
+        }
+      })();
     },
-    [isPlaying, stopTransport],
+    [restartPlaybackAt],
   );
 
   const rewindToStart = useCallback(() => {
