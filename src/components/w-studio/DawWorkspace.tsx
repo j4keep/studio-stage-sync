@@ -1,5 +1,5 @@
 /* W.Studio DAW Workspace */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { TrackKind } from "./types";
 import {
   EFFECT_PRESET_LABELS,
@@ -637,10 +637,32 @@ function IconMediaBrowser() {
     </svg>
   );
 }
-function IconForwardEnd() {
+/** Transport: jump to project start (|◀◀) */
+function IconGoToStart() {
   return (
-    <svg className="h-[16px] w-[16px]" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M6 6h2v12H6zm4 0l10 6-10 6z" />
+    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <rect x="4" y="5" width="2.5" height="14" rx="0.5" />
+      <path d="M19 18V6l-8 6 8 6z" />
+      <path d="M11 18V6l-7 6 7 6z" />
+    </svg>
+  );
+}
+/** Transport: skip forward (~one beat) (▶▶) */
+function IconFastForward() {
+  return (
+    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M13 6v12l8.5-6L13 6z" />
+      <path d="M3 6v12l8.5-6L3 6z" />
+    </svg>
+  );
+}
+/** Transport: jump to project end (▶▶|) */
+function IconGoToEnd() {
+  return (
+    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M5 18V6l8 6-8 6z" />
+      <path d="M13 18V6l7 6-7 6z" />
+      <rect x="17.5" y="5" width="2.5" height="14" rx="0.5" />
     </svg>
   );
 }
@@ -1754,6 +1776,21 @@ function CycleRangeRuler({
   );
 }
 
+function LogicMacroToolButton({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      title={label}
+      className="flex min-w-[52px] max-w-[88px] flex-col items-center gap-0.5 rounded px-1 py-0.5 text-[#ccc] hover:bg-black/15"
+    >
+      <span className="flex h-[18px] items-center justify-center opacity-90 [&>svg]:h-[15px] [&>svg]:w-[15px]">
+        {children}
+      </span>
+      <span className="max-w-[84px] text-center text-[8px] leading-[1.05]">{label}</span>
+    </button>
+  );
+}
+
 function DawChrome() {
   const daw = useDaw();
   const [editorTab, setEditorTab] = useState<"clip" | "piano">("clip");
@@ -1765,6 +1802,9 @@ function DawChrome() {
   const [editorsOpen, setEditorsOpen] = useState(false);
   const [focusWorkbench, setFocusWorkbench] = useState(false);
   const [mixerFilter, setMixerFilter] = useState("Tracks");
+  /** Control-bar-only toggles — full master solo/mute routing can wire later */
+  const [ctrlBarMasterMute, setCtrlBarMasterMute] = useState(false);
+  const [ctrlBarMasterSolo, setCtrlBarMasterSolo] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const projectFileRef = useRef<HTMLInputElement>(null);
   const importTrackRef = useRef<string>("");
@@ -1917,15 +1957,42 @@ function DawChrome() {
 
           <div className="flex items-center gap-0.5">
             <button type="button" title="Go to beginning" onClick={() => daw.rewindToStart()} className={ctrlBtnBase}>
+              <IconGoToStart />
+            </button>
+            <button
+              type="button"
+              title="Rewind (one beat)"
+              onClick={() => {
+                const beatSec = 60 / Math.max(40, daw.tempo);
+                daw.seek(Math.max(0, daw.currentTime - beatSec));
+              }}
+              className={ctrlBtnBase}
+            >
               <IconRewind />
             </button>
+            <button
+              type="button"
+              title="Fast forward (one beat)"
+              onClick={() => {
+                const beatSec = 60 / Math.max(40, daw.tempo);
+                daw.seek(Math.min(end, daw.currentTime + beatSec));
+              }}
+              className={ctrlBtnBase}
+            >
+              <IconFastForward />
+            </button>
             <button type="button" title="Go to end" onClick={() => daw.seek(end)} className={ctrlBtnBase}>
-              <IconForwardEnd />
+              <IconGoToEnd />
             </button>
             <button type="button" title="Stop" onClick={() => daw.stopTransport()} className={ctrlBtnBase}>
               <IconStop />
             </button>
-            <button type="button" title="Play" onClick={() => daw.play()} className={`${ctrlBtnBase} min-w-[40px]`}>
+            <button
+              type="button"
+              title="Play"
+              onClick={() => daw.play()}
+              className={`${daw.isPlaying ? ctrlBtnActive : ctrlBtnBase} min-w-[40px]`}
+            >
               <IconPlay />
             </button>
             <button
@@ -2032,8 +2099,32 @@ function DawChrome() {
             </button>
           </div>
 
-          {/* Right of LCD: Metronome, 1234 purple, flag */}
+          {/* Logic Pro: Master solos, then metronome / count-in (no stray “1234” clip / star) */}
           <div className="flex items-center gap-0.5 border-l pl-2" style={{ borderColor: LP.border }}>
+            <button
+              type="button"
+              title="Master Solo (control bar)"
+              onClick={() => setCtrlBarMasterSolo((v) => !v)}
+              className={`h-7 min-w-[30px] rounded-[3px] border text-[10px] font-bold shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] ${
+                ctrlBarMasterSolo
+                  ? "border-[#886600] bg-[#e8d44a] text-[#111]"
+                  : `${ctrlBtn} border-[#5a5a5e] bg-gradient-to-b from-[#727276] to-[#5a5a5e] text-[#eee]`
+              }`}
+            >
+              S
+            </button>
+            <button
+              type="button"
+              title="Master Mute (control bar)"
+              onClick={() => setCtrlBarMasterMute((v) => !v)}
+              className={`h-7 min-w-[30px] rounded-[3px] border text-[10px] font-bold shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] ${
+                ctrlBarMasterMute
+                  ? "border-[#3a7a7a] bg-[#5ab0b0] text-[#022]"
+                  : `${ctrlBtn} border-[#5a5a5e] bg-gradient-to-b from-[#727276] to-[#5a5a5e] text-[#eee]`
+              }`}
+            >
+              M
+            </button>
             <button
               type="button"
               title="Metronome"
@@ -2042,21 +2133,8 @@ function DawChrome() {
             >
               <IconMetronome off={!daw.metronomeOn} />
             </button>
-            <button type="button" title="Count-in" className={ctrlBtnBase}>
+            <button type="button" title="Count-in (1 · 2 · 3 · 4)" className={ctrlBtnBase}>
               <IconCountIn />
-            </button>
-            <button
-              type="button"
-              title="MIDI activity"
-              className={`${ctrlBtn} border-[#6a3eaa] bg-gradient-to-b from-[#7a4eba] to-[#5a2ea0] text-[10px] font-bold`}
-              style={{ minWidth: 36 }}
-            >
-              1234
-            </button>
-            <button type="button" title="Notifications" className={ctrlBtnBase}>
-              <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor">
-                <path d="M8 1l1 3h3l-2.5 2 1 3L8 7.5 5.5 9l1-3L4 4h3z" />
-              </svg>
             </button>
           </div>
 
@@ -2074,53 +2152,19 @@ function DawChrome() {
             />
           </div>
 
-          {/* Far right 4 icons — matches Logic Pro */}
+          {/* List · Notes · Loops · Media — matches Logic control bar browsers */}
           <div className="flex items-center gap-0.5 border-l pl-2" style={{ borderColor: LP.border }}>
             <button type="button" title="List editors" className={ctrlBtnBase}>
-              <svg
-                className="h-[18px] w-[18px]"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-              >
-                <path d="M4 6h16M4 10h16M4 14h16M4 18h16" strokeLinecap="round" />
-              </svg>
+              <IconListDoc />
             </button>
             <button type="button" title="Notepad" className={ctrlBtnBase}>
-              <svg
-                className="h-[18px] w-[18px]"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-              >
-                <rect x="5" y="3" width="14" height="18" rx="1.5" />
-                <path d="M9 7h6M9 11h6M9 15h3" strokeLinecap="round" />
-              </svg>
+              <IconNotePad />
             </button>
-            <button type="button" title="Comments" className={ctrlBtnBase}>
-              <svg
-                className="h-[18px] w-[18px]"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-              >
-                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-              </svg>
+            <button type="button" title="Loop Browser" className={ctrlBtnBase}>
+              <IconLoopBrowser />
             </button>
-            <button type="button" title="Lock" className={ctrlBtnBase}>
-              <svg
-                className="h-[18px] w-[18px]"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-              >
-                <rect x="5" y="11" width="14" height="10" rx="1.5" />
-                <path d="M8 11V7a4 4 0 0 1 8 0v4" />
-              </svg>
+            <button type="button" title="Media Browser" className={ctrlBtnBase}>
+              <IconMediaBrowser />
             </button>
           </div>
 
@@ -2202,71 +2246,117 @@ function DawChrome() {
           </div>
         </div>
 
-        {/* Row 2: Icon+Label toolbar — matches Logic Pro screenshot exactly */}
+        {/* Row 2: Logic-style macro buttons (icon above label, monochrome) */}
         <div
-          className="flex flex-wrap items-end gap-3 border-t px-3 py-1 overflow-x-auto"
+          className="flex flex-wrap items-end gap-x-2 gap-y-1 border-t px-2 py-1 overflow-x-auto"
           style={{ borderColor: LP.border, background: `linear-gradient(180deg, ${LP.panel} 0%, ${LP.panelLo} 100%)` }}
         >
-          {[
-            { icon: "∿λ", label: "Articulation" },
-            { icon: "⊞↕", label: "Track Zoom" },
-            { icon: "♫↻", label: "Note Repeat" },
-            { icon: "⊘", label: "Spot Erase" },
-            { icon: "✂▎", label: "Split by Playhead" },
-            { icon: "✂⟨⟩", label: "Split by Locators" },
-            { icon: "⤓", label: "Bounce Regions" },
-          ].map((b) => (
-            <button
-              key={b.label}
-              type="button"
-              title={b.label}
-              className="flex flex-col items-center gap-0.5 rounded px-1.5 py-0.5 text-[#ccc] hover:bg-black/15"
-            >
-              <span className="text-[14px] leading-none">{b.icon}</span>
-              <span className="text-[8px] whitespace-nowrap">{b.label}</span>
-            </button>
-          ))}
-          <div className="mx-1 h-8 w-px bg-[#555] self-center" />
-          {/* Nudge Value */}
-          <div className="flex items-center gap-1">
-            <button type="button" className="text-[12px] text-[#aaa] hover:text-white">
+          <LogicMacroToolButton label="Articulation">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.25" aria-hidden>
+              <path d="M2.5 12c2.5-5.2 5.5-7.5 11-5.5" strokeLinecap="round" />
+              <path d="M10.5 3.8l3 2.2-1.2 2.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </LogicMacroToolButton>
+          <LogicMacroToolButton label="Track Zoom">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden>
+              <rect x="2" y="3" width="12" height="9" rx="1" />
+              <path d="M5 7h6M8 4.5v5" strokeLinecap="round" />
+              <path d="M4 13h8" strokeLinecap="round" />
+            </svg>
+          </LogicMacroToolButton>
+          <LogicMacroToolButton label="Note Repeat">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden>
+              <path
+                d="M11 3v2.5c0 1.5-1.2 2-2.5 2h-2M4 11V8.5C4 7 5.2 6 6.5 6h2"
+                strokeLinecap="round"
+              />
+              <path d="M12.5 4.5L11 3v3h3" fill="currentColor" stroke="none" />
+              <path d="M3.5 11.5L5 13v-3H2" fill="currentColor" stroke="none" />
+            </svg>
+          </LogicMacroToolButton>
+          <LogicMacroToolButton label="Spot Erase">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden>
+              <circle cx="8" cy="8" r="4.5" />
+              <path d="M4.5 4.5l7 7" strokeLinecap="round" />
+            </svg>
+          </LogicMacroToolButton>
+          <LogicMacroToolButton label="Split by Playhead">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden>
+              <circle cx="5.2" cy="8" r="1.8" />
+              <circle cx="5.2" cy="12" r="1.8" />
+              <path d="M7 5l4 6" strokeLinecap="round" />
+              <path d="M8 2.5v11.5" strokeLinecap="round" opacity="0.55" />
+            </svg>
+          </LogicMacroToolButton>
+          <LogicMacroToolButton label="Split by Locators">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden>
+              <circle cx="4.5" cy="6" r="1.5" />
+              <circle cx="4.5" cy="11" r="1.5" />
+              <path d="M6.5 4.5L11 8l-4.5 3.5" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M12.5 2.5v11" strokeLinecap="round" opacity="0.45" />
+            </svg>
+          </LogicMacroToolButton>
+          <LogicMacroToolButton label="Bounce Regions">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden>
+              <path d="M3 4h10v6H3z" />
+              <path d="M8 10v3M6 12.5h4" strokeLinecap="round" />
+            </svg>
+          </LogicMacroToolButton>
+          <div className="mx-1 h-8 w-px shrink-0 bg-[#555] self-center" />
+          <div className="flex items-center gap-1 px-0.5">
+            <button type="button" className="text-[11px] text-[#aaa] hover:text-white" aria-label="Nudge down">
               ‹
             </button>
-            <span className="rounded border border-[#555] bg-[#3a3a3e] px-3 py-0.5 text-[10px] text-[#ddd]">Tick</span>
-            <button type="button" className="text-[12px] text-[#aaa] hover:text-white">
+            <span className="rounded border border-[#555] bg-[#3a3a3e] px-2.5 py-0.5 text-[9px] font-medium text-[#ddd]">
+              Tick
+            </span>
+            <button type="button" className="text-[11px] text-[#aaa] hover:text-white" aria-label="Nudge up">
               ›
             </button>
-            <span className="ml-0.5 text-[8px] text-[#999]">Nudge Value</span>
+            <span className="ml-0.5 hidden text-[8px] text-[#999] sm:inline">Nudge Value</span>
           </div>
-          <div className="mx-1 h-8 w-px bg-[#555] self-center" />
-          {[
-            { icon: "⟳§", label: "Repeat Section" },
-            { icon: "✂§", label: "Cut Section" },
-            { icon: "⟨⟩", label: "Set Locators" },
-            { icon: "🔍", label: "Zoom" },
-            { icon: "🎨", label: "Colors" },
-          ].map((b) => (
-            <button
-              key={b.label}
-              type="button"
-              title={b.label}
-              className="flex flex-col items-center gap-0.5 rounded px-1.5 py-0.5 text-[#ccc] hover:bg-black/15"
-            >
-              <span className="text-[14px] leading-none">{b.icon}</span>
-              <span className="text-[8px] whitespace-nowrap">{b.label}</span>
-            </button>
-          ))}
+          <div className="mx-1 h-8 w-px shrink-0 bg-[#555] self-center" />
+          <LogicMacroToolButton label="Repeat Section">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden>
+              <path d="M4 5h5M4 9h5M4 5v4" strokeLinecap="round" />
+              <path d="M11.5 6.5a3 3 0 110 3" strokeLinecap="round" />
+            </svg>
+          </LogicMacroToolButton>
+          <LogicMacroToolButton label="Cut Section">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden>
+              <rect x="3" y="5" width="6" height="5" rx="0.5" />
+              <path d="M7 9l4.5 4.5" strokeLinecap="round" />
+              <circle cx="4.5" cy="11.5" r="1.3" />
+              <circle cx="4.5" cy="13.5" r="1.3" />
+            </svg>
+          </LogicMacroToolButton>
+          <LogicMacroToolButton label="Set Locators">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden>
+              <path d="M3 3v10M13 3v10" strokeLinecap="round" />
+              <path d="M5 5h6M5 11h6" strokeLinecap="round" />
+            </svg>
+          </LogicMacroToolButton>
+          <LogicMacroToolButton label="Zoom">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden>
+              <circle cx="7" cy="7" r="3.8" />
+              <path d="M10 10l3.5 3.5" strokeLinecap="round" />
+            </svg>
+          </LogicMacroToolButton>
+          <LogicMacroToolButton label="Colors">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.1" aria-hidden>
+              <path d="M8 2l1.8 3.6 4 .7-2.9 2.8.7 4L8 12l-3.6 1.9.7-4-2.9-2.8 4-.7L8 2z" />
+            </svg>
+          </LogicMacroToolButton>
         </div>
 
+        {/* Row 3: Arrange tools — Logic order: Pointer, Pencil, Eraser, Text, Scissors, Glue, Solo, Mute, Zoom, Automation, Flex */}
         <div
           className="flex min-h-[36px] flex-wrap items-center gap-x-1 gap-y-1 border-t px-2 py-1"
           style={{ borderColor: LP.border, background: LP.panelLo }}
         >
-          {/* Undo arrow */}
-          <button type="button" className={`${ctrlBtnBase} h-6 w-6 text-[10px]`} title="Undo">
+          <button type="button" className={`${ctrlBtnBase} h-6 w-6 text-[11px]`} title="Undo">
             ↺
           </button>
-          {/* Edit / Functions / View dropdowns */}
           {["Edit", "Functions", "View"].map((m) => (
             <button
               key={m}
@@ -2277,98 +2367,67 @@ function DawChrome() {
             </button>
           ))}
           <div className="mx-1 h-4 w-px bg-[#555]" />
-          {/* Grid / List / Linear view icons */}
-          <button type="button" title="Grid view" className={ctrlBtnBase}>
-            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor">
-              <rect x="1" y="1" width="4" height="4" rx="0.5" />
-              <rect x="6" y="1" width="4" height="4" rx="0.5" />
-              <rect x="11" y="1" width="4" height="4" rx="0.5" />
-              <rect x="1" y="6" width="4" height="4" rx="0.5" />
-              <rect x="6" y="6" width="4" height="4" rx="0.5" />
-              <rect x="11" y="6" width="4" height="4" rx="0.5" />
-            </svg>
-          </button>
-          <button type="button" title="List view" className={ctrlBtnActive}>
-            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor">
-              <rect x="1" y="2" width="14" height="3" rx="0.5" />
-              <rect x="1" y="6" width="14" height="3" rx="0.5" />
-              <rect x="1" y="10" width="14" height="3" rx="0.5" />
-            </svg>
-          </button>
-          <button type="button" title="Linear view" className={ctrlBtnBase}>
-            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M2 8h12" strokeLinecap="round" />
-              <path d="M2 4h12M2 12h12" strokeLinecap="round" opacity="0.4" />
-            </svg>
-          </button>
-          <div className="mx-1 h-4 w-px bg-[#555]" />
-          {/* Pen / Auto / Flex tool icons */}
-          <button type="button" title="Pencil tool" className={ctrlBtnBase}>
-            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
-              <path d="M10 2l4 4-9 9H1v-4z" strokeLinejoin="round" />
-            </svg>
-          </button>
-          <button type="button" title="Automation" className={ctrlBtnBase}>
-            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
-              <path d="M1 12l4-8 4 6 6-8" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-          <button type="button" title="Flex" className={ctrlBtnBase}>
-            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
-              <path d="M2 8c2-4 4-4 6 0s4 4 6 0" strokeLinecap="round" />
-            </svg>
-          </button>
-          <div className="mx-1 h-4 w-px bg-[#555]" />
-          {/* Pointer / Crosshair / Plus tools */}
-          <button type="button" title="Pointer tool" className={ctrlBtnBase}>
-            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor">
+          <button type="button" title="Pointer tool" className={ctrlBtnActive}>
+            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
               <path d="M3 1l9 6-4 1 2 5-2 1-2-5-3 3z" />
             </svg>
           </button>
-          <button type="button" title="Crosshair / Marquee" className={ctrlBtnBase}>
-            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
-              <path d="M8 1v14M1 8h14" strokeLinecap="round" />
+          <button type="button" title="Pencil tool" className={ctrlBtnBase}>
+            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden>
+              <path d="M10 2l4 4-9 9H1v-4z" strokeLinejoin="round" />
+            </svg>
+          </button>
+          <button type="button" title="Eraser tool" className={ctrlBtnBase}>
+            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden>
+              <path d="M9.2 2.5l4.3 4.3-6 6-3-1-1-3 5.7-6.3z" strokeLinejoin="round" />
+              <path d="M3 14l3-1.5" strokeLinecap="round" />
+            </svg>
+          </button>
+          <button type="button" title="Text tool" className={ctrlBtnBase}>
+            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden>
+              <path d="M5 3h6M8 3v8M5 13h6" strokeLinecap="round" />
+            </svg>
+          </button>
+          <button type="button" title="Scissors" className={ctrlBtnBase}>
+            <IconScissors />
+          </button>
+          <button type="button" title="Glue" className={ctrlBtnBase}>
+            <IconGlue />
+          </button>
+          <button type="button" title="Solo (edit tool)" className={ctrlBtnBase}>
+            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.25" aria-hidden>
+              <path d="M2.5 10V6c0-2 2.5-3.8 5.5-3.8S13.5 4 13.5 6v4" strokeLinecap="round" />
+              <path d="M2.5 10c0 2 2.5 3.5 5.5 3.5S13.5 12 13.5 10" strokeLinecap="round" />
+              <path d="M8 14v1.8M6 16h4" strokeLinecap="round" />
+            </svg>
+          </button>
+          <button type="button" title="Mute (edit tool)" className={ctrlBtnBase}>
+            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.25" aria-hidden>
+              <path
+                d="M3 6.5h3l3-2v9l-3-2H3V6.5z"
+                strokeLinejoin="round"
+              />
+              <path d="M11.5 5.5l3 5M14.5 5.5l-3 5" strokeLinecap="round" />
             </svg>
           </button>
           <button type="button" title="Zoom tool" className={ctrlBtnBase}>
-            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
+            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden>
               <circle cx="7" cy="7" r="4" />
               <path d="M10 10l4 4" strokeLinecap="round" />
               <path d="M5 7h4M7 5v4" strokeLinecap="round" />
             </svg>
           </button>
-          <div className="mx-1 h-4 w-px bg-[#555]" />
-          {/* Gear / waveform / quantize */}
-          <button type="button" title="Settings" className={ctrlBtnBase}>
-            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2">
-              <circle cx="8" cy="8" r="2.5" />
-              <path
-                d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.5 1.5M11.5 11.5L13 13M13 3l-1.5 1.5M4.5 11.5L3 13"
-                strokeLinecap="round"
-              />
+          <button type="button" title="Automation" className={ctrlBtnBase}>
+            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden>
+              <path d="M1 12l4-8 4 6 6-8" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
-          <button type="button" title="Audio analysis" className={ctrlBtnBase}>
-            <IconWaveInst />
-          </button>
-          <button type="button" title="Quantize" className={ctrlBtnBase}>
-            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor">
-              <rect x="2" y="3" width="1.5" height="10" />
-              <rect x="5.5" y="3" width="1.5" height="10" />
-              <rect x="9" y="3" width="1.5" height="10" />
-              <rect x="12.5" y="3" width="1.5" height="10" />
+          <button type="button" title="Flex" className={ctrlBtnBase}>
+            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden>
+              <path d="M2 8c2-4 4-4 6 0s4 4 6 0" strokeLinecap="round" />
             </svg>
           </button>
           <div className="mx-1 h-4 w-px bg-[#555]" />
-          {/* Zoom vertical/horizontal with delta arrows */}
-          <button type="button" title="Zoom out vertical" className={`${ctrlBtnBase} h-6 w-5 text-[10px]`}>
-            ↕
-          </button>
-          <button type="button" title="Zoom out horizontal" className={`${ctrlBtnBase} h-6 w-5 text-[10px]`}>
-            ↔
-          </button>
-          <div className="mx-1 h-4 w-px bg-[#555]" />
-          {/* Snap / Drag */}
           <label className="flex items-center gap-1 text-[8px] text-[#aaa]">
             Snap
             <select
@@ -2391,7 +2450,7 @@ function DawChrome() {
             </select>
           </label>
           <label className="ml-auto flex min-w-[120px] max-w-[240px] flex-1 items-center gap-2 sm:max-w-md">
-            <span className="text-[8px] text-[#888]">Pos</span>
+            <span className="text-[8px] text-[#888] whitespace-nowrap">Playhead</span>
             <input
               type="range"
               min={0}
@@ -2399,7 +2458,7 @@ function DawChrome() {
               step={0.01}
               value={Math.min(daw.currentTime, end)}
               onChange={(e) => daw.seek(Number(e.target.value))}
-              className="h-1 w-full cursor-pointer"
+              className="h-1 w-full min-w-[72px] cursor-pointer"
               style={{ accentColor: LP.accentBlueHi }}
             />
           </label>
@@ -2933,7 +2992,6 @@ export function DawWorkspacePage() {
     </DawProvider>
   );
 }
-import type { CSSProperties, ReactNode } from "react";
 
 export type DawQuickHelpModalProps = {
   open: boolean;
@@ -2952,7 +3010,8 @@ function DefaultHelpBody() {
   return (
     <ul className="list-disc space-y-1.5 pl-4 text-[12px] leading-snug text-zinc-400">
       <li>
-        <span className="text-zinc-100">Transport:</span> Play, Stop, rewind / end, Record, Loop, Metronome.
+        <span className="text-zinc-100">Transport:</span> Play, Stop, go to start/end, rewind & fast-forward by beat,
+        Record, Loop, Metronome.
       </li>
       <li>
         <span className="text-zinc-100">Audio:</span> Import, drag files onto a track, or add sounds from your library
