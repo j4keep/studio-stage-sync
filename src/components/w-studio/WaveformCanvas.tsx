@@ -8,13 +8,24 @@ type Props = {
   color: string;
   /** Region fill behind the wave */
   fill?: string;
+  /** Optional window into the buffer (seconds). Defaults to full buffer. */
+  viewStartSec?: number;
+  viewEndSec?: number;
 };
 
 /**
  * Lightweight peak waveform (min/max per column) — reads channel 0.
  * Matches the “audiowave block” look in desktop DAWs.
  */
-export function WaveformCanvas({ buffer, width, height, color, fill = 'rgba(0,0,0,0.25)' }: Props) {
+export function WaveformCanvas({
+  buffer,
+  width,
+  height,
+  color,
+  fill = 'rgba(0,0,0,0.25)',
+  viewStartSec = 0,
+  viewEndSec,
+}: Props) {
   const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -35,10 +46,17 @@ export function WaveformCanvas({ buffer, width, height, color, fill = 'rgba(0,0,
     ctx.fillRect(0, 0, width, height);
 
     const data = buffer.getChannelData(0);
+    const sr = buffer.sampleRate;
+    const v0 = Math.max(0, viewStartSec);
+    const v1 = Math.min(buffer.duration, viewEndSec ?? buffer.duration);
+    const i0 = Math.max(0, Math.floor(v0 * sr));
+    const i1 = Math.min(data.length, Math.max(i0 + 1, Math.ceil(v1 * sr)));
+    const span = i1 - i0;
+
     const mid = height / 2;
     const amp = mid * 0.92;
     const cols = Math.max(1, Math.floor(width));
-    const step = Math.max(1, Math.floor(data.length / cols));
+    const step = Math.max(1, Math.floor(span / cols));
 
     ctx.lineWidth = 1;
     ctx.strokeStyle = color;
@@ -46,8 +64,8 @@ export function WaveformCanvas({ buffer, width, height, color, fill = 'rgba(0,0,
     for (let x = 0; x < cols; x++) {
       let min = 0;
       let max = 0;
-      const start = x * step;
-      const end = Math.min(start + step, data.length);
+      const start = i0 + x * step;
+      const end = Math.min(start + step, i1);
       for (let i = start; i < end; i++) {
         const s = data[i]!;
         if (s < min) min = s;
@@ -57,7 +75,7 @@ export function WaveformCanvas({ buffer, width, height, color, fill = 'rgba(0,0,
       ctx.lineTo(x + 0.5, mid - min * amp);
     }
     ctx.stroke();
-  }, [buffer, width, height, color, fill]);
+  }, [buffer, width, height, color, fill, viewStartSec, viewEndSec]);
 
   return <canvas ref={ref} className="pointer-events-none block" aria-hidden />;
 }

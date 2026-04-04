@@ -1,4 +1,5 @@
-import type { EffectPresetId, EqPresetId, MidiNote, SpacePresetId, Track } from './types';
+import type { Clip, EffectPresetId, EqPresetId, MidiNote, SpacePresetId, Track } from './types';
+import { clipTimelineEnd, clipTrimEnd, clipTrimStart } from './types';
 
 /**
  * Downsample amplitude envelope from an `AudioBuffer` for lightweight previews / meters.
@@ -44,6 +45,14 @@ export function faderToDbLabel(t: number): string {
   const db = minDb + p * (maxDb - minDb);
   if (db <= -55.5) return '−∞';
   return `${db >= 0 ? '+' : ''}${db.toFixed(1)}`;
+}
+
+/** dB label for a linear clip / gain multiplier (1.0 = 0 dB). */
+export function linearGainToDbLabel(linear: number): string {
+  const g = Math.max(0, linear);
+  if (g < 0.00009) return '−∞';
+  const db = 20 * Math.log10(g);
+  return `${db >= 0 ? '+' : ''}${db.toFixed(1)} dB`;
 }
 
 export function configureEq(
@@ -867,14 +876,14 @@ export function audioBufferFromStereoFloat(
 }
 
 export function getTimelineEndSec(
-  tracks: { clips: { startTime: number; buffer: AudioBuffer }[]; midiNotes?: MidiNote[] }[],
+  tracks: { clips: { startTime: number; buffer: AudioBuffer; trimStart?: number; trimEnd?: number }[]; midiNotes?: MidiNote[] }[],
   tempoBpm = 120,
 ): number {
   const spb = 60 / Math.max(40, tempoBpm);
   let end = 8;
   for (const t of tracks) {
     for (const c of t.clips) {
-      end = Math.max(end, c.startTime + c.buffer.duration);
+      end = Math.max(end, clipTimelineEnd(c as import('./types').Clip));
     }
     for (const m of t.midiNotes ?? []) {
       end = Math.max(end, m.startBeats * spb + m.durationBeats * spb);
@@ -983,14 +992,21 @@ export async function offlineRenderMix(
     const g = inputs.get(track.id);
     if (!g) continue;
     for (const clip of track.clips) {
-      if (clip.startTime >= durationSec) continue;
+      const ts = clipTrimStart(clip);
+      const te = clipTrimEnd(clip);
+      const vis = Math.max(0.001, te - ts);
+      const clipEndT = clip.startTime + vis;
+      if (clip.startTime >= durationSec || clipEndT <= 0) continue;
       const src = offline.createBufferSource();
       src.buffer = clip.buffer;
-      src.connect(g);
+      const cg = offline.createGain();
+      cg.gain.value = Math.max(0, clip.clipGain ?? 1);
+      src.connect(cg);
+      cg.connect(g);
       const maxDur = durationSec - clip.startTime;
-      const dur = Math.min(clip.buffer.duration, maxDur);
+      const dur = Math.min(vis, maxDur);
       if (dur <= 0) continue;
-      src.start(clip.startTime, 0, dur);
+      src.start(clip.startTime, ts, dur);
     }
     if (!trackAudible(track, soloAny)) continue;
     for (const note of track.midiNotes ?? []) {

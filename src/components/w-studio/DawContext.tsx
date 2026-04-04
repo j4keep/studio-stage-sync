@@ -16,6 +16,7 @@ import {
   configureEq,
   configureSpace,
   createLibrarySound,
+  createWaveformData,
   encodeWavFromAudioBuffer,
   faderToGain,
   getTimelineEndSec,
@@ -25,10 +26,13 @@ import {
   trackAudible,
   type LibrarySoundId,
 } from './audio';
+import { DAWEngine } from './dawEngine';
 import { MIC_CHAIN_PRESETS, type MicChainPresetId } from './micPresets';
 import { hydrateProject, parseProjectJSON, serializeProject } from './projectIO';
 import { REMOTE_LIBRARY_FLAT } from './remoteLibrary';
 import {
+  clipTrimEnd,
+  clipTrimStart,
   newTrack,
   type Clip,
   type ClipSourceMeta,
@@ -72,6 +76,9 @@ type DawContextValue = {
   isRecording: boolean;
   loopEnabled: boolean;
   setLoopEnabled: (v: boolean) => void;
+  loopStartSec: number;
+  loopEndSec: number;
+  setLoopRegionSec: (startSec: number, endSec: number) => void;
   metronomeOn: boolean;
   setMetronomeOn: (v: boolean) => void;
   tempo: number;
@@ -130,6 +137,9 @@ type DawContextValue = {
   /** Timeline time when the current take started (punch-in). */
   recordingPunchInTime: number | null;
   moveClip: (trackId: string, clipId: string, startTime: number) => void;
+  trimClipEdge: (clipId: string, edge: 'left' | 'right', deltaSec: number) => void;
+  /** Linear gain before the track fader (1 = unity, 0 = mute, max 4 ≈ +12 dB). */
+  setClipGain: (trackId: string, clipId: string, gain: number) => void;
 };
 
 const DawContext = createContext<DawContextValue | null>(null);
@@ -154,6 +164,8 @@ export function DawProvider({ children }: { children: ReactNode }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [loopEnabled, setLoopEnabled] = useState(false);
+  const [loopStartSec, setLoopStartSec] = useState(0);
+  const [loopEndSec, setLoopEndSec] = useState(() => (60 / 120) * 4 * 4);
   const [metronomeOn, setMetronomeOn] = useState(false);
   const [tempo, setTempo] = useState(120);
   const [beatsPerBar, setBeatsPerBar] = useState(4);
@@ -169,6 +181,22 @@ export function DawProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     loopEnabledRef.current = loopEnabled;
   }, [loopEnabled]);
+
+  const loopStartSecRef = useRef(loopStartSec);
+  const loopEndSecRef = useRef(loopEndSec);
+  useEffect(() => {
+    loopStartSecRef.current = loopStartSec;
+  }, [loopStartSec]);
+  useEffect(() => {
+    loopEndSecRef.current = loopEndSec;
+  }, [loopEndSec]);
+
+  const setLoopRegionSec = useCallback((a: number, b: number) => {
+    const lo = Math.max(0, Math.min(a, b));
+    const hi = Math.max(lo + 0.05, Math.max(a, b));
+    setLoopStartSec(lo);
+    setLoopEndSec(hi);
+  }, []);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const masterGainRef = useRef<GainNode | null>(null);
@@ -367,17 +395,8 @@ export function DawProvider({ children }: { children: ReactNode }) {
         if (!trackAudible(tr, soloAny)) continue;
         const nodes = ensureTrackNodes(ctx, tr.id);
         for (const clip of tr.clips) {
-          const clipEnd = clip.startTime + clip.buffer.duration;
-          if (clipEnd <= p0) continue;
-          const playFrom = Math.max(p0, clip.startTime);
-          const offset = playFrom - clip.startTime;
-          const duration = clipEnd - playFrom;
-          const when = t0 + (playFrom - p0);
-          const src = ctx.createBufferSource();
-          src.buffer = clip.buffer;
-          src.connect(nodes.fader);
-          src.start(when, offset, duration);
-          activeSourcesRef.current.push(src);
+          const src = DAWEngine.scheduleClipIfAudible(ctx, clip, nodes.fader, t0, p0);
+          if (src) activeSourcesRef.current.push(src);
         }
         for (const note of tr.midiNotes) {
           const ns = note.startBeats * spb;
@@ -430,18 +449,20 @@ export function DawProvider({ children }: { children: ReactNode }) {
     if (!ctx || !sess) return;
     const t = sess.p0 + (ctx.currentTime - sess.t0);
     const end = getTimelineEndSec(tracksRef.current, tempoRef.current);
+    const ls = loopStartSecRef.current;
+    const le = loopEndSecRef.current;
+    if (loopEnabledRef.current && le > ls + 0.01 && t >= le) {
+      stopPlaybackSources();
+      const t0 = ctx.currentTime;
+      const p0 = ls;
+      playSessionRef.current = { t0, p0 };
+      schedulePlayback(ctx, t0, p0);
+      setCurrentTime(ls);
+      setStatus('Loop…');
+      rafRef.current = requestAnimationFrame(tickPlayhead);
+      return;
+    }
     if (end > 0.02 && t >= end) {
-      if (loopEnabledRef.current) {
-        stopPlaybackSources();
-        const t0 = ctx.currentTime;
-        const p0 = 0;
-        playSessionRef.current = { t0, p0 };
-        schedulePlayback(ctx, t0, p0);
-        setCurrentTime(0);
-        setStatus('Loop…');
-        rafRef.current = requestAnimationFrame(tickPlayhead);
-        return;
-      }
       for (const s of activeSourcesRef.current) {
         try {
           s.stop();
@@ -756,10 +777,21 @@ export function DawProvider({ children }: { children: ReactNode }) {
     }
 
     const buf = audioBufferFromStereoFloat(ctx, merged.L, merged.R, ctx.sampleRate);
+    let peaks: number[];
+    try {
+      peaks = createWaveformData(buf, 120);
+    } catch {
+      peaks = [];
+    }
     const clip: Clip = {
       id: crypto.randomUUID(),
       startTime: startSec,
       buffer: buf,
+      name: 'Take 1',
+      trimStart: 0,
+      trimEnd: buf.duration,
+      clipGain: 1,
+      waveformPeaks: peaks,
     };
 
     setTracks((prev) =>
@@ -1003,13 +1035,67 @@ export function DawProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  const trimClipEdge = useCallback((clipId: string, edge: 'left' | 'right', deltaSec: number) => {
+    setTracks((prev) =>
+      prev.map((tr) => ({
+        ...tr,
+        clips: tr.clips.map((c) => {
+          if (c.id !== clipId) return c;
+          const ts = clipTrimStart(c);
+          const te = clipTrimEnd(c);
+          const bufMax = c.buffer.duration;
+          if (edge === 'left') {
+            const newTrimStart = Math.max(0, ts + deltaSec);
+            const maxTs = te - 0.05;
+            const safeTS = Math.min(newTrimStart, maxTs);
+            const diff = safeTS - ts;
+            return {
+              ...c,
+              trimStart: safeTS,
+              startTime: c.startTime + diff,
+            };
+          }
+          const newTrimEnd = te + deltaSec;
+          const minTe = ts + 0.05;
+          const safeTE = Math.max(newTrimEnd, minTe);
+          const capped = Math.min(safeTE, bufMax);
+          return { ...c, trimEnd: capped };
+        }),
+      })),
+    );
+  }, []);
+
+  const setClipGain = useCallback((trackId: string, clipId: string, gain: number) => {
+    const g = Math.max(0, Math.min(4, gain));
+    setTracks((prev) =>
+      prev.map((tr) =>
+        tr.id !== trackId
+          ? tr
+          : {
+              ...tr,
+              clips: tr.clips.map((c) => (c.id === clipId ? { ...c, clipGain: g } : c)),
+            },
+      ),
+    );
+  }, []);
+
   const addClipFromBuffer = useCallback(
     (trackId: string, buffer: AudioBuffer, startTime?: number, sourceMeta?: ClipSourceMeta) => {
       const at = startTime ?? currentTimeRef.current;
+      let peaks: number[];
+      try {
+        peaks = createWaveformData(buffer, 100);
+      } catch {
+        peaks = [];
+      }
       const clip: Clip = {
         id: crypto.randomUUID(),
         startTime: Math.max(0, at),
         buffer,
+        trimStart: 0,
+        trimEnd: buffer.duration,
+        clipGain: 1,
+        waveformPeaks: peaks,
         ...(sourceMeta ? { sourceMeta } : {}),
       };
       setTracks((prev) =>
@@ -1202,6 +1288,9 @@ export function DawProvider({ children }: { children: ReactNode }) {
       isRecording,
       loopEnabled,
       setLoopEnabled,
+      loopStartSec,
+      loopEndSec,
+      setLoopRegionSec,
       metronomeOn,
       setMetronomeOn,
       tempo,
@@ -1249,6 +1338,8 @@ export function DawProvider({ children }: { children: ReactNode }) {
       recordingLivePeaks,
       recordingPunchInTime,
       moveClip,
+      trimClipEdge,
+      setClipGain,
     }),
     [
       tracks,
@@ -1260,6 +1351,9 @@ export function DawProvider({ children }: { children: ReactNode }) {
       recordingLivePeaks,
       recordingPunchInTime,
       loopEnabled,
+      loopStartSec,
+      loopEndSec,
+      setLoopRegionSec,
       metronomeOn,
       tempo,
       beatsPerBar,
@@ -1289,6 +1383,8 @@ export function DawProvider({ children }: { children: ReactNode }) {
       stopRecord,
       deleteClip,
       moveClip,
+      trimClipEdge,
+      setClipGain,
       addClipFromBuffer,
       addLibraryClip,
       addRemoteLibraryClip,

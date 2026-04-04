@@ -7,8 +7,35 @@ export type Clip = {
   id: string;
   startTime: number;
   buffer: AudioBuffer;
+  /** Optional label in the lane */
+  name?: string;
+  /** Trim: seconds into buffer where audible region starts (default 0) */
+  trimStart?: number;
+  /** Trim: seconds into buffer where region ends (default buffer.duration) */
+  trimEnd?: number;
+  /** Per-clip gain multiplier (applied before track fader) */
+  clipGain?: number;
+  /** Normalized peak envelope for bar waveform UI */
+  waveformPeaks?: number[];
   sourceMeta?: ClipSourceMeta;
 };
+
+export function clipTrimStart(c: Clip): number {
+  return Math.max(0, c.trimStart ?? 0);
+}
+
+export function clipTrimEnd(c: Clip): number {
+  const d = c.buffer.duration;
+  return Math.min(d, c.trimEnd ?? d);
+}
+
+export function clipVisibleDuration(c: Clip): number {
+  return Math.max(0.001, clipTrimEnd(c) - clipTrimStart(c));
+}
+
+export function clipTimelineEnd(c: Clip): number {
+  return c.startTime + clipVisibleDuration(c);
+}
 
 /** Piano-roll note; times in quarter-note beats (480 ticks = 1 beat if you scale later) */
 export type MidiNote = {

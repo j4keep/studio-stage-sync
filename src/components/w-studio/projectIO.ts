@@ -1,13 +1,16 @@
 import { createLibrarySound, type LibrarySoundId } from './audio';
 import { REMOTE_LIBRARY_FLAT } from './remoteLibrary';
-import type {
-  ClipSourceMeta,
-  EffectPresetId,
-  EqPresetId,
-  MidiNote,
-  SpacePresetId,
-  Track,
-  TrackKind,
+import {
+  clipTrimEnd,
+  clipTrimStart,
+  clipVisibleDuration,
+  type ClipSourceMeta,
+  type EffectPresetId,
+  type EqPresetId,
+  type MidiNote,
+  type SpacePresetId,
+  type Track,
+  type TrackKind,
 } from './types';
 
 export const PROJECT_FILE_VERSION = 1 as const;
@@ -17,6 +20,11 @@ export type SerializedClipV1 = {
   startTime: number;
   durationSec: number;
   source: ClipSourceMeta;
+  /** Seconds into decoded buffer; omit means 0 */
+  trimStartSec?: number;
+  /** Seconds into decoded buffer; omit means full buffer duration */
+  trimEndSec?: number;
+  clipGain?: number;
 };
 
 export type SerializedTrackV1 = {
@@ -66,7 +74,10 @@ export function serializeProject(tracks: Track[], tempo: number, beatsPerBar: nu
         .map((c) => ({
           id: c.id,
           startTime: c.startTime,
-          durationSec: c.buffer.duration,
+          durationSec: clipVisibleDuration(c),
+          trimStartSec: clipTrimStart(c),
+          trimEndSec: clipTrimEnd(c),
+          clipGain: c.clipGain,
           source: c.sourceMeta,
         })),
       midiNotes: t.midiNotes.map((m) => ({ ...m })),
@@ -111,10 +122,15 @@ export async function hydrateProject(data: SerializedProjectV1, ctx: AudioContex
       try {
         if (sc.source.type === 'library') {
           const buf = createLibrarySound(ctx, sc.source.soundId as LibrarySoundId);
+          const t0 = sc.trimStartSec ?? 0;
+          const t1 = sc.trimEndSec ?? buf.duration;
           tr.clips.push({
             id: sc.id,
             startTime: sc.startTime,
             buffer: buf,
+            trimStart: t0,
+            trimEnd: Math.min(buf.duration, t1),
+            clipGain: sc.clipGain,
             sourceMeta: sc.source,
           });
         } else if (sc.source.type === 'remote') {
@@ -125,10 +141,15 @@ export async function hydrateProject(data: SerializedProjectV1, ctx: AudioContex
           if (!res.ok) continue;
           const ab = await res.arrayBuffer();
           const buf = await ctx.decodeAudioData(ab.slice(0));
+          const t0 = sc.trimStartSec ?? 0;
+          const t1 = sc.trimEndSec ?? buf.duration;
           tr.clips.push({
             id: sc.id,
             startTime: sc.startTime,
             buffer: buf,
+            trimStart: t0,
+            trimEnd: Math.min(buf.duration, t1),
+            clipGain: sc.clipGain,
             sourceMeta: { type: 'remote', remoteId: remoteSource.remoteId },
           });
         }

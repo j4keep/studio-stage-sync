@@ -1,6 +1,7 @@
 /* W.Studio DAW Workspace */
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { TrackKind } from "./types";
+import { clipTrimEnd, clipTrimStart } from "./types";
 import {
   EFFECT_PRESET_LABELS,
   EQ_PRESET_LABELS,
@@ -8,6 +9,7 @@ import {
   SPACE_PRESET_LABELS,
   faderToDbLabel,
   getTimelineEndSec,
+  linearGainToDbLabel,
 } from "./audio";
 import { MIC_CHAIN_PRESETS } from "./micPresets";
 import { REMOTE_LIBRARY_BY_CATEGORY } from "./remoteLibrary";
@@ -1593,6 +1595,9 @@ function CycleRangeRuler({
   beatsPerBar,
   currentTime,
   loopEnabled,
+  loopStartSec,
+  loopEndSec,
+  setLoopRegionSec,
   onSeek,
   scrollLeft,
 }: {
@@ -1603,26 +1608,23 @@ function CycleRangeRuler({
   beatsPerBar: number;
   currentTime: number;
   loopEnabled: boolean;
+  loopStartSec: number;
+  loopEndSec: number;
+  setLoopRegionSec: (a: number, b: number) => void;
   onSeek: (t: number) => void;
   scrollLeft: number;
 }) {
-  const [cycleStart, setCycleStart] = useState(0); // in bars (0-indexed)
-  const [cycleEnd, setCycleEnd] = useState(4); // in bars (0-indexed), so 4 bars = bars 1-4
-  const [dragging, setDragging] = useState<"playhead" | "cycleLeft" | "cycleRight" | "cycleBody" | null>(null);
-  const dragStartRef = useRef({ x: 0, cycleStart: 0, cycleEnd: 0 });
+  const dragStartRef = useRef({ x: 0, loopStart: 0, loopEnd: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
 
   const totalBars = Math.max(TIMELINE_BAR_LIMIT, Math.ceil(end / secPerBar(tempo, beatsPerBar)) + 1);
-  const maxBars = TIMELINE_BAR_LIMIT;
 
-  const pxToBar = (px: number) => Math.max(0, Math.min(maxBars, px / barW));
   const pxToSec = (px: number) => Math.max(0, px / PX_PER_SEC);
 
   const handleMouseDown = (e: React.MouseEvent, type: "playhead" | "cycleLeft" | "cycleRight" | "cycleBody") => {
     e.preventDefault();
     e.stopPropagation();
-    setDragging(type);
-    dragStartRef.current = { x: e.clientX, cycleStart, cycleEnd };
+    dragStartRef.current = { x: e.clientX, loopStart: loopStartSec, loopEnd: loopEndSec };
 
     const onMove = (ev: MouseEvent) => {
       const rect = containerRef.current?.getBoundingClientRect();
@@ -1632,24 +1634,19 @@ function CycleRangeRuler({
       if (type === "playhead") {
         onSeek(pxToSec(relX));
       } else if (type === "cycleLeft") {
-        const newStart = Math.round(pxToBar(relX));
-        if (newStart < cycleEnd) setCycleStart(Math.max(0, newStart));
+        const t = Math.max(0, Math.min(pxToSec(relX), loopEndSec - 0.05));
+        setLoopRegionSec(t, loopEndSec);
       } else if (type === "cycleRight") {
-        const newEnd = Math.round(pxToBar(relX));
-        if (newEnd > cycleStart) setCycleEnd(Math.min(maxBars, newEnd));
+        setLoopRegionSec(loopStartSec, Math.max(loopStartSec + 0.05, pxToSec(relX)));
       } else if (type === "cycleBody") {
-        const dx = ev.clientX - dragStartRef.current.x;
-        const dBars = Math.round(dx / barW);
-        const len = dragStartRef.current.cycleEnd - dragStartRef.current.cycleStart;
-        let newStart = dragStartRef.current.cycleStart + dBars;
-        newStart = Math.max(0, Math.min(maxBars - len, newStart));
-        setCycleStart(newStart);
-        setCycleEnd(newStart + len);
+        const dSec = (ev.clientX - dragStartRef.current.x) / PX_PER_SEC;
+        const lo = dragStartRef.current.loopStart + dSec;
+        const hi = dragStartRef.current.loopEnd + dSec;
+        setLoopRegionSec(lo, hi);
       }
     };
 
     const onUp = () => {
-      setDragging(null);
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
@@ -1658,10 +1655,12 @@ function CycleRangeRuler({
     window.addEventListener("mouseup", onUp);
   };
 
-  const cycleLeftPx = cycleStart * barW;
-  const cycleRightPx = cycleEnd * barW;
+  const cycleLeftPx = loopStartSec * PX_PER_SEC;
+  const cycleRightPx = loopEndSec * PX_PER_SEC;
   const playheadPx = currentTime * PX_PER_SEC;
-  void dragging;
+  const spbLoop = secPerBar(tempo, beatsPerBar);
+  const cycleStartBar = Math.floor(loopStartSec / spbLoop);
+  const cycleEndBar = Math.max(cycleStartBar + 1, Math.ceil(loopEndSec / spbLoop));
 
   return (
     <div
@@ -1706,13 +1705,13 @@ function CycleRangeRuler({
                 }}
                 style={{ borderRight: "2px solid #8a7028" }}
               />
-              {Array.from({ length: cycleEnd - cycleStart }).map((_, i) => (
+              {Array.from({ length: cycleEndBar - cycleStartBar }).map((_, i) => (
                 <span
                   key={i}
                   className="absolute top-0 font-mono text-[9px] font-bold"
                   style={{ left: i * barW + 4, color: loopEnabled ? "#5a3a10" : "#444" }}
                 >
-                  {cycleStart + i + 1}
+                  {cycleStartBar + i + 1}
                 </span>
               ))}
             </div>
@@ -1831,6 +1830,15 @@ function DawChrome() {
     scroll0: number;
     previewStart: number;
   } | null>(null);
+  const trimDragRef = useRef<{
+    clipId: string;
+    trackId: string;
+    edge: "left" | "right";
+    startClientX: number;
+    scroll0: number;
+    previewDeltaSec: number;
+  } | null>(null);
+  const [, setTrimDragTick] = useState(0);
 
   /* responsive defaults handled in useState initializers above */
 
@@ -1887,6 +1895,29 @@ function DawChrome() {
       clipDragRef.current = null;
       if (d) daw.moveClip(d.trackId, d.clipId, d.previewStart);
       setClipDragTick((t) => t + 1);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [daw]);
+
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      const d = trimDragRef.current;
+      if (!d) return;
+      const sc = arrangeScrollRef.current?.scrollLeft ?? 0;
+      const dxPx = e.clientX - d.startClientX + (sc - d.scroll0);
+      d.previewDeltaSec = dxPx / PX_PER_SEC;
+      setTrimDragTick((t) => t + 1);
+    };
+    const onUp = () => {
+      const d = trimDragRef.current;
+      trimDragRef.current = null;
+      if (d && d.previewDeltaSec !== 0) daw.trimClipEdge(d.clipId, d.edge, d.previewDeltaSec);
+      setTrimDragTick((t) => t + 1);
     };
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
@@ -2674,6 +2705,9 @@ function DawChrome() {
                 beatsPerBar={daw.beatsPerBar}
                 currentTime={daw.currentTime}
                 loopEnabled={daw.loopEnabled}
+                loopStartSec={daw.loopStartSec}
+                loopEndSec={daw.loopEndSec}
+                setLoopRegionSec={daw.setLoopRegionSec}
                 onSeek={(t) => daw.seek(t)}
                 scrollLeft={arrangeScrollLeft}
               />
@@ -2929,12 +2963,33 @@ function DawChrome() {
                           </div>
                         ) : null}
                         {tr.clips.map((c) => {
-                          const w = Math.max(24, c.buffer.duration * PX_PER_SEC);
+                          const ts0 = clipTrimStart(c);
+                          const te0 = clipTrimEnd(c);
+                          let dispTs = ts0;
+                          let dispTe = te0;
+                          let clipLeftSec = c.startTime;
+                          const trd = trimDragRef.current;
+                          if (trd && trd.clipId === c.id) {
+                            if (trd.edge === "left") {
+                              const newTs = Math.max(0, Math.min(te0 - 0.05, ts0 + trd.previewDeltaSec));
+                              const diff = newTs - ts0;
+                              dispTs = newTs;
+                              dispTe = te0;
+                              clipLeftSec = c.startTime + diff;
+                            } else {
+                              dispTs = ts0;
+                              dispTe = Math.max(ts0 + 0.05, Math.min(c.buffer.duration, te0 + trd.previewDeltaSec));
+                              clipLeftSec = c.startTime;
+                            }
+                          }
+                          const d = clipDragRef.current;
+                          if (d && d.trackId === tr.id && d.clipId === c.id) {
+                            clipLeftSec = d.previewStart;
+                          }
+                          const vis = Math.max(0.001, dispTe - dispTs);
+                          const w = Math.max(24, vis * PX_PER_SEC);
                           const h = 54;
                           const isSel = selection?.trackId === tr.id && selection?.clipId === c.id;
-                          const d = clipDragRef.current;
-                          const clipLeftSec =
-                            d && d.trackId === tr.id && d.clipId === c.id ? d.previewStart : c.startTime;
                           return (
                             <div
                               key={c.id}
@@ -2985,10 +3040,46 @@ function DawChrome() {
                                 height={h}
                                 color={tr.color}
                                 fill="rgba(0,0,0,0.35)"
+                                viewStartSec={dispTs}
+                                viewEndSec={dispTe}
+                              />
+                              <div
+                                className="absolute left-0 top-0 z-20 h-full w-2 cursor-ew-resize bg-white/20 hover:bg-white/35"
+                                title="Trim start"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  trimDragRef.current = {
+                                    clipId: c.id,
+                                    trackId: tr.id,
+                                    edge: "left",
+                                    startClientX: e.clientX,
+                                    scroll0: arrangeScrollRef.current?.scrollLeft ?? 0,
+                                    previewDeltaSec: 0,
+                                  };
+                                  setTrimDragTick((t) => t + 1);
+                                }}
+                              />
+                              <div
+                                className="absolute right-0 top-0 z-20 h-full w-2 cursor-ew-resize bg-white/20 hover:bg-white/35"
+                                title="Trim end"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  trimDragRef.current = {
+                                    clipId: c.id,
+                                    trackId: tr.id,
+                                    edge: "right",
+                                    startClientX: e.clientX,
+                                    scroll0: arrangeScrollRef.current?.scrollLeft ?? 0,
+                                    previewDeltaSec: 0,
+                                  };
+                                  setTrimDragTick((t) => t + 1);
+                                }}
                               />
                               <button
                                 type="button"
-                                className="absolute right-0 top-0 z-10 hidden rounded-bl bg-black/55 px-1.5 py-0.5 text-[11px] text-white group-hover:inline"
+                                className="absolute right-2 top-0 z-10 hidden rounded-bl bg-black/55 px-1.5 py-0.5 text-[11px] text-white group-hover:inline"
                                 aria-label="Remove clip"
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -3014,7 +3105,7 @@ function DawChrome() {
       {editorsOpen ? (
         <footer
           className={`flex shrink-0 flex-col border-t ${
-            editorTab === "piano" ? "min-h-[240px] flex-1 lg:h-[min(320px,40vh)] lg:max-h-[420px]" : "h-[148px]"
+            editorTab === "piano" ? "min-h-[240px] flex-1 lg:h-[min(320px,40vh)] lg:max-h-[420px]" : "h-[180px]"
           }`}
           style={{ borderColor: LP.border, background: LP.panelLo }}
         >
@@ -3054,20 +3145,60 @@ function DawChrome() {
             ))}
           </div>
           <div className="flex min-h-0 flex-1 items-stretch">
-            {editorTab === "clip" && selectedClip && selectedTrack ? (
-              <div className="flex flex-1 items-center gap-3 p-3">
-                <div className="h-1 w-10 shrink-0 rounded" style={{ backgroundColor: selectedTrack.color }} />
+            {editorTab === "clip" && selectedClip && selectedTrack && selection ? (
+              <div className="flex min-h-0 flex-1 flex-col gap-2 p-3">
+                <div className="flex min-h-0 flex-1 items-center gap-3">
+                  <div className="h-1 w-10 shrink-0 rounded" style={{ backgroundColor: selectedTrack.color }} />
+                  <div
+                    className="min-h-0 min-w-0 flex-1 rounded border"
+                    style={{ borderColor: LP.border, background: "#2a2a2a" }}
+                  >
+                    <WaveformCanvas
+                      buffer={selectedClip.buffer}
+                      width={Math.min(1200, editorWavWidth)}
+                      height={88}
+                      color="#e8e8e8"
+                      fill="rgba(0,0,0,0.45)"
+                      viewStartSec={clipTrimStart(selectedClip)}
+                      viewEndSec={clipTrimEnd(selectedClip)}
+                    />
+                  </div>
+                </div>
                 <div
-                  className="min-h-0 flex-1 rounded border"
-                  style={{ borderColor: LP.border, background: "#2a2a2a" }}
+                  className="flex shrink-0 flex-wrap items-center gap-2 sm:gap-3"
+                  style={{ color: LP.text }}
                 >
-                  <WaveformCanvas
-                    buffer={selectedClip.buffer}
-                    width={Math.min(1200, editorWavWidth)}
-                    height={96}
-                    color="#e8e8e8"
-                    fill="rgba(0,0,0,0.45)"
-                  />
+                  <span className="min-w-0 text-[10px] font-semibold uppercase tracking-wide" style={{ color: LP.textMuted }}>
+                    {selectedClip.name ?? "Clip"}
+                  </span>
+                  <label className="flex min-w-0 flex-1 items-center gap-2 text-[11px]" htmlFor="wstudio-clip-gain">
+                    <span className="shrink-0" style={{ color: LP.textMuted }}>
+                      Gain
+                    </span>
+                    <input
+                      id="wstudio-clip-gain"
+                      type="range"
+                      min={0}
+                      max={4}
+                      step={0.01}
+                      value={selectedClip.clipGain ?? 1}
+                      onChange={(e) =>
+                        daw.setClipGain(selection.trackId, selection.clipId, Number(e.target.value))
+                      }
+                      className="h-1.5 min-w-[120px] flex-1 cursor-pointer accent-[#5a9eef]"
+                    />
+                    <span className="w-[72px] shrink-0 tabular-nums" title="Linear gain → dB">
+                      {linearGainToDbLabel(selectedClip.clipGain ?? 1)}
+                    </span>
+                    <button
+                      type="button"
+                      className="shrink-0 rounded border px-2 py-0.5 text-[10px] hover:bg-white/5"
+                      style={{ borderColor: LP.border, color: LP.textMuted }}
+                      onClick={() => daw.setClipGain(selection.trackId, selection.clipId, 1)}
+                    >
+                      0 dB
+                    </button>
+                  </label>
                 </div>
               </div>
             ) : editorTab === "clip" ? (
