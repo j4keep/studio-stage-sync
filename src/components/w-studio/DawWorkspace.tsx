@@ -1791,6 +1791,19 @@ function LogicMacroToolButton({ label, children }: { label: string; children: Re
   );
 }
 
+type ArrangeEditTool =
+  | "pointer"
+  | "pencil"
+  | "eraser"
+  | "text"
+  | "scissors"
+  | "glue"
+  | "solo"
+  | "mute"
+  | "zoom"
+  | "automation"
+  | "flex";
+
 function DawChrome() {
   const daw = useDaw();
   const [editorTab, setEditorTab] = useState<"clip" | "piano">("clip");
@@ -1802,9 +1815,7 @@ function DawChrome() {
   const [editorsOpen, setEditorsOpen] = useState(false);
   const [focusWorkbench, setFocusWorkbench] = useState(false);
   const [mixerFilter, setMixerFilter] = useState("Tracks");
-  /** Control-bar-only toggles — full master solo/mute routing can wire later */
-  const [ctrlBarMasterMute, setCtrlBarMasterMute] = useState(false);
-  const [ctrlBarMasterSolo, setCtrlBarMasterSolo] = useState(false);
+  const [arrangeTool, setArrangeTool] = useState<ArrangeEditTool>("pointer");
   const fileRef = useRef<HTMLInputElement>(null);
   const projectFileRef = useRef<HTMLInputElement>(null);
   const importTrackRef = useRef<string>("");
@@ -1821,6 +1832,16 @@ function DawChrome() {
   }, [daw.tracks, daw.tempo, minimumTimelineEnd]);
 
   const widthPx = Math.ceil(end * PX_PER_SEC) + 160;
+
+  const exclusiveSoloSelection = useMemo(() => {
+    const sel = daw.selectedTrackId;
+    if (!sel) return false;
+    const soloed = daw.tracks.filter((t) => t.solo);
+    return soloed.length === 1 && soloed[0].id === sel;
+  }, [daw.tracks, daw.selectedTrackId]);
+
+  const arrangeToolBtn = (id: ArrangeEditTool) =>
+    arrangeTool === id ? ctrlBtnActive : ctrlBtnBase;
 
   const selectedClip =
     selection && daw.tracks.find((t) => t.id === selection.trackId)?.clips.find((c) => c.id === selection.clipId);
@@ -2103,10 +2124,10 @@ function DawChrome() {
           <div className="flex items-center gap-0.5 border-l pl-2" style={{ borderColor: LP.border }}>
             <button
               type="button"
-              title="Master Solo (control bar)"
-              onClick={() => setCtrlBarMasterSolo((v) => !v)}
+              title="Solo selected track only (toggle)"
+              onClick={() => daw.toggleExclusiveSoloSelection()}
               className={`h-7 min-w-[30px] rounded-[3px] border text-[10px] font-bold shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] ${
-                ctrlBarMasterSolo
+                exclusiveSoloSelection
                   ? "border-[#886600] bg-[#e8d44a] text-[#111]"
                   : `${ctrlBtn} border-[#5a5a5e] bg-gradient-to-b from-[#727276] to-[#5a5a5e] text-[#eee]`
               }`}
@@ -2115,10 +2136,10 @@ function DawChrome() {
             </button>
             <button
               type="button"
-              title="Master Mute (control bar)"
-              onClick={() => setCtrlBarMasterMute((v) => !v)}
+              title="Mute main mix (master)"
+              onClick={() => daw.setMasterMuted(!daw.masterMuted)}
               className={`h-7 min-w-[30px] rounded-[3px] border text-[10px] font-bold shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] ${
-                ctrlBarMasterMute
+                daw.masterMuted
                   ? "border-[#3a7a7a] bg-[#5ab0b0] text-[#022]"
                   : `${ctrlBtn} border-[#5a5a5e] bg-gradient-to-b from-[#727276] to-[#5a5a5e] text-[#eee]`
               }`}
@@ -2367,41 +2388,51 @@ function DawChrome() {
             </button>
           ))}
           <div className="mx-1 h-4 w-px bg-[#555]" />
-          <button type="button" title="Pointer tool" className={ctrlBtnActive}>
+          <button type="button" title="Pointer tool" className={arrangeToolBtn("pointer")} onClick={() => setArrangeTool("pointer")}>
             <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
               <path d="M3 1l9 6-4 1 2 5-2 1-2-5-3 3z" />
             </svg>
           </button>
-          <button type="button" title="Pencil tool" className={ctrlBtnBase}>
+          <button type="button" title="Pencil tool" className={arrangeToolBtn("pencil")} onClick={() => setArrangeTool("pencil")}>
             <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden>
               <path d="M10 2l4 4-9 9H1v-4z" strokeLinejoin="round" />
             </svg>
           </button>
-          <button type="button" title="Eraser tool" className={ctrlBtnBase}>
+          <button type="button" title="Eraser tool" className={arrangeToolBtn("eraser")} onClick={() => setArrangeTool("eraser")}>
             <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden>
               <path d="M9.2 2.5l4.3 4.3-6 6-3-1-1-3 5.7-6.3z" strokeLinejoin="round" />
               <path d="M3 14l3-1.5" strokeLinecap="round" />
             </svg>
           </button>
-          <button type="button" title="Text tool" className={ctrlBtnBase}>
+          <button type="button" title="Text tool" className={arrangeToolBtn("text")} onClick={() => setArrangeTool("text")}>
             <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden>
               <path d="M5 3h6M8 3v8M5 13h6" strokeLinecap="round" />
             </svg>
           </button>
-          <button type="button" title="Scissors" className={ctrlBtnBase}>
+          <button type="button" title="Scissors" className={arrangeToolBtn("scissors")} onClick={() => setArrangeTool("scissors")}>
             <IconScissors />
           </button>
-          <button type="button" title="Glue" className={ctrlBtnBase}>
+          <button type="button" title="Glue" className={arrangeToolBtn("glue")} onClick={() => setArrangeTool("glue")}>
             <IconGlue />
           </button>
-          <button type="button" title="Solo (edit tool)" className={ctrlBtnBase}>
+          <button
+            type="button"
+            title="Solo tool (region-style editing — mode only for now)"
+            className={arrangeToolBtn("solo")}
+            onClick={() => setArrangeTool("solo")}
+          >
             <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.25" aria-hidden>
               <path d="M2.5 10V6c0-2 2.5-3.8 5.5-3.8S13.5 4 13.5 6v4" strokeLinecap="round" />
               <path d="M2.5 10c0 2 2.5 3.5 5.5 3.5S13.5 12 13.5 10" strokeLinecap="round" />
               <path d="M8 14v1.8M6 16h4" strokeLinecap="round" />
             </svg>
           </button>
-          <button type="button" title="Mute (edit tool)" className={ctrlBtnBase}>
+          <button
+            type="button"
+            title="Mute tool (region-style editing — mode only for now)"
+            className={arrangeToolBtn("mute")}
+            onClick={() => setArrangeTool("mute")}
+          >
             <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.25" aria-hidden>
               <path
                 d="M3 6.5h3l3-2v9l-3-2H3V6.5z"
@@ -2410,19 +2441,19 @@ function DawChrome() {
               <path d="M11.5 5.5l3 5M14.5 5.5l-3 5" strokeLinecap="round" />
             </svg>
           </button>
-          <button type="button" title="Zoom tool" className={ctrlBtnBase}>
+          <button type="button" title="Zoom tool" className={arrangeToolBtn("zoom")} onClick={() => setArrangeTool("zoom")}>
             <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden>
               <circle cx="7" cy="7" r="4" />
               <path d="M10 10l4 4" strokeLinecap="round" />
               <path d="M5 7h4M7 5v4" strokeLinecap="round" />
             </svg>
           </button>
-          <button type="button" title="Automation" className={ctrlBtnBase}>
+          <button type="button" title="Automation" className={arrangeToolBtn("automation")} onClick={() => setArrangeTool("automation")}>
             <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden>
               <path d="M1 12l4-8 4 6 6-8" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
-          <button type="button" title="Flex" className={ctrlBtnBase}>
+          <button type="button" title="Flex" className={arrangeToolBtn("flex")} onClick={() => setArrangeTool("flex")}>
             <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden>
               <path d="M2 8c2-4 4-4 6 0s4 4 6 0" strokeLinecap="round" />
             </svg>
@@ -3011,7 +3042,8 @@ function DefaultHelpBody() {
     <ul className="list-disc space-y-1.5 pl-4 text-[12px] leading-snug text-zinc-400">
       <li>
         <span className="text-zinc-100">Transport:</span> Play, Stop, go to start/end, rewind & fast-forward by beat,
-        Record, Loop, Metronome.
+        Record, Loop, Metronome. <span className="text-zinc-100">Control bar S</span> solos the selected track only;{" "}
+        <span className="text-zinc-100">M</span> mutes the main mix.
       </li>
       <li>
         <span className="text-zinc-100">Audio:</span> Import, drag files onto a track, or add sounds from your library

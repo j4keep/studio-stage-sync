@@ -81,6 +81,11 @@ type DawContextValue = {
   meterPeaks: Record<string, number>;
   masterVolume: number;
   setMasterVolume: (v: number) => void;
+  /** Hard-mutes the main mix at the master gain (Logic-style control-bar M). */
+  masterMuted: boolean;
+  setMasterMuted: (v: boolean) => void;
+  /** Solo only the selected track, or clear all solos if already in that state. */
+  toggleExclusiveSoloSelection: () => void;
   status: string;
   addTrackWithKind: (kind: TrackKind) => void;
   removeTrack: (id: string) => void;
@@ -147,6 +152,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
   const [beatsPerBar, setBeatsPerBar] = useState(4);
   const [meterPeaks, setMeterPeaks] = useState<Record<string, number>>({});
   const [masterVolume, setMasterVolumeState] = useState(1);
+  const [masterMuted, setMasterMutedState] = useState(false);
   const [status, setStatus] = useState('');
 
   const loopEnabledRef = useRef(loopEnabled);
@@ -182,6 +188,11 @@ export function DawProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     masterVolumeRef.current = masterVolume;
   }, [masterVolume]);
+
+  const masterMutedRef = useRef(masterMuted);
+  useEffect(() => {
+    masterMutedRef.current = masterMuted;
+  }, [masterMuted]);
 
   useEffect(() => {
     if (tracks.length && !selectedTrackId) {
@@ -222,10 +233,24 @@ export function DawProvider({ children }: { children: ReactNode }) {
     masterAnalyserRef.current = null;
   }, []);
 
+  const applyMasterGain = useCallback(() => {
+    const ctx = audioCtxRef.current;
+    const g = masterGainRef.current;
+    if (!ctx || !g) return;
+    const vol = Math.max(0, Math.min(1, masterVolumeRef.current));
+    const eff = masterMutedRef.current ? 0 : vol;
+    try {
+      g.gain.setValueAtTime(eff, ctx.currentTime);
+    } catch {
+      g.gain.value = eff;
+    }
+  }, []);
+
   const ensureMaster = useCallback((ctx: AudioContext) => {
     if (!masterGainRef.current || !masterAnalyserRef.current) {
       const mg = ctx.createGain();
-      mg.gain.value = Math.max(0, Math.min(1, masterVolumeRef.current));
+      const vol = Math.max(0, Math.min(1, masterVolumeRef.current));
+      mg.gain.value = masterMutedRef.current ? 0 : vol;
       const ma = ctx.createAnalyser();
       ma.fftSize = 1024;
       ma.smoothingTimeConstant = 0.55;
@@ -668,20 +693,24 @@ export function DawProvider({ children }: { children: ReactNode }) {
     setStatus(`Saved stereo clip (${buf.duration.toFixed(2)}s) on ${nm}.`);
   }, [isRecording, selectedTrackId, teardownMicGraph]);
 
-  const setMasterVolume = useCallback((v: number) => {
-    const nv = Math.max(0, Math.min(1, v));
-    setMasterVolumeState(nv);
-    masterVolumeRef.current = nv;
-    const ctx = audioCtxRef.current;
-    const g = masterGainRef.current;
-    if (ctx && g) {
-      try {
-        g.gain.setValueAtTime(nv, ctx.currentTime);
-      } catch {
-        g.gain.value = nv;
-      }
-    }
-  }, []);
+  const setMasterVolume = useCallback(
+    (v: number) => {
+      const nv = Math.max(0, Math.min(1, v));
+      setMasterVolumeState(nv);
+      masterVolumeRef.current = nv;
+      applyMasterGain();
+    },
+    [applyMasterGain],
+  );
+
+  const setMasterMuted = useCallback(
+    (muted: boolean) => {
+      setMasterMutedState(muted);
+      masterMutedRef.current = muted;
+      applyMasterGain();
+    },
+    [applyMasterGain],
+  );
 
   const addTrackWithKind = useCallback((kind: TrackKind) => {
     setTracks((prev) => [...prev, newTrack('', prev.length, kind)]);
@@ -849,6 +878,24 @@ export function DawProvider({ children }: { children: ReactNode }) {
     },
     [syncTrackNodeParams],
   );
+
+  const toggleExclusiveSoloSelection = useCallback(() => {
+    const ctx = audioCtxRef.current;
+    const sel = selectedTrackId;
+    if (!sel) return;
+    setTracks((prev) => {
+      const soloed = prev.filter((t) => t.solo);
+      const onlyThis = soloed.length === 1 && soloed[0].id === sel;
+      const next = onlyThis
+        ? prev.map((t) => ({ ...t, solo: false }))
+        : prev.map((t) => ({ ...t, solo: t.id === sel }));
+      if (ctx) {
+        const soloAny = anySolo(next);
+        for (const tr of next) syncTrackNodeParams(ctx, tr, soloAny);
+      }
+      return next;
+    });
+  }, [selectedTrackId, syncTrackNodeParams]);
 
   const toggleRecordArm = useCallback((id: string) => {
     setTracks((prev) =>
@@ -1075,6 +1122,8 @@ export function DawProvider({ children }: { children: ReactNode }) {
       meterPeaks,
       masterVolume,
       setMasterVolume,
+      masterMuted,
+      setMasterMuted,
       status,
       addTrackWithKind,
       removeTrack,
@@ -1088,6 +1137,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
       applyMicChainPreset,
       toggleMute,
       toggleSolo,
+      toggleExclusiveSoloSelection,
       toggleRecordArm,
       seek,
       rewindToStart,
@@ -1120,6 +1170,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
       beatsPerBar,
       meterPeaks,
       masterVolume,
+      masterMuted,
       status,
       addTrackWithKind,
       removeTrack,
@@ -1133,6 +1184,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
       applyMicChainPreset,
       toggleMute,
       toggleSolo,
+      toggleExclusiveSoloSelection,
       toggleRecordArm,
       seek,
       rewindToStart,
@@ -1153,6 +1205,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
       updateMidiNote,
       setBeatsPerBar,
       setMasterVolume,
+      setMasterMuted,
     ],
   );
 
