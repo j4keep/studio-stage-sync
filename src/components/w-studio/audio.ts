@@ -1,5 +1,27 @@
 import type { EffectPresetId, EqPresetId, MidiNote, SpacePresetId, Track } from './types';
 
+/**
+ * Downsample amplitude envelope from an `AudioBuffer` for lightweight previews / meters.
+ * Uses channel 0 (mono mix for display).
+ */
+export function createWaveformData(audioBuffer: AudioBuffer, samples = 200): number[] {
+  const ch0 = audioBuffer.getChannelData(0);
+  const n = ch0.length;
+  if (n === 0 || samples <= 0) return [];
+  const blockSize = Math.max(1, Math.floor(n / samples));
+  const waveform: number[] = [];
+  for (let i = 0; i < samples; i++) {
+    let sum = 0;
+    const start = i * blockSize;
+    const end = Math.min(start + blockSize, n);
+    for (let j = start; j < end; j++) {
+      sum += Math.abs(ch0[j]!);
+    }
+    waveform.push(sum / (end - start));
+  }
+  return waveform;
+}
+
 export function midiNoteToFreq(midi: number): number {
   const m = Math.max(0, Math.min(127, midi));
   return 440 * Math.pow(2, (m - 69) / 12);

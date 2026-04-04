@@ -123,6 +123,13 @@ type DawContextValue = {
   removeMidiNote: (trackId: string, noteId: string) => void;
   updateMidiNote: (trackId: string, noteId: string, patch: Partial<Omit<MidiNote, 'id'>>) => void;
   setBeatsPerBar: (n: number) => void;
+  /** Lane receiving input while recording (for live waveform overlay). */
+  recordingTrackId: string | null;
+  /** Normalized mic peaks while recording (for live strip). */
+  recordingLivePeaks: number[];
+  /** Timeline time when the current take started (punch-in). */
+  recordingPunchInTime: number | null;
+  moveClip: (trackId: string, clipId: string, startTime: number) => void;
 };
 
 const DawContext = createContext<DawContextValue | null>(null);
@@ -153,6 +160,9 @@ export function DawProvider({ children }: { children: ReactNode }) {
   const [meterPeaks, setMeterPeaks] = useState<Record<string, number>>({});
   const [masterVolume, setMasterVolumeState] = useState(1);
   const [masterMuted, setMasterMutedState] = useState(false);
+  const [recordingTrackId, setRecordingTrackId] = useState<string | null>(null);
+  const [recordingLivePeaks, setRecordingLivePeaks] = useState<number[]>([]);
+  const [recordingPunchInTime, setRecordingPunchInTime] = useState<number | null>(null);
   const [status, setStatus] = useState('');
 
   const loopEnabledRef = useRef(loopEnabled);
@@ -204,6 +214,42 @@ export function DawProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     isRecordingRef.current = isRecording;
   }, [isRecording]);
+
+  const isPlayingRef = useRef(isPlaying);
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
+
+  /** Seed first two tracks once per browser tab so lanes show waveforms (avoids Strict Mode double-insert). */
+  useEffect(() => {
+    if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('wstudio_arrange_demo_v1') === '1') return;
+    const ctx = ensureAudioCtx(audioCtxRef);
+    void ctx.resume().then(() => {
+      const kick = createLibrarySound(ctx, 'kick');
+      const snare = createLibrarySound(ctx, 'snare');
+      setTracks((prev) => {
+        if (prev.length < 2) return prev;
+        if (prev[0]!.clips.length > 0 || prev[1]!.clips.length > 0) return prev;
+        if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('wstudio_arrange_demo_v1', '1');
+        return prev.map((tr, i) => {
+          if (i === 0) {
+            return {
+              ...tr,
+              clips: [{ id: crypto.randomUUID(), startTime: 0, buffer: kick }],
+            };
+          }
+          if (i === 1) {
+            return {
+              ...tr,
+              clips: [{ id: crypto.randomUUID(), startTime: 1.15, buffer: snare }],
+            };
+          }
+          return tr;
+        });
+      });
+    });
+    return undefined;
+  }, []);
 
   const disposeTrackNodes = useCallback((ctx: AudioContext) => {
     for (const n of trackNodesRef.current.values()) {
@@ -525,9 +571,24 @@ export function DawProvider({ children }: { children: ReactNode }) {
         const v = Math.max(peak, prev * 0.85);
         meterHoldRef.current.__mic__ = v;
         out.__mic__ = v;
+        const nowWall = performance.now();
+        if (nowWall - lastRecWavePushRef.current > 48) {
+          lastRecWavePushRef.current = nowWall;
+          recordingHistoryRef.current.push(Math.min(1, peak * 2.2));
+          if (recordingHistoryRef.current.length > 360) recordingHistoryRef.current.shift();
+          setRecordingLivePeaks(recordingHistoryRef.current.slice());
+        }
       } else {
         meterHoldRef.current.__mic__ = 0;
       }
+
+      const actx = audioCtxRef.current;
+      const tAnchor = recordTimelineAnchorRef.current;
+      if (tAnchor && actx && isRecordingRef.current && !isPlayingRef.current) {
+        const tLin = tAnchor.timeline + (actx.currentTime - tAnchor.ctx);
+        setCurrentTime(Math.max(0, tLin));
+      }
+
       setMeterPeaks(out);
       id = requestAnimationFrame(sample);
     };
@@ -556,9 +617,18 @@ export function DawProvider({ children }: { children: ReactNode }) {
   const micInputSilentRef = useRef<GainNode | null>(null);
   const recordStartTimeRef = useRef(0);
   const recordingActiveRef = useRef(false);
+  /** Sync playhead while recording: timeline = timeline0 + (ctxNow - ctx0) */
+  const recordTimelineAnchorRef = useRef<{ ctx: number; timeline: number } | null>(null);
+  const recordingHistoryRef = useRef<number[]>([]);
+  const lastRecWavePushRef = useRef(0);
 
   const teardownMicGraph = useCallback(() => {
     recordingActiveRef.current = false;
+    recordTimelineAnchorRef.current = null;
+    setRecordingTrackId(null);
+    setRecordingPunchInTime(null);
+    setRecordingLivePeaks([]);
+    recordingHistoryRef.current = [];
     try {
       recordProcessorRef.current?.disconnect();
       recordSourceRef.current?.disconnect();
@@ -602,6 +672,12 @@ export function DawProvider({ children }: { children: ReactNode }) {
       ensureMaster(ctx);
       recordStartTimeRef.current = currentTimeRef.current;
       recordStereoChunksRef.current = [];
+      recordingHistoryRef.current = [];
+      lastRecWavePushRef.current = performance.now();
+      setRecordingLivePeaks([]);
+      setRecordingPunchInTime(currentTimeRef.current);
+      recordTimelineAnchorRef.current = { ctx: ctx.currentTime, timeline: currentTimeRef.current };
+      setRecordingTrackId(targetId);
 
       const src = ctx.createMediaStreamSource(stream);
       const proc = ctx.createScriptProcessor(4096, 2, 2);
@@ -689,6 +765,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
     setTracks((prev) =>
       prev.map((tr) => (tr.id === targetId ? { ...tr, clips: [...tr.clips, clip] } : tr)),
     );
+    setCurrentTime(startSec + buf.duration);
     const nm = tracksRef.current.find((t) => t.id === targetId)?.name ?? 'track';
     setStatus(`Saved stereo clip (${buf.duration.toFixed(2)}s) on ${nm}.`);
   }, [isRecording, selectedTrackId, teardownMicGraph]);
@@ -911,6 +988,17 @@ export function DawProvider({ children }: { children: ReactNode }) {
     setTracks((prev) =>
       prev.map((t) =>
         t.id === trackId ? { ...t, clips: t.clips.filter((c) => c.id !== clipId) } : t,
+      ),
+    );
+  }, []);
+
+  const moveClip = useCallback((trackId: string, clipId: string, startTime: number) => {
+    const t = Math.max(0, startTime);
+    setTracks((prev) =>
+      prev.map((tr) =>
+        tr.id !== trackId
+          ? tr
+          : { ...tr, clips: tr.clips.map((c) => (c.id === clipId ? { ...c, startTime: t } : c)) },
       ),
     );
   }, []);
@@ -1157,6 +1245,10 @@ export function DawProvider({ children }: { children: ReactNode }) {
       removeMidiNote,
       updateMidiNote,
       setBeatsPerBar,
+      recordingTrackId,
+      recordingLivePeaks,
+      recordingPunchInTime,
+      moveClip,
     }),
     [
       tracks,
@@ -1164,6 +1256,9 @@ export function DawProvider({ children }: { children: ReactNode }) {
       currentTime,
       isPlaying,
       isRecording,
+      recordingTrackId,
+      recordingLivePeaks,
+      recordingPunchInTime,
       loopEnabled,
       metronomeOn,
       tempo,
@@ -1193,6 +1288,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
       startRecord,
       stopRecord,
       deleteClip,
+      moveClip,
       addClipFromBuffer,
       addLibraryClip,
       addRemoteLibraryClip,

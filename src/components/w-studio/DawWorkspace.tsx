@@ -13,6 +13,7 @@ import { MIC_CHAIN_PRESETS } from "./micPresets";
 import { REMOTE_LIBRARY_BY_CATEGORY } from "./remoteLibrary";
 import { DawProvider, INPUT_SOURCE_OPTIONS, useDaw } from "./DawContext";
 import { PianoRoll } from "./PianoRoll";
+import { LivePeaksCanvas } from "./LivePeaksCanvas";
 import { WaveformCanvas } from "./WaveformCanvas";
 
 const PX_PER_SEC = 52;
@@ -1821,6 +1822,15 @@ function DawChrome() {
   const importTrackRef = useRef<string>("");
   const arrangeScrollRef = useRef<HTMLDivElement>(null);
   const [arrangeScrollLeft, setArrangeScrollLeft] = useState(0);
+  const [, setClipDragTick] = useState(0);
+  const clipDragRef = useRef<{
+    trackId: string;
+    clipId: string;
+    origStart: number;
+    startClientX: number;
+    scroll0: number;
+    previewStart: number;
+  } | null>(null);
 
   /* responsive defaults handled in useState initializers above */
 
@@ -1862,6 +1872,29 @@ function DawChrome() {
     importTrackRef.current = trackId;
     fileRef.current?.click();
   };
+
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      const d = clipDragRef.current;
+      if (!d) return;
+      const sc = arrangeScrollRef.current?.scrollLeft ?? 0;
+      const dxPx = e.clientX - d.startClientX + (sc - d.scroll0);
+      d.previewStart = Math.max(0, d.origStart + dxPx / PX_PER_SEC);
+      setClipDragTick((t) => t + 1);
+    };
+    const onUp = () => {
+      const d = clipDragRef.current;
+      clipDragRef.current = null;
+      if (d) daw.moveClip(d.trackId, d.clipId, d.previewStart);
+      setClipDragTick((t) => t + 1);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [daw]);
 
   useEffect(() => {
     if (mainView !== "arrange") return;
@@ -2023,7 +2056,7 @@ function DawChrome() {
                 if (daw.isRecording) daw.stopRecord();
                 else void daw.startRecord();
               }}
-              className={`${ctrlBtnBase} text-[#ffb0b0] ${daw.isRecording ? "ring-1 ring-red-500" : ""}`}
+              className={`${ctrlBtnBase} text-[#ffb0b0] ${daw.isRecording ? "animate-pulse ring-2 ring-red-500 ring-offset-1 ring-offset-[#5a5a5e]" : ""}`}
             >
               <IconRec />
             </button>
@@ -2868,24 +2901,67 @@ function DawChrome() {
                             );
                           });
                         })()}
+                        {daw.isRecording && daw.recordingTrackId === tr.id && daw.recordingPunchInTime != null ? (
+                          <div
+                            className="pointer-events-none absolute top-1.5 z-[5] overflow-hidden rounded-[3px] border shadow-[0_0_12px_rgba(239,68,68,0.35)]"
+                            style={{
+                              left: daw.recordingPunchInTime * PX_PER_SEC,
+                              width: Math.max(
+                                12,
+                                (daw.currentTime - daw.recordingPunchInTime) * PX_PER_SEC,
+                              ),
+                              height: 54,
+                              borderColor: "rgba(248,113,113,0.85)",
+                              backgroundColor: "rgba(80,20,20,0.45)",
+                            }}
+                            title="Live input"
+                          >
+                            <LivePeaksCanvas
+                              peaks={daw.recordingLivePeaks}
+                              width={Math.max(
+                                24,
+                                Math.floor((daw.currentTime - daw.recordingPunchInTime) * PX_PER_SEC),
+                              )}
+                              height={54}
+                              color="#fca5a5"
+                              fill="rgba(0,0,0,0.2)"
+                            />
+                          </div>
+                        ) : null}
                         {tr.clips.map((c) => {
                           const w = Math.max(24, c.buffer.duration * PX_PER_SEC);
                           const h = 54;
                           const isSel = selection?.trackId === tr.id && selection?.clipId === c.id;
+                          const d = clipDragRef.current;
+                          const clipLeftSec =
+                            d && d.trackId === tr.id && d.clipId === c.id ? d.previewStart : c.startTime;
                           return (
                             <div
                               key={c.id}
                               role="button"
                               tabIndex={0}
-                              className={`group absolute top-1.5 cursor-pointer overflow-hidden rounded-[3px] border text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] outline-none focus-visible:ring-2 ${
+                              className={`group absolute top-1.5 cursor-grab overflow-hidden rounded-[3px] border text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] outline-none focus-visible:ring-2 active:cursor-grabbing ${
                                 isSel ? "ring-2 ring-[#5a9eef]/80" : "hover:brightness-105"
                               }`}
                               style={{
-                                left: c.startTime * PX_PER_SEC,
+                                left: clipLeftSec * PX_PER_SEC,
                                 width: w,
                                 height: h,
                                 backgroundColor: `${tr.color}22`,
                                 borderColor: isSel ? LP.accentBlueHi : LP.border,
+                              }}
+                              onMouseDown={(e) => {
+                                if (e.button !== 0) return;
+                                e.stopPropagation();
+                                clipDragRef.current = {
+                                  trackId: tr.id,
+                                  clipId: c.id,
+                                  origStart: c.startTime,
+                                  startClientX: e.clientX,
+                                  scroll0: arrangeScrollRef.current?.scrollLeft ?? 0,
+                                  previewStart: c.startTime,
+                                };
+                                setClipDragTick((t) => t + 1);
                               }}
                               onDragOver={(e) => {
                                 if ([...e.dataTransfer.types].includes("Files")) {
@@ -3042,8 +3118,9 @@ function DefaultHelpBody() {
     <ul className="list-disc space-y-1.5 pl-4 text-[12px] leading-snug text-zinc-400">
       <li>
         <span className="text-zinc-100">Transport:</span> Play, Stop, go to start/end, rewind & fast-forward by beat,
-        Record, Loop, Metronome. <span className="text-zinc-100">Control bar S</span> solos the selected track only;{" "}
-        <span className="text-zinc-100">M</span> mutes the main mix.
+        Record, Loop, Metronome. While recording (without Play), the playhead advances and a live waveform strip grows on
+        the armed track. <span className="text-zinc-100">Control bar S</span> solos the selected track only;{" "}
+        <span className="text-zinc-100">M</span> mutes the main mix. Drag clips horizontally to move them in time.
       </li>
       <li>
         <span className="text-zinc-100">Audio:</span> Import, drag files onto a track, or add sounds from your library
