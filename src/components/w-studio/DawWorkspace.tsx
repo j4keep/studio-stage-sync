@@ -2239,6 +2239,15 @@ function DawChrome() {
         e.stopPropagation();
         e.dataTransfer.dropEffect = "copy";
       }}
+      onDrop={(e: DragEvent) => {
+        if (!dataTransferHasFiles(e.dataTransfer)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const file = firstAudioFileFromDataTransfer(e.dataTransfer);
+        if (!file) return;
+        const newId = daw.addTrackWithKind("import_audio");
+        void daw.importAudioFile(newId, file);
+      }}
     >
       <input
         id={WSTUDIO_AUDIO_FILE_INPUT_ID}
