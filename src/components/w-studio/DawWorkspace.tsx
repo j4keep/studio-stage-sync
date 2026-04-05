@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type DragEvent,
   type MouseEvent,
   type ReactNode,
   type RefObject,
@@ -158,11 +159,31 @@ function isAudioDropFile(file: File): boolean {
   return /\.(wav|mp3|ogg|m4a|aac|flac|webm)$/i.test(file.name);
 }
 
+function dataTransferHasFiles(dt: DataTransfer | null): boolean {
+  if (!dt) return false;
+  const types = Array.from(dt.types ?? []);
+  if (types.includes("Files") || types.includes("application/x-moz-file")) return true;
+  if (dt.items?.length) {
+    for (let i = 0; i < dt.items.length; i++) {
+      if (dt.items[i]?.kind === "file") return true;
+    }
+  }
+  return false;
+}
+
 function firstAudioFileFromDataTransfer(dt: DataTransfer): File | undefined {
   const { files } = dt;
   for (let i = 0; i < files.length; i++) {
     const f = files.item(i);
     if (f && isAudioDropFile(f)) return f;
+  }
+  if (dt.items?.length) {
+    for (let i = 0; i < dt.items.length; i++) {
+      const it = dt.items[i];
+      if (it?.kind !== "file") continue;
+      const f = it.getAsFile();
+      if (f && isAudioDropFile(f)) return f;
+    }
   }
   return undefined;
 }
@@ -2181,7 +2202,7 @@ function DawChrome() {
       <input
         ref={fileRef}
         type="file"
-        accept="audio/*,.wav,.mp3,.ogg,.m4a"
+        accept="audio/*,.wav,.mp3,.ogg,.m4a,.aac,.flac,.webm"
         className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0];
@@ -2208,7 +2229,13 @@ function DawChrome() {
       <StartSongModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        onPick={(kind) => daw.addTrackWithKind(kind)}
+        onPick={(kind) => {
+          const id = daw.addTrackWithKind(kind);
+          if (kind === "import_audio") {
+            importTrackRef.current = id;
+            queueMicrotask(() => fileRef.current?.click());
+          }
+        }}
       />
 
       <header
@@ -2992,6 +3019,19 @@ function DawChrome() {
                       borderColor: LP.border,
                       background: daw.selectedTrackId === tr.id ? "rgba(60,120,200,0.14)" : LP.panel,
                     }}
+                    onDragOver={(e: DragEvent) => {
+                      if (!dataTransferHasFiles(e.dataTransfer)) return;
+                      e.preventDefault();
+                      e.stopPropagation();
+                      e.dataTransfer.dropEffect = "copy";
+                    }}
+                    onDrop={(e: DragEvent) => {
+                      if (!dataTransferHasFiles(e.dataTransfer)) return;
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const file = firstAudioFileFromDataTransfer(e.dataTransfer);
+                      if (file) void daw.importAudioFile(tr.id, file);
+                    }}
                   >
                     <div
                       className="sticky left-0 z-10 flex shrink-0 border-r"
@@ -3109,14 +3149,13 @@ function DawChrome() {
                       className="relative shrink-0"
                       data-timeline-lane={tr.id}
                       style={{ width: widthPx, minHeight: TRACK_ROW_MIN_H }}
-                      onDragOver={(e) => {
-                        if ([...e.dataTransfer.types].includes("Files")) {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          e.dataTransfer.dropEffect = "copy";
-                        }
+                      onDragOver={(e: DragEvent) => {
+                        if (!dataTransferHasFiles(e.dataTransfer)) return;
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.dataTransfer.dropEffect = "copy";
                       }}
-                      onDrop={(e) => {
+                      onDrop={(e: DragEvent) => {
                         e.preventDefault();
                         e.stopPropagation();
                         const file = firstAudioFileFromDataTransfer(e.dataTransfer);
@@ -3135,14 +3174,15 @@ function DawChrome() {
                           backgroundColor: LP.panelLo,
                           backgroundImage: `repeating-linear-gradient(90deg, transparent 0, transparent ${Math.max(1, barW - 1)}px, rgba(0,0,0,0.12) ${Math.max(1, barW - 1)}px, rgba(0,0,0,0.12) ${barW}px)`,
                         }}
-                        onDragOver={(e) => {
-                          if ([...e.dataTransfer.types].includes("Files")) {
-                            e.preventDefault();
-                            e.dataTransfer.dropEffect = "copy";
-                          }
-                        }}
-                        onDrop={(e) => {
+                        onDragOver={(e: DragEvent) => {
+                          if (!dataTransferHasFiles(e.dataTransfer)) return;
                           e.preventDefault();
+                          e.stopPropagation();
+                          e.dataTransfer.dropEffect = "copy";
+                        }}
+                        onDrop={(e: DragEvent) => {
+                          e.preventDefault();
+                          e.stopPropagation();
                           const file = firstAudioFileFromDataTransfer(e.dataTransfer);
                           if (file) void daw.importAudioFile(tr.id, file);
                         }}
@@ -3238,14 +3278,15 @@ function DawChrome() {
                                 backgroundColor: `${tr.color}22`,
                                 borderColor: isSel ? LP.accentBlueHi : LP.border,
                               }}
-                              onDragOver={(e) => {
-                                if ([...e.dataTransfer.types].includes("Files")) {
-                                  e.preventDefault();
-                                  e.dataTransfer.dropEffect = "copy";
-                                }
-                              }}
-                              onDrop={(e) => {
+                              onDragOver={(e: DragEvent) => {
+                                if (!dataTransferHasFiles(e.dataTransfer)) return;
                                 e.preventDefault();
+                                e.stopPropagation();
+                                e.dataTransfer.dropEffect = "copy";
+                              }}
+                              onDrop={(e: DragEvent) => {
+                                e.preventDefault();
+                                e.stopPropagation();
                                 const file = firstAudioFileFromDataTransfer(e.dataTransfer);
                                 if (file) void daw.importAudioFile(tr.id, file);
                               }}

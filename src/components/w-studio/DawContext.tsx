@@ -110,7 +110,7 @@ type DawContextValue = {
   /** Solo only the selected track, or clear all solos if already in that state. */
   toggleExclusiveSoloSelection: () => void;
   status: string;
-  addTrackWithKind: (kind: TrackKind) => void;
+  addTrackWithKind: (kind: TrackKind) => string;
   removeTrack: (id: string) => void;
   renameTrack: (id: string, name: string) => void;
   setTrackInputSource: (id: string, label: string) => void;
@@ -946,7 +946,14 @@ export function DawProvider({ children }: { children: ReactNode }) {
   );
 
   const addTrackWithKind = useCallback((kind: TrackKind) => {
-    setTracks((prev) => [...prev, newTrack('', prev.length, kind)]);
+    let newId = '';
+    setTracks((prev) => {
+      const tr = newTrack('', prev.length, kind);
+      newId = tr.id;
+      return [...prev, tr];
+    });
+    setSelectedTrackId(newId);
+    return newId;
   }, []);
 
   const removeTrack = useCallback((id: string) => {
@@ -1315,6 +1322,10 @@ export function DawProvider({ children }: { children: ReactNode }) {
 
   const importAudioFile = useCallback(
     async (trackId: string, file: File) => {
+      if (!tracksRef.current.some((t) => t.id === trackId)) {
+        setStatus('Import failed: select a track or add one first.');
+        return;
+      }
       try {
         const ctx = ensureAudioCtx(audioCtxRef);
         await ctx.resume();
