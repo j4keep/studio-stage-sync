@@ -2240,7 +2240,15 @@ function DawChrome() {
             <button type="button" title="Go to end" onClick={() => daw.seek(end)} className={ctrlBtnBase}>
               <IconGoToEnd />
             </button>
-            <button type="button" title="Stop" onClick={() => daw.stopTransport()} className={ctrlBtnBase}>
+            <button
+              type="button"
+              title="Stop"
+              onClick={() => {
+                if (daw.isRecording) daw.stopRecord();
+                daw.stopTransport();
+              }}
+              className={ctrlBtnBase}
+            >
               <IconStop />
             </button>
             <button

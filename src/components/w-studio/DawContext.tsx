@@ -556,10 +556,9 @@ export function DawProvider({ children }: { children: ReactNode }) {
     // Loop handling
     if (loopEnabledRef.current && le > ls + 0.01) {
       if (safeRaw >= le) {
-        // Synchronous restart at loop start – no async, no extra RAF scheduling
         restartPlaybackAt(ls);
-        // Guard: if a new generation started (e.g. stop was called), bail out
         if (transportGenRef.current !== gen) return;
+        setStatus('Loop…');
         rafRef.current = requestAnimationFrame(tickPlayhead);
         return;
       }
@@ -605,7 +604,6 @@ export function DawProvider({ children }: { children: ReactNode }) {
       const ctx = ensureAudioCtx(audioCtxRef);
       if (ctx.state === 'suspended') await ctx.resume();
 
-      // Stop sources & RAF without resetting currentTime
       transportGenRef.current += 1;
       stopPlaybackSources();
       stopPlayheadRaf();
@@ -741,14 +739,14 @@ export function DawProvider({ children }: { children: ReactNode }) {
     (t: number) => {
       const next = Math.max(0, t);
       if (isPlayingRef.current) {
-        // Restart playback from new position; RAF is already running
         restartPlaybackAt(next);
+        rafRef.current = requestAnimationFrame(tickPlayhead);
       } else {
         currentTimeRef.current = next;
         setCurrentTime(next);
       }
     },
-    [restartPlaybackAt],
+    [restartPlaybackAt, tickPlayhead],
   );
 
   const rewindToStart = useCallback(() => {
