@@ -950,7 +950,9 @@ export function DawProvider({ children }: { children: ReactNode }) {
     setTracks((prev) => {
       const tr = newTrack('', prev.length, kind);
       newId = tr.id;
-      return [...prev, tr];
+      const next = [...prev, tr];
+      tracksRef.current = next;
+      return next;
     });
     setSelectedTrackId(newId);
     return newId;

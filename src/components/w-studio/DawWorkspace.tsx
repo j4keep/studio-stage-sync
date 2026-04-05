@@ -2207,6 +2207,7 @@ function DawChrome() {
         onChange={(e) => {
           const f = e.target.files?.[0];
           const tid = importTrackRef.current || targetTrackId;
+          importTrackRef.current = "";
           if (f && tid) void daw.importAudioFile(tid, f);
           e.target.value = "";
         }}
@@ -2233,7 +2234,7 @@ function DawChrome() {
           const id = daw.addTrackWithKind(kind);
           if (kind === "import_audio") {
             importTrackRef.current = id;
-            queueMicrotask(() => fileRef.current?.click());
+            fileRef.current?.click();
           }
         }}
       />
@@ -3008,6 +3009,26 @@ function DawChrome() {
                 ref={arrangeScrollRef}
                 className="min-h-0 flex-1 overflow-auto"
                 onScroll={(e) => setArrangeScrollLeft(e.currentTarget.scrollLeft)}
+                onDragEnter={(e: DragEvent) => {
+                  if (!dataTransferHasFiles(e.dataTransfer)) return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onDragOver={(e: DragEvent) => {
+                  if (!dataTransferHasFiles(e.dataTransfer)) return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  e.dataTransfer.dropEffect = "copy";
+                }}
+                onDrop={(e: DragEvent) => {
+                  if (!dataTransferHasFiles(e.dataTransfer)) return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const file = firstAudioFileFromDataTransfer(e.dataTransfer);
+                  if (!file) return;
+                  const tid = daw.selectedTrackId ?? daw.tracks[0]?.id;
+                  if (tid) void daw.importAudioFile(tid, file);
+                }}
               >
                 {daw.tracks.map((tr, ti) => (
                   <div
