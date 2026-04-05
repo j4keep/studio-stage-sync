@@ -976,7 +976,7 @@ function VerticalMixerFader({
     event.preventDefault();
     updateFromClientY(event.clientY);
 
-    const handleMove = (moveEvent: MouseEvent) => updateFromClientY(moveEvent.clientY);
+    const handleMove = (moveEvent: globalThis.MouseEvent) => updateFromClientY(moveEvent.clientY);
     const handleUp = () => {
       window.removeEventListener("mousemove", handleMove);
       window.removeEventListener("mouseup", handleUp);
@@ -1790,7 +1790,7 @@ function CycleRangeRuler({
     e.stopPropagation();
     dragStartRef.current = { x: e.clientX, loopStart: loopStartSec, loopEnd: loopEndSec };
 
-    const onMove = (ev: MouseEvent) => {
+    const onMove = (ev: globalThis.MouseEvent) => {
       const rect = containerRef.current?.getBoundingClientRect();
       if (!rect) return;
       const relX = scrollLeft + (ev.clientX - rect.left);
