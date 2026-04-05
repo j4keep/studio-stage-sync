@@ -2239,6 +2239,15 @@ function DawChrome() {
         e.stopPropagation();
         e.dataTransfer.dropEffect = "copy";
       }}
+      onDrop={(e: DragEvent) => {
+        if (!dataTransferHasFiles(e.dataTransfer)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const file = firstAudioFileFromDataTransfer(e.dataTransfer);
+        if (!file) return;
+        const newId = daw.addTrackWithKind("import_audio");
+        void daw.importAudioFile(newId, file);
+      }}
     >
       <input
         id={WSTUDIO_AUDIO_FILE_INPUT_ID}
@@ -2596,10 +2605,12 @@ function DawChrome() {
             </button>
             <button
               type="button"
-              title="Import audio"
+              title="Import audio file into new track"
               className={`${ctrlBtnBase} px-2 text-[9px]`}
-              onClick={() => targetTrackId && openImport(targetTrackId)}
-              disabled={!targetTrackId}
+              onClick={() => {
+                const newId = daw.addTrackWithKind("import_audio");
+                openImport(newId);
+              }}
             >
               Imp
             </button>
@@ -3069,8 +3080,8 @@ function DawChrome() {
                   e.stopPropagation();
                   const file = firstAudioFileFromDataTransfer(e.dataTransfer);
                   if (!file) return;
-                  const tid = daw.selectedTrackId ?? daw.tracks[0]?.id;
-                  if (tid) void daw.importAudioFile(tid, file);
+                  const newId = daw.addTrackWithKind("import_audio");
+                  void daw.importAudioFile(newId, file);
                 }}
               >
                 {daw.tracks.map((tr, ti) => (
