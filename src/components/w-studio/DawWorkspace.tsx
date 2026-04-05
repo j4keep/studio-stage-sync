@@ -57,6 +57,8 @@ const MIXER_LABEL_W = 82;
 const MIXER_STRIP_W = 74;
 const MIXER_METER_H = 160;
 const TRACK_ROW_MIN_H = 56;
+/** Stable id so "New track → Import audio" can use <label htmlFor> (reliable file picker vs programmatic .click()). */
+const WSTUDIO_AUDIO_FILE_INPUT_ID = "wstudio-audio-file-import";
 const MIXER_LABEL_ROWS = [
   { label: "Setting", height: 22 },
   { label: "Gain Reduction", height: 20 },
@@ -907,12 +909,18 @@ function StartSongModal({
   open,
   onClose,
   onPick,
+  audioFileInputId,
+  onPrepareImportAudio,
 }: {
   open: boolean;
   onClose: () => void;
   onPick: (k: TrackKind) => void;
+  audioFileInputId: string;
+  onPrepareImportAudio: () => void;
 }) {
   if (!open) return null;
+  const cellClass =
+    "flex flex-col items-center rounded-lg border px-3 py-4 text-center transition hover:brightness-110";
   return (
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center p-4"
@@ -938,26 +946,48 @@ function StartSongModal({
           New track
         </h2>
         <div className="grid grid-cols-2 gap-3">
-          {MODAL_CELLS.map((c) => (
-            <button
-              key={c.kind}
-              type="button"
-              className="flex flex-col items-center rounded-lg border px-3 py-4 text-center transition hover:brightness-110"
-              style={{ borderColor: LP.border, background: LP.panelLo }}
-              onClick={() => {
-                onPick(c.kind);
-                onClose();
-              }}
-            >
-              <span className="mb-2 text-2xl" style={{ color: c.color }} aria-hidden>
-                ●
-              </span>
-              <span className="text-[13px] font-medium">{c.label}</span>
-              <span className="mt-0.5 text-[10px]" style={{ color: LP.textMuted }}>
-                {c.hint}
-              </span>
-            </button>
-          ))}
+          {MODAL_CELLS.map((c) =>
+            c.kind === "import_audio" ? (
+              <label
+                key={c.kind}
+                htmlFor={audioFileInputId}
+                className={`${cellClass} cursor-pointer`}
+                style={{ borderColor: LP.border, background: LP.panelLo }}
+                onMouseDown={() => onPrepareImportAudio()}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") onPrepareImportAudio();
+                }}
+                onClick={() => setTimeout(() => onClose(), 0)}
+              >
+                <span className="mb-2 text-2xl" style={{ color: c.color }} aria-hidden>
+                  ●
+                </span>
+                <span className="text-[13px] font-medium">{c.label}</span>
+                <span className="mt-0.5 text-[10px]" style={{ color: LP.textMuted }}>
+                  {c.hint}
+                </span>
+              </label>
+            ) : (
+              <button
+                key={c.kind}
+                type="button"
+                className={cellClass}
+                style={{ borderColor: LP.border, background: LP.panelLo }}
+                onClick={() => {
+                  onPick(c.kind);
+                  onClose();
+                }}
+              >
+                <span className="mb-2 text-2xl" style={{ color: c.color }} aria-hidden>
+                  ●
+                </span>
+                <span className="text-[13px] font-medium">{c.label}</span>
+                <span className="mt-0.5 text-[10px]" style={{ color: LP.textMuted }}>
+                  {c.hint}
+                </span>
+              </button>
+            ),
+          )}
         </div>
       </div>
     </div>
@@ -2198,11 +2228,23 @@ function DawChrome() {
         focusWorkbench ? "fixed inset-0 z-[140] min-h-[100dvh] min-w-0" : "h-screen min-h-[640px] min-w-0"
       }`}
       style={{ background: LP.appBg, color: LP.text }}
+      onDragEnter={(e: DragEvent) => {
+        if (!dataTransferHasFiles(e.dataTransfer)) return;
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+      onDragOver={(e: DragEvent) => {
+        if (!dataTransferHasFiles(e.dataTransfer)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = "copy";
+      }}
     >
       <input
+        id={WSTUDIO_AUDIO_FILE_INPUT_ID}
         ref={fileRef}
         type="file"
-        accept="audio/*,.wav,.mp3,.ogg,.m4a,.aac,.flac,.webm"
+        accept="audio/*,.wav,.mp3,.ogg,.m4a,.aac,.flac,.webm,audio/wav,audio/x-wav"
         className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0];
@@ -2230,12 +2272,13 @@ function DawChrome() {
       <StartSongModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
+        audioFileInputId={WSTUDIO_AUDIO_FILE_INPUT_ID}
+        onPrepareImportAudio={() => {
+          const id = daw.addTrackWithKind("import_audio");
+          importTrackRef.current = id;
+        }}
         onPick={(kind) => {
-          const id = daw.addTrackWithKind(kind);
-          if (kind === "import_audio") {
-            importTrackRef.current = id;
-            fileRef.current?.click();
-          }
+          daw.addTrackWithKind(kind);
         }}
       />
 

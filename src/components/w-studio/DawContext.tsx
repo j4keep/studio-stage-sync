@@ -1322,27 +1322,46 @@ export function DawProvider({ children }: { children: ReactNode }) {
     [addClipFromBuffer],
   );
 
-  const importAudioFile = useCallback(
-    async (trackId: string, file: File) => {
-      if (!tracksRef.current.some((t) => t.id === trackId)) {
-        setStatus('Import failed: select a track or add one first.');
+  const importAudioFile = useCallback(async (trackId: string, file: File) => {
+    try {
+      const ctx = ensureAudioCtx(audioCtxRef);
+      await ctx.resume();
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const raw = await ctx.decodeAudioData(bytes.buffer.slice(0, bytes.byteLength));
+      const buf = audioBufferToStereo(ctx, raw);
+      const at = currentTimeRef.current;
+      let peaks: number[];
+      try {
+        peaks = createWaveformData(buf, 100);
+      } catch {
+        peaks = [];
+      }
+      const clip: Clip = {
+        id: crypto.randomUUID(),
+        startTime: Math.max(0, at),
+        buffer: buf,
+        trimStart: 0,
+        trimEnd: buf.duration,
+        clipGain: 1,
+        waveformPeaks: peaks,
+      };
+      let applied = false;
+      setTracks((prev) => {
+        const i = prev.findIndex((t) => t.id === trackId);
+        if (i < 0) return prev;
+        applied = true;
+        return prev.map((t, j) => (j === i ? { ...t, clips: [...t.clips, clip] } : t));
+      });
+      if (!applied) {
+        setStatus('Import failed: no matching track. Add a track, select it, try again.');
         return;
       }
-      try {
-        const ctx = ensureAudioCtx(audioCtxRef);
-        await ctx.resume();
-        const ab = await file.arrayBuffer();
-        const raw = await ctx.decodeAudioData(ab.slice(0));
-        const buf = audioBufferToStereo(ctx, raw);
-        addClipFromBuffer(trackId, buf, currentTimeRef.current);
-        setStatus(`Imported ${file.name} (${buf.numberOfChannels} ch) at playhead.`);
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        setStatus(`Import failed: ${msg}`);
-      }
-    },
-    [addClipFromBuffer],
-  );
+      setStatus(`Imported ${file.name} (${buf.numberOfChannels} ch) at playhead.`);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setStatus(`Import failed: ${msg}`);
+    }
+  }, []);
 
   const addMidiNote = useCallback((trackId: string, note: Omit<MidiNote, 'id'>) => {
     const id = crypto.randomUUID();
