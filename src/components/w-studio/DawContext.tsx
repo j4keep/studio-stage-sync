@@ -739,14 +739,14 @@ export function DawProvider({ children }: { children: ReactNode }) {
 
   const seek = useCallback(
     (t: number) => {
-      void (async () => {
-        const next = Math.max(0, t);
-        if (isPlayingRef.current) {
-          await restartPlaybackAt(next);
-        } else {
-          setCurrentTime(next);
-        }
-      })();
+      const next = Math.max(0, t);
+      if (isPlayingRef.current) {
+        // Restart playback from new position; RAF is already running
+        restartPlaybackAt(next);
+      } else {
+        currentTimeRef.current = next;
+        setCurrentTime(next);
+      }
     },
     [restartPlaybackAt],
   );
