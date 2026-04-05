@@ -518,22 +518,31 @@ export function DawProvider({ children }: { children: ReactNode }) {
     rafRef.current = 0;
   }, []);
 
+  /** Monotonic generation counter – each play/restart bumps it so stale RAF ticks are ignored. */
+  const transportGenRef = useRef(0);
+
+  /**
+   * Core helper: stop all scheduled sources, reschedule from `p0`, and update session.
+   * Synchronous (ctx must already be running). Does NOT touch isPlaying or RAF.
+   */
   const restartPlaybackAt = useCallback(
-    async (p0: number) => {
-      const ctx = ensureAudioCtx(audioCtxRef);
-      if (ctx.state === 'suspended') await ctx.resume();
+    (p0: number) => {
+      const ctx = audioCtxRef.current;
+      if (!ctx) return;
 
       stopPlaybackSources();
 
-      const t0 = ctx.currentTime + 0.01;
+      const t0 = ctx.currentTime + 0.005;
       playSessionRef.current = { t0, p0 };
-      schedulePlayback(ctx, t0, p0);
+      currentTimeRef.current = p0;
       setCurrentTime(p0);
+      schedulePlayback(ctx, t0, p0);
     },
     [schedulePlayback, stopPlaybackSources],
   );
 
   const tickPlayhead = useCallback(() => {
+    const gen = transportGenRef.current;
     const ctx = audioCtxRef.current;
     const sess = playSessionRef.current;
     if (!ctx || !sess) return;
@@ -544,54 +553,73 @@ export function DawProvider({ children }: { children: ReactNode }) {
     const le = loopEndSecRef.current;
     const end = getTimelineEndSec(tracksRef.current, tempoRef.current);
 
+    // Loop handling
     if (loopEnabledRef.current && le > ls + 0.01) {
       if (safeRaw >= le) {
-        void restartPlaybackAt(ls);
-        setStatus('Loop…');
+        // Synchronous restart at loop start – no async, no extra RAF scheduling
+        restartPlaybackAt(ls);
+        // Guard: if a new generation started (e.g. stop was called), bail out
+        if (transportGenRef.current !== gen) return;
         rafRef.current = requestAnimationFrame(tickPlayhead);
         return;
       }
       setCurrentTime(Math.min(safeRaw, le));
+      if (transportGenRef.current !== gen) return;
       rafRef.current = requestAnimationFrame(tickPlayhead);
       return;
     }
 
+    // End-of-timeline stop
     if (end > 0.02 && safeRaw >= end) {
       stopPlaybackSources();
-      stopPlayheadRaf();
       playSessionRef.current = null;
       setIsPlaying(false);
       setCurrentTime(end);
+      currentTimeRef.current = end;
       setStatus('End of timeline.');
       return;
     }
 
     setCurrentTime(safeRaw);
+    currentTimeRef.current = safeRaw;
+    if (transportGenRef.current !== gen) return;
     rafRef.current = requestAnimationFrame(tickPlayhead);
-  }, [restartPlaybackAt, stopPlaybackSources, stopPlayheadRaf]);
+  }, [restartPlaybackAt, stopPlaybackSources]);
 
   const stopTransport = useCallback(() => {
+    // Bump generation so any in-flight RAF tick becomes a no-op
+    transportGenRef.current += 1;
     if (metroIntervalRef.current) {
       clearInterval(metroIntervalRef.current);
       metroIntervalRef.current = 0;
     }
-    playSessionRef.current = null;
     stopPlaybackSources();
     stopPlayheadRaf();
+    playSessionRef.current = null;
     setIsPlaying(false);
+    // Don't touch currentTime – keep playhead where it is
   }, [stopPlaybackSources, stopPlayheadRaf]);
 
   const play = useCallback(() => {
     void (async () => {
       const ctx = ensureAudioCtx(audioCtxRef);
       if (ctx.state === 'suspended') await ctx.resume();
-      stopTransport();
-      await restartPlaybackAt(currentTimeRef.current);
+
+      // Stop sources & RAF without resetting currentTime
+      transportGenRef.current += 1;
+      stopPlaybackSources();
+      stopPlayheadRaf();
+      if (metroIntervalRef.current) {
+        clearInterval(metroIntervalRef.current);
+        metroIntervalRef.current = 0;
+      }
+
+      restartPlaybackAt(currentTimeRef.current);
       setIsPlaying(true);
       setStatus((s) => (s.startsWith('Recording') ? 'Recording + playback…' : ''));
       rafRef.current = requestAnimationFrame(tickPlayhead);
     })();
-  }, [restartPlaybackAt, stopTransport, tickPlayhead]);
+  }, [restartPlaybackAt, stopPlaybackSources, stopPlayheadRaf, tickPlayhead]);
 
   useEffect(() => {
     if (!isPlaying || !metronomeOn) {
@@ -711,14 +739,14 @@ export function DawProvider({ children }: { children: ReactNode }) {
 
   const seek = useCallback(
     (t: number) => {
-      void (async () => {
-        const next = Math.max(0, t);
-        if (isPlayingRef.current) {
-          await restartPlaybackAt(next);
-        } else {
-          setCurrentTime(next);
-        }
-      })();
+      const next = Math.max(0, t);
+      if (isPlayingRef.current) {
+        // Restart playback from new position; RAF is already running
+        restartPlaybackAt(next);
+      } else {
+        currentTimeRef.current = next;
+        setCurrentTime(next);
+      }
     },
     [restartPlaybackAt],
   );
