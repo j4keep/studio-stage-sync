@@ -7,6 +7,7 @@ import {
   type CSSProperties,
   type MouseEvent,
   type ReactNode,
+  type RefObject,
 } from "react";
 import type { BusId, Track, TrackKind } from "./types";
 import { clipTrimEnd, clipTrimStart, MIXER_BUS_STRIPS, ROUTING_BUS_IDS } from "./types";
@@ -1764,6 +1765,7 @@ function CycleRangeRuler({
   setLoopRegionSec,
   onSeek,
   scrollLeft,
+  scrollContainerRef,
 }: {
   barW: number;
   widthPx: number;
@@ -1777,33 +1779,77 @@ function CycleRangeRuler({
   setLoopRegionSec: (a: number, b: number) => void;
   onSeek: (t: number) => void;
   scrollLeft: number;
+  /** Main arrange scroll element — live scrollLeft fixes drag while scrolled; must exclude track header from X math. */
+  scrollContainerRef: RefObject<HTMLDivElement | null>;
 }) {
-  const dragStartRef = useRef({ x: 0, loopStart: 0, loopEnd: 0 });
+  const dragStartRef = useRef({
+    x: 0,
+    loopStart: 0,
+    loopEnd: 0,
+    /** Seconds: playhead time minus timeline sec at pointer (grabs triangle, not only line). */
+    playheadOffsetSec: 0,
+    /** Timeline content px at cycle-body drag start. */
+    startTimelinePx: 0,
+  });
   const containerRef = useRef<HTMLDivElement>(null);
 
   const totalBars = Math.max(TIMELINE_BAR_LIMIT, Math.ceil(end / secPerBar(tempo, beatsPerBar)) + 1);
 
-  const pxToSec = (px: number) => Math.max(0, px / PX_PER_SEC);
+  const pxToSecLocal = (px: number) => Math.max(0, px / PX_PER_SEC);
+
+  /** X position in timeline content space (0 = bar 1 origin), same as ruler click-seek. */
+  const timelineContentXFromClient = (clientX: number) => {
+    const outer = containerRef.current?.getBoundingClientRect();
+    if (!outer) return 0;
+    const timelineViewportLeft = outer.left + TRACK_HEADER_W;
+    const sc = scrollContainerRef.current?.scrollLeft ?? scrollLeft;
+    return sc + (clientX - timelineViewportLeft);
+  };
 
   const handleMouseDown = (e: MouseEvent, type: "playhead" | "cycleLeft" | "cycleRight" | "cycleBody") => {
     e.preventDefault();
     e.stopPropagation();
-    dragStartRef.current = { x: e.clientX, loopStart: loopStartSec, loopEnd: loopEndSec };
+    const tx0 = timelineContentXFromClient(e.clientX);
+    if (type === "playhead") {
+      dragStartRef.current = {
+        x: e.clientX,
+        loopStart: loopStartSec,
+        loopEnd: loopEndSec,
+        playheadOffsetSec: currentTime - pxToSecLocal(tx0),
+        startTimelinePx: 0,
+      };
+    } else if (type === "cycleBody") {
+      dragStartRef.current = {
+        x: e.clientX,
+        loopStart: loopStartSec,
+        loopEnd: loopEndSec,
+        playheadOffsetSec: 0,
+        startTimelinePx: tx0,
+      };
+    } else {
+      dragStartRef.current = {
+        x: e.clientX,
+        loopStart: loopStartSec,
+        loopEnd: loopEndSec,
+        playheadOffsetSec: 0,
+        startTimelinePx: 0,
+      };
+    }
 
     const onMove = (ev: globalThis.MouseEvent) => {
-      const rect = containerRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      const relX = scrollLeft + (ev.clientX - rect.left);
+      const tx = timelineContentXFromClient(ev.clientX);
 
       if (type === "playhead") {
-        onSeek(pxToSec(relX));
+        onSeek(Math.max(0, pxToSecLocal(tx) + dragStartRef.current.playheadOffsetSec));
       } else if (type === "cycleLeft") {
-        const t = Math.max(0, Math.min(pxToSec(relX), loopEndSec - 0.05));
-        setLoopRegionSec(t, loopEndSec);
+        const hi = dragStartRef.current.loopEnd;
+        const t = Math.max(0, Math.min(pxToSecLocal(tx), hi - 0.05));
+        setLoopRegionSec(t, hi);
       } else if (type === "cycleRight") {
-        setLoopRegionSec(loopStartSec, Math.max(loopStartSec + 0.05, pxToSec(relX)));
+        const lo = dragStartRef.current.loopStart;
+        setLoopRegionSec(lo, Math.max(lo + 0.05, pxToSecLocal(tx)));
       } else if (type === "cycleBody") {
-        const dSec = (ev.clientX - dragStartRef.current.x) / PX_PER_SEC;
+        const dSec = (tx - dragStartRef.current.startTimelinePx) / PX_PER_SEC;
         const lo = dragStartRef.current.loopStart + dSec;
         const hi = dragStartRef.current.loopEnd + dSec;
         setLoopRegionSec(lo, hi);
@@ -1840,7 +1886,8 @@ function CycleRangeRuler({
         <div className="relative min-w-0 flex-1 overflow-hidden">
           <div className="relative h-[18px]" style={{ width: widthPx, transform: `translateX(${-scrollLeft}px)` }}>
             <div
-              className="absolute top-0 bottom-0 cursor-move"
+              className="absolute top-0 bottom-0 cursor-move select-none"
+              title={loopEnabled ? "Drag cycle region" : "Drag cycle region (enable Cycle)"}
               style={{
                 left: cycleLeftPx,
                 width: Math.max(8, cycleRightPx - cycleLeftPx),
@@ -1853,8 +1900,9 @@ function CycleRangeRuler({
               }}
               onMouseDown={(e) => handleMouseDown(e, "cycleBody")}
             >
-              <div
-                className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize"
+            <div
+              className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize"
+                title="Drag cycle start"
                 onMouseDown={(e) => {
                   e.stopPropagation();
                   handleMouseDown(e, "cycleLeft");
@@ -1863,6 +1911,7 @@ function CycleRangeRuler({
               />
               <div
                 className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize"
+                title="Drag cycle end"
                 onMouseDown={(e) => {
                   e.stopPropagation();
                   handleMouseDown(e, "cycleRight");
@@ -2892,6 +2941,7 @@ function DawChrome() {
                 setLoopRegionSec={daw.setLoopRegionSec}
                 onSeek={(t) => daw.seek(t)}
                 scrollLeft={arrangeScrollLeft}
+                scrollContainerRef={arrangeScrollRef}
               />
 
               {/* +/Save/Dropdown row above tracks — matches Logic Pro */}
