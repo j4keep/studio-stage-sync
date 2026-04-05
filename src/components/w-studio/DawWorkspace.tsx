@@ -2047,7 +2047,7 @@ function DawChrome() {
   };
 
   useEffect(() => {
-    const onMove = (e: MouseEvent) => {
+    const onMove = (e: globalThis.MouseEvent) => {
       const d = clipDragRef.current;
       if (!d) return;
       const scrollEl = arrangeScrollRef.current;
@@ -2076,7 +2076,7 @@ function DawChrome() {
   }, [daw]);
 
   useEffect(() => {
-    const onMove = (e: MouseEvent) => {
+    const onMove = (e: globalThis.MouseEvent) => {
       const d = trimDragRef.current;
       if (!d) return;
       const sc = arrangeScrollRef.current?.scrollLeft ?? 0;
