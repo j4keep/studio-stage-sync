@@ -1324,44 +1324,20 @@ export function DawProvider({ children }: { children: ReactNode }) {
 
   const importAudioFile = useCallback(async (trackId: string, file: File) => {
     try {
+      setStatus(`Importing ${file.name}…`);
       const ctx = ensureAudioCtx(audioCtxRef);
-      await ctx.resume();
-      const bytes = new Uint8Array(await file.arrayBuffer());
-      const raw = await ctx.decodeAudioData(bytes.buffer.slice(0, bytes.byteLength));
+      if (ctx.state === 'suspended') await ctx.resume();
+      const arrayBuf = await file.arrayBuffer();
+      const raw = await ctx.decodeAudioData(arrayBuf.slice(0));
       const buf = audioBufferToStereo(ctx, raw);
-      const at = currentTimeRef.current;
-      let peaks: number[];
-      try {
-        peaks = createWaveformData(buf, 100);
-      } catch {
-        peaks = [];
-      }
-      const clip: Clip = {
-        id: crypto.randomUUID(),
-        startTime: Math.max(0, at),
-        buffer: buf,
-        trimStart: 0,
-        trimEnd: buf.duration,
-        clipGain: 1,
-        waveformPeaks: peaks,
-      };
-      let applied = false;
-      setTracks((prev) => {
-        const i = prev.findIndex((t) => t.id === trackId);
-        if (i < 0) return prev;
-        applied = true;
-        return prev.map((t, j) => (j === i ? { ...t, clips: [...t.clips, clip] } : t));
-      });
-      if (!applied) {
-        setStatus('Import failed: no matching track. Add a track, select it, try again.');
-        return;
-      }
-      setStatus(`Imported ${file.name} (${buf.numberOfChannels} ch) at playhead.`);
+      addClipFromBuffer(trackId, buf);
+      setStatus(`Imported ${file.name} (${buf.duration.toFixed(1)}s, ${buf.numberOfChannels} ch)`);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
+      console.error('[W.Studio] Import failed:', msg, e);
       setStatus(`Import failed: ${msg}`);
     }
-  }, []);
+  }, [addClipFromBuffer]);
 
   const addMidiNote = useCallback((trackId: string, note: Omit<MidiNote, 'id'>) => {
     const id = crypto.randomUUID();
