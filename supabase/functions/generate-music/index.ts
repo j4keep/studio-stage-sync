@@ -87,7 +87,7 @@ serve(async (req) => {
 
     const data = await response.json();
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    let songData = { title: "Untitled", lyrics: "", genre: "Pop", mood: "Chill" };
+    let songData: Record<string, unknown> = { title: "Untitled", lyrics: "", genre: "Pop", mood: "Chill" };
 
     if (toolCall?.function?.arguments) {
       try {
