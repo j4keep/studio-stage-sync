@@ -2464,20 +2464,38 @@ function DawChrome() {
             </button>
           </div>
 
-          {daw.isRecording ? (
+          {daw.isRecording || daw.tracks.some((t) => t.recordArm) ? (
             <div className="flex flex-col items-center px-1">
-              <span className="text-[7px] font-bold uppercase text-[#faa]">In</span>
+              <span
+                className={`text-[7px] font-bold uppercase ${daw.isRecording ? "text-[#faa]" : "text-[#9ad]"}`}
+              >
+                {daw.isRecording ? "In" : "Mic"}
+              </span>
               <div
                 className="relative mt-0.5 h-12 w-3 overflow-hidden rounded-sm border border-[#333] bg-black"
-                title="Input level"
+                title={
+                  daw.isRecording
+                    ? "Raw input level (pre-limiter); take uses soft limit ~−1 dBFS"
+                    : "Raw input while armed — adjust gain before record"
+                }
               >
-                <div
-                  className="absolute bottom-0 left-0 right-0 transition-[height] duration-75"
-                  style={{
-                    height: `${Math.min(100, (daw.meterPeaks.__mic__ ?? 0) * 110)}%`,
-                    background: `linear-gradient(to top, ${LP.meterGreen}, ${LP.meterYel}, ${LP.meterRed})`,
-                  }}
-                />
+                {(() => {
+                  const peak = daw.isRecording
+                    ? (daw.meterPeaks.__mic__ ?? 0)
+                    : daw.armedMicPeak;
+                  const hot = peak >= 0.92;
+                  return (
+                    <div
+                      className="absolute bottom-0 left-0 right-0 transition-[height] duration-75"
+                      style={{
+                        height: `${Math.min(100, peak * 110)}%`,
+                        background: hot
+                          ? `linear-gradient(to top, ${LP.meterYel}, ${LP.meterRed}, #ff4040)`
+                          : `linear-gradient(to top, ${LP.meterGreen}, ${LP.meterYel}, ${LP.meterRed})`,
+                      }}
+                    />
+                  );
+                })()}
               </div>
             </div>
           ) : null}

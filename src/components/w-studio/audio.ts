@@ -853,6 +853,19 @@ export function mergeFloatChunks(chunks: Float32Array[]): Float32Array {
   return out;
 }
 
+/**
+ * Linear amplitude for -1 dBFS headroom (~0.89). Recorded samples are soft-limited toward this
+ * ceiling so files stay clean while avoiding brick-wall clipping at ±1.
+ */
+export const RECORD_PEAK_CEIL_LINEAR = 10 ** (-1 / 20);
+
+/** Soft saturation: asymptotes to ±RECORD_PEAK_CEIL_LINEAR (tanh knee). */
+export function limitRecordingFloatSample(s: number): number {
+  if (!Number.isFinite(s)) return 0;
+  const c = RECORD_PEAK_CEIL_LINEAR;
+  return c * Math.tanh(s / c);
+}
+
 /** One stereo slice from the recorder (L/R same length). */
 export type StereoFloatChunk = { L: Float32Array; R: Float32Array };
 

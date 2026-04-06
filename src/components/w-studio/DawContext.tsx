@@ -22,6 +22,7 @@ import {
   faderToGain,
   getTimelineEndSec,
   mergeStereoChunks,
+  limitRecordingFloatSample,
   midiNoteToFreq,
   offlineRenderMix,
   trackAudible,
@@ -87,6 +88,18 @@ export const INPUT_SOURCE_OPTIONS = [
   'Line in',
   'Aggregate device',
 ] as const;
+
+/** One rate for capture + timeline decode; keeps recording buffer rate consistent. */
+export const DAW_AUDIO_SAMPLE_RATE = 48000 as const;
+
+/** Raw mic — no browser AEC/NS/AGC (clean path; user controls gain / limiter in-engine). */
+const CLEAN_MIC_CONSTRAINTS: MediaTrackConstraints = {
+  echoCancellation: false,
+  noiseSuppression: false,
+  autoGainControl: false,
+  channelCount: { ideal: 2 },
+  sampleRate: { ideal: DAW_AUDIO_SAMPLE_RATE },
+};
 
 type DawContextValue = {
   tracks: Track[];
@@ -188,7 +201,11 @@ function ensureAudioCtx(ref: MutableRefObject<AudioContext | null>) {
     const Ctx =
       window.AudioContext ||
       (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    ref.current = new Ctx();
+    try {
+      ref.current = new Ctx({ sampleRate: DAW_AUDIO_SAMPLE_RATE });
+    } catch {
+      ref.current = new Ctx();
+    }
   }
   return ref.current;
 }
@@ -213,6 +230,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
   const [masterMuted, setMasterMutedState] = useState(false);
   const [recordingTrackId, setRecordingTrackId] = useState<string | null>(null);
   const [recordingLivePeaks, setRecordingLivePeaks] = useState<number[]>([]);
+  const [armedMicPeak, setArmedMicPeak] = useState(0);
   const [recordingPunchInTime, setRecordingPunchInTime] = useState<number | null>(null);
   const [status, setStatus] = useState('');
   const [projectMeta, setProjectMetaState] = useState<StudioProjectMeta>(() => defaultStudioProjectMeta());
@@ -315,6 +333,122 @@ export function DawProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     isRecordingRef.current = isRecording;
   }, [isRecording]);
+
+  const anyRecordArmed = useMemo(() => tracks.some((t) => t.recordArm), [tracks]);
+
+  const liveMicStreamRef = useRef<MediaStream | null>(null);
+  const armPreviewRafRef = useRef(0);
+  const armPreviewNodesRef = useRef<{
+    src: MediaStreamAudioSourceNode;
+    analyser: AnalyserNode;
+    silent: GainNode;
+  } | null>(null);
+
+  const stopArmPreviewNodesOnly = useCallback(() => {
+    if (armPreviewRafRef.current) {
+      cancelAnimationFrame(armPreviewRafRef.current);
+      armPreviewRafRef.current = 0;
+    }
+    const n = armPreviewNodesRef.current;
+    if (n) {
+      try {
+        n.src.disconnect();
+        n.analyser.disconnect();
+        n.silent.disconnect();
+      } catch {
+        /* ignore */
+      }
+      armPreviewNodesRef.current = null;
+    }
+  }, []);
+
+  const releaseLiveMicStreamFully = useCallback(() => {
+    stopArmPreviewNodesOnly();
+    liveMicStreamRef.current?.getTracks().forEach((t) => t.stop());
+    liveMicStreamRef.current = null;
+    setArmedMicPeak(0);
+  }, [stopArmPreviewNodesOnly]);
+
+  /** Raw mic → analyser only (gain 0 to speakers). Never ties to playback / mixer bus. */
+  useEffect(() => {
+    if (isRecording) return;
+
+    if (!anyRecordArmed) {
+      if (!isRecordingRef.current) releaseLiveMicStreamFully();
+      return;
+    }
+
+    let cancelled = false;
+
+    const run = async () => {
+      try {
+        const ctx = ensureAudioCtx(audioCtxRef);
+        await ctx.resume();
+
+        let stream = liveMicStreamRef.current;
+        const live =
+          stream &&
+          stream.getTracks().some((t) => t.readyState === 'live');
+        if (!live) {
+          stream = await navigator.mediaDevices.getUserMedia({
+            audio: CLEAN_MIC_CONSTRAINTS,
+            video: false,
+          });
+          if (cancelled) {
+            stream.getTracks().forEach((t) => t.stop());
+            return;
+          }
+          liveMicStreamRef.current = stream;
+        }
+
+        stopArmPreviewNodesOnly();
+        const src = ctx.createMediaStreamSource(stream);
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 512;
+        analyser.smoothingTimeConstant = 0.35;
+        const silent = ctx.createGain();
+        silent.gain.value = 0;
+        src.connect(analyser);
+        analyser.connect(silent);
+        silent.connect(ctx.destination);
+        armPreviewNodesRef.current = { src, analyser, silent };
+
+        const tick = () => {
+          if (cancelled || isRecordingRef.current) return;
+          const a = analyser;
+          const buf = new Uint8Array(a.fftSize);
+          a.getByteTimeDomainData(buf);
+          let peak = 0;
+          for (let i = 0; i < buf.length; i++) {
+            const v = Math.abs(buf[i]! - 128) / 128;
+            if (v > peak) peak = v;
+          }
+          setArmedMicPeak((p) => Math.max(peak, p * 0.9));
+          armPreviewRafRef.current = requestAnimationFrame(tick);
+        };
+        armPreviewRafRef.current = requestAnimationFrame(tick);
+      } catch {
+        setArmedMicPeak(0);
+        setStatus('Mic preview failed — check permissions.');
+      }
+    };
+
+    void run();
+
+    return () => {
+      cancelled = true;
+      if (armPreviewRafRef.current) {
+        cancelAnimationFrame(armPreviewRafRef.current);
+        armPreviewRafRef.current = 0;
+      }
+      stopArmPreviewNodesOnly();
+    };
+  }, [
+    anyRecordArmed,
+    isRecording,
+    releaseLiveMicStreamFully,
+    stopArmPreviewNodesOnly,
+  ]);
 
   const isPlayingRef = useRef(isPlaying);
   useEffect(() => {
@@ -787,10 +921,11 @@ export function DawProvider({ children }: { children: ReactNode }) {
     seek(0);
   }, [seek]);
 
-  const micStreamRef = useRef<MediaStream | null>(null);
   const recordStereoChunksRef = useRef<{ L: Float32Array; R: Float32Array }[]>([]);
   const recordProcessorRef = useRef<ScriptProcessorNode | null>(null);
   const recordSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  /** Post-source trim (unity); single fan-out point for meter + capture — raw mic only. */
+  const recordInputTrimRef = useRef<GainNode | null>(null);
   const recordMuteRef = useRef<GainNode | null>(null);
   const micInputAnalyserRef = useRef<AnalyserNode | null>(null);
   const micInputSilentRef = useRef<GainNode | null>(null);
@@ -811,6 +946,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
     try {
       recordProcessorRef.current?.disconnect();
       recordSourceRef.current?.disconnect();
+      recordInputTrimRef.current?.disconnect();
       recordMuteRef.current?.disconnect();
       micInputAnalyserRef.current?.disconnect();
       micInputSilentRef.current?.disconnect();
@@ -819,12 +955,14 @@ export function DawProvider({ children }: { children: ReactNode }) {
     }
     recordProcessorRef.current = null;
     recordSourceRef.current = null;
+    recordInputTrimRef.current = null;
     recordMuteRef.current = null;
     micInputAnalyserRef.current = null;
     micInputSilentRef.current = null;
-    micStreamRef.current?.getTracks().forEach((x) => x.stop());
-    micStreamRef.current = null;
+    liveMicStreamRef.current?.getTracks().forEach((x) => x.stop());
+    liveMicStreamRef.current = null;
     recordStereoChunksRef.current = [];
+    setArmedMicPeak(0);
   }, []);
 
   const startRecord = useCallback(async () => {
@@ -837,18 +975,22 @@ export function DawProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          channelCount: { ideal: 2 },
-        },
-        video: false,
-      });
+      stopArmPreviewNodesOnly();
+
       const ctx = ensureAudioCtx(audioCtxRef);
       if (ctx.state === 'suspended') await ctx.resume();
 
-      ensureMaster(ctx);
+      let stream = liveMicStreamRef.current;
+      const streamLive =
+        stream && stream.getTracks().some((t) => t.readyState === 'live');
+      if (!streamLive) {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: CLEAN_MIC_CONSTRAINTS,
+          video: false,
+        });
+        liveMicStreamRef.current = stream;
+      }
+
       recordStartTimeRef.current = currentTimeRef.current;
       recordStereoChunksRef.current = [];
       recordingHistoryRef.current = [];
@@ -858,7 +1000,12 @@ export function DawProvider({ children }: { children: ReactNode }) {
       recordTimelineAnchorRef.current = { ctx: ctx.currentTime, timeline: currentTimeRef.current };
       setRecordingTrackId(targetId);
 
+      // Single MediaStreamSource → trim → [meter tap | ScriptProcessor]. No mixer / playback branches.
       const src = ctx.createMediaStreamSource(stream);
+      const inputTrim = ctx.createGain();
+      inputTrim.gain.value = 1;
+      src.connect(inputTrim);
+
       const proc = ctx.createScriptProcessor(4096, 2, 2);
       const mute = ctx.createGain();
       mute.gain.value = 0;
@@ -866,29 +1013,33 @@ export function DawProvider({ children }: { children: ReactNode }) {
       proc.onaudioprocess = (e) => {
         if (!recordingActiveRef.current) return;
         const ib = e.inputBuffer;
-        const L = new Float32Array(ib.getChannelData(0));
-        const R =
-          ib.numberOfChannels > 1
-            ? new Float32Array(ib.getChannelData(1))
-            : new Float32Array(L);
+        const n = ib.length;
+        const ch0 = ib.getChannelData(0);
+        const ch1 = ib.numberOfChannels > 1 ? ib.getChannelData(1) : ch0;
+        const L = new Float32Array(n);
+        const R = new Float32Array(n);
+        for (let i = 0; i < n; i++) {
+          L[i] = limitRecordingFloatSample(ch0[i]!);
+          R[i] = limitRecordingFloatSample(ch1[i]!);
+        }
         recordStereoChunksRef.current.push({ L, R });
       };
 
-      const inputAnalyser = ctx.createAnalyser();
-      inputAnalyser.fftSize = 512;
-      inputAnalyser.smoothingTimeConstant = 0.45;
-      const inputSilent = ctx.createGain();
-      inputSilent.gain.value = 0;
-      src.connect(inputAnalyser);
-      inputAnalyser.connect(inputSilent);
-      inputSilent.connect(ctx.destination);
-
-      src.connect(proc);
+      inputTrim.connect(proc);
       proc.connect(mute);
       mute.connect(ctx.destination);
 
-      micStreamRef.current = stream;
+      const inputAnalyser = ctx.createAnalyser();
+      inputAnalyser.fftSize = 512;
+      inputAnalyser.smoothingTimeConstant = 0.35;
+      const inputSilent = ctx.createGain();
+      inputSilent.gain.value = 0;
+      inputTrim.connect(inputAnalyser);
+      inputAnalyser.connect(inputSilent);
+      inputSilent.connect(ctx.destination);
+
       recordSourceRef.current = src;
+      recordInputTrimRef.current = inputTrim;
       recordProcessorRef.current = proc;
       recordMuteRef.current = mute;
       micInputAnalyserRef.current = inputAnalyser;
@@ -898,14 +1049,14 @@ export function DawProvider({ children }: { children: ReactNode }) {
       setIsRecording(true);
       setStatus(
         isPlaying
-          ? 'Recording… (stereo where supported; meter shows input).'
-          : 'Recording… Use Play for overdub. Watch input meter.',
+          ? 'Recording… raw mic path; mix is not routed into the take.'
+          : 'Recording… clean mic (Limiter ~−1 dBFS). Watch input meter.',
       );
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setStatus(`Mic error: ${msg}`);
     }
-  }, [ensureMaster, isPlaying, isRecording, selectedTrackId]);
+  }, [isPlaying, isRecording, selectedTrackId, stopArmPreviewNodesOnly]);
 
   const stopRecord = useCallback(() => {
     if (!isRecording) return;
@@ -1568,6 +1719,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
       setBeatsPerBar,
       recordingTrackId,
       recordingLivePeaks,
+      armedMicPeak,
       recordingPunchInTime,
       moveClip,
       trimClipEdge,
@@ -1591,6 +1743,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
       isRecording,
       recordingTrackId,
       recordingLivePeaks,
+      armedMicPeak,
       recordingPunchInTime,
       loopEnabled,
       loopStartSec,
