@@ -32,6 +32,14 @@ import { MIC_CHAIN_PRESETS, type MicChainPresetId } from './micPresets';
 import { hydrateProject, parseProjectJSON, serializeProject } from './projectIO';
 import { REMOTE_LIBRARY_FLAT } from './remoteLibrary';
 import {
+  defaultStudioProjectMeta,
+  studioSessionCapabilities,
+  type SessionRole,
+  type StudioProjectMeta,
+  type StudioSessionCapabilities,
+  type StudioToolSheetId,
+} from './studioSession';
+import {
   clipTrimEnd,
   clipTrimStart,
   newTrack,
@@ -42,6 +50,7 @@ import {
   type EqPresetId,
   type MidiNote,
   type SpacePresetId,
+  type StudioTrackType,
   type Track,
   type TrackKind,
 } from './types';
@@ -158,6 +167,18 @@ type DawContextValue = {
   trimClipEdge: (clipId: string, edge: 'left' | 'right', deltaSec: number) => void;
   /** Linear gain before the track fader (1 = unity, 0 = mute, max 4 ≈ +12 dB). */
   setClipGain: (trackId: string, clipId: string, gain: number) => void;
+  /** Saved project / session metadata (booking hooks, title, notes). */
+  projectMeta: StudioProjectMeta;
+  patchProjectMeta: (patch: Partial<StudioProjectMeta>) => void;
+  sessionRole: SessionRole;
+  setSessionRole: (role: SessionRole) => void;
+  artistSessionLimited: boolean;
+  setArtistSessionLimited: (v: boolean) => void;
+  sessionCapabilities: StudioSessionCapabilities;
+  /** Studio tool sheet (keyboard, loops, etc.) — UI placeholder until engines land. */
+  studioToolSheet: StudioToolSheetId | null;
+  setStudioToolSheet: (id: StudioToolSheetId | null) => void;
+  setTrackStudioType: (trackId: string, studioType: StudioTrackType) => void;
 };
 
 const DawContext = createContext<DawContextValue | null>(null);
@@ -194,11 +215,24 @@ export function DawProvider({ children }: { children: ReactNode }) {
   const [recordingLivePeaks, setRecordingLivePeaks] = useState<number[]>([]);
   const [recordingPunchInTime, setRecordingPunchInTime] = useState<number | null>(null);
   const [status, setStatus] = useState('');
+  const [projectMeta, setProjectMetaState] = useState<StudioProjectMeta>(() => defaultStudioProjectMeta());
+  const [sessionRole, setSessionRole] = useState<SessionRole>('engineer');
+  const [artistSessionLimited, setArtistSessionLimited] = useState(false);
+  const [studioToolSheet, setStudioToolSheet] = useState<StudioToolSheetId | null>(null);
   const [busMixer, setBusMixer] = useState<BusMixerState>(() => ({
     reverbA: { volume: 0.88, muted: false },
     drumBus: { volume: 0.88, muted: false },
     vocalBus: { volume: 0.88, muted: false },
   }));
+
+  const patchProjectMeta = useCallback((patch: Partial<StudioProjectMeta>) => {
+    setProjectMetaState((p) => ({ ...p, ...patch }));
+  }, []);
+
+  const sessionCapabilities = useMemo(
+    () => studioSessionCapabilities(sessionRole, artistSessionLimited),
+    [sessionRole, artistSessionLimited],
+  );
 
   const loopEnabledRef = useRef(loopEnabled);
   useEffect(() => {
@@ -989,6 +1023,12 @@ export function DawProvider({ children }: { children: ReactNode }) {
     setTracks((prev) => prev.map((t) => (t.id === id ? { ...t, name } : t)));
   }, []);
 
+  const setTrackStudioType = useCallback((trackId: string, studioType: StudioTrackType) => {
+    setTracks((prev) =>
+      prev.map((t) => (t.id === trackId ? { ...t, studioTrackType: studioType } : t)),
+    );
+  }, []);
+
   const setTrackInputSource = useCallback((id: string, label: string) => {
     setTracks((prev) => prev.map((t) => (t.id === id ? { ...t, inputSource: label } : t)));
   }, []);
@@ -1376,7 +1416,11 @@ export function DawProvider({ children }: { children: ReactNode }) {
 
   const exportProjectJson = useCallback(() => {
     try {
-      const json = serializeProject(tracksRef.current, tempoRef.current, beatsPerBar);
+      const json = serializeProject(tracksRef.current, tempoRef.current, beatsPerBar, {
+        projectMeta,
+        sessionRole,
+        artistSessionLimited,
+      });
       const blob = new Blob([json], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -1389,7 +1433,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
       const msg = e instanceof Error ? e.message : String(e);
       setStatus(`Export project failed: ${msg}`);
     }
-  }, [beatsPerBar]);
+  }, [artistSessionLimited, beatsPerBar, projectMeta, sessionRole]);
 
   const importProjectJson = useCallback(
     async (json: string) => {
@@ -1408,6 +1452,10 @@ export function DawProvider({ children }: { children: ReactNode }) {
         setSelectedTrackId(next[0]?.id ?? null);
         setTempo(data.tempo);
         setBeatsPerBar(Math.min(12, Math.max(1, data.beatsPerBar || 4)));
+        setProjectMetaState({ ...defaultStudioProjectMeta(), ...(data.projectMeta ?? {}) });
+        setSessionRole(data.sessionRole ?? 'engineer');
+        setArtistSessionLimited(data.artistSessionLimited ?? false);
+        setStudioToolSheet(null);
         setCurrentTime(0);
         setStatus(`Loaded project (${next.length} tracks).`);
       } catch (e) {
@@ -1524,6 +1572,16 @@ export function DawProvider({ children }: { children: ReactNode }) {
       moveClip,
       trimClipEdge,
       setClipGain,
+      projectMeta,
+      patchProjectMeta,
+      sessionRole,
+      setSessionRole,
+      artistSessionLimited,
+      setArtistSessionLimited,
+      sessionCapabilities,
+      studioToolSheet,
+      setStudioToolSheet,
+      setTrackStudioType,
     }),
     [
       tracks,
@@ -1587,6 +1645,13 @@ export function DawProvider({ children }: { children: ReactNode }) {
       setBeatsPerBar,
       setMasterVolume,
       setMasterMuted,
+      projectMeta,
+      patchProjectMeta,
+      sessionRole,
+      artistSessionLimited,
+      sessionCapabilities,
+      studioToolSheet,
+      setTrackStudioType,
     ],
   );
 

@@ -10,7 +10,7 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import type { BusId, Track, TrackKind } from "./types";
+import type { BusId, StudioTrackType, Track, TrackKind } from "./types";
 import { clipTrimEnd, clipTrimStart, MIXER_BUS_STRIPS, ROUTING_BUS_IDS } from "./types";
 import {
   EFFECT_PRESET_LABELS,
@@ -24,6 +24,7 @@ import {
 import { MIC_CHAIN_PRESETS } from "./micPresets";
 import { REMOTE_LIBRARY_BY_CATEGORY } from "./remoteLibrary";
 import { DawProvider, INPUT_SOURCE_OPTIONS, useDaw } from "./DawContext";
+import type { StudioToolSheetId } from "./studioSession";
 import { PianoRoll } from "./PianoRoll";
 import { LivePeaksCanvas } from "./LivePeaksCanvas";
 import { WaveformCanvas } from "./WaveformCanvas";
@@ -78,6 +79,22 @@ const MIXER_LABEL_ROWS = [
   { label: "", height: 28 },
   { label: "", height: 24 },
 ] as const;
+const STUDIO_TRACK_TYPE_LABELS: Record<StudioTrackType, string> = {
+  audio: "Audio",
+  vocal: "Vocal",
+  instrument: "Instrument",
+  beat: "Beat",
+  loop: "Loop",
+};
+
+const STUDIO_TOOL_SHEET_COPY: Record<StudioToolSheetId, { title: string; blurb: string }> = {
+  keyboard: { title: "Keyboard", blurb: "MIDI keyboard workflow — instrument panel coming soon." },
+  beat_maker: { title: "Beat Maker", blurb: "Step/pad beat tools — placeholder for the beat lane." },
+  loops_browser: { title: "Loops browser", blurb: "Browse and audition loops; drag-to-arrange hooks into the Library." },
+  instruments: { title: "Instruments", blurb: "Instrument rack and presets — placeholder until sound engine lands." },
+  fx_rack: { title: "FX rack / inserts", blurb: "Per-track inserts — use strip EQ / dynamics / space today; graph editor later." },
+};
+
 const MIXER_SCALE_MARKS = [
   "6",
   "3",
@@ -382,8 +399,9 @@ function InspectorChannelStrip({ trackId, isStereoOut }: { trackId: string | nul
         >
           <button
             type="button"
-            onClick={() => tr && daw.toggleRecordArm(tr.id)}
-            className={`h-4 w-5 rounded-sm border text-[8px] font-bold ${tr?.recordArm ? "border-[#a22] bg-[#e03030] text-white" : "border-[#555] bg-[#4a4a4e] text-[#999]"}`}
+            disabled={!daw.sessionCapabilities.canArmRecord}
+            onClick={() => tr && daw.sessionCapabilities.canArmRecord && daw.toggleRecordArm(tr.id)}
+            className={`h-4 w-5 rounded-sm border text-[8px] font-bold ${tr?.recordArm ? "border-[#a22] bg-[#e03030] text-white" : "border-[#555] bg-[#4a4a4e] text-[#999]"} disabled:opacity-40`}
           >
             R
           </button>
@@ -460,6 +478,40 @@ function TrackInspector({ trackId }: { trackId: string | null }) {
           <span className="font-semibold">Track:</span>
           <span className="text-[#b0b0b4]">{tr?.name ?? "Audio 1"}</span>
         </div>
+        {tr ? (
+          <div className="mt-1.5 space-y-1">
+            <label className="flex flex-col gap-0.5 text-[8px] text-[#888]">
+              <span>Studio lane</span>
+              <select
+                className="rounded border px-1 py-0.5 text-[9px]"
+                style={{ borderColor: LP.border, background: LP.panelLo, color: LP.text }}
+                value={tr.studioTrackType}
+                onChange={(e) => daw.setTrackStudioType(tr.id, e.target.value as StudioTrackType)}
+              >
+                {(Object.entries(STUDIO_TRACK_TYPE_LABELS) as [StudioTrackType, string][]).map(([id, lab]) => (
+                  <option key={id} value={id}>
+                    {lab}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="text-[8px] text-[#888]">
+              Inserts
+              <div className="mt-0.5 flex flex-wrap gap-0.5">
+                {tr.fxInserts.map((s, i) => (
+                  <span
+                    key={s.id}
+                    className="rounded border px-1 py-px text-[7px]"
+                    style={{ borderColor: LP.border, color: s.pluginId ? LP.text : "#666" }}
+                    title="FX slot placeholder"
+                  >
+                    {s.pluginId ?? `FX ${i + 1}`}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
       {/* Two channel strips side by side */}
       <div className="flex min-h-0 flex-1 justify-center overflow-y-auto">
@@ -1412,8 +1464,9 @@ function MixerStrip({ track: tr, peak, fileInputTrigger }: MixerStripProps) {
       >
         <button
           type="button"
-          onClick={() => daw.toggleRecordArm(tr.id)}
-          className={`h-4 w-5 rounded-sm border text-[8px] font-bold ${tr.recordArm ? "border-[#a22] bg-[#e03030] text-white" : "border-[#555] bg-[#4a4a4e] text-[#999]"}`}
+          disabled={!daw.sessionCapabilities.canArmRecord}
+          onClick={() => daw.sessionCapabilities.canArmRecord && daw.toggleRecordArm(tr.id)}
+          className={`h-4 w-5 rounded-sm border text-[8px] font-bold ${tr.recordArm ? "border-[#a22] bg-[#e03030] text-white" : "border-[#555] bg-[#4a4a4e] text-[#999]"} disabled:opacity-40`}
         >
           R
         </button>
@@ -2073,7 +2126,7 @@ function DawChrome() {
   const [editorTab, setEditorTab] = useState<"clip" | "piano">("clip");
   const [selection, setSelection] = useState<ClipSelection>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [mainView, setMainView] = useState<"arrange" | "mixer">("arrange");
+  const [mainView, setMainView] = useState<"studio" | "edit" | "mixer">("studio");
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [inspectorOpen, setInspectorOpen] = useState(true);
   const [editorsOpen, setEditorsOpen] = useState(false);
@@ -2199,7 +2252,7 @@ function DawChrome() {
   }, [daw]);
 
   useEffect(() => {
-    if (mainView !== "arrange") return;
+    if (mainView === "mixer") return;
     const viewport = arrangeScrollRef.current;
     if (!viewport) return;
 
@@ -2324,8 +2377,9 @@ function DawChrome() {
             </button>
             <button
               type="button"
-              title="Mixer"
-              onClick={() => setMainView("mixer")}
+              title="Mixer / Console"
+              onClick={() => daw.sessionCapabilities.canOpenFullMixer && setMainView("mixer")}
+              disabled={!daw.sessionCapabilities.canOpenFullMixer}
               className={mainView === "mixer" ? ctrlBtnActive : ctrlBtnBase}
             >
               <IconMixerConsole />
@@ -2391,11 +2445,12 @@ function DawChrome() {
             <button
               type="button"
               title={daw.isRecording ? "Stop recording" : "Record"}
+              disabled={!daw.isRecording && !daw.sessionCapabilities.canArmRecord}
               onClick={() => {
                 if (daw.isRecording) daw.stopRecord();
                 else void daw.startRecord();
               }}
-              className={`${ctrlBtnBase} text-[#ffb0b0] ${daw.isRecording ? "animate-pulse ring-2 ring-red-500 ring-offset-1 ring-offset-[#5a5a5e]" : ""}`}
+              className={`${ctrlBtnBase} text-[#ffb0b0] ${daw.isRecording ? "animate-pulse ring-2 ring-red-500 ring-offset-1 ring-offset-[#5a5a5e]" : ""} disabled:opacity-40`}
             >
               <IconRec />
             </button>
@@ -2539,8 +2594,9 @@ function DawChrome() {
               max={1}
               step={0.01}
               value={daw.masterVolume}
+              disabled={!daw.sessionCapabilities.canAdjustMaster}
               onChange={(e) => daw.setMasterVolume(Number(e.target.value))}
-              className="h-1.5 w-full cursor-pointer"
+              className="h-1.5 w-full cursor-pointer disabled:opacity-40"
               style={{ accentColor: "#d0d0d0" }}
             />
           </div>
@@ -2553,7 +2609,16 @@ function DawChrome() {
             <button type="button" title="Notepad" className={ctrlBtnBase}>
               <IconNotePad />
             </button>
-            <button type="button" title="Loop Browser" className={ctrlBtnBase}>
+            <button
+              type="button"
+              title="Loop Browser"
+              disabled={!daw.sessionCapabilities.canBrowseLoops}
+              onClick={() =>
+                daw.sessionCapabilities.canBrowseLoops &&
+                daw.setStudioToolSheet(daw.studioToolSheet === "loops_browser" ? null : "loops_browser")
+              }
+              className={daw.studioToolSheet === "loops_browser" ? ctrlBtnActive : ctrlBtnBase}
+            >
               <IconLoopBrowser />
             </button>
             <button type="button" title="Media Browser" className={ctrlBtnBase}>
@@ -2565,10 +2630,28 @@ function DawChrome() {
           <div className="ml-1 flex flex-wrap items-center gap-0.5">
             <button
               type="button"
-              title="Arrange / Edit"
-              onClick={() => setMainView("arrange")}
+              title="Studio — tracking & tools"
+              onClick={() => {
+                setMainView("studio");
+                setEditorsOpen(false);
+              }}
               className={
-                mainView === "arrange"
+                mainView === "studio"
+                  ? `${ctrlBtnActive} px-2 text-[9px] font-semibold`
+                  : `${ctrlBtnBase} px-2 text-[9px]`
+              }
+            >
+              Studio
+            </button>
+            <button
+              type="button"
+              title="Edit — timeline tools & editors"
+              onClick={() => {
+                setMainView("edit");
+                setEditorsOpen(true);
+              }}
+              className={
+                mainView === "edit"
                   ? `${ctrlBtnActive} px-2 text-[9px] font-semibold`
                   : `${ctrlBtnBase} px-2 text-[9px]`
               }
@@ -2577,15 +2660,16 @@ function DawChrome() {
             </button>
             <button
               type="button"
-              title="Mixer view"
-              onClick={() => setMainView("mixer")}
+              title="Mixer"
+              onClick={() => daw.sessionCapabilities.canOpenFullMixer && setMainView("mixer")}
+              disabled={!daw.sessionCapabilities.canOpenFullMixer}
               className={
                 mainView === "mixer"
                   ? `${ctrlBtnActive} px-2 text-[9px] font-semibold`
                   : `${ctrlBtnBase} px-2 text-[9px]`
               }
             >
-              Mix
+              Mixer
             </button>
             <button
               type="button"
@@ -2599,7 +2683,8 @@ function DawChrome() {
               type="button"
               title="New track"
               className={`${ctrlBtnBase} px-2 text-[9px]`}
-              onClick={() => setModalOpen(true)}
+              disabled={!daw.sessionCapabilities.canManageTracks}
+              onClick={() => daw.sessionCapabilities.canManageTracks && setModalOpen(true)}
             >
               +Tr
             </button>
@@ -2626,7 +2711,8 @@ function DawChrome() {
               type="button"
               title="Save project JSON"
               className={`${ctrlBtnBase} px-2 text-[9px] text-[#9d9]`}
-              onClick={() => daw.exportProjectJson()}
+              disabled={!daw.sessionCapabilities.canImportExportProject}
+              onClick={() => daw.sessionCapabilities.canImportExportProject && daw.exportProjectJson()}
             >
               Save
             </button>
@@ -2634,19 +2720,84 @@ function DawChrome() {
               type="button"
               title="Load project"
               className={`${ctrlBtnBase} px-2 text-[9px]`}
-              onClick={() => projectFileRef.current?.click()}
+              disabled={!daw.sessionCapabilities.canImportExportProject}
+              onClick={() =>
+                daw.sessionCapabilities.canImportExportProject && projectFileRef.current?.click()
+              }
             >
               Load
             </button>
           </div>
         </div>
 
-        {/* Row 2: Logic-style macro buttons (icon above label, monochrome) */}
-        <div
-          className="flex flex-wrap items-end gap-x-2 gap-y-1 border-t px-2 py-1 overflow-x-auto"
-          style={{ borderColor: LP.border, background: `linear-gradient(180deg, ${LP.panel} 0%, ${LP.panelLo} 100%)` }}
-        >
-          <LogicMacroToolButton label="Articulation">
+        {mainView === "studio" ? (
+          <div
+            className="flex flex-wrap items-center gap-x-1 gap-y-1 border-t px-2 py-1"
+            style={{ borderColor: LP.border, background: LP.panelLo }}
+          >
+            <span
+              className="mr-1 text-[8px] font-semibold uppercase tracking-wide"
+              style={{ color: LP.textMuted }}
+            >
+              Studio tools
+            </span>
+            {(
+              [
+                { id: "keyboard" as const, label: "Keyboard" },
+                { id: "beat_maker" as const, label: "Beat maker" },
+                { id: "loops_browser" as const, label: "Loops" },
+                { id: "instruments" as const, label: "Instruments" },
+                { id: "fx_rack" as const, label: "FX rack" },
+              ] as const
+            ).map((tool) => {
+              const disabled =
+                (tool.id === "keyboard" && !daw.sessionCapabilities.canOpenKeyboard) ||
+                (tool.id === "beat_maker" && !daw.sessionCapabilities.canOpenBeatTools) ||
+                (tool.id === "loops_browser" && !daw.sessionCapabilities.canBrowseLoops) ||
+                (tool.id === "instruments" && !daw.sessionCapabilities.canOpenKeyboard) ||
+                (tool.id === "fx_rack" && !daw.sessionCapabilities.canManageFxRack);
+              return (
+                <button
+                  key={tool.id}
+                  type="button"
+                  title={tool.label}
+                  disabled={disabled}
+                  onClick={() => {
+                    if (disabled) return;
+                    daw.setStudioToolSheet(daw.studioToolSheet === tool.id ? null : tool.id);
+                  }}
+                  className={
+                    daw.studioToolSheet === tool.id
+                      ? `${ctrlBtnActive} px-2 text-[9px] font-medium`
+                      : `${ctrlBtnBase} px-2 text-[9px]`
+                  }
+                >
+                  {tool.label}
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              title="Sample / loop library drawer"
+              className={`${ctrlBtnBase} ml-auto px-2 text-[9px]`}
+              onClick={() => setLibraryOpen(true)}
+            >
+              Library
+            </button>
+          </div>
+        ) : null}
+
+        {mainView === "edit" ? (
+          <>
+            {/* Row 2: Logic-style macro buttons (icon above label, monochrome) */}
+            <div
+              className="flex flex-wrap items-end gap-x-2 gap-y-1 border-t px-2 py-1 overflow-x-auto"
+              style={{
+                borderColor: LP.border,
+                background: `linear-gradient(180deg, ${LP.panel} 0%, ${LP.panelLo} 100%)`,
+              }}
+            >
+              <LogicMacroToolButton label="Articulation">
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.25" aria-hidden>
               <path d="M2.5 12c2.5-5.2 5.5-7.5 11-5.5" strokeLinecap="round" />
               <path d="M10.5 3.8l3 2.2-1.2 2.8" strokeLinecap="round" strokeLinejoin="round" />
@@ -2868,7 +3019,33 @@ function DawChrome() {
             />
           </label>
         </div>
+          </>
+        ) : null}
       </header>
+
+      {daw.studioToolSheet && mainView !== "mixer" ? (
+        <div
+          className="flex shrink-0 flex-col gap-1 border-b px-3 py-2"
+          style={{ borderColor: LP.border, background: LP.panel }}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] font-semibold" style={{ color: LP.text }}>
+              {STUDIO_TOOL_SHEET_COPY[daw.studioToolSheet].title}
+            </span>
+            <button
+              type="button"
+              className="rounded border px-2 py-0.5 text-[9px]"
+              style={{ borderColor: LP.border, color: LP.textMuted }}
+              onClick={() => daw.setStudioToolSheet(null)}
+            >
+              Close
+            </button>
+          </div>
+          <p className="text-[9px] leading-snug" style={{ color: LP.textMuted }}>
+            {STUDIO_TOOL_SHEET_COPY[daw.studioToolSheet].blurb}
+          </p>
+        </div>
+      ) : null}
 
       {mainView === "mixer" ? (
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden" style={{ background: LP.panel }}>
@@ -3035,8 +3212,9 @@ function DawChrome() {
                   <button
                     type="button"
                     title="New track"
-                    onClick={() => setModalOpen(true)}
-                    className="flex h-5 w-5 items-center justify-center rounded border border-[#555] bg-[#4a4a4e] text-[12px] text-[#ccc] hover:bg-[#555]"
+                    disabled={!daw.sessionCapabilities.canManageTracks}
+                    onClick={() => daw.sessionCapabilities.canManageTracks && setModalOpen(true)}
+                    className="flex h-5 w-5 items-center justify-center rounded border border-[#555] bg-[#4a4a4e] text-[12px] text-[#ccc] hover:bg-[#555] disabled:opacity-40"
                   >
                     +
                   </button>
@@ -3159,13 +3337,16 @@ function DawChrome() {
                           <button
                             type="button"
                             title="Record arm"
-                            className="h-[18px] w-[18px] rounded-sm border text-[7px] font-bold"
+                            disabled={!daw.sessionCapabilities.canArmRecord}
+                            className="h-[18px] w-[18px] rounded-sm border text-[7px] font-bold disabled:opacity-40"
                             style={{
                               borderColor: "#444",
                               background: tr.recordArm ? LP.record : "#404040",
                               color: tr.recordArm ? "#fff" : "#ccc",
                             }}
-                            onClick={() => daw.toggleRecordArm(tr.id)}
+                            onClick={() =>
+                              daw.sessionCapabilities.canArmRecord && daw.toggleRecordArm(tr.id)
+                            }
                           >
                             R
                           </button>
@@ -3462,7 +3643,7 @@ function DawChrome() {
         </div>
       )}
 
-      {editorsOpen ? (
+      {editorsOpen && daw.sessionCapabilities.canEditTimeline ? (
         <footer
           className={`flex shrink-0 flex-col border-t ${
             editorTab === "piano" ? "min-h-[240px] flex-1 lg:h-[min(320px,40vh)] lg:max-h-[420px]" : "h-[180px]"

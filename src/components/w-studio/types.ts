@@ -55,6 +55,45 @@ export type TrackKind =
   | 'import_audio'
   | 'play_drums';
 
+/**
+ * High-level studio track role (BandLab-style). Complements `TrackKind` creation flows.
+ * Audio graph still keys off clips + MIDI + existing mixer chain.
+ */
+export type StudioTrackType = 'audio' | 'vocal' | 'instrument' | 'beat' | 'loop';
+
+/** Placeholder FX insert slots per track — plugins wired later. */
+export type FxInsertSlot = {
+  id: string;
+  pluginId: string | null;
+  bypass: boolean;
+};
+
+export const DEFAULT_FX_INSERT_SLOT_COUNT = 4 as const;
+
+export function createDefaultFxInsertSlots(): FxInsertSlot[] {
+  return Array.from({ length: DEFAULT_FX_INSERT_SLOT_COUNT }, (_, i) => ({
+    id: `fx-${i}`,
+    pluginId: null,
+    bypass: false,
+  }));
+}
+
+export function studioTrackTypeFromKind(kind: TrackKind): StudioTrackType {
+  switch (kind) {
+    case 'record_audio':
+      return 'vocal';
+    case 'import_audio':
+      return 'audio';
+    case 'create_beat':
+    case 'play_drums':
+      return 'beat';
+    case 'instrument':
+      return 'instrument';
+    case 'use_loops':
+      return 'loop';
+  }
+}
+
 /** Per-channel EQ preset (Biquad chain configured in AudioContext) */
 export type EqPresetId =
   | 'flat'
@@ -150,6 +189,8 @@ export function newTrack(name: string, index: number, kind: TrackKind = 'record_
     name: label,
     color: TRACK_PALETTE[index % TRACK_PALETTE.length]!,
     kind,
+    studioTrackType: studioTrackTypeFromKind(kind),
+    fxInserts: createDefaultFxInsertSlots(),
     inputSource: typeof navigator !== 'undefined' ? 'Built-in microphone' : 'Default input',
     recordArm: false,
     volume: 0.82,

@@ -1,15 +1,20 @@
 import { createLibrarySound, type LibrarySoundId } from './audio';
 import { REMOTE_LIBRARY_FLAT } from './remoteLibrary';
+import type { SessionRole, StudioProjectMeta } from './studioSession';
 import {
   clipTrimEnd,
   clipTrimStart,
   clipVisibleDuration,
+  createDefaultFxInsertSlots,
+  studioTrackTypeFromKind,
   type BusId,
   type ClipSourceMeta,
   type EffectPresetId,
   type EqPresetId,
+  type FxInsertSlot,
   type MidiNote,
   type SpacePresetId,
+  type StudioTrackType,
   type Track,
   type TrackKind,
 } from './types';
@@ -33,6 +38,8 @@ export type SerializedTrackV1 = {
   name: string;
   color: string;
   kind: TrackKind;
+  studioTrackType?: StudioTrackType;
+  fxInserts?: FxInsertSlot[];
   inputSource: string;
   volume: number;
   pan: number;
@@ -52,18 +59,39 @@ export type SerializedProjectV1 = {
   tempo: number;
   beatsPerBar: number;
   tracks: SerializedTrackV1[];
+  projectMeta?: StudioProjectMeta;
+  sessionRole?: SessionRole;
+  artistSessionLimited?: boolean;
 };
 
-export function serializeProject(tracks: Track[], tempo: number, beatsPerBar: number): string {
+export type ProjectSerializeEnvelope = {
+  projectMeta?: StudioProjectMeta;
+  sessionRole?: SessionRole;
+  artistSessionLimited?: boolean;
+};
+
+export function serializeProject(
+  tracks: Track[],
+  tempo: number,
+  beatsPerBar: number,
+  envelope?: ProjectSerializeEnvelope,
+): string {
   const data: SerializedProjectV1 = {
     version: PROJECT_FILE_VERSION,
     tempo,
     beatsPerBar,
+    ...(envelope?.projectMeta ? { projectMeta: envelope.projectMeta } : {}),
+    ...(envelope?.sessionRole != null ? { sessionRole: envelope.sessionRole } : {}),
+    ...(envelope?.artistSessionLimited != null
+      ? { artistSessionLimited: envelope.artistSessionLimited }
+      : {}),
     tracks: tracks.map((t) => ({
       id: t.id,
       name: t.name,
       color: t.color,
       kind: t.kind,
+      studioTrackType: t.studioTrackType,
+      fxInserts: t.fxInserts.map((s) => ({ ...s })),
       inputSource: t.inputSource,
       volume: t.volume,
       pan: t.pan,
@@ -111,6 +139,11 @@ export async function hydrateProject(data: SerializedProjectV1, ctx: AudioContex
       name: st.name,
       color: st.color,
       kind: st.kind,
+      studioTrackType: st.studioTrackType ?? studioTrackTypeFromKind(st.kind),
+      fxInserts:
+        st.fxInserts && st.fxInserts.length > 0
+          ? st.fxInserts.map((s) => ({ ...s }))
+          : createDefaultFxInsertSlots(),
       inputSource: st.inputSource,
       recordArm: false,
       volume: st.volume,
