@@ -53,15 +53,15 @@ function timelineSecFromClient(clientX: number, scrollLeft: number, laneEl: HTML
   const x = scrollLeft + (clientX - lr.left);
   return Math.max(0, pxToSec(x));
 }
-const TRACK_HEADER_W = 292;
+const TRACK_HEADER_W = 276;
 const TIMELINE_BAR_LIMIT = 127;
-const INSPECTOR_STRIP_W = 74;
+/** Mixer layout — Logic-style proportions: narrow strip, tall fader, meters to the right of the cap */
+const MIXER_LABEL_W = 96;
+const MIXER_STRIP_W = 92;
+const MIXER_METER_H = 228;
+const INSPECTOR_STRIP_W = MIXER_STRIP_W;
 const INSPECTOR_PANEL_W = INSPECTOR_STRIP_W * 2 + 1; /* 1px for border between strips */
-/** Mixer layout — compact, aligned with classic console strips */
-const MIXER_LABEL_W = 82;
-const MIXER_STRIP_W = 74;
-const MIXER_METER_H = 160;
-const TRACK_ROW_MIN_H = 56;
+const TRACK_ROW_MIN_H = 48;
 /** Stable id so "New track → Import audio" can use <label htmlFor> (reliable file picker vs programmatic .click()). */
 const WSTUDIO_AUDIO_FILE_INPUT_ID = "wstudio-audio-file-import";
 const MIXER_LABEL_ROWS = [
@@ -952,17 +952,20 @@ function PanKnob({
 function DualPeakMeters({
   peak,
   height = MIXER_METER_H,
-  barWidth = 8,
+  barWidth = 10,
+  barGap = 3,
 }: {
   peak: number;
   height?: number;
   barWidth?: number;
+  /** Horizontal gap between L/R stems */
+  barGap?: number;
 }) {
   const h = Math.min(100, peak * 112);
   const bar = (k: string) => (
     <div
       key={k}
-      className="relative overflow-hidden rounded-[2px] bg-[#0a0a0a]"
+      className="relative overflow-hidden rounded-[3px] bg-[#0a0a0a]"
       style={{
         height,
         width: barWidth,
@@ -987,7 +990,7 @@ function DualPeakMeters({
     </div>
   );
   return (
-    <div className="flex items-end gap-[2px]" style={{ height }}>
+    <div className="flex items-end" style={{ height, gap: barGap }}>
       {bar("L")}
       {bar("R")}
     </div>
@@ -1143,16 +1146,17 @@ function VerticalMixerFader({
     window.addEventListener("mouseup", handleUp);
   };
 
-  const handleTop = (1 - Math.max(0, Math.min(1, value))) * (MIXER_METER_H - 30);
+  const capH = 32;
+  const handleTop = (1 - Math.max(0, Math.min(1, value))) * (MIXER_METER_H - capH);
 
   return (
-    <div className="flex h-full w-full items-stretch justify-center gap-[3px] px-[3px] py-1">
-      <div className="flex flex-col items-end justify-between py-0.5 font-mono text-[6px] leading-none text-[#9f9fa3]">
+    <div className="flex h-full w-full max-w-full items-stretch justify-center gap-1 px-[2px] py-0.5">
+      {/* Logic order: dB scale → fader groove + cap → peak meters (right of fader) */}
+      <div className="flex min-w-[12px] flex-col items-end justify-between py-0.5 font-mono text-[7px] leading-none tracking-tight text-[#c4c4c8]">
         {MIXER_SCALE_MARKS.map((mark) => (
           <span key={mark}>{mark}</span>
         ))}
       </div>
-      <DualPeakMeters peak={peak} height={MIXER_METER_H} barWidth={6} />
       <div
         ref={railRef}
         role="slider"
@@ -1161,7 +1165,7 @@ function VerticalMixerFader({
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={Math.round(value * 100)}
-        className="relative w-[30px] cursor-ns-resize select-none outline-none"
+        className="relative w-[34px] shrink-0 cursor-ns-resize select-none outline-none"
         style={{ height: MIXER_METER_H }}
         onMouseDown={startDrag}
         onKeyDown={(event) => {
@@ -1176,27 +1180,28 @@ function VerticalMixerFader({
         }}
       >
         <div
-          className="absolute left-1/2 top-0 bottom-0 w-[10px] -translate-x-1/2 rounded-[3px] border border-[#17171a]"
+          className="absolute left-1/2 top-0 bottom-0 w-[12px] -translate-x-1/2 rounded-[4px] border border-[#121214]"
           style={{
-            background: "linear-gradient(90deg, #5a5a5e 0%, #3b3b40 45%, #2a2a2e 100%)",
-            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1)",
+            background: "linear-gradient(90deg, #4c4c50 0%, #323236 40%, #1e1e22 100%)",
+            boxShadow: "inset 0 2px 4px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.08)",
           }}
         />
         <div
-          className="pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 rounded-[4px] border border-[#8b8b8f]"
+          className="pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 rounded-[5px] border border-[#7a7a80]"
           style={{
             top: handleTop,
-            width: 28,
-            height: 30,
-            background: "linear-gradient(180deg, #f2f2f2 0%, #cbcbcf 45%, #9b9b9f 100%)",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.82)",
+            width: 30,
+            height: capH,
+            background: "linear-gradient(180deg, #ececec 0%, #c8c8cc 42%, #98989c 100%)",
+            boxShadow:
+              "0 2px 4px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(0,0,0,0.12)",
           }}
         >
-          <div className="absolute inset-x-[5px] top-[8px] h-px bg-[#77777b]" />
-          <div className="absolute inset-x-[5px] top-[14px] h-px bg-[#77777b]" />
-          <div className="absolute inset-x-[5px] top-[20px] h-px bg-[#77777b]" />
+          <div className="absolute inset-x-[6px] top-[9px] h-px bg-[#6a6a6e]" />
+          <div className="absolute inset-x-[6px] top-[16px] h-px bg-[#6a6a6e]" />
         </div>
       </div>
+      <DualPeakMeters peak={peak} height={MIXER_METER_H} barWidth={11} barGap={3} />
     </div>
   );
 }
@@ -3430,27 +3435,29 @@ function DawChrome() {
                       }}
                     >
                       <div className="w-1 shrink-0" style={{ backgroundColor: tr.color }} />
-                      <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-1 py-1">
-                        <div className="flex items-center gap-1">
-                          <span className="w-3 text-center font-mono text-[8px] text-[#888]">{ti + 1}</span>
-                          <IconWaveInst />
+                      <div className="flex min-w-0 flex-1 flex-col justify-center gap-px px-1 py-0.5">
+                        <div className="flex items-center gap-0.5">
+                          <span className="w-3 shrink-0 text-center font-mono text-[7px] text-[#888]">{ti + 1}</span>
+                          <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center">
+                            <IconWaveInst />
+                          </span>
                           <input
-                            className="min-w-0 flex-1 truncate border border-transparent bg-transparent text-[10px] font-semibold outline-none"
+                            className="min-w-0 flex-1 truncate border border-transparent bg-transparent text-[9px] font-semibold leading-tight outline-none"
                             style={{ color: LP.text }}
                             value={tr.name}
                             onChange={(e) => daw.renameTrack(tr.id, e.target.value)}
                             onClick={() => daw.setSelectedTrackId(tr.id)}
                           />
                         </div>
-                        <div className="flex items-center gap-0.5">
+                        <div className="flex min-h-[26px] items-center gap-0.5">
                           <button
                             type="button"
                             title="Mute"
-                            className="h-[18px] w-[18px] rounded-sm border text-[7px] font-bold"
+                            className="h-4 w-4 shrink-0 rounded-full border text-[6px] font-bold"
                             style={{
-                              borderColor: "#444",
-                              background: tr.muted ? LP.muteOn : "#404040",
-                              color: tr.muted ? "#022" : "#ccc",
+                              borderColor: "#3a3a3e",
+                              background: tr.muted ? LP.muteOn : "#3a3a3e",
+                              color: tr.muted ? "#022" : "#bbb",
                             }}
                             onClick={() => daw.toggleMute(tr.id)}
                           >
@@ -3459,11 +3466,11 @@ function DawChrome() {
                           <button
                             type="button"
                             title="Solo"
-                            className="h-[18px] w-[18px] rounded-sm border text-[7px] font-bold"
+                            className="h-4 w-4 shrink-0 rounded-full border text-[6px] font-bold"
                             style={{
-                              borderColor: "#444",
-                              background: tr.solo ? LP.solo : "#404040",
-                              color: tr.solo ? "#111" : "#ccc",
+                              borderColor: "#3a3a3e",
+                              background: tr.solo ? LP.solo : "#3a3a3e",
+                              color: tr.solo ? "#111" : "#bbb",
                             }}
                             onClick={() => daw.toggleSolo(tr.id)}
                           >
@@ -3473,11 +3480,11 @@ function DawChrome() {
                             type="button"
                             title="Record arm"
                             disabled={!daw.sessionCapabilities.canArmRecord}
-                            className="h-[18px] w-[18px] rounded-sm border text-[7px] font-bold disabled:opacity-40"
+                            className="h-4 w-4 shrink-0 rounded-full border text-[6px] font-bold disabled:opacity-40"
                             style={{
-                              borderColor: "#444",
-                              background: tr.recordArm ? LP.record : "#404040",
-                              color: tr.recordArm ? "#fff" : "#ccc",
+                              borderColor: "#3a3a3e",
+                              background: tr.recordArm ? LP.record : "#3a3a3e",
+                              color: tr.recordArm ? "#fff" : "#bbb",
                             }}
                             onClick={() =>
                               daw.sessionCapabilities.canArmRecord && daw.toggleRecordArm(tr.id)
@@ -3489,66 +3496,79 @@ function DawChrome() {
                             type="button"
                             title="Input monitoring (headphones) — live to master; not recorded"
                             onClick={() => daw.toggleInputMonitoring(tr.id)}
-                            className="flex h-[18px] w-[18px] items-center justify-center rounded-sm border"
+                            className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border"
                             style={{
-                              borderColor: tr.inputMonitoring ? "#4a78c8" : "#444",
-                              background: tr.inputMonitoring ? "#3478f6" : "#404040",
-                              color: tr.inputMonitoring ? "#fff" : "#ccc",
-                              position: "relative",
+                              borderColor: tr.inputMonitoring ? "#4a78c8" : "#3a3a3e",
+                              background: tr.inputMonitoring ? "#3478f6" : "#3a3a3e",
+                              color: tr.inputMonitoring ? "#fff" : "#bbb",
                               zIndex: 20,
                               pointerEvents: "auto",
                               cursor: "pointer",
                             }}
                           >
-                            <Headphones size={11} strokeWidth={2.25} aria-hidden />
+                            <Headphones size={10} strokeWidth={2.2} aria-hidden />
                           </button>
-                          {/* Volume fader with signal-dependent green fill */}
                           {(() => {
                             const peak = meterPeakScalar(daw.meterPeaks[tr.id]);
                             const signalPct = Math.min(100, peak * 110);
                             const volPct = tr.volume * 100;
                             return (
-                              <div
-                                className="relative mx-1 h-4 min-w-[56px] flex-1 overflow-hidden rounded-full"
-                                style={{ background: "#2a2a2a", boxShadow: "inset 0 1px 3px rgba(0,0,0,0.6)" }}
-                              >
-                                {/* Signal-level green fill (only shows when audio is flowing) */}
-                                {signalPct > 0.5 && (
+                              <>
+                                <div
+                                  className="relative h-3.5 w-1 shrink-0 overflow-hidden rounded-sm border border-[#1f1f22] bg-[#0a0a0c]"
+                                  style={{ boxShadow: "inset 0 1px 2px rgba(0,0,0,0.8)" }}
+                                  title="Level"
+                                >
                                   <div
-                                    className="absolute left-0 top-0 bottom-0 rounded-full transition-[width] duration-75"
+                                    className="absolute bottom-0 left-0 right-0 transition-[height] duration-75"
                                     style={{
-                                      width: `${Math.min(volPct, signalPct)}%`,
-                                      background: "linear-gradient(to right, #3a8a3a, #5cb85c)",
+                                      height: `${Math.min(100, signalPct)}%`,
+                                      background: `linear-gradient(to top, ${LP.meterGreen}, ${LP.meterYel})`,
                                     }}
                                   />
-                                )}
-                                {/* Gray volume bar background showing fader position */}
+                                </div>
                                 <div
-                                  className="absolute left-0 top-0 bottom-0 rounded-full"
-                                  style={{
-                                    width: `${volPct}%`,
-                                    background:
-                                      signalPct > 0.5 ? "transparent" : "linear-gradient(to right, #4a4a4e, #5a5a5e)",
-                                    opacity: signalPct > 0.5 ? 0 : 0.6,
-                                  }}
-                                />
-                                <input
-                                  type="range"
-                                  min={0}
-                                  max={1}
-                                  step={0.01}
-                                  value={tr.volume}
-                                  onChange={(e) => daw.setTrackVolume(tr.id, Number(e.target.value))}
-                                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                                />
-                                <div
-                                  className="pointer-events-none absolute top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border border-[#888] bg-gradient-to-b from-[#ccc] to-[#888] shadow"
-                                  style={{ left: `calc(${volPct}% - 6px)` }}
-                                />
-                              </div>
+                                  className="relative mx-0.5 h-3 min-w-[48px] flex-1 overflow-hidden rounded-full"
+                                  style={{ background: "#2a2a2e", boxShadow: "inset 0 1px 3px rgba(0,0,0,0.65)" }}
+                                >
+                                  {signalPct > 0.5 && (
+                                    <div
+                                      className="absolute bottom-0 left-0 top-0 rounded-full transition-[width] duration-75"
+                                      style={{
+                                        width: `${Math.min(volPct, signalPct)}%`,
+                                        background: "linear-gradient(to right, #2d6a2d, #4ecb4e)",
+                                      }}
+                                    />
+                                  )}
+                                  <div
+                                    className="absolute bottom-0 left-0 top-0 rounded-full"
+                                    style={{
+                                      width: `${volPct}%`,
+                                      background:
+                                        signalPct > 0.5
+                                          ? "transparent"
+                                          : "linear-gradient(to right, #4a4a50, #5c5c64)",
+                                      opacity: signalPct > 0.5 ? 0 : 0.65,
+                                    }}
+                                  />
+                                  <input
+                                    type="range"
+                                    min={0}
+                                    max={1}
+                                    step={0.01}
+                                    value={tr.volume}
+                                    onChange={(e) => daw.setTrackVolume(tr.id, Number(e.target.value))}
+                                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                                  />
+                                  <div
+                                    className="pointer-events-none absolute top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full border border-[#666] bg-gradient-to-b from-[#ddd] to-[#888] shadow"
+                                    style={{ left: `calc(${volPct}% - 5px)` }}
+                                  />
+                                </div>
+                              </>
                             );
                           })()}
-                          <PanKnob value={tr.pan} onChange={(v) => daw.setTrackPan(tr.id, v)} size={26} />
+                          <PanKnob value={tr.pan} onChange={(v) => daw.setTrackPan(tr.id, v)} size={22} />
                         </div>
                       </div>
                     </div>
@@ -3606,7 +3626,7 @@ function DawChrome() {
                                 className="pointer-events-none absolute rounded-sm opacity-85"
                                 style={{
                                   left,
-                                  top: 62,
+                                  top: Math.max(10, Math.round(TRACK_ROW_MIN_H * 0.42)),
                                   width: w,
                                   height: 10,
                                   backgroundColor: tr.color,
@@ -3618,14 +3638,15 @@ function DawChrome() {
                         })()}
                         {daw.isRecording && daw.recordingTrackId === tr.id && daw.recordingPunchInTime != null ? (
                           <div
-                            className="pointer-events-none absolute top-1.5 z-[5] overflow-hidden rounded-[3px] border shadow-[0_0_12px_rgba(239,68,68,0.35)]"
+                            className="pointer-events-none absolute z-[5] overflow-hidden rounded-[3px] border shadow-[0_0_12px_rgba(239,68,68,0.35)]"
                             style={{
                               left: daw.recordingPunchInTime * PX_PER_SEC,
                               width: Math.max(
                                 12,
                                 (daw.currentTime - daw.recordingPunchInTime) * PX_PER_SEC,
                               ),
-                              height: 54,
+                              height: Math.max(28, TRACK_ROW_MIN_H - 8),
+                              top: 4,
                               borderColor: "rgba(248,113,113,0.85)",
                               backgroundColor: "rgba(80,20,20,0.45)",
                             }}
@@ -3637,7 +3658,7 @@ function DawChrome() {
                                 24,
                                 Math.floor((daw.currentTime - daw.recordingPunchInTime) * PX_PER_SEC),
                               )}
-                              height={54}
+                              height={Math.max(28, TRACK_ROW_MIN_H - 8)}
                               color="#fca5a5"
                               fill="rgba(0,0,0,0.2)"
                             />
@@ -3669,14 +3690,14 @@ function DawChrome() {
                           }
                           const vis = Math.max(0.001, dispTe - dispTs);
                           const w = Math.max(24, vis * PX_PER_SEC);
-                          const h = 54;
+                          const h = Math.max(34, TRACK_ROW_MIN_H - 6);
                           const isSel = selection?.trackId === tr.id && selection?.clipId === c.id;
                           return (
                             <div
                               key={c.id}
                               role="button"
                               tabIndex={0}
-                              className={`group absolute top-1.5 cursor-default overflow-hidden rounded-[3px] border text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] outline-none focus-visible:ring-2 ${
+                              className={`group absolute top-[3px] cursor-default overflow-hidden rounded-[3px] border text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] outline-none focus-visible:ring-2 ${
                                 isSel ? "ring-2 ring-[#5a9eef]/80" : "hover:brightness-105"
                               }`}
                               style={{
