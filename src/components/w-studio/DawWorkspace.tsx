@@ -26,7 +26,7 @@ import { MIC_CHAIN_PRESETS } from "./micPresets";
 import { REMOTE_LIBRARY_BY_CATEGORY } from "./remoteLibrary";
 import { Headphones } from "lucide-react";
 import ChannelMeter from "./ChannelMeter";
-import { resolveStereo, trackToChannelConfig } from "./channelConfig";
+import { resolveStereo, trackShowsStereoMeters, trackToChannelConfig } from "./channelConfig";
 import { DawProvider, INPUT_SOURCE_OPTIONS, meterPeakLR, meterPeakScalar, useDaw, type DawMeterPeak } from "./DawContext";
 import { InsertRowPlaceholder, TrackPluginSlots } from "./TrackPluginSlots";
 import type { StudioToolSheetId } from "./studioSession";
@@ -281,6 +281,7 @@ function InspectorChannelStrip({ trackId, isStereoOut }: { trackId: string | nul
       ? (daw.meterPeaks[tr.id] ?? 0)
       : 0;
   const peak = meterPeakScalar(meterPeak);
+  const dualMeters = Boolean(isStereoOut || (tr != null && trackShowsStereoMeters(tr)));
   const vol = isStereoOut ? daw.masterVolume : (tr?.volume ?? 0.8);
   const pan = tr?.pan ?? 0;
   const name = isStereoOut ? "Stereo Out" : (tr?.name ?? "Track");
@@ -483,7 +484,13 @@ function InspectorChannelStrip({ trackId, isStereoOut }: { trackId: string | nul
         className="border-b"
         style={{ borderColor: LOGIC_MIX.rowLine, minHeight: MIXER_METER_H + 6, height: MIXER_METER_H + 6 }}
       >
-        <VerticalMixerFader value={vol} meterPeak={meterPeak} onChange={updateVolume} ariaLabel={`${name} level`} />
+        <VerticalMixerFader
+          value={vol}
+          meterPeak={meterPeak}
+          dualMeters={dualMeters}
+          onChange={updateVolume}
+          ariaLabel={`${name} level`}
+        />
       </div>
       {!isStereoOut ? (
         <div
@@ -1004,6 +1011,54 @@ function PanKnob({
   );
 }
 
+const METER_SEGMENT_PCTS = [12, 28, 44, 60, 76] as const;
+
+function PeakMeterStem({ peak, height, barWidth }: { peak: number; height: number; barWidth: number }) {
+  const h = Math.min(100, peak * 112);
+  return (
+    <div
+      className="relative overflow-hidden rounded-[2px] bg-[#060607]"
+      style={{
+        height,
+        width: barWidth,
+        boxShadow: "inset 0 3px 8px rgba(0,0,0,0.98), inset 0 1px 0 rgba(255,255,255,0.05)",
+      }}
+    >
+      {METER_SEGMENT_PCTS.map((pct) => (
+        <div
+          key={pct}
+          className="pointer-events-none absolute left-0 right-0 border-t border-[#1a1a1c]"
+          style={{ bottom: `${pct}%` }}
+        />
+      ))}
+      <div
+        className="absolute bottom-0 left-0 right-0 transition-[height] duration-75 ease-out"
+        style={{
+          height: `${h}%`,
+          background: `linear-gradient(to top, ${LP.meterGreen} 0%, ${LP.meterYel} 68%, ${LP.meterRed} 100%)`,
+          boxShadow: "0 0 3px rgba(80,210,80,0.2)",
+        }}
+      />
+    </div>
+  );
+}
+
+function SinglePeakMeter({
+  peak,
+  height = MIXER_METER_H,
+  barWidth,
+}: {
+  peak: number;
+  height?: number;
+  barWidth: number;
+}) {
+  return (
+    <div className="flex items-end" style={{ height }}>
+      <PeakMeterStem peak={peak} height={height} barWidth={barWidth} />
+    </div>
+  );
+}
+
 function DualPeakMeters({
   peakL,
   peakR,
@@ -1018,40 +1073,33 @@ function DualPeakMeters({
   /** Horizontal gap between L/R stems */
   barGap?: number;
 }) {
-  const bar = (k: string, peak: number) => {
-    const h = Math.min(100, peak * 112);
-    return (
-      <div
-        key={k}
-        className="relative overflow-hidden rounded-[2px] bg-[#060607]"
-        style={{
-          height,
-          width: barWidth,
-          boxShadow: "inset 0 3px 8px rgba(0,0,0,0.98), inset 0 1px 0 rgba(255,255,255,0.05)",
-        }}
-      >
-        {[12, 28, 44, 60, 76].map((pct) => (
-          <div
-            key={pct}
-            className="pointer-events-none absolute left-0 right-0 border-t border-[#1a1a1c]"
-            style={{ bottom: `${pct}%` }}
-          />
-        ))}
-        <div
-          className="absolute bottom-0 left-0 right-0 transition-[height] duration-75 ease-out"
-          style={{
-            height: `${h}%`,
-            background: `linear-gradient(to top, ${LP.meterGreen} 0%, ${LP.meterYel} 68%, ${LP.meterRed} 100%)`,
-            boxShadow: "0 0 3px rgba(80,210,80,0.2)",
-          }}
-        />
-      </div>
-    );
-  };
   return (
     <div className="flex items-end" style={{ height, gap: barGap }}>
-      {bar("L", peakL)}
-      {bar("R", peakR)}
+      <PeakMeterStem peak={peakL} height={height} barWidth={barWidth} />
+      <PeakMeterStem peak={peakR} height={height} barWidth={barWidth} />
+    </div>
+  );
+}
+
+/** Logic-style dB ladder: ticks + numerals to the right of the meters */
+function MixerFaderDbScale() {
+  return (
+    <div
+      className="flex min-w-[28px] flex-col justify-between py-px pl-0.5 font-mono text-[6px] leading-none tracking-tight text-[#ceced2]"
+      style={{ height: MIXER_METER_H }}
+    >
+      {MIXER_SCALE_MARKS.map((mark, i) => (
+        <div key={mark} className="flex items-center justify-end gap-0.5">
+          <div
+            className="h-px shrink-0 bg-[#7a7a82]"
+            style={{
+              width: i === 0 || mark === "0" || mark === "-12" || mark === "-60" ? 9 : 6,
+              opacity: 0.85,
+            }}
+          />
+          <span className="w-[15px] text-right tabular-nums">{mark}</span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -1174,17 +1222,21 @@ const mixerFieldGreen = `${mixerFieldBase} border-[#2e5a2e] bg-[#4a9a4a] text-[#
 function VerticalMixerFader({
   value,
   meterPeak,
+  dualMeters,
   onChange,
   ariaLabel,
 }: {
   value: number;
   meterPeak: DawMeterPeak;
+  /** Stereo / master-style dual stems; mono sources get a single peak bar */
+  dualMeters: boolean;
   onChange: (value: number) => void;
   ariaLabel: string;
 }) {
   const railRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
   const { left: peakL, right: peakR } = meterPeakLR(meterPeak);
+  const peakMono = meterPeakScalar(meterPeak);
 
   const updateFromClientY = (clientY: number) => {
     const rect = railRef.current?.getBoundingClientRect();
@@ -1214,18 +1266,15 @@ function VerticalMixerFader({
     }
   };
 
-  const capH = Math.round(MIXER_METER_H * 0.145);
+  const capH = Math.round(MIXER_METER_H * 0.15);
   const handleTop = (1 - Math.max(0, Math.min(1, value))) * (MIXER_METER_H - capH);
-  const capW = 22;
-  const grooveW = 7;
+  const meterClusterW = dualMeters ? LOGIC_MIX.meterBar * 2 + LOGIC_MIX.meterGap : LOGIC_MIX.meterBar;
+  const capW = Math.min(26, Math.max(20, meterClusterW + 10));
+  const grooveW = 6;
 
   return (
     <div className="flex h-full w-full max-w-full items-stretch justify-center gap-0.5 px-px py-0.5">
-      <div className="flex min-w-[11px] flex-col items-end justify-between py-px font-mono text-[6px] leading-none tracking-tight text-[#b8b8bc]">
-        {MIXER_SCALE_MARKS.map((mark) => (
-          <span key={mark}>{mark}</span>
-        ))}
-      </div>
+      {/* Logic order: thin track + cap → segmented meters → dB ladder (ticks + numbers) */}
       <div
         ref={railRef}
         role="slider"
@@ -1234,7 +1283,7 @@ function VerticalMixerFader({
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={Math.round(value * 100)}
-        className="relative w-[26px] shrink-0 cursor-ns-resize touch-none select-none outline-none"
+        className="relative w-[30px] shrink-0 cursor-ns-resize touch-none select-none outline-none"
         style={{ height: MIXER_METER_H }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -1252,53 +1301,56 @@ function VerticalMixerFader({
         }}
       >
         <div
-          className="pointer-events-none absolute left-1/2 top-0.5 bottom-0.5 w-[calc(100%-4px)] max-w-[24px] -translate-x-1/2 rounded-[3px]"
+          className="pointer-events-none absolute left-1/2 top-0.5 bottom-0.5 w-full max-w-[22px] -translate-x-1/2 rounded-[2px]"
           style={{
-            background: "linear-gradient(180deg, #2a2a2e 0%, #141416 42%, #0a0a0c 100%)",
+            background: "linear-gradient(180deg, #2e2e32 0%, #121214 45%, #070708 100%)",
             boxShadow:
-              "inset 0 3px 6px rgba(0,0,0,0.85), inset 0 1px 0 rgba(255,255,255,0.06), 0 1px 0 rgba(255,255,255,0.04)",
+              "inset 0 4px 8px rgba(0,0,0,0.88), inset 0 1px 0 rgba(255,255,255,0.05), 0 1px 0 rgba(255,255,255,0.03)",
           }}
         />
         <div
-          className="pointer-events-none absolute left-1/2 top-0 bottom-0 -translate-x-1/2 rounded-[3px] border border-[#0c0c0e]"
+          className="pointer-events-none absolute left-1/2 top-0 bottom-0 z-[1] -translate-x-1/2 rounded-[2px] border border-[#050506]"
           style={{
             width: grooveW,
-            background: "linear-gradient(90deg, #1a1a1e 0%, #0d0d10 45%, #050506 100%)",
+            background: "linear-gradient(90deg, #141418 0%, #08080a 55%, #020203 100%)",
             boxShadow:
-              "inset 0 2px 5px rgba(0,0,0,0.95), inset 1px 0 0 rgba(255,255,255,0.04), inset -1px 0 0 rgba(0,0,0,0.5)",
+              "inset 0 2px 6px rgba(0,0,0,0.95), inset 1px 0 0 rgba(255,255,255,0.04), inset -1px 0 0 rgba(0,0,0,0.55)",
           }}
         />
         <div
-          className="pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 rounded-[3px] border border-[#5c5c62]"
+          className="pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 rounded-[2px] border border-x-[#4a4a50] border-y-[#8e8e96]"
           style={{
             top: handleTop,
             width: capW,
             height: capH,
-            background: "linear-gradient(90deg, #b4b4ba 0%, #e8e8ec 22%, #f6f6f8 48%, #c6c6cc 78%, #8e8e94 100%)",
+            background: "linear-gradient(180deg, #f2f2f6 0%, #dcdce0 18%, #c0c0c8 50%, #a0a0a8 82%, #787880 100%)",
             boxShadow:
-              "0 1px 2px rgba(0,0,0,0.55), 0 3px 6px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.95), inset 0 -2px 3px rgba(0,0,0,0.18)",
+              "0 1px 1px rgba(0,0,0,0.4), 0 4px 7px rgba(0,0,0,0.38), inset 0 1px 0 rgba(255,255,255,0.92), inset 0 -2px 4px rgba(0,0,0,0.2)",
           }}
         >
+          {/* Logic-style thumb notch */}
           <div
-            className="pointer-events-none absolute inset-y-[3px] left-1/2 w-px -translate-x-1/2 bg-[#69696f]/90"
-            style={{ boxShadow: "1px 0 0 rgba(255,255,255,0.35)" }}
+            className="pointer-events-none absolute left-[3px] right-[3px] top-1/2 h-[7px] -translate-y-1/2 rounded-[1px]"
+            style={{
+              background: "linear-gradient(180deg, #1a1a1e 0%, #0a0a0c 40%, #121214 100%)",
+              boxShadow:
+                "inset 0 2px 3px rgba(0,0,0,0.75), inset 0 -1px 0 rgba(255,255,255,0.12), 0 0 0 1px rgba(0,0,0,0.2)",
+            }}
           />
-          {[0.26, 0.42, 0.58, 0.74].map((t) => (
-            <div
-              key={t}
-              className="pointer-events-none absolute left-[3px] right-[3px] h-px bg-[#5a5a60]/85"
-              style={{ top: `${t * 100}%` }}
-            />
-          ))}
         </div>
       </div>
-      <DualPeakMeters
-        peakL={peakL}
-        peakR={peakR}
-        height={MIXER_METER_H}
-        barWidth={LOGIC_MIX.meterBar}
-        barGap={LOGIC_MIX.meterGap}
-      />
+      {dualMeters ? (
+        <DualPeakMeters
+          peakL={peakL}
+          peakR={peakR}
+          height={MIXER_METER_H}
+          barWidth={LOGIC_MIX.meterBar}
+          barGap={LOGIC_MIX.meterGap}
+        />
+      ) : (
+        <SinglePeakMeter peak={peakMono} height={MIXER_METER_H} barWidth={LOGIC_MIX.meterBar} />
+      )}
+      <MixerFaderDbScale />
     </div>
   );
 }
@@ -1689,6 +1741,7 @@ function MixerStrip({ track: tr, peak, fileInputTrigger }: MixerStripProps) {
         <VerticalMixerFader
           value={tr.volume}
           meterPeak={peak}
+          dualMeters={trackShowsStereoMeters(tr)}
           onChange={(value) => daw.setTrackVolume(tr.id, value)}
           ariaLabel={`${tr.name} level`}
         />
@@ -1849,6 +1902,7 @@ function BusMixerStrip({ busId }: BusMixerStripProps) {
         <VerticalMixerFader
           value={bm.volume}
           meterPeak={meterPeak}
+          dualMeters
           onChange={(value) => daw.setBusVolume(busId, value)}
           ariaLabel={`${title} level`}
         />
@@ -1972,6 +2026,7 @@ function StereoOutStrip() {
         <VerticalMixerFader
           value={daw.masterVolume}
           meterPeak={meterPeak}
+          dualMeters
           onChange={(value) => daw.setMasterVolume(value)}
           ariaLabel="Stereo out level"
         />
@@ -2085,9 +2140,17 @@ function MasterMixerStrip() {
         <VerticalMixerFader
           value={daw.masterVolume}
           meterPeak={meterPeak}
+          dualMeters
           onChange={(value) => daw.setMasterVolume(value)}
           ariaLabel="Master volume"
         />
+      </div>
+      <div
+        className="flex items-center justify-center border-b py-0.5"
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 22, height: 22 }}
+        aria-hidden
+      >
+        <span className="text-[8px] font-medium text-[#555]">&#8203;</span>
       </div>
       <div
         className="flex items-center justify-center gap-1.5 py-0.5"
@@ -3355,25 +3418,32 @@ function DawChrome() {
                 <TrackInspector trackId={targetTrackId} />
               </aside>
             )}
-            <div
-              className="flex min-h-0 flex-1 items-stretch overflow-x-auto overflow-y-auto"
-              style={{ background: "#262628" }}
-            >
-              <MixerLabelColumn />
-              {daw.tracks.map((t) => (
-                <MixerStrip
-                  key={t.id}
-                  track={t}
-                  peak={daw.meterPeaks[t.id] ?? 0}
-                  fileInputTrigger={() => openImport(t.id)}
-                />
-              ))}
-              {MIXER_BUS_STRIPS.map((bid) => (
-                <BusMixerStrip key={bid} busId={bid} />
-              ))}
-              <StereoOutStrip />
-              <MasterMixerStrip />
-              <div className="min-w-[32px] flex-1" style={{ background: "#262628" }} aria-hidden />
+            <div className="flex min-h-0 min-w-0 flex-1 items-stretch" style={{ background: "#262628" }}>
+              <div
+                className="flex min-h-0 min-w-0 flex-1 items-stretch overflow-x-auto overflow-y-auto"
+                style={{ background: "#262628" }}
+              >
+                <MixerLabelColumn />
+                {daw.tracks.map((t) => (
+                  <MixerStrip
+                    key={t.id}
+                    track={t}
+                    peak={daw.meterPeaks[t.id] ?? 0}
+                    fileInputTrigger={() => openImport(t.id)}
+                  />
+                ))}
+                {MIXER_BUS_STRIPS.map((bid) => (
+                  <BusMixerStrip key={bid} busId={bid} />
+                ))}
+                <div className="min-w-[32px] shrink-0 grow" style={{ background: "#262628" }} aria-hidden />
+              </div>
+              <div
+                className="flex shrink-0 self-stretch border-l border-[#0a0a0a] shadow-[-6px_0_14px_rgba(0,0,0,0.35)]"
+                style={{ background: "#262628" }}
+              >
+                <StereoOutStrip />
+                <MasterMixerStrip />
+              </div>
             </div>
           </div>
         </div>

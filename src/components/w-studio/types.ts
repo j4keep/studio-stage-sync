@@ -94,7 +94,7 @@ export function studioTrackTypeFromKind(kind: TrackKind): StudioTrackType {
   }
 }
 
-/** Metering + capture width hint: explicit mono/stereo or auto from source (see `channelConfig.resolveStereo`). */
+/** Metering + capture width hint: mixer dual meters use `channelConfig.trackShowsStereoMeters`. */
 export type TrackChannelMode = 'mono' | 'stereo' | 'auto';
 
 export function defaultChannelModeForKind(kind: TrackKind): TrackChannelMode {

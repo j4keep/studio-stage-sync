@@ -48,6 +48,13 @@ export function resolveStereo(config: ChannelConfig): boolean {
   return false;
 }
 
+/**
+ * L/R dual peak meters on mixer strips — Logic-style: stereo tracks or obvious stereo sources
+ * (imported/loop audio), not mono mics or generic instrument lanes.
+ */
 export function trackShowsStereoMeters(tr: Track): boolean {
-  return resolveStereo(trackToChannelConfig(tr));
+  if (tr.channelMode === "mono") return false;
+  if (tr.channelMode === "stereo") return true;
+  /* auto */
+  return tr.kind === "import_audio" || tr.kind === "use_loops";
 }
