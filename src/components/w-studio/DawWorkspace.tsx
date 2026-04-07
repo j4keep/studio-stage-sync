@@ -57,7 +57,7 @@ const TRACK_HEADER_W = 276;
 const TIMELINE_BAR_LIMIT = 127;
 /** Mixer layout — Logic-style proportions: narrow strip, tall fader, meters to the right of the cap */
 const MIXER_LABEL_W = 96;
-const MIXER_STRIP_W = 92;
+const MIXER_STRIP_W = 98;
 const MIXER_METER_H = 228;
 const INSPECTOR_STRIP_W = MIXER_STRIP_W;
 const INSPECTOR_PANEL_W = INSPECTOR_STRIP_W * 2 + 1; /* 1px for border between strips */
@@ -66,23 +66,22 @@ const TRACK_ROW_MIN_H = 48;
 const WSTUDIO_AUDIO_FILE_INPUT_ID = "wstudio-audio-file-import";
 const MIXER_LABEL_ROWS = [
   { label: "Setting", height: 22 },
-  { label: "Gain Reduction", height: 20 },
-  { label: "EQ", height: 20 },
+  { label: "Gain Reduction", height: 18 },
+  { label: "EQ", height: 24 },
   { label: "MIDI FX", height: 20 },
-  { label: "Input", height: 34 },
-  { label: "Audio FX", height: 60 },
-  { label: "Sends", height: 34 },
+  { label: "Input", height: 38 },
+  { label: "Audio FX", height: 112 },
+  { label: "Sends", height: 32 },
   { label: "Output", height: 22 },
   { label: "Group", height: 20 },
   { label: "Automation", height: 24 },
-  { label: "Inserts", height: 40 },
-  { label: "", height: 40 }, // instrument icon area
-  { label: "Pan", height: 36 },
-  { label: "dB", height: 24 },
+  { label: "", height: 44 }, // instrument icon (Logic square well)
+  { label: "Pan", height: 40 },
+  { label: "dB", height: 26 },
   { label: "", height: MIXER_METER_H + 10 },
-  { label: "", height: 22 },
-  { label: "", height: 28 },
   { label: "", height: 24 },
+  { label: "", height: 30 },
+  { label: "", height: 26 },
 ] as const;
 const STUDIO_TRACK_TYPE_LABELS: Record<StudioTrackType, string> = {
   audio: "Audio",
@@ -145,6 +144,31 @@ const LP = {
   slotBorder: "#3e3e42",
   stripBg: "linear-gradient(180deg, #636366 0%, #505054 100%)",
   channelLabelBg: "#3a3a3e",
+} as const;
+
+/** Logic Pro–style mixer strip chrome (charcoal + cyan inserts + green Read) */
+const LOGIC_MIX = {
+  stripGradient: "linear-gradient(180deg, #3d3d40 0%, #2a2a2c 38%, #222224 100%)",
+  headerMini: "truncate text-center text-[10px] font-semibold leading-tight text-[#ececec]",
+  rowLine: "#141416",
+  fxBlue:
+    "flex h-[22px] w-full shrink-0 cursor-pointer items-center justify-center truncate rounded-[5px] border border-[#0a3d5c] bg-gradient-to-b from-[#5eb2e8] to-[#2a7fbf] px-1 text-center text-[9px] font-semibold leading-tight text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.35),inset_0_-1px_0_rgba(0,0,0,0.22)] outline-none appearance-none",
+  slotIn:
+    "flex h-[20px] w-full shrink-0 cursor-pointer items-center justify-center truncate rounded-[5px] border border-[#343438] bg-gradient-to-b from-[#3a3a3e] to-[#2c2c30] px-1 text-center text-[8px] font-medium text-[#eaeaea] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] outline-none appearance-none",
+  slotDark:
+    "flex h-[20px] w-full items-center justify-center rounded-[5px] border border-[#2e2e32] bg-[#232326] text-[8px] text-[#5c5c60] shadow-[inset_0_2px_4px_rgba(0,0,0,0.35)]",
+  readBtn:
+    "flex h-[22px] w-full items-center justify-center rounded-[5px] border border-[#1f5a22] bg-gradient-to-b from-[#4ec04e] to-[#2d8830] text-[10px] font-bold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),inset_0_-1px_0_rgba(0,0,0,0.2)]",
+  eqThumb:
+    "relative h-[22px] w-[26px] shrink-0 overflow-hidden rounded-[4px] border border-[#1a1a1d] bg-[#141416] shadow-[inset_0_2px_6px_rgba(0,0,0,0.65)] isolate",
+  iconWell:
+    "flex h-11 w-11 shrink-0 items-center justify-center rounded-[5px] border border-[#161618] bg-[#101012] shadow-[inset_0_2px_6px_rgba(0,0,0,0.6)]",
+  grMeter:
+    "h-1.5 w-full max-w-[76px] rounded-full bg-[#0d0d0f] shadow-[inset_0_1px_3px_rgba(0,0,0,0.9)]",
+  readout:
+    "min-w-0 flex-1 rounded border border-[#0a0a0c] bg-[#050506] px-1 py-0.5 text-center font-mono text-[9px] tabular-nums leading-none text-[#e4e4e8]",
+  readoutPeak: "text-[#5ddf5d]",
+  meterBar: 5,
 } as const;
 
 const ctrlBtn =
@@ -263,225 +287,251 @@ function InspectorChannelStrip({ trackId, isStereoOut }: { trackId: string | nul
     else if (tr) daw.setTrackVolume(tr.id, value);
   };
 
-  const eqLabel = tr ? (EQ_PRESET_LABELS.find((o) => o.id === tr.eqPreset)?.label ?? "Chan EQ") : "Output EQ";
-  const effectLabel = tr ? (EFFECT_PRESET_LABELS.find((o) => o.id === tr.effectPreset)?.label ?? "Off") : "";
-  const spaceLabel = tr ? (SPACE_PRESET_LABELS.find((o) => o.id === tr.spacePreset)?.label ?? "") : "Space D";
-
   return (
     <div
-      className="flex min-h-full shrink-0 flex-col"
-      style={{ color: LP.text, width: INSPECTOR_STRIP_W, minWidth: INSPECTOR_STRIP_W }}
+      className="flex min-h-full shrink-0 flex-col border-r shadow-[inset_-1px_0_0_rgba(0,0,0,0.4)]"
+      style={{
+        color: LP.text,
+        width: INSPECTOR_STRIP_W,
+        minWidth: INSPECTOR_STRIP_W,
+        background: LOGIC_MIX.stripGradient,
+        borderColor: "#050506",
+      }}
     >
-      {/* Setting */}
       <MixerSlotRow label="Setting">
-        <div className={mixerFieldDark} title={name}>
+        <div className={`${LOGIC_MIX.headerMini} w-full rounded-[4px] border border-[#2a2a2e] bg-[#252528] py-0.5`} title={name}>
           {name}
         </div>
       </MixerSlotRow>
-      {/* Gain Reduction */}
       <MixerSlotRow label="Gain Reduction">
-        <div className="h-3 w-full rounded-[2px] border border-[#454549] bg-[#3a3a3e]" />
+        <div className="flex w-full justify-center px-1">
+          <div className={LOGIC_MIX.grMeter} />
+        </div>
       </MixerSlotRow>
-      {/* EQ */}
       <MixerSlotRow label="EQ">
         {tr ? (
-          <select
-            value={tr.eqPreset}
-            onChange={(e) => daw.setTrackEq(tr.id, e.target.value as (typeof tr)["eqPreset"])}
-            className={`${mixerFieldGray} appearance-none outline-none`}
-            title="Channel EQ"
-          >
-            {EQ_PRESET_LABELS.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.label}
-              </option>
-            ))}
-          </select>
+          <div className="flex w-full items-center gap-1 px-0.5">
+            <LogicMiniEqThumb presetId={tr.eqPreset} />
+            <select
+              value={tr.eqPreset}
+              onChange={(e) => daw.setTrackEq(tr.id, e.target.value as (typeof tr)["eqPreset"])}
+              className={`${LOGIC_MIX.fxBlue} min-w-0 flex-1 text-[8px]`}
+              title="Channel EQ"
+            >
+              {EQ_PRESET_LABELS.map((o) => (
+                <option key={o.id} value={o.id} className="bg-[#1a1a1e]">
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
         ) : (
-          <div className={mixerFieldDark}>Output EQ</div>
+          <div className={LOGIC_MIX.fxBlue}>Output EQ</div>
         )}
       </MixerSlotRow>
-      {/* MIDI FX */}
       <MixerSlotRow label="MIDI FX">
-        <div className="h-4 w-full rounded-[2px] border border-[#454549] bg-[#4a4a4e]" />
+        <div className={LOGIC_MIX.slotDark}>{"—"}</div>
       </MixerSlotRow>
-      {/* Input */}
       <MixerSlotRow label="Input">
         {!isStereoOut && tr ? (
-          <div className="relative z-20 flex min-h-0 flex-col gap-px" style={{ pointerEvents: "auto" }}>
+          <div className="relative z-20 flex min-h-0 w-full flex-col gap-[3px]">
             <select
               value={tr.inputDeviceId ?? ""}
-              title="Audio input device"
+              title="Audio input"
               onChange={(e) => {
                 const v = e.target.value;
                 const sel = daw.inputDevices.find((d) => d.deviceId === v);
                 daw.setTrackInputDevice(tr.id, v, sel?.label || "Input");
               }}
-              className={`${mixerFieldGray} max-w-full cursor-pointer appearance-none outline-none text-[8px]`}
-              style={{ position: "relative", zIndex: 20, pointerEvents: "auto" }}
+              className={LOGIC_MIX.slotIn}
             >
-              <option value="">Default</option>
+              <option value="" className="bg-[#1a1a1e]">
+                Input
+              </option>
               {daw.inputDevices.map((device) => (
-                <option key={device.deviceId} value={device.deviceId}>
+                <option key={device.deviceId} value={device.deviceId} className="bg-[#1a1a1e]">
                   {device.label || `In ${device.deviceId.slice(0, 4)}`}
                 </option>
               ))}
             </select>
             <select
-              title="Mono / stereo / auto"
+              title="Channel width"
               value={tr.channelMode}
               onChange={(e) => daw.setTrackChannelMode(tr.id, e.target.value as Track["channelMode"])}
-              className={`${mixerFieldDark} max-w-full cursor-pointer appearance-none outline-none text-[7px]`}
-              style={{ position: "relative", zIndex: 20, pointerEvents: "auto" }}
+              className={`${LOGIC_MIX.slotIn} text-[7px]`}
             >
-              <option value="mono">Mono</option>
-              <option value="stereo">Stereo</option>
-              <option value="auto">Auto</option>
+              <option value="mono" className="bg-[#1a1a1e]">
+                Mono
+              </option>
+              <option value="stereo" className="bg-[#1a1a1e]">
+                Stereo
+              </option>
+              <option value="auto" className="bg-[#1a1a1e]">
+                Auto
+              </option>
             </select>
           </div>
         ) : (
-          <div className="text-[9px] text-[#ccc]">∞</div>
+          <div className={`${LOGIC_MIX.slotIn} text-[8px]`}>∞</div>
         )}
       </MixerSlotRow>
-      {/* Audio FX */}
       <MixerSlotRow label="Audio FX">
         {tr ? (
-          <div className="flex w-full flex-col gap-[2px]">
+          <div className="flex w-full flex-col gap-[3px]">
             <select
               value={tr.effectPreset}
               onChange={(e) => daw.setTrackEffect(tr.id, e.target.value as (typeof tr)["effectPreset"])}
-              className={`${mixerFieldBlue} appearance-none outline-none`}
-              title="Audio FX"
+              className={LOGIC_MIX.fxBlue}
+              title="Dynamics / FX"
             >
               {EFFECT_PRESET_LABELS.map((o) => (
-                <option key={o.id} value={o.id}>
+                <option key={o.id} value={o.id} className="bg-[#1a1a1e]">
                   {o.label}
                 </option>
               ))}
             </select>
-            <MixerStack items={[spaceLabel !== "Dry" ? spaceLabel : ""]} tone="blue" />
+            <select
+              value={tr.spacePreset}
+              onChange={(e) => daw.setTrackSpace(tr.id, e.target.value as (typeof tr)["spacePreset"])}
+              className={LOGIC_MIX.fxBlue}
+              title="Space"
+            >
+              {SPACE_PRESET_LABELS.map((o) => (
+                <option key={o.id} value={o.id} className="bg-[#1a1a1e]">
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            <TrackPluginSlots slots={tr.fxInserts} />
           </div>
         ) : (
           <MixerStack items={["Space D"]} tone="blue" />
         )}
       </MixerSlotRow>
-      {/* Sends */}
       <MixerSlotRow label="Sends">
-        <MixerStack items={!isStereoOut ? ["Sends"] : []} tone="gray" />
+        {!isStereoOut && tr ? (
+          <div className="flex items-center gap-1 rounded-[4px] border border-[#2e4a6a] bg-gradient-to-b from-[#4e8cc8] to-[#2a5a90] px-1 py-0.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]">
+            <span className="shrink-0 text-[8px] font-semibold text-white">Rv</span>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={Math.round((tr.sendReverb ?? 0.18) * 100)}
+              onChange={(e) => daw.setTrackSendReverb(tr.id, Number(e.target.value) / 100)}
+              className="h-1 min-w-0 flex-1 cursor-pointer"
+              style={{ accentColor: "#b8e0ff" }}
+            />
+          </div>
+        ) : (
+          <div className={LOGIC_MIX.slotDark} />
+        )}
       </MixerSlotRow>
-      {/* Output */}
       <MixerSlotRow label="Output">
-        <div className={mixerFieldDark}>{isStereoOut ? "Output" : "St Out"}</div>
+        <div className={LOGIC_MIX.slotIn}>{isStereoOut ? "Output" : "St Out"}</div>
       </MixerSlotRow>
-      {/* Group */}
       <MixerSlotRow label="Group">
-        <div className="h-4 w-full rounded-[2px] border border-[#454549] bg-[#4a4a4e]" />
+        <div className={`${LOGIC_MIX.slotDark} text-[#666]`}>Group</div>
       </MixerSlotRow>
-      {/* Automation */}
       <MixerSlotRow label="Automation">
-        <button type="button" className={`${mixerFieldGreen} font-bold`}>
+        <button type="button" className={LOGIC_MIX.readBtn}>
           Read
         </button>
       </MixerSlotRow>
-      <MixerSlotRow label="Inserts">
-        {!isStereoOut && tr ? <TrackPluginSlots slots={tr.fxInserts} /> : <InsertRowPlaceholder />}
-      </MixerSlotRow>
-      {/* Instrument icon */}
       <div
-        className="flex items-center justify-center border-b"
-        style={{ borderColor: "#4a4a4e", minHeight: 40, height: 40 }}
+        className="flex items-center justify-center border-b py-1"
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 44, height: 44 }}
       >
-        {!isStereoOut && tr ? (
-          <InstrumentIcon kind={tr.kind} color={tr.color} />
-        ) : (
-          <svg
-            style={{ color: "#4a9a4a", width: 28, height: 28 }}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-          >
-            <circle cx="12" cy="12" r="7" />
-            <path d="M9 9l6 6M15 9l-6 6" strokeLinecap="round" />
-          </svg>
-        )}
+        <div className={LOGIC_MIX.iconWell}>
+          {!isStereoOut && tr ? (
+            <InstrumentIcon kind={tr.kind} color={tr.color} />
+          ) : (
+            <svg
+              style={{ color: "#4a9a4a", width: 26, height: 26 }}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            >
+              <circle cx="12" cy="12" r="7" />
+              <path d="M9 9l6 6M15 9l-6 6" strokeLinecap="round" />
+            </svg>
+          )}
+        </div>
       </div>
-      {/* Pan */}
       <div
-        className="flex items-center justify-center border-b"
-        style={{ borderColor: "#4a4a4e", minHeight: 36, height: 36 }}
+        className="flex items-center justify-center border-b py-1"
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 40, height: 40 }}
       >
         <PanKnob
           value={isStereoOut ? 0 : pan}
           onChange={(v) => !isStereoOut && tr && daw.setTrackPan(tr.id, v)}
-          size={28}
+          size={30}
           showValueLabel={false}
         />
       </div>
-      {/* dB */}
       <div
-        className="flex items-center justify-center gap-0.5 border-b px-[2px]"
-        style={{ borderColor: "#4a4a4e", minHeight: 24, height: 24 }}
+        className="flex items-stretch justify-center gap-0.5 border-b px-0.5 py-0.5"
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 26, height: 26 }}
       >
-        <span className="rounded border border-[#222] bg-[#0a0a0a] px-1 py-0.5 font-mono text-[9px] tabular-nums text-[#e0e0e0]">
-          {isStereoOut ? "0.0" : faderToDbLabel(vol)}
-        </span>
-        <span className="rounded border border-[#222] bg-[#0a0a0a] px-1 py-0.5 font-mono text-[9px] tabular-nums text-[#4eca4e]">
-          {peakToDbDisplay(peak)}
-        </span>
+        <span className={LOGIC_MIX.readout}>{isStereoOut ? "0.0" : faderToDbLabel(vol)}</span>
+        <span className={`${LOGIC_MIX.readout} ${LOGIC_MIX.readoutPeak}`}>{peakToDbDisplay(peak)}</span>
       </div>
-      {/* Fader + meters */}
       <div
         className="border-b"
-        style={{ borderColor: "#4a4a4e", minHeight: MIXER_METER_H + 10, height: MIXER_METER_H + 10 }}
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: MIXER_METER_H + 10, height: MIXER_METER_H + 10 }}
       >
         <VerticalMixerFader value={vol} peak={peak} onChange={updateVolume} ariaLabel={`${name} level`} />
       </div>
-      {/* R I / Bnce */}
       {!isStereoOut ? (
         <div
-          className="flex items-center justify-center gap-0.5 border-b py-[2px]"
-          style={{ borderColor: "#4a4a4e", minHeight: 22, height: 22 }}
+          className="flex items-center justify-center gap-1 border-b px-0.5 py-0.5"
+          style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 24, height: 24 }}
         >
           <button
             type="button"
             disabled={!daw.sessionCapabilities.canArmRecord}
             onClick={() => tr && daw.sessionCapabilities.canArmRecord && daw.toggleRecordArm(tr.id)}
-            className={`h-4 w-5 rounded-sm border text-[8px] font-bold ${tr?.recordArm ? "border-[#a22] bg-[#e03030] text-white" : "border-[#555] bg-[#4a4a4e] text-[#999]"} disabled:opacity-40`}
+            className={`flex h-[22px] w-[30px] items-center justify-center rounded-[4px] border text-[9px] font-bold shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] disabled:opacity-40 ${
+              tr?.recordArm
+                ? "border-[#8b2020] bg-gradient-to-b from-[#e84848] to-[#a82020] text-white"
+                : "border-[#3a3a40] bg-gradient-to-b from-[#4a4a52] to-[#323238] text-[#bbb]"
+            }`}
           >
             R
           </button>
           <button
             type="button"
-            title="Input monitoring (headphones)"
+            title="Input monitoring"
             onClick={() => tr && daw.toggleInputMonitoring(tr.id)}
-            className={`flex h-4 w-5 shrink-0 items-center justify-center rounded-sm border ${
+            className={`flex h-[22px] w-[30px] items-center justify-center rounded-[4px] border text-[9px] font-bold shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] ${
               tr?.inputMonitoring
-                ? "border-[#4a78c8] bg-[#3478f6] text-white"
-                : "border-[#555] bg-[#4a4a4e] text-[#999]"
+                ? "border-[#b86812] bg-gradient-to-b from-[#f0a030] to-[#c07018] text-[#1a0a00]"
+                : "border-[#3a3a40] bg-gradient-to-b from-[#4a4a52] to-[#323238] text-[#bbb]"
             }`}
-            style={{ position: "relative", zIndex: 20, pointerEvents: "auto", cursor: "pointer" }}
           >
-            <Headphones size={12} strokeWidth={2.25} aria-hidden />
+            <Headphones size={13} strokeWidth={2.25} aria-hidden />
           </button>
         </div>
       ) : (
         <div
-          className="flex items-center justify-center border-b py-[2px]"
-          style={{ borderColor: "#4a4a4e", minHeight: 22, height: 22 }}
+          className="flex items-center justify-center border-b py-0.5"
+          style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 24, height: 24 }}
         >
-          <span className="text-[8px] text-[#999]">Bnce</span>
+          <span className="text-[8px] font-medium text-[#888]">Bnce</span>
         </div>
       )}
-      {/* M S */}
       <div
-        className="flex items-center justify-center gap-1 border-b py-0.5"
-        style={{ borderColor: "#4a4a4e", minHeight: 28, height: 28 }}
+        className="flex items-center justify-center gap-1.5 border-b px-1 py-0.5"
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 30, height: 30 }}
       >
         <button
           type="button"
           onClick={() => !isStereoOut && tr && daw.toggleMute(tr.id)}
-          className={`h-6 w-7 rounded-sm border text-[10px] font-bold ${!isStereoOut && tr?.muted ? "border-[#3a7a7a] bg-[#5ab0b0] text-[#022]" : "border-[#555] bg-[#4a4a4e] text-[#ddd]"}`}
+          className={`h-7 w-8 rounded-[4px] border text-[11px] font-bold shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] ${
+            !isStereoOut && tr?.muted
+              ? "border-[#2a6a6a] bg-gradient-to-b from-[#5ec8c8] to-[#3a9898] text-[#022]"
+              : "border-[#3a3a40] bg-gradient-to-b from-[#4f4f56] to-[#36363c] text-[#eee]"
+          }`}
         >
           M
         </button>
@@ -489,20 +539,22 @@ function InspectorChannelStrip({ trackId, isStereoOut }: { trackId: string | nul
           <button
             type="button"
             onClick={() => tr && daw.toggleSolo(tr.id)}
-            className={`h-6 w-7 rounded-sm border text-[10px] font-bold ${tr?.solo ? "border-[#886600] bg-[#e8d44a] text-[#111]" : "border-[#555] bg-[#4a4a4e] text-[#ddd]"}`}
+            className={`h-7 w-8 rounded-[4px] border text-[11px] font-bold shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] ${
+              tr?.solo
+                ? "border-[#a08008] bg-gradient-to-b from-[#f0e060] to-[#c0a020] text-[#111]"
+                : "border-[#3a3a40] bg-gradient-to-b from-[#4f4f56] to-[#36363c] text-[#eee]"
+            }`}
           >
             S
           </button>
         )}
       </div>
-      {/* Track name label */}
       <div
-        className="mt-auto flex items-center justify-center truncate border-t px-1 text-center text-[9px] font-semibold"
+        className="mt-auto flex min-h-[26px] items-center justify-center truncate border-t px-0.5 py-0.5 text-center text-[10px] font-bold leading-none tracking-tight text-white"
         style={{
           backgroundColor: labelColor,
-          borderColor: LP.border,
-          color: isStereoOut ? "#fff" : "#111",
-          minHeight: 24,
+          borderColor: "#000",
+          textShadow: "0 1px 2px rgba(0,0,0,0.65)",
         }}
         title={name}
       >
@@ -1201,24 +1253,29 @@ function VerticalMixerFader({
           <div className="absolute inset-x-[6px] top-[16px] h-px bg-[#6a6a6e]" />
         </div>
       </div>
-      <DualPeakMeters peak={peak} height={MIXER_METER_H} barWidth={11} barGap={3} />
+      <DualPeakMeters peak={peak} height={MIXER_METER_H} barWidth={LOGIC_MIX.meterBar} barGap={3} />
     </div>
   );
 }
 
 function MixerStack({ items, tone = "gray" }: { items: string[]; tone?: "gray" | "blue" }) {
-  const cls = tone === "blue" ? mixerFieldBlue : mixerFieldGray;
+  const blueCls = `${LOGIC_MIX.fxBlue} min-h-[22px]`;
+  const grayCls = LOGIC_MIX.slotDark;
   const visible = items.filter(Boolean).slice(0, 4);
   return (
-    <div className="flex w-full flex-col gap-1">
+    <div className="flex w-full flex-col gap-[3px]">
       {visible.length ? (
         visible.map((item, index) => (
-          <div key={`${item}-${index}`} className={cls} title={item}>
+          <div
+            key={`${item}-${index}`}
+            className={tone === "blue" ? blueCls : grayCls}
+            title={item}
+          >
             {item}
           </div>
         ))
       ) : (
-        <div className="h-5 w-full rounded-[3px] border border-[#454549] bg-[#4a4a4e]" />
+        <div className={grayCls} />
       )}
     </div>
   );
@@ -1227,14 +1284,18 @@ function MixerStack({ items, tone = "gray" }: { items: string[]; tone?: "gray" |
 function MixerLabelColumn() {
   return (
     <div
-      className="sticky left-0 z-10 flex shrink-0 flex-col border-r text-right text-[9px] text-[#b0b0b4]"
-      style={{ width: MIXER_LABEL_W, borderColor: LP.border, background: LP.panel }}
+      className="sticky left-0 z-10 flex shrink-0 flex-col border-r text-right text-[9px] font-medium text-[#97979c]"
+      style={{
+        width: MIXER_LABEL_W,
+        borderColor: "#0a0a0b",
+        background: "linear-gradient(180deg, #3a3a3d 0%, #2c2c2f 100%)",
+      }}
     >
       {MIXER_LABEL_ROWS.map((row, index) => (
         <div
           key={`${row.label}-${index}`}
           className="flex items-center justify-end border-b px-2"
-          style={{ borderColor: "#4a4a4e", minHeight: row.height, height: row.height }}
+          style={{ borderColor: LOGIC_MIX.rowLine, minHeight: row.height, height: row.height }}
         >
           {row.label}
         </div>
@@ -1318,27 +1379,43 @@ function LogicMixerFilterBar({ active, onPick }: { active: string; onPick: (s: s
 function MixerSlotRow({ label, children }: { label: string; children?: ReactNode }) {
   const rowHeights: Record<string, number> = {
     Setting: 22,
-    "Gain Reduction": 20,
-    EQ: 20,
+    "Gain Reduction": 18,
+    EQ: 24,
     "MIDI FX": 20,
-    Input: 34,
-    Inserts: 40,
-    "Audio FX": 60,
-    Sends: 34,
+    Input: 38,
+    "Audio FX": 112,
+    Sends: 32,
     Output: 22,
     Group: 20,
     Automation: 24,
-    Icon: 40,
-    Pan: 36,
-    dB: 24,
+    Icon: 44,
+    Pan: 40,
+    dB: 26,
   };
   const rowHeight = rowHeights[label] ?? 20;
   return (
     <div
-      className={`flex border-b px-1 ${label === "Audio FX" || label === "Sends" ? "items-start py-[2px]" : "items-center justify-center"}`}
-      style={{ borderColor: "#4a4a4e", minHeight: rowHeight, height: rowHeight }}
+      className={`flex border-b px-0.5 ${label === "Audio FX" || label === "Sends" ? "items-start py-[3px]" : "items-center justify-center"}`}
+      style={{ borderColor: LOGIC_MIX.rowLine, minHeight: rowHeight, height: rowHeight }}
     >
       <div className="min-w-0 flex-1">{children}</div>
+    </div>
+  );
+}
+
+function LogicMiniEqThumb({ presetId }: { presetId: string }) {
+  const tilt = presetId === "flat" ? 0 : presetId.includes("bass") ? -12 : 8;
+  return (
+    <div className={LOGIC_MIX.eqThumb} title="EQ curve">
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0 top-2 opacity-90"
+        style={{
+          background: `linear-gradient(185deg, transparent 0%, rgba(80,160,240,0.25) 40%, rgba(120,200,255,0.55) 100%)`,
+          transform: `skewY(${tilt}deg)`,
+          transformOrigin: "center bottom",
+        }}
+      />
+      <div className="pointer-events-none absolute inset-x-1 bottom-1 top-3 rounded-sm border border-[#2a2a2e] bg-[#0c0c0e]" />
     </div>
   );
 }
@@ -1381,102 +1458,128 @@ function MixerStrip({ track: tr, peak, fileInputTrigger }: MixerStripProps) {
   const dbLabel = faderToDbLabel(tr.volume);
   const peakScalar = meterPeakScalar(peak);
   const peakDb = peakToDbDisplay(peakScalar);
-  const eqLabel = EQ_PRESET_LABELS.find((option) => option.id === tr.eqPreset)?.label ?? "Chan EQ";
-  const effectLabel = EFFECT_PRESET_LABELS.find((option) => option.id === tr.effectPreset)?.label ?? "Comp";
-  const spaceLabel = SPACE_PRESET_LABELS.find((option) => option.id === tr.spacePreset)?.label ?? "Space";
   const sendItems = tr.kind === "instrument" ? ["Bus 4"] : [];
   void fileInputTrigger;
 
   return (
     <div
-      className="relative z-10 flex min-h-full shrink-0 flex-col border-r"
-      style={{ width: MIXER_STRIP_W, borderColor: LP.border, background: LP.stripBg }}
+      className="relative z-10 flex min-h-full shrink-0 flex-col border-r shadow-[2px_0_8px_rgba(0,0,0,0.35)]"
+      style={{
+        width: MIXER_STRIP_W,
+        borderColor: "#050506",
+        background: LOGIC_MIX.stripGradient,
+      }}
     >
       <MixerSlotRow label="Setting">
-        <div className={mixerFieldDark} title={tr.name}>
+        <div
+          className={`${LOGIC_MIX.headerMini} w-full truncate rounded-[4px] border border-[#2a2a2e] bg-[#252528] py-0.5`}
+          title={tr.name}
+        >
           {tr.name}
         </div>
       </MixerSlotRow>
       <MixerSlotRow label="Gain Reduction">
-        <div className="h-3 w-full rounded-[2px] border border-[#454549] bg-[#3a3a3e]" />
+        <div className="flex w-full justify-center px-1">
+          <div className={LOGIC_MIX.grMeter} title="Gain reduction">
+            <div
+              className="h-full w-[30%] rounded-full bg-gradient-to-r from-[#3a6a3a] to-[#5acd5a] opacity-80"
+              style={{ marginLeft: 0 }}
+            />
+          </div>
+        </div>
       </MixerSlotRow>
       <MixerSlotRow label="EQ">
-        <select
-          value={tr.eqPreset}
-          onChange={(e) => daw.setTrackEq(tr.id, e.target.value as (typeof tr)["eqPreset"])}
-          className={`${mixerFieldGray} appearance-none outline-none`}
-          title="Channel EQ"
-        >
-          {EQ_PRESET_LABELS.map((o) => (
-            <option key={o.id} value={o.id}>
-              {o.label}
-            </option>
-          ))}
-        </select>
+        <div className="flex w-full items-center gap-1 px-0.5">
+          <LogicMiniEqThumb presetId={tr.eqPreset} />
+          <select
+            value={tr.eqPreset}
+            onChange={(e) => daw.setTrackEq(tr.id, e.target.value as (typeof tr)["eqPreset"])}
+            className={`${LOGIC_MIX.fxBlue} min-w-0 flex-1 text-[8px]`}
+            title="Channel EQ"
+          >
+            {EQ_PRESET_LABELS.map((o) => (
+              <option key={o.id} value={o.id} className="bg-[#1a1a1e] text-[#eee]">
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </MixerSlotRow>
       <MixerSlotRow label="MIDI FX">
-        <div className="h-4 w-full rounded-[2px] border border-[#454549] bg-[#4a4a4e]" />
+        <div className={`${LOGIC_MIX.slotDark} opacity-90`}>{"—"}</div>
       </MixerSlotRow>
       <MixerSlotRow label="Input">
-        <div
-          className="relative z-20 flex min-h-0 flex-col gap-px"
-          style={{ pointerEvents: "auto" }}
-        >
+        <div className="relative z-20 flex min-h-0 w-full flex-col gap-[3px]" style={{ pointerEvents: "auto" }}>
           <select
             value={tr.inputDeviceId ?? ""}
-            title="Audio input device"
+            title="Audio input"
             onChange={(e) => {
               const v = e.target.value;
               const sel = daw.inputDevices.find((d) => d.deviceId === v);
               daw.setTrackInputDevice(tr.id, v, sel?.label || "Input");
             }}
-            className={`${mixerFieldGray} max-w-full cursor-pointer appearance-none outline-none text-[8px]`}
-            style={{ position: "relative", zIndex: 20, pointerEvents: "auto" }}
+            className={LOGIC_MIX.slotIn}
           >
-            <option value="">Default</option>
+            <option value="" className="bg-[#1a1a1e]">
+              Input
+            </option>
             {daw.inputDevices.map((device) => (
-              <option key={device.deviceId} value={device.deviceId}>
+              <option key={device.deviceId} value={device.deviceId} className="bg-[#1a1a1e]">
                 {device.label || `In ${device.deviceId.slice(0, 4)}`}
               </option>
             ))}
           </select>
           <select
-            title="Input channels: mono / stereo / auto (from source)"
+            title="Channel width"
             value={tr.channelMode}
             onChange={(e) => daw.setTrackChannelMode(tr.id, e.target.value as Track["channelMode"])}
-            className={`${mixerFieldDark} max-w-full cursor-pointer appearance-none outline-none text-[7px]`}
-            style={{ position: "relative", zIndex: 20, pointerEvents: "auto" }}
+            className={`${LOGIC_MIX.slotIn} text-[7px]`}
           >
-            <option value="mono">Mono</option>
-            <option value="stereo">Stereo</option>
-            <option value="auto">Auto</option>
+            <option value="mono" className="bg-[#1a1a1e]">
+              Mono
+            </option>
+            <option value="stereo" className="bg-[#1a1a1e]">
+              Stereo
+            </option>
+            <option value="auto" className="bg-[#1a1a1e]">
+              Auto
+            </option>
           </select>
         </div>
       </MixerSlotRow>
       <MixerSlotRow label="Audio FX">
-        <div className="flex w-full flex-col gap-[2px]">
+        <div className="flex w-full flex-col gap-[3px]">
           <select
             value={tr.effectPreset}
             onChange={(e) => daw.setTrackEffect(tr.id, e.target.value as (typeof tr)["effectPreset"])}
-            className={`${mixerFieldBlue} appearance-none outline-none`}
-            title="Audio FX"
+            className={LOGIC_MIX.fxBlue}
+            title="Dynamics / FX"
           >
             {EFFECT_PRESET_LABELS.map((o) => (
-              <option key={o.id} value={o.id}>
+              <option key={o.id} value={o.id} className="bg-[#1a1a1e]">
                 {o.label}
               </option>
             ))}
           </select>
-          <MixerStack
-            items={[spaceLabel !== "Dry" ? spaceLabel : "", effectLabel !== "None" ? effectLabel : ""]}
-            tone="blue"
-          />
+          <select
+            value={tr.spacePreset}
+            onChange={(e) => daw.setTrackSpace(tr.id, e.target.value as (typeof tr)["spacePreset"])}
+            className={LOGIC_MIX.fxBlue}
+            title="Space"
+          >
+            {SPACE_PRESET_LABELS.map((o) => (
+              <option key={o.id} value={o.id} className="bg-[#1a1a1e]">
+                {o.label}
+              </option>
+            ))}
+          </select>
+          <TrackPluginSlots slots={tr.fxInserts} />
         </div>
       </MixerSlotRow>
       <MixerSlotRow label="Sends">
-        <div className="flex w-full flex-col gap-[2px]">
-          <label className="flex min-h-[22px] items-center gap-1 px-0.5" title="Reverb send level">
-            <span className="shrink-0 text-[8px] text-[#aaa]">Rv</span>
+        <div className="flex w-full flex-col gap-[3px]">
+          <div className="flex items-center gap-1 rounded-[4px] border border-[#2e4a6a] bg-gradient-to-b from-[#4e8cc8] to-[#2a5a90] px-1 py-0.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]">
+            <span className="shrink-0 text-[8px] font-semibold text-white">Rv</span>
             <input
               type="range"
               min={0}
@@ -1484,9 +1587,10 @@ function MixerStrip({ track: tr, peak, fileInputTrigger }: MixerStripProps) {
               value={Math.round((tr.sendReverb ?? 0.18) * 100)}
               onChange={(e) => daw.setTrackSendReverb(tr.id, Number(e.target.value) / 100)}
               className="h-1 min-w-0 flex-1 cursor-pointer"
-              style={{ accentColor: LP.accentBlueHi }}
+              style={{ accentColor: "#b8e0ff" }}
+              title="Reverb send"
             />
-          </label>
+          </div>
           {sendItems.length > 0 ? <MixerStack items={sendItems} tone="blue" /> : null}
         </div>
       </MixerSlotRow>
@@ -1494,57 +1598,48 @@ function MixerStrip({ track: tr, peak, fileInputTrigger }: MixerStripProps) {
         <select
           value={tr.outputBus ?? "master"}
           onChange={(e) => daw.setTrackOutputBus(tr.id, e.target.value as BusId)}
-          className={`${mixerFieldGray} max-w-full appearance-none outline-none text-[9px]`}
-          title="Output bus"
+          className={LOGIC_MIX.slotIn}
+          title="Output"
         >
           {ROUTING_BUS_IDS.map((id) => (
-            <option key={id} value={id}>
+            <option key={id} value={id} className="bg-[#1a1a1e]">
               {BUS_LABELS[id]}
             </option>
           ))}
         </select>
       </MixerSlotRow>
       <MixerSlotRow label="Group">
-        <div className="h-4 w-full rounded-[2px] border border-[#454549] bg-[#4a4a4e]" />
+        <div className={`${LOGIC_MIX.slotDark} text-[#666]`}>Group</div>
       </MixerSlotRow>
       <MixerSlotRow label="Automation">
-        <button type="button" className={`${mixerFieldGreen} font-bold`} title="Automation mode">
+        <button type="button" className={LOGIC_MIX.readBtn} title="Automation">
           Read
         </button>
       </MixerSlotRow>
-      <MixerSlotRow label="Inserts">
-        <TrackPluginSlots slots={tr.fxInserts} />
-      </MixerSlotRow>
-      {/* Instrument icon */}
       <div
-        className="flex items-center justify-center border-b"
-        style={{ borderColor: "#4a4a4e", minHeight: 40, height: 40 }}
+        className="flex items-center justify-center border-b py-1"
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 44, height: 44 }}
       >
-        <InstrumentIcon kind={tr.kind} color={tr.color} />
+        <div className={LOGIC_MIX.iconWell}>
+          <InstrumentIcon kind={tr.kind} color={tr.color} />
+        </div>
       </div>
-      {/* Pan */}
       <div
-        className="flex items-center justify-center border-b"
-        style={{ borderColor: "#4a4a4e", minHeight: 36, height: 36 }}
+        className="flex items-center justify-center border-b py-1"
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 40, height: 40 }}
       >
-        <PanKnob value={tr.pan} onChange={(v) => daw.setTrackPan(tr.id, v)} size={28} showValueLabel={false} />
+        <PanKnob value={tr.pan} onChange={(v) => daw.setTrackPan(tr.id, v)} size={30} showValueLabel={false} />
       </div>
-      {/* dB */}
       <div
-        className="flex items-center justify-center gap-0.5 border-b px-[2px]"
-        style={{ borderColor: "#4a4a4e", minHeight: 24, height: 24 }}
+        className="flex items-stretch justify-center gap-0.5 border-b px-0.5 py-0.5"
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 26, height: 26 }}
       >
-        <span className="rounded border border-[#222] bg-[#0a0a0a] px-1 py-0.5 font-mono text-[9px] tabular-nums text-[#e0e0e0]">
-          {dbLabel}
-        </span>
-        <span className="rounded border border-[#222] bg-[#0a0a0a] px-1 py-0.5 font-mono text-[9px] tabular-nums text-[#4eca4e]">
-          {peakDb}
-        </span>
+        <span className={LOGIC_MIX.readout}>{dbLabel}</span>
+        <span className={`${LOGIC_MIX.readout} ${LOGIC_MIX.readoutPeak}`}>{peakDb}</span>
       </div>
-      {/* Fader + meters */}
       <div
         className="border-b"
-        style={{ borderColor: "#4a4a4e", minHeight: MIXER_METER_H + 10, height: MIXER_METER_H + 10 }}
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: MIXER_METER_H + 10, height: MIXER_METER_H + 10 }}
       >
         <VerticalMixerFader
           value={tr.volume}
@@ -1553,43 +1648,48 @@ function MixerStrip({ track: tr, peak, fileInputTrigger }: MixerStripProps) {
           ariaLabel={`${tr.name} level`}
         />
       </div>
-      {/* R I */}
       <div
-        className="flex items-center justify-center gap-0.5 border-b py-[2px]"
-        style={{ borderColor: "#4a4a4e", minHeight: 22, height: 22 }}
+        className="flex items-center justify-center gap-1 border-b px-0.5 py-0.5"
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 24, height: 24 }}
       >
         <button
           type="button"
           disabled={!daw.sessionCapabilities.canArmRecord}
           onClick={() => daw.sessionCapabilities.canArmRecord && daw.toggleRecordArm(tr.id)}
-          className={`h-4 w-5 rounded-sm border text-[8px] font-bold ${tr.recordArm ? "border-[#a22] bg-[#e03030] text-white" : "border-[#555] bg-[#4a4a4e] text-[#999]"} disabled:opacity-40`}
+          className={`flex h-[22px] w-[30px] items-center justify-center rounded-[4px] border text-[9px] font-bold shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] disabled:opacity-40 ${
+            tr.recordArm
+              ? "border-[#8b2020] bg-gradient-to-b from-[#e84848] to-[#a82020] text-white"
+              : "border-[#3a3a40] bg-gradient-to-b from-[#4a4a52] to-[#323238] text-[#bbb]"
+          }`}
+          title="Record enable"
         >
           R
         </button>
         <button
           type="button"
-          title="Input monitoring (headphones) — live input to master; not recorded"
+          title="Input monitoring"
           onClick={() => daw.toggleInputMonitoring(tr.id)}
-          className={`flex h-4 w-5 shrink-0 items-center justify-center rounded-sm border ${
+          className={`flex h-[22px] w-[30px] items-center justify-center rounded-[4px] border text-[9px] font-bold shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] ${
             tr.inputMonitoring
-              ? "border-[#4a78c8] bg-[#3478f6] text-white"
-              : "border-[#555] bg-[#4a4a4e] text-[#999]"
+              ? "border-[#b86812] bg-gradient-to-b from-[#f0a030] to-[#c07018] text-[#1a0a00]"
+              : "border-[#3a3a40] bg-gradient-to-b from-[#4a4a52] to-[#323238] text-[#bbb]"
           }`}
-          style={{ position: "relative", zIndex: 20, pointerEvents: "auto", cursor: "pointer" }}
         >
-          <Headphones size={12} strokeWidth={2.25} aria-hidden />
+          <Headphones size={13} strokeWidth={2.25} aria-hidden />
         </button>
       </div>
       <div
-        className="flex items-center justify-center gap-1 border-b py-0.5"
-        style={{ borderColor: "#4a4a4e", minHeight: 28, height: 28 }}
+        className="flex items-center justify-center gap-1.5 border-b px-1 py-0.5"
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 30, height: 30 }}
       >
         <button
           type="button"
           title="Mute"
           onClick={() => daw.toggleMute(tr.id)}
-          className={`h-6 w-7 rounded-sm border text-[10px] font-bold ${
-            tr.muted ? "border-[#3a7a7a] bg-[#5ab0b0] text-[#022]" : "border-[#555] bg-[#4a4a4e] text-[#ddd]"
+          className={`h-7 w-8 rounded-[4px] border text-[11px] font-bold shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] ${
+            tr.muted
+              ? "border-[#2a6a6a] bg-gradient-to-b from-[#5ec8c8] to-[#3a9898] text-[#022]"
+              : "border-[#3a3a40] bg-gradient-to-b from-[#4f4f56] to-[#36363c] text-[#eee]"
           }`}
         >
           M
@@ -1598,16 +1698,22 @@ function MixerStrip({ track: tr, peak, fileInputTrigger }: MixerStripProps) {
           type="button"
           title="Solo"
           onClick={() => daw.toggleSolo(tr.id)}
-          className={`h-6 w-7 rounded-sm border text-[10px] font-bold ${
-            tr.solo ? "border-[#886600] bg-[#e8d44a] text-[#111]" : "border-[#555] bg-[#4a4a4e] text-[#ddd]"
+          className={`h-7 w-8 rounded-[4px] border text-[11px] font-bold shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] ${
+            tr.solo
+              ? "border-[#a08008] bg-gradient-to-b from-[#f0e060] to-[#c0a020] text-[#111]"
+              : "border-[#3a3a40] bg-gradient-to-b from-[#4f4f56] to-[#36363c] text-[#eee]"
           }`}
         >
           S
         </button>
       </div>
       <div
-        className="mt-auto flex items-center justify-center truncate border-t px-1 text-center text-[9px] font-semibold"
-        style={{ backgroundColor: tr.color, borderColor: LP.border, color: "#111", minHeight: 24 }}
+        className="mt-auto flex min-h-[26px] items-center justify-center truncate border-t px-0.5 py-0.5 text-center text-[10px] font-bold leading-none tracking-tight text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]"
+        style={{
+          backgroundColor: tr.color,
+          borderColor: "#000",
+          textShadow: "0 1px 2px rgba(0,0,0,0.65)",
+        }}
         title={tr.name}
       >
         {tr.name || "Track"}
@@ -1628,74 +1734,71 @@ function BusMixerStrip({ busId }: BusMixerStripProps) {
   const dbLabel = faderToDbLabel(bm.volume);
   return (
     <div
-      className="flex min-h-full shrink-0 flex-col border-l"
-      style={{ width: MIXER_STRIP_W, borderColor: LP.border, background: LP.stripBg }}
+      className="flex min-h-full shrink-0 flex-col border-l shadow-[2px_0_8px_rgba(0,0,0,0.35)]"
+      style={{ width: MIXER_STRIP_W, borderColor: "#050506", background: LOGIC_MIX.stripGradient }}
     >
       <MixerSlotRow label="Setting">
-        <div className={mixerFieldDark} title={title}>
+        <div className={`${LOGIC_MIX.headerMini} w-full rounded-[4px] border border-[#2a2a2e] bg-[#252528] py-0.5`}>
           {title}
         </div>
       </MixerSlotRow>
       <MixerSlotRow label="Gain Reduction">
-        <div className="h-3 w-full rounded-[2px] border border-[#454549] bg-[#3a3a3e]" />
+        <div className="flex w-full justify-center px-1">
+          <div className={LOGIC_MIX.grMeter} />
+        </div>
       </MixerSlotRow>
       <MixerSlotRow label="EQ">
-        <div className={mixerFieldDark}>—</div>
+        <div className={`${LOGIC_MIX.slotDark}`}>—</div>
       </MixerSlotRow>
       <MixerSlotRow label="MIDI FX">
-        <div className="h-4 w-full rounded-[2px] border border-[#454549] bg-[#4a4a4e]" />
+        <div className={`${LOGIC_MIX.slotDark}`}>{"—"}</div>
       </MixerSlotRow>
       <MixerSlotRow label="Input">
-        <div className="text-[9px] text-[#ccc]">Tracks</div>
+        <div className={`${LOGIC_MIX.slotIn} text-[8px] text-[#aaa]`}>Tracks</div>
       </MixerSlotRow>
       <MixerSlotRow label="Audio FX">
-        <MixerStack items={[]} tone="gray" />
+        <InsertRowPlaceholder />
       </MixerSlotRow>
       <MixerSlotRow label="Sends">
-        <MixerStack items={[]} tone="gray" />
+        <div className={LOGIC_MIX.slotDark} />
       </MixerSlotRow>
       <MixerSlotRow label="Output">
-        <div className={mixerFieldDark}>Master</div>
+        <div className={LOGIC_MIX.slotIn}>Master</div>
       </MixerSlotRow>
       <MixerSlotRow label="Group">
-        <div className="h-4 w-full rounded-[2px] border border-[#454549] bg-[#4a4a4e]" />
+        <div className={`${LOGIC_MIX.slotDark} text-[#666]`}>Group</div>
       </MixerSlotRow>
       <MixerSlotRow label="Automation">
-        <button type="button" className={`${mixerFieldGreen} font-bold`}>
+        <button type="button" className={LOGIC_MIX.readBtn}>
           Read
         </button>
       </MixerSlotRow>
-      <MixerSlotRow label="Inserts">
-        <InsertRowPlaceholder />
-      </MixerSlotRow>
       <div
-        className="flex items-center justify-center border-b"
-        style={{ borderColor: "#4a4a4e", minHeight: 40, height: 40 }}
+        className="flex items-center justify-center border-b py-1"
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 44, height: 44 }}
       >
-        <svg style={{ color: "#6b8cbc", width: 26, height: 26 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <path d="M4 16v2M8 16v4M12 6v14M16 12v8M20 8v12" strokeLinecap="round" />
-        </svg>
+        <div className={LOGIC_MIX.iconWell}>
+          <svg style={{ color: "#6b8cbc", width: 24, height: 24 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path d="M4 16v2M8 16v4M12 6v14M16 12v8M20 8v12" strokeLinecap="round" />
+          </svg>
+        </div>
       </div>
       <div
-        className="flex items-center justify-center border-b"
-        style={{ borderColor: "#4a4a4e", minHeight: 36, height: 36 }}
+        className="flex items-center justify-center border-b py-1"
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 40, height: 40 }}
       >
-        <PanKnob value={0} onChange={() => {}} size={28} showValueLabel={false} />
+        <PanKnob value={0} onChange={() => {}} size={30} showValueLabel={false} />
       </div>
       <div
-        className="flex items-center justify-center gap-0.5 border-b px-[2px]"
-        style={{ borderColor: "#4a4a4e", minHeight: 24, height: 24 }}
+        className="flex items-stretch justify-center gap-0.5 border-b px-0.5 py-0.5"
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 26, height: 26 }}
       >
-        <span className="rounded border border-[#222] bg-[#0a0a0a] px-1 py-0.5 font-mono text-[9px] tabular-nums text-[#e0e0e0]">
-          {dbLabel}
-        </span>
-        <span className="rounded border border-[#222] bg-[#0a0a0a] px-1 py-0.5 font-mono text-[9px] tabular-nums text-[#4eca4e]">
-          {peakToDbDisplay(peak)}
-        </span>
+        <span className={LOGIC_MIX.readout}>{dbLabel}</span>
+        <span className={`${LOGIC_MIX.readout} ${LOGIC_MIX.readoutPeak}`}>{peakToDbDisplay(peak)}</span>
       </div>
       <div
         className="border-b"
-        style={{ borderColor: "#4a4a4e", minHeight: MIXER_METER_H + 10, height: MIXER_METER_H + 10 }}
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: MIXER_METER_H + 10, height: MIXER_METER_H + 10 }}
       >
         <VerticalMixerFader
           value={bm.volume}
@@ -1705,29 +1808,35 @@ function BusMixerStrip({ busId }: BusMixerStripProps) {
         />
       </div>
       <div
-        className="flex items-center justify-center border-b py-[2px]"
-        style={{ borderColor: "#4a4a4e", minHeight: 22, height: 22 }}
+        className="flex items-center justify-center border-b py-0.5"
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 24, height: 24 }}
       >
-        <span className="text-[8px] text-[#999]">Aux</span>
+        <span className="text-[8px] font-medium text-[#888]">Aux</span>
       </div>
       <div
-        className="flex items-center justify-center gap-0.5 border-b py-[2px]"
-        style={{ borderColor: "#4a4a4e", minHeight: 28, height: 28 }}
+        className="flex items-center justify-center py-0.5"
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 30, height: 30, borderBottomWidth: 1, borderBottomStyle: "solid" }}
       >
         <button
           type="button"
           title="Mute bus"
           onClick={() => daw.toggleBusMute(busId)}
-          className={`h-5 w-6 rounded-sm border text-[9px] font-bold ${
-            bm.muted ? "border-[#3a7a7a] bg-[#5ab0b0] text-[#022]" : "border-[#555] bg-[#4a4a4e] text-[#ddd]"
+          className={`h-7 w-8 rounded-[4px] border text-[11px] font-bold shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] ${
+            bm.muted
+              ? "border-[#2a6a6a] bg-gradient-to-b from-[#5ec8c8] to-[#3a9898] text-[#022]"
+              : "border-[#3a3a40] bg-gradient-to-b from-[#4f4f56] to-[#36363c] text-[#eee]"
           }`}
         >
           M
         </button>
       </div>
       <div
-        className="mt-auto flex items-center justify-center truncate border-t px-1 text-center text-[9px] font-semibold text-white"
-        style={{ backgroundColor: "#4a5a78", borderColor: LP.border, minHeight: 24 }}
+        className="mt-auto flex min-h-[26px] items-center justify-center truncate border-t px-0.5 py-0.5 text-center text-[10px] font-bold leading-none text-white"
+        style={{
+          backgroundColor: "#4a5a78",
+          borderColor: "#000",
+          textShadow: "0 1px 2px rgba(0,0,0,0.65)",
+        }}
       >
         {title}
       </div>
@@ -1740,80 +1849,78 @@ function StereoOutStrip() {
   const peak = meterPeakScalar(daw.meterPeaks.__master__);
   return (
     <div
-      className="flex min-h-full shrink-0 flex-col border-l"
-      style={{ width: MIXER_STRIP_W, borderColor: LP.border, background: LP.stripBg }}
+      className="flex min-h-full shrink-0 flex-col border-l shadow-[2px_0_8px_rgba(0,0,0,0.35)]"
+      style={{ width: MIXER_STRIP_W, borderColor: "#050506", background: LOGIC_MIX.stripGradient }}
     >
       <MixerSlotRow label="Setting">
-        <div className={mixerFieldDark}>Stereo Out</div>
+        <div className={`${LOGIC_MIX.headerMini} w-full rounded-[4px] border border-[#2a2a2e] bg-[#252528] py-0.5`}>
+          Stereo Out
+        </div>
       </MixerSlotRow>
       <MixerSlotRow label="Gain Reduction">
-        <div className="h-3 w-full rounded-[2px] border border-[#454549] bg-[#3a3a3e]" />
+        <div className="flex w-full justify-center px-1">
+          <div className={LOGIC_MIX.grMeter} />
+        </div>
       </MixerSlotRow>
       <MixerSlotRow label="EQ">
-        <div className={mixerFieldDark}>Output EQ</div>
+        <div className={LOGIC_MIX.fxBlue}>Output EQ</div>
       </MixerSlotRow>
       <MixerSlotRow label="MIDI FX">
-        <div className="h-4 w-full rounded-[2px] border border-[#454549] bg-[#4a4a4e]" />
+        <div className={LOGIC_MIX.slotDark}>{"—"}</div>
       </MixerSlotRow>
       <MixerSlotRow label="Input">
-        <div className="text-[9px] text-[#ccc]">∞</div>
+        <div className={`${LOGIC_MIX.slotIn} text-[8px]`}>∞</div>
       </MixerSlotRow>
       <MixerSlotRow label="Audio FX">
         <MixerStack items={["Space D"]} tone="blue" />
       </MixerSlotRow>
       <MixerSlotRow label="Sends">
-        <MixerStack items={[]} tone="gray" />
+        <div className={LOGIC_MIX.slotDark} />
       </MixerSlotRow>
       <MixerSlotRow label="Output">
-        <div className={mixerFieldDark}>St Out</div>
+        <div className={LOGIC_MIX.slotIn}>St Out</div>
       </MixerSlotRow>
       <MixerSlotRow label="Group">
-        <div className="h-4 w-full rounded-[2px] border border-[#454549] bg-[#4a4a4e]" />
+        <div className={`${LOGIC_MIX.slotDark} text-[#666]`}>Group</div>
       </MixerSlotRow>
       <MixerSlotRow label="Automation">
-        <button type="button" className={`${mixerFieldGreen} font-bold`}>
+        <button type="button" className={LOGIC_MIX.readBtn}>
           Read
         </button>
       </MixerSlotRow>
-      <MixerSlotRow label="Inserts">
-        <InsertRowPlaceholder />
-      </MixerSlotRow>
-      {/* Icon area */}
       <div
-        className="flex items-center justify-center border-b"
-        style={{ borderColor: "#4a4a4e", minHeight: 40, height: 40 }}
+        className="flex items-center justify-center border-b py-1"
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 44, height: 44 }}
       >
-        <svg
-          style={{ color: "#4a9a4a", width: 28, height: 28 }}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-        >
-          <circle cx="12" cy="12" r="7" />
-          <path d="M9 9l6 6M15 9l-6 6" strokeLinecap="round" />
-        </svg>
+        <div className={LOGIC_MIX.iconWell}>
+          <svg
+            style={{ color: "#4a9a4a", width: 26, height: 26 }}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+          >
+            <circle cx="12" cy="12" r="7" />
+            <path d="M9 9l6 6M15 9l-6 6" strokeLinecap="round" />
+          </svg>
+        </div>
       </div>
       <div
-        className="flex items-center justify-center border-b"
-        style={{ borderColor: "#4a4a4e", minHeight: 36, height: 36 }}
+        className="flex items-center justify-center border-b py-1"
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 40, height: 40 }}
       >
-        <PanKnob value={0} onChange={() => {}} size={28} showValueLabel={false} />
+        <PanKnob value={0} onChange={() => {}} size={30} showValueLabel={false} />
       </div>
       <div
-        className="flex items-center justify-center gap-0.5 border-b px-[2px]"
-        style={{ borderColor: "#4a4a4e", minHeight: 24, height: 24 }}
+        className="flex items-stretch justify-center gap-0.5 border-b px-0.5 py-0.5"
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 26, height: 26 }}
       >
-        <span className="rounded border border-[#222] bg-[#0a0a0a] px-1 py-0.5 font-mono text-[9px] tabular-nums text-[#e0e0e0]">
-          0.0
-        </span>
-        <span className="rounded border border-[#222] bg-[#0a0a0a] px-1 py-0.5 font-mono text-[9px] tabular-nums text-[#4eca4e]">
-          {peakToDbDisplay(peak)}
-        </span>
+        <span className={LOGIC_MIX.readout}>0.0</span>
+        <span className={`${LOGIC_MIX.readout} ${LOGIC_MIX.readoutPeak}`}>{peakToDbDisplay(peak)}</span>
       </div>
       <div
         className="border-b"
-        style={{ borderColor: "#4a4a4e", minHeight: MIXER_METER_H + 10, height: MIXER_METER_H + 10 }}
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: MIXER_METER_H + 10, height: MIXER_METER_H + 10 }}
       >
         <VerticalMixerFader
           value={daw.masterVolume}
@@ -1823,25 +1930,29 @@ function StereoOutStrip() {
         />
       </div>
       <div
-        className="flex items-center justify-center border-b py-[2px]"
-        style={{ borderColor: "#4a4a4e", minHeight: 22, height: 22 }}
+        className="flex items-center justify-center border-b py-0.5"
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 24, height: 24 }}
       >
-        <span className="text-[8px] text-[#999]">Bnce</span>
+        <span className="text-[8px] font-medium text-[#888]">Bnce</span>
       </div>
       <div
-        className="flex items-center justify-center gap-0.5 border-b py-[2px]"
-        style={{ borderColor: "#4a4a4e", minHeight: 28, height: 28 }}
+        className="flex items-center justify-center py-0.5"
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 30, height: 30, borderBottomWidth: 1, borderBottomStyle: "solid" }}
       >
         <button
           type="button"
-          className="h-5 w-6 rounded-sm border border-[#555] bg-[#4a4a4e] text-[9px] font-bold text-[#ddd]"
+          className="h-7 w-8 rounded-[4px] border border-[#3a3a40] bg-gradient-to-b from-[#4f4f56] to-[#36363c] text-[11px] font-bold text-[#eee] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]"
         >
           M
         </button>
       </div>
       <div
-        className="mt-auto flex items-center justify-center truncate border-t px-1 text-center text-[9px] font-semibold text-white"
-        style={{ backgroundColor: "#4a9a4a", borderColor: LP.border, minHeight: 24 }}
+        className="mt-auto flex min-h-[26px] items-center justify-center truncate border-t px-0.5 py-0.5 text-center text-[10px] font-bold leading-none text-white"
+        style={{
+          backgroundColor: "#3d8f50",
+          borderColor: "#000",
+          textShadow: "0 1px 2px rgba(0,0,0,0.65)",
+        }}
       >
         Stereo Out
       </div>
@@ -1854,73 +1965,74 @@ function MasterMixerStrip() {
   const peak = meterPeakScalar(daw.meterPeaks.__master__);
   return (
     <div
-      className="flex min-h-full shrink-0 flex-col border-l"
-      style={{ width: MIXER_STRIP_W, borderColor: LP.border, background: LP.stripBg }}
+      className="flex min-h-full shrink-0 flex-col border-l shadow-[2px_0_8px_rgba(0,0,0,0.35)]"
+      style={{ width: MIXER_STRIP_W, borderColor: "#050506", background: LOGIC_MIX.stripGradient }}
     >
       <MixerSlotRow label="Setting">
-        <div className={mixerFieldDark}>Master</div>
+        <div className={`${LOGIC_MIX.headerMini} w-full rounded-[4px] border border-[#2a2a2e] bg-[#252528] py-0.5`}>
+          Master
+        </div>
       </MixerSlotRow>
       <MixerSlotRow label="Gain Reduction">
-        <div className="h-3 w-full rounded-[2px] border border-[#454549] bg-[#3a3a3e]" />
+        <div className="flex w-full justify-center px-1">
+          <div className={LOGIC_MIX.grMeter} />
+        </div>
       </MixerSlotRow>
       <MixerSlotRow label="EQ">
-        <div className={mixerFieldDark}>Limiter</div>
+        <div className={LOGIC_MIX.fxBlue}>Limiter</div>
       </MixerSlotRow>
       <MixerSlotRow label="MIDI FX">
-        <div className="h-4 w-full rounded-[2px] border border-[#454549] bg-[#4a4a4e]" />
+        <div className={LOGIC_MIX.slotDark}>{"—"}</div>
       </MixerSlotRow>
       <MixerSlotRow label="Input">
-        <div className="text-[9px] text-[#ccc]">∞</div>
+        <div className={`${LOGIC_MIX.slotIn} text-[8px]`}>∞</div>
       </MixerSlotRow>
       <MixerSlotRow label="Audio FX">
-        <MixerStack items={["Limiter"]} tone="blue" />
+        <div className="flex w-full flex-col gap-[3px]">
+          <MixerStack items={["Limiter"]} tone="blue" />
+          <InsertRowPlaceholder />
+        </div>
       </MixerSlotRow>
       <MixerSlotRow label="Sends">
-        <MixerStack items={[]} tone="gray" />
+        <div className={LOGIC_MIX.slotDark} />
       </MixerSlotRow>
       <MixerSlotRow label="Output">
-        <div className={mixerFieldDark}>Master</div>
+        <div className={LOGIC_MIX.slotIn}>Master</div>
       </MixerSlotRow>
       <MixerSlotRow label="Group">
-        <div className="h-4 w-full rounded-[2px] border border-[#454549] bg-[#4a4a4e]" />
+        <div className={`${LOGIC_MIX.slotDark} text-[#666]`}>Group</div>
       </MixerSlotRow>
       <MixerSlotRow label="Automation">
-        <button type="button" className={`${mixerFieldGreen} font-bold`}>
+        <button type="button" className={LOGIC_MIX.readBtn}>
           Read
         </button>
       </MixerSlotRow>
-      <MixerSlotRow label="Inserts">
-        <InsertRowPlaceholder />
-      </MixerSlotRow>
-      {/* Icon area */}
       <div
-        className="flex items-center justify-center border-b"
-        style={{ borderColor: "#4a4a4e", minHeight: 40, height: 40 }}
+        className="flex items-center justify-center border-b py-1"
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 44, height: 44 }}
       >
-        <svg style={{ color: "#9b4d96", width: 28, height: 28 }} viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 2L2 7v10l10 5 10-5V7L12 2zm0 2.2L19.2 8 12 11.8 4.8 8 12 4.2z" />
-        </svg>
+        <div className={LOGIC_MIX.iconWell}>
+          <svg style={{ color: "#9b4d96", width: 26, height: 26 }} viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2L2 7v10l10 5 10-5V7L12 2zm0 2.2L19.2 8 12 11.8 4.8 8 12 4.2z" />
+          </svg>
+        </div>
       </div>
       <div
-        className="flex items-center justify-center border-b"
-        style={{ borderColor: "#4a4a4e", minHeight: 36, height: 36 }}
+        className="flex items-center justify-center border-b py-1"
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 40, height: 40 }}
       >
-        <PanKnob value={0} onChange={() => {}} size={28} showValueLabel={false} />
+        <PanKnob value={0} onChange={() => {}} size={30} showValueLabel={false} />
       </div>
       <div
-        className="flex items-center justify-center gap-0.5 border-b px-[2px]"
-        style={{ borderColor: "#4a4a4e", minHeight: 24, height: 24 }}
+        className="flex items-stretch justify-center gap-0.5 border-b px-0.5 py-0.5"
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 26, height: 26 }}
       >
-        <span className="rounded border border-[#222] bg-[#0a0a0a] px-1 py-0.5 font-mono text-[9px] tabular-nums text-[#e0e0e0]">
-          {faderToDbLabel(daw.masterVolume)}
-        </span>
-        <span className="rounded border border-[#222] bg-[#0a0a0a] px-1 py-0.5 font-mono text-[9px] tabular-nums text-[#4eca4e]">
-          {peakToDbDisplay(peak)}
-        </span>
+        <span className={LOGIC_MIX.readout}>{faderToDbLabel(daw.masterVolume)}</span>
+        <span className={`${LOGIC_MIX.readout} ${LOGIC_MIX.readoutPeak}`}>{peakToDbDisplay(peak)}</span>
       </div>
       <div
         className="border-b"
-        style={{ borderColor: "#4a4a4e", minHeight: MIXER_METER_H + 10, height: MIXER_METER_H + 10 }}
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: MIXER_METER_H + 10, height: MIXER_METER_H + 10 }}
       >
         <VerticalMixerFader
           value={daw.masterVolume}
@@ -1930,36 +2042,31 @@ function MasterMixerStrip() {
         />
       </div>
       <div
-        className="flex items-center justify-center gap-0.5 border-b py-[2px]"
-        style={{ borderColor: "#4a4a4e", minHeight: 22, height: 22 }}
+        className="flex items-center justify-center gap-1.5 py-0.5"
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 30, height: 30, borderBottomWidth: 1, borderBottomStyle: "solid" }}
       >
         <button
           type="button"
-          className="h-4 w-5 rounded-sm border border-[#555] bg-[#4a4a4e] text-[8px] font-bold text-[#ddd]"
-        >
-          M
-        </button>
-      </div>
-      <div
-        className="flex items-center justify-center gap-0.5 border-b py-[2px]"
-        style={{ borderColor: "#4a4a4e", minHeight: 28, height: 28 }}
-      >
-        <button
-          type="button"
-          className="h-5 w-6 rounded-sm border border-[#555] bg-[#4a4a4e] text-[9px] font-bold text-[#ddd]"
+          className="h-7 w-8 rounded-[4px] border border-[#3a3a40] bg-gradient-to-b from-[#4f4f56] to-[#36363c] text-[11px] font-bold text-[#eee] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]"
+          title="Mute"
         >
           M
         </button>
         <button
           type="button"
-          className="h-5 w-6 rounded-sm border border-[#555] bg-[#4a4a4e] text-[9px] font-bold text-[#ddd]"
+          className="h-7 w-8 rounded-[4px] border border-[#3a3a40] bg-gradient-to-b from-[#4f4f56] to-[#36363c] text-[11px] font-bold text-[#eee] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]"
+          title="Dim"
         >
           D
         </button>
       </div>
       <div
-        className="mt-auto flex items-center justify-center truncate border-t px-1 text-center text-[9px] font-semibold text-white"
-        style={{ backgroundColor: "#9b4d96", borderColor: LP.border, minHeight: 24 }}
+        className="mt-auto flex min-h-[26px] items-center justify-center truncate border-t px-0.5 py-0.5 text-center text-[10px] font-bold leading-none text-white"
+        style={{
+          backgroundColor: "#8b3d8a",
+          borderColor: "#000",
+          textShadow: "0 1px 2px rgba(0,0,0,0.65)",
+        }}
       >
         Master
       </div>
@@ -3188,21 +3295,21 @@ function DawChrome() {
       ) : null}
 
       {mainView === "mixer" ? (
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden" style={{ background: LP.panel }}>
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden" style={{ background: "#2c2c2f" }}>
           <LogicMixerFilterBar active={mixerFilter} onPick={setMixerFilter} />
           <div className="flex min-h-0 flex-1 overflow-hidden">
             {/* Inspector in mixer view */}
             {inspectorOpen && (
               <aside
                 className="flex shrink-0 flex-col border-r"
-                style={{ borderColor: LP.border, background: LP.panel, width: INSPECTOR_PANEL_W }}
+                style={{ borderColor: "#0a0a0b", background: "#2a2a2d", width: INSPECTOR_PANEL_W }}
               >
                 <TrackInspector trackId={targetTrackId} />
               </aside>
             )}
             <div
               className="flex min-h-0 flex-1 items-stretch overflow-x-auto overflow-y-auto"
-              style={{ background: LP.panelLo }}
+              style={{ background: "#262628" }}
             >
               <MixerLabelColumn />
               {daw.tracks.map((t) => (
@@ -3218,7 +3325,7 @@ function DawChrome() {
               ))}
               <StereoOutStrip />
               <MasterMixerStrip />
-              <div className="min-w-[32px] flex-1" style={{ background: LP.panelLo }} aria-hidden />
+              <div className="min-w-[32px] flex-1" style={{ background: "#262628" }} aria-hidden />
             </div>
           </div>
         </div>
