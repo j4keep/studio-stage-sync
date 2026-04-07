@@ -6,6 +6,7 @@ import {
   clipTrimStart,
   clipVisibleDuration,
   createDefaultFxInsertSlots,
+  defaultChannelModeForKind,
   studioTrackTypeFromKind,
   type BusId,
   type ClipSourceMeta,
@@ -40,6 +41,9 @@ export type SerializedTrackV1 = {
   kind: TrackKind;
   studioTrackType?: StudioTrackType;
   fxInserts?: FxInsertSlot[];
+  inputDeviceId?: string;
+  inputMonitoring?: boolean;
+  channelMode?: TrackChannelMode;
   inputSource: string;
   volume: number;
   pan: number;
@@ -92,6 +96,9 @@ export function serializeProject(
       kind: t.kind,
       studioTrackType: t.studioTrackType,
       fxInserts: t.fxInserts.map((s) => ({ ...s })),
+      inputDeviceId: t.inputDeviceId || undefined,
+      inputMonitoring: t.inputMonitoring,
+      channelMode: t.channelMode,
       inputSource: t.inputSource,
       volume: t.volume,
       pan: t.pan,
@@ -144,6 +151,9 @@ export async function hydrateProject(data: SerializedProjectV1, ctx: AudioContex
         st.fxInserts && st.fxInserts.length > 0
           ? st.fxInserts.map((s) => ({ ...s }))
           : createDefaultFxInsertSlots(),
+      inputDeviceId: st.inputDeviceId,
+      inputMonitoring: st.inputMonitoring ?? false,
+      channelMode: st.channelMode ?? defaultChannelModeForKind(st.kind),
       inputSource: st.inputSource,
       recordArm: false,
       volume: st.volume,

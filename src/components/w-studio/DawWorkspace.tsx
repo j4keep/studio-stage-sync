@@ -23,7 +23,7 @@ import {
 } from "./audio";
 import { MIC_CHAIN_PRESETS } from "./micPresets";
 import { REMOTE_LIBRARY_BY_CATEGORY } from "./remoteLibrary";
-import { DawProvider, INPUT_SOURCE_OPTIONS, useDaw } from "./DawContext";
+import { DawProvider, INPUT_SOURCE_OPTIONS, meterPeakScalar, useDaw } from "./DawContext";
 import type { StudioToolSheetId } from "./studioSession";
 import { PianoRoll } from "./PianoRoll";
 import { LivePeaksCanvas } from "./LivePeaksCanvas";
@@ -244,7 +244,11 @@ function IconExpand() {
 function InspectorChannelStrip({ trackId, isStereoOut }: { trackId: string | null; isStereoOut?: boolean }) {
   const daw = useDaw();
   const tr = !isStereoOut && trackId ? daw.tracks.find((t) => t.id === trackId) : null;
-  const peak = isStereoOut ? (daw.meterPeaks.__master__ ?? 0) : tr ? (daw.meterPeaks[tr.id] ?? 0) : 0;
+  const peak = isStereoOut
+    ? meterPeakScalar(daw.meterPeaks.__master__)
+    : tr
+      ? meterPeakScalar(daw.meterPeaks[tr.id])
+      : 0;
   const vol = isStereoOut ? daw.masterVolume : (tr?.volume ?? 0.8);
   const pan = tr?.pan ?? 0;
   const name = isStereoOut ? "Stereo Out" : (tr?.name ?? "Track");
@@ -1358,7 +1362,25 @@ function MixerStrip({ track: tr, peak, fileInputTrigger }: MixerStripProps) {
         <div className="h-4 w-full rounded-[2px] border border-[#454549] bg-[#4a4a4e]" />
       </MixerSlotRow>
       <MixerSlotRow label="Input">
-        <div className={mixerFieldDark}>In 1</div>
+        <div className="flex flex-col gap-0.5">
+          <select
+            value={tr.inputDeviceId ?? ""}
+            title="Audio input device"
+            onChange={(e) => {
+              const v = e.target.value;
+              const sel = daw.inputDevices.find((d) => d.deviceId === v);
+              daw.setTrackInputDevice(tr.id, v, sel?.label || "Input");
+            }}
+            className={`${mixerFieldGray} max-w-full appearance-none outline-none text-[8px]`}
+          >
+            <option value="">Default</option>
+            {daw.inputDevices.map((device) => (
+              <option key={device.deviceId} value={device.deviceId}>
+                {device.label || `In ${device.deviceId.slice(0, 4)}`}
+              </option>
+            ))}
+          </select>
+        </div>
       </MixerSlotRow>
       <MixerSlotRow label="Audio FX">
         <div className="flex w-full flex-col gap-[2px]">
@@ -1472,7 +1494,13 @@ function MixerStrip({ track: tr, peak, fileInputTrigger }: MixerStripProps) {
         </button>
         <button
           type="button"
-          className="h-4 w-5 rounded-sm border border-[#555] bg-[#4a4a4e] text-[8px] font-bold text-[#999]"
+          title="Input monitoring — hear live mic on master (does not print to recording)"
+          onClick={() => daw.toggleInputMonitoring(tr.id)}
+          className={`h-4 w-5 rounded-sm border text-[8px] font-bold ${
+            tr.inputMonitoring
+              ? "border-[#4a78c8] bg-[#3478f6] text-white"
+              : "border-[#555] bg-[#4a4a4e] text-[#999]"
+          }`}
         >
           I
         </button>
@@ -1519,7 +1547,7 @@ type BusMixerStripProps = {
 
 function BusMixerStrip({ busId }: BusMixerStripProps) {
   const daw = useDaw();
-  const peak = daw.meterPeaks[`bus:${busId}`] ?? 0;
+  const peak = meterPeakScalar(daw.meterPeaks[`bus:${busId}`]);
   const bm = daw.busMixer[busId];
   const title = BUS_LABELS[busId];
   const dbLabel = faderToDbLabel(bm.volume);
@@ -1631,7 +1659,7 @@ function BusMixerStrip({ busId }: BusMixerStripProps) {
 
 function StereoOutStrip() {
   const daw = useDaw();
-  const peak = daw.meterPeaks.__master__ ?? 0;
+  const peak = meterPeakScalar(daw.meterPeaks.__master__);
   return (
     <div
       className="flex min-h-full shrink-0 flex-col border-l"
@@ -1742,7 +1770,7 @@ function StereoOutStrip() {
 
 function MasterMixerStrip() {
   const daw = useDaw();
-  const peak = daw.meterPeaks.__master__ ?? 0;
+  const peak = meterPeakScalar(daw.meterPeaks.__master__);
   return (
     <div
       className="flex min-h-full shrink-0 flex-col border-l"
@@ -2471,32 +2499,49 @@ function DawChrome() {
               >
                 {daw.isRecording ? "In" : "Mic"}
               </span>
-              <div
-                className="relative mt-0.5 h-12 w-3 overflow-hidden rounded-sm border border-[#333] bg-black"
-                title={
-                  daw.isRecording
-                    ? "Raw input level (pre-limiter); take uses soft limit ~−1 dBFS"
-                    : "Raw input while armed — adjust gain before record"
-                }
-              >
-                {(() => {
-                  const peak = daw.isRecording
-                    ? (daw.meterPeaks.__mic__ ?? 0)
-                    : daw.armedMicPeak;
+              {(() => {
+                const armed = daw.tracks.find((t) => t.recordArm);
+                const stereo = armed?.channelMode === "stereo";
+                const lv = daw.isRecording
+                  ? (() => {
+                      const m = daw.meterPeaks.__mic__;
+                      if (m != null && typeof m === "object" && "left" in m)
+                        return m as { left: number; right: number };
+                      const s = meterPeakScalar(m);
+                      return { left: s, right: s };
+                    })()
+                  : daw.armedMicLevels;
+                const bar = (peak: number) => {
                   const hot = peak >= 0.92;
                   return (
                     <div
-                      className="absolute bottom-0 left-0 right-0 transition-[height] duration-75"
-                      style={{
-                        height: `${Math.min(100, peak * 110)}%`,
-                        background: hot
-                          ? `linear-gradient(to top, ${LP.meterYel}, ${LP.meterRed}, #ff4040)`
-                          : `linear-gradient(to top, ${LP.meterGreen}, ${LP.meterYel}, ${LP.meterRed})`,
-                      }}
-                    />
+                      className="relative mt-0.5 h-12 overflow-hidden rounded-sm border border-[#333] bg-black"
+                      style={{ width: stereo ? 5 : 12 }}
+                      title={
+                        daw.isRecording
+                          ? "Raw input (pre-limiter); take is soft-limited ~−1 dBFS"
+                          : "Live input level; Input Monitor (I) routes to master only, not the take"
+                      }
+                    >
+                      <div
+                        className="absolute bottom-0 left-0 right-0 transition-[height] duration-75"
+                        style={{
+                          height: `${Math.min(100, peak * 110)}%`,
+                          background: hot
+                            ? `linear-gradient(to top, ${LP.meterYel}, ${LP.meterRed}, #ff4040)`
+                            : `linear-gradient(to top, ${LP.meterGreen}, ${LP.meterYel}, ${LP.meterRed})`,
+                        }}
+                      />
+                    </div>
                   );
-                })()}
-              </div>
+                };
+                return (
+                  <div className="mt-0.5 flex gap-px">
+                    {bar(lv.left)}
+                    {stereo ? bar(lv.right) : null}
+                  </div>
+                );
+              })()}
             </div>
           ) : null}
 
@@ -3368,9 +3413,22 @@ function DawChrome() {
                           >
                             R
                           </button>
+                          <button
+                            type="button"
+                            title="Input monitor (live to master; not recorded)"
+                            onClick={() => daw.toggleInputMonitoring(tr.id)}
+                            className="h-[18px] w-[18px] rounded-sm border text-[7px] font-bold"
+                            style={{
+                              borderColor: tr.inputMonitoring ? "#4a78c8" : "#444",
+                              background: tr.inputMonitoring ? "#3478f6" : "#404040",
+                              color: tr.inputMonitoring ? "#fff" : "#ccc",
+                            }}
+                          >
+                            I
+                          </button>
                           {/* Volume fader with signal-dependent green fill */}
                           {(() => {
-                            const peak = daw.meterPeaks[tr.id] ?? 0;
+                            const peak = meterPeakScalar(daw.meterPeaks[tr.id]);
                             const signalPct = Math.min(100, peak * 110);
                             const volPct = tr.volume * 100;
                             return (

@@ -94,6 +94,13 @@ export function studioTrackTypeFromKind(kind: TrackKind): StudioTrackType {
   }
 }
 
+/** Metering: mono lane vs stereo (UI can show one or two bars). */
+export type TrackChannelMode = 'mono' | 'stereo';
+
+export function defaultChannelModeForKind(kind: TrackKind): TrackChannelMode {
+  return kind === 'record_audio' ? 'mono' : 'stereo';
+}
+
 /** Per-channel EQ preset (Biquad chain configured in AudioContext) */
 export type EqPresetId =
   | 'flat'
@@ -153,6 +160,14 @@ export type Track = {
   /** Hex, e.g. `#2f7dd0` */
   color: string;
   kind: TrackKind;
+  studioTrackType: StudioTrackType;
+  fxInserts: FxInsertSlot[];
+  /** Optional hardware device id from enumerateDevices (empty = system default). */
+  inputDeviceId?: string;
+  /** Hear live input in master — parallel tap only; never mixed into recorder. */
+  inputMonitoring: boolean;
+  /** Input / meter layout (vocal lanes typically mono). */
+  channelMode: TrackChannelMode;
   /** Shown in mixer input dropdown (UI + future routing) */
   inputSource: string;
   /** Single red "R" arm at a time recommended */
@@ -191,6 +206,9 @@ export function newTrack(name: string, index: number, kind: TrackKind = 'record_
     kind,
     studioTrackType: studioTrackTypeFromKind(kind),
     fxInserts: createDefaultFxInsertSlots(),
+    inputDeviceId: undefined,
+    inputMonitoring: false,
+    channelMode: defaultChannelModeForKind(kind),
     inputSource: typeof navigator !== 'undefined' ? 'Built-in microphone' : 'Default input',
     recordArm: false,
     volume: 0.82,

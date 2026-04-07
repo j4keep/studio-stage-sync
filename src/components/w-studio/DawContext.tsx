@@ -56,6 +56,15 @@ import {
   type TrackKind,
 } from './types';
 
+/** Scalar peak or stereo input meter (playback strips stay scalar). */
+export type DawMeterPeak = number | { left: number; right: number };
+
+export function meterPeakScalar(p: DawMeterPeak | undefined): number {
+  if (p == null) return 0;
+  if (typeof p === 'number') return p;
+  return Math.max(p.left, p.right);
+}
+
 type PlaySession = { t0: number; p0: number };
 
 type TrackNodes = {
@@ -101,6 +110,13 @@ const CLEAN_MIC_CONSTRAINTS: MediaTrackConstraints = {
   sampleRate: { ideal: DAW_AUDIO_SAMPLE_RATE },
 };
 
+function buildMicCaptureConstraints(deviceId?: string): MediaTrackConstraints {
+  return {
+    ...CLEAN_MIC_CONSTRAINTS,
+    ...(deviceId ? { deviceId: { ideal: deviceId } } : {}),
+  };
+}
+
 type DawContextValue = {
   tracks: Track[];
   selectedTrackId: string | null;
@@ -118,8 +134,12 @@ type DawContextValue = {
   tempo: number;
   setTempo: (bpm: number) => void;
   beatsPerBar: number;
-  /** Normalized 0–1 peaks (track ids, `__master__`, `__mic__`, `bus:<id>`) */
-  meterPeaks: Record<string, number>;
+  /** Levels: scalar for tracks/buses/master; `{left,right}` for `__mic__` while recording. */
+  meterPeaks: Record<string, DawMeterPeak>;
+  inputDevices: MediaDeviceInfo[];
+  refreshInputDevices: () => Promise<void>;
+  setTrackInputDevice: (trackId: string, deviceId: string, label: string) => void;
+  toggleInputMonitoring: (trackId: string) => void;
   /** Per-sub-bus fader + mute (vocal, drum, reverb aux). */
   busMixer: BusMixerState;
   setBusVolume: (busId: NonMasterBus, v: number) => void;
@@ -174,6 +194,8 @@ type DawContextValue = {
   recordingTrackId: string | null;
   /** Normalized mic peaks while recording (for live strip). */
   recordingLivePeaks: number[];
+  /** Raw L/R mic levels while armed (pre-record) from device; mono lanes duplicate visually in UI. */
+  armedMicLevels: { left: number; right: number };
   /** Timeline time when the current take started (punch-in). */
   recordingPunchInTime: number | null;
   moveClip: (trackId: string, clipId: string, startTime: number) => void;
@@ -225,12 +247,16 @@ export function DawProvider({ children }: { children: ReactNode }) {
   const [metronomeOn, setMetronomeOn] = useState(false);
   const [tempo, setTempo] = useState(120);
   const [beatsPerBar, setBeatsPerBar] = useState(4);
-  const [meterPeaks, setMeterPeaks] = useState<Record<string, number>>({});
+  const [meterPeaks, setMeterPeaks] = useState<Record<string, DawMeterPeak>>({});
+  const [inputDevices, setInputDevices] = useState<MediaDeviceInfo[]>([]);
   const [masterVolume, setMasterVolumeState] = useState(1);
   const [masterMuted, setMasterMutedState] = useState(false);
   const [recordingTrackId, setRecordingTrackId] = useState<string | null>(null);
   const [recordingLivePeaks, setRecordingLivePeaks] = useState<number[]>([]);
-  const [armedMicPeak, setArmedMicPeak] = useState(0);
+  const [armedMicLevels, setArmedMicLevels] = useState<{ left: number; right: number }>({
+    left: 0,
+    right: 0,
+  });
   const [recordingPunchInTime, setRecordingPunchInTime] = useState<number | null>(null);
   const [status, setStatus] = useState('');
   const [projectMeta, setProjectMetaState] = useState<StudioProjectMeta>(() => defaultStudioProjectMeta());
@@ -251,6 +277,27 @@ export function DawProvider({ children }: { children: ReactNode }) {
     () => studioSessionCapabilities(sessionRole, artistSessionLimited),
     [sessionRole, artistSessionLimited],
   );
+
+  const refreshInputDevices = useCallback(async () => {
+    try {
+      const probe = await navigator.mediaDevices.getUserMedia({
+        audio: CLEAN_MIC_CONSTRAINTS,
+        video: false,
+      });
+      probe.getTracks().forEach((t) => t.stop());
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      setInputDevices(devices.filter((d) => d.kind === 'audioinput'));
+    } catch {
+      setInputDevices([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshInputDevices();
+    const onDev = () => void refreshInputDevices();
+    navigator.mediaDevices?.addEventListener?.('devicechange', onDev);
+    return () => navigator.mediaDevices?.removeEventListener?.('devicechange', onDev);
+  }, [refreshInputDevices]);
 
   const loopEnabledRef = useRef(loopEnabled);
   useEffect(() => {
@@ -276,6 +323,8 @@ export function DawProvider({ children }: { children: ReactNode }) {
   const audioCtxRef = useRef<AudioContext | null>(null);
   const masterGainRef = useRef<GainNode | null>(null);
   const masterAnalyserRef = useRef<AnalyserNode | null>(null);
+  const micInputAnalyserLRef = useRef<AnalyserNode | null>(null);
+  const micInputAnalyserRRef = useRef<AnalyserNode | null>(null);
   const trackNodesRef = useRef(new Map<string, TrackNodes>());
   const busNodesRef = useRef(new Map<string, BusNodes>());
   const activeSourcesRef = useRef<AudioScheduledSourceNode[]>([]);
@@ -334,14 +383,18 @@ export function DawProvider({ children }: { children: ReactNode }) {
     isRecordingRef.current = isRecording;
   }, [isRecording]);
 
-  const anyRecordArmed = useMemo(() => tracks.some((t) => t.recordArm), [tracks]);
+  const armedRecordTrack = useMemo(() => tracks.find((t) => t.recordArm), [tracks]);
+  const anyRecordArmed = Boolean(armedRecordTrack);
 
   const liveMicStreamRef = useRef<MediaStream | null>(null);
   const armPreviewRafRef = useRef(0);
   const armPreviewNodesRef = useRef<{
     src: MediaStreamAudioSourceNode;
-    analyser: AnalyserNode;
-    silent: GainNode;
+    splitter: ChannelSplitterNode;
+    analyserL: AnalyserNode;
+    analyserR: AnalyserNode;
+    silentL: GainNode;
+    silentR: GainNode;
   } | null>(null);
 
   const stopArmPreviewNodesOnly = useCallback(() => {
@@ -353,8 +406,11 @@ export function DawProvider({ children }: { children: ReactNode }) {
     if (n) {
       try {
         n.src.disconnect();
-        n.analyser.disconnect();
-        n.silent.disconnect();
+        n.splitter.disconnect();
+        n.analyserL.disconnect();
+        n.analyserR.disconnect();
+        n.silentL.disconnect();
+        n.silentR.disconnect();
       } catch {
         /* ignore */
       }
@@ -366,7 +422,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
     stopArmPreviewNodesOnly();
     liveMicStreamRef.current?.getTracks().forEach((t) => t.stop());
     liveMicStreamRef.current = null;
-    setArmedMicPeak(0);
+    setArmedMicLevels({ left: 0, right: 0 });
   }, [stopArmPreviewNodesOnly]);
 
   /** Raw mic → analyser only (gain 0 to speakers). Never ties to playback / mixer bus. */
@@ -384,6 +440,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
       try {
         const ctx = ensureAudioCtx(audioCtxRef);
         await ctx.resume();
+        const armedNow = tracksRef.current.find((t) => t.recordArm);
 
         let stream = liveMicStreamRef.current;
         const live =
@@ -391,7 +448,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
           stream.getTracks().some((t) => t.readyState === 'live');
         if (!live) {
           stream = await navigator.mediaDevices.getUserMedia({
-            audio: CLEAN_MIC_CONSTRAINTS,
+            audio: buildMicCaptureConstraints(armedNow?.inputDeviceId),
             video: false,
           });
           if (cancelled) {
@@ -403,19 +460,34 @@ export function DawProvider({ children }: { children: ReactNode }) {
 
         stopArmPreviewNodesOnly();
         const src = ctx.createMediaStreamSource(stream);
-        const analyser = ctx.createAnalyser();
-        analyser.fftSize = 512;
-        analyser.smoothingTimeConstant = 0.35;
-        const silent = ctx.createGain();
-        silent.gain.value = 0;
-        src.connect(analyser);
-        analyser.connect(silent);
-        silent.connect(ctx.destination);
-        armPreviewNodesRef.current = { src, analyser, silent };
+        const splitter = ctx.createChannelSplitter(2);
+        const analyserL = ctx.createAnalyser();
+        const analyserR = ctx.createAnalyser();
+        analyserL.fftSize = 512;
+        analyserR.fftSize = 512;
+        analyserL.smoothingTimeConstant = 0.35;
+        analyserR.smoothingTimeConstant = 0.35;
+        const silentL = ctx.createGain();
+        const silentR = ctx.createGain();
+        silentL.gain.value = 0;
+        silentR.gain.value = 0;
+        src.connect(splitter);
+        splitter.connect(analyserL, 0, 0);
+        splitter.connect(analyserR, 1, 0);
+        analyserL.connect(silentL);
+        analyserR.connect(silentR);
+        silentL.connect(ctx.destination);
+        silentR.connect(ctx.destination);
+        armPreviewNodesRef.current = {
+          src,
+          splitter,
+          analyserL,
+          analyserR,
+          silentL,
+          silentR,
+        };
 
-        const tick = () => {
-          if (cancelled || isRecordingRef.current) return;
-          const a = analyser;
+        const sampleCh = (a: AnalyserNode) => {
           const buf = new Uint8Array(a.fftSize);
           a.getByteTimeDomainData(buf);
           let peak = 0;
@@ -423,12 +495,22 @@ export function DawProvider({ children }: { children: ReactNode }) {
             const v = Math.abs(buf[i]! - 128) / 128;
             if (v > peak) peak = v;
           }
-          setArmedMicPeak((p) => Math.max(peak, p * 0.9));
+          return peak;
+        };
+
+        const tick = () => {
+          if (cancelled || isRecordingRef.current) return;
+          const pl = sampleCh(analyserL);
+          const pr = sampleCh(analyserR);
+          setArmedMicLevels((prev) => ({
+            left: Math.max(pl, prev.left * 0.9),
+            right: Math.max(pr, prev.right * 0.9),
+          }));
           armPreviewRafRef.current = requestAnimationFrame(tick);
         };
         armPreviewRafRef.current = requestAnimationFrame(tick);
       } catch {
-        setArmedMicPeak(0);
+        setArmedMicLevels({ left: 0, right: 0 });
         setStatus('Mic preview failed — check permissions.');
       }
     };
@@ -446,6 +528,8 @@ export function DawProvider({ children }: { children: ReactNode }) {
   }, [
     anyRecordArmed,
     isRecording,
+    armedRecordTrack?.id,
+    armedRecordTrack?.inputDeviceId,
     releaseLiveMicStreamFully,
     stopArmPreviewNodesOnly,
   ]);
@@ -818,19 +902,24 @@ export function DawProvider({ children }: { children: ReactNode }) {
   }, [isPlaying, metronomeOn]);
 
   const meterHoldRef = useRef<Record<string, number>>({});
+  const micMeterHoldRef = useRef({ l: 0, r: 0 });
   useEffect(() => {
     let id = 0;
+    const samplePeak = (a: AnalyserNode) => {
+      const buf = new Uint8Array(a.fftSize);
+      a.getByteTimeDomainData(buf);
+      let peak = 0;
+      for (let i = 0; i < buf.length; i++) {
+        const v = Math.abs(buf[i]! - 128) / 128;
+        if (v > peak) peak = v;
+      }
+      return peak;
+    };
+
     const sample = () => {
-      const out: Record<string, number> = {};
+      const out: Record<string, DawMeterPeak> = {};
       for (const [tid, nodes] of trackNodesRef.current.entries()) {
-        const a = nodes.analyser;
-        const buf = new Uint8Array(a.fftSize);
-        a.getByteTimeDomainData(buf);
-        let peak = 0;
-        for (let i = 0; i < buf.length; i++) {
-          const v = Math.abs(buf[i]! - 128) / 128;
-          if (v > peak) peak = v;
-        }
+        const peak = samplePeak(nodes.analyser);
         const prev = meterHoldRef.current[tid] ?? 0;
         const v = Math.max(peak, prev * 0.88);
         meterHoldRef.current[tid] = v;
@@ -838,55 +927,39 @@ export function DawProvider({ children }: { children: ReactNode }) {
       }
       const ma = masterAnalyserRef.current;
       if (ma) {
-        const buf = new Uint8Array(ma.fftSize);
-        ma.getByteTimeDomainData(buf);
-        let peak = 0;
-        for (let i = 0; i < buf.length; i++) {
-          const v = Math.abs(buf[i]! - 128) / 128;
-          if (v > peak) peak = v;
-        }
+        const peak = samplePeak(ma);
         const prev = meterHoldRef.current.__master__ ?? 0;
         const v = Math.max(peak, prev * 0.88);
         meterHoldRef.current.__master__ = v;
         out.__master__ = v;
       }
       for (const [bid, bnodes] of busNodesRef.current.entries()) {
-        const a = bnodes.analyser;
-        const buf = new Uint8Array(a.fftSize);
-        a.getByteTimeDomainData(buf);
-        let peak = 0;
-        for (let i = 0; i < buf.length; i++) {
-          const v = Math.abs(buf[i]! - 128) / 128;
-          if (v > peak) peak = v;
-        }
+        const peak = samplePeak(bnodes.analyser);
         const key = `bus:${bid}`;
         const prev = meterHoldRef.current[key] ?? 0;
         const v = Math.max(peak, prev * 0.88);
         meterHoldRef.current[key] = v;
         out[key] = v;
       }
-      const micA = micInputAnalyserRef.current;
-      if (micA && isRecordingRef.current) {
-        const buf = new Uint8Array(micA.fftSize);
-        micA.getByteTimeDomainData(buf);
-        let peak = 0;
-        for (let i = 0; i < buf.length; i++) {
-          const v = Math.abs(buf[i]! - 128) / 128;
-          if (v > peak) peak = v;
-        }
-        const prev = meterHoldRef.current.__mic__ ?? 0;
-        const v = Math.max(peak, prev * 0.85);
-        meterHoldRef.current.__mic__ = v;
-        out.__mic__ = v;
+      const micL = micInputAnalyserLRef.current;
+      const micR = micInputAnalyserRRef.current;
+      if (micL && micR && isRecordingRef.current) {
+        const pl = samplePeak(micL);
+        const pr = samplePeak(micR);
+        const h = micMeterHoldRef.current;
+        h.l = Math.max(pl, h.l * 0.85);
+        h.r = Math.max(pr, h.r * 0.85);
+        out.__mic__ = { left: h.l, right: h.r };
         const nowWall = performance.now();
+        const micMax = Math.max(h.l, h.r);
         if (nowWall - lastRecWavePushRef.current > 48) {
           lastRecWavePushRef.current = nowWall;
-          recordingHistoryRef.current.push(Math.min(1, peak * 2.2));
+          recordingHistoryRef.current.push(Math.min(1, micMax * 2.2));
           if (recordingHistoryRef.current.length > 360) recordingHistoryRef.current.shift();
           setRecordingLivePeaks(recordingHistoryRef.current.slice());
         }
       } else {
-        meterHoldRef.current.__mic__ = 0;
+        micMeterHoldRef.current = { l: 0, r: 0 };
       }
 
       const actx = audioCtxRef.current;
@@ -927,8 +1000,10 @@ export function DawProvider({ children }: { children: ReactNode }) {
   /** Post-source trim (unity); single fan-out point for meter + capture — raw mic only. */
   const recordInputTrimRef = useRef<GainNode | null>(null);
   const recordMuteRef = useRef<GainNode | null>(null);
-  const micInputAnalyserRef = useRef<AnalyserNode | null>(null);
-  const micInputSilentRef = useRef<GainNode | null>(null);
+  const recordChannelSplitterRef = useRef<ChannelSplitterNode | null>(null);
+  const recordMicSilentLRef = useRef<GainNode | null>(null);
+  const recordMicSilentRRef = useRef<GainNode | null>(null);
+  const recordMonitorGainRef = useRef<GainNode | null>(null);
   const recordStartTimeRef = useRef(0);
   const recordingActiveRef = useRef(false);
   /** Sync playhead while recording: timeline = timeline0 + (ctxNow - ctx0) */
@@ -948,8 +1023,12 @@ export function DawProvider({ children }: { children: ReactNode }) {
       recordSourceRef.current?.disconnect();
       recordInputTrimRef.current?.disconnect();
       recordMuteRef.current?.disconnect();
-      micInputAnalyserRef.current?.disconnect();
-      micInputSilentRef.current?.disconnect();
+      recordChannelSplitterRef.current?.disconnect();
+      micInputAnalyserLRef.current?.disconnect();
+      micInputAnalyserRRef.current?.disconnect();
+      recordMicSilentLRef.current?.disconnect();
+      recordMicSilentRRef.current?.disconnect();
+      recordMonitorGainRef.current?.disconnect();
     } catch {
       /* ignore */
     }
@@ -957,12 +1036,17 @@ export function DawProvider({ children }: { children: ReactNode }) {
     recordSourceRef.current = null;
     recordInputTrimRef.current = null;
     recordMuteRef.current = null;
-    micInputAnalyserRef.current = null;
-    micInputSilentRef.current = null;
+    recordChannelSplitterRef.current = null;
+    micInputAnalyserLRef.current = null;
+    micInputAnalyserRRef.current = null;
+    recordMicSilentLRef.current = null;
+    recordMicSilentRRef.current = null;
+    recordMonitorGainRef.current = null;
     liveMicStreamRef.current?.getTracks().forEach((x) => x.stop());
     liveMicStreamRef.current = null;
     recordStereoChunksRef.current = [];
-    setArmedMicPeak(0);
+    setArmedMicLevels({ left: 0, right: 0 });
+    micMeterHoldRef.current = { l: 0, r: 0 };
   }, []);
 
   const startRecord = useCallback(async () => {
@@ -985,11 +1069,14 @@ export function DawProvider({ children }: { children: ReactNode }) {
         stream && stream.getTracks().some((t) => t.readyState === 'live');
       if (!streamLive) {
         stream = await navigator.mediaDevices.getUserMedia({
-          audio: CLEAN_MIC_CONSTRAINTS,
+          audio: buildMicCaptureConstraints(armed?.inputDeviceId),
           video: false,
         });
         liveMicStreamRef.current = stream;
       }
+
+      ensureMaster(ctx);
+      const masterIn = masterGainRef.current;
 
       recordStartTimeRef.current = currentTimeRef.current;
       recordStereoChunksRef.current = [];
@@ -1005,6 +1092,14 @@ export function DawProvider({ children }: { children: ReactNode }) {
       const inputTrim = ctx.createGain();
       inputTrim.gain.value = 1;
       src.connect(inputTrim);
+
+      if (armed?.inputMonitoring && masterIn) {
+        const mon = ctx.createGain();
+        mon.gain.value = 0.48;
+        src.connect(mon);
+        mon.connect(masterIn);
+        recordMonitorGainRef.current = mon;
+      }
 
       const proc = ctx.createScriptProcessor(4096, 2, 2);
       const mute = ctx.createGain();
@@ -1029,21 +1124,34 @@ export function DawProvider({ children }: { children: ReactNode }) {
       proc.connect(mute);
       mute.connect(ctx.destination);
 
-      const inputAnalyser = ctx.createAnalyser();
-      inputAnalyser.fftSize = 512;
-      inputAnalyser.smoothingTimeConstant = 0.35;
-      const inputSilent = ctx.createGain();
-      inputSilent.gain.value = 0;
-      inputTrim.connect(inputAnalyser);
-      inputAnalyser.connect(inputSilent);
-      inputSilent.connect(ctx.destination);
+      const split = ctx.createChannelSplitter(2);
+      inputTrim.connect(split);
+      const micAL = ctx.createAnalyser();
+      const micAR = ctx.createAnalyser();
+      micAL.fftSize = 512;
+      micAR.fftSize = 512;
+      micAL.smoothingTimeConstant = 0.35;
+      micAR.smoothingTimeConstant = 0.35;
+      const sL = ctx.createGain();
+      const sR = ctx.createGain();
+      sL.gain.value = 0;
+      sR.gain.value = 0;
+      split.connect(micAL, 0, 0);
+      split.connect(micAR, 1, 0);
+      micAL.connect(sL);
+      micAR.connect(sR);
+      sL.connect(ctx.destination);
+      sR.connect(ctx.destination);
 
       recordSourceRef.current = src;
       recordInputTrimRef.current = inputTrim;
       recordProcessorRef.current = proc;
       recordMuteRef.current = mute;
-      micInputAnalyserRef.current = inputAnalyser;
-      micInputSilentRef.current = inputSilent;
+      recordChannelSplitterRef.current = split;
+      micInputAnalyserLRef.current = micAL;
+      micInputAnalyserRRef.current = micAR;
+      recordMicSilentLRef.current = sL;
+      recordMicSilentRRef.current = sR;
       recordingActiveRef.current = true;
 
       setIsRecording(true);
@@ -1056,7 +1164,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
       const msg = e instanceof Error ? e.message : String(e);
       setStatus(`Mic error: ${msg}`);
     }
-  }, [isPlaying, isRecording, selectedTrackId, stopArmPreviewNodesOnly]);
+  }, [ensureMaster, isPlaying, isRecording, selectedTrackId, stopArmPreviewNodesOnly]);
 
   const stopRecord = useCallback(() => {
     if (!isRecording) return;
@@ -1182,6 +1290,26 @@ export function DawProvider({ children }: { children: ReactNode }) {
 
   const setTrackInputSource = useCallback((id: string, label: string) => {
     setTracks((prev) => prev.map((t) => (t.id === id ? { ...t, inputSource: label } : t)));
+  }, []);
+
+  const setTrackInputDevice = useCallback((id: string, deviceId: string, label: string) => {
+    setTracks((prev) =>
+      prev.map((t) =>
+        t.id === id
+          ? {
+              ...t,
+              inputDeviceId: deviceId || undefined,
+              inputSource: label,
+            }
+          : t,
+      ),
+    );
+  }, []);
+
+  const toggleInputMonitoring = useCallback((id: string) => {
+    setTracks((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, inputMonitoring: !t.inputMonitoring } : t)),
+    );
   }, []);
 
   const setTrackVolume = useCallback(
@@ -1675,6 +1803,10 @@ export function DawProvider({ children }: { children: ReactNode }) {
       setTempo,
       beatsPerBar,
       meterPeaks,
+      inputDevices,
+      refreshInputDevices,
+      setTrackInputDevice,
+      toggleInputMonitoring,
       busMixer,
       setBusVolume,
       toggleBusMute,
@@ -1687,6 +1819,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
       removeTrack,
       renameTrack,
       setTrackInputSource,
+      setTrackInputDevice,
       setTrackVolume,
       setTrackPan,
       setTrackEq,
@@ -1698,6 +1831,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
       toggleMute,
       toggleSolo,
       toggleExclusiveSoloSelection,
+      toggleInputMonitoring,
       toggleRecordArm,
       seek,
       rewindToStart,
@@ -1719,7 +1853,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
       setBeatsPerBar,
       recordingTrackId,
       recordingLivePeaks,
-      armedMicPeak,
+      armedMicLevels,
       recordingPunchInTime,
       moveClip,
       trimClipEdge,
@@ -1743,7 +1877,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
       isRecording,
       recordingTrackId,
       recordingLivePeaks,
-      armedMicPeak,
+      armedMicLevels,
       recordingPunchInTime,
       loopEnabled,
       loopStartSec,
@@ -1753,6 +1887,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
       tempo,
       beatsPerBar,
       meterPeaks,
+      inputDevices,
       busMixer,
       masterVolume,
       masterMuted,
@@ -1761,6 +1896,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
       removeTrack,
       renameTrack,
       setTrackInputSource,
+      setTrackInputDevice,
       setTrackVolume,
       setTrackPan,
       setTrackEq,
@@ -1774,6 +1910,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
       toggleMute,
       toggleSolo,
       toggleExclusiveSoloSelection,
+      toggleInputMonitoring,
       toggleRecordArm,
       seek,
       rewindToStart,
@@ -1805,6 +1942,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
       sessionCapabilities,
       studioToolSheet,
       setTrackStudioType,
+      refreshInputDevices,
     ],
   );
 
