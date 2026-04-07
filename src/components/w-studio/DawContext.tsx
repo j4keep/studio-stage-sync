@@ -66,6 +66,13 @@ export function meterPeakScalar(p: DawMeterPeak | undefined): number {
   return Math.max(p.left, p.right);
 }
 
+/** Stereo pair for meters: mono/scalar peaks duplicate to both stems (Logic-style). */
+export function meterPeakLR(p: DawMeterPeak | undefined): { left: number; right: number } {
+  if (p == null) return { left: 0, right: 0 };
+  if (typeof p === 'number') return { left: p, right: p };
+  return { left: p.left, right: p.right };
+}
+
 type PlaySession = { t0: number; p0: number };
 
 type TrackNodes = {

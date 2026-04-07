@@ -6,9 +6,9 @@ type Props = {
 };
 
 const slotFilled =
-  "flex h-[20px] w-full cursor-pointer items-center justify-center truncate rounded-[5px] border border-[#0a4a72] bg-gradient-to-b from-[#52a6d8] to-[#2870a6] px-1 text-center text-[8px] font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28)]";
+  "flex h-[12px] w-full cursor-pointer items-center justify-center truncate rounded-[3px] border border-[#0a4a72] bg-gradient-to-b from-[#4a98cc] to-[#2870a6] px-0.5 text-center text-[7px] font-semibold leading-none text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25)]";
 const slotEmpty =
-  "flex h-[20px] w-full cursor-pointer items-center justify-center truncate rounded-[5px] border border-[#2c2c30] bg-[#1e1e22] px-1 text-center text-[8px] text-[#5a5a60] shadow-[inset_0_2px_5px_rgba(0,0,0,0.45)]";
+  "flex h-[12px] w-full cursor-pointer items-center justify-center truncate rounded-[3px] border border-[#2c2c30] bg-[#1a1a1e] px-0.5 text-center text-[7px] leading-none text-[#5a5a60] shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)]";
 
 /** Logic-style insert ladder — full-width cyan when loaded, charcoal when empty */
 export function TrackPluginSlots({ slots }: Props) {
@@ -43,7 +43,7 @@ export function InsertRowPlaceholder() {
       {[0, 1, 2, 3].map((i) => (
         <div
           key={i}
-          className="h-[20px] w-full rounded-[5px] border border-[#2c2c30] bg-[#1a1a1d] shadow-[inset_0_2px_5px_rgba(0,0,0,0.45)]"
+          className="h-[12px] w-full rounded-[3px] border border-[#2c2c30] bg-[#1a1a1d] shadow-[inset_0_2px_4px_rgba(0,0,0,0.45)]"
         />
       ))}
     </div>
