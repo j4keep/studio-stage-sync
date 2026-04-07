@@ -853,14 +853,20 @@ export function mergeFloatChunks(chunks: Float32Array[]): Float32Array {
   return out;
 }
 
-/**
- * Linear amplitude for -1 dBFS headroom (~0.89). Recorded samples are soft-limited toward this
- * ceiling so files stay clean while avoiding brick-wall clipping at ±1.
- */
+/** Unity reference; UI can map peaks to −12…−6 dBFS target without DSP on the record path. */
 export const RECORD_PEAK_CEIL_LINEAR = 10 ** (-1 / 20);
 
-/** Soft saturation: asymptotes to ±RECORD_PEAK_CEIL_LINEAR (tanh knee). */
+/**
+ * Clean vocal/instrument capture: no coloring limiter — only ±1 float clamp so WAV encode stays finite.
+ * Use track FX / gain staging for level; watch the input meter for −12…−6 dBFS.
+ */
 export function limitRecordingFloatSample(s: number): number {
+  if (!Number.isFinite(s)) return 0;
+  return Math.max(-1, Math.min(1, s));
+}
+
+/** Optional soft ceiling (~−1 dBFS) if you re-enable in-engine safety limiting later. */
+export function softLimitRecordingFloatSample(s: number): number {
   if (!Number.isFinite(s)) return 0;
   const c = RECORD_PEAK_CEIL_LINEAR;
   return c * Math.tanh(s / c);

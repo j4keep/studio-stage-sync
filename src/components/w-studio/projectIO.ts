@@ -17,8 +17,14 @@ import {
   type SpacePresetId,
   type StudioTrackType,
   type Track,
+  type TrackChannelMode,
   type TrackKind,
 } from './types';
+
+function normalizeTrackChannelMode(raw: unknown, kind: TrackKind): TrackChannelMode {
+  if (raw === 'mono' || raw === 'stereo' || raw === 'auto') return raw;
+  return defaultChannelModeForKind(kind);
+}
 
 export const PROJECT_FILE_VERSION = 1 as const;
 
@@ -153,7 +159,7 @@ export async function hydrateProject(data: SerializedProjectV1, ctx: AudioContex
           : createDefaultFxInsertSlots(),
       inputDeviceId: st.inputDeviceId,
       inputMonitoring: st.inputMonitoring ?? false,
-      channelMode: st.channelMode ?? defaultChannelModeForKind(st.kind),
+      channelMode: normalizeTrackChannelMode(st.channelMode, st.kind),
       inputSource: st.inputSource,
       recordArm: false,
       volume: st.volume,

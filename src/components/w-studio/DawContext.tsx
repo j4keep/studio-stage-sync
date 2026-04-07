@@ -53,6 +53,7 @@ import {
   type SpacePresetId,
   type StudioTrackType,
   type Track,
+  type TrackChannelMode,
   type TrackKind,
 } from './types';
 
@@ -140,6 +141,7 @@ type DawContextValue = {
   refreshInputDevices: () => Promise<void>;
   setTrackInputDevice: (trackId: string, deviceId: string, label: string) => void;
   toggleInputMonitoring: (trackId: string) => void;
+  setTrackChannelMode: (trackId: string, mode: TrackChannelMode) => void;
   /** Per-sub-bus fader + mute (vocal, drum, reverb aux). */
   busMixer: BusMixerState;
   setBusVolume: (busId: NonMasterBus, v: number) => void;
@@ -1312,6 +1314,10 @@ export function DawProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  const setTrackChannelMode = useCallback((id: string, mode: TrackChannelMode) => {
+    setTracks((prev) => prev.map((t) => (t.id === id ? { ...t, channelMode: mode } : t)));
+  }, []);
+
   const setTrackVolume = useCallback(
     (id: string, v: number) => {
       const vol = Math.max(0, Math.min(1, v));
@@ -1807,6 +1813,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
       refreshInputDevices,
       setTrackInputDevice,
       toggleInputMonitoring,
+      setTrackChannelMode,
       busMixer,
       setBusVolume,
       toggleBusMute,
@@ -1819,7 +1826,6 @@ export function DawProvider({ children }: { children: ReactNode }) {
       removeTrack,
       renameTrack,
       setTrackInputSource,
-      setTrackInputDevice,
       setTrackVolume,
       setTrackPan,
       setTrackEq,
@@ -1831,7 +1837,6 @@ export function DawProvider({ children }: { children: ReactNode }) {
       toggleMute,
       toggleSolo,
       toggleExclusiveSoloSelection,
-      toggleInputMonitoring,
       toggleRecordArm,
       seek,
       rewindToStart,
@@ -1911,6 +1916,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
       toggleSolo,
       toggleExclusiveSoloSelection,
       toggleInputMonitoring,
+      setTrackChannelMode,
       toggleRecordArm,
       seek,
       rewindToStart,

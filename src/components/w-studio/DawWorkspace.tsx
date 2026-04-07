@@ -23,7 +23,11 @@ import {
 } from "./audio";
 import { MIC_CHAIN_PRESETS } from "./micPresets";
 import { REMOTE_LIBRARY_BY_CATEGORY } from "./remoteLibrary";
-import { DawProvider, INPUT_SOURCE_OPTIONS, meterPeakScalar, useDaw } from "./DawContext";
+import { Headphones } from "lucide-react";
+import ChannelMeter from "./ChannelMeter";
+import { resolveStereo, trackToChannelConfig } from "./channelConfig";
+import { DawProvider, INPUT_SOURCE_OPTIONS, meterPeakScalar, useDaw, type DawMeterPeak } from "./DawContext";
+import { InsertRowPlaceholder, TrackPluginSlots } from "./TrackPluginSlots";
 import type { StudioToolSheetId } from "./studioSession";
 import { PianoRoll } from "./PianoRoll";
 import { LivePeaksCanvas } from "./LivePeaksCanvas";
@@ -65,12 +69,13 @@ const MIXER_LABEL_ROWS = [
   { label: "Gain Reduction", height: 20 },
   { label: "EQ", height: 20 },
   { label: "MIDI FX", height: 20 },
-  { label: "Input", height: 22 },
+  { label: "Input", height: 34 },
   { label: "Audio FX", height: 60 },
   { label: "Sends", height: 34 },
   { label: "Output", height: 22 },
   { label: "Group", height: 20 },
   { label: "Automation", height: 24 },
+  { label: "Inserts", height: 40 },
   { label: "", height: 40 }, // instrument icon area
   { label: "Pan", height: 36 },
   { label: "dB", height: 24 },
@@ -302,7 +307,41 @@ function InspectorChannelStrip({ trackId, isStereoOut }: { trackId: string | nul
       </MixerSlotRow>
       {/* Input */}
       <MixerSlotRow label="Input">
-        {!isStereoOut ? <div className={mixerFieldDark}>Input 1</div> : <div className="text-[9px] text-[#ccc]">∞</div>}
+        {!isStereoOut && tr ? (
+          <div className="relative z-20 flex min-h-0 flex-col gap-px" style={{ pointerEvents: "auto" }}>
+            <select
+              value={tr.inputDeviceId ?? ""}
+              title="Audio input device"
+              onChange={(e) => {
+                const v = e.target.value;
+                const sel = daw.inputDevices.find((d) => d.deviceId === v);
+                daw.setTrackInputDevice(tr.id, v, sel?.label || "Input");
+              }}
+              className={`${mixerFieldGray} max-w-full cursor-pointer appearance-none outline-none text-[8px]`}
+              style={{ position: "relative", zIndex: 20, pointerEvents: "auto" }}
+            >
+              <option value="">Default</option>
+              {daw.inputDevices.map((device) => (
+                <option key={device.deviceId} value={device.deviceId}>
+                  {device.label || `In ${device.deviceId.slice(0, 4)}`}
+                </option>
+              ))}
+            </select>
+            <select
+              title="Mono / stereo / auto"
+              value={tr.channelMode}
+              onChange={(e) => daw.setTrackChannelMode(tr.id, e.target.value as Track["channelMode"])}
+              className={`${mixerFieldDark} max-w-full cursor-pointer appearance-none outline-none text-[7px]`}
+              style={{ position: "relative", zIndex: 20, pointerEvents: "auto" }}
+            >
+              <option value="mono">Mono</option>
+              <option value="stereo">Stereo</option>
+              <option value="auto">Auto</option>
+            </select>
+          </div>
+        ) : (
+          <div className="text-[9px] text-[#ccc]">∞</div>
+        )}
       </MixerSlotRow>
       {/* Audio FX */}
       <MixerSlotRow label="Audio FX">
@@ -343,6 +382,9 @@ function InspectorChannelStrip({ trackId, isStereoOut }: { trackId: string | nul
         <button type="button" className={`${mixerFieldGreen} font-bold`}>
           Read
         </button>
+      </MixerSlotRow>
+      <MixerSlotRow label="Inserts">
+        {!isStereoOut && tr ? <TrackPluginSlots slots={tr.fxInserts} /> : <InsertRowPlaceholder />}
       </MixerSlotRow>
       {/* Instrument icon */}
       <div
@@ -411,9 +453,16 @@ function InspectorChannelStrip({ trackId, isStereoOut }: { trackId: string | nul
           </button>
           <button
             type="button"
-            className="h-4 w-5 rounded-sm border border-[#555] bg-[#4a4a4e] text-[8px] font-bold text-[#999]"
+            title="Input monitoring (headphones)"
+            onClick={() => tr && daw.toggleInputMonitoring(tr.id)}
+            className={`flex h-4 w-5 shrink-0 items-center justify-center rounded-sm border ${
+              tr?.inputMonitoring
+                ? "border-[#4a78c8] bg-[#3478f6] text-white"
+                : "border-[#555] bg-[#4a4a4e] text-[#999]"
+            }`}
+            style={{ position: "relative", zIndex: 20, pointerEvents: "auto", cursor: "pointer" }}
           >
-            I
+            <Headphones size={12} strokeWidth={2.25} aria-hidden />
           </button>
         </div>
       ) : (
@@ -1267,7 +1316,8 @@ function MixerSlotRow({ label, children }: { label: string; children?: ReactNode
     "Gain Reduction": 20,
     EQ: 20,
     "MIDI FX": 20,
-    Input: 22,
+    Input: 34,
+    Inserts: 40,
     "Audio FX": 60,
     Sends: 34,
     Output: 22,
@@ -1316,7 +1366,7 @@ function InstrumentIcon({ kind, color }: { kind: string; color: string }) {
 
 type MixerStripProps = {
   track: Track;
-  peak: number;
+  peak: DawMeterPeak;
   fileInputTrigger: () => void;
 };
 
@@ -1324,7 +1374,8 @@ function MixerStrip({ track: tr, peak, fileInputTrigger }: MixerStripProps) {
   const daw = useDaw();
 
   const dbLabel = faderToDbLabel(tr.volume);
-  const peakDb = peakToDbDisplay(peak);
+  const peakScalar = meterPeakScalar(peak);
+  const peakDb = peakToDbDisplay(peakScalar);
   const eqLabel = EQ_PRESET_LABELS.find((option) => option.id === tr.eqPreset)?.label ?? "Chan EQ";
   const effectLabel = EFFECT_PRESET_LABELS.find((option) => option.id === tr.effectPreset)?.label ?? "Comp";
   const spaceLabel = SPACE_PRESET_LABELS.find((option) => option.id === tr.spacePreset)?.label ?? "Space";
@@ -1333,7 +1384,7 @@ function MixerStrip({ track: tr, peak, fileInputTrigger }: MixerStripProps) {
 
   return (
     <div
-      className="flex min-h-full shrink-0 flex-col border-r"
+      className="relative z-10 flex min-h-full shrink-0 flex-col border-r"
       style={{ width: MIXER_STRIP_W, borderColor: LP.border, background: LP.stripBg }}
     >
       <MixerSlotRow label="Setting">
@@ -1362,7 +1413,10 @@ function MixerStrip({ track: tr, peak, fileInputTrigger }: MixerStripProps) {
         <div className="h-4 w-full rounded-[2px] border border-[#454549] bg-[#4a4a4e]" />
       </MixerSlotRow>
       <MixerSlotRow label="Input">
-        <div className="flex flex-col gap-0.5">
+        <div
+          className="relative z-20 flex min-h-0 flex-col gap-px"
+          style={{ pointerEvents: "auto" }}
+        >
           <select
             value={tr.inputDeviceId ?? ""}
             title="Audio input device"
@@ -1371,7 +1425,8 @@ function MixerStrip({ track: tr, peak, fileInputTrigger }: MixerStripProps) {
               const sel = daw.inputDevices.find((d) => d.deviceId === v);
               daw.setTrackInputDevice(tr.id, v, sel?.label || "Input");
             }}
-            className={`${mixerFieldGray} max-w-full appearance-none outline-none text-[8px]`}
+            className={`${mixerFieldGray} max-w-full cursor-pointer appearance-none outline-none text-[8px]`}
+            style={{ position: "relative", zIndex: 20, pointerEvents: "auto" }}
           >
             <option value="">Default</option>
             {daw.inputDevices.map((device) => (
@@ -1379,6 +1434,17 @@ function MixerStrip({ track: tr, peak, fileInputTrigger }: MixerStripProps) {
                 {device.label || `In ${device.deviceId.slice(0, 4)}`}
               </option>
             ))}
+          </select>
+          <select
+            title="Input channels: mono / stereo / auto (from source)"
+            value={tr.channelMode}
+            onChange={(e) => daw.setTrackChannelMode(tr.id, e.target.value as Track["channelMode"])}
+            className={`${mixerFieldDark} max-w-full cursor-pointer appearance-none outline-none text-[7px]`}
+            style={{ position: "relative", zIndex: 20, pointerEvents: "auto" }}
+          >
+            <option value="mono">Mono</option>
+            <option value="stereo">Stereo</option>
+            <option value="auto">Auto</option>
           </select>
         </div>
       </MixerSlotRow>
@@ -1441,6 +1507,9 @@ function MixerStrip({ track: tr, peak, fileInputTrigger }: MixerStripProps) {
           Read
         </button>
       </MixerSlotRow>
+      <MixerSlotRow label="Inserts">
+        <TrackPluginSlots slots={tr.fxInserts} />
+      </MixerSlotRow>
       {/* Instrument icon */}
       <div
         className="flex items-center justify-center border-b"
@@ -1474,7 +1543,7 @@ function MixerStrip({ track: tr, peak, fileInputTrigger }: MixerStripProps) {
       >
         <VerticalMixerFader
           value={tr.volume}
-          peak={peak}
+          peak={peakScalar}
           onChange={(value) => daw.setTrackVolume(tr.id, value)}
           ariaLabel={`${tr.name} level`}
         />
@@ -1494,15 +1563,16 @@ function MixerStrip({ track: tr, peak, fileInputTrigger }: MixerStripProps) {
         </button>
         <button
           type="button"
-          title="Input monitoring — hear live mic on master (does not print to recording)"
+          title="Input monitoring (headphones) — live input to master; not recorded"
           onClick={() => daw.toggleInputMonitoring(tr.id)}
-          className={`h-4 w-5 rounded-sm border text-[8px] font-bold ${
+          className={`flex h-4 w-5 shrink-0 items-center justify-center rounded-sm border ${
             tr.inputMonitoring
               ? "border-[#4a78c8] bg-[#3478f6] text-white"
               : "border-[#555] bg-[#4a4a4e] text-[#999]"
           }`}
+          style={{ position: "relative", zIndex: 20, pointerEvents: "auto", cursor: "pointer" }}
         >
-          I
+          <Headphones size={12} strokeWidth={2.25} aria-hidden />
         </button>
       </div>
       <div
@@ -1589,6 +1659,9 @@ function BusMixerStrip({ busId }: BusMixerStripProps) {
         <button type="button" className={`${mixerFieldGreen} font-bold`}>
           Read
         </button>
+      </MixerSlotRow>
+      <MixerSlotRow label="Inserts">
+        <InsertRowPlaceholder />
       </MixerSlotRow>
       <div
         className="flex items-center justify-center border-b"
@@ -1696,6 +1769,9 @@ function StereoOutStrip() {
         <button type="button" className={`${mixerFieldGreen} font-bold`}>
           Read
         </button>
+      </MixerSlotRow>
+      <MixerSlotRow label="Inserts">
+        <InsertRowPlaceholder />
       </MixerSlotRow>
       {/* Icon area */}
       <div
@@ -1807,6 +1883,9 @@ function MasterMixerStrip() {
         <button type="button" className={`${mixerFieldGreen} font-bold`}>
           Read
         </button>
+      </MixerSlotRow>
+      <MixerSlotRow label="Inserts">
+        <InsertRowPlaceholder />
       </MixerSlotRow>
       {/* Icon area */}
       <div
@@ -2501,7 +2580,7 @@ function DawChrome() {
               </span>
               {(() => {
                 const armed = daw.tracks.find((t) => t.recordArm);
-                const stereo = armed?.channelMode === "stereo";
+                const stereo = armed ? resolveStereo(trackToChannelConfig(armed)) : false;
                 const lv = daw.isRecording
                   ? (() => {
                       const m = daw.meterPeaks.__mic__;
@@ -2511,34 +2590,27 @@ function DawChrome() {
                       return { left: s, right: s };
                     })()
                   : daw.armedMicLevels;
-                const bar = (peak: number) => {
-                  const hot = peak >= 0.92;
-                  return (
-                    <div
-                      className="relative mt-0.5 h-12 overflow-hidden rounded-sm border border-[#333] bg-black"
-                      style={{ width: stereo ? 5 : 12 }}
-                      title={
-                        daw.isRecording
-                          ? "Raw input (pre-limiter); take is soft-limited ~−1 dBFS"
-                          : "Live input level; Input Monitor (I) routes to master only, not the take"
-                      }
-                    >
-                      <div
-                        className="absolute bottom-0 left-0 right-0 transition-[height] duration-75"
-                        style={{
-                          height: `${Math.min(100, peak * 110)}%`,
-                          background: hot
-                            ? `linear-gradient(to top, ${LP.meterYel}, ${LP.meterRed}, #ff4040)`
-                            : `linear-gradient(to top, ${LP.meterGreen}, ${LP.meterYel}, ${LP.meterRed})`,
-                        }}
-                      />
-                    </div>
-                  );
-                };
+                const maxPeak = Math.max(lv.left, lv.right);
+                const isClipping = maxPeak >= 0.98;
+                const hotLevel = maxPeak >= 0.92;
                 return (
-                  <div className="mt-0.5 flex gap-px">
-                    {bar(lv.left)}
-                    {stereo ? bar(lv.right) : null}
+                  <div className="mt-0.5 flex flex-col items-center gap-0.5" title="Dry input level — aim ~−12 to −6 dBFS; no limiter on record path">
+                    <ChannelMeter
+                      levelL={lv.left}
+                      levelR={lv.right}
+                      isStereo={stereo}
+                      height={48}
+                      barWidth={stereo ? 5 : 8}
+                    />
+                    {isClipping ? (
+                      <span className="max-w-[56px] text-center text-[6px] font-bold leading-tight text-[#ff3b30]">
+                        Clip — lower gain
+                      </span>
+                    ) : hotLevel ? (
+                      <span className="max-w-[56px] text-center text-[6px] font-semibold text-[#ffcc00]">Hot</span>
+                    ) : armed?.kind === "record_audio" && maxPeak > 0.02 && maxPeak < 0.2 ? (
+                      <span className="max-w-[56px] text-center text-[6px] text-[#9ad]">Raise toward −12…−6 dB</span>
+                    ) : null}
                   </div>
                 );
               })()}
@@ -3415,16 +3487,20 @@ function DawChrome() {
                           </button>
                           <button
                             type="button"
-                            title="Input monitor (live to master; not recorded)"
+                            title="Input monitoring (headphones) — live to master; not recorded"
                             onClick={() => daw.toggleInputMonitoring(tr.id)}
-                            className="h-[18px] w-[18px] rounded-sm border text-[7px] font-bold"
+                            className="flex h-[18px] w-[18px] items-center justify-center rounded-sm border"
                             style={{
                               borderColor: tr.inputMonitoring ? "#4a78c8" : "#444",
                               background: tr.inputMonitoring ? "#3478f6" : "#404040",
                               color: tr.inputMonitoring ? "#fff" : "#ccc",
+                              position: "relative",
+                              zIndex: 20,
+                              pointerEvents: "auto",
+                              cursor: "pointer",
                             }}
                           >
-                            I
+                            <Headphones size={11} strokeWidth={2.25} aria-hidden />
                           </button>
                           {/* Volume fader with signal-dependent green fill */}
                           {(() => {

@@ -94,11 +94,11 @@ export function studioTrackTypeFromKind(kind: TrackKind): StudioTrackType {
   }
 }
 
-/** Metering: mono lane vs stereo (UI can show one or two bars). */
-export type TrackChannelMode = 'mono' | 'stereo';
+/** Metering + capture width hint: explicit mono/stereo or auto from source (see `channelConfig.resolveStereo`). */
+export type TrackChannelMode = 'mono' | 'stereo' | 'auto';
 
 export function defaultChannelModeForKind(kind: TrackKind): TrackChannelMode {
-  return kind === 'record_audio' ? 'mono' : 'stereo';
+  return kind === 'record_audio' ? 'mono' : 'auto';
 }
 
 /** Per-channel EQ preset (Biquad chain configured in AudioContext) */
