@@ -1,5 +1,7 @@
 export type SessionPhase = "scheduled" | "live" | "ended";
 
+export type TimerWarningLevel = "ok" | "caution" | "warning" | "critical";
+
 export type EngineerBookingProfile = {
   hourlyRate: number;
   minimumBookingMinutes: number;

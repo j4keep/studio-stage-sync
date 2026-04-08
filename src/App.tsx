@@ -49,8 +49,8 @@ import AskJhiPage from "./pages/AskJhiPage";
 import FeedPage from "./pages/FeedPage";
 import { WStudioLayout } from "./wstudio/WStudioLayout";
 import SessionJoinScreen from "./wstudio/session/SessionJoinScreen";
-import ArtistView from "./wstudio/artist/ArtistView";
-import EngineerView from "./wstudio/engineer/EngineerView";
+import ArtistSessionScreen from "./wstudio/session/ArtistSessionScreen";
+import EngineerSessionScreen from "./wstudio/session/EngineerSessionScreen";
 
 import TermsAgreementGate from "./components/TermsAgreementGate";
 import ThemePickerSheet from "./components/ThemePickerSheet";
@@ -206,12 +206,15 @@ const ProtectedRoutes = () => {
         <Route path="/helpdesk" element={<HelpDeskPage />} />
         <Route path="/ask-jhi" element={<AskJhiPage />} />
         <Route path="/wstudio" element={<WStudioLayout />}>
-          <Route index element={<Navigate to="session" replace />} />
-          <Route path="session" element={<SessionJoinScreen />} />
-          <Route path="artist" element={<ArtistView />} />
-          <Route path="engineer" element={<EngineerView />} />
+          <Route index element={<Navigate to="session/join" replace />} />
+          <Route path="session/join" element={<SessionJoinScreen />} />
+          <Route path="session/artist" element={<ArtistSessionScreen />} />
+          <Route path="session/engineer" element={<EngineerSessionScreen />} />
+          <Route path="session" element={<Navigate to="/wstudio/session/join" replace />} />
+          <Route path="artist" element={<Navigate to="/wstudio/session/artist" replace />} />
+          <Route path="engineer" element={<Navigate to="/wstudio/session/engineer" replace />} />
         </Route>
-        <Route path="/ai-studio" element={<Navigate to="/wstudio/session" replace />} />
+        <Route path="/ai-studio" element={<Navigate to="/wstudio/session/join" replace />} />
         <Route path="/admin/tickets" element={<AdminTicketsPage />} />
         <Route path="/battles" element={<BattlesPage />} />
         <Route path="/battle/:battleId" element={<MusicBattlePlayerPage />} />

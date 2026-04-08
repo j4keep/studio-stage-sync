@@ -27,7 +27,7 @@ const BottomNav = () => {
   const tabs = [
     { path: "/", label: "Home", icon: Home, pro: false },
     { path: "/feed", label: "Feed", icon: ImagePlus, pro: false },
-    { path: "/wstudio/session", label: "W.Studio", icon: Music, pro: false },
+    { path: "/wstudio/session/join", label: "W.Studio", icon: Music, pro: false, matchPrefix: "/wstudio/session" },
     { path: "/profile", label: "Profile", icon: User, pro: false },
   ];
 
@@ -44,7 +44,10 @@ const BottomNav = () => {
       <nav className={`fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/90 backdrop-blur-xl safe-area-bottom transition-transform duration-300 ${hidden ? "translate-y-full" : "translate-y-0"}`}>
         <div className="flex items-center justify-around py-2 px-1 max-w-lg mx-auto">
           {tabs.map((tab) => {
-            const isActive = location.pathname === tab.path;
+            const isActive =
+              "matchPrefix" in tab && tab.matchPrefix
+                ? location.pathname.startsWith(tab.matchPrefix)
+                : location.pathname === tab.path;
             const Icon = tab.icon;
             return (
               <button

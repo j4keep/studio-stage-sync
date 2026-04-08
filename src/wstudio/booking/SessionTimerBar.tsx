@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { Clock, Radio } from "lucide-react";
-import type { TimerWarningLevel } from "./BookingTimerContext";
+import type { TimerWarningLevel } from "./bookingTypes";
 import { formatClock, formatDurationMinutes } from "./bookingTypes";
 
 type Props = {

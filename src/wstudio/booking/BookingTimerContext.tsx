@@ -11,7 +11,12 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSession } from "../session/SessionContext";
-import type { EngineerBookingProfile, PendingExtension, SessionBookingRecord } from "./bookingTypes";
+import type {
+  EngineerBookingProfile,
+  PendingExtension,
+  SessionBookingRecord,
+  TimerWarningLevel,
+} from "./bookingTypes";
 import {
   computeInitialSessionValue,
   extensionCost,
@@ -20,7 +25,7 @@ import { loadEngineerProfile, saveEngineerProfile } from "./engineerProfileStora
 import { loadSessionBooking, saveSessionBooking } from "./sessionBookingStorage";
 import { loadSessionRates, publishEngineerRatesToSession } from "./sessionRatesStorage";
 
-export type TimerWarningLevel = "ok" | "caution" | "warning" | "critical";
+export type { TimerWarningLevel };
 
 export type BookingTimerContextValue = {
   engineerProfile: EngineerBookingProfile;
