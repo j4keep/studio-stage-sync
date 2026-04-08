@@ -25,6 +25,7 @@ import {
 import { MIC_CHAIN_PRESETS } from "./micPresets";
 import { REMOTE_LIBRARY_BY_CATEGORY } from "./remoteLibrary";
 import { Headphones } from "lucide-react";
+import { RemoteSessionPanel } from "./RemoteSessionPanel";
 import ChannelMeter from "./ChannelMeter";
 import { resolveStereo, trackShowsStereoMeters, trackToChannelConfig } from "./channelConfig";
 import { DawProvider, INPUT_SOURCE_OPTIONS, meterPeakLR, meterPeakScalar, useDaw, type DawMeterPeak } from "./DawContext";
@@ -1594,7 +1595,7 @@ type MixerStripProps = {
   stripIndex: number;
   trackReorderHover: number | null;
   setTrackReorderHover: (index: number | null) => void;
-  trackReorderSourceIndexRef: RefObject<number | null>;
+  trackReorderSourceIndexRef: React.MutableRefObject<number | null>;
   peak: DawMeterPeak;
   fileInputTrigger: () => void;
 };
@@ -2657,6 +2658,7 @@ function DawChrome() {
   const [inspectorOpen, setInspectorOpen] = useState(true);
   const [editorsOpen, setEditorsOpen] = useState(false);
   const [focusWorkbench, setFocusWorkbench] = useState(false);
+  const [remoteSessionOpen, setRemoteSessionOpen] = useState(false);
   const [mixerFilter, setMixerFilter] = useState("Tracks");
   const [arrangeTool, setArrangeTool] = useState<ArrangeEditTool>("pointer");
   const fileRef = useRef<HTMLInputElement>(null);
@@ -2851,6 +2853,7 @@ function DawChrome() {
   }, [daw.currentTime, mainView, widthPx]);
 
   return (
+    <>
     <div
       className={`flex flex-col [@media(orientation:landscape)]:[.daw-main]:min-h-0 ${
         focusWorkbench ? "fixed inset-0 z-[140] min-h-[100dvh] min-w-0" : "h-screen min-h-[640px] min-w-0"
@@ -3273,6 +3276,14 @@ function DawChrome() {
               }
             >
               Mixer
+            </button>
+            <button
+              type="button"
+              title="Remote recording session"
+              className={`${remoteSessionOpen ? ctrlBtnActive : ctrlBtnBase} px-2 text-[9px]`}
+              onClick={() => setRemoteSessionOpen(true)}
+            >
+              Remote
             </button>
             <button
               type="button"
@@ -4553,6 +4564,8 @@ function DawChrome() {
         </footer>
       ) : null}
     </div>
+      <RemoteSessionPanel open={remoteSessionOpen} onClose={() => setRemoteSessionOpen(false)} />
+    </>
   );
 }
 
