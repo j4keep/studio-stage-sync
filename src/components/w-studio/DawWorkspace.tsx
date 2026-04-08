@@ -2722,6 +2722,8 @@ function DawChrome() {
   playRef.current = daw.play;
   const stopTransportRef = useRef(daw.stopTransport);
   stopTransportRef.current = daw.stopTransport;
+  const rewindToStartRef = useRef(daw.rewindToStart);
+  rewindToStartRef.current = daw.rewindToStart;
 
   useEffect(() => {
     const onDragEnd = () => {
@@ -2733,13 +2735,27 @@ function DawChrome() {
   }, []);
 
   useEffect(() => {
+    const inTextOrControl = (el: HTMLElement | null) =>
+      Boolean(el?.closest("input, textarea, select, [contenteditable='true'], [role='slider']"));
+
     const onKey = (e: KeyboardEvent) => {
-      if (e.code !== "Space") return;
       const el = e.target as HTMLElement | null;
-      if (el?.closest("input, textarea, select, [contenteditable='true'], [role='slider']")) return;
-      e.preventDefault();
-      if (isPlayingRef.current) stopTransportRef.current();
-      else void playRef.current();
+
+      if (e.code === "Space") {
+        if (inTextOrControl(el)) return;
+        e.preventDefault();
+        if (isPlayingRef.current) stopTransportRef.current();
+        else void playRef.current();
+        return;
+      }
+
+      /** Return / Enter — rewind to 0 and play (Logic-style from start). */
+      if (e.code === "Enter" || e.key === "Enter") {
+        if (inTextOrControl(el)) return;
+        e.preventDefault();
+        rewindToStartRef.current();
+        void playRef.current();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
