@@ -3278,6 +3278,14 @@ function DawChrome() {
             </button>
             <button
               type="button"
+              title="Remote recording session"
+              className={`${remoteSessionOpen ? ctrlBtnActive : ctrlBtnBase} px-2 text-[9px]`}
+              onClick={() => setRemoteSessionOpen(true)}
+            >
+              Remote
+            </button>
+            <button
+              type="button"
               title="Export mix (WAV)"
               className={`${ctrlBtnBase} px-2 text-[9px]`}
               onClick={() => void daw.exportMixWav()}
@@ -4555,6 +4563,8 @@ function DawChrome() {
         </footer>
       ) : null}
     </div>
+      <RemoteSessionPanel open={remoteSessionOpen} onClose={() => setRemoteSessionOpen(false)} />
+    </>
   );
 }
 
