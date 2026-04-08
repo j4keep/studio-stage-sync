@@ -168,6 +168,10 @@ const LP = {
   channelLabelBg: "#3a3a3e",
 } as const;
 
+/** Arrange lane / header tint when a track row is selected (edit page) — reused on mixer strips */
+const ARRANGE_TRACK_SELECTED_LANE_BG = "rgba(60,120,200,0.14)";
+const ARRANGE_TRACK_SELECTED_HEADER_BG = "rgba(92, 122, 168, 0.92)";
+
 /** Logic Pro–style mixer strip chrome (charcoal + cyan inserts + green Read) */
 const LOGIC_MIX = {
   stripGradient: "linear-gradient(180deg, #3d3d40 0%, #2a2a2c 38%, #222224 100%)",
@@ -1560,8 +1564,15 @@ type MixerStripProps = {
   fileInputTrigger: () => void;
 };
 
+function mixerStripControlTarget(target: EventTarget | null): boolean {
+  const el = target instanceof Element ? target : null;
+  if (!el) return false;
+  return Boolean(el.closest('button, input, select, textarea, a, [role="slider"]'));
+}
+
 function MixerStrip({ track: tr, peak, fileInputTrigger }: MixerStripProps) {
   const daw = useDaw();
+  const selected = daw.selectedTrackId === tr.id;
 
   const dbLabel = faderToDbLabel(tr.volume);
   const peakScalar = meterPeakScalar(peak);
@@ -1569,18 +1580,33 @@ function MixerStrip({ track: tr, peak, fileInputTrigger }: MixerStripProps) {
   const sendItems = tr.kind === "instrument" ? ["Bus 4"] : [];
   void fileInputTrigger;
 
+  const stripBackground = selected
+    ? `linear-gradient(180deg, ${ARRANGE_TRACK_SELECTED_LANE_BG} 0%, rgba(60,120,200,0.06) 42%, transparent 72%), ${LOGIC_MIX.stripGradient}`
+    : LOGIC_MIX.stripGradient;
+
   return (
     <div
+      data-mixer-strip={tr.id}
       className="relative z-10 flex min-h-full shrink-0 flex-col border-r shadow-[2px_0_8px_rgba(0,0,0,0.35)]"
       style={{
         width: MIXER_STRIP_W,
-        borderColor: "#050506",
-        background: LOGIC_MIX.stripGradient,
+        borderColor: selected ? "rgba(80,140,200,0.55)" : "#050506",
+        background: stripBackground,
+        boxShadow: selected ? `inset 3px 0 0 ${tr.color}, 2px 0 8px rgba(0,0,0,0.35)` : undefined,
+      }}
+      onPointerDown={(e) => {
+        if (mixerStripControlTarget(e.target)) return;
+        daw.setSelectedTrackId(tr.id);
       }}
     >
       <MixerSlotRow label="Setting">
         <div
-          className={`${LOGIC_MIX.headerMini} w-full truncate rounded-[4px] border border-[#2a2a2e] bg-[#252528] py-0.5`}
+          className={`${LOGIC_MIX.headerMini} w-full truncate rounded-[4px] border py-0.5 ${
+            selected ? "border-[#4a6a9a]" : "border-[#2a2a2e]"
+          }`}
+          style={{
+            background: selected ? ARRANGE_TRACK_SELECTED_HEADER_BG : "#252528",
+          }}
           title={tr.name}
         >
           {tr.name}
@@ -1824,6 +1850,7 @@ function MixerStrip({ track: tr, peak, fileInputTrigger }: MixerStripProps) {
           backgroundColor: tr.color,
           borderColor: "#000",
           textShadow: "0 1px 2px rgba(0,0,0,0.65)",
+          boxShadow: selected ? "inset 0 0 0 2px rgba(120,180,255,0.75)" : undefined,
         }}
         title={tr.name}
       >
@@ -1967,16 +1994,35 @@ function BusMixerStrip({ busId }: BusMixerStripProps) {
 
 function StereoOutStrip() {
   const daw = useDaw();
+  const sel = daw.selectedTrackId ? daw.tracks.find((t) => t.id === daw.selectedTrackId) : undefined;
   const meterPeak: DawMeterPeak = daw.meterPeaks.__stereoBus__ ?? 0;
   const peak = meterPeakScalar(meterPeak);
   return (
     <div
       className="flex min-h-full shrink-0 flex-col border-l shadow-[2px_0_8px_rgba(0,0,0,0.35)]"
-      style={{ width: MIXER_STRIP_W, borderColor: "#050506", background: LOGIC_MIX.stripGradient }}
+      style={{
+        width: MIXER_STRIP_W,
+        borderColor: "#050506",
+        background: LOGIC_MIX.stripGradient,
+        boxShadow: sel ? `inset 3px 0 0 ${sel.color}, 2px 0 8px rgba(0,0,0,0.35)` : undefined,
+      }}
+      title={sel ? `Stereo bus (mix includes ${sel.name})` : "Stereo bus"}
     >
       <MixerSlotRow label="Setting">
-        <div className={`${LOGIC_MIX.headerMini} w-full rounded-[4px] border border-[#2a2a2e] bg-[#252528] py-0.5`}>
-          Stereo Out
+        <div
+          className={`${LOGIC_MIX.headerMini} flex w-full flex-col gap-0 rounded-[4px] border border-[#2a2a2e] bg-[#252528] py-0.5 leading-tight`}
+        >
+          <span>Stereo Out</span>
+          {sel ? (
+            <span
+              className="truncate px-0.5 text-[7px] font-normal normal-case text-[#9ec0ec]"
+              title={`Selected track: ${sel.name}`}
+            >
+              {sel.name}
+            </span>
+          ) : (
+            <span className="px-0.5 text-[7px] font-normal normal-case text-[#6a6a70]">No selection</span>
+          )}
         </div>
       </MixerSlotRow>
       <MixerSlotRow label="Gain Reduction">
@@ -2093,16 +2139,35 @@ function StereoOutStrip() {
 
 function MasterMixerStrip() {
   const daw = useDaw();
+  const sel = daw.selectedTrackId ? daw.tracks.find((t) => t.id === daw.selectedTrackId) : undefined;
   const meterPeak: DawMeterPeak = daw.meterPeaks.__master__ ?? 0;
   const peak = meterPeakScalar(meterPeak);
   return (
     <div
       className="flex min-h-full shrink-0 flex-col border-l shadow-[2px_0_8px_rgba(0,0,0,0.35)]"
-      style={{ width: MIXER_STRIP_W, borderColor: "#050506", background: LOGIC_MIX.stripGradient }}
+      style={{
+        width: MIXER_STRIP_W,
+        borderColor: "#050506",
+        background: LOGIC_MIX.stripGradient,
+        boxShadow: sel ? `inset 3px 0 0 ${sel.color}, 2px 0 8px rgba(0,0,0,0.35)` : undefined,
+      }}
+      title={sel ? `Master output (editing context: ${sel.name})` : "Master output"}
     >
       <MixerSlotRow label="Setting">
-        <div className={`${LOGIC_MIX.headerMini} w-full rounded-[4px] border border-[#2a2a2e] bg-[#252528] py-0.5`}>
-          Master
+        <div
+          className={`${LOGIC_MIX.headerMini} flex w-full flex-col gap-0 rounded-[4px] border border-[#2a2a2e] bg-[#252528] py-0.5 leading-tight`}
+        >
+          <span>Master</span>
+          {sel ? (
+            <span
+              className="truncate px-0.5 text-[7px] font-normal normal-case text-[#9ec0ec]"
+              title={`Selected track: ${sel.name}`}
+            >
+              {sel.name}
+            </span>
+          ) : (
+            <span className="px-0.5 text-[7px] font-normal normal-case text-[#6a6a70]">No selection</span>
+          )}
         </div>
       </MixerSlotRow>
       <MixerSlotRow label="Gain Reduction">
