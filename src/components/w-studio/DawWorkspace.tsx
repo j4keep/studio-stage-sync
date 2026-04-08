@@ -246,6 +246,14 @@ function dataTransferHasFiles(dt: DataTransfer | null): boolean {
   return false;
 }
 
+/** HTML5 drag payload for reordering tracks in the arrange header / mixer. */
+const DND_WSTUDIO_TRACK_INDEX = "application/x-wstudio-track-index";
+
+function dataTransferHasTrackReorder(dt: DataTransfer | null): boolean {
+  if (!dt) return false;
+  return Array.from(dt.types ?? []).includes(DND_WSTUDIO_TRACK_INDEX);
+}
+
 function firstAudioFileFromDataTransfer(dt: DataTransfer): File | undefined {
   const { files } = dt;
   for (let i = 0; i < files.length; i++) {
@@ -1560,6 +1568,9 @@ function InstrumentIcon({ kind, color }: { kind: string; color: string }) {
 
 type MixerStripProps = {
   track: Track;
+  stripIndex: number;
+  trackReorderHover: number | null;
+  setTrackReorderHover: (index: number | null) => void;
   peak: DawMeterPeak;
   fileInputTrigger: () => void;
 };
@@ -1570,7 +1581,14 @@ function mixerStripControlTarget(target: EventTarget | null): boolean {
   return Boolean(el.closest('button, input, select, textarea, a, [role="slider"]'));
 }
 
-function MixerStrip({ track: tr, peak, fileInputTrigger }: MixerStripProps) {
+function MixerStrip({
+  track: tr,
+  stripIndex: ti,
+  trackReorderHover,
+  setTrackReorderHover,
+  peak,
+  fileInputTrigger,
+}: MixerStripProps) {
   const daw = useDaw();
   const selected = daw.selectedTrackId === tr.id;
 
@@ -1584,6 +1602,8 @@ function MixerStrip({ track: tr, peak, fileInputTrigger }: MixerStripProps) {
     ? `linear-gradient(180deg, ${ARRANGE_TRACK_SELECTED_LANE_BG} 0%, rgba(60,120,200,0.06) 42%, transparent 72%), ${LOGIC_MIX.stripGradient}`
     : LOGIC_MIX.stripGradient;
 
+  const canReorder = daw.sessionCapabilities.canManageTracks;
+
   return (
     <div
       data-mixer-strip={tr.id}
@@ -1592,7 +1612,28 @@ function MixerStrip({ track: tr, peak, fileInputTrigger }: MixerStripProps) {
         width: MIXER_STRIP_W,
         borderColor: selected ? "rgba(80,140,200,0.55)" : "#050506",
         background: stripBackground,
-        boxShadow: selected ? `inset 3px 0 0 ${tr.color}, 2px 0 8px rgba(0,0,0,0.35)` : undefined,
+        boxShadow:
+          trackReorderHover === ti
+            ? "inset 0 0 0 2px rgba(100, 160, 240, 0.75), 2px 0 8px rgba(0,0,0,0.35)"
+            : selected
+              ? `inset 3px 0 0 ${tr.color}, 2px 0 8px rgba(0,0,0,0.35)`
+              : undefined,
+      }}
+      onDragOver={(e) => {
+        if (!canReorder || !dataTransferHasTrackReorder(e.dataTransfer)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = "move";
+        setTrackReorderHover(ti);
+      }}
+      onDrop={(e) => {
+        if (!canReorder || !dataTransferHasTrackReorder(e.dataTransfer)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        setTrackReorderHover(null);
+        const raw = e.dataTransfer.getData(DND_WSTUDIO_TRACK_INDEX);
+        const from = parseInt(raw, 10);
+        if (Number.isFinite(from) && from !== ti) daw.reorderTracks(from, ti);
       }}
       onPointerDown={(e) => {
         if (mixerStripControlTarget(e.target)) return;
@@ -1600,16 +1641,34 @@ function MixerStrip({ track: tr, peak, fileInputTrigger }: MixerStripProps) {
       }}
     >
       <MixerSlotRow label="Setting">
-        <div
-          className={`${LOGIC_MIX.headerMini} w-full truncate rounded-[4px] border py-0.5 ${
-            selected ? "border-[#4a6a9a]" : "border-[#2a2a2e]"
-          }`}
-          style={{
-            background: selected ? ARRANGE_TRACK_SELECTED_HEADER_BG : "#252528",
-          }}
-          title={tr.name}
-        >
-          {tr.name}
+        <div className="flex w-full items-stretch gap-0.5">
+          {canReorder ? (
+            <div
+              className="flex w-[10px] shrink-0 cursor-grab flex-col items-center justify-center rounded-sm border border-transparent text-[6px] leading-[3px] text-[#888] hover:border-[#555] hover:bg-black/20 active:cursor-grabbing"
+              draggable
+              onDragStart={(e) => {
+                e.stopPropagation();
+                e.dataTransfer.setData(DND_WSTUDIO_TRACK_INDEX, String(ti));
+                e.dataTransfer.effectAllowed = "move";
+              }}
+              title="Drag to reorder"
+              aria-label="Drag to reorder track"
+            >
+              <span aria-hidden>⋮</span>
+              <span aria-hidden>⋮</span>
+            </div>
+          ) : null}
+          <div
+            className={`${LOGIC_MIX.headerMini} min-w-0 flex-1 truncate rounded-[4px] border py-0.5 ${
+              selected ? "border-[#4a6a9a]" : "border-[#2a2a2e]"
+            }`}
+            style={{
+              background: selected ? ARRANGE_TRACK_SELECTED_HEADER_BG : "#252528",
+            }}
+            title={tr.name}
+          >
+            {tr.name}
+          </div>
         </div>
       </MixerSlotRow>
       <MixerSlotRow label="Gain Reduction">
@@ -2570,6 +2629,8 @@ function DawChrome() {
   const importTrackRef = useRef<string>("");
   const arrangeScrollRef = useRef<HTMLDivElement>(null);
   const [arrangeScrollLeft, setArrangeScrollLeft] = useState(0);
+  /** Drop-target highlight while dragging a track reorder handle (arrange or mixer). */
+  const [trackReorderHover, setTrackReorderHover] = useState<number | null>(null);
   const [, setClipDragTick] = useState(0);
   const clipDragRef = useRef<{
     trackId: string;
@@ -2617,6 +2678,32 @@ function DawChrome() {
   const selectedTrack = daw.selectedTrackId ? daw.tracks.find((t) => t.id === daw.selectedTrackId) : null;
 
   const targetTrackId = daw.selectedTrackId ?? daw.tracks[0]?.id ?? "";
+
+  const isPlayingRef = useRef(daw.isPlaying);
+  isPlayingRef.current = daw.isPlaying;
+  const playRef = useRef(daw.play);
+  playRef.current = daw.play;
+  const stopTransportRef = useRef(daw.stopTransport);
+  stopTransportRef.current = daw.stopTransport;
+
+  useEffect(() => {
+    const clearReorderHover = () => setTrackReorderHover(null);
+    window.addEventListener("dragend", clearReorderHover);
+    return () => window.removeEventListener("dragend", clearReorderHover);
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code !== "Space") return;
+      const el = e.target as HTMLElement | null;
+      if (el?.closest("input, textarea, select, [contenteditable='true'], [role='slider']")) return;
+      e.preventDefault();
+      if (isPlayingRef.current) stopTransportRef.current();
+      else void playRef.current();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const [editorWavWidth, setEditorWavWidth] = useState(880);
   useEffect(() => {
@@ -3526,10 +3613,13 @@ function DawChrome() {
                 style={{ background: "#262628" }}
               >
                 <MixerLabelColumn />
-                {daw.tracks.map((t) => (
+                {daw.tracks.map((t, ti) => (
                   <MixerStrip
                     key={t.id}
                     track={t}
+                    stripIndex={ti}
+                    trackReorderHover={trackReorderHover}
+                    setTrackReorderHover={setTrackReorderHover}
                     peak={daw.meterPeaks[t.id] ?? 0}
                     fileInputTrigger={() => openImport(t.id)}
                   />
@@ -3739,19 +3829,41 @@ function DawChrome() {
                       minWidth: TRACK_HEADER_W + widthPx,
                       borderColor: LP.border,
                       background: daw.selectedTrackId === tr.id ? "rgba(60,120,200,0.14)" : LP.panel,
+                      boxShadow:
+                        trackReorderHover === ti
+                          ? "inset 0 0 0 2px rgba(100, 160, 240, 0.75)"
+                          : undefined,
                     }}
                     onDragOver={(e: DragEvent) => {
-                      if (!dataTransferHasFiles(e.dataTransfer)) return;
-                      e.preventDefault();
-                      e.stopPropagation();
-                      e.dataTransfer.dropEffect = "copy";
+                      if (dataTransferHasFiles(e.dataTransfer)) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.dataTransfer.dropEffect = "copy";
+                        return;
+                      }
+                      if (dataTransferHasTrackReorder(e.dataTransfer) && daw.sessionCapabilities.canManageTracks) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.dataTransfer.dropEffect = "move";
+                        setTrackReorderHover(ti);
+                      }
                     }}
                     onDrop={(e: DragEvent) => {
-                      if (!dataTransferHasFiles(e.dataTransfer)) return;
-                      e.preventDefault();
-                      e.stopPropagation();
-                      const file = firstAudioFileFromDataTransfer(e.dataTransfer);
-                      if (file) void daw.importAudioFile(tr.id, file);
+                      if (dataTransferHasFiles(e.dataTransfer)) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const file = firstAudioFileFromDataTransfer(e.dataTransfer);
+                        if (file) void daw.importAudioFile(tr.id, file);
+                        return;
+                      }
+                      if (dataTransferHasTrackReorder(e.dataTransfer) && daw.sessionCapabilities.canManageTracks) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setTrackReorderHover(null);
+                        const raw = e.dataTransfer.getData(DND_WSTUDIO_TRACK_INDEX);
+                        const from = parseInt(raw, 10);
+                        if (Number.isFinite(from) && from !== ti) daw.reorderTracks(from, ti);
+                      }
                     }}
                   >
                     <div
@@ -3765,6 +3877,22 @@ function DawChrome() {
                       <div className="w-1 shrink-0 self-stretch" style={{ backgroundColor: tr.color }} />
                       <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-center gap-0 px-1 py-0">
                         <div className="flex items-center gap-0.5">
+                          {daw.sessionCapabilities.canManageTracks ? (
+                            <div
+                              className="flex h-[22px] w-[11px] shrink-0 cursor-grab flex-col items-center justify-center rounded-sm border border-transparent text-[7px] leading-[3px] text-[#888] hover:border-[#555] hover:bg-black/15 active:cursor-grabbing"
+                              draggable
+                              onDragStart={(e) => {
+                                e.stopPropagation();
+                                e.dataTransfer.setData(DND_WSTUDIO_TRACK_INDEX, String(ti));
+                                e.dataTransfer.effectAllowed = "move";
+                              }}
+                              title="Drag to reorder track"
+                              aria-label="Drag to reorder track"
+                            >
+                              <span aria-hidden>⋮</span>
+                              <span aria-hidden>⋮</span>
+                            </div>
+                          ) : null}
                           <span className="w-3 shrink-0 text-center font-mono text-[7px] text-[#888]">{ti + 1}</span>
                           <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center">
                             <IconWaveInst />

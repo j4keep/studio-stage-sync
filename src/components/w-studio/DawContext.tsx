@@ -167,6 +167,8 @@ type DawContextValue = {
   status: string;
   addTrackWithKind: (kind: TrackKind) => string;
   removeTrack: (id: string) => void;
+  /** Move track from `fromIndex` to `toIndex` in the track list (arrange + mixer order). */
+  reorderTracks: (fromIndex: number, toIndex: number) => void;
   renameTrack: (id: string, name: string) => void;
   setTrackInputSource: (id: string, label: string) => void;
   setTrackVolume: (id: string, v: number) => void;
@@ -1348,6 +1350,25 @@ export function DawProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const reorderTracks = useCallback(
+    (fromIndex: number, toIndex: number) => {
+      if (!sessionCapabilities.canManageTracks) return;
+      setTracks((prev) => {
+        const n = prev.length;
+        if (n < 2) return prev;
+        const from = Math.max(0, Math.min(n - 1, Math.floor(fromIndex)));
+        const to = Math.max(0, Math.min(n - 1, Math.floor(toIndex)));
+        if (from === to) return prev;
+        const next = [...prev];
+        const [row] = next.splice(from, 1);
+        next.splice(to, 0, row);
+        tracksRef.current = next;
+        return next;
+      });
+    },
+    [sessionCapabilities.canManageTracks],
+  );
+
   const renameTrack = useCallback((id: string, name: string) => {
     setTracks((prev) => prev.map((t) => (t.id === id ? { ...t, name } : t)));
   }, []);
@@ -1894,6 +1915,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
       status,
       addTrackWithKind,
       removeTrack,
+      reorderTracks,
       renameTrack,
       setTrackInputSource,
       setTrackVolume,
@@ -1970,6 +1992,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
       status,
       addTrackWithKind,
       removeTrack,
+      reorderTracks,
       renameTrack,
       setTrackInputSource,
       setTrackInputDevice,
