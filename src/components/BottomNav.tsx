@@ -27,13 +27,13 @@ const BottomNav = () => {
   const tabs = [
     { path: "/", label: "Home", icon: Home, pro: false },
     { path: "/feed", label: "Feed", icon: ImagePlus, pro: false },
-    { path: "/ai-studio", label: "W.Studio", icon: Music, pro: true },
+    { path: "/wstudio/session", label: "W.Studio", icon: Music, pro: true },
     { path: "/profile", label: "Profile", icon: User, pro: false },
   ];
 
   const handleTabClick = (tab: typeof tabs[0]) => {
     if (tab.pro && !isPro) {
-      requirePro("AI Music Studio");
+      requirePro("W.Studio");
     } else {
       navigate(tab.path);
     }

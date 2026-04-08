@@ -1,7 +1,5 @@
-import RecordingStudio from "./RecordingStudio";
+import { Navigate } from "react-router-dom";
 
-const AIMusicTab = () => {
-  return <RecordingStudio />;
-};
+const AIMusicTab = () => <Navigate to="/wstudio/session" replace />;
 
 export default AIMusicTab;

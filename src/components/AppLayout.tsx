@@ -15,9 +15,10 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isPro, requirePro, showProModal, gatedFeature, closeProModal, activatePro } = useProGate();
-  const isStudioPage = location.pathname === "/ai-studio";
+  const isStudioPage =
+    location.pathname.startsWith("/wstudio") || location.pathname === "/ai-studio";
   const isFullScreenPage = ["/feed"].includes(location.pathname);
-  const showTopBar = !["/auth", "/feed", "/ai-studio"].includes(location.pathname);
+  const showTopBar = !["/auth", "/feed", "/ai-studio"].includes(location.pathname) && !location.pathname.startsWith("/wstudio");
 
   const handleAskJhi = () => {
     if (!isPro) {

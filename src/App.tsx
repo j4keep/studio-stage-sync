@@ -46,8 +46,11 @@ import MyBoostsPage from "./pages/MyBoostsPage";
 import HelpDeskPage from "./pages/HelpDeskPage";
 import AdminTicketsPage from "./pages/AdminTicketsPage";
 import AskJhiPage from "./pages/AskJhiPage";
-import AIStudioPage from "./pages/AIStudioPage";
 import FeedPage from "./pages/FeedPage";
+import { WStudioLayout } from "./wstudio/WStudioLayout";
+import SessionJoinScreen from "./wstudio/session/SessionJoinScreen";
+import ArtistView from "./wstudio/artist/ArtistView";
+import EngineerView from "./wstudio/engineer/EngineerView";
 
 import TermsAgreementGate from "./components/TermsAgreementGate";
 import ThemePickerSheet from "./components/ThemePickerSheet";
@@ -202,7 +205,13 @@ const ProtectedRoutes = () => {
         <Route path="/my-boosts" element={<MyBoostsPage />} />
         <Route path="/helpdesk" element={<HelpDeskPage />} />
         <Route path="/ask-jhi" element={<AskJhiPage />} />
-        <Route path="/ai-studio" element={<AIStudioPage />} />
+        <Route path="/wstudio" element={<WStudioLayout />}>
+          <Route index element={<Navigate to="session" replace />} />
+          <Route path="session" element={<SessionJoinScreen />} />
+          <Route path="artist" element={<ArtistView />} />
+          <Route path="engineer" element={<EngineerView />} />
+        </Route>
+        <Route path="/ai-studio" element={<Navigate to="/wstudio/session" replace />} />
         <Route path="/admin/tickets" element={<AdminTicketsPage />} />
         <Route path="/battles" element={<BattlesPage />} />
         <Route path="/battle/:battleId" element={<MusicBattlePlayerPage />} />
