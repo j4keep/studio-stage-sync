@@ -248,18 +248,36 @@ function dataTransferHasFiles(dt: DataTransfer | null): boolean {
 
 /** HTML5 drag payload for reordering tracks in the arrange header / mixer. */
 const DND_WSTUDIO_TRACK_INDEX = "application/x-wstudio-track-index";
+const DND_TEXT_REORDER_PREFIX = "wstudio-reorder:";
 
-function dataTransferHasTrackReorder(dt: DataTransfer | null): boolean {
+/** MIME appears in `types` during drag (custom payload); optional `text/plain` fallback read only in `drop`. */
+function dataTransferHasTrackReorderMime(dt: DataTransfer | null): boolean {
   if (!dt) return false;
   return Array.from(dt.types ?? []).includes(DND_WSTUDIO_TRACK_INDEX);
 }
 
-function firstAudioFileFromDataTransfer(dt: DataTransfer): File | undefined {
-  const { files } = dt;
-  for (let i = 0; i < files.length; i++) {
-    const f = files.item(i);
-    if (f && isAudioDropFile(f)) return f;
+function isTrackReorderDragEvent(
+  dt: DataTransfer | null,
+  sourceIndexRef: RefObject<number | null>,
+): boolean {
+  return sourceIndexRef.current !== null || dataTransferHasTrackReorderMime(dt);
+}
+
+function readTrackReorderSourceIndex(dt: DataTransfer): number | null {
+  const raw = dt.getData(DND_WSTUDIO_TRACK_INDEX);
+  if (raw) {
+    const n = parseInt(raw, 10);
+    if (Number.isFinite(n)) return n;
   }
+  const plain = dt.getData("text/plain");
+  if (plain.startsWith(DND_TEXT_REORDER_PREFIX)) {
+    const n = parseInt(plain.slice(DND_TEXT_REORDER_PREFIX.length), 10);
+    if (Number.isFinite(n)) return n;
+  }
+  return null;
+}
+
+function firstAudioFileFromDataTransfer(dt: DataTransfer): File | undefined {
   if (dt.items?.length) {
     for (let i = 0; i < dt.items.length; i++) {
       const it = dt.items[i];
@@ -267,6 +285,11 @@ function firstAudioFileFromDataTransfer(dt: DataTransfer): File | undefined {
       const f = it.getAsFile();
       if (f && isAudioDropFile(f)) return f;
     }
+  }
+  const { files } = dt;
+  for (let i = 0; i < files.length; i++) {
+    const f = files.item(i);
+    if (f && isAudioDropFile(f)) return f;
   }
   return undefined;
 }
@@ -1571,6 +1594,7 @@ type MixerStripProps = {
   stripIndex: number;
   trackReorderHover: number | null;
   setTrackReorderHover: (index: number | null) => void;
+  trackReorderSourceIndexRef: RefObject<number | null>;
   peak: DawMeterPeak;
   fileInputTrigger: () => void;
 };
@@ -1586,6 +1610,7 @@ function MixerStrip({
   stripIndex: ti,
   trackReorderHover,
   setTrackReorderHover,
+  trackReorderSourceIndexRef,
   peak,
   fileInputTrigger,
 }: MixerStripProps) {
@@ -1619,21 +1644,29 @@ function MixerStrip({
               ? `inset 3px 0 0 ${tr.color}, 2px 0 8px rgba(0,0,0,0.35)`
               : undefined,
       }}
+      onDragOverCapture={(e) => {
+        if (!canReorder || !isTrackReorderDragEvent(e.dataTransfer, trackReorderSourceIndexRef)) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        setTrackReorderHover(ti);
+      }}
       onDragOver={(e) => {
-        if (!canReorder || !dataTransferHasTrackReorder(e.dataTransfer)) return;
+        if (!canReorder || !isTrackReorderDragEvent(e.dataTransfer, trackReorderSourceIndexRef)) return;
         e.preventDefault();
         e.stopPropagation();
         e.dataTransfer.dropEffect = "move";
         setTrackReorderHover(ti);
       }}
       onDrop={(e) => {
-        if (!canReorder || !dataTransferHasTrackReorder(e.dataTransfer)) return;
+        if (!canReorder) return;
+        let from = trackReorderSourceIndexRef.current;
+        if (from === null) from = readTrackReorderSourceIndex(e.dataTransfer);
+        if (from === null) return;
         e.preventDefault();
         e.stopPropagation();
+        trackReorderSourceIndexRef.current = null;
         setTrackReorderHover(null);
-        const raw = e.dataTransfer.getData(DND_WSTUDIO_TRACK_INDEX);
-        const from = parseInt(raw, 10);
-        if (Number.isFinite(from) && from !== ti) daw.reorderTracks(from, ti);
+        if (from !== ti) daw.reorderTracks(from, ti);
       }}
       onPointerDown={(e) => {
         if (mixerStripControlTarget(e.target)) return;
@@ -1648,7 +1681,9 @@ function MixerStrip({
               draggable
               onDragStart={(e) => {
                 e.stopPropagation();
+                trackReorderSourceIndexRef.current = ti;
                 e.dataTransfer.setData(DND_WSTUDIO_TRACK_INDEX, String(ti));
+                e.dataTransfer.setData("text/plain", `${DND_TEXT_REORDER_PREFIX}${ti}`);
                 e.dataTransfer.effectAllowed = "move";
               }}
               title="Drag to reorder"
@@ -2631,6 +2666,8 @@ function DawChrome() {
   const [arrangeScrollLeft, setArrangeScrollLeft] = useState(0);
   /** Drop-target highlight while dragging a track reorder handle (arrange or mixer). */
   const [trackReorderHover, setTrackReorderHover] = useState<number | null>(null);
+  /** Source row index while dragging — reliable during dragOver where getData() is empty. */
+  const trackReorderSourceIndexRef = useRef<number | null>(null);
   const [, setClipDragTick] = useState(0);
   const clipDragRef = useRef<{
     trackId: string;
@@ -2687,9 +2724,12 @@ function DawChrome() {
   stopTransportRef.current = daw.stopTransport;
 
   useEffect(() => {
-    const clearReorderHover = () => setTrackReorderHover(null);
-    window.addEventListener("dragend", clearReorderHover);
-    return () => window.removeEventListener("dragend", clearReorderHover);
+    const onDragEnd = () => {
+      trackReorderSourceIndexRef.current = null;
+      setTrackReorderHover(null);
+    };
+    window.addEventListener("dragend", onDragEnd);
+    return () => window.removeEventListener("dragend", onDragEnd);
   }, []);
 
   useEffect(() => {
@@ -3620,6 +3660,7 @@ function DawChrome() {
                     stripIndex={ti}
                     trackReorderHover={trackReorderHover}
                     setTrackReorderHover={setTrackReorderHover}
+                    trackReorderSourceIndexRef={trackReorderSourceIndexRef}
                     peak={daw.meterPeaks[t.id] ?? 0}
                     fileInputTrigger={() => openImport(t.id)}
                   />
@@ -3799,15 +3840,34 @@ function DawChrome() {
                 className="min-h-0 flex-1 overflow-auto"
                 onScroll={(e) => setArrangeScrollLeft(e.currentTarget.scrollLeft)}
                 onDragEnter={(e: DragEvent) => {
-                  if (!dataTransferHasFiles(e.dataTransfer)) return;
-                  e.preventDefault();
-                  e.stopPropagation();
+                  if (dataTransferHasFiles(e.dataTransfer)) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return;
+                  }
+                  if (
+                    daw.sessionCapabilities.canManageTracks &&
+                    isTrackReorderDragEvent(e.dataTransfer, trackReorderSourceIndexRef)
+                  ) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }
                 }}
                 onDragOver={(e: DragEvent) => {
-                  if (!dataTransferHasFiles(e.dataTransfer)) return;
-                  e.preventDefault();
-                  e.stopPropagation();
-                  e.dataTransfer.dropEffect = "copy";
+                  if (dataTransferHasFiles(e.dataTransfer)) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.dataTransfer.dropEffect = "copy";
+                    return;
+                  }
+                  if (
+                    daw.sessionCapabilities.canManageTracks &&
+                    isTrackReorderDragEvent(e.dataTransfer, trackReorderSourceIndexRef)
+                  ) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.dataTransfer.dropEffect = "move";
+                  }
                 }}
                 onDrop={(e: DragEvent) => {
                   if (!dataTransferHasFiles(e.dataTransfer)) return;
@@ -3834,35 +3894,51 @@ function DawChrome() {
                           ? "inset 0 0 0 2px rgba(100, 160, 240, 0.75)"
                           : undefined,
                     }}
-                    onDragOver={(e: DragEvent) => {
-                      if (dataTransferHasFiles(e.dataTransfer)) {
+                    onDragOverCapture={(e: DragEvent) => {
+                      if (
+                        daw.sessionCapabilities.canManageTracks &&
+                        isTrackReorderDragEvent(e.dataTransfer, trackReorderSourceIndexRef)
+                      ) {
                         e.preventDefault();
-                        e.stopPropagation();
-                        e.dataTransfer.dropEffect = "copy";
-                        return;
-                      }
-                      if (dataTransferHasTrackReorder(e.dataTransfer) && daw.sessionCapabilities.canManageTracks) {
-                        e.preventDefault();
-                        e.stopPropagation();
                         e.dataTransfer.dropEffect = "move";
                         setTrackReorderHover(ti);
                       }
                     }}
+                    onDragOver={(e: DragEvent) => {
+                      if (
+                        daw.sessionCapabilities.canManageTracks &&
+                        isTrackReorderDragEvent(e.dataTransfer, trackReorderSourceIndexRef)
+                      ) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.dataTransfer.dropEffect = "move";
+                        setTrackReorderHover(ti);
+                        return;
+                      }
+                      if (dataTransferHasFiles(e.dataTransfer)) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.dataTransfer.dropEffect = "copy";
+                      }
+                    }}
                     onDrop={(e: DragEvent) => {
+                      if (daw.sessionCapabilities.canManageTracks) {
+                        let from = trackReorderSourceIndexRef.current;
+                        if (from === null) from = readTrackReorderSourceIndex(e.dataTransfer);
+                        if (from !== null) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          trackReorderSourceIndexRef.current = null;
+                          setTrackReorderHover(null);
+                          if (from !== ti) daw.reorderTracks(from, ti);
+                          return;
+                        }
+                      }
                       if (dataTransferHasFiles(e.dataTransfer)) {
                         e.preventDefault();
                         e.stopPropagation();
                         const file = firstAudioFileFromDataTransfer(e.dataTransfer);
                         if (file) void daw.importAudioFile(tr.id, file);
-                        return;
-                      }
-                      if (dataTransferHasTrackReorder(e.dataTransfer) && daw.sessionCapabilities.canManageTracks) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setTrackReorderHover(null);
-                        const raw = e.dataTransfer.getData(DND_WSTUDIO_TRACK_INDEX);
-                        const from = parseInt(raw, 10);
-                        if (Number.isFinite(from) && from !== ti) daw.reorderTracks(from, ti);
                       }
                     }}
                   >
@@ -3883,7 +3959,9 @@ function DawChrome() {
                               draggable
                               onDragStart={(e) => {
                                 e.stopPropagation();
+                                trackReorderSourceIndexRef.current = ti;
                                 e.dataTransfer.setData(DND_WSTUDIO_TRACK_INDEX, String(ti));
+                                e.dataTransfer.setData("text/plain", `${DND_TEXT_REORDER_PREFIX}${ti}`);
                                 e.dataTransfer.effectAllowed = "move";
                               }}
                               title="Drag to reorder track"
@@ -4034,12 +4112,35 @@ function DawChrome() {
                       data-timeline-lane={tr.id}
                       style={{ width: widthPx, height: TRACK_ROW_MIN_H }}
                       onDragOver={(e: DragEvent) => {
+                        if (
+                          daw.sessionCapabilities.canManageTracks &&
+                          isTrackReorderDragEvent(e.dataTransfer, trackReorderSourceIndexRef)
+                        ) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          e.dataTransfer.dropEffect = "move";
+                          setTrackReorderHover(ti);
+                          return;
+                        }
                         if (!dataTransferHasFiles(e.dataTransfer)) return;
                         e.preventDefault();
                         e.stopPropagation();
                         e.dataTransfer.dropEffect = "copy";
                       }}
                       onDrop={(e: DragEvent) => {
+                        if (daw.sessionCapabilities.canManageTracks) {
+                          let from = trackReorderSourceIndexRef.current;
+                          if (from === null) from = readTrackReorderSourceIndex(e.dataTransfer);
+                          if (from !== null) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            trackReorderSourceIndexRef.current = null;
+                            setTrackReorderHover(null);
+                            if (from !== ti) daw.reorderTracks(from, ti);
+                            return;
+                          }
+                        }
+                        if (!dataTransferHasFiles(e.dataTransfer)) return;
                         e.preventDefault();
                         e.stopPropagation();
                         const file = firstAudioFileFromDataTransfer(e.dataTransfer);
@@ -4059,12 +4160,35 @@ function DawChrome() {
                           backgroundImage: `repeating-linear-gradient(90deg, transparent 0, transparent ${Math.max(1, barW - 1)}px, rgba(0,0,0,0.12) ${Math.max(1, barW - 1)}px, rgba(0,0,0,0.12) ${barW}px)`,
                         }}
                         onDragOver={(e: DragEvent) => {
+                          if (
+                            daw.sessionCapabilities.canManageTracks &&
+                            isTrackReorderDragEvent(e.dataTransfer, trackReorderSourceIndexRef)
+                          ) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            e.dataTransfer.dropEffect = "move";
+                            setTrackReorderHover(ti);
+                            return;
+                          }
                           if (!dataTransferHasFiles(e.dataTransfer)) return;
                           e.preventDefault();
                           e.stopPropagation();
                           e.dataTransfer.dropEffect = "copy";
                         }}
                         onDrop={(e: DragEvent) => {
+                          if (daw.sessionCapabilities.canManageTracks) {
+                            let from = trackReorderSourceIndexRef.current;
+                            if (from === null) from = readTrackReorderSourceIndex(e.dataTransfer);
+                            if (from !== null) {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              trackReorderSourceIndexRef.current = null;
+                              setTrackReorderHover(null);
+                              if (from !== ti) daw.reorderTracks(from, ti);
+                              return;
+                            }
+                          }
+                          if (!dataTransferHasFiles(e.dataTransfer)) return;
                           e.preventDefault();
                           e.stopPropagation();
                           const file = firstAudioFileFromDataTransfer(e.dataTransfer);
@@ -4164,12 +4288,35 @@ function DawChrome() {
                                 borderColor: isSel ? LP.accentBlueHi : LP.border,
                               }}
                               onDragOver={(e: DragEvent) => {
+                                if (
+                                  daw.sessionCapabilities.canManageTracks &&
+                                  isTrackReorderDragEvent(e.dataTransfer, trackReorderSourceIndexRef)
+                                ) {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  e.dataTransfer.dropEffect = "move";
+                                  setTrackReorderHover(ti);
+                                  return;
+                                }
                                 if (!dataTransferHasFiles(e.dataTransfer)) return;
                                 e.preventDefault();
                                 e.stopPropagation();
                                 e.dataTransfer.dropEffect = "copy";
                               }}
                               onDrop={(e: DragEvent) => {
+                                if (daw.sessionCapabilities.canManageTracks) {
+                                  let from = trackReorderSourceIndexRef.current;
+                                  if (from === null) from = readTrackReorderSourceIndex(e.dataTransfer);
+                                  if (from !== null) {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    trackReorderSourceIndexRef.current = null;
+                                    setTrackReorderHover(null);
+                                    if (from !== ti) daw.reorderTracks(from, ti);
+                                    return;
+                                  }
+                                }
+                                if (!dataTransferHasFiles(e.dataTransfer)) return;
                                 e.preventDefault();
                                 e.stopPropagation();
                                 const file = firstAudioFileFromDataTransfer(e.dataTransfer);
