@@ -2853,6 +2853,7 @@ function DawChrome() {
   }, [daw.currentTime, mainView, widthPx]);
 
   return (
+    <>
     <div
       className={`flex flex-col [@media(orientation:landscape)]:[.daw-main]:min-h-0 ${
         focusWorkbench ? "fixed inset-0 z-[140] min-h-[100dvh] min-w-0" : "h-screen min-h-[640px] min-w-0"
