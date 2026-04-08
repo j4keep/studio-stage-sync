@@ -297,18 +297,18 @@ function InspectorChannelStrip({ trackId, isStereoOut }: { trackId: string | nul
   const daw = useDaw();
   const tr = !isStereoOut && trackId ? daw.tracks.find((t) => t.id === trackId) : null;
   const meterPeak: DawMeterPeak = isStereoOut
-    ? (daw.meterPeaks.__master__ ?? 0)
+    ? (daw.meterPeaks.__stereoBus__ ?? 0)
     : tr
       ? (daw.meterPeaks[tr.id] ?? 0)
       : 0;
   const peak = meterPeakScalar(meterPeak);
   const dualMeters = Boolean(isStereoOut || (tr != null && trackShowsStereoMeters(tr)));
-  const vol = isStereoOut ? daw.masterVolume : (tr?.volume ?? 0.8);
+  const vol = isStereoOut ? daw.stereoOutVolume : (tr?.volume ?? 0.8);
   const pan = tr?.pan ?? 0;
   const name = isStereoOut ? "Stereo Out" : (tr?.name ?? "Track");
   const labelColor = isStereoOut ? "#4a9a4a" : (tr?.color ?? "#60a5fa");
   const updateVolume = (value: number) => {
-    if (isStereoOut) daw.setMasterVolume(value);
+    if (isStereoOut) daw.setStereoOutVolume(value);
     else if (tr) daw.setTrackVolume(tr.id, value);
   };
 
@@ -1967,7 +1967,7 @@ function BusMixerStrip({ busId }: BusMixerStripProps) {
 
 function StereoOutStrip() {
   const daw = useDaw();
-  const meterPeak: DawMeterPeak = daw.meterPeaks.__master__ ?? 0;
+  const meterPeak: DawMeterPeak = daw.meterPeaks.__stereoBus__ ?? 0;
   const peak = meterPeakScalar(meterPeak);
   return (
     <div
@@ -2037,7 +2037,7 @@ function StereoOutStrip() {
         className="flex items-stretch justify-center gap-0.5 border-b px-0.5 py-px"
         style={{ borderColor: LOGIC_MIX.rowLine, minHeight: mixRowHeight(MIXER_ROW_IX.db), height: mixRowHeight(MIXER_ROW_IX.db) }}
       >
-        <span className={LOGIC_MIX.readout}>0.0</span>
+        <span className={LOGIC_MIX.readout}>{faderToDbLabel(daw.stereoOutVolume)}</span>
         <span className={`${LOGIC_MIX.readout} ${LOGIC_MIX.readoutPeak}`}>{peakToDbDisplay(peak)}</span>
       </div>
       <div
@@ -2045,10 +2045,10 @@ function StereoOutStrip() {
         style={{ borderColor: LOGIC_MIX.rowLine, minHeight: mixRowHeight(MIXER_ROW_IX.fader), height: mixRowHeight(MIXER_ROW_IX.fader) }}
       >
         <VerticalMixerFader
-          value={daw.masterVolume}
+          value={daw.stereoOutVolume}
           meterPeak={meterPeak}
           dualMeters
-          onChange={(value) => daw.setMasterVolume(value)}
+          onChange={(value) => daw.setStereoOutVolume(value)}
           ariaLabel="Stereo out level"
         />
       </div>

@@ -8,6 +8,7 @@ import {
   createDefaultFxInsertSlots,
   defaultChannelModeForKind,
   studioTrackTypeFromKind,
+  ROUTING_BUS_IDS,
   type BusId,
   type ClipSourceMeta,
   type EffectPresetId,
@@ -169,7 +170,9 @@ export async function hydrateProject(data: SerializedProjectV1, ctx: AudioContex
       eqPreset: st.eqPreset,
       effectPreset: st.effectPreset,
       spacePreset: st.spacePreset,
-      outputBus: st.outputBus ?? 'master',
+      outputBus: (st.outputBus && ROUTING_BUS_IDS.includes(st.outputBus)
+        ? st.outputBus
+        : 'master') as BusId,
       sendReverb: st.sendReverb ?? 0.18,
       clips: [],
       midiNotes: st.midiNotes.map((m) => ({ ...m })),

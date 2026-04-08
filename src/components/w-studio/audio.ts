@@ -988,7 +988,7 @@ export function encodeWavFromAudioBuffer(buf: AudioBuffer): ArrayBuffer {
 function connectOfflineTrack(
   offline: OfflineAudioContext,
   track: Track,
-  master: GainNode,
+  mixBusIn: GainNode,
   soloAny: boolean,
   busTargets: Map<BusId, GainNode>,
 ): BiquadFilterNode | null {
@@ -1022,7 +1022,7 @@ function connectOfflineTrack(
   pan.connect(fader);
   const busId = track.outputBus ?? 'master';
   const dest =
-    busId !== 'master' && busTargets.has(busId) ? busTargets.get(busId)! : master;
+    busId !== 'master' && busTargets.has(busId) ? busTargets.get(busId)! : mixBusIn;
   fader.connect(dest);
   return low;
 }
@@ -1035,21 +1035,24 @@ export async function offlineRenderMix(
 ): Promise<AudioBuffer> {
   const length = Math.max(1, Math.ceil(durationSec * sampleRate));
   const offline = new OfflineAudioContext(2, length, sampleRate);
+  const stereoBus = offline.createGain();
+  stereoBus.gain.value = 1;
   const master = offline.createGain();
   master.gain.value = 1;
+  stereoBus.connect(master);
   master.connect(offline.destination);
   const soloAny = anySolo(tracks);
   const busTargets = new Map<BusId, GainNode>();
   for (const id of MIXER_BUS_STRIPS) {
     const g = offline.createGain();
     g.gain.value = 1;
-    g.connect(master);
+    g.connect(stereoBus);
     busTargets.set(id, g);
   }
   const inputs = new Map<string, BiquadFilterNode>();
 
   for (const track of tracks) {
-    const eqIn = connectOfflineTrack(offline, track, master, soloAny, busTargets);
+    const eqIn = connectOfflineTrack(offline, track, stereoBus, soloAny, busTargets);
     if (eqIn) inputs.set(track.id, eqIn);
   }
 

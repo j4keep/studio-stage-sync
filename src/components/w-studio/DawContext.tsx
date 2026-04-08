@@ -153,6 +153,10 @@ type DawContextValue = {
   busMixer: BusMixerState;
   setBusVolume: (busId: NonMasterBus, v: number) => void;
   toggleBusMute: (busId: NonMasterBus) => void;
+  /** Mix bus level (tracks sum here before the master fader). */
+  stereoOutVolume: number;
+  setStereoOutVolume: (v: number) => void;
+  /** Final output fader after stereo bus. */
   masterVolume: number;
   setMasterVolume: (v: number) => void;
   /** Hard-mutes the main mix at the master gain (Logic-style control-bar M). */
@@ -258,6 +262,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
   const [beatsPerBar, setBeatsPerBar] = useState(4);
   const [meterPeaks, setMeterPeaks] = useState<Record<string, DawMeterPeak>>({});
   const [inputDevices, setInputDevices] = useState<MediaDeviceInfo[]>([]);
+  const [stereoOutVolume, setStereoOutVolumeState] = useState(1);
   const [masterVolume, setMasterVolumeState] = useState(1);
   const [masterMuted, setMasterMutedState] = useState(false);
   const [recordingTrackId, setRecordingTrackId] = useState<string | null>(null);
@@ -330,6 +335,8 @@ export function DawProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
+  const stereoBusGainRef = useRef<GainNode | null>(null);
+  const stereoBusAnalyserRef = useRef<AnalyserNode | null>(null);
   const masterGainRef = useRef<GainNode | null>(null);
   const masterAnalyserRef = useRef<AnalyserNode | null>(null);
   const micInputAnalyserLRef = useRef<AnalyserNode | null>(null);
@@ -355,6 +362,11 @@ export function DawProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     tempoRef.current = tempo;
   }, [tempo]);
+
+  const stereoOutVolumeRef = useRef(stereoOutVolume);
+  useEffect(() => {
+    stereoOutVolumeRef.current = stereoOutVolume;
+  }, [stereoOutVolume]);
 
   const masterVolumeRef = useRef(masterVolume);
   useEffect(() => {
@@ -608,13 +620,29 @@ export function DawProvider({ children }: { children: ReactNode }) {
     }
     busNodesRef.current.clear();
     try {
+      stereoBusGainRef.current?.disconnect();
+      stereoBusAnalyserRef.current?.disconnect();
       masterGainRef.current?.disconnect();
       masterAnalyserRef.current?.disconnect();
     } catch {
       /* ignore */
     }
+    stereoBusGainRef.current = null;
+    stereoBusAnalyserRef.current = null;
     masterGainRef.current = null;
     masterAnalyserRef.current = null;
+  }, []);
+
+  const applyStereoOutGain = useCallback(() => {
+    const ctx = audioCtxRef.current;
+    const g = stereoBusGainRef.current;
+    if (!ctx || !g) return;
+    const vol = Math.max(0, Math.min(1, stereoOutVolumeRef.current));
+    try {
+      g.gain.setValueAtTime(vol, ctx.currentTime);
+    } catch {
+      g.gain.value = vol;
+    }
   }, []);
 
   const applyMasterGain = useCallback(() => {
@@ -631,15 +659,30 @@ export function DawProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const ensureMaster = useCallback((ctx: AudioContext) => {
-    if (!masterGainRef.current || !masterAnalyserRef.current) {
+    const needChain =
+      !stereoBusGainRef.current ||
+      !stereoBusAnalyserRef.current ||
+      !masterGainRef.current ||
+      !masterAnalyserRef.current;
+    if (needChain) {
+      const sb = ctx.createGain();
+      const stereoV = Math.max(0, Math.min(1, stereoOutVolumeRef.current));
+      sb.gain.value = stereoV;
+      const sa = ctx.createAnalyser();
+      sa.fftSize = 1024;
+      sa.smoothingTimeConstant = 0.55;
       const mg = ctx.createGain();
       const vol = Math.max(0, Math.min(1, masterVolumeRef.current));
       mg.gain.value = masterMutedRef.current ? 0 : vol;
       const ma = ctx.createAnalyser();
       ma.fftSize = 1024;
       ma.smoothingTimeConstant = 0.55;
+      sb.connect(sa);
+      sa.connect(mg);
       mg.connect(ma);
       ma.connect(ctx.destination);
+      stereoBusGainRef.current = sb;
+      stereoBusAnalyserRef.current = sa;
       masterGainRef.current = mg;
       masterAnalyserRef.current = ma;
     }
@@ -705,14 +748,14 @@ export function DawProvider({ children }: { children: ReactNode }) {
       nodes.sendGain.gain.value = track.spacePreset === 'off' ? 0 : (track.sendReverb ?? 0.18);
       nodes.dryGain.gain.value = 1;
 
-      const masterIn = masterGainRef.current;
-      if (!masterIn) return;
+      const mixBusIn = stereoBusGainRef.current;
+      if (!mixBusIn) return;
       nodes.analyser.disconnect();
       const busId = track.outputBus ?? 'master';
       if (busId === 'master') {
-        nodes.analyser.connect(masterIn);
+        nodes.analyser.connect(mixBusIn);
       } else {
-        const bus = ensureBusNodes(ctx, busId, masterIn);
+        const bus = ensureBusNodes(ctx, busId, mixBusIn);
         const bm = busMixerRef.current[busId];
         nodes.analyser.connect(bus.gain);
         bus.gain.gain.value = bm.muted ? 0 : faderToGain(bm.volume);
@@ -934,6 +977,14 @@ export function DawProvider({ children }: { children: ReactNode }) {
         meterHoldRef.current[tid] = v;
         out[tid] = v;
       }
+      const sba = stereoBusAnalyserRef.current;
+      if (sba) {
+        const peak = samplePeak(sba);
+        const prev = meterHoldRef.current.__stereoBus__ ?? 0;
+        const v = Math.max(peak, prev * 0.88);
+        meterHoldRef.current.__stereoBus__ = v;
+        out.__stereoBus__ = v;
+      }
       const ma = masterAnalyserRef.current;
       if (ma) {
         const peak = samplePeak(ma);
@@ -1085,7 +1136,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
       }
 
       ensureMaster(ctx);
-      const masterIn = masterGainRef.current;
+      const mixBusIn = stereoBusGainRef.current;
 
       recordStartTimeRef.current = currentTimeRef.current;
       recordStereoChunksRef.current = [];
@@ -1102,11 +1153,11 @@ export function DawProvider({ children }: { children: ReactNode }) {
       inputTrim.gain.value = 1;
       src.connect(inputTrim);
 
-      if (armed?.inputMonitoring && masterIn) {
+      if (armed?.inputMonitoring && mixBusIn) {
         const mon = ctx.createGain();
         mon.gain.value = 0.48;
         src.connect(mon);
-        mon.connect(masterIn);
+        mon.connect(mixBusIn);
         recordMonitorGainRef.current = mon;
       }
 
@@ -1227,6 +1278,16 @@ export function DawProvider({ children }: { children: ReactNode }) {
     const nm = tracksRef.current.find((t) => t.id === targetId)?.name ?? 'track';
     setStatus(`Saved stereo clip (${buf.duration.toFixed(2)}s) on ${nm}.`);
   }, [isRecording, selectedTrackId, teardownMicGraph]);
+
+  const setStereoOutVolume = useCallback(
+    (v: number) => {
+      const nv = Math.max(0, Math.min(1, v));
+      setStereoOutVolumeState(nv);
+      stereoOutVolumeRef.current = nv;
+      applyStereoOutGain();
+    },
+    [applyStereoOutGain],
+  );
 
   const setMasterVolume = useCallback(
     (v: number) => {
@@ -1824,6 +1885,8 @@ export function DawProvider({ children }: { children: ReactNode }) {
       busMixer,
       setBusVolume,
       toggleBusMute,
+      stereoOutVolume,
+      setStereoOutVolume,
       masterVolume,
       setMasterVolume,
       masterMuted,
@@ -1901,6 +1964,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
       meterPeaks,
       inputDevices,
       busMixer,
+      stereoOutVolume,
       masterVolume,
       masterMuted,
       status,
@@ -1946,6 +2010,7 @@ export function DawProvider({ children }: { children: ReactNode }) {
       removeMidiNote,
       updateMidiNote,
       setBeatsPerBar,
+      setStereoOutVolume,
       setMasterVolume,
       setMasterMuted,
       projectMeta,

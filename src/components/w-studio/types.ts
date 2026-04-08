@@ -150,9 +150,11 @@ export const TRACK_PALETTE = [
 /** Sub / aux bus destinations (before master). `master` = direct to main. */
 export type BusId = 'master' | 'reverbA' | 'drumBus' | 'vocalBus';
 
-export const ROUTING_BUS_IDS: BusId[] = ['master', 'reverbA', 'drumBus', 'vocalBus'];
+/** Track output destinations shown in the mixer (sub-bussing TBD). */
+export const ROUTING_BUS_IDS: BusId[] = ['master'];
 
-export const MIXER_BUS_STRIPS: Exclude<BusId, 'master'>[] = ['vocalBus', 'drumBus', 'reverbA'];
+/** Optional aux strips beside tracks — empty until real bussing is implemented. */
+export const MIXER_BUS_STRIPS: Exclude<BusId, 'master'>[] = [];
 
 export type Track = {
   id: string;
