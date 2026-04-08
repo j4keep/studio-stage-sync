@@ -62,7 +62,8 @@ const MIXER_STRIP_W = 72;
 const MIXER_METER_H = 168;
 const INSPECTOR_STRIP_W = MIXER_STRIP_W;
 const INSPECTOR_PANEL_W = INSPECTOR_STRIP_W * 2 + 1; /* 1px for border between strips */
-const TRACK_ROW_MIN_H = 48;
+/** Arrange row: header + lane share this height so waveforms fill the lane (Logic-style alignment). */
+const TRACK_ROW_MIN_H = 52;
 /** Stable id so "New track → Import audio" can use <label htmlFor> (reliable file picker vs programmatic .click()). */
 const WSTUDIO_AUDIO_FILE_INPUT_ID = "wstudio-audio-file-import";
 const MIXER_LABEL_ROWS = [
@@ -3630,8 +3631,9 @@ function DawChrome() {
                 {daw.tracks.map((tr, ti) => (
                   <div
                     key={tr.id}
-                    className="flex border-b"
+                    className="flex shrink-0 border-b"
                     style={{
+                      height: TRACK_ROW_MIN_H,
                       minHeight: TRACK_ROW_MIN_H,
                       minWidth: TRACK_HEADER_W + widthPx,
                       borderColor: LP.border,
@@ -3652,15 +3654,15 @@ function DawChrome() {
                     }}
                   >
                     <div
-                      className="sticky left-0 z-10 flex shrink-0 border-r"
+                      className="sticky left-0 z-10 flex h-full shrink-0 border-r"
                       style={{
                         width: TRACK_HEADER_W,
                         borderColor: LP.border,
                         background: daw.selectedTrackId === tr.id ? "rgba(92, 122, 168, 0.92)" : LP.panel,
                       }}
                     >
-                      <div className="w-1 shrink-0" style={{ backgroundColor: tr.color }} />
-                      <div className="flex min-w-0 flex-1 flex-col justify-center gap-px px-1 py-0.5">
+                      <div className="w-1 shrink-0 self-stretch" style={{ backgroundColor: tr.color }} />
+                      <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-center gap-0 px-1 py-0">
                         <div className="flex items-center gap-0.5">
                           <span className="w-3 shrink-0 text-center font-mono text-[7px] text-[#888]">{ti + 1}</span>
                           <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center">
@@ -3674,7 +3676,7 @@ function DawChrome() {
                             onClick={() => daw.setSelectedTrackId(tr.id)}
                           />
                         </div>
-                        <div className="flex min-h-[26px] items-center gap-0.5">
+                        <div className="flex h-[22px] shrink-0 items-center gap-0.5">
                           <button
                             type="button"
                             title="Mute"
@@ -3799,9 +3801,9 @@ function DawChrome() {
                     </div>
 
                     <div
-                      className="relative shrink-0"
+                      className="relative h-full min-h-0 shrink-0"
                       data-timeline-lane={tr.id}
-                      style={{ width: widthPx, minHeight: TRACK_ROW_MIN_H }}
+                      style={{ width: widthPx, height: TRACK_ROW_MIN_H }}
                       onDragOver={(e: DragEvent) => {
                         if (!dataTransferHasFiles(e.dataTransfer)) return;
                         e.preventDefault();
@@ -3820,10 +3822,10 @@ function DawChrome() {
                         style={{ left: daw.currentTime * PX_PER_SEC }}
                       />
                       <div
-                        className="relative h-full"
+                        className="relative h-full min-h-0"
                         style={{
                           width: widthPx,
-                          minHeight: TRACK_ROW_MIN_H,
+                          height: TRACK_ROW_MIN_H,
                           backgroundColor: LP.panelLo,
                           backgroundImage: `repeating-linear-gradient(90deg, transparent 0, transparent ${Math.max(1, barW - 1)}px, rgba(0,0,0,0.12) ${Math.max(1, barW - 1)}px, rgba(0,0,0,0.12) ${barW}px)`,
                         }}
@@ -3851,7 +3853,7 @@ function DawChrome() {
                                 className="pointer-events-none absolute rounded-sm opacity-85"
                                 style={{
                                   left,
-                                  top: Math.max(10, Math.round(TRACK_ROW_MIN_H * 0.42)),
+                                  top: Math.max(4, Math.round((TRACK_ROW_MIN_H - 10) / 2)),
                                   width: w,
                                   height: 10,
                                   backgroundColor: tr.color,
@@ -3870,8 +3872,8 @@ function DawChrome() {
                                 12,
                                 (daw.currentTime - daw.recordingPunchInTime) * PX_PER_SEC,
                               ),
-                              height: Math.max(28, TRACK_ROW_MIN_H - 8),
-                              top: 4,
+                              height: TRACK_ROW_MIN_H - 4,
+                              top: 2,
                               borderColor: "rgba(248,113,113,0.85)",
                               backgroundColor: "rgba(80,20,20,0.45)",
                             }}
@@ -3883,7 +3885,7 @@ function DawChrome() {
                                 24,
                                 Math.floor((daw.currentTime - daw.recordingPunchInTime) * PX_PER_SEC),
                               )}
-                              height={Math.max(28, TRACK_ROW_MIN_H - 8)}
+                              height={TRACK_ROW_MIN_H - 4}
                               color="#fca5a5"
                               fill="rgba(0,0,0,0.2)"
                             />
@@ -3915,14 +3917,14 @@ function DawChrome() {
                           }
                           const vis = Math.max(0.001, dispTe - dispTs);
                           const w = Math.max(24, vis * PX_PER_SEC);
-                          const h = Math.max(34, TRACK_ROW_MIN_H - 6);
+                          const h = TRACK_ROW_MIN_H - 4;
                           const isSel = selection?.trackId === tr.id && selection?.clipId === c.id;
                           return (
                             <div
                               key={c.id}
                               role="button"
                               tabIndex={0}
-                              className={`group absolute top-[3px] cursor-default overflow-hidden rounded-[3px] border text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] outline-none focus-visible:ring-2 ${
+                              className={`group absolute top-[2px] cursor-default overflow-hidden rounded-[3px] border text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] outline-none focus-visible:ring-2 ${
                                 isSel ? "ring-2 ring-[#5a9eef]/80" : "hover:brightness-105"
                               }`}
                               style={{
