@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { BadgeCent, Clock } from "lucide-react";
 import { useBookingTimer } from "./BookingTimerContext";
+import { useSession } from "../session/SessionContext";
 import type { EngineerBookingProfile } from "./bookingTypes";
 import { formatCurrency } from "./bookingTypes";
 
 export function EngineerBookingSetupPanel() {
+  const { sessionId } = useSession();
   const {
-    sessionId,
     engineerProfile,
     setEngineerProfile,
     publishRatesToCurrentSession,
