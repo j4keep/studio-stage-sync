@@ -1,13 +1,9 @@
 import { Outlet } from "react-router-dom";
 import { SessionProvider } from "./session/SessionContext";
 import { BookingTimerProvider } from "./booking/BookingTimerContext";
-import { useProGate } from "@/hooks/use-pro-gate";
-import ProGateModal from "@/components/ProGateModal";
 
 /** Full-viewport shell for remote session flows (no DAW). */
 export function WStudioLayout() {
-  const { showProModal, gatedFeature, closeProModal, activatePro } = useProGate();
-
   return (
     <SessionProvider>
       <BookingTimerProvider>
@@ -15,7 +11,6 @@ export function WStudioLayout() {
           <Outlet />
         </div>
       </BookingTimerProvider>
-      <ProGateModal open={showProModal} onClose={closeProModal} featureName={gatedFeature} onSubscribe={activatePro} />
     </SessionProvider>
   );
 }
