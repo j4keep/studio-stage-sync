@@ -1,6 +1,9 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Headphones, Mic2, Radio } from "lucide-react";
+import { BookSessionPanel } from "../booking/BookSessionPanel";
+import { EngineerBookingSetupPanel } from "../booking/EngineerBookingSetupPanel";
+import { useBookingTimer } from "../booking/BookingTimerContext";
 import { ConnectionStatus } from "../connection/ConnectionStatus";
 import { useSession } from "./SessionContext";
 
@@ -14,6 +17,7 @@ export default function SessionJoinScreen() {
     joinAsArtist,
     joinAsEngineer,
   } = useSession();
+  const { booking } = useBookingTimer();
 
   useEffect(() => {
     if (connection !== "connected" || !role) return;
@@ -21,11 +25,14 @@ export default function SessionJoinScreen() {
     if (role === "engineer") navigate("/wstudio/engineer", { replace: true });
   }, [connection, role, navigate]);
 
-  const canJoin = sessionId.trim().length > 0 && connection !== "connecting";
+  const hasConfirmedBooking = !!(booking && booking.bookedMinutes > 0);
+  const canJoinEngineer = sessionId.trim().length > 0 && connection !== "connecting";
+  const canJoinArtist =
+    sessionId.trim().length > 0 && connection !== "connecting" && hasConfirmedBooking;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-4 py-10">
-      <div className="w-full max-w-md space-y-8">
+      <div className="w-full max-w-lg space-y-8">
         <header className="text-center">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-600/20 ring-1 ring-violet-500/40">
             <Radio className="h-7 w-7 text-violet-300" aria-hidden />
@@ -54,10 +61,15 @@ export default function SessionJoinScreen() {
           />
         </div>
 
+        <div className="grid gap-6 lg:grid-cols-2">
+          <BookSessionPanel />
+          <EngineerBookingSetupPanel />
+        </div>
+
         <div className="grid gap-3 sm:grid-cols-2">
           <button
             type="button"
-            disabled={!canJoin}
+            disabled={!canJoinArtist}
             onClick={joinAsArtist}
             className="flex items-center justify-center gap-2 rounded-xl border border-zinc-600 bg-zinc-800 py-4 text-sm font-semibold text-white transition-colors hover:bg-zinc-700 disabled:opacity-40"
           >
@@ -66,7 +78,7 @@ export default function SessionJoinScreen() {
           </button>
           <button
             type="button"
-            disabled={!canJoin}
+            disabled={!canJoinEngineer}
             onClick={joinAsEngineer}
             className="flex items-center justify-center gap-2 rounded-xl border border-zinc-600 bg-zinc-800 py-4 text-sm font-semibold text-white transition-colors hover:bg-zinc-700 disabled:opacity-40"
           >
@@ -74,6 +86,12 @@ export default function SessionJoinScreen() {
             Join as Engineer
           </button>
         </div>
+        {!hasConfirmedBooking && sessionId.trim() ? (
+          <p className="text-center text-[11px] text-amber-200/70">
+            Artists: confirm your booking above before joining. Engineers: publish rates so totals match your
+            quote.
+          </p>
+        ) : null}
 
         <p className="text-center text-[11px] leading-relaxed text-zinc-500">
           Signaling, media, and metering are UI shells here—connect your WebRTC / room service when ready.

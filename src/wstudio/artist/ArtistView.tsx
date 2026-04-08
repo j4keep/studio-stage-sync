@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Mic, Radio, Video as VideoIcon, Volume2 } from "lucide-react";
+import { Mic, Radio, Timer, Video as VideoIcon, Volume2 } from "lucide-react";
+import { useBookingTimer } from "../booking/BookingTimerContext";
+import { SessionControlsLockOverlay } from "../booking/SessionControlsLockOverlay";
+import { SessionTimerBar } from "../booking/SessionTimerBar";
 import { ConnectionStatus } from "../connection/ConnectionStatus";
 import { LatencyIndicator } from "../audio/LatencyIndicator";
 import { MicInputSelector, OutputSelector } from "../audio/DeviceSelectors";
@@ -21,6 +24,18 @@ export default function ArtistView() {
     latencyMs,
     leaveSession,
   } = useSession();
+  const {
+    booking,
+    totalBookedMinutes,
+    remainingSeconds,
+    warningLevel,
+    phase,
+    timerRunning,
+    controlsLocked,
+    requestExtension,
+    sessionRates,
+    pendingExtension,
+  } = useBookingTimer();
   const [mic, setMic] = useState("default");
   const [out, setOut] = useState("default");
   const [selfVideoOn, setSelfVideoOn] = useState(true);
@@ -33,6 +48,8 @@ export default function ArtistView() {
     if (role === "engineer") navigate("/wstudio/engineer", { replace: true });
   }, [connection, role, navigate]);
 
+  const lock = controlsLocked;
+
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 p-4">
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800 pb-3">
@@ -44,6 +61,11 @@ export default function ArtistView() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <ConnectionStatus state={connection} />
+          {pendingExtension ? (
+            <span className="rounded-full border border-amber-500/40 bg-amber-950/50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-200/90">
+              Extension pending
+            </span>
+          ) : null}
           <Link
             to="/wstudio/session"
             onClick={leaveSession}
@@ -54,7 +76,40 @@ export default function ArtistView() {
         </div>
       </header>
 
-      <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-3">
+      {booking ? (
+        <SessionTimerBar
+          totalBookedMinutes={totalBookedMinutes}
+          remainingSeconds={remainingSeconds}
+          warningLevel={warningLevel}
+          phase={phase}
+          timerRunning={timerRunning}
+        />
+      ) : null}
+
+      {phase === "live" && sessionRates.extensionsEnabled && !lock ? (
+        <div className="rounded-xl border border-amber-900/30 bg-zinc-900/50 p-3">
+          <div className="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-amber-200/70">
+            <Timer className="h-3.5 w-3.5" aria-hidden />
+            Request more time
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {([15, 30, 60] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                disabled={!!pendingExtension}
+                onClick={() => requestExtension(m)}
+                className="rounded-lg border border-amber-700/40 bg-amber-950/30 px-3 py-2 text-xs font-semibold text-amber-100 hover:bg-amber-900/40 disabled:opacity-40"
+              >
+                +{m} min
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="relative grid min-h-0 flex-1 gap-3 lg:grid-cols-3">
+        {lock ? <SessionControlsLockOverlay /> : null}
         <div className="flex min-h-[200px] flex-col gap-2 lg:col-span-2">
           <VideoPanel title="Engineer" subtitle="Remote engineer video (WebRTC)" className="min-h-[220px] flex-1" />
           {selfVideoOn ? (
@@ -62,9 +117,14 @@ export default function ArtistView() {
           ) : null}
         </div>
 
-        <aside className="flex flex-col gap-3 rounded-xl border border-zinc-800 bg-zinc-900/40 p-3">
+        <aside className="relative flex flex-col gap-3 rounded-xl border border-zinc-800 bg-zinc-900/40 p-3">
           <div className="flex flex-wrap gap-2">
-            <PushControl active={talkbackOn} onClick={toggleTalkback} title="Talkback to engineer">
+            <PushControl
+              active={talkbackOn}
+              onClick={toggleTalkback}
+              disabled={lock}
+              title="Talkback to engineer"
+            >
               <Radio className="mr-2 inline h-4 w-4" aria-hidden />
               Talkback
             </PushControl>
@@ -72,6 +132,7 @@ export default function ArtistView() {
               active={muted}
               onClick={toggleMute}
               variant="danger"
+              disabled={lock}
               title="Mute your mic for the session mix"
             >
               <Mic className="mr-2 inline h-4 w-4" aria-hidden />
@@ -79,8 +140,8 @@ export default function ArtistView() {
             </PushControl>
           </div>
           <LatencyIndicator ms={latencyMs} />
-          <MicInputSelector value={mic} onChange={setMic} disabled={connection !== "connected"} />
-          <OutputSelector value={out} onChange={setOut} disabled={connection !== "connected"} />
+          <MicInputSelector value={mic} onChange={setMic} disabled={connection !== "connected" || lock} />
+          <OutputSelector value={out} onChange={setOut} disabled={connection !== "connected" || lock} />
           <label className="flex cursor-pointer items-center gap-2 text-xs text-zinc-400">
             <input
               type="checkbox"
@@ -94,7 +155,9 @@ export default function ArtistView() {
         </aside>
       </div>
 
-      <section className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-4">
+      <section
+        className={`rounded-xl border border-zinc-800 bg-zinc-900/30 p-4 ${lock ? "pointer-events-none opacity-40" : ""}`}
+      >
         <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
           <Volume2 className="h-3.5 w-3.5" aria-hidden />
           Shared edit page viewer

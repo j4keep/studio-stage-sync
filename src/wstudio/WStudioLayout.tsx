@@ -1,5 +1,6 @@
 import { Outlet } from "react-router-dom";
 import { SessionProvider } from "./session/SessionContext";
+import { BookingTimerProvider } from "./booking/BookingTimerContext";
 import { useProGate } from "@/hooks/use-pro-gate";
 import ProGateModal from "@/components/ProGateModal";
 
@@ -9,9 +10,11 @@ export function WStudioLayout() {
 
   return (
     <SessionProvider>
-      <div className="flex min-h-screen flex-col bg-zinc-950 text-zinc-100">
-        <Outlet />
-      </div>
+      <BookingTimerProvider>
+        <div className="flex min-h-screen flex-col bg-zinc-950 text-zinc-100">
+          <Outlet />
+        </div>
+      </BookingTimerProvider>
       <ProGateModal open={showProModal} onClose={closeProModal} featureName={gatedFeature} onSubscribe={activatePro} />
     </SessionProvider>
   );
