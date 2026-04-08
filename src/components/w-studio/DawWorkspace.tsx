@@ -1594,7 +1594,7 @@ type MixerStripProps = {
   stripIndex: number;
   trackReorderHover: number | null;
   setTrackReorderHover: (index: number | null) => void;
-  trackReorderSourceIndexRef: RefObject<number | null>;
+  trackReorderSourceIndexRef: React.MutableRefObject<number | null>;
   peak: DawMeterPeak;
   fileInputTrigger: () => void;
 };
