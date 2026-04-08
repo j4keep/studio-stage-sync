@@ -57,7 +57,7 @@ function timelineSecFromClient(clientX: number, scrollLeft: number, laneEl: HTML
 const TRACK_HEADER_W = 276;
 const TIMELINE_BAR_LIMIT = 127;
 /** Compact Logic-like strip: ~72px wide, ~168px fader travel (not oversized vs real LP mixer) */
-const MIXER_LABEL_W = 76;
+const MIXER_LABEL_W = 90;
 const MIXER_STRIP_W = 72;
 const MIXER_METER_H = 168;
 const INSPECTOR_STRIP_W = MIXER_STRIP_W;
@@ -66,25 +66,45 @@ const INSPECTOR_PANEL_W = INSPECTOR_STRIP_W * 2 + 1; /* 1px for border between s
 const TRACK_ROW_MIN_H = 52;
 /** Stable id so "New track → Import audio" can use <label htmlFor> (reliable file picker vs programmatic .click()). */
 const WSTUDIO_AUDIO_FILE_INPUT_ID = "wstudio-audio-file-import";
+/** Left label column + every strip row share these heights (indices must stay in lockstep). */
 const MIXER_LABEL_ROWS = [
-  { label: "Setting", height: 19 },
-  { label: "Gain Reduction", height: 15 },
-  { label: "EQ", height: 21 },
-  { label: "MIDI FX", height: 17 },
-  { label: "Input", height: 32 },
-  { label: "Audio FX", height: 98 },
-  { label: "Sends", height: 26 },
-  { label: "Output", height: 19 },
-  { label: "Group", height: 17 },
-  { label: "Automation", height: 21 },
-  { label: "", height: 36 },
-  { label: "Pan", height: 32 },
-  { label: "dB", height: 21 },
-  { label: "", height: MIXER_METER_H + 6 },
-  { label: "", height: 22 },
-  { label: "", height: 26 },
-  { label: "", height: 22 },
+  { label: "Setting", height: 24 },
+  { label: "Gain Reduction", height: 20 },
+  { label: "EQ", height: 24 },
+  { label: "MIDI FX", height: 20 },
+  { label: "Input", height: 42 },
+  { label: "Audio FX", height: 100 },
+  { label: "Sends", height: 30 },
+  { label: "Output", height: 22 },
+  { label: "Group", height: 20 },
+  { label: "Automation", height: 24 },
+  { label: "", height: 40 },
+  { label: "Pan", height: 34 },
+  { label: "dB", height: 24 },
+  { label: "", height: MIXER_METER_H + 8 },
+  { label: "", height: 24 },
+  { label: "", height: 30 },
+  { label: "", height: 24 },
 ] as const;
+
+const MIXER_ROW_IX = {
+  icon: 10,
+  pan: 11,
+  db: 12,
+  fader: 13,
+  rec: 14,
+  ms: 15,
+  name: 16,
+} as const;
+
+function mixRowHeight(i: number): number {
+  return MIXER_LABEL_ROWS[i]!.height;
+}
+
+function mixerStripSlotHeight(label: string): number {
+  const row = MIXER_LABEL_ROWS.find((r) => r.label === label);
+  return row?.height ?? 24;
+}
 const STUDIO_TRACK_TYPE_LABELS: Record<StudioTrackType, string> = {
   audio: "Audio",
   vocal: "Vocal",
@@ -444,7 +464,7 @@ function InspectorChannelStrip({ trackId, isStereoOut }: { trackId: string | nul
       </MixerSlotRow>
       <div
         className="flex items-center justify-center border-b py-0.5"
-        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 36, height: 36 }}
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: mixRowHeight(MIXER_ROW_IX.icon), height: mixRowHeight(MIXER_ROW_IX.icon) }}
       >
         <div className={LOGIC_MIX.iconWell}>
           {!isStereoOut && tr ? (
@@ -465,7 +485,7 @@ function InspectorChannelStrip({ trackId, isStereoOut }: { trackId: string | nul
       </div>
       <div
         className="flex items-center justify-center border-b py-0.5"
-        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 32, height: 32 }}
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: mixRowHeight(MIXER_ROW_IX.pan), height: mixRowHeight(MIXER_ROW_IX.pan) }}
       >
         <PanKnob
           value={isStereoOut ? 0 : pan}
@@ -476,14 +496,14 @@ function InspectorChannelStrip({ trackId, isStereoOut }: { trackId: string | nul
       </div>
       <div
         className="flex items-stretch justify-center gap-0.5 border-b px-0.5 py-px"
-        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 21, height: 21 }}
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: mixRowHeight(MIXER_ROW_IX.db), height: mixRowHeight(MIXER_ROW_IX.db) }}
       >
         <span className={LOGIC_MIX.readout}>{isStereoOut ? "0.0" : faderToDbLabel(vol)}</span>
         <span className={`${LOGIC_MIX.readout} ${LOGIC_MIX.readoutPeak}`}>{peakToDbDisplay(peak)}</span>
       </div>
       <div
         className="border-b"
-        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: MIXER_METER_H + 6, height: MIXER_METER_H + 6 }}
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: mixRowHeight(MIXER_ROW_IX.fader), height: mixRowHeight(MIXER_ROW_IX.fader) }}
       >
         <VerticalMixerFader
           value={vol}
@@ -496,7 +516,7 @@ function InspectorChannelStrip({ trackId, isStereoOut }: { trackId: string | nul
       {!isStereoOut ? (
         <div
           className="flex items-center justify-center gap-1 border-b px-0.5 py-0.5"
-          style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 22, height: 22 }}
+          style={{ borderColor: LOGIC_MIX.rowLine, minHeight: mixRowHeight(MIXER_ROW_IX.rec), height: mixRowHeight(MIXER_ROW_IX.rec) }}
         >
           <button
             type="button"
@@ -526,14 +546,14 @@ function InspectorChannelStrip({ trackId, isStereoOut }: { trackId: string | nul
       ) : (
         <div
           className="flex items-center justify-center border-b py-0.5"
-          style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 22, height: 22 }}
+          style={{ borderColor: LOGIC_MIX.rowLine, minHeight: mixRowHeight(MIXER_ROW_IX.rec), height: mixRowHeight(MIXER_ROW_IX.rec) }}
         >
           <span className="text-[8px] font-medium text-[#888]">Bnce</span>
         </div>
       )}
       <div
         className="flex items-center justify-center gap-1.5 border-b px-1 py-0.5"
-        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 26, height: 26 }}
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: mixRowHeight(MIXER_ROW_IX.ms), height: mixRowHeight(MIXER_ROW_IX.ms) }}
       >
         <button
           type="button"
@@ -561,8 +581,10 @@ function InspectorChannelStrip({ trackId, isStereoOut }: { trackId: string | nul
         )}
       </div>
       <div
-        className="mt-auto flex min-h-[22px] items-center justify-center truncate border-t px-0.5 py-0.5 text-center text-[9px] font-bold leading-none tracking-tight text-white"
+        className="mt-auto flex shrink-0 items-center justify-center truncate border-t px-0.5 py-0.5 text-center text-[9px] font-bold leading-none tracking-tight text-white"
         style={{
+          minHeight: mixRowHeight(MIXER_ROW_IX.name),
+          height: mixRowHeight(MIXER_ROW_IX.name),
           backgroundColor: labelColor,
           borderColor: "#000",
           textShadow: "0 1px 2px rgba(0,0,0,0.65)",
@@ -1382,7 +1404,7 @@ function MixerStack({ items, tone = "gray" }: { items: string[]; tone?: "gray" |
 function MixerLabelColumn() {
   return (
     <div
-      className="sticky left-0 z-10 flex shrink-0 flex-col border-r text-right text-[9px] font-medium text-[#97979c]"
+      className="sticky left-0 z-10 flex shrink-0 flex-col border-r text-right text-[8px] font-medium leading-tight tracking-tight text-[#97979c]"
       style={{
         width: MIXER_LABEL_W,
         borderColor: "#0a0a0b",
@@ -1392,10 +1414,10 @@ function MixerLabelColumn() {
       {MIXER_LABEL_ROWS.map((row, index) => (
         <div
           key={`${row.label}-${index}`}
-          className="flex items-center justify-end border-b px-2"
+          className="flex items-center justify-end border-b px-2 py-px"
           style={{ borderColor: LOGIC_MIX.rowLine, minHeight: row.height, height: row.height }}
         >
-          {row.label}
+          <span className="block max-w-[5.75rem] break-words text-right">{row.label}</span>
         </div>
       ))}
     </div>
@@ -1475,28 +1497,16 @@ function LogicMixerFilterBar({ active, onPick }: { active: string; onPick: (s: s
 }
 
 function MixerSlotRow({ label, children }: { label: string; children?: ReactNode }) {
-  const rowHeights: Record<string, number> = {
-    Setting: 19,
-    "Gain Reduction": 15,
-    EQ: 21,
-    "MIDI FX": 17,
-    Input: 32,
-    "Audio FX": 92,
-    Sends: 26,
-    Output: 19,
-    Group: 17,
-    Automation: 21,
-    Icon: 36,
-    Pan: 32,
-    dB: 21,
-  };
-  const rowHeight = rowHeights[label] ?? 20;
+  const rowHeight = mixerStripSlotHeight(label);
+  const loose = label === "Audio FX" || label === "Sends";
   return (
     <div
-      className={`flex border-b px-0.5 ${label === "Audio FX" || label === "Sends" ? "items-start py-[3px]" : "items-center justify-center"}`}
-      style={{ borderColor: LOGIC_MIX.rowLine, minHeight: rowHeight, height: rowHeight }}
+      className={`flex shrink-0 border-b px-0.5 ${loose ? "items-start pt-0.5" : "items-center justify-center"}`}
+      style={{ borderColor: LOGIC_MIX.rowLine, minHeight: rowHeight, height: rowHeight, boxSizing: "border-box" }}
     >
-      <div className="min-w-0 flex-1">{children}</div>
+      <div className={`flex min-h-0 min-w-0 w-full flex-1 flex-col ${loose ? "justify-start" : "justify-center"}`}>
+        {children}
+      </div>
     </div>
   );
 }
@@ -1716,7 +1726,7 @@ function MixerStrip({ track: tr, peak, fileInputTrigger }: MixerStripProps) {
       </MixerSlotRow>
       <div
         className="flex items-center justify-center border-b py-0.5"
-        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 36, height: 36 }}
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: mixRowHeight(MIXER_ROW_IX.icon), height: mixRowHeight(MIXER_ROW_IX.icon) }}
       >
         <div className={LOGIC_MIX.iconWell}>
           <InstrumentIcon kind={tr.kind} color={tr.color} />
@@ -1724,20 +1734,20 @@ function MixerStrip({ track: tr, peak, fileInputTrigger }: MixerStripProps) {
       </div>
       <div
         className="flex items-center justify-center border-b py-0.5"
-        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 32, height: 32 }}
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: mixRowHeight(MIXER_ROW_IX.pan), height: mixRowHeight(MIXER_ROW_IX.pan) }}
       >
         <PanKnob value={tr.pan} onChange={(v) => daw.setTrackPan(tr.id, v)} size={26} showValueLabel={false} />
       </div>
       <div
         className="flex items-stretch justify-center gap-0.5 border-b px-0.5 py-px"
-        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 21, height: 21 }}
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: mixRowHeight(MIXER_ROW_IX.db), height: mixRowHeight(MIXER_ROW_IX.db) }}
       >
         <span className={LOGIC_MIX.readout}>{dbLabel}</span>
         <span className={`${LOGIC_MIX.readout} ${LOGIC_MIX.readoutPeak}`}>{peakDb}</span>
       </div>
       <div
         className="border-b"
-        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: MIXER_METER_H + 6, height: MIXER_METER_H + 6 }}
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: mixRowHeight(MIXER_ROW_IX.fader), height: mixRowHeight(MIXER_ROW_IX.fader) }}
       >
         <VerticalMixerFader
           value={tr.volume}
@@ -1749,7 +1759,7 @@ function MixerStrip({ track: tr, peak, fileInputTrigger }: MixerStripProps) {
       </div>
       <div
         className="flex items-center justify-center gap-1 border-b px-0.5 py-0.5"
-        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 22, height: 22 }}
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: mixRowHeight(MIXER_ROW_IX.rec), height: mixRowHeight(MIXER_ROW_IX.rec) }}
       >
         <button
           type="button"
@@ -1779,7 +1789,7 @@ function MixerStrip({ track: tr, peak, fileInputTrigger }: MixerStripProps) {
       </div>
       <div
         className="flex items-center justify-center gap-1.5 border-b px-1 py-0.5"
-        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 26, height: 26 }}
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: mixRowHeight(MIXER_ROW_IX.ms), height: mixRowHeight(MIXER_ROW_IX.ms) }}
       >
         <button
           type="button"
@@ -1807,8 +1817,10 @@ function MixerStrip({ track: tr, peak, fileInputTrigger }: MixerStripProps) {
         </button>
       </div>
       <div
-        className="mt-auto flex min-h-[22px] items-center justify-center truncate border-t px-0.5 py-0.5 text-center text-[9px] font-bold leading-none tracking-tight text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]"
+        className="mt-auto flex shrink-0 items-center justify-center truncate border-t px-0.5 py-0.5 text-center text-[9px] font-bold leading-none tracking-tight text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]"
         style={{
+          minHeight: mixRowHeight(MIXER_ROW_IX.name),
+          height: mixRowHeight(MIXER_ROW_IX.name),
           backgroundColor: tr.color,
           borderColor: "#000",
           textShadow: "0 1px 2px rgba(0,0,0,0.65)",
@@ -1875,7 +1887,7 @@ function BusMixerStrip({ busId }: BusMixerStripProps) {
       </MixerSlotRow>
       <div
         className="flex items-center justify-center border-b py-0.5"
-        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 36, height: 36 }}
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: mixRowHeight(MIXER_ROW_IX.icon), height: mixRowHeight(MIXER_ROW_IX.icon) }}
       >
         <div className={LOGIC_MIX.iconWell}>
           <svg style={{ color: "#6b8cbc", width: 22, height: 22 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -1885,20 +1897,20 @@ function BusMixerStrip({ busId }: BusMixerStripProps) {
       </div>
       <div
         className="flex items-center justify-center border-b py-0.5"
-        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 32, height: 32 }}
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: mixRowHeight(MIXER_ROW_IX.pan), height: mixRowHeight(MIXER_ROW_IX.pan) }}
       >
         <PanKnob value={0} onChange={() => {}} size={26} showValueLabel={false} />
       </div>
       <div
         className="flex items-stretch justify-center gap-0.5 border-b px-0.5 py-px"
-        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 21, height: 21 }}
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: mixRowHeight(MIXER_ROW_IX.db), height: mixRowHeight(MIXER_ROW_IX.db) }}
       >
         <span className={LOGIC_MIX.readout}>{dbLabel}</span>
         <span className={`${LOGIC_MIX.readout} ${LOGIC_MIX.readoutPeak}`}>{peakToDbDisplay(peak)}</span>
       </div>
       <div
         className="border-b"
-        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: MIXER_METER_H + 6, height: MIXER_METER_H + 6 }}
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: mixRowHeight(MIXER_ROW_IX.fader), height: mixRowHeight(MIXER_ROW_IX.fader) }}
       >
         <VerticalMixerFader
           value={bm.volume}
@@ -1910,13 +1922,19 @@ function BusMixerStrip({ busId }: BusMixerStripProps) {
       </div>
       <div
         className="flex items-center justify-center border-b py-0.5"
-        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 22, height: 22 }}
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: mixRowHeight(MIXER_ROW_IX.rec), height: mixRowHeight(MIXER_ROW_IX.rec) }}
       >
         <span className="text-[8px] font-medium text-[#888]">Aux</span>
       </div>
       <div
         className="flex items-center justify-center py-0.5"
-        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 26, height: 26, borderBottomWidth: 1, borderBottomStyle: "solid" }}
+        style={{
+          borderColor: LOGIC_MIX.rowLine,
+          minHeight: mixRowHeight(MIXER_ROW_IX.ms),
+          height: mixRowHeight(MIXER_ROW_IX.ms),
+          borderBottomWidth: 1,
+          borderBottomStyle: "solid",
+        }}
       >
         <button
           type="button"
@@ -1932,8 +1950,10 @@ function BusMixerStrip({ busId }: BusMixerStripProps) {
         </button>
       </div>
       <div
-        className="mt-auto flex min-h-[22px] items-center justify-center truncate border-t px-0.5 py-0.5 text-center text-[9px] font-bold leading-none text-white"
+        className="mt-auto flex shrink-0 items-center justify-center truncate border-t px-0.5 py-0.5 text-center text-[9px] font-bold leading-none text-white"
         style={{
+          minHeight: mixRowHeight(MIXER_ROW_IX.name),
+          height: mixRowHeight(MIXER_ROW_IX.name),
           backgroundColor: "#4a5a78",
           borderColor: "#000",
           textShadow: "0 1px 2px rgba(0,0,0,0.65)",
@@ -1992,7 +2012,7 @@ function StereoOutStrip() {
       </MixerSlotRow>
       <div
         className="flex items-center justify-center border-b py-0.5"
-        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 36, height: 36 }}
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: mixRowHeight(MIXER_ROW_IX.icon), height: mixRowHeight(MIXER_ROW_IX.icon) }}
       >
         <div className={LOGIC_MIX.iconWell}>
           <svg
@@ -2009,20 +2029,20 @@ function StereoOutStrip() {
       </div>
       <div
         className="flex items-center justify-center border-b py-0.5"
-        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 32, height: 32 }}
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: mixRowHeight(MIXER_ROW_IX.pan), height: mixRowHeight(MIXER_ROW_IX.pan) }}
       >
         <PanKnob value={0} onChange={() => {}} size={26} showValueLabel={false} />
       </div>
       <div
         className="flex items-stretch justify-center gap-0.5 border-b px-0.5 py-px"
-        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 21, height: 21 }}
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: mixRowHeight(MIXER_ROW_IX.db), height: mixRowHeight(MIXER_ROW_IX.db) }}
       >
         <span className={LOGIC_MIX.readout}>0.0</span>
         <span className={`${LOGIC_MIX.readout} ${LOGIC_MIX.readoutPeak}`}>{peakToDbDisplay(peak)}</span>
       </div>
       <div
         className="border-b"
-        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: MIXER_METER_H + 6, height: MIXER_METER_H + 6 }}
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: mixRowHeight(MIXER_ROW_IX.fader), height: mixRowHeight(MIXER_ROW_IX.fader) }}
       >
         <VerticalMixerFader
           value={daw.masterVolume}
@@ -2034,13 +2054,19 @@ function StereoOutStrip() {
       </div>
       <div
         className="flex items-center justify-center border-b py-0.5"
-        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 22, height: 22 }}
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: mixRowHeight(MIXER_ROW_IX.rec), height: mixRowHeight(MIXER_ROW_IX.rec) }}
       >
         <span className="text-[8px] font-medium text-[#888]">Bnce</span>
       </div>
       <div
         className="flex items-center justify-center py-0.5"
-        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 26, height: 26, borderBottomWidth: 1, borderBottomStyle: "solid" }}
+        style={{
+          borderColor: LOGIC_MIX.rowLine,
+          minHeight: mixRowHeight(MIXER_ROW_IX.ms),
+          height: mixRowHeight(MIXER_ROW_IX.ms),
+          borderBottomWidth: 1,
+          borderBottomStyle: "solid",
+        }}
       >
         <button
           type="button"
@@ -2050,8 +2076,10 @@ function StereoOutStrip() {
         </button>
       </div>
       <div
-        className="mt-auto flex min-h-[22px] items-center justify-center truncate border-t px-0.5 py-0.5 text-center text-[9px] font-bold leading-none text-white"
+        className="mt-auto flex shrink-0 items-center justify-center truncate border-t px-0.5 py-0.5 text-center text-[9px] font-bold leading-none text-white"
         style={{
+          minHeight: mixRowHeight(MIXER_ROW_IX.name),
+          height: mixRowHeight(MIXER_ROW_IX.name),
           backgroundColor: "#3d8f50",
           borderColor: "#000",
           textShadow: "0 1px 2px rgba(0,0,0,0.65)",
@@ -2113,7 +2141,7 @@ function MasterMixerStrip() {
       </MixerSlotRow>
       <div
         className="flex items-center justify-center border-b py-0.5"
-        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 36, height: 36 }}
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: mixRowHeight(MIXER_ROW_IX.icon), height: mixRowHeight(MIXER_ROW_IX.icon) }}
       >
         <div className={LOGIC_MIX.iconWell}>
           <svg style={{ color: "#9b4d96", width: 22, height: 22 }} viewBox="0 0 24 24" fill="currentColor">
@@ -2123,20 +2151,20 @@ function MasterMixerStrip() {
       </div>
       <div
         className="flex items-center justify-center border-b py-0.5"
-        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 32, height: 32 }}
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: mixRowHeight(MIXER_ROW_IX.pan), height: mixRowHeight(MIXER_ROW_IX.pan) }}
       >
         <PanKnob value={0} onChange={() => {}} size={26} showValueLabel={false} />
       </div>
       <div
         className="flex items-stretch justify-center gap-0.5 border-b px-0.5 py-px"
-        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 21, height: 21 }}
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: mixRowHeight(MIXER_ROW_IX.db), height: mixRowHeight(MIXER_ROW_IX.db) }}
       >
         <span className={LOGIC_MIX.readout}>{faderToDbLabel(daw.masterVolume)}</span>
         <span className={`${LOGIC_MIX.readout} ${LOGIC_MIX.readoutPeak}`}>{peakToDbDisplay(peak)}</span>
       </div>
       <div
         className="border-b"
-        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: MIXER_METER_H + 6, height: MIXER_METER_H + 6 }}
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: mixRowHeight(MIXER_ROW_IX.fader), height: mixRowHeight(MIXER_ROW_IX.fader) }}
       >
         <VerticalMixerFader
           value={daw.masterVolume}
@@ -2148,14 +2176,20 @@ function MasterMixerStrip() {
       </div>
       <div
         className="flex items-center justify-center border-b py-0.5"
-        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 22, height: 22 }}
+        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: mixRowHeight(MIXER_ROW_IX.rec), height: mixRowHeight(MIXER_ROW_IX.rec) }}
         aria-hidden
       >
         <span className="text-[8px] font-medium text-[#555]">&#8203;</span>
       </div>
       <div
         className="flex items-center justify-center gap-1.5 py-0.5"
-        style={{ borderColor: LOGIC_MIX.rowLine, minHeight: 26, height: 26, borderBottomWidth: 1, borderBottomStyle: "solid" }}
+        style={{
+          borderColor: LOGIC_MIX.rowLine,
+          minHeight: mixRowHeight(MIXER_ROW_IX.ms),
+          height: mixRowHeight(MIXER_ROW_IX.ms),
+          borderBottomWidth: 1,
+          borderBottomStyle: "solid",
+        }}
       >
         <button
           type="button"
@@ -2173,8 +2207,10 @@ function MasterMixerStrip() {
         </button>
       </div>
       <div
-        className="mt-auto flex min-h-[22px] items-center justify-center truncate border-t px-0.5 py-0.5 text-center text-[9px] font-bold leading-none text-white"
+        className="mt-auto flex shrink-0 items-center justify-center truncate border-t px-0.5 py-0.5 text-center text-[9px] font-bold leading-none text-white"
         style={{
+          minHeight: mixRowHeight(MIXER_ROW_IX.name),
+          height: mixRowHeight(MIXER_ROW_IX.name),
           backgroundColor: "#8b3d8a",
           borderColor: "#000",
           textShadow: "0 1px 2px rgba(0,0,0,0.65)",

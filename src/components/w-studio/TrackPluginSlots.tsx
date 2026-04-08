@@ -14,7 +14,7 @@ const slotEmpty =
 export function TrackPluginSlots({ slots }: Props) {
   const daw = useDaw();
   return (
-    <div className="flex w-full flex-col gap-[3px]">
+    <div className="flex w-full flex-col gap-[2px]">
       {[0, 1, 2, 3].map((i) => {
         const s = slots[i];
         const filled = Boolean(s?.pluginId);
@@ -39,7 +39,7 @@ export function TrackPluginSlots({ slots }: Props) {
 
 export function InsertRowPlaceholder() {
   return (
-    <div className="flex w-full flex-col gap-[3px]">
+    <div className="flex w-full flex-col gap-[2px]">
       {[0, 1, 2, 3].map((i) => (
         <div
           key={i}
