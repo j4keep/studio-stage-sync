@@ -25,6 +25,7 @@ import {
 import { MIC_CHAIN_PRESETS } from "./micPresets";
 import { REMOTE_LIBRARY_BY_CATEGORY } from "./remoteLibrary";
 import { Headphones } from "lucide-react";
+import { RemoteSessionPanel } from "./RemoteSessionPanel";
 import ChannelMeter from "./ChannelMeter";
 import { resolveStereo, trackShowsStereoMeters, trackToChannelConfig } from "./channelConfig";
 import { DawProvider, INPUT_SOURCE_OPTIONS, meterPeakLR, meterPeakScalar, useDaw, type DawMeterPeak } from "./DawContext";
@@ -2657,6 +2658,7 @@ function DawChrome() {
   const [inspectorOpen, setInspectorOpen] = useState(true);
   const [editorsOpen, setEditorsOpen] = useState(false);
   const [focusWorkbench, setFocusWorkbench] = useState(false);
+  const [remoteSessionOpen, setRemoteSessionOpen] = useState(false);
   const [mixerFilter, setMixerFilter] = useState("Tracks");
   const [arrangeTool, setArrangeTool] = useState<ArrangeEditTool>("pointer");
   const fileRef = useRef<HTMLInputElement>(null);
