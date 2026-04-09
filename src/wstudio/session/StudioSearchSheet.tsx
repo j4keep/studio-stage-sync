@@ -199,21 +199,14 @@ export function StudioSearchSheet({
               <p className="py-8 text-center text-sm text-zinc-500">No studios found</p>
             ) : (
               filtered.map((studio) => {
-                const thumb = studio.photos?.[0]?.photo_url;
+                const photos = studio.photos ?? [];
                 return (
                   <button
                     key={studio.id}
                     onClick={() => setSelected(studio)}
                     className="flex flex-col gap-2 rounded-xl border border-zinc-800 bg-zinc-900/60 text-left transition hover:border-amber-700/40 overflow-hidden"
                   >
-                    {/* Photo thumbnail */}
-                    {thumb && (
-                      <div className="w-full h-32 overflow-hidden">
-                        <img src={thumb} alt={studio.name} className="w-full h-full object-cover" />
-                      </div>
-                    )}
-
-                    <div className="p-3 pt-2 flex flex-col gap-2">
+                    <div className="p-3 flex flex-col gap-2">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <h3 className="text-sm font-semibold text-white">{studio.name}</h3>
@@ -227,6 +220,25 @@ export function StudioSearchSheet({
                           <span className="text-xs font-medium">{studio.rating}</span>
                         </div>
                       </div>
+
+                      {/* Small photo thumbnails - tap to expand */}
+                      {photos.length > 0 && (
+                        <div className="flex gap-1.5">
+                          {photos.slice(0, 4).map((photo, i) => (
+                            <button
+                              key={photo.id}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setExpandedPhotos(photos);
+                                setExpandedIndex(i);
+                              }}
+                              className="w-14 h-14 rounded-lg overflow-hidden border border-zinc-700 hover:border-amber-500/50 transition flex-shrink-0"
+                            >
+                              <img src={photo.photo_url} alt={`Studio ${i + 1}`} className="w-full h-full object-cover" />
+                            </button>
+                          ))}
+                        </div>
+                      )}
 
                       {/* Engineer profile row */}
                       {studio.profile && (
