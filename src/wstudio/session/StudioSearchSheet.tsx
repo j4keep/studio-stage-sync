@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Search, MapPin, Star, Wifi, Clock } from "lucide-react";
+import { Search, MapPin, Star, Wifi, Clock, ChevronLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -135,10 +135,18 @@ export function StudioSearchSheet({
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
       <SheetContent side="bottom" className="h-[85vh] rounded-t-2xl border-zinc-800 bg-zinc-950 p-0">
-        <SheetHeader className="border-b border-zinc-800 px-4 py-3">
+        <SheetHeader className="border-b border-zinc-800 px-4 py-3 flex flex-row items-center justify-between">
+          <button
+            onClick={onClose}
+            className="flex items-center gap-1 text-sm font-semibold text-white hover:text-amber-300 transition"
+          >
+            <ChevronLeft className="h-5 w-5" />
+            Back
+          </button>
           <SheetTitle className="text-sm font-semibold text-white">
             {selected ? "Book Session" : "Find a Studio"}
           </SheetTitle>
+          <div className="w-14" />
         </SheetHeader>
 
         {!selected ? (
