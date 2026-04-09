@@ -1188,10 +1188,13 @@ export type Database = {
       studio_bookings: {
         Row: {
           approval_deadline: string | null
+          artist_confirmed: boolean | null
+          artist_responded_at: string | null
           booking_date: string
           cancellation_fee: number
           cancelled_at: string | null
           created_at: string
+          engineer_completed_at: string | null
           hours: number
           id: string
           payout_status: string
@@ -1204,10 +1207,13 @@ export type Database = {
         }
         Insert: {
           approval_deadline?: string | null
+          artist_confirmed?: boolean | null
+          artist_responded_at?: string | null
           booking_date: string
           cancellation_fee?: number
           cancelled_at?: string | null
           created_at?: string
+          engineer_completed_at?: string | null
           hours?: number
           id?: string
           payout_status?: string
@@ -1220,10 +1226,13 @@ export type Database = {
         }
         Update: {
           approval_deadline?: string | null
+          artist_confirmed?: boolean | null
+          artist_responded_at?: string | null
           booking_date?: string
           cancellation_fee?: number
           cancelled_at?: string | null
           created_at?: string
+          engineer_completed_at?: string | null
           hours?: number
           id?: string
           payout_status?: string
