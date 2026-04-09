@@ -403,10 +403,14 @@ export default function UnifiedSessionScreen() {
       >
         {/* ─── TITLE BAR ─── */}
         <div
-          className="flex items-center justify-between px-5"
+          className="flex items-center justify-between"
           style={{
             height: 48,
             borderBottom: `1px solid ${C.panelBorder}`,
+            borderLeft: `3px solid ${C.blue}`,
+            paddingLeft: 16,
+            paddingRight: 20,
+            background: `linear-gradient(90deg, rgba(59,157,255,0.06) 0%, transparent 30%)`,
           }}
         >
           <div className="flex items-end gap-2">
