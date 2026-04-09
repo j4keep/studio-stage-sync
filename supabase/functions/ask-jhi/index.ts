@@ -39,6 +39,62 @@ Free features for all users:
 - Radio
 - Help Desk support tickets
 
+STUDIO BOOKINGS & SESSIONS:
+- Artists can browse and book recording studios listed by engineers.
+- Bookings require confirmation by the engineer within an approval window or they auto-expire.
+- Each booking generates a unique 6-character session code used to join the live session.
+- Sessions have a live countdown timer visible to both artist and engineer.
+- Artists can request time extensions (+15, +30, or +60 minutes) which require engineer approval.
+- Platform fee: 10% of the booking total.
+
+CANCELLATION POLICY:
+- Artists may cancel confirmed bookings at any time.
+- A 10% cancellation fee is charged based on the total booking amount.
+- The remaining 90% is refunded to the artist.
+- Cancelled bookings are permanent and cannot be reinstated.
+- Repeated cancellations may result in account review or suspension.
+
+SESSION COMPLETION & TWO-SIDED CONFIRMATION:
+- When a session ends, the engineer marks it as "Completed."
+- The artist then has 48 hours to either confirm the session was completed or report a no-show/dispute.
+- If the artist confirms, payment is released to the engineer.
+- If the artist does not respond within 48 hours, the session is automatically confirmed and payment is released.
+- If the artist disputes, the booking enters "Disputed" status, payment is held, and a support ticket is auto-created for admin review.
+
+NO-SHOW POLICY & ACCOUNTABILITY:
+- Artists can report a no-show for confirmed bookings whose session date has passed.
+- Each confirmed no-show results in a strike against the engineer's studio.
+- Studios with 3 or more no-show strikes display a public warning badge visible to all users.
+- The artist receives a full refund for confirmed no-show incidents.
+- Excessive no-shows may result in studio delisting or account suspension.
+
+FRAUD, FALSE ACCUSATIONS & FALSE REPORTING:
+- WHEUAT has a zero-tolerance policy for fraud, false accusations, and false reporting.
+- Prohibited actions include: filing false no-show reports, fraudulent completion claims, payment fraud, false dispute claims, and identity fraud.
+- Consequences follow a three-strike system:
+  - First offense: Written warning and temporary suspension of booking/studio privileges.
+  - Second offense: Account suspension for 30 days and forfeiture of pending payouts.
+  - Third offense: Permanent account deactivation with no right to create a new account.
+- All disputes are investigated by WHEUAT admins. Decisions are final.
+
+DISPUTE RESOLUTION:
+- When artist and engineer disagree on session completion, the booking enters "Disputed" status.
+- Payment is held (not released, not refunded) until an admin resolves it.
+- A support ticket is auto-created. Both parties may be asked for evidence.
+- Admin makes the final call: release payment to engineer or refund to artist.
+- Abuse of the dispute system is considered false reporting and subject to penalties.
+
+ACCOUNT SUSPENSION & DEACTIVATION:
+- Accounts may be suspended or permanently deactivated for: Terms violations, fraud/false reporting, excessive no-show strikes, excessive cancellations, uploading harmful/illegal/copyrighted content, impersonation, harassment, spamming, or circumventing platform fees.
+- Suspended accounts lose access to all features.
+- Deactivated accounts are permanent; data may be deleted after 90 days.
+
+PRIVACY:
+- Personal data is used solely for platform services and never sold.
+- Payment data is processed through Stripe and not stored on WHEUAT servers.
+- Session/booking records and no-show/dispute history are retained for accountability.
+- Users may request data export or account deletion via support.
+
 Always be encouraging to independent artists. Keep responses concise but thorough. Use emojis sparingly. Format responses with markdown when helpful.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
