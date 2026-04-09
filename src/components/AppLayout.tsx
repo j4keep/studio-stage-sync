@@ -6,6 +6,7 @@ import GlobalPlaylistPlayer from "./GlobalPlaylistPlayer";
 import PlaylistPlayerSheet from "./PlaylistPlayerSheet";
 import NotificationBell from "./NotificationBell";
 import JhiIcon from "./JhiIcon";
+import UnratedSessionPopup from "./UnratedSessionPopup";
 import { MessageCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useProGate } from "@/hooks/use-pro-gate";
@@ -72,6 +73,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
         <BottomNav />
       </div>
       <ProGateModal open={showProModal} onClose={closeProModal} featureName={gatedFeature} onSubscribe={activatePro} />
+      <UnratedSessionPopup />
     </div>
   );
 };
