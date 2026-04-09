@@ -175,13 +175,16 @@ const MyStudiosPage = () => {
     setUpdatingId(bookingId);
     const { error } = await (supabase as any)
       .from("studio_bookings")
-      .update({ session_status: "completed", payout_status: "released" })
+      .update({
+        session_status: "awaiting_confirmation",
+        engineer_completed_at: new Date().toISOString(),
+      })
       .eq("id", bookingId);
     setUpdatingId(null);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Session completed — payout released!" });
+      toast({ title: "Session marked complete — awaiting artist confirmation", description: "Payment will be released once the artist confirms, or auto-released after 48 hours." });
       fetchBookings();
     }
   };
