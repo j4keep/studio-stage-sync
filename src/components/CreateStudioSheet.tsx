@@ -62,7 +62,7 @@ const CreateStudioSheet = ({ open, onClose, onCreated }: CreateStudioSheetProps)
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
-    const remaining = 6 - photoUrls.length;
+    const remaining = 4 - photoUrls.length;
     const toUpload = Array.from(files).slice(0, remaining);
     if (toUpload.length === 0) return;
 
@@ -269,11 +269,11 @@ const CreateStudioSheet = ({ open, onClose, onCreated }: CreateStudioSheetProps)
           {/* Photos */}
           <div>
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Photos ({photoUrls.length}/6)
+              Photos ({photoUrls.length}/4)
             </label>
-            <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden"
+            <input ref={fileInputRef} type="file" accept="image/jpeg,.jpg,.png,.webp,image/*" multiple className="hidden"
               onChange={handlePhotoUpload} />
-            <button onClick={() => fileInputRef.current?.click()} disabled={photoUrls.length >= 6 || uploadingPhoto}
+            <button onClick={() => fileInputRef.current?.click()} disabled={photoUrls.length >= 4 || uploadingPhoto}
               className="w-full mt-1.5 py-3 rounded-xl border border-dashed border-border bg-card text-sm text-muted-foreground flex items-center justify-center gap-2 hover:border-primary/50 transition-all disabled:opacity-50">
               {uploadingPhoto ? (
                 <><div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" /> Uploading...</>
