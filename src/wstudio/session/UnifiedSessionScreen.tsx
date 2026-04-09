@@ -436,7 +436,7 @@ export default function UnifiedSessionScreen() {
             </Panel>
 
             {/* ── SESSION TIMER between video tiles ── */}
-            {connected && (
+            {(
               <Panel className="flex flex-col gap-1.5 px-3 py-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
