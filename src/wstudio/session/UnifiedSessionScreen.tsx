@@ -304,6 +304,9 @@ export default function UnifiedSessionScreen() {
             <span style={{ color: C.label, fontSize: 12, fontWeight: 300, letterSpacing: "0.1em", paddingBottom: 2 }}>RECEIVE</span>
           </div>
           <div className="flex items-center gap-3" style={{ color: C.label }}>
+            <button onPointerDown={(e) => { e.preventDefault(); toggleFullscreen(); }} className="hover:text-white" title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}>
+              {isFullscreen ? "⊡" : "⛶"}
+            </button>
             <button className="hover:text-white">☰</button>
             <button onPointerDown={(e) => { e.preventDefault(); leaveSession(); }} className="hover:text-white">✕</button>
           </div>
