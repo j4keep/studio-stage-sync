@@ -430,7 +430,7 @@ export default function UnifiedSessionScreen() {
         
 
         {/* ─── MAIN GRID ─── */}
-        <div className="relative grid gap-2 p-2" style={{ gridTemplateColumns: "280px 1fr 260px", gridTemplateRows: "auto 1fr auto auto" }}>
+        <div className="relative grid gap-2 p-2" style={{ gridTemplateColumns: "280px 1fr 260px", gridTemplateRows: "auto 1fr auto" }}>
           {/* Controls lock overlay when session ended */}
           {controlsLocked && <SessionControlsLockOverlay />}
 
