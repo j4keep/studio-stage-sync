@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import ReactDOM from "react-dom";
 import { Search, Star, Wifi, Clock, ChevronLeft, ChevronRight, X, ImageIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -445,5 +446,6 @@ export function StudioSearchSheet({
         </div>,
         document.body
       )}
+    </>
   );
 }
