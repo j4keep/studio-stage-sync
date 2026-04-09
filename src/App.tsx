@@ -34,6 +34,7 @@ import MyStorePage from "./pages/MyStorePage";
 import EarningsPage from "./pages/EarningsPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
 import MyStudiosPage from "./pages/MyStudiosPage";
+import MyBookingsPage from "./pages/MyBookingsPage";
 import StorePage from "./pages/StorePage";
 import MessagesPage from "./pages/MessagesPage";
 import BrowseSongsPage from "./pages/BrowseSongsPage";
@@ -193,6 +194,7 @@ const ProtectedRoutes = () => {
         <Route path="/earnings" element={<EarningsPage />} />
         <Route path="/analytics" element={<AnalyticsPage />} />
         <Route path="/my-studios" element={<MyStudiosPage />} />
+        <Route path="/my-bookings" element={<MyBookingsPage />} />
         <Route path="/store" element={<StorePage />} />
         <Route path="/messages" element={<MessagesPage />} />
         <Route path="/browse-songs" element={<BrowseSongsPage />} />
