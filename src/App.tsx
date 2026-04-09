@@ -49,8 +49,7 @@ import AskJhiPage from "./pages/AskJhiPage";
 import FeedPage from "./pages/FeedPage";
 import { WStudioLayout } from "./wstudio/WStudioLayout";
 import SessionJoinScreen from "./wstudio/session/SessionJoinScreen";
-import ArtistSessionScreen from "./wstudio/session/ArtistSessionScreen";
-import EngineerSessionScreen from "./wstudio/session/EngineerSessionScreen";
+import UnifiedSessionScreen from "./wstudio/session/UnifiedSessionScreen";
 
 import TermsAgreementGate from "./components/TermsAgreementGate";
 import ThemePickerSheet from "./components/ThemePickerSheet";
