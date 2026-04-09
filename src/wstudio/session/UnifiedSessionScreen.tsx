@@ -28,6 +28,13 @@ const C = {
   red: "#ef4444",
   blue: "#3b9dff",
   white: "#ffffff",
+  /* Mainstream accent colors */
+  acMagenta: "#e040a0",
+  acGreen: "#40e060",
+  acOrange: "#f08030",
+  acCyan: "#40d0e0",
+  acPurple: "#a040e0",
+  acLime: "#60e040",
 };
 
 /* ─── Interactive SVG Knob ─── */
