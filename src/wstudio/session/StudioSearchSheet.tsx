@@ -211,7 +211,7 @@ export function StudioSearchSheet({
           <div className="flex flex-col gap-4 overflow-y-auto p-4" style={{ maxHeight: "calc(85vh - 56px)" }}>
             <button
               onClick={() => setSelected(null)}
-              className="self-start text-xs text-zinc-400 hover:text-white"
+              className="self-start flex items-center gap-1 text-sm font-semibold text-white hover:text-amber-300 transition"
             >
               ← Back to results
             </button>
