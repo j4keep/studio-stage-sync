@@ -110,11 +110,6 @@ const MyStudiosPage = () => {
             return (
               <motion.div key={studio.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
                 className="rounded-xl bg-card border border-border overflow-hidden">
-                {thumb && (
-                  <div className="w-full h-28 overflow-hidden">
-                    <img src={thumb} alt={studio.name} className="w-full h-full object-cover" />
-                  </div>
-                )}
                 <div className="p-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Search, Star, Wifi, Clock, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Star, Wifi, Clock, ChevronLeft, ChevronRight, X, ImageIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -54,6 +54,8 @@ export function StudioSearchSheet({
   const [selected, setSelected] = useState<(Studio & { profile?: StudioProfile; photos?: StudioPhoto[] }) | null>(null);
   const [hours, setHours] = useState(2);
   const [photoIndex, setPhotoIndex] = useState(0);
+  const [expandedPhotos, setExpandedPhotos] = useState<StudioPhoto[] | null>(null);
+  const [expandedIndex, setExpandedIndex] = useState(0);
   const [bookingDate, setBookingDate] = useState(() => {
     const d = new Date();
     d.setMinutes(d.getMinutes() - (d.getMinutes() % 15), 0, 0);
@@ -197,21 +199,14 @@ export function StudioSearchSheet({
               <p className="py-8 text-center text-sm text-zinc-500">No studios found</p>
             ) : (
               filtered.map((studio) => {
-                const thumb = studio.photos?.[0]?.photo_url;
+                const photos = studio.photos ?? [];
                 return (
                   <button
                     key={studio.id}
                     onClick={() => setSelected(studio)}
                     className="flex flex-col gap-2 rounded-xl border border-zinc-800 bg-zinc-900/60 text-left transition hover:border-amber-700/40 overflow-hidden"
                   >
-                    {/* Photo thumbnail */}
-                    {thumb && (
-                      <div className="w-full h-32 overflow-hidden">
-                        <img src={thumb} alt={studio.name} className="w-full h-full object-cover" />
-                      </div>
-                    )}
-
-                    <div className="p-3 pt-2 flex flex-col gap-2">
+                    <div className="p-3 flex flex-col gap-2">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <h3 className="text-sm font-semibold text-white">{studio.name}</h3>
@@ -225,6 +220,25 @@ export function StudioSearchSheet({
                           <span className="text-xs font-medium">{studio.rating}</span>
                         </div>
                       </div>
+
+                      {/* Small photo thumbnails - tap to expand */}
+                      {photos.length > 0 && (
+                        <div className="flex gap-1.5">
+                          {photos.slice(0, 4).map((photo, i) => (
+                            <button
+                              key={photo.id}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setExpandedPhotos(photos);
+                                setExpandedIndex(i);
+                              }}
+                              className="w-14 h-14 rounded-lg overflow-hidden border border-zinc-700 hover:border-amber-500/50 transition flex-shrink-0"
+                            >
+                              <img src={photo.photo_url} alt={`Studio ${i + 1}`} className="w-full h-full object-cover" />
+                            </button>
+                          ))}
+                        </div>
+                      )}
 
                       {/* Engineer profile row */}
                       {studio.profile && (
@@ -390,6 +404,40 @@ export function StudioSearchSheet({
           </div>
         )}
       </SheetContent>
+
+      {/* Expanded photo overlay */}
+      {expandedPhotos && (
+        <div className="fixed inset-0 z-[100] bg-black/90 flex flex-col items-center justify-center">
+          <button
+            onClick={() => setExpandedPhotos(null)}
+            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-zinc-800 flex items-center justify-center text-white z-10"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <img
+            src={expandedPhotos[expandedIndex]?.photo_url}
+            alt={`Studio photo ${expandedIndex + 1}`}
+            className="max-w-[90vw] max-h-[70vh] rounded-xl object-contain"
+          />
+          {expandedPhotos.length > 1 && (
+            <div className="flex items-center gap-4 mt-4">
+              <button
+                onClick={() => setExpandedIndex((expandedIndex - 1 + expandedPhotos.length) % expandedPhotos.length)}
+                className="w-9 h-9 rounded-full bg-zinc-800 flex items-center justify-center text-white"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <span className="text-sm text-zinc-400">{expandedIndex + 1} / {expandedPhotos.length}</span>
+              <button
+                onClick={() => setExpandedIndex((expandedIndex + 1) % expandedPhotos.length)}
+                className="w-9 h-9 rounded-full bg-zinc-800 flex items-center justify-center text-white"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </Sheet>
   );
 }
