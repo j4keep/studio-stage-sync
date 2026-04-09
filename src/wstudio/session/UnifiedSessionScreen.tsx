@@ -265,14 +265,16 @@ function Waveform({ recording }: { recording: boolean }) {
 }
 
 /* ─── Panel wrapper ─── */
-function Panel({ children, style, className = "" }: { children: React.ReactNode; style?: React.CSSProperties; className?: string }) {
+function Panel({ children, style, className = "", accent }: { children: React.ReactNode; style?: React.CSSProperties; className?: string; accent?: string }) {
   return (
     <div
       className={`overflow-hidden rounded-[4px] ${className}`}
       style={{
         background: `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
-        border: `1px solid ${C.panelBorder}`,
-        boxShadow: `inset 0 1px 0 rgba(255,255,255,0.04), 0 1px 0 rgba(255,255,255,0.02)`,
+        border: accent ? `1.5px solid ${accent}` : `1px solid ${C.panelBorder}`,
+        boxShadow: accent
+          ? `inset 0 1px 0 rgba(255,255,255,0.04), 0 0 12px ${accent}30, 0 1px 0 rgba(255,255,255,0.02)`
+          : `inset 0 1px 0 rgba(255,255,255,0.04), 0 1px 0 rgba(255,255,255,0.02)`,
         ...style,
       }}
     >
