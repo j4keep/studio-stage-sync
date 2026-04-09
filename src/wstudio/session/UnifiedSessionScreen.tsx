@@ -628,9 +628,9 @@ export default function UnifiedSessionScreen() {
               REMOTE VOCAL
             </div>
             <Inset className="p-3">
-              <HorizontalMeter level={remoteVocalLevel} />
+              <HorizontalMeter level={0} />
               <div className="mt-2">
-                <SpectrumBars level={remoteVocalLevel} />
+                <SpectrumBars level={0} />
               </div>
               <div className="mt-1">
                 <FreqLabels />
