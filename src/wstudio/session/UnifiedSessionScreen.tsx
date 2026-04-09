@@ -204,7 +204,7 @@ function Waveform({ recording }: { recording: boolean }) {
     frame = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(frame);
   }, [recording]);
-  return <canvas ref={ref} width={1200} height={64} className="block h-[64px] w-full" />;
+  return <canvas ref={ref} width={1200} height={64} className="block h-[40px] w-full" />;
 }
 
 function Panel({ children, style, className = "", accent }: { children: React.ReactNode; style?: React.CSSProperties; className?: string; accent?: string }) {
