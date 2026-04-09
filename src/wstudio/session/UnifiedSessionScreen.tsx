@@ -283,12 +283,13 @@ export default function UnifiedSessionScreen() {
 
   return (
     <div ref={shellRef} className="flex min-h-screen select-none items-center justify-center overflow-hidden" style={{ background: "#111214", padding: isFullscreen ? 0 : 16 }}>
-      <div className="w-full overflow-hidden rounded-lg" style={{
+      <div className="w-full overflow-hidden rounded-lg flex flex-col" style={{
         maxWidth: isFullscreen ? "100%" : 1100,
         height: isFullscreen ? "100vh" : "auto",
         background: `linear-gradient(180deg, ${C.shell} 0%, ${C.shellDark} 100%)`,
-        border: `1px solid ${C.shellEdge}`,
-        boxShadow: `0 24px 80px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06)`,
+        border: isFullscreen ? "none" : `1px solid ${C.shellEdge}`,
+        borderRadius: isFullscreen ? 0 : undefined,
+        boxShadow: isFullscreen ? "none" : `0 24px 80px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06)`,
         color: C.text,
       }}>
         {/* ─── TITLE BAR ─── */}
