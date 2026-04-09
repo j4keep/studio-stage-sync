@@ -403,19 +403,19 @@ export default function UnifiedSessionScreen() {
       >
         {/* ─── TITLE BAR ─── */}
         <div
-          className="flex items-center justify-between"
+          className="flex items-center justify-between px-5"
           style={{
             height: 48,
             borderBottom: `1px solid ${C.panelBorder}`,
-            borderLeft: `3px solid ${C.blue}`,
-            paddingLeft: 16,
-            paddingRight: 20,
-            background: `linear-gradient(90deg, rgba(59,157,255,0.06) 0%, transparent 30%)`,
           }}
         >
           <div className="flex items-end gap-2">
             <span className="text-[20px] font-black tracking-tight">
-              W<span style={{ color: C.blue }}>.</span>STUDIO
+              <span style={{ position: "relative", display: "inline-block" }}>
+                <span style={{ fontWeight: 900 }}>W</span>
+                <span style={{ position: "absolute", left: 0, top: 2, bottom: 2, width: 3, background: C.blue, borderRadius: 1 }} />
+              </span>
+              <span style={{ color: C.blue }}>.</span>STUDIO
             </span>
             <span style={{ color: C.label, fontSize: 12, fontWeight: 300, letterSpacing: "0.1em", paddingBottom: 2 }}>
               RECEIVE
