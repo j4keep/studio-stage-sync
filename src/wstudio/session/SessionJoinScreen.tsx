@@ -148,6 +148,7 @@ export default function SessionJoinScreen() {
         onClose={() => setShowSearch(false)}
         onBooked={handleBooked}
       />
+      </div>
     </div>
   );
 }
