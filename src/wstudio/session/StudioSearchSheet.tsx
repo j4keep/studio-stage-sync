@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Search, Star, Wifi, Clock, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Star, Wifi, Clock, ChevronLeft, ChevronRight, X, ImageIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
