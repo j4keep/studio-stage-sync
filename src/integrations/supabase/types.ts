@@ -1149,6 +1149,8 @@ export type Database = {
           created_at: string
           hours: number
           id: string
+          session_code: string | null
+          session_status: string
           status: string
           studio_id: string
           total_amount: number
@@ -1159,6 +1161,8 @@ export type Database = {
           created_at?: string
           hours?: number
           id?: string
+          session_code?: string | null
+          session_status?: string
           status?: string
           studio_id: string
           total_amount?: number
@@ -1169,6 +1173,8 @@ export type Database = {
           created_at?: string
           hours?: number
           id?: string
+          session_code?: string | null
+          session_status?: string
           status?: string
           studio_id?: string
           total_amount?: number

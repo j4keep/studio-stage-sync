@@ -22,7 +22,7 @@ export function VideoPanel({
   const vidRef = useRef<HTMLVideoElement>(null);
 
   const hasRenderableVideo =
-    !!stream?.getVideoTracks().some((t) => t.readyState === "live" || t.readyState === "new");
+    !!stream?.getVideoTracks().some((t) => t.readyState === "live" || (t.readyState as string) === "new");
 
   useEffect(() => {
     const el = vidRef.current;
