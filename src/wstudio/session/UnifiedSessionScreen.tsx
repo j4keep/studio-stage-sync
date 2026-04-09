@@ -663,9 +663,9 @@ export default function UnifiedSessionScreen() {
               EFFECTS
             </div>
             <div className="mt-4 flex items-center justify-around">
-              <Knob label="Comp" value={0.34} size={66} />
-              <Knob label="EQ" value={0.48} size={66} />
-              <Knob label="Reverb" value={0.58} size={66} />
+              <Knob label="Comp" value={compVal} size={66} onChange={setCompVal} />
+              <Knob label="EQ" value={eqVal} size={66} onChange={setEqVal} />
+              <Knob label="Reverb" value={reverbVal} size={66} onChange={setReverbVal} />
             </div>
           </Panel>
 
