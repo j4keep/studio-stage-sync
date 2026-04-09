@@ -1145,10 +1145,14 @@ export type Database = {
       }
       studio_bookings: {
         Row: {
+          approval_deadline: string | null
           booking_date: string
+          cancellation_fee: number
+          cancelled_at: string | null
           created_at: string
           hours: number
           id: string
+          payout_status: string
           session_code: string | null
           session_status: string
           status: string
@@ -1157,10 +1161,14 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          approval_deadline?: string | null
           booking_date: string
+          cancellation_fee?: number
+          cancelled_at?: string | null
           created_at?: string
           hours?: number
           id?: string
+          payout_status?: string
           session_code?: string | null
           session_status?: string
           status?: string
@@ -1169,10 +1177,14 @@ export type Database = {
           user_id: string
         }
         Update: {
+          approval_deadline?: string | null
           booking_date?: string
+          cancellation_fee?: number
+          cancelled_at?: string | null
           created_at?: string
           hours?: number
           id?: string
+          payout_status?: string
           session_code?: string | null
           session_status?: string
           status?: string
@@ -1269,6 +1281,7 @@ export type Database = {
       }
       studios: {
         Row: {
+          auto_accept: boolean
           created_at: string
           daily_rate: number | null
           description: string | null
@@ -1284,6 +1297,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          auto_accept?: boolean
           created_at?: string
           daily_rate?: number | null
           description?: string | null
@@ -1299,6 +1313,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          auto_accept?: boolean
           created_at?: string
           daily_rate?: number | null
           description?: string | null
@@ -1421,6 +1436,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      expire_pending_bookings: { Args: never; Returns: number }
       increment_battle_views: {
         Args: { battle_id: string }
         Returns: undefined
