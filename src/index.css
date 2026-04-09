@@ -51,6 +51,27 @@
     --gradient-primary: linear-gradient(135deg, hsl(204 100% 50%), hsl(220 100% 60%));
     --gradient-card: linear-gradient(145deg, hsl(0 0% 9%), hsl(0 0% 6%));
     --gradient-surface: linear-gradient(180deg, hsl(0 0% 8%), hsl(0 0% 4%));
+
+    /* W.Studio plugin tokens */
+    --wstudio-backdrop: 228 14% 5%;
+    --wstudio-shell-top: 222 8% 21%;
+    --wstudio-shell: 223 8% 13%;
+    --wstudio-shell-edge: 220 8% 29%;
+    --wstudio-shell-outline: 225 14% 4%;
+    --wstudio-panel-top: 220 9% 17%;
+    --wstudio-panel-bottom: 220 10% 11%;
+    --wstudio-panel-border: 220 8% 23%;
+    --wstudio-panel-inset: 222 11% 7%;
+    --wstudio-track: 224 12% 6%;
+    --wstudio-screen: 34 12% 24%;
+    --wstudio-text: 0 0% 94%;
+    --wstudio-label: 220 7% 71%;
+    --wstudio-dim: 220 7% 48%;
+    --wstudio-metal: 0 0% 72%;
+    --wstudio-blue: 210 95% 58%;
+    --wstudio-green: 97 78% 57%;
+    --wstudio-yellow: 45 95% 59%;
+    --wstudio-red: 3 90% 62%;
   }
 
   .dark {
@@ -134,6 +155,122 @@
   }
 }
 
+@layer components {
+  .wstudio-shell {
+    background-image:
+      linear-gradient(180deg, hsl(var(--wstudio-shell-top)) 0%, hsl(var(--wstudio-shell)) 100%),
+      linear-gradient(90deg, hsl(0 0% 100% / 0.02) 0%, transparent 10%, transparent 90%, hsl(0 0% 100% / 0.02) 100%);
+    border: 1px solid hsl(var(--wstudio-shell-edge));
+    box-shadow:
+      0 26px 90px hsl(var(--wstudio-backdrop) / 0.82),
+      inset 0 1px 0 hsl(0 0% 100% / 0.06),
+      inset 0 0 0 1px hsl(var(--wstudio-shell-outline) / 0.64);
+    color: hsl(var(--wstudio-text));
+    overflow: hidden;
+  }
+
+  .wstudio-panel {
+    background-image: linear-gradient(180deg, hsl(var(--wstudio-panel-top)) 0%, hsl(var(--wstudio-panel-bottom)) 100%);
+    border: 1px solid hsl(var(--wstudio-panel-border));
+    box-shadow:
+      inset 0 1px 0 hsl(0 0% 100% / 0.05),
+      inset 0 0 0 1px hsl(var(--wstudio-shell-outline) / 0.46),
+      0 1px 0 hsl(0 0% 100% / 0.03);
+    min-width: 0;
+  }
+
+  .wstudio-inset {
+    background-image: linear-gradient(180deg, hsl(var(--wstudio-track)) 0%, hsl(var(--wstudio-panel-inset)) 100%);
+    border: 1px solid hsl(var(--wstudio-panel-border));
+    box-shadow: inset 0 1px 2px hsl(var(--wstudio-shell-outline) / 0.84);
+  }
+
+  .wstudio-screen {
+    background-image:
+      radial-gradient(circle at 50% 10%, hsl(0 0% 100% / 0.08), transparent 28%),
+      linear-gradient(180deg, hsl(var(--wstudio-screen)) 0%, hsl(var(--wstudio-track)) 100%);
+    border: 1px solid hsl(var(--wstudio-panel-border));
+    box-shadow: inset 0 0 0 1px hsl(var(--wstudio-shell-outline) / 0.5);
+  }
+
+  .wstudio-divider {
+    height: 1px;
+    width: 100%;
+    background: linear-gradient(90deg, transparent 0%, hsl(var(--wstudio-panel-border)) 12%, hsl(var(--wstudio-panel-border)) 88%, transparent 100%);
+  }
+
+  .wstudio-button {
+    background-image: linear-gradient(180deg, hsl(var(--wstudio-panel-top)) 0%, hsl(var(--wstudio-panel-bottom)) 100%);
+    border: 1px solid hsl(var(--wstudio-panel-border));
+    color: hsl(var(--wstudio-text));
+    box-shadow:
+      inset 0 1px 0 hsl(0 0% 100% / 0.06),
+      inset 0 -1px 0 hsl(var(--wstudio-shell-outline) / 0.7),
+      0 3px 10px hsl(var(--wstudio-shell-outline) / 0.32);
+    transition: filter 140ms ease, transform 140ms ease, box-shadow 140ms ease;
+  }
+
+  .wstudio-button:hover {
+    filter: brightness(1.05);
+  }
+
+  .wstudio-button:active {
+    transform: translateY(1px);
+  }
+
+  .wstudio-button-active {
+    box-shadow:
+      inset 0 0 0 1px hsl(var(--wstudio-blue) / 0.42),
+      inset 0 1px 0 hsl(0 0% 100% / 0.07),
+      0 0 16px hsl(var(--wstudio-blue) / 0.16);
+  }
+
+  .wstudio-button-danger {
+    box-shadow:
+      inset 0 0 0 1px hsl(var(--wstudio-red) / 0.4),
+      inset 0 1px 0 hsl(0 0% 100% / 0.06),
+      0 0 16px hsl(var(--wstudio-red) / 0.12);
+  }
+
+  .wstudio-icon-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-image: linear-gradient(180deg, hsl(var(--wstudio-panel-top)) 0%, hsl(var(--wstudio-panel-bottom)) 100%);
+    border: 1px solid hsl(var(--wstudio-panel-border));
+    color: hsl(var(--wstudio-label));
+    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.05), inset 0 -1px 0 hsl(var(--wstudio-shell-outline) / 0.7);
+  }
+
+  .wstudio-icon-button-active {
+    color: hsl(var(--wstudio-text));
+    box-shadow:
+      inset 0 0 0 1px hsl(var(--wstudio-blue) / 0.44),
+      inset 0 1px 0 hsl(0 0% 100% / 0.06),
+      0 0 18px hsl(var(--wstudio-blue) / 0.18);
+  }
+
+  .wstudio-status-badge {
+    background-image: linear-gradient(180deg, hsl(var(--wstudio-green) / 0.96) 0%, hsl(99 66% 39%) 100%);
+    color: hsl(0 0% 100%);
+    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.22), 0 0 0 1px hsl(var(--wstudio-shell-outline) / 0.34);
+  }
+
+  .wstudio-talk-orb {
+    background-image:
+      radial-gradient(circle at 32% 28%, hsl(0 0% 100% / 0.36) 0%, transparent 34%),
+      linear-gradient(180deg, hsl(var(--wstudio-blue)) 0%, hsl(210 84% 46%) 100%);
+    box-shadow: 0 0 16px hsl(var(--wstudio-blue) / 0.2), inset 0 1px 0 hsl(0 0% 100% / 0.24);
+  }
+
+  .wstudio-pill-label {
+    background: hsl(var(--wstudio-track) / 0.82);
+    border: 1px solid hsl(var(--wstudio-shell-outline) / 0.6);
+    color: hsl(var(--wstudio-text));
+    box-shadow: 0 4px 16px hsl(var(--wstudio-shell-outline) / 0.36);
+  }
+}
+
 @layer utilities {
   .glow-primary {
     box-shadow: var(--glow-primary);
@@ -163,6 +300,7 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
