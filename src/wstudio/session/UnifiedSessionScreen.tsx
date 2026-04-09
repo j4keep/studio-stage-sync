@@ -435,6 +435,96 @@ export default function UnifiedSessionScreen() {
               </div>
             </Panel>
 
+            {/* ── SESSION TIMER between video tiles ── */}
+            {connected && (
+              <Panel className="flex flex-col gap-1.5 px-3 py-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`flex h-7 w-7 items-center justify-center rounded-md ${(hasBooking ? warningLevel : "ok") === "critical" ? "animate-pulse" : ""}`}
+                      style={{ background: C.inset, border: `1px solid ${C.insetBorder}` }}
+                    >
+                      <span style={{ fontSize: 13 }}>⏱</span>
+                    </div>
+                    <div>
+                      <div
+                        className="font-mono text-[18px] font-bold tabular-nums tracking-tight"
+                        style={{
+                          color:
+                            (hasBooking ? warningLevel : "ok") === "critical" ? C.red
+                            : (hasBooking ? warningLevel : "ok") === "warning" ? C.yellow
+                            : C.text,
+                        }}
+                      >
+                        {(() => {
+                          const rs = hasBooking ? bookingRemaining : demoClock.remainingSeconds;
+                          const m = Math.floor(rs / 60);
+                          const s = rs % 60;
+                          return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+                        })()}
+                      </div>
+                      <div style={{ fontSize: 8, color: C.dim, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase" }}>
+                        {(hasBooking ? totalBookedMinutes : demoClock.totalMinutes)} min booked
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-0.5">
+                    <span
+                      className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-bold uppercase"
+                      style={{
+                        background: (hasBooking ? phase : demoClock.phase) === "live" ? "rgba(74,222,96,0.15)" : (hasBooking ? phase : demoClock.phase) === "ended" ? "rgba(239,68,68,0.15)" : "rgba(155,155,170,0.1)",
+                        color: (hasBooking ? phase : demoClock.phase) === "live" ? C.green : (hasBooking ? phase : demoClock.phase) === "ended" ? C.red : C.dim,
+                        letterSpacing: "0.08em",
+                      }}
+                    >
+                      <span style={{ width: 5, height: 5, borderRadius: "50%", background: "currentColor", display: "inline-block" }} />
+                      {(hasBooking ? phase : demoClock.phase) === "ended" ? "Ended" : (hasBooking ? phase : demoClock.phase) === "live" ? (hasBooking ? timerRunning : demoClock.running) ? "Live" : "Paused" : "Scheduled"}
+                    </span>
+                    {isEngineer && (
+                      <span className="font-mono text-[12px] font-semibold" style={{ color: C.green }}>
+                        {formatCurrency(sessionValueTotal)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="overflow-hidden rounded-full" style={{ height: 4, background: C.inset }}>
+                  <div
+                    className="h-full rounded-full transition-[width] duration-1000 ease-linear"
+                    style={{
+                      width: `${Math.min(100, ((hasBooking ? bookingRemaining : demoClock.remainingSeconds) / Math.max(1, (hasBooking ? totalBookedMinutes : demoClock.totalMinutes) * 60)) * 100)}%`,
+                      background: (hasBooking ? warningLevel : "ok") === "critical" ? C.red : (hasBooking ? warningLevel : "ok") === "warning" ? C.yellow : C.green,
+                    }}
+                  />
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {isEngineer && hasBooking && phase === "scheduled" && (
+                    <button onPointerDown={(e) => { e.preventDefault(); startSessionTimer(); }} className="flex-1 rounded-md px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide" style={{ background: "rgba(74,222,96,0.12)", border: `1px solid rgba(74,222,96,0.3)`, color: C.green }}>
+                      ▶ Start Timer
+                    </button>
+                  )}
+                  {isEngineer && phase === "ended" && (
+                    <button onPointerDown={(e) => { e.preventDefault(); engineerContinueSession(); }} className="flex-1 rounded-md px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide" style={{ background: "rgba(245,200,66,0.1)", border: `1px solid rgba(245,200,66,0.3)`, color: C.yellow }}>
+                      + Continue (+5m)
+                    </button>
+                  )}
+                  {isArtist && hasBooking && phase === "live" && !pendingExtension && (
+                    <>
+                      {([15, 30, 60] as const).map((m) => (
+                        <button key={m} onPointerDown={(e) => { e.preventDefault(); requestExtension(m); }} className="rounded-md px-2 py-1 text-[10px] font-semibold" style={{ background: C.inset, border: `1px solid ${C.insetBorder}`, color: C.yellow }}>
+                          +{m}m
+                        </button>
+                      ))}
+                    </>
+                  )}
+                  {isArtist && pendingExtension && (
+                    <span className="animate-pulse flex-1 rounded-md px-2 py-1.5 text-center text-[10px] font-semibold" style={{ background: "rgba(245,200,66,0.1)", border: `1px solid rgba(245,200,66,0.3)`, color: C.yellow }}>
+                      ⏳ Pending +{pendingExtension.minutes}m
+                    </span>
+                  )}
+                </div>
+              </Panel>
+            )}
+
             {/* Engineer Video — Logo placeholder */}
             <Panel className="relative" style={{ aspectRatio: "4/3" }}>
               <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
