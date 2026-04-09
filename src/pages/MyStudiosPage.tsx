@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Building2, Plus, MapPin, Trash2, ChevronLeft, Star, Pencil, CheckCircle2, XCircle, CalendarDays } from "lucide-react";
+import { Building2, Plus, MapPin, Trash2, ChevronLeft, Star, Pencil, CheckCircle2, XCircle, CalendarDays, Ban, DollarSign, Clock, Zap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,6 +18,10 @@ interface Booking {
   status: string;
   session_code: string | null;
   created_at: string;
+  approval_deadline: string | null;
+  cancelled_at: string | null;
+  cancellation_fee: number;
+  payout_status: string;
   profile?: { display_name: string | null; avatar_url: string | null };
   studio_name?: string;
 }
@@ -36,6 +40,8 @@ interface Studio {
   description: string | null;
 }
 
+const CANCELLATION_FEE_RATE = 0.10;
+
 const MyStudiosPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -47,6 +53,20 @@ const MyStudiosPage = () => {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loadingBookings, setLoadingBookings] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  // Check for expired bookings on load
+  useEffect(() => {
+    const checkExpired = async () => {
+      try {
+        const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+        await fetch(`https://${projectId}.supabase.co/functions/v1/expire-bookings`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
+        });
+      } catch {}
+    };
+    checkExpired();
+  }, []);
 
   const fetchStudios = async () => {
     if (!user) return;
@@ -124,6 +144,57 @@ const MyStudiosPage = () => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
       toast({ title: newStatus === "confirmed" ? "Booking approved!" : "Booking rejected" });
+      fetchBookings();
+    }
+  };
+
+  const handleCancel = async (booking: Booking) => {
+    setUpdatingId(booking.id);
+    const fee = +(booking.total_amount * CANCELLATION_FEE_RATE).toFixed(2);
+    const { error } = await (supabase as any)
+      .from("studio_bookings")
+      .update({
+        status: "cancelled",
+        cancelled_at: new Date().toISOString(),
+        cancellation_fee: fee,
+        payout_status: "refunded",
+      })
+      .eq("id", booking.id);
+    setUpdatingId(null);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: `Booking cancelled. $${fee} cancellation fee applied.` });
+      fetchBookings();
+    }
+  };
+
+  const handleMarkCompleted = async (bookingId: string) => {
+    setUpdatingId(bookingId);
+    const { error } = await (supabase as any)
+      .from("studio_bookings")
+      .update({ session_status: "completed", payout_status: "released" })
+      .eq("id", bookingId);
+    setUpdatingId(null);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Session completed — payout released!" });
+      fetchBookings();
+    }
+  };
+
+  const handleNoShow = async (booking: Booking) => {
+    setUpdatingId(booking.id);
+    const { error } = await (supabase as any)
+      .from("studio_bookings")
+      .update({ session_status: "no_show", payout_status: "refunded" })
+      .eq("id", booking.id);
+    setUpdatingId(null);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "No-show reported — artist will be refunded." });
       fetchBookings();
     }
   };
@@ -243,6 +314,11 @@ const MyStudiosPage = () => {
               {bookings.map((booking) => {
                 const isPending = booking.status === "pending";
                 const isConfirmed = booking.status === "confirmed";
+                const isCancelled = booking.status === "cancelled";
+                const isExpired = booking.status === "expired";
+                const isSessionPending = booking.session_status === "pending" || !booking.session_status;
+                const deadlineMs = booking.approval_deadline ? new Date(booking.approval_deadline).getTime() - Date.now() : null;
+                const deadlineMin = deadlineMs ? Math.max(0, Math.ceil(deadlineMs / 60000)) : null;
                 return (
                   <motion.div
                     key={booking.id}
@@ -264,18 +340,49 @@ const MyStudiosPage = () => {
                           ? "bg-amber-500/15 text-amber-400"
                           : isConfirmed
                           ? "bg-emerald-500/15 text-emerald-400"
+                          : isCancelled
+                          ? "bg-orange-500/15 text-orange-400"
+                          : isExpired
+                          ? "bg-zinc-500/15 text-zinc-400"
                           : "bg-red-500/15 text-red-400"
                       }`}>
-                        {isPending ? "Pending" : isConfirmed ? "Approved" : "Rejected"}
+                        {isPending ? "Pending" : isConfirmed ? "Approved" : isCancelled ? "Cancelled" : isExpired ? "Expired" : "Rejected"}
                       </span>
                     </div>
 
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-primary">${booking.total_amount}</span>
-                      {booking.session_code && (
-                        <span className="text-[10px] font-mono text-muted-foreground">Code: {booking.session_code}</span>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {booking.payout_status && (
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
+                            booking.payout_status === "held" ? "bg-amber-500/10 text-amber-400" :
+                            booking.payout_status === "released" ? "bg-emerald-500/10 text-emerald-400" :
+                            "bg-red-500/10 text-red-400"
+                          }`}>
+                            {booking.payout_status === "held" ? "💰 Held" : booking.payout_status === "released" ? "✅ Paid" : "↩️ Refunded"}
+                          </span>
+                        )}
+                        {booking.session_code && (
+                          <span className="text-[10px] font-mono text-muted-foreground">Code: {booking.session_code}</span>
+                        )}
+                      </div>
                     </div>
+
+                    {/* Deadline countdown for pending */}
+                    {isPending && deadlineMin !== null && (
+                      <div className="flex items-center gap-1.5 mt-2 text-[10px] text-amber-400">
+                        <Clock className="w-3 h-3" />
+                        <span>{deadlineMin > 0 ? `${deadlineMin} min left to respond` : "Deadline passed — will expire soon"}</span>
+                      </div>
+                    )}
+
+                    {/* Cancellation fee display */}
+                    {isCancelled && booking.cancellation_fee > 0 && (
+                      <div className="flex items-center gap-1.5 mt-2 text-[10px] text-orange-400">
+                        <DollarSign className="w-3 h-3" />
+                        <span>Cancellation fee: ${booking.cancellation_fee}</span>
+                      </div>
+                      )}
 
                     {isPending && (
                       <div className="flex gap-2 mt-3">
@@ -292,6 +399,37 @@ const MyStudiosPage = () => {
                           className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-red-600/20 text-red-400 text-xs font-semibold hover:bg-red-600/30 transition disabled:opacity-40"
                         >
                           <XCircle className="w-3.5 h-3.5" /> Reject
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Cancel + session management for confirmed bookings */}
+                    {isConfirmed && (
+                      <div className="flex flex-col gap-2 mt-3">
+                        {isSessionPending && (
+                          <div className="flex gap-2">
+                            <button
+                              disabled={updatingId === booking.id}
+                              onClick={() => handleMarkCompleted(booking.id)}
+                              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-emerald-600/20 text-emerald-400 text-xs font-semibold hover:bg-emerald-600/30 transition disabled:opacity-40"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" /> Session Completed
+                            </button>
+                            <button
+                              disabled={updatingId === booking.id}
+                              onClick={() => handleNoShow(booking)}
+                              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-amber-600/20 text-amber-400 text-xs font-semibold hover:bg-amber-600/30 transition disabled:opacity-40"
+                            >
+                              <Ban className="w-3.5 h-3.5" /> No-Show
+                            </button>
+                          </div>
+                        )}
+                        <button
+                          disabled={updatingId === booking.id}
+                          onClick={() => handleCancel(booking)}
+                          className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg bg-red-600/10 text-red-400 text-xs font-semibold hover:bg-red-600/20 transition disabled:opacity-40"
+                        >
+                          <XCircle className="w-3.5 h-3.5" /> Cancel Booking (10% fee)
                         </button>
                       </div>
                     )}
