@@ -204,7 +204,7 @@ function Waveform({ recording }: { recording: boolean }) {
     frame = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(frame);
   }, [recording]);
-  return <canvas ref={ref} width={1200} height={64} className="block h-[64px] w-full" />;
+  return <canvas ref={ref} width={1200} height={64} className="block h-[40px] w-full" />;
 }
 
 function Panel({ children, style, className = "", accent }: { children: React.ReactNode; style?: React.CSSProperties; className?: string; accent?: string }) {
@@ -520,15 +520,13 @@ export default function UnifiedSessionScreen() {
             </div>
           </Panel>
 
-          {/* ── VOCAL TAKE WAVEFORM (center column, moved up) ── */}
-          <Panel accent={C.acCyan} className="col-span-2 p-3">
-            <div className="mb-2 flex items-center justify-between">
-              <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>Jay's Vocal Take 4 - {recording ? "Recording..." : "Ready"}</span>
-              <span style={{ color: C.dim, fontSize: 13 }}>▐▐</span>
-            </div>
-            <Inset className="overflow-hidden rounded-[3px] p-1">
+          {/* ── VOCAL TAKE WAVEFORM (compact, same height as mute/talk/settings) ── */}
+          <Panel accent={C.acCyan} className="col-span-2 flex items-center gap-3 px-3 py-2">
+            <span style={{ fontSize: 13, fontWeight: 600, color: C.text, whiteSpace: "nowrap" }}>Jay's Vocal Take 4 - {recording ? "Recording..." : "Ready"}</span>
+            <Inset className="flex-1 overflow-hidden rounded-[3px] p-0.5">
               <Waveform recording={recording} />
             </Inset>
+            <span style={{ color: C.dim, fontSize: 13 }}>▐▐</span>
           </Panel>
 
           {/* ── BOTTOM: TRANSPORT BAR (full width, single long card) ── */}
