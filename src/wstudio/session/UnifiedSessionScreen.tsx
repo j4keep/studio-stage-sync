@@ -109,28 +109,31 @@ function Fader({ value = 0.5, height = 90, onChange }: { value?: number; height?
   const trackH = height - 16;
   const thumbY = trackH - value * trackH;
   const dragRef = useRef<{ startY: number; startVal: number } | null>(null);
-  const wrapRef = useRef<HTMLDivElement>(null);
 
-  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+  const onPointerDown = (e: React.PointerEvent) => {
     if (!onChange) return;
     e.preventDefault();
     e.stopPropagation();
-    wrapRef.current?.setPointerCapture(e.pointerId);
     dragRef.current = { startY: e.clientY, startVal: value };
+    const onMove = (ev: PointerEvent) => {
+      if (!dragRef.current) return;
+      const delta = (dragRef.current.startY - ev.clientY) / trackH;
+      onChange(Math.min(1, Math.max(0, dragRef.current.startVal + delta)));
+    };
+    const onUp = () => {
+      dragRef.current = null;
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+    };
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
   };
-  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!dragRef.current || !onChange) return;
-    const delta = (dragRef.current.startY - e.clientY) / trackH;
-    onChange(Math.min(1, Math.max(0, dragRef.current.startVal + delta)));
-  };
-  const onPointerUp = () => { dragRef.current = null; };
 
   return (
     <div
-      ref={wrapRef}
       className="relative"
-      style={{ width: 18, height, cursor: onChange ? "ns-resize" : "default", touchAction: "none" }}
-      onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp}
+      style={{ width: 18, height, cursor: onChange ? "ns-resize" : "default", touchAction: "none", userSelect: "none" }}
+      onPointerDown={onPointerDown}
     >
       <div className="absolute left-1/2 -translate-x-1/2 rounded-full" style={{ top: 8, width: 4, height: trackH, background: `linear-gradient(180deg, ${C.inset} 0%, #0d0e10 100%)`, border: `1px solid ${C.insetBorder}` }} />
       <div className="absolute left-1/2 -translate-x-1/2 rounded-[2px]" style={{ top: 8 + thumbY - 7, width: 20, height: 14, background: `linear-gradient(180deg, #999 0%, #666 100%)`, border: `1px solid ${C.shellEdge}`, boxShadow: `0 2px 6px rgba(0,0,0,0.5)` }}>
