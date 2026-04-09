@@ -33,8 +33,13 @@ const TermsAgreementGate = ({ onAccept }: { onAccept: () => void }) => {
             <li>Artists must upload only original or properly licensed content.</li>
             <li>No external copyrighted music is allowed on Radio.</li>
             <li>Platform fees: 10% studio bookings, 8% project funding, 15% downloads.</li>
-            <li>Pro Artist subscription is $7.99/month with Legal Vault, Verified Badge, Analytics, and Featured Placement.</li>
+            <li>Pro Artist subscription is $10/month or $100/year with DMs, Store, Analytics, Legal Vault, Boosts, Jhi AI, and Zero Ads.</li>
             <li>All payments processed through Stripe. Payouts via Stripe Connect.</li>
+            <li>Cancellation fee: 10% of booking total. Remaining 90% refunded.</li>
+            <li>Session completion requires two-sided confirmation (engineer + artist).</li>
+            <li>No-show reports result in strikes; 3+ strikes display a public warning.</li>
+            <li>False reporting, fraud, or false accusations may result in account suspension or permanent deactivation.</li>
+            <li>Disputes are held for admin review; abuse of disputes is punishable.</li>
             <li>Prohibited: harmful content, impersonation, fraud, harassment.</li>
             <li>WHEUAT provides the platform "as is" with no warranties.</li>
           </ul>
@@ -58,7 +63,7 @@ const TermsAgreementGate = ({ onAccept }: { onAccept: () => void }) => {
             className="mt-0.5"
           />
           <span className="text-xs text-muted-foreground leading-relaxed">
-            I have read and agree to the WHEUAT Terms of Use.
+            I have read and agree to the WHEUAT Terms of Use and Privacy Policy.
           </span>
         </label>
 
