@@ -582,23 +582,54 @@ export default function UnifiedSessionScreen() {
                 ))}
               </div>
             </div>
-            <div className="mt-3 grid grid-cols-2 gap-3">
+            <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-4">
               {/* Vocal Level */}
               <div className="flex flex-col items-center gap-1">
-                <span style={{ fontSize: 12, fontWeight: 500, color: C.text }}>Vocal Level</span>
+                <span style={{ fontSize: 11, fontWeight: 500, color: C.text }}>Vocal Level</span>
                 <div className="flex items-end gap-2">
-                  <Knob value={0.55} size={66} />
-                  <LedMeter level={remoteVocalLevel} height={82} />
-                  <Fader value={0.44} height={82} />
+                  <Knob value={vocalLevel} size={58} />
+                  <LedMeter level={remoteVocalLevel * vocalLevel} height={72} />
+                  <Fader value={vocalLevel} height={72} />
                 </div>
               </div>
               {/* Talkback Level */}
               <div className="flex flex-col items-center gap-1">
-                <span style={{ fontSize: 12, fontWeight: 500, color: C.text }}>Talkback Level</span>
+                <span style={{ fontSize: 11, fontWeight: 500, color: C.text }}>Talkback Level</span>
                 <div className="flex items-end gap-2">
-                  <Knob value={talkbackHeld ? 0.65 : 0.45} size={66} />
-                  <LedMeter level={talkbackHeld ? 0.65 : 0.2} height={82} />
-                  <Fader value={talkbackHeld ? 0.38 : 0.14} height={82} />
+                  <Knob value={talkbackLevel} size={58} />
+                  <LedMeter level={talkbackHeld ? talkbackLevel * 0.85 : 0.12} height={72} />
+                  <Fader value={talkbackLevel} height={72} />
+                </div>
+              </div>
+              {/* Headphone Level */}
+              <div className="flex flex-col items-center gap-1">
+                <span style={{ fontSize: 11, fontWeight: 500, color: C.text }}>Headphone</span>
+                <div className="flex items-end gap-2">
+                  <Knob value={headphoneLevel} size={58} />
+                  <LedMeter level={headphoneLevel * 0.9} height={72} />
+                  <Fader value={headphoneLevel} height={72} />
+                </div>
+                <span style={{ fontSize: 8, color: C.dim, letterSpacing: "0.08em" }}>🎧 HP OUT</span>
+              </div>
+              {/* Cue Mix */}
+              <div className="flex flex-col items-center gap-1">
+                <span style={{ fontSize: 11, fontWeight: 500, color: C.text }}>Cue Mix</span>
+                <Knob value={cueMix} size={58} />
+                <div className="flex w-full items-center justify-between px-1" style={{ fontSize: 8, color: C.dim }}>
+                  <span>VOX</span>
+                  <span>BEAT</span>
+                </div>
+                <div
+                  className="mt-0.5 overflow-hidden rounded-sm"
+                  style={{ height: 4, width: "80%", background: C.track, border: `1px solid ${C.insetBorder}` }}
+                >
+                  <div
+                    className="h-full rounded-sm"
+                    style={{
+                      width: `${cueMix * 100}%`,
+                      background: `linear-gradient(90deg, ${C.blue} 0%, ${C.green} 100%)`,
+                    }}
+                  />
                 </div>
               </div>
             </div>
