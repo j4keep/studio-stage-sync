@@ -549,6 +549,48 @@ export type Database = {
         }
         Relationships: []
       }
+      no_show_strikes: {
+        Row: {
+          booking_id: string
+          created_at: string
+          engineer_id: string
+          id: string
+          reported_by: string
+          studio_id: string
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string
+          engineer_id: string
+          id?: string
+          reported_by: string
+          studio_id: string
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string
+          engineer_id?: string
+          id?: string
+          reported_by?: string
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "no_show_strikes_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "studio_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "no_show_strikes_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           body: string | null
@@ -1291,6 +1333,7 @@ export type Database = {
           id: string
           location: string
           name: string
+          no_show_count: number | null
           rating: number | null
           reviews_count: number | null
           updated_at: string
@@ -1307,6 +1350,7 @@ export type Database = {
           id?: string
           location: string
           name: string
+          no_show_count?: number | null
           rating?: number | null
           reviews_count?: number | null
           updated_at?: string
@@ -1323,6 +1367,7 @@ export type Database = {
           id?: string
           location?: string
           name?: string
+          no_show_count?: number | null
           rating?: number | null
           reviews_count?: number | null
           updated_at?: string
