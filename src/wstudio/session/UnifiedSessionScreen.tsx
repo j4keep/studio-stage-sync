@@ -474,7 +474,7 @@ export default function UnifiedSessionScreen() {
           )}
 
           {/* ── RIGHT: MONITORING (spans 2 rows beside center cards) ── */}
-          <Panel accent={C.acLime} className="row-span-2 p-4">
+          <Panel accent={C.acLime} className="p-4">
             <div className="mb-1 flex items-center justify-between">
               <span style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>MONITORING</span>
               <div className="flex gap-[2px]">
