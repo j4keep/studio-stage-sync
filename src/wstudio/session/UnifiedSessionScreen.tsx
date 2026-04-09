@@ -544,7 +544,7 @@ export default function UnifiedSessionScreen() {
           </Panel>
 
           {/* ── VOCAL TAKE WAVEFORM (compact, same height as mute/talk/settings) ── */}
-          <Panel accent={C.acCyan} className="col-span-2 flex items-center gap-3 px-3 py-2">
+          <Panel accent={C.acCyan} className={`${isMobile ? "" : "col-span-2"} flex items-center gap-3 px-3 py-2`}>
             <span style={{ fontSize: 13, fontWeight: 600, color: C.text, whiteSpace: "nowrap" }}>Jay's Vocal Take 4 - {recording ? "Recording..." : "Ready"}</span>
             <Inset className="flex-1 overflow-hidden rounded-[3px] p-0.5">
               <Waveform recording={recording} />
@@ -553,7 +553,7 @@ export default function UnifiedSessionScreen() {
           </Panel>
 
           {/* ── BOTTOM: TRANSPORT BAR (full width, single long card) ── */}
-          <Panel accent={C.acPurple} className="col-span-3 flex items-center gap-2 px-3 py-2">
+          <Panel accent={C.acPurple} className={`${isMobile ? "" : "col-span-3"} flex ${isMobile ? "flex-wrap" : ""} items-center gap-2 px-3 py-2`}>
             <TBtn sym="▌▌" label="Punch In" disabled={!isEngineer} />
             <TBtn sym="<<" label="Rewind" disabled={!isEngineer} />
             <TBtn sym="▶▶" label="Forward" disabled={!isEngineer} />
