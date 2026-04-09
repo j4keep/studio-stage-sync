@@ -34,18 +34,14 @@ class WStudioErrorBoundary extends Component<{ children: ReactNode }, EBState> {
   }
 }
 
-/** Full-viewport shell for remote session flows (no DAW). */
+/** Shell for remote session flows. Nav is handled by AppLayout. */
 export function WStudioLayout() {
   return (
     <SessionProvider>
       <BookingTimerProvider>
-        <div className="flex min-h-screen w-full flex-col bg-zinc-950 text-zinc-100">
-          <WStudioErrorBoundary>
-            <div className="flex min-h-screen w-full min-w-0 flex-1 flex-col">
-              <Outlet />
-            </div>
-          </WStudioErrorBoundary>
-        </div>
+        <WStudioErrorBoundary>
+          <Outlet />
+        </WStudioErrorBoundary>
       </BookingTimerProvider>
     </SessionProvider>
   );
