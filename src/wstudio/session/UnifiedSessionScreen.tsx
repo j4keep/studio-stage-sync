@@ -108,14 +108,16 @@ function Fader({ value = 0.5, height = 90, onChange }: { value?: number; height?
   const trackH = height - 16;
   const thumbY = trackH - value * trackH;
   const dragRef = useRef<{ startY: number; startVal: number } | null>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
 
-  const onPointerDown = (e: React.PointerEvent) => {
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!onChange) return;
     e.preventDefault();
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    e.stopPropagation();
+    wrapRef.current?.setPointerCapture(e.pointerId);
     dragRef.current = { startY: e.clientY, startVal: value };
   };
-  const onPointerMove = (e: React.PointerEvent) => {
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!dragRef.current || !onChange) return;
     const delta = (dragRef.current.startY - e.clientY) / trackH;
     onChange(Math.min(1, Math.max(0, dragRef.current.startVal + delta)));
@@ -124,6 +126,7 @@ function Fader({ value = 0.5, height = 90, onChange }: { value?: number; height?
 
   return (
     <div
+      ref={wrapRef}
       className="relative"
       style={{ width: 18, height, cursor: onChange ? "ns-resize" : "default", touchAction: "none" }}
       onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp}
