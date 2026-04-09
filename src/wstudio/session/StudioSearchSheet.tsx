@@ -404,6 +404,40 @@ export function StudioSearchSheet({
           </div>
         )}
       </SheetContent>
+
+      {/* Expanded photo overlay */}
+      {expandedPhotos && (
+        <div className="fixed inset-0 z-[100] bg-black/90 flex flex-col items-center justify-center">
+          <button
+            onClick={() => setExpandedPhotos(null)}
+            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-zinc-800 flex items-center justify-center text-white z-10"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <img
+            src={expandedPhotos[expandedIndex]?.photo_url}
+            alt={`Studio photo ${expandedIndex + 1}`}
+            className="max-w-[90vw] max-h-[70vh] rounded-xl object-contain"
+          />
+          {expandedPhotos.length > 1 && (
+            <div className="flex items-center gap-4 mt-4">
+              <button
+                onClick={() => setExpandedIndex((expandedIndex - 1 + expandedPhotos.length) % expandedPhotos.length)}
+                className="w-9 h-9 rounded-full bg-zinc-800 flex items-center justify-center text-white"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <span className="text-sm text-zinc-400">{expandedIndex + 1} / {expandedPhotos.length}</span>
+              <button
+                onClick={() => setExpandedIndex((expandedIndex + 1) % expandedPhotos.length)}
+                className="w-9 h-9 rounded-full bg-zinc-800 flex items-center justify-center text-white"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </Sheet>
   );
 }
