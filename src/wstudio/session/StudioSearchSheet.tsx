@@ -54,6 +54,8 @@ export function StudioSearchSheet({
   const [selected, setSelected] = useState<(Studio & { profile?: StudioProfile; photos?: StudioPhoto[] }) | null>(null);
   const [hours, setHours] = useState(2);
   const [photoIndex, setPhotoIndex] = useState(0);
+  const [expandedPhotos, setExpandedPhotos] = useState<StudioPhoto[] | null>(null);
+  const [expandedIndex, setExpandedIndex] = useState(0);
   const [bookingDate, setBookingDate] = useState(() => {
     const d = new Date();
     d.setMinutes(d.getMinutes() - (d.getMinutes() % 15), 0, 0);
