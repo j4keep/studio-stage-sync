@@ -108,6 +108,7 @@ export default function SessionJoinScreen() {
 
       {/* Find a Studio */}
       <button
+        type="button"
         onClick={() => setShowSearch(true)}
         className="flex w-full max-w-sm items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 text-left transition hover:border-amber-800/40"
       >
