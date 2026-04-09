@@ -257,6 +257,7 @@ export default function UnifiedSessionScreen() {
   const isArtist = role === "artist";
   const recording = live.recording;
   const hasBooking = !!booking && booking.bookedMinutes > 0;
+  const isMobile = useIsMobile();
   const [armed, setArmed] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [vocalLevel, setVocalLevel] = useState(0.55);
