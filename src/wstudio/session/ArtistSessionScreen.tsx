@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { ArrowLeft, Mic, MonitorUp, Radio, Timer, Video as VideoIcon, Volume2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -21,7 +21,6 @@ import { useExpandablePanels } from "./useExpandablePanels";
 const JOIN_PATH = "/wstudio/session/join";
 
 export default function ArtistSessionScreen() {
-  const navigate = useNavigate();
   const {
     sessionId,
     sessionDisplayName,
@@ -56,14 +55,6 @@ export default function ArtistSessionScreen() {
   const [mic, setMic] = useState("default");
   const [out, setOut] = useState("default");
   const [selfVideoOn, setSelfVideoOn] = useState(true);
-
-  useEffect(() => {
-    if (!role) {
-      navigate(JOIN_PATH, { replace: true });
-      return;
-    }
-    if (role === "engineer") navigate("/wstudio/session/engineer", { replace: true });
-  }, [role, navigate]);
 
   const lock = controlsLocked;
   const showPaidTimer = !!booking && booking.bookedMinutes > 0;
@@ -102,7 +93,8 @@ export default function ArtistSessionScreen() {
     return `${formatClock(demoClock.remainingSeconds)} · ${demoClock.phase}`;
   }, [showPaidTimer, remainingSeconds, phase, demoClock.remainingSeconds, demoClock.phase]);
 
-  if (!role) return null;
+  if (!role) return <Navigate to={JOIN_PATH} replace />;
+  if (role === "engineer") return <Navigate to="/wstudio/session/engineer" replace />;
 
   return (
     <div className="flex min-h-0 min-h-screen flex-1 flex-col gap-3 bg-[#121212] p-3 text-zinc-100">
@@ -214,7 +206,7 @@ export default function ArtistSessionScreen() {
             className={cn(
               "flex min-h-[220px] flex-col gap-3",
               collaborationShareActive
-                ? "lg:col-span-8 lg:grid lg:min-h-[min(62vh,520px)] lg:grid-cols-12 lg:gap-3"
+                ? "lg:col-span-8 lg:grid min-h-[280px] lg:min-h-[50vh] lg:grid-cols-12 lg:gap-3"
                 : "lg:col-span-2",
             )}
           >
@@ -225,9 +217,9 @@ export default function ArtistSessionScreen() {
                   title="Engineer screen share"
                   expandId={expandId}
                   onToggleExpand={toggleExpand}
-                  className="flex min-h-[min(48vh,400px)] flex-col lg:col-span-7"
+                  className="flex min-h-[240px] flex-col lg:min-h-[45vh] lg:col-span-7"
                 >
-                  <div className="flex min-h-[min(44vh,380px)] flex-1 flex-col rounded-xl border border-violet-900/35 bg-zinc-950/80 p-3">
+                  <div className="flex min-h-[220px] flex-1 flex-col rounded-xl border border-violet-900/35 bg-zinc-950/80 p-3 lg:min-h-[40vh]">
                     <div className="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-violet-200/80">
                       <MonitorUp className="h-3.5 w-3.5" aria-hidden />
                       Collaboration — engineer share
@@ -273,7 +265,12 @@ export default function ArtistSessionScreen() {
             )}
           </div>
 
-          <aside className="relative flex flex-col gap-3 rounded-xl border border-zinc-800 bg-zinc-900/40 p-3 lg:col-span-1">
+          <aside
+            className={cn(
+              "relative flex flex-col gap-3 rounded-xl border border-zinc-800 bg-zinc-900/40 p-3",
+              collaborationShareActive ? "lg:col-span-4" : "lg:col-span-1",
+            )}
+          >
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"

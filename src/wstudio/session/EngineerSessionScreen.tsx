@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { Link, Navigate } from "react-router-dom";
 import { ArrowLeft, Play, Sparkles, Square, Wallet } from "lucide-react";
 import {
   Dialog,
@@ -40,7 +40,6 @@ const JOIN_PATH = "/wstudio/session/join";
 const DEMO_HOURLY = 85;
 
 export default function EngineerSessionScreen() {
-  const navigate = useNavigate();
   const {
     sessionId,
     sessionDisplayName,
@@ -87,14 +86,6 @@ export default function EngineerSessionScreen() {
   const [vocalChannel, setVocalChannel] = useState<1 | 2 | 3>(1);
   const [armRecord, setArmRecord] = useState(false);
 
-  useEffect(() => {
-    if (!role) {
-      navigate(JOIN_PATH, { replace: true });
-      return;
-    }
-    if (role === "artist") navigate("/wstudio/session/artist", { replace: true });
-  }, [role, navigate]);
-
   const lock = controlsLocked;
   const showPaidTimer = !!booking && booking.bookedMinutes > 0;
   const demoValue = (DEMO_TIMER_MINUTES / 60) * DEMO_HOURLY;
@@ -139,7 +130,8 @@ export default function EngineerSessionScreen() {
   const monitorVocal = Math.min(100, Math.max(0, remoteVocalLevel * 100));
   const monitorTalk = talkbackHeld || live.artistPtt ? 72 : 35;
 
-  if (!role) return null;
+  if (!role) return <Navigate to={JOIN_PATH} replace />;
+  if (role === "artist") return <Navigate to="/wstudio/session/artist" replace />;
 
   return (
     <div className="flex min-h-0 min-h-screen flex-1 flex-col bg-[#121212] text-zinc-100">
@@ -320,7 +312,10 @@ export default function EngineerSessionScreen() {
                 title="Screen share"
                 expandId={expandId}
                 onToggleExpand={toggleExpand}
-                className={cn("flex flex-col gap-2", collaborationShareActive && "min-h-[min(52vh,380px)] flex-1")}
+                className={cn(
+                  "flex flex-col gap-2",
+                  collaborationShareActive && "min-h-[260px] flex-1 lg:min-h-[52vh]",
+                )}
               >
                 <div className="rounded-lg border border-zinc-800 bg-[#1a1a1a] p-2">
                   <div className="mb-2 text-[9px] font-bold uppercase tracking-wide text-zinc-500">Screen share</div>
@@ -335,7 +330,7 @@ export default function EngineerSessionScreen() {
                   <div
                     className={cn(
                       "mt-2 flex min-h-[120px] flex-1 items-center justify-center rounded-md border border-dashed border-zinc-700/80 bg-zinc-950/80 text-center text-[10px] text-zinc-500",
-                      collaborationShareActive && "min-h-[min(46vh,320px)] text-zinc-400",
+                      collaborationShareActive && "min-h-[240px] text-zinc-400 lg:min-h-[46vh]",
                     )}
                   >
                     {collaborationShareActive

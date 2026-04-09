@@ -7,8 +7,10 @@ export function WStudioLayout() {
   return (
     <SessionProvider>
       <BookingTimerProvider>
-        <div className="flex min-h-screen flex-col bg-zinc-950 text-zinc-100">
-          <Outlet />
+        <div className="flex min-h-screen min-h-0 flex-col bg-zinc-950 text-zinc-100">
+          <div className="flex min-h-0 flex-1 flex-col">
+            <Outlet />
+          </div>
         </div>
       </BookingTimerProvider>
     </SessionProvider>

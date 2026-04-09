@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 import { Maximize2, Mic, Minimize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ExpandPanelId } from "./useExpandablePanels";
-import { formatClock, formatDurationMinutes, type TimerWarningLevel } from "../booking/bookingTypes";
+import type { TimerWarningLevel } from "../booking/bookingTypes";
+import { formatClock, formatDurationMinutes } from "../booking/bookingTypes";
 
 export function ExpandableShell({
   id,
