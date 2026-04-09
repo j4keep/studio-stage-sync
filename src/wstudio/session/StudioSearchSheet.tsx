@@ -234,7 +234,7 @@ export function StudioSearchSheet({
 
   return (
     <Sheet open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <SheetContent side="bottom" className="relative h-[85vh] rounded-t-2xl border-zinc-800 bg-zinc-950 p-0" aria-describedby={undefined}>
+      <SheetContent side="bottom" className="h-[85vh] rounded-t-2xl border-zinc-800 bg-zinc-950 p-0" aria-describedby={undefined}>
         <SheetHeader className="border-b border-zinc-800 px-4 py-3 flex flex-row items-center justify-between">
           <button
             type="button"
