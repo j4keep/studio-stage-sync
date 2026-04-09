@@ -410,7 +410,7 @@ export default function EngineerSessionScreen() {
         talkbackLabel="Talk"
         talkbackActive={talkbackHeld}
         onTalkDown={beginTalkback}
-        onTalkUp={endTalkUp}
+        onTalkUp={endTalkback}
         talkDisabled={lock}
       />
     </div>

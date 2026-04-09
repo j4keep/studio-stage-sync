@@ -353,7 +353,7 @@ export default function ArtistSessionScreen() {
         talkbackLabel="Talkback"
         talkbackActive={talkbackHeld}
         onTalkDown={beginTalkback}
-        onTalkUp={endTalkUp}
+        onTalkUp={endTalkback}
         talkDisabled={lock}
       />
     </div>
