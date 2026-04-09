@@ -847,6 +847,16 @@ export default function UnifiedSessionScreen() {
           </Panel>
         </div>
       </div>
+
+      {/* Extension approval dialog (engineer only) */}
+      <ExtensionApprovalDialog
+        open={extensionModalOpen}
+        onOpenChange={setExtensionModalOpen}
+        pending={pendingExtension}
+        rates={sessionRates}
+        onApprove={approveExtension}
+        onDecline={declineExtension}
+      />
     </div>
   );
 }
