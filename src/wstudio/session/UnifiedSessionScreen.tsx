@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useSession } from "./SessionContext";
+import { useBookingTimer } from "../booking/BookingTimerContext";
+import { SessionTimerBar } from "../booking/SessionTimerBar";
+import { SessionControlsLockOverlay } from "../booking/SessionControlsLockOverlay";
+import { ExtensionApprovalDialog } from "../booking/ExtensionApprovalDialog";
+import { formatCurrency } from "../booking/bookingTypes";
 
 /* ─────────────────────────────────────────────
    STYLE CONSTANTS (matching the reference image)
