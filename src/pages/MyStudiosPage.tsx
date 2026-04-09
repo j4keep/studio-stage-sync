@@ -175,13 +175,16 @@ const MyStudiosPage = () => {
     setUpdatingId(bookingId);
     const { error } = await (supabase as any)
       .from("studio_bookings")
-      .update({ session_status: "completed", payout_status: "released" })
+      .update({
+        session_status: "awaiting_confirmation",
+        engineer_completed_at: new Date().toISOString(),
+      })
       .eq("id", bookingId);
     setUpdatingId(null);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Session completed — payout released!" });
+      toast({ title: "Session marked complete — awaiting artist confirmation", description: "Payment will be released once the artist confirms, or auto-released after 48 hours." });
       fetchBookings();
     }
   };
@@ -408,6 +411,18 @@ const MyStudiosPage = () => {
                     {/* Cancel + session management for confirmed bookings */}
                     {isConfirmed && (
                       <div className="flex flex-col gap-2 mt-3">
+                        {booking.session_status === "awaiting_confirmation" && (
+                          <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-2.5">
+                            <p className="text-[11px] text-blue-300 font-semibold">⏳ Awaiting artist confirmation</p>
+                            <p className="text-[10px] text-blue-300/60 mt-0.5">Auto-confirms in 48h if artist doesn't respond</p>
+                          </div>
+                        )}
+                        {booking.session_status === "disputed" && (
+                          <div className="rounded-lg bg-purple-500/10 border border-purple-500/20 p-2.5">
+                            <p className="text-[11px] text-purple-300 font-semibold">⚖️ Session Disputed</p>
+                            <p className="text-[10px] text-purple-300/60 mt-0.5">Artist reported no-show. Under admin review.</p>
+                          </div>
+                        )}
                         {isSessionPending && (
                           <div className="flex gap-2">
                             <button
@@ -426,13 +441,15 @@ const MyStudiosPage = () => {
                             </button>
                           </div>
                         )}
-                        <button
-                          disabled={updatingId === booking.id}
-                          onClick={() => handleCancel(booking)}
-                          className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg bg-red-600/10 text-red-400 text-xs font-semibold hover:bg-red-600/20 transition disabled:opacity-40"
-                        >
-                          <XCircle className="w-3.5 h-3.5" /> Cancel Booking (10% fee)
-                        </button>
+                        {!["awaiting_confirmation", "disputed", "completed"].includes(booking.session_status || "") && (
+                          <button
+                            disabled={updatingId === booking.id}
+                            onClick={() => handleCancel(booking)}
+                            className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg bg-red-600/10 text-red-400 text-xs font-semibold hover:bg-red-600/20 transition disabled:opacity-40"
+                          >
+                            <XCircle className="w-3.5 h-3.5" /> Cancel Booking (10% fee)
+                          </button>
+                        )}
                       </div>
                     )}
                   </motion.div>

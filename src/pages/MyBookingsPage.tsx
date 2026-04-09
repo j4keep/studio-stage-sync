@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ChevronLeft, CalendarDays, Clock, DollarSign, Star, Hash, AlertTriangle, XCircle } from "lucide-react";
+import { ChevronLeft, CalendarDays, Clock, DollarSign, Star, Hash, AlertTriangle, XCircle, CheckCircle2, ShieldAlert } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -19,6 +19,9 @@ interface BookingRow {
   cancellation_fee: number;
   payout_status: string;
   session_status: string;
+  engineer_completed_at: string | null;
+  artist_confirmed: boolean | null;
+  artist_responded_at: string | null;
   studio?: { name: string; location: string; hourly_rate: number; user_id: string };
   reviewed?: boolean;
   has_strike?: boolean;
@@ -31,15 +34,32 @@ const statusColors: Record<string, string> = {
   expired: "bg-zinc-500/15 text-zinc-400",
   rejected: "bg-red-500/15 text-red-400",
   no_show: "bg-red-500/15 text-red-400",
+  awaiting_confirmation: "bg-blue-500/15 text-blue-400",
+  disputed: "bg-purple-500/15 text-purple-400",
+  completed: "bg-emerald-500/15 text-emerald-400",
 };
 
-const statusLabels: Record<string, string> = {
-  pending: "Pending",
-  confirmed: "Approved",
-  cancelled: "Cancelled",
-  expired: "Expired",
-  rejected: "Rejected",
-  no_show: "No-Show Reported",
+const getStatusLabel = (booking: BookingRow) => {
+  if (booking.session_status === "no_show") return "🚫 No-Show";
+  if (booking.session_status === "disputed") return "⚖️ Disputed";
+  if (booking.session_status === "awaiting_confirmation") return "🔔 Awaiting Your Confirmation";
+  if (booking.session_status === "completed") return "✅ Completed";
+  const labels: Record<string, string> = {
+    pending: "Pending",
+    confirmed: "Approved",
+    cancelled: "Cancelled",
+    expired: "Expired",
+    rejected: "Rejected",
+  };
+  return labels[booking.status] || booking.status;
+};
+
+const getStatusColor = (booking: BookingRow) => {
+  if (booking.session_status === "no_show") return statusColors.no_show;
+  if (booking.session_status === "disputed") return statusColors.disputed;
+  if (booking.session_status === "awaiting_confirmation") return statusColors.awaiting_confirmation;
+  if (booking.session_status === "completed") return statusColors.completed;
+  return statusColors[booking.status] || "bg-zinc-500/15 text-zinc-400";
 };
 
 const MyBookingsPage = () => {
@@ -92,7 +112,7 @@ const MyBookingsPage = () => {
   const today = new Date().toISOString().split("T")[0];
   const filtered = bookings.filter((b) => {
     if (filter === "upcoming") return b.booking_date >= today && b.status !== "cancelled" && b.status !== "expired" && b.status !== "rejected";
-    if (filter === "past") return b.booking_date < today || b.session_status === "completed";
+    if (filter === "past") return b.booking_date < today || b.session_status === "completed" || b.session_status === "disputed";
     return true;
   });
 
@@ -125,6 +145,56 @@ const MyBookingsPage = () => {
     setActionLoading(null);
   };
 
+  /** Artist confirms the session was completed — triggers payout release */
+  const handleConfirmCompletion = async (booking: BookingRow) => {
+    if (!user) return;
+    setActionLoading(booking.id);
+    const { error } = await (supabase as any)
+      .from("studio_bookings")
+      .update({
+        artist_confirmed: true,
+        artist_responded_at: new Date().toISOString(),
+      })
+      .eq("id", booking.id)
+      .eq("user_id", user.id);
+
+    if (error) {
+      toast.error("Failed to confirm session");
+    } else {
+      toast.success("Session confirmed! Payment released to engineer.");
+      fetchBookings();
+    }
+    setActionLoading(null);
+  };
+
+  /** Artist disputes — says engineer didn't show up */
+  const handleDisputeNoShow = async (booking: BookingRow) => {
+    if (!user || !booking.studio) return;
+    const confirmed = window.confirm(
+      "Report that this session did NOT happen? This will create a dispute and a support ticket will be auto-created for admin review. Payment will stay held until resolved."
+    );
+    if (!confirmed) return;
+
+    setActionLoading(booking.id);
+    const { error } = await (supabase as any)
+      .from("studio_bookings")
+      .update({
+        artist_confirmed: false,
+        artist_responded_at: new Date().toISOString(),
+      })
+      .eq("id", booking.id)
+      .eq("user_id", user.id);
+
+    if (error) {
+      toast.error("Failed to file dispute");
+    } else {
+      toast.success("Dispute filed. A support ticket has been created for review.");
+      fetchBookings();
+    }
+    setActionLoading(null);
+  };
+
+  /** Legacy direct no-show report (for when engineer hasn't marked complete at all) */
   const handleReportNoShow = async (booking: BookingRow) => {
     if (!user || !booking.studio) return;
     const confirmed = window.confirm(
@@ -133,8 +203,6 @@ const MyBookingsPage = () => {
     if (!confirmed) return;
 
     setActionLoading(booking.id);
-
-    // Insert no-show strike
     const { error: strikeError } = await (supabase as any)
       .from("no_show_strikes")
       .insert({
@@ -145,19 +213,14 @@ const MyBookingsPage = () => {
       });
 
     if (strikeError) {
-      toast.error(strikeError.message?.includes("unique") ? "No-show already reported for this booking" : "Failed to report no-show");
+      toast.error(strikeError.message?.includes("unique") ? "No-show already reported" : "Failed to report no-show");
       setActionLoading(null);
       return;
     }
 
-    // Update booking status to reflect no-show and full refund
     await (supabase as any)
       .from("studio_bookings")
-      .update({
-        session_status: "no_show",
-        payout_status: "refunded",
-        cancellation_fee: 0,
-      })
+      .update({ session_status: "no_show", payout_status: "refunded", cancellation_fee: 0 })
       .eq("id", booking.id);
 
     toast.success("No-show reported. Full refund issued and strike recorded.");
@@ -166,10 +229,17 @@ const MyBookingsPage = () => {
   };
 
   const canCancel = (b: BookingRow) =>
-    (b.status === "pending" || b.status === "confirmed") && b.session_status !== "completed" && b.session_status !== "no_show";
+    (b.status === "pending" || b.status === "confirmed") &&
+    !["completed", "no_show", "disputed", "awaiting_confirmation"].includes(b.session_status);
 
   const canReportNoShow = (b: BookingRow) =>
-    b.status === "confirmed" && b.session_status !== "completed" && b.session_status !== "no_show" && !b.has_strike && b.booking_date <= today;
+    b.status === "confirmed" &&
+    !["completed", "no_show", "disputed", "awaiting_confirmation"].includes(b.session_status) &&
+    !b.has_strike &&
+    b.booking_date <= today;
+
+  const needsConfirmation = (b: BookingRow) =>
+    b.session_status === "awaiting_confirmation" && b.artist_confirmed === null;
 
   return (
     <div className="px-4 pt-4 pb-20">
@@ -183,7 +253,6 @@ const MyBookingsPage = () => {
         <h1 className="text-xl font-display font-bold text-foreground">My Bookings</h1>
       </div>
 
-      {/* Filters */}
       <div className="flex gap-2 mb-4">
         {(["all", "upcoming", "past"] as const).map((f) => (
           <button key={f} onClick={() => setFilter(f)}
@@ -208,17 +277,25 @@ const MyBookingsPage = () => {
         <div className="flex flex-col gap-3">
           {filtered.map((booking) => (
             <motion.div key={booking.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-              className="rounded-xl bg-card border border-border p-4">
+              className={`rounded-xl bg-card border p-4 ${needsConfirmation(booking) ? "border-blue-500/40 ring-1 ring-blue-500/20" : "border-border"}`}>
               {/* Header */}
               <div className="flex items-start justify-between mb-2">
                 <div>
                   <h3 className="text-sm font-semibold text-foreground">{booking.studio?.name || "Studio"}</h3>
                   <p className="text-[11px] text-muted-foreground">{booking.studio?.location}</p>
                 </div>
-                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${statusColors[booking.session_status === "no_show" ? "no_show" : booking.status] || "bg-zinc-500/15 text-zinc-400"}`}>
-                  {booking.session_status === "no_show" ? "🚫 No-Show" : statusLabels[booking.status] || booking.status}
+                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${getStatusColor(booking)}`}>
+                  {getStatusLabel(booking)}
                 </span>
               </div>
+
+              {/* Awaiting confirmation banner */}
+              {needsConfirmation(booking) && (
+                <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-3 mb-3">
+                  <p className="text-xs text-blue-300 font-semibold mb-1">🔔 Engineer marked this session as completed</p>
+                  <p className="text-[11px] text-blue-300/70">Please confirm if the session happened, or report a no-show if it didn't. Auto-confirms in 48 hours.</p>
+                </div>
+              )}
 
               {/* Details */}
               <div className="grid grid-cols-2 gap-2 mt-3">
@@ -242,7 +319,7 @@ const MyBookingsPage = () => {
                 )}
               </div>
 
-              {/* Receipt breakdown */}
+              {/* Receipt */}
               <div className="mt-3 pt-3 border-t border-border">
                 <div className="flex justify-between text-[11px]">
                   <span className="text-muted-foreground">Rate</span>
@@ -264,7 +341,7 @@ const MyBookingsPage = () => {
                 </div>
               </div>
 
-              {/* Payout status + actions */}
+              {/* Payout status */}
               <div className="flex items-center justify-between mt-2">
                 <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
                   booking.payout_status === "held" ? "bg-amber-500/10 text-amber-400" :
@@ -274,7 +351,6 @@ const MyBookingsPage = () => {
                   {booking.payout_status === "held" ? "💰 Payment Held" : booking.payout_status === "released" ? "✅ Paid" : "↩️ Refunded"}
                 </span>
 
-                {/* Rate button for completed sessions */}
                 {booking.session_status === "completed" && !booking.reviewed && (
                   <button onClick={() => setRateBooking(booking)}
                     className="flex items-center gap-1 px-3 py-1.5 rounded-lg gradient-primary text-primary-foreground text-[11px] font-semibold">
@@ -288,7 +364,36 @@ const MyBookingsPage = () => {
                 )}
               </div>
 
-              {/* Action buttons: Cancel & No-Show */}
+              {/* Confirm / Dispute buttons (two-sided confirmation) */}
+              {needsConfirmation(booking) && (
+                <div className="flex gap-2 mt-3 pt-3 border-t border-border">
+                  <button
+                    onClick={() => handleConfirmCompletion(booking)}
+                    disabled={actionLoading === booking.id}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 text-[11px] font-semibold disabled:opacity-50"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    {actionLoading === booking.id ? "Confirming..." : "Confirm Session"}
+                  </button>
+                  <button
+                    onClick={() => handleDisputeNoShow(booking)}
+                    disabled={actionLoading === booking.id}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-[11px] font-semibold disabled:opacity-50"
+                  >
+                    <ShieldAlert className="w-3.5 h-3.5" />
+                    {actionLoading === booking.id ? "Filing..." : "Dispute — No-Show"}
+                  </button>
+                </div>
+              )}
+
+              {/* Disputed status message */}
+              {booking.session_status === "disputed" && (
+                <div className="mt-2 flex items-center gap-1.5 text-[10px] text-purple-400">
+                  <ShieldAlert className="w-3 h-3" /> Under review — a support ticket has been created
+                </div>
+              )}
+
+              {/* Cancel & No-Show (for bookings where engineer hasn't acted yet) */}
               {(canCancel(booking) || canReportNoShow(booking)) && (
                 <div className="flex gap-2 mt-3 pt-3 border-t border-border">
                   {canCancel(booking) && (
@@ -314,7 +419,6 @@ const MyBookingsPage = () => {
                 </div>
               )}
 
-              {/* No-show reported badge */}
               {booking.has_strike && (
                 <div className="mt-2 flex items-center gap-1.5 text-[10px] text-red-400">
                   <AlertTriangle className="w-3 h-3" /> No-show reported — full refund issued
