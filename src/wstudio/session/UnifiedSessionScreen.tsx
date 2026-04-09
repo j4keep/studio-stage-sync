@@ -1,15 +1,719 @@
-import referenceImage from "@/assets/wstudio-receive-reference.png";
+import { useEffect, useRef, useState } from "react";
+import { useSession } from "./SessionContext";
 
-export default function UnifiedSessionScreen() {
+/* ─────────────────────────────────────────────
+   STYLE CONSTANTS (matching the reference image)
+   ───────────────────────────────────────────── */
+const C = {
+  shell: "#2b2d32",
+  shellEdge: "#3d3f44",
+  shellDark: "#1e1f23",
+  panel: "#282a2e",
+  panelLight: "#323438",
+  panelDark: "#1c1d21",
+  panelBorder: "#3a3c41",
+  inset: "#141517",
+  insetBorder: "#2a2c30",
+  track: "#111214",
+  text: "#e8e8ea",
+  label: "#9a9ca2",
+  dim: "#656770",
+  green: "#4ade60",
+  yellow: "#f5c842",
+  red: "#ef4444",
+  blue: "#3b9dff",
+  white: "#ffffff",
+};
+
+/* ─── SVG Knob ─── */
+function Knob({ value = 0.5, size = 68, label }: { value?: number; size?: number; label?: string }) {
+  const angle = -135 + value * 270;
+  const r = size / 2 - 8;
+  const cx = size / 2;
+  const cy = size / 2;
+  const ticks = 13;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+
   return (
-    <div className="flex min-h-screen w-full items-center justify-center overflow-hidden p-4 sm:p-6">
-      <img
-        src={referenceImage}
-        alt="W.Studio reference interface"
-        className="max-h-[calc(100vh-2rem)] max-w-full select-none object-contain sm:max-h-[calc(100vh-3rem)]"
-        draggable={false}
-        loading="eager"
+    <div className="flex flex-col items-center gap-1.5">
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        {/* tick marks */}
+        {Array.from({ length: ticks }).map((_, i) => {
+          const a = toRad(-135 + (i / (ticks - 1)) * 270);
+          return (
+            <line
+              key={i}
+              x1={cx + (r + 3) * Math.cos(a)}
+              y1={cy + (r + 3) * Math.sin(a)}
+              x2={cx + (r + 6) * Math.cos(a)}
+              y2={cy + (r + 6) * Math.sin(a)}
+              stroke={C.dim}
+              strokeWidth={1}
+              strokeLinecap="round"
+            />
+          );
+        })}
+        {/* outer body */}
+        <circle cx={cx} cy={cy} r={r} fill={`url(#knobBody${size})`} stroke={C.shellDark} strokeWidth={2} />
+        {/* inner cap */}
+        <circle cx={cx} cy={cy} r={r * 0.62} fill={`url(#knobCap${size})`} stroke={C.panelBorder} strokeWidth={1} />
+        {/* pointer */}
+        <line
+          x1={cx}
+          y1={cy}
+          x2={cx + (r * 0.52) * Math.cos(toRad(angle))}
+          y2={cy + (r * 0.52) * Math.sin(toRad(angle))}
+          stroke={C.white}
+          strokeWidth={2.5}
+          strokeLinecap="round"
+        />
+        <defs>
+          <radialGradient id={`knobBody${size}`} cx="38%" cy="34%">
+            <stop offset="0%" stopColor="#484a4e" />
+            <stop offset="60%" stopColor="#2a2c30" />
+            <stop offset="100%" stopColor="#1a1b1e" />
+          </radialGradient>
+          <radialGradient id={`knobCap${size}`} cx="40%" cy="36%">
+            <stop offset="0%" stopColor="#3a3c40" />
+            <stop offset="100%" stopColor="#1e1f22" />
+          </radialGradient>
+        </defs>
+      </svg>
+      {label && <span style={{ color: C.text, fontSize: 12, fontWeight: 500 }}>{label}</span>}
+    </div>
+  );
+}
+
+/* ─── Vertical LED meter (like in MONITORING section) ─── */
+function LedMeter({ level = 0.5, height = 90 }: { level?: number; height?: number }) {
+  const segs = 16;
+  return (
+    <div className="flex flex-col-reverse gap-[2px]" style={{ height, width: 10 }}>
+      {Array.from({ length: segs }).map((_, i) => {
+        const pct = (i + 1) / segs;
+        const on = pct <= level;
+        let color = C.green;
+        if (pct > 0.6) color = C.yellow;
+        if (pct > 0.82) color = C.red;
+        return (
+          <div
+            key={i}
+            className="flex-1 rounded-[1px]"
+            style={{ backgroundColor: on ? color : "#1a1b1e" }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+/* ─── Vertical Fader (like in MONITORING section) ─── */
+function Fader({ value = 0.5, height = 90 }: { value?: number; height?: number }) {
+  const trackH = height - 16;
+  const thumbY = trackH - value * trackH;
+
+  return (
+    <div className="relative" style={{ width: 18, height }}>
+      {/* track groove */}
+      <div
+        className="absolute left-1/2 -translate-x-1/2 rounded-full"
+        style={{
+          top: 8,
+          width: 4,
+          height: trackH,
+          background: `linear-gradient(180deg, ${C.inset} 0%, #0d0e10 100%)`,
+          border: `1px solid ${C.insetBorder}`,
+        }}
       />
+      {/* thumb */}
+      <div
+        className="absolute left-1/2 -translate-x-1/2 rounded-[2px]"
+        style={{
+          top: 8 + thumbY - 7,
+          width: 20,
+          height: 14,
+          background: `linear-gradient(180deg, #999 0%, #666 100%)`,
+          border: `1px solid ${C.shellEdge}`,
+          boxShadow: `0 2px 6px rgba(0,0,0,0.5)`,
+        }}
+      >
+        {/* groove lines on thumb */}
+        <div className="absolute left-1/2 top-[4px] h-[1px] w-[10px] -translate-x-1/2 bg-[#555]" />
+        <div className="absolute left-1/2 top-[7px] h-[1px] w-[10px] -translate-x-1/2 bg-[#555]" />
+      </div>
+    </div>
+  );
+}
+
+/* ─── Horizontal gradient meter (REMOTE VOCAL top bar) ─── */
+function HorizontalMeter({ level }: { level: number }) {
+  return (
+    <div
+      className="overflow-hidden rounded-sm"
+      style={{ height: 6, background: C.track, border: `1px solid ${C.insetBorder}` }}
+    >
+      <div
+        className="h-full rounded-sm transition-[width] duration-75"
+        style={{
+          width: `${Math.min(100, level * 100)}%`,
+          background: `linear-gradient(90deg, ${C.green} 0%, ${C.yellow} 55%, ${C.red} 100%)`,
+        }}
+      />
+    </div>
+  );
+}
+
+/* ─── Spectrum bars (REMOTE VOCAL lower section) ─── */
+function SpectrumBars({ level }: { level: number }) {
+  const bars = 48;
+  const active = Math.round(level * bars);
+  return (
+    <div className="flex items-end justify-center gap-[2px]" style={{ height: 22 }}>
+      {Array.from({ length: bars }).map((_, i) => {
+        const on = i < active;
+        const pct = (i + 1) / bars;
+        let color = C.green;
+        if (pct > 0.55) color = C.yellow;
+        if (pct > 0.78) color = C.red;
+        return (
+          <div
+            key={i}
+            className="rounded-[1px]"
+            style={{
+              width: 3,
+              height: 18,
+              backgroundColor: on ? color : "#1e1f23",
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+/* ─── Frequency labels under spectrum ─── */
+function FreqLabels() {
+  const labels = ["∞", "350", "5.4k", "700", "320", "100", "50", "20"];
+  return (
+    <div className="flex justify-between px-1" style={{ fontSize: 7, color: C.dim, letterSpacing: "0.08em" }}>
+      {labels.map((l) => (
+        <span key={l}>{l}</span>
+      ))}
+    </div>
+  );
+}
+
+/* ─── Waveform Canvas ─── */
+function Waveform({ recording }: { recording: boolean }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    let frame = 0;
+    const draw = (t: number) => {
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.fillStyle = C.track;
+      ctx.fillRect(0, 0, w, h);
+      // grid lines
+      ctx.strokeStyle = "#1e1f23";
+      ctx.lineWidth = 1;
+      for (let x = 0; x <= w; x += 60) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, h);
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      ctx.moveTo(0, h / 2);
+      ctx.lineTo(w, h / 2);
+      ctx.stroke();
+      // waveform
+      ctx.strokeStyle = recording ? "#8a8c92" : "#3a3c41";
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      for (let x = 0; x < w; x++) {
+        const spd = recording ? t * 0.003 : 0;
+        const amp =
+          Math.sin(x * 0.028 + spd) * 14 +
+          Math.sin(x * 0.065 + spd * 0.7) * 9 +
+          Math.sin(x * 0.14 + spd * 1.4) * 4;
+        const taper = 0.4 + 0.6 * Math.sin((x / w) * Math.PI);
+        ctx.lineTo(x, h / 2 + amp * taper);
+      }
+      ctx.stroke();
+      frame = requestAnimationFrame(draw);
+    };
+    frame = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(frame);
+  }, [recording]);
+  return <canvas ref={ref} width={1200} height={64} className="block h-[64px] w-full" />;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   UNIFIED SESSION SCREEN — pixel-perfect to reference image
+   ═══════════════════════════════════════════════════════════ */
+export default function UnifiedSessionScreen() {
+  const {
+    role,
+    connection,
+    sessionDisplayName,
+    muted,
+    toggleMute,
+    talkbackHeld,
+    beginTalkback,
+    endTalkback,
+    remoteVocalLevel,
+    live,
+    setSessionRecording,
+    demoClock,
+    leaveSession,
+    screenSharing,
+    toggleScreenShare,
+    collaborationShareActive,
+  } = useSession();
+
+  const isEngineer = role === "engineer";
+  const recording = live.recording;
+  const [armed, setArmed] = useState(false);
+  const connected = connection === "connected";
+  const mins = Math.floor(demoClock.remainingSeconds / 60);
+  const secs = demoClock.remainingSeconds % 60;
+
+  /* ─── Panel wrapper ─── */
+  const Panel = ({ children, style, className = "" }: { children: React.ReactNode; style?: React.CSSProperties; className?: string }) => (
+    <div
+      className={`overflow-hidden rounded-[4px] ${className}`}
+      style={{
+        background: `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
+        border: `1px solid ${C.panelBorder}`,
+        boxShadow: `inset 0 1px 0 rgba(255,255,255,0.04), 0 1px 0 rgba(255,255,255,0.02)`,
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+
+  /* ─── Inset wrapper ─── */
+  const Inset = ({ children, className = "", style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) => (
+    <div
+      className={`rounded-[3px] ${className}`}
+      style={{
+        background: C.inset,
+        border: `1px solid ${C.insetBorder}`,
+        boxShadow: `inset 0 1px 3px rgba(0,0,0,0.6)`,
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+
+  /* ─── Transport button ─── */
+  const TBtn = ({ sym, label, disabled = false }: { sym: string; label: string; disabled?: boolean }) => (
+    <button
+      disabled={disabled}
+      className="flex items-center justify-center gap-2 rounded-[3px] px-5 py-2 text-[14px] font-semibold"
+      style={{
+        background: `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
+        border: `1px solid ${C.panelBorder}`,
+        color: C.text,
+        boxShadow: `inset 0 1px 0 rgba(255,255,255,0.05)`,
+        opacity: disabled ? 0.4 : 1,
+        cursor: disabled ? "not-allowed" : "pointer",
+        minWidth: 120,
+      }}
+    >
+      <span className="font-mono tracking-tight">{sym}</span>
+      <span>{label}</span>
+    </button>
+  );
+
+  return (
+    <div
+      className="flex min-h-screen select-none items-center justify-center overflow-hidden p-4"
+      style={{ background: "#111214" }}
+    >
+      {/* ═══ Plugin Shell ═══ */}
+      <div
+        className="w-full overflow-hidden rounded-lg"
+        style={{
+          maxWidth: 1100,
+          background: `linear-gradient(180deg, ${C.shell} 0%, ${C.shellDark} 100%)`,
+          border: `1px solid ${C.shellEdge}`,
+          boxShadow: `0 24px 80px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06)`,
+          color: C.text,
+        }}
+      >
+        {/* ─── TITLE BAR ─── */}
+        <div
+          className="flex items-center justify-between px-5"
+          style={{
+            height: 48,
+            borderBottom: `1px solid ${C.panelBorder}`,
+          }}
+        >
+          <div className="flex items-end gap-2">
+            <span className="text-[20px] font-black tracking-tight">
+              W<span style={{ color: C.blue }}>.</span>STUDIO
+            </span>
+            <span style={{ color: C.label, fontSize: 12, fontWeight: 300, letterSpacing: "0.1em", paddingBottom: 2 }}>
+              RECEIVE
+            </span>
+          </div>
+          <div className="flex items-center gap-3" style={{ color: C.label }}>
+            <button className="hover:text-white">☰</button>
+            <button onClick={leaveSession} className="hover:text-white">✕</button>
+          </div>
+        </div>
+
+        {/* ─── MAIN GRID ─── */}
+        <div className="grid gap-2 p-2" style={{ gridTemplateColumns: "280px 1fr 260px", gridTemplateRows: "auto 1fr auto auto" }}>
+
+          {/* ── LEFT COLUMN: Videos + Controls (spans rows 1-3) ── */}
+          <div className="row-span-3 flex flex-col gap-2">
+            {/* Artist Video */}
+            <Panel className="relative" style={{ aspectRatio: "4/3" }}>
+              <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, #5a4a3a 0%, #3a3028 40%, #1a1b1e 100%)" }}>
+                {/* stylized booth shapes */}
+                <div className="absolute left-[8%] top-[20%] h-[65%] w-[22%] rounded-lg" style={{ background: "rgba(0,0,0,0.3)" }} />
+                <div className="absolute left-[36%] top-[15%] h-[42px] w-[42px] rounded-full" style={{ background: "#c24a3a" }} />
+                <div className="absolute left-[38%] top-[28%] h-[52px] w-[50px] rounded-full" style={{ background: "#b89070" }} />
+                <div className="absolute left-[34%] top-[50%] h-[80px] w-[78px] rounded-t-[40px]" style={{ background: "#1a1b1e" }} />
+                <div className="absolute right-[14%] top-[26%] h-[42px] w-[42px] rounded-full border-[5px]" style={{ borderColor: "#1a1b1e", background: "transparent" }} />
+              </div>
+              <div
+                className="absolute bottom-2 left-2 rounded px-2 py-1 text-[12px] font-medium"
+                style={{ background: "rgba(0,0,0,0.6)", color: C.text }}
+              >
+                Jay - Florida
+              </div>
+            </Panel>
+
+            {/* Engineer Video */}
+            <Panel className="relative" style={{ aspectRatio: "4/3" }}>
+              <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, #3a3a3e 0%, #28282c 40%, #1a1b1e 100%)" }}>
+                <div className="absolute left-[4%] top-[16%] h-[68%] w-[20%] rounded-lg" style={{ background: "rgba(0,0,0,0.35)" }}>
+                  <div className="mx-auto mt-3 h-8 w-8 rounded-full" style={{ background: "#2a2c30", boxShadow: "inset 0 0 0 5px #1a1b1e" }} />
+                  <div className="mx-auto mt-3 h-10 w-10 rounded-full" style={{ background: "#2a2c30", boxShadow: "inset 0 0 0 6px #1a1b1e" }} />
+                </div>
+                <div className="absolute right-[6%] top-[16%] h-[68%] w-[21%] rounded-lg" style={{ background: "rgba(0,0,0,0.35)" }}>
+                  <div className="mx-auto mt-3 h-9 w-9 rounded-full" style={{ background: "#2a2c30", boxShadow: "inset 0 0 0 5px #1a1b1e" }} />
+                  <div className="mx-auto mt-3 h-11 w-11 rounded-full" style={{ background: "#2a2c30", boxShadow: "inset 0 0 0 6px #1a1b1e" }} />
+                </div>
+                <div className="absolute left-[38%] top-[24%] h-[52px] w-[52px] rounded-full" style={{ background: "#a08868" }} />
+                <div className="absolute left-[34%] top-[46%] h-[78px] w-[88px] rounded-t-[46px]" style={{ background: "#1a1b1e" }} />
+              </div>
+              <div
+                className="absolute bottom-2 left-2 rounded px-2 py-1 text-[12px] font-medium"
+                style={{ background: "rgba(0,0,0,0.6)", color: C.text }}
+              >
+                Bob - New York
+              </div>
+            </Panel>
+
+            {/* Mute / Talk / Settings */}
+            <Panel>
+              <div className="grid grid-cols-3" style={{ borderTop: `1px solid ${C.panelBorder}` }}>
+                {/* Mute */}
+                <button
+                  onClick={toggleMute}
+                  className="flex flex-col items-center justify-center gap-1.5 py-3"
+                >
+                  <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={muted ? C.red : C.label} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                    <line x1="12" y1="19" x2="12" y2="22" />
+                  </svg>
+                  <span style={{ fontSize: 11, color: C.text }}>Mute</span>
+                </button>
+
+                {/* Talk */}
+                <button
+                  onPointerDown={beginTalkback}
+                  onPointerUp={endTalkback}
+                  onPointerLeave={endTalkback}
+                  className="flex flex-col items-center justify-center gap-1.5 py-3"
+                  style={{ borderLeft: `1px solid ${C.panelBorder}`, borderRight: `1px solid ${C.panelBorder}` }}
+                >
+                  <div
+                    className="flex h-9 w-9 items-center justify-center rounded-full"
+                    style={{
+                      background: talkbackHeld
+                        ? `radial-gradient(circle at 35% 30%, rgba(255,255,255,0.3), ${C.blue})`
+                        : `radial-gradient(circle at 35% 30%, rgba(255,255,255,0.25), ${C.blue})`,
+                      boxShadow: talkbackHeld ? `0 0 16px ${C.blue}40` : "none",
+                    }}
+                  >
+                    <span style={{ color: C.white, fontSize: 14 }}>▶</span>
+                  </div>
+                  <span style={{ fontSize: 11, color: C.text }}>Talk</span>
+                </button>
+
+                {/* Settings */}
+                <button className="flex flex-col items-center justify-center gap-1.5 py-3">
+                  <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={C.label} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                  <span style={{ fontSize: 11, color: C.text }}>Settings</span>
+                </button>
+              </div>
+            </Panel>
+          </div>
+
+          {/* ── SESSION STATUS BAR (top, spans center + right) ── */}
+          <Panel className="col-span-2 flex items-center justify-between px-4" style={{ height: 48 }}>
+            <div className="flex items-center gap-3">
+              <span style={{ fontSize: 16, fontWeight: 500, color: C.text }}>
+                {sessionDisplayName || "Session: Live with Jay - Florida"}
+              </span>
+              <span
+                className="rounded px-2.5 py-1 text-[11px] font-bold uppercase"
+                style={{
+                  background: connected
+                    ? "linear-gradient(180deg, #4ade60 0%, #22a838 100%)"
+                    : C.panelDark,
+                  color: connected ? C.white : C.dim,
+                  letterSpacing: "0.06em",
+                  boxShadow: connected ? "inset 0 1px 0 rgba(255,255,255,0.2)" : "none",
+                }}
+              >
+                {connected ? "CONNECTED" : connection.toUpperCase()}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              {/* Icon buttons row */}
+              {[
+                { icon: "🔊", onClick: undefined },
+                { icon: "🖥", onClick: isEngineer ? toggleScreenShare : undefined },
+                { icon: "✕", onClick: undefined },
+                { icon: "⚙", onClick: undefined },
+              ].map((btn, i) => (
+                <button
+                  key={i}
+                  onClick={btn.onClick}
+                  className="flex h-9 w-9 items-center justify-center rounded"
+                  style={{
+                    background: `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
+                    border: `1px solid ${C.panelBorder}`,
+                    color: C.label,
+                    fontSize: 15,
+                  }}
+                >
+                  {btn.icon}
+                </button>
+              ))}
+            </div>
+          </Panel>
+
+          {/* ── CENTER: SYNC CONTROLS ── */}
+          <Panel className="p-4">
+            <div style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>
+              SYNC CONTROLS
+            </div>
+            <div className="my-3 text-center" style={{ fontSize: 16, fontWeight: 600, color: C.text }}>
+              – SYNCED: 120 BPM –
+            </div>
+            <div className="flex items-center justify-center gap-2">
+              {/* Play */}
+              <button
+                disabled={!isEngineer}
+                className="flex items-center gap-2 rounded-[3px] px-5 py-2.5 text-[15px] font-semibold"
+                style={{
+                  background: `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
+                  border: `1px solid ${C.panelBorder}`,
+                  color: C.text,
+                  boxShadow: `inset 0 1px 0 rgba(255,255,255,0.05)`,
+                  opacity: isEngineer ? 1 : 0.4,
+                  minWidth: 110,
+                }}
+              >
+                <span style={{ color: C.text }}>▶</span> Play
+              </button>
+              {/* Stop */}
+              <button
+                disabled={!isEngineer}
+                className="flex items-center gap-2 rounded-[3px] px-5 py-2.5 text-[15px] font-semibold"
+                style={{
+                  background: `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
+                  border: `1px solid ${C.panelBorder}`,
+                  color: C.text,
+                  boxShadow: `inset 0 1px 0 rgba(255,255,255,0.05)`,
+                  opacity: isEngineer ? 1 : 0.4,
+                  minWidth: 110,
+                }}
+              >
+                <span style={{ color: C.red }}>■</span> Stop
+              </button>
+              {/* Record */}
+              <button
+                disabled={!isEngineer}
+                onClick={isEngineer ? () => setSessionRecording(!recording) : undefined}
+                className="flex items-center gap-2 rounded-[3px] px-5 py-2.5 text-[15px] font-semibold"
+                style={{
+                  background: recording
+                    ? `linear-gradient(180deg, #4a1a1a 0%, #2a0e0e 100%)`
+                    : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
+                  border: `1px solid ${recording ? "#6a2222" : C.panelBorder}`,
+                  color: C.text,
+                  boxShadow: recording ? `0 0 14px rgba(239,68,68,0.15)` : `inset 0 1px 0 rgba(255,255,255,0.05)`,
+                  opacity: isEngineer ? 1 : 0.4,
+                  minWidth: 110,
+                }}
+              >
+                <span className={recording ? "animate-pulse" : ""} style={{ color: C.red }}>●</span> Record
+              </button>
+            </div>
+          </Panel>
+
+          {/* ── RIGHT: MONITORING ── */}
+          <Panel className="p-4">
+            <div className="mb-1 flex items-center justify-between">
+              <span style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>
+                MONITORING
+              </span>
+              <div className="flex gap-[2px]">
+                {[3, 5, 4, 6, 3, 2].map((h, i) => (
+                  <div key={i} className="rounded-full" style={{ width: 3, height: h * 2, background: C.label }} />
+                ))}
+              </div>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              {/* Vocal Level */}
+              <div className="flex flex-col items-center gap-1">
+                <span style={{ fontSize: 12, fontWeight: 500, color: C.text }}>Vocal Level</span>
+                <div className="flex items-end gap-2">
+                  <Knob value={0.55} size={66} />
+                  <LedMeter level={remoteVocalLevel} height={82} />
+                  <Fader value={0.44} height={82} />
+                </div>
+              </div>
+              {/* Talkback Level */}
+              <div className="flex flex-col items-center gap-1">
+                <span style={{ fontSize: 12, fontWeight: 500, color: C.text }}>Talkback Level</span>
+                <div className="flex items-end gap-2">
+                  <Knob value={talkbackHeld ? 0.65 : 0.45} size={66} />
+                  <LedMeter level={talkbackHeld ? 0.65 : 0.2} height={82} />
+                  <Fader value={talkbackHeld ? 0.38 : 0.14} height={82} />
+                </div>
+              </div>
+            </div>
+          </Panel>
+
+          {/* ── CENTER: VOCAL INPUT ── */}
+          <Panel className="p-4">
+            <div className="mb-2 flex items-center justify-between">
+              <span style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>
+                VOCAL INPUT
+              </span>
+              <div className="flex items-center gap-1 rounded-[3px] px-1.5 py-0.5" style={{ background: C.inset, border: `1px solid ${C.insetBorder}` }}>
+                <div className="h-2.5 w-1.5 rounded-sm" style={{ background: C.blue }} />
+                <div className="h-2.5 w-1.5 rounded-sm" style={{ background: C.yellow }} />
+              </div>
+            </div>
+            <div className="mb-3 text-center" style={{ fontSize: 16, fontWeight: 700, color: C.text, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              REMOTE VOCAL
+            </div>
+            <Inset className="p-3">
+              <HorizontalMeter level={remoteVocalLevel} />
+              <div className="mt-2">
+                <SpectrumBars level={remoteVocalLevel} />
+              </div>
+              <div className="mt-1">
+                <FreqLabels />
+              </div>
+            </Inset>
+            <div className="mt-4 flex justify-center">
+              <button
+                disabled={!isEngineer}
+                onClick={isEngineer ? () => setArmed(!armed) : undefined}
+                className="rounded-[3px] px-8 py-2.5 text-[15px] font-bold uppercase tracking-wide"
+                style={{
+                  background: armed
+                    ? `linear-gradient(180deg, #4a1a1a 0%, #2a0e0e 100%)`
+                    : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
+                  border: `1px solid ${armed ? "#6a2222" : C.panelBorder}`,
+                  color: C.text,
+                  boxShadow: armed ? `0 0 14px rgba(239,68,68,0.15)` : `inset 0 1px 0 rgba(255,255,255,0.05)`,
+                  opacity: isEngineer ? 1 : 0.4,
+                  cursor: isEngineer ? "pointer" : "not-allowed",
+                }}
+              >
+                ARM RECORD
+              </button>
+            </div>
+          </Panel>
+
+          {/* ── RIGHT: EFFECTS ── */}
+          <Panel className="p-4">
+            <div style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>
+              EFFECTS
+            </div>
+            <div className="mt-4 flex items-center justify-around">
+              <Knob label="Comp" value={0.34} size={66} />
+              <Knob label="EQ" value={0.48} size={66} />
+              <Knob label="Reverb" value={0.58} size={66} />
+            </div>
+          </Panel>
+
+          {/* ── BOTTOM: WAVEFORM STRIP (full width) ── */}
+          <Panel className="col-span-3 p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>
+                Jay's Vocal Take 4 - {recording ? "Recording..." : "Ready"}
+              </span>
+              <span style={{ color: C.dim, fontSize: 13 }}>▐▐</span>
+            </div>
+            <Inset className="overflow-hidden rounded-[3px] p-1">
+              <Waveform recording={recording} />
+            </Inset>
+          </Panel>
+
+          {/* ── BOTTOM: TRANSPORT BAR (full width) ── */}
+          <Panel className="col-span-3 flex items-center gap-2 px-3 py-2">
+            <TBtn sym="▌▌" label="Punch In" disabled={!isEngineer} />
+            <TBtn sym="<<" label="Rewind" disabled={!isEngineer} />
+            <TBtn sym="▶▶" label="Forward" disabled={!isEngineer} />
+
+            {/* REC status */}
+            <div
+              className="ml-2 flex items-center gap-2 rounded-[3px] px-5 py-2 text-[15px] font-bold"
+              style={{
+                background: recording
+                  ? `linear-gradient(180deg, #4a1a1a 0%, #2a0e0e 100%)`
+                  : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
+                border: `1px solid ${recording ? "#6a2222" : C.panelBorder}`,
+                minWidth: 240,
+                justifyContent: "center",
+              }}
+            >
+              <span className={recording ? "animate-pulse" : ""} style={{ color: C.red }}>●</span>
+              <span style={{ color: C.red }}>REC</span>
+              <span style={{ color: recording ? C.red : C.dim }}>
+                {recording ? "● RECORDING..." : ""}
+              </span>
+            </div>
+
+            {/* Auto Upload */}
+            <div className="ml-auto flex items-center gap-3">
+              <div className="flex gap-[3px] rounded-[3px] px-1.5 py-1" style={{ background: C.inset, border: `1px solid ${C.insetBorder}` }}>
+                <span className="rounded-[1px]" style={{ width: 8, height: 12, background: C.green }} />
+                <span className="rounded-[1px]" style={{ width: 8, height: 12, background: C.green }} />
+                <span className="rounded-[1px]" style={{ width: 8, height: 12, background: C.yellow }} />
+                <span className="rounded-[1px]" style={{ width: 8, height: 12, background: C.dim }} />
+              </div>
+              <span style={{ fontSize: 11, color: C.label, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                AUTO UPLOAD:
+              </span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: C.green }}>ON ▶</span>
+            </div>
+          </Panel>
+        </div>
+      </div>
     </div>
   );
 }
