@@ -25,58 +25,48 @@ const C = {
   white: "#ffffff",
 };
 
-/* ─── SVG Knob ─── */
-function Knob({ value = 0.5, size = 68, label }: { value?: number; size?: number; label?: string }) {
+/* ─── Interactive SVG Knob ─── */
+function Knob({ value = 0.5, size = 68, label, onChange }: { value?: number; size?: number; label?: string; onChange?: (v: number) => void }) {
   const angle = -135 + value * 270;
   const r = size / 2 - 8;
   const cx = size / 2;
   const cy = size / 2;
   const ticks = 13;
   const toRad = (d: number) => (d * Math.PI) / 180;
+  const dragRef = useRef<{ startY: number; startVal: number } | null>(null);
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (!onChange) return;
+    e.preventDefault();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    dragRef.current = { startY: e.clientY, startVal: value };
+  };
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!dragRef.current || !onChange) return;
+    const delta = (dragRef.current.startY - e.clientY) / 120;
+    onChange(Math.min(1, Math.max(0, dragRef.current.startVal + delta)));
+  };
+  const onPointerUp = () => { dragRef.current = null; };
 
   return (
-    <div className="flex flex-col items-center gap-1.5">
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        {/* tick marks */}
+    <div className="flex flex-col items-center gap-1.5" style={{ cursor: onChange ? "ns-resize" : "default" }}>
+      <svg
+        width={size} height={size} viewBox={`0 0 ${size} ${size}`}
+        onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp}
+        style={{ touchAction: "none" }}
+      >
         {Array.from({ length: ticks }).map((_, i) => {
           const a = toRad(-135 + (i / (ticks - 1)) * 270);
           return (
-            <line
-              key={i}
-              x1={cx + (r + 3) * Math.cos(a)}
-              y1={cy + (r + 3) * Math.sin(a)}
-              x2={cx + (r + 6) * Math.cos(a)}
-              y2={cy + (r + 6) * Math.sin(a)}
-              stroke={C.dim}
-              strokeWidth={1}
-              strokeLinecap="round"
-            />
+            <line key={i} x1={cx + (r + 3) * Math.cos(a)} y1={cy + (r + 3) * Math.sin(a)} x2={cx + (r + 6) * Math.cos(a)} y2={cy + (r + 6) * Math.sin(a)} stroke={C.dim} strokeWidth={1} strokeLinecap="round" />
           );
         })}
-        {/* outer body */}
         <circle cx={cx} cy={cy} r={r} fill={`url(#knobBody${size})`} stroke={C.shellDark} strokeWidth={2} />
-        {/* inner cap */}
         <circle cx={cx} cy={cy} r={r * 0.62} fill={`url(#knobCap${size})`} stroke={C.panelBorder} strokeWidth={1} />
-        {/* pointer */}
-        <line
-          x1={cx}
-          y1={cy}
-          x2={cx + (r * 0.52) * Math.cos(toRad(angle))}
-          y2={cy + (r * 0.52) * Math.sin(toRad(angle))}
-          stroke={C.white}
-          strokeWidth={2.5}
-          strokeLinecap="round"
-        />
+        <line x1={cx} y1={cy} x2={cx + (r * 0.52) * Math.cos(toRad(angle))} y2={cy + (r * 0.52) * Math.sin(toRad(angle))} stroke={C.white} strokeWidth={2.5} strokeLinecap="round" />
         <defs>
-          <radialGradient id={`knobBody${size}`} cx="38%" cy="34%">
-            <stop offset="0%" stopColor="#484a4e" />
-            <stop offset="60%" stopColor="#2a2c30" />
-            <stop offset="100%" stopColor="#1a1b1e" />
-          </radialGradient>
-          <radialGradient id={`knobCap${size}`} cx="40%" cy="36%">
-            <stop offset="0%" stopColor="#3a3c40" />
-            <stop offset="100%" stopColor="#1e1f22" />
-          </radialGradient>
+          <radialGradient id={`knobBody${size}`} cx="38%" cy="34%"><stop offset="0%" stopColor="#484a4e" /><stop offset="60%" stopColor="#2a2c30" /><stop offset="100%" stopColor="#1a1b1e" /></radialGradient>
+          <radialGradient id={`knobCap${size}`} cx="40%" cy="36%"><stop offset="0%" stopColor="#3a3c40" /><stop offset="100%" stopColor="#1e1f22" /></radialGradient>
         </defs>
       </svg>
       {label && <span style={{ color: C.text, fontSize: 12, fontWeight: 500 }}>{label}</span>}
@@ -107,37 +97,33 @@ function LedMeter({ level = 0.5, height = 90 }: { level?: number; height?: numbe
   );
 }
 
-/* ─── Vertical Fader (like in MONITORING section) ─── */
-function Fader({ value = 0.5, height = 90 }: { value?: number; height?: number }) {
+/* ─── Interactive Vertical Fader ─── */
+function Fader({ value = 0.5, height = 90, onChange }: { value?: number; height?: number; onChange?: (v: number) => void }) {
   const trackH = height - 16;
   const thumbY = trackH - value * trackH;
+  const dragRef = useRef<{ startY: number; startVal: number } | null>(null);
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (!onChange) return;
+    e.preventDefault();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    dragRef.current = { startY: e.clientY, startVal: value };
+  };
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!dragRef.current || !onChange) return;
+    const delta = (dragRef.current.startY - e.clientY) / trackH;
+    onChange(Math.min(1, Math.max(0, dragRef.current.startVal + delta)));
+  };
+  const onPointerUp = () => { dragRef.current = null; };
 
   return (
-    <div className="relative" style={{ width: 18, height }}>
-      {/* track groove */}
-      <div
-        className="absolute left-1/2 -translate-x-1/2 rounded-full"
-        style={{
-          top: 8,
-          width: 4,
-          height: trackH,
-          background: `linear-gradient(180deg, ${C.inset} 0%, #0d0e10 100%)`,
-          border: `1px solid ${C.insetBorder}`,
-        }}
-      />
-      {/* thumb */}
-      <div
-        className="absolute left-1/2 -translate-x-1/2 rounded-[2px]"
-        style={{
-          top: 8 + thumbY - 7,
-          width: 20,
-          height: 14,
-          background: `linear-gradient(180deg, #999 0%, #666 100%)`,
-          border: `1px solid ${C.shellEdge}`,
-          boxShadow: `0 2px 6px rgba(0,0,0,0.5)`,
-        }}
-      >
-        {/* groove lines on thumb */}
+    <div
+      className="relative"
+      style={{ width: 18, height, cursor: onChange ? "ns-resize" : "default", touchAction: "none" }}
+      onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp}
+    >
+      <div className="absolute left-1/2 -translate-x-1/2 rounded-full" style={{ top: 8, width: 4, height: trackH, background: `linear-gradient(180deg, ${C.inset} 0%, #0d0e10 100%)`, border: `1px solid ${C.insetBorder}` }} />
+      <div className="absolute left-1/2 -translate-x-1/2 rounded-[2px]" style={{ top: 8 + thumbY - 7, width: 20, height: 14, background: `linear-gradient(180deg, #999 0%, #666 100%)`, border: `1px solid ${C.shellEdge}`, boxShadow: `0 2px 6px rgba(0,0,0,0.5)` }}>
         <div className="absolute left-1/2 top-[4px] h-[1px] w-[10px] -translate-x-1/2 bg-[#555]" />
         <div className="absolute left-1/2 top-[7px] h-[1px] w-[10px] -translate-x-1/2 bg-[#555]" />
       </div>
@@ -278,11 +264,18 @@ export default function UnifiedSessionScreen() {
   const isEngineer = role === "engineer";
   const recording = live.recording;
   const [armed, setArmed] = useState(false);
+  const [playing, setPlaying] = useState(false);
   const [vocalLevel, setVocalLevel] = useState(0.55);
   const [talkbackLevel, setTalkbackLevel] = useState(0.45);
   const [headphoneLevel, setHeadphoneLevel] = useState(0.7);
   const [cueMix, setCueMix] = useState(0.5);
+  const [compVal, setCompVal] = useState(0.34);
+  const [eqVal, setEqVal] = useState(0.48);
+  const [reverbVal, setReverbVal] = useState(0.58);
+  const [autoUpload, setAutoUpload] = useState(true);
   const connected = connection === "connected";
+  // No peers connected yet — all meter levels are zero
+  const peerConnected = false;
   const mins = Math.floor(demoClock.remainingSeconds / 60);
   const secs = demoClock.remainingSeconds % 60;
 
@@ -379,43 +372,29 @@ export default function UnifiedSessionScreen() {
 
           {/* ── LEFT COLUMN: Videos + Controls (spans rows 1-3) ── */}
           <div className="row-span-3 flex flex-col gap-2">
-            {/* Artist Video */}
+            {/* Artist Video — Logo placeholder until someone joins */}
             <Panel className="relative" style={{ aspectRatio: "4/3" }}>
-              <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, #5a4a3a 0%, #3a3028 40%, #1a1b1e 100%)" }}>
-                {/* stylized booth shapes */}
-                <div className="absolute left-[8%] top-[20%] h-[65%] w-[22%] rounded-lg" style={{ background: "rgba(0,0,0,0.3)" }} />
-                <div className="absolute left-[36%] top-[15%] h-[42px] w-[42px] rounded-full" style={{ background: "#c24a3a" }} />
-                <div className="absolute left-[38%] top-[28%] h-[52px] w-[50px] rounded-full" style={{ background: "#b89070" }} />
-                <div className="absolute left-[34%] top-[50%] h-[80px] w-[78px] rounded-t-[40px]" style={{ background: "#1a1b1e" }} />
-                <div className="absolute right-[14%] top-[26%] h-[42px] w-[42px] rounded-full border-[5px]" style={{ borderColor: "#1a1b1e", background: "transparent" }} />
+              <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
+                <span className="text-[28px] font-black tracking-tight" style={{ color: C.dim }}>
+                  W<span style={{ color: C.blue }}>.</span>STUDIO
+                </span>
+                <span style={{ color: C.dim, fontSize: 11, letterSpacing: "0.14em", marginTop: 4 }}>WAITING FOR ARTIST</span>
               </div>
-              <div
-                className="absolute bottom-2 left-2 rounded px-2 py-1 text-[12px] font-medium"
-                style={{ background: "rgba(0,0,0,0.6)", color: C.text }}
-              >
-                Jay - Florida
+              <div className="absolute bottom-2 left-2 rounded px-2 py-1 text-[12px] font-medium" style={{ background: "rgba(0,0,0,0.6)", color: C.dim }}>
+                No one connected
               </div>
             </Panel>
 
-            {/* Engineer Video */}
+            {/* Engineer Video — Logo placeholder */}
             <Panel className="relative" style={{ aspectRatio: "4/3" }}>
-              <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, #3a3a3e 0%, #28282c 40%, #1a1b1e 100%)" }}>
-                <div className="absolute left-[4%] top-[16%] h-[68%] w-[20%] rounded-lg" style={{ background: "rgba(0,0,0,0.35)" }}>
-                  <div className="mx-auto mt-3 h-8 w-8 rounded-full" style={{ background: "#2a2c30", boxShadow: "inset 0 0 0 5px #1a1b1e" }} />
-                  <div className="mx-auto mt-3 h-10 w-10 rounded-full" style={{ background: "#2a2c30", boxShadow: "inset 0 0 0 6px #1a1b1e" }} />
-                </div>
-                <div className="absolute right-[6%] top-[16%] h-[68%] w-[21%] rounded-lg" style={{ background: "rgba(0,0,0,0.35)" }}>
-                  <div className="mx-auto mt-3 h-9 w-9 rounded-full" style={{ background: "#2a2c30", boxShadow: "inset 0 0 0 5px #1a1b1e" }} />
-                  <div className="mx-auto mt-3 h-11 w-11 rounded-full" style={{ background: "#2a2c30", boxShadow: "inset 0 0 0 6px #1a1b1e" }} />
-                </div>
-                <div className="absolute left-[38%] top-[24%] h-[52px] w-[52px] rounded-full" style={{ background: "#a08868" }} />
-                <div className="absolute left-[34%] top-[46%] h-[78px] w-[88px] rounded-t-[46px]" style={{ background: "#1a1b1e" }} />
+              <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
+                <span className="text-[28px] font-black tracking-tight" style={{ color: C.dim }}>
+                  W<span style={{ color: C.blue }}>.</span>STUDIO
+                </span>
+                <span style={{ color: C.dim, fontSize: 11, letterSpacing: "0.14em", marginTop: 4 }}>WAITING FOR ENGINEER</span>
               </div>
-              <div
-                className="absolute bottom-2 left-2 rounded px-2 py-1 text-[12px] font-medium"
-                style={{ background: "rgba(0,0,0,0.6)", color: C.text }}
-              >
-                Bob - New York
+              <div className="absolute bottom-2 left-2 rounded px-2 py-1 text-[12px] font-medium" style={{ background: "rgba(0,0,0,0.6)", color: C.dim }}>
+                No one connected
               </div>
             </Panel>
 
@@ -526,21 +505,25 @@ export default function UnifiedSessionScreen() {
               {/* Play */}
               <button
                 disabled={!isEngineer}
+                onClick={isEngineer ? () => setPlaying(true) : undefined}
                 className="flex items-center gap-2 rounded-[3px] px-5 py-2.5 text-[15px] font-semibold"
                 style={{
-                  background: `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
-                  border: `1px solid ${C.panelBorder}`,
+                  background: playing
+                    ? `linear-gradient(180deg, #1a3a1a 0%, #0e2a0e 100%)`
+                    : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
+                  border: `1px solid ${playing ? "#2a6a2a" : C.panelBorder}`,
                   color: C.text,
-                  boxShadow: `inset 0 1px 0 rgba(255,255,255,0.05)`,
+                  boxShadow: playing ? `0 0 14px rgba(74,222,96,0.15)` : `inset 0 1px 0 rgba(255,255,255,0.05)`,
                   opacity: isEngineer ? 1 : 0.4,
                   minWidth: 110,
                 }}
               >
-                <span style={{ color: C.text }}>▶</span> Play
+                <span style={{ color: playing ? C.green : C.text }}>▶</span> Play
               </button>
               {/* Stop */}
               <button
                 disabled={!isEngineer}
+                onClick={isEngineer ? () => { setPlaying(false); if (recording) setSessionRecording(false); } : undefined}
                 className="flex items-center gap-2 rounded-[3px] px-5 py-2.5 text-[15px] font-semibold"
                 style={{
                   background: `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
@@ -556,7 +539,7 @@ export default function UnifiedSessionScreen() {
               {/* Record */}
               <button
                 disabled={!isEngineer}
-                onClick={isEngineer ? () => setSessionRecording(!recording) : undefined}
+                onClick={isEngineer ? () => { setSessionRecording(!recording); if (!playing) setPlaying(true); } : undefined}
                 className="flex items-center gap-2 rounded-[3px] px-5 py-2.5 text-[15px] font-semibold"
                 style={{
                   background: recording
@@ -591,49 +574,40 @@ export default function UnifiedSessionScreen() {
               <div className="flex flex-col items-center gap-1">
                 <span style={{ fontSize: 11, fontWeight: 500, color: C.text }}>Vocal Level</span>
                 <div className="flex items-end gap-2">
-                  <Knob value={vocalLevel} size={58} />
-                  <LedMeter level={remoteVocalLevel * vocalLevel} height={72} />
-                  <Fader value={vocalLevel} height={72} />
+                  <Knob value={vocalLevel} size={58} onChange={setVocalLevel} />
+                  <LedMeter level={0} height={72} />
+                  <Fader value={vocalLevel} height={72} onChange={setVocalLevel} />
                 </div>
               </div>
               {/* Talkback Level */}
               <div className="flex flex-col items-center gap-1">
                 <span style={{ fontSize: 11, fontWeight: 500, color: C.text }}>Talkback Level</span>
                 <div className="flex items-end gap-2">
-                  <Knob value={talkbackLevel} size={58} />
-                  <LedMeter level={talkbackHeld ? talkbackLevel * 0.85 : 0.12} height={72} />
-                  <Fader value={talkbackLevel} height={72} />
+                  <Knob value={talkbackLevel} size={58} onChange={setTalkbackLevel} />
+                  <LedMeter level={0} height={72} />
+                  <Fader value={talkbackLevel} height={72} onChange={setTalkbackLevel} />
                 </div>
               </div>
               {/* Headphone Level */}
               <div className="flex flex-col items-center gap-1">
                 <span style={{ fontSize: 11, fontWeight: 500, color: C.text }}>Headphone</span>
                 <div className="flex items-end gap-2">
-                  <Knob value={headphoneLevel} size={58} />
-                  <LedMeter level={headphoneLevel * 0.9} height={72} />
-                  <Fader value={headphoneLevel} height={72} />
+                  <Knob value={headphoneLevel} size={58} onChange={setHeadphoneLevel} />
+                  <LedMeter level={0} height={72} />
+                  <Fader value={headphoneLevel} height={72} onChange={setHeadphoneLevel} />
                 </div>
                 <span style={{ fontSize: 8, color: C.dim, letterSpacing: "0.08em" }}>🎧 HP OUT</span>
               </div>
               {/* Cue Mix */}
               <div className="flex flex-col items-center gap-1">
                 <span style={{ fontSize: 11, fontWeight: 500, color: C.text }}>Cue Mix</span>
-                <Knob value={cueMix} size={58} />
+                <Knob value={cueMix} size={58} onChange={setCueMix} />
                 <div className="flex w-full items-center justify-between px-1" style={{ fontSize: 8, color: C.dim }}>
                   <span>VOX</span>
                   <span>BEAT</span>
                 </div>
-                <div
-                  className="mt-0.5 overflow-hidden rounded-sm"
-                  style={{ height: 4, width: "80%", background: C.track, border: `1px solid ${C.insetBorder}` }}
-                >
-                  <div
-                    className="h-full rounded-sm"
-                    style={{
-                      width: `${cueMix * 100}%`,
-                      background: `linear-gradient(90deg, ${C.blue} 0%, ${C.green} 100%)`,
-                    }}
-                  />
+                <div className="mt-0.5 overflow-hidden rounded-sm" style={{ height: 4, width: "80%", background: C.track, border: `1px solid ${C.insetBorder}` }}>
+                  <div className="h-full rounded-sm" style={{ width: `${cueMix * 100}%`, background: `linear-gradient(90deg, ${C.blue} 0%, ${C.green} 100%)` }} />
                 </div>
               </div>
             </div>
@@ -654,9 +628,9 @@ export default function UnifiedSessionScreen() {
               REMOTE VOCAL
             </div>
             <Inset className="p-3">
-              <HorizontalMeter level={remoteVocalLevel} />
+              <HorizontalMeter level={0} />
               <div className="mt-2">
-                <SpectrumBars level={remoteVocalLevel} />
+                <SpectrumBars level={0} />
               </div>
               <div className="mt-1">
                 <FreqLabels />
@@ -689,9 +663,9 @@ export default function UnifiedSessionScreen() {
               EFFECTS
             </div>
             <div className="mt-4 flex items-center justify-around">
-              <Knob label="Comp" value={0.34} size={66} />
-              <Knob label="EQ" value={0.48} size={66} />
-              <Knob label="Reverb" value={0.58} size={66} />
+              <Knob label="Comp" value={compVal} size={66} onChange={setCompVal} />
+              <Knob label="EQ" value={eqVal} size={66} onChange={setEqVal} />
+              <Knob label="Reverb" value={reverbVal} size={66} onChange={setReverbVal} />
             </div>
           </Panel>
 
@@ -736,15 +710,17 @@ export default function UnifiedSessionScreen() {
             {/* Auto Upload */}
             <div className="ml-auto flex items-center gap-3">
               <div className="flex gap-[3px] rounded-[3px] px-1.5 py-1" style={{ background: C.inset, border: `1px solid ${C.insetBorder}` }}>
-                <span className="rounded-[1px]" style={{ width: 8, height: 12, background: C.green }} />
-                <span className="rounded-[1px]" style={{ width: 8, height: 12, background: C.green }} />
-                <span className="rounded-[1px]" style={{ width: 8, height: 12, background: C.yellow }} />
+                <span className="rounded-[1px]" style={{ width: 8, height: 12, background: autoUpload ? C.green : C.dim }} />
+                <span className="rounded-[1px]" style={{ width: 8, height: 12, background: autoUpload ? C.green : C.dim }} />
+                <span className="rounded-[1px]" style={{ width: 8, height: 12, background: autoUpload ? C.yellow : C.dim }} />
                 <span className="rounded-[1px]" style={{ width: 8, height: 12, background: C.dim }} />
               </div>
               <span style={{ fontSize: 11, color: C.label, letterSpacing: "0.06em", textTransform: "uppercase" }}>
                 AUTO UPLOAD:
               </span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: C.green }}>ON ▶</span>
+              <button onClick={() => setAutoUpload(!autoUpload)} style={{ fontSize: 11, fontWeight: 700, color: autoUpload ? C.green : C.red, cursor: "pointer", background: "none", border: "none" }}>
+                {autoUpload ? "ON ▶" : "OFF ■"}
+              </button>
             </div>
           </Panel>
         </div>
