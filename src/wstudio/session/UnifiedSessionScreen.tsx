@@ -284,14 +284,14 @@ export default function UnifiedSessionScreen() {
   }, []);
 
   return (
-    <div ref={shellRef} className="flex min-h-screen select-none items-center justify-center overflow-hidden" style={{ background: "#111214", padding: isFullscreen ? 0 : 16 }}>
-      <div className="w-full overflow-hidden rounded-lg flex flex-col" style={{
-        maxWidth: isFullscreen ? "100%" : 1100,
+    <div ref={shellRef} className={`flex select-none overflow-hidden ${isMobile ? "flex-col overflow-y-auto" : "min-h-screen items-center justify-center"}`} style={{ background: "#111214", padding: isFullscreen ? 0 : isMobile ? 0 : 16 }}>
+      <div className="w-full overflow-hidden flex flex-col" style={{
+        maxWidth: isFullscreen ? "100%" : isMobile ? "100%" : 1100,
         height: isFullscreen ? "100vh" : "auto",
+        borderRadius: isFullscreen || isMobile ? 0 : 8,
         background: `linear-gradient(180deg, ${C.shell} 0%, ${C.shellDark} 100%)`,
-        border: isFullscreen ? "none" : `1px solid ${C.shellEdge}`,
-        borderRadius: isFullscreen ? 0 : undefined,
-        boxShadow: isFullscreen ? "none" : `0 24px 80px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06)`,
+        border: isFullscreen || isMobile ? "none" : `1px solid ${C.shellEdge}`,
+        boxShadow: isFullscreen || isMobile ? "none" : `0 24px 80px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06)`,
         color: C.text,
       }}>
         {/* ─── TITLE BAR ─── */}
