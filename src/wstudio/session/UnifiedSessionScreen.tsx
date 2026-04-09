@@ -34,32 +34,33 @@ function Knob({ value = 0.5, size = 68, label, onChange }: { value?: number; siz
   const ticks = 13;
   const toRad = (d: number) => (d * Math.PI) / 180;
   const dragRef = useRef<{ startY: number; startVal: number } | null>(null);
-  const wrapRef = useRef<HTMLDivElement>(null);
 
-  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+  const onPointerDown = (e: React.PointerEvent) => {
     if (!onChange) return;
     e.preventDefault();
     e.stopPropagation();
-    wrapRef.current?.setPointerCapture(e.pointerId);
     dragRef.current = { startY: e.clientY, startVal: value };
+    const onMove = (ev: PointerEvent) => {
+      if (!dragRef.current) return;
+      const delta = (dragRef.current.startY - ev.clientY) / 120;
+      onChange(Math.min(1, Math.max(0, dragRef.current.startVal + delta)));
+    };
+    const onUp = () => {
+      dragRef.current = null;
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+    };
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
   };
-  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!dragRef.current || !onChange) return;
-    const delta = (dragRef.current.startY - e.clientY) / 120;
-    onChange(Math.min(1, Math.max(0, dragRef.current.startVal + delta)));
-  };
-  const onPointerUp = () => { dragRef.current = null; };
 
   return (
     <div className="flex flex-col items-center gap-1.5">
       <div
-        ref={wrapRef}
         onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        style={{ cursor: onChange ? "ns-resize" : "default", touchAction: "none" }}
+        style={{ cursor: onChange ? "ns-resize" : "default", touchAction: "none", userSelect: "none" }}
       >
-        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ pointerEvents: "none" }}>
           {Array.from({ length: ticks }).map((_, i) => {
             const a = toRad(-135 + (i / (ticks - 1)) * 270);
             return (
