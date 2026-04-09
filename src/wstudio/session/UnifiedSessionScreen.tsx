@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useSession } from "./SessionContext";
 import { useBookingTimer } from "../booking/BookingTimerContext";
 import { SessionTimerBar } from "../booking/SessionTimerBar";
