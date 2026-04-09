@@ -422,7 +422,7 @@ export default function UnifiedSessionScreen() {
 
           {/* ── LEFT COLUMN: Videos + Controls (spans rows 1-3) ── */}
           <div className="row-span-3 flex flex-col gap-2">
-            {/* Artist Video — Logo placeholder until someone joins */}
+            {/* Artist Video */}
             <Panel className="relative" style={{ aspectRatio: "4/3" }}>
               <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
                 <span className="text-[28px] font-black tracking-tight" style={{ color: C.dim }}>
