@@ -18,6 +18,7 @@ import { formatClock, formatCurrency } from "../booking/bookingTypes";
 import {
   ReceiveEffectsPanel,
   ReceiveMonitoringPanel,
+  ReceivePrimaryRemoteWithPip,
   ReceiveRightColumnWrap,
   ReceiveRoutingPanel,
   ReceiveSessionStrip,
