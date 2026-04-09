@@ -433,7 +433,7 @@ export default function UnifiedSessionScreen() {
           {/* ── LEFT COLUMN: Videos + Controls (spans rows 1-3) ── */}
           <div className="row-span-3 flex flex-col gap-2">
             {/* Artist Video */}
-            <Panel className="relative" style={{ aspectRatio: "4/3" }}>
+            <Panel accent={C.acMagenta} className="relative" style={{ aspectRatio: "4/3" }}>
               <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
                 <span className="text-[28px] font-black tracking-tight" style={{ color: C.dim }}>W<span style={{ color: C.blue }}>.</span>STUDIO</span>
                 <span style={{ color: C.dim, fontSize: 11, letterSpacing: "0.14em", marginTop: 4 }}>WAITING FOR ARTIST</span>
@@ -449,7 +449,7 @@ export default function UnifiedSessionScreen() {
             </Panel>
 
             {/* Engineer Video */}
-            <Panel className="relative" style={{ aspectRatio: "4/3" }}>
+            <Panel accent={C.acGreen} className="relative" style={{ aspectRatio: "4/3" }}>
               <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
                 <span className="text-[28px] font-black tracking-tight" style={{ color: C.dim }}>W<span style={{ color: C.blue }}>.</span>STUDIO</span>
                 <span style={{ color: C.dim, fontSize: 11, letterSpacing: "0.14em", marginTop: 4 }}>WAITING FOR ENGINEER</span>
@@ -470,7 +470,7 @@ export default function UnifiedSessionScreen() {
             </Panel>
 
             {/* Mute / Talk / Settings */}
-            <Panel>
+            <Panel accent={C.acOrange}>
               <div className="grid grid-cols-3" style={{ borderTop: `1px solid ${C.panelBorder}` }}>
                 {/* Mute */}
                 <button
@@ -520,7 +520,7 @@ export default function UnifiedSessionScreen() {
           </div>
 
           {/* ── SESSION STATUS BAR (top, spans center + right) ── */}
-          <Panel className="col-span-2 flex items-center justify-between px-4" style={{ height: 48 }}>
+          <Panel accent={C.acCyan} className="col-span-2 flex items-center justify-between px-4" style={{ height: 48 }}>
             <div className="flex items-center gap-3">
               <span style={{ fontSize: 16, fontWeight: 500, color: C.text }}>
                 {sessionDisplayName || "Session: Live with Jay - Florida"}
@@ -566,7 +566,7 @@ export default function UnifiedSessionScreen() {
           </Panel>
 
           {/* ── CENTER: SYNC CONTROLS ── */}
-          <Panel className="p-4">
+          <Panel accent={C.acPurple} className="p-4">
             <div style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>
               SYNC CONTROLS
             </div>
@@ -630,7 +630,7 @@ export default function UnifiedSessionScreen() {
           </Panel>
 
           {/* ── RIGHT: MONITORING ── */}
-          <Panel className="p-4">
+          <Panel accent={C.acLime} className="p-4">
             <div className="mb-1 flex items-center justify-between">
               <span style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>
                 MONITORING
@@ -686,7 +686,7 @@ export default function UnifiedSessionScreen() {
           </Panel>
 
           {/* ── CENTER: VOCAL INPUT ── */}
-          <Panel className="p-4">
+          <Panel accent={C.acOrange} className="p-4">
             <div className="mb-2 flex items-center justify-between">
               <span style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>
                 VOCAL INPUT
@@ -729,7 +729,7 @@ export default function UnifiedSessionScreen() {
           </Panel>
 
           {/* ── RIGHT: EFFECTS ── */}
-          <Panel className="p-4">
+          <Panel accent={C.acMagenta} className="p-4">
             <div style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>
               EFFECTS
             </div>
@@ -741,7 +741,7 @@ export default function UnifiedSessionScreen() {
           </Panel>
 
           {/* ── BOTTOM: WAVEFORM STRIP (full width) ── */}
-          <Panel className="col-span-3 p-3">
+          <Panel accent={C.acCyan} className="col-span-3 p-3">
             <div className="mb-2 flex items-center justify-between">
               <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>
                 Jay's Vocal Take 4 - {recording ? "Recording..." : "Ready"}
@@ -754,7 +754,7 @@ export default function UnifiedSessionScreen() {
           </Panel>
 
           {/* ── BOTTOM: TRANSPORT BAR (full width) ── */}
-          <Panel className="col-span-3 flex items-center gap-2 px-3 py-2">
+          <Panel accent={C.acPurple} className="col-span-3 flex items-center gap-2 px-3 py-2">
             <TBtn sym="▌▌" label="Punch In" disabled={!isEngineer} />
             <TBtn sym="<<" label="Rewind" disabled={!isEngineer} />
             <TBtn sym="▶▶" label="Forward" disabled={!isEngineer} />
