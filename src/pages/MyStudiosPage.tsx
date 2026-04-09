@@ -1,12 +1,26 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Building2, Plus, MapPin, Trash2, ChevronLeft, Star, Pencil } from "lucide-react";
+import { Building2, Plus, MapPin, Trash2, ChevronLeft, Star, Pencil, CheckCircle2, XCircle, CalendarDays } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import CreateStudioSheet from "@/components/CreateStudioSheet";
 import EditStudioSheet from "@/components/EditStudioSheet";
+
+interface Booking {
+  id: string;
+  studio_id: string;
+  user_id: string;
+  booking_date: string;
+  hours: number;
+  total_amount: number;
+  status: string;
+  session_code: string | null;
+  created_at: string;
+  profile?: { display_name: string | null; avatar_url: string | null };
+  studio_name?: string;
+}
 
 interface Studio {
   id: string;
@@ -30,6 +44,9 @@ const MyStudiosPage = () => {
   const [showCreate, setShowCreate] = useState(false);
   const [editStudio, setEditStudio] = useState<Studio | null>(null);
   const [photoMap, setPhotoMap] = useState<Map<string, string>>(new Map());
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loadingBookings, setLoadingBookings] = useState(false);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const fetchStudios = async () => {
     if (!user) return;
@@ -61,6 +78,55 @@ const MyStudiosPage = () => {
   };
 
   useEffect(() => { fetchStudios(); }, [user]);
+
+  const fetchBookings = async () => {
+    if (!user || studios.length === 0) return;
+    setLoadingBookings(true);
+    const studioIds = studios.map((s) => s.id);
+    const { data } = await (supabase as any)
+      .from("studio_bookings")
+      .select("*")
+      .in("studio_id", studioIds)
+      .order("created_at", { ascending: false });
+
+    if (data) {
+      const userIds = [...new Set((data as Booking[]).map((b) => b.user_id))];
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, display_name, avatar_url")
+        .in("user_id", userIds);
+      const profileMap = new Map((profiles ?? []).map((p) => [p.user_id, p]));
+      const studioNameMap = new Map(studios.map((s) => [s.id, s.name]));
+
+      setBookings(
+        (data as Booking[]).map((b) => ({
+          ...b,
+          profile: profileMap.get(b.user_id) as Booking["profile"],
+          studio_name: studioNameMap.get(b.studio_id),
+        }))
+      );
+    }
+    setLoadingBookings(false);
+  };
+
+  useEffect(() => {
+    if (studios.length > 0) fetchBookings();
+  }, [studios]);
+
+  const handleBookingAction = async (bookingId: string, newStatus: "confirmed" | "rejected") => {
+    setUpdatingId(bookingId);
+    const { error } = await (supabase as any)
+      .from("studio_bookings")
+      .update({ status: newStatus })
+      .eq("id", bookingId);
+    setUpdatingId(null);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: newStatus === "confirmed" ? "Booking approved!" : "Booking rejected" });
+      fetchBookings();
+    }
+  };
 
   const handleDelete = async (id: string) => {
     const { error } = await (supabase as any).from("studios").delete().eq("id", id);
@@ -158,6 +224,84 @@ const MyStudiosPage = () => {
 
       <CreateStudioSheet open={showCreate} onClose={() => setShowCreate(false)} onCreated={fetchStudios} />
       <EditStudioSheet open={!!editStudio} onClose={() => setEditStudio(null)} onUpdated={fetchStudios} studio={editStudio} />
+
+      {studios.length > 0 && (
+        <div className="mt-6">
+          <div className="flex items-center gap-2 mb-3">
+            <CalendarDays className="w-5 h-5 text-primary" />
+            <h2 className="text-lg font-display font-bold text-foreground">Booking Requests</h2>
+          </div>
+
+          {loadingBookings ? (
+            <div className="flex justify-center py-8">
+              <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : bookings.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6">No bookings yet</p>
+          ) : (
+            <div className="flex flex-col gap-2.5">
+              {bookings.map((booking) => {
+                const isPending = booking.status === "pending";
+                const isConfirmed = booking.status === "confirmed";
+                return (
+                  <motion.div
+                    key={booking.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="rounded-xl bg-card border border-border p-3.5"
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">
+                          {booking.profile?.display_name ?? "Unknown Artist"}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {booking.studio_name} · {new Date(booking.booking_date).toLocaleDateString()} · {booking.hours}h
+                        </p>
+                      </div>
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                        isPending
+                          ? "bg-amber-500/15 text-amber-400"
+                          : isConfirmed
+                          ? "bg-emerald-500/15 text-emerald-400"
+                          : "bg-red-500/15 text-red-400"
+                      }`}>
+                        {isPending ? "Pending" : isConfirmed ? "Approved" : "Rejected"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-primary">${booking.total_amount}</span>
+                      {booking.session_code && (
+                        <span className="text-[10px] font-mono text-muted-foreground">Code: {booking.session_code}</span>
+                      )}
+                    </div>
+
+                    {isPending && (
+                      <div className="flex gap-2 mt-3">
+                        <button
+                          disabled={updatingId === booking.id}
+                          onClick={() => handleBookingAction(booking.id, "confirmed")}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-emerald-600/20 text-emerald-400 text-xs font-semibold hover:bg-emerald-600/30 transition disabled:opacity-40"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Approve
+                        </button>
+                        <button
+                          disabled={updatingId === booking.id}
+                          onClick={() => handleBookingAction(booking.id, "rejected")}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-red-600/20 text-red-400 text-xs font-semibold hover:bg-red-600/30 transition disabled:opacity-40"
+                        >
+                          <XCircle className="w-3.5 h-3.5" /> Reject
+                        </button>
+                      </div>
+                    )}
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

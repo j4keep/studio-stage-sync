@@ -206,7 +206,7 @@ export function StudioSearchSheet({
         booking_date: new Date(bookingDate).toISOString().slice(0, 10),
         hours,
         total_amount: total,
-        status: "confirmed",
+        status: "pending",
         session_status: "pending",
       })
       .select("session_code")
@@ -220,7 +220,7 @@ export function StudioSearchSheet({
     }
 
     const code = data?.session_code as string;
-    toast.success(`Session booked! Your code: ${code}`);
+    toast.success(`Booking submitted! Waiting for approval. Code: ${code}`);
     onBooked(code);
     onClose();
   };
@@ -487,7 +487,7 @@ export function StudioSearchSheet({
               type="button"
               className="w-full rounded-xl border border-amber-600/40 bg-gradient-to-b from-amber-700/90 to-amber-950 py-3 text-sm font-semibold text-white shadow-lg shadow-amber-950/40 transition hover:from-amber-600 hover:to-amber-900 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {booking ? "Booking..." : !user ? "Sign in to book" : "Confirm & Get Session Code"}
+              {booking ? "Submitting..." : !user ? "Sign in to book" : "Request Booking"}
             </button>
           </div>
         )}
