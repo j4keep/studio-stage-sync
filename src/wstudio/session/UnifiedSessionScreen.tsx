@@ -731,7 +731,7 @@ export default function UnifiedSessionScreen() {
               <span style={{ fontSize: 11, color: C.label, letterSpacing: "0.06em", textTransform: "uppercase" }}>
                 AUTO UPLOAD:
               </span>
-              <button onClick={() => setAutoUpload(!autoUpload)} style={{ fontSize: 11, fontWeight: 700, color: autoUpload ? C.green : C.red, cursor: "pointer", background: "none", border: "none" }}>
+              <button onPointerDown={(e) => { e.preventDefault(); setAutoUpload(!autoUpload); }} style={{ fontSize: 11, fontWeight: 700, color: autoUpload ? C.green : C.red, cursor: "pointer", background: "none", border: "none" }}>
                 {autoUpload ? "ON ▶" : "OFF ■"}
               </button>
             </div>
