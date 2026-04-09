@@ -410,11 +410,11 @@ export default function UnifiedSessionScreen() {
           }}
         >
           <div className="flex items-end gap-2">
-            <span className="text-[20px] font-black tracking-tight">
-              <span style={{ position: "relative", display: "inline-block" }}>
-                <span style={{ fontWeight: 900 }}>W</span>
-                <span style={{ position: "absolute", left: 0, top: 2, bottom: 2, width: 3, background: C.blue, borderRadius: 1 }} />
-              </span>
+            <span className="text-[20px] font-black tracking-tight" style={{ display: "inline-flex", alignItems: "baseline" }}>
+              <svg width="24" height="18" viewBox="0 0 24 18" fill="none" style={{ marginRight: 1, position: "relative", top: 1 }}>
+                <path d="M0 1L4 17H5L9 5L13 17H14L18 1H16L13 12L9.5 1H8.5L5 12L2 1H0Z" fill={C.white} />
+                <line x1="17" y1="0" x2="12" y2="18" stroke={C.blue} strokeWidth="2.5" strokeLinecap="round" />
+              </svg>
               <span style={{ color: C.blue }}>.</span>STUDIO
             </span>
             <span style={{ color: C.label, fontSize: 12, fontWeight: 300, letterSpacing: "0.1em", paddingBottom: 2 }}>
