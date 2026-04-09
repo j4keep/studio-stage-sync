@@ -264,11 +264,18 @@ export default function UnifiedSessionScreen() {
   const isEngineer = role === "engineer";
   const recording = live.recording;
   const [armed, setArmed] = useState(false);
+  const [playing, setPlaying] = useState(false);
   const [vocalLevel, setVocalLevel] = useState(0.55);
   const [talkbackLevel, setTalkbackLevel] = useState(0.45);
   const [headphoneLevel, setHeadphoneLevel] = useState(0.7);
   const [cueMix, setCueMix] = useState(0.5);
+  const [compVal, setCompVal] = useState(0.34);
+  const [eqVal, setEqVal] = useState(0.48);
+  const [reverbVal, setReverbVal] = useState(0.58);
+  const [autoUpload, setAutoUpload] = useState(true);
   const connected = connection === "connected";
+  // No peers connected yet — all meter levels are zero
+  const peerConnected = false;
   const mins = Math.floor(demoClock.remainingSeconds / 60);
   const secs = demoClock.remainingSeconds % 60;
 
