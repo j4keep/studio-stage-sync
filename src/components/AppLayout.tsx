@@ -40,8 +40,13 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
     );
   }
 
+  // W.Studio pages get full width (no max-w-lg) so DAW fills the screen
+  const containerClass = isStudioPage
+    ? "min-h-screen bg-background text-foreground relative"
+    : "min-h-screen bg-background text-foreground max-w-lg mx-auto relative";
+
   return (
-    <div className="min-h-screen bg-background text-foreground max-w-lg mx-auto relative">
+    <div className={containerClass}>
       {showTopBar && (
         <div className="sticky top-0 z-40 bg-background/90 backdrop-blur-xl border-b border-border px-4 py-2 flex items-center justify-end gap-2 wstudio-nav">
           <button

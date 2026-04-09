@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useSession } from "./SessionContext";
 import { useBookingTimer } from "../booking/BookingTimerContext";
 import { SessionTimerBar } from "../booking/SessionTimerBar";
@@ -256,6 +257,7 @@ export default function UnifiedSessionScreen() {
   const isArtist = role === "artist";
   const recording = live.recording;
   const hasBooking = !!booking && booking.bookedMinutes > 0;
+  const isMobile = useIsMobile();
   const [armed, setArmed] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [vocalLevel, setVocalLevel] = useState(0.55);
@@ -282,14 +284,14 @@ export default function UnifiedSessionScreen() {
   }, []);
 
   return (
-    <div ref={shellRef} className="flex min-h-screen select-none items-center justify-center overflow-hidden" style={{ background: "#111214", padding: isFullscreen ? 0 : 16 }}>
-      <div className="w-full overflow-hidden rounded-lg flex flex-col" style={{
-        maxWidth: isFullscreen ? "100%" : 1100,
+    <div ref={shellRef} className={`flex select-none overflow-hidden ${isMobile ? "flex-col overflow-y-auto" : "min-h-screen items-center justify-center"}`} style={{ background: "#111214", padding: isFullscreen ? 0 : isMobile ? 0 : 16 }}>
+      <div className="w-full overflow-hidden flex flex-col" style={{
+        maxWidth: isFullscreen ? "100%" : isMobile ? "100%" : 1100,
         height: isFullscreen ? "100vh" : "auto",
+        borderRadius: isFullscreen || isMobile ? 0 : 8,
         background: `linear-gradient(180deg, ${C.shell} 0%, ${C.shellDark} 100%)`,
-        border: isFullscreen ? "none" : `1px solid ${C.shellEdge}`,
-        borderRadius: isFullscreen ? 0 : undefined,
-        boxShadow: isFullscreen ? "none" : `0 24px 80px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06)`,
+        border: isFullscreen || isMobile ? "none" : `1px solid ${C.shellEdge}`,
+        boxShadow: isFullscreen || isMobile ? "none" : `0 24px 80px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06)`,
         color: C.text,
       }}>
         {/* ─── TITLE BAR ─── */}
@@ -314,11 +316,11 @@ export default function UnifiedSessionScreen() {
         </div>
 
         {/* ─── MAIN GRID ─── */}
-        <div className={`relative grid gap-2 p-2 ${isFullscreen ? "flex-1" : ""}`} style={{ gridTemplateColumns: "280px 1fr 260px", gridTemplateRows: isFullscreen ? "auto 1fr auto auto" : "auto auto auto auto" }}>
+        <div className={`relative grid gap-2 p-2 ${isFullscreen ? "flex-1" : ""}`} style={{ gridTemplateColumns: isMobile ? "1fr" : "280px 1fr 260px", gridTemplateRows: isFullscreen ? "auto 1fr auto auto" : "auto auto auto auto" }}>
           {controlsLocked && <SessionControlsLockOverlay />}
 
           {/* ── LEFT COLUMN: Videos + Controls (spans all content rows) ── */}
-          <div className="row-span-3 flex flex-col gap-2">
+          <div className={`${isMobile ? "" : "row-span-3"} flex ${isMobile ? "flex-row" : "flex-col"} gap-2`}>
             {/* Artist Video */}
             <Panel accent={C.acMagenta} className="relative" style={{ aspectRatio: "4/3" }}>
               <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
@@ -386,7 +388,7 @@ export default function UnifiedSessionScreen() {
           </div>
 
           {/* ── SESSION STATUS BAR (top, spans center + right) ── */}
-          <Panel accent={C.acCyan} className="col-span-2 flex items-center justify-between px-4" style={{ height: 48 }}>
+          <Panel accent={C.acCyan} className={`${isMobile ? "" : "col-span-2"} flex items-center justify-between px-4`} style={{ height: 48 }}>
             <div className="flex items-center gap-3">
               <span style={{ fontSize: 16, fontWeight: 500, color: C.text }}>{sessionDisplayName || "Session: Live with Jay - Florida"}</span>
               <span className="rounded px-2.5 py-1 text-[11px] font-bold uppercase" style={{
@@ -542,7 +544,7 @@ export default function UnifiedSessionScreen() {
           </Panel>
 
           {/* ── VOCAL TAKE WAVEFORM (compact, same height as mute/talk/settings) ── */}
-          <Panel accent={C.acCyan} className="col-span-2 flex items-center gap-3 px-3 py-2">
+          <Panel accent={C.acCyan} className={`${isMobile ? "" : "col-span-2"} flex items-center gap-3 px-3 py-2`}>
             <span style={{ fontSize: 13, fontWeight: 600, color: C.text, whiteSpace: "nowrap" }}>Jay's Vocal Take 4 - {recording ? "Recording..." : "Ready"}</span>
             <Inset className="flex-1 overflow-hidden rounded-[3px] p-0.5">
               <Waveform recording={recording} />
@@ -551,7 +553,7 @@ export default function UnifiedSessionScreen() {
           </Panel>
 
           {/* ── BOTTOM: TRANSPORT BAR (full width, single long card) ── */}
-          <Panel accent={C.acPurple} className="col-span-3 flex items-center gap-2 px-3 py-2">
+          <Panel accent={C.acPurple} className={`${isMobile ? "" : "col-span-3"} flex ${isMobile ? "flex-wrap" : ""} items-center gap-2 px-3 py-2`}>
             <TBtn sym="▌▌" label="Punch In" disabled={!isEngineer} />
             <TBtn sym="<<" label="Rewind" disabled={!isEngineer} />
             <TBtn sym="▶▶" label="Forward" disabled={!isEngineer} />
