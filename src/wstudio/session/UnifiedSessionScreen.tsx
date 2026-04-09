@@ -484,20 +484,21 @@ export default function UnifiedSessionScreen() {
             <div className="flex items-center gap-2">
               {/* Icon buttons row */}
               {[
-                { icon: "🔊", onClick: undefined },
-                { icon: "🖥", onClick: isEngineer ? toggleScreenShare : undefined },
-                { icon: "✕", onClick: undefined },
-                { icon: "⚙", onClick: undefined },
+                { icon: "🔊", handler: undefined },
+                { icon: "🖥", handler: isEngineer ? toggleScreenShare : undefined },
+                { icon: "✕", handler: undefined },
+                { icon: "⚙", handler: undefined },
               ].map((btn, i) => (
                 <button
                   key={i}
-                  onClick={btn.onClick}
+                  onPointerDown={btn.handler ? (e) => { e.preventDefault(); btn.handler!(); } : undefined}
                   className="flex h-9 w-9 items-center justify-center rounded"
                   style={{
                     background: `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
                     border: `1px solid ${C.panelBorder}`,
                     color: C.label,
                     fontSize: 15,
+                    cursor: btn.handler ? "pointer" : "default",
                   }}
                 >
                   {btn.icon}
