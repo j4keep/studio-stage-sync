@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import type { Role } from "./SessionContext";
-import type { SessionLiveState } from "./sessionLiveSync";
+import { defaultLiveState, type SessionLiveState } from "./sessionLiveSync";
 
 export type ConnectionQuality = "excellent" | "good" | "fair" | "poor";
 
@@ -23,30 +23,31 @@ export function SessionCommIndicators({
   latencyMs: number;
   connectionConnected: boolean;
 }) {
+  const s: SessionLiveState = live ?? defaultLiveState();
   const q = connectionQualityFromLatency(latencyMs);
   const chips: { key: string; label: string; className: string; show: boolean }[] = [
     {
       key: "eng",
       label: "Engineer talking",
-      show: role === "artist" && live.engineerPtt,
+      show: role === "artist" && s.engineerPtt,
       className: "border-sky-600/50 bg-sky-950/50 text-sky-200",
     },
     {
       key: "art",
       label: "Artist talking",
-      show: role === "engineer" && live.artistPtt,
+      show: role === "engineer" && s.artistPtt,
       className: "border-violet-600/50 bg-violet-950/50 text-violet-200",
     },
     {
       key: "mute",
       label: "Artist muted",
-      show: role === "engineer" && live.artistMuted,
+      show: role === "engineer" && s.artistMuted,
       className: "border-rose-700/50 bg-rose-950/40 text-rose-200",
     },
     {
       key: "rec",
       label: "Recording",
-      show: live.recording,
+      show: s.recording,
       className: "border-red-600/60 bg-red-950/50 text-red-200 animate-pulse",
     },
     {

@@ -134,7 +134,7 @@ export default function EngineerSessionScreen() {
   if (role === "artist") return <Navigate to="/wstudio/session/artist" replace />;
 
   return (
-    <div className="flex min-h-0 min-h-screen flex-1 flex-col bg-[#121212] text-zinc-100">
+    <div className="flex min-h-screen w-full flex-col bg-[#121212] text-zinc-100">
       <ExtensionApprovalDialog
         open={extensionModalOpen}
         onOpenChange={setExtensionModalOpen}
@@ -181,11 +181,11 @@ export default function EngineerSessionScreen() {
 
         <ReceiveSessionStrip
           sessionTitle={sessionTitle}
-          connectionLabel={connection === "connected" ? "connected" : connection}
+          connection={connection}
           timerLabel={timerLine}
           onShareClick={() => {
             toggleScreenShare();
-            toast(screenSharing ? "Share off (demo)" : "Share on (demo)");
+            toast.message(screenSharing ? "Share off (demo)" : "Share on (demo)");
           }}
           onVolumeClick={() => toast.message("Monitor mix (demo)")}
           onToolsClick={() => toast.message("Tools / routing (demo)")}

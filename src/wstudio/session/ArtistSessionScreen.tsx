@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { ArrowLeft, Mic, MonitorUp, Radio, Timer, Video as VideoIcon, Volume2 } from "lucide-react";
 import { toast } from "sonner";
@@ -97,7 +97,7 @@ export default function ArtistSessionScreen() {
   if (role === "engineer") return <Navigate to="/wstudio/session/engineer" replace />;
 
   return (
-    <div className="flex min-h-0 min-h-screen flex-1 flex-col gap-3 bg-[#121212] p-3 text-zinc-100">
+    <div className="flex min-h-screen w-full flex-col gap-3 bg-[#121212] p-3 text-zinc-100">
       <ExpandableShell
         id="session"
         title="Session"

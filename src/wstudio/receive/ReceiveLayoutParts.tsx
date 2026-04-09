@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import type { ConnectionState } from "../connection/connectionTypes";
+import { toSessionStripConnection } from "../connection/connectionTypes";
 import { VideoPanel } from "../video/VideoPanel";
 
 const PANEL =
@@ -60,7 +62,7 @@ export function ReceiveTopChrome({
 
 export function ReceiveSessionStrip({
   sessionTitle,
-  connectionLabel,
+  connection,
   timerLabel,
   onVolumeClick,
   onShareClick,
@@ -68,24 +70,32 @@ export function ReceiveSessionStrip({
   onSettingsClick,
 }: {
   sessionTitle: string;
-  connectionLabel: "connected" | "connecting" | "disconnected";
+  /** Full transport state (degraded is shown with a warning label). */
+  connection: ConnectionState;
   timerLabel?: string;
   onVolumeClick?: () => void;
   onShareClick?: () => void;
   onToolsClick?: () => void;
   onSettingsClick?: () => void;
 }) {
-  const connected = connectionLabel === "connected";
+  const strip = toSessionStripConnection(connection);
+  const connected = strip === "connected";
+  const degraded = connection === "degraded";
+  const badgeLabel = degraded ? "Degraded" : connected ? "Connected" : strip;
   return (
     <div className={cn(PANEL, "flex flex-wrap items-center gap-2 px-3 py-2")}>
       <p className="min-w-0 flex-1 truncate text-xs text-zinc-200">{sessionTitle}</p>
       <span
         className={cn(
           "shrink-0 rounded px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide",
-          connected ? "bg-emerald-900/50 text-emerald-300 ring-1 ring-emerald-600/40" : "bg-zinc-800 text-zinc-500",
+          connected
+            ? "bg-emerald-900/50 text-emerald-300 ring-1 ring-emerald-600/40"
+            : degraded
+              ? "bg-orange-900/50 text-orange-200 ring-1 ring-orange-600/40"
+              : "bg-zinc-800 text-zinc-500",
         )}
       >
-        {connected ? "Connected" : connectionLabel}
+        {badgeLabel}
       </span>
       {timerLabel ? (
         <span className="shrink-0 font-mono text-[10px] tabular-nums text-amber-200/90">{timerLabel}</span>

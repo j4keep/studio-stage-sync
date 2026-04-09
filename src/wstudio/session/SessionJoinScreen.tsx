@@ -31,7 +31,7 @@ export default function SessionJoinScreen() {
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-4 py-10">
+    <div className="flex min-h-screen w-full min-w-0 flex-col items-center justify-center px-4 py-10">
       <div className="w-full max-w-lg space-y-8">
         <header className="text-center">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-600/20 ring-1 ring-violet-500/40">
