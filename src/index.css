@@ -305,3 +305,11 @@
     display: none;
   }
 }
+
+/* Hide nav/topbar when W.Studio is in fullscreen */
+:fullscreen .wstudio-nav {
+  display: none !important;
+}
+:fullscreen .wstudio-main {
+  padding-bottom: 0 !important;
+}
