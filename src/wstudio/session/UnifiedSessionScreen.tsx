@@ -388,7 +388,7 @@ export default function UnifiedSessionScreen() {
           </div>
 
           {/* ── SESSION STATUS BAR (top, spans center + right) ── */}
-          <Panel accent={C.acCyan} className="col-span-2 flex items-center justify-between px-4" style={{ height: 48 }}>
+          <Panel accent={C.acCyan} className={`${isMobile ? "" : "col-span-2"} flex items-center justify-between px-4`} style={{ height: 48 }}>
             <div className="flex items-center gap-3">
               <span style={{ fontSize: 16, fontWeight: 500, color: C.text }}>{sessionDisplayName || "Session: Live with Jay - Florida"}</span>
               <span className="rounded px-2.5 py-1 text-[11px] font-bold uppercase" style={{
