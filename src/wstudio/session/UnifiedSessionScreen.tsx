@@ -297,7 +297,7 @@ export default function UnifiedSessionScreen() {
           {controlsLocked && <SessionControlsLockOverlay />}
 
           {/* ── LEFT COLUMN: Videos + Controls (spans all content rows) ── */}
-          <div className="row-span-4 flex flex-col gap-2">
+          <div className="row-span-3 flex flex-col gap-2">
             {/* Artist Video */}
             <Panel accent={C.acMagenta} className="relative" style={{ aspectRatio: "4/3" }}>
               <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
