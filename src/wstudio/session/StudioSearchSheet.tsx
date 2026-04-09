@@ -38,6 +38,70 @@ interface StudioPhoto {
   display_order: number | null;
 }
 
+function ExpandedPhotoViewer({
+  photos,
+  initialIndex,
+  onClose,
+}: {
+  photos: StudioPhoto[];
+  initialIndex: number;
+  onClose: () => void;
+}) {
+  const [idx, setIdx] = useState(initialIndex);
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowLeft") setIdx((i) => (i - 1 + photos.length) % photos.length);
+      if (e.key === "ArrowRight") setIdx((i) => (i + 1) % photos.length);
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [photos.length, onClose]);
+
+  return ReactDOM.createPortal(
+    <div
+      className="fixed inset-0 z-[9999] bg-black/95 flex flex-col items-center justify-center"
+      onPointerDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <button
+        onPointerDown={(e) => { e.stopPropagation(); onClose(); }}
+        className="absolute top-4 right-4 w-11 h-11 rounded-full bg-zinc-700 flex items-center justify-center text-white z-10 active:bg-zinc-500"
+      >
+        <X className="h-6 w-6" />
+      </button>
+      <img
+        src={photos[idx]?.photo_url}
+        alt={`Studio photo ${idx + 1}`}
+        className="max-w-[90vw] max-h-[70vh] rounded-xl object-contain"
+        onPointerDown={(e) => e.stopPropagation()}
+      />
+      {photos.length > 1 && (
+        <div className="flex items-center gap-6 mt-4" onPointerDown={(e) => e.stopPropagation()}>
+          <button
+            onPointerDown={() => setIdx((i) => (i - 1 + photos.length) % photos.length)}
+            className="w-11 h-11 rounded-full bg-zinc-700 flex items-center justify-center text-white active:bg-zinc-500"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <span className="text-sm text-zinc-400 tabular-nums min-w-[3rem] text-center">
+            {idx + 1} / {photos.length}
+          </span>
+          <button
+            onPointerDown={() => setIdx((i) => (i + 1) % photos.length)}
+            className="w-11 h-11 rounded-full bg-zinc-700 flex items-center justify-center text-white active:bg-zinc-500"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        </div>
+      )}
+    </div>,
+    document.body
+  );
+}
+
 export function StudioSearchSheet({
   open,
   onClose,
@@ -408,45 +472,13 @@ export function StudioSearchSheet({
       </SheetContent>
 
     </Sheet>
-    {/* Expanded photo overlay - rendered outside Sheet via portal */}
-    {expandedPhotos &&
-      ReactDOM.createPortal(
-        <div
-          className="fixed inset-0 z-[9999] bg-black/95 flex flex-col items-center justify-center"
-          onClick={() => setExpandedPhotos(null)}
-        >
-          <button
-            onClick={(e) => { e.stopPropagation(); setExpandedPhotos(null); }}
-            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-zinc-700 flex items-center justify-center text-white z-10 active:bg-zinc-600"
-          >
-            <X className="h-5 w-5" />
-          </button>
-          <img
-            src={expandedPhotos[expandedIndex]?.photo_url}
-            alt={`Studio photo ${expandedIndex + 1}`}
-            className="max-w-[90vw] max-h-[70vh] rounded-xl object-contain"
-            onClick={(e) => e.stopPropagation()}
-          />
-          {expandedPhotos.length > 1 && (
-            <div className="flex items-center gap-4 mt-4" onClick={(e) => e.stopPropagation()}>
-              <button
-                onClick={() => setExpandedIndex((prev) => (prev - 1 + expandedPhotos.length) % expandedPhotos.length)}
-                className="w-10 h-10 rounded-full bg-zinc-700 flex items-center justify-center text-white active:bg-zinc-600"
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </button>
-              <span className="text-sm text-zinc-400">{expandedIndex + 1} / {expandedPhotos.length}</span>
-              <button
-                onClick={() => setExpandedIndex((prev) => (prev + 1) % expandedPhotos.length)}
-                className="w-10 h-10 rounded-full bg-zinc-700 flex items-center justify-center text-white active:bg-zinc-600"
-              >
-                <ChevronRight className="h-5 w-5" />
-              </button>
-            </div>
-          )}
-        </div>,
-        document.body
-      )}
+    {expandedPhotos && (
+      <ExpandedPhotoViewer
+        photos={expandedPhotos}
+        initialIndex={expandedIndex}
+        onClose={() => setExpandedPhotos(null)}
+      />
+    )}
     </>
   );
 }
