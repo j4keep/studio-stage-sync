@@ -16,8 +16,14 @@ import {
   generateMockSessionId,
 } from "./demoConfig";
 import type { TimerWarningLevel } from "../booking/bookingTypes";
+import {
+  defaultLiveState,
+  subscribeLive,
+  writeLive,
+  type SessionLiveState,
+} from "./sessionLiveSync";
 
-type Role = "artist" | "engineer" | null;
+export type Role = "artist" | "engineer" | null;
 
 export type DemoClock = {
   totalMinutes: number;
@@ -35,7 +41,6 @@ function demoWarningLevel(remainingSeconds: number, phase: DemoClock["phase"], r
 }
 
 export type SessionContextValue = {
-  /** Preview mode: instant connect, mock data */
   demoMode: boolean;
   sessionId: string;
   setSessionId: (id: string) => void;
@@ -45,7 +50,13 @@ export type SessionContextValue = {
   joinAsArtist: () => void;
   joinAsEngineer: () => void;
   leaveSession: () => void;
+  /** Local push-to-talk pressed */
+  talkbackHeld: boolean;
+  beginTalkback: () => void;
+  endTalkback: () => void;
+  /** @deprecated use talkbackHeld */
   talkbackOn: boolean;
+  /** @deprecated use beginTalkback/endTalkback */
   toggleTalkback: () => void;
   muted: boolean;
   toggleMute: () => void;
@@ -53,10 +64,14 @@ export type SessionContextValue = {
   screenSharing: boolean;
   toggleScreenShare: () => void;
   remoteVocalLevel: number;
-  /** Paid-booking timer absent — use demo clock for preview */
   demoClock: DemoClock;
   demoWarningLevel: TimerWarningLevel;
   startDemoSessionClock: () => void;
+  /** Synced session state (recording, peer PTT, share, artist mute) */
+  live: SessionLiveState;
+  setSessionRecording: (recording: boolean) => void;
+  /** True when engineer has share on OR live says share active (for artist view) */
+  collaborationShareActive: boolean;
 };
 
 const SessionCtx = createContext<SessionContextValue | null>(null);
@@ -66,10 +81,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [sessionDisplayName, setSessionDisplayName] = useState("");
   const [role, setRole] = useState<Role>(null);
   const [connection, setConnection] = useState<ConnectionState>("disconnected");
-  const [talkbackOn, setTalkbackOn] = useState(false);
+  const [talkbackHeld, setTalkbackHeld] = useState(false);
   const [muted, setMuted] = useState(false);
   const [screenSharing, setScreenSharing] = useState(false);
   const [remoteVocalLevel, setRemoteVocalLevel] = useState(0.35);
+  const [live, setLive] = useState<SessionLiveState>(defaultLiveState());
   const latencyRef = useRef(26);
   const vocalPhaseRef = useRef(0);
 
@@ -79,6 +95,44 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     running: false,
     phase: "scheduled",
   });
+
+  useEffect(() => {
+    if (!sessionId.trim() || !role) {
+      setLive(defaultLiveState());
+      return;
+    }
+    return subscribeLive(sessionId, setLive);
+  }, [sessionId, role]);
+
+  useEffect(() => {
+    if (!talkbackHeld) return;
+    const end = () => {
+      setTalkbackHeld(false);
+      if (role === "engineer") writeLive(sessionId, { engineerPtt: false });
+      if (role === "artist") writeLive(sessionId, { artistPtt: false });
+    };
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
+    window.addEventListener("blur", end);
+    return () => {
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+      window.removeEventListener("blur", end);
+    };
+  }, [talkbackHeld, role, sessionId]);
+
+  const beginTalkback = useCallback(() => {
+    if (talkbackHeld) return;
+    setTalkbackHeld(true);
+    if (role === "engineer") writeLive(sessionId, { engineerPtt: true });
+    if (role === "artist") writeLive(sessionId, { artistPtt: true });
+  }, [talkbackHeld, role, sessionId]);
+
+  const endTalkback = useCallback(() => {
+    setTalkbackHeld(false);
+    if (role === "engineer") writeLive(sessionId, { engineerPtt: false });
+    if (role === "artist") writeLive(sessionId, { artistPtt: false });
+  }, [role, sessionId]);
 
   const startDemoSessionClock = useCallback(() => {
     setDemoClock((c) => ({
@@ -138,10 +192,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const leaveSession = useCallback(() => {
     setRole(null);
     setConnection("disconnected");
-    setTalkbackOn(false);
+    setTalkbackHeld(false);
     setMuted(false);
     setScreenSharing(false);
     setSessionDisplayName("");
+    setLive(defaultLiveState());
     setDemoClock({
       totalMinutes: DEMO_TIMER_MINUTES,
       remainingSeconds: DEMO_TIMER_MINUTES * 60,
@@ -149,6 +204,30 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       phase: "scheduled",
     });
   }, []);
+
+  const toggleMute = useCallback(() => {
+    setMuted((m) => {
+      const next = !m;
+      if (role === "artist" && sessionId.trim()) writeLive(sessionId, { artistMuted: next });
+      return next;
+    });
+  }, [role, sessionId]);
+
+  const toggleScreenShare = useCallback(() => {
+    setScreenSharing((prev) => {
+      const next = !prev;
+      if (role === "engineer" && sessionId.trim()) writeLive(sessionId, { screenShareActive: next });
+      return next;
+    });
+  }, [role, sessionId]);
+
+  const setSessionRecording = useCallback(
+    (recording: boolean) => {
+      if (role !== "engineer" || !sessionId.trim()) return;
+      writeLive(sessionId, { recording });
+    },
+    [role, sessionId],
+  );
 
   useEffect(() => {
     if (connection !== "connected" || !WSTUDIO_DEMO_MODE) return;
@@ -183,6 +262,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [demoClock.remainingSeconds, demoClock.phase, demoClock.running],
   );
 
+  const collaborationShareActive =
+    (role === "engineer" && screenSharing) || (role === "artist" && live.screenShareActive);
+
   const value = useMemo<SessionContextValue>(
     () => ({
       demoMode: WSTUDIO_DEMO_MODE,
@@ -194,17 +276,23 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       joinAsArtist,
       joinAsEngineer,
       leaveSession,
-      talkbackOn,
-      toggleTalkback: () => setTalkbackOn((v) => !v),
+      talkbackHeld,
+      beginTalkback,
+      endTalkback,
+      talkbackOn: talkbackHeld,
+      toggleTalkback: () => {},
       muted,
-      toggleMute: () => setMuted((v) => !v),
+      toggleMute,
       latencyMs: connection === "connected" ? latencyRef.current : 0,
       screenSharing,
-      toggleScreenShare: () => setScreenSharing((v) => !v),
+      toggleScreenShare,
       remoteVocalLevel: connection === "connected" ? remoteVocalLevel : 0,
       demoClock,
       demoWarningLevel: demoWarn,
       startDemoSessionClock,
+      live,
+      setSessionRecording,
+      collaborationShareActive,
     }),
     [
       sessionId,
@@ -214,13 +302,20 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       joinAsArtist,
       joinAsEngineer,
       leaveSession,
-      talkbackOn,
+      talkbackHeld,
+      beginTalkback,
+      endTalkback,
       muted,
+      toggleMute,
       screenSharing,
+      toggleScreenShare,
       remoteVocalLevel,
       demoClock,
       demoWarn,
       startDemoSessionClock,
+      live,
+      setSessionRecording,
+      collaborationShareActive,
     ],
   );
 

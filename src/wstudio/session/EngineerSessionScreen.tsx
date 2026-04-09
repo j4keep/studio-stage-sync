@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { useBookingTimer } from "../booking/BookingTimerContext";
 import { ExtensionApprovalDialog } from "../booking/ExtensionApprovalDialog";
 import { SessionControlsLockOverlay } from "../booking/SessionControlsLockOverlay";
@@ -17,20 +18,23 @@ import { formatClock, formatCurrency } from "../booking/bookingTypes";
 import {
   ReceiveEffectsPanel,
   ReceiveMonitoringPanel,
+  ReceivePrimaryRemoteWithPip,
   ReceiveRightColumnWrap,
   ReceiveRoutingPanel,
   ReceiveSessionStrip,
   ReceiveSyncPanel,
   ReceiveTalkRow,
   ReceiveTopChrome,
-  ReceiveVideoStack,
   ReceiveVocalInputPanel,
   ReceiveWaveformFooter,
 } from "../receive/ReceiveLayoutParts";
 import { DEMO_SESSION_TITLE, DEMO_TIMER_MINUTES } from "./demoConfig";
 import { ConnectionStatus } from "../connection/ConnectionStatus";
 import { PushControl } from "../components/PushControl";
+import { ExpandableShell, FloatingSessionDock } from "./ExpandableSessionUI";
+import { SessionCommIndicators } from "./SessionCommIndicators";
 import { useSession } from "./SessionContext";
+import { useExpandablePanels } from "./useExpandablePanels";
 
 const JOIN_PATH = "/wstudio/session/join";
 const DEMO_HOURLY = 85;
@@ -45,8 +49,9 @@ export default function EngineerSessionScreen() {
     demoMode,
     demoClock,
     demoWarningLevel,
-    talkbackOn,
-    toggleTalkback,
+    talkbackHeld,
+    beginTalkback,
+    endTalkback,
     screenSharing,
     toggleScreenShare,
     muted,
@@ -54,6 +59,10 @@ export default function EngineerSessionScreen() {
     remoteVocalLevel,
     leaveSession,
     startDemoSessionClock,
+    latencyMs,
+    live,
+    setSessionRecording,
+    collaborationShareActive,
   } = useSession();
   const {
     booking,
@@ -73,10 +82,10 @@ export default function EngineerSessionScreen() {
     controlsLocked,
     engineerContinueSession,
   } = useBookingTimer();
+  const { expandId, toggleExpand, exitExpand } = useExpandablePanels();
   const [extensionPlaceholderOpen, setExtensionPlaceholderOpen] = useState(false);
   const [vocalChannel, setVocalChannel] = useState<1 | 2 | 3>(1);
   const [armRecord, setArmRecord] = useState(false);
-  const [transportRecording, setTransportRecording] = useState(false);
 
   useEffect(() => {
     if (!role) {
@@ -104,8 +113,31 @@ export default function EngineerSessionScreen() {
     return `${formatClock(demoClock.remainingSeconds)} · ${demoClock.phase}`;
   }, [showPaidTimer, remainingSeconds, phase, demoClock.remainingSeconds, demoClock.phase]);
 
+  const timerCompact = useMemo(() => {
+    if (showPaidTimer) {
+      return {
+        remainingSeconds,
+        totalBookedMinutes,
+        warningLevel,
+      };
+    }
+    return {
+      remainingSeconds: demoClock.remainingSeconds,
+      totalBookedMinutes: demoClock.totalMinutes,
+      warningLevel: demoWarningLevel,
+    };
+  }, [
+    showPaidTimer,
+    remainingSeconds,
+    totalBookedMinutes,
+    warningLevel,
+    demoClock.remainingSeconds,
+    demoClock.totalMinutes,
+    demoWarningLevel,
+  ]);
+
   const monitorVocal = Math.min(100, Math.max(0, remoteVocalLevel * 100));
-  const monitorTalk = talkbackOn ? 68 : 35;
+  const monitorTalk = talkbackHeld || live.artistPtt ? 72 : 35;
 
   if (!role) return null;
 
@@ -134,7 +166,13 @@ export default function EngineerSessionScreen() {
 
       <ReceiveTopChrome demoMode={demoMode} joinPath={JOIN_PATH} onLeave={leaveSession} />
 
-      <div className="flex min-h-0 flex-1 flex-col gap-2 p-2">
+      <ExpandableShell
+        id="session"
+        title="Session layout"
+        expandId={expandId}
+        onToggleExpand={toggleExpand}
+        className="flex min-h-0 flex-1 flex-col gap-2 p-2"
+      >
         <div className="flex flex-wrap items-center gap-2 px-1">
           <Link
             to={JOIN_PATH}
@@ -155,12 +193,21 @@ export default function EngineerSessionScreen() {
           timerLabel={timerLine}
           onShareClick={() => {
             toggleScreenShare();
-            toast.message(screenSharing ? "Share off (demo)" : "Share on (demo)");
+            toast(screenSharing ? "Share off (demo)" : "Share on (demo)");
           }}
           onVolumeClick={() => toast.message("Monitor mix (demo)")}
           onToolsClick={() => toast.message("Tools / routing (demo)")}
           onSettingsClick={() => toast.message("Session settings (demo)")}
         />
+
+        <div className="flex flex-wrap items-center gap-2 px-1">
+          <SessionCommIndicators
+            role="engineer"
+            live={live}
+            latencyMs={latencyMs}
+            connectionConnected={connection === "connected"}
+          />
+        </div>
 
         {showPaidTimer ? (
           <SessionTimerBar
@@ -239,49 +286,95 @@ export default function EngineerSessionScreen() {
           {lock ? <SessionControlsLockOverlay /> : null}
 
           <div className="grid h-full min-h-[420px] grid-cols-1 gap-2 lg:grid-cols-12 lg:gap-3">
-            {/* Left: video stack + talk row — reference layout */}
+            {/* Left: remote + talk — artist large, self PiP */}
             <div className="flex flex-col gap-2 lg:col-span-3">
-              <ReceiveVideoStack artistTitle="Jay — Florida" engineerTitle="Bob — New York" />
-              <ReceiveTalkRow
-                muted={muted}
-                talkbackOn={talkbackOn}
-                onMute={toggleMute}
-                onTalk={toggleTalkback}
-                onSettings={() => toast.message("Channel / device settings (demo)")}
-                disabled={lock}
-              />
+              <ExpandableShell
+                id="remote"
+                title="Remote video"
+                expandId={expandId}
+                onToggleExpand={toggleExpand}
+                className="min-h-0 flex-1 flex-col gap-2"
+              >
+                <ReceivePrimaryRemoteWithPip
+                  remoteTitle="Jay — Florida"
+                  remoteSubtitle="Artist (remote)"
+                  pipTitle="Bob — New York"
+                  pipSubtitle="You (engineer)"
+                />
+                <ReceiveTalkRow
+                  muted={muted}
+                  talkbackActive={talkbackHeld}
+                  onMute={toggleMute}
+                  onTalkDown={beginTalkback}
+                  onTalkUp={endTalkback}
+                  onSettings={() => toast.message("Channel / device settings (demo)")}
+                  disabled={lock}
+                />
+              </ExpandableShell>
             </div>
 
-            {/* Center: sync + vocal */}
-            <div className="flex flex-col gap-2 lg:col-span-5">
-              <ReceiveSyncPanel
-                disabled={lock}
-                onPlay={() => toast.message("Play (demo)")}
-                onStop={() => {
-                  setTransportRecording(false);
-                  toast.message("Stop (demo)");
-                }}
-                onRecord={() => setTransportRecording((v) => !v)}
-              />
-              <ReceiveVocalInputPanel
-                level={remoteVocalLevel}
-                channel={vocalChannel}
-                onChannel={setVocalChannel}
-                armed={armRecord}
-                onArm={() => setArmRecord((a) => !a)}
-                disabled={lock}
-              />
-              <div className="rounded-lg border border-zinc-800 bg-[#1a1a1a] p-2">
-                <div className="mb-1 text-[9px] font-bold uppercase tracking-wide text-zinc-500">Screen share</div>
-                <PushControl
-                  active={screenSharing}
-                  onClick={toggleScreenShare}
+            {/* Center: sync + vocal + share (share grows when active) */}
+            <div className="flex min-h-0 flex-col gap-2 lg:col-span-5">
+              <ExpandableShell
+                id="share"
+                title="Screen share"
+                expandId={expandId}
+                onToggleExpand={toggleExpand}
+                className={cn("flex flex-col gap-2", collaborationShareActive && "min-h-[min(52vh,380px)] flex-1")}
+              >
+                <div className="rounded-lg border border-zinc-800 bg-[#1a1a1a] p-2">
+                  <div className="mb-2 text-[9px] font-bold uppercase tracking-wide text-zinc-500">Screen share</div>
+                  <PushControl
+                    active={screenSharing}
+                    onClick={toggleScreenShare}
+                    disabled={lock}
+                    title="Share screen to artist"
+                  >
+                    {screenSharing ? "Sharing…" : "Start screen share"}
+                  </PushControl>
+                  <div
+                    className={cn(
+                      "mt-2 flex min-h-[120px] flex-1 items-center justify-center rounded-md border border-dashed border-zinc-700/80 bg-zinc-950/80 text-center text-[10px] text-zinc-500",
+                      collaborationShareActive && "min-h-[min(46vh,320px)] text-zinc-400",
+                    )}
+                  >
+                    {collaborationShareActive
+                      ? "Shared display — main collaboration area (WebRTC placeholder)."
+                      : "When sharing, this becomes the main collaboration view for the artist."}
+                  </div>
+                </div>
+              </ExpandableShell>
+
+              <ExpandableShell
+                id="viewer"
+                title="Session viewer / sync"
+                expandId={expandId}
+                onToggleExpand={toggleExpand}
+                className="flex flex-col gap-2"
+              >
+                <ReceiveSyncPanel
                   disabled={lock}
-                  title="Share screen to artist"
-                >
-                  {screenSharing ? "Sharing…" : "Start screen share"}
-                </PushControl>
-              </div>
+                  onPlay={() => toast.message("Play (demo)")}
+                  onStop={() => {
+                    setSessionRecording(false);
+                    toast.message("Stop (demo)");
+                  }}
+                  onRecord={() => {
+                    const next = !live.recording;
+                    setSessionRecording(next);
+                    toast.message(next ? "Recording… (demo)" : "Recording stopped (demo)");
+                  }}
+                />
+                <ReceiveVocalInputPanel
+                  level={remoteVocalLevel}
+                  channel={vocalChannel}
+                  onChannel={setVocalChannel}
+                  armed={armRecord}
+                  onArm={() => setArmRecord((a) => !a)}
+                  disabled={lock}
+                />
+              </ExpandableShell>
+
               <ReceiveRoutingPanel />
             </div>
 
@@ -293,7 +386,15 @@ export default function EngineerSessionScreen() {
           </div>
         </div>
 
-        <ReceiveWaveformFooter vocalLevel={remoteVocalLevel} recording={transportRecording} disabled={lock} />
+        <ExpandableShell
+          id="waveform"
+          title="Waveform / recording"
+          expandId={expandId}
+          onToggleExpand={toggleExpand}
+          className=""
+        >
+          <ReceiveWaveformFooter vocalLevel={remoteVocalLevel} recording={live.recording} disabled={lock} />
+        </ExpandableShell>
 
         <div className="flex justify-end px-1">
           <button
@@ -305,7 +406,18 @@ export default function EngineerSessionScreen() {
             End session
           </button>
         </div>
-      </div>
+      </ExpandableShell>
+
+      <FloatingSessionDock
+        visible={expandId !== null}
+        onExitExpand={exitExpand}
+        timerCompact={timerCompact}
+        talkbackLabel="Talk"
+        talkbackActive={talkbackHeld}
+        onTalkDown={beginTalkback}
+        onTalkUp={endTalkUp}
+        talkDisabled={lock}
+      />
     </div>
   );
 }

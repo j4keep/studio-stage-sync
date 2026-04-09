@@ -129,6 +129,41 @@ function IconToolBtn({
   );
 }
 
+/** Large primary remote, optional corner PiP for self. */
+export function ReceivePrimaryRemoteWithPip({
+  remoteTitle,
+  remoteSubtitle,
+  pipTitle,
+  pipSubtitle,
+  showPip = true,
+}: {
+  remoteTitle: string;
+  remoteSubtitle?: string;
+  pipTitle: string;
+  pipSubtitle?: string;
+  showPip?: boolean;
+}) {
+  return (
+    <div className={cn(PANEL, "relative min-h-[200px] flex-1 overflow-hidden")}>
+      <VideoPanel
+        title={remoteTitle}
+        subtitle={remoteSubtitle ?? "Remote artist (WebRTC placeholder)"}
+        className="min-h-[220px] h-full flex-1 rounded-lg"
+      />
+      {showPip ? (
+        <div className="pointer-events-none absolute bottom-3 right-3 z-10 w-[38%] max-w-[200px] min-h-[110px] overflow-hidden rounded-lg shadow-lg ring-2 ring-black/70">
+          <VideoPanel
+            title={pipTitle}
+            subtitle={pipSubtitle ?? "Self view"}
+            mirrored
+            className="!min-h-[110px] h-full"
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function ReceiveVideoStack({
   artistTitle,
   engineerTitle,
@@ -144,23 +179,26 @@ export function ReceiveVideoStack({
   );
 }
 
+/** Push-to-talk: hold Talk, release to mute. */
 export function ReceiveTalkRow({
   muted,
-  talkbackOn,
+  talkbackActive,
   onMute,
-  onTalk,
+  onTalkDown,
+  onTalkUp,
   onSettings,
   disabled,
 }: {
   muted: boolean;
-  talkbackOn: boolean;
+  talkbackActive: boolean;
   onMute: () => void;
-  onTalk: () => void;
+  onTalkDown: () => void;
+  onTalkUp: () => void;
   onSettings: () => void;
   disabled?: boolean;
 }) {
   const btn =
-    "flex flex-1 flex-col items-center justify-center gap-1 rounded-lg border border-zinc-700/80 bg-zinc-900/90 py-3 text-[9px] font-semibold uppercase tracking-wide text-zinc-400 transition hover:bg-zinc-800 disabled:opacity-40";
+    "flex flex-1 flex-col items-center justify-center gap-1 rounded-lg border border-zinc-700/80 bg-zinc-900/90 py-3 text-[9px] font-semibold uppercase tracking-wide text-zinc-400 transition hover:bg-zinc-800 disabled:opacity-40 select-none touch-manipulation";
   return (
     <div className="grid grid-cols-3 gap-2">
       <button type="button" disabled={disabled} onClick={onMute} className={cn(btn, muted && "border-rose-700/50 bg-rose-950/30 text-rose-200")}>
@@ -170,14 +208,25 @@ export function ReceiveTalkRow({
       <button
         type="button"
         disabled={disabled}
-        onClick={onTalk}
+        onPointerDown={(e) => {
+          e.preventDefault();
+          onTalkDown();
+        }}
+        onPointerUp={onTalkUp}
+        onPointerLeave={onTalkUp}
+        onTouchStart={(e) => {
+          e.preventDefault();
+          onTalkDown();
+        }}
+        onTouchEnd={onTalkUp}
         className={cn(
           btn,
-          talkbackOn ? "border-sky-600/70 bg-sky-950/40 text-sky-200 ring-1 ring-sky-500/30" : "",
+          talkbackActive ? "border-sky-600/70 bg-sky-950/40 text-sky-200 ring-1 ring-sky-500/30" : "",
         )}
       >
         <Radio className="h-5 w-5" />
         Talk
+        <span className="text-[7px] font-normal normal-case text-zinc-500">Hold</span>
       </button>
       <button type="button" disabled={disabled} onClick={onSettings} className={btn}>
         <Settings className="h-5 w-5 text-zinc-300" />
