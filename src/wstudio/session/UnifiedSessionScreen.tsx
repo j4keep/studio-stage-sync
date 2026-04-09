@@ -251,6 +251,62 @@ function Waveform({ recording }: { recording: boolean }) {
   return <canvas ref={ref} width={1200} height={64} className="block h-[64px] w-full" />;
 }
 
+/* ─── Panel wrapper ─── */
+function Panel({ children, style, className = "" }: { children: React.ReactNode; style?: React.CSSProperties; className?: string }) {
+  return (
+    <div
+      className={`overflow-hidden rounded-[4px] ${className}`}
+      style={{
+        background: `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
+        border: `1px solid ${C.panelBorder}`,
+        boxShadow: `inset 0 1px 0 rgba(255,255,255,0.04), 0 1px 0 rgba(255,255,255,0.02)`,
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/* ─── Inset wrapper ─── */
+function Inset({ children, className = "", style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
+  return (
+    <div
+      className={`rounded-[3px] ${className}`}
+      style={{
+        background: C.inset,
+        border: `1px solid ${C.insetBorder}`,
+        boxShadow: `inset 0 1px 3px rgba(0,0,0,0.6)`,
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/* ─── Transport button ─── */
+function TBtn({ sym, label, disabled = false }: { sym: string; label: string; disabled?: boolean }) {
+  return (
+    <button
+      disabled={disabled}
+      className="flex items-center justify-center gap-2 rounded-[3px] px-5 py-2 text-[14px] font-semibold"
+      style={{
+        background: `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
+        border: `1px solid ${C.panelBorder}`,
+        color: C.text,
+        boxShadow: `inset 0 1px 0 rgba(255,255,255,0.05)`,
+        opacity: disabled ? 0.4 : 1,
+        cursor: disabled ? "not-allowed" : "pointer",
+        minWidth: 120,
+      }}
+    >
+      <span className="font-mono tracking-tight">{sym}</span>
+      <span>{label}</span>
+    </button>
+  );
+}
+
 /* ═══════════════════════════════════════════════════════════
    UNIFIED SESSION SCREEN — pixel-perfect to reference image
    ═══════════════════════════════════════════════════════════ */
@@ -292,7 +348,6 @@ export default function UnifiedSessionScreen() {
   const mins = Math.floor(demoClock.remainingSeconds / 60);
   const secs = demoClock.remainingSeconds % 60;
 
-  const connected = connection === "connected";
 
   return (
     <div
