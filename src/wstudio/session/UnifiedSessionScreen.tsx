@@ -278,6 +278,10 @@ export default function UnifiedSessionScreen() {
   const isEngineer = role === "engineer";
   const recording = live.recording;
   const [armed, setArmed] = useState(false);
+  const [vocalLevel, setVocalLevel] = useState(0.55);
+  const [talkbackLevel, setTalkbackLevel] = useState(0.45);
+  const [headphoneLevel, setHeadphoneLevel] = useState(0.7);
+  const [cueMix, setCueMix] = useState(0.5);
   const connected = connection === "connected";
   const mins = Math.floor(demoClock.remainingSeconds / 60);
   const secs = demoClock.remainingSeconds % 60;
