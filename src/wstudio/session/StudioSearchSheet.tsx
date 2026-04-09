@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Search, Star, Wifi, Clock, ChevronLeft, ChevronRight, X, ImageIcon } from "lucide-react";
+import { Search, Star, Wifi, Clock, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -235,7 +235,7 @@ export function StudioSearchSheet({
   return (
     <>
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent side="bottom" className="h-[85vh] rounded-t-2xl border-zinc-800 bg-zinc-950 p-0">
+      <SheetContent side="bottom" className="relative h-[85vh] rounded-t-2xl border-zinc-800 bg-zinc-950 p-0">
         <SheetHeader className="border-b border-zinc-800 px-4 py-3 flex flex-row items-center justify-between">
           <button
             onClick={() => (selected ? setSelected(null) : onClose())}
@@ -489,15 +489,15 @@ export function StudioSearchSheet({
             >
               {booking ? "Booking..." : !user ? "Sign in to book" : "Confirm & Get Session Code"}
             </button>
-
-            {expandedPhotos && (
-              <ExpandedPhotoViewer
-                photos={expandedPhotos}
-                initialIndex={expandedIndex}
-                onClose={() => setExpandedPhotos(null)}
-              />
-            )}
           </div>
+        )}
+
+        {expandedPhotos && (
+          <ExpandedPhotoViewer
+            photos={expandedPhotos}
+            initialIndex={expandedIndex}
+            onClose={() => setExpandedPhotos(null)}
+          />
         )}
       </SheetContent>
 
