@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useSession } from "./SessionContext";
+import { useBookingTimer } from "../booking/BookingTimerContext";
+import { SessionTimerBar } from "../booking/SessionTimerBar";
+import { SessionControlsLockOverlay } from "../booking/SessionControlsLockOverlay";
+import { ExtensionApprovalDialog } from "../booking/ExtensionApprovalDialog";
+import { formatCurrency } from "../booking/bookingTypes";
 
 /* ─────────────────────────────────────────────
    STYLE CONSTANTS (matching the reference image)
@@ -330,8 +335,30 @@ export default function UnifiedSessionScreen() {
     collaborationShareActive,
   } = useSession();
 
+  const {
+    booking,
+    totalBookedMinutes,
+    remainingSeconds: bookingRemaining,
+    warningLevel,
+    timerRunning,
+    phase,
+    pendingExtension,
+    sessionValueTotal,
+    startSessionTimer,
+    requestExtension,
+    approveExtension,
+    declineExtension,
+    engineerContinueSession,
+    extensionModalOpen,
+    setExtensionModalOpen,
+    controlsLocked,
+    sessionRates,
+  } = useBookingTimer();
+
   const isEngineer = role === "engineer";
+  const isArtist = role === "artist";
   const recording = live.recording;
+  const hasBooking = !!booking && booking.bookedMinutes > 0;
   const [armed, setArmed] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [vocalLevel, setVocalLevel] = useState(0.55);
@@ -343,7 +370,6 @@ export default function UnifiedSessionScreen() {
   const [reverbVal, setReverbVal] = useState(0.58);
   const [autoUpload, setAutoUpload] = useState(true);
   const connected = connection === "connected";
-  // No peers connected yet — all meter levels are zero
   const peerConnected = false;
   const mins = Math.floor(demoClock.remainingSeconds / 60);
   const secs = demoClock.remainingSeconds % 60;
@@ -387,8 +413,84 @@ export default function UnifiedSessionScreen() {
           </div>
         </div>
 
+        {/* ─── BOOKING TIMER BAR ─── */}
+        {hasBooking && (
+          <div className="px-2 pt-2">
+            <SessionTimerBar
+              totalBookedMinutes={totalBookedMinutes}
+              remainingSeconds={bookingRemaining}
+              warningLevel={warningLevel}
+              phase={phase}
+              timerRunning={timerRunning}
+              compact
+            />
+            <div className="mt-1.5 flex items-center gap-2 px-1">
+              {/* Engineer: Start timer + earnings */}
+              {isEngineer && phase === "scheduled" && (
+                <button
+                  onPointerDown={(e) => { e.preventDefault(); startSessionTimer(); }}
+                  className="rounded-lg px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wide"
+                  style={{
+                    background: `linear-gradient(180deg, #1a3a1a 0%, #0e2a0e 100%)`,
+                    border: `1px solid #2a6a2a`,
+                    color: C.green,
+                  }}
+                >
+                  ▶ Start Session Timer
+                </button>
+              )}
+              {isEngineer && phase === "ended" && (
+                <button
+                  onPointerDown={(e) => { e.preventDefault(); engineerContinueSession(); }}
+                  className="rounded-lg px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wide"
+                  style={{
+                    background: `linear-gradient(180deg, #3a2a0a 0%, #1a1500 100%)`,
+                    border: `1px solid #6a5a20`,
+                    color: C.yellow,
+                  }}
+                >
+                  + Continue (+5 min grace)
+                </button>
+              )}
+              {isEngineer && (
+                <div className="ml-auto flex items-center gap-2 rounded-lg px-3 py-1.5" style={{ background: C.inset, border: `1px solid ${C.insetBorder}` }}>
+                  <span style={{ fontSize: 9, color: C.dim, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase" }}>Session value</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: C.green, fontFamily: "monospace" }}>{formatCurrency(sessionValueTotal)}</span>
+                </div>
+              )}
+              {/* Artist: Request extension */}
+              {isArtist && phase === "live" && !pendingExtension && (
+                <div className="flex items-center gap-1.5">
+                  <span style={{ fontSize: 10, color: C.dim, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" }}>Add time:</span>
+                  {([15, 30, 60] as const).map((m) => (
+                    <button
+                      key={m}
+                      onPointerDown={(e) => { e.preventDefault(); requestExtension(m); }}
+                      className="rounded-md px-2.5 py-1 text-[11px] font-semibold"
+                      style={{
+                        background: `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
+                        border: `1px solid ${C.panelBorder}`,
+                        color: C.yellow,
+                      }}
+                    >
+                      +{m}m
+                    </button>
+                  ))}
+                </div>
+              )}
+              {isArtist && pendingExtension && (
+                <span className="animate-pulse rounded-md px-3 py-1.5 text-[11px] font-semibold" style={{ background: "rgba(245,200,66,0.1)", border: `1px solid rgba(245,200,66,0.3)`, color: C.yellow }}>
+                  ⏳ Extension request pending (+{pendingExtension.minutes}m)
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* ─── MAIN GRID ─── */}
-        <div className="grid gap-2 p-2" style={{ gridTemplateColumns: "280px 1fr 260px", gridTemplateRows: "auto 1fr auto auto" }}>
+        <div className="relative grid gap-2 p-2" style={{ gridTemplateColumns: "280px 1fr 260px", gridTemplateRows: "auto 1fr auto auto" }}>
+          {/* Controls lock overlay when session ended */}
+          {controlsLocked && <SessionControlsLockOverlay />}
 
           {/* ── LEFT COLUMN: Videos + Controls (spans rows 1-3) ── */}
           <div className="row-span-3 flex flex-col gap-2">
@@ -745,6 +847,16 @@ export default function UnifiedSessionScreen() {
           </Panel>
         </div>
       </div>
+
+      {/* Extension approval dialog (engineer only) */}
+      <ExtensionApprovalDialog
+        open={extensionModalOpen}
+        onOpenChange={setExtensionModalOpen}
+        pending={pendingExtension}
+        rates={sessionRates}
+        onApprove={approveExtension}
+        onDecline={declineExtension}
+      />
     </div>
   );
 }
