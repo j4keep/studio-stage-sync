@@ -62,10 +62,10 @@ export default function SessionJoinScreen() {
       <div className="w-full max-w-sm pt-4">
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-1.5 text-zinc-400 hover:text-white transition"
+          className="flex items-center gap-1.5 text-white hover:text-amber-300 transition"
         >
-          <ChevronLeft className="h-4 w-4" />
-          <span className="text-sm">Back</span>
+          <ChevronLeft className="h-5 w-5" />
+          <span className="text-sm font-semibold">Back</span>
         </button>
       </div>
 
