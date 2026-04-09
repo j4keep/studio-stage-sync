@@ -505,21 +505,25 @@ export default function UnifiedSessionScreen() {
               {/* Play */}
               <button
                 disabled={!isEngineer}
+                onClick={isEngineer ? () => setPlaying(true) : undefined}
                 className="flex items-center gap-2 rounded-[3px] px-5 py-2.5 text-[15px] font-semibold"
                 style={{
-                  background: `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
-                  border: `1px solid ${C.panelBorder}`,
+                  background: playing
+                    ? `linear-gradient(180deg, #1a3a1a 0%, #0e2a0e 100%)`
+                    : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
+                  border: `1px solid ${playing ? "#2a6a2a" : C.panelBorder}`,
                   color: C.text,
-                  boxShadow: `inset 0 1px 0 rgba(255,255,255,0.05)`,
+                  boxShadow: playing ? `0 0 14px rgba(74,222,96,0.15)` : `inset 0 1px 0 rgba(255,255,255,0.05)`,
                   opacity: isEngineer ? 1 : 0.4,
                   minWidth: 110,
                 }}
               >
-                <span style={{ color: C.text }}>▶</span> Play
+                <span style={{ color: playing ? C.green : C.text }}>▶</span> Play
               </button>
               {/* Stop */}
               <button
                 disabled={!isEngineer}
+                onClick={isEngineer ? () => { setPlaying(false); if (recording) setSessionRecording(false); } : undefined}
                 className="flex items-center gap-2 rounded-[3px] px-5 py-2.5 text-[15px] font-semibold"
                 style={{
                   background: `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
@@ -535,7 +539,7 @@ export default function UnifiedSessionScreen() {
               {/* Record */}
               <button
                 disabled={!isEngineer}
-                onClick={isEngineer ? () => setSessionRecording(!recording) : undefined}
+                onClick={isEngineer ? () => { setSessionRecording(!recording); if (!playing) setPlaying(true); } : undefined}
                 className="flex items-center gap-2 rounded-[3px] px-5 py-2.5 text-[15px] font-semibold"
                 style={{
                   background: recording
