@@ -413,7 +413,7 @@ export default function UnifiedSessionScreen() {
           </div>
         </div>
 
-        {/* timer bar removed — now lives inside video column */}
+        
 
         {/* ─── MAIN GRID ─── */}
         <div className="relative grid gap-2 p-2" style={{ gridTemplateColumns: "280px 1fr 260px", gridTemplateRows: "auto 1fr auto auto" }}>
