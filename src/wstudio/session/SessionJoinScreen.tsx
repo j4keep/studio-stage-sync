@@ -57,7 +57,19 @@ export default function SessionJoinScreen() {
   };
 
   return (
-    <div className="flex min-h-[80vh] flex-col items-center justify-center gap-8 px-4 text-zinc-100">
+    <div className="flex min-h-[80vh] flex-col items-center px-4 text-zinc-100">
+      {/* Back Button */}
+      <div className="w-full max-w-sm pt-4">
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-1.5 text-zinc-400 hover:text-white transition"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          <span className="text-sm">Back</span>
+        </button>
+      </div>
+
+      <div className="flex flex-1 flex-col items-center justify-center gap-8">
       {/* Logo */}
       <div className="flex flex-col items-center gap-1">
         <span className="text-2xl font-black tracking-tight text-white">
