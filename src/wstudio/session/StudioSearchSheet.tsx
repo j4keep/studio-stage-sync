@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import ReactDOM from "react-dom";
-import { Search, Star, Wifi, Clock, ChevronLeft, ChevronRight, X, ImageIcon } from "lucide-react";
+import { Search, Star, Wifi, Clock, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -59,15 +58,21 @@ function ExpandedPhotoViewer({
     return () => window.removeEventListener("keydown", handleKey);
   }, [photos.length, onClose]);
 
-  return ReactDOM.createPortal(
+  if (!photos.length) return null;
+
+  return (
     <div
-      className="fixed inset-0 z-[9999] bg-black/95 flex flex-col items-center justify-center"
-      onPointerDown={(e) => {
+      className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/95 px-4 py-6"
+      onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <button
-        onPointerDown={(e) => { e.stopPropagation(); onClose(); }}
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onClose();
+        }}
         className="absolute top-4 right-4 w-11 h-11 rounded-full bg-zinc-700 flex items-center justify-center text-white z-10 active:bg-zinc-500"
       >
         <X className="h-6 w-6" />
@@ -76,12 +81,13 @@ function ExpandedPhotoViewer({
         src={photos[idx]?.photo_url}
         alt={`Studio photo ${idx + 1}`}
         className="max-w-[90vw] max-h-[70vh] rounded-xl object-contain"
-        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       />
       {photos.length > 1 && (
-        <div className="flex items-center gap-6 mt-4" onPointerDown={(e) => e.stopPropagation()}>
+        <div className="mt-4 flex items-center gap-6" onClick={(e) => e.stopPropagation()}>
           <button
-            onPointerDown={() => setIdx((i) => (i - 1 + photos.length) % photos.length)}
+            type="button"
+            onClick={() => setIdx((i) => (i - 1 + photos.length) % photos.length)}
             className="w-11 h-11 rounded-full bg-zinc-700 flex items-center justify-center text-white active:bg-zinc-500"
           >
             <ChevronLeft className="h-5 w-5" />
@@ -90,15 +96,15 @@ function ExpandedPhotoViewer({
             {idx + 1} / {photos.length}
           </span>
           <button
-            onPointerDown={() => setIdx((i) => (i + 1) % photos.length)}
+            type="button"
+            onClick={() => setIdx((i) => (i + 1) % photos.length)}
             className="w-11 h-11 rounded-full bg-zinc-700 flex items-center justify-center text-white active:bg-zinc-500"
           >
             <ChevronRight className="h-5 w-5" />
           </button>
         </div>
       )}
-    </div>,
-    document.body
+    </div>
   );
 }
 
@@ -229,7 +235,7 @@ export function StudioSearchSheet({
   return (
     <>
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent side="bottom" className="h-[85vh] rounded-t-2xl border-zinc-800 bg-zinc-950 p-0">
+      <SheetContent side="bottom" className="relative h-[85vh] rounded-t-2xl border-zinc-800 bg-zinc-950 p-0">
         <SheetHeader className="border-b border-zinc-800 px-4 py-3 flex flex-row items-center justify-between">
           <button
             onClick={() => (selected ? setSelected(null) : onClose())}
@@ -267,10 +273,18 @@ export function StudioSearchSheet({
               filtered.map((studio) => {
                 const photos = studio.photos ?? [];
                 return (
-                  <button
+                  <div
                     key={studio.id}
                     onClick={() => setSelected(studio)}
-                    className="flex flex-col gap-2 rounded-xl border border-zinc-800 bg-zinc-900/60 text-left transition hover:border-amber-700/40 overflow-hidden"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setSelected(studio);
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    className="flex cursor-pointer flex-col gap-2 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/60 text-left transition hover:border-amber-700/40"
                   >
                     <div className="p-3 flex flex-col gap-2">
                       <div className="flex items-start justify-between">
@@ -294,10 +308,12 @@ export function StudioSearchSheet({
                             <button
                               key={photo.id}
                               onClick={(e) => {
+                                e.preventDefault();
                                 e.stopPropagation();
                                 setExpandedPhotos(photos);
                                 setExpandedIndex(i);
                               }}
+                              type="button"
                               className="w-14 h-14 rounded-lg overflow-hidden border border-zinc-700 hover:border-amber-500/50 transition flex-shrink-0"
                             >
                               <img src={photo.photo_url} alt={`Studio ${i + 1}`} className="w-full h-full object-cover" />
@@ -309,7 +325,12 @@ export function StudioSearchSheet({
                       {/* Engineer profile row */}
                       {studio.profile && (
                         <button
-                          onClick={(e) => { e.stopPropagation(); navigateToProfile(studio.user_id); }}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            navigateToProfile(studio.user_id);
+                          }}
+                          type="button"
                           className="flex items-center gap-2 py-1.5 rounded-lg hover:bg-zinc-800/50 transition -mx-1 px-1"
                         >
                           <Avatar className="h-6 w-6">
@@ -344,7 +365,7 @@ export function StudioSearchSheet({
                         )}
                       </div>
                     </div>
-                  </button>
+                  </div>
                 );
               })
             )}
@@ -463,22 +484,24 @@ export function StudioSearchSheet({
             <button
               onClick={handleBook}
               disabled={booking || !user}
+              type="button"
               className="w-full rounded-xl border border-amber-600/40 bg-gradient-to-b from-amber-700/90 to-amber-950 py-3 text-sm font-semibold text-white shadow-lg shadow-amber-950/40 transition hover:from-amber-600 hover:to-amber-900 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {booking ? "Booking..." : !user ? "Sign in to book" : "Confirm & Get Session Code"}
             </button>
           </div>
         )}
+
+        {expandedPhotos && (
+          <ExpandedPhotoViewer
+            photos={expandedPhotos}
+            initialIndex={expandedIndex}
+            onClose={() => setExpandedPhotos(null)}
+          />
+        )}
       </SheetContent>
 
     </Sheet>
-    {expandedPhotos && (
-      <ExpandedPhotoViewer
-        photos={expandedPhotos}
-        initialIndex={expandedIndex}
-        onClose={() => setExpandedPhotos(null)}
-      />
-    )}
     </>
   );
 }
