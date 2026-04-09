@@ -372,43 +372,29 @@ export default function UnifiedSessionScreen() {
 
           {/* ── LEFT COLUMN: Videos + Controls (spans rows 1-3) ── */}
           <div className="row-span-3 flex flex-col gap-2">
-            {/* Artist Video */}
+            {/* Artist Video — Logo placeholder until someone joins */}
             <Panel className="relative" style={{ aspectRatio: "4/3" }}>
-              <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, #5a4a3a 0%, #3a3028 40%, #1a1b1e 100%)" }}>
-                {/* stylized booth shapes */}
-                <div className="absolute left-[8%] top-[20%] h-[65%] w-[22%] rounded-lg" style={{ background: "rgba(0,0,0,0.3)" }} />
-                <div className="absolute left-[36%] top-[15%] h-[42px] w-[42px] rounded-full" style={{ background: "#c24a3a" }} />
-                <div className="absolute left-[38%] top-[28%] h-[52px] w-[50px] rounded-full" style={{ background: "#b89070" }} />
-                <div className="absolute left-[34%] top-[50%] h-[80px] w-[78px] rounded-t-[40px]" style={{ background: "#1a1b1e" }} />
-                <div className="absolute right-[14%] top-[26%] h-[42px] w-[42px] rounded-full border-[5px]" style={{ borderColor: "#1a1b1e", background: "transparent" }} />
+              <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
+                <span className="text-[28px] font-black tracking-tight" style={{ color: C.dim }}>
+                  W<span style={{ color: C.blue }}>.</span>STUDIO
+                </span>
+                <span style={{ color: C.dim, fontSize: 11, letterSpacing: "0.14em", marginTop: 4 }}>WAITING FOR ARTIST</span>
               </div>
-              <div
-                className="absolute bottom-2 left-2 rounded px-2 py-1 text-[12px] font-medium"
-                style={{ background: "rgba(0,0,0,0.6)", color: C.text }}
-              >
-                Jay - Florida
+              <div className="absolute bottom-2 left-2 rounded px-2 py-1 text-[12px] font-medium" style={{ background: "rgba(0,0,0,0.6)", color: C.dim }}>
+                No one connected
               </div>
             </Panel>
 
-            {/* Engineer Video */}
+            {/* Engineer Video — Logo placeholder */}
             <Panel className="relative" style={{ aspectRatio: "4/3" }}>
-              <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, #3a3a3e 0%, #28282c 40%, #1a1b1e 100%)" }}>
-                <div className="absolute left-[4%] top-[16%] h-[68%] w-[20%] rounded-lg" style={{ background: "rgba(0,0,0,0.35)" }}>
-                  <div className="mx-auto mt-3 h-8 w-8 rounded-full" style={{ background: "#2a2c30", boxShadow: "inset 0 0 0 5px #1a1b1e" }} />
-                  <div className="mx-auto mt-3 h-10 w-10 rounded-full" style={{ background: "#2a2c30", boxShadow: "inset 0 0 0 6px #1a1b1e" }} />
-                </div>
-                <div className="absolute right-[6%] top-[16%] h-[68%] w-[21%] rounded-lg" style={{ background: "rgba(0,0,0,0.35)" }}>
-                  <div className="mx-auto mt-3 h-9 w-9 rounded-full" style={{ background: "#2a2c30", boxShadow: "inset 0 0 0 5px #1a1b1e" }} />
-                  <div className="mx-auto mt-3 h-11 w-11 rounded-full" style={{ background: "#2a2c30", boxShadow: "inset 0 0 0 6px #1a1b1e" }} />
-                </div>
-                <div className="absolute left-[38%] top-[24%] h-[52px] w-[52px] rounded-full" style={{ background: "#a08868" }} />
-                <div className="absolute left-[34%] top-[46%] h-[78px] w-[88px] rounded-t-[46px]" style={{ background: "#1a1b1e" }} />
+              <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
+                <span className="text-[28px] font-black tracking-tight" style={{ color: C.dim }}>
+                  W<span style={{ color: C.blue }}>.</span>STUDIO
+                </span>
+                <span style={{ color: C.dim, fontSize: 11, letterSpacing: "0.14em", marginTop: 4 }}>WAITING FOR ENGINEER</span>
               </div>
-              <div
-                className="absolute bottom-2 left-2 rounded px-2 py-1 text-[12px] font-medium"
-                style={{ background: "rgba(0,0,0,0.6)", color: C.text }}
-              >
-                Bob - New York
+              <div className="absolute bottom-2 left-2 rounded px-2 py-1 text-[12px] font-medium" style={{ background: "rgba(0,0,0,0.6)", color: C.dim }}>
+                No one connected
               </div>
             </Panel>
 
