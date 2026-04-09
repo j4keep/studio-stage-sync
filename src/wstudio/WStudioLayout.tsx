@@ -2,6 +2,7 @@ import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Outlet } from "react-router-dom";
 import { SessionProvider } from "./session/SessionContext";
 import { BookingTimerProvider } from "./booking/BookingTimerContext";
+import { StudioMediaProvider } from "./media/StudioMediaContext";
 
 type EBState = { error: Error | null };
 
@@ -39,9 +40,15 @@ export function WStudioLayout() {
   return (
     <SessionProvider>
       <BookingTimerProvider>
-        <WStudioErrorBoundary>
-          <Outlet />
-        </WStudioErrorBoundary>
+        <StudioMediaProvider>
+          <div className="flex min-h-screen w-full flex-col bg-zinc-950 text-zinc-100">
+            <WStudioErrorBoundary>
+              <div className="flex min-h-screen w-full min-w-0 flex-1 flex-col">
+                <Outlet />
+              </div>
+            </WStudioErrorBoundary>
+          </div>
+        </StudioMediaProvider>
       </BookingTimerProvider>
     </SessionProvider>
   );

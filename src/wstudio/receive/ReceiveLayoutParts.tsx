@@ -146,18 +146,28 @@ export function ReceivePrimaryRemoteWithPip({
   pipTitle,
   pipSubtitle,
   showPip = true,
+  remoteStream,
+  pipStream,
+  remoteVideoMuted = false,
+  pipVideoMuted = true,
 }: {
   remoteTitle: string;
   remoteSubtitle?: string;
   pipTitle: string;
   pipSubtitle?: string;
   showPip?: boolean;
+  remoteStream?: MediaStream | null;
+  pipStream?: MediaStream | null;
+  remoteVideoMuted?: boolean;
+  pipVideoMuted?: boolean;
 }) {
   return (
     <div className={cn(PANEL, "relative min-h-[200px] flex-1 overflow-hidden")}>
       <VideoPanel
         title={remoteTitle}
-        subtitle={remoteSubtitle ?? "Remote artist (WebRTC placeholder)"}
+        subtitle={remoteSubtitle ?? "Waiting for peer…"}
+        stream={remoteStream}
+        videoMuted={remoteVideoMuted}
         className="min-h-[220px] h-full flex-1 rounded-lg"
       />
       {showPip ? (
@@ -165,7 +175,9 @@ export function ReceivePrimaryRemoteWithPip({
           <VideoPanel
             title={pipTitle}
             subtitle={pipSubtitle ?? "Self view"}
+            stream={pipStream}
             mirrored
+            videoMuted={pipVideoMuted}
             className="!min-h-[110px] h-full"
           />
         </div>
@@ -177,14 +189,39 @@ export function ReceivePrimaryRemoteWithPip({
 export function ReceiveVideoStack({
   artistTitle,
   engineerTitle,
+  artistSubtitle = "Artist (remote)",
+  engineerSubtitle = "You (engineer)",
+  artistStream,
+  engineerStream,
+  artistVideoMuted = false,
+  engineerVideoMuted = true,
 }: {
   artistTitle: string;
   engineerTitle: string;
+  artistSubtitle?: string;
+  engineerSubtitle?: string;
+  artistStream?: MediaStream | null;
+  engineerStream?: MediaStream | null;
+  artistVideoMuted?: boolean;
+  engineerVideoMuted?: boolean;
 }) {
   return (
     <div className={cn(PANEL, "flex flex-col gap-2 p-2")}>
-      <VideoPanel title={artistTitle} subtitle="Remote artist (placeholder)" className="min-h-[120px] flex-1" />
-      <VideoPanel title={engineerTitle} subtitle="Local / studio (placeholder)" mirrored className="min-h-[120px] flex-1" />
+      <VideoPanel
+        title={artistTitle}
+        subtitle={artistSubtitle}
+        stream={artistStream}
+        videoMuted={artistVideoMuted}
+        className="min-h-[120px] flex-1"
+      />
+      <VideoPanel
+        title={engineerTitle}
+        subtitle={engineerSubtitle}
+        stream={engineerStream}
+        mirrored
+        videoMuted={engineerVideoMuted}
+        className="min-h-[120px] flex-1"
+      />
     </div>
   );
 }
