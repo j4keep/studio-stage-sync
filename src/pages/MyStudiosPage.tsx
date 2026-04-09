@@ -39,6 +39,7 @@ interface Studio {
   reviews_count: number;
   created_at: string;
   description: string | null;
+  auto_accept?: boolean;
 }
 
 const CANCELLATION_FEE_RATE = 0.10;
