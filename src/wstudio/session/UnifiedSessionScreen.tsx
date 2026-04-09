@@ -38,7 +38,7 @@ const C = {
 };
 
 /* ─── Interactive SVG Knob ─── */
-function Knob({ value = 0.5, size = 68, label, onChange }: { value?: number; size?: number; label?: string; onChange?: (v: number) => void }) {
+function Knob({ value = 0.5, size = 68, label, onChange, accent }: { value?: number; size?: number; label?: string; onChange?: (v: number) => void; accent?: string }) {
   const angle = -135 + value * 270;
   const r = size / 2 - 8;
   const cx = size / 2;
