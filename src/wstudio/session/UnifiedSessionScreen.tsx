@@ -314,7 +314,7 @@ export default function UnifiedSessionScreen() {
         </div>
 
         {/* ─── MAIN GRID ─── */}
-        <div className="relative grid gap-2 p-2" style={{ gridTemplateColumns: "280px 1fr 260px", gridTemplateRows: "auto auto auto auto" }}>
+        <div className={`relative grid gap-2 p-2 ${isFullscreen ? "flex-1" : ""}`} style={{ gridTemplateColumns: "280px 1fr 260px", gridTemplateRows: isFullscreen ? "auto 1fr auto auto" : "auto auto auto auto" }}>
           {controlsLocked && <SessionControlsLockOverlay />}
 
           {/* ── LEFT COLUMN: Videos + Controls (spans all content rows) ── */}
