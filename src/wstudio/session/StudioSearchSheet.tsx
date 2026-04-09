@@ -102,6 +102,7 @@ function ExpandedPhotoViewer({
   );
 }
 
+export function StudioSearchSheet({
   open,
   onClose,
   onBooked,
