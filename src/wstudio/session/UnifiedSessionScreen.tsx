@@ -335,8 +335,30 @@ export default function UnifiedSessionScreen() {
     collaborationShareActive,
   } = useSession();
 
+  const {
+    booking,
+    totalBookedMinutes,
+    remainingSeconds: bookingRemaining,
+    warningLevel,
+    timerRunning,
+    phase,
+    pendingExtension,
+    sessionValueTotal,
+    startSessionTimer,
+    requestExtension,
+    approveExtension,
+    declineExtension,
+    engineerContinueSession,
+    extensionModalOpen,
+    setExtensionModalOpen,
+    controlsLocked,
+    sessionRates,
+  } = useBookingTimer();
+
   const isEngineer = role === "engineer";
+  const isArtist = role === "artist";
   const recording = live.recording;
+  const hasBooking = !!booking && booking.bookedMinutes > 0;
   const [armed, setArmed] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [vocalLevel, setVocalLevel] = useState(0.55);
@@ -348,7 +370,6 @@ export default function UnifiedSessionScreen() {
   const [reverbVal, setReverbVal] = useState(0.58);
   const [autoUpload, setAutoUpload] = useState(true);
   const connected = connection === "connected";
-  // No peers connected yet — all meter levels are zero
   const peerConnected = false;
   const mins = Math.floor(demoClock.remainingSeconds / 60);
   const secs = demoClock.remainingSeconds % 60;
