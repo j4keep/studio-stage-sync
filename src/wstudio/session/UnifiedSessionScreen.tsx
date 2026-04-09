@@ -263,12 +263,29 @@ export default function UnifiedSessionScreen() {
   const [headphoneLevel, setHeadphoneLevel] = useState(0.7);
   const [cueMix, setCueMix] = useState(0.5);
   const [autoUpload, setAutoUpload] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const shellRef = useRef<HTMLDivElement>(null);
   const connected = connection === "connected";
 
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement && shellRef.current) {
+      shellRef.current.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
+    } else if (document.fullscreenElement) {
+      document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
+    }
+  };
+
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", handler);
+    return () => document.removeEventListener("fullscreenchange", handler);
+  }, []);
+
   return (
-    <div className="flex min-h-screen select-none items-center justify-center overflow-hidden p-4" style={{ background: "#111214" }}>
+    <div ref={shellRef} className="flex min-h-screen select-none items-center justify-center overflow-hidden" style={{ background: "#111214", padding: isFullscreen ? 0 : 16 }}>
       <div className="w-full overflow-hidden rounded-lg" style={{
-        maxWidth: 1100,
+        maxWidth: isFullscreen ? "100%" : 1100,
+        height: isFullscreen ? "100vh" : "auto",
         background: `linear-gradient(180deg, ${C.shell} 0%, ${C.shellDark} 100%)`,
         border: `1px solid ${C.shellEdge}`,
         boxShadow: `0 24px 80px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06)`,
