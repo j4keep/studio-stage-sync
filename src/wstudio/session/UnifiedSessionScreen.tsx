@@ -413,7 +413,7 @@ export default function UnifiedSessionScreen() {
             <span className="text-[20px] font-black tracking-tight" style={{ display: "inline-flex", alignItems: "baseline" }}>
               <svg width="24" height="18" viewBox="0 0 24 18" fill="none" style={{ marginRight: 1, position: "relative", top: 1 }}>
                 <path d="M0 1L4 17H5L9 5L13 17H14L18 1H16L13 12L9.5 1H8.5L5 12L2 1H0Z" fill={C.white} />
-                <line x1="17" y1="0" x2="12" y2="18" stroke={C.blue} strokeWidth="2.5" strokeLinecap="round" />
+                <line x1="17.5" y1="-1" x2="11.5" y2="19" stroke={C.blue} strokeWidth="4" strokeLinecap="round" />
               </svg>
               <span style={{ color: C.blue }}>.</span>STUDIO
             </span>
