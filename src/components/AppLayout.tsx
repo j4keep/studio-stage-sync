@@ -18,7 +18,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   const isStudioPage =
     location.pathname.startsWith("/wstudio") || location.pathname === "/ai-studio";
   const isFullScreenPage = ["/feed"].includes(location.pathname);
-  const showTopBar = !["/auth", "/feed", "/ai-studio"].includes(location.pathname) && !location.pathname.startsWith("/wstudio");
+  const showTopBar = !["/auth", "/feed", "/ai-studio"].includes(location.pathname);
 
   const handleAskJhi = () => {
     if (!isPro) {
@@ -27,14 +27,6 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
       navigate("/ask-jhi");
     }
   };
-
-  if (isStudioPage) {
-    return (
-      <div className="relative min-h-screen overflow-hidden bg-black text-foreground">
-        {children}
-      </div>
-    );
-  }
 
   if (isFullScreenPage) {
     return (
@@ -51,7 +43,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   return (
     <div className="min-h-screen bg-background text-foreground max-w-lg mx-auto relative">
       {showTopBar && (
-        <div className="sticky top-0 z-40 bg-background/90 backdrop-blur-xl border-b border-border px-4 py-2 flex items-center justify-end gap-2">
+        <div className="sticky top-0 z-40 bg-background/90 backdrop-blur-xl border-b border-border px-4 py-2 flex items-center justify-end gap-2 wstudio-nav">
           <button
             onClick={handleAskJhi}
             className="relative w-9 h-9 rounded-full bg-muted flex items-center justify-center"
@@ -67,11 +59,13 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
           <NotificationBell />
         </div>
       )}
-      <main className="pb-20">{children}</main>
+      <main className={isStudioPage ? "wstudio-main" : "pb-20"}>{children}</main>
       <GlobalRadioPlayer />
       <GlobalPlaylistPlayer />
       <PlaylistPlayerSheet />
-      <BottomNav />
+      <div className="wstudio-nav">
+        <BottomNav />
+      </div>
       <ProGateModal open={showProModal} onClose={closeProModal} featureName={gatedFeature} onSubscribe={activatePro} />
     </div>
   );
