@@ -413,20 +413,20 @@ export default function UnifiedSessionScreen() {
           </div>
         </div>
 
-        {/* ─── BOOKING TIMER BAR ─── */}
-        {hasBooking && (
+        {/* ─── BOOKING / SESSION TIMER BAR ─── */}
+        {connected && (
           <div className="px-2 pt-2">
             <SessionTimerBar
-              totalBookedMinutes={totalBookedMinutes}
-              remainingSeconds={bookingRemaining}
-              warningLevel={warningLevel}
-              phase={phase}
-              timerRunning={timerRunning}
+              totalBookedMinutes={hasBooking ? totalBookedMinutes : demoClock.totalMinutes}
+              remainingSeconds={hasBooking ? bookingRemaining : demoClock.remainingSeconds}
+              warningLevel={hasBooking ? warningLevel : demoClock.phase === "live" && demoClock.remainingSeconds <= 60 ? "critical" : demoClock.phase === "live" && demoClock.remainingSeconds <= 300 ? "warning" : "ok"}
+              phase={hasBooking ? phase : demoClock.phase}
+              timerRunning={hasBooking ? timerRunning : demoClock.running}
               compact
             />
-            <div className="mt-1.5 flex items-center gap-2 px-1">
-              {/* Engineer: Start timer + earnings */}
-              {isEngineer && phase === "scheduled" && (
+            <div className="mt-1.5 flex flex-wrap items-center gap-2 px-1">
+              {/* Engineer: Start timer */}
+              {isEngineer && hasBooking && phase === "scheduled" && (
                 <button
                   onPointerDown={(e) => { e.preventDefault(); startSessionTimer(); }}
                   className="rounded-lg px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wide"
@@ -439,6 +439,7 @@ export default function UnifiedSessionScreen() {
                   ▶ Start Session Timer
                 </button>
               )}
+              {/* Engineer: Continue after ended */}
               {isEngineer && phase === "ended" && (
                 <button
                   onPointerDown={(e) => { e.preventDefault(); engineerContinueSession(); }}
@@ -452,6 +453,7 @@ export default function UnifiedSessionScreen() {
                   + Continue (+5 min grace)
                 </button>
               )}
+              {/* Engineer: Session earnings */}
               {isEngineer && (
                 <div className="ml-auto flex items-center gap-2 rounded-lg px-3 py-1.5" style={{ background: C.inset, border: `1px solid ${C.insetBorder}` }}>
                   <span style={{ fontSize: 9, color: C.dim, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase" }}>Session value</span>
@@ -459,7 +461,7 @@ export default function UnifiedSessionScreen() {
                 </div>
               )}
               {/* Artist: Request extension */}
-              {isArtist && phase === "live" && !pendingExtension && (
+              {isArtist && hasBooking && phase === "live" && !pendingExtension && (
                 <div className="flex items-center gap-1.5">
                   <span style={{ fontSize: 10, color: C.dim, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" }}>Add time:</span>
                   {([15, 30, 60] as const).map((m) => (
