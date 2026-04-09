@@ -28,10 +28,17 @@ const C = {
   red: "#ef4444",
   blue: "#3b9dff",
   white: "#ffffff",
+  /* Mainstream accent colors */
+  acMagenta: "#e040a0",
+  acGreen: "#40e060",
+  acOrange: "#f08030",
+  acCyan: "#40d0e0",
+  acPurple: "#a040e0",
+  acLime: "#60e040",
 };
 
 /* ─── Interactive SVG Knob ─── */
-function Knob({ value = 0.5, size = 68, label, onChange }: { value?: number; size?: number; label?: string; onChange?: (v: number) => void }) {
+function Knob({ value = 0.5, size = 68, label, onChange, accent }: { value?: number; size?: number; label?: string; onChange?: (v: number) => void; accent?: string }) {
   const angle = -135 + value * 270;
   const r = size / 2 - 8;
   const cx = size / 2;
@@ -74,7 +81,8 @@ function Knob({ value = 0.5, size = 68, label, onChange }: { value?: number; siz
           })}
           <circle cx={cx} cy={cy} r={r} fill={`url(#knobBody${size})`} stroke={C.shellDark} strokeWidth={2} />
           <circle cx={cx} cy={cy} r={r * 0.62} fill={`url(#knobCap${size})`} stroke={C.panelBorder} strokeWidth={1} />
-          <line x1={cx} y1={cy} x2={cx + (r * 0.52) * Math.cos(toRad(angle))} y2={cy + (r * 0.52) * Math.sin(toRad(angle))} stroke={C.white} strokeWidth={2.5} strokeLinecap="round" />
+           <line x1={cx} y1={cy} x2={cx + (r * 0.52) * Math.cos(toRad(angle))} y2={cy + (r * 0.52) * Math.sin(toRad(angle))} stroke={accent || C.white} strokeWidth={2.5} strokeLinecap="round" />
+          {accent && <circle cx={cx} cy={cy} r={r} fill="none" stroke={accent} strokeWidth={1.5} opacity={0.35} />}
           <defs>
             <radialGradient id={`knobBody${size}`} cx="38%" cy="34%"><stop offset="0%" stopColor="#484a4e" /><stop offset="60%" stopColor="#2a2c30" /><stop offset="100%" stopColor="#1a1b1e" /></radialGradient>
             <radialGradient id={`knobCap${size}`} cx="40%" cy="36%"><stop offset="0%" stopColor="#3a3c40" /><stop offset="100%" stopColor="#1e1f22" /></radialGradient>
@@ -257,14 +265,16 @@ function Waveform({ recording }: { recording: boolean }) {
 }
 
 /* ─── Panel wrapper ─── */
-function Panel({ children, style, className = "" }: { children: React.ReactNode; style?: React.CSSProperties; className?: string }) {
+function Panel({ children, style, className = "", accent }: { children: React.ReactNode; style?: React.CSSProperties; className?: string; accent?: string }) {
   return (
     <div
       className={`overflow-hidden rounded-[4px] ${className}`}
       style={{
         background: `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
-        border: `1px solid ${C.panelBorder}`,
-        boxShadow: `inset 0 1px 0 rgba(255,255,255,0.04), 0 1px 0 rgba(255,255,255,0.02)`,
+        border: accent ? `1.5px solid ${accent}` : `1px solid ${C.panelBorder}`,
+        boxShadow: accent
+          ? `inset 0 1px 0 rgba(255,255,255,0.04), 0 0 12px ${accent}30, 0 1px 0 rgba(255,255,255,0.02)`
+          : `inset 0 1px 0 rgba(255,255,255,0.04), 0 1px 0 rgba(255,255,255,0.02)`,
         ...style,
       }}
     >
@@ -423,7 +433,7 @@ export default function UnifiedSessionScreen() {
           {/* ── LEFT COLUMN: Videos + Controls (spans rows 1-3) ── */}
           <div className="row-span-3 flex flex-col gap-2">
             {/* Artist Video */}
-            <Panel className="relative" style={{ aspectRatio: "4/3" }}>
+            <Panel accent={C.acMagenta} className="relative" style={{ aspectRatio: "4/3" }}>
               <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
                 <span className="text-[28px] font-black tracking-tight" style={{ color: C.dim }}>W<span style={{ color: C.blue }}>.</span>STUDIO</span>
                 <span style={{ color: C.dim, fontSize: 11, letterSpacing: "0.14em", marginTop: 4 }}>WAITING FOR ARTIST</span>
@@ -439,7 +449,7 @@ export default function UnifiedSessionScreen() {
             </Panel>
 
             {/* Engineer Video */}
-            <Panel className="relative" style={{ aspectRatio: "4/3" }}>
+            <Panel accent={C.acGreen} className="relative" style={{ aspectRatio: "4/3" }}>
               <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
                 <span className="text-[28px] font-black tracking-tight" style={{ color: C.dim }}>W<span style={{ color: C.blue }}>.</span>STUDIO</span>
                 <span style={{ color: C.dim, fontSize: 11, letterSpacing: "0.14em", marginTop: 4 }}>WAITING FOR ENGINEER</span>
@@ -460,7 +470,7 @@ export default function UnifiedSessionScreen() {
             </Panel>
 
             {/* Mute / Talk / Settings */}
-            <Panel>
+            <Panel accent={C.acOrange}>
               <div className="grid grid-cols-3" style={{ borderTop: `1px solid ${C.panelBorder}` }}>
                 {/* Mute */}
                 <button
@@ -510,7 +520,7 @@ export default function UnifiedSessionScreen() {
           </div>
 
           {/* ── SESSION STATUS BAR (top, spans center + right) ── */}
-          <Panel className="col-span-2 flex items-center justify-between px-4" style={{ height: 48 }}>
+          <Panel accent={C.acCyan} className="col-span-2 flex items-center justify-between px-4" style={{ height: 48 }}>
             <div className="flex items-center gap-3">
               <span style={{ fontSize: 16, fontWeight: 500, color: C.text }}>
                 {sessionDisplayName || "Session: Live with Jay - Florida"}
@@ -556,7 +566,7 @@ export default function UnifiedSessionScreen() {
           </Panel>
 
           {/* ── CENTER: SYNC CONTROLS ── */}
-          <Panel className="p-4">
+          <Panel accent={C.acPurple} className="p-4">
             <div style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>
               SYNC CONTROLS
             </div>
@@ -620,7 +630,7 @@ export default function UnifiedSessionScreen() {
           </Panel>
 
           {/* ── RIGHT: MONITORING ── */}
-          <Panel className="p-4">
+          <Panel accent={C.acLime} className="p-4">
             <div className="mb-1 flex items-center justify-between">
               <span style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>
                 MONITORING
@@ -636,7 +646,7 @@ export default function UnifiedSessionScreen() {
               <div className="flex flex-col items-center gap-1">
                 <span style={{ fontSize: 11, fontWeight: 500, color: C.text }}>Vocal Level</span>
                 <div className="flex items-end gap-2">
-                  <Knob value={vocalLevel} size={58} onChange={setVocalLevel} />
+                  <Knob value={vocalLevel} size={58} onChange={setVocalLevel} accent={C.acLime} />
                   <LedMeter level={0} height={72} />
                   <Fader value={vocalLevel} height={72} onChange={setVocalLevel} />
                 </div>
@@ -645,7 +655,7 @@ export default function UnifiedSessionScreen() {
               <div className="flex flex-col items-center gap-1">
                 <span style={{ fontSize: 11, fontWeight: 500, color: C.text }}>Talkback Level</span>
                 <div className="flex items-end gap-2">
-                  <Knob value={talkbackLevel} size={58} onChange={setTalkbackLevel} />
+                  <Knob value={talkbackLevel} size={58} onChange={setTalkbackLevel} accent={C.acCyan} />
                   <LedMeter level={0} height={72} />
                   <Fader value={talkbackLevel} height={72} onChange={setTalkbackLevel} />
                 </div>
@@ -654,7 +664,7 @@ export default function UnifiedSessionScreen() {
               <div className="flex flex-col items-center gap-1">
                 <span style={{ fontSize: 11, fontWeight: 500, color: C.text }}>Headphone</span>
                 <div className="flex items-end gap-2">
-                  <Knob value={headphoneLevel} size={58} onChange={setHeadphoneLevel} />
+                  <Knob value={headphoneLevel} size={58} onChange={setHeadphoneLevel} accent={C.acOrange} />
                   <LedMeter level={0} height={72} />
                   <Fader value={headphoneLevel} height={72} onChange={setHeadphoneLevel} />
                 </div>
@@ -663,7 +673,7 @@ export default function UnifiedSessionScreen() {
               {/* Cue Mix */}
               <div className="flex flex-col items-center gap-1">
                 <span style={{ fontSize: 11, fontWeight: 500, color: C.text }}>Cue Mix</span>
-                <Knob value={cueMix} size={58} onChange={setCueMix} />
+                <Knob value={cueMix} size={58} onChange={setCueMix} accent={C.acPurple} />
                 <div className="flex w-full items-center justify-between px-1" style={{ fontSize: 8, color: C.dim }}>
                   <span>VOX</span>
                   <span>BEAT</span>
@@ -676,7 +686,7 @@ export default function UnifiedSessionScreen() {
           </Panel>
 
           {/* ── CENTER: VOCAL INPUT ── */}
-          <Panel className="p-4">
+          <Panel accent={C.acOrange} className="p-4">
             <div className="mb-2 flex items-center justify-between">
               <span style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>
                 VOCAL INPUT
@@ -719,19 +729,19 @@ export default function UnifiedSessionScreen() {
           </Panel>
 
           {/* ── RIGHT: EFFECTS ── */}
-          <Panel className="p-4">
+          <Panel accent={C.acMagenta} className="p-4">
             <div style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>
               EFFECTS
             </div>
             <div className="mt-4 flex items-center justify-around">
-              <Knob label="Comp" value={compVal} size={66} onChange={setCompVal} />
-              <Knob label="EQ" value={eqVal} size={66} onChange={setEqVal} />
-              <Knob label="Reverb" value={reverbVal} size={66} onChange={setReverbVal} />
+              <Knob label="Comp" value={compVal} size={66} onChange={setCompVal} accent={C.acMagenta} />
+              <Knob label="EQ" value={eqVal} size={66} onChange={setEqVal} accent={C.acCyan} />
+              <Knob label="Reverb" value={reverbVal} size={66} onChange={setReverbVal} accent={C.acGreen} />
             </div>
           </Panel>
 
           {/* ── BOTTOM: WAVEFORM STRIP (full width) ── */}
-          <Panel className="col-span-3 p-3">
+          <Panel accent={C.acCyan} className="col-span-3 p-3">
             <div className="mb-2 flex items-center justify-between">
               <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>
                 Jay's Vocal Take 4 - {recording ? "Recording..." : "Ready"}
@@ -744,7 +754,7 @@ export default function UnifiedSessionScreen() {
           </Panel>
 
           {/* ── BOTTOM: TRANSPORT BAR (full width) ── */}
-          <Panel className="col-span-3 flex items-center gap-2 px-3 py-2">
+          <Panel accent={C.acPurple} className="col-span-3 flex items-center gap-2 px-3 py-2">
             <TBtn sym="▌▌" label="Punch In" disabled={!isEngineer} />
             <TBtn sym="<<" label="Rewind" disabled={!isEngineer} />
             <TBtn sym="▶▶" label="Forward" disabled={!isEngineer} />
