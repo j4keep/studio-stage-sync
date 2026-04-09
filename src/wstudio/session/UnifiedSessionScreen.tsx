@@ -689,48 +689,75 @@ export default function UnifiedSessionScreen() {
             </div>
           </Panel>
 
-          {/* ── CENTER: VOCAL INPUT ── */}
-          <Panel accent={C.acOrange} className="p-4">
-            <div className="mb-2 flex items-center justify-between">
-              <span style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>
-                VOCAL INPUT
-              </span>
-              <div className="flex items-center gap-1 rounded-[3px] px-1.5 py-0.5" style={{ background: C.inset, border: `1px solid ${C.insetBorder}` }}>
-                <div className="h-2.5 w-1.5 rounded-sm" style={{ background: C.blue }} />
-                <div className="h-2.5 w-1.5 rounded-sm" style={{ background: C.yellow }} />
+          {/* ── CENTER: VOCAL INPUT / SCREEN SHARE (switches) ── */}
+          {collaborationShareActive ? (
+            <Panel accent={C.acCyan} className="relative flex flex-col">
+              <div className="flex items-center justify-between px-4 py-2" style={{ borderBottom: `1px solid ${C.panelBorder}` }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>
+                  SCREEN SHARE — DAW VIEW
+                </span>
+                <div className="flex items-center gap-2">
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.green }} />
+                  <span style={{ fontSize: 11, color: C.green, fontWeight: 600 }}>LIVE</span>
+                </div>
               </div>
-            </div>
-            <div className="mb-3 text-center" style={{ fontSize: 16, fontWeight: 700, color: C.text, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-              REMOTE VOCAL
-            </div>
-            <Inset className="p-3">
-              <HorizontalMeter level={0} />
-              <div className="mt-2">
-                <SpectrumBars level={0} />
+              <div className="flex flex-1 items-center justify-center" style={{ background: C.inset, minHeight: 180 }}>
+                <div className="flex flex-col items-center gap-2">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={C.dim} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="3" width="20" height="14" rx="2" />
+                    <line x1="8" y1="21" x2="16" y2="21" />
+                    <line x1="12" y1="17" x2="12" y2="21" />
+                  </svg>
+                  <span style={{ color: C.label, fontSize: 13, fontWeight: 500 }}>
+                    {isEngineer ? "Your screen is being shared" : "Engineer's DAW"}
+                  </span>
+                  <span style={{ color: C.dim, fontSize: 11 }}>Pro Tools / Logic Pro</span>
+                </div>
               </div>
-              <div className="mt-1">
-                <FreqLabels />
+            </Panel>
+          ) : (
+            <Panel accent={C.acOrange} className="p-4">
+              <div className="mb-2 flex items-center justify-between">
+                <span style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>
+                  VOCAL INPUT
+                </span>
+                <div className="flex items-center gap-1 rounded-[3px] px-1.5 py-0.5" style={{ background: C.inset, border: `1px solid ${C.insetBorder}` }}>
+                  <div className="h-2.5 w-1.5 rounded-sm" style={{ background: C.blue }} />
+                  <div className="h-2.5 w-1.5 rounded-sm" style={{ background: C.yellow }} />
+                </div>
               </div>
-            </Inset>
-            <div className="mt-4 flex justify-center">
-              <button
-                onPointerDown={isEngineer ? (e) => { e.preventDefault(); setArmed(!armed); } : undefined}
-                className="rounded-[3px] px-8 py-2.5 text-[15px] font-bold uppercase tracking-wide"
-                style={{
-                  background: armed
-                    ? `linear-gradient(180deg, #4a1a1a 0%, #2a0e0e 100%)`
-                    : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
-                  border: `1px solid ${armed ? "#6a2222" : C.panelBorder}`,
-                  color: C.text,
-                  boxShadow: armed ? `0 0 14px rgba(239,68,68,0.15)` : `inset 0 1px 0 rgba(255,255,255,0.05)`,
-                  opacity: isEngineer ? 1 : 0.4,
-                  cursor: isEngineer ? "pointer" : "not-allowed",
-                }}
-              >
-                ARM RECORD
-              </button>
-            </div>
-          </Panel>
+              <div className="mb-3 text-center" style={{ fontSize: 16, fontWeight: 700, color: C.text, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                REMOTE VOCAL
+              </div>
+              <Inset className="p-3">
+                <HorizontalMeter level={0} />
+                <div className="mt-2">
+                  <SpectrumBars level={0} />
+                </div>
+                <div className="mt-1">
+                  <FreqLabels />
+                </div>
+              </Inset>
+              <div className="mt-4 flex justify-center">
+                <button
+                  onPointerDown={isEngineer ? (e) => { e.preventDefault(); setArmed(!armed); } : undefined}
+                  className="rounded-[3px] px-8 py-2.5 text-[15px] font-bold uppercase tracking-wide"
+                  style={{
+                    background: armed
+                      ? `linear-gradient(180deg, #4a1a1a 0%, #2a0e0e 100%)`
+                      : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
+                    border: `1px solid ${armed ? "#6a2222" : C.panelBorder}`,
+                    color: C.text,
+                    boxShadow: armed ? `0 0 14px rgba(239,68,68,0.15)` : `inset 0 1px 0 rgba(255,255,255,0.05)`,
+                    opacity: isEngineer ? 1 : 0.4,
+                    cursor: isEngineer ? "pointer" : "not-allowed",
+                  }}
+                >
+                  ARM RECORD
+                </button>
+              </div>
+            </Panel>
+          )}
 
           {/* ── RIGHT: EFFECTS ── */}
           <Panel accent={C.acMagenta} className="p-4">
