@@ -18,6 +18,7 @@ interface EditStudioSheetProps {
     daily_rate: number | null;
     equipment: string[];
     engineer_available: boolean;
+    auto_accept?: boolean;
   } | null;
 }
 
@@ -32,6 +33,7 @@ const EditStudioSheet = ({ open, onClose, onUpdated, studio }: EditStudioSheetPr
   const [equipmentInput, setEquipmentInput] = useState("");
   const [equipment, setEquipment] = useState<string[]>([]);
   const [engineerAvailable, setEngineerAvailable] = useState(false);
+  const [autoAccept, setAutoAccept] = useState(false);
   const [existingPhotos, setExistingPhotos] = useState<{ id: string; photo_url: string }[]>([]);
   const [newPhotoUrls, setNewPhotoUrls] = useState<string[]>([]);
   const [deletedPhotoIds, setDeletedPhotoIds] = useState<string[]>([]);
@@ -49,6 +51,7 @@ const EditStudioSheet = ({ open, onClose, onUpdated, studio }: EditStudioSheetPr
       setDailyRate(studio.daily_rate?.toString() ?? "");
       setEquipment(studio.equipment);
       setEngineerAvailable(studio.engineer_available);
+      setAutoAccept(studio.auto_accept ?? false);
       setNewPhotoUrls([]);
       setDeletedPhotoIds([]);
       fetchPhotos(studio.id);
@@ -143,6 +146,7 @@ const EditStudioSheet = ({ open, onClose, onUpdated, studio }: EditStudioSheetPr
           daily_rate: dr > 0 ? dr : null,
           equipment,
           engineer_available: engineerAvailable,
+          auto_accept: autoAccept,
         })
         .eq("id", studio.id);
 
@@ -258,6 +262,21 @@ const EditStudioSheet = ({ open, onClose, onUpdated, studio }: EditStudioSheetPr
               {engineerAvailable && <span className="text-primary-foreground text-xs font-bold">✓</span>}
             </div>
             <span className="text-sm text-foreground">Engineer Available</span>
+          </button>
+
+          <button onClick={() => setAutoAccept(!autoAccept)}
+            className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all ${
+              autoAccept ? "bg-emerald-500/10 border-emerald-500/30" : "bg-card border-border"
+            }`}>
+            <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
+              autoAccept ? "border-emerald-500 bg-emerald-500" : "border-muted-foreground"
+            }`}>
+              {autoAccept && <span className="text-white text-xs font-bold">✓</span>}
+            </div>
+            <div className="text-left">
+              <span className="text-sm text-foreground block">Auto-Accept Bookings</span>
+              <span className="text-[10px] text-muted-foreground">Automatically approve all incoming requests</span>
+            </div>
           </button>
 
           {/* Photos */}
