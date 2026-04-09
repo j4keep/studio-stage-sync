@@ -710,15 +710,17 @@ export default function UnifiedSessionScreen() {
             {/* Auto Upload */}
             <div className="ml-auto flex items-center gap-3">
               <div className="flex gap-[3px] rounded-[3px] px-1.5 py-1" style={{ background: C.inset, border: `1px solid ${C.insetBorder}` }}>
-                <span className="rounded-[1px]" style={{ width: 8, height: 12, background: C.green }} />
-                <span className="rounded-[1px]" style={{ width: 8, height: 12, background: C.green }} />
-                <span className="rounded-[1px]" style={{ width: 8, height: 12, background: C.yellow }} />
+                <span className="rounded-[1px]" style={{ width: 8, height: 12, background: autoUpload ? C.green : C.dim }} />
+                <span className="rounded-[1px]" style={{ width: 8, height: 12, background: autoUpload ? C.green : C.dim }} />
+                <span className="rounded-[1px]" style={{ width: 8, height: 12, background: autoUpload ? C.yellow : C.dim }} />
                 <span className="rounded-[1px]" style={{ width: 8, height: 12, background: C.dim }} />
               </div>
               <span style={{ fontSize: 11, color: C.label, letterSpacing: "0.06em", textTransform: "uppercase" }}>
                 AUTO UPLOAD:
               </span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: C.green }}>ON ▶</span>
+              <button onClick={() => setAutoUpload(!autoUpload)} style={{ fontSize: 11, fontWeight: 700, color: autoUpload ? C.green : C.red, cursor: "pointer", background: "none", border: "none" }}>
+                {autoUpload ? "ON ▶" : "OFF ■"}
+              </button>
             </div>
           </Panel>
         </div>
