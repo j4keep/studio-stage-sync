@@ -521,7 +521,7 @@ export default function UnifiedSessionScreen() {
           </Panel>
 
           {/* ── VOCAL TAKE WAVEFORM (center column, moved up) ── */}
-          <Panel accent={C.acCyan} className="p-3">
+          <Panel accent={C.acCyan} className="col-span-2 p-3">
             <div className="mb-2 flex items-center justify-between">
               <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>Jay's Vocal Take 4 - {recording ? "Recording..." : "Ready"}</span>
               <span style={{ color: C.dim, fontSize: 13 }}>▐▐</span>
