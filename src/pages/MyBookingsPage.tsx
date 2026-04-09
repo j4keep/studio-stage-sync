@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ChevronLeft, CalendarDays, Clock, DollarSign, Star, Hash, ChevronRight } from "lucide-react";
+import { ChevronLeft, CalendarDays, Clock, DollarSign, Star, Hash, AlertTriangle, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 import RateSessionModal from "@/components/RateSessionModal";
 
 interface BookingRow {
@@ -18,8 +19,9 @@ interface BookingRow {
   cancellation_fee: number;
   payout_status: string;
   session_status: string;
-  studio?: { name: string; location: string; hourly_rate: number };
+  studio?: { name: string; location: string; hourly_rate: number; user_id: string };
   reviewed?: boolean;
+  has_strike?: boolean;
 }
 
 const statusColors: Record<string, string> = {
@@ -28,6 +30,7 @@ const statusColors: Record<string, string> = {
   cancelled: "bg-orange-500/15 text-orange-400",
   expired: "bg-zinc-500/15 text-zinc-400",
   rejected: "bg-red-500/15 text-red-400",
+  no_show: "bg-red-500/15 text-red-400",
 };
 
 const statusLabels: Record<string, string> = {
@@ -36,6 +39,7 @@ const statusLabels: Record<string, string> = {
   cancelled: "Cancelled",
   expired: "Expired",
   rejected: "Rejected",
+  no_show: "No-Show Reported",
 };
 
 const MyBookingsPage = () => {
@@ -45,6 +49,7 @@ const MyBookingsPage = () => {
   const [loading, setLoading] = useState(true);
   const [rateBooking, setRateBooking] = useState<BookingRow | null>(null);
   const [filter, setFilter] = useState<"all" | "upcoming" | "past">("all");
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const fetchBookings = async () => {
     if (!user) return;
@@ -52,20 +57,22 @@ const MyBookingsPage = () => {
 
     const { data } = await (supabase as any)
       .from("studio_bookings")
-      .select("*, studios:studio_id(name, location, hourly_rate)")
+      .select("*, studios:studio_id(name, location, hourly_rate, user_id)")
       .eq("user_id", user.id)
       .order("booking_date", { ascending: false });
 
     if (data) {
-      // Check which bookings have been reviewed
       const bookingIds = data.map((b: any) => b.id);
       let reviewedIds = new Set<string>();
+      let strikeIds = new Set<string>();
+
       if (bookingIds.length > 0) {
-        const { data: reviews } = await (supabase as any)
-          .from("studio_reviews")
-          .select("booking_id")
-          .in("booking_id", bookingIds);
-        reviewedIds = new Set((reviews || []).map((r: any) => r.booking_id));
+        const [reviewsRes, strikesRes] = await Promise.all([
+          (supabase as any).from("studio_reviews").select("booking_id").in("booking_id", bookingIds),
+          (supabase as any).from("no_show_strikes").select("booking_id").in("booking_id", bookingIds),
+        ]);
+        reviewedIds = new Set((reviewsRes.data || []).map((r: any) => r.booking_id));
+        strikeIds = new Set((strikesRes.data || []).map((r: any) => r.booking_id));
       }
 
       setBookings(
@@ -73,6 +80,7 @@ const MyBookingsPage = () => {
           ...b,
           studio: b.studios,
           reviewed: reviewedIds.has(b.id),
+          has_strike: strikeIds.has(b.id),
         }))
       );
     }
@@ -87,6 +95,81 @@ const MyBookingsPage = () => {
     if (filter === "past") return b.booking_date < today || b.session_status === "completed";
     return true;
   });
+
+  const handleCancel = async (booking: BookingRow) => {
+    if (!user) return;
+    const fee = Math.round(booking.total_amount * 0.1 * 100) / 100;
+    const confirmed = window.confirm(
+      `Cancel this booking? A 10% cancellation fee of $${fee} will apply.`
+    );
+    if (!confirmed) return;
+
+    setActionLoading(booking.id);
+    const { error } = await (supabase as any)
+      .from("studio_bookings")
+      .update({
+        status: "cancelled",
+        cancellation_fee: fee,
+        cancelled_at: new Date().toISOString(),
+        payout_status: "refunded",
+      })
+      .eq("id", booking.id)
+      .eq("user_id", user.id);
+
+    if (error) {
+      toast.error("Failed to cancel booking");
+    } else {
+      toast.success(`Booking cancelled. $${fee} cancellation fee applied.`);
+      fetchBookings();
+    }
+    setActionLoading(null);
+  };
+
+  const handleReportNoShow = async (booking: BookingRow) => {
+    if (!user || !booking.studio) return;
+    const confirmed = window.confirm(
+      "Report this engineer as a no-show? Your payment will be fully refunded and a strike will be recorded against this studio."
+    );
+    if (!confirmed) return;
+
+    setActionLoading(booking.id);
+
+    // Insert no-show strike
+    const { error: strikeError } = await (supabase as any)
+      .from("no_show_strikes")
+      .insert({
+        engineer_id: booking.studio.user_id,
+        booking_id: booking.id,
+        studio_id: booking.studio_id,
+        reported_by: user.id,
+      });
+
+    if (strikeError) {
+      toast.error(strikeError.message?.includes("unique") ? "No-show already reported for this booking" : "Failed to report no-show");
+      setActionLoading(null);
+      return;
+    }
+
+    // Update booking status to reflect no-show and full refund
+    await (supabase as any)
+      .from("studio_bookings")
+      .update({
+        session_status: "no_show",
+        payout_status: "refunded",
+        cancellation_fee: 0,
+      })
+      .eq("id", booking.id);
+
+    toast.success("No-show reported. Full refund issued and strike recorded.");
+    fetchBookings();
+    setActionLoading(null);
+  };
+
+  const canCancel = (b: BookingRow) =>
+    (b.status === "pending" || b.status === "confirmed") && b.session_status !== "completed" && b.session_status !== "no_show";
+
+  const canReportNoShow = (b: BookingRow) =>
+    b.status === "confirmed" && b.session_status !== "completed" && b.session_status !== "no_show" && !b.has_strike && b.booking_date <= today;
 
   return (
     <div className="px-4 pt-4 pb-20">
@@ -132,8 +215,8 @@ const MyBookingsPage = () => {
                   <h3 className="text-sm font-semibold text-foreground">{booking.studio?.name || "Studio"}</h3>
                   <p className="text-[11px] text-muted-foreground">{booking.studio?.location}</p>
                 </div>
-                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${statusColors[booking.status] || "bg-zinc-500/15 text-zinc-400"}`}>
-                  {statusLabels[booking.status] || booking.status}
+                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${statusColors[booking.session_status === "no_show" ? "no_show" : booking.status] || "bg-zinc-500/15 text-zinc-400"}`}>
+                  {booking.session_status === "no_show" ? "🚫 No-Show" : statusLabels[booking.status] || booking.status}
                 </span>
               </div>
 
@@ -181,7 +264,7 @@ const MyBookingsPage = () => {
                 </div>
               </div>
 
-              {/* Payout status */}
+              {/* Payout status + actions */}
               <div className="flex items-center justify-between mt-2">
                 <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
                   booking.payout_status === "held" ? "bg-amber-500/10 text-amber-400" :
@@ -204,6 +287,39 @@ const MyBookingsPage = () => {
                   </span>
                 )}
               </div>
+
+              {/* Action buttons: Cancel & No-Show */}
+              {(canCancel(booking) || canReportNoShow(booking)) && (
+                <div className="flex gap-2 mt-3 pt-3 border-t border-border">
+                  {canCancel(booking) && (
+                    <button
+                      onClick={() => handleCancel(booking)}
+                      disabled={actionLoading === booking.id}
+                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-orange-500/30 bg-orange-500/10 text-orange-400 text-[11px] font-semibold disabled:opacity-50"
+                    >
+                      <XCircle className="w-3.5 h-3.5" />
+                      {actionLoading === booking.id ? "Cancelling..." : "Cancel Booking"}
+                    </button>
+                  )}
+                  {canReportNoShow(booking) && (
+                    <button
+                      onClick={() => handleReportNoShow(booking)}
+                      disabled={actionLoading === booking.id}
+                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 text-[11px] font-semibold disabled:opacity-50"
+                    >
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      {actionLoading === booking.id ? "Reporting..." : "Report No-Show"}
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* No-show reported badge */}
+              {booking.has_strike && (
+                <div className="mt-2 flex items-center gap-1.5 text-[10px] text-red-400">
+                  <AlertTriangle className="w-3 h-3" /> No-show reported — full refund issued
+                </div>
+              )}
             </motion.div>
           ))}
         </div>
