@@ -22,6 +22,7 @@ interface Booking {
   cancelled_at: string | null;
   cancellation_fee: number;
   payout_status: string;
+  session_status?: string;
   profile?: { display_name: string | null; avatar_url: string | null };
   studio_name?: string;
 }
