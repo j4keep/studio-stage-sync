@@ -24,6 +24,7 @@ interface Studio {
   reviews_count: number;
   user_id: string;
   description: string | null;
+  no_show_count: number;
 }
 
 interface StudioProfile {
@@ -295,9 +296,14 @@ export function StudioSearchSheet({
                             <span>Remote Studio</span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-1 text-amber-400">
-                          <Star className="h-3 w-3 fill-amber-400" />
-                          <span className="text-xs font-medium">{studio.rating}</span>
+                        <div className="flex items-center gap-2">
+                          {(studio.no_show_count ?? 0) >= 3 && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-400 font-semibold">⚠️ {studio.no_show_count} No-Shows</span>
+                          )}
+                          <div className="flex items-center gap-1 text-amber-400">
+                            <Star className="h-3 w-3 fill-amber-400" />
+                            <span className="text-xs font-medium">{studio.rating}</span>
+                          </div>
                         </div>
                       </div>
 
