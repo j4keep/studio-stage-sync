@@ -25,58 +25,48 @@ const C = {
   white: "#ffffff",
 };
 
-/* ─── SVG Knob ─── */
-function Knob({ value = 0.5, size = 68, label }: { value?: number; size?: number; label?: string }) {
+/* ─── Interactive SVG Knob ─── */
+function Knob({ value = 0.5, size = 68, label, onChange }: { value?: number; size?: number; label?: string; onChange?: (v: number) => void }) {
   const angle = -135 + value * 270;
   const r = size / 2 - 8;
   const cx = size / 2;
   const cy = size / 2;
   const ticks = 13;
   const toRad = (d: number) => (d * Math.PI) / 180;
+  const dragRef = useRef<{ startY: number; startVal: number } | null>(null);
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (!onChange) return;
+    e.preventDefault();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    dragRef.current = { startY: e.clientY, startVal: value };
+  };
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!dragRef.current || !onChange) return;
+    const delta = (dragRef.current.startY - e.clientY) / 120;
+    onChange(Math.min(1, Math.max(0, dragRef.current.startVal + delta)));
+  };
+  const onPointerUp = () => { dragRef.current = null; };
 
   return (
-    <div className="flex flex-col items-center gap-1.5">
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        {/* tick marks */}
+    <div className="flex flex-col items-center gap-1.5" style={{ cursor: onChange ? "ns-resize" : "default" }}>
+      <svg
+        width={size} height={size} viewBox={`0 0 ${size} ${size}`}
+        onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp}
+        style={{ touchAction: "none" }}
+      >
         {Array.from({ length: ticks }).map((_, i) => {
           const a = toRad(-135 + (i / (ticks - 1)) * 270);
           return (
-            <line
-              key={i}
-              x1={cx + (r + 3) * Math.cos(a)}
-              y1={cy + (r + 3) * Math.sin(a)}
-              x2={cx + (r + 6) * Math.cos(a)}
-              y2={cy + (r + 6) * Math.sin(a)}
-              stroke={C.dim}
-              strokeWidth={1}
-              strokeLinecap="round"
-            />
+            <line key={i} x1={cx + (r + 3) * Math.cos(a)} y1={cy + (r + 3) * Math.sin(a)} x2={cx + (r + 6) * Math.cos(a)} y2={cy + (r + 6) * Math.sin(a)} stroke={C.dim} strokeWidth={1} strokeLinecap="round" />
           );
         })}
-        {/* outer body */}
         <circle cx={cx} cy={cy} r={r} fill={`url(#knobBody${size})`} stroke={C.shellDark} strokeWidth={2} />
-        {/* inner cap */}
         <circle cx={cx} cy={cy} r={r * 0.62} fill={`url(#knobCap${size})`} stroke={C.panelBorder} strokeWidth={1} />
-        {/* pointer */}
-        <line
-          x1={cx}
-          y1={cy}
-          x2={cx + (r * 0.52) * Math.cos(toRad(angle))}
-          y2={cy + (r * 0.52) * Math.sin(toRad(angle))}
-          stroke={C.white}
-          strokeWidth={2.5}
-          strokeLinecap="round"
-        />
+        <line x1={cx} y1={cy} x2={cx + (r * 0.52) * Math.cos(toRad(angle))} y2={cy + (r * 0.52) * Math.sin(toRad(angle))} stroke={C.white} strokeWidth={2.5} strokeLinecap="round" />
         <defs>
-          <radialGradient id={`knobBody${size}`} cx="38%" cy="34%">
-            <stop offset="0%" stopColor="#484a4e" />
-            <stop offset="60%" stopColor="#2a2c30" />
-            <stop offset="100%" stopColor="#1a1b1e" />
-          </radialGradient>
-          <radialGradient id={`knobCap${size}`} cx="40%" cy="36%">
-            <stop offset="0%" stopColor="#3a3c40" />
-            <stop offset="100%" stopColor="#1e1f22" />
-          </radialGradient>
+          <radialGradient id={`knobBody${size}`} cx="38%" cy="34%"><stop offset="0%" stopColor="#484a4e" /><stop offset="60%" stopColor="#2a2c30" /><stop offset="100%" stopColor="#1a1b1e" /></radialGradient>
+          <radialGradient id={`knobCap${size}`} cx="40%" cy="36%"><stop offset="0%" stopColor="#3a3c40" /><stop offset="100%" stopColor="#1e1f22" /></radialGradient>
         </defs>
       </svg>
       {label && <span style={{ color: C.text, fontSize: 12, fontWeight: 500 }}>{label}</span>}
