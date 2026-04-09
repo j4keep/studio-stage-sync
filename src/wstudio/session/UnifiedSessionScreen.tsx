@@ -376,7 +376,7 @@ export default function UnifiedSessionScreen() {
           </div>
           <div className="flex items-center gap-3" style={{ color: C.label }}>
             <button className="hover:text-white">☰</button>
-            <button onClick={leaveSession} className="hover:text-white">✕</button>
+            <button onPointerDown={(e) => { e.preventDefault(); leaveSession(); }} className="hover:text-white">✕</button>
           </div>
         </div>
 
@@ -416,7 +416,7 @@ export default function UnifiedSessionScreen() {
               <div className="grid grid-cols-3" style={{ borderTop: `1px solid ${C.panelBorder}` }}>
                 {/* Mute */}
                 <button
-                  onClick={toggleMute}
+                  onPointerDown={(e) => { e.preventDefault(); toggleMute(); }}
                   className="flex flex-col items-center justify-center gap-1.5 py-3"
                 >
                   <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={muted ? C.red : C.label} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -517,8 +517,7 @@ export default function UnifiedSessionScreen() {
             <div className="flex items-center justify-center gap-2">
               {/* Play */}
               <button
-                disabled={!isEngineer}
-                onClick={isEngineer ? () => setPlaying(true) : undefined}
+                onPointerDown={isEngineer ? (e) => { e.preventDefault(); setPlaying(true); } : undefined}
                 className="flex items-center gap-2 rounded-[3px] px-5 py-2.5 text-[15px] font-semibold"
                 style={{
                   background: playing
@@ -528,6 +527,7 @@ export default function UnifiedSessionScreen() {
                   color: C.text,
                   boxShadow: playing ? `0 0 14px rgba(74,222,96,0.15)` : `inset 0 1px 0 rgba(255,255,255,0.05)`,
                   opacity: isEngineer ? 1 : 0.4,
+                  cursor: isEngineer ? "pointer" : "not-allowed",
                   minWidth: 110,
                 }}
               >
@@ -535,8 +535,7 @@ export default function UnifiedSessionScreen() {
               </button>
               {/* Stop */}
               <button
-                disabled={!isEngineer}
-                onClick={isEngineer ? () => { setPlaying(false); if (recording) setSessionRecording(false); } : undefined}
+                onPointerDown={isEngineer ? (e) => { e.preventDefault(); setPlaying(false); if (recording) setSessionRecording(false); } : undefined}
                 className="flex items-center gap-2 rounded-[3px] px-5 py-2.5 text-[15px] font-semibold"
                 style={{
                   background: `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
@@ -544,6 +543,7 @@ export default function UnifiedSessionScreen() {
                   color: C.text,
                   boxShadow: `inset 0 1px 0 rgba(255,255,255,0.05)`,
                   opacity: isEngineer ? 1 : 0.4,
+                  cursor: isEngineer ? "pointer" : "not-allowed",
                   minWidth: 110,
                 }}
               >
@@ -551,8 +551,7 @@ export default function UnifiedSessionScreen() {
               </button>
               {/* Record */}
               <button
-                disabled={!isEngineer}
-                onClick={isEngineer ? () => { setSessionRecording(!recording); if (!playing) setPlaying(true); } : undefined}
+                onPointerDown={isEngineer ? (e) => { e.preventDefault(); setSessionRecording(!recording); if (!playing) setPlaying(true); } : undefined}
                 className="flex items-center gap-2 rounded-[3px] px-5 py-2.5 text-[15px] font-semibold"
                 style={{
                   background: recording
@@ -562,6 +561,7 @@ export default function UnifiedSessionScreen() {
                   color: C.text,
                   boxShadow: recording ? `0 0 14px rgba(239,68,68,0.15)` : `inset 0 1px 0 rgba(255,255,255,0.05)`,
                   opacity: isEngineer ? 1 : 0.4,
+                  cursor: isEngineer ? "pointer" : "not-allowed",
                   minWidth: 110,
                 }}
               >
@@ -651,8 +651,7 @@ export default function UnifiedSessionScreen() {
             </Inset>
             <div className="mt-4 flex justify-center">
               <button
-                disabled={!isEngineer}
-                onClick={isEngineer ? () => setArmed(!armed) : undefined}
+                onPointerDown={isEngineer ? (e) => { e.preventDefault(); setArmed(!armed); } : undefined}
                 className="rounded-[3px] px-8 py-2.5 text-[15px] font-bold uppercase tracking-wide"
                 style={{
                   background: armed
