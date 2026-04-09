@@ -207,11 +207,12 @@ const ProtectedRoutes = () => {
         <Route path="/wstudio" element={<WStudioLayout />}>
           <Route index element={<Navigate to="session/join" replace />} />
           <Route path="session/join" element={<SessionJoinScreen />} />
-          <Route path="session/artist" element={<ArtistSessionScreen />} />
-          <Route path="session/engineer" element={<EngineerSessionScreen />} />
+          <Route path="session/live" element={<UnifiedSessionScreen />} />
+          <Route path="session/artist" element={<UnifiedSessionScreen />} />
+          <Route path="session/engineer" element={<UnifiedSessionScreen />} />
           <Route path="session" element={<Navigate to="/wstudio/session/join" replace />} />
-          <Route path="artist" element={<Navigate to="/wstudio/session/artist" replace />} />
-          <Route path="engineer" element={<Navigate to="/wstudio/session/engineer" replace />} />
+          <Route path="artist" element={<Navigate to="/wstudio/session/live" replace />} />
+          <Route path="engineer" element={<Navigate to="/wstudio/session/live" replace />} />
         </Route>
         <Route path="/ai-studio" element={<Navigate to="/wstudio/session/join" replace />} />
         <Route path="/admin/tickets" element={<AdminTicketsPage />} />
