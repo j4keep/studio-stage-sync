@@ -646,7 +646,7 @@ export default function UnifiedSessionScreen() {
               <div className="flex flex-col items-center gap-1">
                 <span style={{ fontSize: 11, fontWeight: 500, color: C.text }}>Vocal Level</span>
                 <div className="flex items-end gap-2">
-                  <Knob value={vocalLevel} size={58} onChange={setVocalLevel} />
+                  <Knob value={vocalLevel} size={58} onChange={setVocalLevel} accent={C.acLime} />
                   <LedMeter level={0} height={72} />
                   <Fader value={vocalLevel} height={72} onChange={setVocalLevel} />
                 </div>
@@ -655,7 +655,7 @@ export default function UnifiedSessionScreen() {
               <div className="flex flex-col items-center gap-1">
                 <span style={{ fontSize: 11, fontWeight: 500, color: C.text }}>Talkback Level</span>
                 <div className="flex items-end gap-2">
-                  <Knob value={talkbackLevel} size={58} onChange={setTalkbackLevel} />
+                  <Knob value={talkbackLevel} size={58} onChange={setTalkbackLevel} accent={C.acCyan} />
                   <LedMeter level={0} height={72} />
                   <Fader value={talkbackLevel} height={72} onChange={setTalkbackLevel} />
                 </div>
@@ -664,7 +664,7 @@ export default function UnifiedSessionScreen() {
               <div className="flex flex-col items-center gap-1">
                 <span style={{ fontSize: 11, fontWeight: 500, color: C.text }}>Headphone</span>
                 <div className="flex items-end gap-2">
-                  <Knob value={headphoneLevel} size={58} onChange={setHeadphoneLevel} />
+                  <Knob value={headphoneLevel} size={58} onChange={setHeadphoneLevel} accent={C.acOrange} />
                   <LedMeter level={0} height={72} />
                   <Fader value={headphoneLevel} height={72} onChange={setHeadphoneLevel} />
                 </div>
@@ -673,7 +673,7 @@ export default function UnifiedSessionScreen() {
               {/* Cue Mix */}
               <div className="flex flex-col items-center gap-1">
                 <span style={{ fontSize: 11, fontWeight: 500, color: C.text }}>Cue Mix</span>
-                <Knob value={cueMix} size={58} onChange={setCueMix} />
+                <Knob value={cueMix} size={58} onChange={setCueMix} accent={C.acPurple} />
                 <div className="flex w-full items-center justify-between px-1" style={{ fontSize: 8, color: C.dim }}>
                   <span>VOX</span>
                   <span>BEAT</span>
@@ -734,9 +734,9 @@ export default function UnifiedSessionScreen() {
               EFFECTS
             </div>
             <div className="mt-4 flex items-center justify-around">
-              <Knob label="Comp" value={compVal} size={66} onChange={setCompVal} />
-              <Knob label="EQ" value={eqVal} size={66} onChange={setEqVal} />
-              <Knob label="Reverb" value={reverbVal} size={66} onChange={setReverbVal} />
+              <Knob label="Comp" value={compVal} size={66} onChange={setCompVal} accent={C.acMagenta} />
+              <Knob label="EQ" value={eqVal} size={66} onChange={setEqVal} accent={C.acCyan} />
+              <Knob label="Reverb" value={reverbVal} size={66} onChange={setReverbVal} accent={C.acGreen} />
             </div>
           </Panel>
 
