@@ -422,7 +422,7 @@ export default function UnifiedSessionScreen() {
                     <div className="flex items-center gap-1.5">
                       <button className="flex h-7 w-7 items-center justify-center rounded text-[13px]" style={{ background: C.panelDark, border: `1px solid ${C.panelBorder}`, color: C.label }}>🔊</button>
                       {isEngineer && (
-                        <button onPointerDown={(e) => { e.preventDefault(); toggleScreenShare(); }} className="flex h-7 w-7 items-center justify-center rounded text-[13px]" style={{ background: screenSharing ? "rgba(59,157,255,0.2)" : C.panelDark, border: `1px solid ${screenSharing ? C.blue : C.panelBorder}`, color: C.label }}>🖥</button>
+                        <button onPointerDown={(e) => { e.preventDefault(); toggleScreenShare(); if (!screenSharing) setMobileTab("video"); }} className="flex h-7 w-7 items-center justify-center rounded text-[13px]" style={{ background: screenSharing ? "rgba(59,157,255,0.2)" : C.panelDark, border: `1px solid ${screenSharing ? C.blue : C.panelBorder}`, color: C.label }}>🖥</button>
                       )}
                     </div>
                   </Panel>
