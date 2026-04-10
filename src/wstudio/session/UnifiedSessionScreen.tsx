@@ -649,12 +649,17 @@ export default function UnifiedSessionScreen() {
           {/* ── LEFT COLUMN: Videos + Controls (spans all content rows) ── */}
           <div className="row-span-3 flex flex-col gap-2">
             {/* Artist Video */}
-            <Panel accent={C.acMagenta} className="relative" style={{ aspectRatio: "4/3" }}>
-              <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
-                <span className="text-[28px] font-black tracking-tight" style={{ color: C.dim }}>W<span style={{ color: C.blue }}>.</span>STUDIO</span>
-                <span style={{ color: C.dim, fontSize: 11, letterSpacing: "0.14em", marginTop: 4 }}>WAITING FOR ARTIST</span>
-              </div>
-              <div className="absolute bottom-2 left-2 rounded px-2 py-1 text-[12px] font-medium" style={{ background: "rgba(0,0,0,0.6)", color: C.dim }}>No one connected</div>
+            <Panel accent={C.acMagenta} className="relative overflow-hidden" style={{ aspectRatio: "4/3" }}>
+              {artistStream ? (
+                <VideoFeed stream={artistStream} mirrored={artistMirrored} />
+              ) : (
+                <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
+                  <span className="text-[28px] font-black tracking-tight" style={{ color: C.dim }}>W<span style={{ color: C.blue }}>.</span>STUDIO</span>
+                  <span style={{ color: C.dim, fontSize: 11, letterSpacing: "0.14em", marginTop: 4 }}>WAITING FOR ARTIST</span>
+                  {!role && <JoinSessionInline onJoin={goToJoin} />}
+                </div>
+              )}
+              <div className="absolute bottom-2 left-2 rounded px-2 py-1 text-[12px] font-medium" style={{ background: "rgba(0,0,0,0.6)", color: artistStream ? C.text : C.dim }}>{artistStream ? "Artist" : "No one connected"}</div>
               <div className="absolute right-2 top-2 flex items-center gap-1.5 rounded-md px-2 py-1" style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)", border: `1px solid ${(hasBooking ? warningLevel : "ok") === "critical" ? "rgba(239,68,68,0.5)" : (hasBooking ? warningLevel : "ok") === "warning" ? "rgba(245,200,66,0.4)" : "rgba(255,255,255,0.1)"}` }}>
                 <span className={`font-mono text-[14px] font-bold tabular-nums ${(hasBooking ? warningLevel : "ok") === "critical" ? "animate-pulse" : ""}`} style={{ color: (hasBooking ? warningLevel : "ok") === "critical" ? C.red : (hasBooking ? warningLevel : "ok") === "warning" ? C.yellow : C.text }}>
                   {(() => { const rs = hasBooking ? bookingRemaining : demoClock.remainingSeconds; return `${String(Math.floor(rs / 60)).padStart(2, "0")}:${String(rs % 60).padStart(2, "0")}`; })()}
@@ -664,12 +669,17 @@ export default function UnifiedSessionScreen() {
             </Panel>
 
             {/* Engineer Video */}
-            <Panel accent={C.acGreen} className="relative" style={{ aspectRatio: "4/3" }}>
-              <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
-                <span className="text-[28px] font-black tracking-tight" style={{ color: C.dim }}>W<span style={{ color: C.blue }}>.</span>STUDIO</span>
-                <span style={{ color: C.dim, fontSize: 11, letterSpacing: "0.14em", marginTop: 4 }}>WAITING FOR ENGINEER</span>
-              </div>
-              <div className="absolute bottom-2 left-2 rounded px-2 py-1 text-[12px] font-medium" style={{ background: "rgba(0,0,0,0.6)", color: C.dim }}>No one connected</div>
+            <Panel accent={C.acGreen} className="relative overflow-hidden" style={{ aspectRatio: "4/3" }}>
+              {engineerStream ? (
+                <VideoFeed stream={engineerStream} mirrored={engineerMirrored} />
+              ) : (
+                <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
+                  <span className="text-[28px] font-black tracking-tight" style={{ color: C.dim }}>W<span style={{ color: C.blue }}>.</span>STUDIO</span>
+                  <span style={{ color: C.dim, fontSize: 11, letterSpacing: "0.14em", marginTop: 4 }}>WAITING FOR ENGINEER</span>
+                  {!role && <JoinSessionInline onJoin={goToJoin} />}
+                </div>
+              )}
+              <div className="absolute bottom-2 left-2 rounded px-2 py-1 text-[12px] font-medium" style={{ background: "rgba(0,0,0,0.6)", color: engineerStream ? C.text : C.dim }}>{engineerStream ? "Engineer" : "No one connected"}</div>
               <div className="absolute right-2 top-2 flex items-center gap-1.5 rounded-md px-2 py-1" style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)", border: `1px solid ${(hasBooking ? warningLevel : "ok") === "critical" ? "rgba(239,68,68,0.5)" : (hasBooking ? warningLevel : "ok") === "warning" ? "rgba(245,200,66,0.4)" : "rgba(255,255,255,0.1)"}` }}>
                 <span className={`font-mono text-[14px] font-bold tabular-nums ${(hasBooking ? warningLevel : "ok") === "critical" ? "animate-pulse" : ""}`} style={{ color: (hasBooking ? warningLevel : "ok") === "critical" ? C.red : (hasBooking ? warningLevel : "ok") === "warning" ? C.yellow : C.text }}>
                   {(() => { const rs = hasBooking ? bookingRemaining : demoClock.remainingSeconds; return `${String(Math.floor(rs / 60)).padStart(2, "0")}:${String(rs % 60).padStart(2, "0")}`; })()}
