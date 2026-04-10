@@ -337,7 +337,7 @@ const MyStudiosPage = () => {
                           {booking.profile?.display_name ?? "Unknown Artist"}
                         </p>
                         <p className="text-[11px] text-muted-foreground">
-                          {booking.studio_name} · {new Date(booking.booking_date).toLocaleDateString()} · {booking.hours}h
+                          {booking.studio_name} · {new Date(booking.booking_date).toLocaleDateString()} · {new Date(booking.booking_date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · {booking.hours}h
                         </p>
                       </div>
                       <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${

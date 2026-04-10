@@ -148,7 +148,7 @@ const PurchasesPage = () => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-foreground truncate">{b.studio_name}</p>
-                  <p className="text-[10px] text-muted-foreground">{new Date(b.booking_date).toLocaleDateString()} · {b.hours}h · {b.status}</p>
+                  <p className="text-[10px] text-muted-foreground">{new Date(b.booking_date).toLocaleDateString()} · {new Date(b.booking_date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · {b.hours}h · {b.status}</p>
                 </div>
                 <span className="text-sm font-bold text-primary">${b.total_amount.toFixed(2)}</span>
               </div>

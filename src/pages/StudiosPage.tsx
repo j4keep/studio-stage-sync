@@ -260,7 +260,7 @@ const StudioReviews = ({ studioId }: { studioId: string }) => {
             className="w-full px-2 py-1.5 rounded-lg bg-background border border-border text-foreground text-xs mb-2">
             <option value="">Select booking...</option>
             {unreviewedBookings.map((b) => (
-              <option key={b.id} value={b.id}>{new Date(b.booking_date).toLocaleDateString()} · {b.hours}h</option>
+              <option key={b.id} value={b.id}>{new Date(b.booking_date).toLocaleDateString()} · {new Date(b.booking_date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · {b.hours}h</option>
             ))}
           </select>
           <div className="flex gap-1 mb-2">
