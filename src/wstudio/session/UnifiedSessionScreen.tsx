@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSession } from "./SessionContext";
 import { useBookingTimer } from "../booking/BookingTimerContext";
@@ -6,6 +6,9 @@ import { SessionTimerBar } from "../booking/SessionTimerBar";
 import { SessionControlsLockOverlay } from "../booking/SessionControlsLockOverlay";
 import { ExtensionApprovalDialog } from "../booking/ExtensionApprovalDialog";
 import { formatCurrency } from "../booking/bookingTypes";
+import { toast } from "sonner";
+
+const canScreenShare = typeof navigator !== "undefined" && !!navigator.mediaDevices?.getDisplayMedia;
 
 /* ─────────────────────────────────────────────
    STYLE CONSTANTS (matching the reference image)
@@ -354,7 +357,10 @@ export default function UnifiedSessionScreen() {
                 <div className="flex items-center gap-1.5">
                   <button className="flex h-7 w-7 items-center justify-center rounded text-[13px]" style={{ background: C.panelDark, border: `1px solid ${C.panelBorder}`, color: C.label }}>🔊</button>
                   {isEngineer && (
-                    <button onClick={() => { toggleScreenShare(); if (!screenSharing) setMobileTab("video"); }} className="flex h-7 items-center justify-center gap-1 rounded px-2 text-[11px] font-semibold" style={{ background: screenSharing ? "rgba(59,157,255,0.2)" : C.panelDark, border: `1px solid ${screenSharing ? C.blue : C.panelBorder}`, color: screenSharing ? C.blue : C.label }}>
+                    <button onClick={() => {
+                      if (!canScreenShare) { toast.error("Screen sharing is not supported on this device. Please use a desktop browser."); return; }
+                      toggleScreenShare(); if (!screenSharing) setMobileTab("video");
+                    }} className="flex h-7 items-center justify-center gap-1 rounded px-2 text-[11px] font-semibold" style={{ background: screenSharing ? "rgba(59,157,255,0.2)" : C.panelDark, border: `1px solid ${screenSharing ? C.blue : C.panelBorder}`, color: screenSharing ? C.blue : C.label }}>
                       🖥 {screenSharing ? "Stop" : "Share"}
                     </button>
                   )}
@@ -659,7 +665,7 @@ export default function UnifiedSessionScreen() {
             <div className="flex items-center gap-2">
               {[
                 { icon: "🔊", handler: undefined },
-                { icon: "🖥", handler: isEngineer ? toggleScreenShare : undefined },
+                { icon: "🖥", handler: isEngineer ? () => { if (!canScreenShare) { toast.error("Screen sharing is not supported on this device. Please use a desktop browser."); return; } toggleScreenShare(); } : undefined },
                 { icon: "✕", handler: undefined },
                 { icon: "⚙", handler: undefined },
               ].map((btn, i) => (
