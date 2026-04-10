@@ -40,6 +40,33 @@ function demoWarningLevel(remainingSeconds: number, phase: DemoClock["phase"], r
   return "ok";
 }
 
+function formatSessionLabel(id: string): string {
+  return `Session: ${id.toUpperCase()}`;
+}
+
+function joinPatch(role: Role): Partial<SessionLiveState> {
+  return role === "engineer" ? { engineerJoined: true } : role === "artist" ? { artistJoined: true } : {};
+}
+
+function leavePatch(role: Role): Partial<SessionLiveState> {
+  if (role === "engineer") {
+    return {
+      engineerJoined: false,
+      engineerPtt: false,
+      screenShareActive: false,
+      recording: false,
+    };
+  }
+  if (role === "artist") {
+    return {
+      artistJoined: false,
+      artistPtt: false,
+      artistMuted: false,
+    };
+  }
+  return {};
+}
+
 export type SessionContextValue = {
   demoMode: boolean;
   sessionId: string;
@@ -124,6 +151,23 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [sessionId, role]);
 
   useEffect(() => {
+    if (WSTUDIO_DEMO_MODE || !sessionId.trim() || !role) return;
+    writeLive(sessionId, joinPatch(role));
+    return () => {
+      writeLive(sessionId, leavePatch(role));
+    };
+  }, [sessionId, role]);
+
+  useEffect(() => {
+    if (WSTUDIO_DEMO_MODE) return;
+    if (!sessionId.trim() || !role) {
+      setConnection("disconnected");
+      return;
+    }
+    setConnection(live.artistJoined && live.engineerJoined ? "connected" : "connecting");
+  }, [sessionId, role, live.artistJoined, live.engineerJoined]);
+
+  useEffect(() => {
     if (!talkbackHeld) return;
     const end = () => {
       setTalkbackHeld(false);
@@ -167,9 +211,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setSessionId(id);
     setRole("artist");
     latencyRef.current = 22 + Math.floor(Math.random() * 12);
+    setSessionDisplayName(WSTUDIO_DEMO_MODE ? `Session: ${DEMO_SESSION_TITLE}` : formatSessionLabel(id));
     if (WSTUDIO_DEMO_MODE) {
       setConnection("connected");
-      setSessionDisplayName(`Session: ${DEMO_SESSION_TITLE}`);
       setDemoClock({
         totalMinutes: DEMO_TIMER_MINUTES,
         remainingSeconds: DEMO_TIMER_MINUTES * 60,
@@ -178,10 +222,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       });
     } else {
       setConnection("connecting");
-      window.setTimeout(() => {
-        setConnection("connected");
-        setSessionDisplayName(`Session: ${DEMO_SESSION_TITLE}`);
-      }, 700);
     }
   }, [sessionId]);
 
@@ -190,9 +230,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setSessionId(id);
     setRole("engineer");
     latencyRef.current = 20 + Math.floor(Math.random() * 14);
+    setSessionDisplayName(WSTUDIO_DEMO_MODE ? `Session: ${DEMO_SESSION_TITLE}` : formatSessionLabel(id));
     if (WSTUDIO_DEMO_MODE) {
       setConnection("connected");
-      setSessionDisplayName(`Session: ${DEMO_SESSION_TITLE}`);
       setDemoClock({
         totalMinutes: DEMO_TIMER_MINUTES,
         remainingSeconds: DEMO_TIMER_MINUTES * 60,
@@ -201,14 +241,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       });
     } else {
       setConnection("connecting");
-      window.setTimeout(() => {
-        setConnection("connected");
-        setSessionDisplayName(`Session: ${DEMO_SESSION_TITLE}`);
-      }, 700);
     }
   }, [sessionId]);
 
   const leaveSession = useCallback(() => {
+    if (sessionId.trim() && role) {
+      writeLive(sessionId, leavePatch(role));
+    }
+    setSessionId("");
     setRole(null);
     setConnection("disconnected");
     setTalkbackHeld(false);
@@ -222,7 +262,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       running: false,
       phase: "scheduled",
     });
-  }, []);
+  }, [role, sessionId]);
 
   const toggleMute = useCallback(() => {
     setMuted((m) => {
