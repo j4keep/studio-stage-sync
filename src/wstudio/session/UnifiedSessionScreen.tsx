@@ -300,47 +300,53 @@ function VideoTileActions({
   isMobile: boolean;
 }) {
   return (
-    <div className="absolute bottom-2 right-2 z-10 flex items-center gap-1.5">
-      {!hasSession && (
+    <>
+      {/* Join/End buttons bottom-left */}
+      <div className="absolute bottom-2 left-2 z-10 flex items-center gap-1.5">
+        {!hasSession && (
+          <button
+            onClick={onJoin}
+            className="rounded px-2 py-1 text-[9px] font-bold uppercase tracking-wide"
+            style={{
+              background: "linear-gradient(180deg, #f59e0b 0%, #b45309 100%)",
+              color: "#fff",
+              border: "1px solid rgba(245,158,11,0.5)",
+              boxShadow: "0 2px 6px rgba(0,0,0,0.4)",
+            }}
+          >
+            Join
+          </button>
+        )}
+        {hasSession && (
+          <button
+            onClick={onEnd}
+            className="rounded px-2 py-1 text-[9px] font-bold uppercase tracking-wide"
+            style={{
+              background: "linear-gradient(180deg, #ef4444 0%, #991b1b 100%)",
+              color: "#fff",
+              border: "1px solid rgba(239,68,68,0.5)",
+              boxShadow: "0 2px 6px rgba(0,0,0,0.4)",
+            }}
+          >
+            End
+          </button>
+        )}
+      </div>
+      {/* Expand button bottom-right */}
+      <div className="absolute bottom-2 right-2 z-10">
         <button
-          onClick={onJoin}
-          className="rounded px-2 py-1 text-[9px] font-bold uppercase tracking-wide"
+          onClick={onToggleExpand}
+          className="rounded px-1.5 py-1 text-[9px] font-bold"
           style={{
-            background: "linear-gradient(180deg, #f59e0b 0%, #b45309 100%)",
-            color: "#fff",
-            border: "1px solid rgba(245,158,11,0.5)",
-            boxShadow: "0 2px 6px rgba(0,0,0,0.4)",
+            background: "rgba(0,0,0,0.7)",
+            color: "#e8e8ea",
+            border: "1px solid rgba(255,255,255,0.15)",
           }}
         >
-          Join
+          {expanded ? "▾" : "⛶"}
         </button>
-      )}
-      {hasSession && (
-        <button
-          onClick={onEnd}
-          className="rounded px-2 py-1 text-[9px] font-bold uppercase tracking-wide"
-          style={{
-            background: "linear-gradient(180deg, #ef4444 0%, #991b1b 100%)",
-            color: "#fff",
-            border: "1px solid rgba(239,68,68,0.5)",
-            boxShadow: "0 2px 6px rgba(0,0,0,0.4)",
-          }}
-        >
-          End
-        </button>
-      )}
-      <button
-        onClick={onToggleExpand}
-        className="rounded px-1.5 py-1 text-[9px] font-bold"
-        style={{
-          background: "rgba(0,0,0,0.7)",
-          color: "#e8e8ea",
-          border: "1px solid rgba(255,255,255,0.15)",
-        }}
-      >
-        {expanded ? "▾" : "⛶"}
-      </button>
-    </div>
+      </div>
+    </>
   );
 }
 
@@ -435,6 +441,8 @@ export default function UnifiedSessionScreen() {
   const engineerStream = isEngineer ? localStream : remoteStream;
   const artistMirrored = isArtist; // mirror local preview
   const engineerMirrored = isEngineer;
+  // Screen share: engineer sees localScreenPreview, artist sees remoteStream (via WebRTC replaceTrack)
+  const screenShareViewStream = isEngineer ? localScreenPreview : (collaborationShareActive ? remoteStream : null);
 
   const goToJoin = useCallback(() => navigate("/wstudio/session/join"), [navigate]);
 
@@ -640,8 +648,8 @@ export default function UnifiedSessionScreen() {
                         </div>
                       </div>
                       <div className="relative flex-1" style={{ background: C.inset, minHeight: 120 }}>
-                        {localScreenPreview ? (
-                          <VideoFeed stream={localScreenPreview} />
+                        {screenShareViewStream ? (
+                          <VideoFeed stream={screenShareViewStream} />
                         ) : (
                           <div className="flex h-full items-center justify-center">
                             <div className="flex flex-col items-center gap-1">
@@ -902,8 +910,8 @@ export default function UnifiedSessionScreen() {
                 </div>
               </div>
               <div className="relative flex-1" style={{ background: C.inset, minHeight: 180 }}>
-                {localScreenPreview ? (
-                  <VideoFeed stream={localScreenPreview} />
+                {screenShareViewStream ? (
+                  <VideoFeed stream={screenShareViewStream} />
                 ) : (
                   <div className="flex h-full items-center justify-center">
                     <div className="flex flex-col items-center gap-2">
@@ -1091,13 +1099,13 @@ export default function UnifiedSessionScreen() {
           stream={engineerStream}
           mirrored={engineerMirrored}
           label="Engineer View"
-          screenShareStream={collaborationShareActive ? localScreenPreview : null}
+          screenShareStream={collaborationShareActive ? screenShareViewStream : null}
           onClose={() => setExpandedPanel(null)}
         />
       )}
       {expandedPanel === "screen" && (
         <ExpandedVideoOverlay
-          stream={localScreenPreview}
+          stream={screenShareViewStream}
           label="Screen Share — DAW View"
           onClose={() => setExpandedPanel(null)}
         />
