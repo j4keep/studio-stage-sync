@@ -562,10 +562,10 @@ export default function UnifiedSessionScreen() {
                       <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
                         <span className="text-[20px] font-black tracking-tight" style={{ color: C.dim }}>W<span style={{ color: C.blue }}>.</span>STUDIO</span>
                         <span style={{ color: C.dim, fontSize: 10, letterSpacing: "0.14em", marginTop: 4 }}>WAITING FOR ARTIST</span>
-                        {!role && <JoinSessionInline onJoin={goToJoin} />}
                       </div>
                     )}
                     <div className="absolute bottom-2 left-2 rounded px-2 py-0.5 text-[10px] font-medium" style={{ background: "rgba(0,0,0,0.6)", color: artistStream ? C.text : C.dim }}>{artistStream ? "Artist" : "No one connected"}</div>
+                    <VideoTileActions hasSession={!!role} onJoin={goToJoin} onEnd={handleEndSession} expanded={expandedPanel === "artist"} onToggleExpand={() => setExpandedPanel(expandedPanel === "artist" ? null : "artist")} isMobile />
                     <div className="absolute right-2 top-2 flex items-center gap-1.5 rounded-md px-2 py-0.5" style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)" }}>
                       <span className="font-mono text-[12px] font-bold tabular-nums" style={{ color: (hasBooking ? warningLevel : "ok") === "critical" ? C.red : (hasBooking ? warningLevel : "ok") === "warning" ? C.yellow : C.text }}>
                         {(() => { const rs = hasBooking ? bookingRemaining : demoClock.remainingSeconds; return `${String(Math.floor(rs / 60)).padStart(2, "0")}:${String(rs % 60).padStart(2, "0")}`; })()}
@@ -582,10 +582,10 @@ export default function UnifiedSessionScreen() {
                       <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
                         <span className="text-[20px] font-black tracking-tight" style={{ color: C.dim }}>W<span style={{ color: C.blue }}>.</span>STUDIO</span>
                         <span style={{ color: C.dim, fontSize: 10, letterSpacing: "0.14em", marginTop: 4 }}>WAITING FOR ENGINEER</span>
-                        {!role && <JoinSessionInline onJoin={goToJoin} />}
                       </div>
                     )}
-                    <div className="absolute bottom-2 left-2 rounded px-2 py-0.5 text-[10px] font-medium" style={{ background: "rgba(0,0,0,0.6)", color: engineerStream ? C.text : C.dim }}>{engineerStream ? "Engineer" : "No one connected"}</div>
+                    <div className="absolute bottom-2 left-2 z-[5] rounded px-2 py-0.5 text-[10px] font-medium" style={{ background: "rgba(0,0,0,0.6)", color: engineerStream ? C.text : C.dim }}>{engineerStream ? "Engineer" : "No one connected"}</div>
+                    <VideoTileActions hasSession={!!role} onJoin={goToJoin} onEnd={handleEndSession} expanded={expandedPanel === "engineer"} onToggleExpand={() => setExpandedPanel(expandedPanel === "engineer" ? null : "engineer")} isMobile />
                     <div className="absolute right-2 top-2 flex items-center gap-1.5 rounded-md px-2 py-0.5" style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)" }}>
                       <span className="font-mono text-[12px] font-bold tabular-nums" style={{ color: (hasBooking ? warningLevel : "ok") === "critical" ? C.red : (hasBooking ? warningLevel : "ok") === "warning" ? C.yellow : C.text }}>
                         {(() => { const rs = hasBooking ? bookingRemaining : demoClock.remainingSeconds; return `${String(Math.floor(rs / 60)).padStart(2, "0")}:${String(rs % 60).padStart(2, "0")}`; })()}
@@ -631,7 +631,7 @@ export default function UnifiedSessionScreen() {
 
                   {/* Screen share view on mobile */}
                   {collaborationShareActive && (
-                    <Panel accent={C.acCyan} className="relative flex flex-col">
+                    <Panel accent={C.acCyan} className="relative flex flex-col overflow-hidden" style={{ minHeight: 160 }}>
                       <div className="flex items-center justify-between px-3 py-2" style={{ borderBottom: `1px solid ${C.panelBorder}` }}>
                         <span style={{ fontSize: 11, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>SCREEN SHARE</span>
                         <div className="flex items-center gap-1">
@@ -639,10 +639,19 @@ export default function UnifiedSessionScreen() {
                           <span style={{ fontSize: 10, color: C.green, fontWeight: 600 }}>LIVE</span>
                         </div>
                       </div>
-                      <div className="flex items-center justify-center" style={{ background: C.inset, minHeight: 120 }}>
-                        <div className="flex flex-col items-center gap-1">
-                          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke={C.dim} strokeWidth={1.5}><rect x="2" y="3" width="20" height="14" rx="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></svg>
-                          <span style={{ color: C.label, fontSize: 11, fontWeight: 500 }}>{isEngineer ? "Your screen is being shared" : "Engineer's DAW"}</span>
+                      <div className="relative flex-1" style={{ background: C.inset, minHeight: 120 }}>
+                        {localScreenPreview ? (
+                          <VideoFeed stream={localScreenPreview} />
+                        ) : (
+                          <div className="flex h-full items-center justify-center">
+                            <div className="flex flex-col items-center gap-1">
+                              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke={C.dim} strokeWidth={1.5}><rect x="2" y="3" width="20" height="14" rx="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></svg>
+                              <span style={{ color: C.label, fontSize: 11, fontWeight: 500 }}>{isEngineer ? "Your screen is being shared" : "Engineer's DAW"}</span>
+                            </div>
+                          </div>
+                        )}
+                        <div className="absolute bottom-2 right-2 z-10">
+                          <button onClick={() => setExpandedPanel(expandedPanel === "screen" ? null : "screen")} className="rounded px-1.5 py-1 text-[9px] font-bold" style={{ background: "rgba(0,0,0,0.7)", color: "#e8e8ea", border: "1px solid rgba(255,255,255,0.15)" }}>⛶</button>
                         </div>
                       </div>
                     </Panel>
