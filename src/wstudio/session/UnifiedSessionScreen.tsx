@@ -287,10 +287,13 @@ function JoinSessionInline({ onJoin }: { onJoin: () => void }) {
    UNIFIED SESSION SCREEN
    ═══════════════════════════════════════════════════════════ */
 export default function UnifiedSessionScreen() {
+  const navigate = useNavigate();
   const {
     role, connection, sessionDisplayName, muted, toggleMute, talkbackHeld, beginTalkback, endTalkback,
     remoteVocalLevel, live, setSessionRecording, demoClock, leaveSession, screenSharing, toggleScreenShare, collaborationShareActive,
   } = useSession();
+
+  const { localStream, remoteStream, localScreenPreview } = useStudioMedia();
 
   const {
     booking, totalBookedMinutes, remainingSeconds: bookingRemaining, warningLevel, timerRunning, phase, pendingExtension,
@@ -303,6 +306,15 @@ export default function UnifiedSessionScreen() {
   const recording = live.recording;
   const hasBooking = !!booking && booking.bookedMinutes > 0;
   const isMobile = useIsMobile();
+
+  // Determine which stream goes where based on role
+  const artistStream = isArtist ? localStream : remoteStream;
+  const engineerStream = isEngineer ? localStream : remoteStream;
+  const artistMirrored = isArtist; // mirror local preview
+  const engineerMirrored = isEngineer;
+
+  const goToJoin = useCallback(() => navigate("/wstudio/session/join"), [navigate]);
+
   const [armed, setArmed] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [vocalLevel, setVocalLevel] = useState(0.55);
