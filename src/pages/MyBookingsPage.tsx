@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ChevronLeft, CalendarDays, Clock, DollarSign, Star, Hash, AlertTriangle, XCircle, CheckCircle2, ShieldAlert } from "lucide-react";
+import { ChevronLeft, CalendarDays, Clock, DollarSign, Star, Hash, AlertTriangle, XCircle, CheckCircle2, ShieldAlert, Headphones } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -318,6 +318,17 @@ const MyBookingsPage = () => {
                   </div>
                 )}
               </div>
+
+              {/* Join Session button for confirmed bookings */}
+              {booking.status === "confirmed" && booking.session_code && !["completed", "no_show", "disputed"].includes(booking.session_status) && (
+                <button
+                  onClick={() => navigate(`/wstudio/session/join?code=${booking.session_code}`)}
+                  className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 rounded-xl gradient-primary text-primary-foreground text-xs font-semibold glow-primary"
+                >
+                  <Headphones className="w-4 h-4" />
+                  Join Session
+                </button>
+              )}
 
               {/* Receipt */}
               <div className="mt-3 pt-3 border-t border-border">
