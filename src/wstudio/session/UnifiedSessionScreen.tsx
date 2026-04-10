@@ -420,6 +420,7 @@ export default function UnifiedSessionScreen() {
   const {
     role, connection, sessionDisplayName, muted, toggleMute, talkbackHeld, beginTalkback, endTalkback,
     remoteVocalLevel, live, setSessionRecording, demoClock, leaveSession, screenSharing, toggleScreenShare, collaborationShareActive,
+    sessionId,
   } = useSession();
 
   const { localStream, remoteStream, localScreenPreview } = useStudioMedia();
@@ -429,6 +430,8 @@ export default function UnifiedSessionScreen() {
     sessionValueTotal, startSessionTimer, requestExtension, approveExtension, declineExtension, engineerContinueSession,
     extensionModalOpen, setExtensionModalOpen, controlsLocked, sessionRates,
   } = useBookingTimer();
+
+  const { user } = useAuth();
 
   const isEngineer = role === "engineer";
   const isArtist = role === "artist";
@@ -450,6 +453,72 @@ export default function UnifiedSessionScreen() {
     leaveSession();
     navigate("/wstudio/session/join");
   }, [leaveSession, navigate]);
+
+  // Engineer marks session complete → update DB + notify artist
+  const handleEngineerMarkComplete = useCallback(async () => {
+    if (!sessionId.trim() || !user) return;
+    try {
+      // Find booking by session code
+      const { data: bookingData } = await (supabase as any)
+        .from("studio_bookings")
+        .select("id, user_id, studio_id, session_code")
+        .eq("session_code", sessionId.trim().toUpperCase())
+        .single();
+      if (bookingData) {
+        await (supabase as any)
+          .from("studio_bookings")
+          .update({
+            engineer_completed_at: new Date().toISOString(),
+            session_status: "awaiting_confirmation",
+          })
+          .eq("id", bookingData.id);
+        // Notify artist to verify
+        await (supabase as any).from("notifications").insert({
+          user_id: bookingData.user_id,
+          type: "booking",
+          title: "✅ Session Complete — Please Verify",
+          body: `Your engineer has marked the session (code: ${bookingData.session_code}) as complete. Please confirm or dispute within 48 hours.`,
+          reference_id: bookingData.id,
+          reference_type: "booking",
+        });
+        toast.success("Session marked complete. Awaiting artist confirmation.");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to mark session complete");
+    }
+    leaveSession();
+    navigate("/wstudio/session/join");
+  }, [sessionId, user, leaveSession, navigate]);
+
+  // Artist confirms session completion
+  const handleArtistConfirmComplete = useCallback(async () => {
+    if (!sessionId.trim() || !user) return;
+    try {
+      const { data: bookingData } = await (supabase as any)
+        .from("studio_bookings")
+        .select("id, studio_id")
+        .eq("session_code", sessionId.trim().toUpperCase())
+        .single();
+      if (bookingData) {
+        await (supabase as any)
+          .from("studio_bookings")
+          .update({
+            artist_confirmed: true,
+            artist_responded_at: new Date().toISOString(),
+            session_status: "completed",
+            payout_status: "released",
+          })
+          .eq("id", bookingData.id);
+        toast.success("Session confirmed! Payment released.");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to confirm session");
+    }
+    leaveSession();
+    navigate("/bookings");
+  }, [sessionId, user, leaveSession, navigate]);
 
   const [expandedPanel, setExpandedPanel] = useState<"artist" | "engineer" | "screen" | null>(null);
 
