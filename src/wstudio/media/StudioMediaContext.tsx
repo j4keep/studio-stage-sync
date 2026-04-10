@@ -60,8 +60,11 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     audio.enabled = talkbackHeld && !muted;
   }, [talkbackHeld, muted, localStream]);
 
+  // Acquire camera/mic ONLY when user has joined a session (sessionId + role set).
+  // talkbackHeld/muted are handled separately so they don't restart the camera.
   useEffect(() => {
     if (!sessionId.trim() || !role) {
+      // No active session — stop all tracks and release camera
       setLocalStream((prev) => {
         prev?.getTracks().forEach((t) => t.stop());
         return null;
@@ -70,6 +73,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // Starting a new session — stop previous tracks first
     setLocalStream((prev) => {
       prev?.getTracks().forEach((t) => t.stop());
       return null;
@@ -91,8 +95,9 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
           return;
         }
         cameraVideoTrackRef.current = ms.getVideoTracks()[0] ?? null;
+        // Audio starts muted; the talkback effect below will enable it
         const a = ms.getAudioTracks()[0];
-        if (a) a.enabled = talkbackHeld && !muted;
+        if (a) a.enabled = false;
         setLocalStream(ms);
         setMediaError(null);
       } catch (e) {
@@ -107,7 +112,21 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [sessionId, role, talkbackHeld, muted]);
+    // Only re-run when session identity changes, NOT on mute/talkback toggles
+  }, [sessionId, role]);
+
+  // Hard cleanup: stop all tracks when provider unmounts (user navigates away)
+  useEffect(() => {
+    return () => {
+      setLocalStream((prev) => {
+        prev?.getTracks().forEach((t) => t.stop());
+        return null;
+      });
+      cameraVideoTrackRef.current = null;
+      screenPreviewStreamRef.current?.getTracks().forEach((t) => t.stop());
+      screenPreviewStreamRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     if (!sessionId.trim() || !role || !localStream) {
