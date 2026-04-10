@@ -283,11 +283,14 @@ export default function UnifiedSessionScreen() {
     return () => document.removeEventListener("fullscreenchange", handler);
   }, []);
 
+  /* ── Mobile-specific tab state ── */
+  const [mobileTab, setMobileTab] = useState<"video" | "controls" | "monitor">("video");
+
   return (
     <div ref={shellRef} className={`flex select-none overflow-hidden ${isMobile ? "flex-col overflow-y-auto" : "min-h-screen items-center justify-center"}`} style={{ background: "#111214", padding: isFullscreen ? 0 : isMobile ? 0 : 16 }}>
       <div className="w-full overflow-hidden flex flex-col" style={{
         maxWidth: isFullscreen ? "100%" : isMobile ? "100%" : 1100,
-        height: isFullscreen ? "100vh" : "auto",
+        height: isFullscreen ? "100vh" : isMobile ? "100dvh" : "auto",
         borderRadius: isFullscreen || isMobile ? 0 : 8,
         background: `linear-gradient(180deg, ${C.shell} 0%, ${C.shellDark} 100%)`,
         border: isFullscreen || isMobile ? "none" : `1px solid ${C.shellEdge}`,
@@ -295,32 +298,278 @@ export default function UnifiedSessionScreen() {
         color: C.text,
       }}>
         {/* ─── TITLE BAR ─── */}
-        <div className="flex items-center justify-between px-5" style={{ height: 48, borderBottom: `1px solid ${C.panelBorder}` }}>
+        <div className="flex items-center justify-between px-3 md:px-5" style={{ height: isMobile ? 40 : 48, borderBottom: `1px solid ${C.panelBorder}` }}>
           <div className="flex items-end gap-2">
-            <span className="text-[20px] font-black tracking-tight" style={{ display: "inline-flex", alignItems: "baseline" }}>
-              <svg width="24" height="18" viewBox="0 0 24 18" fill="none" style={{ marginRight: 1, position: "relative", top: 1 }}>
+            <span className={`${isMobile ? "text-[16px]" : "text-[20px]"} font-black tracking-tight`} style={{ display: "inline-flex", alignItems: "baseline" }}>
+              <svg width={isMobile ? 18 : 24} height={isMobile ? 14 : 18} viewBox="0 0 24 18" fill="none" style={{ marginRight: 1, position: "relative", top: 1 }}>
                 <path d="M0 1L4 17H5L9 5L13 17H14L18 1H16L13 12L9.5 1H8.5L5 12L2 1H0Z" fill={C.white} />
                 <line x1="17.5" y1="-1" x2="11.5" y2="19" stroke={C.blue} strokeWidth="4" strokeLinecap="round" />
               </svg>
               <span style={{ color: C.blue }}>.</span>STUDIO
             </span>
-            <span style={{ color: C.label, fontSize: 12, fontWeight: 300, letterSpacing: "0.1em", paddingBottom: 2 }}>RECEIVE</span>
+            <span style={{ color: C.label, fontSize: isMobile ? 10 : 12, fontWeight: 300, letterSpacing: "0.1em", paddingBottom: 2 }}>RECEIVE</span>
           </div>
           <div className="flex items-center gap-3" style={{ color: C.label }}>
-            <button onPointerDown={(e) => { e.preventDefault(); toggleFullscreen(); }} className="hover:text-white" title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}>
-              {isFullscreen ? "⊡" : "⛶"}
-            </button>
+            {!isMobile && (
+              <button onPointerDown={(e) => { e.preventDefault(); toggleFullscreen(); }} className="hover:text-white" title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}>
+                {isFullscreen ? "⊡" : "⛶"}
+              </button>
+            )}
             <button className="hover:text-white">☰</button>
             <button onPointerDown={(e) => { e.preventDefault(); leaveSession(); }} className="hover:text-white">✕</button>
           </div>
         </div>
 
+        {/* ─── MOBILE TAB BAR ─── */}
+        {isMobile && (
+          <div className="flex" style={{ borderBottom: `1px solid ${C.panelBorder}` }}>
+            {([["video", "📹 Video"], ["controls", "🎛 Controls"], ["monitor", "🎧 Monitor"]] as const).map(([key, label]) => (
+              <button key={key} onPointerDown={(e) => { e.preventDefault(); setMobileTab(key); }} className="flex-1 py-2 text-center text-[11px] font-bold uppercase tracking-wide" style={{
+                color: mobileTab === key ? C.white : C.dim,
+                borderBottom: mobileTab === key ? `2px solid ${C.blue}` : "2px solid transparent",
+                background: mobileTab === key ? "rgba(59,157,255,0.08)" : "transparent",
+              }}>{label}</button>
+            ))}
+          </div>
+        )}
+
         {/* ─── MAIN GRID ─── */}
-        <div className={`relative grid gap-2 p-2 ${isFullscreen ? "flex-1" : ""}`} style={{ gridTemplateColumns: isMobile ? "1fr" : "280px 1fr 260px", gridTemplateRows: isFullscreen ? "auto 1fr auto auto" : "auto auto auto auto" }}>
+        <div className={`relative ${isMobile ? "flex flex-col gap-2 p-2 flex-1 overflow-y-auto" : `grid gap-2 p-2 ${isFullscreen ? "flex-1" : ""}`}`} style={isMobile ? {} : { gridTemplateColumns: "280px 1fr 260px", gridTemplateRows: isFullscreen ? "auto 1fr auto auto" : "auto auto auto auto" }}>
           {controlsLocked && <SessionControlsLockOverlay />}
 
+          {/* ══════════ MOBILE LAYOUT ══════════ */}
+          {isMobile ? (
+            <>
+              {/* ── VIDEO TAB ── */}
+              {mobileTab === "video" && (
+                <div className="flex flex-col gap-2">
+                  {/* Artist Video */}
+                  <Panel accent={C.acMagenta} className="relative" style={{ aspectRatio: "16/9" }}>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
+                      <span className="text-[20px] font-black tracking-tight" style={{ color: C.dim }}>W<span style={{ color: C.blue }}>.</span>STUDIO</span>
+                      <span style={{ color: C.dim, fontSize: 10, letterSpacing: "0.14em", marginTop: 4 }}>WAITING FOR ARTIST</span>
+                    </div>
+                    <div className="absolute bottom-2 left-2 rounded px-2 py-0.5 text-[10px] font-medium" style={{ background: "rgba(0,0,0,0.6)", color: C.dim }}>No one connected</div>
+                    <div className="absolute right-2 top-2 flex items-center gap-1.5 rounded-md px-2 py-0.5" style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)" }}>
+                      <span className="font-mono text-[12px] font-bold tabular-nums" style={{ color: (hasBooking ? warningLevel : "ok") === "critical" ? C.red : (hasBooking ? warningLevel : "ok") === "warning" ? C.yellow : C.text }}>
+                        {(() => { const rs = hasBooking ? bookingRemaining : demoClock.remainingSeconds; return `${String(Math.floor(rs / 60)).padStart(2, "0")}:${String(rs % 60).padStart(2, "0")}`; })()}
+                      </span>
+                      <span style={{ width: 6, height: 6, borderRadius: "50%", background: (hasBooking ? phase : demoClock.phase) === "live" ? C.green : (hasBooking ? phase : demoClock.phase) === "ended" ? C.red : C.dim }} />
+                    </div>
+                  </Panel>
+
+                  {/* Engineer Video */}
+                  <Panel accent={C.acGreen} className="relative" style={{ aspectRatio: "16/9" }}>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
+                      <span className="text-[20px] font-black tracking-tight" style={{ color: C.dim }}>W<span style={{ color: C.blue }}>.</span>STUDIO</span>
+                      <span style={{ color: C.dim, fontSize: 10, letterSpacing: "0.14em", marginTop: 4 }}>WAITING FOR ENGINEER</span>
+                    </div>
+                    <div className="absolute bottom-2 left-2 rounded px-2 py-0.5 text-[10px] font-medium" style={{ background: "rgba(0,0,0,0.6)", color: C.dim }}>No one connected</div>
+                    {isEngineer && (
+                      <div className="absolute bottom-2 right-2 rounded-md px-2 py-0.5" style={{ background: "rgba(0,0,0,0.72)" }}>
+                        <span className="font-mono text-[11px] font-semibold" style={{ color: C.green }}>{formatCurrency(sessionValueTotal)}</span>
+                      </div>
+                    )}
+                  </Panel>
+
+                  {/* Mute / Talk / Settings row */}
+                  <Panel accent={C.acOrange}>
+                    <div className="grid grid-cols-3" style={{ borderTop: `1px solid ${C.panelBorder}` }}>
+                      <button onPointerDown={(e) => { e.preventDefault(); toggleMute(); }} className="flex flex-col items-center justify-center gap-1 py-2.5">
+                        <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={muted ? C.red : C.label} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                          <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                          <line x1="12" y1="19" x2="12" y2="22" />
+                        </svg>
+                        <span style={{ fontSize: 10, color: C.text }}>Mute</span>
+                      </button>
+                      <button onPointerDown={beginTalkback} onPointerUp={endTalkback} onPointerLeave={endTalkback} className="flex flex-col items-center justify-center gap-1 py-2.5" style={{ borderLeft: `1px solid ${C.panelBorder}`, borderRight: `1px solid ${C.panelBorder}` }}>
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full" style={{
+                          background: talkbackHeld ? `radial-gradient(circle at 35% 30%, rgba(255,255,255,0.3), ${C.blue})` : `radial-gradient(circle at 35% 30%, rgba(255,255,255,0.25), ${C.blue})`,
+                          boxShadow: talkbackHeld ? `0 0 16px ${C.blue}40` : "none",
+                        }}>
+                          <span style={{ color: C.white, fontSize: 12 }}>▶</span>
+                        </div>
+                        <span style={{ fontSize: 10, color: C.text }}>Talk</span>
+                      </button>
+                      <button className="flex flex-col items-center justify-center gap-1 py-2.5">
+                        <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={C.label} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                        <span style={{ fontSize: 10, color: C.text }}>Settings</span>
+                      </button>
+                    </div>
+                  </Panel>
+
+                  {/* Session status bar */}
+                  <Panel accent={C.acCyan} className="flex items-center justify-between px-3" style={{ height: 40 }}>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="truncate" style={{ fontSize: 13, fontWeight: 500, color: C.text }}>{sessionDisplayName || "Session: Live"}</span>
+                      <span className="shrink-0 rounded px-2 py-0.5 text-[9px] font-bold uppercase" style={{
+                        background: connected ? "linear-gradient(180deg, #4ade60 0%, #22a838 100%)" : C.panelDark,
+                        color: connected ? C.white : C.dim,
+                      }}>
+                        {connected ? "CONNECTED" : connection.toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button className="flex h-7 w-7 items-center justify-center rounded text-[13px]" style={{ background: C.panelDark, border: `1px solid ${C.panelBorder}`, color: C.label }}>🔊</button>
+                      {isEngineer && (
+                        <button onPointerDown={(e) => { e.preventDefault(); toggleScreenShare(); }} className="flex h-7 w-7 items-center justify-center rounded text-[13px]" style={{ background: screenSharing ? "rgba(59,157,255,0.2)" : C.panelDark, border: `1px solid ${screenSharing ? C.blue : C.panelBorder}`, color: C.label }}>🖥</button>
+                      )}
+                    </div>
+                  </Panel>
+
+                  {/* Screen share view on mobile */}
+                  {collaborationShareActive && (
+                    <Panel accent={C.acCyan} className="relative flex flex-col">
+                      <div className="flex items-center justify-between px-3 py-2" style={{ borderBottom: `1px solid ${C.panelBorder}` }}>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>SCREEN SHARE</span>
+                        <div className="flex items-center gap-1">
+                          <span style={{ width: 5, height: 5, borderRadius: "50%", background: C.green }} />
+                          <span style={{ fontSize: 10, color: C.green, fontWeight: 600 }}>LIVE</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-center" style={{ background: C.inset, minHeight: 120 }}>
+                        <div className="flex flex-col items-center gap-1">
+                          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke={C.dim} strokeWidth={1.5}><rect x="2" y="3" width="20" height="14" rx="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></svg>
+                          <span style={{ color: C.label, fontSize: 11, fontWeight: 500 }}>{isEngineer ? "Your screen is being shared" : "Engineer's DAW"}</span>
+                        </div>
+                      </div>
+                    </Panel>
+                  )}
+                </div>
+              )}
+
+              {/* ── CONTROLS TAB ── */}
+              {mobileTab === "controls" && (
+                <div className="flex flex-col gap-2">
+                  {/* Sync Controls */}
+                  <Panel accent={C.acPurple} className="p-3">
+                    <div style={{ fontSize: 11, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>SYNC CONTROLS</div>
+                    <div className="my-2 text-center" style={{ fontSize: 14, fontWeight: 600, color: C.text }}>– SYNCED: 120 BPM –</div>
+                    <div className="flex flex-wrap items-center justify-center gap-2">
+                      <button onPointerDown={isEngineer ? (e) => { e.preventDefault(); setPlaying(true); } : undefined} className="flex items-center gap-1.5 rounded-[3px] px-4 py-2 text-[13px] font-semibold" style={{
+                        background: playing ? `linear-gradient(180deg, #1a3a1a 0%, #0e2a0e 100%)` : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
+                        border: `1px solid ${playing ? "#2a6a2a" : C.panelBorder}`, color: C.text,
+                        opacity: isEngineer ? 1 : 0.4, cursor: isEngineer ? "pointer" : "not-allowed",
+                      }}>
+                        <span style={{ color: playing ? C.green : C.text }}>▶</span> Play
+                      </button>
+                      <button onPointerDown={isEngineer ? (e) => { e.preventDefault(); setPlaying(false); if (recording) setSessionRecording(false); } : undefined} className="flex items-center gap-1.5 rounded-[3px] px-4 py-2 text-[13px] font-semibold" style={{
+                        background: `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
+                        border: `1px solid ${C.panelBorder}`, color: C.text,
+                        opacity: isEngineer ? 1 : 0.4, cursor: isEngineer ? "pointer" : "not-allowed",
+                      }}>
+                        <span style={{ color: C.red }}>■</span> Stop
+                      </button>
+                      <button onPointerDown={isEngineer ? (e) => { e.preventDefault(); setSessionRecording(!recording); if (!playing) setPlaying(true); } : undefined} className="flex items-center gap-1.5 rounded-[3px] px-4 py-2 text-[13px] font-semibold" style={{
+                        background: recording ? `linear-gradient(180deg, #4a1a1a 0%, #2a0e0e 100%)` : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
+                        border: `1px solid ${recording ? "#6a2222" : C.panelBorder}`, color: C.text,
+                        opacity: isEngineer ? 1 : 0.4, cursor: isEngineer ? "pointer" : "not-allowed",
+                      }}>
+                        <span className={recording ? "animate-pulse" : ""} style={{ color: C.red }}>●</span> Record
+                      </button>
+                    </div>
+                  </Panel>
+
+                  {/* Vocal Input */}
+                  <Panel accent={C.acPurple} className="p-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <span style={{ fontSize: 11, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>VOCAL INPUT</span>
+                    </div>
+                    <div className="mb-2 text-center" style={{ fontSize: 14, fontWeight: 700, color: C.text, textTransform: "uppercase" }}>REMOTE VOCAL</div>
+                    <Inset className="p-2">
+                      <HorizontalMeter level={0} />
+                      <div className="mt-1.5"><SpectrumBars level={0} /></div>
+                      <div className="mt-1"><FreqLabels /></div>
+                    </Inset>
+                    <div className="mt-3 flex justify-center">
+                      <button onPointerDown={isEngineer ? (e) => { e.preventDefault(); setArmed(!armed); } : undefined} className="rounded-[3px] px-6 py-2 text-[13px] font-bold uppercase tracking-wide" style={{
+                        background: armed ? `linear-gradient(180deg, #4a1a1a 0%, #2a0e0e 100%)` : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
+                        border: `1px solid ${armed ? "#6a2222" : C.panelBorder}`, color: C.text,
+                        opacity: isEngineer ? 1 : 0.4, cursor: isEngineer ? "pointer" : "not-allowed",
+                      }}>ARM RECORD</button>
+                    </div>
+                  </Panel>
+
+                  {/* Vocal Take Waveform */}
+                  <Panel accent={C.acCyan} className="flex items-center gap-2 px-3 py-2">
+                    <span className="truncate" style={{ fontSize: 12, fontWeight: 600, color: C.text, whiteSpace: "nowrap" }}>Vocal Take 4 - {recording ? "Rec..." : "Ready"}</span>
+                    <Inset className="flex-1 overflow-hidden rounded-[3px] p-0.5">
+                      <Waveform recording={recording} />
+                    </Inset>
+                  </Panel>
+
+                  {/* Transport Bar */}
+                  <Panel accent={C.acPurple} className="flex flex-wrap items-center gap-1.5 px-2 py-2">
+                    <button disabled={!isEngineer} className="flex items-center gap-1 rounded-[3px] px-3 py-1.5 text-[11px] font-semibold" style={{ background: `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`, border: `1px solid ${C.panelBorder}`, color: C.text, opacity: isEngineer ? 1 : 0.4 }}>▌▌ Punch</button>
+                    <button disabled={!isEngineer} className="flex items-center gap-1 rounded-[3px] px-3 py-1.5 text-[11px] font-semibold" style={{ background: `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`, border: `1px solid ${C.panelBorder}`, color: C.text, opacity: isEngineer ? 1 : 0.4 }}>&lt;&lt; Rew</button>
+                    <button disabled={!isEngineer} className="flex items-center gap-1 rounded-[3px] px-3 py-1.5 text-[11px] font-semibold" style={{ background: `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`, border: `1px solid ${C.panelBorder}`, color: C.text, opacity: isEngineer ? 1 : 0.4 }}>▶▶ Fwd</button>
+                    <div className="flex items-center gap-1.5 rounded-[3px] px-3 py-1.5 text-[12px] font-bold" style={{
+                      background: recording ? `linear-gradient(180deg, #4a1a1a 0%, #2a0e0e 100%)` : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
+                      border: `1px solid ${recording ? "#6a2222" : C.panelBorder}`,
+                    }}>
+                      <span className={recording ? "animate-pulse" : ""} style={{ color: C.red }}>●</span>
+                      <span style={{ color: C.red }}>REC</span>
+                      {recording && <span style={{ color: C.red, fontSize: 10 }}>RECORDING</span>}
+                    </div>
+                  </Panel>
+                </div>
+              )}
+
+              {/* ── MONITOR TAB ── */}
+              {mobileTab === "monitor" && (
+                <Panel accent={C.acLime} className="p-3">
+                  <div className="mb-1 flex items-center justify-between">
+                    <span style={{ fontSize: 11, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>MONITORING</span>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-4">
+                    <div className="flex flex-col items-center gap-1">
+                      <span style={{ fontSize: 10, fontWeight: 500, color: C.text }}>Vocal Level</span>
+                      <div className="flex items-end gap-1.5">
+                        <Knob value={vocalLevel} size={50} onChange={setVocalLevel} accent={C.acLime} />
+                        <LedMeter level={0} height={60} />
+                        <Fader value={vocalLevel} height={60} onChange={setVocalLevel} />
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-center gap-1">
+                      <span style={{ fontSize: 10, fontWeight: 500, color: C.text }}>Talkback Level</span>
+                      <div className="flex items-end gap-1.5">
+                        <Knob value={talkbackLevel} size={50} onChange={setTalkbackLevel} accent={C.acCyan} />
+                        <LedMeter level={0} height={60} />
+                        <Fader value={talkbackLevel} height={60} onChange={setTalkbackLevel} />
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-center gap-1">
+                      <span style={{ fontSize: 10, fontWeight: 500, color: C.text }}>Headphone</span>
+                      <div className="flex items-end gap-1.5">
+                        <Knob value={headphoneLevel} size={50} onChange={setHeadphoneLevel} accent={C.acOrange} />
+                        <LedMeter level={0} height={60} />
+                        <Fader value={headphoneLevel} height={60} onChange={setHeadphoneLevel} />
+                      </div>
+                      <span style={{ fontSize: 8, color: C.dim }}>🎧 HP OUT</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-1">
+                      <span style={{ fontSize: 10, fontWeight: 500, color: C.text }}>Cue Mix</span>
+                      <Knob value={cueMix} size={50} onChange={setCueMix} accent={C.acPurple} />
+                      <div className="flex w-full items-center justify-between px-1" style={{ fontSize: 8, color: C.dim }}>
+                        <span>VOX</span><span>BEAT</span>
+                      </div>
+                      <div className="mt-0.5 overflow-hidden rounded-sm" style={{ height: 4, width: "80%", background: C.track, border: `1px solid ${C.insetBorder}` }}>
+                        <div className="h-full rounded-sm" style={{ width: `${cueMix * 100}%`, background: `linear-gradient(90deg, ${C.blue} 0%, ${C.green} 100%)` }} />
+                      </div>
+                    </div>
+                  </div>
+                </Panel>
+              )}
+            </>
+          ) : (
+            <>
+          {/* ══════════ DESKTOP LAYOUT ══════════ */}
           {/* ── LEFT COLUMN: Videos + Controls (spans all content rows) ── */}
-          <div className={`${isMobile ? "" : "row-span-3"} flex ${isMobile ? "flex-row" : "flex-col"} gap-2`}>
+          <div className="row-span-3 flex flex-col gap-2">
             {/* Artist Video */}
             <Panel accent={C.acMagenta} className="relative" style={{ aspectRatio: "4/3" }}>
               <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
