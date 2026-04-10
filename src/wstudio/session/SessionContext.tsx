@@ -47,8 +47,8 @@ export type SessionContextValue = {
   sessionDisplayName: string;
   role: Role;
   connection: ConnectionState;
-  joinAsArtist: () => void;
-  joinAsEngineer: () => void;
+  joinAsArtist: (overrideSessionId?: string) => void;
+  joinAsEngineer: (overrideSessionId?: string) => void;
   leaveSession: () => void;
   /** Local push-to-talk pressed */
   talkbackHeld: boolean;

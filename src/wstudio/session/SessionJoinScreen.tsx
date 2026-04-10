@@ -48,14 +48,13 @@ export default function SessionJoinScreen() {
         return;
       }
 
-      // Set session ID from booking code so the live screen uses it
-      setSessionId(data.session_code || code.toUpperCase());
+      const sessionIdToUse = data.session_code || code.toUpperCase();
 
       toast.success("Joining session...");
       if (role === "engineer") {
-        joinAsEngineer();
+        joinAsEngineer(sessionIdToUse);
       } else {
-        joinAsArtist();
+        joinAsArtist(sessionIdToUse);
       }
       navigate("/wstudio/session/live");
     })();
@@ -89,11 +88,10 @@ export default function SessionJoinScreen() {
       return;
     }
 
-    // Set session ID from booking code so the live screen uses it
-    setSessionId(data.session_code || sessionCode.toUpperCase());
+    const sessionIdToUse = data.session_code || sessionCode.toUpperCase();
 
     toast.success("Joining session...");
-    joinAsArtist();
+    joinAsArtist(sessionIdToUse);
     navigate("/wstudio/session/live");
   };
 
