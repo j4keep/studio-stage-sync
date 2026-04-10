@@ -441,6 +441,8 @@ export default function UnifiedSessionScreen() {
   const engineerStream = isEngineer ? localStream : remoteStream;
   const artistMirrored = isArtist; // mirror local preview
   const engineerMirrored = isEngineer;
+  // Screen share: engineer sees localScreenPreview, artist sees remoteStream (via WebRTC replaceTrack)
+  const screenShareViewStream = isEngineer ? localScreenPreview : (collaborationShareActive ? remoteStream : null);
 
   const goToJoin = useCallback(() => navigate("/wstudio/session/join"), [navigate]);
 
