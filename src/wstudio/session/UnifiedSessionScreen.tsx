@@ -283,6 +283,129 @@ function JoinSessionInline({ onJoin }: { onJoin: () => void }) {
   );
 }
 
+/* ─── Overlay action buttons on video tiles ─── */
+function VideoTileActions({
+  hasSession,
+  onJoin,
+  onEnd,
+  expanded,
+  onToggleExpand,
+  isMobile,
+}: {
+  hasSession: boolean;
+  onJoin: () => void;
+  onEnd: () => void;
+  expanded: boolean;
+  onToggleExpand: () => void;
+  isMobile: boolean;
+}) {
+  return (
+    <div className="absolute bottom-2 right-2 z-10 flex items-center gap-1.5">
+      {!hasSession && (
+        <button
+          onClick={onJoin}
+          className="rounded px-2 py-1 text-[9px] font-bold uppercase tracking-wide"
+          style={{
+            background: "linear-gradient(180deg, #f59e0b 0%, #b45309 100%)",
+            color: "#fff",
+            border: "1px solid rgba(245,158,11,0.5)",
+            boxShadow: "0 2px 6px rgba(0,0,0,0.4)",
+          }}
+        >
+          Join
+        </button>
+      )}
+      {hasSession && (
+        <button
+          onClick={onEnd}
+          className="rounded px-2 py-1 text-[9px] font-bold uppercase tracking-wide"
+          style={{
+            background: "linear-gradient(180deg, #ef4444 0%, #991b1b 100%)",
+            color: "#fff",
+            border: "1px solid rgba(239,68,68,0.5)",
+            boxShadow: "0 2px 6px rgba(0,0,0,0.4)",
+          }}
+        >
+          End
+        </button>
+      )}
+      <button
+        onClick={onToggleExpand}
+        className="rounded px-1.5 py-1 text-[9px] font-bold"
+        style={{
+          background: "rgba(0,0,0,0.7)",
+          color: "#e8e8ea",
+          border: "1px solid rgba(255,255,255,0.15)",
+        }}
+      >
+        {expanded ? "▾" : "⛶"}
+      </button>
+    </div>
+  );
+}
+
+/* ─── Expanded video overlay ─── */
+function ExpandedVideoOverlay({
+  stream,
+  mirrored,
+  label,
+  screenShareStream,
+  onClose,
+}: {
+  stream: MediaStream | null;
+  mirrored?: boolean;
+  label: string;
+  screenShareStream?: MediaStream | null;
+  onClose: () => void;
+}) {
+  const vidRef = useRef<HTMLVideoElement>(null);
+  const shareRef = useRef<HTMLVideoElement>(null);
+  const activeStream = screenShareStream || stream;
+  const isMirrored = screenShareStream ? false : mirrored;
+
+  useEffect(() => {
+    const el = vidRef.current;
+    if (!el) return;
+    el.srcObject = activeStream ?? null;
+    if (activeStream) void el.play().catch(() => {});
+  }, [activeStream]);
+
+  return (
+    <div className="fixed inset-0 z-[200] flex flex-col" style={{ background: "#000" }}>
+      <div className="flex items-center justify-between px-4 py-2" style={{ background: "rgba(0,0,0,0.9)" }}>
+        <span style={{ color: "#e8e8ea", fontSize: 14, fontWeight: 600 }}>{label}</span>
+        <button
+          onClick={onClose}
+          className="rounded px-3 py-1 text-[11px] font-bold uppercase"
+          style={{
+            background: "rgba(255,255,255,0.1)",
+            color: "#e8e8ea",
+            border: "1px solid rgba(255,255,255,0.2)",
+          }}
+        >
+          ✕ Close
+        </button>
+      </div>
+      <div className="relative flex-1">
+        {activeStream ? (
+          <video
+            ref={vidRef}
+            autoPlay
+            playsInline
+            muted
+            className="absolute inset-0 h-full w-full object-contain"
+            style={isMirrored ? { transform: "scaleX(-1)" } : undefined}
+          />
+        ) : (
+          <div className="flex h-full items-center justify-center" style={{ color: "#656770" }}>
+            No stream available
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ═══════════════════════════════════════════════════════════
    UNIFIED SESSION SCREEN
    ═══════════════════════════════════════════════════════════ */
@@ -314,6 +437,13 @@ export default function UnifiedSessionScreen() {
   const engineerMirrored = isEngineer;
 
   const goToJoin = useCallback(() => navigate("/wstudio/session/join"), [navigate]);
+
+  const handleEndSession = useCallback(() => {
+    leaveSession();
+    navigate("/wstudio/session/join");
+  }, [leaveSession, navigate]);
+
+  const [expandedPanel, setExpandedPanel] = useState<"artist" | "engineer" | "screen" | null>(null);
 
   const [armed, setArmed] = useState(false);
   const [playing, setPlaying] = useState(false);
