@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSession } from "./SessionContext";
+import { useStudioMedia } from "../media/StudioMediaContext";
 import { useBookingTimer } from "../booking/BookingTimerContext";
 import { SessionTimerBar } from "../booking/SessionTimerBar";
 import { SessionControlsLockOverlay } from "../booking/SessionControlsLockOverlay";
