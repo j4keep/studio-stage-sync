@@ -893,7 +893,7 @@ export default function UnifiedSessionScreen() {
 
           {/* ── CENTER: SYNC CONTROLS + VOCAL INPUT (merged card) ── */}
           {collaborationShareActive ? (
-            <Panel accent={C.acCyan} className="relative flex flex-col">
+            <Panel accent={C.acCyan} className="relative flex flex-col overflow-hidden">
               <div className="flex items-center justify-between px-4 py-2" style={{ borderBottom: `1px solid ${C.panelBorder}` }}>
                 <span style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>SCREEN SHARE — DAW VIEW</span>
                 <div className="flex items-center gap-2">
@@ -901,15 +901,24 @@ export default function UnifiedSessionScreen() {
                   <span style={{ fontSize: 11, color: C.green, fontWeight: 600 }}>LIVE</span>
                 </div>
               </div>
-              <div className="flex flex-1 items-center justify-center" style={{ background: C.inset, minHeight: 180 }}>
-                <div className="flex flex-col items-center gap-2">
-                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={C.dim} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="2" y="3" width="20" height="14" rx="2" />
-                    <line x1="8" y1="21" x2="16" y2="21" />
-                    <line x1="12" y1="17" x2="12" y2="21" />
-                  </svg>
-                  <span style={{ color: C.label, fontSize: 13, fontWeight: 500 }}>{isEngineer ? "Your screen is being shared" : "Engineer's DAW"}</span>
-                  <span style={{ color: C.dim, fontSize: 11 }}>Pro Tools / Logic Pro</span>
+              <div className="relative flex-1" style={{ background: C.inset, minHeight: 180 }}>
+                {localScreenPreview ? (
+                  <VideoFeed stream={localScreenPreview} />
+                ) : (
+                  <div className="flex h-full items-center justify-center">
+                    <div className="flex flex-col items-center gap-2">
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={C.dim} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="2" y="3" width="20" height="14" rx="2" />
+                        <line x1="8" y1="21" x2="16" y2="21" />
+                        <line x1="12" y1="17" x2="12" y2="21" />
+                      </svg>
+                      <span style={{ color: C.label, fontSize: 13, fontWeight: 500 }}>{isEngineer ? "Your screen is being shared" : "Engineer's DAW"}</span>
+                      <span style={{ color: C.dim, fontSize: 11 }}>Pro Tools / Logic Pro</span>
+                    </div>
+                  </div>
+                )}
+                <div className="absolute bottom-2 right-2 z-10">
+                  <button onClick={() => setExpandedPanel(expandedPanel === "screen" ? null : "screen")} className="rounded px-2 py-1 text-[10px] font-bold" style={{ background: "rgba(0,0,0,0.7)", color: "#e8e8ea", border: "1px solid rgba(255,255,255,0.15)" }}>⛶ Expand</button>
                 </div>
               </div>
             </Panel>
@@ -1067,6 +1076,32 @@ export default function UnifiedSessionScreen() {
         onApprove={approveExtension}
         onDecline={declineExtension}
       />
+
+      {/* ─── Expanded video overlays ─── */}
+      {expandedPanel === "artist" && (
+        <ExpandedVideoOverlay
+          stream={artistStream}
+          mirrored={artistMirrored}
+          label="Artist View"
+          onClose={() => setExpandedPanel(null)}
+        />
+      )}
+      {expandedPanel === "engineer" && (
+        <ExpandedVideoOverlay
+          stream={engineerStream}
+          mirrored={engineerMirrored}
+          label="Engineer View"
+          screenShareStream={collaborationShareActive ? localScreenPreview : null}
+          onClose={() => setExpandedPanel(null)}
+        />
+      )}
+      {expandedPanel === "screen" && (
+        <ExpandedVideoOverlay
+          stream={localScreenPreview}
+          label="Screen Share — DAW View"
+          onClose={() => setExpandedPanel(null)}
+        />
+      )}
     </div>
   );
 }
