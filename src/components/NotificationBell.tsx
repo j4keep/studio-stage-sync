@@ -66,6 +66,11 @@ const NotificationBell = () => {
     else if (notification.reference_type === "message") navigate("/messages");
     else if (notification.reference_type === "purchase") navigate("/earnings");
     else if (notification.reference_type === "post") navigate("/feed");
+    else if (notification.reference_type === "booking") navigate("/bookings");
+    else if (notification.reference_type === "ticket") navigate("/help");
+    else if (notification.reference_type === "follow") navigate(`/artist/${notification.reference_id}`);
+    else if (notification.reference_type === "studio") navigate("/my-studios");
+    else if (notification.reference_type === "session_verify") navigate("/bookings");
     setOpen(false);
   };
 

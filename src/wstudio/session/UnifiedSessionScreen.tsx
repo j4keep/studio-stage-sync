@@ -9,6 +9,8 @@ import { SessionControlsLockOverlay } from "../booking/SessionControlsLockOverla
 import { ExtensionApprovalDialog } from "../booking/ExtensionApprovalDialog";
 import { formatCurrency } from "../booking/bookingTypes";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 const canScreenShare = typeof navigator !== "undefined" && !!navigator.mediaDevices?.getDisplayMedia;
 
@@ -420,6 +422,7 @@ export default function UnifiedSessionScreen() {
   const {
     role, connection, sessionDisplayName, muted, toggleMute, talkbackHeld, beginTalkback, endTalkback,
     remoteVocalLevel, live, setSessionRecording, demoClock, leaveSession, screenSharing, toggleScreenShare, collaborationShareActive,
+    sessionId,
   } = useSession();
 
   const { localStream, remoteStream, localScreenPreview } = useStudioMedia();
@@ -429,6 +432,8 @@ export default function UnifiedSessionScreen() {
     sessionValueTotal, startSessionTimer, requestExtension, approveExtension, declineExtension, engineerContinueSession,
     extensionModalOpen, setExtensionModalOpen, controlsLocked, sessionRates,
   } = useBookingTimer();
+
+  const { user } = useAuth();
 
   const isEngineer = role === "engineer";
   const isArtist = role === "artist";
@@ -450,6 +455,72 @@ export default function UnifiedSessionScreen() {
     leaveSession();
     navigate("/wstudio/session/join");
   }, [leaveSession, navigate]);
+
+  // Engineer marks session complete → update DB + notify artist
+  const handleEngineerMarkComplete = useCallback(async () => {
+    if (!sessionId.trim() || !user) return;
+    try {
+      // Find booking by session code
+      const { data: bookingData } = await (supabase as any)
+        .from("studio_bookings")
+        .select("id, user_id, studio_id, session_code")
+        .eq("session_code", sessionId.trim().toUpperCase())
+        .single();
+      if (bookingData) {
+        await (supabase as any)
+          .from("studio_bookings")
+          .update({
+            engineer_completed_at: new Date().toISOString(),
+            session_status: "awaiting_confirmation",
+          })
+          .eq("id", bookingData.id);
+        // Notify artist to verify
+        await (supabase as any).from("notifications").insert({
+          user_id: bookingData.user_id,
+          type: "booking",
+          title: "✅ Session Complete — Please Verify",
+          body: `Your engineer has marked the session (code: ${bookingData.session_code}) as complete. Please confirm or dispute within 48 hours.`,
+          reference_id: bookingData.id,
+          reference_type: "booking",
+        });
+        toast.success("Session marked complete. Awaiting artist confirmation.");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to mark session complete");
+    }
+    leaveSession();
+    navigate("/wstudio/session/join");
+  }, [sessionId, user, leaveSession, navigate]);
+
+  // Artist confirms session completion
+  const handleArtistConfirmComplete = useCallback(async () => {
+    if (!sessionId.trim() || !user) return;
+    try {
+      const { data: bookingData } = await (supabase as any)
+        .from("studio_bookings")
+        .select("id, studio_id")
+        .eq("session_code", sessionId.trim().toUpperCase())
+        .single();
+      if (bookingData) {
+        await (supabase as any)
+          .from("studio_bookings")
+          .update({
+            artist_confirmed: true,
+            artist_responded_at: new Date().toISOString(),
+            session_status: "completed",
+            payout_status: "released",
+          })
+          .eq("id", bookingData.id);
+        toast.success("Session confirmed! Payment released.");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to confirm session");
+    }
+    leaveSession();
+    navigate("/bookings");
+  }, [sessionId, user, leaveSession, navigate]);
 
   const [expandedPanel, setExpandedPanel] = useState<"artist" | "engineer" | "screen" | null>(null);
 
@@ -601,7 +672,7 @@ export default function UnifiedSessionScreen() {
                       <span style={{ width: 6, height: 6, borderRadius: "50%", background: (hasBooking ? phase : demoClock.phase) === "live" ? C.green : (hasBooking ? phase : demoClock.phase) === "ended" ? C.red : C.dim }} />
                     </div>
                     {isEngineer && (
-                      <div className="absolute bottom-2 right-2 rounded-md px-2 py-0.5" style={{ background: "rgba(0,0,0,0.72)" }}>
+                      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-[5] rounded-md px-2 py-0.5" style={{ background: "rgba(0,0,0,0.72)" }}>
                         <span className="font-mono text-[11px] font-semibold" style={{ color: C.green }}>{formatCurrency(sessionValueTotal)}</span>
                       </div>
                     )}
@@ -661,6 +732,47 @@ export default function UnifiedSessionScreen() {
                         <div className="absolute bottom-2 right-2 z-10">
                           <button onClick={() => setExpandedPanel(expandedPanel === "screen" ? null : "screen")} className="rounded px-1.5 py-1 text-[9px] font-bold" style={{ background: "rgba(0,0,0,0.7)", color: "#e8e8ea", border: "1px solid rgba(255,255,255,0.15)" }}>⛶</button>
                         </div>
+                      </div>
+                    </Panel>
+                  )}
+
+                  {/* Artist: Request More Time */}
+                  {isArtist && hasBooking && phase === "live" && (
+                    <Panel accent={C.acOrange} className="p-3">
+                      <div className="mb-2" style={{ fontSize: 11, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>REQUEST MORE TIME</div>
+                      {booking?.pendingExtension ? (
+                        <div className="text-center py-2" style={{ color: C.yellow, fontSize: 12 }}>
+                          ⏳ Waiting for engineer to approve +{booking.pendingExtension.minutes} min...
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          {([15, 30, 60] as const).map((mins) => (
+                            <button key={mins} onClick={() => requestExtension(mins)} className="flex-1 rounded-lg py-2 text-center text-[12px] font-bold" style={{
+                              background: "linear-gradient(180deg, #f59e0b 0%, #b45309 100%)",
+                              color: "#fff", border: "1px solid rgba(245,158,11,0.5)",
+                            }}>+{mins} min</button>
+                          ))}
+                        </div>
+                      )}
+                    </Panel>
+                  )}
+
+                  {/* Session Complete Actions */}
+                  {hasBooking && (
+                    <Panel accent={C.acGreen} className="p-3">
+                      <div className="flex gap-2">
+                        {isEngineer && (
+                          <button onClick={handleEngineerMarkComplete} className="flex-1 rounded-lg py-2.5 text-center text-[12px] font-bold" style={{
+                            background: "linear-gradient(180deg, #4ade60 0%, #22a838 100%)",
+                            color: "#fff", border: "1px solid rgba(74,222,96,0.5)",
+                          }}>✅ Mark Complete</button>
+                        )}
+                        {isArtist && (
+                          <button onClick={handleArtistConfirmComplete} className="flex-1 rounded-lg py-2.5 text-center text-[12px] font-bold" style={{
+                            background: "linear-gradient(180deg, #4ade60 0%, #22a838 100%)",
+                            color: "#fff", border: "1px solid rgba(74,222,96,0.5)",
+                          }}>✅ Confirm Complete</button>
+                        )}
                       </div>
                     </Panel>
                   )}
@@ -834,7 +946,7 @@ export default function UnifiedSessionScreen() {
                 <span style={{ width: 6, height: 6, borderRadius: "50%", background: (hasBooking ? phase : demoClock.phase) === "live" ? C.green : (hasBooking ? phase : demoClock.phase) === "ended" ? C.red : C.dim }} />
               </div>
               {isEngineer && (
-                <div className="absolute bottom-2 right-2 rounded-md px-2 py-1" style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)" }}>
+                <div className="absolute bottom-10 right-2 z-[5] rounded-md px-2 py-1" style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)" }}>
                   <span className="font-mono text-[12px] font-semibold" style={{ color: C.green }}>{formatCurrency(sessionValueTotal)}</span>
                 </div>
               )}
@@ -1044,6 +1156,50 @@ export default function UnifiedSessionScreen() {
             </Inset>
             <span style={{ color: C.dim, fontSize: 13 }}>▐▐</span>
           </Panel>
+
+          {/* ── Artist Extension Request (Desktop) ── */}
+          {isArtist && hasBooking && phase === "live" && (
+            <Panel accent={C.acOrange} className="col-span-3 flex items-center gap-3 px-4 py-2">
+              <span style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>REQUEST MORE TIME</span>
+              {booking?.pendingExtension ? (
+                <span style={{ color: C.yellow, fontSize: 12 }}>⏳ Waiting for engineer to approve +{booking.pendingExtension.minutes} min...</span>
+              ) : (
+                <div className="flex gap-2">
+                  {([15, 30, 60] as const).map((mins) => (
+                    <button key={mins} onClick={() => requestExtension(mins)} className="rounded-lg px-4 py-1.5 text-[12px] font-bold" style={{
+                      background: "linear-gradient(180deg, #f59e0b 0%, #b45309 100%)",
+                      color: "#fff", border: "1px solid rgba(245,158,11,0.5)",
+                    }}>+{mins} min</button>
+                  ))}
+                </div>
+              )}
+              <div className="ml-auto flex gap-2">
+                {isEngineer && (
+                  <button onClick={handleEngineerMarkComplete} className="rounded-lg px-4 py-1.5 text-[12px] font-bold" style={{
+                    background: "linear-gradient(180deg, #4ade60 0%, #22a838 100%)",
+                    color: "#fff", border: "1px solid rgba(74,222,96,0.5)",
+                  }}>✅ Mark Complete</button>
+                )}
+                {isArtist && (
+                  <button onClick={handleArtistConfirmComplete} className="rounded-lg px-4 py-1.5 text-[12px] font-bold" style={{
+                    background: "linear-gradient(180deg, #4ade60 0%, #22a838 100%)",
+                    color: "#fff", border: "1px solid rgba(74,222,96,0.5)",
+                  }}>✅ Confirm Complete</button>
+                )}
+              </div>
+            </Panel>
+          )}
+
+          {/* ── Desktop: Session Complete Bar ── */}
+          {hasBooking && !isArtist && (
+            <Panel accent={C.acGreen} className="col-span-3 flex items-center justify-between px-4 py-2">
+              <span style={{ fontSize: 12, fontWeight: 600, color: C.label }}>SESSION ACTIONS</span>
+              <button onClick={handleEngineerMarkComplete} className="rounded-lg px-5 py-2 text-[12px] font-bold" style={{
+                background: "linear-gradient(180deg, #4ade60 0%, #22a838 100%)",
+                color: "#fff", border: "1px solid rgba(74,222,96,0.5)",
+              }}>✅ Mark Session Complete</button>
+            </Panel>
+          )}
 
           {/* ── BOTTOM: TRANSPORT BAR (full width, single long card) ── */}
           <Panel accent={C.acPurple} className="col-span-3 flex items-center gap-2 px-3 py-2">

@@ -50,6 +50,12 @@ export default function SessionJoinScreen() {
 
       const sessionIdToUse = data.session_code || code.toUpperCase();
 
+      // Store booked hours so BookingTimerContext can pick it up
+      if (data.hours) {
+        const bookedMinutes = data.hours * 60;
+        localStorage.setItem(`wstudio_booking_hours_${sessionIdToUse}`, JSON.stringify({ bookedMinutes, bookingId: data.id }));
+      }
+
       toast.success("Joining session...");
       if (role === "engineer") {
         joinAsEngineer(sessionIdToUse);
@@ -89,6 +95,12 @@ export default function SessionJoinScreen() {
     }
 
     const sessionIdToUse = data.session_code || sessionCode.toUpperCase();
+
+    // Store booked hours so BookingTimerContext can pick it up
+    if (data.hours) {
+      const bookedMinutes = data.hours * 60;
+      localStorage.setItem(`wstudio_booking_hours_${sessionIdToUse}`, JSON.stringify({ bookedMinutes, bookingId: data.id }));
+    }
 
     toast.success("Joining session...");
     joinAsArtist(sessionIdToUse);
