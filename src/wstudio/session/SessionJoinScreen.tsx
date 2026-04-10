@@ -73,7 +73,7 @@ export default function SessionJoinScreen() {
 
     const { data, error } = await (supabase as any)
       .from("studio_bookings")
-      .select("id, session_code, session_status, studio_id, hours")
+      .select("id, session_code, session_status, studio_id, hours, user_id")
       .eq("session_code", sessionCode.toUpperCase())
       .single();
 
@@ -88,6 +88,9 @@ export default function SessionJoinScreen() {
       toast.error("This session has already ended.");
       return;
     }
+
+    // Set session ID from booking code so the live screen uses it
+    setSessionId(data.session_code || sessionCode.toUpperCase());
 
     toast.success("Joining session...");
     joinAsArtist();
