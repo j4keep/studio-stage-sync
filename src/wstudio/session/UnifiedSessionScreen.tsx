@@ -1157,6 +1157,50 @@ export default function UnifiedSessionScreen() {
             <span style={{ color: C.dim, fontSize: 13 }}>▐▐</span>
           </Panel>
 
+          {/* ── Artist Extension Request (Desktop) ── */}
+          {isArtist && hasBooking && phase === "live" && (
+            <Panel accent={C.acOrange} className="col-span-3 flex items-center gap-3 px-4 py-2">
+              <span style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>REQUEST MORE TIME</span>
+              {booking?.pendingExtension ? (
+                <span style={{ color: C.yellow, fontSize: 12 }}>⏳ Waiting for engineer to approve +{booking.pendingExtension.minutes} min...</span>
+              ) : (
+                <div className="flex gap-2">
+                  {([15, 30, 60] as const).map((mins) => (
+                    <button key={mins} onClick={() => requestExtension(mins)} className="rounded-lg px-4 py-1.5 text-[12px] font-bold" style={{
+                      background: "linear-gradient(180deg, #f59e0b 0%, #b45309 100%)",
+                      color: "#fff", border: "1px solid rgba(245,158,11,0.5)",
+                    }}>+{mins} min</button>
+                  ))}
+                </div>
+              )}
+              <div className="ml-auto flex gap-2">
+                {isEngineer && (
+                  <button onClick={handleEngineerMarkComplete} className="rounded-lg px-4 py-1.5 text-[12px] font-bold" style={{
+                    background: "linear-gradient(180deg, #4ade60 0%, #22a838 100%)",
+                    color: "#fff", border: "1px solid rgba(74,222,96,0.5)",
+                  }}>✅ Mark Complete</button>
+                )}
+                {isArtist && (
+                  <button onClick={handleArtistConfirmComplete} className="rounded-lg px-4 py-1.5 text-[12px] font-bold" style={{
+                    background: "linear-gradient(180deg, #4ade60 0%, #22a838 100%)",
+                    color: "#fff", border: "1px solid rgba(74,222,96,0.5)",
+                  }}>✅ Confirm Complete</button>
+                )}
+              </div>
+            </Panel>
+          )}
+
+          {/* ── Desktop: Session Complete Bar ── */}
+          {hasBooking && !isArtist && (
+            <Panel accent={C.acGreen} className="col-span-3 flex items-center justify-between px-4 py-2">
+              <span style={{ fontSize: 12, fontWeight: 600, color: C.label }}>SESSION ACTIONS</span>
+              <button onClick={handleEngineerMarkComplete} className="rounded-lg px-5 py-2 text-[12px] font-bold" style={{
+                background: "linear-gradient(180deg, #4ade60 0%, #22a838 100%)",
+                color: "#fff", border: "1px solid rgba(74,222,96,0.5)",
+              }}>✅ Mark Session Complete</button>
+            </Panel>
+          )}
+
           {/* ── BOTTOM: TRANSPORT BAR (full width, single long card) ── */}
           <Panel accent={C.acPurple} className="col-span-3 flex items-center gap-2 px-3 py-2">
             <TBtn sym="▌▌" label="Punch In" disabled={!isEngineer} />
