@@ -34,7 +34,7 @@ export default function SessionJoinScreen() {
       setJoining(true);
       const { data, error } = await (supabase as any)
         .from("studio_bookings")
-        .select("id, session_code, session_status, studio_id, hours")
+        .select("id, session_code, session_status, studio_id, hours, user_id")
         .eq("session_code", code.toUpperCase())
         .single();
       setJoining(false);
@@ -48,11 +48,13 @@ export default function SessionJoinScreen() {
         return;
       }
 
+      const sessionIdToUse = data.session_code || code.toUpperCase();
+
       toast.success("Joining session...");
       if (role === "engineer") {
-        joinAsEngineer();
+        joinAsEngineer(sessionIdToUse);
       } else {
-        joinAsArtist();
+        joinAsArtist(sessionIdToUse);
       }
       navigate("/wstudio/session/live");
     })();
@@ -70,7 +72,7 @@ export default function SessionJoinScreen() {
 
     const { data, error } = await (supabase as any)
       .from("studio_bookings")
-      .select("id, session_code, session_status, studio_id, hours")
+      .select("id, session_code, session_status, studio_id, hours, user_id")
       .eq("session_code", sessionCode.toUpperCase())
       .single();
 
@@ -86,8 +88,10 @@ export default function SessionJoinScreen() {
       return;
     }
 
+    const sessionIdToUse = data.session_code || sessionCode.toUpperCase();
+
     toast.success("Joining session...");
-    joinAsArtist();
+    joinAsArtist(sessionIdToUse);
     navigate("/wstudio/session/live");
   };
 
