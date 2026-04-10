@@ -243,6 +243,46 @@ function TBtn({ sym, label, disabled = false }: { sym: string; label: string; di
   );
 }
 
+/* ─── Live Video Feed ─── */
+function VideoFeed({ stream, mirrored }: { stream: MediaStream | null; mirrored?: boolean }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.srcObject = stream ?? null;
+    if (stream) void el.play().catch(() => {});
+  }, [stream]);
+  if (!stream) return null;
+  return (
+    <video
+      ref={ref}
+      autoPlay
+      playsInline
+      muted
+      className="absolute inset-0 h-full w-full object-cover"
+      style={mirrored ? { transform: "scaleX(-1)" } : undefined}
+    />
+  );
+}
+
+/* ─── Inline Join Session (shown in video placeholder when no session) ─── */
+function JoinSessionInline({ onJoin }: { onJoin: () => void }) {
+  return (
+    <button
+      onClick={onJoin}
+      className="mt-2 rounded-lg px-4 py-1.5 text-[11px] font-bold uppercase tracking-wide"
+      style={{
+        background: "linear-gradient(180deg, #f59e0b 0%, #b45309 100%)",
+        color: "#fff",
+        border: "1px solid rgba(245,158,11,0.5)",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
+      }}
+    >
+      Join Session
+    </button>
+  );
+}
+
 /* ═══════════════════════════════════════════════════════════
    UNIFIED SESSION SCREEN
    ═══════════════════════════════════════════════════════════ */
