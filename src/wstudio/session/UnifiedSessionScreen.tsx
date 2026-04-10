@@ -648,8 +648,8 @@ export default function UnifiedSessionScreen() {
                         </div>
                       </div>
                       <div className="relative flex-1" style={{ background: C.inset, minHeight: 120 }}>
-                        {localScreenPreview ? (
-                          <VideoFeed stream={localScreenPreview} />
+                        {screenShareViewStream ? (
+                          <VideoFeed stream={screenShareViewStream} />
                         ) : (
                           <div className="flex h-full items-center justify-center">
                             <div className="flex flex-col items-center gap-1">
@@ -910,8 +910,8 @@ export default function UnifiedSessionScreen() {
                 </div>
               </div>
               <div className="relative flex-1" style={{ background: C.inset, minHeight: 180 }}>
-                {localScreenPreview ? (
-                  <VideoFeed stream={localScreenPreview} />
+                {screenShareViewStream ? (
+                  <VideoFeed stream={screenShareViewStream} />
                 ) : (
                   <div className="flex h-full items-center justify-center">
                     <div className="flex flex-col items-center gap-2">
@@ -1099,13 +1099,13 @@ export default function UnifiedSessionScreen() {
           stream={engineerStream}
           mirrored={engineerMirrored}
           label="Engineer View"
-          screenShareStream={collaborationShareActive ? localScreenPreview : null}
+          screenShareStream={collaborationShareActive ? screenShareViewStream : null}
           onClose={() => setExpandedPanel(null)}
         />
       )}
       {expandedPanel === "screen" && (
         <ExpandedVideoOverlay
-          stream={localScreenPreview}
+          stream={screenShareViewStream}
           label="Screen Share — DAW View"
           onClose={() => setExpandedPanel(null)}
         />
