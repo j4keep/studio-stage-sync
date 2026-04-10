@@ -735,6 +735,47 @@ export default function UnifiedSessionScreen() {
                       </div>
                     </Panel>
                   )}
+
+                  {/* Artist: Request More Time */}
+                  {isArtist && hasBooking && phase === "live" && (
+                    <Panel accent={C.acOrange} className="p-3">
+                      <div className="mb-2" style={{ fontSize: 11, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>REQUEST MORE TIME</div>
+                      {booking?.pendingExtension ? (
+                        <div className="text-center py-2" style={{ color: C.yellow, fontSize: 12 }}>
+                          ⏳ Waiting for engineer to approve +{booking.pendingExtension.minutes} min...
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          {([15, 30, 60] as const).map((mins) => (
+                            <button key={mins} onClick={() => requestExtension(mins)} className="flex-1 rounded-lg py-2 text-center text-[12px] font-bold" style={{
+                              background: "linear-gradient(180deg, #f59e0b 0%, #b45309 100%)",
+                              color: "#fff", border: "1px solid rgba(245,158,11,0.5)",
+                            }}>+{mins} min</button>
+                          ))}
+                        </div>
+                      )}
+                    </Panel>
+                  )}
+
+                  {/* Session Complete Actions */}
+                  {hasBooking && (
+                    <Panel accent={C.acGreen} className="p-3">
+                      <div className="flex gap-2">
+                        {isEngineer && (
+                          <button onClick={handleEngineerMarkComplete} className="flex-1 rounded-lg py-2.5 text-center text-[12px] font-bold" style={{
+                            background: "linear-gradient(180deg, #4ade60 0%, #22a838 100%)",
+                            color: "#fff", border: "1px solid rgba(74,222,96,0.5)",
+                          }}>✅ Mark Complete</button>
+                        )}
+                        {isArtist && (
+                          <button onClick={handleArtistConfirmComplete} className="flex-1 rounded-lg py-2.5 text-center text-[12px] font-bold" style={{
+                            background: "linear-gradient(180deg, #4ade60 0%, #22a838 100%)",
+                            color: "#fff", border: "1px solid rgba(74,222,96,0.5)",
+                          }}>✅ Confirm Complete</button>
+                        )}
+                      </div>
+                    </Panel>
+                  )}
                 </div>
               )}
 
