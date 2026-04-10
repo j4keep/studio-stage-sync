@@ -162,8 +162,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
-  const joinAsArtist = useCallback(() => {
-    const id = sessionId.trim() || generateMockSessionId();
+  const joinAsArtist = useCallback((overrideSessionId?: string) => {
+    const id = overrideSessionId?.trim() || sessionId.trim() || generateMockSessionId();
     setSessionId(id);
     setRole("artist");
     latencyRef.current = 22 + Math.floor(Math.random() * 12);
@@ -185,8 +185,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   }, [sessionId]);
 
-  const joinAsEngineer = useCallback(() => {
-    const id = sessionId.trim() || generateMockSessionId();
+  const joinAsEngineer = useCallback((overrideSessionId?: string) => {
+    const id = overrideSessionId?.trim() || sessionId.trim() || generateMockSessionId();
     setSessionId(id);
     setRole("engineer");
     latencyRef.current = 20 + Math.floor(Math.random() * 14);
