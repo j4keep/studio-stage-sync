@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Building2, Plus, MapPin, Trash2, ChevronLeft, Star, Pencil, CheckCircle2, XCircle, CalendarDays, Ban, DollarSign, Clock, Zap } from "lucide-react";
+import { Building2, Plus, MapPin, Trash2, ChevronLeft, Star, Pencil, CheckCircle2, XCircle, CalendarDays, Ban, DollarSign, Clock, Zap, Headphones } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -411,6 +411,15 @@ const MyStudiosPage = () => {
                     {/* Cancel + session management for confirmed bookings */}
                     {isConfirmed && (
                       <div className="flex flex-col gap-2 mt-3">
+                        {/* Join Session button for engineer */}
+                        {booking.session_code && isSessionPending && (
+                          <button
+                            onClick={() => navigate(`/wstudio/session/join?code=${booking.session_code}&role=engineer`)}
+                            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl gradient-primary text-primary-foreground text-xs font-semibold glow-primary"
+                          >
+                            <Headphones className="w-4 h-4" /> Join Session
+                          </button>
+                        )}
                         {booking.session_status === "awaiting_confirmation" && (
                           <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-2.5">
                             <p className="text-[11px] text-blue-300 font-semibold">⏳ Awaiting artist confirmation</p>

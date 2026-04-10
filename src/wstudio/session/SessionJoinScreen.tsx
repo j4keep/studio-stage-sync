@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Search, KeyRound, Headphones, Mic2, ChevronLeft } from "lucide-react";
 import { useSession } from "./SessionContext";
 import { StudioSearchSheet } from "./StudioSearchSheet";
@@ -13,10 +13,50 @@ import { toast } from "sonner";
 
 export default function SessionJoinScreen() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { joinAsArtist, joinAsEngineer } = useSession();
   const [showSearch, setShowSearch] = useState(false);
   const [sessionCode, setSessionCode] = useState("");
   const [joining, setJoining] = useState(false);
+  const autoJoinedRef = useRef(false);
+
+  // Auto-join from booking link (?code=XXXXXX&role=engineer|artist)
+  useEffect(() => {
+    if (autoJoinedRef.current) return;
+    const code = searchParams.get("code");
+    if (!code || code.length < 6) return;
+    autoJoinedRef.current = true;
+    const role = searchParams.get("role");
+    setSessionCode(code);
+
+    // Auto-trigger join
+    (async () => {
+      setJoining(true);
+      const { data, error } = await (supabase as any)
+        .from("studio_bookings")
+        .select("id, session_code, session_status, studio_id, hours")
+        .eq("session_code", code.toUpperCase())
+        .single();
+      setJoining(false);
+
+      if (error || !data) {
+        toast.error("Invalid session code. Please check and try again.");
+        return;
+      }
+      if (data.session_status === "completed") {
+        toast.error("This session has already ended.");
+        return;
+      }
+
+      toast.success("Joining session...");
+      if (role === "engineer") {
+        joinAsEngineer();
+      } else {
+        joinAsArtist();
+      }
+      navigate("/wstudio/session/live");
+    })();
+  }, [searchParams, joinAsArtist, joinAsEngineer, navigate]);
 
   const handleJoin = (role: "artist" | "engineer") => {
     if (role === "artist") joinAsArtist();
