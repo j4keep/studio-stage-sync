@@ -58,7 +58,7 @@ export default function SessionJoinScreen() {
       }
       navigate("/wstudio/session/live");
     })();
-  }, [searchParams, joinAsArtist, joinAsEngineer, navigate, setSessionId]);
+  }, [searchParams, joinAsArtist, joinAsEngineer, navigate]);
 
   const handleJoin = (role: "artist" | "engineer") => {
     if (role === "artist") joinAsArtist();
