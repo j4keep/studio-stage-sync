@@ -10,24 +10,17 @@ import {
 } from "react";
 import { useSession } from "../session/SessionContext";
 import type { Role } from "../session/SessionContext";
-
-type SignalPayload =
-  | { t: "offer"; sdp: string; from: "artist" | "engineer" }
-  | { t: "answer"; sdp: string; from: "artist" | "engineer" }
-  | { t: "ice"; candidate: RTCIceCandidateInit; from: "artist" | "engineer" };
+import {
+  sendRtcSignal,
+  subscribeRtcSignals,
+  type RtcSignalPayload,
+  type RtcSignalRole,
+} from "./realtimeRtcSignaling";
 
 const ICE_SERVERS: RTCIceServer[] = [{ urls: "stun:stun.l.google.com:19302" }];
 
-function channelName(sessionId: string): string {
-  return `wstudio-rtc-${sessionId.trim()}`;
-}
-
-function offerKey(sessionId: string): string {
-  return `wstudio_rtc_offer_${sessionId.trim()}`;
-}
-
-function answerKey(sessionId: string): string {
-  return `wstudio_rtc_answer_${sessionId.trim()}`;
+function toSignalRole(role: Role): RtcSignalRole | null {
+  return role === "artist" || role === "engineer" ? role : null;
 }
 
 export type StudioMediaContextValue = {
@@ -49,7 +42,6 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
   const [mediaError, setMediaError] = useState<string | null>(null);
 
   const pcRef = useRef<RTCPeerConnection | null>(null);
-  const bcRef = useRef<BroadcastChannel | null>(null);
   const cameraVideoTrackRef = useRef<MediaStreamTrack | null>(null);
   const inboundStreamRef = useRef<MediaStream | null>(null);
   const pendingIceRef = useRef<RTCIceCandidateInit[]>([]);
@@ -77,6 +69,12 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       cameraVideoTrackRef.current = null;
       return;
     }
+
+    setLocalStream((prev) => {
+      prev?.getTracks().forEach((t) => t.stop());
+      return null;
+    });
+    cameraVideoTrackRef.current = null;
 
     let cancelled = false;
     (async () => {
@@ -109,8 +107,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-acquire when session role changes
-  }, [sessionId, role]);
+  }, [sessionId, role, talkbackHeld, muted]);
 
   useEffect(() => {
     if (!sessionId.trim() || !role || !localStream) {
@@ -118,16 +115,9 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
         pcRef.current.close();
         pcRef.current = null;
       }
-      bcRef.current?.close();
-      bcRef.current = null;
       inboundStreamRef.current = null;
       setRemoteStream(null);
       pendingIceRef.current = [];
-      return;
-    }
-
-    if (typeof BroadcastChannel === "undefined") {
-      setMediaError("WebRTC signaling requires a browser with BroadcastChannel (open two tabs on this site).");
       return;
     }
 
@@ -137,55 +127,99 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     const inbound = new MediaStream();
     inboundStreamRef.current = inbound;
     setRemoteStream(inbound);
+    pendingIceRef.current = [];
 
     pc.ontrack = (ev) => {
-      const t = ev.track;
-      if (!inbound.getTracks().some((x) => x.id === t.id)) inbound.addTrack(t);
+      const track = ev.track;
+      if (!inbound.getTracks().some((existing) => existing.id === track.id)) {
+        inbound.addTrack(track);
+      }
       setRemoteStream(new MediaStream(inbound.getTracks()));
     };
 
     const flushIce = async () => {
       const pending = pendingIceRef.current.splice(0);
-      for (const c of pending) {
+      for (const candidate of pending) {
         try {
-          await pc.addIceCandidate(c);
+          await pc.addIceCandidate(candidate);
         } catch {
           /* ignore stale */
         }
       }
     };
 
-    const persistAndPost = (payload: SignalPayload) => {
-      try {
-        if (payload.t === "offer") {
-          localStorage.setItem(offerKey(sessionId), JSON.stringify(payload));
-        } else if (payload.t === "answer") {
-          localStorage.setItem(answerKey(sessionId), JSON.stringify(payload));
-        }
-      } catch {
-        /* ignore quota */
-      }
-      bcRef.current?.postMessage(JSON.stringify(payload));
+    const sendSignal = (payload: RtcSignalPayload) => {
+      sendRtcSignal(sessionId, payload);
     };
 
-    for (const t of localStream.getTracks()) {
-      pc.addTrack(t, localStream);
-    }
+    const sendReady = () => {
+      const currentRole = toSignalRole(roleRef.current);
+      if (!currentRole) return;
+      sendSignal({ t: "ready", from: currentRole });
+    };
 
-    const bc = new BroadcastChannel(channelName(sessionId));
-    bcRef.current = bc;
+    const sendOrRepeatOffer = async () => {
+      if (roleRef.current !== "engineer") return;
+      const currentRole = toSignalRole(roleRef.current);
+      if (!currentRole) return;
 
-    const handlePayload = async (msg: SignalPayload) => {
+      try {
+        const existingOffer = pc.localDescription;
+        if (existingOffer?.type === "offer" && existingOffer.sdp) {
+          sendSignal({ t: "offer", sdp: existingOffer.sdp, from: currentRole });
+          return;
+        }
+
+        if (pc.signalingState !== "stable") return;
+
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        if (offer.sdp) {
+          sendSignal({ t: "offer", sdp: offer.sdp, from: currentRole });
+        }
+      } catch (err) {
+        console.warn("W.Studio offer failed", err);
+      }
+    };
+
+    const handlePayload = async (msg: RtcSignalPayload) => {
       if (msg.from === roleRef.current) return;
 
       try {
+        if (msg.t === "ready") {
+          if (roleRef.current === "engineer") {
+            await sendOrRepeatOffer();
+          }
+          return;
+        }
+
         if (msg.t === "offer" && roleRef.current === "artist") {
+          if (pc.currentRemoteDescription?.type === "offer" && pc.currentRemoteDescription.sdp === msg.sdp) {
+            if (pc.localDescription?.type === "answer" && pc.localDescription.sdp) {
+              sendSignal({ t: "answer", sdp: pc.localDescription.sdp, from: "artist" });
+            }
+            return;
+          }
+
+          if (pc.signalingState === "have-local-offer") {
+            try {
+              await pc.setLocalDescription({ type: "rollback" });
+            } catch {
+              /* ignore rollback failures */
+            }
+          }
+
           await pc.setRemoteDescription({ type: "offer", sdp: msg.sdp });
           await flushIce();
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
-          persistAndPost({ t: "answer", sdp: answer.sdp!, from: "artist" });
+          if (answer.sdp) {
+            sendSignal({ t: "answer", sdp: answer.sdp, from: "artist" });
+          }
         } else if (msg.t === "answer" && roleRef.current === "engineer") {
+          if (pc.currentRemoteDescription?.type === "answer" && pc.currentRemoteDescription.sdp === msg.sdp) {
+            return;
+          }
           await pc.setRemoteDescription({ type: "answer", sdp: msg.sdp });
           await flushIce();
         } else if (msg.t === "ice") {
@@ -204,64 +238,32 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    const onMessage = async (ev: MessageEvent) => {
-      try {
-        const msg = JSON.parse(ev.data as string) as SignalPayload;
-        await handlePayload(msg);
-      } catch {
-        /* ignore */
-      }
-    };
+    for (const track of localStream.getTracks()) {
+      pc.addTrack(track, localStream);
+    }
 
-    bc.onmessage = onMessage;
+    const unsubscribeSignals = subscribeRtcSignals(sessionId, (msg) => {
+      void handlePayload(msg);
+    });
 
     pc.onicecandidate = (e) => {
-      if (e.candidate && roleRef.current) {
-        persistAndPost({
+      const currentRole = toSignalRole(roleRef.current);
+      if (e.candidate && currentRole) {
+        sendSignal({
           t: "ice",
           candidate: e.candidate.toJSON(),
-          from: roleRef.current === "engineer" ? "engineer" : "artist",
+          from: currentRole,
         });
       }
     };
 
-    const tryStoredOfferAnswer = async () => {
-      try {
-        if (role === "artist") {
-          const raw = localStorage.getItem(offerKey(sessionId));
-          if (raw) {
-            const msg = JSON.parse(raw) as SignalPayload;
-            if (msg.t === "offer") await handlePayload(msg);
-          }
-        } else if (role === "engineer") {
-          const raw = localStorage.getItem(answerKey(sessionId));
-          if (raw) {
-            const msg = JSON.parse(raw) as SignalPayload;
-            if (msg.t === "answer") await handlePayload(msg);
-          }
-        }
-      } catch {
-        /* ignore */
-      }
-    };
-
-    void (async () => {
-      if (role === "engineer") {
-        try {
-          const offer = await pc.createOffer();
-          await pc.setLocalDescription(offer);
-          persistAndPost({ t: "offer", sdp: offer.sdp!, from: "engineer" });
-        } catch (e) {
-          console.warn("W.Studio offer failed", e);
-        }
-      }
-      await tryStoredOfferAnswer();
-    })();
+    sendReady();
+    if (role === "engineer") {
+      void sendOrRepeatOffer();
+    }
 
     return () => {
-      bc.onmessage = null;
-      bc.close();
-      bcRef.current = null;
+      unsubscribeSignals();
       pc.onicecandidate = null;
       pc.ontrack = null;
       pc.close();
