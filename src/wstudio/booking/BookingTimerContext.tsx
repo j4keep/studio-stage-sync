@@ -106,6 +106,29 @@ export function BookingTimerProvider({ children }: { children: ReactNode }) {
       return;
     }
     const loaded = loadSessionBooking(sessionId);
+    // If no existing booking, check if we have stored booking hours from DB
+    if (!loaded) {
+      try {
+        const stored = localStorage.getItem(`wstudio_booking_hours_${sessionId.trim()}`);
+        if (stored) {
+          const { bookedMinutes } = JSON.parse(stored);
+          if (bookedMinutes > 0) {
+            const rates = loadSessionRates(sessionId);
+            const initialValue = computeInitialSessionValue(bookedMinutes, rates.hourlyRate);
+            const newBooking: SessionBookingRecord = {
+              ...emptyBooking(sessionId),
+              scheduledStartIso: new Date().toISOString(),
+              bookedMinutes,
+              hourlyRateSnapshot: rates.hourlyRate,
+              initialSessionValue: initialValue,
+              phase: "scheduled",
+            };
+            persist(newBooking);
+            return;
+          }
+        }
+      } catch { /* ignore */ }
+    }
     setBooking(loaded);
     warnedRef.current = { m15: false, m5: false, m1: false };
     pendingToastRef.current = null;
