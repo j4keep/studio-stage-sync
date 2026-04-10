@@ -340,6 +340,27 @@ export default function UnifiedSessionScreen() {
           {/* ══════════ MOBILE LAYOUT ══════════ */}
           {isMobile ? (
             <>
+              {/* Session status bar — always visible on mobile */}
+              <Panel accent={C.acCyan} className="flex items-center justify-between px-3" style={{ height: 40 }}>
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="truncate" style={{ fontSize: 13, fontWeight: 500, color: C.text }}>{sessionDisplayName || "Session: Live"}</span>
+                  <span className="shrink-0 rounded px-2 py-0.5 text-[9px] font-bold uppercase" style={{
+                    background: connected ? "linear-gradient(180deg, #4ade60 0%, #22a838 100%)" : C.panelDark,
+                    color: connected ? C.white : C.dim,
+                  }}>
+                    {connected ? "CONNECTED" : connection.toUpperCase()}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button className="flex h-7 w-7 items-center justify-center rounded text-[13px]" style={{ background: C.panelDark, border: `1px solid ${C.panelBorder}`, color: C.label }}>🔊</button>
+                  {isEngineer && (
+                    <button onClick={() => { toggleScreenShare(); if (!screenSharing) setMobileTab("video"); }} className="flex h-7 items-center justify-center gap-1 rounded px-2 text-[11px] font-semibold" style={{ background: screenSharing ? "rgba(59,157,255,0.2)" : C.panelDark, border: `1px solid ${screenSharing ? C.blue : C.panelBorder}`, color: screenSharing ? C.blue : C.label }}>
+                      🖥 {screenSharing ? "Stop" : "Share"}
+                    </button>
+                  )}
+                </div>
+              </Panel>
+
               {/* ── VIDEO TAB ── */}
               {mobileTab === "video" && (
                 <div className="flex flex-col gap-2">
@@ -365,6 +386,12 @@ export default function UnifiedSessionScreen() {
                       <span style={{ color: C.dim, fontSize: 10, letterSpacing: "0.14em", marginTop: 4 }}>WAITING FOR ENGINEER</span>
                     </div>
                     <div className="absolute bottom-2 left-2 rounded px-2 py-0.5 text-[10px] font-medium" style={{ background: "rgba(0,0,0,0.6)", color: C.dim }}>No one connected</div>
+                    <div className="absolute right-2 top-2 flex items-center gap-1.5 rounded-md px-2 py-0.5" style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)" }}>
+                      <span className="font-mono text-[12px] font-bold tabular-nums" style={{ color: (hasBooking ? warningLevel : "ok") === "critical" ? C.red : (hasBooking ? warningLevel : "ok") === "warning" ? C.yellow : C.text }}>
+                        {(() => { const rs = hasBooking ? bookingRemaining : demoClock.remainingSeconds; return `${String(Math.floor(rs / 60)).padStart(2, "0")}:${String(rs % 60).padStart(2, "0")}`; })()}
+                      </span>
+                      <span style={{ width: 6, height: 6, borderRadius: "50%", background: (hasBooking ? phase : demoClock.phase) === "live" ? C.green : (hasBooking ? phase : demoClock.phase) === "ended" ? C.red : C.dim }} />
+                    </div>
                     {isEngineer && (
                       <div className="absolute bottom-2 right-2 rounded-md px-2 py-0.5" style={{ background: "rgba(0,0,0,0.72)" }}>
                         <span className="font-mono text-[11px] font-semibold" style={{ color: C.green }}>{formatCurrency(sessionValueTotal)}</span>
@@ -399,25 +426,6 @@ export default function UnifiedSessionScreen() {
                         </svg>
                         <span style={{ fontSize: 10, color: C.text }}>Settings</span>
                       </button>
-                    </div>
-                  </Panel>
-
-                  {/* Session status bar */}
-                  <Panel accent={C.acCyan} className="flex items-center justify-between px-3" style={{ height: 40 }}>
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="truncate" style={{ fontSize: 13, fontWeight: 500, color: C.text }}>{sessionDisplayName || "Session: Live"}</span>
-                      <span className="shrink-0 rounded px-2 py-0.5 text-[9px] font-bold uppercase" style={{
-                        background: connected ? "linear-gradient(180deg, #4ade60 0%, #22a838 100%)" : C.panelDark,
-                        color: connected ? C.white : C.dim,
-                      }}>
-                        {connected ? "CONNECTED" : connection.toUpperCase()}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <button className="flex h-7 w-7 items-center justify-center rounded text-[13px]" style={{ background: C.panelDark, border: `1px solid ${C.panelBorder}`, color: C.label }}>🔊</button>
-                      {isEngineer && (
-                        <button onPointerDown={(e) => { e.preventDefault(); toggleScreenShare(); }} className="flex h-7 w-7 items-center justify-center rounded text-[13px]" style={{ background: screenSharing ? "rgba(59,157,255,0.2)" : C.panelDark, border: `1px solid ${screenSharing ? C.blue : C.panelBorder}`, color: C.label }}>🖥</button>
-                      )}
                     </div>
                   </Panel>
 
