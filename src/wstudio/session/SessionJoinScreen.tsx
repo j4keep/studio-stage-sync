@@ -14,7 +14,7 @@ import { toast } from "sonner";
 export default function SessionJoinScreen() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { joinAsArtist, joinAsEngineer } = useSession();
+  const { joinAsArtist, joinAsEngineer, setSessionId } = useSession();
   const [showSearch, setShowSearch] = useState(false);
   const [sessionCode, setSessionCode] = useState("");
   const [joining, setJoining] = useState(false);
@@ -34,7 +34,7 @@ export default function SessionJoinScreen() {
       setJoining(true);
       const { data, error } = await (supabase as any)
         .from("studio_bookings")
-        .select("id, session_code, session_status, studio_id, hours")
+        .select("id, session_code, session_status, studio_id, hours, user_id")
         .eq("session_code", code.toUpperCase())
         .single();
       setJoining(false);
@@ -48,6 +48,9 @@ export default function SessionJoinScreen() {
         return;
       }
 
+      // Set session ID from booking code so the live screen uses it
+      setSessionId(data.session_code || code.toUpperCase());
+
       toast.success("Joining session...");
       if (role === "engineer") {
         joinAsEngineer();
@@ -56,7 +59,7 @@ export default function SessionJoinScreen() {
       }
       navigate("/wstudio/session/live");
     })();
-  }, [searchParams, joinAsArtist, joinAsEngineer, navigate]);
+  }, [searchParams, joinAsArtist, joinAsEngineer, navigate, setSessionId]);
 
   const handleJoin = (role: "artist" | "engineer") => {
     if (role === "artist") joinAsArtist();

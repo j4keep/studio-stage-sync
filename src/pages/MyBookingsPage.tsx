@@ -322,7 +322,7 @@ const MyBookingsPage = () => {
               {/* Join Session button for confirmed bookings */}
               {booking.status === "confirmed" && booking.session_code && !["completed", "no_show", "disputed"].includes(booking.session_status) && (
                 <button
-                  onClick={() => navigate(`/wstudio/session/join?code=${booking.session_code}`)}
+                  onClick={() => navigate(`/wstudio/session/join?code=${booking.session_code}&role=artist`)}
                   className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 rounded-xl gradient-primary text-primary-foreground text-xs font-semibold glow-primary"
                 >
                   <Headphones className="w-4 h-4" />
