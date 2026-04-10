@@ -16,13 +16,11 @@ type LiveChannelEntry = {
   channel: ReturnType<typeof supabase.channel>;
   refCount: number;
   subscribed: boolean;
+  /** In-memory authoritative state for this session */
+  state: SessionLiveState;
 };
 
 const liveChannels = new Map<string, LiveChannelEntry>();
-
-function storageKey(sessionId: string): string {
-  return `wstudio_session_live_${sessionId.trim()}`;
-}
 
 export function defaultLiveState(): SessionLiveState {
   return {
@@ -36,14 +34,6 @@ export function defaultLiveState(): SessionLiveState {
   };
 }
 
-function persistLive(sessionId: string, state: SessionLiveState) {
-  try {
-    localStorage.setItem(storageKey(sessionId), JSON.stringify(state));
-  } catch {
-    /* ignore quota */
-  }
-}
-
 function emitLive(sessionId: string, state: SessionLiveState) {
   window.dispatchEvent(new CustomEvent(EVT, { detail: { sessionId, state } }));
 }
@@ -53,21 +43,25 @@ function ensureLiveChannel(sessionId: string): LiveChannelEntry {
   const existing = liveChannels.get(id);
   if (existing) return existing;
 
+  const entry: LiveChannelEntry = {
+    channel: null as any,
+    refCount: 0,
+    subscribed: false,
+    state: defaultLiveState(),
+  };
+
   const channel = supabase.channel(`wstudio-live-${id}`, {
     config: { broadcast: { ack: false, self: false } },
   });
 
-  const entry: LiveChannelEntry = {
-    channel,
-    refCount: 0,
-    subscribed: false,
-  };
+  entry.channel = channel;
 
   channel
-    .on("broadcast", { event: "state" }, ({ payload }) => {
-      const next = { ...defaultLiveState(), ...(payload as Partial<SessionLiveState>) };
-      persistLive(id, next);
-      emitLive(id, next);
+    .on("broadcast", { event: "patch" }, ({ payload }) => {
+      // Merge only the received patch into our in-memory state
+      const patch = payload as Partial<SessionLiveState>;
+      entry.state = { ...entry.state, ...patch };
+      emitLive(id, entry.state);
     })
     .subscribe((status) => {
       entry.subscribed = status === "SUBSCRIBED";
@@ -81,48 +75,46 @@ function ensureLiveChannel(sessionId: string): LiveChannelEntry {
 }
 
 export function readLive(sessionId: string): SessionLiveState {
-  if (!sessionId.trim()) return defaultLiveState();
-  try {
-    const raw = localStorage.getItem(storageKey(sessionId));
-    if (!raw) return defaultLiveState();
-    return { ...defaultLiveState(), ...JSON.parse(raw) };
-  } catch {
-    return defaultLiveState();
-  }
+  const id = sessionId.trim();
+  if (!id) return defaultLiveState();
+  const entry = liveChannels.get(id);
+  return entry ? { ...entry.state } : defaultLiveState();
 }
 
 export function writeLive(sessionId: string, patch: Partial<SessionLiveState>): SessionLiveState {
   const id = sessionId.trim();
   if (!id) return defaultLiveState();
 
-  const next = { ...readLive(id), ...patch };
-  persistLive(id, next);
-  emitLive(id, next);
-
   const entry = ensureLiveChannel(id);
-  const sendBroadcast = () =>
+  // Merge patch into our in-memory state
+  entry.state = { ...entry.state, ...patch };
+  // Emit locally
+  emitLive(id, entry.state);
+
+  // Broadcast ONLY the patch (not the full state) so the remote side merges it
+  const sendPatch = () =>
     entry.channel.send({
       type: "broadcast",
-      event: "state",
-      payload: next,
+      event: "patch",
+      payload: patch,
     });
 
   if (entry.subscribed) {
-    void sendBroadcast();
+    void sendPatch();
   } else {
     window.setTimeout(() => {
       const current = liveChannels.get(id);
       if (current?.subscribed) {
         void current.channel.send({
           type: "broadcast",
-          event: "state",
-          payload: next,
+          event: "patch",
+          payload: patch,
         });
       }
     }, 150);
   }
 
-  return next;
+  return entry.state;
 }
 
 export function subscribeLive(sessionId: string, cb: (s: SessionLiveState) => void): () => void {
@@ -140,22 +132,11 @@ export function subscribeLive(sessionId: string, cb: (s: SessionLiveState) => vo
     if (d?.sessionId === id) cb(d.state);
   };
 
-  const onStorage = (e: StorageEvent) => {
-    if (e.key !== storageKey(id) || !e.newValue) return;
-    try {
-      cb({ ...defaultLiveState(), ...JSON.parse(e.newValue) });
-    } catch {
-      /* ignore */
-    }
-  };
-
   window.addEventListener(EVT, onInternal);
-  window.addEventListener("storage", onStorage);
-  cb(readLive(id));
+  cb(entry.state);
 
   return () => {
     window.removeEventListener(EVT, onInternal);
-    window.removeEventListener("storage", onStorage);
 
     const current = liveChannels.get(id);
     if (!current) return;
