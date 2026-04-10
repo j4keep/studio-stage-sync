@@ -14,7 +14,7 @@ import { toast } from "sonner";
 export default function SessionJoinScreen() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { joinAsArtist, joinAsEngineer, setSessionId } = useSession();
+  const { joinAsArtist, joinAsEngineer } = useSession();
   const [showSearch, setShowSearch] = useState(false);
   const [sessionCode, setSessionCode] = useState("");
   const [joining, setJoining] = useState(false);
