@@ -9,6 +9,8 @@ import { SessionControlsLockOverlay } from "../booking/SessionControlsLockOverla
 import { ExtensionApprovalDialog } from "../booking/ExtensionApprovalDialog";
 import { formatCurrency } from "../booking/bookingTypes";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 const canScreenShare = typeof navigator !== "undefined" && !!navigator.mediaDevices?.getDisplayMedia;
 
