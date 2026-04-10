@@ -601,7 +601,7 @@ export default function UnifiedSessionScreen() {
                       <span style={{ width: 6, height: 6, borderRadius: "50%", background: (hasBooking ? phase : demoClock.phase) === "live" ? C.green : (hasBooking ? phase : demoClock.phase) === "ended" ? C.red : C.dim }} />
                     </div>
                     {isEngineer && (
-                      <div className="absolute bottom-2 right-2 rounded-md px-2 py-0.5" style={{ background: "rgba(0,0,0,0.72)" }}>
+                      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-[5] rounded-md px-2 py-0.5" style={{ background: "rgba(0,0,0,0.72)" }}>
                         <span className="font-mono text-[11px] font-semibold" style={{ color: C.green }}>{formatCurrency(sessionValueTotal)}</span>
                       </div>
                     )}
@@ -834,7 +834,7 @@ export default function UnifiedSessionScreen() {
                 <span style={{ width: 6, height: 6, borderRadius: "50%", background: (hasBooking ? phase : demoClock.phase) === "live" ? C.green : (hasBooking ? phase : demoClock.phase) === "ended" ? C.red : C.dim }} />
               </div>
               {isEngineer && (
-                <div className="absolute bottom-2 right-2 rounded-md px-2 py-1" style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)" }}>
+                <div className="absolute bottom-10 right-2 z-[5] rounded-md px-2 py-1" style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)" }}>
                   <span className="font-mono text-[12px] font-semibold" style={{ color: C.green }}>{formatCurrency(sessionValueTotal)}</span>
                 </div>
               )}
