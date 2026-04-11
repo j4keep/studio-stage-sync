@@ -40,10 +40,14 @@ export type StudioMediaContextValue = {
   localScreenPreview: MediaStream | null;
   mediaError: string | null;
   clearMediaError: () => void;
-  /** 0–1 RMS envelope from local mic (pre–PTT gate; use for vocal meters) */
+  /** 0–1 RMS from local mic (pre–PTT gate; real input, ~0 when muted) */
   localMicLevel: number;
+  /** 0–1 RMS on the send path after PTT gain (real audio only while transmitting) */
+  localTalkbackTxLevel: number;
   /** 0–1 RMS from remote participant's audio */
   remoteMicLevel: number;
+  /** Live inbound audio track from peer (for UI labels) */
+  hasRemoteAudio: boolean;
 };
 
 const Ctx = createContext<StudioMediaContextValue | null>(null);
@@ -56,8 +60,10 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [localScreenPreview, setLocalScreenPreview] = useState<MediaStream | null>(null);
   const [mediaError, setMediaError] = useState<string | null>(null);
-  const [localMicLevel, setLocalMicLevel] = useState(0);
+   const [localMicLevel, setLocalMicLevel] = useState(0);
+  const [localTalkbackTxLevel, setLocalTalkbackTxLevel] = useState(0);
   const [remoteMicLevel, setRemoteMicLevel] = useState(0);
+  const [hasRemoteAudio, setHasRemoteAudio] = useState(false);
 
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
@@ -110,6 +116,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       if (updateState) {
         setLocalStream(null);
         setLocalMicLevel(0);
+        setLocalTalkbackTxLevel(0);
       }
     },
     [closeLocalAudioGraph],
@@ -209,18 +216,23 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
         const micOnly = new MediaStream([audioTrack]);
         const source = ctx.createMediaStreamSource(micOnly);
 
-        const analyser = ctx.createAnalyser();
-        analyser.fftSize = 1024;
-        analyser.smoothingTimeConstant = 0.85;
-        source.connect(analyser);
+        const analyserLocal = ctx.createAnalyser();
+        analyserLocal.fftSize = 2048;
+        analyserLocal.smoothingTimeConstant = 0.75;
+        source.connect(analyserLocal);
 
         const gain = ctx.createGain();
         gain.gain.value = 0;
         gainNodeRef.current = gain;
         source.connect(gain);
 
+        const analyserTx = ctx.createAnalyser();
+        analyserTx.fftSize = 2048;
+        analyserTx.smoothingTimeConstant = 0.75;
+
         const dest = ctx.createMediaStreamDestination();
-        gain.connect(dest);
+        gain.connect(analyserTx);
+        analyserTx.connect(dest);
 
         const sentAudio = dest.stream.getAudioTracks()[0];
         const outTracks = videoTrack ? [videoTrack, sentAudio] : [sentAudio];
@@ -249,41 +261,44 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       cancelled = true;
       cancelAnimationFrame(localLevelRafRef.current);
       localLevelRafRef.current = 0;
-      closeLocalAudioGraph();
+      stopLocalMedia();
     };
-  }, [sessionId, role, stopLocalMedia, closeLocalAudioGraph]);
+  }, [sessionId, role, stopLocalMedia]);
 
-  /** Remote vocal level from peer audio (real RTP, not simulated). */
+  /** Remote level from peer audio (real RTP). */
   useEffect(() => {
     const audioTrack = remoteStream?.getAudioTracks().find((t) => t.readyState === "live");
     if (!audioTrack) {
+      setHasRemoteAudio(false);
       setRemoteMicLevel(0);
       return;
     }
 
+    setHasRemoteAudio(true);
+
     let cancelled = false;
-    const remoteBuf = new Uint8Array(1024);
+    const remoteScratch = new Float32Array(2048);
     const remoteRafRef = { id: 0 };
 
     const ctx = new AudioContext();
     void ctx.resume().catch(() => {});
     const src = ctx.createMediaStreamSource(new MediaStream([audioTrack]));
     const analyser = ctx.createAnalyser();
-    analyser.fftSize = 1024;
-    analyser.smoothingTimeConstant = 0.85;
+    analyser.fftSize = 2048;
+    analyser.smoothingTimeConstant = 0.75;
     src.connect(analyser);
 
     const tick = () => {
       if (cancelled) return;
-      analyser.getByteTimeDomainData(remoteBuf);
+      analyser.getFloatTimeDomainData(remoteScratch);
       let sum = 0;
-      for (let i = 0; i < remoteBuf.length; i++) {
-        const x = (remoteBuf[i] - 128) / 128;
+      for (let i = 0; i < remoteScratch.length; i++) {
+        const x = remoteScratch[i];
         sum += x * x;
       }
-      const rms = Math.sqrt(sum / remoteBuf.length);
-      const instant = Math.min(1, rms * 5.5);
-      setRemoteMicLevel((prev) => prev * 0.82 + instant * 0.18);
+      const rms = Math.sqrt(sum / remoteScratch.length);
+      const instant = Math.min(1, rms * 9);
+      setRemoteMicLevel((prev) => prev * 0.78 + instant * 0.22);
       remoteRafRef.id = requestAnimationFrame(tick);
     };
     remoteRafRef.id = requestAnimationFrame(tick);
@@ -293,6 +308,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       cancelAnimationFrame(remoteRafRef.id);
       src.disconnect();
       void ctx.close();
+      setHasRemoteAudio(false);
       setRemoteMicLevel(0);
     };
   }, [remoteStream]);
@@ -556,9 +572,21 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       mediaError,
       clearMediaError,
       localMicLevel,
+      localTalkbackTxLevel,
       remoteMicLevel,
+      hasRemoteAudio,
     }),
-    [localStream, remoteStream, localScreenPreview, mediaError, clearMediaError, localMicLevel, remoteMicLevel],
+    [
+      localStream,
+      remoteStream,
+      localScreenPreview,
+      mediaError,
+      clearMediaError,
+      localMicLevel,
+      localTalkbackTxLevel,
+      remoteMicLevel,
+      hasRemoteAudio,
+    ],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

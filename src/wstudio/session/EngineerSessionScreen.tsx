@@ -84,7 +84,8 @@ export default function EngineerSessionScreen() {
     engineerContinueSession,
   } = useBookingTimer();
   const { expandId, toggleExpand, exitExpand } = useExpandablePanels();
-  const { localStream, remoteStream, localScreenPreview, mediaError } = useStudioMedia();
+  const { localStream, remoteStream, localScreenPreview, mediaError, remoteMicLevel, localTalkbackTxLevel } =
+    useStudioMedia();
   const [extensionPlaceholderOpen, setExtensionPlaceholderOpen] = useState(false);
   const [vocalChannel, setVocalChannel] = useState<1 | 2 | 3>(1);
   const [armRecord, setArmRecord] = useState(false);
@@ -130,8 +131,11 @@ export default function EngineerSessionScreen() {
     demoWarningLevel,
   ]);
 
-  const monitorVocal = Math.min(100, Math.max(0, remoteMicLevel * 100));
-  const monitorTalk = talkbackHeld || live.artistPtt ? 72 : 35;
+  const monitorVocalSignal = Math.min(100, Math.max(0, remoteMicLevel * 100));
+  const monitorTalkSignal = Math.min(
+    100,
+    Math.max(0, Math.max(localTalkbackTxLevel, remoteMicLevel) * 100),
+  );
 
   if (!role) return <Navigate to={JOIN_PATH} replace />;
   if (role === "artist") return <Navigate to="/wstudio/session/artist" replace />;
@@ -400,7 +404,12 @@ export default function EngineerSessionScreen() {
 
             {/* Right: monitoring + effects */}
             <ReceiveRightColumnWrap>
-              <ReceiveMonitoringPanel vocalLevel={monitorVocal} talkbackLevel={monitorTalk} />
+              <ReceiveMonitoringPanel
+                vocalKnobDisplay={Math.min(100, Math.max(0, live.vocalLevel * 100))}
+                vocalSignalLevel={monitorVocalSignal}
+                talkbackKnobDisplay={Math.min(100, Math.max(0, live.talkbackLevel * 100))}
+                talkbackSignalLevel={monitorTalkSignal}
+              />
               <ReceiveEffectsPanel />
             </ReceiveRightColumnWrap>
           </div>

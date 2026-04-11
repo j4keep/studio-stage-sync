@@ -427,23 +427,29 @@ function HardwareKnob({ label, value, size = "lg" }: { label: string; value: num
 }
 
 export function ReceiveMonitoringPanel({
-  vocalLevel,
-  talkbackLevel,
+  vocalKnobDisplay,
+  vocalSignalLevel,
+  talkbackKnobDisplay,
+  talkbackSignalLevel,
 }: {
-  vocalLevel: number;
-  talkbackLevel: number;
+  /** 0–100 decorative knob = user mix setting */
+  vocalKnobDisplay: number;
+  /** 0–100 LED ladder = real incoming vocal signal */
+  vocalSignalLevel: number;
+  talkbackKnobDisplay: number;
+  talkbackSignalLevel: number;
 }) {
   return (
     <div className={cn(PANEL, "p-3")}>
       <div className="mb-2 text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-500">Monitoring</div>
       <div className="flex justify-around gap-2">
         <div className="flex items-end gap-2">
-          <HardwareKnob label="Vocal level" value={vocalLevel} />
-          <VerticalLeds value={vocalLevel} />
+          <HardwareKnob label="Vocal level" value={vocalKnobDisplay} />
+          <VerticalLeds value={vocalSignalLevel} />
         </div>
         <div className="flex items-end gap-2">
-          <HardwareKnob label="Talkback level" value={talkbackLevel} />
-          <VerticalLeds value={talkbackLevel} />
+          <HardwareKnob label="Talkback level" value={talkbackKnobDisplay} />
+          <VerticalLeds value={talkbackSignalLevel} />
         </div>
       </div>
     </div>
