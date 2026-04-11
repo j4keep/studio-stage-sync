@@ -421,12 +421,12 @@ export default function UnifiedSessionScreen() {
   const navigate = useNavigate();
   const {
     role, connection, sessionDisplayName, muted, toggleMute, talkbackHeld, beginTalkback, endTalkback,
-    remoteVocalLevel, live, setSessionRecording, setSessionPlaying, setSessionRecordArmed, updateSessionMonitorLevels,
+       live, setSessionRecording, setSessionPlaying, setSessionRecordArmed, updateSessionMonitorLevels,
     demoClock, leaveSession, screenSharing, toggleScreenShare, collaborationShareActive,
     sessionId,
   } = useSession();
 
-  const { localStream, remoteStream, localScreenPreview } = useStudioMedia();
+  const { localStream, remoteStream, localScreenPreview, localMicLevel, remoteMicLevel } = useStudioMedia();
 
   const {
     booking, totalBookedMinutes, remainingSeconds: bookingRemaining, warningLevel, timerRunning, phase, pendingExtension,
@@ -446,6 +446,8 @@ export default function UnifiedSessionScreen() {
   const headphoneLevel = live.headphoneLevel;
   const cueMix = live.cueMix;
   const peerPtt = isEngineer ? live.artistPtt : live.engineerPtt;
+  /** Artist: own mic; engineer: incoming artist vocal (RTP). */
+  const vocalInputMeterLevel = isArtist ? localMicLevel : remoteMicLevel;
   const hasBooking = !!booking && booking.bookedMinutes > 0;
   const isMobile = useIsMobile();
 
@@ -789,21 +791,21 @@ export default function UnifiedSessionScreen() {
                     <div style={{ fontSize: 11, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>SYNC CONTROLS</div>
                     <div className="my-2 text-center" style={{ fontSize: 14, fontWeight: 600, color: C.text }}>– SYNCED: 120 BPM –</div>
                     <div className="flex flex-wrap items-center justify-center gap-2">
-                      <button onPointerDown={isEngineer ? (e) => { e.preventDefault(); setPlaying(true); } : undefined} className="flex items-center gap-1.5 rounded-[3px] px-4 py-2 text-[13px] font-semibold" style={{
+                      <button onPointerDown={isEngineer ? (e) => { e.preventDefault(); setSessionPlaying(true); } : undefined} className="flex items-center gap-1.5 rounded-[3px] px-4 py-2 text-[13px] font-semibold" style={{
                         background: playing ? `linear-gradient(180deg, #1a3a1a 0%, #0e2a0e 100%)` : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
                         border: `1px solid ${playing ? "#2a6a2a" : C.panelBorder}`, color: C.text,
                         opacity: isEngineer ? 1 : 0.4, cursor: isEngineer ? "pointer" : "not-allowed",
                       }}>
                         <span style={{ color: playing ? C.green : C.text }}>▶</span> Play
                       </button>
-                      <button onPointerDown={isEngineer ? (e) => { e.preventDefault(); setPlaying(false); if (recording) setSessionRecording(false); } : undefined} className="flex items-center gap-1.5 rounded-[3px] px-4 py-2 text-[13px] font-semibold" style={{
+                      <button onPointerDown={isEngineer ? (e) => { e.preventDefault(); setSessionPlaying(false); if (recording) setSessionRecording(false); } : undefined} className="flex items-center gap-1.5 rounded-[3px] px-4 py-2 text-[13px] font-semibold" style={{
                         background: `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
                         border: `1px solid ${C.panelBorder}`, color: C.text,
                         opacity: isEngineer ? 1 : 0.4, cursor: isEngineer ? "pointer" : "not-allowed",
                       }}>
                         <span style={{ color: C.red }}>■</span> Stop
                       </button>
-                      <button onPointerDown={isEngineer ? (e) => { e.preventDefault(); setSessionRecording(!recording); if (!playing) setPlaying(true); } : undefined} className="flex items-center gap-1.5 rounded-[3px] px-4 py-2 text-[13px] font-semibold" style={{
+                      <button onPointerDown={isEngineer ? (e) => { e.preventDefault(); setSessionRecording(!recording); if (!playing) setSessionPlaying(true); } : undefined} className="flex items-center gap-1.5 rounded-[3px] px-4 py-2 text-[13px] font-semibold" style={{
                         background: recording ? `linear-gradient(180deg, #4a1a1a 0%, #2a0e0e 100%)` : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
                         border: `1px solid ${recording ? "#6a2222" : C.panelBorder}`, color: C.text,
                         opacity: isEngineer ? 1 : 0.4, cursor: isEngineer ? "pointer" : "not-allowed",
@@ -820,12 +822,12 @@ export default function UnifiedSessionScreen() {
                     </div>
                     <div className="mb-2 text-center" style={{ fontSize: 14, fontWeight: 700, color: C.text, textTransform: "uppercase" }}>REMOTE VOCAL</div>
                     <Inset className="p-2">
-                      <HorizontalMeter level={0} />
-                      <div className="mt-1.5"><SpectrumBars level={0} /></div>
+                      <HorizontalMeter level={vocalInputMeterLevel} />
+                      <div className="mt-1.5"><SpectrumBars level={vocalInputMeterLevel} /></div>
                       <div className="mt-1"><FreqLabels /></div>
                     </Inset>
                     <div className="mt-3 flex justify-center">
-                      <button onPointerDown={isEngineer ? (e) => { e.preventDefault(); setArmed(!armed); } : undefined} className="rounded-[3px] px-6 py-2 text-[13px] font-bold uppercase tracking-wide" style={{
+                      <button onPointerDown={isEngineer ? (e) => { e.preventDefault(); setSessionRecordArmed(!armed); } : undefined} className="rounded-[3px] px-6 py-2 text-[13px] font-bold uppercase tracking-wide" style={{
                         background: armed ? `linear-gradient(180deg, #4a1a1a 0%, #2a0e0e 100%)` : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
                         border: `1px solid ${armed ? "#6a2222" : C.panelBorder}`, color: C.text,
                         opacity: isEngineer ? 1 : 0.4, cursor: isEngineer ? "pointer" : "not-allowed",
@@ -868,9 +870,9 @@ export default function UnifiedSessionScreen() {
                     <div className="flex flex-col items-center gap-1">
                       <span style={{ fontSize: 10, fontWeight: 500, color: C.text }}>Vocal Level</span>
                       <div className="flex items-end gap-1.5">
-                        <Knob value={vocalLevel} size={50} onChange={setVocalLevel} accent={C.acLime} />
-                        <LedMeter level={0} height={60} />
-                        <Fader value={vocalLevel} height={60} onChange={setVocalLevel} />
+                        <Knob value={vocalLevel} size={50} onChange={(v) => updateSessionMonitorLevels({ vocalLevel: v })} accent={C.acLime} />
+                        <LedMeter level={vocalLevel * (0.35 + vocalInputMeterLevel * 0.65)} height={60} />
+                        <Fader value={vocalLevel} height={60} onChange={(v) => updateSessionMonitorLevels({ vocalLevel: v })} />
                       </div>
                     </div>
                     <div className="flex flex-col items-center gap-1">
@@ -884,15 +886,15 @@ export default function UnifiedSessionScreen() {
                     <div className="flex flex-col items-center gap-1">
                       <span style={{ fontSize: 10, fontWeight: 500, color: C.text }}>Headphone</span>
                       <div className="flex items-end gap-1.5">
-                        <Knob value={headphoneLevel} size={50} onChange={setHeadphoneLevel} accent={C.acOrange} />
-                        <LedMeter level={0} height={60} />
-                        <Fader value={headphoneLevel} height={60} onChange={setHeadphoneLevel} />
+                        <Knob value={headphoneLevel} size={50} onChange={(v) => updateSessionMonitorLevels({ headphoneLevel: v })} accent={C.acOrange} />
+                        <LedMeter level={headphoneLevel} height={60} />
+                        <Fader value={headphoneLevel} height={60} onChange={(v) => updateSessionMonitorLevels({ headphoneLevel: v })} />
                       </div>
                       <span style={{ fontSize: 8, color: C.dim }}>🎧 HP OUT</span>
                     </div>
                     <div className="flex flex-col items-center gap-1">
                       <span style={{ fontSize: 10, fontWeight: 500, color: C.text }}>Cue Mix</span>
-                      <Knob value={cueMix} size={50} onChange={setCueMix} accent={C.acPurple} />
+                      <Knob value={cueMix} size={50} onChange={(v) => updateSessionMonitorLevels({ cueMix: v })} accent={C.acPurple} />
                       <div className="flex w-full items-center justify-between px-1" style={{ fontSize: 8, color: C.dim }}>
                         <span>VOX</span><span>BEAT</span>
                       </div>
@@ -1111,8 +1113,8 @@ export default function UnifiedSessionScreen() {
                 </div>
                 <div className="mb-3 text-center" style={{ fontSize: 16, fontWeight: 700, color: C.text, textTransform: "uppercase", letterSpacing: "0.04em" }}>REMOTE VOCAL</div>
                 <Inset className="p-3">
-                  <HorizontalMeter level={remoteVocalLevel} />
-                  <div className="mt-2"><SpectrumBars level={remoteVocalLevel} /></div>
+                  <HorizontalMeter level={vocalInputMeterLevel} />
+                  <div className="mt-2"><SpectrumBars level={vocalInputMeterLevel} /></div>
                   <div className="mt-1"><FreqLabels /></div>
                 </Inset>
                 <div className="mt-4 flex justify-center">
@@ -1140,7 +1142,7 @@ export default function UnifiedSessionScreen() {
                 <span style={{ fontSize: 11, fontWeight: 500, color: C.text }}>Vocal Level</span>
                 <div className="flex items-end gap-2">
                   <Knob value={vocalLevel} size={58} onChange={(v) => updateSessionMonitorLevels({ vocalLevel: v })} accent={C.acLime} />
-                  <LedMeter level={vocalLevel * (0.35 + remoteVocalLevel * 0.65)} height={72} />
+                  <LedMeter level={vocalLevel * (0.35 + vocalInputMeterLevel * 0.65)} height={72} />
                   <Fader value={vocalLevel} height={72} onChange={(v) => updateSessionMonitorLevels({ vocalLevel: v })} />
                 </div>
               </div>

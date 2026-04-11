@@ -58,7 +58,6 @@ export default function EngineerSessionScreen() {
     toggleScreenShare,
     muted,
     toggleMute,
-    remoteVocalLevel,
     leaveSession,
     startDemoSessionClock,
     latencyMs,
@@ -131,7 +130,7 @@ export default function EngineerSessionScreen() {
     demoWarningLevel,
   ]);
 
-  const monitorVocal = Math.min(100, Math.max(0, remoteVocalLevel * 100));
+  const monitorVocal = Math.min(100, Math.max(0, remoteMicLevel * 100));
   const monitorTalk = talkbackHeld || live.artistPtt ? 72 : 35;
 
   if (!role) return <Navigate to={JOIN_PATH} replace />;
@@ -387,7 +386,7 @@ export default function EngineerSessionScreen() {
                   }}
                 />
                 <ReceiveVocalInputPanel
-                  level={remoteVocalLevel}
+                  level={remoteMicLevel}
                   channel={vocalChannel}
                   onChannel={setVocalChannel}
                   armed={armRecord}
@@ -414,7 +413,7 @@ export default function EngineerSessionScreen() {
           onToggleExpand={toggleExpand}
           className=""
         >
-          <ReceiveWaveformFooter vocalLevel={remoteVocalLevel} recording={live.recording} disabled={lock} />
+          <ReceiveWaveformFooter vocalLevel={remoteMicLevel} recording={live.recording} disabled={lock} />
         </ExpandableShell>
 
         <div className="flex justify-end px-1">

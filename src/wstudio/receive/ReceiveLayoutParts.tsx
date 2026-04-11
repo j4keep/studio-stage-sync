@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -489,21 +489,14 @@ export function ReceiveWaveformFooter({
   recording: boolean;
   disabled?: boolean;
 }) {
-  const [bars, setBars] = useState<number[]>(() => Array.from({ length: 48 }, () => 0.2));
-
-  useEffect(() => {
-    let id: number;
-    const tick = () => {
-      setBars((prev) =>
-        prev.map((_, i) => {
-          const wave = Math.sin(Date.now() / 200 + i * 0.35) * 0.25 + vocalLevel * 0.55;
-          return Math.min(1, Math.max(0.08, wave + Math.random() * 0.12));
-        }),
-      );
-      id = requestAnimationFrame(tick);
-    };
-    id = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(id);
+  const bars = useMemo(() => {
+    const n = 48;
+    const v = Math.min(1, Math.max(0, vocalLevel));
+    return Array.from({ length: n }, (_, i) => {
+      const t = i / (n - 1);
+      const shape = 0.15 + 0.85 * Math.sin(t * Math.PI);
+      return Math.min(1, Math.max(0.02, v * shape));
+    });
   }, [vocalLevel]);
 
   return (
