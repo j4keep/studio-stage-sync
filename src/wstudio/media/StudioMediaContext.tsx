@@ -19,6 +19,16 @@ import {
 
 const ICE_SERVERS: RTCIceServer[] = [{ urls: "stun:stun.l.google.com:19302" }];
 
+function stopMediaStream(stream: MediaStream | null) {
+  stream?.getTracks().forEach((track) => {
+    try {
+      track.stop();
+    } catch {
+      /* ignore track shutdown errors */
+    }
+  });
+}
+
 function toSignalRole(role: Role): RtcSignalRole | null {
   return role === "artist" || role === "engineer" ? role : null;
 }
@@ -42,6 +52,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
   const [mediaError, setMediaError] = useState<string | null>(null);
 
   const pcRef = useRef<RTCPeerConnection | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
   const cameraVideoTrackRef = useRef<MediaStreamTrack | null>(null);
   const inboundStreamRef = useRef<MediaStream | null>(null);
   const pendingIceRef = useRef<RTCIceCandidateInit[]>([]);
@@ -54,6 +65,27 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
 
   const clearMediaError = useCallback(() => setMediaError(null), []);
 
+  const stopLocalMedia = useCallback((updateState = true) => {
+    stopMediaStream(localStreamRef.current);
+    localStreamRef.current = null;
+    cameraVideoTrackRef.current = null;
+    if (updateState) {
+      setLocalStream(null);
+    }
+  }, []);
+
+  const stopScreenPreview = useCallback((updateState = true) => {
+    stopMediaStream(screenPreviewStreamRef.current);
+    screenPreviewStreamRef.current = null;
+    if (updateState) {
+      setLocalScreenPreview(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    localStreamRef.current = localStream;
+  }, [localStream]);
+
   useEffect(() => {
     const audio = localStream?.getAudioTracks()[0];
     if (!audio) return;
@@ -65,20 +97,12 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!sessionId.trim() || !role) {
       // No active session — stop all tracks and release camera
-      setLocalStream((prev) => {
-        prev?.getTracks().forEach((t) => t.stop());
-        return null;
-      });
-      cameraVideoTrackRef.current = null;
+      stopLocalMedia();
       return;
     }
 
     // Starting a new session — stop previous tracks first
-    setLocalStream((prev) => {
-      prev?.getTracks().forEach((t) => t.stop());
-      return null;
-    });
-    cameraVideoTrackRef.current = null;
+    stopLocalMedia();
 
     let cancelled = false;
     (async () => {
@@ -95,6 +119,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
           return;
         }
         cameraVideoTrackRef.current = ms.getVideoTracks()[0] ?? null;
+        localStreamRef.current = ms;
         // Audio starts muted; the talkback effect below will enable it
         const a = ms.getAudioTracks()[0];
         if (a) a.enabled = false;
@@ -103,8 +128,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       } catch (e) {
         if (!cancelled) {
           setMediaError(e instanceof Error ? e.message : "Could not access camera or microphone");
-          setLocalStream(null);
-          cameraVideoTrackRef.current = null;
+          stopLocalMedia();
         }
       }
     })();
@@ -113,20 +137,23 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       cancelled = true;
     };
     // Only re-run when session identity changes, NOT on mute/talkback toggles
-  }, [sessionId, role]);
+  }, [sessionId, role, stopLocalMedia]);
 
   // Hard cleanup: stop all tracks when provider unmounts (user navigates away)
   useEffect(() => {
     return () => {
-      setLocalStream((prev) => {
-        prev?.getTracks().forEach((t) => t.stop());
-        return null;
-      });
-      cameraVideoTrackRef.current = null;
-      screenPreviewStreamRef.current?.getTracks().forEach((t) => t.stop());
-      screenPreviewStreamRef.current = null;
+      stopLocalMedia(false);
+      stopScreenPreview(false);
+      if (pcRef.current) {
+        pcRef.current.onicecandidate = null;
+        pcRef.current.ontrack = null;
+        pcRef.current.close();
+        pcRef.current = null;
+      }
+      inboundStreamRef.current = null;
+      pendingIceRef.current = [];
     };
-  }, []);
+  }, [stopLocalMedia, stopScreenPreview]);
 
   useEffect(() => {
     if (!sessionId.trim() || !role || !localStream) {
@@ -295,11 +322,9 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!role) {
-      screenPreviewStreamRef.current?.getTracks().forEach((t) => t.stop());
-      screenPreviewStreamRef.current = null;
-      setLocalScreenPreview(null);
+      stopScreenPreview();
     }
-  }, [role]);
+  }, [role, stopScreenPreview]);
 
   useEffect(() => {
     if (role !== "engineer") {
@@ -311,9 +336,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     const cam = cameraVideoTrackRef.current;
 
     if (!screenSharing) {
-      screenPreviewStreamRef.current?.getTracks().forEach((t) => t.stop());
-      screenPreviewStreamRef.current = null;
-      setLocalScreenPreview(null);
+      stopScreenPreview();
       if (videoSender && cam && cam.readyState === "live") {
         void videoSender.replaceTrack(cam);
       }
@@ -348,7 +371,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [screenSharing, role]);
+  }, [screenSharing, role, stopScreenPreview]);
 
   const value = useMemo<StudioMediaContextValue>(
     () => ({

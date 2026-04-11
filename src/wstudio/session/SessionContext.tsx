@@ -123,25 +123,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     phase: "scheduled",
   });
 
-  // Auto-join as engineer in demo mode when navigating directly to /live
-  const autoJoinedRef = useRef(false);
-  useEffect(() => {
-    if (WSTUDIO_DEMO_MODE && !role && !autoJoinedRef.current) {
-      autoJoinedRef.current = true;
-      const id = generateMockSessionId();
-      setSessionId(id);
-      setRole("engineer");
-      setConnection("connected");
-      setSessionDisplayName(`Session: ${DEMO_SESSION_TITLE}`);
-      setDemoClock({
-        totalMinutes: DEMO_TIMER_MINUTES,
-        remainingSeconds: DEMO_TIMER_MINUTES * 60,
-        running: true,
-        phase: "live",
-      });
-    }
-  }, [role]);
-
   useEffect(() => {
     if (!sessionId.trim() || !role) {
       setLive(defaultLiveState());

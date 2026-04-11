@@ -1,5 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { SessionProvider } from "./session/SessionContext";
 import { BookingTimerProvider } from "./booking/BookingTimerContext";
 import { StudioMediaProvider } from "./media/StudioMediaContext";
@@ -37,18 +37,26 @@ class WStudioErrorBoundary extends Component<{ children: ReactNode }, EBState> {
 
 /** Shell for remote session flows. Nav is handled by AppLayout. */
 export function WStudioLayout() {
+  const { pathname } = useLocation();
+  const mediaEnabled =
+    pathname === "/wstudio/session/live" ||
+    pathname === "/wstudio/session/artist" ||
+    pathname === "/wstudio/session/engineer";
+
+  const shell = (
+    <div className="flex min-h-screen w-full flex-col bg-zinc-950 text-zinc-100">
+      <WStudioErrorBoundary>
+        <div className="flex min-h-screen w-full min-w-0 flex-1 flex-col">
+          <Outlet />
+        </div>
+      </WStudioErrorBoundary>
+    </div>
+  );
+
   return (
     <SessionProvider>
       <BookingTimerProvider>
-        <StudioMediaProvider>
-          <div className="flex min-h-screen w-full flex-col bg-zinc-950 text-zinc-100">
-            <WStudioErrorBoundary>
-              <div className="flex min-h-screen w-full min-w-0 flex-1 flex-col">
-                <Outlet />
-              </div>
-            </WStudioErrorBoundary>
-          </div>
-        </StudioMediaProvider>
+        {mediaEnabled ? <StudioMediaProvider>{shell}</StudioMediaProvider> : shell}
       </BookingTimerProvider>
     </SessionProvider>
   );
