@@ -55,6 +55,8 @@ function leavePatch(role: Role): Partial<SessionLiveState> {
       engineerPtt: false,
       screenShareActive: false,
       recording: false,
+      playing: false,
+      recordArmed: false,
     };
   }
   if (role === "artist") {
@@ -97,6 +99,14 @@ export type SessionContextValue = {
   /** Synced session state (recording, peer PTT, share, artist mute) */
   live: SessionLiveState;
   setSessionRecording: (recording: boolean) => void;
+  setSessionPlaying: (playing: boolean) => void;
+  setSessionRecordArmed: (armed: boolean) => void;
+  updateSessionMonitorLevels: (patch: {
+    vocalLevel?: number;
+    talkbackLevel?: number;
+    headphoneLevel?: number;
+    cueMix?: number;
+  }) => void;
   /** True when engineer has share on OR live says share active (for artist view) */
   collaborationShareActive: boolean;
 };
@@ -147,6 +157,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
     setConnection(live.artistJoined && live.engineerJoined ? "connected" : "connecting");
   }, [sessionId, role, live.artistJoined, live.engineerJoined]);
+
+  useEffect(() => {
+    if (role !== "artist") return;
+    setMuted(live.artistMuted);
+  }, [role, live.artistMuted]);
 
   useEffect(() => {
     if (!talkbackHeld) return;
@@ -269,6 +284,41 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [role, sessionId],
   );
 
+  const setSessionPlaying = useCallback(
+    (playing: boolean) => {
+      if (role !== "engineer" || !sessionId.trim()) return;
+      writeLive(sessionId, { playing });
+    },
+    [role, sessionId],
+  );
+
+  const setSessionRecordArmed = useCallback(
+    (armed: boolean) => {
+      if (role !== "engineer" || !sessionId.trim()) return;
+      writeLive(sessionId, { recordArmed: armed });
+    },
+    [role, sessionId],
+  );
+
+  const updateSessionMonitorLevels = useCallback(
+    (patch: {
+      vocalLevel?: number;
+      talkbackLevel?: number;
+      headphoneLevel?: number;
+      cueMix?: number;
+    }) => {
+      if (!sessionId.trim() || !role) return;
+      const clamp = (n: number) => Math.min(1, Math.max(0, n));
+      const next: Partial<SessionLiveState> = {};
+      if (patch.vocalLevel !== undefined) next.vocalLevel = clamp(patch.vocalLevel);
+      if (patch.talkbackLevel !== undefined) next.talkbackLevel = clamp(patch.talkbackLevel);
+      if (patch.headphoneLevel !== undefined) next.headphoneLevel = clamp(patch.headphoneLevel);
+      if (patch.cueMix !== undefined) next.cueMix = clamp(patch.cueMix);
+      if (Object.keys(next).length) writeLive(sessionId, next);
+    },
+    [sessionId, role],
+  );
+
   useEffect(() => {
     if (connection !== "connected" || !WSTUDIO_DEMO_MODE) return;
     let frame: number;
@@ -332,6 +382,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       startDemoSessionClock,
       live,
       setSessionRecording,
+      setSessionPlaying,
+      setSessionRecordArmed,
+      updateSessionMonitorLevels,
       collaborationShareActive,
     }),
     [
@@ -355,6 +408,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       startDemoSessionClock,
       live,
       setSessionRecording,
+      setSessionPlaying,
+      setSessionRecordArmed,
+      updateSessionMonitorLevels,
       collaborationShareActive,
     ],
   );

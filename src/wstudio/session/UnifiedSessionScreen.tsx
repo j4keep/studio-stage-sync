@@ -421,7 +421,8 @@ export default function UnifiedSessionScreen() {
   const navigate = useNavigate();
   const {
     role, connection, sessionDisplayName, muted, toggleMute, talkbackHeld, beginTalkback, endTalkback,
-    remoteVocalLevel, live, setSessionRecording, demoClock, leaveSession, screenSharing, toggleScreenShare, collaborationShareActive,
+    remoteVocalLevel, live, setSessionRecording, setSessionPlaying, setSessionRecordArmed, updateSessionMonitorLevels,
+    demoClock, leaveSession, screenSharing, toggleScreenShare, collaborationShareActive,
     sessionId,
   } = useSession();
 
@@ -438,6 +439,13 @@ export default function UnifiedSessionScreen() {
   const isEngineer = role === "engineer";
   const isArtist = role === "artist";
   const recording = live.recording;
+  const playing = live.playing;
+  const armed = live.recordArmed;
+  const vocalLevel = live.vocalLevel;
+  const talkbackLevel = live.talkbackLevel;
+  const headphoneLevel = live.headphoneLevel;
+  const cueMix = live.cueMix;
+  const peerPtt = isEngineer ? live.artistPtt : live.engineerPtt;
   const hasBooking = !!booking && booking.bookedMinutes > 0;
   const isMobile = useIsMobile();
 
@@ -524,12 +532,6 @@ export default function UnifiedSessionScreen() {
 
   const [expandedPanel, setExpandedPanel] = useState<"artist" | "engineer" | "screen" | null>(null);
 
-  const [armed, setArmed] = useState(false);
-  const [playing, setPlaying] = useState(false);
-  const [vocalLevel, setVocalLevel] = useState(0.55);
-  const [talkbackLevel, setTalkbackLevel] = useState(0.45);
-  const [headphoneLevel, setHeadphoneLevel] = useState(0.7);
-  const [cueMix, setCueMix] = useState(0.5);
   const [autoUpload, setAutoUpload] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const shellRef = useRef<HTMLDivElement>(null);
@@ -955,7 +957,7 @@ export default function UnifiedSessionScreen() {
             {/* Mute / Talk / Settings */}
             <Panel accent={C.acOrange}>
               <div className="grid grid-cols-3" style={{ borderTop: `1px solid ${C.panelBorder}` }}>
-                <button onPointerDown={(e) => { e.preventDefault(); toggleMute(); }} className="flex flex-col items-center justify-center gap-1.5 py-3">
+                <button type="button" onPointerDown={(e) => { e.preventDefault(); toggleMute(); }} className="flex flex-col items-center justify-center gap-1.5 py-3">
                   <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={muted ? C.red : C.label} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                     <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
                     <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
@@ -963,12 +965,36 @@ export default function UnifiedSessionScreen() {
                   </svg>
                   <span style={{ fontSize: 11, color: C.text }}>Mute</span>
                 </button>
-                <button onPointerDown={beginTalkback} onPointerUp={endTalkback} onPointerLeave={endTalkback} className="flex flex-col items-center justify-center gap-1.5 py-3" style={{ borderLeft: `1px solid ${C.panelBorder}`, borderRight: `1px solid ${C.panelBorder}` }}>
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full" style={{
-                    background: talkbackHeld ? `radial-gradient(circle at 35% 30%, rgba(255,255,255,0.3), ${C.blue})` : `radial-gradient(circle at 35% 30%, rgba(255,255,255,0.25), ${C.blue})`,
-                    boxShadow: talkbackHeld ? `0 0 16px ${C.blue}40` : "none",
-                  }}>
-                    <span style={{ color: C.white, fontSize: 14 }}>▶</span>
+                <button
+                  type="button"
+                  onPointerDown={(e) => { e.preventDefault(); beginTalkback(); }}
+                  onPointerUp={endTalkback}
+                  onPointerLeave={endTalkback}
+                  onTouchStart={(e) => { e.preventDefault(); beginTalkback(); }}
+                  onTouchEnd={(e) => { e.preventDefault(); endTalkback(); }}
+                  className="flex flex-col items-center justify-center gap-1.5 py-3"
+                  style={{
+                    borderLeft: `1px solid ${C.panelBorder}`,
+                    borderRight: `1px solid ${C.panelBorder}`,
+                    touchAction: "none",
+                    outline: peerPtt && !talkbackHeld ? `1px solid ${C.acCyan}` : undefined,
+                    outlineOffset: 2,
+                  }}
+                >
+                  <div
+                    className="flex h-9 w-9 items-center justify-center rounded-full transition-[box-shadow,transform] duration-100"
+                    style={{
+                      background:
+                        talkbackHeld
+                          ? `radial-gradient(circle at 35% 30%, rgba(255,255,255,0.45), ${C.blue})`
+                          : peerPtt
+                            ? `radial-gradient(circle at 35% 30%, rgba(255,255,255,0.22), #2563eb)`
+                            : `radial-gradient(circle at 35% 30%, rgba(255,255,255,0.25), ${C.blue})`,
+                      boxShadow: talkbackHeld ? `0 0 20px ${C.blue}80, inset 0 0 12px rgba(255,255,255,0.15)` : peerPtt ? `0 0 12px rgba(37,99,235,0.45)` : "none",
+                      transform: talkbackHeld ? "scale(1.06)" : "scale(1)",
+                    }}
+                  >
+                    <span style={{ color: C.white, fontSize: 14 }}>{"\u25B6"}</span>
                   </div>
                   <span style={{ fontSize: 11, color: C.text }}>Talk</span>
                 </button>
@@ -1048,7 +1074,7 @@ export default function UnifiedSessionScreen() {
               <div style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>SYNC CONTROLS</div>
               <div className="my-3 text-center" style={{ fontSize: 16, fontWeight: 600, color: C.text }}>– SYNCED: 120 BPM –</div>
               <div className="flex items-center justify-center gap-2">
-                <button onPointerDown={isEngineer ? (e) => { e.preventDefault(); setPlaying(true); } : undefined} className="flex items-center gap-2 rounded-[3px] px-5 py-2.5 text-[15px] font-semibold" style={{
+                <button type="button" onPointerDown={isEngineer ? (e) => { e.preventDefault(); setSessionPlaying(true); } : undefined} className="flex items-center gap-2 rounded-[3px] px-5 py-2.5 text-[15px] font-semibold" style={{
                   background: playing ? `linear-gradient(180deg, #1a3a1a 0%, #0e2a0e 100%)` : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
                   border: `1px solid ${playing ? "#2a6a2a" : C.panelBorder}`, color: C.text,
                   boxShadow: playing ? `0 0 14px rgba(74,222,96,0.15)` : `inset 0 1px 0 rgba(255,255,255,0.05)`,
@@ -1056,7 +1082,7 @@ export default function UnifiedSessionScreen() {
                 }}>
                   <span style={{ color: playing ? C.green : C.text }}>▶</span> Play
                 </button>
-                <button onPointerDown={isEngineer ? (e) => { e.preventDefault(); setPlaying(false); if (recording) setSessionRecording(false); } : undefined} className="flex items-center gap-2 rounded-[3px] px-5 py-2.5 text-[15px] font-semibold" style={{
+                <button type="button" onPointerDown={isEngineer ? (e) => { e.preventDefault(); setSessionPlaying(false); if (recording) setSessionRecording(false); } : undefined} className="flex items-center gap-2 rounded-[3px] px-5 py-2.5 text-[15px] font-semibold" style={{
                   background: `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
                   border: `1px solid ${C.panelBorder}`, color: C.text,
                   boxShadow: `inset 0 1px 0 rgba(255,255,255,0.05)`,
@@ -1064,7 +1090,7 @@ export default function UnifiedSessionScreen() {
                 }}>
                   <span style={{ color: C.red }}>■</span> Stop
                 </button>
-                <button onPointerDown={isEngineer ? (e) => { e.preventDefault(); setSessionRecording(!recording); if (!playing) setPlaying(true); } : undefined} className="flex items-center gap-2 rounded-[3px] px-5 py-2.5 text-[15px] font-semibold" style={{
+                <button type="button" onPointerDown={isEngineer ? (e) => { e.preventDefault(); const next = !recording; setSessionRecording(next); if (!playing && next) setSessionPlaying(true); } : undefined} className="flex items-center gap-2 rounded-[3px] px-5 py-2.5 text-[15px] font-semibold" style={{
                   background: recording ? `linear-gradient(180deg, #4a1a1a 0%, #2a0e0e 100%)` : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
                   border: `1px solid ${recording ? "#6a2222" : C.panelBorder}`, color: C.text,
                   boxShadow: recording ? `0 0 14px rgba(239,68,68,0.15)` : `inset 0 1px 0 rgba(255,255,255,0.05)`,
@@ -1085,12 +1111,12 @@ export default function UnifiedSessionScreen() {
                 </div>
                 <div className="mb-3 text-center" style={{ fontSize: 16, fontWeight: 700, color: C.text, textTransform: "uppercase", letterSpacing: "0.04em" }}>REMOTE VOCAL</div>
                 <Inset className="p-3">
-                  <HorizontalMeter level={0} />
-                  <div className="mt-2"><SpectrumBars level={0} /></div>
+                  <HorizontalMeter level={remoteVocalLevel} />
+                  <div className="mt-2"><SpectrumBars level={remoteVocalLevel} /></div>
                   <div className="mt-1"><FreqLabels /></div>
                 </Inset>
                 <div className="mt-4 flex justify-center">
-                  <button onPointerDown={isEngineer ? (e) => { e.preventDefault(); setArmed(!armed); } : undefined} className="rounded-[3px] px-8 py-2.5 text-[15px] font-bold uppercase tracking-wide" style={{
+                  <button type="button" onPointerDown={isEngineer ? (e) => { e.preventDefault(); setSessionRecordArmed(!armed); } : undefined} className="rounded-[3px] px-8 py-2.5 text-[15px] font-bold uppercase tracking-wide" style={{
                     background: armed ? `linear-gradient(180deg, #4a1a1a 0%, #2a0e0e 100%)` : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
                     border: `1px solid ${armed ? "#6a2222" : C.panelBorder}`, color: C.text,
                     boxShadow: armed ? `0 0 14px rgba(239,68,68,0.15)` : `inset 0 1px 0 rgba(255,255,255,0.05)`,
@@ -1113,31 +1139,31 @@ export default function UnifiedSessionScreen() {
               <div className="flex flex-col items-center gap-1">
                 <span style={{ fontSize: 11, fontWeight: 500, color: C.text }}>Vocal Level</span>
                 <div className="flex items-end gap-2">
-                  <Knob value={vocalLevel} size={58} onChange={setVocalLevel} accent={C.acLime} />
-                  <LedMeter level={0} height={72} />
-                  <Fader value={vocalLevel} height={72} onChange={setVocalLevel} />
+                  <Knob value={vocalLevel} size={58} onChange={(v) => updateSessionMonitorLevels({ vocalLevel: v })} accent={C.acLime} />
+                  <LedMeter level={vocalLevel * (0.35 + remoteVocalLevel * 0.65)} height={72} />
+                  <Fader value={vocalLevel} height={72} onChange={(v) => updateSessionMonitorLevels({ vocalLevel: v })} />
                 </div>
               </div>
               <div className="flex flex-col items-center gap-1">
                 <span style={{ fontSize: 11, fontWeight: 500, color: C.text }}>Talkback Level</span>
                 <div className="flex items-end gap-2">
-                  <Knob value={talkbackLevel} size={58} onChange={setTalkbackLevel} accent={C.acCyan} />
-                  <LedMeter level={0} height={72} />
-                  <Fader value={talkbackLevel} height={72} onChange={setTalkbackLevel} />
+                  <Knob value={talkbackLevel} size={58} onChange={(v) => updateSessionMonitorLevels({ talkbackLevel: v })} accent={C.acCyan} />
+                  <LedMeter level={Math.min(1, talkbackLevel * (peerPtt || talkbackHeld ? 1.15 : 0.4))} height={72} />
+                  <Fader value={talkbackLevel} height={72} onChange={(v) => updateSessionMonitorLevels({ talkbackLevel: v })} />
                 </div>
               </div>
               <div className="flex flex-col items-center gap-1">
                 <span style={{ fontSize: 11, fontWeight: 500, color: C.text }}>Headphone</span>
                 <div className="flex items-end gap-2">
-                  <Knob value={headphoneLevel} size={58} onChange={setHeadphoneLevel} accent={C.acOrange} />
-                  <LedMeter level={0} height={72} />
-                  <Fader value={headphoneLevel} height={72} onChange={setHeadphoneLevel} />
+                  <Knob value={headphoneLevel} size={58} onChange={(v) => updateSessionMonitorLevels({ headphoneLevel: v })} accent={C.acOrange} />
+                  <LedMeter level={headphoneLevel} height={72} />
+                  <Fader value={headphoneLevel} height={72} onChange={(v) => updateSessionMonitorLevels({ headphoneLevel: v })} />
                 </div>
                 <span style={{ fontSize: 8, color: C.dim, letterSpacing: "0.08em" }}>🎧 HP OUT</span>
               </div>
               <div className="flex flex-col items-center gap-1">
                 <span style={{ fontSize: 11, fontWeight: 500, color: C.text }}>Cue Mix</span>
-                <Knob value={cueMix} size={58} onChange={setCueMix} accent={C.acPurple} />
+                <Knob value={cueMix} size={58} onChange={(v) => updateSessionMonitorLevels({ cueMix: v })} accent={C.acPurple} />
                 <div className="flex w-full items-center justify-between px-1" style={{ fontSize: 8, color: C.dim }}>
                   <span>VOX</span><span>BEAT</span>
                 </div>
@@ -1149,8 +1175,8 @@ export default function UnifiedSessionScreen() {
           </Panel>
 
           {/* ── VOCAL TAKE WAVEFORM (compact, same height as mute/talk/settings) ── */}
-          <Panel accent={C.acCyan} className="col-span-2 flex items-center gap-3 px-3 py-2">
-            <span style={{ fontSize: 13, fontWeight: 600, color: C.text, whiteSpace: "nowrap" }}>Jay's Vocal Take 4 - {recording ? "Recording..." : "Ready"}</span>
+          <Panel accent={C.acCyan} className={`${isMobile ? "" : "col-span-2"} flex items-center gap-3 px-3 py-2`}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: C.text, whiteSpace: "nowrap" }}>Jay&apos;s Vocal Take 4 - {recording ? "Recording..." : playing ? "Playing" : "Ready"}</span>
             <Inset className="flex-1 overflow-hidden rounded-[3px] p-0.5">
               <Waveform recording={recording} />
             </Inset>
@@ -1212,7 +1238,9 @@ export default function UnifiedSessionScreen() {
             }}>
               <span className={recording ? "animate-pulse" : ""} style={{ color: C.red }}>●</span>
               <span style={{ color: C.red }}>REC</span>
-              <span style={{ color: recording ? C.red : C.dim }}>{recording ? "● RECORDING..." : ""}</span>
+              <span style={{ color: recording ? C.red : armed ? C.yellow : C.dim }}>
+                {recording ? "● RECORDING..." : armed ? "● ARMED" : ""}
+              </span>
             </div>
             <div className="ml-auto flex items-center gap-3">
               <div className="flex gap-[3px] rounded-[3px] px-1.5 py-1" style={{ background: C.inset, border: `1px solid ${C.insetBorder}` }}>

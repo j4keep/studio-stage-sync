@@ -51,6 +51,18 @@ export function SessionCommIndicators({
       className: "border-red-600/60 bg-red-950/50 text-red-200 animate-pulse",
     },
     {
+      key: "armed",
+      label: "Record armed",
+      show: s.recordArmed && !s.recording,
+      className: "border-amber-600/50 bg-amber-950/40 text-amber-200",
+    },
+    {
+      key: "play",
+      label: "Playing",
+      show: s.playing,
+      className: "border-emerald-600/50 bg-emerald-950/40 text-emerald-200",
+    },
+    {
       key: "lat",
       label: q === "poor" ? "Latency high" : q === "fair" ? "Latency elevated" : "Latency OK",
       show: connectionConnected && (q === "fair" || q === "poor"),

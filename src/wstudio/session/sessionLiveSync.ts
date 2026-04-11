@@ -8,6 +8,15 @@ export type SessionLiveState = {
   artistMuted: boolean;
   artistJoined: boolean;
   engineerJoined: boolean;
+  /** Transport playback (UI sync; engineer drives) */
+  playing: boolean;
+  /** Record arm (engineer drives) */
+  recordArmed: boolean;
+  /** Monitor mix 0–1 (shared session snapshot) */
+  vocalLevel: number;
+  talkbackLevel: number;
+  headphoneLevel: number;
+  cueMix: number;
 };
 
 const EVT = "wstudio-session-live-sync";
@@ -31,6 +40,12 @@ export function defaultLiveState(): SessionLiveState {
     artistMuted: false,
     artistJoined: false,
     engineerJoined: false,
+    playing: false,
+    recordArmed: false,
+    vocalLevel: 0.55,
+    talkbackLevel: 0.45,
+    headphoneLevel: 0.7,
+    cueMix: 0.5,
   };
 }
 
