@@ -18,24 +18,19 @@ export default function StudioBridgeScreen() {
   } = useStudioMedia();
 
   const vocalPathReady = !!(engineerDawVocalIn1 && engineerDawVocalIn2 && hasRemoteAudio);
-  const artistPresent = live.artistJoined;
-  const sessionLinked = connection === "connected";
   const signalDetected = engineerBridgeVocalLevel >= 0.035;
 
+  /** Bridge status derives from actual audio path, not session-level handshake */
   const feedInactiveReason = !sessionId.trim()
     ? "No session"
-    : !sessionLinked
-      ? "Session not linked"
-      : !artistPresent
-        ? "Artist not in session"
-        : !hasRemoteAudio
-          ? "No remote audio track"
-          : !vocalPathReady
-            ? "Vocal bus not ready"
-            : null;
+    : !hasRemoteAudio
+      ? "No remote audio track"
+      : !vocalPathReady
+        ? "Vocal bus not ready"
+        : null;
 
   const feedStatusLabel =
-    vocalPathReady && sessionLinked && artistPresent
+    vocalPathReady
       ? signalDetected
         ? "ACTIVE"
         : "ACTIVE · quiet"
@@ -43,7 +38,7 @@ export default function StudioBridgeScreen() {
 
   const artistLine =
     live.remoteArtistLabel.trim() ||
-    (artistPresent ? "Artist connected (no display name yet)" : "Waiting for artist…");
+    (hasRemoteAudio ? "Artist connected" : "Waiting for artist…");
 
   const sessionNameLine =
     sessionDisplayName.trim() ||
