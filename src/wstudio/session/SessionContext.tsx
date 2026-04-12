@@ -434,17 +434,3 @@ export function useSession() {
   if (!v) throw new Error("useSession requires SessionProvider");
   return v;
 }
-     updateSessionMonitorLevels,
-      updateSessionHeadphoneLevel,
-      collaborationShareActive,
-    ],
-  );
-
-  return <SessionCtx.Provider value={value}>{children}</SessionCtx.Provider>;
-}
-
-export function useSession() {
-  const v = useContext(SessionCtx);
-  if (!v) throw new Error("useSession requires SessionProvider");
-  return v;
-}
