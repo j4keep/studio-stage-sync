@@ -475,6 +475,8 @@ export default function UnifiedSessionScreen() {
     localTalkbackTxLevel,
     remoteMicLevel,
     hasRemoteAudio,
+    engineerDawVocalIn1,
+    engineerBridgeVocalLevel,
   } = useStudioMedia();
 
   const {
@@ -547,6 +549,19 @@ export default function UnifiedSessionScreen() {
   }, [isEngineer, recording, armed, setSessionRecordArmed]);
 
   const engineerRecordDimmed = isEngineer && !recording && !armed;
+  /** Engineer DAW bridge: isolated vocal bus + session/artist sync (session UI extension only). */
+  const bridgePathReady = isEngineer && !!engineerDawVocalIn1 && hasRemoteAudio;
+  const bridgeStatusLabel = !isEngineer
+    ? ""
+    : connection === "disconnected"
+      ? "Disconnected"
+      : connection === "connected" && live.artistJoined
+        ? "Connected"
+        : "Connecting";
+  const bridgeStatusColor =
+    bridgeStatusLabel === "Connected" ? C.green : bridgeStatusLabel === "Connecting" ? C.yellow : C.dim;
+  const bridgeArtistLabel = live.remoteArtistLabel.trim() || "—";
+  const bridgeFeedActive = isEngineer && bridgePathReady && connection === "connected" && live.artistJoined;
   const goToJoin = useCallback(() => navigate("/wstudio/session/join"), [navigate]);
 
   const handleEndSession = useCallback(() => {
@@ -903,6 +918,37 @@ export default function UnifiedSessionScreen() {
                     </div>
                   </Panel>
 
+                  {isEngineer ? (
+                    <Panel accent={C.acPurple} className="p-3">
+                      <div style={{ fontSize: 11, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>W.STUDIO BRIDGE</div>
+                      <div className="mt-2 space-y-1" style={{ fontSize: 10, color: C.text, lineHeight: 1.45 }}>
+                        <div>
+                          <span style={{ color: C.dim }}>Status: </span>
+                          <span style={{ color: bridgeStatusColor, fontWeight: 600 }}>{bridgeStatusLabel}</span>
+                        </div>
+                        <div>
+                          <span style={{ color: C.dim }}>Artist: </span>
+                          <span style={{ fontWeight: 500 }}>{bridgeArtistLabel}</span>
+                        </div>
+                        <div>
+                          <span style={{ color: C.dim }}>Feed: </span>
+                          <span style={{ color: bridgeFeedActive ? C.green : C.dim, fontWeight: 600 }}>{bridgeFeedActive ? "Active" : "Inactive"}</span>
+                        </div>
+                        <div>
+                          <span style={{ color: C.dim }}>Output: </span>
+                          <span style={{ color: C.acCyan, fontWeight: 600 }}>Virtual Input Ready</span>
+                        </div>
+                      </div>
+                      <div className="mt-2 border-t pt-2" style={{ borderColor: C.panelBorder, fontSize: 9, color: C.dim }}>
+                        <span style={{ color: bridgeStatusColor }}>• {bridgeStatusLabel}</span>
+                        <span style={{ color: C.dim }}> · Artist: </span>
+                        <span style={{ color: C.text }}>{bridgeArtistLabel}</span>
+                        <span style={{ color: C.dim }}> · Feed </span>
+                        <span style={{ color: bridgeFeedActive ? C.green : C.dim }}>{bridgeFeedActive ? "Active" : "Inactive"}</span>
+                      </div>
+                    </Panel>
+                  ) : null}
+
                   {/* Vocal Input */}
                   <Panel accent={C.acPurple} className="p-3">
                     <div className="mb-2 flex items-center justify-between">
@@ -926,6 +972,15 @@ export default function UnifiedSessionScreen() {
                         </div>
                         <HorizontalMeter level={hasRemoteAudio ? meterDisplay(remoteMicLevel) : 0} />
                       </div>
+                      {isEngineer ? (
+                        <div>
+                          <div className="mb-0.5 flex justify-between" style={{ fontSize: 9, fontWeight: 600, color: C.label, letterSpacing: "0.08em" }}>
+                            <span>BRIDGE OUT (DAW FEED)</span>
+                            <span style={{ color: C.dim, fontWeight: 500 }}>{bridgePathReady ? "routed" : "—"}</span>
+                          </div>
+                          <HorizontalMeter level={bridgePathReady ? meterDisplay(engineerBridgeVocalLevel) : 0} />
+                        </div>
+                      ) : null}
                       <div className="mt-1"><SpectrumBars level={spectrumLevel} /></div>
                       <div className="mt-0.5"><FreqLabels /></div>
                     </Inset>
@@ -1207,6 +1262,37 @@ export default function UnifiedSessionScreen() {
                 </button>
               </div>
 
+              {isEngineer ? (
+                <div className="mt-4" style={{ borderTop: `1px solid ${C.panelBorder}`, paddingTop: 12 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>W.STUDIO BRIDGE</div>
+                  <div className="mt-2 space-y-1.5" style={{ fontSize: 12, color: C.text, lineHeight: 1.45 }}>
+                    <div>
+                      <span style={{ color: C.dim }}>Status: </span>
+                      <span style={{ color: bridgeStatusColor, fontWeight: 600 }}>{bridgeStatusLabel}</span>
+                    </div>
+                    <div>
+                      <span style={{ color: C.dim }}>Artist: </span>
+                      <span style={{ fontWeight: 500 }}>{bridgeArtistLabel}</span>
+                    </div>
+                    <div>
+                      <span style={{ color: C.dim }}>Feed: </span>
+                      <span style={{ color: bridgeFeedActive ? C.green : C.dim, fontWeight: 600 }}>{bridgeFeedActive ? "Active" : "Inactive"}</span>
+                    </div>
+                    <div>
+                      <span style={{ color: C.dim }}>Output: </span>
+                      <span style={{ color: C.acCyan, fontWeight: 600 }}>Virtual Input Ready</span>
+                    </div>
+                  </div>
+                  <div className="mt-2 border-t pt-2" style={{ borderColor: C.panelBorder, fontSize: 11, color: C.dim }}>
+                    <span style={{ color: bridgeStatusColor }}>• {bridgeStatusLabel}</span>
+                    <span style={{ color: C.dim }}> · Artist: </span>
+                    <span style={{ color: C.text }}>{bridgeArtistLabel}</span>
+                    <span style={{ color: C.dim }}> · Feed </span>
+                    <span style={{ color: bridgeFeedActive ? C.green : C.dim }}>{bridgeFeedActive ? "Active" : "Inactive"}</span>
+                  </div>
+                </div>
+              ) : null}
+
               {/* Vocal Input (merged) */}
               <div className="mt-4" style={{ borderTop: `1px solid ${C.panelBorder}`, paddingTop: 12 }}>
                 <div className="mb-2 flex items-center justify-between">
@@ -1234,6 +1320,15 @@ export default function UnifiedSessionScreen() {
                     </div>
                     <HorizontalMeter level={hasRemoteAudio ? meterDisplay(remoteMicLevel) : 0} />
                   </div>
+                  {isEngineer ? (
+                    <div>
+                      <div className="mb-0.5 flex justify-between" style={{ fontSize: 10, fontWeight: 600, color: C.label, letterSpacing: "0.1em" }}>
+                        <span>BRIDGE OUT (DAW FEED)</span>
+                        <span style={{ color: C.dim, fontWeight: 500 }}>{bridgePathReady ? "routed" : "—"}</span>
+                      </div>
+                      <HorizontalMeter level={bridgePathReady ? meterDisplay(engineerBridgeVocalLevel) : 0} />
+                    </div>
+                  ) : null}
                   <div className="mt-2"><SpectrumBars level={spectrumLevel} /></div>
                   <div className="mt-1"><FreqLabels /></div>
                 </Inset>
