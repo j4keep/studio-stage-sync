@@ -8,6 +8,8 @@ export type SessionLiveState = {
   artistMuted: boolean;
   artistJoined: boolean;
   engineerJoined: boolean;
+  /** Set by artist on join; shown on engineer bridge (not used in main session chrome). */
+  remoteArtistLabel: string;
   /** Transport playback (UI sync; engineer drives) */
   playing: boolean;
   /** Record arm (engineer drives) */
@@ -44,6 +46,7 @@ export function defaultLiveState(): SessionLiveState {
     artistMuted: false,
     artistJoined: false,
     engineerJoined: false,
+    remoteArtistLabel: "",
     playing: false,
     recordArmed: false,
     takeCapturedThisSession: false,

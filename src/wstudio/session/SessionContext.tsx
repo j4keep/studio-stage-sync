@@ -23,6 +23,8 @@ import {
   writeLive,
   type SessionLiveState,
 } from "./sessionLiveSync";
+import { useAuth } from "@/contexts/AuthContext";
+import type { User } from "@supabase/supabase-js";
 
 export type Role = "artist" | "engineer" | null;
 
@@ -66,6 +68,7 @@ function leavePatch(role: Role): Partial<SessionLiveState> {
       artistJoined: false,
       artistPtt: false,
       artistMuted: false,
+      remoteArtistLabel: "",
     };
   }
   return {};
@@ -116,6 +119,7 @@ export type SessionContextValue = {
 const SessionCtx = createContext<SessionContextValue | null>(null);
 
 export function SessionProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [sessionId, setSessionId] = useState("");
   const [sessionDisplayName, setSessionDisplayName] = useState("");
   const [role, setRole] = useState<Role>(null);
@@ -202,24 +206,31 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
-  const joinAsArtist = useCallback((overrideSessionId?: string) => {
-    const id = overrideSessionId?.trim() || sessionId.trim() || generateMockSessionId();
-    setSessionId(id);
-    setRole("artist");
-    latencyRef.current = 22 + Math.floor(Math.random() * 12);
-    setSessionDisplayName(WSTUDIO_DEMO_MODE ? `Session: ${DEMO_SESSION_TITLE}` : formatSessionLabel(id));
-    if (WSTUDIO_DEMO_MODE) {
-      setConnection("connected");
-      setDemoClock({
-        totalMinutes: DEMO_TIMER_MINUTES,
-        remainingSeconds: DEMO_TIMER_MINUTES * 60,
-        running: true,
-        phase: "live",
+  const joinAsArtist = useCallback(
+    (overrideSessionId?: string) => {
+      const id = overrideSessionId?.trim() || sessionId.trim() || generateMockSessionId();
+      setSessionId(id);
+      setRole("artist");
+      latencyRef.current = 22 + Math.floor(Math.random() * 12);
+      setSessionDisplayName(WSTUDIO_DEMO_MODE ? `Session: ${DEMO_SESSION_TITLE}` : formatSessionLabel(id));
+      if (WSTUDIO_DEMO_MODE) {
+        setConnection("connected");
+        setDemoClock({
+          totalMinutes: DEMO_TIMER_MINUTES,
+          remainingSeconds: DEMO_TIMER_MINUTES * 60,
+          running: true,
+          phase: "live",
+        });
+      } else {
+        setConnection("connecting");
+      }
+      const label = WSTUDIO_DEMO_MODE ? "Jay — Florida" : remoteArtistLabelFromUser(user);
+      queueMicrotask(() => {
+        if (id.trim()) writeLive(id, { remoteArtistLabel: label || "Remote artist" });
       });
-    } else {
-      setConnection("connecting");
-    }
-  }, [sessionId]);
+    },
+    [sessionId, user],
+  );
 
   const joinAsEngineer = useCallback((overrideSessionId?: string) => {
     const id = overrideSessionId?.trim() || sessionId.trim() || generateMockSessionId();
@@ -410,6 +421,20 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setSessionPlaying,
       setSessionRecordArmed,
       updateSessionMonitorLevels,
+      updateSessionHeadphoneLevel,
+      collaborationShareActive,
+    ],
+  );
+
+  return <SessionCtx.Provider value={value}>{children}</SessionCtx.Provider>;
+}
+
+export function useSession() {
+  const v = useContext(SessionCtx);
+  if (!v) throw new Error("useSession requires SessionProvider");
+  return v;
+}
+     updateSessionMonitorLevels,
       updateSessionHeadphoneLevel,
       collaborationShareActive,
     ],
