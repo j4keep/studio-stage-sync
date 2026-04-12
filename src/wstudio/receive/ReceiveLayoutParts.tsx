@@ -347,6 +347,7 @@ export function ReceiveVocalInputPanel({
   onChannel,
   onArm,
   armed,
+  recording = false,
   disabled,
 }: {
   level: number;
@@ -354,6 +355,7 @@ export function ReceiveVocalInputPanel({
   onChannel: (c: 1 | 2 | 3) => void;
   onArm: () => void;
   armed: boolean;
+  recording?: boolean;
   disabled?: boolean;
 }) {
   const pct = Math.min(100, Math.max(0, level * 100));
