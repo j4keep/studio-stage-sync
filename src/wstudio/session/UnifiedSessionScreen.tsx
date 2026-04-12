@@ -671,7 +671,7 @@ export default function UnifiedSessionScreen() {
   }, []);
 
   /* ── Mobile-specific tab state ── */
-  const [mobileTab, setMobileTab] = useState<"video" | "controls" | "monitor" | "bridge">("video");
+  const [mobileTab, setMobileTab] = useState<"video" | "controls" | "monitor">("video");
 
   return (
     <div ref={shellRef} className={`flex select-none overflow-hidden ${isMobile ? "flex-col overflow-y-auto" : "min-h-screen items-center justify-center"}`} style={{ background: "#111214", padding: isFullscreen ? 0 : isMobile ? 0 : 16 }}>
@@ -710,7 +710,7 @@ export default function UnifiedSessionScreen() {
         {/* ─── MOBILE TAB BAR ─── */}
         {isMobile && (
           <div className="flex" style={{ borderBottom: `1px solid ${C.panelBorder}` }}>
-            {([["video", "📹 Video"], ["controls", "🎛 Controls"], ["monitor", "🎧 Monitor"], ...(isEngineer ? [["bridge", "🔗 Bridge"] as const] : [])] as const).map(([key, label]) => (
+            {([["video", "📹 Video"], ["controls", "🎛 Controls"], ["monitor", "🎧 Monitor"]] as const).map(([key, label]) => (
               <button key={key} onPointerDown={(e) => { e.preventDefault(); setMobileTab(key as any); }} className="flex-1 py-2 text-center text-[11px] font-bold uppercase tracking-wide" style={{
                 color: mobileTab === key ? C.white : C.dim,
                 borderBottom: mobileTab === key ? `2px solid ${C.blue}` : "2px solid transparent",
@@ -1109,59 +1109,6 @@ export default function UnifiedSessionScreen() {
                 </Panel>
               )}
 
-              {/* ── BRIDGE TAB (mobile, engineer only) ── */}
-              {mobileTab === "bridge" && isEngineer && (
-                <Panel accent={C.acCyan} className="p-3">
-                  <div style={{ fontSize: 11, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>W.STUDIO BRIDGE</div>
-                  <div className="mt-3 space-y-2" style={{ fontSize: 11, color: C.text, lineHeight: 1.5 }}>
-                    <div className="flex justify-between">
-                      <span style={{ color: C.dim }}>Status</span>
-                      <span style={{ color: bridgeStatusColor, fontWeight: 600 }}>{bridgeStatusLabel}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span style={{ color: C.dim }}>Artist</span>
-                      <span style={{ fontWeight: 500 }}>{bridgeArtistLabel}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span style={{ color: C.dim }}>Feed</span>
-                      <span style={{ color: bridgeFeedActive ? C.green : C.dim, fontWeight: 600 }}>{bridgeFeedActive ? "Active" : "Inactive"}</span>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 border-t pt-3" style={{ borderColor: C.panelBorder }}>
-                    <div className="mb-1" style={{ fontSize: 10, fontWeight: 600, color: C.label, letterSpacing: "0.08em", textTransform: "uppercase" }}>BRIDGE OUT (DAW FEED)</div>
-                    <HorizontalMeter level={bridgePathReady ? meterDisplay(engineerBridgeVocalLevel) : 0} />
-                  </div>
-
-                  <div className="mt-3 border-t pt-3" style={{ borderColor: C.panelBorder }}>
-                    <div className="mb-1.5 flex items-center justify-between">
-                      <span style={{ fontSize: 10, fontWeight: 600, color: C.label, letterSpacing: "0.08em", textTransform: "uppercase" }}>Output Device</span>
-                      <button type="button" onClick={() => bridgeRefreshDevices()} style={{ fontSize: 9, color: C.dim, background: "none", border: "none", cursor: "pointer" }}>↻ Refresh</button>
-                    </div>
-                    <select
-                      value={bridgeSelectedDevice}
-                      onChange={(e) => setBridgeSelectedDevice(e.target.value)}
-                      style={{
-                        width: "100%", fontSize: 11, padding: "6px 8px",
-                        background: C.panelDark, color: C.text,
-                        border: `1px solid ${C.panelBorder}`, borderRadius: 6,
-                        outline: "none",
-                      }}
-                    >
-                      <option value="default">Default output</option>
-                      {bridgeDevices.filter(d => d.deviceId !== "default").map(d => (
-                        <option key={d.deviceId} value={d.deviceId}>{d.label}</option>
-                      ))}
-                    </select>
-                    <div className="mt-1.5 flex items-center gap-2">
-                      <span style={{ fontSize: 9, color: bridgeRouted ? C.green : C.dim, fontWeight: 600 }}>
-                        {bridgeRouted ? "● Routing" : "○ Not routing"}
-                      </span>
-                    </div>
-                    {bridgeRoutingError && <div style={{ fontSize: 9, color: C.red, marginTop: 4 }}>{bridgeRoutingError}</div>}
-                  </div>
-                </Panel>
-              )}
             </>
           ) : (
             <>
