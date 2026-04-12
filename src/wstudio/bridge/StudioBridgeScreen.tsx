@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useSession } from "../session/SessionContext";
 import { useStudioMedia } from "../media/StudioMediaContext";
 import { WSTUDIO_DAW_VOCAL_IN_1, WSTUDIO_DAW_VOCAL_IN_2 } from "../media/dawRouting";
+import { useBridgeOutputDevice } from "./useBridgeOutputDevice";
 
 /**
  * Engineer-side W.Studio Bridge MVP: isolated artist vocal path + session/participant status.
@@ -16,6 +17,9 @@ export default function StudioBridgeScreen() {
     engineerBridgeVocalLevel,
     hasRemoteAudio,
   } = useStudioMedia();
+
+  const { devices, selectedDeviceId, setSelectedDeviceId, routingError, routed, refreshDevices } =
+    useBridgeOutputDevice(engineerDawVocalIn1);
 
   const vocalPathReady = !!(engineerDawVocalIn1 && engineerDawVocalIn2 && hasRemoteAudio);
   const signalDetected = engineerBridgeVocalLevel >= 0.035;
@@ -159,32 +163,62 @@ export default function StudioBridgeScreen() {
         </div>
       </section>
 
-      {/* Virtual inputs + routing placeholder */}
       <section className="space-y-3 rounded-lg border border-zinc-800 bg-zinc-900/40 p-4">
-        <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">Browser buses (MVP)</div>
-        <ul className="space-y-1.5 text-sm text-zinc-300">
-          <li className="flex justify-between gap-2">
-            <span>{WSTUDIO_DAW_VOCAL_IN_1}</span>
-            <span className={vocalPathReady ? "text-emerald-400" : "text-zinc-600"}>{vocalPathReady ? "Ready" : "—"}</span>
-          </li>
-          <li className="flex justify-between gap-2">
-            <span>{WSTUDIO_DAW_VOCAL_IN_2}</span>
-            <span className={vocalPathReady ? "text-emerald-400" : "text-zinc-600"}>{vocalPathReady ? "Ready" : "—"}</span>
-          </li>
-        </ul>
-        <div className="border-t border-zinc-800/80 pt-3">
+        <div className="flex items-center justify-between gap-2">
           <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">Output routing</div>
-          <p className="mt-2 text-sm text-zinc-400">
-            <span className="text-zinc-500">Virtual driver: </span>
-            <span className="text-amber-200/80">Not installed</span>
-            <span className="mx-2 text-zinc-700">·</span>
-            <span className="text-zinc-500">DAW input: </span>
-            <span className="text-zinc-400">Awaiting desktop bridge</span>
-          </p>
-          <p className="mt-2 text-[11px] leading-relaxed text-zinc-600">
-            Next step: map these streams to Core Audio / WASAPI endpoints (e.g. Pro Tools, Logic, FL Studio) via a companion app — not required for this MVP.
-          </p>
+          <button
+            type="button"
+            onClick={() => refreshDevices()}
+            className="text-[10px] font-medium text-zinc-500 hover:text-zinc-300 transition-colors"
+          >
+            ↻ Refresh
+          </button>
         </div>
+
+        {/* Device selector */}
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs text-zinc-400">Bridge output device</span>
+          <select
+            value={selectedDeviceId}
+            onChange={(e) => setSelectedDeviceId(e.target.value)}
+            disabled={!vocalPathReady}
+            className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none focus:ring-2 focus:ring-violet-600 disabled:opacity-50"
+          >
+            <option value="default">Default output</option>
+            {devices
+              .filter((d) => d.deviceId !== "default")
+              .map((d) => (
+                <option key={d.deviceId} value={d.deviceId}>
+                  {d.label}
+                </option>
+              ))}
+          </select>
+        </label>
+
+        {/* Routing status */}
+        <div className="flex items-center gap-2 text-xs">
+          <span
+            className={
+              routed && vocalPathReady
+                ? "inline-flex h-2 w-2 rounded-full bg-emerald-400"
+                : "inline-flex h-2 w-2 rounded-full bg-zinc-600"
+            }
+            aria-hidden
+          />
+          <span className={routed && vocalPathReady ? "text-emerald-400 font-semibold" : "text-zinc-500"}>
+            {routed && vocalPathReady
+              ? `Routing to: ${devices.find((d) => d.deviceId === selectedDeviceId)?.label ?? selectedDeviceId}`
+              : "Not routing"}
+          </span>
+        </div>
+
+        {routingError && (
+          <p className="text-xs text-red-400/90">{routingError}</p>
+        )}
+
+        <p className="text-[11px] leading-relaxed text-zinc-600">
+          Select a virtual cable (BlackHole, VB-Cable, Loopback) to route the artist vocal into your DAW. Set your DAW input to the same device.
+        </p>
       </section>
 
       {!!engineerScreenShareAudioStream && (
