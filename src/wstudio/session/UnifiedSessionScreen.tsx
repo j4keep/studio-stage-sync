@@ -481,6 +481,15 @@ export default function UnifiedSessionScreen() {
   } = useStudioMedia();
 
   const {
+    devices: bridgeDevices,
+    selectedDeviceId: bridgeSelectedDevice,
+    setSelectedDeviceId: setBridgeSelectedDevice,
+    routingError: bridgeRoutingError,
+    routed: bridgeRouted,
+    refreshDevices: bridgeRefreshDevices,
+  } = useBridgeOutputDevice(isEngineer ? engineerDawVocalIn1 ?? null : null);
+
+  const {
     booking, totalBookedMinutes, remainingSeconds: bookingRemaining, warningLevel, timerRunning, phase, pendingExtension,
     sessionValueTotal, startSessionTimer, requestExtension, approveExtension, declineExtension, engineerContinueSession,
     extensionModalOpen, setExtensionModalOpen, controlsLocked, sessionRates,
