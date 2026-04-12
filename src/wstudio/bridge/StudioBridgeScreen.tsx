@@ -8,7 +8,7 @@ import { WSTUDIO_DAW_VOCAL_IN_1, WSTUDIO_DAW_VOCAL_IN_2 } from "../media/dawRout
  * Separate from the main live session UI (see /wstudio/session/live).
  */
 export default function StudioBridgeScreen() {
-  const { sessionId, sessionDisplayName, role, connection, live } = useSession();
+  const { sessionId, sessionDisplayName, role, live } = useSession();
   const {
     engineerDawVocalIn1,
     engineerDawVocalIn2,
