@@ -224,7 +224,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       } else {
         setConnection("connecting");
       }
-      const label = WSTUDIO_DEMO_MODE ? "Jay — Florida" : remoteArtistLabelFromUser(user);
+      const label = WSTUDIO_DEMO_MODE ? "Jay — Florida" : (user?.email?.split("@")[0] ?? "Remote artist");
       queueMicrotask(() => {
         if (id.trim()) writeLive(id, { remoteArtistLabel: label || "Remote artist" });
       });

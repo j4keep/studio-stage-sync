@@ -415,7 +415,6 @@ export default function EngineerSessionScreen() {
                   onChannel={setVocalChannel}
                   armed={live.recordArmed}
                   onArm={() => setSessionRecordArmed(!live.recordArmed)}
-                  recording={live.recording}
                   disabled={lock}
                 />
               </ExpandableShell>
