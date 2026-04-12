@@ -18,6 +18,9 @@ export default function StudioBridgeScreen() {
     hasRemoteAudio,
   } = useStudioMedia();
 
+  const { devices, selectedDeviceId, setSelectedDeviceId, routingError, routed, refreshDevices } =
+    useBridgeOutputDevice(engineerDawVocalIn1);
+
   const vocalPathReady = !!(engineerDawVocalIn1 && engineerDawVocalIn2 && hasRemoteAudio);
   const signalDetected = engineerBridgeVocalLevel >= 0.035;
 
