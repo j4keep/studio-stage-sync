@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useSession } from "../session/SessionContext";
 import { useStudioMedia } from "../media/StudioMediaContext";
 import { WSTUDIO_DAW_VOCAL_IN_1, WSTUDIO_DAW_VOCAL_IN_2 } from "../media/dawRouting";
+import { useBridgeOutputDevice } from "./useBridgeOutputDevice";
 
 /**
  * Engineer-side W.Studio Bridge MVP: isolated artist vocal path + session/participant status.
