@@ -8,7 +8,7 @@ import { WSTUDIO_DAW_VOCAL_IN_1, WSTUDIO_DAW_VOCAL_IN_2 } from "../media/dawRout
  * Separate from the main live session UI (see /wstudio/session/live).
  */
 export default function StudioBridgeScreen() {
-  const { sessionId, sessionDisplayName, role, connection, live } = useSession();
+  const { sessionId, sessionDisplayName, role, live } = useSession();
   const {
     engineerDawVocalIn1,
     engineerDawVocalIn2,
@@ -18,24 +18,19 @@ export default function StudioBridgeScreen() {
   } = useStudioMedia();
 
   const vocalPathReady = !!(engineerDawVocalIn1 && engineerDawVocalIn2 && hasRemoteAudio);
-  const artistPresent = live.artistJoined;
-  const sessionLinked = connection === "connected";
   const signalDetected = engineerBridgeVocalLevel >= 0.035;
 
+  /** Bridge status derives from actual audio path, not session-level handshake */
   const feedInactiveReason = !sessionId.trim()
     ? "No session"
-    : !sessionLinked
-      ? "Session not linked"
-      : !artistPresent
-        ? "Artist not in session"
-        : !hasRemoteAudio
-          ? "No remote audio track"
-          : !vocalPathReady
-            ? "Vocal bus not ready"
-            : null;
+    : !hasRemoteAudio
+      ? "No remote audio track"
+      : !vocalPathReady
+        ? "Vocal bus not ready"
+        : null;
 
   const feedStatusLabel =
-    vocalPathReady && sessionLinked && artistPresent
+    vocalPathReady
       ? signalDetected
         ? "ACTIVE"
         : "ACTIVE · quiet"
@@ -43,7 +38,7 @@ export default function StudioBridgeScreen() {
 
   const artistLine =
     live.remoteArtistLabel.trim() ||
-    (artistPresent ? "Artist connected (no display name yet)" : "Waiting for artist…");
+    (hasRemoteAudio ? "Artist connected" : "Waiting for artist…");
 
   const sessionNameLine =
     sessionDisplayName.trim() ||
@@ -95,10 +90,10 @@ export default function StudioBridgeScreen() {
           <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">Artist</div>
           <div className="mt-1 text-base font-semibold text-zinc-100">{artistLine}</div>
           <div className="mt-1 text-xs text-zinc-500">
-            {artistPresent ? (
-              <span className="text-emerald-400/90">In session</span>
+            {hasRemoteAudio ? (
+              <span className="text-emerald-400/90">Audio connected</span>
             ) : (
-              <span className="text-zinc-600">Not in session</span>
+              <span className="text-zinc-600">No audio yet</span>
             )}
           </div>
         </div>
@@ -107,17 +102,17 @@ export default function StudioBridgeScreen() {
       {/* Link + feed state */}
       <section className="space-y-3 rounded-lg border border-zinc-800 bg-zinc-900/40 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">Session link</div>
+          <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">Audio link</div>
           <div
             className={
-              connection === "connected"
+              vocalPathReady
                 ? "text-sm font-semibold text-emerald-400"
-                : connection === "connecting"
+                : hasRemoteAudio
                   ? "text-sm font-semibold text-amber-300"
                   : "text-sm font-semibold text-zinc-500"
             }
           >
-            {connection === "connected" ? "Connected" : connection === "connecting" ? "Connecting" : "Disconnected"}
+            {vocalPathReady ? "Connected" : hasRemoteAudio ? "Connecting" : "Disconnected"}
           </div>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-zinc-800/80 pt-3">

@@ -551,17 +551,21 @@ export default function UnifiedSessionScreen() {
   const engineerRecordDimmed = isEngineer && !recording && !armed;
   /** Engineer DAW bridge: isolated vocal bus + session/artist sync (session UI extension only). */
   const bridgePathReady = isEngineer && !!engineerDawVocalIn1 && hasRemoteAudio;
+  /** Bridge status derives from actual audio routing state, not session-level handshake */
   const bridgeStatusLabel = !isEngineer
     ? ""
-    : connection === "disconnected"
-      ? "Disconnected"
-      : connection === "connected" && live.artistJoined
-        ? "Connected"
-        : "Connecting";
+    : bridgePathReady
+      ? "Connected"
+      : hasRemoteAudio
+        ? "Connecting"
+        : sessionId.trim()
+          ? "Connecting"
+          : "Disconnected";
   const bridgeStatusColor =
     bridgeStatusLabel === "Connected" ? C.green : bridgeStatusLabel === "Connecting" ? C.yellow : C.dim;
-  const bridgeArtistLabel = live.remoteArtistLabel.trim() || "—";
-  const bridgeFeedActive = isEngineer && bridgePathReady && connection === "connected" && live.artistJoined;
+  const bridgeArtistLabel = live.remoteArtistLabel.trim() || (hasRemoteAudio ? "Artist connected" : "—");
+  /** Feed active when the DAW vocal path is actually receiving remote audio */
+  const bridgeFeedActive = isEngineer && bridgePathReady;
   const goToJoin = useCallback(() => navigate("/wstudio/session/join"), [navigate]);
 
   const handleEndSession = useCallback(() => {
