@@ -11,6 +11,7 @@ import { formatCurrency } from "../booking/bookingTypes";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBridgeOutputDevice } from "../bridge/useBridgeOutputDevice";
 
 const canScreenShare = typeof navigator !== "undefined" && !!navigator.mediaDevices?.getDisplayMedia;
 
