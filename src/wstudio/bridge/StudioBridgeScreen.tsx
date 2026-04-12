@@ -90,10 +90,10 @@ export default function StudioBridgeScreen() {
           <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">Artist</div>
           <div className="mt-1 text-base font-semibold text-zinc-100">{artistLine}</div>
           <div className="mt-1 text-xs text-zinc-500">
-            {artistPresent ? (
-              <span className="text-emerald-400/90">In session</span>
+            {hasRemoteAudio ? (
+              <span className="text-emerald-400/90">Audio connected</span>
             ) : (
-              <span className="text-zinc-600">Not in session</span>
+              <span className="text-zinc-600">No audio yet</span>
             )}
           </div>
         </div>
@@ -102,17 +102,17 @@ export default function StudioBridgeScreen() {
       {/* Link + feed state */}
       <section className="space-y-3 rounded-lg border border-zinc-800 bg-zinc-900/40 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">Session link</div>
+          <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">Audio link</div>
           <div
             className={
-              connection === "connected"
+              vocalPathReady
                 ? "text-sm font-semibold text-emerald-400"
-                : connection === "connecting"
+                : hasRemoteAudio
                   ? "text-sm font-semibold text-amber-300"
                   : "text-sm font-semibold text-zinc-500"
             }
           >
-            {connection === "connected" ? "Connected" : connection === "connecting" ? "Connecting" : "Disconnected"}
+            {vocalPathReady ? "Connected" : hasRemoteAudio ? "Connecting" : "Disconnected"}
           </div>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-zinc-800/80 pt-3">
