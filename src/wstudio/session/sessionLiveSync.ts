@@ -12,11 +12,13 @@ export type SessionLiveState = {
   playing: boolean;
   /** Record arm (engineer drives) */
   recordArmed: boolean;
-  /** Monitor mix 0–1 (shared session snapshot) */
+  /** Monitor mix 0–1 (engineer drives; artist read-only in UI) */
   vocalLevel: number;
   talkbackLevel: number;
-  headphoneLevel: number;
   cueMix: number;
+  /** Per-user headphone send to local output (not shared across roles) */
+  headphoneLevelEngineer: number;
+  headphoneLevelArtist: number;
 };
 
 const EVT = "wstudio-session-live-sync";
@@ -44,8 +46,9 @@ export function defaultLiveState(): SessionLiveState {
     recordArmed: false,
     vocalLevel: 0.55,
     talkbackLevel: 0.45,
-    headphoneLevel: 0.7,
     cueMix: 0.5,
+    headphoneLevelEngineer: 0.7,
+    headphoneLevelArtist: 0.7,
   };
 }
 
@@ -73,8 +76,13 @@ function ensureLiveChannel(sessionId: string): LiveChannelEntry {
 
   channel
     .on("broadcast", { event: "patch" }, ({ payload }) => {
-      // Merge only the received patch into our in-memory state
-      const patch = payload as Partial<SessionLiveState>;
+      const raw = payload as Partial<SessionLiveState> & { headphoneLevel?: number };
+      const patch: Partial<SessionLiveState> = { ...raw };
+      if (typeof raw.headphoneLevel === "number") {
+        if (patch.headphoneLevelEngineer === undefined) patch.headphoneLevelEngineer = raw.headphoneLevel;
+        if (patch.headphoneLevelArtist === undefined) patch.headphoneLevelArtist = raw.headphoneLevel;
+      }
+      delete (patch as { headphoneLevel?: number }).headphoneLevel;
       entry.state = { ...entry.state, ...patch };
       emitLive(id, entry.state);
     })

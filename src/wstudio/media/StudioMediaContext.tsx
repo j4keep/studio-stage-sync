@@ -36,6 +36,8 @@ function toSignalRole(role: Role): RtcSignalRole | null {
 export type StudioMediaContextValue = {
   localStream: MediaStream | null;
   remoteStream: MediaStream | null;
+  /** Remote stream for playback (artist: processed for talkback priority + headphone; engineer: raw) */
+  remoteStreamForPlayback: MediaStream | null;
   /** Engineer's captured display for local preview only */
   localScreenPreview: MediaStream | null;
   mediaError: string | null;
@@ -55,9 +57,10 @@ const Ctx = createContext<StudioMediaContextValue | null>(null);
 const DEBUG_AUDIO_TAG = "[W.Studio audio]";
 
 export function StudioMediaProvider({ children }: { children: ReactNode }) {
-  const { sessionId, role, talkbackHeld, muted, screenSharing, toggleScreenShare } = useSession();
+  const { sessionId, role, muted, live, screenSharing, toggleScreenShare } = useSession();
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const [remotePlaybackStream, setRemotePlaybackStream] = useState<MediaStream | null>(null);
   const [localScreenPreview, setLocalScreenPreview] = useState<MediaStream | null>(null);
   const [mediaError, setMediaError] = useState<string | null>(null);
    const [localMicLevel, setLocalMicLevel] = useState(0);
@@ -81,6 +84,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
   const txLevelRafRef = useRef(0);
   const audioDebugLastLogRef = useRef(0);
   const acquiredSessionTracksRef = useRef<MediaStreamTrack[]>([]);
+  const artistRemoteGainRef = useRef<GainNode | null>(null);
 
   roleRef.current = role;
   toggleScreenShareRef.current = toggleScreenShare;
@@ -333,6 +337,68 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       setRemoteMicLevel(0);
     };
   }, [remoteStream]);
+
+  /** Artist: route peer audio through Web Audio for headphone level + engineer talkback priority. */
+  useEffect(() => {
+    artistRemoteGainRef.current = null;
+    if (role !== "artist") {
+      setRemotePlaybackStream(null);
+      return;
+    }
+    const rs = remoteStream;
+    if (!rs) {
+      setRemotePlaybackStream(null);
+      return;
+    }
+    const audioTr = rs.getAudioTracks()[0];
+    if (!audioTr) {
+      setRemotePlaybackStream(rs);
+      return;
+    }
+    const videoTr = rs.getVideoTracks()[0] ?? null;
+    const ctx = new AudioContext();
+    void ctx.resume().catch(() => {});
+    const src = ctx.createMediaStreamSource(new MediaStream([audioTr]));
+    const gain = ctx.createGain();
+    artistRemoteGainRef.current = gain;
+    const dest = ctx.createMediaStreamDestination();
+    src.connect(gain);
+    gain.connect(dest);
+    const hp = live.headphoneLevelArtist;
+    const priority = live.engineerPtt ? 1.3 : 1;
+    gain.gain.value = Math.min(1.5, Math.max(0, hp * priority));
+    const out = new MediaStream([...(videoTr ? [videoTr] : []), ...dest.stream.getAudioTracks()]);
+    setRemotePlaybackStream(out);
+    return () => {
+      artistRemoteGainRef.current = null;
+      src.disconnect();
+      gain.disconnect();
+      void ctx.close();
+      setRemotePlaybackStream(null);
+    };
+  }, [role, remoteStream]);
+
+  useEffect(() => {
+    const gain = artistRemoteGainRef.current;
+    if (role !== "artist" || !gain) return;
+    const hp = live.headphoneLevelArtist;
+    /** Engineer holding Talk: lift peer voice in artist cans (continuous duplex unchanged). */
+    const priority = live.engineerPtt ? 1.3 : 1;
+    const target = Math.min(1.5, Math.max(0, hp * priority));
+    const ctx = gain.context;
+    const t = ctx.currentTime;
+    try {
+      gain.gain.cancelScheduledValues(t);
+      gain.gain.linearRampToValueAtTime(target, t + 0.05);
+    } catch {
+      gain.gain.value = target;
+    }
+  }, [role, live.headphoneLevelArtist, live.engineerPtt]);
+
+  const remoteStreamForPlayback = useMemo(() => {
+    if (role !== "artist") return remoteStream;
+    return remotePlaybackStream ?? remoteStream;
+  }, [role, remoteStream, remotePlaybackStream]);
 
   useEffect(() => {
     const now = performance.now();
@@ -589,6 +655,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     () => ({
       localStream,
       remoteStream,
+      remoteStreamForPlayback,
       localScreenPreview,
       mediaError,
       clearMediaError,
@@ -600,6 +667,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     [
       localStream,
       remoteStream,
+      remoteStreamForPlayback,
       localScreenPreview,
       mediaError,
       clearMediaError,

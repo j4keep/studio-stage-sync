@@ -269,18 +269,22 @@ function VideoFeed({
   mirrored,
   /** Local preview: true (default). Remote peer: false so WebRTC audio is audible. */
   muted = true,
+  /** Output level0–1 for remote monitoring (local preview typically unused). */
+  volume = 1,
 }: {
   stream: MediaStream | null;
   mirrored?: boolean;
   muted?: boolean;
+  volume?: number;
 }) {
   const ref = useRef<HTMLVideoElement>(null);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     el.srcObject = stream ?? null;
+    el.volume = Math.min(1, Math.max(0, volume));
     if (stream) void el.play().catch(() => {});
-  }, [stream]);
+  }, [stream, volume]);
   if (!stream) return null;
   return (
     <video
@@ -385,12 +389,16 @@ function ExpandedVideoOverlay({
   mirrored,
   label,
   screenShareStream,
+  audioMuted = true,
+  volume = 1,
   onClose,
 }: {
   stream: MediaStream | null;
   mirrored?: boolean;
   label: string;
   screenShareStream?: MediaStream | null;
+  audioMuted?: boolean;
+  volume?: number;
   onClose: () => void;
 }) {
   const vidRef = useRef<HTMLVideoElement>(null);
@@ -401,8 +409,9 @@ function ExpandedVideoOverlay({
     const el = vidRef.current;
     if (!el) return;
     el.srcObject = activeStream ?? null;
+    el.volume = Math.min(1, Math.max(0, volume));
     if (activeStream) void el.play().catch(() => {});
-  }, [activeStream]);
+  }, [activeStream, volume]);
 
   return (
     <div className="fixed inset-0 z-[200] flex flex-col" style={{ background: "#000" }}>
@@ -447,7 +456,7 @@ export default function UnifiedSessionScreen() {
   const navigate = useNavigate();
   const {
     role, connection, sessionDisplayName, muted, toggleMute, talkbackHeld, beginTalkback, endTalkback,
-       live, setSessionRecording, setSessionPlaying, setSessionRecordArmed, updateSessionMonitorLevels,
+       live, setSessionRecording, setSessionPlaying, setSessionRecordArmed, updateSessionMonitorLevels, updateSessionHeadphoneLevel,
     demoClock, leaveSession, screenSharing, toggleScreenShare, collaborationShareActive,
     sessionId,
   } = useSession();
@@ -455,6 +464,7 @@ export default function UnifiedSessionScreen() {
   const {
     localStream,
     remoteStream,
+    remoteStreamForPlayback,
     localScreenPreview,
     localMicLevel,
     localTalkbackTxLevel,
@@ -479,7 +489,7 @@ export default function UnifiedSessionScreen() {
   const armed = live.recordArmed;
   const vocalLevel = live.vocalLevel;
   const talkbackLevel = live.talkbackLevel;
-  const headphoneLevel = live.headphoneLevel;
+  const headphoneLevel = isEngineer ? live.headphoneLevelEngineer : live.headphoneLevelArtist;
   const cueMix = live.cueMix;
   const peerPtt = isEngineer ? live.artistPtt : live.engineerPtt;
   /** Hide analyser noise floor in live meters only; monitoring uses raw knob values. */
@@ -495,13 +505,14 @@ export default function UnifiedSessionScreen() {
   const hasBooking = !!booking && booking.bookedMinutes > 0;
   const isMobile = useIsMobile();
 
-  // Determine which stream goes where based on role
-  const artistStream = isArtist ? localStream : remoteStream;
-  const engineerStream = isEngineer ? localStream : remoteStream;
+  // Determine which stream goes where based on role (playback stream = processed for artist talkback/HP)
+  const artistStream = isArtist ? localStream : remoteStreamForPlayback;
+  const engineerStream = isEngineer ? localStream : remoteStreamForPlayback;
   const artistMirrored = isArtist; // mirror local preview
   const engineerMirrored = isEngineer;
-  // Screen share: engineer sees localScreenPreview, artist sees remoteStream (via WebRTC replaceTrack)
-  const screenShareViewStream = isEngineer ? localScreenPreview : (collaborationShareActive ? remoteStream : null);
+  const screenShareViewStream = isEngineer ? localScreenPreview : (collaborationShareActive ? remoteStreamForPlayback : null);
+ /** Headphone bus: engineer scales remote tile; artist level is applied in Web Audio graph. */
+  const remoteTileVolume = isEngineer ? live.headphoneLevelEngineer : 1;
 
   const goToJoin = useCallback(() => navigate("/wstudio/session/join"), [navigate]);
 
@@ -684,7 +695,7 @@ export default function UnifiedSessionScreen() {
                   {/* Artist Video */}
                   <Panel accent={C.acMagenta} className="relative overflow-hidden" style={{ aspectRatio: "16/9" }}>
                     {artistStream ? (
-                      <VideoFeed stream={artistStream} mirrored={artistMirrored} muted={isArtist} />
+                      <VideoFeed stream={artistStream} mirrored={artistMirrored} muted={isArtist} volume={isEngineer ? remoteTileVolume : 1} />
                     ) : (
                       <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
                         <span className="text-[20px] font-black tracking-tight" style={{ color: C.dim }}>W<span style={{ color: C.blue }}>.</span>STUDIO</span>
@@ -945,9 +956,9 @@ export default function UnifiedSessionScreen() {
                     <div className="flex flex-col items-center gap-1">
                       <span style={{ fontSize: 10, fontWeight: 500, color: C.text }}>Headphone</span>
                       <div className="flex items-end gap-1.5">
-                        <Knob value={headphoneLevel} size={50} onChange={monitorAdjust ? (v) => monitorAdjust({ headphoneLevel: v }) : undefined} accent={C.acOrange} />
+                        <Knob value={headphoneLevel} size={50} onChange={(v) => updateSessionHeadphoneLevel(v)} accent={C.acOrange} />
                         <ControlLevelLadder level={headphoneLevel} height={60} accent={C.acOrange} />
-                        <Fader value={headphoneLevel} height={60} onChange={monitorAdjust ? (v) => monitorAdjust({ headphoneLevel: v }) : undefined} />
+                        <Fader value={headphoneLevel} height={60} onChange={(v) => updateSessionHeadphoneLevel(v)} />
                       </div>
                       <span style={{ fontSize: 8, color: C.dim }}>🎧 HP OUT</span>
                     </div>
@@ -973,7 +984,7 @@ export default function UnifiedSessionScreen() {
             {/* Artist Video */}
             <Panel accent={C.acMagenta} className="relative overflow-hidden" style={{ aspectRatio: "4/3" }}>
               {artistStream ? (
-                <VideoFeed stream={artistStream} mirrored={artistMirrored} muted={isArtist} />
+                <VideoFeed stream={artistStream} mirrored={artistMirrored} muted={isArtist} volume={isEngineer ? remoteTileVolume : 1} />
               ) : (
                 <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
                   <span className="text-[28px] font-black tracking-tight" style={{ color: C.dim }}>W<span style={{ color: C.blue }}>.</span>STUDIO</span>
@@ -1231,9 +1242,9 @@ export default function UnifiedSessionScreen() {
               <div className="flex flex-col items-center gap-1">
                 <span style={{ fontSize: 11, fontWeight: 500, color: C.text }}>Headphone</span>
                 <div className="flex items-end gap-2">
-                  <Knob value={headphoneLevel} size={58} onChange={monitorAdjust ? (v) => monitorAdjust({ headphoneLevel: v }) : undefined} accent={C.acOrange} />
+                  <Knob value={headphoneLevel} size={58} onChange={(v) => updateSessionHeadphoneLevel(v)} accent={C.acOrange} />
                   <ControlLevelLadder level={headphoneLevel} height={72} accent={C.acOrange} />
-                  <Fader value={headphoneLevel} height={72} onChange={monitorAdjust ? (v) => monitorAdjust({ headphoneLevel: v }) : undefined} />
+                  <Fader value={headphoneLevel} height={72} onChange={(v) => updateSessionHeadphoneLevel(v)} />
                 </div>
                 <span style={{ fontSize: 8, color: C.dim, letterSpacing: "0.08em" }}>🎧 HP OUT</span>
               </div>
@@ -1352,6 +1363,7 @@ export default function UnifiedSessionScreen() {
           mirrored={artistMirrored}
           label="Artist View"
           audioMuted={isArtist}
+          volume={isEngineer ? remoteTileVolume : 1}
           onClose={() => setExpandedPanel(null)}
         />
       )}
@@ -1362,6 +1374,7 @@ export default function UnifiedSessionScreen() {
           label="Engineer View"
           screenShareStream={collaborationShareActive ? screenShareViewStream : null}
           audioMuted={isEngineer}
+          volume={isArtist ? 1 : remoteTileVolume}
           onClose={() => setExpandedPanel(null)}
         />
       )}
@@ -1370,6 +1383,7 @@ export default function UnifiedSessionScreen() {
           stream={screenShareViewStream}
           label="Screen Share — DAW View"
           audioMuted={isEngineer}
+          volume={isArtist ? 1 : 1}
           onClose={() => setExpandedPanel(null)}
         />
       )}

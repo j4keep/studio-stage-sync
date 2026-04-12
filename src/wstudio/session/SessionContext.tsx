@@ -103,9 +103,10 @@ export type SessionContextValue = {
   updateSessionMonitorLevels: (patch: {
     vocalLevel?: number;
     talkbackLevel?: number;
-    headphoneLevel?: number;
     cueMix?: number;
   }) => void;
+  /** Local headphone output level for the current role only (not synced across users). */
+  updateSessionHeadphoneLevel: (level: number) => void;
   /** True when engineer has share on OR live says share active (for artist view) */
   collaborationShareActive: boolean;
 };
@@ -298,20 +299,24 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   );
 
   const updateSessionMonitorLevels = useCallback(
-    (patch: {
-      vocalLevel?: number;
-      talkbackLevel?: number;
-      headphoneLevel?: number;
-      cueMix?: number;
-    }) => {
+    (patch: { vocalLevel?: number; talkbackLevel?: number; cueMix?: number }) => {
       if (!sessionId.trim() || role !== "engineer") return;
       const clamp = (n: number) => Math.min(1, Math.max(0, n));
       const next: Partial<SessionLiveState> = {};
       if (patch.vocalLevel !== undefined) next.vocalLevel = clamp(patch.vocalLevel);
       if (patch.talkbackLevel !== undefined) next.talkbackLevel = clamp(patch.talkbackLevel);
-      if (patch.headphoneLevel !== undefined) next.headphoneLevel = clamp(patch.headphoneLevel);
       if (patch.cueMix !== undefined) next.cueMix = clamp(patch.cueMix);
       if (Object.keys(next).length) writeLive(sessionId, next);
+    },
+    [sessionId, role],
+  );
+
+  const updateSessionHeadphoneLevel = useCallback(
+    (level: number) => {
+      if (!sessionId.trim() || (role !== "engineer" && role !== "artist")) return;
+      const v = Math.min(1, Math.max(0, level));
+      if (role === "engineer") writeLive(sessionId, { headphoneLevelEngineer: v });
+      else writeLive(sessionId, { headphoneLevelArtist: v });
     },
     [sessionId, role],
   );
@@ -368,6 +373,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setSessionPlaying,
       setSessionRecordArmed,
       updateSessionMonitorLevels,
+      updateSessionHeadphoneLevel,
       collaborationShareActive,
     }),
     [
@@ -393,6 +399,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setSessionPlaying,
       setSessionRecordArmed,
       updateSessionMonitorLevels,
+      updateSessionHeadphoneLevel,
       collaborationShareActive,
     ],
   );

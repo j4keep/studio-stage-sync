@@ -150,6 +150,7 @@ export function ReceivePrimaryRemoteWithPip({
   pipStream,
   remoteVideoMuted = false,
   pipVideoMuted = true,
+  remoteVolume = 1,
 }: {
   remoteTitle: string;
   remoteSubtitle?: string;
@@ -160,6 +161,8 @@ export function ReceivePrimaryRemoteWithPip({
   pipStream?: MediaStream | null;
   remoteVideoMuted?: boolean;
   pipVideoMuted?: boolean;
+  /** 0–1 remote tile output (e.g. engineer headphone bus). */
+  remoteVolume?: number;
 }) {
   return (
     <div className={cn(PANEL, "relative min-h-[200px] flex-1 overflow-hidden")}>
@@ -168,6 +171,7 @@ export function ReceivePrimaryRemoteWithPip({
         subtitle={remoteSubtitle ?? "Waiting for peer…"}
         stream={remoteStream}
         videoMuted={remoteVideoMuted}
+        volume={remoteVolume}
         className="min-h-[220px] h-full flex-1 rounded-lg"
       />
       {showPip ? (

@@ -54,7 +54,7 @@ export default function ArtistSessionScreen() {
     pendingExtension,
   } = useBookingTimer();
   const { expandId, toggleExpand, exitExpand } = useExpandablePanels();
-  const { localStream, remoteStream, mediaError } = useStudioMedia();
+  const { localStream, remoteStream, remoteStreamForPlayback, mediaError } = useStudioMedia();
   const [mic, setMic] = useState("default");
   const [out, setOut] = useState("default");
   const [selfVideoOn, setSelfVideoOn] = useState(true);
@@ -231,8 +231,9 @@ export default function ArtistSessionScreen() {
                       <VideoPanel
                         title="Engineer share"
                         subtitle={remoteStream ? "Live from engineer" : "Waiting for stream…"}
-                        stream={remoteStream}
+                        stream={remoteStreamForPlayback}
                         videoMuted={false}
+                        volume={1}
                         className="min-h-[180px] flex-1 rounded-none border-0 lg:min-h-[36vh]"
                       />
                     </div>
@@ -251,7 +252,8 @@ export default function ArtistSessionScreen() {
                     pipTitle="You — Jay · Florida"
                     pipSubtitle="Self preview"
                     showPip={selfVideoOn}
-                    remoteStream={remoteStream}
+                    remoteStream={remoteStreamForPlayback}
+                    remoteVolume={1}
                     pipStream={localStream}
                   />
                 </ExpandableShell>
@@ -270,7 +272,8 @@ export default function ArtistSessionScreen() {
                   pipTitle="You — Jay · Florida"
                   pipSubtitle="Self preview"
                   showPip={selfVideoOn}
-                  remoteStream={remoteStream}
+                  remoteStream={remoteStreamForPlayback}
+                  remoteVolume={1}
                   pipStream={localStream}
                 />
               </ExpandableShell>

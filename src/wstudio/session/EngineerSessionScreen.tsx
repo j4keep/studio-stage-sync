@@ -83,7 +83,15 @@ export default function EngineerSessionScreen() {
     engineerContinueSession,
   } = useBookingTimer();
   const { expandId, toggleExpand, exitExpand } = useExpandablePanels();
-  const { localStream, remoteStream, localScreenPreview, mediaError, remoteMicLevel, localTalkbackTxLevel } = useStudioMedia();
+  const {
+    localStream,
+    remoteStream,
+    remoteStreamForPlayback,
+    localScreenPreview,
+    mediaError,
+    remoteMicLevel,
+    localTalkbackTxLevel,
+  } = useStudioMedia();
   const [extensionPlaceholderOpen, setExtensionPlaceholderOpen] = useState(false);
   const [vocalChannel, setVocalChannel] = useState<1 | 2 | 3>(1);
   const [armRecord, setArmRecord] = useState(false);
@@ -302,7 +310,8 @@ export default function EngineerSessionScreen() {
                   remoteSubtitle="Artist (remote)"
                   pipTitle="Bob — New York"
                   pipSubtitle="You (engineer)"
-                  remoteStream={remoteStream}
+                  remoteStream={remoteStreamForPlayback}
+                  remoteVolume={live.headphoneLevelEngineer}
                   pipStream={localStream}
                 />
                 <ReceiveTalkRow

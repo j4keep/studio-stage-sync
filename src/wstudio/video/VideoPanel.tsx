@@ -9,6 +9,8 @@ export function VideoPanel({
   stream,
   /** Mute this element to avoid feedback (local preview); set false for remote if audio should play here. */
   videoMuted = true,
+  /** 0–1 output level when unmuted (e.g. engineer headphone bus on remote tile). */
+  volume = 1,
   className = "",
 }: {
   title: string;
@@ -17,21 +19,26 @@ export function VideoPanel({
   mirrored?: boolean;
   stream?: MediaStream | null;
   videoMuted?: boolean;
+  volume?: number;
   className?: string;
 }) {
   const vidRef = useRef<HTMLVideoElement>(null);
 
   const hasRenderableVideo =
     !!stream?.getVideoTracks().some((t) => t.readyState === "live" || (t.readyState as string) === "new");
+  const hasLiveAudio =
+    !!stream?.getAudioTracks().some((t) => t.readyState === "live" || (t.readyState as string) === "new");
+  const showMediaElement = hasRenderableVideo || hasLiveAudio;
 
   useEffect(() => {
     const el = vidRef.current;
     if (!el) return;
     el.srcObject = stream ?? null;
-    if (stream && hasRenderableVideo) {
+    el.volume = Math.min(1, Math.max(0, volume));
+    if (stream && showMediaElement) {
       void el.play().catch(() => {});
     }
-  }, [stream, hasRenderableVideo]);
+  }, [stream, showMediaElement, volume]);
 
   return (
     <div
