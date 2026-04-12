@@ -241,7 +241,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
         setLocalStream(outStream);
         setMediaError(null);
 
-        localLevelRafRef.current = requestAnimationFrame(() => tickLocalMeter(analyser));
+        localLevelRafRef.current = requestAnimationFrame(() => tickLocalMeter(analyserLocal));
 
         applyMuteAndPttToGraph();
 
@@ -320,7 +320,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     const raw = rawMicAudioTrackRef.current;
     const pc = pcRef.current;
     console.debug(DEBUG_AUDIO_TAG, {
-      micStreamActive: !!localStreamRef.current && (raw?.readyState === "live" ?? false),
+      micStreamActive: !!localStreamRef.current && (raw?.readyState === "live" || false),
       meterConnectedToLiveMic: !!audioCtxRef.current && !!gainNodeRef.current,
       muteState: muted,
       pushToTalkTransmitting: !muted && talkbackHeld,
