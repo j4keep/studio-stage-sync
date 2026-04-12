@@ -487,7 +487,7 @@ export default function UnifiedSessionScreen() {
     routingError: bridgeRoutingError,
     routed: bridgeRouted,
     refreshDevices: bridgeRefreshDevices,
-  } = useBridgeOutputDevice(isEngineer ? engineerDawVocalIn1 ?? null : null);
+  } = useBridgeOutputDevice(role === "engineer" ? engineerDawVocalIn1 ?? null : null);
 
   const {
     booking, totalBookedMinutes, remainingSeconds: bookingRemaining, warningLevel, timerRunning, phase, pendingExtension,
