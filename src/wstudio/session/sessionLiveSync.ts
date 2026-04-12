@@ -12,6 +12,8 @@ export type SessionLiveState = {
   playing: boolean;
   /** Record arm (engineer drives) */
   recordArmed: boolean;
+  /** True after at least one completed record pass this session (placeholder take UI) */
+  takeCapturedThisSession: boolean;
   /** Monitor mix 0–1 (engineer drives; artist read-only in UI) */
   vocalLevel: number;
   talkbackLevel: number;
@@ -44,6 +46,7 @@ export function defaultLiveState(): SessionLiveState {
     engineerJoined: false,
     playing: false,
     recordArmed: false,
+    takeCapturedThisSession: false,
     vocalLevel: 0.55,
     talkbackLevel: 0.45,
     cueMix: 0.5,

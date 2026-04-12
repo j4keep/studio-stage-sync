@@ -292,14 +292,19 @@ export function ReceiveSyncPanel({
   onPlay,
   onStop,
   onRecord,
+  recording = false,
+  recordArmed = false,
 }: {
   disabled?: boolean;
   onPlay?: () => void;
   onStop?: () => void;
   onRecord?: () => void;
+  recording?: boolean;
+  recordArmed?: boolean;
 }) {
   const big =
     "flex flex-1 flex-col items-center justify-center rounded-lg border border-zinc-600/80 bg-gradient-to-b from-zinc-800 to-zinc-900 py-4 text-[10px] font-bold uppercase tracking-wide text-zinc-200 shadow-md disabled:opacity-40";
+  const recordLocked = !recording && !recordArmed;
   return (
     <div className={cn(PANEL, "p-3")}>
       <div className="mb-2 text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-500">Sync controls</div>
@@ -313,11 +318,22 @@ export function ReceiveSyncPanel({
         </button>
         <button
           type="button"
-          disabled={disabled}
-          className={cn(big, "border-rose-800/60 text-rose-200")}
+          disabled={disabled || recordLocked}
+          className={cn(
+            big,
+            recording
+              ? "border-red-700/70 bg-gradient-to-b from-red-950/80 to-zinc-900 text-red-100 shadow-[0_0_16px_rgba(220,38,38,0.25)]"
+              : "border-rose-800/60 text-rose-200",
+            recordLocked && "opacity-45",
+          )}
           onClick={onRecord}
         >
-          <span className="mb-0.5 inline-block h-2 w-2 rounded-full bg-red-500" />
+          <span
+            className={cn(
+              "mb-0.5 inline-block h-2 w-2 rounded-full bg-red-500",
+              recording && "animate-pulse",
+            )}
+          />
           Record
         </button>
       </div>
@@ -373,7 +389,7 @@ export function ReceiveVocalInputPanel({
       </div>
       <button
         type="button"
-        disabled={disabled}
+        disabled={disabled || recording}
         onClick={onArm}
         className={cn(
           "w-full rounded-lg border py-3 text-xs font-bold uppercase tracking-wide transition",
@@ -513,10 +529,16 @@ export function ReceiveWaveformFooter({
   vocalLevel,
   recording,
   disabled,
+  recordArmed = false,
+  takeCaptured = false,
+  playing = false,
 }: {
   vocalLevel: number;
   recording: boolean;
   disabled?: boolean;
+  recordArmed?: boolean;
+  takeCaptured?: boolean;
+  playing?: boolean;
 }) {
   const bars = useMemo(() => {
     const n = 48;
@@ -528,15 +550,30 @@ export function ReceiveWaveformFooter({
     });
   }, [vocalLevel]);
 
+  const takeLabel = recording
+    ? "Recording…"
+    : takeCaptured
+      ? "Take saved"
+      : recordArmed
+        ? "Armed — ready"
+        : playing
+          ? "Playing"
+          : "Ready";
+
   return (
     <div className={cn(PANEL, "overflow-hidden")}>
       <div className="flex items-center justify-between border-b border-zinc-800/80 px-3 py-1.5">
         <span className="text-[10px] font-medium text-zinc-400">
-          Jay&apos;s vocal take 4 · {recording ? "Recording…" : "Ready"}
+          Jay&apos;s vocal take 4 · {takeLabel}
         </span>
         <Pause className="h-3.5 w-3.5 text-zinc-600" />
       </div>
-      <div className="flex h-14 items-end gap-px bg-zinc-950 px-1 pb-1 pt-2">
+      <div
+        className={cn(
+          "flex h-14 items-end gap-px bg-zinc-950 px-1 pb-1 pt-2",
+          recording && "motion-safe:animate-pulse",
+        )}
+      >
         {bars.map((h, i) => (
           <div
             key={i}
@@ -566,11 +603,19 @@ export function ReceiveWaveformFooter({
             "ml-auto flex items-center gap-2 rounded-lg border px-4 py-2 text-[10px] font-bold uppercase tracking-wide",
             recording
               ? "border-red-600/80 bg-red-950/60 text-red-200 shadow-[0_0_20px_rgba(220,38,38,0.35)]"
-              : "border-zinc-600 bg-zinc-800 text-zinc-400",
+              : recordArmed
+                ? "border-amber-600/70 bg-amber-950/40 text-amber-100"
+                : "border-zinc-600 bg-zinc-800 text-zinc-400",
           )}
         >
-          <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-red-500" />
-          Rec · {recording ? "Recording…" : "Idle"}
+          <span
+            className={cn(
+              "inline-block h-2 w-2 rounded-full",
+              recording ? "animate-pulse bg-red-500" : recordArmed ? "bg-amber-400" : "bg-zinc-600",
+            )}
+          />
+          Rec ·{" "}
+          {recording ? "Recording…" : recordArmed ? "Armed" : takeCaptured ? "Take saved" : "Idle"}
         </button>
         <div className="flex items-center gap-2 pl-2">
           <VerticalLeds value={45} count={8} />

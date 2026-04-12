@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { ArrowLeft, Play, Sparkles, Square, Wallet } from "lucide-react";
 import {
@@ -62,6 +62,8 @@ export default function EngineerSessionScreen() {
     latencyMs,
     live,
     setSessionRecording,
+    setSessionPlaying,
+    setSessionRecordArmed,
     collaborationShareActive,
   } = useSession();
   const {
@@ -94,7 +96,6 @@ export default function EngineerSessionScreen() {
   } = useStudioMedia();
   const [extensionPlaceholderOpen, setExtensionPlaceholderOpen] = useState(false);
   const [vocalChannel, setVocalChannel] = useState<1 | 2 | 3>(1);
-  const [armRecord, setArmRecord] = useState(false);
 
   const lock = controlsLocked;
   const showPaidTimer = !!booking && booking.bookedMinutes > 0;
@@ -142,6 +143,21 @@ export default function EngineerSessionScreen() {
     100,
     Math.max(0, Math.max(localTalkbackTxLevel, remoteMicLevel) * 100),
   );
+
+  const handleTransportRecord = useCallback(() => {
+    if (live.recording) {
+      setSessionRecording(false);
+      return;
+    }
+    if (!live.recordArmed) return;
+    setSessionRecording(true);
+    if (!live.playing) setSessionPlaying(true);
+  }, [live.recording, live.recordArmed, live.playing, setSessionRecording, setSessionPlaying]);
+
+  const handleTransportStop = useCallback(() => {
+    if (live.recording) setSessionRecording(false);
+    setSessionPlaying(false);
+  }, [live.recording, setSessionRecording, setSessionPlaying]);
 
   if (!role) return <Navigate to={JOIN_PATH} replace />;
   if (role === "artist") return <Navigate to="/wstudio/session/artist" replace />;
@@ -387,23 +403,19 @@ export default function EngineerSessionScreen() {
               >
                 <ReceiveSyncPanel
                   disabled={lock}
+                  recording={live.recording}
+                  recordArmed={live.recordArmed}
                   onPlay={() => toast.message("Play (demo)")}
-                  onStop={() => {
-                    setSessionRecording(false);
-                    toast.message("Stop (demo)");
-                  }}
-                  onRecord={() => {
-                    const next = !live.recording;
-                    setSessionRecording(next);
-                    toast.message(next ? "Recording… (demo)" : "Recording stopped (demo)");
-                  }}
+                  onStop={handleTransportStop}
+                  onRecord={handleTransportRecord}
                 />
                 <ReceiveVocalInputPanel
                   level={remoteMicLevel}
                   channel={vocalChannel}
                   onChannel={setVocalChannel}
-                  armed={armRecord}
-                  onArm={() => setArmRecord((a) => !a)}
+                  armed={live.recordArmed}
+                  onArm={() => setSessionRecordArmed(!live.recordArmed)}
+                  recording={live.recording}
                   disabled={lock}
                 />
               </ExpandableShell>
@@ -429,7 +441,14 @@ export default function EngineerSessionScreen() {
           onToggleExpand={toggleExpand}
           className=""
         >
-          <ReceiveWaveformFooter vocalLevel={remoteMicLevel} recording={live.recording} disabled={lock} />
+          <ReceiveWaveformFooter
+            vocalLevel={remoteMicLevel}
+            recording={live.recording}
+            disabled={lock}
+            recordArmed={live.recordArmed}
+            takeCaptured={live.takeCapturedThisSession}
+            playing={live.playing}
+          />
         </ExpandableShell>
 
         <div className="flex justify-end px-1">

@@ -198,7 +198,7 @@ function FreqLabels() {
   );
 }
 
-function Waveform({ recording }: { recording: boolean }) {
+function Waveform({ recording, takeCaptured }: { recording: boolean; takeCaptured?: boolean }) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const canvas = ref.current;
@@ -215,12 +215,17 @@ function Waveform({ recording }: { recording: boolean }) {
       ctx.lineWidth = 1;
       for (let x = 0; x <= w; x += 60) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
       ctx.beginPath(); ctx.moveTo(0, h / 2); ctx.lineTo(w, h / 2); ctx.stroke();
-      ctx.strokeStyle = recording ? "#8a8c92" : "#3a3c41";
+      ctx.strokeStyle = recording ? "#8a8c92" : takeCaptured ? "#6b7280" : "#3a3c41";
       ctx.lineWidth = 1.2;
       ctx.beginPath();
       for (let x = 0; x < w; x++) {
         const spd = recording ? t * 0.003 : 0;
-        const amp = Math.sin(x * 0.028 + spd) * 14 + Math.sin(x * 0.065 + spd * 0.7) * 9 + Math.sin(x * 0.14 + spd * 1.4) * 4;
+        let amp: number;
+        if (takeCaptured && !recording) {
+          amp = Math.sin(x * 0.028) * 13 + Math.sin(x * 0.065) * 8 + Math.sin(x * 0.11) * 5;
+        } else {
+          amp = Math.sin(x * 0.028 + spd) * 14 + Math.sin(x * 0.065 + spd * 0.7) * 9 + Math.sin(x * 0.14 + spd * 1.4) * 4;
+        }
         const taper = 0.4 + 0.6 * Math.sin((x / w) * Math.PI);
         ctx.lineTo(x, h / 2 + amp * taper);
       }
@@ -229,7 +234,7 @@ function Waveform({ recording }: { recording: boolean }) {
     };
     frame = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(frame);
-  }, [recording]);
+  }, [recording, takeCaptured]);
   return <canvas ref={ref} width={1200} height={64} className="block h-[40px] w-full" />;
 }
 
@@ -487,6 +492,7 @@ export default function UnifiedSessionScreen() {
   const recording = live.recording;
   const playing = live.playing;
   const armed = live.recordArmed;
+  const takeCaptured = live.takeCapturedThisSession;
   const vocalLevel = live.vocalLevel;
   const talkbackLevel = live.talkbackLevel;
   const headphoneLevel = isEngineer ? live.headphoneLevelEngineer : live.headphoneLevelArtist;
@@ -514,6 +520,33 @@ export default function UnifiedSessionScreen() {
  /** Headphone bus: engineer scales remote tile; artist level is applied in Web Audio graph. */
   const remoteTileVolume = isEngineer ? live.headphoneLevelEngineer : 1;
 
+  const vocalTakeTitle = recording
+    ? (isMobile ? "Rec..." : "Recording...")
+    : takeCaptured
+      ? "Take saved"
+      : armed
+        ? "Armed — ready"
+        : playing
+          ? "Playing"
+          : "Ready";
+
+  const handleTransportRecord = useCallback(() => {
+    if (!isEngineer) return;
+    if (recording) {
+      setSessionRecording(false);
+      return;
+    }
+    if (!armed) return;
+    setSessionRecording(true);
+    if (!playing) setSessionPlaying(true);
+  }, [isEngineer, recording, armed, playing, setSessionRecording, setSessionPlaying]);
+
+  const handleArmRecordToggle = useCallback(() => {
+    if (!isEngineer || recording) return;
+    setSessionRecordArmed(!armed);
+  }, [isEngineer, recording, armed, setSessionRecordArmed]);
+
+  const engineerRecordDimmed = isEngineer && !recording && !armed;
   const goToJoin = useCallback(() => navigate("/wstudio/session/join"), [navigate]);
 
   const handleEndSession = useCallback(() => {
@@ -860,10 +893,10 @@ export default function UnifiedSessionScreen() {
                       }}>
                         <span style={{ color: C.red }}>■</span> Stop
                       </button>
-                      <button onPointerDown={isEngineer ? (e) => { e.preventDefault(); setSessionRecording(!recording); if (!playing) setSessionPlaying(true); } : undefined} className="flex items-center gap-1.5 rounded-[3px] px-4 py-2 text-[13px] font-semibold" style={{
+                      <button onPointerDown={isEngineer ? (e) => { e.preventDefault(); handleTransportRecord(); } : undefined} className="flex items-center gap-1.5 rounded-[3px] px-4 py-2 text-[13px] font-semibold" style={{
                         background: recording ? `linear-gradient(180deg, #4a1a1a 0%, #2a0e0e 100%)` : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
                         border: `1px solid ${recording ? "#6a2222" : C.panelBorder}`, color: C.text,
-                        opacity: isEngineer ? 1 : 0.4, cursor: isEngineer ? "pointer" : "not-allowed",
+                        opacity: isEngineer ? (engineerRecordDimmed ? 0.45 : 1) : 0.4, cursor: isEngineer && !engineerRecordDimmed ? "pointer" : "not-allowed",
                       }}>
                         <span className={recording ? "animate-pulse" : ""} style={{ color: C.red }}>●</span> Record
                       </button>
@@ -897,19 +930,19 @@ export default function UnifiedSessionScreen() {
                       <div className="mt-0.5"><FreqLabels /></div>
                     </Inset>
                     <div className="mt-3 flex justify-center">
-                      <button onPointerDown={isEngineer ? (e) => { e.preventDefault(); setSessionRecordArmed(!armed); } : undefined} className="rounded-[3px] px-6 py-2 text-[13px] font-bold uppercase tracking-wide" style={{
+                      <button onPointerDown={isEngineer && !recording ? (e) => { e.preventDefault(); handleArmRecordToggle(); } : undefined} className="rounded-[3px] px-6 py-2 text-[13px] font-bold uppercase tracking-wide" style={{
                         background: armed ? `linear-gradient(180deg, #4a1a1a 0%, #2a0e0e 100%)` : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
                         border: `1px solid ${armed ? "#6a2222" : C.panelBorder}`, color: C.text,
-                        opacity: isEngineer ? 1 : 0.4, cursor: isEngineer ? "pointer" : "not-allowed",
+                        opacity: isEngineer && !recording ? 1 : 0.4, cursor: isEngineer && !recording ? "pointer" : "not-allowed",
                       }}>ARM RECORD</button>
                     </div>
                   </Panel>
 
                   {/* Vocal Take Waveform */}
                   <Panel accent={C.acCyan} className="flex items-center gap-2 px-3 py-2">
-                    <span className="truncate" style={{ fontSize: 12, fontWeight: 600, color: C.text, whiteSpace: "nowrap" }}>Vocal Take 4 - {recording ? "Rec..." : "Ready"}</span>
+                    <span className="truncate" style={{ fontSize: 12, fontWeight: 600, color: C.text, whiteSpace: "nowrap" }}>Vocal Take 4 — {vocalTakeTitle}</span>
                     <Inset className="flex-1 overflow-hidden rounded-[3px] p-0.5">
-                      <Waveform recording={recording} />
+                      <Waveform recording={recording} takeCaptured={takeCaptured} />
                     </Inset>
                   </Panel>
 
@@ -919,12 +952,14 @@ export default function UnifiedSessionScreen() {
                     <button disabled={!isEngineer} className="flex items-center gap-1 rounded-[3px] px-3 py-1.5 text-[11px] font-semibold" style={{ background: `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`, border: `1px solid ${C.panelBorder}`, color: C.text, opacity: isEngineer ? 1 : 0.4 }}>&lt;&lt; Rew</button>
                     <button disabled={!isEngineer} className="flex items-center gap-1 rounded-[3px] px-3 py-1.5 text-[11px] font-semibold" style={{ background: `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`, border: `1px solid ${C.panelBorder}`, color: C.text, opacity: isEngineer ? 1 : 0.4 }}>▶▶ Fwd</button>
                     <div className="flex items-center gap-1.5 rounded-[3px] px-3 py-1.5 text-[12px] font-bold" style={{
-                      background: recording ? `linear-gradient(180deg, #4a1a1a 0%, #2a0e0e 100%)` : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
-                      border: `1px solid ${recording ? "#6a2222" : C.panelBorder}`,
+                      background: recording ? `linear-gradient(180deg, #4a1a1a 0%, #2a0e0e 100%)` : armed ? `linear-gradient(180deg, #3a2a0a 0%, #2a1f08 100%)` : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
+                      border: `1px solid ${recording ? "#6a2222" : armed ? "#6a5a22" : C.panelBorder}`,
                     }}>
-                      <span className={recording ? "animate-pulse" : ""} style={{ color: C.red }}>●</span>
-                      <span style={{ color: C.red }}>REC</span>
-                      {recording && <span style={{ color: C.red, fontSize: 10 }}>RECORDING</span>}
+                      <span className={recording ? "animate-pulse" : ""} style={{ color: recording ? C.red : armed ? C.yellow : C.dim }}>●</span>
+                      <span style={{ color: recording ? C.red : armed ? C.yellow : C.dim }}>REC</span>
+                      {(recording || armed) && (
+                        <span style={{ color: recording ? C.red : C.yellow, fontSize: 10 }}>{recording ? "RECORDING" : "ARMED"}</span>
+                      )}
                     </div>
                   </Panel>
                 </div>
@@ -1162,11 +1197,11 @@ export default function UnifiedSessionScreen() {
                 }}>
                   <span style={{ color: C.red }}>■</span> Stop
                 </button>
-                <button type="button" onPointerDown={isEngineer ? (e) => { e.preventDefault(); const next = !recording; setSessionRecording(next); if (!playing && next) setSessionPlaying(true); } : undefined} className="flex items-center gap-2 rounded-[3px] px-5 py-2.5 text-[15px] font-semibold" style={{
+                <button type="button" onPointerDown={isEngineer ? (e) => { e.preventDefault(); handleTransportRecord(); } : undefined} className="flex items-center gap-2 rounded-[3px] px-5 py-2.5 text-[15px] font-semibold" style={{
                   background: recording ? `linear-gradient(180deg, #4a1a1a 0%, #2a0e0e 100%)` : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
                   border: `1px solid ${recording ? "#6a2222" : C.panelBorder}`, color: C.text,
                   boxShadow: recording ? `0 0 14px rgba(239,68,68,0.15)` : `inset 0 1px 0 rgba(255,255,255,0.05)`,
-                  opacity: isEngineer ? 1 : 0.4, cursor: isEngineer ? "pointer" : "not-allowed", minWidth: 110,
+                  opacity: isEngineer ? (engineerRecordDimmed ? 0.45 : 1) : 0.4, cursor: isEngineer && !engineerRecordDimmed ? "pointer" : "not-allowed", minWidth: 110,
                 }}>
                   <span className={recording ? "animate-pulse" : ""} style={{ color: C.red }}>●</span> Record
                 </button>
@@ -1203,11 +1238,11 @@ export default function UnifiedSessionScreen() {
                   <div className="mt-1"><FreqLabels /></div>
                 </Inset>
                 <div className="mt-4 flex justify-center">
-                  <button type="button" onPointerDown={isEngineer ? (e) => { e.preventDefault(); setSessionRecordArmed(!armed); } : undefined} className="rounded-[3px] px-8 py-2.5 text-[15px] font-bold uppercase tracking-wide" style={{
+                  <button type="button" onPointerDown={isEngineer && !recording ? (e) => { e.preventDefault(); handleArmRecordToggle(); } : undefined} className="rounded-[3px] px-8 py-2.5 text-[15px] font-bold uppercase tracking-wide" style={{
                     background: armed ? `linear-gradient(180deg, #4a1a1a 0%, #2a0e0e 100%)` : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
                     border: `1px solid ${armed ? "#6a2222" : C.panelBorder}`, color: C.text,
                     boxShadow: armed ? `0 0 14px rgba(239,68,68,0.15)` : `inset 0 1px 0 rgba(255,255,255,0.05)`,
-                    opacity: isEngineer ? 1 : 0.4, cursor: isEngineer ? "pointer" : "not-allowed",
+                    opacity: isEngineer && !recording ? 1 : 0.4, cursor: isEngineer && !recording ? "pointer" : "not-allowed",
                   }}>ARM RECORD</button>
                 </div>
               </div>
@@ -1263,9 +1298,9 @@ export default function UnifiedSessionScreen() {
 
           {/* ── VOCAL TAKE WAVEFORM (compact, same height as mute/talk/settings) ── */}
           <Panel accent={C.acCyan} className={`${isMobile ? "" : "col-span-2"} flex items-center gap-3 px-3 py-2`}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: C.text, whiteSpace: "nowrap" }}>Jay&apos;s Vocal Take 4 - {recording ? "Recording..." : playing ? "Playing" : "Ready"}</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: C.text, whiteSpace: "nowrap" }}>Jay&apos;s Vocal Take 4 — {vocalTakeTitle}</span>
             <Inset className="flex-1 overflow-hidden rounded-[3px] p-0.5">
-              <Waveform recording={recording} />
+              <Waveform recording={recording} takeCaptured={takeCaptured} />
             </Inset>
             <span style={{ color: C.dim, fontSize: 13 }}>▐▐</span>
           </Panel>
@@ -1320,13 +1355,13 @@ export default function UnifiedSessionScreen() {
             <TBtn sym="<<" label="Rewind" disabled={!isEngineer} />
             <TBtn sym="▶▶" label="Forward" disabled={!isEngineer} />
             <div className="ml-2 flex items-center gap-2 rounded-[3px] px-5 py-2 text-[15px] font-bold" style={{
-              background: recording ? `linear-gradient(180deg, #4a1a1a 0%, #2a0e0e 100%)` : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
-              border: `1px solid ${recording ? "#6a2222" : C.panelBorder}`, minWidth: 240, justifyContent: "center",
+              background: recording ? `linear-gradient(180deg, #4a1a1a 0%, #2a0e0e 100%)` : armed ? `linear-gradient(180deg, #3a2a0a 0%, #2a1f08 100%)` : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
+              border: `1px solid ${recording ? "#6a2222" : armed ? "#6a5a22" : C.panelBorder}`, minWidth: 240, justifyContent: "center",
             }}>
-              <span className={recording ? "animate-pulse" : ""} style={{ color: C.red }}>●</span>
-              <span style={{ color: C.red }}>REC</span>
-              <span style={{ color: recording ? C.red : armed ? C.yellow : C.dim }}>
-                {recording ? "● RECORDING..." : armed ? "● ARMED" : ""}
+              <span className={recording ? "animate-pulse" : ""} style={{ color: recording ? C.red : armed ? C.yellow : C.dim }}>●</span>
+              <span style={{ color: recording ? C.red : armed ? C.yellow : C.dim }}>REC</span>
+              <span style={{ color: recording ? C.red : armed ? C.yellow : takeCaptured ? C.text : C.dim }}>
+                {recording ? "● RECORDING..." : armed ? "● ARMED — READY" : takeCaptured ? "● TAKE SAVED" : ""}
               </span>
             </div>
             <div className="ml-auto flex items-center gap-3">

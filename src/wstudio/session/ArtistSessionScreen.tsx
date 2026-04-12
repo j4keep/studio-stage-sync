@@ -122,6 +122,11 @@ export default function ArtistSessionScreen() {
                   Recording…
                 </span>
               ) : null}
+              {live.recordArmed && !live.recording ? (
+                <span className="rounded border border-amber-600/55 bg-amber-950/45 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-100">
+                  Ready to record
+                </span>
+              ) : null}
             </div>
             <p className="mt-1 truncate text-xs text-zinc-300">{sessionDisplayName || `Session: ${DEMO_SESSION_TITLE}`}</p>
             <div className="mt-2 flex flex-wrap items-center gap-2">

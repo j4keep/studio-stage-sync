@@ -18,6 +18,7 @@ import {
 import type { TimerWarningLevel } from "../booking/bookingTypes";
 import {
   defaultLiveState,
+  readLive,
   subscribeLive,
   writeLive,
   type SessionLiveState,
@@ -57,6 +58,7 @@ function leavePatch(role: Role): Partial<SessionLiveState> {
       recording: false,
       playing: false,
       recordArmed: false,
+      takeCapturedThisSession: false,
     };
   }
   if (role === "artist") {
@@ -277,7 +279,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const setSessionRecording = useCallback(
     (recording: boolean) => {
       if (role !== "engineer" || !sessionId.trim()) return;
-      writeLive(sessionId, { recording });
+      const s = readLive(sessionId);
+      if (recording) {
+        if (!s.recordArmed) return;
+        writeLive(sessionId, { recording: true, recordArmed: false });
+        return;
+      }
+      const patch: Partial<SessionLiveState> = { recording: false };
+      if (s.recording) patch.takeCapturedThisSession = true;
+      writeLive(sessionId, patch);
     },
     [role, sessionId],
   );
@@ -293,6 +303,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const setSessionRecordArmed = useCallback(
     (armed: boolean) => {
       if (role !== "engineer" || !sessionId.trim()) return;
+      if (readLive(sessionId).recording) return;
       writeLive(sessionId, { recordArmed: armed });
     },
     [role, sessionId],
