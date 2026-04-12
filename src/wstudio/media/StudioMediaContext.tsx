@@ -16,6 +16,7 @@ import {
   type RtcSignalPayload,
   type RtcSignalRole,
 } from "./realtimeRtcSignaling";
+import { WSTUDIO_DAW_VOCAL_IN_1, WSTUDIO_DAW_VOCAL_IN_2 } from "./dawRouting";
 
 const ICE_SERVERS: RTCIceServer[] = [{ urls: "stun:stun.l.google.com:19302" }];
 
@@ -67,6 +68,9 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
   const [localTalkbackTxLevel, setLocalTalkbackTxLevel] = useState(0);
   const [remoteMicLevel, setRemoteMicLevel] = useState(0);
   const [hasRemoteAudio, setHasRemoteAudio] = useState(false);
+  const [engineerDawVocalIn1, setEngineerDawVocalIn1] = useState<MediaStream | null>(null);
+  const [engineerDawVocalIn2, setEngineerDawVocalIn2] = useState<MediaStream | null>(null);
+  const [engineerScreenShareAudioStream, setEngineerScreenShareAudioStream] = useState<MediaStream | null>(null);
 
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
@@ -337,6 +341,84 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       setRemoteMicLevel(0);
     };
   }, [remoteStream]);
+
+  /**
+   * Engineer: isolate remote artist vocal into dedicated Web Audio destinations for DAW routing.
+   * Independent of HTML video volume / headphone UI — unity gain on the peer mic tap.
+   * Vocal In 1 & 2 are parallel buses for future stereo/aux mapping (MVP: dual mono from one track).
+   */
+  useEffect(() => {
+    if (role !== "engineer") {
+      setEngineerDawVocalIn1(null);
+      setEngineerDawVocalIn2(null);
+      return;
+    }
+    const rs = remoteStream;
+    const audioTrack = rs?.getAudioTracks().find((t) => t.readyState === "live");
+    if (!audioTrack) {
+      setEngineerDawVocalIn1(null);
+      setEngineerDawVocalIn2(null);
+      return;
+    }
+
+    let cancelled = false;
+    const ctx = new AudioContext();
+    void ctx.resume().catch(() => {});
+    const micStream = new MediaStream([audioTrack]);
+    const src = ctx.createMediaStreamSource(micStream);
+    const g1 = ctx.createGain();
+    const g2 = ctx.createGain();
+    g1.gain.value = 1;
+    g2.gain.value = 1;
+    const dest1 = ctx.createMediaStreamDestination();
+    const dest2 = ctx.createMediaStreamDestination();
+    try {
+      dest1.stream.getAudioTracks().forEach((t) => {
+        t.contentHint = "music";
+      });
+      dest2.stream.getAudioTracks().forEach((t) => {
+        t.contentHint = "music";
+      });
+    } catch {
+      /* contentHint unsupported */
+    }
+    src.connect(g1);
+    src.connect(g2);
+    g1.connect(dest1);
+    g2.connect(dest2);
+
+    const s1 = dest1.stream;
+    const s2 = dest2.stream;
+    if (import.meta.env.DEV) {
+      console.debug(DEBUG_AUDIO_TAG, "DAW vocal buses", WSTUDIO_DAW_VOCAL_IN_1, WSTUDIO_DAW_VOCAL_IN_2, s1.id, s2.id);
+    }
+
+    if (!cancelled) {
+      setEngineerDawVocalIn1(s1);
+      setEngineerDawVocalIn2(s2);
+    }
+
+    return () => {
+      cancelled = true;
+      src.disconnect();
+      g1.disconnect();
+      g2.disconnect();
+      void ctx.close();
+      setEngineerDawVocalIn1(null);
+      setEngineerDawVocalIn2(null);
+    };
+  }, [role, remoteStream]);
+
+  /** Screen-share audio only (never mixed into artist vocal DAW buses). */
+  useEffect(() => {
+    if (role !== "engineer") {
+      setEngineerScreenShareAudioStream(null);
+      return;
+    }
+    const v = localScreenPreview;
+    const a = v?.getAudioTracks().find((t) => t.readyState === "live");
+    setEngineerScreenShareAudioStream(a ? new MediaStream([a]) : null);
+  }, [role, localScreenPreview]);
 
   /** Artist: route peer audio through Web Audio for headphone level + engineer talkback priority. */
   useEffect(() => {
@@ -657,6 +739,9 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       remoteStream,
       remoteStreamForPlayback,
       localScreenPreview,
+      engineerDawVocalIn1,
+      engineerDawVocalIn2,
+      engineerScreenShareAudioStream,
       mediaError,
       clearMediaError,
       localMicLevel,
@@ -669,6 +754,9 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       remoteStream,
       remoteStreamForPlayback,
       localScreenPreview,
+      engineerDawVocalIn1,
+      engineerDawVocalIn2,
+      engineerScreenShareAudioStream,
       mediaError,
       clearMediaError,
       localMicLevel,

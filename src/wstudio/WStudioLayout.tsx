@@ -41,7 +41,8 @@ export function WStudioLayout() {
   const mediaEnabled =
     pathname === "/wstudio/session/live" ||
     pathname === "/wstudio/session/artist" ||
-    pathname === "/wstudio/session/engineer";
+    pathname === "/wstudio/session/engineer" ||
+    pathname === "/wstudio/session/bridge";
 
   const shell = (
     <div className="flex min-h-screen w-full flex-col bg-zinc-950 text-zinc-100">
