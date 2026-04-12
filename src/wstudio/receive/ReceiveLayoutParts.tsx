@@ -347,6 +347,7 @@ export function ReceiveVocalInputPanel({
   onChannel,
   onArm,
   armed,
+  recording = false,
   disabled,
 }: {
   level: number;
