@@ -264,7 +264,16 @@ function TBtn({ sym, label, disabled = false }: { sym: string; label: string; di
 }
 
 /* ─── Live Video Feed ─── */
-function VideoFeed({ stream, mirrored }: { stream: MediaStream | null; mirrored?: boolean }) {
+function VideoFeed({
+  stream,
+  mirrored,
+  /** Local preview: true (default). Remote peer: false so WebRTC audio is audible. */
+  muted = true,
+}: {
+  stream: MediaStream | null;
+  mirrored?: boolean;
+  muted?: boolean;
+}) {
   const ref = useRef<HTMLVideoElement>(null);
   useEffect(() => {
     const el = ref.current;
@@ -278,7 +287,7 @@ function VideoFeed({ stream, mirrored }: { stream: MediaStream | null; mirrored?
       ref={ref}
       autoPlay
       playsInline
-      muted
+      muted={muted}
       className="absolute inset-0 h-full w-full object-cover"
       style={mirrored ? { transform: "scaleX(-1)" } : undefined}
     />
@@ -385,7 +394,6 @@ function ExpandedVideoOverlay({
   onClose: () => void;
 }) {
   const vidRef = useRef<HTMLVideoElement>(null);
-  const shareRef = useRef<HTMLVideoElement>(null);
   const activeStream = screenShareStream || stream;
   const isMirrored = screenShareStream ? false : mirrored;
 
@@ -418,7 +426,7 @@ function ExpandedVideoOverlay({
             ref={vidRef}
             autoPlay
             playsInline
-            muted
+            muted={audioMuted}
             className="absolute inset-0 h-full w-full object-contain"
             style={isMirrored ? { transform: "scaleX(-1)" } : undefined}
           />
@@ -674,7 +682,7 @@ export default function UnifiedSessionScreen() {
                   {/* Artist Video */}
                   <Panel accent={C.acMagenta} className="relative overflow-hidden" style={{ aspectRatio: "16/9" }}>
                     {artistStream ? (
-                      <VideoFeed stream={artistStream} mirrored={artistMirrored} />
+                      <VideoFeed stream={artistStream} mirrored={artistMirrored} muted={isArtist} />
                     ) : (
                       <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
                         <span className="text-[20px] font-black tracking-tight" style={{ color: C.dim }}>W<span style={{ color: C.blue }}>.</span>STUDIO</span>
@@ -694,7 +702,7 @@ export default function UnifiedSessionScreen() {
                   {/* Engineer Video */}
                   <Panel accent={C.acGreen} className="relative overflow-hidden" style={{ aspectRatio: "16/9" }}>
                     {engineerStream ? (
-                      <VideoFeed stream={engineerStream} mirrored={engineerMirrored} />
+                      <VideoFeed stream={engineerStream} mirrored={engineerMirrored} muted={isEngineer} />
                     ) : (
                       <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
                         <span className="text-[20px] font-black tracking-tight" style={{ color: C.dim }}>W<span style={{ color: C.blue }}>.</span>STUDIO</span>
@@ -963,7 +971,7 @@ export default function UnifiedSessionScreen() {
             {/* Artist Video */}
             <Panel accent={C.acMagenta} className="relative overflow-hidden" style={{ aspectRatio: "4/3" }}>
               {artistStream ? (
-                <VideoFeed stream={artistStream} mirrored={artistMirrored} />
+                <VideoFeed stream={artistStream} mirrored={artistMirrored} muted={isArtist} />
               ) : (
                 <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
                   <span className="text-[28px] font-black tracking-tight" style={{ color: C.dim }}>W<span style={{ color: C.blue }}>.</span>STUDIO</span>
@@ -983,7 +991,7 @@ export default function UnifiedSessionScreen() {
             {/* Engineer Video */}
             <Panel accent={C.acGreen} className="relative overflow-hidden" style={{ aspectRatio: "4/3" }}>
               {engineerStream ? (
-                <VideoFeed stream={engineerStream} mirrored={engineerMirrored} />
+                <VideoFeed stream={engineerStream} mirrored={engineerMirrored} muted={isEngineer} />
               ) : (
                 <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
                   <span className="text-[28px] font-black tracking-tight" style={{ color: C.dim }}>W<span style={{ color: C.blue }}>.</span>STUDIO</span>
@@ -1341,6 +1349,7 @@ export default function UnifiedSessionScreen() {
           stream={artistStream}
           mirrored={artistMirrored}
           label="Artist View"
+          audioMuted={isArtist}
           onClose={() => setExpandedPanel(null)}
         />
       )}
@@ -1350,6 +1359,7 @@ export default function UnifiedSessionScreen() {
           mirrored={engineerMirrored}
           label="Engineer View"
           screenShareStream={collaborationShareActive ? screenShareViewStream : null}
+          audioMuted={isEngineer}
           onClose={() => setExpandedPanel(null)}
         />
       )}
@@ -1357,6 +1367,7 @@ export default function UnifiedSessionScreen() {
         <ExpandedVideoOverlay
           stream={screenShareViewStream}
           label="Screen Share — DAW View"
+          audioMuted={isEngineer}
           onClose={() => setExpandedPanel(null)}
         />
       )}

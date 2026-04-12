@@ -251,6 +251,8 @@ export default function ArtistSessionScreen() {
                     pipTitle="You — Jay · Florida"
                     pipSubtitle="Self preview"
                     showPip={selfVideoOn}
+                    remoteStream={remoteStream}
+                    pipStream={localStream}
                   />
                 </ExpandableShell>
               </>

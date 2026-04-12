@@ -42,7 +42,7 @@ export type StudioMediaContextValue = {
   clearMediaError: () => void;
   /** 0–1 RMS from local mic (pre–PTT gate; real input, ~0 when muted) */
   localMicLevel: number;
-  /** 0–1 RMS on the send path after PTT gain (real audio only while transmitting) */
+  /** 0–1 RMS on the WebRTC send path (post mute gate; follows voice when unmuted) */
   localTalkbackTxLevel: number;
   /** 0–1 RMS from remote participant's audio */
   remoteMicLevel: number;
@@ -78,6 +78,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
   const gainNodeRef = useRef<GainNode | null>(null);
   const rawMicAudioTrackRef = useRef<MediaStreamTrack | null>(null);
   const localLevelRafRef = useRef(0);
+  const txLevelRafRef = useRef(0);
   const audioDebugLastLogRef = useRef(0);
   const acquiredSessionTracksRef = useRef<MediaStreamTrack[]>([]);
 
@@ -89,6 +90,8 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
   const closeLocalAudioGraph = useCallback(() => {
     cancelAnimationFrame(localLevelRafRef.current);
     localLevelRafRef.current = 0;
+    cancelAnimationFrame(txLevelRafRef.current);
+    txLevelRafRef.current = 0;
     try {
       void audioCtxRef.current?.close();
     } catch {
@@ -139,21 +142,22 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       gain.gain.value = 0;
     } else {
       if (raw) raw.enabled = true;
-      gain.gain.value = talkbackHeld ? 1 : 0;
+      /** Continuous voice to peer when unmuted; UI talkback stays a separate control layer. */
+      gain.gain.value = 1;
     }
-  }, [muted, talkbackHeld]);
+  }, [muted]);
 
   useEffect(() => {
     localStreamRef.current = localStream;
   }, [localStream]);
 
-  /** PTT gate on processed send path; raw mic stays live for metering when unmuted. */
+  /** Mute gates the processed send path; raw mic tap stays live for local metering when unmuted. */
   useEffect(() => {
     applyMuteAndPttToGraph();
   }, [applyMuteAndPttToGraph]);
 
   // Acquire camera/mic ONLY when user has joined a session (sessionId + role set).
-  // Audio: Web Audio tap (meter) + gain node (PTT) → MediaStreamDestination → WebRTC.
+  // Audio: Web Audio tap (meter) + gain node (mute) → MediaStreamDestination → WebRTC.
   useEffect(() => {
     if (!sessionId.trim() || !role) {
       stopLocalMedia();
@@ -177,6 +181,21 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       const instant = Math.min(1, rms * 5.5);
       setLocalMicLevel((prev) => prev * 0.82 + instant * 0.18);
       localLevelRafRef.current = requestAnimationFrame(() => tickLocalMeter(analyser));
+    };
+
+    const bufTx = new Uint8Array(1024);
+    const tickTxMeter = (analyserTx: AnalyserNode) => {
+      if (cancelled) return;
+      analyserTx.getByteTimeDomainData(bufTx);
+      let sum = 0;
+      for (let i = 0; i < bufTx.length; i++) {
+        const x = (bufTx[i] - 128) / 128;
+        sum += x * x;
+      }
+      const rms = Math.sqrt(sum / bufTx.length);
+      const instant = Math.min(1, rms * 5.5);
+      setLocalTalkbackTxLevel((prev) => prev * 0.82 + instant * 0.18);
+      txLevelRafRef.current = requestAnimationFrame(() => tickTxMeter(analyserTx));
     };
 
     (async () => {
@@ -261,6 +280,8 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       cancelled = true;
       cancelAnimationFrame(localLevelRafRef.current);
       localLevelRafRef.current = 0;
+      cancelAnimationFrame(txLevelRafRef.current);
+      txLevelRafRef.current = 0;
       stopLocalMedia();
     };
   }, [sessionId, role, stopLocalMedia]);
@@ -323,12 +344,12 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       micStreamActive: !!localStreamRef.current && (raw?.readyState === "live" || false),
       meterConnectedToLiveMic: !!audioCtxRef.current && !!gainNodeRef.current,
       muteState: muted,
-      pushToTalkTransmitting: !muted && talkbackHeld,
+      micSendingToPeer: !muted && gainNodeRef.current !== null && gainNodeRef.current.gain.value > 0,
       rtcConnectionState: pc?.connectionState ?? "no-pc",
       localMicLevel: Number(localMicLevel.toFixed(3)),
       remoteMicLevel: Number(remoteMicLevel.toFixed(3)),
     });
-  }, [localMicLevel, remoteMicLevel, muted, talkbackHeld, localStream]);
+  }, [localMicLevel, remoteMicLevel, muted, localStream]);
 
   // Hard cleanup: stop all tracks when provider unmounts (user navigates away)
   useEffect(() => {

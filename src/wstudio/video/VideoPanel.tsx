@@ -40,7 +40,7 @@ export function VideoPanel({
         className,
       )}
     >
-      {stream && hasRenderableVideo ? (
+      {stream && showMediaElement ? (
         <video
           ref={vidRef}
           className={cn("absolute inset-0 h-full w-full object-cover", mirrored && "scale-x-[-1]")}

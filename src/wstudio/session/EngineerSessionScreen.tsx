@@ -25,7 +25,6 @@ import {
   ReceiveSyncPanel,
   ReceiveTalkRow,
   ReceiveTopChrome,
-  ReceiveVideoStack,
   ReceiveVocalInputPanel,
   ReceiveWaveformFooter,
 } from "../receive/ReceiveLayoutParts";
@@ -303,6 +302,8 @@ export default function EngineerSessionScreen() {
                   remoteSubtitle="Artist (remote)"
                   pipTitle="Bob — New York"
                   pipSubtitle="You (engineer)"
+                  remoteStream={remoteStream}
+                  pipStream={localStream}
                 />
                 <ReceiveTalkRow
                   muted={muted}
