@@ -472,6 +472,8 @@ export default function UnifiedSessionScreen() {
 
   const isEngineer = role === "engineer";
   const isArtist = role === "artist";
+  /** Monitor mix is engineer-driven; artist UI reflects synced `live` values only. */
+  const monitorAdjust = isEngineer ? updateSessionMonitorLevels : undefined;
   const recording = live.recording;
   const playing = live.playing;
   const armed = live.recordArmed;
@@ -921,37 +923,37 @@ export default function UnifiedSessionScreen() {
               {mobileTab === "monitor" && (
                 <Panel accent={C.acLime} className="p-3">
                   <div className="mb-1 flex items-center justify-between">
-                    <span style={{ fontSize: 11, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>MONITORING</span>
+                    <span title={isArtist ? "Engineer adjusts monitor mix; values sync here." : undefined} style={{ fontSize: 11, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>MONITORING</span>
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-4">
                     <div className="flex flex-col items-center gap-1">
                       <span style={{ fontSize: 10, fontWeight: 500, color: C.text }}>Vocal Level</span>
                       <div className="flex items-end gap-1.5">
-                        <Knob value={vocalLevel} size={50} onChange={(v) => updateSessionMonitorLevels({ vocalLevel: v })} accent={C.acLime} />
+                        <Knob value={vocalLevel} size={50} onChange={monitorAdjust ? (v) => monitorAdjust({ vocalLevel: v }) : undefined} accent={C.acLime} />
                         <ControlLevelLadder level={vocalLevel} height={60} accent={C.acLime} />
-                        <Fader value={vocalLevel} height={60} onChange={(v) => updateSessionMonitorLevels({ vocalLevel: v })} />
+                        <Fader value={vocalLevel} height={60} onChange={monitorAdjust ? (v) => monitorAdjust({ vocalLevel: v }) : undefined} />
                       </div>
                     </div>
                     <div className="flex flex-col items-center gap-1">
                       <span style={{ fontSize: 10, fontWeight: 500, color: C.text }}>Talkback Level</span>
                       <div className="flex items-end gap-1.5">
-                        <Knob value={talkbackLevel} size={50} onChange={(v) => updateSessionMonitorLevels({ talkbackLevel: v })} accent={C.acCyan} />
+                        <Knob value={talkbackLevel} size={50} onChange={monitorAdjust ? (v) => monitorAdjust({ talkbackLevel: v }) : undefined} accent={C.acCyan} />
                         <ControlLevelLadder level={talkbackLevel} height={60} accent={C.acCyan} />
-                        <Fader value={talkbackLevel} height={60} onChange={(v) => updateSessionMonitorLevels({ talkbackLevel: v })} />
+                        <Fader value={talkbackLevel} height={60} onChange={monitorAdjust ? (v) => monitorAdjust({ talkbackLevel: v }) : undefined} />
                       </div>
                     </div>
                     <div className="flex flex-col items-center gap-1">
                       <span style={{ fontSize: 10, fontWeight: 500, color: C.text }}>Headphone</span>
                       <div className="flex items-end gap-1.5">
-                        <Knob value={headphoneLevel} size={50} onChange={(v) => updateSessionMonitorLevels({ headphoneLevel: v })} accent={C.acOrange} />
+                        <Knob value={headphoneLevel} size={50} onChange={monitorAdjust ? (v) => monitorAdjust({ headphoneLevel: v }) : undefined} accent={C.acOrange} />
                         <ControlLevelLadder level={headphoneLevel} height={60} accent={C.acOrange} />
-                        <Fader value={headphoneLevel} height={60} onChange={(v) => updateSessionMonitorLevels({ headphoneLevel: v })} />
+                        <Fader value={headphoneLevel} height={60} onChange={monitorAdjust ? (v) => monitorAdjust({ headphoneLevel: v }) : undefined} />
                       </div>
                       <span style={{ fontSize: 8, color: C.dim }}>🎧 HP OUT</span>
                     </div>
                     <div className="flex flex-col items-center gap-1">
                       <span style={{ fontSize: 10, fontWeight: 500, color: C.text }}>Cue Mix</span>
-                      <Knob value={cueMix} size={50} onChange={(v) => updateSessionMonitorLevels({ cueMix: v })} accent={C.acPurple} />
+                      <Knob value={cueMix} size={50} onChange={monitorAdjust ? (v) => monitorAdjust({ cueMix: v }) : undefined} accent={C.acPurple} />
                       <div className="flex w-full items-center justify-between px-1" style={{ fontSize: 8, color: C.dim }}>
                         <span>VOX</span><span>BEAT</span>
                       </div>
@@ -1204,7 +1206,7 @@ export default function UnifiedSessionScreen() {
           {/* ── RIGHT: MONITORING (spans 2 rows beside center cards) ── */}
           <Panel accent={C.acLime} className="p-4">
             <div className="mb-1 flex items-center justify-between">
-              <span style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>MONITORING</span>
+              <span title={isArtist ? "Engineer adjusts monitor mix; values sync here." : undefined} style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>MONITORING</span>
               <div className="flex gap-[2px]">
                 {[3, 5, 4, 6, 3, 2].map((h, i) => (<div key={i} className="rounded-full" style={{ width: 3, height: h * 2, background: C.label }} />))}
               </div>
@@ -1213,31 +1215,31 @@ export default function UnifiedSessionScreen() {
               <div className="flex flex-col items-center gap-1">
                 <span style={{ fontSize: 11, fontWeight: 500, color: C.text }}>Vocal Level</span>
                 <div className="flex items-end gap-2">
-                  <Knob value={vocalLevel} size={58} onChange={(v) => updateSessionMonitorLevels({ vocalLevel: v })} accent={C.acLime} />
+                  <Knob value={vocalLevel} size={58} onChange={monitorAdjust ? (v) => monitorAdjust({ vocalLevel: v }) : undefined} accent={C.acLime} />
                   <ControlLevelLadder level={vocalLevel} height={72} accent={C.acLime} />
-                  <Fader value={vocalLevel} height={72} onChange={(v) => updateSessionMonitorLevels({ vocalLevel: v })} />
+                  <Fader value={vocalLevel} height={72} onChange={monitorAdjust ? (v) => monitorAdjust({ vocalLevel: v }) : undefined} />
                 </div>
               </div>
               <div className="flex flex-col items-center gap-1">
                 <span style={{ fontSize: 11, fontWeight: 500, color: C.text }}>Talkback Level</span>
                 <div className="flex items-end gap-2">
-                  <Knob value={talkbackLevel} size={58} onChange={(v) => updateSessionMonitorLevels({ talkbackLevel: v })} accent={C.acCyan} />
+                  <Knob value={talkbackLevel} size={58} onChange={monitorAdjust ? (v) => monitorAdjust({ talkbackLevel: v }) : undefined} accent={C.acCyan} />
                   <ControlLevelLadder level={talkbackLevel} height={72} accent={C.acCyan} />
-                  <Fader value={talkbackLevel} height={72} onChange={(v) => updateSessionMonitorLevels({ talkbackLevel: v })} />
+                  <Fader value={talkbackLevel} height={72} onChange={monitorAdjust ? (v) => monitorAdjust({ talkbackLevel: v }) : undefined} />
                 </div>
               </div>
               <div className="flex flex-col items-center gap-1">
                 <span style={{ fontSize: 11, fontWeight: 500, color: C.text }}>Headphone</span>
                 <div className="flex items-end gap-2">
-                  <Knob value={headphoneLevel} size={58} onChange={(v) => updateSessionMonitorLevels({ headphoneLevel: v })} accent={C.acOrange} />
+                  <Knob value={headphoneLevel} size={58} onChange={monitorAdjust ? (v) => monitorAdjust({ headphoneLevel: v }) : undefined} accent={C.acOrange} />
                   <ControlLevelLadder level={headphoneLevel} height={72} accent={C.acOrange} />
-                  <Fader value={headphoneLevel} height={72} onChange={(v) => updateSessionMonitorLevels({ headphoneLevel: v })} />
+                  <Fader value={headphoneLevel} height={72} onChange={monitorAdjust ? (v) => monitorAdjust({ headphoneLevel: v }) : undefined} />
                 </div>
                 <span style={{ fontSize: 8, color: C.dim, letterSpacing: "0.08em" }}>🎧 HP OUT</span>
               </div>
               <div className="flex flex-col items-center gap-1">
                 <span style={{ fontSize: 11, fontWeight: 500, color: C.text }}>Cue Mix</span>
-                <Knob value={cueMix} size={58} onChange={(v) => updateSessionMonitorLevels({ cueMix: v })} accent={C.acPurple} />
+                <Knob value={cueMix} size={58} onChange={monitorAdjust ? (v) => monitorAdjust({ cueMix: v }) : undefined} accent={C.acPurple} />
                 <div className="flex w-full items-center justify-between px-1" style={{ fontSize: 8, color: C.dim }}>
                   <span>VOX</span><span>BEAT</span>
                 </div>

@@ -304,7 +304,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       headphoneLevel?: number;
       cueMix?: number;
     }) => {
-      if (!sessionId.trim() || !role) return;
+      if (!sessionId.trim() || role !== "engineer") return;
       const clamp = (n: number) => Math.min(1, Math.max(0, n));
       const next: Partial<SessionLiveState> = {};
       if (patch.vocalLevel !== undefined) next.vocalLevel = clamp(patch.vocalLevel);
