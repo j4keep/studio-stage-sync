@@ -84,7 +84,7 @@ export default function EngineerSessionScreen() {
     engineerContinueSession,
   } = useBookingTimer();
   const { expandId, toggleExpand, exitExpand } = useExpandablePanels();
-  const { localStream, remoteStream, localScreenPreview, mediaError, remoteMicLevel } = useStudioMedia();
+  const { localStream, remoteStream, localScreenPreview, mediaError, remoteMicLevel, localTalkbackTxLevel } = useStudioMedia();
   const [extensionPlaceholderOpen, setExtensionPlaceholderOpen] = useState(false);
   const [vocalChannel, setVocalChannel] = useState<1 | 2 | 3>(1);
   const [armRecord, setArmRecord] = useState(false);

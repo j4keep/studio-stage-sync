@@ -97,7 +97,7 @@ function Knob({ value = 0.5, size = 68, label, onChange, accent }: { value?: num
   );
 }
 
-/** Vertical steps for MONITORING setpoints only — neutral styling, not a live VU. */
+/** Vertical tick-mark indicator for MONITORING setpoints — static gain style, NOT a live VU meter. */
 function ControlLevelLadder({
   level = 0.5,
   height = 90,
@@ -105,27 +105,24 @@ function ControlLevelLadder({
 }: {
   level?: number;
   height?: number;
-  /** Subtle rim tint matching the adjacent knob accent */
   accent?: string;
 }) {
   const segs = 16;
+  const activeIdx = Math.round(level * segs);
   return (
-    <div className="flex flex-col-reverse gap-[2px]" style={{ height, width: 10 }} aria-hidden>
+    <div className="relative flex flex-col-reverse gap-[2px]" style={{ height, width: 10 }} aria-hidden>
       {Array.from({ length: segs }).map((_, i) => {
-        const pct = (i + 1) / segs;
-        const on = pct <= level;
+        const isSetpoint = i === activeIdx - 1;
         return (
           <div
             key={i}
             className="flex-1 rounded-[1px]"
             style={{
-              backgroundColor: on ? "#3a3d42" : "#141517",
-              boxShadow:
-                on && accent
-                  ? `inset 0 0 0 1px ${accent}33`
-                  : on
-                    ? "inset 0 1px 0 rgba(255,255,255,0.05)"
-                    : undefined,
+              backgroundColor: isSetpoint
+                ? (accent ?? "#888")
+                : "#1a1b1e",
+              border: `1px solid ${isSetpoint ? (accent ? accent + "88" : "#555") : "#222325"}`,
+              boxShadow: isSetpoint ? `0 0 4px ${accent ?? "#888"}44` : undefined,
             }}
           />
         );
