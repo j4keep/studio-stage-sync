@@ -97,17 +97,38 @@ function Knob({ value = 0.5, size = 68, label, onChange, accent }: { value?: num
   );
 }
 
-function LedMeter({ level = 0.5, height = 90 }: { level?: number; height?: number }) {
+/** Vertical steps for MONITORING setpoints only — neutral styling, not a live VU. */
+function ControlLevelLadder({
+  level = 0.5,
+  height = 90,
+  accent,
+}: {
+  level?: number;
+  height?: number;
+  /** Subtle rim tint matching the adjacent knob accent */
+  accent?: string;
+}) {
   const segs = 16;
   return (
-    <div className="flex flex-col-reverse gap-[2px]" style={{ height, width: 10 }}>
+    <div className="flex flex-col-reverse gap-[2px]" style={{ height, width: 10 }} aria-hidden>
       {Array.from({ length: segs }).map((_, i) => {
         const pct = (i + 1) / segs;
         const on = pct <= level;
-        let color = C.green;
-        if (pct > 0.6) color = C.yellow;
-        if (pct > 0.82) color = C.red;
-        return (<div key={i} className="flex-1 rounded-[1px]" style={{ backgroundColor: on ? color : "#1a1b1e" }} />);
+        return (
+          <div
+            key={i}
+            className="flex-1 rounded-[1px]"
+            style={{
+              backgroundColor: on ? "#3a3d42" : "#141517",
+              boxShadow:
+                on && accent
+                  ? `inset 0 0 0 1px ${accent}33`
+                  : on
+                    ? "inset 0 1px 0 rgba(255,255,255,0.05)"
+                    : undefined,
+            }}
+          />
+        );
       })}
     </div>
   );
@@ -454,9 +475,15 @@ export default function UnifiedSessionScreen() {
   const headphoneLevel = live.headphoneLevel;
   const cueMix = live.cueMix;
   const peerPtt = isEngineer ? live.artistPtt : live.engineerPtt;
+  /** Hide analyser noise floor in live meters only; monitoring uses raw knob values. */
+  const meterDisplay = (x: number) => (x < 0.04 ? 0 : x);
   const spectrumLevel = Math.min(
     1,
-    Math.max(localMicLevel, localTalkbackTxLevel, hasRemoteAudio ? remoteMicLevel : 0),
+    Math.max(
+      meterDisplay(localMicLevel),
+      meterDisplay(localTalkbackTxLevel),
+      hasRemoteAudio ? meterDisplay(remoteMicLevel) : 0,
+    ),
   );
   const hasBooking = !!booking && booking.bookedMinutes > 0;
   const isMobile = useIsMobile();
@@ -835,18 +862,18 @@ export default function UnifiedSessionScreen() {
                         <div className="mb-0.5 flex justify-between" style={{ fontSize: 9, fontWeight: 600, color: C.label, letterSpacing: "0.08em" }}>
                           <span>LOCAL MIC</span>
                         </div>
-                        <HorizontalMeter level={localMicLevel} />
+                        <HorizontalMeter level={meterDisplay(localMicLevel)} />
                       </div>
                       <div>
                         <div className="mb-0.5" style={{ fontSize: 9, fontWeight: 600, color: C.label, letterSpacing: "0.08em" }}>TALKBACK SEND</div>
-                        <HorizontalMeter level={localTalkbackTxLevel} />
+                        <HorizontalMeter level={meterDisplay(localTalkbackTxLevel)} />
                       </div>
                       <div>
                         <div className="mb-0.5 flex justify-between" style={{ fontSize: 9, fontWeight: 600, color: C.label, letterSpacing: "0.08em" }}>
                           <span>REMOTE IN</span>
                           <span style={{ color: C.dim, fontWeight: 500 }}>{hasRemoteAudio ? "live" : "no stream"}</span>
                         </div>
-                        <HorizontalMeter level={hasRemoteAudio ? remoteMicLevel : 0} />
+                        <HorizontalMeter level={hasRemoteAudio ? meterDisplay(remoteMicLevel) : 0} />
                       </div>
                       <div className="mt-1"><SpectrumBars level={spectrumLevel} /></div>
                       <div className="mt-0.5"><FreqLabels /></div>
@@ -896,7 +923,7 @@ export default function UnifiedSessionScreen() {
                       <span style={{ fontSize: 10, fontWeight: 500, color: C.text }}>Vocal Level</span>
                       <div className="flex items-end gap-1.5">
                         <Knob value={vocalLevel} size={50} onChange={(v) => updateSessionMonitorLevels({ vocalLevel: v })} accent={C.acLime} />
-                        <LedMeter level={vocalLevel} height={60} />
+                        <ControlLevelLadder level={vocalLevel} height={60} accent={C.acLime} />
                         <Fader value={vocalLevel} height={60} onChange={(v) => updateSessionMonitorLevels({ vocalLevel: v })} />
                       </div>
                     </div>
@@ -904,7 +931,7 @@ export default function UnifiedSessionScreen() {
                       <span style={{ fontSize: 10, fontWeight: 500, color: C.text }}>Talkback Level</span>
                       <div className="flex items-end gap-1.5">
                         <Knob value={talkbackLevel} size={50} onChange={(v) => updateSessionMonitorLevels({ talkbackLevel: v })} accent={C.acCyan} />
-                        <LedMeter level={talkbackLevel} height={60} />
+                        <ControlLevelLadder level={talkbackLevel} height={60} accent={C.acCyan} />
                         <Fader value={talkbackLevel} height={60} onChange={(v) => updateSessionMonitorLevels({ talkbackLevel: v })} />
                       </div>
                     </div>
@@ -912,7 +939,7 @@ export default function UnifiedSessionScreen() {
                       <span style={{ fontSize: 10, fontWeight: 500, color: C.text }}>Headphone</span>
                       <div className="flex items-end gap-1.5">
                         <Knob value={headphoneLevel} size={50} onChange={(v) => updateSessionMonitorLevels({ headphoneLevel: v })} accent={C.acOrange} />
-                        <LedMeter level={headphoneLevel} height={60} />
+                        <ControlLevelLadder level={headphoneLevel} height={60} accent={C.acOrange} />
                         <Fader value={headphoneLevel} height={60} onChange={(v) => updateSessionMonitorLevels({ headphoneLevel: v })} />
                       </div>
                       <span style={{ fontSize: 8, color: C.dim }}>🎧 HP OUT</span>
@@ -1141,18 +1168,18 @@ export default function UnifiedSessionScreen() {
                     <div className="mb-0.5 flex justify-between" style={{ fontSize: 10, fontWeight: 600, color: C.label, letterSpacing: "0.1em" }}>
                       <span>LOCAL MIC</span>
                     </div>
-                    <HorizontalMeter level={localMicLevel} />
+                    <HorizontalMeter level={meterDisplay(localMicLevel)} />
                   </div>
                   <div>
                     <div className="mb-0.5" style={{ fontSize: 10, fontWeight: 600, color: C.label, letterSpacing: "0.1em" }}>TALKBACK SEND</div>
-                    <HorizontalMeter level={localTalkbackTxLevel} />
+                    <HorizontalMeter level={meterDisplay(localTalkbackTxLevel)} />
                   </div>
                   <div>
                     <div className="mb-0.5 flex justify-between" style={{ fontSize: 10, fontWeight: 600, color: C.label, letterSpacing: "0.1em" }}>
                       <span>REMOTE IN</span>
                       <span style={{ color: C.dim, fontWeight: 500 }}>{hasRemoteAudio ? "live" : "no stream"}</span>
                     </div>
-                    <HorizontalMeter level={hasRemoteAudio ? remoteMicLevel : 0} />
+                    <HorizontalMeter level={hasRemoteAudio ? meterDisplay(remoteMicLevel) : 0} />
                   </div>
                   <div className="mt-2"><SpectrumBars level={spectrumLevel} /></div>
                   <div className="mt-1"><FreqLabels /></div>
@@ -1182,7 +1209,7 @@ export default function UnifiedSessionScreen() {
                 <span style={{ fontSize: 11, fontWeight: 500, color: C.text }}>Vocal Level</span>
                 <div className="flex items-end gap-2">
                   <Knob value={vocalLevel} size={58} onChange={(v) => updateSessionMonitorLevels({ vocalLevel: v })} accent={C.acLime} />
-                  <LedMeter level={vocalLevel} height={72} />
+                  <ControlLevelLadder level={vocalLevel} height={72} accent={C.acLime} />
                   <Fader value={vocalLevel} height={72} onChange={(v) => updateSessionMonitorLevels({ vocalLevel: v })} />
                 </div>
               </div>
@@ -1190,7 +1217,7 @@ export default function UnifiedSessionScreen() {
                 <span style={{ fontSize: 11, fontWeight: 500, color: C.text }}>Talkback Level</span>
                 <div className="flex items-end gap-2">
                   <Knob value={talkbackLevel} size={58} onChange={(v) => updateSessionMonitorLevels({ talkbackLevel: v })} accent={C.acCyan} />
-                  <LedMeter level={talkbackLevel} height={72} />
+                  <ControlLevelLadder level={talkbackLevel} height={72} accent={C.acCyan} />
                   <Fader value={talkbackLevel} height={72} onChange={(v) => updateSessionMonitorLevels({ talkbackLevel: v })} />
                 </div>
               </div>
@@ -1198,7 +1225,7 @@ export default function UnifiedSessionScreen() {
                 <span style={{ fontSize: 11, fontWeight: 500, color: C.text }}>Headphone</span>
                 <div className="flex items-end gap-2">
                   <Knob value={headphoneLevel} size={58} onChange={(v) => updateSessionMonitorLevels({ headphoneLevel: v })} accent={C.acOrange} />
-                  <LedMeter level={headphoneLevel} height={72} />
+                  <ControlLevelLadder level={headphoneLevel} height={72} accent={C.acOrange} />
                   <Fader value={headphoneLevel} height={72} onChange={(v) => updateSessionMonitorLevels({ headphoneLevel: v })} />
                 </div>
                 <span style={{ fontSize: 8, color: C.dim, letterSpacing: "0.08em" }}>🎧 HP OUT</span>

@@ -384,19 +384,43 @@ export function ReceiveVocalInputPanel({
   );
 }
 
-function VerticalLeds({ value, count = 12 }: { value: number; count?: number }) {
+function VerticalLeds({
+  value,
+  count = 12,
+  variant = "meter",
+}: {
+  value: number;
+  count?: number;
+  /** `meter` = VU-style colors; `control` = neutral steps for mix setpoints only */
+  variant?: "meter" | "control";
+}) {
   const lit = Math.round((value / 100) * count);
   return (
-    <div className="flex flex-col-reverse gap-0.5">
-      {Array.from({ length: count }, (_, i) => (
-        <div
-          key={i}
-          className={cn(
-            "h-1 w-4 rounded-[1px]",
-            i < lit ? (i > 8 ? "bg-red-500/90" : i > 5 ? "bg-amber-400/90" : "bg-emerald-500/90") : "bg-zinc-800",
-          )}
-        />
-      ))}
+    <div className="flex flex-col-reverse gap-0.5" aria-hidden>
+      {Array.from({ length: count }, (_, i) => {
+        const on = i < lit;
+        if (variant === "control") {
+          return (
+            <div
+              key={i}
+              className="h-1 w-4 rounded-[1px]"
+              style={{
+                backgroundColor: on ? "#3a3d42" : "#18191c",
+                boxShadow: on ? "inset 0 1px 0 rgba(255,255,255,0.05)" : undefined,
+              }}
+            />
+          );
+        }
+        return (
+          <div
+            key={i}
+            className={cn(
+              "h-1 w-4 rounded-[1px]",
+              on ? (i > 8 ? "bg-red-500/90" : i > 5 ? "bg-amber-400/90" : "bg-emerald-500/90") : "bg-zinc-800",
+            )}
+          />
+        );
+      })}
     </div>
   );
 }
@@ -428,16 +452,11 @@ function HardwareKnob({ label, value, size = "lg" }: { label: string; value: num
 
 export function ReceiveMonitoringPanel({
   vocalKnobDisplay,
-  vocalSignalLevel,
   talkbackKnobDisplay,
-  talkbackSignalLevel,
 }: {
-  /** 0–100 decorative knob = user mix setting */
+  /** 0–100 mix setpoint (knob + ladder — not live audio) */
   vocalKnobDisplay: number;
-  /** 0–100 LED ladder = real incoming vocal signal */
-  vocalSignalLevel: number;
   talkbackKnobDisplay: number;
-  talkbackSignalLevel: number;
 }) {
   return (
     <div className={cn(PANEL, "p-3")}>
@@ -445,11 +464,11 @@ export function ReceiveMonitoringPanel({
       <div className="flex justify-around gap-2">
         <div className="flex items-end gap-2">
           <HardwareKnob label="Vocal level" value={vocalKnobDisplay} />
-          <VerticalLeds value={vocalSignalLevel} />
+          <VerticalLeds value={vocalKnobDisplay} variant="control" />
         </div>
         <div className="flex items-end gap-2">
           <HardwareKnob label="Talkback level" value={talkbackKnobDisplay} />
-          <VerticalLeds value={talkbackSignalLevel} />
+          <VerticalLeds value={talkbackKnobDisplay} variant="control" />
         </div>
       </div>
     </div>
