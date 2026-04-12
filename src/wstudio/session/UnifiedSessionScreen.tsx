@@ -918,37 +918,6 @@ export default function UnifiedSessionScreen() {
                     </div>
                   </Panel>
 
-                  {isEngineer ? (
-                    <Panel accent={C.acPurple} className="p-3">
-                      <div style={{ fontSize: 11, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>W.STUDIO BRIDGE</div>
-                      <div className="mt-2 space-y-1" style={{ fontSize: 10, color: C.text, lineHeight: 1.45 }}>
-                        <div>
-                          <span style={{ color: C.dim }}>Status: </span>
-                          <span style={{ color: bridgeStatusColor, fontWeight: 600 }}>{bridgeStatusLabel}</span>
-                        </div>
-                        <div>
-                          <span style={{ color: C.dim }}>Artist: </span>
-                          <span style={{ fontWeight: 500 }}>{bridgeArtistLabel}</span>
-                        </div>
-                        <div>
-                          <span style={{ color: C.dim }}>Feed: </span>
-                          <span style={{ color: bridgeFeedActive ? C.green : C.dim, fontWeight: 600 }}>{bridgeFeedActive ? "Active" : "Inactive"}</span>
-                        </div>
-                        <div>
-                          <span style={{ color: C.dim }}>Output: </span>
-                          <span style={{ color: C.acCyan, fontWeight: 600 }}>Virtual Input Ready</span>
-                        </div>
-                      </div>
-                      <div className="mt-2 border-t pt-2" style={{ borderColor: C.panelBorder, fontSize: 9, color: C.dim }}>
-                        <span style={{ color: bridgeStatusColor }}>• {bridgeStatusLabel}</span>
-                        <span style={{ color: C.dim }}> · Artist: </span>
-                        <span style={{ color: C.text }}>{bridgeArtistLabel}</span>
-                        <span style={{ color: C.dim }}> · Feed </span>
-                        <span style={{ color: bridgeFeedActive ? C.green : C.dim }}>{bridgeFeedActive ? "Active" : "Inactive"}</span>
-                      </div>
-                    </Panel>
-                  ) : null}
-
                   {/* Vocal Input */}
                   <Panel accent={C.acPurple} className="p-3">
                     <div className="mb-2 flex items-center justify-between">
@@ -1063,6 +1032,36 @@ export default function UnifiedSessionScreen() {
                       </div>
                     </div>
                   </div>
+                  {isEngineer ? (
+                    <div className="mt-4 border-t pt-3" style={{ borderColor: C.panelBorder }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>W.STUDIO BRIDGE</div>
+                      <div className="mt-2 space-y-1" style={{ fontSize: 10, color: C.text, lineHeight: 1.45 }}>
+                        <div>
+                          <span style={{ color: C.dim }}>Status: </span>
+                          <span style={{ color: bridgeStatusColor, fontWeight: 600 }}>{bridgeStatusLabel}</span>
+                        </div>
+                        <div>
+                          <span style={{ color: C.dim }}>Artist: </span>
+                          <span style={{ fontWeight: 500 }}>{bridgeArtistLabel}</span>
+                        </div>
+                        <div>
+                          <span style={{ color: C.dim }}>Feed: </span>
+                          <span style={{ color: bridgeFeedActive ? C.green : C.dim, fontWeight: 600 }}>{bridgeFeedActive ? "Active" : "Inactive"}</span>
+                        </div>
+                        <div>
+                          <span style={{ color: C.dim }}>Output: </span>
+                          <span style={{ color: C.acCyan, fontWeight: 600 }}>Virtual Input Ready</span>
+                        </div>
+                      </div>
+                      <div className="mt-2 border-t pt-2" style={{ borderColor: C.panelBorder, fontSize: 9, color: C.dim }}>
+                        <span style={{ color: bridgeStatusColor }}>• {bridgeStatusLabel}</span>
+                        <span style={{ color: C.dim }}> · Artist: </span>
+                        <span style={{ color: C.text }}>{bridgeArtistLabel}</span>
+                        <span style={{ color: C.dim }}> · Feed </span>
+                        <span style={{ color: bridgeFeedActive ? C.green : C.dim }}>{bridgeFeedActive ? "Active" : "Inactive"}</span>
+                      </div>
+                    </div>
+                  ) : null}
                 </Panel>
               )}
             </>
@@ -1262,37 +1261,6 @@ export default function UnifiedSessionScreen() {
                 </button>
               </div>
 
-              {isEngineer ? (
-                <div className="mt-4" style={{ borderTop: `1px solid ${C.panelBorder}`, paddingTop: 12 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>W.STUDIO BRIDGE</div>
-                  <div className="mt-2 space-y-1.5" style={{ fontSize: 12, color: C.text, lineHeight: 1.45 }}>
-                    <div>
-                      <span style={{ color: C.dim }}>Status: </span>
-                      <span style={{ color: bridgeStatusColor, fontWeight: 600 }}>{bridgeStatusLabel}</span>
-                    </div>
-                    <div>
-                      <span style={{ color: C.dim }}>Artist: </span>
-                      <span style={{ fontWeight: 500 }}>{bridgeArtistLabel}</span>
-                    </div>
-                    <div>
-                      <span style={{ color: C.dim }}>Feed: </span>
-                      <span style={{ color: bridgeFeedActive ? C.green : C.dim, fontWeight: 600 }}>{bridgeFeedActive ? "Active" : "Inactive"}</span>
-                    </div>
-                    <div>
-                      <span style={{ color: C.dim }}>Output: </span>
-                      <span style={{ color: C.acCyan, fontWeight: 600 }}>Virtual Input Ready</span>
-                    </div>
-                  </div>
-                  <div className="mt-2 border-t pt-2" style={{ borderColor: C.panelBorder, fontSize: 11, color: C.dim }}>
-                    <span style={{ color: bridgeStatusColor }}>• {bridgeStatusLabel}</span>
-                    <span style={{ color: C.dim }}> · Artist: </span>
-                    <span style={{ color: C.text }}>{bridgeArtistLabel}</span>
-                    <span style={{ color: C.dim }}> · Feed </span>
-                    <span style={{ color: bridgeFeedActive ? C.green : C.dim }}>{bridgeFeedActive ? "Active" : "Inactive"}</span>
-                  </div>
-                </div>
-              ) : null}
-
               {/* Vocal Input (merged) */}
               <div className="mt-4" style={{ borderTop: `1px solid ${C.panelBorder}`, paddingTop: 12 }}>
                 <div className="mb-2 flex items-center justify-between">
@@ -1389,6 +1357,36 @@ export default function UnifiedSessionScreen() {
                 </div>
               </div>
             </div>
+            {isEngineer ? (
+              <div className="mt-4 border-t pt-3" style={{ borderColor: C.panelBorder }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>W.STUDIO BRIDGE</div>
+                <div className="mt-2 space-y-1.5" style={{ fontSize: 12, color: C.text, lineHeight: 1.45 }}>
+                  <div>
+                    <span style={{ color: C.dim }}>Status: </span>
+                    <span style={{ color: bridgeStatusColor, fontWeight: 600 }}>{bridgeStatusLabel}</span>
+                  </div>
+                  <div>
+                    <span style={{ color: C.dim }}>Artist: </span>
+                    <span style={{ fontWeight: 500 }}>{bridgeArtistLabel}</span>
+                  </div>
+                  <div>
+                    <span style={{ color: C.dim }}>Feed: </span>
+                    <span style={{ color: bridgeFeedActive ? C.green : C.dim, fontWeight: 600 }}>{bridgeFeedActive ? "Active" : "Inactive"}</span>
+                  </div>
+                  <div>
+                    <span style={{ color: C.dim }}>Output: </span>
+                    <span style={{ color: C.acCyan, fontWeight: 600 }}>Virtual Input Ready</span>
+                  </div>
+                </div>
+                <div className="mt-2 border-t pt-2" style={{ borderColor: C.panelBorder, fontSize: 11, color: C.dim }}>
+                  <span style={{ color: bridgeStatusColor }}>• {bridgeStatusLabel}</span>
+                  <span style={{ color: C.dim }}> · Artist: </span>
+                  <span style={{ color: C.text }}>{bridgeArtistLabel}</span>
+                  <span style={{ color: C.dim }}> · Feed </span>
+                  <span style={{ color: bridgeFeedActive ? C.green : C.dim }}>{bridgeFeedActive ? "Active" : "Inactive"}</span>
+                </div>
+              </div>
+            ) : null}
           </Panel>
 
           {/* ── VOCAL TAKE WAVEFORM (compact, same height as mute/talk/settings) ── */}
