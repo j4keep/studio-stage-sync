@@ -54,6 +54,20 @@ export type StudioMediaContextValue = {
    * Engineer-only: 0–1 level measured on the dedicated bridge / DAW vocal graph (separate Web Audio path from session monitor metering).
    */
   engineerBridgeVocalLevel: number;
+  /** Engineer-only: DAW return capture stream (from virtual cable input like BlackHole). */
+  engineerDawReturnStream: MediaStream | null;
+  /** Engineer-only: 0–1 level on the DAW return capture path. */
+  engineerDawReturnLevel: number;
+  /** Engineer-only: whether DAW return capture is active. */
+  dawReturnActive: boolean;
+  /** Engineer-only: selected input device ID for DAW return capture. */
+  dawReturnDeviceId: string;
+  /** Engineer-only: set the input device for DAW return. */
+  setDawReturnDeviceId: (id: string) => void;
+  /** Engineer-only: start capturing DAW return from selected input device. */
+  startDawReturn: () => void;
+  /** Engineer-only: stop DAW return capture. */
+  stopDawReturn: () => void;
   mediaError: string | null;
   clearMediaError: () => void;
   /** 0–1 RMS from local mic (pre–PTT gate; real input, ~0 when muted) */
@@ -85,6 +99,10 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
   const [engineerDawVocalIn2, setEngineerDawVocalIn2] = useState<MediaStream | null>(null);
   const [engineerScreenShareAudioStream, setEngineerScreenShareAudioStream] = useState<MediaStream | null>(null);
   const [engineerBridgeVocalLevel, setEngineerBridgeVocalLevel] = useState(0);
+  const [engineerDawReturnStream, setEngineerDawReturnStream] = useState<MediaStream | null>(null);
+  const [engineerDawReturnLevel, setEngineerDawReturnLevel] = useState(0);
+  const [dawReturnActive, setDawReturnActive] = useState(false);
+  const [dawReturnDeviceId, setDawReturnDeviceId] = useState("none");
 
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
@@ -103,6 +121,10 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
   const audioDebugLastLogRef = useRef(0);
   const acquiredSessionTracksRef = useRef<MediaStreamTrack[]>([]);
   const artistRemoteGainRef = useRef<GainNode | null>(null);
+  const dawReturnCtxRef = useRef<AudioContext | null>(null);
+  const dawReturnStreamRef = useRef<MediaStream | null>(null);
+  const dawReturnRafRef = useRef(0);
+  const dawReturnSenderRef = useRef<RTCRtpSender | null>(null);
 
   roleRef.current = role;
   toggleScreenShareRef.current = toggleScreenShare;
@@ -450,6 +472,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
   }, [role, remoteStream]);
 
   /** Screen-share audio only (never mixed into artist vocal DAW buses). */
+  /** Screen-share audio only (never mixed into artist vocal DAW buses). */
   useEffect(() => {
     if (role !== "engineer") {
       setEngineerScreenShareAudioStream(null);
@@ -459,6 +482,97 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     const a = v?.getAudioTracks().find((t) => t.readyState === "live");
     setEngineerScreenShareAudioStream(a ? new MediaStream([a]) : null);
   }, [role, localScreenPreview]);
+
+  /**
+   * Engineer-only: DAW Return capture.
+   * Captures audio from a selected input device (e.g. BlackHole) and sends it to the artist
+   * via WebRTC so they can hear DAW playback in their headphones.
+   * Monitor-only — does NOT affect the recording path (artist mic → DAW).
+   */
+  const cleanupDawReturn = useCallback(() => {
+    cancelAnimationFrame(dawReturnRafRef.current);
+    dawReturnRafRef.current = 0;
+    if (dawReturnStreamRef.current) {
+      dawReturnStreamRef.current.getTracks().forEach((t) => { try { t.stop(); } catch { /* */ } });
+      dawReturnStreamRef.current = null;
+    }
+    if (dawReturnCtxRef.current) {
+      try { void dawReturnCtxRef.current.close(); } catch { /* */ }
+      dawReturnCtxRef.current = null;
+    }
+    if (dawReturnSenderRef.current && pcRef.current) {
+      try { pcRef.current.removeTrack(dawReturnSenderRef.current); } catch { /* */ }
+      dawReturnSenderRef.current = null;
+    }
+    setEngineerDawReturnStream(null);
+    setEngineerDawReturnLevel(0);
+    setDawReturnActive(false);
+  }, []);
+
+  const startDawReturn = useCallback(async () => {
+    if (role !== "engineer" || dawReturnDeviceId === "none") return;
+    cleanupDawReturn();
+    try {
+      const constraints: MediaStreamConstraints = {
+        audio: dawReturnDeviceId === "default"
+          ? { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+          : { deviceId: { exact: dawReturnDeviceId }, echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+        video: false,
+      };
+      const returnStream = await navigator.mediaDevices.getUserMedia(constraints);
+      dawReturnStreamRef.current = returnStream;
+      const returnTrack = returnStream.getAudioTracks()[0];
+      if (!returnTrack) { cleanupDawReturn(); return; }
+      try { returnTrack.contentHint = "music"; } catch { /* */ }
+
+      const ctx = new AudioContext();
+      dawReturnCtxRef.current = ctx;
+      await ctx.resume().catch(() => {});
+      const src = ctx.createMediaStreamSource(new MediaStream([returnTrack]));
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 2048;
+      analyser.smoothingTimeConstant = 0.75;
+      src.connect(analyser);
+
+      const scratch = new Float32Array(2048);
+      const tickReturn = () => {
+        analyser.getFloatTimeDomainData(scratch);
+        let sum = 0;
+        for (let i = 0; i < scratch.length; i++) { sum += scratch[i] * scratch[i]; }
+        const rms = Math.sqrt(sum / scratch.length);
+        const instant = Math.min(1, rms * 9);
+        setEngineerDawReturnLevel((prev) => prev * 0.78 + instant * 0.22);
+        dawReturnRafRef.current = requestAnimationFrame(tickReturn);
+      };
+      dawReturnRafRef.current = requestAnimationFrame(tickReturn);
+
+      const pc = pcRef.current;
+      if (pc && pc.connectionState !== "closed") {
+        const sender = pc.addTrack(returnTrack, returnStream);
+        dawReturnSenderRef.current = sender;
+      }
+
+      setEngineerDawReturnStream(returnStream);
+      setDawReturnActive(true);
+      console.debug(DEBUG_AUDIO_TAG, "DAW Return capture started", { deviceId: dawReturnDeviceId });
+    } catch (err) {
+      console.warn(DEBUG_AUDIO_TAG, "DAW Return capture failed", err);
+      setMediaError(err instanceof Error ? err.message : "Could not capture DAW return audio");
+      cleanupDawReturn();
+    }
+  }, [role, dawReturnDeviceId, cleanupDawReturn]);
+
+  const stopDawReturn = useCallback(() => {
+    cleanupDawReturn();
+    console.debug(DEBUG_AUDIO_TAG, "DAW Return capture stopped");
+  }, [cleanupDawReturn]);
+
+  // Cleanup DAW return when role changes or session ends
+  useEffect(() => {
+    if (role !== "engineer" || !sessionId.trim()) {
+      cleanupDawReturn();
+    }
+  }, [role, sessionId, cleanupDawReturn]);
 
   /** Artist: route peer audio through Web Audio for headphone level + engineer talkback priority. */
   useEffect(() => {
@@ -783,6 +897,13 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       engineerDawVocalIn2,
       engineerScreenShareAudioStream,
       engineerBridgeVocalLevel,
+      engineerDawReturnStream,
+      engineerDawReturnLevel,
+      dawReturnActive,
+      dawReturnDeviceId,
+      setDawReturnDeviceId,
+      startDawReturn,
+      stopDawReturn,
       mediaError,
       clearMediaError,
       localMicLevel,
@@ -799,6 +920,12 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       engineerDawVocalIn2,
       engineerScreenShareAudioStream,
       engineerBridgeVocalLevel,
+      engineerDawReturnStream,
+      engineerDawReturnLevel,
+      dawReturnActive,
+      dawReturnDeviceId,
+      startDawReturn,
+      stopDawReturn,
       mediaError,
       clearMediaError,
       localMicLevel,

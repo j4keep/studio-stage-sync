@@ -1,12 +1,16 @@
 import { Link } from "react-router-dom";
 import { useSession } from "../session/SessionContext";
 import { useStudioMedia } from "../media/StudioMediaContext";
-import { WSTUDIO_DAW_VOCAL_IN_1, WSTUDIO_DAW_VOCAL_IN_2 } from "../media/dawRouting";
 import { useBridgeOutputDevice } from "./useBridgeOutputDevice";
+import { useBridgeInputDevices } from "./useBridgeInputDevice";
+import { BridgeSessionInfo } from "./BridgeSessionInfo";
+import { BridgeAudioLink } from "./BridgeAudioLink";
+import { BridgeVocalMeter } from "./BridgeVocalMeter";
+import { BridgeOutputRouting } from "./BridgeOutputRouting";
+import { BridgeDawReturn } from "./BridgeDawReturn";
 
 /**
- * Engineer-side W.Studio Bridge MVP: isolated artist vocal path + session/participant status.
- * Separate from the main live session UI (see /wstudio/session/live).
+ * Engineer-side W.Studio Bridge MVP: isolated artist vocal path + DAW return + session status.
  */
 export default function StudioBridgeScreen() {
   const { sessionId, sessionDisplayName, role, live } = useSession();
@@ -15,16 +19,23 @@ export default function StudioBridgeScreen() {
     engineerDawVocalIn2,
     engineerScreenShareAudioStream,
     engineerBridgeVocalLevel,
+    engineerDawReturnLevel,
+    dawReturnActive,
+    dawReturnDeviceId,
+    setDawReturnDeviceId,
+    startDawReturn,
+    stopDawReturn,
     hasRemoteAudio,
   } = useStudioMedia();
 
-  const { devices, selectedDeviceId, setSelectedDeviceId, routingError, routed, refreshDevices } =
+  const { devices: outputDevices, selectedDeviceId, setSelectedDeviceId, routingError, routed, refreshDevices: refreshOutputDevices } =
     useBridgeOutputDevice(engineerDawVocalIn1);
+
+  const { devices: inputDevices, refreshDevices: refreshInputDevices } = useBridgeInputDevices();
 
   const vocalPathReady = !!(engineerDawVocalIn1 && engineerDawVocalIn2 && hasRemoteAudio);
   const signalDetected = engineerBridgeVocalLevel >= 0.035;
 
-  /** Bridge status derives from actual audio path, not session-level handshake */
   const feedInactiveReason = !sessionId.trim()
     ? "No session"
     : !hasRemoteAudio
@@ -33,20 +44,12 @@ export default function StudioBridgeScreen() {
         ? "Vocal bus not ready"
         : null;
 
-  const feedStatusLabel =
-    vocalPathReady
-      ? signalDetected
-        ? "ACTIVE"
-        : "ACTIVE · quiet"
-      : "INACTIVE";
+  const feedStatusLabel = vocalPathReady
+    ? signalDetected ? "ACTIVE" : "ACTIVE · quiet"
+    : "INACTIVE";
 
-  const artistLine =
-    live.remoteArtistLabel.trim() ||
-    (hasRemoteAudio ? "Artist connected" : "Waiting for artist…");
-
-  const sessionNameLine =
-    sessionDisplayName.trim() ||
-    (sessionId.trim() ? `Session: ${sessionId.toUpperCase()}` : "—");
+  const artistLine = live.remoteArtistLabel.trim() || (hasRemoteAudio ? "Artist connected" : "Waiting for artist…");
+  const sessionNameLine = sessionDisplayName.trim() || (sessionId.trim() ? `Session: ${sessionId.toUpperCase()}` : "—");
 
   if (role !== "engineer") {
     return (
@@ -67,11 +70,11 @@ export default function StudioBridgeScreen() {
       <header className="border-b border-zinc-800 pb-4">
         <h1 className="text-lg font-bold text-white">W.Studio Bridge</h1>
         <p className="mt-1 text-xs leading-relaxed text-zinc-500">
-          Engineer-only layer for the artist&apos;s live vocal (dedicated Web Audio path). Session, video, and talkback stay in the main live room — this page does not replace them.
+          Engineer-only layer: artist vocal to DAW + DAW playback return to artist. Session, video, and talkback stay in the main live room.
         </p>
       </header>
 
-      {!sessionId.trim() ? (
+      {!sessionId.trim() && (
         <div className="rounded-lg border border-amber-900/40 bg-amber-950/20 p-4 text-sm text-amber-100/90">
           Join a session as engineer first, then open{" "}
           <span className="font-mono text-amber-200/90">/wstudio/session/bridge</span> in this profile.
@@ -81,145 +84,50 @@ export default function StudioBridgeScreen() {
             </Link>
           </div>
         </div>
-      ) : null}
+      )}
 
-      {/* Session + participant */}
-      <section className="grid gap-3 rounded-lg border border-zinc-800 bg-zinc-900/50 p-4 sm:grid-cols-2">
-        <div>
-          <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">Session</div>
-          <div className="mt-1 text-base font-semibold text-zinc-100">{sessionNameLine}</div>
-          <div className="mt-0.5 font-mono text-xs text-zinc-500 tabular-nums">{sessionId.toUpperCase() || "—"}</div>
-        </div>
-        <div>
-          <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">Artist</div>
-          <div className="mt-1 text-base font-semibold text-zinc-100">{artistLine}</div>
-          <div className="mt-1 text-xs text-zinc-500">
-            {hasRemoteAudio ? (
-              <span className="text-emerald-400/90">Audio connected</span>
-            ) : (
-              <span className="text-zinc-600">No audio yet</span>
-            )}
-          </div>
-        </div>
-      </section>
+      <BridgeSessionInfo
+        sessionNameLine={sessionNameLine}
+        sessionId={sessionId}
+        artistLine={artistLine}
+        hasRemoteAudio={hasRemoteAudio}
+      />
 
-      {/* Link + feed state */}
-      <section className="space-y-3 rounded-lg border border-zinc-800 bg-zinc-900/40 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">Audio link</div>
-          <div
-            className={
-              vocalPathReady
-                ? "text-sm font-semibold text-emerald-400"
-                : hasRemoteAudio
-                  ? "text-sm font-semibold text-amber-300"
-                  : "text-sm font-semibold text-zinc-500"
-            }
-          >
-            {vocalPathReady ? "Connected" : hasRemoteAudio ? "Connecting" : "Disconnected"}
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-zinc-800/80 pt-3">
-          <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">Artist vocal feed</div>
-          <div className="flex items-center gap-2">
-            <span
-              className={
-                feedStatusLabel.startsWith("ACTIVE")
-                  ? signalDetected
-                    ? "inline-flex h-2 w-2 animate-pulse rounded-full bg-emerald-400"
-                    : "inline-flex h-2 w-2 rounded-full bg-emerald-600/80"
-                  : "inline-flex h-2 w-2 rounded-full bg-zinc-600"
-              }
-              aria-hidden
-            />
-            <span
-              className={
-                feedStatusLabel.startsWith("ACTIVE") ? "text-sm font-bold text-emerald-400" : "text-sm font-bold text-zinc-500"
-              }
-            >
-              {feedStatusLabel}
-            </span>
-          </div>
-        </div>
-        {feedInactiveReason ? (
-          <p className="text-xs text-zinc-500">{feedInactiveReason}</p>
-        ) : null}
-      </section>
+      <BridgeAudioLink
+        vocalPathReady={vocalPathReady}
+        hasRemoteAudio={hasRemoteAudio}
+        feedStatusLabel={feedStatusLabel}
+        signalDetected={signalDetected}
+        feedInactiveReason={feedInactiveReason}
+      />
 
-      {/* Dedicated bridge-path meter (not the main session monitor strip) */}
-      <section className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-4">
-        <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">Incoming vocal (bridge path)</div>
-            <p className="mt-0.5 text-[11px] text-zinc-500">Tapped from the isolated DAW vocal bus — not mixed with talkback send or headphone UI.</p>
-          </div>
-          <span className="font-mono text-xs text-zinc-400 tabular-nums">{Math.round(engineerBridgeVocalLevel * 100)}%</span>
-        </div>
-        <div className="h-2.5 overflow-hidden rounded-full bg-zinc-950 ring-1 ring-zinc-800">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-emerald-800 via-amber-500 to-red-500 transition-[width] duration-75"
-            style={{ width: `${Math.round(Math.min(1, engineerBridgeVocalLevel) * 100)}%` }}
-          />
-        </div>
-      </section>
+      <BridgeVocalMeter
+        level={engineerBridgeVocalLevel}
+        label="Incoming vocal (bridge path)"
+        description="Tapped from the isolated DAW vocal bus — not mixed with talkback send or headphone UI."
+      />
 
-      <section className="space-y-3 rounded-lg border border-zinc-800 bg-zinc-900/40 p-4">
-        <div className="flex items-center justify-between gap-2">
-          <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">Output routing</div>
-          <button
-            type="button"
-            onClick={() => refreshDevices()}
-            className="text-[10px] font-medium text-zinc-500 hover:text-zinc-300 transition-colors"
-          >
-            ↻ Refresh
-          </button>
-        </div>
+      <BridgeOutputRouting
+        devices={outputDevices}
+        selectedDeviceId={selectedDeviceId}
+        setSelectedDeviceId={setSelectedDeviceId}
+        vocalPathReady={vocalPathReady}
+        routed={routed}
+        routingError={routingError}
+        refreshDevices={refreshOutputDevices}
+      />
 
-        {/* Device selector */}
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs text-zinc-400">Bridge output device</span>
-          <select
-            value={selectedDeviceId}
-            onChange={(e) => setSelectedDeviceId(e.target.value)}
-            disabled={!vocalPathReady}
-            className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none focus:ring-2 focus:ring-violet-600 disabled:opacity-50"
-          >
-            <option value="default">Default output</option>
-            {devices
-              .filter((d) => d.deviceId !== "default")
-              .map((d) => (
-                <option key={d.deviceId} value={d.deviceId}>
-                  {d.label}
-                </option>
-              ))}
-          </select>
-        </label>
-
-        {/* Routing status */}
-        <div className="flex items-center gap-2 text-xs">
-          <span
-            className={
-              routed && vocalPathReady
-                ? "inline-flex h-2 w-2 rounded-full bg-emerald-400"
-                : "inline-flex h-2 w-2 rounded-full bg-zinc-600"
-            }
-            aria-hidden
-          />
-          <span className={routed && vocalPathReady ? "text-emerald-400 font-semibold" : "text-zinc-500"}>
-            {routed && vocalPathReady
-              ? `Routing to: ${devices.find((d) => d.deviceId === selectedDeviceId)?.label ?? selectedDeviceId}`
-              : "Not routing"}
-          </span>
-        </div>
-
-        {routingError && (
-          <p className="text-xs text-red-400/90">{routingError}</p>
-        )}
-
-        <p className="text-[11px] leading-relaxed text-zinc-600">
-          Select a virtual cable (BlackHole, VB-Cable, Loopback) to route the artist vocal into your DAW. Set your DAW input to the same device.
-        </p>
-      </section>
+      <BridgeDawReturn
+        inputDevices={inputDevices}
+        dawReturnDeviceId={dawReturnDeviceId}
+        setDawReturnDeviceId={setDawReturnDeviceId}
+        dawReturnActive={dawReturnActive}
+        dawReturnLevel={engineerDawReturnLevel}
+        startDawReturn={startDawReturn}
+        stopDawReturn={stopDawReturn}
+        refreshInputDevices={refreshInputDevices}
+        sessionActive={!!sessionId.trim()}
+      />
 
       {!!engineerScreenShareAudioStream && (
         <section className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-4 text-sm text-zinc-400">
