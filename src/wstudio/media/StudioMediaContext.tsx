@@ -54,6 +54,20 @@ export type StudioMediaContextValue = {
    * Engineer-only: 0–1 level measured on the dedicated bridge / DAW vocal graph (separate Web Audio path from session monitor metering).
    */
   engineerBridgeVocalLevel: number;
+  /** Engineer-only: DAW return capture stream (from virtual cable input like BlackHole). */
+  engineerDawReturnStream: MediaStream | null;
+  /** Engineer-only: 0–1 level on the DAW return capture path. */
+  engineerDawReturnLevel: number;
+  /** Engineer-only: whether DAW return capture is active. */
+  dawReturnActive: boolean;
+  /** Engineer-only: selected input device ID for DAW return capture. */
+  dawReturnDeviceId: string;
+  /** Engineer-only: set the input device for DAW return. */
+  setDawReturnDeviceId: (id: string) => void;
+  /** Engineer-only: start capturing DAW return from selected input device. */
+  startDawReturn: () => void;
+  /** Engineer-only: stop DAW return capture. */
+  stopDawReturn: () => void;
   mediaError: string | null;
   clearMediaError: () => void;
   /** 0–1 RMS from local mic (pre–PTT gate; real input, ~0 when muted) */
@@ -85,6 +99,10 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
   const [engineerDawVocalIn2, setEngineerDawVocalIn2] = useState<MediaStream | null>(null);
   const [engineerScreenShareAudioStream, setEngineerScreenShareAudioStream] = useState<MediaStream | null>(null);
   const [engineerBridgeVocalLevel, setEngineerBridgeVocalLevel] = useState(0);
+  const [engineerDawReturnStream, setEngineerDawReturnStream] = useState<MediaStream | null>(null);
+  const [engineerDawReturnLevel, setEngineerDawReturnLevel] = useState(0);
+  const [dawReturnActive, setDawReturnActive] = useState(false);
+  const [dawReturnDeviceId, setDawReturnDeviceId] = useState("none");
 
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
