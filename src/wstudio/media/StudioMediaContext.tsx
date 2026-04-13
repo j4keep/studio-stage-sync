@@ -601,10 +601,14 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     src.connect(gain);
     gain.connect(dest);
     const hp = live.headphoneLevelArtist;
-    const priority = live.engineerPtt ? 1.3 : 1;
-    gain.gain.value = Math.min(1.5, Math.max(0, hp * priority));
+    /** Talkback level scales the PTT boost (0–1 → 1.0–2.0x when PTT held). */
+    const talkbackBoost = live.engineerPtt ? (1 + live.talkbackLevel) : 1;
+    /** Vocal level scales the channel (0.5 = unity). */
+    const vocalScale = live.vocalLevel * 2;
+    gain.gain.value = Math.min(2, Math.max(0, hp * talkbackBoost * vocalScale));
     const out = new MediaStream([...(videoTr ? [videoTr] : []), ...dest.stream.getAudioTracks()]);
     setRemotePlaybackStream(out);
+    console.debug("[W.Studio audio] Artist remote playback graph created", { hp, talkbackBoost, vocalScale });
     return () => {
       artistRemoteGainRef.current = null;
       src.disconnect();
@@ -618,9 +622,10 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     const gain = artistRemoteGainRef.current;
     if (role !== "artist" || !gain) return;
     const hp = live.headphoneLevelArtist;
-    /** Engineer holding Talk: lift peer voice in artist cans (continuous duplex unchanged). */
-    const priority = live.engineerPtt ? 1.3 : 1;
-    const target = Math.min(1.5, Math.max(0, hp * priority));
+    /** Talkback level scales the PTT boost; vocal level scales the channel. */
+    const talkbackBoost = live.engineerPtt ? (1 + live.talkbackLevel) : 1;
+    const vocalScale = live.vocalLevel * 2;
+    const target = Math.min(2, Math.max(0, hp * talkbackBoost * vocalScale));
     const ctx = gain.context;
     const t = ctx.currentTime;
     try {
@@ -629,7 +634,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     } catch {
       gain.gain.value = target;
     }
-  }, [role, live.headphoneLevelArtist, live.engineerPtt]);
+  }, [role, live.headphoneLevelArtist, live.engineerPtt, live.talkbackLevel, live.vocalLevel]);
 
   const remoteStreamForPlayback = useMemo(() => {
     if (role !== "artist") return remoteStream;
