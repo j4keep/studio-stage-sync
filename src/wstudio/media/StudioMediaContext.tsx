@@ -731,6 +731,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       const master = ctx.createGain();
       const dest = ctx.createMediaStreamDestination();
       artistRemoteGainRef.current = master;
+      master.gain.value = 1;
       master.connect(dest);
 
       const sources = audioTracks.map((track) => {
@@ -738,8 +739,6 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
         source.connect(master);
         return source;
       });
-
-      rampGain(master, live.headphoneLevelArtist);
 
       setRemotePlaybackStream(new MediaStream([...(videoTrack ? [videoTrack] : []), ...dest.stream.getAudioTracks()]));
 
@@ -793,9 +792,10 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
         returnSource.connect(dawReturnGain);
       }
 
-      rampGain(remoteGain, levelToUnityGain(live.vocalLevel));
-      rampGain(dawReturnGain, levelToUnityGain(live.cueMix));
-      rampGain(headphonesGain, live.headphoneLevelEngineer);
+      // Set initial gains at unity so audio is immediately audible
+      remoteGain.gain.value = 1;
+      dawReturnGain.gain.value = 1;
+      headphonesGain.gain.value = 1;
 
       setRemotePlaybackStream(new MediaStream([...(videoTrack ? [videoTrack] : []), ...dest.stream.getAudioTracks()]));
 
@@ -816,7 +816,8 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
 
     setRemotePlaybackStream(remoteStream);
     return;
-  }, [role, remoteStream, engineerDawReturnStream, live.headphoneLevelArtist, live.headphoneLevelEngineer, live.vocalLevel, live.cueMix]);
+    // NOTE: live.* values deliberately excluded — gain updates are handled by the separate effect below
+  }, [role, remoteStream, engineerDawReturnStream]);
 
   useEffect(() => {
     if (role === "artist") {
