@@ -490,6 +490,8 @@ export default function UnifiedSessionScreen() {
     hasRemoteAudio,
     engineerDawVocalIn1,
     engineerBridgeVocalLevel,
+    engineerDawReturnLevel,
+    dawReturnActive,
   } = useStudioMedia();
 
   const {
@@ -994,6 +996,15 @@ export default function UnifiedSessionScreen() {
                           <HorizontalMeter level={bridgePathReady ? meterDisplay(engineerBridgeVocalLevel) : 0} />
                         </div>
                       ) : null}
+                      {isEngineer ? (
+                        <div>
+                          <div className="mb-0.5 flex justify-between" style={{ fontSize: 9, fontWeight: 600, color: C.label, letterSpacing: "0.08em" }}>
+                            <span>RETURN FROM DAW</span>
+                            <span style={{ color: dawReturnActive ? C.green : C.dim, fontWeight: 500 }}>{dawReturnActive ? "sending" : "—"}</span>
+                          </div>
+                          <HorizontalMeter level={dawReturnActive ? meterDisplay(engineerDawReturnLevel) : 0} />
+                        </div>
+                      ) : null}
                       <div className="mt-1"><SpectrumBars level={spectrumLevel} /></div>
                       <div className="mt-0.5"><FreqLabels /></div>
                     </Inset>
@@ -1370,6 +1381,15 @@ export default function UnifiedSessionScreen() {
                         <span style={{ color: C.dim, fontWeight: 500 }}>{bridgePathReady ? "routed" : "—"}</span>
                       </div>
                       <HorizontalMeter level={bridgePathReady ? meterDisplay(engineerBridgeVocalLevel) : 0} />
+                    </div>
+                  ) : null}
+                  {isEngineer ? (
+                    <div>
+                      <div className="mb-0.5 flex justify-between" style={{ fontSize: 10, fontWeight: 600, color: C.label, letterSpacing: "0.1em" }}>
+                        <span>RETURN FROM DAW</span>
+                        <span style={{ color: dawReturnActive ? C.green : C.dim, fontWeight: 500 }}>{dawReturnActive ? "sending" : "—"}</span>
+                      </div>
+                      <HorizontalMeter level={dawReturnActive ? meterDisplay(engineerDawReturnLevel) : 0} />
                     </div>
                   ) : null}
                   <div className="mt-2"><SpectrumBars level={spectrumLevel} /></div>
