@@ -472,11 +472,16 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
   }, [role, remoteStream]);
 
   /** Screen-share audio only (never mixed into artist vocal DAW buses). */
+  /** Screen-share audio only (never mixed into artist vocal DAW buses). */
   useEffect(() => {
     if (role !== "engineer") {
       setEngineerScreenShareAudioStream(null);
       return;
     }
+    const v = localScreenPreview;
+    const a = v?.getAudioTracks().find((t) => t.readyState === "live");
+    setEngineerScreenShareAudioStream(a ? new MediaStream([a]) : null);
+  }, [role, localScreenPreview]);
 
   /**
    * Engineer-only: DAW Return capture.
@@ -495,7 +500,6 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       try { void dawReturnCtxRef.current.close(); } catch { /* */ }
       dawReturnCtxRef.current = null;
     }
-    // Remove the sender from peer connection
     if (dawReturnSenderRef.current && pcRef.current) {
       try { pcRef.current.removeTrack(dawReturnSenderRef.current); } catch { /* */ }
       dawReturnSenderRef.current = null;
@@ -507,32 +511,20 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
 
   const startDawReturn = useCallback(async () => {
     if (role !== "engineer" || dawReturnDeviceId === "none") return;
-
-    // Clean up any previous capture
     cleanupDawReturn();
-
     try {
-      // Capture the selected input device (BlackHole / VB-Cable appears as audio input)
       const constraints: MediaStreamConstraints = {
         audio: dawReturnDeviceId === "default"
           ? { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
           : { deviceId: { exact: dawReturnDeviceId }, echoCancellation: false, noiseSuppression: false, autoGainControl: false },
         video: false,
       };
-
       const returnStream = await navigator.mediaDevices.getUserMedia(constraints);
       dawReturnStreamRef.current = returnStream;
-
       const returnTrack = returnStream.getAudioTracks()[0];
-      if (!returnTrack) {
-        cleanupDawReturn();
-        return;
-      }
-
-      // Set content hint for music quality
+      if (!returnTrack) { cleanupDawReturn(); return; }
       try { returnTrack.contentHint = "music"; } catch { /* */ }
 
-      // Create metering
       const ctx = new AudioContext();
       dawReturnCtxRef.current = ctx;
       await ctx.resume().catch(() => {});
@@ -554,7 +546,6 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       };
       dawReturnRafRef.current = requestAnimationFrame(tickReturn);
 
-      // Add the DAW return track to the peer connection so the artist receives it
       const pc = pcRef.current;
       if (pc && pc.connectionState !== "closed") {
         const sender = pc.addTrack(returnTrack, returnStream);
@@ -563,7 +554,6 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
 
       setEngineerDawReturnStream(returnStream);
       setDawReturnActive(true);
-
       console.debug(DEBUG_AUDIO_TAG, "DAW Return capture started", { deviceId: dawReturnDeviceId });
     } catch (err) {
       console.warn(DEBUG_AUDIO_TAG, "DAW Return capture failed", err);
@@ -583,10 +573,6 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       cleanupDawReturn();
     }
   }, [role, sessionId, cleanupDawReturn]);
-    const v = localScreenPreview;
-    const a = v?.getAudioTracks().find((t) => t.readyState === "live");
-    setEngineerScreenShareAudioStream(a ? new MediaStream([a]) : null);
-  }, [role, localScreenPreview]);
 
   /** Artist: route peer audio through Web Audio for headphone level + engineer talkback priority. */
   useEffect(() => {
