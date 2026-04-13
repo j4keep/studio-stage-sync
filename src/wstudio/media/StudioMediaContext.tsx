@@ -121,6 +121,10 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
   const audioDebugLastLogRef = useRef(0);
   const acquiredSessionTracksRef = useRef<MediaStreamTrack[]>([]);
   const artistRemoteGainRef = useRef<GainNode | null>(null);
+  const dawReturnCtxRef = useRef<AudioContext | null>(null);
+  const dawReturnStreamRef = useRef<MediaStream | null>(null);
+  const dawReturnRafRef = useRef(0);
+  const dawReturnSenderRef = useRef<RTCRtpSender | null>(null);
 
   roleRef.current = role;
   toggleScreenShareRef.current = toggleScreenShare;
