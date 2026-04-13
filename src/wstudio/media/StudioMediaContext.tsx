@@ -99,10 +99,15 @@ function levelToTalkbackGain(level: number) {
 function rampGain(node: GainNode | null, target: number) {
   if (!node) return;
   const next = Math.max(0, target);
-  const now = node.context.currentTime;
+  const ctx = node.context as AudioContext;
+  if (ctx.state !== "running") {
+    node.gain.value = next;
+    return;
+  }
   try {
-    node.gain.cancelScheduledValues(now);
-    node.gain.linearRampToValueAtTime(next, now + 0.05);
+    const t = ctx.currentTime;
+    node.gain.cancelScheduledValues(t);
+    node.gain.linearRampToValueAtTime(next, t + 0.05);
   } catch {
     node.gain.value = next;
   }
@@ -274,10 +279,14 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
           : 0
         : 1;
 
-    rampGain(micSendGain, micSendTarget);
+    if (micSendGain) {
+      micSendGain.gain.value = micSendTarget;
+    }
 
     const dawReturnSendTarget = role === "engineer" ? levelToUnityGain(live.cueMix) : 0;
-    rampGain(dawReturnSendGain, dawReturnSendTarget);
+    if (dawReturnSendGain) {
+      dawReturnSendGain.gain.value = dawReturnSendTarget;
+    }
   }, [muted, role, talkbackHeld, live.talkbackLevel, live.cueMix]);
 
   const applyMuteAndPttToGraphRef = useRef<() => void>(() => {});
