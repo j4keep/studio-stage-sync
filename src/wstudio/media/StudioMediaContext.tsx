@@ -37,7 +37,7 @@ function toSignalRole(role: Role): RtcSignalRole | null {
 export type StudioMediaContextValue = {
   localStream: MediaStream | null;
   remoteStream: MediaStream | null;
-  /** Remote stream for playback (artist: processed for talkback priority + headphone; engineer: raw) */
+  /** Remote stream for playback, processed into the current role's actual monitor mix. */
   remoteStreamForPlayback: MediaStream | null;
   /** Engineer's captured display for local preview only */
   localScreenPreview: MediaStream | null;
@@ -84,8 +84,56 @@ const Ctx = createContext<StudioMediaContextValue | null>(null);
 
 const DEBUG_AUDIO_TAG = "[W.Studio audio]";
 
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function levelToUnityGain(level: number) {
+  return clamp(level * 2, 0, 2);
+}
+
+function levelToTalkbackGain(level: number) {
+  return 1 + clamp(level, 0, 1);
+}
+
+function rampGain(node: GainNode | null, target: number) {
+  if (!node) return;
+  const next = Math.max(0, target);
+  const now = node.context.currentTime;
+  try {
+    node.gain.cancelScheduledValues(now);
+    node.gain.linearRampToValueAtTime(next, now + 0.05);
+  } catch {
+    node.gain.value = next;
+  }
+}
+
+function keepAudioContextRunning(ctx: AudioContext) {
+  let disposed = false;
+  const cleanup = () => {
+    if (disposed) return;
+    disposed = true;
+    window.removeEventListener("pointerdown", resume, true);
+    window.removeEventListener("touchstart", resume, true);
+    window.removeEventListener("keydown", resume, true);
+  };
+  const resume = () => {
+    void ctx.resume().catch(() => {});
+    if (ctx.state === "running") cleanup();
+  };
+
+  if (ctx.state !== "running") {
+    window.addEventListener("pointerdown", resume, true);
+    window.addEventListener("touchstart", resume, true);
+    window.addEventListener("keydown", resume, true);
+    resume();
+  }
+
+  return cleanup;
+}
+
 export function StudioMediaProvider({ children }: { children: ReactNode }) {
-  const { sessionId, role, muted, live, screenSharing, toggleScreenShare } = useSession();
+  const { sessionId, role, muted, talkbackHeld, live, screenSharing, toggleScreenShare } = useSession();
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [remotePlaybackStream, setRemotePlaybackStream] = useState<MediaStream | null>(null);
@@ -120,10 +168,17 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
   const txLevelRafRef = useRef(0);
   const audioDebugLastLogRef = useRef(0);
   const acquiredSessionTracksRef = useRef<MediaStreamTrack[]>([]);
+  const localSendDestinationRef = useRef<MediaStreamAudioDestinationNode | null>(null);
+  const dawReturnSendSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const dawReturnSendGainRef = useRef<GainNode | null>(null);
   const artistRemoteGainRef = useRef<GainNode | null>(null);
+  const engineerRemoteGainRef = useRef<GainNode | null>(null);
+  const engineerDawReturnMonitorGainRef = useRef<GainNode | null>(null);
+  const engineerHeadphoneGainRef = useRef<GainNode | null>(null);
   const dawReturnCtxRef = useRef<AudioContext | null>(null);
   const dawReturnStreamRef = useRef<MediaStream | null>(null);
   const dawReturnRafRef = useRef(0);
+  const dawReturnAudioUnlockCleanupRef = useRef<() => void>(() => {});
   const dawReturnSenderRef = useRef<RTCRtpSender | null>(null);
 
   roleRef.current = role;
@@ -137,6 +192,16 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     cancelAnimationFrame(txLevelRafRef.current);
     txLevelRafRef.current = 0;
     try {
+      dawReturnSendSourceRef.current?.disconnect();
+    } catch {
+      /* ignore */
+    }
+    try {
+      dawReturnSendGainRef.current?.disconnect();
+    } catch {
+      /* ignore */
+    }
+    try {
       void audioCtxRef.current?.close();
     } catch {
       /* ignore */
@@ -144,6 +209,9 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     audioCtxRef.current = null;
     gainNodeRef.current = null;
     rawMicAudioTrackRef.current = null;
+    localSendDestinationRef.current = null;
+    dawReturnSendSourceRef.current = null;
+    dawReturnSendGainRef.current = null;
   }, []);
 
   const stopLocalMedia = useCallback(
@@ -177,19 +245,64 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const detachDawReturnFromSendGraph = useCallback(() => {
+    try {
+      dawReturnSendSourceRef.current?.disconnect();
+    } catch {
+      /* ignore */
+    }
+    try {
+      dawReturnSendGainRef.current?.disconnect();
+    } catch {
+      /* ignore */
+    }
+    dawReturnSendSourceRef.current = null;
+    dawReturnSendGainRef.current = null;
+  }, []);
+
   const applyMuteAndPttToGraph = useCallback(() => {
     const raw = rawMicAudioTrackRef.current;
-    const gain = gainNodeRef.current;
-    if (!gain) return;
-    if (muted) {
-      if (raw) raw.enabled = false;
-      gain.gain.value = 0;
-    } else {
-      if (raw) raw.enabled = true;
-      /** Continuous voice to peer when unmuted; UI talkback stays a separate control layer. */
-      gain.gain.value = 1;
-    }
-  }, [muted]);
+    const micSendGain = gainNodeRef.current;
+    const dawReturnSendGain = dawReturnSendGainRef.current;
+    if (raw) raw.enabled = !muted;
+
+    const micSendTarget = muted
+      ? 0
+      : role === "engineer"
+        ? talkbackHeld
+          ? levelToTalkbackGain(live.talkbackLevel)
+          : 0
+        : 1;
+
+    rampGain(micSendGain, micSendTarget);
+
+    const dawReturnSendTarget = role === "engineer" ? levelToUnityGain(live.cueMix) : 0;
+    rampGain(dawReturnSendGain, dawReturnSendTarget);
+  }, [muted, role, talkbackHeld, live.talkbackLevel, live.cueMix]);
+
+  const applyMuteAndPttToGraphRef = useRef<() => void>(() => {});
+  applyMuteAndPttToGraphRef.current = applyMuteAndPttToGraph;
+
+  const attachDawReturnToSendGraph = useCallback(
+    (stream: MediaStream | null) => {
+      detachDawReturnFromSendGraph();
+
+      const ctx = audioCtxRef.current;
+      const dest = localSendDestinationRef.current;
+      const returnTrack = stream?.getAudioTracks().find((track) => track.readyState === "live") ?? null;
+      if (!ctx || !dest || !returnTrack) return;
+
+      const source = ctx.createMediaStreamSource(new MediaStream([returnTrack]));
+      const gain = ctx.createGain();
+      source.connect(gain);
+      gain.connect(dest);
+
+      dawReturnSendSourceRef.current = source;
+      dawReturnSendGainRef.current = gain;
+      applyMuteAndPttToGraphRef.current();
+    },
+    [detachDawReturnFromSendGraph],
+  );
 
   useEffect(() => {
     localStreamRef.current = localStream;
@@ -211,6 +324,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     stopLocalMedia();
 
     let cancelled = false;
+    let releaseAudioContext = () => {};
     const buf = new Uint8Array(1024);
 
     const tickLocalMeter = (analyser: AnalyserNode) => {
@@ -274,6 +388,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
 
         const ctx = new AudioContext();
         audioCtxRef.current = ctx;
+        releaseAudioContext = keepAudioContextRunning(ctx);
         await ctx.resume().catch(() => {});
 
         const micOnly = new MediaStream([audioTrack]);
@@ -294,8 +409,13 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
         analyserTx.smoothingTimeConstant = 0.75;
 
         const dest = ctx.createMediaStreamDestination();
+        localSendDestinationRef.current = dest;
         gain.connect(analyserTx);
-        analyserTx.connect(dest);
+        gain.connect(dest);
+
+        if (dawReturnStreamRef.current) {
+          attachDawReturnToSendGraph(dawReturnStreamRef.current);
+        }
 
         const sentAudio = dest.stream.getAudioTracks()[0];
         const outTracks = videoTrack ? [videoTrack, sentAudio] : [sentAudio];
@@ -322,13 +442,14 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
 
     return () => {
       cancelled = true;
+      releaseAudioContext();
       cancelAnimationFrame(localLevelRafRef.current);
       localLevelRafRef.current = 0;
       cancelAnimationFrame(txLevelRafRef.current);
       txLevelRafRef.current = 0;
       stopLocalMedia();
     };
-  }, [sessionId, role, stopLocalMedia]);
+  }, [sessionId, role, stopLocalMedia, attachDawReturnToSendGraph]);
 
   /** Remote level from peer audio (real RTP). */
   useEffect(() => {
@@ -492,6 +613,9 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
   const cleanupDawReturn = useCallback(() => {
     cancelAnimationFrame(dawReturnRafRef.current);
     dawReturnRafRef.current = 0;
+    dawReturnAudioUnlockCleanupRef.current();
+    dawReturnAudioUnlockCleanupRef.current = () => {};
+    detachDawReturnFromSendGraph();
     if (dawReturnStreamRef.current) {
       dawReturnStreamRef.current.getTracks().forEach((t) => { try { t.stop(); } catch { /* */ } });
       dawReturnStreamRef.current = null;
@@ -507,7 +631,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     setEngineerDawReturnStream(null);
     setEngineerDawReturnLevel(0);
     setDawReturnActive(false);
-  }, []);
+  }, [detachDawReturnFromSendGraph]);
 
   const startDawReturn = useCallback(async () => {
     if (role !== "engineer" || dawReturnDeviceId === "none") return;
@@ -527,12 +651,15 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
 
       const ctx = new AudioContext();
       dawReturnCtxRef.current = ctx;
+      dawReturnAudioUnlockCleanupRef.current = keepAudioContextRunning(ctx);
       await ctx.resume().catch(() => {});
       const src = ctx.createMediaStreamSource(new MediaStream([returnTrack]));
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 2048;
       analyser.smoothingTimeConstant = 0.75;
       src.connect(analyser);
+
+      attachDawReturnToSendGraph(returnStream);
 
       const scratch = new Float32Array(2048);
       const tickReturn = () => {
@@ -546,12 +673,6 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       };
       dawReturnRafRef.current = requestAnimationFrame(tickReturn);
 
-      const pc = pcRef.current;
-      if (pc && pc.connectionState !== "closed") {
-        const sender = pc.addTrack(returnTrack, returnStream);
-        dawReturnSenderRef.current = sender;
-      }
-
       setEngineerDawReturnStream(returnStream);
       setDawReturnActive(true);
       console.debug(DEBUG_AUDIO_TAG, "DAW Return capture started", { deviceId: dawReturnDeviceId });
@@ -560,7 +681,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       setMediaError(err instanceof Error ? err.message : "Could not capture DAW return audio");
       cleanupDawReturn();
     }
-  }, [role, dawReturnDeviceId, cleanupDawReturn]);
+  }, [role, dawReturnDeviceId, cleanupDawReturn, attachDawReturnToSendGraph]);
 
   const stopDawReturn = useCallback(() => {
     cleanupDawReturn();
@@ -574,70 +695,135 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     }
   }, [role, sessionId, cleanupDawReturn]);
 
-  /** Artist: route peer audio through Web Audio for headphone level + engineer talkback priority. */
   useEffect(() => {
     artistRemoteGainRef.current = null;
-    if (role !== "artist") {
-      setRemotePlaybackStream(null);
-      return;
+    engineerRemoteGainRef.current = null;
+    engineerDawReturnMonitorGainRef.current = null;
+    engineerHeadphoneGainRef.current = null;
+
+    if (role === "artist") {
+      const rs = remoteStream;
+      if (!rs) {
+        setRemotePlaybackStream(null);
+        return;
+      }
+
+      const videoTrack = rs.getVideoTracks()[0] ?? null;
+      const audioTracks = rs.getAudioTracks().filter((track) => track.readyState === "live");
+      if (!audioTracks.length) {
+        setRemotePlaybackStream(rs);
+        return;
+      }
+
+      const ctx = new AudioContext();
+      const releaseAudioContext = keepAudioContextRunning(ctx);
+      void ctx.resume().catch(() => {});
+
+      const master = ctx.createGain();
+      const dest = ctx.createMediaStreamDestination();
+      artistRemoteGainRef.current = master;
+      master.connect(dest);
+
+      const sources = audioTracks.map((track) => {
+        const source = ctx.createMediaStreamSource(new MediaStream([track]));
+        source.connect(master);
+        return source;
+      });
+
+      rampGain(master, live.headphoneLevelArtist);
+
+      setRemotePlaybackStream(new MediaStream([...(videoTrack ? [videoTrack] : []), ...dest.stream.getAudioTracks()]));
+
+      return () => {
+        artistRemoteGainRef.current = null;
+        sources.forEach((source) => source.disconnect());
+        master.disconnect();
+        releaseAudioContext();
+        void ctx.close();
+        setRemotePlaybackStream(null);
+      };
     }
-    const rs = remoteStream;
-    if (!rs) {
-      setRemotePlaybackStream(null);
-      return;
+
+    if (role === "engineer") {
+      const rs = remoteStream;
+      const videoTrack = rs?.getVideoTracks()[0] ?? null;
+      const remoteAudioTracks = rs?.getAudioTracks().filter((track) => track.readyState === "live") ?? [];
+      const returnTrack = engineerDawReturnStream?.getAudioTracks().find((track) => track.readyState === "live") ?? null;
+
+      if (!remoteAudioTracks.length && !returnTrack) {
+        setRemotePlaybackStream(rs ?? null);
+        return;
+      }
+
+      const ctx = new AudioContext();
+      const releaseAudioContext = keepAudioContextRunning(ctx);
+      void ctx.resume().catch(() => {});
+
+      const remoteGain = ctx.createGain();
+      const dawReturnGain = ctx.createGain();
+      const headphonesGain = ctx.createGain();
+      const dest = ctx.createMediaStreamDestination();
+
+      engineerRemoteGainRef.current = remoteGain;
+      engineerDawReturnMonitorGainRef.current = dawReturnGain;
+      engineerHeadphoneGainRef.current = headphonesGain;
+
+      remoteGain.connect(headphonesGain);
+      dawReturnGain.connect(headphonesGain);
+      headphonesGain.connect(dest);
+
+      const sources = remoteAudioTracks.map((track) => {
+        const source = ctx.createMediaStreamSource(new MediaStream([track]));
+        source.connect(remoteGain);
+        return source;
+      });
+
+      let returnSource: MediaStreamAudioSourceNode | null = null;
+      if (returnTrack) {
+        returnSource = ctx.createMediaStreamSource(new MediaStream([returnTrack]));
+        returnSource.connect(dawReturnGain);
+      }
+
+      rampGain(remoteGain, levelToUnityGain(live.vocalLevel));
+      rampGain(dawReturnGain, levelToUnityGain(live.cueMix));
+      rampGain(headphonesGain, live.headphoneLevelEngineer);
+
+      setRemotePlaybackStream(new MediaStream([...(videoTrack ? [videoTrack] : []), ...dest.stream.getAudioTracks()]));
+
+      return () => {
+        engineerRemoteGainRef.current = null;
+        engineerDawReturnMonitorGainRef.current = null;
+        engineerHeadphoneGainRef.current = null;
+        sources.forEach((source) => source.disconnect());
+        returnSource?.disconnect();
+        remoteGain.disconnect();
+        dawReturnGain.disconnect();
+        headphonesGain.disconnect();
+        releaseAudioContext();
+        void ctx.close();
+        setRemotePlaybackStream(null);
+      };
     }
-    const audioTr = rs.getAudioTracks()[0];
-    if (!audioTr) {
-      setRemotePlaybackStream(rs);
-      return;
-    }
-    const videoTr = rs.getVideoTracks()[0] ?? null;
-    const ctx = new AudioContext();
-    void ctx.resume().catch(() => {});
-    const src = ctx.createMediaStreamSource(new MediaStream([audioTr]));
-    const gain = ctx.createGain();
-    artistRemoteGainRef.current = gain;
-    const dest = ctx.createMediaStreamDestination();
-    src.connect(gain);
-    gain.connect(dest);
-    const hp = live.headphoneLevelArtist;
-    /** Talkback level scales the PTT boost (0–1 → 1.0–2.0x when PTT held). */
-    const talkbackBoost = live.engineerPtt ? (1 + live.talkbackLevel) : 1;
-    /** Vocal level scales the channel (0.5 = unity). */
-    const vocalScale = live.vocalLevel * 2;
-    gain.gain.value = Math.min(2, Math.max(0, hp * talkbackBoost * vocalScale));
-    const out = new MediaStream([...(videoTr ? [videoTr] : []), ...dest.stream.getAudioTracks()]);
-    setRemotePlaybackStream(out);
-    console.debug("[W.Studio audio] Artist remote playback graph created", { hp, talkbackBoost, vocalScale });
-    return () => {
-      artistRemoteGainRef.current = null;
-      src.disconnect();
-      gain.disconnect();
-      void ctx.close();
-      setRemotePlaybackStream(null);
-    };
-  }, [role, remoteStream]);
+
+    setRemotePlaybackStream(remoteStream);
+    return;
+  }, [role, remoteStream, engineerDawReturnStream, live.headphoneLevelArtist, live.headphoneLevelEngineer, live.vocalLevel, live.cueMix]);
 
   useEffect(() => {
-    const gain = artistRemoteGainRef.current;
-    if (role !== "artist" || !gain) return;
-    const hp = live.headphoneLevelArtist;
-    /** Talkback level scales the PTT boost; vocal level scales the channel. */
-    const talkbackBoost = live.engineerPtt ? (1 + live.talkbackLevel) : 1;
-    const vocalScale = live.vocalLevel * 2;
-    const target = Math.min(2, Math.max(0, hp * talkbackBoost * vocalScale));
-    const ctx = gain.context;
-    const t = ctx.currentTime;
-    try {
-      gain.gain.cancelScheduledValues(t);
-      gain.gain.linearRampToValueAtTime(target, t + 0.05);
-    } catch {
-      gain.gain.value = target;
+    if (role === "artist") {
+      rampGain(artistRemoteGainRef.current, live.headphoneLevelArtist);
+      return;
     }
-  }, [role, live.headphoneLevelArtist, live.engineerPtt, live.talkbackLevel, live.vocalLevel]);
+
+    if (role === "engineer") {
+      rampGain(engineerRemoteGainRef.current, levelToUnityGain(live.vocalLevel));
+      rampGain(engineerDawReturnMonitorGainRef.current, levelToUnityGain(live.cueMix));
+      rampGain(engineerHeadphoneGainRef.current, live.headphoneLevelEngineer);
+    }
+  }, [role, live.headphoneLevelArtist, live.headphoneLevelEngineer, live.vocalLevel, live.cueMix]);
 
   const remoteStreamForPlayback = useMemo(() => {
-    if (role !== "artist") return remoteStream;
+    if (role !== "artist" && role !== "engineer") return remoteStream;
     return remotePlaybackStream ?? remoteStream;
   }, [role, remoteStream, remotePlaybackStream]);
 

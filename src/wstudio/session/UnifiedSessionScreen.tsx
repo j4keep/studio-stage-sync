@@ -541,12 +541,7 @@ export default function UnifiedSessionScreen() {
   const artistMirrored = isArtist; // mirror local preview
   const engineerMirrored = isEngineer;
   const screenShareViewStream = isEngineer ? localScreenPreview : (collaborationShareActive ? remoteStreamForPlayback : null);
- /** Headphone bus: engineer scales remote tile; artist level is applied in Web Audio graph.
-   *  Vocal Level knob (0–1, default 0.55) scales the artist's voice in the engineer's monitor.
-   *  We treat 0.5 as unity gain so default ~1.1x, max 2x at 1.0. */
-  const remoteTileVolume = isEngineer
-    ? Math.min(1, live.headphoneLevelEngineer * (live.vocalLevel * 2))
-    : 1;
+  const remoteTileVolume = 1;
 
   const vocalTakeTitle = recording
     ? (isMobile ? "Rec..." : "Recording...")
