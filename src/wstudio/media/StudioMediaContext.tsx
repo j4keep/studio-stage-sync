@@ -500,6 +500,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     const remoteRafRef = { id: 0 };
 
     const ctx = new AudioContext();
+    const releaseAudioContext = keepAudioContextRunning(ctx);
     void ctx.resume().catch(() => {});
     const src = ctx.createMediaStreamSource(new MediaStream([audioTrack]));
     const analyser = ctx.createAnalyser();
@@ -526,6 +527,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       cancelled = true;
       cancelAnimationFrame(remoteRafRef.id);
       src.disconnect();
+      releaseAudioContext();
       void ctx.close();
       setHasRemoteAudio(false);
       setRemoteMicLevel(0);
@@ -553,38 +555,39 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    audioTrack.enabled = true;
+
     let cancelled = false;
     let meterRaf = 0;
     const bridgeScratch = new Float32Array(2048);
+    const cloneTrack = (track: MediaStreamTrack) => {
+      try {
+        const cloned = track.clone();
+        cloned.enabled = true;
+        try {
+          cloned.contentHint = "music";
+        } catch {
+          /* contentHint unsupported */
+        }
+        return cloned;
+      } catch {
+        return track;
+      }
+    };
+    const bridgeTrack1 = cloneTrack(audioTrack);
+    const bridgeTrack2 = cloneTrack(audioTrack);
+    const bridgeOutputTracks = [bridgeTrack1, bridgeTrack2].filter((track) => track !== audioTrack);
+    const s1 = new MediaStream([bridgeTrack1]);
+    const s2 = new MediaStream([bridgeTrack2]);
     const ctx = new AudioContext();
     const releaseAudioContext = keepAudioContextRunning(ctx);
     void ctx.resume().catch(() => {});
     const micStream = new MediaStream([audioTrack]);
     const src = ctx.createMediaStreamSource(micStream);
-    const g1 = ctx.createGain();
-    const g2 = ctx.createGain();
-    g1.gain.value = 1;
-    g2.gain.value = 1;
-    const dest1 = ctx.createMediaStreamDestination();
-    const dest2 = ctx.createMediaStreamDestination();
     const bridgeAnalyser = ctx.createAnalyser();
     bridgeAnalyser.fftSize = 2048;
     bridgeAnalyser.smoothingTimeConstant = 0.75;
-    try {
-      dest1.stream.getAudioTracks().forEach((t) => {
-        t.contentHint = "music";
-      });
-      dest2.stream.getAudioTracks().forEach((t) => {
-        t.contentHint = "music";
-      });
-    } catch {
-      /* contentHint unsupported */
-    }
-    src.connect(g1);
-    src.connect(g2);
-    g1.connect(dest1);
-    g1.connect(bridgeAnalyser);
-    g2.connect(dest2);
+    src.connect(bridgeAnalyser);
 
     const tickBridgeMeter = () => {
       if (cancelled) return;
@@ -601,10 +604,13 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     };
     meterRaf = requestAnimationFrame(tickBridgeMeter);
 
-    const s1 = dest1.stream;
-    const s2 = dest2.stream;
     if (import.meta.env.DEV) {
-      console.debug(DEBUG_AUDIO_TAG, "DAW vocal buses", WSTUDIO_DAW_VOCAL_IN_1, WSTUDIO_DAW_VOCAL_IN_2, s1.id, s2.id);
+      console.debug(DEBUG_AUDIO_TAG, "DAW vocal buses", WSTUDIO_DAW_VOCAL_IN_1, WSTUDIO_DAW_VOCAL_IN_2, {
+        inputTrackId: audioTrack.id,
+        outputStream1: s1.id,
+        outputStream2: s2.id,
+        usingTrackClones: bridgeOutputTracks.length > 0,
+      });
     }
 
     if (!cancelled) {
@@ -618,10 +624,15 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       releaseAudioContext();
       setEngineerBridgeVocalLevel(0);
       src.disconnect();
-      g1.disconnect();
-      g2.disconnect();
       bridgeAnalyser.disconnect();
       void ctx.close();
+      bridgeOutputTracks.forEach((track) => {
+        try {
+          track.stop();
+        } catch {
+          /* ignore clone shutdown errors */
+        }
+      });
       setEngineerDawVocalIn1(null);
       setEngineerDawVocalIn2(null);
     };
