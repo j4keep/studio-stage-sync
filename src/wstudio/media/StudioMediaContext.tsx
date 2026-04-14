@@ -918,8 +918,19 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
 
     pc.ontrack = (ev) => {
       const track = ev.track;
+      console.log(DEBUG_AUDIO_TAG, "ontrack received", {
+        kind: track.kind,
+        id: track.id,
+        enabled: track.enabled,
+        readyState: track.readyState,
+        muted: track.muted,
+      });
       if (!inbound.getTracks().some((existing) => existing.id === track.id)) {
         inbound.addTrack(track);
+      }
+      // Force-enable received audio tracks
+      if (track.kind === "audio") {
+        track.enabled = true;
       }
       setRemoteStream(new MediaStream(inbound.getTracks()));
     };
@@ -1026,8 +1037,23 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     };
 
     for (const track of localStream.getTracks()) {
+      // Ensure audio tracks are enabled when first added to peer connection
+      if (track.kind === "audio") {
+        track.enabled = true;
+        console.log(DEBUG_AUDIO_TAG, "Adding audio track to PC", {
+          id: track.id,
+          label: track.label,
+          enabled: track.enabled,
+          readyState: track.readyState,
+          muted: track.muted,
+        });
+      }
       pc.addTrack(track, localStream);
     }
+
+    // Immediately apply mute/PTT AFTER tracks are added
+    // (artist mute sets track.enabled=false; this restores correct state)
+    applyMuteAndPttToGraphRef.current();
 
     const unsubscribeSignals = subscribeRtcSignals(sessionId, (msg) => {
       void handlePayload(msg);

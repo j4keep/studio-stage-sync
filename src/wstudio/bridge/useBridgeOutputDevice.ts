@@ -85,11 +85,23 @@ export function useBridgeOutputDevice(bridgeStream: MediaStream | null) {
     el.muted = false;
     el.volume = 1;
 
+    console.log(BRIDGE_TAG, "srcObject attached", {
+      streamId: bridgeStream.id,
+      trackCount: tracks.length,
+      trackStates: tracks.map(t => ({ id: t.id, enabled: t.enabled, readyState: t.readyState })),
+    });
+
     let cancelled = false;
 
     void el.play().then(() => {
       if (cancelled) return;
-      console.log(BRIDGE_TAG, "✅ Playing to default output (use macOS Multi-Output for DAW)");
+      console.log(BRIDGE_TAG, "✅ Playing to default output (use macOS Multi-Output for DAW)", {
+        paused: el!.paused,
+        muted: el!.muted,
+        volume: el!.volume,
+        readyState: el!.readyState,
+        currentTime: el!.currentTime,
+      });
       setRouted(true);
       setRoutingError(null);
     }).catch(err => {
@@ -99,12 +111,38 @@ export function useBridgeOutputDevice(bridgeStream: MediaStream | null) {
       armUnlockRetry(el!);
     });
 
+    // Watchdog: every 2s confirm audio element is actually playing
     watchdogRef.current = setInterval(() => {
       if (cancelled || !el) return;
       const st = el.srcObject instanceof MediaStream ? el.srcObject.getAudioTracks() : [];
-      if (el.paused && st.some(t => t.readyState === "live")) {
+      const hasLive = st.some(t => t.readyState === "live");
+
+      // Log state every cycle for debugging
+      console.debug(BRIDGE_TAG, "watchdog", {
+        paused: el.paused,
+        muted: el.muted,
+        volume: el.volume,
+        readyState: el.readyState,
+        currentTime: el.currentTime,
+        hasLiveTracks: hasLive,
+        trackStates: st.map(t => ({ enabled: t.enabled, readyState: t.readyState })),
+      });
+
+      if (el.paused && hasLive) {
         console.warn(BRIDGE_TAG, "Watchdog: restarting play()");
+        el.muted = false;
+        el.volume = 1;
         void el.play().then(() => { setRouted(true); setRoutingError(null); }).catch(() => {});
+      }
+
+      // Ensure not silently muted
+      if (el.muted) {
+        console.warn(BRIDGE_TAG, "Watchdog: element was muted, forcing unmute");
+        el.muted = false;
+      }
+      if (el.volume < 1) {
+        console.warn(BRIDGE_TAG, "Watchdog: volume was", el.volume, "forcing to 1");
+        el.volume = 1;
       }
     }, 2000);
 
