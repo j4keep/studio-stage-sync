@@ -52,6 +52,7 @@ import { WStudioLayout } from "./wstudio/WStudioLayout";
 import SessionJoinScreen from "./wstudio/session/SessionJoinScreen";
 import UnifiedSessionScreen from "./wstudio/session/UnifiedSessionScreen";
 import StudioBridgeScreen from "./wstudio/bridge/StudioBridgeScreen";
+import WStudioPluginPage from "./pages/WStudioPluginPage";
 
 import TermsAgreementGate from "./components/TermsAgreementGate";
 import ThemePickerSheet from "./components/ThemePickerSheet";
@@ -214,6 +215,7 @@ const ProtectedRoutes = () => {
           <Route path="session/artist" element={<UnifiedSessionScreen />} />
           <Route path="session/engineer" element={<UnifiedSessionScreen />} />
           <Route path="session/bridge" element={<StudioBridgeScreen />} />
+          <Route path="session/plugin" element={<WStudioPluginPage />} />
           <Route path="session" element={<Navigate to="/wstudio/session/join" replace />} />
           <Route path="artist" element={<Navigate to="/wstudio/session/live" replace />} />
           <Route path="engineer" element={<Navigate to="/wstudio/session/live" replace />} />
