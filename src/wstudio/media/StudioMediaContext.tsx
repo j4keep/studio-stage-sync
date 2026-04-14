@@ -84,6 +84,27 @@ const Ctx = createContext<StudioMediaContextValue | null>(null);
 
 const DEBUG_AUDIO_TAG = "[W.Studio audio]";
 
+const SESSION_AUDIO_CONSTRAINTS: MediaTrackConstraints = {
+  echoCancellation: true,
+  noiseSuppression: true,
+  autoGainControl: true,
+};
+
+async function getSessionCaptureStream() {
+  try {
+    return await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "user" },
+      audio: SESSION_AUDIO_CONSTRAINTS,
+    });
+  } catch (error) {
+    console.warn(DEBUG_AUDIO_TAG, "Camera + mic capture failed, retrying with audio only", error);
+    return navigator.mediaDevices.getUserMedia({
+      video: false,
+      audio: SESSION_AUDIO_CONSTRAINTS,
+    });
+  }
+}
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
@@ -373,13 +394,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
 
     (async () => {
       try {
-        const ms = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "user" },
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-          },
-        });
+        const ms = await getSessionCaptureStream();
         if (cancelled) {
           ms.getTracks().forEach((t) => t.stop());
           return;
@@ -400,6 +415,20 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
         }
 
         rawMicAudioTrackRef.current = audioTrack;
+        try {
+          audioTrack.contentHint = "speech";
+        } catch {
+          /* contentHint unsupported */
+        }
+
+        console.debug(DEBUG_AUDIO_TAG, "Local capture ready", {
+          role: roleRef.current,
+          audioTrackId: audioTrack.id,
+          audioTrackEnabled: audioTrack.enabled,
+          audioTrackMuted: audioTrack.muted,
+          audioTrackReadyState: audioTrack.readyState,
+          videoTrackPresent: !!videoTrack,
+        });
 
         const ctx = new AudioContext();
         audioCtxRef.current = ctx;
