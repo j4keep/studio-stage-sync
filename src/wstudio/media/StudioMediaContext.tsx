@@ -269,21 +269,27 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     const raw = rawMicAudioTrackRef.current;
     const micSendGain = gainNodeRef.current;
     const dawReturnSendGain = dawReturnSendGainRef.current;
+
+    // Artist path: raw mic track sent directly – mute via track.enabled
+    if (role === "artist") {
+      if (raw) raw.enabled = !muted;
+      return;
+    }
+
+    // Engineer path: gain node controls talkback gating
     if (raw) raw.enabled = !muted;
 
     const micSendTarget = muted
       ? 0
-      : role === "engineer"
-        ? talkbackHeld
-          ? levelToTalkbackGain(live.talkbackLevel)
-          : 0
-        : 1;
+      : talkbackHeld
+        ? levelToTalkbackGain(live.talkbackLevel)
+        : 0;
 
     if (micSendGain) {
       micSendGain.gain.value = micSendTarget;
     }
 
-    const dawReturnSendTarget = role === "engineer" ? levelToUnityGain(live.cueMix) : 0;
+    const dawReturnSendTarget = levelToUnityGain(live.cueMix);
     if (dawReturnSendGain) {
       dawReturnSendGain.gain.value = dawReturnSendTarget;
     }
