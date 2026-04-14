@@ -247,6 +247,7 @@ const App = () => {
                     <div id="app-bg-layer" className="min-h-screen bg-background text-foreground">
                       <Routes>
                         <Route path="/auth" element={<AuthPage />} />
+                        <Route path="/plugin" element={<WStudioPluginPage />} />
                         <Route path="/index" element={<Navigate to="/" replace />} />
                         <Route path="/*" element={<ProtectedRoutes />} />
                       </Routes>
