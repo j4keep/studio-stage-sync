@@ -556,29 +556,33 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     }
 
     audioTrack.enabled = true;
+    try {
+      audioTrack.contentHint = "music";
+    } catch {
+      /* contentHint unsupported */
+    }
 
     let cancelled = false;
     let meterRaf = 0;
     const bridgeScratch = new Float32Array(2048);
-    const cloneTrack = (track: MediaStreamTrack) => {
+    let secondaryTrack: MediaStreamTrack = audioTrack;
+    let secondaryTrackIsClone = false;
+
+    try {
+      secondaryTrack = audioTrack.clone();
+      secondaryTrack.enabled = true;
+      secondaryTrackIsClone = secondaryTrack !== audioTrack;
       try {
-        const cloned = track.clone();
-        cloned.enabled = true;
-        try {
-          cloned.contentHint = "music";
-        } catch {
-          /* contentHint unsupported */
-        }
-        return cloned;
+        secondaryTrack.contentHint = "music";
       } catch {
-        return track;
+        /* contentHint unsupported */
       }
-    };
-    const bridgeTrack1 = cloneTrack(audioTrack);
-    const bridgeTrack2 = cloneTrack(audioTrack);
-    const bridgeOutputTracks = [bridgeTrack1, bridgeTrack2].filter((track) => track !== audioTrack);
-    const s1 = new MediaStream([bridgeTrack1]);
-    const s2 = new MediaStream([bridgeTrack2]);
+    } catch {
+      secondaryTrack = audioTrack;
+    }
+
+    const s1 = new MediaStream([audioTrack]);
+    const s2 = new MediaStream([secondaryTrack]);
     const ctx = new AudioContext();
     const releaseAudioContext = keepAudioContextRunning(ctx);
     void ctx.resume().catch(() => {});
@@ -609,7 +613,8 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
         inputTrackId: audioTrack.id,
         outputStream1: s1.id,
         outputStream2: s2.id,
-        usingTrackClones: bridgeOutputTracks.length > 0,
+        bridgeOutUsesRawRemoteTrack: true,
+        secondaryTrackCloned: secondaryTrackIsClone,
       });
     }
 
@@ -626,13 +631,13 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       src.disconnect();
       bridgeAnalyser.disconnect();
       void ctx.close();
-      bridgeOutputTracks.forEach((track) => {
+      if (secondaryTrackIsClone) {
         try {
-          track.stop();
+          secondaryTrack.stop();
         } catch {
           /* ignore clone shutdown errors */
         }
-      });
+      }
       setEngineerDawVocalIn1(null);
       setEngineerDawVocalIn2(null);
     };
