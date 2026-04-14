@@ -2,6 +2,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 export type AudioOutputDevice = { deviceId: string; label: string };
 
+type RoutableAudioElement = HTMLAudioElement & {
+  setSinkId?: (deviceId: string) => Promise<void>;
+};
+
+function getRoutingErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Failed to start bridge output";
+}
+
 /**
  * Enumerates audio output devices and routes a MediaStream to the selected one via setSinkId.
  * Used by the Bridge panel to pipe BRIDGE OUT into a virtual cable (BlackHole / VB-Cable).
@@ -11,9 +19,41 @@ export function useBridgeOutputDevice(bridgeStream: MediaStream | null) {
   const [selectedDeviceId, setSelectedDeviceId] = useState("default");
   const [routingError, setRoutingError] = useState<string | null>(null);
   const [routed, setRouted] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioRef = useRef<RoutableAudioElement | null>(null);
+  const unlockCleanupRef = useRef<() => void>(() => {});
 
-  // Enumerate output devices
+  const clearUnlockRetry = useCallback(() => {
+    unlockCleanupRef.current();
+    unlockCleanupRef.current = () => {};
+  }, []);
+
+  const armUnlockRetry = useCallback((el: RoutableAudioElement) => {
+    clearUnlockRetry();
+
+    let disposed = false;
+    const retry = () => {
+      void el.play().then(() => {
+        if (disposed) return;
+        setRouted(true);
+        setRoutingError(null);
+        clearUnlockRetry();
+      }).catch(() => {});
+    };
+
+    const cleanup = () => {
+      if (disposed) return;
+      disposed = true;
+      window.removeEventListener("pointerdown", retry, true);
+      window.removeEventListener("touchstart", retry, true);
+      window.removeEventListener("keydown", retry, true);
+    };
+
+    unlockCleanupRef.current = cleanup;
+    window.addEventListener("pointerdown", retry, true);
+    window.addEventListener("touchstart", retry, true);
+    window.addEventListener("keydown", retry, true);
+  }, [clearUnlockRetry]);
+
   const refreshDevices = useCallback(async () => {
     try {
       const all = await navigator.mediaDevices.enumerateDevices();
@@ -35,13 +75,14 @@ export function useBridgeOutputDevice(bridgeStream: MediaStream | null) {
     return () => navigator.mediaDevices.removeEventListener("devicechange", refreshDevices);
   }, [refreshDevices]);
 
-  // Route stream to selected device
   useEffect(() => {
     setRoutingError(null);
     setRouted(false);
+    clearUnlockRetry();
 
     if (!bridgeStream) {
       if (audioRef.current) {
+        audioRef.current.pause();
         audioRef.current.srcObject = null;
       }
       return;
@@ -49,48 +90,61 @@ export function useBridgeOutputDevice(bridgeStream: MediaStream | null) {
 
     let el = audioRef.current;
     if (!el) {
-      el = new Audio();
+      el = new Audio() as RoutableAudioElement;
       el.autoplay = true;
-      // Mute the default speaker output — the real output goes to the selected sink
-      el.volume = 0;
+      el.preload = "auto";
       audioRef.current = el;
     }
 
     el.srcObject = bridgeStream;
+    el.muted = false;
+    el.volume = 1;
 
-    const applySink = async () => {
+    let cancelled = false;
+
+    const applySinkAndPlay = async () => {
       try {
-        if (typeof (el as any).setSinkId === "function") {
-          await (el as any).setSinkId(selectedDeviceId);
-          // When routing to a virtual cable, we want full volume on that sink
-          el!.volume = 1;
-          setRouted(true);
-          setRoutingError(null);
-        } else {
-          setRoutingError("setSinkId not supported in this browser");
+        if (selectedDeviceId !== "default") {
+          if (typeof el.setSinkId !== "function") {
+            throw new Error("setSinkId not supported in this browser");
+          }
+          await el.setSinkId(selectedDeviceId);
+        } else if (typeof el.setSinkId === "function") {
+          await el.setSinkId("default");
         }
-      } catch (err) {
-        setRoutingError(err instanceof Error ? err.message : "Failed to set output device");
+
+        await el.play();
+        if (cancelled) return;
+        setRouted(true);
+        setRoutingError(null);
+        clearUnlockRetry();
+      } catch (error) {
+        if (cancelled) return;
+        setRoutingError(getRoutingErrorMessage(error));
         setRouted(false);
+        armUnlockRetry(el);
       }
     };
 
-    applySink();
+    void applySinkAndPlay();
 
     return () => {
-      // Don't destroy audio element on re-render, just stop stream
+      cancelled = true;
+      clearUnlockRetry();
+      el.pause();
     };
-  }, [bridgeStream, selectedDeviceId]);
+  }, [bridgeStream, selectedDeviceId, armUnlockRetry, clearUnlockRetry]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
+      clearUnlockRetry();
       if (audioRef.current) {
+        audioRef.current.pause();
         audioRef.current.srcObject = null;
         audioRef.current = null;
       }
     };
-  }, []);
+  }, [clearUnlockRetry]);
 
   return {
     devices,
