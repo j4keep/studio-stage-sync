@@ -495,12 +495,8 @@ export default function UnifiedSessionScreen() {
   } = useStudioMedia();
 
   const {
-    devices: bridgeDevices,
-    selectedDeviceId: bridgeSelectedDevice,
-    setSelectedDeviceId: setBridgeSelectedDevice,
     routingError: bridgeRoutingError,
     routed: bridgeRouted,
-    refreshDevices: bridgeRefreshDevices,
   } = useBridgeOutputDevice(role === "engineer" ? engineerDawVocalIn1 ?? null : null);
 
   const {
