@@ -211,6 +211,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const id = overrideSessionId?.trim() || sessionId.trim() || generateMockSessionId();
       setSessionId(id);
       setRole("artist");
+      setMuted(false);
+      setTalkbackHeld(false);
+      setLive((prev) => ({
+        ...prev,
+        artistMuted: false,
+        artistPtt: false,
+      }));
       latencyRef.current = 22 + Math.floor(Math.random() * 12);
       setSessionDisplayName(WSTUDIO_DEMO_MODE ? `Session: ${DEMO_SESSION_TITLE}` : formatSessionLabel(id));
       if (WSTUDIO_DEMO_MODE) {
@@ -226,7 +233,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       }
       const label = WSTUDIO_DEMO_MODE ? "Jay — Florida" : (user?.email?.split("@")[0] ?? "Remote artist");
       queueMicrotask(() => {
-        if (id.trim()) writeLive(id, { remoteArtistLabel: label || "Remote artist" });
+        if (id.trim()) {
+          writeLive(id, {
+            remoteArtistLabel: label || "Remote artist",
+            artistMuted: false,
+            artistPtt: false,
+          });
+        }
       });
     },
     [sessionId, user],
@@ -236,6 +249,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const id = overrideSessionId?.trim() || sessionId.trim() || generateMockSessionId();
     setSessionId(id);
     setRole("engineer");
+    setMuted(false);
+    setTalkbackHeld(false);
     latencyRef.current = 20 + Math.floor(Math.random() * 14);
     setSessionDisplayName(WSTUDIO_DEMO_MODE ? `Session: ${DEMO_SESSION_TITLE}` : formatSessionLabel(id));
     if (WSTUDIO_DEMO_MODE) {
