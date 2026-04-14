@@ -557,6 +557,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     let meterRaf = 0;
     const bridgeScratch = new Float32Array(2048);
     const ctx = new AudioContext();
+    const releaseAudioContext = keepAudioContextRunning(ctx);
     void ctx.resume().catch(() => {});
     const micStream = new MediaStream([audioTrack]);
     const src = ctx.createMediaStreamSource(micStream);
@@ -614,6 +615,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
       cancelAnimationFrame(meterRaf);
+      releaseAudioContext();
       setEngineerBridgeVocalLevel(0);
       src.disconnect();
       g1.disconnect();
