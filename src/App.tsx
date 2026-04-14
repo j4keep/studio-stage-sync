@@ -215,7 +215,6 @@ const ProtectedRoutes = () => {
           <Route path="session/artist" element={<UnifiedSessionScreen />} />
           <Route path="session/engineer" element={<UnifiedSessionScreen />} />
           <Route path="session/bridge" element={<StudioBridgeScreen />} />
-          <Route path="session/plugin" element={<WStudioPluginPage />} />
           <Route path="session" element={<Navigate to="/wstudio/session/join" replace />} />
           <Route path="artist" element={<Navigate to="/wstudio/session/live" replace />} />
           <Route path="engineer" element={<Navigate to="/wstudio/session/live" replace />} />
