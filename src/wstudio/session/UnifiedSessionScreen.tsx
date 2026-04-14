@@ -1102,34 +1102,16 @@ export default function UnifiedSessionScreen() {
                         <div>
                           <span style={{ color: C.dim }}>Output: </span>
                           {bridgeRouted && bridgeFeedActive ? (
-                            <span style={{ color: C.green, fontWeight: 600 }}>
-                              {bridgeDevices.find(d => d.deviceId === bridgeSelectedDevice)?.label ?? "Routed"}
-                            </span>
+                            <span style={{ color: C.green, fontWeight: 600 }}>Default (use Multi-Output for DAW)</span>
                           ) : (
-                            <span style={{ color: C.acCyan, fontWeight: 600 }}>Select device ↓</span>
+                            <span style={{ color: C.acCyan, fontWeight: 600 }}>Waiting for signal</span>
                           )}
                         </div>
                         <div className="mt-1.5">
-                          <select
-                            value={bridgeSelectedDevice}
-                            onChange={(e) => setBridgeSelectedDevice(e.target.value)}
-                            style={{
-                              width: "100%", fontSize: 9, padding: "3px 4px",
-                              background: C.panelDark, color: C.text,
-                              border: `1px solid ${C.panelBorder}`, borderRadius: 4,
-                              outline: "none",
-                            }}
-                          >
-                            <option value="default">Default output</option>
-                            {bridgeDevices.filter(d => d.deviceId !== "default").map(d => (
-                              <option key={d.deviceId} value={d.deviceId}>{d.label}</option>
-                            ))}
-                          </select>
-                          <div className="mt-1 flex items-center justify-between">
+                          <div className="flex items-center justify-between">
                             <span style={{ fontSize: 8, color: bridgeRouted ? C.green : C.dim }}>
-                              {bridgeRouted ? "● Routing" : "○ Not routing"}
+                              {bridgeRouted ? "● Playing" : "○ Not playing"}
                             </span>
-                            <button type="button" onClick={() => bridgeRefreshDevices()} style={{ fontSize: 8, color: C.dim, background: "none", border: "none", cursor: "pointer" }}>↻ Refresh</button>
                           </div>
                           {bridgeRoutingError && <div style={{ fontSize: 8, color: C.red, marginTop: 2 }}>{bridgeRoutingError}</div>}
                         </div>
@@ -1467,34 +1449,16 @@ export default function UnifiedSessionScreen() {
                   <div>
                     <span style={{ color: C.dim }}>Output: </span>
                     {bridgeRouted && bridgeFeedActive ? (
-                      <span style={{ color: C.green, fontWeight: 600 }}>
-                        {bridgeDevices.find(d => d.deviceId === bridgeSelectedDevice)?.label ?? "Routed"}
-                      </span>
+                      <span style={{ color: C.green, fontWeight: 600 }}>Default (use Multi-Output for DAW)</span>
                     ) : (
-                      <span style={{ color: C.acCyan, fontWeight: 600 }}>Select device ↓</span>
+                      <span style={{ color: C.acCyan, fontWeight: 600 }}>Waiting for signal</span>
                     )}
                   </div>
                   <div className="mt-2">
-                    <select
-                      value={bridgeSelectedDevice}
-                      onChange={(e) => setBridgeSelectedDevice(e.target.value)}
-                      style={{
-                        width: "100%", fontSize: 11, padding: "4px 6px",
-                        background: C.panelDark, color: C.text,
-                        border: `1px solid ${C.panelBorder}`, borderRadius: 4,
-                        outline: "none",
-                      }}
-                    >
-                      <option value="default">Default output</option>
-                      {bridgeDevices.filter(d => d.deviceId !== "default").map(d => (
-                        <option key={d.deviceId} value={d.deviceId}>{d.label}</option>
-                      ))}
-                    </select>
-                    <div className="mt-1 flex items-center justify-between">
+                    <div className="flex items-center justify-between">
                       <span style={{ fontSize: 9, color: bridgeRouted ? C.green : C.dim }}>
-                        {bridgeRouted ? "● Routing" : "○ Not routing"}
+                        {bridgeRouted ? "● Playing" : "○ Not playing"}
                       </span>
-                      <button type="button" onClick={() => bridgeRefreshDevices()} style={{ fontSize: 9, color: C.dim, background: "none", border: "none", cursor: "pointer" }}>↻ Refresh</button>
                     </div>
                     {bridgeRoutingError && <div style={{ fontSize: 9, color: C.red, marginTop: 2 }}>{bridgeRoutingError}</div>}
                   </div>
