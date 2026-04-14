@@ -215,7 +215,6 @@ const ProtectedRoutes = () => {
           <Route path="session/artist" element={<UnifiedSessionScreen />} />
           <Route path="session/engineer" element={<UnifiedSessionScreen />} />
           <Route path="session/bridge" element={<StudioBridgeScreen />} />
-          <Route path="session/plugin" element={<WStudioPluginPage />} />
           <Route path="session" element={<Navigate to="/wstudio/session/join" replace />} />
           <Route path="artist" element={<Navigate to="/wstudio/session/live" replace />} />
           <Route path="engineer" element={<Navigate to="/wstudio/session/live" replace />} />
@@ -248,6 +247,7 @@ const App = () => {
                     <div id="app-bg-layer" className="min-h-screen bg-background text-foreground">
                       <Routes>
                         <Route path="/auth" element={<AuthPage />} />
+                        <Route path="/plugin" element={<WStudioPluginPage />} />
                         <Route path="/index" element={<Navigate to="/" replace />} />
                         <Route path="/*" element={<ProtectedRoutes />} />
                       </Routes>
