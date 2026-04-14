@@ -68,6 +68,10 @@ export type StudioMediaContextValue = {
   startDawReturn: () => void;
   /** Engineer-only: stop DAW return capture. */
   stopDawReturn: () => void;
+  /** Selected live microphone input for session capture. */
+  micDeviceId: string;
+  /** Change the live microphone input for session capture. */
+  setMicDeviceId: (id: string) => void;
   mediaError: string | null;
   clearMediaError: () => void;
   /** 0–1 RMS from local mic (pre–PTT gate; real input, ~0 when muted) */
@@ -90,17 +94,30 @@ const SESSION_AUDIO_CONSTRAINTS: MediaTrackConstraints = {
   autoGainControl: true,
 };
 
-async function getSessionCaptureStream() {
+function buildSessionAudioConstraints(deviceId: string): MediaTrackConstraints {
+  if (!deviceId || deviceId === "default") {
+    return SESSION_AUDIO_CONSTRAINTS;
+  }
+
+  return {
+    ...SESSION_AUDIO_CONSTRAINTS,
+    deviceId: { exact: deviceId },
+  };
+}
+
+async function getSessionCaptureStream(deviceId: string) {
+  const audio = buildSessionAudioConstraints(deviceId);
+
   try {
     return await navigator.mediaDevices.getUserMedia({
       video: { facingMode: "user" },
-      audio: SESSION_AUDIO_CONSTRAINTS,
+      audio,
     });
   } catch (error) {
     console.warn(DEBUG_AUDIO_TAG, "Camera + mic capture failed, retrying with audio only", error);
     return navigator.mediaDevices.getUserMedia({
       video: false,
-      audio: SESSION_AUDIO_CONSTRAINTS,
+      audio,
     });
   }
 }
@@ -177,6 +194,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
   const [engineerDawReturnLevel, setEngineerDawReturnLevel] = useState(0);
   const [dawReturnActive, setDawReturnActive] = useState(false);
   const [dawReturnDeviceId, setDawReturnDeviceId] = useState("none");
+  const [micDeviceId, setMicDeviceId] = useState("default");
 
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
@@ -213,8 +231,10 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
   const clearMediaError = useCallback(() => setMediaError(null), []);
 
   const closeLocalAudioGraph = useCallback(() => {
-    cancelAnimationFrame(localLevelRafRef.current);
-    localLevelRafRef.current = 0;
+    if (localLevelRafRef.current) {
+      window.clearInterval(localLevelRafRef.current);
+      localLevelRafRef.current = 0;
+    }
     cancelAnimationFrame(txLevelRafRef.current);
     txLevelRafRef.current = 0;
     try {
@@ -363,8 +383,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     let releaseAudioContext = () => {};
     const buf = new Uint8Array(1024);
 
-    const tickLocalMeter = (analyser: AnalyserNode) => {
-      if (cancelled) return;
+    const sampleLocalMeter = (analyser: AnalyserNode) => {
       analyser.getByteTimeDomainData(buf);
       let sum = 0;
       for (let i = 0; i < buf.length; i++) {
@@ -374,7 +393,6 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       const rms = Math.sqrt(sum / buf.length);
       const instant = Math.min(1, rms * 5.5);
       setLocalMicLevel((prev) => prev * 0.82 + instant * 0.18);
-      localLevelRafRef.current = requestAnimationFrame(() => tickLocalMeter(analyser));
     };
 
     const bufTx = new Uint8Array(1024);
@@ -394,7 +412,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
 
     (async () => {
       try {
-        const ms = await getSessionCaptureStream();
+        const ms = await getSessionCaptureStream(micDeviceId);
         if (cancelled) {
           ms.getTracks().forEach((t) => t.stop());
           return;
@@ -423,6 +441,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
 
         console.debug(DEBUG_AUDIO_TAG, "Local capture ready", {
           role: roleRef.current,
+          requestedMicDeviceId: micDeviceId,
           audioTrackId: audioTrack.id,
           audioTrackEnabled: audioTrack.enabled,
           audioTrackMuted: audioTrack.muted,
@@ -484,7 +503,11 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
         setLocalStream(outStream);
         setMediaError(null);
 
-        localLevelRafRef.current = requestAnimationFrame(() => tickLocalMeter(analyserLocal));
+        sampleLocalMeter(analyserLocal);
+        localLevelRafRef.current = window.setInterval(() => {
+          if (cancelled) return;
+          sampleLocalMeter(analyserLocal);
+        }, 80);
 
         applyMuteAndPttToGraph();
 
@@ -505,13 +528,15 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
       releaseAudioContext();
-      cancelAnimationFrame(localLevelRafRef.current);
-      localLevelRafRef.current = 0;
+      if (localLevelRafRef.current) {
+        window.clearInterval(localLevelRafRef.current);
+        localLevelRafRef.current = 0;
+      }
       cancelAnimationFrame(txLevelRafRef.current);
       txLevelRafRef.current = 0;
       stopLocalMedia();
     };
-  }, [sessionId, role, stopLocalMedia, attachDawReturnToSendGraph]);
+  }, [sessionId, role, stopLocalMedia, attachDawReturnToSendGraph, micDeviceId]);
 
   /** Remote level from peer audio (real RTP). */
   useEffect(() => {
@@ -1202,6 +1227,8 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       setDawReturnDeviceId,
       startDawReturn,
       stopDawReturn,
+      micDeviceId,
+      setMicDeviceId,
       mediaError,
       clearMediaError,
       localMicLevel,
@@ -1224,6 +1251,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       dawReturnDeviceId,
       startDawReturn,
       stopDawReturn,
+      micDeviceId,
       mediaError,
       clearMediaError,
       localMicLevel,
