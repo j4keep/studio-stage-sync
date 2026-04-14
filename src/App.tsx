@@ -52,6 +52,7 @@ import { WStudioLayout } from "./wstudio/WStudioLayout";
 import SessionJoinScreen from "./wstudio/session/SessionJoinScreen";
 import UnifiedSessionScreen from "./wstudio/session/UnifiedSessionScreen";
 import StudioBridgeScreen from "./wstudio/bridge/StudioBridgeScreen";
+import WStudioPluginPage from "./pages/WStudioPluginPage";
 
 import TermsAgreementGate from "./components/TermsAgreementGate";
 import ThemePickerSheet from "./components/ThemePickerSheet";
