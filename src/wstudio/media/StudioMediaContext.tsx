@@ -408,26 +408,42 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
         analyserLocal.smoothingTimeConstant = 0.75;
         source.connect(analyserLocal);
 
-        const gain = ctx.createGain();
-        gain.gain.value = 0;
-        gainNodeRef.current = gain;
-        source.connect(gain);
+        /*
+         * Artist path: send the RAW mic track directly via WebRTC.
+         * The gain node / MediaStreamDestination is only needed for the
+         * engineer (talkback gating + DAW return mixing).  For the artist,
+         * muting is handled by audioTrack.enabled = false, and the engineer
+         * controls monitoring levels on their end.
+         */
+        const isArtistRole = roleRef.current === "artist";
 
-        const analyserTx = ctx.createAnalyser();
-        analyserTx.fftSize = 2048;
-        analyserTx.smoothingTimeConstant = 0.75;
+        let sentAudioTrack: MediaStreamTrack;
 
-        const dest = ctx.createMediaStreamDestination();
-        localSendDestinationRef.current = dest;
-        gain.connect(analyserTx);
-        gain.connect(dest);
+        if (isArtistRole) {
+          // Artist: raw mic goes straight to WebRTC – no gain processing
+          sentAudioTrack = audioTrack;
+          // We still need gainNodeRef so applyMuteAndPttToGraph can toggle track.enabled
+          gainNodeRef.current = null;
+          localSendDestinationRef.current = null;
+        } else {
+          // Engineer: mic → gain (talkback gated) → destination (+ DAW return mix)
+          const gain = ctx.createGain();
+          gain.gain.value = 0;
+          gainNodeRef.current = gain;
+          source.connect(gain);
 
-        if (dawReturnStreamRef.current) {
-          attachDawReturnToSendGraph(dawReturnStreamRef.current);
+          const dest = ctx.createMediaStreamDestination();
+          localSendDestinationRef.current = dest;
+          gain.connect(dest);
+
+          if (dawReturnStreamRef.current) {
+            attachDawReturnToSendGraph(dawReturnStreamRef.current);
+          }
+
+          sentAudioTrack = dest.stream.getAudioTracks()[0];
         }
 
-        const sentAudio = dest.stream.getAudioTracks()[0];
-        const outTracks = videoTrack ? [videoTrack, sentAudio] : [sentAudio];
+        const outTracks = videoTrack ? [videoTrack, sentAudioTrack] : [sentAudioTrack];
         const outStream = new MediaStream(outTracks);
         localStreamRef.current = outStream;
         setLocalStream(outStream);
@@ -438,7 +454,9 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
         applyMuteAndPttToGraph();
 
         console.debug(DEBUG_AUDIO_TAG, "Mic graph ready", {
+          role: roleRef.current,
           micTrackActive: audioTrack.readyState === "live",
+          sentDirect: isArtistRole,
           meterConnected: true,
         });
       } catch (e) {
