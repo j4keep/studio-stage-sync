@@ -492,6 +492,7 @@ export default function UnifiedSessionScreen() {
     engineerBridgeVocalLevel,
     engineerDawReturnLevel,
     dawReturnActive,
+    mediaError,
   } = useStudioMedia();
 
   const {
@@ -791,6 +792,9 @@ export default function UnifiedSessionScreen() {
                       <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
                         <span className="text-[20px] font-black tracking-tight" style={{ color: C.dim }}>W<span style={{ color: C.blue }}>.</span>STUDIO</span>
                         <span style={{ color: C.dim, fontSize: 10, letterSpacing: "0.14em", marginTop: 4 }}>WAITING FOR ENGINEER</span>
+                        {mediaError && (
+                          <span style={{ color: C.red, fontSize: 10, marginTop: 8, maxWidth: "80%", textAlign: "center" }}>⚠ {mediaError}</span>
+                        )}
                       </div>
                     )}
                     <div className="absolute bottom-2 left-2 z-[5] rounded px-2 py-0.5 text-[10px] font-medium" style={{ background: "rgba(0,0,0,0.6)", color: engineerStream ? C.text : C.dim }}>{engineerStream ? "Engineer" : "No one connected"}</div>
@@ -1162,6 +1166,9 @@ export default function UnifiedSessionScreen() {
                 <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
                   <span className="text-[28px] font-black tracking-tight" style={{ color: C.dim }}>W<span style={{ color: C.blue }}>.</span>STUDIO</span>
                   <span style={{ color: C.dim, fontSize: 11, letterSpacing: "0.14em", marginTop: 4 }}>WAITING FOR ENGINEER</span>
+                  {mediaError && (
+                    <span style={{ color: C.red, fontSize: 11, marginTop: 8, maxWidth: "80%", textAlign: "center" }}>⚠ {mediaError}</span>
+                  )}
                 </div>
               )}
               <div className="absolute bottom-2 left-2 z-[5] rounded px-2 py-1 text-[12px] font-medium" style={{ background: "rgba(0,0,0,0.6)", color: engineerStream ? C.text : C.dim }}>{engineerStream ? "Engineer" : "No one connected"}</div>
