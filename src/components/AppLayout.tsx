@@ -70,13 +70,19 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
           <NotificationBell />
         </div>
       )}
-      <main className={isStudioPage ? "wstudio-main" : "pb-20"}>{children}</main>
-      <GlobalRadioPlayer />
-      <GlobalPlaylistPlayer />
-      <PlaylistPlayerSheet />
-      <div className="wstudio-nav">
-        <BottomNav />
-      </div>
+      <main className={isStudioPage ? (isLiveSession ? "" : "wstudio-main") : "pb-20"}>{children}</main>
+      {!isLiveSession && (
+        <>
+          <GlobalRadioPlayer />
+          <GlobalPlaylistPlayer />
+          <PlaylistPlayerSheet />
+        </>
+      )}
+      {showBottomNav && (
+        <div className="wstudio-nav">
+          <BottomNav />
+        </div>
+      )}
       <ProGateModal open={showProModal} onClose={closeProModal} featureName={gatedFeature} onSubscribe={activatePro} />
       <UnratedSessionPopup />
     </div>
