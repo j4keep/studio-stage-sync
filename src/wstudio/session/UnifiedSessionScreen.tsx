@@ -672,7 +672,7 @@ export default function UnifiedSessionScreen() {
   }, []);
 
   /* ── Mobile-specific tab state ── */
-  const [mobileTab, setMobileTab] = useState<"video" | "controls" | "monitor">("video");
+  const [mobileTab, setMobileTab] = useState<"video" | "plugin">("video");
 
   return (
     <div ref={shellRef} className={`flex select-none overflow-hidden ${isMobile ? "flex-col overflow-y-auto" : "min-h-screen items-center justify-center"}`} style={{ background: "#111214", padding: isFullscreen ? 0 : isMobile ? 0 : 16 }}>
