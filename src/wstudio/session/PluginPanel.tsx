@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
-import { Copy, Check, Mic, Settings, Pause, Menu, X } from "lucide-react";
+import { Copy, Check, Mic, Settings, Menu, X } from "lucide-react";
 
 const C = {
-  shell: "#2b2d32",
-  panelBorder: "#3a3c41",
-  inset: "#141517",
-  dim: "#656770",
+  shell: "#3a3c42",
+  shellLight: "#45474d",
+  panelBorder: "#4a4c52",
+  inset: "#2a2c30",
+  dim: "#757780",
   green: "#4ade60",
   text: "#e8e8ea",
   label: "#9a9ca2",
@@ -20,7 +21,7 @@ function VUMeter({ level, peak, label, dbLabel }: { level: number; peak: number;
       <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: C.label }}>{label}</span>
       <div className="relative flex gap-[3px]">
         {[level, level * 0.95].map((l, ch) => (
-          <div key={ch} className="relative overflow-hidden rounded-sm" style={{ height: 120, width: 10, background: "#111214", border: "1px solid #2a2c30" }}>
+          <div key={ch} className="relative overflow-hidden rounded-sm" style={{ height: 130, width: 10, background: "#1e1f23", border: "1px solid #333538" }}>
             <div
               className="absolute bottom-0 left-0 w-full rounded-sm transition-[height] duration-75"
               style={{
@@ -33,7 +34,7 @@ function VUMeter({ level, peak, label, dbLabel }: { level: number; peak: number;
               style={{ height: 2, bottom: `${Math.min(100, (ch === 0 ? peak : peak * 0.95) * 100)}%`, background: "rgba(255,255,255,0.8)" }}
             />
             {[0, 25, 50, 75, 100].map((p) => (
-              <div key={p} className="absolute left-0 w-full" style={{ height: 1, bottom: `${p}%`, background: "rgba(100,100,100,0.4)" }} />
+              <div key={p} className="absolute left-0 w-full" style={{ height: 1, bottom: `${p}%`, background: "rgba(100,100,100,0.3)" }} />
             ))}
           </div>
         ))}
@@ -56,13 +57,13 @@ function LiveButton({ isLive, onClick }: { isLive: boolean; onClick: () => void 
         style={{ width: 100, height: 100, margin: "auto", left: 0, right: 0, top: 0, bottom: 0 }}
       />
       <div
-        className={`relative z-10 flex h-[80px] w-[80px] items-center justify-center rounded-full border-2 transition-all duration-300 ${
+        className={`relative z-10 flex h-[72px] w-[72px] items-center justify-center rounded-full border-2 transition-all duration-300 ${
           isLive
             ? "border-cyan-400/60 bg-gradient-to-b from-cyan-500 via-cyan-600 to-cyan-800 shadow-[0_0_30px_rgba(6,182,212,0.4),inset_0_2px_4px_rgba(255,255,255,0.2)]"
-            : "border-zinc-600 bg-gradient-to-b from-zinc-600 via-zinc-700 to-zinc-800 shadow-[inset_0_2px_4px_rgba(255,255,255,0.05)]"
+            : "border-zinc-500 bg-gradient-to-b from-zinc-500 via-zinc-600 to-zinc-700 shadow-[inset_0_2px_4px_rgba(255,255,255,0.05)]"
         }`}
       >
-        <span className={`text-sm font-bold tracking-[0.15em] ${isLive ? "text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.6)]" : "text-zinc-400"}`}>
+        <span className={`text-sm font-bold tracking-[0.15em] ${isLive ? "text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.6)]" : "text-zinc-300"}`}>
           LIVE
         </span>
       </div>
@@ -100,7 +101,6 @@ export default function PluginPanel({
 
   useEffect(() => { setIsLive(connected); }, [connected]);
 
-  // Drive meters from props or simulate
   useEffect(() => {
     const iv = setInterval(() => {
       if (!isLive) {
@@ -128,15 +128,15 @@ export default function PluginPanel({
 
   return (
     <div
-      className="flex h-full flex-col overflow-hidden rounded-[4px]"
+      className="flex h-full flex-col overflow-hidden rounded-[6px]"
       style={{
-        background: "linear-gradient(180deg, #1e1e24 0%, #18181c 40%, #131316 100%)",
-        border: `1px solid ${C.panelBorder}`,
-        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04), 0 1px 0 rgba(255,255,255,0.02)",
+        background: `linear-gradient(180deg, #404248 0%, #36383d 40%, #303236 100%)`,
+        border: `1px solid #505258`,
+        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 2px 12px rgba(0,0,0,0.4)",
       }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2" style={{ borderBottom: "1px solid rgba(58,60,65,0.4)" }}>
+      <div className="flex items-center justify-between px-3 py-2" style={{ borderBottom: "1px solid #4a4c50" }}>
         <div className="flex items-center gap-2">
           <svg width="18" height="18" viewBox="0 0 32 32" fill="none">
             <path d="M4 8L10 24L16 12L22 24L28 8" stroke="hsl(270,60%,65%)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
@@ -153,10 +153,10 @@ export default function PluginPanel({
       </div>
 
       {/* Session info */}
-      <div className="px-3 py-2" style={{ borderBottom: "1px solid rgba(30,31,35,0.6)" }}>
+      <div className="px-3 py-2" style={{ borderBottom: "1px solid #3a3c40" }}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="flex h-5 w-5 items-center justify-center rounded" style={{ background: "rgba(58,60,65,0.6)" }}>
+            <div className="flex h-5 w-5 items-center justify-center rounded" style={{ background: "rgba(80,82,88,0.6)" }}>
               <svg width="8" height="10" viewBox="0 0 10 12" fill={C.label}><path d="M1 0L10 6L1 12V0Z" /></svg>
             </div>
             <span className="text-[12px] font-semibold" style={{ color: C.white }}>{sessionTitle}</span>
@@ -171,10 +171,10 @@ export default function PluginPanel({
       </div>
 
       {/* Copy link */}
-      <div className="px-3 py-2" style={{ borderBottom: "1px solid rgba(30,31,35,0.6)" }}>
-        <div className="flex items-center overflow-hidden rounded" style={{ border: "1px solid rgba(58,60,65,0.5)", background: "rgba(17,18,20,0.8)" }}>
+      <div className="px-3 py-2" style={{ borderBottom: "1px solid #3a3c40" }}>
+        <div className="flex items-center overflow-hidden rounded" style={{ border: "1px solid #4a4c50", background: "#2a2c30" }}>
           <span className="flex-1 px-2 py-1 font-mono text-[11px]" style={{ color: C.label }}>{sessionLink}</span>
-          <button onClick={handleCopy} className="flex items-center gap-1 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider" style={{ borderLeft: "1px solid rgba(58,60,65,0.5)", color: C.label }}>
+          <button onClick={handleCopy} className="flex items-center gap-1 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider" style={{ borderLeft: "1px solid #4a4c50", color: C.label }}>
             {copied ? <Check size={10} style={{ color: C.green }} /> : <Copy size={10} />}
             {copied ? "COPIED" : "COPY"}
           </button>
@@ -189,9 +189,9 @@ export default function PluginPanel({
       </div>
 
       {/* Latency + Talkback */}
-      <div className="flex items-center justify-between px-4 py-1.5" style={{ borderTop: "1px solid rgba(30,31,35,0.6)" }}>
+      <div className="flex items-center justify-between px-4 py-1.5" style={{ borderTop: "1px solid #3a3c40" }}>
         <div className="flex items-center gap-1">
-          <div className="rounded-sm" style={{ height: 10, width: 16, border: "1px solid #555", background: "#1a1b1e" }} />
+          <div className="rounded-sm" style={{ height: 10, width: 16, border: "1px solid #555", background: "#2a2c30" }} />
           <span className="font-mono text-[9px]" style={{ color: C.dim }}>1 s</span>
         </div>
         <button
@@ -202,8 +202,8 @@ export default function PluginPanel({
           onTouchEnd={(e) => { e.preventDefault(); onTalkUp?.(); }}
           className="flex items-center gap-1.5 rounded-md px-4 py-1 text-[10px] font-semibold uppercase tracking-wider transition-all"
           style={{
-            border: talkbackActive ? "1px solid rgba(6,182,212,0.5)" : "1px solid rgba(58,60,65,0.6)",
-            background: talkbackActive ? "rgba(6,182,212,0.15)" : "rgba(30,31,35,0.6)",
+            border: talkbackActive ? "1px solid rgba(6,182,212,0.5)" : "1px solid #555",
+            background: talkbackActive ? "rgba(6,182,212,0.15)" : "#333538",
             color: talkbackActive ? "#67e8f9" : C.label,
             boxShadow: talkbackActive ? "0 0 10px rgba(6,182,212,0.2)" : "none",
           }}
@@ -211,17 +211,16 @@ export default function PluginPanel({
           <Mic size={11} /> TALKBACK
         </button>
         <div className="flex items-center gap-1">
-          <div className="rounded-sm" style={{ height: 10, width: 16, border: "1px solid #555", background: "#1a1b1e" }} />
+          <div className="rounded-sm" style={{ height: 10, width: 16, border: "1px solid #555", background: "#2a2c30" }} />
           <span className="font-mono text-[9px]" style={{ color: C.dim }}>1 s</span>
           <div className="rounded-full" style={{ height: 8, width: 8, background: isLive ? "#06b6d4" : "#555", boxShadow: isLive ? "0 0 4px rgba(6,182,212,0.6)" : "none" }} />
         </div>
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between px-3 py-2" style={{ borderTop: "1px solid rgba(58,60,65,0.4)" }}>
+      <div className="flex items-center justify-between px-3 py-2" style={{ borderTop: "1px solid #4a4c50" }}>
         <div className="flex items-center gap-2">
           <Settings size={12} style={{ color: C.dim }} />
-          <Pause size={12} style={{ color: C.dim }} />
         </div>
         <div className="flex items-center gap-1">
           <span className="rounded-full" style={{ height: 5, width: 5, background: C.green }} />
