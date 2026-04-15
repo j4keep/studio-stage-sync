@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import PluginPanel from "./PluginPanel";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSession } from "./SessionContext";
@@ -261,7 +262,7 @@ export default function UnifiedSessionScreen() {
 
         {/* ─── MAIN CONTENT ─── */}
         <div className={`relative flex-1 ${isMobile ? "flex flex-col gap-2 p-2 overflow-y-auto" : "grid gap-2 p-3"}`} style={isMobile ? {} : {
-          gridTemplateColumns: collaborationShareActive ? "1fr 1fr 280px" : "1fr 1fr 280px",
+          gridTemplateColumns: "280px 1fr 1fr 280px",
           gridTemplateRows: "auto 1fr auto",
         }}>
           {controlsLocked && <SessionControlsLockOverlay />}
@@ -497,7 +498,7 @@ export default function UnifiedSessionScreen() {
             /* ══════════ DESKTOP LAYOUT ══════════ */
             <>
               {/* ── SESSION STATUS BAR (spans full width) ── */}
-              <Panel accent={C.acCyan} className="col-span-3 flex items-center justify-between px-4" style={{ height: 48 }}>
+              <Panel accent={C.acCyan} className="col-span-4 flex items-center justify-between px-4" style={{ height: 48 }}>
                 <div className="flex items-center gap-3">
                   <span style={{ fontSize: 16, fontWeight: 500, color: C.text }}>{sessionDisplayName || "Session: Live"}</span>
                   <span className="rounded px-2.5 py-1 text-[11px] font-bold uppercase" style={{
@@ -518,7 +519,19 @@ export default function UnifiedSessionScreen() {
                 </div>
               </Panel>
 
-              {/* ── LEFT: ARTIST VIDEO ── */}
+              {/* ── LEFT: PLUGIN PANEL ── */}
+              <PluginPanel
+                sessionTitle={sessionDisplayName || "Session"}
+                connected={connected}
+                talkbackActive={talkbackHeld}
+                onTalkDown={beginTalkback}
+                onTalkUp={endTalkback}
+                sessionLink={sessionId ? `w.studio/${sessionId}` : "w.studio/—"}
+                remoteMicLevel={remoteMicLevel}
+                sendLevel={0}
+              />
+
+              {/* ── ARTIST VIDEO ── */}
               <Panel accent={C.acMagenta} className="relative overflow-hidden" style={{ aspectRatio: "4/3" }}>
                 {artistStream ? (
                   <VideoFeed stream={artistStream} mirrored={artistMirrored} muted={isArtist} volume={1} />
@@ -629,7 +642,7 @@ export default function UnifiedSessionScreen() {
               </Panel>
 
               {/* ── BOTTOM CONTROLS (full width) ── */}
-              <Panel accent={C.acOrange} className="col-span-3 flex items-center justify-between px-4 py-2">
+              <Panel accent={C.acOrange} className="col-span-4 flex items-center justify-between px-4 py-2">
                 <div className="flex items-center gap-3">
                   {/* Mute */}
                   <button type="button" onPointerDown={(e) => { e.preventDefault(); toggleMute(); }} className="flex items-center gap-2 rounded-[3px] px-4 py-2 text-[13px] font-semibold" style={{
