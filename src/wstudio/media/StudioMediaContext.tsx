@@ -30,6 +30,11 @@ function stopMediaStream(stream: MediaStream | null) {
   });
 }
 
+type AcquiredSessionMedia = {
+  stream: MediaStream;
+  mode: "camera+mic" | "camera+mic-fallback" | "mic-only";
+};
+
 function toSignalRole(role: Role): RtcSignalRole | null {
   return role === "artist" || role === "engineer" ? role : null;
 }
@@ -83,6 +88,76 @@ export type StudioMediaContextValue = {
 const Ctx = createContext<StudioMediaContextValue | null>(null);
 
 const DEBUG_AUDIO_TAG = "[W.Studio audio]";
+
+function isRecoverableMediaError(error: unknown) {
+  const name = typeof error === "object" && error && "name" in error
+    ? String((error as { name?: unknown }).name)
+    : "";
+
+  return [
+    "NotFoundError",
+    "DevicesNotFoundError",
+    "OverconstrainedError",
+    "ConstraintNotSatisfiedError",
+  ].includes(name);
+}
+
+async function acquireSessionMedia(): Promise<AcquiredSessionMedia> {
+  const audio: MediaTrackConstraints = {
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: true,
+  };
+
+  const attempts: Array<{ mode: AcquiredSessionMedia["mode"]; constraints: MediaStreamConstraints }> = [
+    {
+      mode: "camera+mic",
+      constraints: {
+        video: { facingMode: { ideal: "user" } },
+        audio,
+      },
+    },
+    {
+      mode: "camera+mic-fallback",
+      constraints: {
+        video: true,
+        audio,
+      },
+    },
+    {
+      mode: "mic-only",
+      constraints: {
+        video: false,
+        audio,
+      },
+    },
+  ];
+
+  let lastError: unknown;
+
+  for (let index = 0; index < attempts.length; index += 1) {
+    const attempt = attempts[index];
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia(attempt.constraints);
+      if (attempt.mode === "mic-only") {
+        console.warn(DEBUG_AUDIO_TAG, "Camera unavailable — continuing with microphone only");
+      }
+      return { stream, mode: attempt.mode };
+    } catch (error) {
+      lastError = error;
+      console.warn(DEBUG_AUDIO_TAG, `Local media attempt failed (${attempt.mode})`, {
+        name: error instanceof Error ? error.name : "UnknownError",
+        message: error instanceof Error ? error.message : String(error),
+      });
+
+      if (!isRecoverableMediaError(error) || index === attempts.length - 1) {
+        throw error;
+      }
+    }
+  }
+
+  throw lastError ?? new Error("Could not access camera or microphone");
+}
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -373,13 +448,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
 
     (async () => {
       try {
-        const ms = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "user" },
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-          },
-        });
+        const { stream: ms, mode } = await acquireSessionMedia();
         if (cancelled) {
           ms.getTracks().forEach((t) => t.stop());
           return;
@@ -461,6 +530,8 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
 
         console.debug(DEBUG_AUDIO_TAG, "Mic graph ready", {
           role: roleRef.current,
+          acquisitionMode: mode,
+          videoTrackActive: videoTrack?.readyState === "live",
           micTrackActive: audioTrack.readyState === "live",
           sentDirect: isArtistRole,
           meterConnected: true,
