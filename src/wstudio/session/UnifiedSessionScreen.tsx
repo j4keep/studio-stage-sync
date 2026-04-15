@@ -711,7 +711,7 @@ export default function UnifiedSessionScreen() {
         {/* ─── MOBILE TAB BAR ─── */}
         {isMobile && (
           <div className="flex" style={{ borderBottom: `1px solid ${C.panelBorder}` }}>
-            {([["video", "📹 Video"], ["controls", "🎛 Controls"], ["monitor", "🎧 Monitor"]] as const).map(([key, label]) => (
+            {([["video", "📹 Video"], ["plugin", "🔌 Plugin"]] as const).map(([key, label]) => (
               <button key={key} onPointerDown={(e) => { e.preventDefault(); setMobileTab(key as any); }} className="flex-1 py-2 text-center text-[11px] font-bold uppercase tracking-wide" style={{
                 color: mobileTab === key ? C.white : C.dim,
                 borderBottom: mobileTab === key ? `2px solid ${C.blue}` : "2px solid transparent",
