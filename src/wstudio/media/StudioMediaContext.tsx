@@ -827,6 +827,19 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       void sendOrRepeatOffer();
     }
 
+    // Retry ready/offer signals periodically until connected, to handle race conditions
+    // where one side joins before the other has subscribed to the channel.
+    const retryInterval = window.setInterval(() => {
+      if (!pcRef.current || pcRef.current.connectionState === "connected") {
+        window.clearInterval(retryInterval);
+        return;
+      }
+      sendReady();
+      if (roleRef.current === "engineer") {
+        void sendOrRepeatOffer();
+      }
+    }, 2000);
+
     return () => {
       unsubscribeSignals();
       pc.onicecandidate = null;
