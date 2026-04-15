@@ -723,7 +723,7 @@ export default function UnifiedSessionScreen() {
         )}
 
         {/* ─── MAIN GRID ─── */}
-        <div className={`relative ${isMobile ? "flex flex-col gap-2 p-2 flex-1 overflow-y-auto" : `grid gap-2 p-2 ${isFullscreen ? "flex-1" : ""}`}`} style={isMobile ? {} : { gridTemplateColumns: "1fr 320px", gridTemplateRows: isFullscreen ? "1fr" : "auto" }}>
+        <div className={`relative ${isMobile ? "flex flex-col gap-2 p-2 flex-1 overflow-y-auto" : "grid gap-2 p-2 flex-1 overflow-hidden"}`} style={isMobile ? {} : { gridTemplateColumns: "1fr 320px", gridTemplateRows: "1fr" }}>
           {controlsLocked && <SessionControlsLockOverlay />}
 
           {/* ══════════ MOBILE LAYOUT ══════════ */}
