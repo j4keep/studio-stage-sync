@@ -841,6 +841,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     }, 2000);
 
     return () => {
+      window.clearInterval(retryInterval);
       unsubscribeSignals();
       pc.onicecandidate = null;
       pc.ontrack = null;
