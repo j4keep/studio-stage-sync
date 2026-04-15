@@ -1500,7 +1500,7 @@ export default function UnifiedSessionScreen() {
 
           {/* ── Artist Extension Request (Desktop) ── */}
           {isArtist && hasBooking && phase === "live" && (
-            <Panel accent={C.acOrange} className="col-span-3 flex items-center gap-3 px-4 py-2">
+            <Panel accent={C.acOrange} className="col-span-4 flex items-center gap-3 px-4 py-2">
               <span style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>REQUEST MORE TIME</span>
               {booking?.pendingExtension ? (
                 <span style={{ color: C.yellow, fontSize: 12 }}>⏳ Waiting for engineer to approve +{booking.pendingExtension.minutes} min...</span>
@@ -1533,7 +1533,7 @@ export default function UnifiedSessionScreen() {
 
           {/* ── Desktop: Session Complete Bar ── */}
           {hasBooking && !isArtist && (
-            <Panel accent={C.acGreen} className="col-span-3 flex items-center justify-between px-4 py-2">
+            <Panel accent={C.acGreen} className="col-span-4 flex items-center justify-between px-4 py-2">
               <span style={{ fontSize: 12, fontWeight: 600, color: C.label }}>SESSION ACTIONS</span>
               <button onClick={handleEngineerMarkComplete} className="rounded-lg px-5 py-2 text-[12px] font-bold" style={{
                 background: "linear-gradient(180deg, #4ade60 0%, #22a838 100%)",
@@ -1543,7 +1543,7 @@ export default function UnifiedSessionScreen() {
           )}
 
           {/* ── BOTTOM: TRANSPORT BAR (full width, single long card) ── */}
-          <Panel accent={C.acPurple} className="col-span-3 flex items-center gap-2 px-3 py-2">
+          <Panel accent={C.acPurple} className="col-span-4 flex items-center gap-2 px-3 py-2">
             <TBtn sym="▌▌" label="Punch In" disabled={!isEngineer} />
             <TBtn sym="<<" label="Rewind" disabled={!isEngineer} />
             <TBtn sym="▶▶" label="Forward" disabled={!isEngineer} />
