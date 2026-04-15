@@ -1172,10 +1172,17 @@ export default function UnifiedSessionScreen() {
               ) : (
                 <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
                   <span className="text-[28px] font-black tracking-tight" style={{ color: C.dim }}>W<span style={{ color: C.blue }}>.</span>STUDIO</span>
-                  <span style={{ color: C.dim, fontSize: 11, letterSpacing: "0.14em", marginTop: 4 }}>WAITING FOR ARTIST</span>
+                  <span style={{ color: C.dim, fontSize: 11, letterSpacing: "0.14em", marginTop: 4 }}>
+                    {isArtist && mediaError ? "⚠ CAMERA ACCESS DENIED" : isArtist ? "STARTING CAMERA..." : "WAITING FOR ARTIST"}
+                  </span>
+                  {isArtist && mediaError && (
+                    <span style={{ color: C.red, fontSize: 10, marginTop: 6, maxWidth: "80%", textAlign: "center" }}>{mediaError}</span>
+                  )}
                 </div>
               )}
-              <div className="absolute bottom-2 left-2 z-[5] rounded px-2 py-1 text-[12px] font-medium" style={{ background: "rgba(0,0,0,0.6)", color: artistStream ? C.text : C.dim }}>{artistStream ? "Artist" : "No one connected"}</div>
+              <div className="absolute bottom-2 left-2 z-[5] rounded px-2 py-1 text-[12px] font-medium" style={{ background: "rgba(0,0,0,0.6)", color: artistStream ? C.text : C.dim }}>
+                {artistStream ? (isArtist ? "You (Artist)" : "Artist") : "No one connected"}
+              </div>
               <VideoTileActions hasSession={!!role} onJoin={goToJoin} onEnd={handleEndSession} expanded={expandedPanel === "artist"} onToggleExpand={() => setExpandedPanel(expandedPanel === "artist" ? null : "artist")} isMobile={false} />
               <div className="absolute right-2 top-2 flex items-center gap-1.5 rounded-md px-2 py-1" style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)", border: `1px solid ${(hasBooking ? warningLevel : "ok") === "critical" ? "rgba(239,68,68,0.5)" : (hasBooking ? warningLevel : "ok") === "warning" ? "rgba(245,200,66,0.4)" : "rgba(255,255,255,0.1)"}` }}>
                 <span className={`font-mono text-[14px] font-bold tabular-nums ${(hasBooking ? warningLevel : "ok") === "critical" ? "animate-pulse" : ""}`} style={{ color: (hasBooking ? warningLevel : "ok") === "critical" ? C.red : (hasBooking ? warningLevel : "ok") === "warning" ? C.yellow : C.text }}>
@@ -1192,10 +1199,17 @@ export default function UnifiedSessionScreen() {
               ) : (
                 <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
                   <span className="text-[28px] font-black tracking-tight" style={{ color: C.dim }}>W<span style={{ color: C.blue }}>.</span>STUDIO</span>
-                  <span style={{ color: C.dim, fontSize: 11, letterSpacing: "0.14em", marginTop: 4 }}>WAITING FOR ENGINEER</span>
+                  <span style={{ color: C.dim, fontSize: 11, letterSpacing: "0.14em", marginTop: 4 }}>
+                    {isEngineer && mediaError ? "⚠ CAMERA ACCESS DENIED" : isEngineer ? "STARTING CAMERA..." : "WAITING FOR ENGINEER"}
+                  </span>
+                  {isEngineer && mediaError && (
+                    <span style={{ color: C.red, fontSize: 10, marginTop: 6, maxWidth: "80%", textAlign: "center" }}>{mediaError}</span>
+                  )}
                 </div>
               )}
-              <div className="absolute bottom-2 left-2 z-[5] rounded px-2 py-1 text-[12px] font-medium" style={{ background: "rgba(0,0,0,0.6)", color: engineerStream ? C.text : C.dim }}>{engineerStream ? "Engineer" : "No one connected"}</div>
+              <div className="absolute bottom-2 left-2 z-[5] rounded px-2 py-1 text-[12px] font-medium" style={{ background: "rgba(0,0,0,0.6)", color: engineerStream ? C.text : C.dim }}>
+                {engineerStream ? (isEngineer ? "You (Engineer)" : "Engineer") : "No one connected"}
+              </div>
               <VideoTileActions hasSession={!!role} onJoin={goToJoin} onEnd={handleEndSession} expanded={expandedPanel === "engineer"} onToggleExpand={() => setExpandedPanel(expandedPanel === "engineer" ? null : "engineer")} isMobile={false} />
               <div className="absolute right-2 top-2 flex items-center gap-1.5 rounded-md px-2 py-1" style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)", border: `1px solid ${(hasBooking ? warningLevel : "ok") === "critical" ? "rgba(239,68,68,0.5)" : (hasBooking ? warningLevel : "ok") === "warning" ? "rgba(245,200,66,0.4)" : "rgba(255,255,255,0.1)"}` }}>
                 <span className={`font-mono text-[14px] font-bold tabular-nums ${(hasBooking ? warningLevel : "ok") === "critical" ? "animate-pulse" : ""}`} style={{ color: (hasBooking ? warningLevel : "ok") === "critical" ? C.red : (hasBooking ? warningLevel : "ok") === "warning" ? C.yellow : C.text }}>
