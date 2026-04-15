@@ -672,7 +672,7 @@ export default function UnifiedSessionScreen() {
   }, []);
 
   /* ── Mobile-specific tab state ── */
-  const [mobileTab, setMobileTab] = useState<"video" | "controls" | "monitor">("video");
+  const [mobileTab, setMobileTab] = useState<"video" | "plugin">("video");
 
   return (
     <div ref={shellRef} className={`flex select-none overflow-hidden ${isMobile ? "flex-col overflow-y-auto" : "min-h-screen items-center justify-center"}`} style={{ background: "#111214", padding: isFullscreen ? 0 : isMobile ? 0 : 16 }}>
@@ -711,7 +711,7 @@ export default function UnifiedSessionScreen() {
         {/* ─── MOBILE TAB BAR ─── */}
         {isMobile && (
           <div className="flex" style={{ borderBottom: `1px solid ${C.panelBorder}` }}>
-            {([["video", "📹 Video"], ["controls", "🎛 Controls"], ["monitor", "🎧 Monitor"]] as const).map(([key, label]) => (
+            {([["video", "📹 Video"], ["plugin", "🔌 Plugin"]] as const).map(([key, label]) => (
               <button key={key} onPointerDown={(e) => { e.preventDefault(); setMobileTab(key as any); }} className="flex-1 py-2 text-center text-[11px] font-bold uppercase tracking-wide" style={{
                 color: mobileTab === key ? C.white : C.dim,
                 borderBottom: mobileTab === key ? `2px solid ${C.blue}` : "2px solid transparent",
@@ -800,16 +800,16 @@ export default function UnifiedSessionScreen() {
                     )}
                   </Panel>
 
-                  {/* Mute / Talk / Settings row */}
+                  {/* Mute / Talk / End / Settings row */}
                   <Panel accent={C.acOrange}>
-                    <div className="grid grid-cols-3" style={{ borderTop: `1px solid ${C.panelBorder}` }}>
+                    <div className="grid grid-cols-4" style={{ borderTop: `1px solid ${C.panelBorder}` }}>
                       <button onPointerDown={(e) => { e.preventDefault(); toggleMute(); }} className="flex flex-col items-center justify-center gap-1 py-2.5">
                         <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={muted ? C.red : C.label} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                           <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
                           <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
                           <line x1="12" y1="19" x2="12" y2="22" />
                         </svg>
-                        <span style={{ fontSize: 10, color: C.text }}>Mute</span>
+                        <span style={{ fontSize: 10, color: muted ? C.red : C.text }}>Mute</span>
                       </button>
                       <button
                         onPointerDown={(e) => { e.preventDefault(); beginTalkback(); }}
@@ -818,11 +818,7 @@ export default function UnifiedSessionScreen() {
                         onTouchStart={(e) => { e.preventDefault(); beginTalkback(); }}
                         onTouchEnd={(e) => { e.preventDefault(); endTalkback(); }}
                         className="flex flex-col items-center justify-center gap-1 py-2.5"
-                        style={{
-                          borderLeft: `1px solid ${C.panelBorder}`,
-                          borderRight: `1px solid ${C.panelBorder}`,
-                          touchAction: "none",
-                        }}
+                        style={{ borderLeft: `1px solid ${C.panelBorder}`, borderRight: `1px solid ${C.panelBorder}`, touchAction: "none" }}
                       >
                         <div className="flex h-8 w-8 items-center justify-center rounded-full transition-[box-shadow,transform] duration-100" style={{
                           background: talkbackHeld
@@ -838,6 +834,13 @@ export default function UnifiedSessionScreen() {
                         <span style={{ fontSize: 10, color: talkbackHeld ? C.blue : C.text, fontWeight: talkbackHeld ? 700 : 400 }}>
                           {talkbackHeld ? "TALKING" : peerPtt ? "INCOMING" : "Talk"}
                         </span>
+                      </button>
+                      <button onPointerDown={(e) => { e.preventDefault(); handleEndSession(); }} className="flex flex-col items-center justify-center gap-1 py-2.5" style={{ borderRight: `1px solid ${C.panelBorder}` }}>
+                        <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={C.red} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91" />
+                          <line x1="23" y1="1" x2="1" y2="23" />
+                        </svg>
+                        <span style={{ fontSize: 10, color: C.red }}>End</span>
                       </button>
                       <button className="flex flex-col items-center justify-center gap-1 py-2.5">
                         <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={C.label} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -967,204 +970,19 @@ export default function UnifiedSessionScreen() {
                 </div>
               )}
 
-              {/* ── CONTROLS TAB ── */}
-              {mobileTab === "controls" && (
-                <div className="flex flex-col gap-2">
-                  {/* Sync Controls */}
-                  <Panel accent={C.acPurple} className="p-3">
-                    <div style={{ fontSize: 11, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>SYNC CONTROLS</div>
-                    <div className="my-2 text-center" style={{ fontSize: 14, fontWeight: 600, color: C.text }}>– SYNCED: 120 BPM –</div>
-                    <div className="flex flex-wrap items-center justify-center gap-2">
-                      <button onPointerDown={isEngineer ? (e) => { e.preventDefault(); setSessionPlaying(true); } : undefined} className="flex items-center gap-1.5 rounded-[3px] px-4 py-2 text-[13px] font-semibold" style={{
-                        background: playing ? `linear-gradient(180deg, #1a3a1a 0%, #0e2a0e 100%)` : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
-                        border: `1px solid ${playing ? "#2a6a2a" : C.panelBorder}`, color: C.text,
-                        opacity: isEngineer ? 1 : 0.4, cursor: isEngineer ? "pointer" : "not-allowed",
-                      }}>
-                        <span style={{ color: playing ? C.green : C.text }}>▶</span> Play
-                      </button>
-                      <button onPointerDown={isEngineer ? (e) => { e.preventDefault(); setSessionPlaying(false); if (recording) setSessionRecording(false); } : undefined} className="flex items-center gap-1.5 rounded-[3px] px-4 py-2 text-[13px] font-semibold" style={{
-                        background: `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
-                        border: `1px solid ${C.panelBorder}`, color: C.text,
-                        opacity: isEngineer ? 1 : 0.4, cursor: isEngineer ? "pointer" : "not-allowed",
-                      }}>
-                        <span style={{ color: C.red }}>■</span> Stop
-                      </button>
-                      <button onPointerDown={isEngineer ? (e) => { e.preventDefault(); handleTransportRecord(); } : undefined} className="flex items-center gap-1.5 rounded-[3px] px-4 py-2 text-[13px] font-semibold" style={{
-                        background: recording ? `linear-gradient(180deg, #4a1a1a 0%, #2a0e0e 100%)` : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
-                        border: `1px solid ${recording ? "#6a2222" : C.panelBorder}`, color: C.text,
-                        opacity: isEngineer ? (engineerRecordDimmed ? 0.45 : 1) : 0.4, cursor: isEngineer && !engineerRecordDimmed ? "pointer" : "not-allowed",
-                      }}>
-                        <span className={recording ? "animate-pulse" : ""} style={{ color: C.red }}>●</span> Record
-                      </button>
-                    </div>
-                  </Panel>
-
-                  {/* Vocal Input */}
-                  <Panel accent={C.acPurple} className="p-3">
-                    <div className="mb-2 flex items-center justify-between">
-                      <span style={{ fontSize: 11, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>VOCAL INPUT</span>
-                    </div>
-                    <Inset className="space-y-2 p-2">
-                      <div>
-                        <div className="mb-0.5 flex justify-between" style={{ fontSize: 9, fontWeight: 600, color: C.label, letterSpacing: "0.08em" }}>
-                          <span>LOCAL MIC</span>
-                        </div>
-                        <HorizontalMeter level={meterDisplay(localMicLevel)} />
-                      </div>
-                      <div>
-                        <div className="mb-0.5" style={{ fontSize: 9, fontWeight: 600, color: C.label, letterSpacing: "0.08em" }}>TALKBACK SEND</div>
-                        <HorizontalMeter level={meterDisplay(localTalkbackTxLevel)} />
-                      </div>
-                      <div>
-                        <div className="mb-0.5 flex justify-between" style={{ fontSize: 9, fontWeight: 600, color: C.label, letterSpacing: "0.08em" }}>
-                          <span>REMOTE IN</span>
-                          <span style={{ color: C.dim, fontWeight: 500 }}>{hasRemoteAudio ? "live" : "no stream"}</span>
-                        </div>
-                        <HorizontalMeter level={hasRemoteAudio ? meterDisplay(remoteMicLevel) : 0} />
-                      </div>
-                      {isEngineer ? (
-                        <div>
-                          <div className="mb-0.5 flex justify-between" style={{ fontSize: 9, fontWeight: 600, color: C.label, letterSpacing: "0.08em" }}>
-                            <span>BRIDGE OUT (DAW FEED)</span>
-                            <span style={{ color: C.dim, fontWeight: 500 }}>{bridgePathReady ? "routed" : "—"}</span>
-                          </div>
-                          <HorizontalMeter level={bridgePathReady ? meterDisplay(engineerBridgeVocalLevel) : 0} />
-                        </div>
-                      ) : null}
-                      {isEngineer ? (
-                        <div>
-                          <div className="mb-0.5 flex justify-between" style={{ fontSize: 9, fontWeight: 600, color: C.label, letterSpacing: "0.08em" }}>
-                            <span>RETURN FROM DAW</span>
-                            <span style={{ color: dawReturnActive ? C.green : C.dim, fontWeight: 500 }}>{dawReturnActive ? "sending" : "—"}</span>
-                          </div>
-                          <HorizontalMeter level={dawReturnActive ? meterDisplay(engineerDawReturnLevel) : 0} />
-                        </div>
-                      ) : null}
-                      <div className="mt-1"><SpectrumBars level={spectrumLevel} /></div>
-                      <div className="mt-0.5"><FreqLabels /></div>
-                    </Inset>
-                    <div className="mt-3 flex justify-center">
-                      <button onPointerDown={isEngineer && !recording ? (e) => { e.preventDefault(); handleArmRecordToggle(); } : undefined} className="rounded-[3px] px-6 py-2 text-[13px] font-bold uppercase tracking-wide" style={{
-                        background: armed ? `linear-gradient(180deg, #4a1a1a 0%, #2a0e0e 100%)` : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
-                        border: `1px solid ${armed ? "#6a2222" : C.panelBorder}`, color: C.text,
-                        opacity: isEngineer && !recording ? 1 : 0.4, cursor: isEngineer && !recording ? "pointer" : "not-allowed",
-                      }}>ARM RECORD</button>
-                    </div>
-                  </Panel>
-
-                  {/* Vocal Take Waveform */}
-                  <Panel accent={C.acCyan} className="flex items-center gap-2 px-3 py-2">
-                    <span className="truncate" style={{ fontSize: 12, fontWeight: 600, color: C.text, whiteSpace: "nowrap" }}>Vocal Take 4 — {vocalTakeTitle}</span>
-                    <Inset className="flex-1 overflow-hidden rounded-[3px] p-0.5">
-                      <Waveform recording={recording} takeCaptured={takeCaptured} />
-                    </Inset>
-                  </Panel>
-
-                  {/* Transport Bar */}
-                  <Panel accent={C.acPurple} className="flex flex-wrap items-center gap-1.5 px-2 py-2">
-                    <button disabled={!isEngineer} className="flex items-center gap-1 rounded-[3px] px-3 py-1.5 text-[11px] font-semibold" style={{ background: `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`, border: `1px solid ${C.panelBorder}`, color: C.text, opacity: isEngineer ? 1 : 0.4 }}>▌▌ Punch</button>
-                    <button disabled={!isEngineer} className="flex items-center gap-1 rounded-[3px] px-3 py-1.5 text-[11px] font-semibold" style={{ background: `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`, border: `1px solid ${C.panelBorder}`, color: C.text, opacity: isEngineer ? 1 : 0.4 }}>&lt;&lt; Rew</button>
-                    <button disabled={!isEngineer} className="flex items-center gap-1 rounded-[3px] px-3 py-1.5 text-[11px] font-semibold" style={{ background: `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`, border: `1px solid ${C.panelBorder}`, color: C.text, opacity: isEngineer ? 1 : 0.4 }}>▶▶ Fwd</button>
-                    <div className="flex items-center gap-1.5 rounded-[3px] px-3 py-1.5 text-[12px] font-bold" style={{
-                      background: recording ? `linear-gradient(180deg, #4a1a1a 0%, #2a0e0e 100%)` : armed ? `linear-gradient(180deg, #3a2a0a 0%, #2a1f08 100%)` : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
-                      border: `1px solid ${recording ? "#6a2222" : armed ? "#6a5a22" : C.panelBorder}`,
-                    }}>
-                      <span className={recording ? "animate-pulse" : ""} style={{ color: recording ? C.red : armed ? C.yellow : C.dim }}>●</span>
-                      <span style={{ color: recording ? C.red : armed ? C.yellow : C.dim }}>REC</span>
-                      {(recording || armed) && (
-                        <span style={{ color: recording ? C.red : C.yellow, fontSize: 10 }}>{recording ? "RECORDING" : "ARMED"}</span>
-                      )}
-                    </div>
-                  </Panel>
+              {/* ── PLUGIN TAB ── */}
+              {mobileTab === "plugin" && (
+                <div className="flex flex-col gap-2" style={{ minHeight: 400 }}>
+                  <PluginPanel
+                    sessionTitle={sessionDisplayName || "Session"}
+                    connected={connected}
+                    talkbackActive={talkbackHeld}
+                    onTalkDown={beginTalkback}
+                    onTalkUp={endTalkback}
+                    remoteMicLevel={hasRemoteAudio ? remoteMicLevel : 0}
+                    sendLevel={bridgeFeedActive ? engineerBridgeVocalLevel : 0}
+                  />
                 </div>
-              )}
-
-              {/* ── MONITOR TAB ── */}
-              {mobileTab === "monitor" && (
-                <Panel accent={C.acLime} className="p-3">
-                  <div className="mb-1 flex items-center justify-between">
-                    <span title={isArtist ? "Engineer adjusts monitor mix; values sync here." : undefined} style={{ fontSize: 11, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>MONITORING</span>
-                  </div>
-                  <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-4">
-                    <div className="flex flex-col items-center gap-1">
-                      <span style={{ fontSize: 10, fontWeight: 500, color: C.text }}>Vocal Level</span>
-                      <div className="flex items-end gap-1.5">
-                        <Knob value={vocalLevel} size={50} onChange={monitorAdjust ? (v) => monitorAdjust({ vocalLevel: v }) : undefined} accent={C.acLime} />
-                        <ControlLevelLadder level={vocalLevel} height={60} accent={C.acLime} />
-                        <Fader value={vocalLevel} height={60} onChange={monitorAdjust ? (v) => monitorAdjust({ vocalLevel: v }) : undefined} />
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-center gap-1">
-                      <span style={{ fontSize: 10, fontWeight: 500, color: C.text }}>Talkback Level</span>
-                      <div className="flex items-end gap-1.5">
-                        <Knob value={talkbackLevel} size={50} onChange={monitorAdjust ? (v) => monitorAdjust({ talkbackLevel: v }) : undefined} accent={C.acCyan} />
-                        <ControlLevelLadder level={talkbackLevel} height={60} accent={C.acCyan} />
-                        <Fader value={talkbackLevel} height={60} onChange={monitorAdjust ? (v) => monitorAdjust({ talkbackLevel: v }) : undefined} />
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-center gap-1">
-                      <span style={{ fontSize: 10, fontWeight: 500, color: C.text }}>Headphone</span>
-                      <div className="flex items-end gap-1.5">
-                        <Knob value={headphoneLevel} size={50} onChange={(v) => updateSessionHeadphoneLevel(v)} accent={C.acOrange} />
-                        <ControlLevelLadder level={headphoneLevel} height={60} accent={C.acOrange} />
-                        <Fader value={headphoneLevel} height={60} onChange={(v) => updateSessionHeadphoneLevel(v)} />
-                      </div>
-                      <span style={{ fontSize: 8, color: C.dim }}>🎧 HP OUT</span>
-                    </div>
-                    <div className="flex flex-col items-center gap-1">
-                      <span style={{ fontSize: 10, fontWeight: 500, color: C.text }}>Cue Mix</span>
-                      <Knob value={cueMix} size={50} onChange={monitorAdjust ? (v) => monitorAdjust({ cueMix: v }) : undefined} accent={C.acPurple} />
-                      <div className="flex w-full items-center justify-between px-1" style={{ fontSize: 8, color: C.dim }}>
-                        <span>VOX</span><span>BEAT</span>
-                      </div>
-                      <div className="mt-0.5 overflow-hidden rounded-sm" style={{ height: 4, width: "80%", background: C.track, border: `1px solid ${C.insetBorder}` }}>
-                        <div className="h-full rounded-sm" style={{ width: `${cueMix * 100}%`, background: `linear-gradient(90deg, ${C.blue} 0%, ${C.green} 100%)` }} />
-                      </div>
-                    </div>
-                  </div>
-                  {isEngineer ? (
-                    <div className="mt-4 border-t pt-3" style={{ borderColor: C.panelBorder }}>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>W.STUDIO BRIDGE</div>
-                      <div className="mt-2 space-y-1" style={{ fontSize: 10, color: C.text, lineHeight: 1.45 }}>
-                        <div>
-                          <span style={{ color: C.dim }}>Status: </span>
-                          <span style={{ color: bridgeStatusColor, fontWeight: 600 }}>{bridgeStatusLabel}</span>
-                        </div>
-                        <div>
-                          <span style={{ color: C.dim }}>Artist: </span>
-                          <span style={{ fontWeight: 500 }}>{bridgeArtistLabel}</span>
-                        </div>
-                        <div>
-                          <span style={{ color: C.dim }}>Feed: </span>
-                          <span style={{ color: bridgeFeedActive ? C.green : C.dim, fontWeight: 600 }}>{bridgeFeedActive ? "Active" : "Inactive"}</span>
-                        </div>
-                        <div>
-                          <span style={{ color: C.dim }}>Output: </span>
-                          {bridgeRouted && bridgeFeedActive ? (
-                            <span style={{ color: C.green, fontWeight: 600 }}>Default (use Multi-Output for DAW)</span>
-                          ) : (
-                            <span style={{ color: C.acCyan, fontWeight: 600 }}>Waiting for signal</span>
-                          )}
-                        </div>
-                        <div className="mt-1.5">
-                          <div className="flex items-center justify-between">
-                            <span style={{ fontSize: 8, color: bridgeRouted ? C.green : C.dim }}>
-                              {bridgeRouted ? "● Playing" : "○ Not playing"}
-                            </span>
-                          </div>
-                          {bridgeRoutingError && <div style={{ fontSize: 8, color: C.red, marginTop: 2 }}>{bridgeRoutingError}</div>}
-                        </div>
-                      </div>
-                      <div className="mt-2 border-t pt-2" style={{ borderColor: C.panelBorder, fontSize: 9, color: C.dim }}>
-                        <span style={{ color: bridgeStatusColor }}>• {bridgeStatusLabel}</span>
-                        <span style={{ color: C.dim }}> · Artist: </span>
-                        <span style={{ color: C.text }}>{bridgeArtistLabel}</span>
-                        <span style={{ color: C.dim }}> · Feed </span>
-                        <span style={{ color: bridgeFeedActive ? C.green : C.dim }}>{bridgeFeedActive ? "Active" : "Inactive"}</span>
-                      </div>
-                    </div>
-                  ) : null}
-                </Panel>
               )}
 
             </>
