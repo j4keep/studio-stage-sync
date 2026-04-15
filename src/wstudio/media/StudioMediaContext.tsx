@@ -850,6 +850,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       unsubscribeSignals();
       pc.onicecandidate = null;
       pc.ontrack = null;
+      pc.onconnectionstatechange = null;
       pc.close();
       pcRef.current = null;
       inboundStreamRef.current = null;
