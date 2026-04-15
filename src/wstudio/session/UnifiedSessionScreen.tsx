@@ -800,16 +800,16 @@ export default function UnifiedSessionScreen() {
                     )}
                   </Panel>
 
-                  {/* Mute / Talk / Settings row */}
+                  {/* Mute / Talk / End / Settings row */}
                   <Panel accent={C.acOrange}>
-                    <div className="grid grid-cols-3" style={{ borderTop: `1px solid ${C.panelBorder}` }}>
+                    <div className="grid grid-cols-4" style={{ borderTop: `1px solid ${C.panelBorder}` }}>
                       <button onPointerDown={(e) => { e.preventDefault(); toggleMute(); }} className="flex flex-col items-center justify-center gap-1 py-2.5">
                         <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={muted ? C.red : C.label} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                           <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
                           <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
                           <line x1="12" y1="19" x2="12" y2="22" />
                         </svg>
-                        <span style={{ fontSize: 10, color: C.text }}>Mute</span>
+                        <span style={{ fontSize: 10, color: muted ? C.red : C.text }}>Mute</span>
                       </button>
                       <button
                         onPointerDown={(e) => { e.preventDefault(); beginTalkback(); }}
@@ -818,11 +818,7 @@ export default function UnifiedSessionScreen() {
                         onTouchStart={(e) => { e.preventDefault(); beginTalkback(); }}
                         onTouchEnd={(e) => { e.preventDefault(); endTalkback(); }}
                         className="flex flex-col items-center justify-center gap-1 py-2.5"
-                        style={{
-                          borderLeft: `1px solid ${C.panelBorder}`,
-                          borderRight: `1px solid ${C.panelBorder}`,
-                          touchAction: "none",
-                        }}
+                        style={{ borderLeft: `1px solid ${C.panelBorder}`, borderRight: `1px solid ${C.panelBorder}`, touchAction: "none" }}
                       >
                         <div className="flex h-8 w-8 items-center justify-center rounded-full transition-[box-shadow,transform] duration-100" style={{
                           background: talkbackHeld
@@ -838,6 +834,13 @@ export default function UnifiedSessionScreen() {
                         <span style={{ fontSize: 10, color: talkbackHeld ? C.blue : C.text, fontWeight: talkbackHeld ? 700 : 400 }}>
                           {talkbackHeld ? "TALKING" : peerPtt ? "INCOMING" : "Talk"}
                         </span>
+                      </button>
+                      <button onPointerDown={(e) => { e.preventDefault(); handleEndSession(); }} className="flex flex-col items-center justify-center gap-1 py-2.5" style={{ borderRight: `1px solid ${C.panelBorder}` }}>
+                        <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={C.red} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91" />
+                          <line x1="23" y1="1" x2="1" y2="23" />
+                        </svg>
+                        <span style={{ fontSize: 10, color: C.red }}>End</span>
                       </button>
                       <button className="flex flex-col items-center justify-center gap-1 py-2.5">
                         <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={C.label} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
