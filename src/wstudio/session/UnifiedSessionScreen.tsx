@@ -993,7 +993,7 @@ export default function UnifiedSessionScreen() {
           {/* Simple 2-column: Communication (videos + controls) | Plugin */}
 
           {/* ── LEFT: Videos + Communication Controls ── */}
-          <div className="row-span-4 flex flex-col gap-2" style={{ gridRow: "1 / -1" }}>
+          <div className="flex flex-col gap-2 overflow-y-auto" style={{ minHeight: 0 }}>
             {/* Artist Video */}
             <Panel accent={C.acMagenta} className="relative overflow-hidden flex-1" style={{ minHeight: 200 }}>
               {artistStream ? (
