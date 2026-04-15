@@ -1161,7 +1161,7 @@ export default function UnifiedSessionScreen() {
           </div>
 
           {/* ── RIGHT: W.Studio Plugin Panel ── */}
-          <div className="row-span-4 flex flex-col" style={{ gridRow: "1 / -1" }}>
+          <div className="flex flex-col" style={{ minHeight: 0 }}>
             <PluginPanel
               sessionTitle={sessionDisplayName || "Session: Live"}
               connected={connected}
