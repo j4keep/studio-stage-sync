@@ -339,23 +339,21 @@ function JoinSessionInline({ onJoin }: { onJoin: () => void }) {
 function VideoTileActions({
   hasSession,
   onJoin,
-  onEnd,
   expanded,
   onToggleExpand,
-  isMobile,
 }: {
   hasSession: boolean;
   onJoin: () => void;
-  onEnd: () => void;
+  onEnd?: () => void;
   expanded: boolean;
   onToggleExpand: () => void;
-  isMobile: boolean;
+  isMobile?: boolean;
 }) {
   return (
     <>
-      {/* Join/End buttons bottom-left */}
-      <div className="absolute bottom-2 left-2 z-10 flex items-center gap-1.5">
-        {!hasSession && (
+      {/* Join button bottom-left (only when no session) */}
+      {!hasSession && (
+        <div className="absolute bottom-2 left-2 z-10">
           <button
             onClick={onJoin}
             className="rounded px-2 py-1 text-[9px] font-bold uppercase tracking-wide"
@@ -368,22 +366,15 @@ function VideoTileActions({
           >
             Join
           </button>
-        )}
-        {hasSession && (
-          <button
-            onClick={onEnd}
-            className="rounded px-2 py-1 text-[9px] font-bold uppercase tracking-wide"
-            style={{
-              background: "linear-gradient(180deg, #ef4444 0%, #991b1b 100%)",
-              color: "#fff",
-              border: "1px solid rgba(239,68,68,0.5)",
-              boxShadow: "0 2px 6px rgba(0,0,0,0.4)",
-            }}
-          >
-            End
-          </button>
-        )}
-      </div>
+        </div>
+      )}
+      {/* Connection indicator bottom-left (when in session) */}
+      {hasSession && (
+        <div className="absolute bottom-2 left-2 z-10 flex items-center gap-1.5 rounded px-2 py-1" style={{ background: "rgba(0,0,0,0.6)" }}>
+          <div className="h-[6px] w-[6px] rounded-full" style={{ background: C.green, boxShadow: `0 0 4px ${C.green}` }} />
+          <span style={{ color: "#e8e8ea", fontSize: 9, fontWeight: 600 }}>LIVE</span>
+        </div>
+      )}
       {/* Expand button bottom-right */}
       <div className="absolute bottom-2 right-2 z-10">
         <button
