@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBridgeOutputDevice } from "../bridge/useBridgeOutputDevice";
+import PluginPanel from "./PluginPanel";
 
 const canScreenShare = typeof navigator !== "undefined" && !!navigator.mediaDevices?.getDisplayMedia;
 
@@ -685,7 +686,7 @@ export default function UnifiedSessionScreen() {
   return (
     <div ref={shellRef} className={`flex select-none overflow-hidden ${isMobile ? "flex-col overflow-y-auto" : "min-h-screen items-center justify-center"}`} style={{ background: "#111214", padding: isFullscreen ? 0 : isMobile ? 0 : 16 }}>
       <div className="w-full overflow-hidden flex flex-col" style={{
-        maxWidth: isFullscreen ? "100%" : isMobile ? "100%" : 1100,
+        maxWidth: isFullscreen ? "100%" : isMobile ? "100%" : 1440,
         height: isFullscreen ? "100vh" : isMobile ? "100dvh" : "auto",
         borderRadius: isFullscreen || isMobile ? 0 : 8,
         background: `linear-gradient(180deg, ${C.shell} 0%, ${C.shellDark} 100%)`,
@@ -730,7 +731,7 @@ export default function UnifiedSessionScreen() {
         )}
 
         {/* ─── MAIN GRID ─── */}
-        <div className={`relative ${isMobile ? "flex flex-col gap-2 p-2 flex-1 overflow-y-auto" : `grid gap-2 p-2 ${isFullscreen ? "flex-1" : ""}`}`} style={isMobile ? {} : { gridTemplateColumns: "280px 1fr 260px", gridTemplateRows: isFullscreen ? "auto 1fr auto auto" : "auto auto auto auto" }}>
+        <div className={`relative ${isMobile ? "flex flex-col gap-2 p-2 flex-1 overflow-y-auto" : `grid gap-2 p-2 ${isFullscreen ? "flex-1" : ""}`}`} style={isMobile ? {} : { gridTemplateColumns: "320px 280px 1fr 260px", gridTemplateRows: isFullscreen ? "auto 1fr auto auto" : "auto auto auto auto" }}>
           {controlsLocked && <SessionControlsLockOverlay />}
 
           {/* ══════════ MOBILE LAYOUT ══════════ */}
@@ -885,7 +886,54 @@ export default function UnifiedSessionScreen() {
                     </Panel>
                   )}
 
-                  {/* Artist: Request More Time */}
+                  {/* ── Plugin Status + Session Info (side by side like reference) ── */}
+                  {isEngineer && (
+                    <div className="grid grid-cols-2 gap-2">
+                      {/* Studio Session panel */}
+                      <Panel accent={C.acCyan} className="p-3">
+                        <div className="mb-1 flex items-center gap-1.5">
+                          <svg width="14" height="14" viewBox="0 0 32 32" fill="none">
+                            <path d="M4 8L10 24L16 12L22 24L28 8" stroke="hsl(270,60%,65%)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                            <line x1="14" y1="4" x2="20" y2="28" stroke="hsl(210,90%,60%)" strokeWidth="2.5" strokeLinecap="round"/>
+                          </svg>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: C.text, letterSpacing: "0.05em" }}>STUDIO SESSION</span>
+                        </div>
+                        <div className="mt-2 flex items-center justify-between">
+                          <span style={{ fontSize: 12, fontWeight: 600, color: C.text }}>{sessionDisplayName || "Session"}</span>
+                          <span className="rounded-full" style={{ width: 8, height: 8, background: connected ? C.green : C.dim }} />
+                        </div>
+                        <span style={{ fontSize: 10, color: C.dim }}>Session Live</span>
+                        <button onClick={handleEndSession} className="mt-2 w-full rounded-lg py-2 text-center text-[11px] font-bold uppercase" style={{
+                          background: "linear-gradient(180deg, rgba(239,68,68,0.15) 0%, rgba(153,27,27,0.2) 100%)",
+                          color: "#ef4444", border: "1px solid rgba(239,68,68,0.3)",
+                        }}>🔲 Disconnect</button>
+                      </Panel>
+
+                      {/* W.Studio Plugin Status panel */}
+                      <Panel accent={C.acCyan} className="p-3">
+                        <div className="mb-1 flex items-center gap-1.5">
+                          <span style={{ fontSize: 11, fontWeight: 700, color: C.text, letterSpacing: "0.05em" }}>W.STUDIO</span>
+                        </div>
+                        <div className="mt-1 flex items-center gap-1">
+                          <span className="rounded-full" style={{ width: 6, height: 6, background: bridgeFeedActive ? C.green : C.dim }} />
+                          <span style={{ fontSize: 10, fontWeight: 600, color: bridgeFeedActive ? C.green : C.dim }}>
+                            {bridgeFeedActive ? "Connected" : "Waiting"}
+                          </span>
+                          <span style={{ fontSize: 10, color: C.dim }}> | Plugin {bridgeFeedActive ? "active" : "inactive"}</span>
+                        </div>
+                        <div className="mt-1.5 space-y-0.5" style={{ fontSize: 9, color: C.dim }}>
+                          <div>Send Plugin | 48 kHz / WavesHQ</div>
+                          <div>Feed <span style={{ color: bridgeFeedActive ? C.green : C.dim }}>{bridgeFeedActive ? "Active" : "Inactive"}</span> | {playing ? "Playing" : "Stopped"}</div>
+                        </div>
+                        <div className="mt-1.5 flex items-center gap-1.5 text-[9px] font-semibold" style={{ color: C.label }}>
+                          TALKBACK
+                          <span className="rounded-full" style={{ width: 5, height: 5, background: talkbackHeld ? C.blue : C.dim }} />
+                          <HorizontalMeter level={talkbackHeld ? localTalkbackTxLevel : 0} />
+                        </div>
+                      </Panel>
+                    </div>
+                  )}
+
                   {isArtist && hasBooking && phase === "live" && (
                     <Panel accent={C.acOrange} className="p-3">
                       <div className="mb-2" style={{ fontSize: 11, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>REQUEST MORE TIME</div>
@@ -1132,6 +1180,20 @@ export default function UnifiedSessionScreen() {
           ) : (
             <>
           {/* ══════════ DESKTOP LAYOUT ══════════ */}
+          {/* ── PLUGIN COLUMN (first, spans all content rows) ── */}
+          <div className="row-span-4 flex flex-col">
+            <PluginPanel
+              sessionTitle={sessionDisplayName || "Session: Live"}
+              connected={connected}
+              talkbackActive={talkbackHeld}
+              onTalkDown={beginTalkback}
+              onTalkUp={endTalkback}
+              sessionLink={sessionId.trim() ? `w.studio/${sessionId.trim()}` : "w.studio/—"}
+              remoteMicLevel={remoteMicLevel}
+              sendLevel={localMicLevel}
+            />
+          </div>
+
           {/* ── LEFT COLUMN: Videos + Controls (spans all content rows) ── */}
           <div className="row-span-3 flex flex-col gap-2">
             {/* Artist Video */}
@@ -1485,7 +1547,7 @@ export default function UnifiedSessionScreen() {
 
           {/* ── Artist Extension Request (Desktop) ── */}
           {isArtist && hasBooking && phase === "live" && (
-            <Panel accent={C.acOrange} className="col-span-3 flex items-center gap-3 px-4 py-2">
+            <Panel accent={C.acOrange} className="col-span-4 flex items-center gap-3 px-4 py-2">
               <span style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>REQUEST MORE TIME</span>
               {booking?.pendingExtension ? (
                 <span style={{ color: C.yellow, fontSize: 12 }}>⏳ Waiting for engineer to approve +{booking.pendingExtension.minutes} min...</span>
@@ -1518,7 +1580,7 @@ export default function UnifiedSessionScreen() {
 
           {/* ── Desktop: Session Complete Bar ── */}
           {hasBooking && !isArtist && (
-            <Panel accent={C.acGreen} className="col-span-3 flex items-center justify-between px-4 py-2">
+            <Panel accent={C.acGreen} className="col-span-4 flex items-center justify-between px-4 py-2">
               <span style={{ fontSize: 12, fontWeight: 600, color: C.label }}>SESSION ACTIONS</span>
               <button onClick={handleEngineerMarkComplete} className="rounded-lg px-5 py-2 text-[12px] font-bold" style={{
                 background: "linear-gradient(180deg, #4ade60 0%, #22a838 100%)",
@@ -1528,7 +1590,7 @@ export default function UnifiedSessionScreen() {
           )}
 
           {/* ── BOTTOM: TRANSPORT BAR (full width, single long card) ── */}
-          <Panel accent={C.acPurple} className="col-span-3 flex items-center gap-2 px-3 py-2">
+          <Panel accent={C.acPurple} className="col-span-4 flex items-center gap-2 px-3 py-2">
             <TBtn sym="▌▌" label="Punch In" disabled={!isEngineer} />
             <TBtn sym="<<" label="Rewind" disabled={!isEngineer} />
             <TBtn sym="▶▶" label="Forward" disabled={!isEngineer} />
