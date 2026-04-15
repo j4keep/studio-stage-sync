@@ -490,6 +490,7 @@ export default function UnifiedSessionScreen() {
     hasRemoteAudio,
     engineerDawVocalIn1,
     engineerBridgeVocalLevel,
+    mediaError,
   } = useStudioMedia();
 
   const {
