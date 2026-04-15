@@ -984,6 +984,9 @@ export default function UnifiedSessionScreen() {
                   />
                 </div>
               )}
+
+            </>
+          ) : (
             <>
           {/* ══════════ DESKTOP LAYOUT ══════════ */}
           {/* Simple 2-column: Communication (videos + controls) | Plugin */}
