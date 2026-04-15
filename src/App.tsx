@@ -52,7 +52,6 @@ import { WStudioLayout } from "./wstudio/WStudioLayout";
 import SessionJoinScreen from "./wstudio/session/SessionJoinScreen";
 import UnifiedSessionScreen from "./wstudio/session/UnifiedSessionScreen";
 import StudioBridgeScreen from "./wstudio/bridge/StudioBridgeScreen";
-import WStudioPluginPage from "./pages/WStudioPluginPage";
 
 import TermsAgreementGate from "./components/TermsAgreementGate";
 import ThemePickerSheet from "./components/ThemePickerSheet";
@@ -247,7 +246,6 @@ const App = () => {
                     <div id="app-bg-layer" className="min-h-screen bg-background text-foreground">
                       <Routes>
                         <Route path="/auth" element={<AuthPage />} />
-                        <Route path="/plugin" element={<WStudioPluginPage />} />
                         <Route path="/index" element={<Navigate to="/" replace />} />
                         <Route path="/*" element={<ProtectedRoutes />} />
                       </Routes>

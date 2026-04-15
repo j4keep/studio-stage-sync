@@ -54,14 +54,8 @@ export default function ArtistSessionScreen() {
     pendingExtension,
   } = useBookingTimer();
   const { expandId, toggleExpand, exitExpand } = useExpandablePanels();
-  const {
-    localStream,
-    remoteStream,
-    remoteStreamForPlayback,
-    mediaError,
-    micDeviceId,
-    setMicDeviceId,
-  } = useStudioMedia();
+  const { localStream, remoteStream, remoteStreamForPlayback, mediaError } = useStudioMedia();
+  const [mic, setMic] = useState("default");
   const [out, setOut] = useState("default");
   const [selfVideoOn, setSelfVideoOn] = useState(true);
 
@@ -333,7 +327,7 @@ export default function ArtistSessionScreen() {
               </PushControl>
             </div>
             <LatencyIndicator ms={latencyMs} />
-            <MicInputSelector value={micDeviceId} onChange={setMicDeviceId} disabled={lock} />
+            <MicInputSelector value={mic} onChange={setMic} disabled={lock} />
             <OutputSelector value={out} onChange={setOut} disabled={lock} />
             <label className="flex cursor-pointer items-center gap-2 text-xs text-zinc-400">
               <input
