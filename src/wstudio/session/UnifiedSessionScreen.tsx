@@ -523,12 +523,7 @@ export default function UnifiedSessionScreen() {
               <PluginPanel
                 sessionTitle={sessionDisplayName || "Session"}
                 connected={connected}
-                talkbackActive={talkbackHeld}
-                onTalkDown={beginTalkback}
-                onTalkUp={endTalkback}
-                sessionLink={sessionId ? `w.studio/${sessionId}` : "w.studio/—"}
-                remoteMicLevel={remoteMicLevel}
-                sendLevel={0}
+                sendLevel={remoteMicLevel}
               />
 
               {/* ── ARTIST VIDEO ── */}
