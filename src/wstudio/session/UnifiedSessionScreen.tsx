@@ -675,10 +675,11 @@ export default function UnifiedSessionScreen() {
   const [mobileTab, setMobileTab] = useState<"video" | "plugin">("video");
 
   return (
-    <div ref={shellRef} className={`flex select-none overflow-hidden ${isMobile ? "flex-col overflow-y-auto" : "min-h-screen items-center justify-center"}`} style={{ background: "#111214", padding: isFullscreen ? 0 : isMobile ? 0 : 16 }}>
+    <div ref={shellRef} className={`flex select-none overflow-hidden ${isMobile ? "flex-col" : "min-h-screen items-center justify-center"}`} style={{ background: "#111214", padding: isFullscreen ? 0 : isMobile ? 0 : 16, height: isMobile ? "100dvh" : undefined }}>
       <div className="w-full overflow-hidden flex flex-col" style={{
         maxWidth: isFullscreen ? "100%" : isMobile ? "100%" : 1440,
-        height: isFullscreen ? "100vh" : isMobile ? "100dvh" : "auto",
+        height: isFullscreen ? "100vh" : isMobile ? "100%" : "100vh",
+        maxHeight: isFullscreen || isMobile ? undefined : "calc(100vh - 32px)",
         borderRadius: isFullscreen || isMobile ? 0 : 8,
         background: `linear-gradient(180deg, ${C.shell} 0%, ${C.shellDark} 100%)`,
         border: isFullscreen || isMobile ? "none" : `1px solid ${C.shellEdge}`,
