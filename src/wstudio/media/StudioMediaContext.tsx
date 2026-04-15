@@ -992,6 +992,8 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
 
     const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
     pcRef.current = pc;
+    let closed = false;
+    let handshakeRetryTimer = 0;
 
     const inbound = new MediaStream();
     inboundStreamRef.current = inbound;
@@ -1037,6 +1039,13 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       if (!currentRole) return;
       sendSignal({ t: "ready", from: currentRole });
     };
+
+    const transportConnected = () =>
+      pc.connectionState === "connected" ||
+      pc.iceConnectionState === "connected" ||
+      pc.iceConnectionState === "completed";
+
+    const shouldRetryHandshake = () => !closed && pc.signalingState !== "closed" && !transportConnected();
 
     const sendOrRepeatOffer = async () => {
       if (roleRef.current !== "engineer") return;
@@ -1152,14 +1161,42 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       }
     };
 
+    pc.onconnectionstatechange = () => {
+      console.debug(DEBUG_AUDIO_TAG, "pc connection state", {
+        connectionState: pc.connectionState,
+        iceConnectionState: pc.iceConnectionState,
+        signalingState: pc.signalingState,
+      });
+    };
+
+    pc.oniceconnectionstatechange = () => {
+      console.debug(DEBUG_AUDIO_TAG, "pc ICE state", {
+        connectionState: pc.connectionState,
+        iceConnectionState: pc.iceConnectionState,
+        signalingState: pc.signalingState,
+      });
+    };
+
     sendReady();
     if (role === "engineer") {
       void sendOrRepeatOffer();
     }
 
+    handshakeRetryTimer = window.setInterval(() => {
+      if (!shouldRetryHandshake()) return;
+      sendReady();
+      if (roleRef.current === "engineer") {
+        void sendOrRepeatOffer();
+      }
+    }, 1200);
+
     return () => {
+      closed = true;
+      window.clearInterval(handshakeRetryTimer);
       unsubscribeSignals();
       pc.onicecandidate = null;
+      pc.onconnectionstatechange = null;
+      pc.oniceconnectionstatechange = null;
       pc.ontrack = null;
       pc.close();
       pcRef.current = null;
