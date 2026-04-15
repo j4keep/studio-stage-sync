@@ -731,7 +731,7 @@ export default function UnifiedSessionScreen() {
         )}
 
         {/* ─── MAIN GRID ─── */}
-        <div className={`relative ${isMobile ? "flex flex-col gap-2 p-2 flex-1 overflow-y-auto" : `grid gap-2 p-2 ${isFullscreen ? "flex-1" : ""}`}`} style={isMobile ? {} : { gridTemplateColumns: "320px 280px 1fr 260px", gridTemplateRows: isFullscreen ? "auto 1fr auto auto" : "auto auto auto auto" }}>
+        <div className={`relative ${isMobile ? "flex flex-col gap-2 p-2 flex-1 overflow-y-auto" : `grid gap-2 p-2 ${isFullscreen ? "flex-1" : ""}`}`} style={isMobile ? {} : { gridTemplateColumns: "1fr 320px", gridTemplateRows: isFullscreen ? "1fr" : "auto" }}>
           {controlsLocked && <SessionControlsLockOverlay />}
 
           {/* ══════════ MOBILE LAYOUT ══════════ */}
@@ -1180,35 +1180,28 @@ export default function UnifiedSessionScreen() {
           ) : (
             <>
           {/* ══════════ DESKTOP LAYOUT ══════════ */}
-          {/* ── PLUGIN COLUMN (first, spans all content rows) ── */}
-          <div className="row-span-4 flex flex-col">
-            <PluginPanel
-              sessionTitle={sessionDisplayName || "Session: Live"}
-              connected={connected}
-              talkbackActive={talkbackHeld}
-              onTalkDown={beginTalkback}
-              onTalkUp={endTalkback}
-              sessionLink={sessionId.trim() ? `w.studio/${sessionId.trim()}` : "w.studio/—"}
-              remoteMicLevel={remoteMicLevel}
-              sendLevel={localMicLevel}
-            />
-          </div>
+          {/* Simple 2-column: Communication (videos + controls) | Plugin */}
 
-          {/* ── LEFT COLUMN: Videos + Controls (spans all content rows) ── */}
-          <div className="row-span-3 flex flex-col gap-2">
+          {/* ── LEFT: Videos + Communication Controls ── */}
+          <div className="row-span-4 flex flex-col gap-2" style={{ gridRow: "1 / -1" }}>
             {/* Artist Video */}
-            <Panel accent={C.acMagenta} className="relative overflow-hidden" style={{ aspectRatio: "4/3" }}>
+            <Panel accent={C.acMagenta} className="relative overflow-hidden flex-1" style={{ minHeight: 200 }}>
               {artistStream ? (
                 <VideoFeed stream={artistStream} mirrored={artistMirrored} muted={isArtist} volume={isEngineer ? remoteTileVolume : 1} />
               ) : (
                 <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
-                  <span className="text-[28px] font-black tracking-tight" style={{ color: C.dim }}>W<span style={{ color: C.blue }}>.</span>STUDIO</span>
-                  <span style={{ color: C.dim, fontSize: 11, letterSpacing: "0.14em", marginTop: 4 }}>WAITING FOR ARTIST</span>
+                  <span className="text-[24px] font-black tracking-tight" style={{ color: C.dim }}>W<span style={{ color: C.blue }}>.</span>STUDIO</span>
+                  <span style={{ color: C.dim, fontSize: 10, letterSpacing: "0.14em", marginTop: 4 }}>WAITING FOR ARTIST</span>
                 </div>
               )}
-              <div className="absolute bottom-2 left-2 z-[5] rounded px-2 py-1 text-[12px] font-medium" style={{ background: "rgba(0,0,0,0.6)", color: artistStream ? C.text : C.dim }}>{artistStream ? "Artist" : "No one connected"}</div>
+              {/* Role label + connection dot */}
+              <div className="absolute bottom-2 left-2 z-[5] flex items-center gap-1.5 rounded px-2 py-1" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}>
+                <span className="rounded-full" style={{ width: 6, height: 6, background: artistStream ? C.green : C.dim }} />
+                <span style={{ fontSize: 11, fontWeight: 600, color: artistStream ? C.text : C.dim }}>Artist</span>
+              </div>
               <VideoTileActions hasSession={!!role} onJoin={goToJoin} onEnd={handleEndSession} expanded={expandedPanel === "artist"} onToggleExpand={() => setExpandedPanel(expandedPanel === "artist" ? null : "artist")} isMobile={false} />
-              <div className="absolute right-2 top-2 flex items-center gap-1.5 rounded-md px-2 py-1" style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)", border: `1px solid ${(hasBooking ? warningLevel : "ok") === "critical" ? "rgba(239,68,68,0.5)" : (hasBooking ? warningLevel : "ok") === "warning" ? "rgba(245,200,66,0.4)" : "rgba(255,255,255,0.1)"}` }}>
+              {/* Timer overlay */}
+              <div className="absolute right-2 top-2 flex items-center gap-1.5 rounded-md px-2 py-1" style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)" }}>
                 <span className={`font-mono text-[14px] font-bold tabular-nums ${(hasBooking ? warningLevel : "ok") === "critical" ? "animate-pulse" : ""}`} style={{ color: (hasBooking ? warningLevel : "ok") === "critical" ? C.red : (hasBooking ? warningLevel : "ok") === "warning" ? C.yellow : C.text }}>
                   {(() => { const rs = hasBooking ? bookingRemaining : demoClock.remainingSeconds; return `${String(Math.floor(rs / 60)).padStart(2, "0")}:${String(rs % 60).padStart(2, "0")}`; })()}
                 </span>
@@ -1217,19 +1210,22 @@ export default function UnifiedSessionScreen() {
             </Panel>
 
             {/* Engineer Video */}
-            <Panel accent={C.acGreen} className="relative overflow-hidden" style={{ aspectRatio: "4/3" }}>
+            <Panel accent={C.acGreen} className="relative overflow-hidden flex-1" style={{ minHeight: 200 }}>
               {engineerStream ? (
                 <VideoFeed stream={engineerStream} mirrored={engineerMirrored} muted={isEngineer} />
               ) : (
                 <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
-                  <span className="text-[28px] font-black tracking-tight" style={{ color: C.dim }}>W<span style={{ color: C.blue }}>.</span>STUDIO</span>
-                  <span style={{ color: C.dim, fontSize: 11, letterSpacing: "0.14em", marginTop: 4 }}>WAITING FOR ENGINEER</span>
+                  <span className="text-[24px] font-black tracking-tight" style={{ color: C.dim }}>W<span style={{ color: C.blue }}>.</span>STUDIO</span>
+                  <span style={{ color: C.dim, fontSize: 10, letterSpacing: "0.14em", marginTop: 4 }}>WAITING FOR ENGINEER</span>
                 </div>
               )}
-              <div className="absolute bottom-2 left-2 z-[5] rounded px-2 py-1 text-[12px] font-medium" style={{ background: "rgba(0,0,0,0.6)", color: engineerStream ? C.text : C.dim }}>{engineerStream ? "Engineer" : "No one connected"}</div>
+              <div className="absolute bottom-2 left-2 z-[5] flex items-center gap-1.5 rounded px-2 py-1" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}>
+                <span className="rounded-full" style={{ width: 6, height: 6, background: engineerStream ? C.green : C.dim }} />
+                <span style={{ fontSize: 11, fontWeight: 600, color: engineerStream ? C.text : C.dim }}>Engineer</span>
+              </div>
               <VideoTileActions hasSession={!!role} onJoin={goToJoin} onEnd={handleEndSession} expanded={expandedPanel === "engineer"} onToggleExpand={() => setExpandedPanel(expandedPanel === "engineer" ? null : "engineer")} isMobile={false} />
-              <div className="absolute right-2 top-2 flex items-center gap-1.5 rounded-md px-2 py-1" style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)", border: `1px solid ${(hasBooking ? warningLevel : "ok") === "critical" ? "rgba(239,68,68,0.5)" : (hasBooking ? warningLevel : "ok") === "warning" ? "rgba(245,200,66,0.4)" : "rgba(255,255,255,0.1)"}` }}>
-                <span className={`font-mono text-[14px] font-bold tabular-nums ${(hasBooking ? warningLevel : "ok") === "critical" ? "animate-pulse" : ""}`} style={{ color: (hasBooking ? warningLevel : "ok") === "critical" ? C.red : (hasBooking ? warningLevel : "ok") === "warning" ? C.yellow : C.text }}>
+              <div className="absolute right-2 top-2 flex items-center gap-1.5 rounded-md px-2 py-1" style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)" }}>
+                <span className={`font-mono text-[14px] font-bold tabular-nums`} style={{ color: C.text }}>
                   {(() => { const rs = hasBooking ? bookingRemaining : demoClock.remainingSeconds; return `${String(Math.floor(rs / 60)).padStart(2, "0")}:${String(rs % 60).padStart(2, "0")}`; })()}
                 </span>
                 <span style={{ width: 6, height: 6, borderRadius: "50%", background: (hasBooking ? phase : demoClock.phase) === "live" ? C.green : (hasBooking ? phase : demoClock.phase) === "ended" ? C.red : C.dim }} />
@@ -1241,17 +1237,19 @@ export default function UnifiedSessionScreen() {
               )}
             </Panel>
 
-            {/* Mute / Talk / Settings */}
+            {/* Communication Controls: Mute | Talk | End Session | Share Screen */}
             <Panel accent={C.acOrange}>
-              <div className="grid grid-cols-3" style={{ borderTop: `1px solid ${C.panelBorder}` }}>
-                <button type="button" onPointerDown={(e) => { e.preventDefault(); toggleMute(); }} className="flex flex-col items-center justify-center gap-1.5 py-3">
-                  <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={muted ? C.red : C.label} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <div className="flex" style={{ borderTop: `1px solid ${C.panelBorder}` }}>
+                {/* Mute */}
+                <button type="button" onPointerDown={(e) => { e.preventDefault(); toggleMute(); }} className="flex flex-1 flex-col items-center justify-center gap-1.5 py-3" style={{ borderRight: `1px solid ${C.panelBorder}` }}>
+                  <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={muted ? C.red : C.label} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                     <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
                     <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
                     <line x1="12" y1="19" x2="12" y2="22" />
                   </svg>
-                  <span style={{ fontSize: 11, color: C.text }}>Mute</span>
+                  <span style={{ fontSize: 10, color: muted ? C.red : C.text }}>Mute</span>
                 </button>
+                {/* Talk */}
                 <button
                   type="button"
                   onPointerDown={(e) => { e.preventDefault(); beginTalkback(); }}
@@ -1259,364 +1257,112 @@ export default function UnifiedSessionScreen() {
                   onPointerLeave={endTalkback}
                   onTouchStart={(e) => { e.preventDefault(); beginTalkback(); }}
                   onTouchEnd={(e) => { e.preventDefault(); endTalkback(); }}
-                  className="flex flex-col items-center justify-center gap-1.5 py-3"
-                  style={{
-                    borderLeft: `1px solid ${C.panelBorder}`,
-                    borderRight: `1px solid ${C.panelBorder}`,
-                    touchAction: "none",
-                    outline: peerPtt && !talkbackHeld ? `1px solid ${C.acCyan}` : undefined,
-                    outlineOffset: 2,
-                  }}
+                  className="flex flex-1 flex-col items-center justify-center gap-1.5 py-3"
+                  style={{ borderRight: `1px solid ${C.panelBorder}`, touchAction: "none" }}
                 >
                   <div
-                    className="flex h-9 w-9 items-center justify-center rounded-full transition-[box-shadow,transform] duration-100"
+                    className="flex h-8 w-8 items-center justify-center rounded-full transition-all duration-100"
                     style={{
-                      background:
-                        talkbackHeld
-                          ? `radial-gradient(circle at 35% 30%, rgba(255,255,255,0.45), ${C.blue})`
-                          : peerPtt
-                            ? `radial-gradient(circle at 35% 30%, rgba(255,255,255,0.22), #2563eb)`
-                            : `radial-gradient(circle at 35% 30%, rgba(255,255,255,0.25), ${C.blue})`,
-                      boxShadow: talkbackHeld ? `0 0 20px ${C.blue}80, inset 0 0 12px rgba(255,255,255,0.15)` : peerPtt ? `0 0 12px rgba(37,99,235,0.45)` : "none",
+                      background: talkbackHeld
+                        ? `radial-gradient(circle at 35% 30%, rgba(255,255,255,0.45), ${C.blue})`
+                        : peerPtt
+                          ? `radial-gradient(circle at 35% 30%, rgba(255,255,255,0.22), #2563eb)`
+                          : `radial-gradient(circle at 35% 30%, rgba(255,255,255,0.25), ${C.blue})`,
+                      boxShadow: talkbackHeld ? `0 0 16px ${C.blue}80` : peerPtt ? `0 0 10px rgba(37,99,235,0.45)` : "none",
                       transform: talkbackHeld ? "scale(1.06)" : "scale(1)",
                     }}
                   >
-                    <span style={{ color: C.white, fontSize: 14 }}>{"\u25B6"}</span>
+                    <span style={{ color: C.white, fontSize: 12 }}>{"\u25B6"}</span>
                   </div>
-                  <span style={{ fontSize: 11, color: C.text }}>Talk</span>
+                  <span style={{ fontSize: 10, color: C.text }}>Talk</span>
                 </button>
-                <button className="flex flex-col items-center justify-center gap-1.5 py-3">
-                  <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={C.label} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-                    <circle cx="12" cy="12" r="3" />
-                  </svg>
-                  <span style={{ fontSize: 11, color: C.text }}>Settings</span>
+                {/* End Session */}
+                <button type="button" onPointerDown={(e) => { e.preventDefault(); handleEndSession(); }} className="flex flex-1 flex-col items-center justify-center gap-1.5 py-3" style={{ borderRight: `1px solid ${C.panelBorder}` }}>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full" style={{ background: "linear-gradient(180deg, #ef4444 0%, #991b1b 100%)" }}>
+                    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
+                      <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </div>
+                  <span style={{ fontSize: 10, color: C.text }}>End</span>
                 </button>
+                {/* Share Screen */}
+                {isEngineer && canScreenShare && (
+                  <button type="button" onPointerDown={(e) => { e.preventDefault(); toggleScreenShare(); }} className="flex flex-1 flex-col items-center justify-center gap-1.5 py-3">
+                    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={screenSharing ? C.blue : C.label} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="2" y="3" width="20" height="14" rx="2" />
+                      <line x1="8" y1="21" x2="16" y2="21" />
+                      <line x1="12" y1="17" x2="12" y2="21" />
+                    </svg>
+                    <span style={{ fontSize: 10, color: screenSharing ? C.blue : C.text }}>{screenSharing ? "Stop" : "Share"}</span>
+                  </button>
+                )}
               </div>
             </Panel>
-          </div>
 
-          {/* ── SESSION STATUS BAR (top, spans center + right) ── */}
-          <Panel accent={C.acCyan} className={`${isMobile ? "" : "col-span-2"} flex items-center justify-between px-4`} style={{ height: 48 }}>
-            <div className="flex items-center gap-3">
-              <span style={{ fontSize: 16, fontWeight: 500, color: C.text }}>{sessionDisplayName || "Session: Live with Jay - Florida"}</span>
-              <span className="rounded px-2.5 py-1 text-[11px] font-bold uppercase" style={{
-                background: connected ? "linear-gradient(180deg, #4ade60 0%, #22a838 100%)" : C.panelDark,
-                color: connected ? C.white : C.dim, letterSpacing: "0.06em",
-                boxShadow: connected ? "inset 0 1px 0 rgba(255,255,255,0.2)" : "none",
-              }}>
-                {connected ? "CONNECTED" : connection.toUpperCase()}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              {[
-                { icon: "🔊", handler: undefined },
-                { icon: "🖥", handler: isEngineer ? () => { if (!canScreenShare) { toast.error("Screen sharing is not supported on this device. Please use a desktop browser."); return; } toggleScreenShare(); } : undefined },
-                { icon: "✕", handler: undefined },
-                { icon: "⚙", handler: undefined },
-              ].map((btn, i) => (
-                <button key={i} onPointerDown={btn.handler ? (e) => { e.preventDefault(); btn.handler!(); } : undefined} className="flex h-9 w-9 items-center justify-center rounded" style={{
-                  background: `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
-                  border: `1px solid ${C.panelBorder}`, color: C.label, fontSize: 15,
-                  cursor: btn.handler ? "pointer" : "default",
-                }}>{btn.icon}</button>
-              ))}
-            </div>
-          </Panel>
-
-          {/* ── CENTER: SYNC CONTROLS + VOCAL INPUT (merged card) ── */}
-          {collaborationShareActive ? (
-            <Panel accent={C.acCyan} className="relative flex flex-col overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-2" style={{ borderBottom: `1px solid ${C.panelBorder}` }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>SCREEN SHARE — DAW VIEW</span>
-                <div className="flex items-center gap-2">
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.green }} />
-                  <span style={{ fontSize: 11, color: C.green, fontWeight: 600 }}>LIVE</span>
-                </div>
-              </div>
-              <div className="relative flex-1" style={{ background: C.inset, minHeight: 180 }}>
-                {screenShareViewStream ? (
-                  <VideoFeed stream={screenShareViewStream} />
-                ) : (
-                  <div className="flex h-full items-center justify-center">
-                    <div className="flex flex-col items-center gap-2">
-                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={C.dim} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="2" y="3" width="20" height="14" rx="2" />
-                        <line x1="8" y1="21" x2="16" y2="21" />
-                        <line x1="12" y1="17" x2="12" y2="21" />
-                      </svg>
-                      <span style={{ color: C.label, fontSize: 13, fontWeight: 500 }}>{isEngineer ? "Your screen is being shared" : "Engineer's DAW"}</span>
-                      <span style={{ color: C.dim, fontSize: 11 }}>Pro Tools / Logic Pro</span>
+            {/* Screen Share View (only when active) */}
+            {collaborationShareActive && (
+              <Panel accent={C.acCyan} className="relative overflow-hidden" style={{ minHeight: 140 }}>
+                <div className="absolute inset-0">
+                  {screenShareViewStream ? (
+                    <VideoFeed stream={screenShareViewStream} />
+                  ) : (
+                    <div className="flex h-full items-center justify-center" style={{ background: C.inset }}>
+                      <span style={{ color: C.dim, fontSize: 12 }}>{isEngineer ? "Your screen is being shared" : "Engineer's DAW"}</span>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
                 <div className="absolute bottom-2 right-2 z-10">
                   <button onClick={() => setExpandedPanel(expandedPanel === "screen" ? null : "screen")} className="rounded px-2 py-1 text-[10px] font-bold" style={{ background: "rgba(0,0,0,0.7)", color: "#e8e8ea", border: "1px solid rgba(255,255,255,0.15)" }}>⛶ Expand</button>
                 </div>
-              </div>
-            </Panel>
-          ) : (
-            <Panel accent={C.acPurple} className="p-4">
-              {/* Sync Controls */}
-              <div style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>SYNC CONTROLS</div>
-              <div className="my-3 text-center" style={{ fontSize: 16, fontWeight: 600, color: C.text }}>– SYNCED: 120 BPM –</div>
-              <div className="flex items-center justify-center gap-2">
-                <button type="button" onPointerDown={isEngineer ? (e) => { e.preventDefault(); setSessionPlaying(true); } : undefined} className="flex items-center gap-2 rounded-[3px] px-5 py-2.5 text-[15px] font-semibold" style={{
-                  background: playing ? `linear-gradient(180deg, #1a3a1a 0%, #0e2a0e 100%)` : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
-                  border: `1px solid ${playing ? "#2a6a2a" : C.panelBorder}`, color: C.text,
-                  boxShadow: playing ? `0 0 14px rgba(74,222,96,0.15)` : `inset 0 1px 0 rgba(255,255,255,0.05)`,
-                  opacity: isEngineer ? 1 : 0.4, cursor: isEngineer ? "pointer" : "not-allowed", minWidth: 110,
-                }}>
-                  <span style={{ color: playing ? C.green : C.text }}>▶</span> Play
-                </button>
-                <button type="button" onPointerDown={isEngineer ? (e) => { e.preventDefault(); setSessionPlaying(false); if (recording) setSessionRecording(false); } : undefined} className="flex items-center gap-2 rounded-[3px] px-5 py-2.5 text-[15px] font-semibold" style={{
-                  background: `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
-                  border: `1px solid ${C.panelBorder}`, color: C.text,
-                  boxShadow: `inset 0 1px 0 rgba(255,255,255,0.05)`,
-                  opacity: isEngineer ? 1 : 0.4, cursor: isEngineer ? "pointer" : "not-allowed", minWidth: 110,
-                }}>
-                  <span style={{ color: C.red }}>■</span> Stop
-                </button>
-                <button type="button" onPointerDown={isEngineer ? (e) => { e.preventDefault(); handleTransportRecord(); } : undefined} className="flex items-center gap-2 rounded-[3px] px-5 py-2.5 text-[15px] font-semibold" style={{
-                  background: recording ? `linear-gradient(180deg, #4a1a1a 0%, #2a0e0e 100%)` : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
-                  border: `1px solid ${recording ? "#6a2222" : C.panelBorder}`, color: C.text,
-                  boxShadow: recording ? `0 0 14px rgba(239,68,68,0.15)` : `inset 0 1px 0 rgba(255,255,255,0.05)`,
-                  opacity: isEngineer ? (engineerRecordDimmed ? 0.45 : 1) : 0.4, cursor: isEngineer && !engineerRecordDimmed ? "pointer" : "not-allowed", minWidth: 110,
-                }}>
-                  <span className={recording ? "animate-pulse" : ""} style={{ color: C.red }}>●</span> Record
-                </button>
-              </div>
+              </Panel>
+            )}
 
-              {/* Vocal Input (merged) */}
-              <div className="mt-4" style={{ borderTop: `1px solid ${C.panelBorder}`, paddingTop: 12 }}>
-                <div className="mb-2 flex items-center justify-between">
-                  <span style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>VOCAL INPUT</span>
-                  <div className="flex items-center gap-1 rounded-[3px] px-1.5 py-0.5" style={{ background: C.inset, border: `1px solid ${C.insetBorder}` }}>
-                    <div className="h-2.5 w-1.5 rounded-sm" style={{ background: C.blue }} />
-                    <div className="h-2.5 w-1.5 rounded-sm" style={{ background: C.yellow }} />
+            {/* Extension / Complete actions */}
+            {isArtist && hasBooking && phase === "live" && (
+              <Panel accent={C.acOrange} className="flex items-center gap-3 px-3 py-2">
+                <span style={{ fontSize: 11, fontWeight: 600, color: C.label, letterSpacing: "0.1em", textTransform: "uppercase" }}>MORE TIME</span>
+                {booking?.pendingExtension ? (
+                  <span style={{ color: C.yellow, fontSize: 11 }}>⏳ +{booking.pendingExtension.minutes} min pending...</span>
+                ) : (
+                  <div className="flex gap-1.5">
+                    {([15, 30, 60] as const).map((mins) => (
+                      <button key={mins} onClick={() => requestExtension(mins)} className="rounded px-3 py-1 text-[11px] font-bold" style={{
+                        background: "linear-gradient(180deg, #f59e0b 0%, #b45309 100%)", color: "#fff", border: "1px solid rgba(245,158,11,0.5)",
+                      }}>+{mins}m</button>
+                    ))}
                   </div>
-                </div>
-                <Inset className="space-y-2 p-3">
-                  <div>
-                    <div className="mb-0.5 flex justify-between" style={{ fontSize: 10, fontWeight: 600, color: C.label, letterSpacing: "0.1em" }}>
-                      <span>LOCAL MIC</span>
-                    </div>
-                    <HorizontalMeter level={meterDisplay(localMicLevel)} />
-                  </div>
-                  <div>
-                    <div className="mb-0.5" style={{ fontSize: 10, fontWeight: 600, color: C.label, letterSpacing: "0.1em" }}>TALKBACK SEND</div>
-                    <HorizontalMeter level={meterDisplay(localTalkbackTxLevel)} />
-                  </div>
-                  <div>
-                    <div className="mb-0.5 flex justify-between" style={{ fontSize: 10, fontWeight: 600, color: C.label, letterSpacing: "0.1em" }}>
-                      <span>REMOTE IN</span>
-                      <span style={{ color: C.dim, fontWeight: 500 }}>{hasRemoteAudio ? "live" : "no stream"}</span>
-                    </div>
-                    <HorizontalMeter level={hasRemoteAudio ? meterDisplay(remoteMicLevel) : 0} />
-                  </div>
-                  {isEngineer ? (
-                    <div>
-                      <div className="mb-0.5 flex justify-between" style={{ fontSize: 10, fontWeight: 600, color: C.label, letterSpacing: "0.1em" }}>
-                        <span>BRIDGE OUT (DAW FEED)</span>
-                        <span style={{ color: C.dim, fontWeight: 500 }}>{bridgePathReady ? "routed" : "—"}</span>
-                      </div>
-                      <HorizontalMeter level={bridgePathReady ? meterDisplay(engineerBridgeVocalLevel) : 0} />
-                    </div>
-                  ) : null}
-                  {isEngineer ? (
-                    <div>
-                      <div className="mb-0.5 flex justify-between" style={{ fontSize: 10, fontWeight: 600, color: C.label, letterSpacing: "0.1em" }}>
-                        <span>RETURN FROM DAW</span>
-                        <span style={{ color: dawReturnActive ? C.green : C.dim, fontWeight: 500 }}>{dawReturnActive ? "sending" : "—"}</span>
-                      </div>
-                      <HorizontalMeter level={dawReturnActive ? meterDisplay(engineerDawReturnLevel) : 0} />
-                    </div>
-                  ) : null}
-                  <div className="mt-2"><SpectrumBars level={spectrumLevel} /></div>
-                  <div className="mt-1"><FreqLabels /></div>
-                </Inset>
-                <div className="mt-4 flex justify-center">
-                  <button type="button" onPointerDown={isEngineer && !recording ? (e) => { e.preventDefault(); handleArmRecordToggle(); } : undefined} className="rounded-[3px] px-8 py-2.5 text-[15px] font-bold uppercase tracking-wide" style={{
-                    background: armed ? `linear-gradient(180deg, #4a1a1a 0%, #2a0e0e 100%)` : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
-                    border: `1px solid ${armed ? "#6a2222" : C.panelBorder}`, color: C.text,
-                    boxShadow: armed ? `0 0 14px rgba(239,68,68,0.15)` : `inset 0 1px 0 rgba(255,255,255,0.05)`,
-                    opacity: isEngineer && !recording ? 1 : 0.4, cursor: isEngineer && !recording ? "pointer" : "not-allowed",
-                  }}>ARM RECORD</button>
-                </div>
-              </div>
-            </Panel>
-          )}
-
-          {/* ── RIGHT: MONITORING (spans 2 rows beside center cards) ── */}
-          <Panel accent={C.acLime} className="p-4">
-            <div className="mb-1 flex items-center justify-between">
-              <span title={isArtist ? "Engineer adjusts monitor mix; values sync here." : undefined} style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>MONITORING</span>
-              <div className="flex gap-[2px]">
-                {[3, 5, 4, 6, 3, 2].map((h, i) => (<div key={i} className="rounded-full" style={{ width: 3, height: h * 2, background: C.label }} />))}
-              </div>
-            </div>
-            <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-4">
-              <div className="flex flex-col items-center gap-1">
-                <span style={{ fontSize: 11, fontWeight: 500, color: C.text }}>Vocal Level</span>
-                <div className="flex items-end gap-2">
-                  <Knob value={vocalLevel} size={58} onChange={monitorAdjust ? (v) => monitorAdjust({ vocalLevel: v }) : undefined} accent={C.acLime} />
-                  <ControlLevelLadder level={vocalLevel} height={72} accent={C.acLime} />
-                  <Fader value={vocalLevel} height={72} onChange={monitorAdjust ? (v) => monitorAdjust({ vocalLevel: v }) : undefined} />
-                </div>
-              </div>
-              <div className="flex flex-col items-center gap-1">
-                <span style={{ fontSize: 11, fontWeight: 500, color: C.text }}>Talkback Level</span>
-                <div className="flex items-end gap-2">
-                  <Knob value={talkbackLevel} size={58} onChange={monitorAdjust ? (v) => monitorAdjust({ talkbackLevel: v }) : undefined} accent={C.acCyan} />
-                  <ControlLevelLadder level={talkbackLevel} height={72} accent={C.acCyan} />
-                  <Fader value={talkbackLevel} height={72} onChange={monitorAdjust ? (v) => monitorAdjust({ talkbackLevel: v }) : undefined} />
-                </div>
-              </div>
-              <div className="flex flex-col items-center gap-1">
-                <span style={{ fontSize: 11, fontWeight: 500, color: C.text }}>Headphone</span>
-                <div className="flex items-end gap-2">
-                  <Knob value={headphoneLevel} size={58} onChange={(v) => updateSessionHeadphoneLevel(v)} accent={C.acOrange} />
-                  <ControlLevelLadder level={headphoneLevel} height={72} accent={C.acOrange} />
-                  <Fader value={headphoneLevel} height={72} onChange={(v) => updateSessionHeadphoneLevel(v)} />
-                </div>
-                <span style={{ fontSize: 8, color: C.dim, letterSpacing: "0.08em" }}>🎧 HP OUT</span>
-              </div>
-              <div className="flex flex-col items-center gap-1">
-                <span style={{ fontSize: 11, fontWeight: 500, color: C.text }}>Cue Mix</span>
-                <Knob value={cueMix} size={58} onChange={monitorAdjust ? (v) => monitorAdjust({ cueMix: v }) : undefined} accent={C.acPurple} />
-                <div className="flex w-full items-center justify-between px-1" style={{ fontSize: 8, color: C.dim }}>
-                  <span>VOX</span><span>BEAT</span>
-                </div>
-                <div className="mt-0.5 overflow-hidden rounded-sm" style={{ height: 4, width: "80%", background: C.track, border: `1px solid ${C.insetBorder}` }}>
-                  <div className="h-full rounded-sm" style={{ width: `${cueMix * 100}%`, background: `linear-gradient(90deg, ${C.blue} 0%, ${C.green} 100%)` }} />
-                </div>
-              </div>
-            </div>
-            {isEngineer ? (
-              <div className="mt-4 border-t pt-3" style={{ borderColor: C.panelBorder }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>W.STUDIO BRIDGE</div>
-                <div className="mt-2 space-y-1.5" style={{ fontSize: 12, color: C.text, lineHeight: 1.45 }}>
-                  <div>
-                    <span style={{ color: C.dim }}>Status: </span>
-                    <span style={{ color: bridgeStatusColor, fontWeight: 600 }}>{bridgeStatusLabel}</span>
-                  </div>
-                  <div>
-                    <span style={{ color: C.dim }}>Artist: </span>
-                    <span style={{ fontWeight: 500 }}>{bridgeArtistLabel}</span>
-                  </div>
-                  <div>
-                    <span style={{ color: C.dim }}>Feed: </span>
-                    <span style={{ color: bridgeFeedActive ? C.green : C.dim, fontWeight: 600 }}>{bridgeFeedActive ? "Active" : "Inactive"}</span>
-                  </div>
-                  <div>
-                    <span style={{ color: C.dim }}>Output: </span>
-                    {bridgeRouted && bridgeFeedActive ? (
-                      <span style={{ color: C.green, fontWeight: 600 }}>Default (use Multi-Output for DAW)</span>
-                    ) : (
-                      <span style={{ color: C.acCyan, fontWeight: 600 }}>Waiting for signal</span>
-                    )}
-                  </div>
-                  <div className="mt-2">
-                    <div className="flex items-center justify-between">
-                      <span style={{ fontSize: 9, color: bridgeRouted ? C.green : C.dim }}>
-                        {bridgeRouted ? "● Playing" : "○ Not playing"}
-                      </span>
-                    </div>
-                    {bridgeRoutingError && <div style={{ fontSize: 9, color: C.red, marginTop: 2 }}>{bridgeRoutingError}</div>}
-                  </div>
-                </div>
-                <div className="mt-2 border-t pt-2" style={{ borderColor: C.panelBorder, fontSize: 11, color: C.dim }}>
-                  <span style={{ color: bridgeStatusColor }}>• {bridgeStatusLabel}</span>
-                  <span style={{ color: C.dim }}> · Artist: </span>
-                  <span style={{ color: C.text }}>{bridgeArtistLabel}</span>
-                  <span style={{ color: C.dim }}> · Feed </span>
-                  <span style={{ color: bridgeFeedActive ? C.green : C.dim }}>{bridgeFeedActive ? "Active" : "Inactive"}</span>
-                </div>
-              </div>
-            ) : null}
-          </Panel>
-
-          {/* ── VOCAL TAKE WAVEFORM (compact, same height as mute/talk/settings) ── */}
-          <Panel accent={C.acCyan} className={`${isMobile ? "" : "col-span-2"} flex items-center gap-3 px-3 py-2`}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: C.text, whiteSpace: "nowrap" }}>Jay&apos;s Vocal Take 4 — {vocalTakeTitle}</span>
-            <Inset className="flex-1 overflow-hidden rounded-[3px] p-0.5">
-              <Waveform recording={recording} takeCaptured={takeCaptured} />
-            </Inset>
-            <span style={{ color: C.dim, fontSize: 13 }}>▐▐</span>
-          </Panel>
-
-          {/* ── Artist Extension Request (Desktop) ── */}
-          {isArtist && hasBooking && phase === "live" && (
-            <Panel accent={C.acOrange} className="col-span-4 flex items-center gap-3 px-4 py-2">
-              <span style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>REQUEST MORE TIME</span>
-              {booking?.pendingExtension ? (
-                <span style={{ color: C.yellow, fontSize: 12 }}>⏳ Waiting for engineer to approve +{booking.pendingExtension.minutes} min...</span>
-              ) : (
-                <div className="flex gap-2">
-                  {([15, 30, 60] as const).map((mins) => (
-                    <button key={mins} onClick={() => requestExtension(mins)} className="rounded-lg px-4 py-1.5 text-[12px] font-bold" style={{
-                      background: "linear-gradient(180deg, #f59e0b 0%, #b45309 100%)",
-                      color: "#fff", border: "1px solid rgba(245,158,11,0.5)",
-                    }}>+{mins} min</button>
-                  ))}
-                </div>
-              )}
-              <div className="ml-auto flex gap-2">
+                )}
+              </Panel>
+            )}
+            {hasBooking && (
+              <Panel accent={C.acGreen} className="flex items-center justify-between px-3 py-2">
                 {isEngineer && (
-                  <button onClick={handleEngineerMarkComplete} className="rounded-lg px-4 py-1.5 text-[12px] font-bold" style={{
-                    background: "linear-gradient(180deg, #4ade60 0%, #22a838 100%)",
-                    color: "#fff", border: "1px solid rgba(74,222,96,0.5)",
+                  <button onClick={handleEngineerMarkComplete} className="flex-1 rounded py-2 text-center text-[11px] font-bold" style={{
+                    background: "linear-gradient(180deg, #4ade60 0%, #22a838 100%)", color: "#fff", border: "1px solid rgba(74,222,96,0.5)",
                   }}>✅ Mark Complete</button>
                 )}
                 {isArtist && (
-                  <button onClick={handleArtistConfirmComplete} className="rounded-lg px-4 py-1.5 text-[12px] font-bold" style={{
-                    background: "linear-gradient(180deg, #4ade60 0%, #22a838 100%)",
-                    color: "#fff", border: "1px solid rgba(74,222,96,0.5)",
+                  <button onClick={handleArtistConfirmComplete} className="flex-1 rounded py-2 text-center text-[11px] font-bold" style={{
+                    background: "linear-gradient(180deg, #4ade60 0%, #22a838 100%)", color: "#fff", border: "1px solid rgba(74,222,96,0.5)",
                   }}>✅ Confirm Complete</button>
                 )}
-              </div>
-            </Panel>
-          )}
+              </Panel>
+            )}
+          </div>
 
-          {/* ── Desktop: Session Complete Bar ── */}
-          {hasBooking && !isArtist && (
-            <Panel accent={C.acGreen} className="col-span-4 flex items-center justify-between px-4 py-2">
-              <span style={{ fontSize: 12, fontWeight: 600, color: C.label }}>SESSION ACTIONS</span>
-              <button onClick={handleEngineerMarkComplete} className="rounded-lg px-5 py-2 text-[12px] font-bold" style={{
-                background: "linear-gradient(180deg, #4ade60 0%, #22a838 100%)",
-                color: "#fff", border: "1px solid rgba(74,222,96,0.5)",
-              }}>✅ Mark Session Complete</button>
-            </Panel>
-          )}
-
-          {/* ── BOTTOM: TRANSPORT BAR (full width, single long card) ── */}
-          <Panel accent={C.acPurple} className="col-span-4 flex items-center gap-2 px-3 py-2">
-            <TBtn sym="▌▌" label="Punch In" disabled={!isEngineer} />
-            <TBtn sym="<<" label="Rewind" disabled={!isEngineer} />
-            <TBtn sym="▶▶" label="Forward" disabled={!isEngineer} />
-            <div className="ml-2 flex items-center gap-2 rounded-[3px] px-5 py-2 text-[15px] font-bold" style={{
-              background: recording ? `linear-gradient(180deg, #4a1a1a 0%, #2a0e0e 100%)` : armed ? `linear-gradient(180deg, #3a2a0a 0%, #2a1f08 100%)` : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
-              border: `1px solid ${recording ? "#6a2222" : armed ? "#6a5a22" : C.panelBorder}`, minWidth: 240, justifyContent: "center",
-            }}>
-              <span className={recording ? "animate-pulse" : ""} style={{ color: recording ? C.red : armed ? C.yellow : C.dim }}>●</span>
-              <span style={{ color: recording ? C.red : armed ? C.yellow : C.dim }}>REC</span>
-              <span style={{ color: recording ? C.red : armed ? C.yellow : takeCaptured ? C.text : C.dim }}>
-                {recording ? "● RECORDING..." : armed ? "● ARMED — READY" : takeCaptured ? "● TAKE SAVED" : ""}
-              </span>
-            </div>
-            <div className="ml-auto flex items-center gap-3">
-              <div className="flex gap-[3px] rounded-[3px] px-1.5 py-1" style={{ background: C.inset, border: `1px solid ${C.insetBorder}` }}>
-                <span className="rounded-[1px]" style={{ width: 8, height: 12, background: autoUpload ? C.green : C.dim }} />
-                <span className="rounded-[1px]" style={{ width: 8, height: 12, background: autoUpload ? C.green : C.dim }} />
-                <span className="rounded-[1px]" style={{ width: 8, height: 12, background: autoUpload ? C.yellow : C.dim }} />
-                <span className="rounded-[1px]" style={{ width: 8, height: 12, background: C.dim }} />
-              </div>
-              <span style={{ fontSize: 11, color: C.label, letterSpacing: "0.06em", textTransform: "uppercase" }}>AUTO UPLOAD:</span>
-              <button onPointerDown={(e) => { e.preventDefault(); setAutoUpload(!autoUpload); }} style={{ fontSize: 11, fontWeight: 700, color: autoUpload ? C.green : C.red, cursor: "pointer", background: "none", border: "none" }}>
-                {autoUpload ? "ON ▶" : "OFF ■"}
-              </button>
-            </div>
-          </Panel>
+          {/* ── RIGHT: W.Studio Plugin Panel ── */}
+          <div className="row-span-4 flex flex-col" style={{ gridRow: "1 / -1" }}>
+            <PluginPanel
+              sessionTitle={sessionDisplayName || "Session: Live"}
+              connected={connected}
+              talkbackActive={talkbackHeld}
+              onTalkDown={beginTalkback}
+              onTalkUp={endTalkback}
+              sessionLink={sessionId.trim() ? `w.studio/${sessionId.trim()}` : "w.studio/—"}
+              remoteMicLevel={remoteMicLevel}
+              sendLevel={localMicLevel}
+            />
+          </div>
             </>
           )}
         </div>
