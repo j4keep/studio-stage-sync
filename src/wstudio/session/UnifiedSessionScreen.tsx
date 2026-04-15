@@ -267,9 +267,78 @@ export default function UnifiedSessionScreen() {
         }}>
           {controlsLocked && <SessionControlsLockOverlay />}
 
-          {isMobile ? (
+          {isMobile && isArtist ? (
+            /* ══════════ ARTIST MOBILE: HOLD TO TALK ══════════ */
+            <div className="flex flex-1 flex-col items-center justify-center gap-6 px-4" style={{ minHeight: "60vh" }}>
+              {/* Connected indicator */}
+              <div className="flex items-center gap-2">
+                <span className="rounded-full" style={{ width: 10, height: 10, background: connected ? C.green : C.dim, boxShadow: connected ? "0 0 8px rgba(74,222,96,0.5)" : "none" }} />
+                <span className="text-[13px] font-semibold" style={{ color: connected ? C.green : C.dim }}>
+                  {connected ? "Connected" : "Offline"}
+                </span>
+              </div>
+
+              {/* Session name */}
+              <span className="text-[14px] font-medium" style={{ color: C.label }}>{sessionDisplayName || "Session"}</span>
+
+              {/* Big hold-to-talk button */}
+              <button
+                onPointerDown={(e) => { e.preventDefault(); beginTalkback(); }}
+                onPointerUp={endTalkback}
+                onPointerLeave={endTalkback}
+                onTouchStart={(e) => { e.preventDefault(); beginTalkback(); }}
+                onTouchEnd={(e) => { e.preventDefault(); endTalkback(); }}
+                className="flex flex-col items-center justify-center rounded-full transition-all duration-200 select-none"
+                style={{
+                  width: 160, height: 160,
+                  background: talkbackHeld
+                    ? "radial-gradient(circle at 40% 35%, rgba(255,255,255,0.3), #0ea5e9, #0369a1)"
+                    : "radial-gradient(circle at 40% 35%, rgba(255,255,255,0.15), #3b82f6, #1e40af)",
+                  border: `3px solid ${talkbackHeld ? "rgba(14,165,233,0.7)" : "rgba(59,130,246,0.4)"}`,
+                  boxShadow: talkbackHeld
+                    ? "0 0 60px rgba(14,165,233,0.5), 0 0 120px rgba(14,165,233,0.2)"
+                    : "0 0 30px rgba(59,130,246,0.2)",
+                  transform: talkbackHeld ? "scale(1.05)" : "scale(1)",
+                  touchAction: "none",
+                }}
+              >
+                <svg width={40} height={40} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                  <line x1="12" y1="19" x2="12" y2="22" />
+                </svg>
+                <span className="mt-2 text-[14px] font-bold tracking-wider" style={{ color: C.white }}>
+                  {talkbackHeld ? "TALKING" : "HOLD TO TALK"}
+                </span>
+              </button>
+
+              {/* Small level indicator */}
+              {talkbackHeld && (
+                <div className="flex items-center gap-2">
+                  <div className="overflow-hidden rounded-full" style={{ width: 80, height: 4, background: "#222" }}>
+                    <div className="h-full rounded-full transition-all duration-100" style={{
+                      width: `${Math.min(100, (localTalkbackTxLevel || 0) * 200)}%`,
+                      background: C.blue,
+                    }} />
+                  </div>
+                </div>
+              )}
+
+              {/* End session */}
+              <button
+                onPointerDown={(e) => { e.preventDefault(); handleEndSession(); }}
+                className="mt-8 rounded-lg px-6 py-2 text-[12px] font-bold uppercase tracking-wide"
+                style={{
+                  background: "rgba(239,68,68,0.1)",
+                  border: "1px solid rgba(239,68,68,0.3)",
+                  color: C.red,
+                }}
+              >
+                End Session
+              </button>
+            </div>
+          ) : isMobile ? (
             <>
-              {/* ── MOBILE: SESSION TAB ── */}
               {mobileTab === "video" && (
                 <div className="flex flex-col gap-2">
                   {/* Session Status */}
