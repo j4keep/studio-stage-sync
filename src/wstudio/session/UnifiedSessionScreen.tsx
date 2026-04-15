@@ -1133,6 +1133,20 @@ export default function UnifiedSessionScreen() {
           ) : (
             <>
           {/* ══════════ DESKTOP LAYOUT ══════════ */}
+          {/* ── PLUGIN COLUMN (first, spans all content rows) ── */}
+          <div className="row-span-4 flex flex-col">
+            <PluginPanel
+              sessionTitle={sessionDisplayName || "Session: Live"}
+              connected={connected}
+              talkbackActive={talkbackHeld}
+              onTalkDown={beginTalkback}
+              onTalkUp={endTalkback}
+              sessionLink={sessionId.trim() ? `w.studio/${sessionId.trim()}` : "w.studio/—"}
+              remoteMicLevel={remoteMicLevel}
+              sendLevel={localMicLevel}
+            />
+          </div>
+
           {/* ── LEFT COLUMN: Videos + Controls (spans all content rows) ── */}
           <div className="row-span-3 flex flex-col gap-2">
             {/* Artist Video */}
