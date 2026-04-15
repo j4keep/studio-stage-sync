@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBridgeOutputDevice } from "../bridge/useBridgeOutputDevice";
+import PluginPanel from "./PluginPanel";
 
 const canScreenShare = typeof navigator !== "undefined" && !!navigator.mediaDevices?.getDisplayMedia;
 
@@ -685,7 +686,7 @@ export default function UnifiedSessionScreen() {
   return (
     <div ref={shellRef} className={`flex select-none overflow-hidden ${isMobile ? "flex-col overflow-y-auto" : "min-h-screen items-center justify-center"}`} style={{ background: "#111214", padding: isFullscreen ? 0 : isMobile ? 0 : 16 }}>
       <div className="w-full overflow-hidden flex flex-col" style={{
-        maxWidth: isFullscreen ? "100%" : isMobile ? "100%" : 1100,
+        maxWidth: isFullscreen ? "100%" : isMobile ? "100%" : 1440,
         height: isFullscreen ? "100vh" : isMobile ? "100dvh" : "auto",
         borderRadius: isFullscreen || isMobile ? 0 : 8,
         background: `linear-gradient(180deg, ${C.shell} 0%, ${C.shellDark} 100%)`,
@@ -730,7 +731,7 @@ export default function UnifiedSessionScreen() {
         )}
 
         {/* ─── MAIN GRID ─── */}
-        <div className={`relative ${isMobile ? "flex flex-col gap-2 p-2 flex-1 overflow-y-auto" : `grid gap-2 p-2 ${isFullscreen ? "flex-1" : ""}`}`} style={isMobile ? {} : { gridTemplateColumns: "280px 1fr 260px", gridTemplateRows: isFullscreen ? "auto 1fr auto auto" : "auto auto auto auto" }}>
+        <div className={`relative ${isMobile ? "flex flex-col gap-2 p-2 flex-1 overflow-y-auto" : `grid gap-2 p-2 ${isFullscreen ? "flex-1" : ""}`}`} style={isMobile ? {} : { gridTemplateColumns: "320px 280px 1fr 260px", gridTemplateRows: isFullscreen ? "auto 1fr auto auto" : "auto auto auto auto" }}>
           {controlsLocked && <SessionControlsLockOverlay />}
 
           {/* ══════════ MOBILE LAYOUT ══════════ */}
