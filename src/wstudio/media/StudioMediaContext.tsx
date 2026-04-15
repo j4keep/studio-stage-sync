@@ -694,8 +694,13 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     setRemoteStream(inbound);
     pendingIceRef.current = [];
 
+    pc.onconnectionstatechange = () => {
+      console.debug(DEBUG_AUDIO_TAG, "WebRTC connectionState:", pc.connectionState);
+    };
+
     pc.ontrack = (ev) => {
       const track = ev.track;
+      console.debug(DEBUG_AUDIO_TAG, "Remote track received:", track.kind, track.id, track.readyState);
       if (!inbound.getTracks().some((existing) => existing.id === track.id)) {
         inbound.addTrack(track);
       }
