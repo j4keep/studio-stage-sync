@@ -339,23 +339,21 @@ function JoinSessionInline({ onJoin }: { onJoin: () => void }) {
 function VideoTileActions({
   hasSession,
   onJoin,
-  onEnd,
   expanded,
   onToggleExpand,
-  isMobile,
 }: {
   hasSession: boolean;
   onJoin: () => void;
-  onEnd: () => void;
+  onEnd?: () => void;
   expanded: boolean;
   onToggleExpand: () => void;
-  isMobile: boolean;
+  isMobile?: boolean;
 }) {
   return (
     <>
-      {/* Join/End buttons bottom-left */}
-      <div className="absolute bottom-2 left-2 z-10 flex items-center gap-1.5">
-        {!hasSession && (
+      {/* Join button bottom-left (only when no session) */}
+      {!hasSession && (
+        <div className="absolute bottom-2 left-2 z-10">
           <button
             onClick={onJoin}
             className="rounded px-2 py-1 text-[9px] font-bold uppercase tracking-wide"
@@ -368,22 +366,15 @@ function VideoTileActions({
           >
             Join
           </button>
-        )}
-        {hasSession && (
-          <button
-            onClick={onEnd}
-            className="rounded px-2 py-1 text-[9px] font-bold uppercase tracking-wide"
-            style={{
-              background: "linear-gradient(180deg, #ef4444 0%, #991b1b 100%)",
-              color: "#fff",
-              border: "1px solid rgba(239,68,68,0.5)",
-              boxShadow: "0 2px 6px rgba(0,0,0,0.4)",
-            }}
-          >
-            End
-          </button>
-        )}
-      </div>
+        </div>
+      )}
+      {/* Connection indicator bottom-left (when in session) */}
+      {hasSession && (
+        <div className="absolute bottom-2 left-2 z-10 flex items-center gap-1.5 rounded px-2 py-1" style={{ background: "rgba(0,0,0,0.6)" }}>
+          <div className="h-[6px] w-[6px] rounded-full" style={{ background: C.green, boxShadow: `0 0 4px ${C.green}` }} />
+          <span style={{ color: "#e8e8ea", fontSize: 9, fontWeight: 600 }}>LIVE</span>
+        </div>
+      )}
       {/* Expand button bottom-right */}
       <div className="absolute bottom-2 right-2 z-10">
         <button
@@ -775,7 +766,7 @@ export default function UnifiedSessionScreen() {
                       </div>
                     )}
                     <div className="absolute bottom-2 left-2 rounded px-2 py-0.5 text-[10px] font-medium" style={{ background: "rgba(0,0,0,0.6)", color: artistStream ? C.text : C.dim }}>{artistStream ? "Artist" : "No one connected"}</div>
-                    <VideoTileActions hasSession={!!role} onJoin={goToJoin} onEnd={handleEndSession} expanded={expandedPanel === "artist"} onToggleExpand={() => setExpandedPanel(expandedPanel === "artist" ? null : "artist")} isMobile />
+                    <VideoTileActions hasSession={!!role} onJoin={goToJoin} expanded={expandedPanel === "artist"} onToggleExpand={() => setExpandedPanel(expandedPanel === "artist" ? null : "artist")} />
                     <div className="absolute right-2 top-2 flex items-center gap-1.5 rounded-md px-2 py-0.5" style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)" }}>
                       <span className="font-mono text-[12px] font-bold tabular-nums" style={{ color: (hasBooking ? warningLevel : "ok") === "critical" ? C.red : (hasBooking ? warningLevel : "ok") === "warning" ? C.yellow : C.text }}>
                         {(() => { const rs = hasBooking ? bookingRemaining : demoClock.remainingSeconds; return `${String(Math.floor(rs / 60)).padStart(2, "0")}:${String(rs % 60).padStart(2, "0")}`; })()}
@@ -795,7 +786,7 @@ export default function UnifiedSessionScreen() {
                       </div>
                     )}
                     <div className="absolute bottom-2 left-2 z-[5] rounded px-2 py-0.5 text-[10px] font-medium" style={{ background: "rgba(0,0,0,0.6)", color: engineerStream ? C.text : C.dim }}>{engineerStream ? "Engineer" : "No one connected"}</div>
-                    <VideoTileActions hasSession={!!role} onJoin={goToJoin} onEnd={handleEndSession} expanded={expandedPanel === "engineer"} onToggleExpand={() => setExpandedPanel(expandedPanel === "engineer" ? null : "engineer")} isMobile />
+                    <VideoTileActions hasSession={!!role} onJoin={goToJoin} expanded={expandedPanel === "engineer"} onToggleExpand={() => setExpandedPanel(expandedPanel === "engineer" ? null : "engineer")} />
                     <div className="absolute right-2 top-2 flex items-center gap-1.5 rounded-md px-2 py-0.5" style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)" }}>
                       <span className="font-mono text-[12px] font-bold tabular-nums" style={{ color: (hasBooking ? warningLevel : "ok") === "critical" ? C.red : (hasBooking ? warningLevel : "ok") === "warning" ? C.yellow : C.text }}>
                         {(() => { const rs = hasBooking ? bookingRemaining : demoClock.remainingSeconds; return `${String(Math.floor(rs / 60)).padStart(2, "0")}:${String(rs % 60).padStart(2, "0")}`; })()}
@@ -1199,7 +1190,7 @@ export default function UnifiedSessionScreen() {
                 <span className="rounded-full" style={{ width: 6, height: 6, background: artistStream ? C.green : C.dim }} />
                 <span style={{ fontSize: 11, fontWeight: 600, color: artistStream ? C.text : C.dim }}>Artist</span>
               </div>
-              <VideoTileActions hasSession={!!role} onJoin={goToJoin} onEnd={handleEndSession} expanded={expandedPanel === "artist"} onToggleExpand={() => setExpandedPanel(expandedPanel === "artist" ? null : "artist")} isMobile={false} />
+              <VideoTileActions hasSession={!!role} onJoin={goToJoin} expanded={expandedPanel === "artist"} onToggleExpand={() => setExpandedPanel(expandedPanel === "artist" ? null : "artist")} />
               {/* Timer overlay */}
               <div className="absolute right-2 top-2 flex items-center gap-1.5 rounded-md px-2 py-1" style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)" }}>
                 <span className={`font-mono text-[14px] font-bold tabular-nums ${(hasBooking ? warningLevel : "ok") === "critical" ? "animate-pulse" : ""}`} style={{ color: (hasBooking ? warningLevel : "ok") === "critical" ? C.red : (hasBooking ? warningLevel : "ok") === "warning" ? C.yellow : C.text }}>
@@ -1223,7 +1214,7 @@ export default function UnifiedSessionScreen() {
                 <span className="rounded-full" style={{ width: 6, height: 6, background: engineerStream ? C.green : C.dim }} />
                 <span style={{ fontSize: 11, fontWeight: 600, color: engineerStream ? C.text : C.dim }}>Engineer</span>
               </div>
-              <VideoTileActions hasSession={!!role} onJoin={goToJoin} onEnd={handleEndSession} expanded={expandedPanel === "engineer"} onToggleExpand={() => setExpandedPanel(expandedPanel === "engineer" ? null : "engineer")} isMobile={false} />
+              <VideoTileActions hasSession={!!role} onJoin={goToJoin} expanded={expandedPanel === "engineer"} onToggleExpand={() => setExpandedPanel(expandedPanel === "engineer" ? null : "engineer")} />
               <div className="absolute right-2 top-2 flex items-center gap-1.5 rounded-md px-2 py-1" style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)" }}>
                 <span className={`font-mono text-[14px] font-bold tabular-nums`} style={{ color: C.text }}>
                   {(() => { const rs = hasBooking ? bookingRemaining : demoClock.remainingSeconds; return `${String(Math.floor(rs / 60)).padStart(2, "0")}:${String(rs % 60).padStart(2, "0")}`; })()}
