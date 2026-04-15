@@ -1,69 +1,49 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const BRIDGE_TAG = "[BRIDGE-OUTPUT]";
+export type AudioOutputDevice = { deviceId: string; label: string };
 
 /**
- * Plays the bridge stream to the browser's DEFAULT output only.
- * No setSinkId — macOS Multi-Output Device duplicates to BlackHole for DAW capture.
- * This is how pro remote-session apps (Audiomovers, Cleanfeed, etc.) work.
+ * Enumerates audio output devices and routes a MediaStream to the selected one via setSinkId.
+ * Used by the Bridge panel to pipe BRIDGE OUT into a virtual cable (BlackHole / VB-Cable).
  */
 export function useBridgeOutputDevice(bridgeStream: MediaStream | null) {
-  const [routed, setRouted] = useState(false);
+  const [devices, setDevices] = useState<AudioOutputDevice[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState("default");
   const [routingError, setRoutingError] = useState<string | null>(null);
+  const [routed, setRouted] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const watchdogRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const unlockCleanupRef = useRef<() => void>(() => {});
 
-  const clearUnlockRetry = useCallback(() => {
-    unlockCleanupRef.current();
-    unlockCleanupRef.current = () => {};
+  // Enumerate output devices
+  const refreshDevices = useCallback(async () => {
+    try {
+      const all = await navigator.mediaDevices.enumerateDevices();
+      const outputs = all
+        .filter((d) => d.kind === "audiooutput")
+        .map((d) => ({
+          deviceId: d.deviceId,
+          label: d.label || `Output ${d.deviceId.slice(0, 8)}`,
+        }));
+      setDevices(outputs);
+    } catch {
+      setDevices([]);
+    }
   }, []);
 
-  const armUnlockRetry = useCallback((el: HTMLAudioElement) => {
-    clearUnlockRetry();
-    let disposed = false;
-    const retry = () => {
-      void el.play().then(() => {
-        if (disposed) return;
-        console.log(BRIDGE_TAG, "Autoplay unlocked via user gesture");
-        setRouted(true);
-        setRoutingError(null);
-        clearUnlockRetry();
-      }).catch(() => {});
-    };
-    const cleanup = () => {
-      if (disposed) return;
-      disposed = true;
-      window.removeEventListener("pointerdown", retry, true);
-      window.removeEventListener("touchstart", retry, true);
-      window.removeEventListener("keydown", retry, true);
-    };
-    unlockCleanupRef.current = cleanup;
-    window.addEventListener("pointerdown", retry, true);
-    window.addEventListener("touchstart", retry, true);
-    window.addEventListener("keydown", retry, true);
-  }, [clearUnlockRetry]);
+  useEffect(() => {
+    refreshDevices();
+    navigator.mediaDevices.addEventListener("devicechange", refreshDevices);
+    return () => navigator.mediaDevices.removeEventListener("devicechange", refreshDevices);
+  }, [refreshDevices]);
 
+  // Route stream to selected device
   useEffect(() => {
     setRoutingError(null);
     setRouted(false);
-    clearUnlockRetry();
-    if (watchdogRef.current) { clearInterval(watchdogRef.current); watchdogRef.current = null; }
 
     if (!bridgeStream) {
-      console.log(BRIDGE_TAG, "No bridge stream, tearing down");
       if (audioRef.current) {
-        audioRef.current.pause();
         audioRef.current.srcObject = null;
-        if (audioRef.current.parentNode) audioRef.current.parentNode.removeChild(audioRef.current);
       }
-      return;
-    }
-
-    const tracks = bridgeStream.getAudioTracks();
-    if (tracks.length === 0 || tracks.every(t => t.readyState !== "live")) {
-      console.warn(BRIDGE_TAG, "No live audio tracks");
-      setRoutingError("Bridge stream has no live audio tracks");
       return;
     }
 
@@ -71,101 +51,53 @@ export function useBridgeOutputDevice(bridgeStream: MediaStream | null) {
     if (!el) {
       el = new Audio();
       el.autoplay = true;
-      el.style.position = "absolute";
-      el.style.width = "0";
-      el.style.height = "0";
-      el.style.opacity = "0";
-      el.style.pointerEvents = "none";
-      document.body.appendChild(el);
+      // Mute the default speaker output — the real output goes to the selected sink
+      el.volume = 0;
       audioRef.current = el;
-      console.log(BRIDGE_TAG, "Created hidden audio element (default output)");
     }
 
     el.srcObject = bridgeStream;
-    el.muted = false;
-    el.volume = 1;
 
-    console.log(BRIDGE_TAG, "srcObject attached", {
-      streamId: bridgeStream.id,
-      trackCount: tracks.length,
-      trackStates: tracks.map(t => ({ id: t.id, enabled: t.enabled, readyState: t.readyState })),
-    });
-
-    let cancelled = false;
-
-    void el.play().then(() => {
-      if (cancelled) return;
-      console.log(BRIDGE_TAG, "✅ Playing to default output (use macOS Multi-Output for DAW)", {
-        paused: el!.paused,
-        muted: el!.muted,
-        volume: el!.volume,
-        readyState: el!.readyState,
-        currentTime: el!.currentTime,
-      });
-      setRouted(true);
-      setRoutingError(null);
-    }).catch(err => {
-      if (cancelled) return;
-      console.error(BRIDGE_TAG, "Play failed, waiting for gesture:", err);
-      setRoutingError("Click anywhere to start bridge output");
-      armUnlockRetry(el!);
-    });
-
-    // Watchdog: every 2s confirm audio element is actually playing
-    watchdogRef.current = setInterval(() => {
-      if (cancelled || !el) return;
-      const st = el.srcObject instanceof MediaStream ? el.srcObject.getAudioTracks() : [];
-      const hasLive = st.some(t => t.readyState === "live");
-
-      // Log state every cycle for debugging
-      console.debug(BRIDGE_TAG, "watchdog", {
-        paused: el.paused,
-        muted: el.muted,
-        volume: el.volume,
-        readyState: el.readyState,
-        currentTime: el.currentTime,
-        hasLiveTracks: hasLive,
-        trackStates: st.map(t => ({ enabled: t.enabled, readyState: t.readyState })),
-      });
-
-      if (el.paused && hasLive) {
-        console.warn(BRIDGE_TAG, "Watchdog: restarting play()");
-        el.muted = false;
-        el.volume = 1;
-        void el.play().then(() => { setRouted(true); setRoutingError(null); }).catch(() => {});
+    const applySink = async () => {
+      try {
+        if (typeof (el as any).setSinkId === "function") {
+          await (el as any).setSinkId(selectedDeviceId);
+          // When routing to a virtual cable, we want full volume on that sink
+          el!.volume = 1;
+          setRouted(true);
+          setRoutingError(null);
+        } else {
+          setRoutingError("setSinkId not supported in this browser");
+        }
+      } catch (err) {
+        setRoutingError(err instanceof Error ? err.message : "Failed to set output device");
+        setRouted(false);
       }
+    };
 
-      // Ensure not silently muted
-      if (el.muted) {
-        console.warn(BRIDGE_TAG, "Watchdog: element was muted, forcing unmute");
-        el.muted = false;
-      }
-      if (el.volume < 1) {
-        console.warn(BRIDGE_TAG, "Watchdog: volume was", el.volume, "forcing to 1");
-        el.volume = 1;
-      }
-    }, 2000);
+    applySink();
 
     return () => {
-      cancelled = true;
-      clearUnlockRetry();
-      if (watchdogRef.current) { clearInterval(watchdogRef.current); watchdogRef.current = null; }
-      el!.pause();
+      // Don't destroy audio element on re-render, just stop stream
     };
-  }, [bridgeStream, armUnlockRetry, clearUnlockRetry]);
+  }, [bridgeStream, selectedDeviceId]);
 
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      clearUnlockRetry();
-      if (watchdogRef.current) { clearInterval(watchdogRef.current); watchdogRef.current = null; }
       if (audioRef.current) {
-        audioRef.current.pause();
         audioRef.current.srcObject = null;
-        if (audioRef.current.parentNode) audioRef.current.parentNode.removeChild(audioRef.current);
         audioRef.current = null;
       }
     };
-  }, [clearUnlockRetry]);
+  }, []);
 
-  return { routed, routingError };
+  return {
+    devices,
+    selectedDeviceId,
+    setSelectedDeviceId,
+    routingError,
+    routed,
+    refreshDevices,
+  };
 }

@@ -28,7 +28,8 @@ export default function StudioBridgeScreen() {
     hasRemoteAudio,
   } = useStudioMedia();
 
-  const { routingError, routed } = useBridgeOutputDevice(engineerDawVocalIn1);
+  const { devices: outputDevices, selectedDeviceId, setSelectedDeviceId, routingError, routed, refreshDevices: refreshOutputDevices } =
+    useBridgeOutputDevice(engineerDawVocalIn1);
 
   const { devices: inputDevices, refreshDevices: refreshInputDevices } = useBridgeInputDevices();
 
@@ -107,9 +108,13 @@ export default function StudioBridgeScreen() {
       />
 
       <BridgeOutputRouting
+        devices={outputDevices}
+        selectedDeviceId={selectedDeviceId}
+        setSelectedDeviceId={setSelectedDeviceId}
         vocalPathReady={vocalPathReady}
         routed={routed}
         routingError={routingError}
+        refreshDevices={refreshOutputDevices}
       />
 
       <BridgeDawReturn

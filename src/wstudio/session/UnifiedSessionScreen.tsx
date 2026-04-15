@@ -490,14 +490,15 @@ export default function UnifiedSessionScreen() {
     hasRemoteAudio,
     engineerDawVocalIn1,
     engineerBridgeVocalLevel,
-    engineerDawReturnLevel,
-    dawReturnActive,
-    mediaError,
   } = useStudioMedia();
 
   const {
+    devices: bridgeDevices,
+    selectedDeviceId: bridgeSelectedDevice,
+    setSelectedDeviceId: setBridgeSelectedDevice,
     routingError: bridgeRoutingError,
     routed: bridgeRouted,
+    refreshDevices: bridgeRefreshDevices,
   } = useBridgeOutputDevice(role === "engineer" ? engineerDawVocalIn1 ?? null : null);
 
   const {
@@ -540,7 +541,12 @@ export default function UnifiedSessionScreen() {
   const artistMirrored = isArtist; // mirror local preview
   const engineerMirrored = isEngineer;
   const screenShareViewStream = isEngineer ? localScreenPreview : (collaborationShareActive ? remoteStreamForPlayback : null);
-  const remoteTileVolume = 1;
+ /** Headphone bus: engineer scales remote tile; artist level is applied in Web Audio graph.
+   *  Vocal Level knob (0–1, default 0.55) scales the artist's voice in the engineer's monitor.
+   *  We treat 0.5 as unity gain so default ~1.1x, max 2x at 1.0. */
+  const remoteTileVolume = isEngineer
+    ? Math.min(1, live.headphoneLevelEngineer * (live.vocalLevel * 2))
+    : 1;
 
   const vocalTakeTitle = recording
     ? (isMobile ? "Rec..." : "Recording...")
@@ -792,9 +798,6 @@ export default function UnifiedSessionScreen() {
                       <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
                         <span className="text-[20px] font-black tracking-tight" style={{ color: C.dim }}>W<span style={{ color: C.blue }}>.</span>STUDIO</span>
                         <span style={{ color: C.dim, fontSize: 10, letterSpacing: "0.14em", marginTop: 4 }}>WAITING FOR ENGINEER</span>
-                        {mediaError && (
-                          <span style={{ color: C.red, fontSize: 10, marginTop: 8, maxWidth: "80%", textAlign: "center" }}>⚠ {mediaError}</span>
-                        )}
                       </div>
                     )}
                     <div className="absolute bottom-2 left-2 z-[5] rounded px-2 py-0.5 text-[10px] font-medium" style={{ background: "rgba(0,0,0,0.6)", color: engineerStream ? C.text : C.dim }}>{engineerStream ? "Engineer" : "No one connected"}</div>
@@ -996,15 +999,6 @@ export default function UnifiedSessionScreen() {
                           <HorizontalMeter level={bridgePathReady ? meterDisplay(engineerBridgeVocalLevel) : 0} />
                         </div>
                       ) : null}
-                      {isEngineer ? (
-                        <div>
-                          <div className="mb-0.5 flex justify-between" style={{ fontSize: 9, fontWeight: 600, color: C.label, letterSpacing: "0.08em" }}>
-                            <span>RETURN FROM DAW</span>
-                            <span style={{ color: dawReturnActive ? C.green : C.dim, fontWeight: 500 }}>{dawReturnActive ? "sending" : "—"}</span>
-                          </div>
-                          <HorizontalMeter level={dawReturnActive ? meterDisplay(engineerDawReturnLevel) : 0} />
-                        </div>
-                      ) : null}
                       <div className="mt-1"><SpectrumBars level={spectrumLevel} /></div>
                       <div className="mt-0.5"><FreqLabels /></div>
                     </Inset>
@@ -1106,16 +1100,34 @@ export default function UnifiedSessionScreen() {
                         <div>
                           <span style={{ color: C.dim }}>Output: </span>
                           {bridgeRouted && bridgeFeedActive ? (
-                            <span style={{ color: C.green, fontWeight: 600 }}>Default (use Multi-Output for DAW)</span>
+                            <span style={{ color: C.green, fontWeight: 600 }}>
+                              {bridgeDevices.find(d => d.deviceId === bridgeSelectedDevice)?.label ?? "Routed"}
+                            </span>
                           ) : (
-                            <span style={{ color: C.acCyan, fontWeight: 600 }}>Waiting for signal</span>
+                            <span style={{ color: C.acCyan, fontWeight: 600 }}>Select device ↓</span>
                           )}
                         </div>
                         <div className="mt-1.5">
-                          <div className="flex items-center justify-between">
+                          <select
+                            value={bridgeSelectedDevice}
+                            onChange={(e) => setBridgeSelectedDevice(e.target.value)}
+                            style={{
+                              width: "100%", fontSize: 9, padding: "3px 4px",
+                              background: C.panelDark, color: C.text,
+                              border: `1px solid ${C.panelBorder}`, borderRadius: 4,
+                              outline: "none",
+                            }}
+                          >
+                            <option value="default">Default output</option>
+                            {bridgeDevices.filter(d => d.deviceId !== "default").map(d => (
+                              <option key={d.deviceId} value={d.deviceId}>{d.label}</option>
+                            ))}
+                          </select>
+                          <div className="mt-1 flex items-center justify-between">
                             <span style={{ fontSize: 8, color: bridgeRouted ? C.green : C.dim }}>
-                              {bridgeRouted ? "● Playing" : "○ Not playing"}
+                              {bridgeRouted ? "● Routing" : "○ Not routing"}
                             </span>
+                            <button type="button" onClick={() => bridgeRefreshDevices()} style={{ fontSize: 8, color: C.dim, background: "none", border: "none", cursor: "pointer" }}>↻ Refresh</button>
                           </div>
                           {bridgeRoutingError && <div style={{ fontSize: 8, color: C.red, marginTop: 2 }}>{bridgeRoutingError}</div>}
                         </div>
@@ -1166,9 +1178,6 @@ export default function UnifiedSessionScreen() {
                 <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
                   <span className="text-[28px] font-black tracking-tight" style={{ color: C.dim }}>W<span style={{ color: C.blue }}>.</span>STUDIO</span>
                   <span style={{ color: C.dim, fontSize: 11, letterSpacing: "0.14em", marginTop: 4 }}>WAITING FOR ENGINEER</span>
-                  {mediaError && (
-                    <span style={{ color: C.red, fontSize: 11, marginTop: 8, maxWidth: "80%", textAlign: "center" }}>⚠ {mediaError}</span>
-                  )}
                 </div>
               )}
               <div className="absolute bottom-2 left-2 z-[5] rounded px-2 py-1 text-[12px] font-medium" style={{ background: "rgba(0,0,0,0.6)", color: engineerStream ? C.text : C.dim }}>{engineerStream ? "Engineer" : "No one connected"}</div>
@@ -1368,15 +1377,6 @@ export default function UnifiedSessionScreen() {
                       <HorizontalMeter level={bridgePathReady ? meterDisplay(engineerBridgeVocalLevel) : 0} />
                     </div>
                   ) : null}
-                  {isEngineer ? (
-                    <div>
-                      <div className="mb-0.5 flex justify-between" style={{ fontSize: 10, fontWeight: 600, color: C.label, letterSpacing: "0.1em" }}>
-                        <span>RETURN FROM DAW</span>
-                        <span style={{ color: dawReturnActive ? C.green : C.dim, fontWeight: 500 }}>{dawReturnActive ? "sending" : "—"}</span>
-                      </div>
-                      <HorizontalMeter level={dawReturnActive ? meterDisplay(engineerDawReturnLevel) : 0} />
-                    </div>
-                  ) : null}
                   <div className="mt-2"><SpectrumBars level={spectrumLevel} /></div>
                   <div className="mt-1"><FreqLabels /></div>
                 </Inset>
@@ -1456,16 +1456,34 @@ export default function UnifiedSessionScreen() {
                   <div>
                     <span style={{ color: C.dim }}>Output: </span>
                     {bridgeRouted && bridgeFeedActive ? (
-                      <span style={{ color: C.green, fontWeight: 600 }}>Default (use Multi-Output for DAW)</span>
+                      <span style={{ color: C.green, fontWeight: 600 }}>
+                        {bridgeDevices.find(d => d.deviceId === bridgeSelectedDevice)?.label ?? "Routed"}
+                      </span>
                     ) : (
-                      <span style={{ color: C.acCyan, fontWeight: 600 }}>Waiting for signal</span>
+                      <span style={{ color: C.acCyan, fontWeight: 600 }}>Select device ↓</span>
                     )}
                   </div>
                   <div className="mt-2">
-                    <div className="flex items-center justify-between">
+                    <select
+                      value={bridgeSelectedDevice}
+                      onChange={(e) => setBridgeSelectedDevice(e.target.value)}
+                      style={{
+                        width: "100%", fontSize: 11, padding: "4px 6px",
+                        background: C.panelDark, color: C.text,
+                        border: `1px solid ${C.panelBorder}`, borderRadius: 4,
+                        outline: "none",
+                      }}
+                    >
+                      <option value="default">Default output</option>
+                      {bridgeDevices.filter(d => d.deviceId !== "default").map(d => (
+                        <option key={d.deviceId} value={d.deviceId}>{d.label}</option>
+                      ))}
+                    </select>
+                    <div className="mt-1 flex items-center justify-between">
                       <span style={{ fontSize: 9, color: bridgeRouted ? C.green : C.dim }}>
-                        {bridgeRouted ? "● Playing" : "○ Not playing"}
+                        {bridgeRouted ? "● Routing" : "○ Not routing"}
                       </span>
+                      <button type="button" onClick={() => bridgeRefreshDevices()} style={{ fontSize: 9, color: C.dim, background: "none", border: "none", cursor: "pointer" }}>↻ Refresh</button>
                     </div>
                     {bridgeRoutingError && <div style={{ fontSize: 9, color: C.red, marginTop: 2 }}>{bridgeRoutingError}</div>}
                   </div>
