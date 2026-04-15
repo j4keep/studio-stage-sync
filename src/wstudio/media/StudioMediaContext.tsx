@@ -212,6 +212,97 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
 
     let cancelled = false;
     const buf = new Uint8Array(1024);
+    const sessionAudioConstraints: MediaTrackConstraints = {
+      echoCancellation: true,
+      noiseSuppression: true,
+    };
+
+    const isRecoverableDeviceError = (error: unknown) => {
+      if (!(error instanceof Error)) return false;
+      const msg = error.message.toLowerCase();
+      return (
+        error.name === "NotFoundError" ||
+        error.name === "OverconstrainedError" ||
+        error.name === "ConstraintNotSatisfiedError" ||
+        msg.includes("requested device not found") ||
+        msg.includes("device not found") ||
+        msg.includes("facingmode")
+      );
+    };
+
+    const tryOptionalCapture = async (
+      attempts: MediaStreamConstraints[],
+      label: "video" | "audio",
+    ) => {
+      let lastError: unknown = null;
+      for (const constraints of attempts) {
+        try {
+          return await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (error) {
+          lastError = error;
+          if (!isRecoverableDeviceError(error)) break;
+        }
+      }
+
+      if (lastError) {
+        console.warn(DEBUG_AUDIO_TAG, `${label} fallback capture failed`, lastError);
+      }
+      return null;
+    };
+
+    const acquireSessionMedia = async () => {
+      let lastError: unknown = null;
+      const preferredAttempts: MediaStreamConstraints[] = [
+        {
+          video: { facingMode: { ideal: "user" } },
+          audio: { ...sessionAudioConstraints },
+        },
+        {
+          video: true,
+          audio: { ...sessionAudioConstraints },
+        },
+      ];
+
+      for (const constraints of preferredAttempts) {
+        try {
+          return await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (error) {
+          lastError = error;
+          if (!isRecoverableDeviceError(error)) {
+            throw error;
+          }
+        }
+      }
+
+      const videoOnly = await tryOptionalCapture(
+        [
+          { video: { facingMode: { ideal: "user" } }, audio: false },
+          { video: true, audio: false },
+        ],
+        "video",
+      );
+      const audioOnly = await tryOptionalCapture(
+        [{ video: false, audio: { ...sessionAudioConstraints } }],
+        "audio",
+      );
+
+      const recoveredTracks = [
+        ...(videoOnly?.getTracks() ?? []),
+        ...(audioOnly?.getTracks() ?? []),
+      ];
+
+      if (recoveredTracks.length > 0) {
+        console.warn(DEBUG_AUDIO_TAG, "Recovered session media with fallback capture", {
+          hasVideo: recoveredTracks.some((track) => track.kind === "video"),
+          hasAudio: recoveredTracks.some((track) => track.kind === "audio"),
+        });
+        return new MediaStream(recoveredTracks);
+      }
+
+      throw lastError instanceof Error
+        ? lastError
+        : new Error("Could not access camera or microphone");
+    };
 
     const tickLocalMeter = (analyser: AnalyserNode) => {
       if (cancelled) return;
@@ -244,13 +335,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
 
     (async () => {
       try {
-        const ms = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "user" },
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-          },
-        });
+        const ms = await acquireSessionMedia();
         if (cancelled) {
           ms.getTracks().forEach((t) => t.stop());
           return;
