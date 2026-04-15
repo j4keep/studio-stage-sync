@@ -778,10 +778,17 @@ export default function UnifiedSessionScreen() {
                     ) : (
                       <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
                         <span className="text-[20px] font-black tracking-tight" style={{ color: C.dim }}>W<span style={{ color: C.blue }}>.</span>STUDIO</span>
-                        <span style={{ color: C.dim, fontSize: 10, letterSpacing: "0.14em", marginTop: 4 }}>WAITING FOR ARTIST</span>
+                        <span style={{ color: C.dim, fontSize: 10, letterSpacing: "0.14em", marginTop: 4 }}>
+                          {isArtist && mediaError ? "⚠ CAMERA ACCESS DENIED" : isArtist ? "STARTING CAMERA..." : "WAITING FOR ARTIST"}
+                        </span>
+                        {isArtist && mediaError && (
+                          <span style={{ color: C.red, fontSize: 9, marginTop: 6, maxWidth: "80%", textAlign: "center" }}>{mediaError}</span>
+                        )}
                       </div>
                     )}
-                    <div className="absolute bottom-2 left-2 rounded px-2 py-0.5 text-[10px] font-medium" style={{ background: "rgba(0,0,0,0.6)", color: artistStream ? C.text : C.dim }}>{artistStream ? "Artist" : "No one connected"}</div>
+                    <div className="absolute bottom-2 left-2 rounded px-2 py-0.5 text-[10px] font-medium" style={{ background: "rgba(0,0,0,0.6)", color: artistStream ? C.text : C.dim }}>
+                      {artistStream ? (isArtist ? "You (Artist)" : "Artist") : "No one connected"}
+                    </div>
                     <VideoTileActions hasSession={!!role} onJoin={goToJoin} onEnd={handleEndSession} expanded={expandedPanel === "artist"} onToggleExpand={() => setExpandedPanel(expandedPanel === "artist" ? null : "artist")} isMobile />
                     <div className="absolute right-2 top-2 flex items-center gap-1.5 rounded-md px-2 py-0.5" style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)" }}>
                       <span className="font-mono text-[12px] font-bold tabular-nums" style={{ color: (hasBooking ? warningLevel : "ok") === "critical" ? C.red : (hasBooking ? warningLevel : "ok") === "warning" ? C.yellow : C.text }}>
