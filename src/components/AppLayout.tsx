@@ -18,8 +18,13 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   const { isPro, requirePro, showProModal, gatedFeature, closeProModal, activatePro } = useProGate();
   const isStudioPage =
     location.pathname.startsWith("/wstudio") || location.pathname === "/ai-studio";
+  const isLiveSession =
+    location.pathname.includes("/wstudio/session/live") ||
+    location.pathname.includes("/wstudio/session/engineer") ||
+    location.pathname.includes("/wstudio/session/artist");
   const isFullScreenPage = ["/feed"].includes(location.pathname);
-  const showTopBar = !["/auth", "/feed", "/ai-studio"].includes(location.pathname);
+  const showTopBar = !["/auth", "/feed", "/ai-studio"].includes(location.pathname) && !isLiveSession;
+  const showBottomNav = !isLiveSession;
 
   const handleAskJhi = () => {
     if (!isPro) {
@@ -65,13 +70,19 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
           <NotificationBell />
         </div>
       )}
-      <main className={isStudioPage ? "wstudio-main" : "pb-20"}>{children}</main>
-      <GlobalRadioPlayer />
-      <GlobalPlaylistPlayer />
-      <PlaylistPlayerSheet />
-      <div className="wstudio-nav">
-        <BottomNav />
-      </div>
+      <main className={isStudioPage ? (isLiveSession ? "" : "wstudio-main") : "pb-20"}>{children}</main>
+      {!isLiveSession && (
+        <>
+          <GlobalRadioPlayer />
+          <GlobalPlaylistPlayer />
+          <PlaylistPlayerSheet />
+        </>
+      )}
+      {showBottomNav && (
+        <div className="wstudio-nav">
+          <BottomNav />
+        </div>
+      )}
       <ProGateModal open={showProModal} onClose={closeProModal} featureName={gatedFeature} onSubscribe={activatePro} />
       <UnratedSessionPopup />
     </div>

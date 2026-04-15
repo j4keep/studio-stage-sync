@@ -675,10 +675,11 @@ export default function UnifiedSessionScreen() {
   const [mobileTab, setMobileTab] = useState<"video" | "plugin">("video");
 
   return (
-    <div ref={shellRef} className={`flex select-none overflow-hidden ${isMobile ? "flex-col overflow-y-auto" : "min-h-screen items-center justify-center"}`} style={{ background: "#111214", padding: isFullscreen ? 0 : isMobile ? 0 : 16 }}>
+    <div ref={shellRef} className={`flex select-none overflow-hidden ${isMobile ? "flex-col" : "min-h-screen items-center justify-center"}`} style={{ background: "#111214", padding: isFullscreen ? 0 : isMobile ? 0 : 16, height: isMobile ? "100dvh" : undefined }}>
       <div className="w-full overflow-hidden flex flex-col" style={{
         maxWidth: isFullscreen ? "100%" : isMobile ? "100%" : 1440,
-        height: isFullscreen ? "100vh" : isMobile ? "100dvh" : "auto",
+        height: isFullscreen ? "100vh" : isMobile ? "100%" : "100vh",
+        maxHeight: isFullscreen || isMobile ? undefined : "calc(100vh - 32px)",
         borderRadius: isFullscreen || isMobile ? 0 : 8,
         background: `linear-gradient(180deg, ${C.shell} 0%, ${C.shellDark} 100%)`,
         border: isFullscreen || isMobile ? "none" : `1px solid ${C.shellEdge}`,
@@ -722,7 +723,7 @@ export default function UnifiedSessionScreen() {
         )}
 
         {/* ─── MAIN GRID ─── */}
-        <div className={`relative ${isMobile ? "flex flex-col gap-2 p-2 flex-1 overflow-y-auto" : `grid gap-2 p-2 ${isFullscreen ? "flex-1" : ""}`}`} style={isMobile ? {} : { gridTemplateColumns: "1fr 320px", gridTemplateRows: isFullscreen ? "1fr" : "auto" }}>
+        <div className={`relative ${isMobile ? "flex flex-col gap-2 p-2 flex-1 overflow-y-auto" : "grid gap-2 p-2 flex-1 overflow-hidden"}`} style={isMobile ? {} : { gridTemplateColumns: "1fr 320px", gridTemplateRows: "1fr" }}>
           {controlsLocked && <SessionControlsLockOverlay />}
 
           {/* ══════════ MOBILE LAYOUT ══════════ */}
@@ -992,7 +993,7 @@ export default function UnifiedSessionScreen() {
           {/* Simple 2-column: Communication (videos + controls) | Plugin */}
 
           {/* ── LEFT: Videos + Communication Controls ── */}
-          <div className="row-span-4 flex flex-col gap-2" style={{ gridRow: "1 / -1" }}>
+          <div className="flex flex-col gap-2 overflow-y-auto" style={{ minHeight: 0 }}>
             {/* Artist Video */}
             <Panel accent={C.acMagenta} className="relative overflow-hidden flex-1" style={{ minHeight: 200 }}>
               {artistStream ? (
@@ -1160,7 +1161,7 @@ export default function UnifiedSessionScreen() {
           </div>
 
           {/* ── RIGHT: W.Studio Plugin Panel ── */}
-          <div className="row-span-4 flex flex-col" style={{ gridRow: "1 / -1" }}>
+          <div className="flex flex-col" style={{ minHeight: 0 }}>
             <PluginPanel
               sessionTitle={sessionDisplayName || "Session: Live"}
               connected={connected}
