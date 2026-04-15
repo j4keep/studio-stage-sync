@@ -102,8 +102,26 @@ export default function SessionJoinScreen() {
       localStorage.setItem(`wstudio_booking_hours_${sessionIdToUse}`, JSON.stringify({ bookedMinutes, bookingId: data.id }));
     }
 
+    // Determine role: if the studio belongs to the current user, join as engineer
+    let detectedRole: "artist" | "engineer" = "artist";
+    if (data.studio_id) {
+      const { data: studio } = await (supabase as any)
+        .from("studios")
+        .select("user_id")
+        .eq("id", data.studio_id)
+        .single();
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (studio && currentUser && studio.user_id === currentUser.id) {
+        detectedRole = "engineer";
+      }
+    }
+
     toast.success("Joining session...");
-    joinAsArtist(sessionIdToUse);
+    if (detectedRole === "engineer") {
+      joinAsEngineer(sessionIdToUse);
+    } else {
+      joinAsArtist(sessionIdToUse);
+    }
     navigate("/wstudio/session/live");
   };
 

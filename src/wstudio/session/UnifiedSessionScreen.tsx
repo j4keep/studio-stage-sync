@@ -492,6 +492,7 @@ export default function UnifiedSessionScreen() {
     engineerBridgeVocalLevel,
     engineerDawReturnLevel,
     dawReturnActive,
+    mediaError,
   } = useStudioMedia();
 
   const {
