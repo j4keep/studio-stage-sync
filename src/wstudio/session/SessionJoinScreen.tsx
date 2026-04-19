@@ -11,9 +11,14 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import wstudioBgAsset from "../../../public/wstudio-bg.mp4.asset.json";
+import orbitMixer from "@/assets/wstudio-orbit-mixer.jpg";
+import orbitMic from "@/assets/wstudio-orbit-mic.jpg";
+import orbitHeadphones from "@/assets/wstudio-orbit-headphones.jpg";
+import orbitControl from "@/assets/wstudio-orbit-control.jpg";
+import orbitVocalist from "@/assets/wstudio-orbit-vocalist.jpg";
+import orbitFaders from "@/assets/wstudio-orbit-faders.jpg";
 
-const wstudioBgVideo = (wstudioBgAsset as { url: string }).url;
+const ORBIT_IMAGES = [orbitMixer, orbitMic, orbitHeadphones, orbitControl, orbitVocalist, orbitFaders];
 
 export default function SessionJoinScreen() {
   const navigate = useNavigate();
@@ -126,19 +131,9 @@ export default function SessionJoinScreen() {
   };
 
   return (
-    <div className="relative min-h-[100dvh] overflow-hidden text-zinc-100">
-      {/* Looping studio background video */}
-      <video
-        src={wstudioBgVideo}
-        autoPlay
-        loop
-        muted
-        playsInline
-        className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-40"
-      />
-      {/* Gradient overlay for legibility */}
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/70 via-black/55 to-black/90" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(245,158,11,0.18),transparent_55%)]" />
+    <div className="relative min-h-[100dvh] overflow-hidden bg-black text-zinc-100">
+      {/* Subtle radial accent */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(245,158,11,0.12),transparent_55%)]" />
 
       <div className="relative z-10 flex min-h-[100dvh] flex-col items-center px-4 pb-10">
         {/* Back Button */}
@@ -167,21 +162,58 @@ export default function SessionJoinScreen() {
             </p>
           </div>
 
-          {/* Find a Studio — primary CTA */}
-          <button
-            type="button"
-            onClick={() => setShowSearch(true)}
-            className="group relative flex w-full max-w-sm items-center gap-3 overflow-hidden rounded-2xl border border-amber-500/40 bg-gradient-to-br from-amber-600/30 via-amber-700/20 to-zinc-900/80 p-4 text-left shadow-[0_8px_30px_-10px_rgba(245,158,11,0.45)] transition hover:border-amber-400/70"
-          >
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 ring-1 ring-amber-400/40">
-              <Search className="h-6 w-6 text-amber-200" />
+          {/* Orbiting studio image circles around the primary CTA */}
+          <div className="relative my-2 flex h-[300px] w-[300px] items-center justify-center sm:h-[340px] sm:w-[340px]">
+            {/* Rotating orbit ring */}
+            <div
+              className="absolute inset-0 animate-[spin_28s_linear_infinite]"
+              style={{ transformOrigin: "center" }}
+            >
+              {ORBIT_IMAGES.map((src, i) => {
+                const angle = (i / ORBIT_IMAGES.length) * 2 * Math.PI;
+                const radius = 130; // px from center
+                const x = Math.cos(angle) * radius;
+                const y = Math.sin(angle) * radius;
+                return (
+                  <div
+                    key={src}
+                    className="absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full border border-amber-400/40 shadow-[0_4px_20px_-4px_rgba(245,158,11,0.45)] sm:h-[72px] sm:w-[72px]"
+                    style={{ transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))` }}
+                  >
+                    {/* Counter-rotate so images stay upright */}
+                    <div className="h-full w-full animate-[spin_28s_linear_infinite_reverse]">
+                      <img
+                        src={src}
+                        alt="Studio gear"
+                        loading="lazy"
+                        width={72}
+                        height={72}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-            <div className="flex-1">
-              <h3 className="text-sm font-bold text-white">Find an Engineer</h3>
-              <p className="text-[11px] text-zinc-300/80">Browse studios & book a remote session</p>
-            </div>
-            <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-semibold text-amber-200">Start</span>
-          </button>
+
+            {/* Soft glow behind CTA */}
+            <div className="pointer-events-none absolute h-40 w-40 rounded-full bg-amber-500/20 blur-3xl" />
+
+            {/* Center CTA */}
+            <button
+              type="button"
+              onClick={() => setShowSearch(true)}
+              className="group relative z-10 flex h-36 w-36 flex-col items-center justify-center gap-1 rounded-full border border-amber-500/50 bg-gradient-to-br from-amber-600/40 via-amber-700/30 to-zinc-900/90 text-center shadow-[0_8px_30px_-6px_rgba(245,158,11,0.6)] transition hover:scale-105 hover:border-amber-400/80 sm:h-40 sm:w-40"
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20 ring-1 ring-amber-400/50">
+                <Search className="h-5 w-5 text-amber-200" />
+              </div>
+              <h3 className="px-2 text-[13px] font-bold leading-tight text-white">Find an Engineer</h3>
+              <span className="rounded-full bg-amber-500/25 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-100">
+                Tap to start
+              </span>
+            </button>
+          </div>
 
           {/* Session Code Entry */}
           <div className="flex w-full max-w-sm flex-col items-center gap-3 rounded-2xl border border-zinc-700/60 bg-zinc-900/70 p-5 backdrop-blur-md">
