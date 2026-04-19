@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ChevronLeft, CalendarDays, Clock, DollarSign, Star, Hash, AlertTriangle, XCircle, CheckCircle2, ShieldAlert, Headphones } from "lucide-react";
+import { ChevronLeft, CalendarDays, Clock, DollarSign, Star, Hash, AlertTriangle, XCircle, CheckCircle2, ShieldAlert, Headphones, Share2, Copy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -321,13 +321,62 @@ const MyBookingsPage = () => {
 
               {/* Join Session button for confirmed bookings */}
               {booking.status === "confirmed" && booking.session_code && !["completed", "no_show", "disputed"].includes(booking.session_status) && (
-                <button
-                  onClick={() => navigate(`/wstudio/session/join?code=${booking.session_code}&role=artist`)}
-                  className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 rounded-xl gradient-primary text-primary-foreground text-xs font-semibold glow-primary"
-                >
-                  <Headphones className="w-4 h-4" />
-                  Join Session
-                </button>
+                <>
+                  <button
+                    onClick={() => navigate(`/wstudio/session/join?code=${booking.session_code}&role=artist`)}
+                    className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 rounded-xl gradient-primary text-primary-foreground text-xs font-semibold glow-primary"
+                  >
+                    <Headphones className="w-4 h-4" />
+                    Join Session
+                  </button>
+
+                  {/* Share / Invite featured artist */}
+                  <div className="mt-2 rounded-xl border border-primary/20 bg-primary/5 p-3">
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <Share2 className="w-3.5 h-3.5 text-primary" />
+                      <span className="text-[11px] font-semibold text-foreground">Invite a featured artist</span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mb-2">
+                      Share this link so another WHEUAT artist can join your session for a feature.
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={async () => {
+                          const url = `${window.location.origin}/wstudio/session/join?code=${booking.session_code}&role=artist`;
+                          const shareText = `🎙️ Join my W.STUDIO session on WHEUAT — code ${booking.session_code}\n${url}`;
+                          if (navigator.share) {
+                            try {
+                              await navigator.share({ title: "Join my session", text: shareText, url });
+                              return;
+                            } catch { /* fall through to copy */ }
+                          }
+                          try {
+                            await navigator.clipboard.writeText(shareText);
+                            toast.success("Invite link copied!");
+                          } catch {
+                            toast.error("Could not copy link");
+                          }
+                        }}
+                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg gradient-primary text-primary-foreground text-[11px] font-semibold"
+                      >
+                        <Share2 className="w-3 h-3" /> Share Invite
+                      </button>
+                      <button
+                        onClick={async () => {
+                          try {
+                            await navigator.clipboard.writeText(booking.session_code!);
+                            toast.success(`Code ${booking.session_code} copied`);
+                          } catch {
+                            toast.error("Could not copy code");
+                          }
+                        }}
+                        className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-border bg-card text-foreground text-[11px] font-semibold"
+                      >
+                        <Copy className="w-3 h-3" /> Copy Code
+                      </button>
+                    </div>
+                  </div>
+                </>
               )}
 
               {/* Receipt */}

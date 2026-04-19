@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Mail, Lock, Eye, EyeOff, User, Calendar, ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import wheuatLogo from "@/assets/wheuat-logo.png";
@@ -19,12 +19,14 @@ const AuthPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
+  const redirectPath = searchParams.get("redirect");
 
   // Redirect if already logged in
   useEffect(() => {
-    if (user) navigate("/", { replace: true });
-  }, [user, navigate]);
+    if (user) navigate(redirectPath || "/", { replace: true });
+  }, [user, navigate, redirectPath]);
 
   // Splash animation → welcome
   useEffect(() => {
