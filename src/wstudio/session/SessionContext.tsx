@@ -168,7 +168,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setConnection("disconnected");
       return;
     }
-    setConnection(live.artistJoined && live.engineerJoined ? "connected" : "connecting");
+    const bothJoined = live.artistJoined && live.engineerJoined;
+    setConnection(bothJoined ? "connected" : "connecting");
+    // Activate the DB session when both sides are present
+    if (bothJoined && liveSessionDbId.current) {
+      activateLiveSession(liveSessionDbId.current);
+    }
   }, [sessionId, role, live.artistJoined, live.engineerJoined]);
 
   useEffect(() => {
