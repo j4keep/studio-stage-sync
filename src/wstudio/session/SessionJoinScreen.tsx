@@ -131,16 +131,16 @@ export default function SessionJoinScreen() {
   };
 
   return (
-    <div className="relative min-h-[100dvh] overflow-y-auto bg-background text-foreground">
+    <div className="relative h-[100dvh] overflow-hidden bg-background text-foreground">
       {/* Subtle radial accent using theme primary */}
       <div
         className="pointer-events-none absolute inset-0"
         style={{ background: "radial-gradient(ellipse at top, hsl(var(--primary) / 0.18), transparent 55%)" }}
       />
 
-      <div className="relative z-10 flex min-h-[100dvh] flex-col items-center px-4 pb-8">
+      <div className="relative z-10 flex h-[100dvh] flex-col items-center px-4 pb-3">
         {/* Back Button */}
-        <div className="w-full max-w-sm pt-4">
+        <div className="w-full max-w-sm pt-3">
           <button
             onClick={() => navigate(-1)}
             className="flex items-center gap-1.5 text-foreground/90 hover:text-primary transition"
