@@ -24,13 +24,13 @@ import {
   type SessionLiveState,
 } from "./sessionLiveSync";
 import { useAuth } from "@/contexts/AuthContext";
-import type { User } from "@supabase/supabase-js";
 import {
   upsertLiveSession,
   upsertParticipant,
   markParticipantLeft,
   activateLiveSession,
   lookupBookingByCode,
+  updateParticipantMicMuted,
 } from "./sessionDb";
 
 export type Role = "artist" | "engineer" | null;
@@ -287,7 +287,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (sessionId.trim() && role) {
       writeLive(sessionId, leavePatch(role));
     }
+<<<<<<< HEAD
     liveSessionDbId.current = null;
+=======
+    if (!WSTUDIO_DEMO_MODE && sessionId.trim()) {
+      void markLiveParticipantLeft(sessionId);
+    }
+>>>>>>> 3a3673d (W.STUDIO: live session DB, session-lookup edge function, web sync, JUCE session fetch)
     setSessionId("");
     setRole(null);
     setConnection("disconnected");
@@ -308,9 +314,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setMuted((m) => {
       const next = !m;
       if (role === "artist" && sessionId.trim()) writeLive(sessionId, { artistMuted: next });
+      if (!WSTUDIO_DEMO_MODE && role === "artist" && user && liveSessionDbId.current) {
+        void updateParticipantMicMuted(liveSessionDbId.current, user.id, next);
+      }
       return next;
     });
-  }, [role, sessionId]);
+  }, [role, sessionId, user]);
 
   const toggleScreenShare = useCallback(() => {
     setScreenSharing((prev) => {

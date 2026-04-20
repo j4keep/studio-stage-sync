@@ -109,6 +109,16 @@ export async function markParticipantLeft(liveSessionId: string, userId: string)
   if (error) console.error("[sessionDb] markParticipantLeft error:", error.message);
 }
 
+export async function updateParticipantMicMuted(liveSessionId: string, userId: string, micMuted: boolean) {
+  const { error } = await supabase
+    .from("live_session_participants")
+    .update({ mic_muted: micMuted })
+    .eq("live_session_id", liveSessionId)
+    .eq("user_id", userId);
+
+  if (error) console.error("[sessionDb] updateParticipantMicMuted error:", error.message);
+}
+
 /** Upgrade session status to 'active' once both sides are present. */
 export async function activateLiveSession(liveSessionId: string) {
   const { error } = await supabase
