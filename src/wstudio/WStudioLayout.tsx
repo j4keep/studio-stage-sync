@@ -45,7 +45,7 @@ export function WStudioLayout() {
     pathname === "/wstudio/session/bridge";
 
   const shell = (
-    <div className="flex min-h-screen w-full flex-col bg-zinc-950 text-zinc-100">
+    <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
       <WStudioErrorBoundary>
         <div className="flex min-h-screen w-full min-w-0 flex-1 flex-col">
           <Outlet />
