@@ -287,13 +287,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (sessionId.trim() && role) {
       writeLive(sessionId, leavePatch(role));
     }
-<<<<<<< HEAD
     liveSessionDbId.current = null;
-=======
-    if (!WSTUDIO_DEMO_MODE && sessionId.trim()) {
-      void markLiveParticipantLeft(sessionId);
-    }
->>>>>>> 3a3673d (W.STUDIO: live session DB, session-lookup edge function, web sync, JUCE session fetch)
     setSessionId("");
     setRole(null);
     setConnection("disconnected");
