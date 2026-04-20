@@ -150,11 +150,11 @@ export default function SessionJoinScreen() {
           </button>
         </div>
 
-        <div className="flex flex-1 flex-col items-center justify-center gap-5 w-full py-4">
+        <div className="flex flex-1 flex-col items-center justify-between gap-3 w-full py-2 min-h-0">
           {/* Pro Logo Mark — matches WHEUAT branding */}
-          <div className="flex flex-col items-center gap-2 text-center">
+          <div className="flex flex-col items-center gap-1.5 text-center">
             <div
-              className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]"
+              className="inline-flex items-center gap-2 rounded-full border px-3 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em]"
               style={{
                 borderColor: "hsl(var(--primary) / 0.35)",
                 backgroundColor: "hsl(var(--primary) / 0.10)",
@@ -166,39 +166,39 @@ export default function SessionJoinScreen() {
             </div>
 
             {/* Refined logo — single-color wordmark with accent dot, like a pro brand mark */}
-            <div className="mt-1 flex items-center gap-2">
+            <div className="flex items-center gap-2">
               <div
-                className="flex h-9 w-9 items-center justify-center rounded-lg shadow-lg"
+                className="flex h-8 w-8 items-center justify-center rounded-lg shadow-lg"
                 style={{
                   background: "var(--gradient-primary)",
                   boxShadow: "var(--glow-primary)",
                 }}
               >
-                <Radio className="h-5 w-5 text-primary-foreground" strokeWidth={2.5} />
+                <Radio className="h-4 w-4 text-primary-foreground" strokeWidth={2.5} />
               </div>
-              <span className="text-3xl font-black tracking-tight text-foreground">
+              <span className="text-2xl font-black tracking-tight text-foreground">
                 W<span className="text-primary">.</span>STUDIO
               </span>
             </div>
 
-            <p className="max-w-xs text-[12px] leading-relaxed text-muted-foreground">
-              Book a vetted engineer. Drop into a live studio session from anywhere.
+            <p className="max-w-xs text-[11px] leading-snug text-muted-foreground">
+              Book a vetted engineer. Drop into a live session from anywhere.
             </p>
           </div>
 
           {/* Orbiting studio image circles around the primary CTA */}
-          <div className="relative flex h-[280px] w-[280px] items-center justify-center sm:h-[320px] sm:w-[320px]">
+          <div className="relative flex h-[230px] w-[230px] items-center justify-center shrink-0">
             {/* Rotating orbit ring */}
             <div className="absolute inset-0 animate-[spin_28s_linear_infinite]" style={{ transformOrigin: "center" }}>
               {ORBIT_IMAGES.map((src, i) => {
                 const angle = (i / ORBIT_IMAGES.length) * 2 * Math.PI;
-                const radius = 120;
+                const radius = 100;
                 const x = Math.cos(angle) * radius;
                 const y = Math.sin(angle) * radius;
                 return (
                   <div
                     key={src}
-                    className="absolute left-1/2 top-1/2 h-14 w-14 -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full border sm:h-16 sm:w-16"
+                    className="absolute left-1/2 top-1/2 h-12 w-12 -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full border"
                     style={{
                       transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`,
                       borderColor: "hsl(var(--primary) / 0.5)",
@@ -210,8 +210,8 @@ export default function SessionJoinScreen() {
                         src={src}
                         alt="Studio gear"
                         loading="lazy"
-                        width={64}
-                        height={64}
+                        width={48}
+                        height={48}
                         className="h-full w-full object-cover"
                       />
                     </div>
@@ -222,7 +222,7 @@ export default function SessionJoinScreen() {
 
             {/* Soft glow behind CTA */}
             <div
-              className="pointer-events-none absolute h-36 w-36 rounded-full blur-3xl"
+              className="pointer-events-none absolute h-28 w-28 rounded-full blur-3xl"
               style={{ backgroundColor: "hsl(var(--primary) / 0.25)" }}
             />
 
@@ -230,7 +230,7 @@ export default function SessionJoinScreen() {
             <button
               type="button"
               onClick={() => setShowSearch(true)}
-              className="group relative z-10 flex h-32 w-32 flex-col items-center justify-center gap-1 rounded-full border text-center transition hover:scale-105 sm:h-36 sm:w-36"
+              className="group relative z-10 flex h-28 w-28 flex-col items-center justify-center gap-1 rounded-full border text-center transition hover:scale-105"
               style={{
                 borderColor: "hsl(var(--primary) / 0.6)",
                 background: "linear-gradient(135deg, hsl(var(--primary) / 0.35), hsl(var(--primary) / 0.15), hsl(var(--background) / 0.9))",
@@ -238,18 +238,18 @@ export default function SessionJoinScreen() {
               }}
             >
               <div
-                className="flex h-9 w-9 items-center justify-center rounded-xl ring-1"
+                className="flex h-8 w-8 items-center justify-center rounded-xl ring-1"
                 style={{
                   backgroundColor: "hsl(var(--primary) / 0.25)",
                   // @ts-ignore CSS custom prop
                   "--tw-ring-color": "hsl(var(--primary) / 0.5)",
                 }}
               >
-                <Search className="h-5 w-5 text-primary" />
+                <Search className="h-4 w-4 text-primary" />
               </div>
-              <h3 className="px-2 text-[13px] font-bold leading-tight text-foreground">Find an Engineer</h3>
+              <h3 className="px-2 text-[12px] font-bold leading-tight text-foreground">Find an Engineer</h3>
               <span
-                className="rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider"
+                className="rounded-full px-2 py-0.5 text-[8px] font-semibold uppercase tracking-wider"
                 style={{
                   backgroundColor: "hsl(var(--primary) / 0.25)",
                   color: "hsl(var(--primary))",
