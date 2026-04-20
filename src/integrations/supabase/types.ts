@@ -466,6 +466,100 @@ export type Database = {
         }
         Relationships: []
       }
+      live_session_participants: {
+        Row: {
+          client_instance_id: string | null
+          display_name: string | null
+          id: string
+          is_live: boolean
+          joined_at: string
+          left_at: string | null
+          live_session_id: string
+          mic_muted: boolean
+          role: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          client_instance_id?: string | null
+          display_name?: string | null
+          id?: string
+          is_live?: boolean
+          joined_at?: string
+          left_at?: string | null
+          live_session_id: string
+          mic_muted?: boolean
+          role?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          client_instance_id?: string | null
+          display_name?: string | null
+          id?: string
+          is_live?: boolean
+          joined_at?: string
+          left_at?: string | null
+          live_session_id?: string
+          mic_muted?: boolean
+          role?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_session_participants_live_session_id_fkey"
+            columns: ["live_session_id"]
+            isOneToOne: false
+            referencedRelation: "live_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      live_sessions: {
+        Row: {
+          booking_id: string | null
+          created_at: string
+          created_by: string
+          ended_at: string | null
+          id: string
+          session_code: string
+          started_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          booking_id?: string | null
+          created_at?: string
+          created_by: string
+          ended_at?: string | null
+          id?: string
+          session_code: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          booking_id?: string | null
+          created_at?: string
+          created_by?: string
+          ended_at?: string | null
+          id?: string
+          session_code?: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_sessions_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "studio_bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string | null
