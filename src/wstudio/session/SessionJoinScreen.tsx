@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Search, KeyRound, Headphones, Mic2, ChevronLeft, Sparkles } from "lucide-react";
+import { Search, KeyRound, Headphones, Mic2, ChevronLeft, Sparkles, Radio } from "lucide-react";
 import { useSession } from "./SessionContext";
 import { StudioSearchSheet } from "./StudioSearchSheet";
 import {
