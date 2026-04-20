@@ -133,7 +133,7 @@ export default function SessionJoinScreen() {
   };
 
   return (
-    <div className="relative overflow-hidden bg-background text-foreground" style={{ height: JOIN_SCREEN_HEIGHT }}>
+    <div className="relative overflow-hidden overscroll-none bg-background text-foreground" style={{ height: JOIN_SCREEN_HEIGHT }}>
       {/* Subtle radial accent using theme primary */}
       <div
         className="pointer-events-none absolute inset-0"

@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import BottomNav from "./BottomNav";
 import GlobalRadioPlayer from "./GlobalRadioPlayer";
@@ -18,8 +18,27 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   const { isPro, requirePro, showProModal, gatedFeature, closeProModal, activatePro } = useProGate();
   const isStudioPage =
     location.pathname.startsWith("/wstudio") || location.pathname === "/ai-studio";
+  const isWStudioJoinPage = location.pathname === "/wstudio/session/join";
   const isFullScreenPage = ["/feed"].includes(location.pathname);
   const showTopBar = !isStudioPage && !["/auth", "/feed", "/ai-studio"].includes(location.pathname);
+
+  useEffect(() => {
+    if (!isWStudioJoinPage) return;
+
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousBodyOverscroll = document.body.style.overscrollBehavior;
+
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    document.body.style.overscrollBehavior = "none";
+
+    return () => {
+      document.documentElement.style.overflow = previousHtmlOverflow;
+      document.body.style.overflow = previousBodyOverflow;
+      document.body.style.overscrollBehavior = previousBodyOverscroll;
+    };
+  }, [isWStudioJoinPage]);
 
   const handleAskJhi = () => {
     if (!isPro) {
@@ -43,7 +62,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
 
   // W.Studio pages get full width (no max-w-lg) so DAW fills the screen
   const containerClass = isStudioPage
-    ? "min-h-screen bg-background text-foreground relative"
+    ? `bg-background text-foreground relative ${isWStudioJoinPage ? "h-dvh overflow-hidden" : "min-h-screen"}`
     : "min-h-screen bg-background text-foreground max-w-lg mx-auto relative";
 
   return (
@@ -65,7 +84,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
           <NotificationBell />
         </div>
       )}
-      <main className={isStudioPage ? "wstudio-main" : "pb-20"}>{children}</main>
+      <main className={isStudioPage ? `wstudio-main ${isWStudioJoinPage ? "h-full overflow-hidden" : ""}` : "pb-20"}>{children}</main>
       <GlobalRadioPlayer />
       <GlobalPlaylistPlayer />
       <PlaylistPlayerSheet />
