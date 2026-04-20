@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Search, KeyRound, Headphones, Mic2, ChevronLeft, Sparkles } from "lucide-react";
+import { Search, KeyRound, Headphones, Mic2, ChevronLeft, Sparkles, Radio } from "lucide-react";
 import { useSession } from "./SessionContext";
 import { StudioSearchSheet } from "./StudioSearchSheet";
 import {
@@ -131,63 +131,87 @@ export default function SessionJoinScreen() {
   };
 
   return (
-    <div className="relative min-h-[100dvh] overflow-hidden bg-black text-zinc-100">
-      {/* Subtle radial accent */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(245,158,11,0.12),transparent_55%)]" />
+    <div className="relative min-h-[100dvh] overflow-y-auto bg-background text-foreground">
+      {/* Subtle radial accent using theme primary */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{ background: "radial-gradient(ellipse at top, hsl(var(--primary) / 0.18), transparent 55%)" }}
+      />
 
-      <div className="relative z-10 flex min-h-[100dvh] flex-col items-center px-4 pb-10">
+      <div className="relative z-10 flex min-h-[100dvh] flex-col items-center px-4 pb-8">
         {/* Back Button */}
         <div className="w-full max-w-sm pt-4">
           <button
             onClick={() => navigate(-1)}
-            className="flex items-center gap-1.5 text-white/90 hover:text-amber-300 transition"
+            className="flex items-center gap-1.5 text-foreground/90 hover:text-primary transition"
           >
             <ChevronLeft className="h-5 w-5" />
             <span className="text-sm font-semibold">Back</span>
           </button>
         </div>
 
-        <div className="flex flex-1 flex-col items-center justify-center gap-6 w-full">
-          {/* Logo / Hero */}
+        <div className="flex flex-1 flex-col items-center justify-center gap-5 w-full py-4">
+          {/* Pro Logo Mark — matches WHEUAT branding */}
           <div className="flex flex-col items-center gap-2 text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-200">
+            <div
+              className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]"
+              style={{
+                borderColor: "hsl(var(--primary) / 0.35)",
+                backgroundColor: "hsl(var(--primary) / 0.10)",
+                color: "hsl(var(--primary))",
+              }}
+            >
               <Sparkles className="h-3 w-3" />
               Remote Recording
             </div>
-            <span className="mt-1 text-3xl font-black tracking-tight text-white drop-shadow">
-              W.<span className="text-amber-300">STUDIO</span>
-            </span>
-            <p className="max-w-xs text-[12px] leading-relaxed text-zinc-300/80">
+
+            {/* Refined logo — single-color wordmark with accent dot, like a pro brand mark */}
+            <div className="mt-1 flex items-center gap-2">
+              <div
+                className="flex h-9 w-9 items-center justify-center rounded-lg shadow-lg"
+                style={{
+                  background: "var(--gradient-primary)",
+                  boxShadow: "var(--glow-primary)",
+                }}
+              >
+                <Radio className="h-5 w-5 text-primary-foreground" strokeWidth={2.5} />
+              </div>
+              <span className="text-3xl font-black tracking-tight text-foreground">
+                W<span className="text-primary">.</span>STUDIO
+              </span>
+            </div>
+
+            <p className="max-w-xs text-[12px] leading-relaxed text-muted-foreground">
               Book a vetted engineer. Drop into a live studio session from anywhere.
             </p>
           </div>
 
           {/* Orbiting studio image circles around the primary CTA */}
-          <div className="relative my-2 flex h-[300px] w-[300px] items-center justify-center sm:h-[340px] sm:w-[340px]">
+          <div className="relative flex h-[280px] w-[280px] items-center justify-center sm:h-[320px] sm:w-[320px]">
             {/* Rotating orbit ring */}
-            <div
-              className="absolute inset-0 animate-[spin_28s_linear_infinite]"
-              style={{ transformOrigin: "center" }}
-            >
+            <div className="absolute inset-0 animate-[spin_28s_linear_infinite]" style={{ transformOrigin: "center" }}>
               {ORBIT_IMAGES.map((src, i) => {
                 const angle = (i / ORBIT_IMAGES.length) * 2 * Math.PI;
-                const radius = 130; // px from center
+                const radius = 120;
                 const x = Math.cos(angle) * radius;
                 const y = Math.sin(angle) * radius;
                 return (
                   <div
                     key={src}
-                    className="absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full border border-amber-400/40 shadow-[0_4px_20px_-4px_rgba(245,158,11,0.45)] sm:h-[72px] sm:w-[72px]"
-                    style={{ transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))` }}
+                    className="absolute left-1/2 top-1/2 h-14 w-14 -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full border sm:h-16 sm:w-16"
+                    style={{
+                      transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`,
+                      borderColor: "hsl(var(--primary) / 0.5)",
+                      boxShadow: "0 4px 20px -4px hsl(var(--primary) / 0.45)",
+                    }}
                   >
-                    {/* Counter-rotate so images stay upright */}
                     <div className="h-full w-full animate-[spin_28s_linear_infinite_reverse]">
                       <img
                         src={src}
                         alt="Studio gear"
                         loading="lazy"
-                        width={72}
-                        height={72}
+                        width={64}
+                        height={64}
                         className="h-full w-full object-cover"
                       />
                     </div>
@@ -197,68 +221,96 @@ export default function SessionJoinScreen() {
             </div>
 
             {/* Soft glow behind CTA */}
-            <div className="pointer-events-none absolute h-40 w-40 rounded-full bg-amber-500/20 blur-3xl" />
+            <div
+              className="pointer-events-none absolute h-36 w-36 rounded-full blur-3xl"
+              style={{ backgroundColor: "hsl(var(--primary) / 0.25)" }}
+            />
 
             {/* Center CTA */}
             <button
               type="button"
               onClick={() => setShowSearch(true)}
-              className="group relative z-10 flex h-36 w-36 flex-col items-center justify-center gap-1 rounded-full border border-amber-500/50 bg-gradient-to-br from-amber-600/40 via-amber-700/30 to-zinc-900/90 text-center shadow-[0_8px_30px_-6px_rgba(245,158,11,0.6)] transition hover:scale-105 hover:border-amber-400/80 sm:h-40 sm:w-40"
+              className="group relative z-10 flex h-32 w-32 flex-col items-center justify-center gap-1 rounded-full border text-center transition hover:scale-105 sm:h-36 sm:w-36"
+              style={{
+                borderColor: "hsl(var(--primary) / 0.6)",
+                background: "linear-gradient(135deg, hsl(var(--primary) / 0.35), hsl(var(--primary) / 0.15), hsl(var(--background) / 0.9))",
+                boxShadow: "0 8px 30px -6px hsl(var(--primary) / 0.6)",
+              }}
             >
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20 ring-1 ring-amber-400/50">
-                <Search className="h-5 w-5 text-amber-200" />
+              <div
+                className="flex h-9 w-9 items-center justify-center rounded-xl ring-1"
+                style={{
+                  backgroundColor: "hsl(var(--primary) / 0.25)",
+                  // @ts-ignore CSS custom prop
+                  "--tw-ring-color": "hsl(var(--primary) / 0.5)",
+                }}
+              >
+                <Search className="h-5 w-5 text-primary" />
               </div>
-              <h3 className="px-2 text-[13px] font-bold leading-tight text-white">Find an Engineer</h3>
-              <span className="rounded-full bg-amber-500/25 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-100">
+              <h3 className="px-2 text-[13px] font-bold leading-tight text-foreground">Find an Engineer</h3>
+              <span
+                className="rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider"
+                style={{
+                  backgroundColor: "hsl(var(--primary) / 0.25)",
+                  color: "hsl(var(--primary))",
+                }}
+              >
                 Tap to start
               </span>
             </button>
           </div>
 
           {/* Session Code Entry */}
-          <div className="flex w-full max-w-sm flex-col items-center gap-3 rounded-2xl border border-zinc-700/60 bg-zinc-900/70 p-5 backdrop-blur-md">
-            <div className="flex items-center gap-2 text-amber-300">
+          <div
+            className="flex w-full max-w-sm flex-col items-center gap-3 rounded-2xl border p-4 backdrop-blur-md"
+            style={{
+              borderColor: "hsl(var(--border))",
+              backgroundColor: "hsl(var(--card) / 0.7)",
+            }}
+          >
+            <div className="flex items-center gap-2 text-primary">
               <KeyRound className="h-4 w-4" />
               <span className="text-xs font-semibold uppercase tracking-wide">Have a Session Code?</span>
             </div>
-            <p className="text-center text-[11px] text-zinc-400">
+            <p className="text-center text-[11px] text-muted-foreground">
               Enter your 6-digit code from your engineer or a featured artist invite.
             </p>
             <InputOTP maxLength={6} value={sessionCode} onChange={setSessionCode}>
               <InputOTPGroup>
-                <InputOTPSlot index={0} className="border-zinc-700 bg-zinc-950 text-white" />
-                <InputOTPSlot index={1} className="border-zinc-700 bg-zinc-950 text-white" />
-                <InputOTPSlot index={2} className="border-zinc-700 bg-zinc-950 text-white" />
-                <InputOTPSlot index={3} className="border-zinc-700 bg-zinc-950 text-white" />
-                <InputOTPSlot index={4} className="border-zinc-700 bg-zinc-950 text-white" />
-                <InputOTPSlot index={5} className="border-zinc-700 bg-zinc-950 text-white" />
+                {[0, 1, 2, 3, 4, 5].map((i) => (
+                  <InputOTPSlot key={i} index={i} className="border-border bg-background text-foreground" />
+                ))}
               </InputOTPGroup>
             </InputOTP>
             <button
               onClick={handleCodeJoin}
               disabled={sessionCode.length < 6 || joining}
-              className="w-full rounded-xl border border-amber-600/40 bg-gradient-to-b from-amber-700/90 to-amber-950 py-2.5 text-sm font-semibold text-white shadow-lg shadow-amber-950/40 transition hover:from-amber-600 hover:to-amber-900 disabled:cursor-not-allowed disabled:opacity-40"
+              className="w-full rounded-xl py-2.5 text-sm font-semibold text-primary-foreground shadow-lg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+              style={{
+                background: "var(--gradient-primary)",
+                boxShadow: "var(--glow-primary)",
+              }}
             >
               {joining ? "Joining..." : "Join Session"}
             </button>
           </div>
 
           {/* Role Buttons */}
-          <div className="flex w-full max-w-sm flex-col gap-2">
-            <p className="text-center text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
+          <div className="flex w-full max-w-sm flex-col gap-2 pb-4">
+            <p className="text-center text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
               Or join directly
             </p>
             <div className="flex gap-2">
               <button
                 onClick={() => handleJoin("engineer")}
-                className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-zinc-700/70 bg-zinc-900/70 px-4 py-3 text-sm font-semibold text-zinc-200 backdrop-blur hover:bg-zinc-800/80"
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-card/70 px-4 py-3 text-sm font-semibold text-foreground backdrop-blur hover:bg-card transition"
               >
                 <Headphones className="h-4 w-4" />
                 Engineer
               </button>
               <button
                 onClick={() => handleJoin("artist")}
-                className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-zinc-700/70 bg-zinc-900/70 px-4 py-3 text-sm font-semibold text-zinc-200 backdrop-blur hover:bg-zinc-800/80"
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-card/70 px-4 py-3 text-sm font-semibold text-foreground backdrop-blur hover:bg-card transition"
               >
                 <Mic2 className="h-4 w-4" />
                 Artist
