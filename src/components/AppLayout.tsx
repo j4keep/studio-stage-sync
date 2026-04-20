@@ -19,7 +19,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   const isStudioPage =
     location.pathname.startsWith("/wstudio") || location.pathname === "/ai-studio";
   const isFullScreenPage = ["/feed"].includes(location.pathname);
-  const showTopBar = !["/auth", "/feed", "/ai-studio"].includes(location.pathname);
+  const showTopBar = !isStudioPage && !["/auth", "/feed", "/ai-studio"].includes(location.pathname);
 
   const handleAskJhi = () => {
     if (!isPro) {
