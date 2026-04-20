@@ -215,6 +215,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const persistJoin = useCallback(async (sessionCode: string, joinRole: "engineer" | "artist", displayName?: string) => {
+    if (WSTUDIO_DEMO_MODE || !user) return;
+    const bookingId = await lookupBookingByCode(sessionCode);
+    const dbId = await upsertLiveSession(sessionCode, user.id, bookingId);
+    if (!dbId) return;
+    liveSessionDbId.current = dbId;
+    await upsertParticipant(dbId, user.id, joinRole, displayName);
+  }, [user]);
+
   const joinAsArtist = useCallback(
     (overrideSessionId?: string) => {
       const id = overrideSessionId?.trim() || sessionId.trim() || generateMockSessionId();
@@ -237,8 +246,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       queueMicrotask(() => {
         if (id.trim()) writeLive(id, { remoteArtistLabel: label || "Remote artist" });
       });
+      // Persist to DB
+      persistJoin(id, "artist", label || "Remote artist");
     },
-    [sessionId, user],
+    [sessionId, user, persistJoin],
   );
 
   const joinAsEngineer = useCallback((overrideSessionId?: string) => {
