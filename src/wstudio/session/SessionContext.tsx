@@ -25,6 +25,13 @@ import {
 } from "./sessionLiveSync";
 import { useAuth } from "@/contexts/AuthContext";
 import type { User } from "@supabase/supabase-js";
+import {
+  upsertLiveSession,
+  upsertParticipant,
+  markParticipantLeft,
+  activateLiveSession,
+  lookupBookingByCode,
+} from "./sessionDb";
 
 export type Role = "artist" | "engineer" | null;
 
@@ -129,6 +136,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [screenSharing, setScreenSharing] = useState(false);
   const [live, setLive] = useState<SessionLiveState>(defaultLiveState());
   const latencyRef = useRef(26);
+  /** Tracks the live_sessions row id so leave can reference it */
+  const liveSessionDbId = useRef<string | null>(null);
 
   const [demoClock, setDemoClock] = useState<DemoClock>({
     totalMinutes: DEMO_TIMER_MINUTES,
@@ -159,7 +168,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setConnection("disconnected");
       return;
     }
-    setConnection(live.artistJoined && live.engineerJoined ? "connected" : "connecting");
+    const bothJoined = live.artistJoined && live.engineerJoined;
+    setConnection(bothJoined ? "connected" : "connecting");
+    // Activate the DB session when both sides are present
+    if (bothJoined && liveSessionDbId.current) {
+      activateLiveSession(liveSessionDbId.current);
+    }
   }, [sessionId, role, live.artistJoined, live.engineerJoined]);
 
   useEffect(() => {
@@ -206,6 +220,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const persistJoin = useCallback(async (sessionCode: string, joinRole: "engineer" | "artist", displayName?: string) => {
+    if (WSTUDIO_DEMO_MODE || !user) return;
+    const bookingId = await lookupBookingByCode(sessionCode);
+    const dbId = await upsertLiveSession(sessionCode, user.id, bookingId);
+    if (!dbId) return;
+    liveSessionDbId.current = dbId;
+    await upsertParticipant(dbId, user.id, joinRole, displayName);
+  }, [user]);
+
   const joinAsArtist = useCallback(
     (overrideSessionId?: string) => {
       const id = overrideSessionId?.trim() || sessionId.trim() || generateMockSessionId();
@@ -228,8 +251,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       queueMicrotask(() => {
         if (id.trim()) writeLive(id, { remoteArtistLabel: label || "Remote artist" });
       });
+      // Persist to DB
+      persistJoin(id, "artist", label || "Remote artist");
     },
-    [sessionId, user],
+    [sessionId, user, persistJoin],
   );
 
   const joinAsEngineer = useCallback((overrideSessionId?: string) => {
@@ -249,12 +274,20 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     } else {
       setConnection("connecting");
     }
-  }, [sessionId]);
+    // Persist to DB
+    const displayName = user?.email?.split("@")[0] ?? "Engineer";
+    persistJoin(id, "engineer", displayName);
+  }, [sessionId, user, persistJoin]);
 
   const leaveSession = useCallback(() => {
+    // Mark participant as left in DB before clearing local state
+    if (!WSTUDIO_DEMO_MODE && user && liveSessionDbId.current) {
+      markParticipantLeft(liveSessionDbId.current, user.id);
+    }
     if (sessionId.trim() && role) {
       writeLive(sessionId, leavePatch(role));
     }
+    liveSessionDbId.current = null;
     setSessionId("");
     setRole(null);
     setConnection("disconnected");
@@ -269,7 +302,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       running: false,
       phase: "scheduled",
     });
-  }, [role, sessionId]);
+  }, [role, sessionId, user]);
 
   const toggleMute = useCallback(() => {
     setMuted((m) => {
