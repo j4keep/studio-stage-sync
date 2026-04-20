@@ -269,12 +269,20 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     } else {
       setConnection("connecting");
     }
-  }, [sessionId]);
+    // Persist to DB
+    const displayName = user?.email?.split("@")[0] ?? "Engineer";
+    persistJoin(id, "engineer", displayName);
+  }, [sessionId, user, persistJoin]);
 
   const leaveSession = useCallback(() => {
+    // Mark participant as left in DB before clearing local state
+    if (!WSTUDIO_DEMO_MODE && user && liveSessionDbId.current) {
+      markParticipantLeft(liveSessionDbId.current, user.id);
+    }
     if (sessionId.trim() && role) {
       writeLive(sessionId, leavePatch(role));
     }
+    liveSessionDbId.current = null;
     setSessionId("");
     setRole(null);
     setConnection("disconnected");
