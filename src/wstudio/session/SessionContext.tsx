@@ -136,6 +136,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [screenSharing, setScreenSharing] = useState(false);
   const [live, setLive] = useState<SessionLiveState>(defaultLiveState());
   const latencyRef = useRef(26);
+  /** Tracks the live_sessions row id so leave can reference it */
+  const liveSessionDbId = useRef<string | null>(null);
 
   const [demoClock, setDemoClock] = useState<DemoClock>({
     totalMinutes: DEMO_TIMER_MINUTES,
