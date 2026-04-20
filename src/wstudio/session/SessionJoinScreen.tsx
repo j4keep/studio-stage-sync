@@ -262,30 +262,27 @@ export default function SessionJoinScreen() {
 
           {/* Session Code Entry */}
           <div
-            className="flex w-full max-w-sm flex-col items-center gap-3 rounded-2xl border p-4 backdrop-blur-md"
+            className="flex w-full max-w-sm flex-col items-center gap-2 rounded-2xl border p-3 backdrop-blur-md"
             style={{
               borderColor: "hsl(var(--border))",
               backgroundColor: "hsl(var(--card) / 0.7)",
             }}
           >
             <div className="flex items-center gap-2 text-primary">
-              <KeyRound className="h-4 w-4" />
-              <span className="text-xs font-semibold uppercase tracking-wide">Have a Session Code?</span>
+              <KeyRound className="h-3.5 w-3.5" />
+              <span className="text-[11px] font-semibold uppercase tracking-wide">Have a Session Code?</span>
             </div>
-            <p className="text-center text-[11px] text-muted-foreground">
-              Enter your 6-digit code from your engineer or a featured artist invite.
-            </p>
             <InputOTP maxLength={6} value={sessionCode} onChange={setSessionCode}>
               <InputOTPGroup>
                 {[0, 1, 2, 3, 4, 5].map((i) => (
-                  <InputOTPSlot key={i} index={i} className="border-border bg-background text-foreground" />
+                  <InputOTPSlot key={i} index={i} className="border-border bg-background text-foreground h-9 w-9" />
                 ))}
               </InputOTPGroup>
             </InputOTP>
             <button
               onClick={handleCodeJoin}
               disabled={sessionCode.length < 6 || joining}
-              className="w-full rounded-xl py-2.5 text-sm font-semibold text-primary-foreground shadow-lg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+              className="w-full rounded-xl py-2 text-sm font-semibold text-primary-foreground shadow-lg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
               style={{
                 background: "var(--gradient-primary)",
                 boxShadow: "var(--glow-primary)",
@@ -296,21 +293,21 @@ export default function SessionJoinScreen() {
           </div>
 
           {/* Role Buttons */}
-          <div className="flex w-full max-w-sm flex-col gap-2 pb-4">
+          <div className="flex w-full max-w-sm flex-col gap-1.5">
             <p className="text-center text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
               Or join directly
             </p>
             <div className="flex gap-2">
               <button
                 onClick={() => handleJoin("engineer")}
-                className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-card/70 px-4 py-3 text-sm font-semibold text-foreground backdrop-blur hover:bg-card transition"
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-card/70 px-4 py-2.5 text-sm font-semibold text-foreground backdrop-blur hover:bg-card transition"
               >
                 <Headphones className="h-4 w-4" />
                 Engineer
               </button>
               <button
                 onClick={() => handleJoin("artist")}
-                className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-card/70 px-4 py-3 text-sm font-semibold text-foreground backdrop-blur hover:bg-card transition"
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-card/70 px-4 py-2.5 text-sm font-semibold text-foreground backdrop-blur hover:bg-card transition"
               >
                 <Mic2 className="h-4 w-4" />
                 Artist
