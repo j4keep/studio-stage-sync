@@ -25,6 +25,13 @@ import {
 } from "./sessionLiveSync";
 import { useAuth } from "@/contexts/AuthContext";
 import type { User } from "@supabase/supabase-js";
+import {
+  upsertLiveSession,
+  upsertParticipant,
+  markParticipantLeft,
+  activateLiveSession,
+  lookupBookingByCode,
+} from "./sessionDb";
 
 export type Role = "artist" | "engineer" | null;
 
