@@ -19,7 +19,8 @@ import orbitVocalist from "@/assets/wstudio-orbit-vocalist.jpg";
 import orbitFaders from "@/assets/wstudio-orbit-faders.jpg";
 
 const ORBIT_IMAGES = [orbitMixer, orbitMic, orbitHeadphones, orbitControl, orbitVocalist, orbitFaders];
-const JOIN_SCREEN_HEIGHT = "calc(100dvh - 5.5rem - env(safe-area-inset-bottom, 0px))";
+// Reserve room for the fixed bottom nav (~64px tall) so role buttons sit just above it with no gap.
+const JOIN_SCREEN_HEIGHT = "calc(100dvh - 64px - env(safe-area-inset-bottom, 0px))";
 
 export default function SessionJoinScreen() {
   const navigate = useNavigate();
