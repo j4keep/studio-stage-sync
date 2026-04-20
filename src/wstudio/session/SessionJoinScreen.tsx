@@ -19,6 +19,7 @@ import orbitVocalist from "@/assets/wstudio-orbit-vocalist.jpg";
 import orbitFaders from "@/assets/wstudio-orbit-faders.jpg";
 
 const ORBIT_IMAGES = [orbitMixer, orbitMic, orbitHeadphones, orbitControl, orbitVocalist, orbitFaders];
+const JOIN_SCREEN_HEIGHT = "calc(100dvh - 5.5rem - env(safe-area-inset-bottom, 0px))";
 
 export default function SessionJoinScreen() {
   const navigate = useNavigate();
@@ -131,16 +132,16 @@ export default function SessionJoinScreen() {
   };
 
   return (
-    <div className="relative h-[100dvh] overflow-hidden bg-background text-foreground">
+    <div className="relative overflow-hidden bg-background text-foreground" style={{ height: JOIN_SCREEN_HEIGHT }}>
       {/* Subtle radial accent using theme primary */}
       <div
         className="pointer-events-none absolute inset-0"
         style={{ background: "radial-gradient(ellipse at top, hsl(var(--primary) / 0.18), transparent 55%)" }}
       />
 
-      <div className="relative z-10 flex h-[100dvh] flex-col items-center px-4 pb-3">
+      <div className="relative z-10 flex h-full flex-col items-center px-4 pb-2">
         {/* Back Button */}
-        <div className="w-full max-w-sm pt-3">
+        <div className="w-full max-w-sm pt-2">
           <button
             onClick={() => navigate(-1)}
             className="flex items-center gap-1.5 text-foreground/90 hover:text-primary transition"
@@ -150,9 +151,9 @@ export default function SessionJoinScreen() {
           </button>
         </div>
 
-        <div className="flex flex-1 flex-col items-center justify-between gap-3 w-full py-2 min-h-0">
+        <div className="flex w-full min-h-0 flex-1 flex-col items-center justify-between gap-2 py-1.5">
           {/* Pro Logo Mark — matches WHEUAT branding */}
-          <div className="flex flex-col items-center gap-1.5 text-center">
+          <div className="flex flex-col items-center gap-1 text-center">
             <div
               className="inline-flex items-center gap-2 rounded-full border px-3 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em]"
               style={{
@@ -168,37 +169,37 @@ export default function SessionJoinScreen() {
             {/* Refined logo — single-color wordmark with accent dot, like a pro brand mark */}
             <div className="flex items-center gap-2">
               <div
-                className="flex h-8 w-8 items-center justify-center rounded-lg shadow-lg"
+                className="flex h-7 w-7 items-center justify-center rounded-lg shadow-lg"
                 style={{
                   background: "var(--gradient-primary)",
                   boxShadow: "var(--glow-primary)",
                 }}
               >
-                <Radio className="h-4 w-4 text-primary-foreground" strokeWidth={2.5} />
+                <Radio className="h-3.5 w-3.5 text-primary-foreground" strokeWidth={2.5} />
               </div>
-              <span className="text-2xl font-black tracking-tight text-foreground">
+              <span className="text-[1.65rem] font-black tracking-tight text-foreground">
                 W<span className="text-primary">.</span>STUDIO
               </span>
             </div>
 
-            <p className="max-w-xs text-[11px] leading-snug text-muted-foreground">
+            <p className="max-w-xs text-[10px] leading-snug text-muted-foreground">
               Book a vetted engineer. Drop into a live session from anywhere.
             </p>
           </div>
 
           {/* Orbiting studio image circles around the primary CTA */}
-          <div className="relative flex h-[230px] w-[230px] items-center justify-center shrink-0">
+          <div className="relative flex h-[208px] w-[208px] shrink-0 items-center justify-center">
             {/* Rotating orbit ring */}
             <div className="absolute inset-0 animate-[spin_28s_linear_infinite]" style={{ transformOrigin: "center" }}>
               {ORBIT_IMAGES.map((src, i) => {
                 const angle = (i / ORBIT_IMAGES.length) * 2 * Math.PI;
-                const radius = 100;
+                const radius = 90;
                 const x = Math.cos(angle) * radius;
                 const y = Math.sin(angle) * radius;
                 return (
                   <div
                     key={src}
-                    className="absolute left-1/2 top-1/2 h-12 w-12 -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full border"
+                    className="absolute left-1/2 top-1/2 h-11 w-11 -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full border"
                     style={{
                       transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`,
                       borderColor: "hsl(var(--primary) / 0.5)",
@@ -210,8 +211,8 @@ export default function SessionJoinScreen() {
                         src={src}
                         alt="Studio gear"
                         loading="lazy"
-                        width={48}
-                        height={48}
+                        width={44}
+                        height={44}
                         className="h-full w-full object-cover"
                       />
                     </div>
@@ -222,7 +223,7 @@ export default function SessionJoinScreen() {
 
             {/* Soft glow behind CTA */}
             <div
-              className="pointer-events-none absolute h-28 w-28 rounded-full blur-3xl"
+              className="pointer-events-none absolute h-24 w-24 rounded-full blur-3xl"
               style={{ backgroundColor: "hsl(var(--primary) / 0.25)" }}
             />
 
@@ -230,7 +231,7 @@ export default function SessionJoinScreen() {
             <button
               type="button"
               onClick={() => setShowSearch(true)}
-              className="group relative z-10 flex h-28 w-28 flex-col items-center justify-center gap-1 rounded-full border text-center transition hover:scale-105"
+              className="group relative z-10 flex h-24 w-24 flex-col items-center justify-center gap-1 rounded-full border text-center transition hover:scale-105"
               style={{
                 borderColor: "hsl(var(--primary) / 0.6)",
                 background: "linear-gradient(135deg, hsl(var(--primary) / 0.35), hsl(var(--primary) / 0.15), hsl(var(--background) / 0.9))",
@@ -238,14 +239,14 @@ export default function SessionJoinScreen() {
               }}
             >
               <div
-                className="flex h-8 w-8 items-center justify-center rounded-xl ring-1"
+                className="flex h-7 w-7 items-center justify-center rounded-xl ring-1"
                 style={{
                   backgroundColor: "hsl(var(--primary) / 0.25)",
                   // @ts-ignore CSS custom prop
                   "--tw-ring-color": "hsl(var(--primary) / 0.5)",
                 }}
               >
-                <Search className="h-4 w-4 text-primary" />
+                <Search className="h-3.5 w-3.5 text-primary" />
               </div>
               <h3 className="px-2 text-[12px] font-bold leading-tight text-foreground">Find an Engineer</h3>
               <span
@@ -262,7 +263,7 @@ export default function SessionJoinScreen() {
 
           {/* Session Code Entry */}
           <div
-            className="flex w-full max-w-sm flex-col items-center gap-2 rounded-2xl border p-3 backdrop-blur-md"
+            className="flex w-full max-w-sm flex-col items-center gap-1.5 rounded-2xl border p-2.5 backdrop-blur-md"
             style={{
               borderColor: "hsl(var(--border))",
               backgroundColor: "hsl(var(--card) / 0.7)",
@@ -275,7 +276,7 @@ export default function SessionJoinScreen() {
             <InputOTP maxLength={6} value={sessionCode} onChange={setSessionCode}>
               <InputOTPGroup>
                 {[0, 1, 2, 3, 4, 5].map((i) => (
-                  <InputOTPSlot key={i} index={i} className="border-border bg-background text-foreground h-9 w-9" />
+                  <InputOTPSlot key={i} index={i} className="h-8 w-8 border-border bg-background text-foreground" />
                 ))}
               </InputOTPGroup>
             </InputOTP>
@@ -293,21 +294,21 @@ export default function SessionJoinScreen() {
           </div>
 
           {/* Role Buttons */}
-          <div className="flex w-full max-w-sm flex-col gap-1.5">
+          <div className="flex w-full max-w-sm flex-col gap-1">
             <p className="text-center text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
               Or join directly
             </p>
             <div className="flex gap-2">
               <button
                 onClick={() => handleJoin("engineer")}
-                className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-card/70 px-4 py-2.5 text-sm font-semibold text-foreground backdrop-blur hover:bg-card transition"
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-card/70 px-4 py-2 text-sm font-semibold text-foreground backdrop-blur transition hover:bg-card"
               >
                 <Headphones className="h-4 w-4" />
                 Engineer
               </button>
               <button
                 onClick={() => handleJoin("artist")}
-                className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-card/70 px-4 py-2.5 text-sm font-semibold text-foreground backdrop-blur hover:bg-card transition"
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-card/70 px-4 py-2 text-sm font-semibold text-foreground backdrop-blur transition hover:bg-card"
               >
                 <Mic2 className="h-4 w-4" />
                 Artist
