@@ -302,7 +302,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       running: false,
       phase: "scheduled",
     });
-  }, [role, sessionId]);
+  }, [role, sessionId, user]);
 
   const toggleMute = useCallback(() => {
     setMuted((m) => {
