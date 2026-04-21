@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBridgeOutputDevice } from "../bridge/useBridgeOutputDevice";
+import { copyAccessTokenForPlugin } from "../lib/copyPluginAccessToken";
 
 const canScreenShare = typeof navigator !== "undefined" && !!navigator.mediaDevices?.getDisplayMedia;
 
@@ -714,6 +715,19 @@ export default function UnifiedSessionScreen() {
             <span style={{ color: C.label, fontSize: isMobile ? 10 : 12, fontWeight: 300, letterSpacing: "0.1em", paddingBottom: 2 }}>RECEIVE</span>
           </div>
           <div className="flex items-center gap-3" style={{ color: C.label }}>
+            {isEngineer && (
+              <button
+                type="button"
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  void copyAccessTokenForPlugin();
+                }}
+                className="rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide hover:bg-white/10 hover:text-white"
+                title="Copy Supabase access token for the W.Studio DAW plugin (SYNC)"
+              >
+                DAW token
+              </button>
+            )}
             {!isMobile && (
               <button onPointerDown={(e) => { e.preventDefault(); toggleFullscreen(); }} className="hover:text-white" title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}>
                 {isFullscreen ? "⊡" : "⛶"}

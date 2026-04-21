@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local clutter / mistaken Projucer output (see native/wstudio-plugin/README.md)
+Screenshot*.png
+**/WStudioPlungin/
+
+# Supabase CLI local artifacts
+supabase/.temp/

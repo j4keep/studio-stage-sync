@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Search, KeyRound, Headphones, Mic2, ChevronLeft, Sparkles, Radio } from "lucide-react";
+import { Search, KeyRound, Headphones, Mic2, ChevronLeft, Sparkles, Radio, Copy } from "lucide-react";
 import { useSession } from "./SessionContext";
 import { StudioSearchSheet } from "./StudioSearchSheet";
 import {
@@ -291,6 +291,14 @@ export default function SessionJoinScreen() {
               }}
             >
               {joining ? "Joining..." : "Join Session"}
+            </button>
+            <button
+              type="button"
+              onClick={() => void copyAccessTokenForPlugin()}
+              className="flex w-full items-center justify-center gap-2 rounded-lg border border-border/80 py-1.5 text-[11px] font-medium text-muted-foreground transition hover:bg-muted/40 hover:text-foreground"
+            >
+              <Copy className="h-3.5 w-3.5 shrink-0" />
+              Copy access token for DAW plugin
             </button>
           </div>
 
