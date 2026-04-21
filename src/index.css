@@ -68,7 +68,9 @@
     --wstudio-label: 220 7% 71%;
     --wstudio-dim: 220 7% 48%;
     --wstudio-metal: 0 0% 72%;
-    --wstudio-blue: 210 95% 58%;
+    /* Match native W.Studio plugin accents (#2ee0d8 main, #4dc4f5 mic) */
+    --wstudio-blue: 176 74% 53%;
+    --wstudio-mic: 197 89% 63%;
     --wstudio-green: 97 78% 57%;
     --wstudio-yellow: 45 95% 59%;
     --wstudio-red: 3 90% 62%;
@@ -259,7 +261,7 @@
   .wstudio-talk-orb {
     background-image:
       radial-gradient(circle at 32% 28%, hsl(0 0% 100% / 0.36) 0%, transparent 34%),
-      linear-gradient(180deg, hsl(var(--wstudio-blue)) 0%, hsl(210 84% 46%) 100%);
+      linear-gradient(180deg, hsl(var(--wstudio-blue)) 0%, hsl(var(--wstudio-mic)) 100%);
     box-shadow: 0 0 16px hsl(var(--wstudio-blue) / 0.2), inset 0 1px 0 hsl(0 0% 100% / 0.24);
   }
 
@@ -304,6 +306,31 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+}
+
+/* W.Studio web shell — same palette family as the JUCE plugin (cyan / charcoal) */
+[data-wstudio-app="true"] {
+  --primary: 176 74% 53%;
+  --primary-foreground: 222 25% 8%;
+  --ring: 176 74% 53%;
+  --accent: 176 74% 53%;
+  --accent-foreground: 222 25% 8%;
+  --sidebar-primary: 176 74% 53%;
+  --sidebar-ring: 176 74% 53%;
+  --glow-primary: 0 0 22px hsl(176 74% 53% / 0.38);
+  --glow-primary-strong: 0 0 34px hsl(176 74% 53% / 0.52);
+  --gradient-primary: linear-gradient(135deg, hsl(176 74% 53%), hsl(197 89% 63%));
+}
+
+[data-wstudio-app="true"] .text-glow {
+  text-shadow: 0 0 20px hsl(176 74% 53% / 0.45);
+}
+
+.wstudio-app-backdrop {
+  background-color: #06080c;
+  background-image:
+    radial-gradient(ellipse 120% 80% at 50% -20%, hsl(176 74% 53% / 0.07), transparent 55%),
+    linear-gradient(180deg, #121820 0%, #05070a 100%);
 }
 
 /* Hide nav/topbar when W.Studio is in fullscreen */

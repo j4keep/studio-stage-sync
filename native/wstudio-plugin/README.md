@@ -31,6 +31,16 @@ The `.jucer` module paths are **`../../JUCE/modules`** relative to the folder th
 3. If **Clean** complains about deleting `build/`: quit Logic, then in Terminal run  
    `rm -rf WStudioPlugin/WStudioPlugin/Builds/MacOSX/build`   and build again.
 
+## Standalone distribution (AU / VST3)
+
+- Build the **Release** scheme, then copy the `.component` and/or `.vst3` from `Builds/MacOSX/build/Release/` (exact path depends on Xcode settings).
+- **Code signing & notarization** are required for Gatekeeper on macOS when giving installers to customers; use your Apple Developer Program workflow (not covered here).
+- **Session cloud URL:** the default Supabase `session-lookup` endpoint is compiled in. For your own backend, add to **Xcode → Target → Build Settings → Other C Flags** (or Projucer exporter flags):
+
+  `-DWSTUDIO_SESSION_LOOKUP_URL=\"https://your-project.supabase.co/functions/v1/session-lookup\"`
+
+  (Escape quotes as your build system requires.) The value must be the full function URL with no trailing slash.
+
 ## Layout
 
 ```

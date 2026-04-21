@@ -4,6 +4,11 @@
 #include <JuceHeader.h>
 #include <vector>
 
+/** Set at compile time for standalone / white-label builds, e.g. Xcode Other C Flags. */
+#ifndef WSTUDIO_SESSION_LOOKUP_URL
+#define WSTUDIO_SESSION_LOOKUP_URL "https://cdcdlqbjyptamtleitdp.supabase.co/functions/v1/session-lookup"
+#endif
+
 /**
  * GET session-lookup Edge Function (Supabase) — run from a worker thread, not audio.
  * Response shape matches Lovable / live_sessions + live_session_participants.

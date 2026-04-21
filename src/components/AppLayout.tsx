@@ -66,7 +66,10 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
     : "min-h-screen bg-background text-foreground max-w-lg mx-auto relative";
 
   return (
-    <div className={containerClass}>
+    <div
+      className={`${containerClass}${isStudioPage ? " wstudio-app-backdrop" : ""}`}
+      {...(isStudioPage ? { "data-wstudio-app": "true" as const } : {})}
+    >
       {showTopBar && (
         <div className="sticky top-0 z-40 bg-background/90 backdrop-blur-xl border-b border-border px-4 py-2 flex items-center justify-end gap-2 wstudio-nav">
           <button

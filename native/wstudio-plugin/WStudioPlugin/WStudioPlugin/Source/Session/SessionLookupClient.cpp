@@ -2,8 +2,7 @@
 
 namespace
 {
-constexpr const char* kSessionLookupUrl =
-    "https://cdcdlqbjyptamtleitdp.supabase.co/functions/v1/session-lookup";
+constexpr const char* kSessionLookupUrl = WSTUDIO_SESSION_LOOKUP_URL;
 
 inline SessionLookupParseResult fail(juce::String msg)
 {

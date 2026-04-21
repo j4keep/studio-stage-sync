@@ -17,32 +17,31 @@ import { copyAccessTokenForPlugin } from "../lib/copyPluginAccessToken";
 const canScreenShare = typeof navigator !== "undefined" && !!navigator.mediaDevices?.getDisplayMedia;
 
 /* ─────────────────────────────────────────────
-   STYLE CONSTANTS (matching the reference image)
+   STYLE CONSTANTS — aligned with JUCE WStudioPlugin (cyan #2ee0d8, charcoal shell)
    ───────────────────────────────────────────── */
 const C = {
-  shell: "#2b2d32",
-  shellEdge: "#3d3f44",
-  shellDark: "#1e1f23",
-  panel: "#282a2e",
-  panelLight: "#323438",
-  panelDark: "#1c1d21",
-  panelBorder: "#3a3c41",
-  inset: "#141517",
-  insetBorder: "#2a2c30",
+  shell: "#121820",
+  shellEdge: "rgba(46, 224, 216, 0.22)",
+  shellDark: "#06080c",
+  panel: "#161b24",
+  panelLight: "#1c222c",
+  panelDark: "#0e1118",
+  panelBorder: "#2a3038",
+  inset: "#06080c",
+  insetBorder: "#1f252e",
   track: "#111214",
-  text: "#e8e8ea",
-  label: "#9a9ca2",
-  dim: "#656770",
+  text: "#f2f6fa",
+  label: "#9ca3b0",
+  dim: "#6a7380",
   green: "#4ade60",
   yellow: "#f5c842",
   red: "#ef4444",
-  blue: "#3b9dff",
+  blue: "#2ee0d8",
   white: "#ffffff",
-  /* Mainstream accent colors */
   acMagenta: "#e040a0",
   acGreen: "#40e060",
   acOrange: "#f08030",
-  acCyan: "#40d0e0",
+  acCyan: "#2ee0d8",
   acPurple: "#a040e0",
   acLime: "#60e040",
 };
@@ -745,7 +744,7 @@ export default function UnifiedSessionScreen() {
               <button key={key} onPointerDown={(e) => { e.preventDefault(); setMobileTab(key as any); }} className="flex-1 py-2 text-center text-[11px] font-bold uppercase tracking-wide" style={{
                 color: mobileTab === key ? C.white : C.dim,
                 borderBottom: mobileTab === key ? `2px solid ${C.blue}` : "2px solid transparent",
-                background: mobileTab === key ? "rgba(59,157,255,0.08)" : "transparent",
+                background: mobileTab === key ? "rgba(46,224,216,0.1)" : "transparent",
               }}>{label}</button>
             ))}
           </div>
@@ -775,7 +774,7 @@ export default function UnifiedSessionScreen() {
                     <button onClick={() => {
                       if (!canScreenShare) { toast.error("Screen sharing is not supported on this device. Please use a desktop browser."); return; }
                       toggleScreenShare(); if (!screenSharing) setMobileTab("video");
-                    }} className="flex h-7 items-center justify-center gap-1 rounded px-2 text-[11px] font-semibold" style={{ background: screenSharing ? "rgba(59,157,255,0.2)" : C.panelDark, border: `1px solid ${screenSharing ? C.blue : C.panelBorder}`, color: screenSharing ? C.blue : C.label }}>
+                    }} className="flex h-7 items-center justify-center gap-1 rounded px-2 text-[11px] font-semibold" style={{ background: screenSharing ? "rgba(46,224,216,0.18)" : C.panelDark, border: `1px solid ${screenSharing ? C.blue : C.panelBorder}`, color: screenSharing ? C.blue : C.label }}>
                       🖥 {screenSharing ? "Stop" : "Share"}
                     </button>
                   )}
@@ -874,7 +873,7 @@ export default function UnifiedSessionScreen() {
                             : peerPtt
                               ? `radial-gradient(circle at 35% 30%, rgba(255,255,255,0.22), #2563eb)`
                               : `radial-gradient(circle at 35% 30%, rgba(255,255,255,0.25), ${C.blue})`,
-                          boxShadow: talkbackHeld ? `0 0 20px ${C.blue}80, inset 0 0 12px rgba(255,255,255,0.15)` : peerPtt ? `0 0 12px rgba(37,99,235,0.45)` : "none",
+                          boxShadow: talkbackHeld ? `0 0 20px ${C.blue}80, inset 0 0 12px rgba(255,255,255,0.15)` : peerPtt ? `0 0 12px rgba(46,224,216,0.45)` : "none",
                           transform: talkbackHeld ? "scale(1.06)" : "scale(1)",
                         }}>
                           <span style={{ color: C.white, fontSize: 12 }}>🎙</span>
@@ -1274,7 +1273,7 @@ export default function UnifiedSessionScreen() {
                           : peerPtt
                             ? `radial-gradient(circle at 35% 30%, rgba(255,255,255,0.22), #2563eb)`
                             : `radial-gradient(circle at 35% 30%, rgba(255,255,255,0.25), ${C.blue})`,
-                      boxShadow: talkbackHeld ? `0 0 20px ${C.blue}80, inset 0 0 12px rgba(255,255,255,0.15)` : peerPtt ? `0 0 12px rgba(37,99,235,0.45)` : "none",
+                      boxShadow: talkbackHeld ? `0 0 20px ${C.blue}80, inset 0 0 12px rgba(255,255,255,0.15)` : peerPtt ? `0 0 12px rgba(46,224,216,0.45)` : "none",
                       transform: talkbackHeld ? "scale(1.06)" : "scale(1)",
                     }}
                   >
