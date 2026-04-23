@@ -25,6 +25,26 @@ function isPluginLocalDevice(deviceId: string): boolean {
   return deviceId === WSTUDIO_PLUGIN_LOCAL_DEVICE_ID;
 }
 
+/** Same MediaStream cannot reliably drive two AudioContexts; clone tracks for the tap graph. */
+function cloneStreamForAudioTap(stream: MediaStream): MediaStream {
+  const tracks = stream.getAudioTracks().map((t) => {
+    try {
+      return typeof t.clone === "function" ? t.clone() : t;
+    } catch {
+      return t;
+    }
+  });
+  return new MediaStream(tracks);
+}
+
+function isPublicHttpsBlockingLoopbackWs(): boolean {
+  if (typeof window === "undefined") return false;
+  if (!window.isSecureContext) return false;
+  if (window.location.protocol !== "https:") return false;
+  const h = window.location.hostname;
+  return h !== "localhost" && h !== "127.0.0.1";
+}
+
 /**
  * Enumerates audio output devices and routes a MediaStream to the selected one via setSinkId,
  * or to the W.Studio plugin via a local WebSocket when {@link WSTUDIO_PLUGIN_LOCAL_DEVICE_ID} is selected.
@@ -41,6 +61,7 @@ export function useBridgeOutputDevice(bridgeStream: MediaStream | null) {
     processor: ScriptProcessorNode;
     source: MediaStreamAudioSourceNode;
     mute: GainNode;
+    tapStream: MediaStream;
   } | null>(null);
 
   const refreshDevices = useCallback(async () => {
@@ -85,6 +106,13 @@ export function useBridgeOutputDevice(bridgeStream: MediaStream | null) {
         g.mute.disconnect();
         g.ws.close();
         void g.ctx.close();
+        g.tapStream.getTracks().forEach((t) => {
+          try {
+            t.stop();
+          } catch {
+            /* ignore */
+          }
+        });
       } catch {
         /* ignore */
       }
@@ -108,25 +136,49 @@ export function useBridgeOutputDevice(bridgeStream: MediaStream | null) {
       const port = getPluginAudioPort();
       const wsUrl = `ws://127.0.0.1:${port}`;
 
+      if (isPublicHttpsBlockingLoopbackWs()) {
+        setRouted(false);
+        setRoutingError(
+          "WStudioPlugin uses ws://127.0.0.1. Browsers block that from most HTTPS sites. Run the web app at http://localhost (npm run dev) on this Mac, or use “Default output” + BlackHole until a secure tunnel exists.",
+        );
+        return () => {};
+      }
+
       let cancelled = false;
       const run = async () => {
+        let tapStream: MediaStream | null = null;
+        let ctx: AudioContext | null = null;
+        let ws: WebSocket | null = null;
         try {
-          const ctx = new AudioContext();
-          const ws = new WebSocket(wsUrl);
+          tapStream = cloneStreamForAudioTap(bridgeStream);
+          ctx = new AudioContext();
+          ws = new WebSocket(wsUrl);
           ws.binaryType = "arraybuffer";
 
           await new Promise<void>((resolve, reject) => {
-            ws.onopen = () => resolve();
-            ws.onerror = () => reject(new Error("Could not connect to W.Studio plugin. Open the plugin in your DAW on this Mac (it listens on 127.0.0.1)."));
+            ws!.onopen = () => resolve();
+            ws!.onerror = () =>
+              reject(
+                new Error(
+                  "Could not open WebSocket to 127.0.0.1. Open WStudioPlugin in Logic (track running), allow the connection, and use http://localhost for the site if you are on HTTPS hosting.",
+                ),
+              );
           });
 
           if (cancelled) {
             ws.close();
             void ctx.close();
+            tapStream.getTracks().forEach((t) => {
+              try {
+                t.stop();
+              } catch {
+                /* ignore */
+              }
+            });
             return;
           }
 
-          const source = ctx.createMediaStreamSource(bridgeStream);
+          const source = ctx.createMediaStreamSource(tapStream);
           const bufferSize = 2048;
           const processor = ctx.createScriptProcessor(bufferSize, 2, 2);
           const mute = ctx.createGain();
@@ -150,7 +202,7 @@ export function useBridgeOutputDevice(bridgeStream: MediaStream | null) {
           processor.connect(mute);
           mute.connect(ctx.destination);
 
-          pluginGraphRef.current = { ctx, ws, processor, source, mute };
+          pluginGraphRef.current = { ctx, ws, processor, source, mute, tapStream };
 
           await ctx.resume();
 
@@ -162,6 +214,29 @@ export function useBridgeOutputDevice(bridgeStream: MediaStream | null) {
           setRouted(true);
           setRoutingError(null);
         } catch (err) {
+          if (ws) {
+            try {
+              ws.close();
+            } catch {
+              /* ignore */
+            }
+          }
+          if (ctx) {
+            try {
+              void ctx.close();
+            } catch {
+              /* ignore */
+            }
+          }
+          if (tapStream) {
+            tapStream.getTracks().forEach((t) => {
+              try {
+                t.stop();
+              } catch {
+                /* ignore */
+              }
+            });
+          }
           if (!cancelled) {
             setRouted(false);
             setRoutingError(err instanceof Error ? err.message : "Plugin audio routing failed");
@@ -227,6 +302,13 @@ export function useBridgeOutputDevice(bridgeStream: MediaStream | null) {
           g.mute.disconnect();
           g.ws.close();
           void g.ctx.close();
+          g.tapStream.getTracks().forEach((t) => {
+            try {
+              t.stop();
+            } catch {
+              /* ignore */
+            }
+          });
         } catch {
           /* ignore */
         }
