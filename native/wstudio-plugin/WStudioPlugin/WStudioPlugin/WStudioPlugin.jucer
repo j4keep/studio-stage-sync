@@ -28,6 +28,10 @@
               file="Source/Session/SessionLookupClient.cpp"/>
         <FILE id="arh" name="AudioRouter.h" compile="0" resource="0" file="Source/Session/AudioRouter.h"/>
         <FILE id="arc" name="AudioRouter.cpp" compile="1" resource="0" file="Source/Session/AudioRouter.cpp"/>
+        <FILE id="pnh" name="PluginNetworkAudio.h" compile="0" resource="0"
+              file="Source/Session/PluginNetworkAudio.h"/>
+        <FILE id="pnc" name="PluginNetworkAudio.cpp" compile="1" resource="0"
+              file="Source/Session/PluginNetworkAudio.cpp"/>
       </GROUP>
     </GROUP>
   </MAINGROUP>

@@ -11,7 +11,7 @@ import { formatCurrency } from "../booking/bookingTypes";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useBridgeOutputDevice } from "../bridge/useBridgeOutputDevice";
+import { useBridgeOutputDevice, WSTUDIO_PLUGIN_LOCAL_DEVICE_ID } from "../bridge/useBridgeOutputDevice";
 import { copyAccessTokenForPlugin } from "../lib/copyPluginAccessToken";
 
 const canScreenShare = typeof navigator !== "undefined" && !!navigator.mediaDevices?.getDisplayMedia;
@@ -1147,9 +1147,16 @@ export default function UnifiedSessionScreen() {
                             }}
                           >
                             <option value="default">Default output</option>
-                            {bridgeDevices.filter(d => d.deviceId !== "default").map(d => (
-                              <option key={d.deviceId} value={d.deviceId}>{d.label}</option>
-                            ))}
+                            <option value={WSTUDIO_PLUGIN_LOCAL_DEVICE_ID}>
+                              WStudioPlugin — localhost (Logic / AU, port 47999)
+                            </option>
+                            {bridgeDevices
+                              .filter((d) => d.deviceId !== "default" && d.deviceId !== WSTUDIO_PLUGIN_LOCAL_DEVICE_ID)
+                              .map((d) => (
+                                <option key={d.deviceId} value={d.deviceId}>
+                                  {d.label}
+                                </option>
+                              ))}
                           </select>
                           <div className="mt-1 flex items-center justify-between">
                             <span style={{ fontSize: 8, color: bridgeRouted ? C.green : C.dim }}>
@@ -1517,9 +1524,16 @@ export default function UnifiedSessionScreen() {
                       }}
                     >
                       <option value="default">Default output</option>
-                      {bridgeDevices.filter(d => d.deviceId !== "default").map(d => (
-                        <option key={d.deviceId} value={d.deviceId}>{d.label}</option>
-                      ))}
+                      <option value={WSTUDIO_PLUGIN_LOCAL_DEVICE_ID}>
+                        WStudioPlugin — localhost (Logic / AU, port 47999)
+                      </option>
+                      {bridgeDevices
+                        .filter((d) => d.deviceId !== "default" && d.deviceId !== WSTUDIO_PLUGIN_LOCAL_DEVICE_ID)
+                        .map((d) => (
+                          <option key={d.deviceId} value={d.deviceId}>
+                            {d.label}
+                          </option>
+                        ))}
                     </select>
                     <div className="mt-1 flex items-center justify-between">
                       <span style={{ fontSize: 9, color: bridgeRouted ? C.green : C.dim }}>

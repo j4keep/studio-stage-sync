@@ -96,7 +96,8 @@ SessionLookupParseResult SessionLookupParseResult::parseJson(const juce::String&
     if (arr == nullptr)
         return fail("Invalid participants array");
 
-    r.participants.reserve((size_t)juce::jmin(arr->size(), 64));
+    const int cap = juce::jmin(arr->size(), 64);
+    r.participants.reserve((size_t)cap);
 
     for (const auto& item : *arr)
     {
@@ -122,7 +123,7 @@ SessionLookupParseResult SessionLookupParseResult::fetch(const juce::String& ses
     if (token.isEmpty())
         return fail("Access token is empty");
 
-    juce::URL url(juce::String(kSessionLookupUrl));
+    juce::URL url { juce::String(kSessionLookupUrl) };
     url = url.withParameter("code", code);
 
     const juce::String headers = "Authorization: Bearer " + token + "\r\n";

@@ -1,4 +1,5 @@
 import type { AudioOutputDevice } from "./useBridgeOutputDevice";
+import { WSTUDIO_PLUGIN_LOCAL_DEVICE_ID } from "./useBridgeOutputDevice";
 
 export function BridgeOutputRouting({
   devices,
@@ -35,9 +36,16 @@ export function BridgeOutputRouting({
           className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none focus:ring-2 focus:ring-violet-600 disabled:opacity-50"
         >
           <option value="default">Default output</option>
-          {devices.filter((d) => d.deviceId !== "default").map((d) => (
-            <option key={d.deviceId} value={d.deviceId}>{d.label}</option>
-          ))}
+          <option value={WSTUDIO_PLUGIN_LOCAL_DEVICE_ID}>
+            WStudioPlugin — localhost (Logic / AU, port 47999)
+          </option>
+          {devices
+            .filter((d) => d.deviceId !== "default" && d.deviceId !== WSTUDIO_PLUGIN_LOCAL_DEVICE_ID)
+            .map((d) => (
+              <option key={d.deviceId} value={d.deviceId}>
+                {d.label}
+              </option>
+            ))}
         </select>
       </label>
 
@@ -56,7 +64,7 @@ export function BridgeOutputRouting({
       {routingError && <p className="text-xs text-red-400/90">{routingError}</p>}
 
       <p className="text-[11px] leading-relaxed text-zinc-600">
-        Select a virtual cable (BlackHole, VB-Cable, Loopback) to route the artist vocal into your DAW. Set your DAW input to the same device.
+        Prefer <span className="text-zinc-500">WStudioPlugin — localhost</span> with the AU open in Logic (same Mac). Or pick BlackHole / VB-Cable and use that as your DAW input. Hosted HTTPS sites may block the WebSocket; use local dev when testing the plugin path.
       </p>
     </section>
   );

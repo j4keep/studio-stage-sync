@@ -1,11 +1,14 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 #include "Session/AudioRouter.h"
+#include "Session/PluginNetworkAudio.h"
 #include <cmath>
 
 namespace
 {
 static constexpr const char* kRootStateId = "WSTPersistRoot";
+/** Loopback WebSocket port for W.STUDIO web → plugin bridge audio (must match web). */
+static constexpr int kPluginNetworkAudioPort = 47999;
 }
 
 WStudioPluginAudioProcessor::WStudioPluginAudioProcessor()
@@ -45,7 +48,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout WStudioPluginAudioProcessor:
 
 void WStudioPluginAudioProcessor::applySessionStateForAudioThread(SessionState s) noexcept
 {
-    sessionStateAudio.store((int)s, std::memory_order_release);
+    sessionStateAudio.store(s, std::memory_order_release);
 }
 
 void WStudioPluginAudioProcessor::commitSessionSnapshot(juce::ValueTree snapshot)
@@ -190,6 +193,10 @@ void WStudioPluginAudioProcessor::changeProgramName(int, const juce::String&)
 
 void WStudioPluginAudioProcessor::prepareToPlay(double newSampleRate, int newSamplesPerBlock)
 {
+    if (networkAudio == nullptr)
+        networkAudio = std::make_unique<PluginNetworkAudio>();
+    networkAudio->startServer(kPluginNetworkAudioPort);
+
     sampleRate = newSampleRate;
     samplesPerBlock = juce::jmax(1, newSamplesPerBlock);
     constexpr double tauSec = 0.22;
@@ -204,6 +211,8 @@ void WStudioPluginAudioProcessor::prepareToPlay(double newSampleRate, int newSam
 
 void WStudioPluginAudioProcessor::releaseResources()
 {
+    if (networkAudio != nullptr)
+        networkAudio->stopServer();
 }
 
 #ifndef JucePlugin_PreferredChannelConfigurations
@@ -250,7 +259,7 @@ void WStudioPluginAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
 
     measureAndSmoothPeaks(buffer, nCh, nSm);
 
-    const auto st = (SessionState)sessionStateAudio.load(std::memory_order_acquire);
+    const auto st = sessionStateAudio.load(std::memory_order_acquire);
     const bool sessionActive = (st == SessionState::Connected || st == SessionState::Live || st == SessionState::Recording);
 
     float gain = 1.0f;
@@ -292,6 +301,9 @@ void WStudioPluginAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     c.talkbackMusicGain = talkbackDuckSmoothed;
 
     AudioRouter::processMainInsert(buffer, nCh, nSm, c);
+
+    if (networkAudio != nullptr)
+        networkAudio->pullAndAdd(buffer, nCh, nSm);
 }
 
 bool WStudioPluginAudioProcessor::hasEditor() const

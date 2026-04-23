@@ -5,6 +5,10 @@
 
 #include "Session/WStudioSessionTypes.h"
 
+#include <memory>
+
+class PluginNetworkAudio;
+
 namespace WStudioParams
 {
 inline constexpr auto gainId = "gain";
@@ -92,7 +96,7 @@ private:
 
     juce::AudioProcessorValueTreeState apvts;
 
-    std::atomic<int> sessionStateAudio { (int)SessionState::Offline };
+    std::atomic<SessionState> sessionStateAudio { SessionState::Offline };
     std::atomic<float> inputPeakLeft { 0.f };
     std::atomic<float> inputPeakRight { 0.f };
 
@@ -105,6 +109,8 @@ private:
 
     mutable juce::CriticalSection sessionSnapshotLock;
     juce::ValueTree sessionSnapshot { "WStudioSession" };
+
+    std::unique_ptr<PluginNetworkAudio> networkAudio;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(WStudioPluginAudioProcessor)
 };
