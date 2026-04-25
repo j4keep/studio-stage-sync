@@ -63,6 +63,19 @@ fn parse_port() -> u16 {
         .unwrap_or(DEFAULT_PORT)
 }
 
+/// Finder-launched apps hide stderr; show a dialog so failures are visible.
+#[cfg(target_os = "macos")]
+fn show_macos_alert(message: &str) {
+    let safe = message.replace('\\', "\\\\").replace('"', "'");
+    let script = format!("display alert \"W.STUDIO Bridge\" message \"{safe}\" as informational");
+    let _ = std::process::Command::new("osascript")
+        .args(["-e", &script])
+        .output();
+}
+
+#[cfg(not(target_os = "macos"))]
+fn show_macos_alert(_message: &str) {}
+
 fn run_cpal(fifo: Arc<Mutex<StereoFifo>>) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let host = cpal::default_host();
     let device = host
@@ -190,25 +203,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let fifo = Arc::new(Mutex::new(StereoFifo::new()));
     let fifo_audio = Arc::clone(&fifo);
 
+    let (audio_err_tx, audio_err_rx) = std::sync::mpsc::channel::<String>();
     std::thread::spawn(move || {
         if let Err(e) = run_cpal(fifo_audio) {
-            eprintln!("[wstudio-bridge] {e}");
-            std::process::exit(1);
+            let msg = format!("{e}");
+            eprintln!("[wstudio-bridge] {msg}");
+            let _ = audio_err_tx.send(msg);
         }
     });
 
-    tokio::time::sleep(std::time::Duration::from_millis(150)).await;
+    tokio::time::sleep(std::time::Duration::from_millis(400)).await;
+    if let Ok(msg) = audio_err_rx.try_recv() {
+        let full = format!("Audio output failed: {msg}\n\nTip: set a working speaker or BlackHole as the default output, or run from Terminal to see full logs.");
+        show_macos_alert(&full);
+        return Err(full.into());
+    }
 
-    let listener = TcpListener::bind(addr).await.map_err(|e| {
-        if e.kind() == ErrorKind::AddrInUse {
-            format!(
-                "port {port} in use — quit the other bridge instance or pass a different port, e.g. {}",
-                port + 1
-            )
-        } else {
-            e.to_string()
+    let listener = match TcpListener::bind(addr).await {
+        Ok(l) => l,
+        Err(e) => {
+            let detail = if e.kind() == ErrorKind::AddrInUse {
+                format!(
+                    "Port {port} is already in use. Quit the other W.STUDIO Bridge (or Terminal npm run wstudio:bridge), then try again."
+                )
+            } else {
+                e.to_string()
+            };
+            show_macos_alert(&detail);
+            return Err(detail.into());
         }
-    })?;
+    };
 
     eprintln!(
         "[wstudio-bridge] WebSocket: ws://127.0.0.1:{port}\n\

@@ -69,9 +69,19 @@ Outputs:
 WSTUDIO_BRIDGE_ICON=/path/to/your/1024.png npm run wstudio:bridge:app
 ```
 
-**Gatekeeper:** first launch → right-click the app → **Open**, or run:
+**Gatekeeper (first launch):** Apple blocks apps that are not signed with an Apple Developer ID. **Right‑click** the app → **Open** → click **Open** in the dialog. That tells macOS you trust this app once.
 
-`xattr -cr "path/to/W.STUDIO Bridge.app"`
+**`xattr -cr`:** Clears the “downloaded from internet” quarantine flag. Use it if macOS says the app is damaged or still won’t open:
+
+```bash
+xattr -cr "/Applications/W.STUDIO Bridge.app"
+```
+
+**Dock icon only bounces:** the app is probably **quitting immediately** (often **port 48001 already in use** because Terminal `npm run wstudio:bridge` is still running, or **audio device** error). Quit duplicate bridges, then open again. Newer builds show a **macOS alert** with the reason. To see errors in text, run the binary in Terminal:
+
+```bash
+"/Users/you/Desktop/studio-stage-sync/native/wstudio-desktop-bridge/target/release/bundle/osx/W.STUDIO Bridge.app/Contents/MacOS/wstudio-desktop-bridge"
+```
 
 **Lovable / GitHub:** this repo does not auto-upload a binary. After `npm run wstudio:bridge:app`, upload **`dist-bridge/WSTUDIO-Bridge-mac.dmg`** as a [GitHub Release](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository) asset so others can download it.
 
