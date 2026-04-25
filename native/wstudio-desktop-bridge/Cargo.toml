@@ -21,6 +21,6 @@ osx_minimum_system_version = "11.0"
 [dependencies]
 cpal = "0.15"
 futures-util = "0.3"
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "io-util"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "io-util", "time"] }
 tokio-tungstenite = "0.24"
 tungstenite = "0.24"
