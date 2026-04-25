@@ -2,7 +2,7 @@
 name = "wstudio-desktop-bridge"
 version = "0.1.0"
 edition = "2021"
-description = "W.STUDIO Desktop Bridge — receives engineer WebSocket PCM and plays to the default output (e.g. BlackHole for Logic)"
+description = "W.STUDIO Desktop Bridge — receives engineer WebSocket PCM and plays to the default CoreAudio output"
 license = "UNLICENSED"
 publish = false
 
@@ -15,7 +15,7 @@ version = "0.1.0"
 copyright = "Copyright (c) Wheuat LLC. All rights reserved."
 category = "public.app-category.music"
 short_description = "W.STUDIO session audio to your Mac output."
-long_description = "Receives live artist audio from the W.STUDIO web session (engineer) and plays it to the default CoreAudio output. Use with BlackHole or an aggregate device so Logic can record the vocal."
+long_description = "Receives live artist audio from the W.STUDIO web session (engineer) and plays it to the default CoreAudio output. Route that output into the input your DAW records (virtual loopback or W.STUDIO aggregate)."
 osx_minimum_system_version = "11.0"
 
 [dependencies]

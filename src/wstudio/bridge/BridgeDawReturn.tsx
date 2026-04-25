@@ -104,7 +104,7 @@ export function BridgeDawReturn({
 
       <div className="rounded-md border border-zinc-800/60 bg-zinc-900/30 p-3 text-[11px] leading-relaxed text-zinc-500 space-y-1.5">
         <p className="font-semibold text-zinc-400">How it works:</p>
-        <p>1. Set your DAW output (Logic / Pro Tools) to <span className="text-violet-300/80">BlackHole</span> or <span className="text-violet-300/80">VB-Cable</span></p>
+        <p>1. Set your DAW output to the same <span className="text-violet-300/80">virtual loopback</span> / return bus your session uses</p>
         <p>2. Select the same device above as the return input</p>
         <p>3. Click <span className="text-violet-300/80">Start return</span> — DAW playback streams to the artist</p>
         <p className="text-zinc-600 mt-1">Artist hears: engineer talkback + DAW playback + beats + takes</p>

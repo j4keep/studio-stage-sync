@@ -58,7 +58,7 @@ export type StudioMediaContextValue = {
    * Engineer-only: `AudioContext` that owns {@link engineerDawVocalIn1}. Use for WStudioPlugin WebSocket tap so one context drives meters and Logic.
    */
   engineerDawVocalAudioContext: AudioContext | null;
-  /** Engineer-only: DAW return capture stream (from virtual cable input like BlackHole). */
+  /** Engineer-only: DAW return capture stream (from virtual loopback / return input). */
   engineerDawReturnStream: MediaStream | null;
   /** Engineer-only: 0–1 level on the DAW return capture path. */
   engineerDawReturnLevel: number;
@@ -579,7 +579,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
 
   /**
    * Engineer-only: DAW Return capture.
-   * Captures audio from a selected input device (e.g. BlackHole) and sends it to the artist
+   * Captures audio from a selected input device (e.g. virtual loopback) and sends it to the artist
    * via WebRTC so they can hear DAW playback in their headphones.
    * Monitor-only — does NOT affect the recording path (artist mic → DAW).
    */

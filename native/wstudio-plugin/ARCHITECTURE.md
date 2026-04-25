@@ -2,7 +2,7 @@
 
 ## What an AU is *not*
 
-A **single Audio Unit** loaded as an insert **cannot** become a **macOS CoreAudio input device** like BlackHole. Logic does not list AU inserts as **track input sources**. That is why you see **“No input source selected”** when you expect the **artist’s remote vocal** to behave like **Input 1** on an audio track.
+A **single Audio Unit** loaded as an insert **cannot** become a **macOS CoreAudio input device** the way a virtual loopback driver does. Logic does not list AU inserts as **track input sources**. That is why you see **“No input source selected”** when you expect the **artist’s remote vocal** to behave like **Input 1** on an audio track.
 
 The current **WebSocket-in-`processBlock`** path can add audio **inside the insert’s buffer**, but it does **not** fix Logic’s input-arming / monitoring model for “record from the internet as if it were a mic.”
 
@@ -11,7 +11,7 @@ The current **WebSocket-in-`processBlock`** path can add audio **inside the inse
 | Component | Role |
 |-----------|------|
 | **WStudioPlugin AU** | UI: LIVE, session, monitor/mute/talkback, meters, connection status. **Control surface** and session UX—not a substitute for a hardware input. |
-| **W.STUDIO virtual audio device** | **CoreAudio** driver (BlackHole-style). Appears as **e.g. “W.STUDIO Artist Input”** in Logic/macOS. **MVP:** mono artist vocal; later stereo / multiple artists. |
+| **W.STUDIO virtual audio device** | **CoreAudio** driver (loopback-style). Appears as **e.g. “W.STUDIO Artist Input”** in Logic/macOS. **MVP:** mono artist vocal; later stereo / multiple artists. |
 | **W.STUDIO Bridge** | Desktop service/app: receives artist audio from the **web session** (WebRTC path), writes PCM into the **virtual device**. May talk to the AU for status (IPC, local socket, etc.). |
 
 ### Intended record path (engineer)
@@ -28,7 +28,7 @@ macOS lets you pick **one CoreAudio device** (or one **aggregate**) for Logic’
 
 **W.STUDIO must not replace** that hardware. It **adds** a virtual input next to it.
 
-**Pattern: Aggregate Device** (same idea BlackHole users already know)
+**Pattern: Aggregate Device** (combine physical inputs with W.STUDIO virtual input)
 
 1. **Outputs:** keep using **your existing interface** for **speakers, headphones, and low-latency monitoring** when Logic allows.
 2. **Inputs:** create a **macOS Aggregate Device** in **Audio MIDI Setup** that combines:
@@ -46,4 +46,4 @@ macOS lets you pick **one CoreAudio device** (or one **aggregate**) for Logic’
 ## References for implementers
 
 - Apple: **Audio Server Plug-In** / **Core Audio Driver** kits (modern driver models; follow current Apple guidance).
-- Existing open patterns: **BlackHole**, **Loopback** (product-level reference for “virtual device + app” split).
+- Industry pattern: **virtual loopback driver + companion app** (W.STUDIO implements the same architecture under your brand).

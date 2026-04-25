@@ -98,7 +98,7 @@ async function ensureAudioContextRunning(ctx: AudioContext): Promise<void> {
  *
  * **Bridge path (important):** `bridgeStream` must be the **engineer’s** graph — typically
  * `engineerDawVocalIn1`, which carries the **remote WebRTC artist mic**. Run the Rust bridge (`npm run wstudio:bridge`)
- * and set macOS **default output** to BlackHole (or route there) so Logic can record that input. The artist’s browser does not talk to Logic directly.
+ * and set macOS **Sound output** to the device your DAW records from (loopback / aggregate / W.STUDIO routing). The artist’s browser does not talk to Logic directly.
  *
  * The plugin tap always uses its **own** `AudioContext`. Feeding a `MediaStreamDestination` from the engineer
  * vocal graph back into a `MediaStreamSource` **in that same context** is unreliable in Chrome and often
@@ -220,7 +220,7 @@ export function useBridgeOutputDevice(bridgeStream: MediaStream | null) {
       if (isPublicHttpsBlockingLoopbackWs()) {
         setRouted(false);
         setRoutingError(
-          "This bridge uses ws://127.0.0.1. Browsers block that from most HTTPS sites. Run the web app at http://localhost (npm run dev) on this Mac, or use “Default output” + BlackHole until a secure tunnel exists.",
+          "This bridge uses ws://127.0.0.1. Browsers block that from most HTTPS sites. Run the web app at http://localhost (npm run dev) on this Mac, or use “Default output” with your normal loopback routing until a secure tunnel exists.",
         );
         return () => {};
       }

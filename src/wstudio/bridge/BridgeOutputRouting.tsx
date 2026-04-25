@@ -63,7 +63,7 @@ export function BridgeOutputRouting({
       <p className="text-[11px] leading-relaxed text-zinc-600">
         Primary path: <span className="text-zinc-500">W.STUDIO Desktop Bridge</span> receives the session and drives{" "}
         <span className="text-zinc-500">W.STUDIO Artist Input</span> (virtual device) so Logic can use it like a normal mic input. Route
-        bridge audio here to the same output the bridge listens on (often BlackHole) until the desktop app wires this automatically.
+        bridge audio here to the same output your W.STUDIO routing uses until the desktop app wires this automatically.
         {WSTUDIO_PLUGIN_WS_BRIDGE_ENABLED ? (
           <span> Experimental AU WebSocket option is enabled in this build.</span>
         ) : null}

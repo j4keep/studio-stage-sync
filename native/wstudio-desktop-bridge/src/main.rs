@@ -1,8 +1,8 @@
 //! W.STUDIO Desktop Bridge — Milestone 1
 //! Listens on ws://127.0.0.1:PORT (default 48001). The engineer web app sends binary frames of
 //! little-endian float32 stereo interleaved PCM (same layout as the legacy AU bridge).
-//! Audio is played on the **default output device** — set macOS default to BlackHole (or an
-//! aggregate that includes it) so Logic can use that input.
+//! Audio is played on the **default output device** — aim that device at whatever CoreAudio
+//! input your DAW records from (virtual loopback, aggregate, or W.STUDIO input device).
 
 use std::collections::VecDeque;
 use std::io::ErrorKind;
@@ -80,7 +80,7 @@ fn run_cpal(fifo: Arc<Mutex<StereoFifo>>) -> Result<(), Box<dyn std::error::Erro
     let host = cpal::default_host();
     let device = host
         .default_output_device()
-        .ok_or("no default output device — connect speakers or BlackHole")?;
+        .ok_or("no default output device — connect speakers or a virtual output")?;
     eprintln!(
         "[wstudio-bridge] Output device: {}",
         device.name().unwrap_or_else(|_| "(unknown)".into())
@@ -214,7 +214,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     tokio::time::sleep(std::time::Duration::from_millis(400)).await;
     if let Ok(msg) = audio_err_rx.try_recv() {
-        let full = format!("Audio output failed: {msg}\n\nTip: set a working speaker or BlackHole as the default output, or run from Terminal to see full logs.");
+        let full = format!("Audio output failed: {msg}\n\nTip: choose a working output in System Settings → Sound (speakers or your W.STUDIO / loopback routing), or run from Terminal to see full logs.");
         show_macos_alert(&full);
         return Err(full.into());
     }
@@ -237,7 +237,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     eprintln!(
         "[wstudio-bridge] WebSocket: ws://127.0.0.1:{port}\n\
          In the web app (engineer), set bridge output to **W.STUDIO Desktop Bridge**.\n\
-         Tip: set system default output to **BlackHole 2ch**, then in Logic choose BlackHole as track input — or use an Aggregate Device."
+         Tip: set Sound output to the device your DAW records from (virtual loopback or W.STUDIO aggregate), then arm that input on a track in Logic."
     );
 
     loop {

@@ -13,7 +13,7 @@ Small **Rust** app: listens on **`ws://127.0.0.1:48001`** (override with `VITE_W
 ## Prerequisites
 
 - [Rust](https://rustup.rs/) (`cargo` on your PATH)
-- Optional: [BlackHole](https://existential.audio/blackhole/) — set **System Settings → Sound → Output** to **BlackHole 2ch** so Logic can use BlackHole as a **track input** while you monitor elsewhere (e.g. aggregate device).
+- Optional: a **virtual loopback** or **W.STUDIO aggregate** routing so your DAW can record the same signal the bridge plays to **Sound → Output**.
 
 ## Run from Terminal (dev)
 
@@ -39,7 +39,7 @@ Leave the terminal open. In the web app (engineer, `http://localhost:8080` or yo
 
 1. Join the session (same code as artist).
 2. Under **W.STUDIO BRIDGE**, output should default to **W.STUDIO Desktop Bridge** on localhost.
-3. Confirm **REMOTE IN** is **live**, then you should see levels in Logic if BlackHole (or your chosen default output) is armed on a track.
+3. Confirm **REMOTE IN** is **live**, then you should see levels in your DAW when the routed input is armed on a track.
 
 ## Installable Mac app (.app + .dmg)
 
@@ -93,7 +93,7 @@ xattr -cr "/Applications/W.STUDIO Bridge.app"
 
 | Milestone | Scope |
 |-----------|--------|
-| **1 (this)** | WebSocket → default audio output; manual BlackHole / aggregate. |
+| **1 (this)** | WebSocket → default audio output; manual loopback / aggregate routing. |
 | **2** | Dedicated **W.STUDIO Artist Input** device + installer. |
 | **3** | Session pairing, reconnect UI, device picker in the app. |
 | **4** | AU plugin = controls / meters only; optional IPC with this app. |

@@ -2,7 +2,7 @@
 
 Fresh **Audio Unit + VST3** plugin scaffold. The web app in the repo root does not build this — use **Projucer** and **Xcode** on a Mac.
 
-**Architecture note:** An AU insert **cannot** act as a **Logic/macOS audio input** like BlackHole. The intended product uses **W.STUDIO Desktop Bridge + virtual input** for recording; **this AU is primarily a control / metering surface** (see [`ARCHITECTURE.md`](./ARCHITECTURE.md)). Experimental WebSocket PCM into the AU is controlled by **`WSTUDIO_AU_ENABLE_NETWORK_BRIDGE`** in **Projucer → Configurations** (and in Xcode **Preprocessor Macros** after Save). Default is **`0`** in both Debug and Release. Engineers keep **their existing interface** (any vendor); an **Aggregate Device** can add **W.STUDIO Artist Input** alongside those inputs.
+**Architecture note:** An AU insert **cannot** act as a **Logic/macOS audio input** the way a virtual loopback device does. The intended product uses **W.STUDIO Desktop Bridge + virtual input** for recording; **this AU is primarily a control / metering surface** (see [`ARCHITECTURE.md`](./ARCHITECTURE.md)). Experimental WebSocket PCM into the AU is controlled by **`WSTUDIO_AU_ENABLE_NETWORK_BRIDGE`** in **Projucer → Configurations** (and in Xcode **Preprocessor Macros** after Save). Default is **`0`** in both Debug and Release. Engineers keep **their existing interface** (any vendor); an **Aggregate Device** can add **W.STUDIO Artist Input** alongside those inputs.
 
 ## Checklist: is the tree set up right?
 

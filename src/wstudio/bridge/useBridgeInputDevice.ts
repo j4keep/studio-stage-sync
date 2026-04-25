@@ -4,7 +4,7 @@ export type AudioInputDevice = { deviceId: string; label: string };
 
 /**
  * Enumerates audio INPUT devices for DAW Return capture.
- * BlackHole / VB-Cable appear as audio inputs when installed.
+ * Virtual loopback devices appear as extra inputs when installed (vendor-neutral).
  */
 export function useBridgeInputDevices() {
   const [devices, setDevices] = useState<AudioInputDevice[]>([]);
