@@ -2,6 +2,14 @@
 
 Small **Rust** app: listens on **`ws://127.0.0.1:48001`** (override with `VITE_WSTUDIO_DESKTOP_BRIDGE_PORT` in the web app, or pass a port as the first CLI arg). The **engineer** web session sends the same **float32 stereo interleaved** PCM as the legacy AU bridge; this process plays it to the **macOS default output device**.
 
+## Why there is no folder named “Rust” (and no `.app` inside GitHub)
+
+- **Rust** is the **programming language**, not a folder in your project. You know a project uses Rust when you see:
+  - **`Cargo.toml`** — build config (like `package.json` for Node).
+  - **`src/main.rs`** — source code (`.rs` = **R**u**s**t).
+- You install the Rust **compiler and tools once on your Mac** from [rustup.rs](https://rustup.rs/). After that, Terminal understands `cargo`. Nothing in the repo needs to be named “Rust.”
+- **Lovable** deploys your **website** (e.g. `studio-stage-sync.lovable.app`). It does **not** compile native Mac apps. A **`.app` / `.dmg`** is built **on a Mac** (or by **GitHub Actions**) from this folder, then you drag it to Applications—same idea as shipping any Mac program that is not only a website.
+
 ## Prerequisites
 
 - [Rust](https://rustup.rs/) (`cargo` on your PATH)
