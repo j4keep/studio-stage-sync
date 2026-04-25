@@ -1,0 +1,26 @@
+[package]
+name = "wstudio-desktop-bridge"
+version = "0.1.0"
+edition = "2021"
+description = "W.STUDIO Desktop Bridge — receives engineer WebSocket PCM and plays to the default output (e.g. BlackHole for Logic)"
+license = "UNLICENSED"
+publish = false
+
+# macOS .app bundle — build with: bash ../../scripts/build-wstudio-bridge-app.sh (needs `cargo install cargo-bundle`)
+[package.metadata.bundle]
+name = "W.STUDIO Bridge"
+identifier = "com.wheuat.wstudio.bridge"
+icon = ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png"]
+version = "0.1.0"
+copyright = "Copyright (c) Wheuat LLC. All rights reserved."
+category = "public.app-category.music"
+short_description = "W.STUDIO session audio to your Mac output."
+long_description = "Receives live artist audio from the W.STUDIO web session (engineer) and plays it to the default CoreAudio output. Use with BlackHole or an aggregate device so Logic can record the vocal."
+osx_minimum_system_version = "11.0"
+
+[dependencies]
+cpal = "0.15"
+futures-util = "0.3"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "io-util"] }
+tokio-tungstenite = "0.24"
+tungstenite = "0.24"

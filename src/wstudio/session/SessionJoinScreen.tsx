@@ -17,6 +17,7 @@ import orbitHeadphones from "@/assets/wstudio-orbit-headphones.jpg";
 import orbitControl from "@/assets/wstudio-orbit-control.jpg";
 import orbitVocalist from "@/assets/wstudio-orbit-vocalist.jpg";
 import orbitFaders from "@/assets/wstudio-orbit-faders.jpg";
+import { WSTUDIO_DEMO_MODE } from "./demoConfig";
 
 const ORBIT_IMAGES = [orbitMixer, orbitMic, orbitHeadphones, orbitControl, orbitVocalist, orbitFaders];
 // Reserve room for the fixed bottom nav (~64px tall) so role buttons sit just above it with no gap.
@@ -88,12 +89,26 @@ export default function SessionJoinScreen() {
   }, [searchParams, joinAsArtist, joinAsEngineer, navigate, user, authLoading]);
 
   const handleJoin = (role: "artist" | "engineer") => {
-    if (role === "artist") joinAsArtist();
-    else joinAsEngineer();
-    navigate("/wstudio/session/live");
+    if (role === "artist") {
+      joinAsArtist();
+      navigate("/wstudio/session/live");
+      return;
+    }
+    // Engineer must share the same session id as the artist for WebRTC (Supabase rtc channel is per session).
+    if (WSTUDIO_DEMO_MODE) {
+      joinAsEngineer();
+      navigate("/wstudio/session/live");
+      return;
+    }
+    if (sessionCode.length >= 6) {
+      void joinWithSessionCode("engineer");
+      return;
+    }
+    toast.error("Enter your 6-character session code, then tap Join as engineer.");
   };
 
-  const handleCodeJoin = async () => {
+  /** Validates booking row and joins with the canonical session_code so engineer + artist use one rtc channel. */
+  const joinWithSessionCode = async (asRole: "artist" | "engineer") => {
     if (sessionCode.length < 6) return;
     setJoining(true);
 
@@ -122,8 +137,9 @@ export default function SessionJoinScreen() {
       localStorage.setItem(`wstudio_booking_hours_${sessionIdToUse}`, JSON.stringify({ bookedMinutes, bookingId: data.id }));
     }
 
-    toast.success("Joining session...");
-    joinAsArtist(sessionIdToUse);
+    toast.success(asRole === "engineer" ? "Joining as engineer…" : "Joining as artist…");
+    if (asRole === "artist") joinAsArtist(sessionIdToUse);
+    else joinAsEngineer(sessionIdToUse);
     navigate("/wstudio/session/live");
   };
 
@@ -281,17 +297,28 @@ export default function SessionJoinScreen() {
                 ))}
               </InputOTPGroup>
             </InputOTP>
-            <button
-              onClick={handleCodeJoin}
-              disabled={sessionCode.length < 6 || joining}
-              className="w-full rounded-xl py-2 text-sm font-semibold text-primary-foreground shadow-lg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
-              style={{
-                background: "var(--gradient-primary)",
-                boxShadow: "var(--glow-primary)",
-              }}
-            >
-              {joining ? "Joining..." : "Join Session"}
-            </button>
+            <div className="flex w-full gap-2">
+              <button
+                type="button"
+                onClick={() => void joinWithSessionCode("artist")}
+                disabled={sessionCode.length < 6 || joining}
+                className="flex-1 rounded-xl py-2 text-sm font-semibold text-primary-foreground shadow-lg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                style={{
+                  background: "var(--gradient-primary)",
+                  boxShadow: "var(--glow-primary)",
+                }}
+              >
+                {joining ? "…" : "Join as artist"}
+              </button>
+              <button
+                type="button"
+                onClick={() => void joinWithSessionCode("engineer")}
+                disabled={sessionCode.length < 6 || joining}
+                className="flex-1 rounded-xl border border-primary/50 bg-card py-2 text-sm font-semibold text-foreground shadow-md transition hover:bg-muted/30 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {joining ? "…" : "Join as engineer"}
+              </button>
+            </div>
             <button
               type="button"
               onClick={() => void copyAccessTokenForPlugin()}

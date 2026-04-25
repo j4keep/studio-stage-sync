@@ -23,9 +23,14 @@ dist-ssr
 *.sln
 *.sw?
 
-# Local clutter / mistaken Projucer output (see native/wstudio-plugin/README.md)
+# Local clutter (see native/wstudio-plugin/README.md)
 Screenshot*.png
-**/WStudioPlungin/
+native/wstudio-plugin/WStudioPlugin/Builds/MacOSX/BuiltPlugin/
+
+# Rust bridge build + generated installer
+native/wstudio-desktop-bridge/target/
+native/wstudio-desktop-bridge/icons/*.png
+dist-bridge/
 
 # Supabase CLI local artifacts
 supabase/.temp/

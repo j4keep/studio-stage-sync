@@ -26,7 +26,8 @@ void SessionController::setSessionState(SessionState next)
 void SessionController::mockBeginConnecting()
 {
     connectionPhase = ConnectionPhase::Handshaking;
-    model.setSessionId(juce::Uuid().toString().substring(0, 8).toUpperCase());
+    // Not the web session code — real id comes from session-lookup after Sync in the plugin UI.
+    model.setSessionId("DEMO");
     mockTickCounter = 0;
 }
 

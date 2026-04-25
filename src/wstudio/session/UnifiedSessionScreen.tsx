@@ -11,7 +11,12 @@ import { formatCurrency } from "../booking/bookingTypes";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useBridgeOutputDevice, WSTUDIO_PLUGIN_LOCAL_DEVICE_ID } from "../bridge/useBridgeOutputDevice";
+import {
+  useBridgeOutputDevice,
+  WSTUDIO_DESKTOP_BRIDGE_LOCAL_DEVICE_ID,
+  WSTUDIO_PLUGIN_LOCAL_DEVICE_ID,
+  WSTUDIO_PLUGIN_WS_BRIDGE_ENABLED,
+} from "../bridge/useBridgeOutputDevice";
 import { copyAccessTokenForPlugin } from "../lib/copyPluginAccessToken";
 
 const canScreenShare = typeof navigator !== "undefined" && !!navigator.mediaDevices?.getDisplayMedia;
@@ -593,6 +598,10 @@ export default function UnifiedSessionScreen() {
   const bridgeArtistLabel = live.remoteArtistLabel.trim() || (hasRemoteAudio ? "Artist connected" : "—");
   /** Feed active when the DAW vocal path is actually receiving remote audio */
   const bridgeFeedActive = isEngineer && bridgePathReady;
+  const bridgeUsingLocalWsBridge =
+    isEngineer &&
+    (bridgeSelectedDevice === WSTUDIO_DESKTOP_BRIDGE_LOCAL_DEVICE_ID ||
+      bridgeSelectedDevice === WSTUDIO_PLUGIN_LOCAL_DEVICE_ID);
   const goToJoin = useCallback(() => navigate("/wstudio/session/join"), [navigate]);
 
   const handleEndSession = useCallback(() => {
@@ -1112,6 +1121,13 @@ export default function UnifiedSessionScreen() {
                   {isEngineer ? (
                     <div className="mt-4 border-t pt-3" style={{ borderColor: C.panelBorder }}>
                       <div style={{ fontSize: 11, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>W.STUDIO BRIDGE</div>
+                      <div className="mt-1.5" style={{ fontSize: 8, color: C.dim, lineHeight: 1.4 }}>
+                        Production path: install <span style={{ color: C.text }}>W.STUDIO Desktop Bridge</span> — it receives the artist and feeds{" "}
+                        <span style={{ color: C.text }}>W.STUDIO Artist Input</span> so Logic records like a normal mic. In Logic, pick that input on a track; use the in-DAW plugin for controls and meters only.
+                        {WSTUDIO_PLUGIN_WS_BRIDGE_ENABLED ? (
+                          <span> This dev build still lists the experimental AU WebSocket output.</span>
+                        ) : null}
+                      </div>
                       <div className="mt-2 space-y-1" style={{ fontSize: 10, color: C.text, lineHeight: 1.45 }}>
                         <div>
                           <span style={{ color: C.dim }}>Status: </span>
@@ -1131,6 +1147,14 @@ export default function UnifiedSessionScreen() {
                             <span style={{ color: C.green, fontWeight: 600 }}>
                               {bridgeDevices.find(d => d.deviceId === bridgeSelectedDevice)?.label ?? "Routed"}
                             </span>
+                          ) : bridgeRouted && bridgeUsingLocalWsBridge ? (
+                            <span style={{ color: C.yellow, fontWeight: 600 }}>
+                              Bridge link OK — waiting for artist vocal (same session code)
+                            </span>
+                          ) : bridgeRouted ? (
+                            <span style={{ color: C.green, fontWeight: 600 }}>
+                              {bridgeDevices.find(d => d.deviceId === bridgeSelectedDevice)?.label ?? "Routed"}
+                            </span>
                           ) : (
                             <span style={{ color: C.acCyan, fontWeight: 600 }}>Select device ↓</span>
                           )}
@@ -1147,11 +1171,8 @@ export default function UnifiedSessionScreen() {
                             }}
                           >
                             <option value="default">Default output</option>
-                            <option value={WSTUDIO_PLUGIN_LOCAL_DEVICE_ID}>
-                              WStudioPlugin — localhost (Logic / AU, port 47999)
-                            </option>
                             {bridgeDevices
-                              .filter((d) => d.deviceId !== "default" && d.deviceId !== WSTUDIO_PLUGIN_LOCAL_DEVICE_ID)
+                              .filter((d) => d.deviceId !== "default")
                               .map((d) => (
                                 <option key={d.deviceId} value={d.deviceId}>
                                   {d.label}
@@ -1165,6 +1186,11 @@ export default function UnifiedSessionScreen() {
                             <button type="button" onClick={() => bridgeRefreshDevices()} style={{ fontSize: 8, color: C.dim, background: "none", border: "none", cursor: "pointer" }}>↻ Refresh</button>
                           </div>
                           {bridgeRoutingError && <div style={{ fontSize: 8, color: C.red, marginTop: 2 }}>{bridgeRoutingError}</div>}
+                          {isEngineer && !bridgeFeedActive && sessionId.trim() ? (
+                            <div style={{ fontSize: 8, color: C.dim, marginTop: 4, lineHeight: 1.35 }}>
+                              Route the artist vocal (WebRTC) to the output your desktop bridge or virtual device uses. Same session code on both sides; REMOTE IN should show &quot;live&quot; before audio reaches Logic.
+                            </div>
+                          ) : null}
                         </div>
                       </div>
                       <div className="mt-2 border-t pt-2" style={{ borderColor: C.panelBorder, fontSize: 9, color: C.dim }}>
@@ -1489,6 +1515,13 @@ export default function UnifiedSessionScreen() {
             {isEngineer ? (
               <div className="mt-4 border-t pt-3" style={{ borderColor: C.panelBorder }}>
                 <div style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>W.STUDIO BRIDGE</div>
+                <div className="mt-1.5" style={{ fontSize: 9, color: C.dim, lineHeight: 1.4 }}>
+                  Production path: install <span style={{ color: C.text }}>W.STUDIO Desktop Bridge</span> — it receives the artist and feeds{" "}
+                  <span style={{ color: C.text }}>W.STUDIO Artist Input</span> so Logic records like a normal mic. In Logic, pick that input on a track; use the in-DAW plugin for controls and meters only.
+                  {WSTUDIO_PLUGIN_WS_BRIDGE_ENABLED ? (
+                    <span> This dev build still lists the experimental AU WebSocket output.</span>
+                  ) : null}
+                </div>
                 <div className="mt-2 space-y-1.5" style={{ fontSize: 12, color: C.text, lineHeight: 1.45 }}>
                   <div>
                     <span style={{ color: C.dim }}>Status: </span>
@@ -1508,6 +1541,14 @@ export default function UnifiedSessionScreen() {
                       <span style={{ color: C.green, fontWeight: 600 }}>
                         {bridgeDevices.find(d => d.deviceId === bridgeSelectedDevice)?.label ?? "Routed"}
                       </span>
+                    ) : bridgeRouted && bridgeUsingLocalWsBridge ? (
+                      <span style={{ color: C.yellow, fontWeight: 600 }}>
+                        Bridge link OK — waiting for artist vocal (same session code)
+                      </span>
+                    ) : bridgeRouted ? (
+                      <span style={{ color: C.green, fontWeight: 600 }}>
+                        {bridgeDevices.find(d => d.deviceId === bridgeSelectedDevice)?.label ?? "Routed"}
+                      </span>
                     ) : (
                       <span style={{ color: C.acCyan, fontWeight: 600 }}>Select device ↓</span>
                     )}
@@ -1524,11 +1565,8 @@ export default function UnifiedSessionScreen() {
                       }}
                     >
                       <option value="default">Default output</option>
-                      <option value={WSTUDIO_PLUGIN_LOCAL_DEVICE_ID}>
-                        WStudioPlugin — localhost (Logic / AU, port 47999)
-                      </option>
                       {bridgeDevices
-                        .filter((d) => d.deviceId !== "default" && d.deviceId !== WSTUDIO_PLUGIN_LOCAL_DEVICE_ID)
+                        .filter((d) => d.deviceId !== "default")
                         .map((d) => (
                           <option key={d.deviceId} value={d.deviceId}>
                             {d.label}
@@ -1542,6 +1580,11 @@ export default function UnifiedSessionScreen() {
                       <button type="button" onClick={() => bridgeRefreshDevices()} style={{ fontSize: 9, color: C.dim, background: "none", border: "none", cursor: "pointer" }}>↻ Refresh</button>
                     </div>
                     {bridgeRoutingError && <div style={{ fontSize: 9, color: C.red, marginTop: 2 }}>{bridgeRoutingError}</div>}
+                    {isEngineer && !bridgeFeedActive && sessionId.trim() ? (
+                      <div style={{ fontSize: 9, color: C.dim, marginTop: 4, lineHeight: 1.35 }}>
+                        Route the artist vocal (WebRTC) to the output your desktop bridge or virtual device uses. Same session code on both sides; REMOTE IN should show &quot;live&quot; before audio reaches Logic.
+                      </div>
+                    ) : null}
                   </div>
                 </div>
                 <div className="mt-2 border-t pt-2" style={{ borderColor: C.panelBorder, fontSize: 11, color: C.dim }}>

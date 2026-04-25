@@ -12,7 +12,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "supabase:ship:wstudio": "bash scripts/wstudio-backend-ship.sh",
-    "supabase:verify:session-lookup": "bash scripts/wstudio-verify-session-lookup.sh"
+    "supabase:verify:session-lookup": "bash scripts/wstudio-verify-session-lookup.sh",
+    "wstudio:plugin:au": "bash scripts/build-wstudio-au.sh",
+    "wstudio:plugin:fix-xcode-scripts": "bash scripts/fix-wstudio-xcode-copy-scripts.sh",
+    "wstudio:bridge": "cargo run --manifest-path native/wstudio-desktop-bridge/Cargo.toml",
+    "wstudio:bridge:app": "bash scripts/build-wstudio-bridge-app.sh"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

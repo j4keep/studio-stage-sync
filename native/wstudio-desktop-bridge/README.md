@@ -1,0 +1,81 @@
+# W.STUDIO Desktop Bridge
+
+Small **Rust** app: listens on **`ws://127.0.0.1:48001`** (override with `VITE_WSTUDIO_DESKTOP_BRIDGE_PORT` in the web app, or pass a port as the first CLI arg). The **engineer** web session sends the same **float32 stereo interleaved** PCM as the legacy AU bridge; this process plays it to the **macOS default output device**.
+
+## Prerequisites
+
+- [Rust](https://rustup.rs/) (`cargo` on your PATH)
+- Optional: [BlackHole](https://existential.audio/blackhole/) — set **System Settings → Sound → Output** to **BlackHole 2ch** so Logic can use BlackHole as a **track input** while you monitor elsewhere (e.g. aggregate device).
+
+## Run from Terminal (dev)
+
+From the **repo root**:
+
+```bash
+npm run wstudio:bridge
+```
+
+Or:
+
+```bash
+cargo run --manifest-path native/wstudio-desktop-bridge/Cargo.toml
+```
+
+Custom port (must match the web env):
+
+```bash
+cargo run --manifest-path native/wstudio-desktop-bridge/Cargo.toml -- 48002
+```
+
+Leave the terminal open. In the web app (engineer, `http://localhost:8080` or your dev URL):
+
+1. Join the session (same code as artist).
+2. Under **W.STUDIO BRIDGE**, output should default to **W.STUDIO Desktop Bridge** on localhost.
+3. Confirm **REMOTE IN** is **live**, then you should see levels in Logic if BlackHole (or your chosen default output) is armed on a track.
+
+## Installable Mac app (.app + .dmg)
+
+This is a **real** macOS application bundle (icon, name in Finder), not “only a README.”
+
+**One-time:** install [Rust](https://rustup.rs), then:
+
+```bash
+cargo install cargo-bundle
+```
+
+**Build** (from repo root):
+
+```bash
+cd /Users/you/Desktop/studio-stage-sync   # your path
+npm run wstudio:bridge:app
+```
+
+Outputs:
+
+- **`native/wstudio-desktop-bridge/target/release/bundle/osx/W.STUDIO Bridge.app`**
+- **`dist-bridge/WSTUDIO-Bridge-mac.dmg`** (drag the app to Applications)
+
+**Icon:** uses `src/assets/wheuat-logo.png` if present, else the doc reference PNG. Override:
+
+```bash
+WSTUDIO_BRIDGE_ICON=/path/to/your/1024.png npm run wstudio:bridge:app
+```
+
+**Gatekeeper:** first launch → right-click the app → **Open**, or run:
+
+`xattr -cr "path/to/W.STUDIO Bridge.app"`
+
+**Lovable / GitHub:** this repo does not auto-upload a binary. After `npm run wstudio:bridge:app`, upload **`dist-bridge/WSTUDIO-Bridge-mac.dmg`** as a [GitHub Release](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository) asset so others can download it.
+
+## Web app env
+
+- `VITE_WSTUDIO_DESKTOP_BRIDGE_PORT` — default **48001** if unset.
+
+## Milestones (roadmap)
+
+| Milestone | Scope |
+|-----------|--------|
+| **1 (this)** | WebSocket → default audio output; manual BlackHole / aggregate. |
+| **2** | Dedicated **W.STUDIO Artist Input** device + installer. |
+| **3** | Session pairing, reconnect UI, device picker in the app. |
+| **4** | AU plugin = controls / meters only; optional IPC with this app. |

@@ -518,6 +518,9 @@ WStudioPluginAudioProcessorEditor::WStudioPluginAudioProcessorEditor(WStudioPlug
     refreshControlButtonLabels();
     updatePriorityControlStatus();
 
+    // Hosts (e.g. Logic) may not call prepareToPlay until play / graph wake — browser WebSocket connects earlier.
+    audioProcessor.ensureNetworkBridgeServerRunning();
+
     startTimerHz(24);
 }
 

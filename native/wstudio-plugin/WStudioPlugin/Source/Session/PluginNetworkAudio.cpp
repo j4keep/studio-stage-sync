@@ -272,9 +272,16 @@ PluginNetworkAudio::~PluginNetworkAudio()
 
 void PluginNetworkAudio::startServer(int port)
 {
+    if (isThreadRunning() && serverRunning.load(std::memory_order_acquire) && listenPort == port)
+    {
+        DBG("PluginNetworkAudio: already listening on 127.0.0.1:" << port << " (startServer no-op)");
+        return;
+    }
+
     stopServer();
     listenPort = port;
     serverRunning.store(true, std::memory_order_release);
+    DBG("PluginNetworkAudio: starting bridge listen thread for 127.0.0.1:" << port);
     startThread(juce::Thread::Priority::normal);
 }
 
@@ -296,6 +303,20 @@ void PluginNetworkAudio::stopServer()
     stopThread(4000);
 }
 
+void PluginNetworkAudio::setMaxAudioBlockSize(int maxSamples) noexcept
+{
+    if (maxSamples <= 0)
+        return;
+    // Headroom: some hosts briefly exceed prepareToPlay's block hint; never RT-allocate in pullAndAdd.
+    const int frames = juce::jmax(maxSamples, 4096);
+    const int needFloats = frames * 2;
+    if (pullScratchFloats < needFloats)
+    {
+        pullScratch.malloc((size_t)needFloats);
+        pullScratchFloats = needFloats;
+    }
+}
+
 void PluginNetworkAudio::pullAndAdd(juce::AudioBuffer<float>& buffer, int numChannels, int numSamples) noexcept
 {
     if (numSamples <= 0 || numChannels <= 0 || fifoStorage.get() == nullptr)
@@ -308,11 +329,14 @@ void PluginNetworkAudio::pullAndAdd(juce::AudioBuffer<float>& buffer, int numCha
     if (toRead <= 0)
         return;
 
-    juce::HeapBlock<float> tmp((size_t)(toRead * 2));
+    const int needFloats = toRead * 2;
+    if (pullScratch.get() == nullptr || needFloats > pullScratchFloats)
+        return;
+
     int start1 = 0, size1 = 0, start2 = 0, size2 = 0;
     fifo.prepareToRead(toRead, start1, size1, start2, size2);
 
-    float* dst = tmp.get();
+    float* dst = pullScratch.get();
     if (size1 > 0)
         memcpy(dst, fifoStorage.get() + (size_t)start1 * 2, (size_t)size1 * sizeof(float) * 2);
     if (size2 > 0)
@@ -325,8 +349,8 @@ void PluginNetworkAudio::pullAndAdd(juce::AudioBuffer<float>& buffer, int numCha
 
     for (int i = 0; i < toRead; ++i)
     {
-        const float sl = tmp[(size_t)i * 2];
-        const float sr = tmp[(size_t)i * 2 + 1];
+        const float sl = dst[(size_t)i * 2];
+        const float sr = dst[(size_t)i * 2 + 1];
         l[i] += sl;
         if (numChannels > 1)
             r[i] += sr;
@@ -338,10 +362,13 @@ void PluginNetworkAudio::run()
     listener = std::make_unique<juce::StreamingSocket>();
     if (!listener->createListener(listenPort, "127.0.0.1"))
     {
-        DBG("WStudio: could not listen on 127.0.0.1:" << listenPort);
+        DBG("PluginNetworkAudio: FAILED createListener on 127.0.0.1:" << listenPort
+                                                                      << " (port in use or bind error?)");
         listener.reset();
         return;
     }
+
+    DBG("PluginNetworkAudio: listening for WebSocket on 127.0.0.1:" << listenPort);
 
     while (!threadShouldExit() && serverRunning.load(std::memory_order_acquire))
     {
@@ -421,11 +448,17 @@ void PluginNetworkAudio::run()
             if (payloadLen > (uint64_t)64 * 1024 * 1024)
                 break;
 
-            juce::HeapBlock<uint8_t> payload((size_t)payloadLen);
-            if (payloadLen > 0 && sock.read(payload.get(), (int)payloadLen, true) != (int)payloadLen)
+            if (payloadLen > 0 && (size_t)payloadLen > wsPayloadScratchBytes)
+            {
+                wsPayloadScratch.malloc((size_t)payloadLen);
+                wsPayloadScratchBytes = (size_t)payloadLen;
+            }
+
+            uint8_t* payload = payloadLen > 0 ? wsPayloadScratch.get() : nullptr;
+            if (payloadLen > 0 && sock.read(payload, (int)payloadLen, true) != (int)payloadLen)
                 break;
 
-            if (masked)
+            if (masked && payload != nullptr)
             {
                 for (uint64_t i = 0; i < payloadLen; ++i)
                     payload[i] = (uint8_t)(payload[i] ^ mask[i & 3]);
@@ -434,10 +467,14 @@ void PluginNetworkAudio::run()
             if (opcode == 0x2 || opcode == 0x0 || opcode == 0x1)
             {
                 // Binary/text: treat binary as float32 stereo interleaved.
-                if (opcode == 0x2 && payloadLen >= 8 && (payloadLen % 8) == 0)
+                if (opcode == 0x2 && payloadLen >= 8 && (payloadLen % 8) == 0 && payload != nullptr)
                 {
                     const int frames = (int)(payloadLen / 8);
-                    pushStereoPcm(this, fifo, fifoStorage, (const float*)payload.get(), frames);
+                    static int rxLogCounter = 0;
+                    if ((++rxLogCounter % 64) == 0)
+                        DBG("W.STUDIO received WebSocket audio bytes: " << (int)payloadLen << " (" << frames
+                                                                          << " stereo frames float32 LE)");
+                    pushStereoPcm(this, fifo, fifoStorage, (const float*)payload, frames);
                 }
             }
         }

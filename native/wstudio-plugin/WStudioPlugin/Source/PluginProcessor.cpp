@@ -4,11 +4,33 @@
 #include "Session/PluginNetworkAudio.h"
 #include <cmath>
 
+// WebSocket PCM into the AU is optional. Set per configuration in Projucer:
+// Configurations → Debug/Release → Preprocessor Definitions:
+//   WSTUDIO_AU_ENABLE_NETWORK_BRIDGE=0  (default, control-surface-only AU)
+//   WSTUDIO_AU_ENABLE_NETWORK_BRIDGE=1  (experimental browser → AU bridge)
+// After changing the .jucer, click Save to refresh the Xcode project.
+
 namespace
 {
 static constexpr const char* kRootStateId = "WSTPersistRoot";
+#if WSTUDIO_AU_ENABLE_NETWORK_BRIDGE
 /** Loopback WebSocket port for W.STUDIO web → plugin bridge audio (must match web). */
 static constexpr int kPluginNetworkAudioPort = 47999;
+#endif
+
+static float channelRms(const juce::AudioBuffer<float>& b, int channel, int numSamples) noexcept
+{
+    if (numSamples <= 0 || channel < 0 || channel >= b.getNumChannels())
+        return 0.f;
+    const float* d = b.getReadPointer(channel);
+    double acc = 0.0;
+    for (int i = 0; i < numSamples; ++i)
+    {
+        const double x = (double)d[i];
+        acc += x * x;
+    }
+    return (float)std::sqrt(acc / (double)numSamples);
+}
 }
 
 WStudioPluginAudioProcessor::WStudioPluginAudioProcessor()
@@ -191,14 +213,27 @@ void WStudioPluginAudioProcessor::changeProgramName(int, const juce::String&)
 {
 }
 
-void WStudioPluginAudioProcessor::prepareToPlay(double newSampleRate, int newSamplesPerBlock)
+void WStudioPluginAudioProcessor::ensureNetworkBridgeServerRunning()
 {
+#if WSTUDIO_AU_ENABLE_NETWORK_BRIDGE
     if (networkAudio == nullptr)
         networkAudio = std::make_unique<PluginNetworkAudio>();
+
     networkAudio->startServer(kPluginNetworkAudioPort);
+    DBG("W.STUDIO bridge server requested on 127.0.0.1:" << kPluginNetworkAudioPort);
+#endif
+}
+
+void WStudioPluginAudioProcessor::prepareToPlay(double newSampleRate, int newSamplesPerBlock)
+{
+    ensureNetworkBridgeServerRunning();
 
     sampleRate = newSampleRate;
     samplesPerBlock = juce::jmax(1, newSamplesPerBlock);
+#if WSTUDIO_AU_ENABLE_NETWORK_BRIDGE
+    if (networkAudio != nullptr)
+        networkAudio->setMaxAudioBlockSize(samplesPerBlock);
+#endif
     constexpr double tauSec = 0.22;
     meterReleasePerBlock =
         (float)std::exp(-(double)samplesPerBlock / (sampleRate * tauSec));
@@ -211,8 +246,10 @@ void WStudioPluginAudioProcessor::prepareToPlay(double newSampleRate, int newSam
 
 void WStudioPluginAudioProcessor::releaseResources()
 {
-    if (networkAudio != nullptr)
-        networkAudio->stopServer();
+    // Do not stop PluginNetworkAudio here. Hosts often call releaseResources when playback
+    // stops or the graph is rewired; closing the WebSocket breaks the browser bridge until
+    // prepareToPlay runs again. The server stops in PluginNetworkAudio's destructor when
+    // this processor is destroyed.
 }
 
 #ifndef JucePlugin_PreferredChannelConfigurations
@@ -257,8 +294,6 @@ void WStudioPluginAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     const int nCh = buffer.getNumChannels();
     const int nSm = buffer.getNumSamples();
 
-    measureAndSmoothPeaks(buffer, nCh, nSm);
-
     const auto st = sessionStateAudio.load(std::memory_order_acquire);
     const bool sessionActive = (st == SessionState::Connected || st == SessionState::Live || st == SessionState::Recording);
 
@@ -302,8 +337,22 @@ void WStudioPluginAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
 
     AudioRouter::processMainInsert(buffer, nCh, nSm, c);
 
+#if JUCE_DEBUG
+    const float rmsBeforeBridge = channelRms(buffer, 0, nSm);
+#endif
+#if WSTUDIO_AU_ENABLE_NETWORK_BRIDGE
     if (networkAudio != nullptr)
         networkAudio->pullAndAdd(buffer, nCh, nSm);
+#endif
+#if JUCE_DEBUG
+    const float rmsAfterBridge = channelRms(buffer, 0, nSm);
+    static int bridgeRmsLogCounter = 0;
+    if ((++bridgeRmsLogCounter % 128) == 0)
+        DBG("W.STUDIO processBlock RMS L before pullAndAdd: " << rmsBeforeBridge << "  after: " << rmsAfterBridge);
+#endif
+
+    // Meters reflect post-insert + web bridge (matches what Logic hears on the insert output).
+    measureAndSmoothPeaks(buffer, nCh, nSm);
 }
 
 bool WStudioPluginAudioProcessor::hasEditor() const
@@ -313,6 +362,7 @@ bool WStudioPluginAudioProcessor::hasEditor() const
 
 juce::AudioProcessorEditor* WStudioPluginAudioProcessor::createEditor()
 {
+    ensureNetworkBridgeServerRunning();
     return new WStudioPluginAudioProcessorEditor(*this);
 }
 

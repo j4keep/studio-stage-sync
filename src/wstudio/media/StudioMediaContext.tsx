@@ -54,6 +54,10 @@ export type StudioMediaContextValue = {
    * Engineer-only: 0–1 level measured on the dedicated bridge / DAW vocal graph (separate Web Audio path from session monitor metering).
    */
   engineerBridgeVocalLevel: number;
+  /**
+   * Engineer-only: `AudioContext` that owns {@link engineerDawVocalIn1}. Use for WStudioPlugin WebSocket tap so one context drives meters and Logic.
+   */
+  engineerDawVocalAudioContext: AudioContext | null;
   /** Engineer-only: DAW return capture stream (from virtual cable input like BlackHole). */
   engineerDawReturnStream: MediaStream | null;
   /** Engineer-only: 0–1 level on the DAW return capture path. */
@@ -97,6 +101,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
   const [hasRemoteAudio, setHasRemoteAudio] = useState(false);
   const [engineerDawVocalIn1, setEngineerDawVocalIn1] = useState<MediaStream | null>(null);
   const [engineerDawVocalIn2, setEngineerDawVocalIn2] = useState<MediaStream | null>(null);
+  const [engineerDawVocalAudioContext, setEngineerDawVocalAudioContext] = useState<AudioContext | null>(null);
   const [engineerScreenShareAudioStream, setEngineerScreenShareAudioStream] = useState<MediaStream | null>(null);
   const [engineerBridgeVocalLevel, setEngineerBridgeVocalLevel] = useState(0);
   const [engineerDawReturnStream, setEngineerDawReturnStream] = useState<MediaStream | null>(null);
@@ -472,6 +477,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     if (role !== "engineer") {
       setEngineerDawVocalIn1(null);
       setEngineerDawVocalIn2(null);
+      setEngineerDawVocalAudioContext(null);
       setEngineerBridgeVocalLevel(0);
       return;
     }
@@ -480,6 +486,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     if (!audioTrack) {
       setEngineerDawVocalIn1(null);
       setEngineerDawVocalIn2(null);
+      setEngineerDawVocalAudioContext(null);
       setEngineerBridgeVocalLevel(0);
       return;
     }
@@ -489,6 +496,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     const bridgeScratch = new Float32Array(2048);
     const ctx = new AudioContext();
     void ctx.resume().catch(() => {});
+    setEngineerDawVocalAudioContext(ctx);
     const micStream = new MediaStream([audioTrack]);
     const src = ctx.createMediaStreamSource(micStream);
     const g1 = ctx.createGain();
@@ -546,6 +554,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       cancelled = true;
       cancelAnimationFrame(meterRaf);
       setEngineerBridgeVocalLevel(0);
+      setEngineerDawVocalAudioContext(null);
       src.disconnect();
       g1.disconnect();
       g2.disconnect();
@@ -1005,6 +1014,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       localScreenPreview,
       engineerDawVocalIn1,
       engineerDawVocalIn2,
+      engineerDawVocalAudioContext,
       engineerScreenShareAudioStream,
       engineerBridgeVocalLevel,
       engineerDawReturnStream,
@@ -1028,6 +1038,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       localScreenPreview,
       engineerDawVocalIn1,
       engineerDawVocalIn2,
+      engineerDawVocalAudioContext,
       engineerScreenShareAudioStream,
       engineerBridgeVocalLevel,
       engineerDawReturnStream,

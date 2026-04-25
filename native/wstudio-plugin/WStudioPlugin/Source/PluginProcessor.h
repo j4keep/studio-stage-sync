@@ -90,6 +90,9 @@ public:
     void commitSessionSnapshot(juce::ValueTree snapshot);
     juce::ValueTree copySessionSnapshot() const;
 
+    /** Optional experimental path: loopback WebSocket PCM (off by default; see WSTUDIO_AU_ENABLE_NETWORK_BRIDGE). */
+    void ensureNetworkBridgeServerRunning();
+
 private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     void measureAndSmoothPeaks(const juce::AudioBuffer<float>& buffer, int numChannels, int numSamples) noexcept;
