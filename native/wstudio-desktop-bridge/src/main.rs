@@ -69,12 +69,30 @@ fn parse_port() -> u16 {
 /// Finder-launched apps hide stderr; show a dialog so failures are visible.
 #[cfg(target_os = "macos")]
 fn show_macos_alert(message: &str) {
-    let safe = message.replace('\\', "\\\\").replace('"', "'");
+    // AppleScript breaks on raw newlines in the message string.
+    let single = message.replace(['\n', '\r'], " — ");
+    let safe = single.replace('\\', "\\\\").replace('"', "'");
     let script = format!("display alert \"W.STUDIO Bridge\" message \"{safe}\" as informational");
     let _ = std::process::Command::new("osascript")
         .args(["-e", &script])
         .output();
 }
+
+/// No window — confirm to the user the headless server actually started.
+#[cfg(target_os = "macos")]
+fn show_macos_started_notification(port: u16) {
+    let body = format!(
+        "Bridge is running on port {port}. It does not appear in Sound settings - audio plays to your current Mac output."
+    );
+    let safe = body.replace('\\', "\\\\").replace('"', "'");
+    let script = format!("display notification \"{safe}\" with title \"W.STUDIO Bridge\"");
+    let _ = std::process::Command::new("osascript")
+        .args(["-e", &script])
+        .output();
+}
+
+#[cfg(not(target_os = "macos"))]
+fn show_macos_started_notification(_port: u16) {}
 
 #[cfg(not(target_os = "macos"))]
 fn show_macos_alert(_message: &str) {}
@@ -216,7 +234,28 @@ async fn handle_client(stream: TcpStream, fifo: Arc<Mutex<StereoFifo>>) {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    std::panic::set_hook(Box::new(|info| {
+        let msg = info.to_string();
+        log_line(&format!("[wstudio-bridge] PANIC: {msg}"));
+        #[cfg(target_os = "macos")]
+        {
+            let single = msg.replace(['\n', '\r'], " ");
+            let safe: String = single.chars().take(240).collect::<String>();
+            let safe = safe.replace('\\', "\\\\").replace('"', "'");
+            let script = format!(
+                "display alert \"W.STUDIO Bridge quit unexpectedly\" message \"{safe}\" as critical"
+            );
+            let _ = std::process::Command::new("osascript")
+                .args(["-e", &script])
+                .output();
+        }
+    }));
+
     let port = parse_port();
+    log_line(&format!(
+        "[wstudio-bridge] starting (pid {}, port {port})",
+        std::process::id()
+    ));
     let addr: SocketAddr = ([127, 0, 0, 1], port).into();
 
     let fifo = Arc::new(Mutex::new(StereoFifo::new()));
@@ -270,6 +309,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
          In the web app (engineer), set bridge output to **W.STUDIO Desktop Bridge**.\n\
          Tip: set Sound output to the device your DAW records from (virtual loopback or W.STUDIO aggregate), then arm that input on a track in Logic."
     ));
+    show_macos_started_notification(port);
 
     loop {
         let (stream, _) = listener.accept().await?;

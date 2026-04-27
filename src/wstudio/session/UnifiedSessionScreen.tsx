@@ -1122,8 +1122,7 @@ export default function UnifiedSessionScreen() {
                     <div className="mt-4 border-t pt-3" style={{ borderColor: C.panelBorder }}>
                       <div style={{ fontSize: 11, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>W.STUDIO BRIDGE</div>
                       <div className="mt-1.5" style={{ fontSize: 8, color: C.dim, lineHeight: 1.4 }}>
-                        Production path: install <span style={{ color: C.text }}>W.STUDIO Desktop Bridge</span> — it receives the artist and feeds{" "}
-                        <span style={{ color: C.text }}>W.STUDIO Artist Input</span> so Logic records like a normal mic. In Logic, pick that input on a track; use the in-DAW plugin for controls and meters only.
+                        Run <span style={{ color: C.text }}>W.STUDIO Desktop Bridge</span> on this Mac — it receives the artist over the web session and plays to your <span style={{ color: C.text }}>current Mac output</span> (it does not appear in System Settings → Sound). Point Logic at the <span style={{ color: C.text }}>input</span> that hears that output (loopback / aggregate). Future <span style={{ color: C.text }}>W.STUDIO Artist Input</span> would show in Sound; not in this build. Use the AU for controls/meters only.
                         {WSTUDIO_PLUGIN_WS_BRIDGE_ENABLED ? (
                           <span> This dev build still lists the experimental AU WebSocket output.</span>
                         ) : null}
@@ -1188,7 +1187,7 @@ export default function UnifiedSessionScreen() {
                           {bridgeRoutingError && <div style={{ fontSize: 8, color: C.red, marginTop: 2 }}>{bridgeRoutingError}</div>}
                           {isEngineer && !bridgeFeedActive && sessionId.trim() ? (
                             <div style={{ fontSize: 8, color: C.dim, marginTop: 4, lineHeight: 1.35 }}>
-                              Route the artist vocal (WebRTC) to the output your desktop bridge or virtual device uses. Same session code on both sides; REMOTE IN should show &quot;live&quot; before audio reaches Logic.
+                              Route the artist vocal (WebRTC) to the bridge (localhost WebSocket). Set Mac Sound output to whatever your DAW records from. Same session code on both sides; REMOTE IN should show &quot;live&quot; before audio reaches Logic.
                             </div>
                           ) : null}
                         </div>
@@ -1516,8 +1515,7 @@ export default function UnifiedSessionScreen() {
               <div className="mt-4 border-t pt-3" style={{ borderColor: C.panelBorder }}>
                 <div style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>W.STUDIO BRIDGE</div>
                 <div className="mt-1.5" style={{ fontSize: 9, color: C.dim, lineHeight: 1.4 }}>
-                  Production path: install <span style={{ color: C.text }}>W.STUDIO Desktop Bridge</span> — it receives the artist and feeds{" "}
-                  <span style={{ color: C.text }}>W.STUDIO Artist Input</span> so Logic records like a normal mic. In Logic, pick that input on a track; use the in-DAW plugin for controls and meters only.
+                  Run <span style={{ color: C.text }}>W.STUDIO Desktop Bridge</span> on this Mac — it receives the artist over the web session and plays to your <span style={{ color: C.text }}>current Mac output</span> (it does not appear in System Settings → Sound). Point Logic at the <span style={{ color: C.text }}>input</span> that hears that output (loopback / aggregate). Future <span style={{ color: C.text }}>W.STUDIO Artist Input</span> would show in Sound; not in this build. Use the AU for controls/meters only.
                   {WSTUDIO_PLUGIN_WS_BRIDGE_ENABLED ? (
                     <span> This dev build still lists the experimental AU WebSocket output.</span>
                   ) : null}
@@ -1582,7 +1580,7 @@ export default function UnifiedSessionScreen() {
                     {bridgeRoutingError && <div style={{ fontSize: 9, color: C.red, marginTop: 2 }}>{bridgeRoutingError}</div>}
                     {isEngineer && !bridgeFeedActive && sessionId.trim() ? (
                       <div style={{ fontSize: 9, color: C.dim, marginTop: 4, lineHeight: 1.35 }}>
-                        Route the artist vocal (WebRTC) to the output your desktop bridge or virtual device uses. Same session code on both sides; REMOTE IN should show &quot;live&quot; before audio reaches Logic.
+                        Route the artist vocal (WebRTC) to the bridge (localhost WebSocket). Set Mac Sound output to whatever your DAW records from. Same session code on both sides; REMOTE IN should show &quot;live&quot; before audio reaches Logic.
                       </div>
                     ) : null}
                   </div>

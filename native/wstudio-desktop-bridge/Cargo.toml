@@ -15,7 +15,7 @@ version = "0.1.0"
 copyright = "Copyright (c) Wheuat LLC. All rights reserved."
 category = "public.app-category.music"
 short_description = "W.STUDIO session audio to your Mac output."
-long_description = "Receives live artist audio from the W.STUDIO web session (engineer) and plays it to the default CoreAudio output. Route that output into the input your DAW records (virtual loopback or W.STUDIO aggregate)."
+long_description = "Receives live artist audio from the W.STUDIO web session (engineer) over WebSocket and plays it to the Mac default output. This app does not add a device in System Settings → Sound; use loopback or an aggregate so your DAW can record that output."
 osx_minimum_system_version = "11.0"
 
 [dependencies]

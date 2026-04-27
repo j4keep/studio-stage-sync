@@ -61,9 +61,10 @@ export function BridgeOutputRouting({
       {routingError && <p className="text-xs text-red-400/90">{routingError}</p>}
 
       <p className="text-[11px] leading-relaxed text-zinc-600">
-        Primary path: <span className="text-zinc-500">W.STUDIO Desktop Bridge</span> receives the session and drives{" "}
-        <span className="text-zinc-500">W.STUDIO Artist Input</span> (virtual device) so Logic can use it like a normal mic input. Route
-        bridge audio here to the same output your W.STUDIO routing uses until the desktop app wires this automatically.
+        <span className="text-zinc-500">W.STUDIO Desktop Bridge</span> is a small Mac app (WebSocket + speakers) — it does{" "}
+        <span className="text-zinc-500">not</span> appear in System Settings → Sound like a virtual sound card. It plays session audio to
+        your Mac&apos;s <span className="text-zinc-500">current output</span>; use loopback or an aggregate so your DAW records that signal.
+        A future <span className="text-zinc-500">W.STUDIO Artist Input</span> driver would show up in Sound; that is not shipped in this milestone.
         {WSTUDIO_PLUGIN_WS_BRIDGE_ENABLED ? (
           <span> Experimental AU WebSocket option is enabled in this build.</span>
         ) : null}

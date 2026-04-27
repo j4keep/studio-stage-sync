@@ -2,6 +2,14 @@
 
 Small **Rust** app: listens on **`ws://127.0.0.1:48001`** (override with `VITE_WSTUDIO_DESKTOP_BRIDGE_PORT` in the web app, or pass a port as the first CLI arg). The **engineer** web session sends the same **float32 stereo interleaved** PCM as the legacy AU bridge; this process plays it to the **macOS default output device**.
 
+## This is not BlackHole (and it will not show up under System Settings → Sound)
+
+**W.STUDIO Bridge is a normal app with a WebSocket server plus a speaker output.** It does **not** install a virtual **sound card** or **input** that appears next to BlackHole, built-in mic, or your interface. macOS only lists devices that come from a **Core Audio driver / HAL plug-in** (that is a separate, much larger project — the roadmap calls that something like **“W.STUDIO Artist Input”**).
+
+**What you do today:** leave **Sound → Output** on whatever you already use for loopback routing (or speakers). Run the bridge, open the **engineer** session in the web app, choose **W.STUDIO Desktop Bridge** in the **in-browser** output menu (that menu is **not** the Mac Sound list). The bridge receives audio over `ws://127.0.0.1` and **plays it out** the Mac’s **current** output device — your DAW records from the **input** side of your existing loopback/aggregate setup.
+
+**Testing with Lovable (HTTPS):** browsers usually **block** `ws://127.0.0.1` from public HTTPS sites. For end-to-end bridge tests on your Mac, run the web app at **`http://localhost`** (`npm run dev` from this repo) while the bridge runs — or plan a secure tunnel / `wss` relay later.
+
 ## Why there is no folder named “Rust” (and no `.app` inside GitHub)
 
 - **Rust** is the **programming language**, not a folder in your project. You know a project uses Rust when you see:

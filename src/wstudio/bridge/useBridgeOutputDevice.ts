@@ -5,7 +5,8 @@ export type AudioOutputDevice = { deviceId: string; label: string };
 /** Primary path: engineer tab sends PCM to the Rust desktop bridge on localhost (see `npm run wstudio:bridge`). */
 export const WSTUDIO_DESKTOP_BRIDGE_LOCAL_DEVICE_ID = "wstudio-desktop-bridge-local";
 
-const DESKTOP_BRIDGE_LABEL = "W.STUDIO Desktop Bridge — localhost (run npm run wstudio:bridge, port 48001)";
+const DESKTOP_BRIDGE_LABEL =
+  "W.STUDIO Desktop Bridge — local app (ws://127.0.0.1:48001; not listed in Mac Sound settings)";
 
 /**
  * Experimental: WebSocket PCM into the in-DAW AU. Enable with `VITE_WSTUDIO_PLUGIN_WS_BRIDGE=true`.
