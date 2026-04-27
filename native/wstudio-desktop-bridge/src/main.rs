@@ -6,8 +6,11 @@
 
 use std::collections::VecDeque;
 use std::io::ErrorKind;
+use std::io::Write;
 use std::net::SocketAddr;
+use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::SampleFormat;
@@ -76,26 +79,41 @@ fn show_macos_alert(message: &str) {
 #[cfg(not(target_os = "macos"))]
 fn show_macos_alert(_message: &str) {}
 
-fn run_cpal(fifo: Arc<Mutex<StereoFifo>>) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+/// Finder-launched apps hide stderr; mirror important lines here so support is possible.
+fn log_line(msg: &str) {
+    eprintln!("{msg}");
+    #[cfg(target_os = "macos")]
+    {
+        let path = "/tmp/wstudio-bridge.log";
+        if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(path) {
+            let _ = writeln!(f, "{}", msg);
+        }
+    }
+}
+
+fn run_cpal(
+    fifo: Arc<Mutex<StereoFifo>>,
+    started_tx: Sender<Result<(), String>>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let host = cpal::default_host();
     let device = host
         .default_output_device()
         .ok_or("no default output device — connect speakers or a virtual output")?;
-    eprintln!(
+    log_line(&format!(
         "[wstudio-bridge] Output device: {}",
         device.name().unwrap_or_else(|_| "(unknown)".into())
-    );
+    ));
 
     let supported = device.default_output_config()?;
     let sample_format = supported.sample_format();
     let config = supported.config();
     let channels = config.channels as usize;
-    eprintln!(
+    log_line(&format!(
         "[wstudio-bridge] Stream: {} Hz, {} channels, {:?}",
         config.sample_rate.0,
         channels,
         sample_format
-    );
+    ));
 
     let err_fn = |e: cpal::StreamError| eprintln!("[wstudio-bridge] stream error: {e}");
 
@@ -154,7 +172,8 @@ fn run_cpal(fifo: Arc<Mutex<StereoFifo>>) -> Result<(), Box<dyn std::error::Erro
     };
 
     stream.play()?;
-    eprintln!("[wstudio-bridge] Playing. Leave this terminal open. Ctrl+C to stop.");
+    let _ = started_tx.send(Ok(()));
+    log_line("[wstudio-bridge] Playing. Leave this process running (or keep the app open).");
 
     std::thread::park();
     Ok(())
@@ -203,20 +222,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let fifo = Arc::new(Mutex::new(StereoFifo::new()));
     let fifo_audio = Arc::clone(&fifo);
 
-    let (audio_err_tx, audio_err_rx) = std::sync::mpsc::channel::<String>();
+    let (audio_started_tx, audio_started_rx) = std::sync::mpsc::channel::<Result<(), String>>();
+    let tx_cpal = audio_started_tx.clone();
+    let tx_err = audio_started_tx.clone();
+    drop(audio_started_tx);
     std::thread::spawn(move || {
-        if let Err(e) = run_cpal(fifo_audio) {
+        if let Err(e) = run_cpal(fifo_audio, tx_cpal) {
             let msg = format!("{e}");
-            eprintln!("[wstudio-bridge] {msg}");
-            let _ = audio_err_tx.send(msg);
+            log_line(&format!("[wstudio-bridge] {msg}"));
+            let _ = tx_err.send(Err(msg));
         }
     });
 
-    tokio::time::sleep(std::time::Duration::from_millis(400)).await;
-    if let Ok(msg) = audio_err_rx.try_recv() {
-        let full = format!("Audio output failed: {msg}\n\nTip: choose a working output in System Settings → Sound (speakers or your W.STUDIO / loopback routing), or run from Terminal to see full logs.");
-        show_macos_alert(&full);
-        return Err(full.into());
+    match audio_started_rx.recv_timeout(Duration::from_secs(8)) {
+        Ok(Ok(())) => {}
+        Ok(Err(msg)) => {
+            let full = format!("Audio output failed: {msg}\n\nTip: System Settings → Sound → pick a working output (built-in speakers, headphones, or your loopback). If this persists, see /tmp/wstudio-bridge.log");
+            log_line(&full);
+            show_macos_alert(&full);
+            return Err(full.into());
+        }
+        Err(_) => {
+            let full = "The bridge audio engine did not start in time (or the audio thread stopped).\n\nTip: quit other copies of W.STUDIO Bridge, check Sound output in System Settings, then try again. Details: /tmp/wstudio-bridge.log";
+            log_line(full);
+            show_macos_alert(full);
+            return Err(full.into());
+        }
     }
 
     let listener = match TcpListener::bind(addr).await {
@@ -234,11 +265,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         }
     };
 
-    eprintln!(
+    log_line(&format!(
         "[wstudio-bridge] WebSocket: ws://127.0.0.1:{port}\n\
          In the web app (engineer), set bridge output to **W.STUDIO Desktop Bridge**.\n\
          Tip: set Sound output to the device your DAW records from (virtual loopback or W.STUDIO aggregate), then arm that input on a track in Logic."
-    );
+    ));
 
     loop {
         let (stream, _) = listener.accept().await?;

@@ -77,7 +77,14 @@ WSTUDIO_BRIDGE_ICON=/path/to/your/1024.png npm run wstudio:bridge:app
 xattr -cr "/Applications/W.STUDIO Bridge.app"
 ```
 
-**Dock icon only bounces:** the app is probably **quitting immediately** (often **port 48001 already in use** because Terminal `npm run wstudio:bridge` is still running, or **audio device** error). Quit duplicate bridges, then open again. Newer builds show a **macOS alert** with the reason. To see errors in text, run the binary in Terminal:
+**Dock icon only bounces:** the process exits right away. The two usual causes:
+
+1. **Port 48001 in use** — another W.STUDIO Bridge is running, or you still have `npm run wstudio:bridge` open in Terminal. Quit those, then launch the app again. Check with: `lsof -nP -iTCP:48001 -sTCP:LISTEN`
+2. **CoreAudio won’t open the default output** — pick **System Settings → Sound → Output** and choose built-in speakers or headphones once, then try the bridge again.
+
+A **dialog** should explain which case it is. If you don’t see it, open **`/tmp/wstudio-bridge.log`** in TextEdit (Finder → Go → Go to Folder → `/tmp`). Newer builds also log there when launched from Finder.
+
+To see errors in Terminal, run the binary directly:
 
 ```bash
 "/Users/you/Desktop/studio-stage-sync/native/wstudio-desktop-bridge/target/release/bundle/osx/W.STUDIO Bridge.app/Contents/MacOS/wstudio-desktop-bridge"
