@@ -19,6 +19,7 @@ import {
 } from "../bridge/useBridgeOutputDevice";
 import { copyAccessTokenForPlugin } from "../lib/copyPluginAccessToken";
 import { useLocalBridgePoll } from "../bridge/useLocalBridgePoll";
+import { useArtistMicBridge } from "../bridge/useArtistMicBridge";
 
 const canScreenShare = typeof navigator !== "undefined" && !!navigator.mediaDevices?.getDisplayMedia;
 
@@ -586,6 +587,8 @@ export default function UnifiedSessionScreen() {
   const bridgePathReady = isEngineer && !!engineerDawVocalIn1 && hasRemoteAudio;
   /** Local desktop bridge poll (JUCE AU plugin HTTP server on 127.0.0.1:47999). */
   const localBridge = useLocalBridgePoll(isEngineer);
+  /** Artist mic → JUCE plugin via local HTTP bridge POST (slot 0 = primary artist for now). */
+  useArtistMicBridge(isArtist ? localStream : null, 0, isArtist && !muted);
   /** Bridge status derives from local-bridge HTTP poll OR audio routing state. */
   const bridgeStatusLabel = !isEngineer
     ? ""
