@@ -18,6 +18,7 @@ import orbitControl from "@/assets/wstudio-orbit-control.jpg";
 import orbitVocalist from "@/assets/wstudio-orbit-vocalist.jpg";
 import orbitFaders from "@/assets/wstudio-orbit-faders.jpg";
 import { WSTUDIO_DEMO_MODE } from "./demoConfig";
+import { copyAccessTokenForPlugin } from "../lib/copyPluginAccessToken";
 
 const ORBIT_IMAGES = [orbitMixer, orbitMic, orbitHeadphones, orbitControl, orbitVocalist, orbitFaders];
 // Reserve room for the fixed bottom nav (~64px tall) so role buttons sit just above it with no gap.
