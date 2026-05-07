@@ -584,21 +584,21 @@ export default function UnifiedSessionScreen() {
   const engineerRecordDimmed = isEngineer && !recording && !armed;
   /** Engineer DAW bridge: isolated vocal bus + session/artist sync (session UI extension only). */
   const bridgePathReady = isEngineer && !!engineerDawVocalIn1 && hasRemoteAudio;
-  /** Bridge status derives from actual audio routing state, not session-level handshake */
+  /** Local desktop bridge poll (JUCE AU plugin HTTP server on 127.0.0.1:47999). */
+  const localBridge = useLocalBridgePoll(isEngineer);
+  /** Bridge status derives from local-bridge HTTP poll OR audio routing state. */
   const bridgeStatusLabel = !isEngineer
     ? ""
-    : bridgePathReady
+    : localBridge.connected || bridgePathReady
       ? "Connected"
-      : hasRemoteAudio
+      : hasRemoteAudio || sessionId.trim()
         ? "Connecting"
-        : sessionId.trim()
-          ? "Connecting"
-          : "Disconnected";
+        : "Disconnected";
   const bridgeStatusColor =
     bridgeStatusLabel === "Connected" ? C.green : bridgeStatusLabel === "Connecting" ? C.yellow : C.dim;
   const bridgeArtistLabel = live.remoteArtistLabel.trim() || (hasRemoteAudio ? "Artist connected" : "—");
-  /** Feed active when the DAW vocal path is actually receiving remote audio */
-  const bridgeFeedActive = isEngineer && bridgePathReady;
+  /** Feed active when local bridge has fresh samples OR DAW vocal path is receiving remote audio */
+  const bridgeFeedActive = isEngineer && (localBridge.feedActive || bridgePathReady);
   const bridgeUsingLocalWsBridge =
     isEngineer &&
     (bridgeSelectedDevice === WSTUDIO_DESKTOP_BRIDGE_LOCAL_DEVICE_ID ||
