@@ -18,6 +18,7 @@ import {
   WSTUDIO_PLUGIN_WS_BRIDGE_ENABLED,
 } from "../bridge/useBridgeOutputDevice";
 import { copyAccessTokenForPlugin } from "../lib/copyPluginAccessToken";
+import { useLocalBridgePoll } from "../bridge/useLocalBridgePoll";
 
 const canScreenShare = typeof navigator !== "undefined" && !!navigator.mediaDevices?.getDisplayMedia;
 
