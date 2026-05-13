@@ -6,7 +6,7 @@ export type AudioOutputDevice = { deviceId: string; label: string };
 export const WSTUDIO_DESKTOP_BRIDGE_LOCAL_DEVICE_ID = "wstudio-desktop-bridge-local";
 
 const DESKTOP_BRIDGE_LABEL =
-  "W.STUDIO Desktop Bridge — local app (ws://127.0.0.1:48001; not listed in Mac Sound settings)";
+  "W.STUDIO Desktop Bridge — local app (http://127.0.0.1:47999; not listed in Mac Sound settings)";
 
 /**
  * Experimental: WebSocket PCM into the in-DAW AU. Enable with `VITE_WSTUDIO_PLUGIN_WS_BRIDGE=true`.
@@ -47,13 +47,11 @@ function getPluginAudioPort(): number {
 
 type LocalWsBridgeKind = "desktop" | "plugin";
 
-function getLocalWsBridgeTarget(deviceId: string): { port: number; kind: LocalWsBridgeKind } | null {
-  if (deviceId === WSTUDIO_DESKTOP_BRIDGE_LOCAL_DEVICE_ID) {
-    return { port: getDesktopBridgePort(), kind: "desktop" };
-  }
-  if (deviceId === WSTUDIO_PLUGIN_LOCAL_DEVICE_ID && WSTUDIO_PLUGIN_WS_BRIDGE_ENABLED) {
-    return { port: getPluginAudioPort(), kind: "plugin" };
-  }
+function getLocalWsBridgeTarget(_deviceId: string): { port: number; kind: LocalWsBridgeKind } | null {
+  // HTTP-only bridge: DAW feed and artist mic now use plain HTTP on
+  // 127.0.0.1:47999 (see useLocalBridgePoll + useArtistMicBridge). The
+  // legacy ws://127.0.0.1 path is intentionally disabled so the bridge
+  // panel never surfaces the "browsers block ws://" warning.
   return null;
 }
 
@@ -426,9 +424,18 @@ export function useBridgeOutputDevice(bridgeStream: MediaStream | null) {
     el.srcObject = bridgeStream;
 
     const applySink = async () => {
+      // The "W.STUDIO Desktop Bridge" entry is a virtual ID (not a real
+      // audiooutput) — the actual transport is HTTP loopback handled by
+      // useLocalBridgePoll/useArtistMicBridge. Fall back to the default
+      // sink so setSinkId doesn't reject and surface a red error.
+      const sinkId =
+        selectedDeviceId === WSTUDIO_DESKTOP_BRIDGE_LOCAL_DEVICE_ID ||
+        selectedDeviceId === WSTUDIO_PLUGIN_LOCAL_DEVICE_ID
+          ? "default"
+          : selectedDeviceId;
       try {
         if (typeof (el as HTMLAudioElement & { setSinkId?: (id: string) => Promise<void> }).setSinkId === "function") {
-          await (el as HTMLAudioElement & { setSinkId: (id: string) => Promise<void> }).setSinkId(selectedDeviceId);
+          await (el as HTMLAudioElement & { setSinkId: (id: string) => Promise<void> }).setSinkId(sinkId);
           el!.volume = 1;
           setRouted(true);
           setRoutingError(null);
