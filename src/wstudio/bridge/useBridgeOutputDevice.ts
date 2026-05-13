@@ -47,13 +47,11 @@ function getPluginAudioPort(): number {
 
 type LocalWsBridgeKind = "desktop" | "plugin";
 
-function getLocalWsBridgeTarget(deviceId: string): { port: number; kind: LocalWsBridgeKind } | null {
-  if (deviceId === WSTUDIO_DESKTOP_BRIDGE_LOCAL_DEVICE_ID) {
-    return { port: getDesktopBridgePort(), kind: "desktop" };
-  }
-  if (deviceId === WSTUDIO_PLUGIN_LOCAL_DEVICE_ID && WSTUDIO_PLUGIN_WS_BRIDGE_ENABLED) {
-    return { port: getPluginAudioPort(), kind: "plugin" };
-  }
+function getLocalWsBridgeTarget(_deviceId: string): { port: number; kind: LocalWsBridgeKind } | null {
+  // HTTP-only bridge: DAW feed and artist mic now use plain HTTP on
+  // 127.0.0.1:47999 (see useLocalBridgePoll + useArtistMicBridge). The
+  // legacy ws://127.0.0.1 path is intentionally disabled so the bridge
+  // panel never surfaces the "browsers block ws://" warning.
   return null;
 }
 
