@@ -424,9 +424,18 @@ export function useBridgeOutputDevice(bridgeStream: MediaStream | null) {
     el.srcObject = bridgeStream;
 
     const applySink = async () => {
+      // The "W.STUDIO Desktop Bridge" entry is a virtual ID (not a real
+      // audiooutput) — the actual transport is HTTP loopback handled by
+      // useLocalBridgePoll/useArtistMicBridge. Fall back to the default
+      // sink so setSinkId doesn't reject and surface a red error.
+      const sinkId =
+        selectedDeviceId === WSTUDIO_DESKTOP_BRIDGE_LOCAL_DEVICE_ID ||
+        selectedDeviceId === WSTUDIO_PLUGIN_LOCAL_DEVICE_ID
+          ? "default"
+          : selectedDeviceId;
       try {
         if (typeof (el as HTMLAudioElement & { setSinkId?: (id: string) => Promise<void> }).setSinkId === "function") {
-          await (el as HTMLAudioElement & { setSinkId: (id: string) => Promise<void> }).setSinkId(selectedDeviceId);
+          await (el as HTMLAudioElement & { setSinkId: (id: string) => Promise<void> }).setSinkId(sinkId);
           el!.volume = 1;
           setRouted(true);
           setRoutingError(null);
