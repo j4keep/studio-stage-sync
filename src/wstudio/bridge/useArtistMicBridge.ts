@@ -7,11 +7,12 @@ import { useEffect, useRef } from "react";
  *   POST http://127.0.0.1:47999/artist-audio?slot=<slot>
  *   { "samples": [-1..1, ...] }
  *
- * No WebRTC. Plain HTTP. Pairs with the GET /plugin-audio poll the engineer uses.
+ * No WebRTC. Plain HTTP loopback. Pairs with the GET /plugin-audio poll the engineer uses.
  */
 const BRIDGE_BASE = "http://127.0.0.1:47999/artist-audio";
-const PACKET_SAMPLES = 256; // 128–512 range
-const MAX_INFLIGHT = 4;
+const PACKET_SAMPLES = 256; // ~5.8ms @ 44.1k — within the 128–512 / 10–25ms window
+const MAX_INFLIGHT = 8;
+const LOG_EVERY = 20; // log roughly every ~120ms of audio
 
 export function useArtistMicBridge(
   stream: MediaStream | null,
@@ -22,6 +23,7 @@ export function useArtistMicBridge(
   const inflightRef = useRef(0);
   const lastErrorLogRef = useRef(0);
   const postCountRef = useRef(0);
+  const droppedRef = useRef(0);
 
   useEffect(() => {
     if (!enabled || !stream) return;
@@ -29,7 +31,9 @@ export function useArtistMicBridge(
     if (!track) return;
 
     let cancelled = false;
-    const ctx = new AudioContext();
+    const Ctx: typeof AudioContext =
+      (window as any).AudioContext || (window as any).webkitAudioContext;
+    const ctx = new Ctx();
     void ctx.resume().catch(() => {});
     const src = ctx.createMediaStreamSource(new MediaStream([track]));
     // ScriptProcessor is deprecated but works everywhere without a worklet asset.
@@ -46,32 +50,46 @@ export function useArtistMicBridge(
     node.onaudioprocess = (ev) => {
       if (cancelled) return;
       const ch = ev.inputBuffer.getChannelData(0);
-      // Detect silence cheaply; still post so the bridge sees liveness, but skip if inflight saturated.
-      if (inflightRef.current >= MAX_INFLIGHT) return;
 
-      // Copy to a regular array (JSON-serialisable)
+      if (inflightRef.current >= MAX_INFLIGHT) {
+        droppedRef.current++;
+        if (droppedRef.current % 50 === 0) {
+          // eslint-disable-next-line no-console
+          console.warn(`artist-audio bridge backpressure, dropped ${droppedRef.current} packets`);
+        }
+        return;
+      }
+
+      // Copy to a regular array (JSON-serialisable). Always send — even silence —
+      // so the bridge sees liveness and downstream meters don't stall.
       const samples = new Array(ch.length);
       for (let i = 0; i < ch.length; i++) samples[i] = ch[i];
 
       if (!announcedRef.current) {
         announcedRef.current = true;
         // eslint-disable-next-line no-console
-        console.log("WSTUDIO mic bridge active");
+        console.log(`WSTUDIO mic bridge active → ${url} (sampleRate ${ctx.sampleRate})`);
       }
 
       inflightRef.current++;
+      const body = JSON.stringify({
+        sampleRate: ctx.sampleRate,
+        slot,
+        samples,
+      });
       fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ samples }),
+        body,
         keepalive: true,
         cache: "no-store",
+        mode: "cors",
       })
         .then(() => {
           postCountRef.current++;
-          if (postCountRef.current % 50 === 0) {
+          if (postCountRef.current % LOG_EVERY === 0) {
             // eslint-disable-next-line no-console
-            console.log(`POST artist-audio slot ${slot} samples ${samples.length}`);
+            console.log(`POST artist-audio slot ${slot} samples: ${samples.length}`);
           }
         })
         .catch((err) => {
@@ -95,6 +113,7 @@ export function useArtistMicBridge(
       try { muteSink.disconnect(); } catch {}
       void ctx.close().catch(() => {});
       announcedRef.current = false;
+      inflightRef.current = 0;
     };
   }, [stream, slot, enabled]);
 }
