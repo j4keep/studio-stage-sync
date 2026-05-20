@@ -4,12 +4,12 @@ import { useEffect, useRef } from "react";
  * Captures the local artist mic from a MediaStream and POSTs mono float PCM
  * to the JUCE plugin's local HTTP bridge in small packets.
  *
- *   POST http://127.0.0.1:47999/artist-audio?slot=<slot>
+ *   POST http://192.168.12.155:47999/artist-audio?slot=<slot>
  *   { "samples": [-1..1, ...] }
  *
  * No WebRTC. Plain HTTP loopback. Pairs with the GET /plugin-audio poll the engineer uses.
  */
-const BRIDGE_BASE = "http://127.0.0.1:47999/artist-audio";
+const BRIDGE_BASE = "http://192.168.12.155:47999/artist-audio";
 const PACKET_SAMPLES = 256; // ~5.8ms @ 44.1k — within the 128–512 / 10–25ms window
 const MAX_INFLIGHT = 8;
 const LOG_EVERY = 20; // log roughly every ~120ms of audio
