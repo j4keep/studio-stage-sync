@@ -2,11 +2,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 export type AudioOutputDevice = { deviceId: string; label: string };
 
-/** Primary path: engineer tab sends PCM to the Rust desktop bridge on localhost (see `npm run wstudio:bridge`). */
+/** Primary path: engineer tab sends PCM to the Rust desktop bridge (see `npm run wstudio:bridge`). */
 export const WSTUDIO_DESKTOP_BRIDGE_LOCAL_DEVICE_ID = "wstudio-desktop-bridge-local";
 
-const DESKTOP_BRIDGE_LABEL =
-  "W.STUDIO Desktop Bridge — local app (http://192.168.12.155:47999; not listed in Mac Sound settings)";
+/** Bridge host on your LAN (override with VITE_WSTUDIO_BRIDGE_WS_HOST). */
+function getBridgeWsHost(): string {
+  const raw = import.meta.env?.VITE_WSTUDIO_BRIDGE_WS_HOST;
+  if (typeof raw === "string" && raw.trim().length > 0) return raw.trim();
+  return "192.168.12.155";
+}
 
 /**
  * Experimental: WebSocket PCM into the in-DAW AU. Enable with `VITE_WSTUDIO_PLUGIN_WS_BRIDGE=true`.
@@ -23,21 +27,25 @@ export const WSTUDIO_PLUGIN_LOCAL_DEVICE_ID = "wstudio-plugin-local";
 /** Shown in bridge output dropdown when experimental path is enabled. */
 const PLUGIN_OUTPUT_LABEL = "Experimental: WStudioPlugin — localhost (AU WebSocket, port 47999)";
 
+function getDesktopBridgePort(): number {
+  const raw = import.meta.env?.VITE_WSTUDIO_DESKTOP_BRIDGE_PORT;
+  const n = raw !== undefined ? Number(raw) : NaN;
+  return Number.isFinite(n) && n > 0 ? n : 48001;
+}
+
+function desktopBridgeLabel(): string {
+  return `W.STUDIO Desktop Bridge — local app (http://${getBridgeWsHost()}:47999; not listed in Mac Sound settings)`;
+}
+
 const initialBridgeDevices = (): AudioOutputDevice[] => {
   const head: AudioOutputDevice[] = [
-    { deviceId: WSTUDIO_DESKTOP_BRIDGE_LOCAL_DEVICE_ID, label: DESKTOP_BRIDGE_LABEL },
+    { deviceId: WSTUDIO_DESKTOP_BRIDGE_LOCAL_DEVICE_ID, label: desktopBridgeLabel() },
   ];
   if (WSTUDIO_PLUGIN_WS_BRIDGE_ENABLED) {
     head.push({ deviceId: WSTUDIO_PLUGIN_LOCAL_DEVICE_ID, label: PLUGIN_OUTPUT_LABEL });
   }
   return head;
 };
-
-function getDesktopBridgePort(): number {
-  const raw = import.meta.env?.VITE_WSTUDIO_DESKTOP_BRIDGE_PORT;
-  const n = raw !== undefined ? Number(raw) : NaN;
-  return Number.isFinite(n) && n > 0 ? n : 48001;
-}
 
 function getPluginAudioPort(): number {
   const raw = import.meta.env?.VITE_WSTUDIO_PLUGIN_AUDIO_PORT;
@@ -79,7 +87,7 @@ function isPublicHttpsBlockingLoopbackWs(): boolean {
 function getInitialBridgeOutputDeviceId(): string {
   if (typeof window === "undefined") return "default";
   const h = window.location.hostname;
-  if (h === "localhost" || h === "127.0.0.1") return WSTUDIO_DESKTOP_BRIDGE_LOCAL_DEVICE_ID;
+  if (h === "localhost" || h === "127.0.0.1" || h === getBridgeWsHost()) return WSTUDIO_DESKTOP_BRIDGE_LOCAL_DEVICE_ID;
   return "default";
 }
 
@@ -93,7 +101,7 @@ async function ensureAudioContextRunning(ctx: AudioContext): Promise<void> {
 
 /**
  * Enumerates audio output devices and routes a MediaStream to the selected one via setSinkId,
- * to **W.STUDIO Desktop Bridge** on `ws://127.0.0.1:48001` (or the experimental AU path if enabled).
+ * to **W.STUDIO Desktop Bridge** on `ws://<bridge-host>:48001` (default {@link getBridgeWsHost}) or the experimental AU path if enabled.
  *
  * **Bridge path (important):** `bridgeStream` must be the **engineer’s** graph — typically
  * `engineerDawVocalIn1`, which carries the **remote WebRTC artist mic**. Run the Rust bridge (`npm run wstudio:bridge`)
@@ -134,7 +142,7 @@ export function useBridgeOutputDevice(bridgeStream: MediaStream | null) {
         }));
 
       const head: AudioOutputDevice[] = [
-        { deviceId: WSTUDIO_DESKTOP_BRIDGE_LOCAL_DEVICE_ID, label: DESKTOP_BRIDGE_LABEL },
+        { deviceId: WSTUDIO_DESKTOP_BRIDGE_LOCAL_DEVICE_ID, label: desktopBridgeLabel() },
       ];
       if (WSTUDIO_PLUGIN_WS_BRIDGE_ENABLED) {
         head.push({ deviceId: WSTUDIO_PLUGIN_LOCAL_DEVICE_ID, label: PLUGIN_OUTPUT_LABEL });
@@ -214,12 +222,13 @@ export function useBridgeOutputDevice(bridgeStream: MediaStream | null) {
 
       stopPluginGraph();
 
-      const wsUrl = `ws://127.0.0.1:${wsTarget.port}`;
+      const bridgeHost = wsTarget.kind === "desktop" ? getBridgeWsHost() : "127.0.0.1";
+      const wsUrl = `ws://${bridgeHost}:${wsTarget.port}`;
 
       if (isPublicHttpsBlockingLoopbackWs()) {
         setRouted(false);
         setRoutingError(
-          "This bridge uses ws://127.0.0.1. Browsers block that from most HTTPS sites. Run the web app at http://localhost (npm run dev) on this Mac, or use “Default output” with your normal loopback routing until a secure tunnel exists.",
+          `This bridge uses ws://${getBridgeWsHost()}. Browsers block that from most HTTPS sites. Run the web app over HTTP on your LAN, or use “Default output” with your normal loopback routing until a secure tunnel exists.`,
         );
         return () => {};
       }
@@ -243,7 +252,7 @@ export function useBridgeOutputDevice(bridgeStream: MediaStream | null) {
               reject(
                 new Error(
                   wsTarget.kind === "desktop"
-                    ? `Could not open WebSocket to 127.0.0.1:${wsTarget.port}. On this Mac run: npm run wstudio:bridge (Rust bridge must be listening). Then click Refresh. Use http://localhost for this site (not HTTPS).`
+                    ? `Could not open WebSocket to ${getBridgeWsHost()}:${wsTarget.port}. On the bridge Mac run: npm run wstudio:bridge (must listen on the LAN). Then click Refresh. Use HTTP for this site (not HTTPS).`
                     : `Could not open WebSocket to 127.0.0.1:${wsTarget.port}. Enable the AU network bridge in Xcode/Projucer, open WStudioPlugin in Logic, start playback once, then Refresh. Use http://localhost (not HTTPS).`,
                 ),
               );

@@ -1,0 +1,37 @@
+# Builds W.STUDIO Bridge (.app + .dmg) on GitHub’s Mac runner — download from the Actions run (Artifacts).
+# This does not code-sign or notarize; first open: right-click the app → Open.
+name: W.STUDIO Bridge (macOS)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "native/wstudio-desktop-bridge/**"
+      - "scripts/build-wstudio-bridge-app.sh"
+      - ".github/workflows/wstudio-bridge-macos.yml"
+
+jobs:
+  bundle:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: native/wstudio-desktop-bridge
+
+      - name: cargo-bundle
+        run: cargo install cargo-bundle
+
+      - name: Build .app and .dmg
+        run: bash scripts/build-wstudio-bridge-app.sh
+
+      - name: Upload DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: WSTUDIO-Bridge-mac
+          path: dist-bridge/WSTUDIO-Bridge-mac.dmg
