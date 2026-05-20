@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-const BRIDGE_URL = "http://127.0.0.1:47999/plugin-audio";
+const BRIDGE_URL = "http://192.168.12.155:47999/plugin-audio";
 const POLL_MS = 45;
 const STALE_MS = 1500; // mark inactive if no samples for this long
 

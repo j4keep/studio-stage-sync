@@ -6,7 +6,7 @@ export type AudioOutputDevice = { deviceId: string; label: string };
 export const WSTUDIO_DESKTOP_BRIDGE_LOCAL_DEVICE_ID = "wstudio-desktop-bridge-local";
 
 const DESKTOP_BRIDGE_LABEL =
-  "W.STUDIO Desktop Bridge — local app (http://127.0.0.1:47999; not listed in Mac Sound settings)";
+  "W.STUDIO Desktop Bridge — local app (http://192.168.12.155:47999; not listed in Mac Sound settings)";
 
 /**
  * Experimental: WebSocket PCM into the in-DAW AU. Enable with `VITE_WSTUDIO_PLUGIN_WS_BRIDGE=true`.
@@ -49,7 +49,7 @@ type LocalWsBridgeKind = "desktop" | "plugin";
 
 function getLocalWsBridgeTarget(_deviceId: string): { port: number; kind: LocalWsBridgeKind } | null {
   // HTTP-only bridge: DAW feed and artist mic now use plain HTTP on
-  // 127.0.0.1:47999 (see useLocalBridgePoll + useArtistMicBridge). The
+  // 192.168.12.155:47999 (see useLocalBridgePoll + useArtistMicBridge). The
   // legacy ws://127.0.0.1 path is intentionally disabled so the bridge
   // panel never surfaces the "browsers block ws://" warning.
   return null;

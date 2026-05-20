@@ -585,7 +585,7 @@ export default function UnifiedSessionScreen() {
   const engineerRecordDimmed = isEngineer && !recording && !armed;
   /** Engineer DAW bridge: isolated vocal bus + session/artist sync (session UI extension only). */
   const bridgePathReady = isEngineer && !!engineerDawVocalIn1 && hasRemoteAudio;
-  /** Local desktop bridge poll (JUCE AU plugin HTTP server on 127.0.0.1:47999). */
+  /** Local desktop bridge poll (JUCE AU plugin HTTP server on 192.168.12.155:47999). */
   const localBridge = useLocalBridgePoll(isEngineer);
   /** Mic → JUCE plugin via local HTTP bridge POST. Active whenever local mic stream is live & unmuted (any role). */
   useArtistMicBridge(localStream ?? null, 0, !!localStream && !muted);
