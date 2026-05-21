@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /**
  * Captures the local artist mic from a MediaStream and POSTs mono float PCM
@@ -8,25 +8,86 @@ import { useEffect, useRef } from "react";
  *   { "samples": [-1..1, ...] }
  *
  * No WebRTC. Plain HTTP loopback. Pairs with the GET /plugin-audio poll the engineer uses.
+ *
+ * Returns live diagnostics so the artist UI can render a bridge status panel
+ * (connection state, outgoing mic level, packet counters, target URL).
  */
-const BRIDGE_BASE = "http://192.168.12.155:47999/artist-audio";
+const BRIDGE_HOST = "192.168.12.155:47999";
+const BRIDGE_BASE = `http://${BRIDGE_HOST}/artist-audio`;
 const PACKET_SAMPLES = 256; // ~5.8ms @ 44.1k — within the 128–512 / 10–25ms window
 const MAX_INFLIGHT = 8;
 const LOG_EVERY = 20; // log roughly every ~120ms of audio
+
+export type ArtistBridgeConnection = "CONNECTED" | "CONNECTING" | "DISCONNECTED";
+
+export interface ArtistMicBridgeStats {
+  connection: ArtistBridgeConnection;
+  /** Most recent outgoing RMS level (0–1). */
+  level: number;
+  packetsSent: number;
+  packetsFailed: number;
+  packetsDropped: number;
+  /** True when most recent POST succeeded. */
+  sending: boolean;
+  targetUrl: string;
+  /** Display label for the engineer bridge endpoint (host:port form). */
+  bridgeHost: string;
+  slot: number;
+  enabled: boolean;
+  lastError: string | null;
+}
 
 export function useArtistMicBridge(
   stream: MediaStream | null,
   slot: number,
   enabled: boolean = true,
-) {
+): ArtistMicBridgeStats {
   const announcedRef = useRef(false);
   const inflightRef = useRef(0);
   const lastErrorLogRef = useRef(0);
   const postCountRef = useRef(0);
+  const failCountRef = useRef(0);
   const droppedRef = useRef(0);
+  const consecutiveFailRef = useRef(0);
+  const levelRef = useRef(0);
+  const lastOkAtRef = useRef(0);
+  const lastErrorMsgRef = useRef<string | null>(null);
 
+  const targetUrl = `${BRIDGE_BASE}?slot=${slot}`;
+
+  const [stats, setStats] = useState<ArtistMicBridgeStats>(() => ({
+    connection: "DISCONNECTED",
+    level: 0,
+    packetsSent: 0,
+    packetsFailed: 0,
+    packetsDropped: 0,
+    sending: false,
+    targetUrl,
+    bridgeHost: BRIDGE_HOST,
+    slot,
+    enabled,
+    lastError: null,
+  }));
+
+  // Audio capture + HTTP posting effect.
   useEffect(() => {
-    if (!enabled || !stream) return;
+    if (!enabled || !stream) {
+      // Reset visible state when disabled.
+      announcedRef.current = false;
+      inflightRef.current = 0;
+      consecutiveFailRef.current = 0;
+      levelRef.current = 0;
+      setStats((s) => ({
+        ...s,
+        connection: "DISCONNECTED",
+        level: 0,
+        sending: false,
+        targetUrl,
+        slot,
+        enabled,
+      }));
+      return;
+    }
     const track = stream.getAudioTracks().find((t) => t.readyState === "live");
     if (!track) return;
 
@@ -36,7 +97,6 @@ export function useArtistMicBridge(
     const ctx = new Ctx();
     void ctx.resume().catch(() => {});
     const src = ctx.createMediaStreamSource(new MediaStream([track]));
-    // ScriptProcessor is deprecated but works everywhere without a worklet asset.
     const node = ctx.createScriptProcessor(PACKET_SAMPLES, 1, 1);
     const muteSink = ctx.createGain();
     muteSink.gain.value = 0;
@@ -45,11 +105,18 @@ export function useArtistMicBridge(
     node.connect(muteSink);
     muteSink.connect(ctx.destination);
 
-    const url = `${BRIDGE_BASE}?slot=${slot}`;
+    // Mark CONNECTING immediately so the UI doesn't sit on DISCONNECTED.
+    setStats((s) => ({ ...s, connection: "CONNECTING", enabled: true, slot, targetUrl }));
 
     node.onaudioprocess = (ev) => {
       if (cancelled) return;
       const ch = ev.inputBuffer.getChannelData(0);
+
+      // Compute RMS for the outgoing meter (always — even when backpressured).
+      let sumSq = 0;
+      for (let i = 0; i < ch.length; i++) sumSq += ch[i] * ch[i];
+      const rms = Math.sqrt(sumSq / ch.length);
+      levelRef.current = Math.min(1, rms * 1.8); // mild headroom boost for visibility
 
       if (inflightRef.current >= MAX_INFLIGHT) {
         droppedRef.current++;
@@ -60,15 +127,13 @@ export function useArtistMicBridge(
         return;
       }
 
-      // Copy to a regular array (JSON-serialisable). Always send — even silence —
-      // so the bridge sees liveness and downstream meters don't stall.
       const samples = new Array(ch.length);
       for (let i = 0; i < ch.length; i++) samples[i] = ch[i];
 
       if (!announcedRef.current) {
         announcedRef.current = true;
         // eslint-disable-next-line no-console
-        console.log(`WSTUDIO mic bridge active → ${url} (sampleRate ${ctx.sampleRate})`);
+        console.log(`WSTUDIO mic bridge active → ${targetUrl} (sampleRate ${ctx.sampleRate})`);
       }
 
       inflightRef.current++;
@@ -77,7 +142,7 @@ export function useArtistMicBridge(
         slot,
         samples,
       });
-      fetch(url, {
+      fetch(targetUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body,
@@ -87,17 +152,23 @@ export function useArtistMicBridge(
       })
         .then(() => {
           postCountRef.current++;
+          consecutiveFailRef.current = 0;
+          lastOkAtRef.current = performance.now();
+          lastErrorMsgRef.current = null;
           if (postCountRef.current % LOG_EVERY === 0) {
             // eslint-disable-next-line no-console
             console.log(`POST artist-audio slot ${slot} samples: ${samples.length}`);
           }
         })
         .catch((err) => {
+          failCountRef.current++;
+          consecutiveFailRef.current++;
+          lastErrorMsgRef.current = err?.message ?? String(err);
           const now = performance.now();
           if (now - lastErrorLogRef.current > 2000) {
             lastErrorLogRef.current = now;
             // eslint-disable-next-line no-console
-            console.warn("artist-audio POST failed", err?.message ?? err);
+            console.warn("artist-audio POST failed", lastErrorMsgRef.current);
           }
         })
         .finally(() => {
@@ -105,8 +176,35 @@ export function useArtistMicBridge(
         });
     };
 
+    // Lightweight refresh tick (~10Hz) so meter + counters update smoothly.
+    const tick = window.setInterval(() => {
+      if (cancelled) return;
+      const now = performance.now();
+      const okRecently = lastOkAtRef.current > 0 && now - lastOkAtRef.current < 1500;
+      const connection: ArtistBridgeConnection =
+        consecutiveFailRef.current >= 3 && !okRecently
+          ? "DISCONNECTED"
+          : okRecently
+            ? "CONNECTED"
+            : "CONNECTING";
+      setStats({
+        connection,
+        level: levelRef.current,
+        packetsSent: postCountRef.current,
+        packetsFailed: failCountRef.current,
+        packetsDropped: droppedRef.current,
+        sending: okRecently,
+        targetUrl,
+        bridgeHost: BRIDGE_HOST,
+        slot,
+        enabled: true,
+        lastError: lastErrorMsgRef.current,
+      });
+    }, 100);
+
     return () => {
       cancelled = true;
+      window.clearInterval(tick);
       try { node.onaudioprocess = null as any; } catch {}
       try { src.disconnect(); } catch {}
       try { node.disconnect(); } catch {}
@@ -114,6 +212,9 @@ export function useArtistMicBridge(
       void ctx.close().catch(() => {});
       announcedRef.current = false;
       inflightRef.current = 0;
+      levelRef.current = 0;
     };
-  }, [stream, slot, enabled]);
+  }, [stream, slot, enabled, targetUrl]);
+
+  return stats;
 }
