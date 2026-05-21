@@ -1607,6 +1607,14 @@ export default function UnifiedSessionScreen() {
                 </div>
               </div>
             ) : null}
+            {isArtist ? (
+              <div className="mt-4 border-t pt-3" style={{ borderColor: C.panelBorder }}>
+                <ArtistBridgePanel
+                  stats={artistBridgeStats}
+                  remoteEngineerConnected={hasRemoteAudio || !!live.engineerJoined}
+                />
+              </div>
+            ) : null}
           </Panel>
 
           {/* ── VOCAL TAKE WAVEFORM (compact, same height as mute/talk/settings) ── */}
