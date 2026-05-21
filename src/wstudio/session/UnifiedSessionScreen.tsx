@@ -20,6 +20,7 @@ import {
 import { copyAccessTokenForPlugin } from "../lib/copyPluginAccessToken";
 import { useLocalBridgePoll } from "../bridge/useLocalBridgePoll";
 import { useArtistMicBridge } from "../bridge/useArtistMicBridge";
+import { ArtistBridgePanel } from "../bridge/ArtistBridgePanel";
 
 const canScreenShare = typeof navigator !== "undefined" && !!navigator.mediaDevices?.getDisplayMedia;
 
