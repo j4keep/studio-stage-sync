@@ -588,7 +588,7 @@ export default function UnifiedSessionScreen() {
   /** Local desktop bridge poll (JUCE AU plugin HTTP server on 192.168.12.155:47999). */
   const localBridge = useLocalBridgePoll(isEngineer);
   /** Mic → JUCE plugin via local HTTP bridge POST. Active whenever local mic stream is live & unmuted (any role). */
-  useArtistMicBridge(localStream ?? null, 0, !!localStream && !muted);
+  const artistBridgeStats = useArtistMicBridge(localStream ?? null, 0, !!localStream && !muted);
   /** Bridge status derives from local-bridge HTTP poll OR audio routing state. */
   const bridgeStatusLabel = !isEngineer
     ? ""
