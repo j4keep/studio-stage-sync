@@ -33,9 +33,8 @@ export function ArtistBridgePanel({
         : "bg-red-500";
 
   const meterPct = Math.max(0, Math.min(100, Math.round(level * 100)));
-  // ws://host:48001 is the public-facing label the artist expects to see
-  // even though we POST over HTTP to the same engineer bridge box.
-  const wsLabel = `ws://${bridgeHost.split(":")[0]}:48001`;
+  // Artist mic sender is plain HTTP POST to the engineer plugin bridge.
+  const endpointLabel = `http://${bridgeHost}/artist-audio?slot=${slot}`;
 
   return (
     <section className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-3 text-zinc-200">
@@ -91,8 +90,8 @@ export function ArtistBridgePanel({
         </dd>
 
         <dt className="text-zinc-500">Endpoint</dt>
-        <dd className="truncate font-mono text-[10px] text-zinc-400" title={wsLabel}>
-          {wsLabel}
+        <dd className="truncate font-mono text-[10px] text-zinc-400" title={endpointLabel}>
+          {endpointLabel}
         </dd>
       </dl>
 
