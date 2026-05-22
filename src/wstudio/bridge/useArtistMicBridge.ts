@@ -12,8 +12,31 @@ import { useEffect, useRef, useState } from "react";
  * Returns live diagnostics so the artist UI can render a bridge status panel
  * (connection state, outgoing mic level, packet counters, target URL).
  */
-const BRIDGE_HOST = "192.168.12.155:47999";
-const BRIDGE_BASE = `http://${BRIDGE_HOST}/artist-audio`;
+const DEFAULT_BRIDGE_HOST = "192.168.12.155:47999";
+/**
+ * Resolve the bridge host the artist browser should POST mic samples to.
+ *
+ * Priority:
+ *   1. `?bridge=host:port` URL override (handy for quick LAN testing).
+ *   2. `localStorage["wstudio.bridge.host"]` (set by the Local Bridge Test Mode UI).
+ *   3. Hard-coded LAN default (`192.168.12.155:47999`).
+ *
+ * If the current page is loaded over HTTPS we honour the override too, but the
+ * UI panel surfaces a clear Mixed-Content warning + "open over HTTP" CTA so the
+ * artist can re-open the session from a same-protocol origin.
+ */
+function resolveBridgeHost(): string {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const fromQuery = params.get("bridge");
+    if (fromQuery) return fromQuery;
+  } catch {}
+  try {
+    const fromStore = localStorage.getItem("wstudio.bridge.host");
+    if (fromStore) return fromStore;
+  } catch {}
+  return DEFAULT_BRIDGE_HOST;
+}
 const PACKET_SAMPLES = 256; // ~5.8ms @ 44.1k — within the 128–512 / 10–25ms window
 const MAX_INFLIGHT = 8;
 const LOG_EVERY = 20; // log roughly every ~120ms of audio
