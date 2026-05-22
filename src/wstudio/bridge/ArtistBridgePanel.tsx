@@ -106,6 +106,30 @@ export function ArtistBridgePanel({
         </div>
       </div>
 
+      {/* Mixed Content / Local Bridge Test Mode banner. HTTPS pages can't POST
+          to http:// LAN targets — Chrome silently fails with "Failed to fetch".
+          Surface this clearly with a one-click "Open over HTTP" remediation. */}
+      {mixedContentBlocked ? (
+        <div className="mb-3 rounded-md border border-amber-500/50 bg-amber-500/10 p-2 text-[10px] text-amber-200">
+          <div className="mb-1 font-bold uppercase tracking-wider text-amber-300">
+            ⚠ Mixed Content blocked
+          </div>
+          <p className="leading-snug">
+            This page is HTTPS but the engineer bridge is plain HTTP on the LAN.
+            Chrome blocks the POST. To test the artist bridge locally, re-open
+            the session over HTTP from the LAN dev server.
+          </p>
+          <button
+            type="button"
+            onClick={openOverHttp}
+            className="mt-2 w-full rounded-md bg-amber-500 px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-950 hover:bg-amber-400"
+          >
+            Open session over HTTP
+          </button>
+        </div>
+      ) : null}
+
+
       {/* Outgoing vocal meter */}
       <div className="mb-2">
         <div className="mb-1 flex items-center justify-between text-[10px] text-zinc-500">
