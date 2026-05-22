@@ -76,7 +76,8 @@ export function useArtistMicBridge(
   const lastOkAtRef = useRef(0);
   const lastErrorMsgRef = useRef<string | null>(null);
 
-  const targetUrl = `${BRIDGE_BASE}?slot=${slot}`;
+  const bridgeHost = resolveBridgeHost();
+  const targetUrl = `http://${bridgeHost}/artist-audio?slot=${slot}`;
 
   const [stats, setStats] = useState<ArtistMicBridgeStats>(() => ({
     connection: "DISCONNECTED",
