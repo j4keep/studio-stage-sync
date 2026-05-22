@@ -411,15 +411,16 @@ void PluginNetworkAudio::pullAndAdd(juce::AudioBuffer<float>& buffer, int numCha
 void PluginNetworkAudio::run()
 {
     listener = std::make_unique<juce::StreamingSocket>();
-    if (!listener->createListener(listenPort, "127.0.0.1"))
+    if (!listener->createListener(listenPort, "0.0.0.0"))
     {
-        DBG("PluginNetworkAudio: FAILED createListener on 127.0.0.1:" << listenPort
-                                                                      << " (port in use or bind error?)");
+        DBG("PluginNetworkAudio: FAILED createListener on 0.0.0.0:" << listenPort
+                                                                    << " (port in use or bind error?)");
         listener.reset();
         return;
     }
 
-    DBG("PluginNetworkAudio: listening for WebSocket on 127.0.0.1:" << listenPort);
+    DBG("PluginNetworkAudio: listening for WebSocket + HTTP on 0.0.0.0:" << listenPort);
+
 
     while (!threadShouldExit() && serverRunning.load(std::memory_order_acquire))
     {
