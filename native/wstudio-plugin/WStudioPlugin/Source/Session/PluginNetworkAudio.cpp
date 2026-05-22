@@ -259,7 +259,56 @@ static bool sendAll(juce::StreamingSocket& sock, const void* data, int len)
 static void pushStereoPcm(PluginNetworkAudio* self, juce::AbstractFifo& fifo, juce::HeapBlock<float>& storage,
                           const float* samples, int numStereoFrames) noexcept;
 
+// ---- HTTP helpers (CORS + POST /artist-audio) -------------------------------
+
+static juce::String firstRequestLine(const juce::String& headers)
+{
+    return headers.upToFirstOccurrenceOf("\r\n", false, false);
+}
+
+static int parseContentLength(const juce::String& headers)
+{
+    const auto v = extractHeaderValue(headers, "content-length");
+    return v.isEmpty() ? 0 : v.getIntValue();
+}
+
+static bool sendHttpResponse(juce::StreamingSocket& sock,
+                             const char* statusLine,
+                             const juce::String& body,
+                             const char* contentType = "text/plain")
+{
+    juce::String resp;
+    resp << "HTTP/1.1 " << statusLine << "\r\n"
+         << "Access-Control-Allow-Origin: *\r\n"
+         << "Access-Control-Allow-Headers: content-type\r\n"
+         << "Access-Control-Allow-Methods: POST, GET, OPTIONS\r\n"
+         << "Access-Control-Max-Age: 86400\r\n"
+         << "Content-Type: " << contentType << "\r\n"
+         << "Content-Length: " << (int) body.getNumBytesAsUTF8() << "\r\n"
+         << "Connection: close\r\n\r\n"
+         << body;
+    return sendAll(sock, resp.toRawUTF8(),
+                   juce::roundToInt((double) resp.getNumBytesAsUTF8()));
+}
+
+// Reads exactly `len` bytes from the socket into `dst`. Returns true on success.
+static bool readExact(juce::StreamingSocket& sock, void* dst, int len)
+{
+    auto* p = static_cast<char*>(dst);
+    int remaining = len;
+    while (remaining > 0)
+    {
+        const int n = sock.read(p, remaining, true);
+        if (n <= 0)
+            return false;
+        p += n;
+        remaining -= n;
+    }
+    return true;
+}
+
 } // namespace
+
 
 PluginNetworkAudio::PluginNetworkAudio()
     : Thread("WStudio network audio")
