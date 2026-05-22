@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { ArtistMicBridgeStats } from "./useArtistMicBridge";
 
 /**
@@ -35,6 +36,32 @@ export function ArtistBridgePanel({
   const meterPct = Math.max(0, Math.min(100, Math.round(level * 100)));
   // Artist mic sender is plain HTTP POST to the engineer plugin bridge.
   const endpointLabel = `http://${bridgeHost}/artist-audio?slot=${slot}`;
+
+  const [testResult, setTestResult] = useState<string | null>(null);
+  const [testing, setTesting] = useState(false);
+  const runTestPost = async () => {
+    setTesting(true);
+    setTestResult("POSTing...");
+    const url = endpointLabel;
+    try {
+      const t0 = performance.now();
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ samples: [0.1, 0.1, 0.1, 0.1] }),
+        mode: "cors",
+        cache: "no-store",
+      });
+      const ms = Math.round(performance.now() - t0);
+      let text = "";
+      try { text = await res.text(); } catch {}
+      setTestResult(`HTTP ${res.status} ${res.statusText} (${ms}ms)\n${text || "<empty body>"}`);
+    } catch (err: any) {
+      setTestResult(`ERROR: ${err?.name ?? "Error"}: ${err?.message ?? String(err)}`);
+    } finally {
+      setTesting(false);
+    }
+  };
 
   return (
     <section className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-3 text-zinc-200">
@@ -100,6 +127,25 @@ export function ArtistBridgePanel({
           ⚠ {lastError}
         </p>
       ) : null}
+
+      <div className="mt-3 border-t border-zinc-800 pt-2">
+        <button
+          type="button"
+          onClick={runTestPost}
+          disabled={testing}
+          className="w-full rounded-md bg-violet-600 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-white hover:bg-violet-500 disabled:opacity-50"
+        >
+          {testing ? "Sending..." : "Test POST"}
+        </button>
+        {testResult ? (
+          <pre className="mt-2 max-h-32 overflow-auto whitespace-pre-wrap rounded bg-zinc-950 p-2 font-mono text-[10px] text-zinc-300 ring-1 ring-zinc-800">
+{testResult}
+          </pre>
+        ) : null}
+      </div>
+    </section>
+  );
+}
     </section>
   );
 }
