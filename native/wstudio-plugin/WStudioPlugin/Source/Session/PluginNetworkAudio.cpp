@@ -1,6 +1,8 @@
 #include "PluginNetworkAudio.h"
 
 #include <cstring>
+#include <vector>
+
 
 namespace
 {
