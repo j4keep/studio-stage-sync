@@ -37,6 +37,37 @@ export function ArtistBridgePanel({
   // Artist mic sender is plain HTTP POST to the engineer plugin bridge.
   const endpointLabel = `http://${bridgeHost}/artist-audio?slot=${slot}`;
 
+  // ---- Local Bridge Test Mode --------------------------------------------
+  // The Lovable preview/published app is served over HTTPS, but the engineer
+  // bridge listens on plain HTTP on the LAN. Chrome blocks HTTPS→HTTP as Mixed
+  // Content, so POSTs silently fail with "Failed to fetch". This block detects
+  // that case and surfaces a clear remediation path: re-open the same hash
+  // route over HTTP from the LAN dev origin (vite already binds 0.0.0.0:8080).
+  const isHttpsPage = typeof window !== "undefined" && window.location.protocol === "https:";
+  const isHttpTarget = endpointLabel.startsWith("http://");
+  const mixedContentBlocked = isHttpsPage && isHttpTarget;
+
+  const [hostInput, setHostInput] = useState<string>(() => {
+    try { return localStorage.getItem("wstudio.bridge.host") || bridgeHost; } catch { return bridgeHost; }
+  });
+  const saveHost = () => {
+    try {
+      const v = hostInput.trim();
+      if (v) localStorage.setItem("wstudio.bridge.host", v);
+      else localStorage.removeItem("wstudio.bridge.host");
+    } catch {}
+    window.location.reload();
+  };
+  const openOverHttp = () => {
+    // Reload current hash route from http://<bridge-lan-ip>:8080 (vite dev
+    // server). The artist Mac must have network reach to that host.
+    const lanHost = (bridgeHost.split(":")[0] || "localhost");
+    const hash = window.location.hash || "#/";
+    const url = `http://${lanHost}:8080/${hash}`;
+    window.open(url, "_blank", "noopener");
+  };
+
+
   const [testResult, setTestResult] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
   const runTestPost = async () => {
