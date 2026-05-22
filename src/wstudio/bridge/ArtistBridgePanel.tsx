@@ -146,6 +146,3 @@ export function ArtistBridgePanel({
     </section>
   );
 }
-    </section>
-  );
-}
