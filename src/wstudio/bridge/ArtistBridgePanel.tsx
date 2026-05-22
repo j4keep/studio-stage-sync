@@ -90,8 +90,8 @@ export function ArtistBridgePanel({
         </dd>
 
         <dt className="text-zinc-500">Endpoint</dt>
-        <dd className="truncate font-mono text-[10px] text-zinc-400" title={wsLabel}>
-          {wsLabel}
+        <dd className="truncate font-mono text-[10px] text-zinc-400" title={endpointLabel}>
+          {endpointLabel}
         </dd>
       </dl>
 
