@@ -186,11 +186,14 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     const raw = rawMicAudioTrackRef.current;
     const gain = gainNodeRef.current;
     if (!gain) return;
+    // Keep the raw mic track enabled at all times so the local meter, spectrum,
+    // and the artist→engineer HTTP bridge tap always see live input. Mute is
+    // enforced purely by the post-tap gain node, which silences the WebRTC
+    // send path (and the bridge tap, which reads the processed `localStream`).
+    if (raw && !raw.enabled) raw.enabled = true;
     if (muted) {
-      if (raw) raw.enabled = false;
       gain.gain.value = 0;
     } else {
-      if (raw) raw.enabled = true;
       /** Continuous voice to peer when unmuted; UI talkback stays a separate control layer. */
       gain.gain.value = 1;
     }
