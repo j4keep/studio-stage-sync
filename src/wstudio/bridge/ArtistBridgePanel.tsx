@@ -183,7 +183,28 @@ export function ArtistBridgePanel({
         </p>
       ) : null}
 
-      <div className="mt-3 border-t border-zinc-800 pt-2">
+      <div className="mt-3 space-y-2 border-t border-zinc-800 pt-2">
+        <div>
+          <label className="mb-1 block text-[10px] uppercase tracking-wider text-zinc-500">
+            Bridge host:port
+          </label>
+          <div className="flex gap-1">
+            <input
+              type="text"
+              value={hostInput}
+              onChange={(e) => setHostInput(e.target.value)}
+              placeholder="192.168.12.155:47999"
+              className="flex-1 rounded bg-zinc-950 px-2 py-1 font-mono text-[10px] text-zinc-200 ring-1 ring-zinc-800 focus:outline-none focus:ring-violet-500"
+            />
+            <button
+              type="button"
+              onClick={saveHost}
+              className="rounded bg-zinc-700 px-2 py-1 text-[10px] font-bold uppercase text-zinc-100 hover:bg-zinc-600"
+            >
+              Save
+            </button>
+          </div>
+        </div>
         <button
           type="button"
           onClick={runTestPost}
@@ -193,11 +214,12 @@ export function ArtistBridgePanel({
           {testing ? "Sending..." : "Test POST"}
         </button>
         {testResult ? (
-          <pre className="mt-2 max-h-32 overflow-auto whitespace-pre-wrap rounded bg-zinc-950 p-2 font-mono text-[10px] text-zinc-300 ring-1 ring-zinc-800">
+          <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded bg-zinc-950 p-2 font-mono text-[10px] text-zinc-300 ring-1 ring-zinc-800">
 {testResult}
           </pre>
         ) : null}
       </div>
+
     </section>
   );
 }
