@@ -12,7 +12,7 @@ import { useEffect, useRef, useState } from "react";
  * Returns live diagnostics so the artist UI can render a bridge status panel
  * (connection state, outgoing mic level, packet counters, target URL).
  */
-const DEFAULT_BRIDGE_HOST = "192.168.12.155:47999";
+const DEFAULT_bridgeHost = "192.168.12.155:47999";
 /**
  * Resolve the bridge host the artist browser should POST mic samples to.
  *
@@ -35,7 +35,7 @@ function resolveBridgeHost(): string {
     const fromStore = localStorage.getItem("wstudio.bridge.host");
     if (fromStore) return fromStore;
   } catch {}
-  return DEFAULT_BRIDGE_HOST;
+  return DEFAULT_bridgeHost;
 }
 const PACKET_SAMPLES = 256; // ~5.8ms @ 44.1k — within the 128–512 / 10–25ms window
 const MAX_INFLIGHT = 8;
@@ -87,7 +87,7 @@ export function useArtistMicBridge(
     packetsDropped: 0,
     sending: false,
     targetUrl,
-    bridgeHost: BRIDGE_HOST,
+    bridgeHost: bridgeHost,
     slot,
     enabled,
     lastError: null,
@@ -219,7 +219,7 @@ export function useArtistMicBridge(
         packetsDropped: droppedRef.current,
         sending: okRecently,
         targetUrl,
-        bridgeHost: BRIDGE_HOST,
+        bridgeHost: bridgeHost,
         slot,
         enabled: true,
         lastError: lastErrorMsgRef.current,
