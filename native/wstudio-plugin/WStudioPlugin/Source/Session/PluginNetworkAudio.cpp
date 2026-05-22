@@ -433,8 +433,76 @@ void PluginNetworkAudio::run()
             continue;
 
         const auto key = extractHeaderValue(headers, "sec-websocket-key");
+
+        // --- HTTP branch: no WebSocket upgrade requested. ----------------------
+        // Handles CORS preflight + POST /artist-audio?slot=N JSON sample packets.
         if (key.isEmpty())
+        {
+            const auto requestLine = firstRequestLine(headers);
+
+            if (requestLine.startsWith("OPTIONS "))
+            {
+                sendHttpResponse(*conn, "200 OK", {});
+                continue;
+            }
+
+            if (requestLine.startsWith("POST /artist-audio"))
+            {
+                const int contentLen = parseContentLength(headers);
+                if (contentLen <= 0 || contentLen > 16 * 1024 * 1024)
+                {
+                    sendHttpResponse(*conn, "400 Bad Request", "bad content-length");
+                    continue;
+                }
+
+                juce::HeapBlock<char> body((size_t) contentLen + 1);
+                if (!readExact(*conn, body.get(), contentLen))
+                {
+                    sendHttpResponse(*conn, "400 Bad Request", "short body");
+                    continue;
+                }
+                body[contentLen] = 0;
+
+                int wroteFrames = 0;
+                const auto parsed = juce::JSON::parse(juce::String::fromUTF8(body.get(), contentLen));
+                if (auto* obj = parsed.getDynamicObject())
+                {
+                    const auto samplesVar = obj->getProperty("samples");
+                    if (const auto* arr = samplesVar.getArray())
+                    {
+                        const int n = arr->size();
+                        if (n > 0)
+                        {
+                            // Mono mic → duplicate to stereo interleaved to match the
+                            // existing WebSocket binary float32 LE stereo path / FIFO.
+                            std::vector<float> stereo((size_t) n * 2);
+                            for (int i = 0; i < n; ++i)
+                            {
+                                const float s = (float) (double) (*arr)[i];
+                                stereo[(size_t) i * 2]     = s;
+                                stereo[(size_t) i * 2 + 1] = s;
+                            }
+                            pushStereoPcm(this, fifo, fifoStorage, stereo.data(), n);
+                            wroteFrames = n;
+                        }
+                    }
+                }
+
+                static int httpRxCounter = 0;
+                if ((++httpRxCounter % 64) == 0)
+                    DBG("W.STUDIO HTTP /artist-audio received " << wroteFrames
+                        << " mono samples (" << contentLen << " body bytes)");
+
+                sendHttpResponse(*conn, "200 OK",
+                                 juce::String("{\"ok\":true,\"frames\":") + juce::String(wroteFrames) + "}",
+                                 "application/json");
+                continue;
+            }
+
+            sendHttpResponse(*conn, "404 Not Found", "not found");
             continue;
+        }
+
 
         const auto accept = computeWebSocketAccept(key);
         juce::String response;
