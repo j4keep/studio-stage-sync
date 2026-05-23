@@ -379,6 +379,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       setLocalTalkbackTxLevel((prev) => prev * 0.82 + instant * 0.18);
       txLevelRafRef.current = requestAnimationFrame(() => tickTxMeter(analyserTx));
     };
+    let releaseAudioNudge = () => {};
 
     (async () => {
       try {
@@ -454,6 +455,10 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
         };
         window.addEventListener("pointerdown", nudgeAudio, { passive: true });
         window.addEventListener("keydown", nudgeAudio);
+        releaseAudioNudge = () => {
+          window.removeEventListener("pointerdown", nudgeAudio);
+          window.removeEventListener("keydown", nudgeAudio);
+        };
         audioTrack.addEventListener("ended", () => {
           if (!cancelled) setMediaError("Microphone stopped. Tap Enable mic to reconnect.");
         });
@@ -482,6 +487,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       localLevelRafRef.current = 0;
       cancelAnimationFrame(txLevelRafRef.current);
       txLevelRafRef.current = 0;
+      releaseAudioNudge();
       stopLocalMedia();
     };
   }, [sessionId, role, mediaRestartKey, stopLocalMedia]);
