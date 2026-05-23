@@ -124,6 +124,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
   const audioCtxRef = useRef<AudioContext | null>(null);
   const gainNodeRef = useRef<GainNode | null>(null);
   const rawMicAudioTrackRef = useRef<MediaStreamTrack | null>(null);
+  const sendMicAudioTrackRef = useRef<MediaStreamTrack | null>(null);
   const localLevelRafRef = useRef(0);
   const txLevelRafRef = useRef(0);
   const audioDebugLastLogRef = useRef(0);
@@ -152,6 +153,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     audioCtxRef.current = null;
     gainNodeRef.current = null;
     rawMicAudioTrackRef.current = null;
+    sendMicAudioTrackRef.current = null;
   }, []);
 
   const stopLocalMedia = useCallback(
@@ -188,18 +190,18 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
 
   const applyMuteAndPttToGraph = useCallback(() => {
     const raw = rawMicAudioTrackRef.current;
+    const sendTrack = sendMicAudioTrackRef.current;
     const gain = gainNodeRef.current;
-    if (!gain) return;
+    if (!gain && !sendTrack) return;
     // Keep the raw mic track enabled at all times so the local meter, spectrum,
-    // and the artist→engineer HTTP bridge tap always see live input. Mute is
-    // enforced purely by the post-tap gain node, which silences the WebRTC
-    // send path (and the bridge tap, which reads the processed `localStream`).
+    // and diagnostics always see live input. WebRTC uses a cloned mic track so
+    // the artist send does not depend on a Web Audio graph staying awake.
     if (raw && !raw.enabled) raw.enabled = true;
-    if (muted) {
-      gain.gain.value = 0;
-    } else {
-      /** Continuous voice to peer when unmuted; UI talkback stays a separate control layer. */
-      gain.gain.value = 1;
+    if (sendTrack && sendTrack.readyState === "live") {
+      sendTrack.enabled = !muted;
+    }
+    if (gain) {
+      gain.gain.value = muted ? 0 : 1;
     }
   }, [muted]);
 
