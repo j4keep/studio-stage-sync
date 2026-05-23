@@ -1036,6 +1036,11 @@ export default function UnifiedSessionScreen() {
                           <span>LOCAL MIC</span>
                         </div>
                         <HorizontalMeter level={meterDisplay(localMicLevel)} />
+                        {artistMicNeedsReconnect ? (
+                          <button type="button" onClick={restartLocalMedia} className="mt-1 rounded-[3px] px-2 py-1 text-[10px] font-bold uppercase" style={{ background: C.blue, color: C.shellDark, border: `1px solid ${C.blue}` }}>
+                            Enable mic
+                          </button>
+                        ) : null}
                       </div>
                       <div>
                         <div className="mb-0.5" style={{ fontSize: 9, fontWeight: 600, color: C.label, letterSpacing: "0.08em" }}>TALKBACK SEND</div>
@@ -1464,6 +1469,11 @@ export default function UnifiedSessionScreen() {
                       <span>LOCAL MIC</span>
                     </div>
                     <HorizontalMeter level={meterDisplay(localMicLevel)} />
+                    {artistMicNeedsReconnect ? (
+                      <button type="button" onClick={restartLocalMedia} className="mt-1 rounded-[3px] px-2 py-1 text-[10px] font-bold uppercase" style={{ background: C.blue, color: C.shellDark, border: `1px solid ${C.blue}` }}>
+                        Enable mic
+                      </button>
+                    ) : null}
                   </div>
                   <div>
                     <div className="mb-0.5" style={{ fontSize: 10, fontWeight: 600, color: C.label, letterSpacing: "0.1em" }}>TALKBACK SEND</div>
