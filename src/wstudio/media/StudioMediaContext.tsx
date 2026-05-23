@@ -934,7 +934,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       if (!localAudioSender?.track || localAudioSender.track.readyState !== "live") return;
       void pc.getStats(localAudioSender.track).then((report) => {
         report.forEach((entry) => {
-          if (entry.type !== "media-source" || entry.kind !== "audio" || typeof entry.audioLevel !== "number") return;
+          if (entry.type !== "media-source" || typeof entry.audioLevel !== "number") return;
           const instant = Math.min(1, entry.audioLevel * 3.5);
           setLocalMicLevel((prev) => Math.max(prev * 0.86, instant));
           setLocalTalkbackTxLevel((prev) => Math.max(prev * 0.86, mutedRef.current ? 0 : instant));
