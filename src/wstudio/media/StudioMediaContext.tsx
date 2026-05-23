@@ -922,9 +922,23 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       }
     };
 
+    let localAudioSender: RTCRtpSender | null = null;
     for (const track of localStream.getTracks()) {
-      pc.addTrack(track, localStream);
+      const sender = pc.addTrack(track, localStream);
+      if (track.kind === "audio") localAudioSender = sender;
     }
+
+    const statsMeterInterval = window.setInterval(() => {
+      if (!localAudioSender?.track || localAudioSender.track.readyState !== "live") return;
+      void pc.getStats(localAudioSender.track).then((report) => {
+        report.forEach((entry) => {
+          if (entry.type !== "media-source" || entry.kind !== "audio" || typeof entry.audioLevel !== "number") return;
+          const instant = Math.min(1, entry.audioLevel * 3.5);
+          setLocalMicLevel((prev) => Math.max(prev * 0.86, instant));
+          setLocalTalkbackTxLevel((prev) => Math.max(prev * 0.86, muted ? 0 : instant));
+        });
+      }).catch(() => {});
+    }, 160);
 
     const unsubscribeSignals = subscribeRtcSignals(sessionId, (msg) => {
       void handlePayload(msg);
@@ -961,6 +975,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
 
     return () => {
       window.clearInterval(retryInterval);
+      window.clearInterval(statsMeterInterval);
       unsubscribeSignals();
       pc.onicecandidate = null;
       pc.ontrack = null;
