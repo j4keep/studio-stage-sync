@@ -1039,9 +1039,9 @@ export default function UnifiedSessionScreen() {
                           <span>LOCAL MIC</span>
                         </div>
                         <HorizontalMeter level={meterDisplay(localMicLevel)} />
-                        {artistMicNeedsReconnect ? (
+                        {isArtist ? (
                           <button type="button" onClick={restartLocalMedia} className="mt-1 rounded-[3px] px-2 py-1 text-[10px] font-bold uppercase" style={{ background: C.blue, color: C.shellDark, border: `1px solid ${C.blue}` }}>
-                            Enable mic
+                            {artistMicNeedsReconnect ? "Enable mic" : "Reconnect mic"}
                           </button>
                         ) : null}
                         {isArtist ? (
@@ -1487,9 +1487,9 @@ export default function UnifiedSessionScreen() {
                       <span>LOCAL MIC</span>
                     </div>
                     <HorizontalMeter level={meterDisplay(localMicLevel)} />
-                    {artistMicNeedsReconnect ? (
+                    {isArtist ? (
                       <button type="button" onClick={restartLocalMedia} className="mt-1 rounded-[3px] px-2 py-1 text-[10px] font-bold uppercase" style={{ background: C.blue, color: C.shellDark, border: `1px solid ${C.blue}` }}>
-                        Enable mic
+                        {artistMicNeedsReconnect ? "Enable mic" : "Reconnect mic"}
                       </button>
                     ) : null}
                     {isArtist ? (
