@@ -1214,6 +1214,11 @@ export default function UnifiedSessionScreen() {
                       </div>
                     </div>
                   ) : null}
+                  {isEngineer ? (
+                    <div className="mt-3">
+                      <EngineerBridgeDiagnostics stats={engineerRelayStats} />
+                    </div>
+                  ) : null}
                   {isArtist ? (
                     <div className="mt-4 border-t pt-3" style={{ borderColor: C.panelBorder }}>
                       <ArtistBridgePanel
@@ -1613,6 +1618,11 @@ export default function UnifiedSessionScreen() {
                   <span style={{ color: C.dim }}> · Feed </span>
                   <span style={{ color: bridgeFeedActive ? C.green : C.dim }}>{bridgeFeedActive ? "Active" : "Inactive"}</span>
                 </div>
+              </div>
+            ) : null}
+            {isEngineer ? (
+              <div className="mt-3">
+                <EngineerBridgeDiagnostics stats={engineerRelayStats} />
               </div>
             ) : null}
             {isArtist ? (
