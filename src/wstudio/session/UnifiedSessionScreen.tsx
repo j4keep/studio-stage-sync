@@ -95,11 +95,17 @@ function Knob({ value = 0.5, size = 68, label, onChange, accent }: { value?: num
     };
     const onUp = () => {
       dragRef.current = null;
-      document.removeEventListener("pointermove", onMove);
-      document.removeEventListener("pointerup", onUp);
+      const target = typeof document !== "undefined" ? document : undefined;
+      if (target && typeof target.removeEventListener === "function") {
+        target.removeEventListener("pointermove", onMove);
+        target.removeEventListener("pointerup", onUp);
+      }
     };
-    document.addEventListener("pointermove", onMove);
-    document.addEventListener("pointerup", onUp);
+    const target = typeof document !== "undefined" ? document : undefined;
+    if (target && typeof target.addEventListener === "function") {
+      target.addEventListener("pointermove", onMove);
+      target.addEventListener("pointerup", onUp);
+    }
   };
 
   return (
@@ -175,11 +181,17 @@ function Fader({ value = 0.5, height = 90, onChange }: { value?: number; height?
     };
     const onUp = () => {
       dragRef.current = null;
-      document.removeEventListener("pointermove", onMove);
-      document.removeEventListener("pointerup", onUp);
+      const target = typeof document !== "undefined" ? document : undefined;
+      if (target && typeof target.removeEventListener === "function") {
+        target.removeEventListener("pointermove", onMove);
+        target.removeEventListener("pointerup", onUp);
+      }
     };
-    document.addEventListener("pointermove", onMove);
-    document.addEventListener("pointerup", onUp);
+    const target = typeof document !== "undefined" ? document : undefined;
+    if (target && typeof target.addEventListener === "function") {
+      target.addEventListener("pointermove", onMove);
+      target.addEventListener("pointerup", onUp);
+    }
   };
   return (
     <div className="relative" style={{ width: 18, height, cursor: onChange ? "ns-resize" : "default", touchAction: "none", userSelect: "none" }} onPointerDown={onPointerDown}>
@@ -322,11 +334,17 @@ function VideoFeed({
         // Retry on next user interaction
         const retryPlay = () => {
           el.play().catch(() => {});
-          document.removeEventListener("click", retryPlay);
-          document.removeEventListener("touchstart", retryPlay);
+          const target = typeof document !== "undefined" ? document : undefined;
+          if (target && typeof target.removeEventListener === "function") {
+            target.removeEventListener("click", retryPlay);
+            target.removeEventListener("touchstart", retryPlay);
+          }
         };
-        document.addEventListener("click", retryPlay, { once: true });
-        document.addEventListener("touchstart", retryPlay, { once: true });
+        const target = typeof document !== "undefined" ? document : undefined;
+        if (target && typeof target.addEventListener === "function") {
+          target.addEventListener("click", retryPlay, { once: true });
+          target.addEventListener("touchstart", retryPlay, { once: true });
+        }
       });
     }
   }, [stream, volume]);
