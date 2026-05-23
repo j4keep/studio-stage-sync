@@ -100,6 +100,9 @@ export type StudioMediaContextValue = {
   mediaError: string | null;
   clearMediaError: () => void;
   restartLocalMedia: () => void;
+  audioInputDevices: MediaDeviceInfo[];
+  selectedMicDeviceId: string;
+  setSelectedMicDeviceId: (id: string) => void;
   /** 0–1 RMS from the raw physical mic before mute / send-path gating. */
   localMicLevel: number;
   /** 0–1 RMS on the WebRTC send path (post mute gate; follows voice when unmuted) */
@@ -123,6 +126,8 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
   const [localScreenPreview, setLocalScreenPreview] = useState<MediaStream | null>(null);
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [mediaRestartKey, setMediaRestartKey] = useState(0);
+  const [audioInputDevices, setAudioInputDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedMicDeviceId, setSelectedMicDeviceId] = useState("default");
    const [localMicLevel, setLocalMicLevel] = useState(0);
   const [localTalkbackTxLevel, setLocalTalkbackTxLevel] = useState(0);
   const [remoteMicLevel, setRemoteMicLevel] = useState(0);
@@ -171,6 +176,12 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
   const restartLocalMedia = useCallback(() => {
     setMediaError(null);
     setMediaRestartKey((key) => key + 1);
+  }, []);
+
+  const refreshAudioInputs = useCallback(async () => {
+    if (!navigator.mediaDevices?.enumerateDevices) return;
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    setAudioInputDevices(devices.filter((device) => device.kind === "audioinput"));
   }, []);
 
   const closeLocalAudioGraph = useCallback(() => {
