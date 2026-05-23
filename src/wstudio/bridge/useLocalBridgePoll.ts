@@ -1,6 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 
-const BRIDGE_URL = "http://192.168.12.155:47999/plugin-audio";
+const BRIDGE_HOST_DEFAULT = "192.168.12.155:47999";
+function resolveBridgeHost(): string {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get("bridge");
+    if (q) return q;
+  } catch {}
+  try {
+    const v = localStorage.getItem("wstudio.bridge.host");
+    if (v) return v;
+  } catch {}
+  return BRIDGE_HOST_DEFAULT;
+}
 const POLL_MS = 45;
 const STALE_MS = 1500; // mark inactive if no samples for this long
 
@@ -15,6 +27,14 @@ export interface LocalBridgeState {
   lastOkAt: number | null;
   /** Last error message, if any. */
   error: string | null;
+  /** Successful poll responses that contained samples. */
+  packetsReceived: number;
+  /** Failed poll responses (network / abort / HTTP error). */
+  packetsFailed: number;
+  /** Target endpoint URL (for diagnostics). */
+  endpoint: string;
+  /** Bridge host:port the poll targets. */
+  bridgeHost: string;
 }
 
 /**
@@ -22,16 +42,25 @@ export interface LocalBridgeState {
  * Pure HTTP polling — no WebRTC. CORS expected to be permitted by the local bridge.
  */
 export function useLocalBridgePoll(enabled: boolean = true): LocalBridgeState {
-  const [state, setState] = useState<LocalBridgeState>({
+  const bridgeHost = resolveBridgeHost();
+  const endpoint = `http://${bridgeHost}/plugin-audio`;
+
+  const [state, setState] = useState<LocalBridgeState>(() => ({
     connected: false,
     feedActive: false,
     level: 0,
     lastOkAt: null,
     error: null,
-  });
+    packetsReceived: 0,
+    packetsFailed: 0,
+    endpoint,
+    bridgeHost,
+  }));
 
   const lastSamplesAt = useRef<number>(0);
   const failureCount = useRef<number>(0);
+  const receivedCount = useRef<number>(0);
+  const failedCount = useRef<number>(0);
 
   useEffect(() => {
     if (!enabled) return;
@@ -43,7 +72,7 @@ export function useLocalBridgePoll(enabled: boolean = true): LocalBridgeState {
       try {
         const ctrl = new AbortController();
         const to = window.setTimeout(() => ctrl.abort(), 800);
-        const res = await fetch(BRIDGE_URL, { signal: ctrl.signal, cache: "no-store" });
+        const res = await fetch(endpoint, { signal: ctrl.signal, cache: "no-store" });
         window.clearTimeout(to);
 
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -56,7 +85,7 @@ export function useLocalBridgePoll(enabled: boolean = true): LocalBridgeState {
         let peak = 0;
         if (samples.length > 0) {
           lastSamplesAt.current = now;
-          // sample subset for cheap peak
+          receivedCount.current++;
           const step = Math.max(1, Math.floor(samples.length / 256));
           for (let i = 0; i < samples.length; i += step) {
             const v = Math.abs(samples[i] ?? 0);
@@ -65,24 +94,33 @@ export function useLocalBridgePoll(enabled: boolean = true): LocalBridgeState {
         }
         const stillFresh = now - lastSamplesAt.current < STALE_MS;
         setState((prev) => ({
+          ...prev,
           connected: true,
           feedActive: samples.length > 0 || stillFresh,
-          // smooth level (simple ema)
           level: prev.level * 0.6 + Math.min(1, peak) * 0.4,
           lastOkAt: Date.now(),
           error: null,
+          packetsReceived: receivedCount.current,
+          packetsFailed: failedCount.current,
+          endpoint,
+          bridgeHost,
         }));
       } catch (err: any) {
         if (cancelled) return;
         failureCount.current += 1;
-        // graceful reconnect: backoff to ~500ms after several failures
+        failedCount.current += 1;
         nextDelay = failureCount.current > 4 ? 500 : POLL_MS;
+        const msg = err?.name === "AbortError" ? "timeout" : (err?.message ?? "fetch failed");
         setState((prev) => ({
+          ...prev,
           connected: false,
           feedActive: false,
           level: prev.level * 0.5,
-          lastOkAt: prev.lastOkAt,
-          error: err?.name === "AbortError" ? "timeout" : (err?.message ?? "fetch failed"),
+          error: msg,
+          packetsReceived: receivedCount.current,
+          packetsFailed: failedCount.current,
+          endpoint,
+          bridgeHost,
         }));
       } finally {
         if (!cancelled) timer = window.setTimeout(tick, nextDelay);
@@ -94,7 +132,7 @@ export function useLocalBridgePoll(enabled: boolean = true): LocalBridgeState {
       cancelled = true;
       if (timer != null) window.clearTimeout(timer);
     };
-  }, [enabled]);
+  }, [enabled, endpoint, bridgeHost]);
 
   return state;
 }
