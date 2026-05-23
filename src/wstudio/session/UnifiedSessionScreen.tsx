@@ -20,7 +20,7 @@ import {
 import { copyAccessTokenForPlugin } from "../lib/copyPluginAccessToken";
 import { useLocalBridgePoll } from "../bridge/useLocalBridgePoll";
 import { useArtistMicBridge } from "../bridge/useArtistMicBridge";
-import { ArtistBridgePanel } from "../bridge/ArtistBridgePanel";
+import { BridgePanel } from "../bridge/BridgePanel";
 
 const canScreenShare = typeof navigator !== "undefined" && !!navigator.mediaDevices?.getDisplayMedia;
 
@@ -1235,20 +1235,22 @@ export default function UnifiedSessionScreen() {
                           ) : null}
                         </div>
                       </div>
-                      <div className="mt-2 border-t pt-2" style={{ borderColor: C.panelBorder, fontSize: 9, color: C.dim }}>
-                        <span style={{ color: bridgeStatusColor }}>• {bridgeStatusLabel}</span>
-                        <span style={{ color: C.dim }}> · Artist: </span>
-                        <span style={{ color: C.text }}>{bridgeArtistLabel}</span>
-                        <span style={{ color: C.dim }}> · Feed </span>
-                        <span style={{ color: bridgeFeedActive ? C.green : C.dim }}>{bridgeFeedActive ? "Active" : "Inactive"}</span>
+                      <div className="mt-3 border-t pt-3" style={{ borderColor: C.panelBorder }}>
+                        <BridgePanel
+                          role="engineer"
+                          stats={localBridge}
+                          hasRemoteAudio={hasRemoteAudio}
+                          remotePeerConnected={hasRemoteAudio || !!live.artistJoined}
+                        />
                       </div>
                     </div>
                   ) : null}
                   {isArtist ? (
                     <div className="mt-4 border-t pt-3" style={{ borderColor: C.panelBorder }}>
-                      <ArtistBridgePanel
+                      <BridgePanel
+                        role="artist"
                         stats={artistBridgeStats}
-                        remoteEngineerConnected={hasRemoteAudio || !!live.engineerJoined}
+                        remotePeerConnected={hasRemoteAudio || !!live.engineerJoined}
                       />
                     </div>
                   ) : null}
@@ -1636,20 +1638,22 @@ export default function UnifiedSessionScreen() {
                     ) : null}
                   </div>
                 </div>
-                <div className="mt-2 border-t pt-2" style={{ borderColor: C.panelBorder, fontSize: 11, color: C.dim }}>
-                  <span style={{ color: bridgeStatusColor }}>• {bridgeStatusLabel}</span>
-                  <span style={{ color: C.dim }}> · Artist: </span>
-                  <span style={{ color: C.text }}>{bridgeArtistLabel}</span>
-                  <span style={{ color: C.dim }}> · Feed </span>
-                  <span style={{ color: bridgeFeedActive ? C.green : C.dim }}>{bridgeFeedActive ? "Active" : "Inactive"}</span>
+                <div className="mt-3 border-t pt-3" style={{ borderColor: C.panelBorder }}>
+                  <BridgePanel
+                    role="engineer"
+                    stats={localBridge}
+                    hasRemoteAudio={hasRemoteAudio}
+                    remotePeerConnected={hasRemoteAudio || !!live.artistJoined}
+                  />
                 </div>
               </div>
             ) : null}
             {isArtist ? (
               <div className="mt-4 border-t pt-3" style={{ borderColor: C.panelBorder }}>
-                <ArtistBridgePanel
+                <BridgePanel
+                  role="artist"
                   stats={artistBridgeStats}
-                  remoteEngineerConnected={hasRemoteAudio || !!live.engineerJoined}
+                  remotePeerConnected={hasRemoteAudio || !!live.engineerJoined}
                 />
               </div>
             ) : null}
