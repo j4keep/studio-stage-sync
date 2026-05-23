@@ -715,7 +715,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     }
   }, [role, sessionId, cleanupDawReturn]);
 
-  /** Artist: route peer audio through Web Audio for headphone level + engineer talkback priority. */
+  /** Artist: play the peer WebRTC stream directly. Avoid Web Audio here so browser context suspension cannot silence the artist page. */
   useEffect(() => {
     artistRemoteGainRef.current = null;
     if (role !== "artist") {
@@ -727,36 +727,9 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       setRemotePlaybackStream(null);
       return;
     }
-    const audioTr = rs.getAudioTracks()[0];
-    if (!audioTr) {
-      setRemotePlaybackStream(rs);
-      return;
-    }
-    const videoTr = rs.getVideoTracks()[0] ?? null;
-    const ctx = new AudioContext();
-    void ctx.resume().catch(() => {});
-    const src = ctx.createMediaStreamSource(new MediaStream([audioTr]));
-    const gain = ctx.createGain();
-    artistRemoteGainRef.current = gain;
-    const dest = ctx.createMediaStreamDestination();
-    src.connect(gain);
-    gain.connect(dest);
-    const hp = live.headphoneLevelArtist;
-    /** Talkback level scales the PTT boost (0–1 → 1.0–2.0x when PTT held). */
-    const talkbackBoost = live.engineerPtt ? (1 + live.talkbackLevel) : 1;
-    /** Vocal level scales the channel (0.5 = unity). */
-    const vocalScale = live.vocalLevel * 2;
-    gain.gain.value = Math.min(2, Math.max(0, hp * talkbackBoost * vocalScale));
-    const out = new MediaStream([...(videoTr ? [videoTr] : []), ...dest.stream.getAudioTracks()]);
-    setRemotePlaybackStream(out);
-    console.debug("[W.Studio audio] Artist remote playback graph created", { hp, talkbackBoost, vocalScale });
-    return () => {
-      artistRemoteGainRef.current = null;
-      src.disconnect();
-      gain.disconnect();
-      void ctx.close();
-      setRemotePlaybackStream(null);
-    };
+    setRemotePlaybackStream(rs);
+    console.debug("[W.Studio audio] Artist remote playback uses direct WebRTC stream");
+    return () => setRemotePlaybackStream(null);
   }, [role, remoteStream]);
 
   useEffect(() => {
