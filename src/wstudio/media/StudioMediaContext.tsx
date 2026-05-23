@@ -371,6 +371,8 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
         }
 
         rawMicAudioTrackRef.current = audioTrack;
+        const sendAudioTrack = audioTrack.clone();
+        sendMicAudioTrackRef.current = sendAudioTrack;
         const rawMicStream = new MediaStream([audioTrack]);
         setLocalMicMonitorStream(rawMicStream);
 
@@ -398,23 +400,22 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
         analyserTx.fftSize = 2048;
         analyserTx.smoothingTimeConstant = 0.75;
 
-        const dest = ctx.createMediaStreamDestination();
         gain.connect(analyserTx);
-        analyserTx.connect(dest);
 
-        const sentAudio = dest.stream.getAudioTracks()[0];
-        const outTracks = videoTrack ? [videoTrack, sentAudio] : [sentAudio];
+        const outTracks = videoTrack ? [videoTrack, sendAudioTrack] : [sendAudioTrack];
         const outStream = new MediaStream(outTracks);
         localStreamRef.current = outStream;
         setLocalStream(outStream);
         setMediaError(null);
 
         localLevelRafRef.current = requestAnimationFrame(() => tickLocalMeter(analyserLocal));
+        txLevelRafRef.current = requestAnimationFrame(() => tickTxMeter(analyserTx));
 
         applyMuteAndPttToGraph();
 
         console.debug(DEBUG_AUDIO_TAG, "Mic graph ready", {
           micTrackActive: audioTrack.readyState === "live",
+          sendTrackActive: sendAudioTrack.readyState === "live",
           meterConnected: true,
         });
       } catch (e) {
