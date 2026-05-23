@@ -21,6 +21,8 @@ import { copyAccessTokenForPlugin } from "../lib/copyPluginAccessToken";
 import { useLocalBridgePoll } from "../bridge/useLocalBridgePoll";
 import { useArtistMicBridge } from "../bridge/useArtistMicBridge";
 import { ArtistBridgePanel } from "../bridge/ArtistBridgePanel";
+import { useEngineerBridgeRelay } from "../bridge/useEngineerBridgeRelay";
+import { EngineerBridgeDiagnostics } from "../bridge/EngineerBridgeDiagnostics";
 
 const canScreenShare = typeof navigator !== "undefined" && !!navigator.mediaDevices?.getDisplayMedia;
 
@@ -588,8 +590,14 @@ export default function UnifiedSessionScreen() {
   const bridgePathReady = isEngineer && !!engineerDawVocalIn1 && hasRemoteAudio;
   /** Local desktop bridge poll (JUCE AU plugin HTTP server on 192.168.12.155:47999). */
   const localBridge = useLocalBridgePoll(isEngineer);
-  /** Mic → JUCE plugin via local HTTP bridge POST. Active whenever local mic stream is live & unmuted (any role). */
+  /** Artist mic: local meter only — actual transport is the WebRTC session. */
   const artistBridgeStats = useArtistMicBridge(localStream ?? null, 0, !!localStream && !muted);
+  /** Engineer-only: tap inbound remote artist audio (WebRTC) and POST to local plugin bridge (127.0.0.1). */
+  const engineerRelayStats = useEngineerBridgeRelay(
+    isEngineer ? remoteStream ?? null : null,
+    0,
+    isEngineer,
+  );
   /** Bridge status derives from local-bridge HTTP poll OR audio routing state. */
   const bridgeStatusLabel = !isEngineer
     ? ""
@@ -1206,6 +1214,11 @@ export default function UnifiedSessionScreen() {
                       </div>
                     </div>
                   ) : null}
+                  {isEngineer ? (
+                    <div className="mt-3">
+                      <EngineerBridgeDiagnostics stats={engineerRelayStats} />
+                    </div>
+                  ) : null}
                   {isArtist ? (
                     <div className="mt-4 border-t pt-3" style={{ borderColor: C.panelBorder }}>
                       <ArtistBridgePanel
@@ -1605,6 +1618,11 @@ export default function UnifiedSessionScreen() {
                   <span style={{ color: C.dim }}> · Feed </span>
                   <span style={{ color: bridgeFeedActive ? C.green : C.dim }}>{bridgeFeedActive ? "Active" : "Inactive"}</span>
                 </div>
+              </div>
+            ) : null}
+            {isEngineer ? (
+              <div className="mt-3">
+                <EngineerBridgeDiagnostics stats={engineerRelayStats} />
               </div>
             ) : null}
             {isArtist ? (
