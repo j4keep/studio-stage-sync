@@ -852,6 +852,9 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     pc.ontrack = (ev) => {
       const track = ev.track;
       console.debug(DEBUG_AUDIO_TAG, "Remote track received:", track.kind, track.id, track.readyState);
+      if (track.kind === "audio") {
+        setHasRemoteAudio(true);
+      }
       if (!inbound.getTracks().some((existing) => existing.id === track.id)) {
         inbound.addTrack(track);
       }
@@ -966,13 +969,23 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     }
 
     const statsMeterInterval = window.setInterval(() => {
-      if (!localAudioSender?.track || localAudioSender.track.readyState !== "live") return;
-      void pc.getStats(localAudioSender.track).then((report) => {
+      void pc.getStats(localAudioSender?.track ?? undefined).then((report) => {
         report.forEach((entry) => {
-          if (entry.type !== "media-source" || typeof entry.audioLevel !== "number") return;
-          const instant = Math.min(1, entry.audioLevel * 3.5);
-          setLocalMicLevel((prev) => Math.max(prev * 0.86, instant));
-          setLocalTalkbackTxLevel((prev) => Math.max(prev * 0.86, mutedRef.current ? 0 : instant));
+          if (entry.type === "media-source") {
+            const result = readRtcAudioLevel(entry, localStatsEnergyRef.current, 3.5);
+            localStatsEnergyRef.current = result.snapshot ?? localStatsEnergyRef.current;
+            if (result.level === null) return;
+            setLocalMicLevel((prev) => Math.max(prev * 0.86, result.level));
+            setLocalTalkbackTxLevel((prev) => Math.max(prev * 0.86, mutedRef.current ? 0 : result.level));
+            return;
+          }
+          if (entry.type === "inbound-rtp" && entry.kind === "audio") {
+            setHasRemoteAudio(true);
+            const result = readRtcAudioLevel(entry, remoteStatsEnergyRef.current, 6.5);
+            remoteStatsEnergyRef.current = result.snapshot ?? remoteStatsEnergyRef.current;
+            if (result.level === null) return;
+            setRemoteMicLevel((prev) => Math.max(prev * 0.82, result.level));
+          }
         });
       }).catch(() => {});
     }, 160);
