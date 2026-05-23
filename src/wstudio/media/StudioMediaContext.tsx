@@ -36,6 +36,8 @@ function toSignalRole(role: Role): RtcSignalRole | null {
 
 export type StudioMediaContextValue = {
   localStream: MediaStream | null;
+  /** Raw physical mic stream for local artist metering; never sent directly to the peer. */
+  localMicMonitorStream: MediaStream | null;
   remoteStream: MediaStream | null;
   /** Remote stream for playback (artist: processed for talkback priority + headphone; engineer: raw) */
   remoteStreamForPlayback: MediaStream | null;
@@ -74,7 +76,7 @@ export type StudioMediaContextValue = {
   stopDawReturn: () => void;
   mediaError: string | null;
   clearMediaError: () => void;
-  /** 0–1 RMS from local mic (pre–PTT gate; real input, ~0 when muted) */
+  /** 0–1 RMS from the raw physical mic before mute / send-path gating. */
   localMicLevel: number;
   /** 0–1 RMS on the WebRTC send path (post mute gate; follows voice when unmuted) */
   localTalkbackTxLevel: number;
@@ -91,6 +93,7 @@ const DEBUG_AUDIO_TAG = "[W.Studio audio]";
 export function StudioMediaProvider({ children }: { children: ReactNode }) {
   const { sessionId, role, muted, live, screenSharing, toggleScreenShare } = useSession();
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [localMicMonitorStream, setLocalMicMonitorStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [remotePlaybackStream, setRemotePlaybackStream] = useState<MediaStream | null>(null);
   const [localScreenPreview, setLocalScreenPreview] = useState<MediaStream | null>(null);
@@ -167,6 +170,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       cameraVideoTrackRef.current = null;
       if (updateState) {
         setLocalStream(null);
+        setLocalMicMonitorStream(null);
         setLocalMicLevel(0);
         setLocalTalkbackTxLevel(0);
       }
@@ -358,24 +362,30 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
         if (!audioTrack) {
           localStreamRef.current = ms;
           setLocalStream(ms);
+          setLocalMicMonitorStream(null);
           setMediaError(null);
           console.warn(DEBUG_AUDIO_TAG, "No audio track on getUserMedia stream");
           return;
         }
 
         rawMicAudioTrackRef.current = audioTrack;
+        const rawMicStream = new MediaStream([audioTrack]);
+        setLocalMicMonitorStream(rawMicStream);
 
         const ctx = new AudioContext();
         audioCtxRef.current = ctx;
         await ctx.resume().catch(() => {});
 
-        const micOnly = new MediaStream([audioTrack]);
-        const source = ctx.createMediaStreamSource(micOnly);
+        const source = ctx.createMediaStreamSource(rawMicStream);
 
         const analyserLocal = ctx.createAnalyser();
         analyserLocal.fftSize = 2048;
         analyserLocal.smoothingTimeConstant = 0.75;
         source.connect(analyserLocal);
+        const localMeterSink = ctx.createGain();
+        localMeterSink.gain.value = 0;
+        analyserLocal.connect(localMeterSink);
+        localMeterSink.connect(ctx.destination);
 
         const gain = ctx.createGain();
         gain.gain.value = 0;
@@ -1012,6 +1022,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
   const value = useMemo<StudioMediaContextValue>(
     () => ({
       localStream,
+      localMicMonitorStream,
       remoteStream,
       remoteStreamForPlayback,
       localScreenPreview,
@@ -1036,6 +1047,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     }),
     [
       localStream,
+      localMicMonitorStream,
       remoteStream,
       remoteStreamForPlayback,
       localScreenPreview,
