@@ -944,17 +944,18 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     const statsMeterInterval = window.setInterval(() => {
       void pc.getStats().then((report) => {
         report.forEach((entry) => {
-          if (entry.type === "media-source") {
-            const result = readRtcAudioLevel(entry, localStatsEnergyRef.current, 3.5);
+          const stat = entry as any;
+          if (stat.type === "media-source") {
+            const result = readRtcAudioLevel(stat, localStatsEnergyRef.current, 3.5);
             localStatsEnergyRef.current = result.snapshot ?? localStatsEnergyRef.current;
             if (result.level === null) return;
             setLocalMicLevel((prev) => Math.max(prev * 0.86, result.level));
             setLocalTalkbackTxLevel((prev) => Math.max(prev * 0.86, mutedRef.current ? 0 : result.level));
             return;
           }
-          if (entry.type === "inbound-rtp" && entry.kind === "audio") {
+          if (stat.type === "inbound-rtp" && stat.kind === "audio") {
             setHasRemoteAudio(true);
-            const result = readRtcAudioLevel(entry, remoteStatsEnergyRef.current, 6.5);
+            const result = readRtcAudioLevel(stat, remoteStatsEnergyRef.current, 6.5);
             remoteStatsEnergyRef.current = result.snapshot ?? remoteStatsEnergyRef.current;
             if (result.level === null) return;
             setRemoteMicLevel((prev) => Math.max(prev * 0.82, result.level));
