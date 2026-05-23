@@ -942,7 +942,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     }
 
     const statsMeterInterval = window.setInterval(() => {
-      void pc.getStats(localAudioSender?.track ?? undefined).then((report) => {
+      void pc.getStats().then((report) => {
         report.forEach((entry) => {
           if (entry.type === "media-source") {
             const result = readRtcAudioLevel(entry, localStatsEnergyRef.current, 3.5);
