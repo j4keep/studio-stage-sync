@@ -20,28 +20,9 @@ import {
 import { copyAccessTokenForPlugin } from "../lib/copyPluginAccessToken";
 import { useLocalBridgePoll } from "../bridge/useLocalBridgePoll";
 import { useArtistMicBridge } from "../bridge/useArtistMicBridge";
-import { BridgePanel } from "../bridge/BridgePanel";
+import { ArtistBridgePanel } from "../bridge/ArtistBridgePanel";
 
 const canScreenShare = typeof navigator !== "undefined" && !!navigator.mediaDevices?.getDisplayMedia;
-
-/** Safely attach an event listener to a target that may be undefined
- *  (e.g. window.visualViewport in browsers that don't support it,
- *  or document/window in non-browser contexts). Returns a cleanup fn. */
-function safeAddEventListener(
-  target: EventTarget | null | undefined,
-  type: string,
-  handler: EventListenerOrEventListenerObject,
-  options?: AddEventListenerOptions | boolean,
-): () => void {
-  if (target && typeof (target as EventTarget).addEventListener === "function") {
-    try { (target as EventTarget).addEventListener(type, handler, options); } catch { /* noop */ }
-  }
-  return () => {
-    if (target && typeof (target as EventTarget).removeEventListener === "function") {
-      try { (target as EventTarget).removeEventListener(type, handler, options as EventListenerOptions); } catch { /* noop */ }
-    }
-  };
-}
 
 /* ─────────────────────────────────────────────
    STYLE CONSTANTS — aligned with JUCE WStudioPlugin (cyan #2ee0d8, charcoal shell)
@@ -95,17 +76,11 @@ function Knob({ value = 0.5, size = 68, label, onChange, accent }: { value?: num
     };
     const onUp = () => {
       dragRef.current = null;
-      const target = typeof document !== "undefined" ? document : undefined;
-      if (target && typeof target.removeEventListener === "function") {
-        target.removeEventListener("pointermove", onMove);
-        target.removeEventListener("pointerup", onUp);
-      }
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
     };
-    const target = typeof document !== "undefined" ? document : undefined;
-    if (target && typeof target.addEventListener === "function") {
-      target.addEventListener("pointermove", onMove);
-      target.addEventListener("pointerup", onUp);
-    }
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
   };
 
   return (
@@ -181,17 +156,11 @@ function Fader({ value = 0.5, height = 90, onChange }: { value?: number; height?
     };
     const onUp = () => {
       dragRef.current = null;
-      const target = typeof document !== "undefined" ? document : undefined;
-      if (target && typeof target.removeEventListener === "function") {
-        target.removeEventListener("pointermove", onMove);
-        target.removeEventListener("pointerup", onUp);
-      }
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
     };
-    const target = typeof document !== "undefined" ? document : undefined;
-    if (target && typeof target.addEventListener === "function") {
-      target.addEventListener("pointermove", onMove);
-      target.addEventListener("pointerup", onUp);
-    }
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
   };
   return (
     <div className="relative" style={{ width: 18, height, cursor: onChange ? "ns-resize" : "default", touchAction: "none", userSelect: "none" }} onPointerDown={onPointerDown}>
@@ -334,17 +303,11 @@ function VideoFeed({
         // Retry on next user interaction
         const retryPlay = () => {
           el.play().catch(() => {});
-          const target = typeof document !== "undefined" ? document : undefined;
-          if (target && typeof target.removeEventListener === "function") {
-            target.removeEventListener("click", retryPlay);
-            target.removeEventListener("touchstart", retryPlay);
-          }
+          document.removeEventListener("click", retryPlay);
+          document.removeEventListener("touchstart", retryPlay);
         };
-        const target = typeof document !== "undefined" ? document : undefined;
-        if (target && typeof target.addEventListener === "function") {
-          target.addEventListener("click", retryPlay, { once: true });
-          target.addEventListener("touchstart", retryPlay, { once: true });
-        }
+        document.addEventListener("click", retryPlay, { once: true });
+        document.addEventListener("touchstart", retryPlay, { once: true });
       });
     }
   }, [stream, volume]);
@@ -734,9 +697,8 @@ export default function UnifiedSessionScreen() {
 
   useEffect(() => {
     const handler = () => setIsFullscreen(!!document.fullscreenElement);
-    const target: EventTarget | undefined =
-      (typeof document !== "undefined" ? document : undefined);
-    return safeAddEventListener(target, "fullscreenchange", handler);
+    document.addEventListener("fullscreenchange", handler);
+    return () => document.removeEventListener("fullscreenchange", handler);
   }, []);
 
   /* ── Mobile-specific tab state ── */
@@ -1235,22 +1197,20 @@ export default function UnifiedSessionScreen() {
                           ) : null}
                         </div>
                       </div>
-                      <div className="mt-3 border-t pt-3" style={{ borderColor: C.panelBorder }}>
-                        <BridgePanel
-                          role="engineer"
-                          stats={localBridge}
-                          hasRemoteAudio={hasRemoteAudio}
-                          remotePeerConnected={hasRemoteAudio || !!live.artistJoined}
-                        />
+                      <div className="mt-2 border-t pt-2" style={{ borderColor: C.panelBorder, fontSize: 9, color: C.dim }}>
+                        <span style={{ color: bridgeStatusColor }}>• {bridgeStatusLabel}</span>
+                        <span style={{ color: C.dim }}> · Artist: </span>
+                        <span style={{ color: C.text }}>{bridgeArtistLabel}</span>
+                        <span style={{ color: C.dim }}> · Feed </span>
+                        <span style={{ color: bridgeFeedActive ? C.green : C.dim }}>{bridgeFeedActive ? "Active" : "Inactive"}</span>
                       </div>
                     </div>
                   ) : null}
                   {isArtist ? (
                     <div className="mt-4 border-t pt-3" style={{ borderColor: C.panelBorder }}>
-                      <BridgePanel
-                        role="artist"
+                      <ArtistBridgePanel
                         stats={artistBridgeStats}
-                        remotePeerConnected={hasRemoteAudio || !!live.engineerJoined}
+                        remoteEngineerConnected={hasRemoteAudio || !!live.engineerJoined}
                       />
                     </div>
                   ) : null}
@@ -1638,22 +1598,20 @@ export default function UnifiedSessionScreen() {
                     ) : null}
                   </div>
                 </div>
-                <div className="mt-3 border-t pt-3" style={{ borderColor: C.panelBorder }}>
-                  <BridgePanel
-                    role="engineer"
-                    stats={localBridge}
-                    hasRemoteAudio={hasRemoteAudio}
-                    remotePeerConnected={hasRemoteAudio || !!live.artistJoined}
-                  />
+                <div className="mt-2 border-t pt-2" style={{ borderColor: C.panelBorder, fontSize: 11, color: C.dim }}>
+                  <span style={{ color: bridgeStatusColor }}>• {bridgeStatusLabel}</span>
+                  <span style={{ color: C.dim }}> · Artist: </span>
+                  <span style={{ color: C.text }}>{bridgeArtistLabel}</span>
+                  <span style={{ color: C.dim }}> · Feed </span>
+                  <span style={{ color: bridgeFeedActive ? C.green : C.dim }}>{bridgeFeedActive ? "Active" : "Inactive"}</span>
                 </div>
               </div>
             ) : null}
             {isArtist ? (
               <div className="mt-4 border-t pt-3" style={{ borderColor: C.panelBorder }}>
-                <BridgePanel
-                  role="artist"
+                <ArtistBridgePanel
                   stats={artistBridgeStats}
-                  remotePeerConnected={hasRemoteAudio || !!live.engineerJoined}
+                  remoteEngineerConnected={hasRemoteAudio || !!live.engineerJoined}
                 />
               </div>
             ) : null}
