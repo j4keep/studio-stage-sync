@@ -158,6 +158,8 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
   const dawReturnStreamRef = useRef<MediaStream | null>(null);
   const dawReturnRafRef = useRef(0);
   const dawReturnSenderRef = useRef<RTCRtpSender | null>(null);
+  const localStatsEnergyRef = useRef<AudioEnergySnapshot | null>(null);
+  const remoteStatsEnergyRef = useRef<AudioEnergySnapshot | null>(null);
 
   roleRef.current = role;
   toggleScreenShareRef.current = toggleScreenShare;
@@ -774,6 +776,16 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       gain.gain.value = target;
     }
   }, [role, live.headphoneLevelArtist, live.engineerPtt, live.talkbackLevel, live.vocalLevel]);
+
+  useEffect(() => {
+    if (!remoteStream) {
+      remoteStatsEnergyRef.current = null;
+      return;
+    }
+    return () => {
+      remoteStatsEnergyRef.current = null;
+    };
+  }, [remoteStream]);
 
   const remoteStreamForPlayback = useMemo(() => {
     if (role !== "artist") return remoteStream;
