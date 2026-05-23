@@ -76,7 +76,7 @@ export type StudioMediaContextValue = {
   stopDawReturn: () => void;
   mediaError: string | null;
   clearMediaError: () => void;
-  /** 0–1 RMS from local mic (pre–PTT gate; real input, ~0 when muted) */
+  /** 0–1 RMS from the raw physical mic before mute / send-path gating. */
   localMicLevel: number;
   /** 0–1 RMS on the WebRTC send path (post mute gate; follows voice when unmuted) */
   localTalkbackTxLevel: number;
