@@ -471,7 +471,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       txLevelRafRef.current = 0;
       stopLocalMedia();
     };
-  }, [sessionId, role, stopLocalMedia]);
+  }, [sessionId, role, mediaRestartKey, stopLocalMedia]);
 
   /** Remote level from peer audio (real RTP). */
   useEffect(() => {
@@ -1094,6 +1094,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       stopDawReturn,
       mediaError,
       clearMediaError,
+      restartLocalMedia,
       localMicLevel,
       localTalkbackTxLevel,
       remoteMicLevel,
@@ -1118,6 +1119,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       stopDawReturn,
       mediaError,
       clearMediaError,
+      restartLocalMedia,
       localMicLevel,
       localTalkbackTxLevel,
       remoteMicLevel,
