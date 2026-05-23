@@ -502,6 +502,7 @@ export default function UnifiedSessionScreen() {
     engineerDawVocalIn1,
     engineerBridgeVocalLevel,
     mediaError,
+    restartLocalMedia,
   } = useStudioMedia();
 
   const {
@@ -523,6 +524,7 @@ export default function UnifiedSessionScreen() {
 
   const isEngineer = role === "engineer";
   const isArtist = role === "artist";
+  const artistMicNeedsReconnect = isArtist && (!localMicMonitorStream || !!mediaError);
   /** Monitor mix is engineer-driven; artist UI reflects synced `live` values only. */
   const monitorAdjust = isEngineer ? updateSessionMonitorLevels : undefined;
   const recording = live.recording;
