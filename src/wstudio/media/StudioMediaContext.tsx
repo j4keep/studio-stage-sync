@@ -399,7 +399,11 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
           localStreamRef.current = ms;
           setLocalStream(ms);
           setLocalMicMonitorStream(null);
-          setMediaError(null);
+          setMediaError(
+            roleRef.current === "artist"
+              ? "Microphone is not connected to this session. Tap Enable mic and allow microphone access."
+              : null,
+          );
           console.warn(DEBUG_AUDIO_TAG, "No audio track on getUserMedia stream");
           return;
         }
