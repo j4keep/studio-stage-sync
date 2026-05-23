@@ -592,7 +592,12 @@ export default function UnifiedSessionScreen() {
   /** Local desktop bridge poll (JUCE AU plugin HTTP server on 192.168.12.155:47999). */
   const localBridge = useLocalBridgePoll(isEngineer);
   /** Artist mic: local meter only — actual transport is the WebRTC session. */
-  const artistBridgeStats = useArtistMicBridge(localMicMonitorStream ?? localStream ?? null, 0, !!(localMicMonitorStream ?? localStream) && !muted);
+  const artistBridgeStatsRaw = useArtistMicBridge(localMicMonitorStream ?? localStream ?? null, 0, !!(localMicMonitorStream ?? localStream) && !muted);
+  const artistBridgeStats = {
+    ...artistBridgeStatsRaw,
+    level: Math.max(artistBridgeStatsRaw.level, localMicLevel, localTalkbackTxLevel),
+    sending: artistBridgeStatsRaw.sending || (!muted && !!(localMicMonitorStream ?? localStream)),
+  };
   /** Engineer-only: tap inbound remote artist audio (WebRTC) and POST to local plugin bridge (127.0.0.1). */
   const engineerRelayStats = useEngineerBridgeRelay(
     isEngineer ? remoteStream ?? null : null,

@@ -120,10 +120,12 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
   const roleRef = useRef<Role>(role);
   const toggleScreenShareRef = useRef(toggleScreenShare);
   const screenPreviewStreamRef = useRef<MediaStream | null>(null);
+  const mutedRef = useRef(muted);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const gainNodeRef = useRef<GainNode | null>(null);
   const rawMicAudioTrackRef = useRef<MediaStreamTrack | null>(null);
+  const sendMicAudioTrackRef = useRef<MediaStreamTrack | null>(null);
   const localLevelRafRef = useRef(0);
   const txLevelRafRef = useRef(0);
   const audioDebugLastLogRef = useRef(0);
@@ -136,6 +138,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
 
   roleRef.current = role;
   toggleScreenShareRef.current = toggleScreenShare;
+  mutedRef.current = muted;
 
   const clearMediaError = useCallback(() => setMediaError(null), []);
 
@@ -152,6 +155,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     audioCtxRef.current = null;
     gainNodeRef.current = null;
     rawMicAudioTrackRef.current = null;
+    sendMicAudioTrackRef.current = null;
   }, []);
 
   const stopLocalMedia = useCallback(
@@ -188,18 +192,18 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
 
   const applyMuteAndPttToGraph = useCallback(() => {
     const raw = rawMicAudioTrackRef.current;
+    const sendTrack = sendMicAudioTrackRef.current;
     const gain = gainNodeRef.current;
-    if (!gain) return;
+    if (!gain && !sendTrack) return;
     // Keep the raw mic track enabled at all times so the local meter, spectrum,
-    // and the artist→engineer HTTP bridge tap always see live input. Mute is
-    // enforced purely by the post-tap gain node, which silences the WebRTC
-    // send path (and the bridge tap, which reads the processed `localStream`).
+    // and diagnostics always see live input. WebRTC uses a cloned mic track so
+    // the artist send does not depend on a Web Audio graph staying awake.
     if (raw && !raw.enabled) raw.enabled = true;
-    if (muted) {
-      gain.gain.value = 0;
-    } else {
-      /** Continuous voice to peer when unmuted; UI talkback stays a separate control layer. */
-      gain.gain.value = 1;
+    if (sendTrack && sendTrack.readyState === "live") {
+      sendTrack.enabled = !muted;
+    }
+    if (gain) {
+      gain.gain.value = muted ? 0 : 1;
     }
   }, [muted]);
 
@@ -369,6 +373,8 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
         }
 
         rawMicAudioTrackRef.current = audioTrack;
+        const sendAudioTrack = audioTrack.clone();
+        sendMicAudioTrackRef.current = sendAudioTrack;
         const rawMicStream = new MediaStream([audioTrack]);
         setLocalMicMonitorStream(rawMicStream);
 
@@ -396,23 +402,26 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
         analyserTx.fftSize = 2048;
         analyserTx.smoothingTimeConstant = 0.75;
 
-        const dest = ctx.createMediaStreamDestination();
         gain.connect(analyserTx);
-        analyserTx.connect(dest);
+        const txMeterSink = ctx.createGain();
+        txMeterSink.gain.value = 0;
+        analyserTx.connect(txMeterSink);
+        txMeterSink.connect(ctx.destination);
 
-        const sentAudio = dest.stream.getAudioTracks()[0];
-        const outTracks = videoTrack ? [videoTrack, sentAudio] : [sentAudio];
+        const outTracks = videoTrack ? [videoTrack, sendAudioTrack] : [sendAudioTrack];
         const outStream = new MediaStream(outTracks);
         localStreamRef.current = outStream;
         setLocalStream(outStream);
         setMediaError(null);
 
         localLevelRafRef.current = requestAnimationFrame(() => tickLocalMeter(analyserLocal));
+        txLevelRafRef.current = requestAnimationFrame(() => tickTxMeter(analyserTx));
 
         applyMuteAndPttToGraph();
 
         console.debug(DEBUG_AUDIO_TAG, "Mic graph ready", {
           micTrackActive: audioTrack.readyState === "live",
+          sendTrackActive: sendAudioTrack.readyState === "live",
           meterConnected: true,
         });
       } catch (e) {
@@ -915,9 +924,23 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       }
     };
 
+    let localAudioSender: RTCRtpSender | null = null;
     for (const track of localStream.getTracks()) {
-      pc.addTrack(track, localStream);
+      const sender = pc.addTrack(track, localStream);
+      if (track.kind === "audio") localAudioSender = sender;
     }
+
+    const statsMeterInterval = window.setInterval(() => {
+      if (!localAudioSender?.track || localAudioSender.track.readyState !== "live") return;
+      void pc.getStats(localAudioSender.track).then((report) => {
+        report.forEach((entry) => {
+          if (entry.type !== "media-source" || typeof entry.audioLevel !== "number") return;
+          const instant = Math.min(1, entry.audioLevel * 3.5);
+          setLocalMicLevel((prev) => Math.max(prev * 0.86, instant));
+          setLocalTalkbackTxLevel((prev) => Math.max(prev * 0.86, mutedRef.current ? 0 : instant));
+        });
+      }).catch(() => {});
+    }, 160);
 
     const unsubscribeSignals = subscribeRtcSignals(sessionId, (msg) => {
       void handlePayload(msg);
@@ -954,6 +977,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
 
     return () => {
       window.clearInterval(retryInterval);
+      window.clearInterval(statsMeterInterval);
       unsubscribeSignals();
       pc.onicecandidate = null;
       pc.ontrack = null;
