@@ -334,11 +334,17 @@ function VideoFeed({
         // Retry on next user interaction
         const retryPlay = () => {
           el.play().catch(() => {});
-          document.removeEventListener("click", retryPlay);
-          document.removeEventListener("touchstart", retryPlay);
+          const target = typeof document !== "undefined" ? document : undefined;
+          if (target && typeof target.removeEventListener === "function") {
+            target.removeEventListener("click", retryPlay);
+            target.removeEventListener("touchstart", retryPlay);
+          }
         };
-        document.addEventListener("click", retryPlay, { once: true });
-        document.addEventListener("touchstart", retryPlay, { once: true });
+        const target = typeof document !== "undefined" ? document : undefined;
+        if (target && typeof target.addEventListener === "function") {
+          target.addEventListener("click", retryPlay, { once: true });
+          target.addEventListener("touchstart", retryPlay, { once: true });
+        }
       });
     }
   }, [stream, volume]);
