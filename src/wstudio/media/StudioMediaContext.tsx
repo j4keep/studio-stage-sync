@@ -409,7 +409,11 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
         const rawMicStream = new MediaStream([audioTrack]);
         setLocalMicMonitorStream(rawMicStream);
 
-        const ctx = new AudioContext();
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioCtx) {
+          throw new Error("This browser does not support live microphone audio.");
+        }
+        const ctx = new AudioCtx();
         audioCtxRef.current = ctx;
         await ctx.resume().catch(() => {});
 
@@ -444,6 +448,15 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
         localStreamRef.current = outStream;
         setLocalStream(outStream);
         setMediaError(null);
+
+        const nudgeAudio = () => {
+          if (ctx.state !== "running") void ctx.resume().catch(() => {});
+        };
+        window.addEventListener("pointerdown", nudgeAudio, { passive: true });
+        window.addEventListener("keydown", nudgeAudio);
+        audioTrack.addEventListener("ended", () => {
+          if (!cancelled) setMediaError("Microphone stopped. Tap Enable mic to reconnect.");
+        });
 
         localLevelRafRef.current = requestAnimationFrame(() => tickLocalMeter(analyserLocal));
         txLevelRafRef.current = requestAnimationFrame(() => tickTxMeter(analyserTx));
