@@ -83,6 +83,10 @@ export function useArtistMicBridge(
     analyser.fftSize = 2048;
     analyser.smoothingTimeConstant = 0.75;
     src.connect(analyser);
+    const meterSink = ctx.createGain();
+    meterSink.gain.value = 0;
+    analyser.connect(meterSink);
+    meterSink.connect(ctx.destination);
 
     const buf = new Float32Array(analyser.fftSize);
 
@@ -113,6 +117,7 @@ export function useArtistMicBridge(
       window.clearInterval(tick);
       try { src.disconnect(); } catch {}
       try { analyser.disconnect(); } catch {}
+      try { meterSink.disconnect(); } catch {}
       void ctx.close().catch(() => {});
       levelRef.current = 0;
     };
