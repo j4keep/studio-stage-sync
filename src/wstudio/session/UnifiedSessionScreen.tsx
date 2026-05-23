@@ -1044,6 +1044,21 @@ export default function UnifiedSessionScreen() {
                             Enable mic
                           </button>
                         ) : null}
+                        {isArtist ? (
+                          <select
+                            value={selectedMicDeviceId}
+                            onChange={(e) => setSelectedMicDeviceId(e.target.value)}
+                            className="mt-1 w-full rounded-[3px] px-1 py-1 text-[10px]"
+                            style={{ background: C.shellDark, color: C.text, border: `1px solid ${C.insetBorder}` }}
+                          >
+                            <option value="default">Default microphone</option>
+                            {audioInputDevices.map((device, index) => (
+                              <option key={device.deviceId || index} value={device.deviceId || "default"}>
+                                {device.label || `Microphone ${index + 1}`}
+                              </option>
+                            ))}
+                          </select>
+                        ) : null}
                       </div>
                       <div>
                         <div className="mb-0.5" style={{ fontSize: 9, fontWeight: 600, color: C.label, letterSpacing: "0.08em" }}>TALKBACK SEND</div>
@@ -1476,6 +1491,21 @@ export default function UnifiedSessionScreen() {
                       <button type="button" onClick={restartLocalMedia} className="mt-1 rounded-[3px] px-2 py-1 text-[10px] font-bold uppercase" style={{ background: C.blue, color: C.shellDark, border: `1px solid ${C.blue}` }}>
                         Enable mic
                       </button>
+                    ) : null}
+                    {isArtist ? (
+                      <select
+                        value={selectedMicDeviceId}
+                        onChange={(e) => setSelectedMicDeviceId(e.target.value)}
+                        className="mt-1 w-full rounded-[3px] px-1 py-1 text-[10px]"
+                        style={{ background: C.shellDark, color: C.text, border: `1px solid ${C.insetBorder}` }}
+                      >
+                        <option value="default">Default microphone</option>
+                        {audioInputDevices.map((device, index) => (
+                          <option key={device.deviceId || index} value={device.deviceId || "default"}>
+                            {device.label || `Microphone ${index + 1}`}
+                          </option>
+                        ))}
+                      </select>
                     ) : null}
                   </div>
                   <div>
