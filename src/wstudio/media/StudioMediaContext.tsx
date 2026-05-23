@@ -401,6 +401,10 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
         analyserTx.smoothingTimeConstant = 0.75;
 
         gain.connect(analyserTx);
+        const txMeterSink = ctx.createGain();
+        txMeterSink.gain.value = 0;
+        analyserTx.connect(txMeterSink);
+        txMeterSink.connect(ctx.destination);
 
         const outTracks = videoTrack ? [videoTrack, sendAudioTrack] : [sendAudioTrack];
         const outStream = new MediaStream(outTracks);
