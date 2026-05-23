@@ -34,6 +34,29 @@ function toSignalRole(role: Role): RtcSignalRole | null {
   return role === "artist" || role === "engineer" ? role : null;
 }
 
+type AudioEnergySnapshot = { energy: number; duration: number };
+
+function readRtcAudioLevel(
+  entry: any,
+  previous: AudioEnergySnapshot | null,
+  scale: number,
+): { level: number | null; snapshot: AudioEnergySnapshot | null } {
+  const directLevel = typeof entry.audioLevel === "number" ? Math.min(1, entry.audioLevel * scale) : null;
+  const hasEnergy = typeof entry.totalAudioEnergy === "number" && typeof entry.totalSamplesDuration === "number";
+  const snapshot = hasEnergy
+    ? { energy: entry.totalAudioEnergy, duration: entry.totalSamplesDuration }
+    : null;
+
+  if (directLevel !== null) return { level: directLevel, snapshot };
+  if (!snapshot || !previous) return { level: null, snapshot };
+
+  const deltaEnergy = snapshot.energy - previous.energy;
+  const deltaDuration = snapshot.duration - previous.duration;
+  if (deltaEnergy < 0 || deltaDuration <= 0) return { level: null, snapshot };
+
+  return { level: Math.min(1, Math.sqrt(deltaEnergy / deltaDuration) * scale), snapshot };
+}
+
 export type StudioMediaContextValue = {
   localStream: MediaStream | null;
   /** Raw physical mic stream for local artist metering; never sent directly to the peer. */
