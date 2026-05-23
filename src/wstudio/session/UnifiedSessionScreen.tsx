@@ -24,6 +24,25 @@ import { ArtistBridgePanel } from "../bridge/ArtistBridgePanel";
 
 const canScreenShare = typeof navigator !== "undefined" && !!navigator.mediaDevices?.getDisplayMedia;
 
+/** Safely attach an event listener to a target that may be undefined
+ *  (e.g. window.visualViewport in browsers that don't support it,
+ *  or document/window in non-browser contexts). Returns a cleanup fn. */
+function safeAddEventListener(
+  target: EventTarget | null | undefined,
+  type: string,
+  handler: EventListenerOrEventListenerObject,
+  options?: AddEventListenerOptions | boolean,
+): () => void {
+  if (target && typeof (target as EventTarget).addEventListener === "function") {
+    try { (target as EventTarget).addEventListener(type, handler, options); } catch { /* noop */ }
+  }
+  return () => {
+    if (target && typeof (target as EventTarget).removeEventListener === "function") {
+      try { (target as EventTarget).removeEventListener(type, handler, options as EventListenerOptions); } catch { /* noop */ }
+    }
+  };
+}
+
 /* ─────────────────────────────────────────────
    STYLE CONSTANTS — aligned with JUCE WStudioPlugin (cyan #2ee0d8, charcoal shell)
    ───────────────────────────────────────────── */
