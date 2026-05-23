@@ -503,6 +503,9 @@ export default function UnifiedSessionScreen() {
     engineerBridgeVocalLevel,
     mediaError,
     restartLocalMedia,
+    audioInputDevices,
+    selectedMicDeviceId,
+    setSelectedMicDeviceId,
   } = useStudioMedia();
 
   const {
