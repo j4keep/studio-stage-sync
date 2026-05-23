@@ -716,8 +716,9 @@ export default function UnifiedSessionScreen() {
 
   useEffect(() => {
     const handler = () => setIsFullscreen(!!document.fullscreenElement);
-    document.addEventListener("fullscreenchange", handler);
-    return () => document.removeEventListener("fullscreenchange", handler);
+    const target: EventTarget | undefined =
+      (typeof document !== "undefined" ? document : undefined);
+    return safeAddEventListener(target, "fullscreenchange", handler);
   }, []);
 
   /* ── Mobile-specific tab state ── */
