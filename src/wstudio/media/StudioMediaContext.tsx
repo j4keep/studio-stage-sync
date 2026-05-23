@@ -99,6 +99,7 @@ export type StudioMediaContextValue = {
   stopDawReturn: () => void;
   mediaError: string | null;
   clearMediaError: () => void;
+  restartLocalMedia: () => void;
   /** 0–1 RMS from the raw physical mic before mute / send-path gating. */
   localMicLevel: number;
   /** 0–1 RMS on the WebRTC send path (post mute gate; follows voice when unmuted) */
@@ -121,6 +122,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
   const [remotePlaybackStream, setRemotePlaybackStream] = useState<MediaStream | null>(null);
   const [localScreenPreview, setLocalScreenPreview] = useState<MediaStream | null>(null);
   const [mediaError, setMediaError] = useState<string | null>(null);
+  const [mediaRestartKey, setMediaRestartKey] = useState(0);
    const [localMicLevel, setLocalMicLevel] = useState(0);
   const [localTalkbackTxLevel, setLocalTalkbackTxLevel] = useState(0);
   const [remoteMicLevel, setRemoteMicLevel] = useState(0);
@@ -166,6 +168,10 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
   mutedRef.current = muted;
 
   const clearMediaError = useCallback(() => setMediaError(null), []);
+  const restartLocalMedia = useCallback(() => {
+    setMediaError(null);
+    setMediaRestartKey((key) => key + 1);
+  }, []);
 
   const closeLocalAudioGraph = useCallback(() => {
     cancelAnimationFrame(localLevelRafRef.current);
