@@ -1026,6 +1026,8 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     return () => {
       window.clearInterval(retryInterval);
       window.clearInterval(statsMeterInterval);
+      localStatsEnergyRef.current = null;
+      remoteStatsEnergyRef.current = null;
       unsubscribeSignals();
       pc.onicecandidate = null;
       pc.ontrack = null;
