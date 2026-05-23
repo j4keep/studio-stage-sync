@@ -34,6 +34,29 @@ function toSignalRole(role: Role): RtcSignalRole | null {
   return role === "artist" || role === "engineer" ? role : null;
 }
 
+type AudioEnergySnapshot = { energy: number; duration: number };
+
+function readRtcAudioLevel(
+  entry: any,
+  previous: AudioEnergySnapshot | null,
+  scale: number,
+): { level: number | null; snapshot: AudioEnergySnapshot | null } {
+  const directLevel = typeof entry.audioLevel === "number" ? Math.min(1, entry.audioLevel * scale) : null;
+  const hasEnergy = typeof entry.totalAudioEnergy === "number" && typeof entry.totalSamplesDuration === "number";
+  const snapshot = hasEnergy
+    ? { energy: entry.totalAudioEnergy, duration: entry.totalSamplesDuration }
+    : null;
+
+  if (directLevel !== null) return { level: directLevel, snapshot };
+  if (!snapshot || !previous) return { level: null, snapshot };
+
+  const deltaEnergy = snapshot.energy - previous.energy;
+  const deltaDuration = snapshot.duration - previous.duration;
+  if (deltaEnergy < 0 || deltaDuration <= 0) return { level: null, snapshot };
+
+  return { level: Math.min(1, Math.sqrt(deltaEnergy / deltaDuration) * scale), snapshot };
+}
+
 export type StudioMediaContextValue = {
   localStream: MediaStream | null;
   /** Raw physical mic stream for local artist metering; never sent directly to the peer. */
@@ -135,6 +158,8 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
   const dawReturnStreamRef = useRef<MediaStream | null>(null);
   const dawReturnRafRef = useRef(0);
   const dawReturnSenderRef = useRef<RTCRtpSender | null>(null);
+  const localStatsEnergyRef = useRef<AudioEnergySnapshot | null>(null);
+  const remoteStatsEnergyRef = useRef<AudioEnergySnapshot | null>(null);
 
   roleRef.current = role;
   toggleScreenShareRef.current = toggleScreenShare;
@@ -690,7 +715,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     }
   }, [role, sessionId, cleanupDawReturn]);
 
-  /** Artist: route peer audio through Web Audio for headphone level + engineer talkback priority. */
+  /** Artist: play the peer WebRTC stream directly. Avoid Web Audio here so browser context suspension cannot silence the artist page. */
   useEffect(() => {
     artistRemoteGainRef.current = null;
     if (role !== "artist") {
@@ -702,36 +727,9 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       setRemotePlaybackStream(null);
       return;
     }
-    const audioTr = rs.getAudioTracks()[0];
-    if (!audioTr) {
-      setRemotePlaybackStream(rs);
-      return;
-    }
-    const videoTr = rs.getVideoTracks()[0] ?? null;
-    const ctx = new AudioContext();
-    void ctx.resume().catch(() => {});
-    const src = ctx.createMediaStreamSource(new MediaStream([audioTr]));
-    const gain = ctx.createGain();
-    artistRemoteGainRef.current = gain;
-    const dest = ctx.createMediaStreamDestination();
-    src.connect(gain);
-    gain.connect(dest);
-    const hp = live.headphoneLevelArtist;
-    /** Talkback level scales the PTT boost (0–1 → 1.0–2.0x when PTT held). */
-    const talkbackBoost = live.engineerPtt ? (1 + live.talkbackLevel) : 1;
-    /** Vocal level scales the channel (0.5 = unity). */
-    const vocalScale = live.vocalLevel * 2;
-    gain.gain.value = Math.min(2, Math.max(0, hp * talkbackBoost * vocalScale));
-    const out = new MediaStream([...(videoTr ? [videoTr] : []), ...dest.stream.getAudioTracks()]);
-    setRemotePlaybackStream(out);
-    console.debug("[W.Studio audio] Artist remote playback graph created", { hp, talkbackBoost, vocalScale });
-    return () => {
-      artistRemoteGainRef.current = null;
-      src.disconnect();
-      gain.disconnect();
-      void ctx.close();
-      setRemotePlaybackStream(null);
-    };
+    setRemotePlaybackStream(rs);
+    console.debug("[W.Studio audio] Artist remote playback uses direct WebRTC stream");
+    return () => setRemotePlaybackStream(null);
   }, [role, remoteStream]);
 
   useEffect(() => {
@@ -751,6 +749,16 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       gain.gain.value = target;
     }
   }, [role, live.headphoneLevelArtist, live.engineerPtt, live.talkbackLevel, live.vocalLevel]);
+
+  useEffect(() => {
+    if (!remoteStream) {
+      remoteStatsEnergyRef.current = null;
+      return;
+    }
+    return () => {
+      remoteStatsEnergyRef.current = null;
+    };
+  }, [remoteStream]);
 
   const remoteStreamForPlayback = useMemo(() => {
     if (role !== "artist") return remoteStream;
@@ -817,6 +825,9 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     pc.ontrack = (ev) => {
       const track = ev.track;
       console.debug(DEBUG_AUDIO_TAG, "Remote track received:", track.kind, track.id, track.readyState);
+      if (track.kind === "audio") {
+        setHasRemoteAudio(true);
+      }
       if (!inbound.getTracks().some((existing) => existing.id === track.id)) {
         inbound.addTrack(track);
       }
@@ -931,13 +942,24 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     }
 
     const statsMeterInterval = window.setInterval(() => {
-      if (!localAudioSender?.track || localAudioSender.track.readyState !== "live") return;
-      void pc.getStats(localAudioSender.track).then((report) => {
+      void pc.getStats().then((report) => {
         report.forEach((entry) => {
-          if (entry.type !== "media-source" || typeof entry.audioLevel !== "number") return;
-          const instant = Math.min(1, entry.audioLevel * 3.5);
-          setLocalMicLevel((prev) => Math.max(prev * 0.86, instant));
-          setLocalTalkbackTxLevel((prev) => Math.max(prev * 0.86, mutedRef.current ? 0 : instant));
+          const stat = entry as any;
+          if (stat.type === "media-source") {
+            const result = readRtcAudioLevel(stat, localStatsEnergyRef.current, 3.5);
+            localStatsEnergyRef.current = result.snapshot ?? localStatsEnergyRef.current;
+            if (result.level === null) return;
+            setLocalMicLevel((prev) => Math.max(prev * 0.86, result.level));
+            setLocalTalkbackTxLevel((prev) => Math.max(prev * 0.86, mutedRef.current ? 0 : result.level));
+            return;
+          }
+          if (stat.type === "inbound-rtp" && stat.kind === "audio") {
+            setHasRemoteAudio(true);
+            const result = readRtcAudioLevel(stat, remoteStatsEnergyRef.current, 6.5);
+            remoteStatsEnergyRef.current = result.snapshot ?? remoteStatsEnergyRef.current;
+            if (result.level === null) return;
+            setRemoteMicLevel((prev) => Math.max(prev * 0.82, result.level));
+          }
         });
       }).catch(() => {});
     }, 160);
@@ -978,6 +1000,8 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     return () => {
       window.clearInterval(retryInterval);
       window.clearInterval(statsMeterInterval);
+      localStatsEnergyRef.current = null;
+      remoteStatsEnergyRef.current = null;
       unsubscribeSignals();
       pc.onicecandidate = null;
       pc.ontrack = null;
