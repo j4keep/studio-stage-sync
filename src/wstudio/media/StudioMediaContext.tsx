@@ -273,6 +273,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     const sessionAudioConstraints: MediaTrackConstraints = {
       echoCancellation: true,
       noiseSuppression: true,
+      ...(selectedMicDeviceId !== "default" ? { deviceId: { exact: selectedMicDeviceId } } : {}),
     };
 
     const isRecoverableDeviceError = (error: unknown) => {
@@ -419,6 +420,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
         }
 
         acquiredSessionTracksRef.current = ms.getTracks();
+        void refreshAudioInputs().catch(() => {});
 
         const videoTrack = ms.getVideoTracks()[0] ?? null;
         const audioTrack = ms.getAudioTracks()[0] ?? null;
@@ -523,7 +525,13 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       releaseAudioNudge();
       stopLocalMedia();
     };
-  }, [sessionId, role, mediaRestartKey, stopLocalMedia]);
+  }, [sessionId, role, selectedMicDeviceId, mediaRestartKey, refreshAudioInputs, stopLocalMedia]);
+
+  useEffect(() => {
+    void refreshAudioInputs().catch(() => {});
+    navigator.mediaDevices?.addEventListener?.("devicechange", refreshAudioInputs);
+    return () => navigator.mediaDevices?.removeEventListener?.("devicechange", refreshAudioInputs);
+  }, [refreshAudioInputs]);
 
   /** Remote level from peer audio (real RTP). */
   useEffect(() => {
