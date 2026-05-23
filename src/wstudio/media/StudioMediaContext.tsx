@@ -299,6 +299,24 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
 
     const acquireSessionMedia = async () => {
       let lastError: unknown = null;
+      if (roleRef.current === "artist") {
+        const audioOnly = await navigator.mediaDevices.getUserMedia({
+          video: false,
+          audio: { ...sessionAudioConstraints },
+        });
+        const videoOnly = await tryOptionalCapture(
+          [
+            { video: { facingMode: { ideal: "user" } }, audio: false },
+            { video: true, audio: false },
+          ],
+          "video",
+        );
+        return new MediaStream([
+          ...audioOnly.getAudioTracks(),
+          ...(videoOnly?.getVideoTracks() ?? []),
+        ]);
+      }
+
       const preferredAttempts: MediaStreamConstraints[] = [
         {
           video: { facingMode: { ideal: "user" } },
