@@ -1023,6 +1023,11 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       const sender = pc.addTrack(track, localStream);
       if (track.kind === "audio") localAudioSender = sender;
     }
+    if (role === "engineer") {
+      engineerTalkbackTransceiverRef.current = pc.addTransceiver("audio", { direction: "sendonly" });
+    } else {
+      engineerTalkbackTransceiverRef.current = null;
+    }
 
     const statsMeterInterval = window.setInterval(() => {
       void pc.getStats().then((report) => {
@@ -1091,6 +1096,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       pc.onconnectionstatechange = null;
       pc.close();
       pcRef.current = null;
+      engineerTalkbackTransceiverRef.current = null;
       inboundStreamRef.current = null;
       pendingIceRef.current = [];
       setRemoteStream(null);
