@@ -117,7 +117,14 @@ export function useEngineerBridgeRelay(
     const trackStream = new MediaStream([track]);
     const sinkEl = document.createElement("audio");
     sinkEl.srcObject = trackStream;
-    sinkEl.muted = true;
+    // IMPORTANT: do NOT set muted=true here. A muted HTMLMediaElement causes
+    // Chrome/WebKit to skip decoding the WebRTC audio track, so the
+    // MediaStreamSource feeding the bridge relay receives only zero buffers.
+    // Keep the element unmuted but at volume 0 — audio is decoded (samples
+    // flow into Web Audio) but nothing is audible through the speakers. The
+    // visible engineer tile stays muted separately to prevent doubled vocals.
+    sinkEl.muted = false;
+    sinkEl.volume = 0;
     sinkEl.autoplay = true;
     (sinkEl as any).playsInline = true;
     void sinkEl.play().catch(() => {});
