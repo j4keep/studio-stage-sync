@@ -10,6 +10,13 @@ export type SessionLiveState = {
   engineerJoined: boolean;
   /** Set by artist on join; shown on engineer bridge (not used in main session chrome). */
   remoteArtistLabel: string;
+  /**
+   * Artist slot (0-based) — maps Artist N in the AU plugin to slot N-1.
+   * Engineer relay POSTs to `/artist-audio?slot=<artistSlot>` so the plugin
+   * routes the inbound samples to the matching Artist channel (1–12).
+   * Default 0 = Artist 1.
+   */
+  artistSlot: number;
   /** Transport playback (UI sync; engineer drives) */
   playing: boolean;
   /** Record arm (engineer drives) */
@@ -47,6 +54,7 @@ export function defaultLiveState(): SessionLiveState {
     artistJoined: false,
     engineerJoined: false,
     remoteArtistLabel: "",
+    artistSlot: 0,
     playing: false,
     recordArmed: false,
     takeCapturedThisSession: false,
