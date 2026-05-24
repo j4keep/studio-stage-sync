@@ -217,7 +217,7 @@ export default function UnifiedSessionScreen() {
   };
 
   const handleLiveTap = () => {
-    if (!isArtist) return;
+    if (!isArtist && !isEngineer) return;
     setArmed((a) => !a);
   };
 
