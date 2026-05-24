@@ -94,10 +94,22 @@ export function useArtistMicBridge(
       if (cancelled) return;
       analyser.getFloatTimeDomainData(buf);
       let sum = 0;
-      for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+      let peak = 0;
+      for (let i = 0; i < buf.length; i++) {
+        const v = buf[i];
+        sum += v * v;
+        const a = v < 0 ? -v : v;
+        if (a > peak) peak = a;
+      }
       const rms = Math.sqrt(sum / buf.length);
-      // Match engineer-relay 8x input gain so the artist meter reflects the boosted signal sent to the plugin.
-      levelRef.current = Math.min(1, rms * 8 * 1.8);
+      // Match engineer-relay 8x input gain, then drive meter from the louder of
+      // boosted-RMS or boosted-peak so the bar tracks transients like the REMOTE meter does.
+      const boostedRms = rms * 8;
+      const boostedPeak = peak * 8;
+      const target = Math.min(1, Math.max(boostedRms * 2.4, boostedPeak * 1.2));
+      // Fast attack, slow release (matches remote meter feel).
+      const prev = levelRef.current;
+      levelRef.current = target > prev ? target : prev * 0.82 + target * 0.18;
       setStats({
         connection: "CONNECTED",
         level: levelRef.current,
@@ -111,7 +123,7 @@ export function useArtistMicBridge(
         enabled: true,
         lastError: null,
       });
-    }, 100);
+    }, 60);
 
     return () => {
       cancelled = true;
