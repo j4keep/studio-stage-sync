@@ -146,8 +146,8 @@ export default function UnifiedSessionScreen() {
 
   const [artistSlot, setArtistSlot] = useState(1);
   const [engineerHost, setEngineerHost] = useState<string>(() => {
-    if (typeof window === "undefined") return "";
-    return window.localStorage.getItem(ENGINEER_HOST_KEY) ?? "";
+    if (typeof window === "undefined") return "192.168.12.155";
+    return window.localStorage.getItem(ENGINEER_HOST_KEY) ?? "192.168.12.155";
   });
   const [armed, setArmed] = useState(false);
 
