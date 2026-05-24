@@ -102,11 +102,8 @@ export function useArtistMicBridge(
         if (a > peak) peak = a;
       }
       const rms = Math.sqrt(sum / buf.length);
-      // Match engineer-relay 8x input gain, then drive meter from the louder of
-      // boosted-RMS or boosted-peak so the bar tracks transients like the REMOTE meter does.
-      const boostedRms = rms * 8;
-      const boostedPeak = peak * 8;
-      const target = Math.min(1, Math.max(boostedRms * 2.4, boostedPeak * 1.2));
+      // Drive meter from the louder of RMS or peak so the bar tracks transients like the REMOTE meter does.
+      const target = Math.min(1, Math.max(rms * 2.4, peak * 1.2));
       // Fast attack, slow release (matches remote meter feel).
       const prev = levelRef.current;
       levelRef.current = target > prev ? target : prev * 0.82 + target * 0.18;
