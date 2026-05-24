@@ -1110,6 +1110,80 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
   }, [role, stopScreenPreview]);
 
   useEffect(() => {
+    if (role !== "engineer" || !sessionId.trim() || !talkbackHeld) {
+      cleanupEngineerTalkback();
+      return;
+    }
+
+    let cancelled = false;
+    const scratch = new Float32Array(2048);
+    const talkbackConstraints: MediaTrackConstraints = {
+      echoCancellation: true,
+      noiseSuppression: true,
+      ...(selectedMicDeviceId !== "default" ? { deviceId: { exact: selectedMicDeviceId } } : {}),
+    };
+
+    const startTalkback = async () => {
+      const sender = engineerTalkbackTransceiverRef.current?.sender;
+      if (!sender || pcRef.current?.connectionState === "closed") return;
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: talkbackConstraints });
+        if (cancelled) {
+          stopMediaStream(stream);
+          return;
+        }
+
+        const track = stream.getAudioTracks()[0] ?? null;
+        if (!track) {
+          stopMediaStream(stream);
+          return;
+        }
+
+        engineerTalkbackStreamRef.current = stream;
+        setLocalMicMonitorStream(stream);
+        await sender.replaceTrack(track);
+
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        engineerTalkbackCtxRef.current = ctx;
+        await ctx.resume().catch(() => {});
+        const src = ctx.createMediaStreamSource(new MediaStream([track]));
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 2048;
+        analyser.smoothingTimeConstant = 0.75;
+        src.connect(analyser);
+
+        const tickTalkback = () => {
+          if (cancelled) return;
+          analyser.getFloatTimeDomainData(scratch);
+          let sum = 0;
+          for (let i = 0; i < scratch.length; i++) sum += scratch[i] * scratch[i];
+          const rms = Math.sqrt(sum / scratch.length);
+          const instant = Math.min(1, rms * 5.5);
+          setLocalMicLevel((prev) => prev * 0.82 + instant * 0.18);
+          setLocalTalkbackTxLevel((prev) => prev * 0.82 + instant * 0.18);
+          engineerTalkbackRafRef.current = requestAnimationFrame(tickTalkback);
+        };
+        engineerTalkbackRafRef.current = requestAnimationFrame(tickTalkback);
+      } catch (err) {
+        if (!cancelled) {
+          setMediaError(err instanceof Error ? err.message : "Could not access engineer talkback microphone");
+          cleanupEngineerTalkback();
+        }
+      }
+    };
+
+    void startTalkback();
+
+    return () => {
+      cancelled = true;
+      cleanupEngineerTalkback();
+    };
+  }, [role, sessionId, talkbackHeld, selectedMicDeviceId, cleanupEngineerTalkback]);
+
+  useEffect(() => {
     if (role !== "engineer") {
       return;
     }
