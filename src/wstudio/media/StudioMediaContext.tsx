@@ -477,7 +477,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
         const rawMicStream = new MediaStream([audioTrack]);
         setLocalMicMonitorStream(rawMicStream);
 
-        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        const AudioCtx = window.AudioContext || (window as WebkitAudioWindow).webkitAudioContext;
         if (!AudioCtx) {
           throw new Error("This browser does not support live microphone audio.");
         }
@@ -1048,7 +1048,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     const statsMeterInterval = window.setInterval(() => {
       void pc.getStats().then((report) => {
         report.forEach((entry) => {
-          const stat = entry as any;
+          const stat = entry as AudioStatsEntry;
           if (stat.type === "media-source") {
             if (roleRef.current === "engineer" && !talkbackHeldRef.current) return;
             const result = readRtcAudioLevel(stat, localStatsEnergyRef.current, 3.5);
@@ -1161,7 +1161,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
         setLocalMicMonitorStream(stream);
         await sender.replaceTrack(track);
 
-        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        const AudioCtx = window.AudioContext || (window as WebkitAudioWindow).webkitAudioContext;
         if (!AudioCtx) return;
         const ctx = new AudioCtx();
         engineerTalkbackCtxRef.current = ctx;
