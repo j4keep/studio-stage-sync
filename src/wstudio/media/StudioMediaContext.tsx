@@ -446,11 +446,17 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
         if (!audioTrack) {
           localStreamRef.current = ms;
           setLocalStream(ms);
+          if (roleRef.current === "engineer") {
+            setLocalMicMonitorStream(null);
+            setLocalMicLevel(0);
+            setLocalTalkbackTxLevel(0);
+            setMediaError(null);
+            console.debug(DEBUG_AUDIO_TAG, "Engineer session joined without opening microphone; talkback is push-to-talk only");
+            return;
+          }
           setLocalMicMonitorStream(null);
           setMediaError(
-            roleRef.current === "artist"
-              ? "Microphone is not connected to this session. Tap Enable mic and allow microphone access."
-              : null,
+            "Microphone is not connected to this session. Tap Enable mic and allow microphone access.",
           );
           console.warn(DEBUG_AUDIO_TAG, "No audio track on getUserMedia stream");
           return;
