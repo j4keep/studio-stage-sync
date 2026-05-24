@@ -109,7 +109,20 @@ export function useEngineerBridgeRelay(
       (window as any).AudioContext || (window as any).webkitAudioContext;
     const ctx = new Ctx();
     void ctx.resume().catch(() => {});
-    const src = ctx.createMediaStreamSource(new MediaStream([track]));
+
+    // Chrome/WebKit quirk: a remote WebRTC MediaStreamTrack does NOT produce
+    // samples through Web Audio API unless it is ALSO attached to an
+    // HTMLMediaElement. Without this hidden sink, MediaStreamSource silently
+    // delivers zero buffers — which is exactly the regression we're fixing.
+    const trackStream = new MediaStream([track]);
+    const sinkEl = document.createElement("audio");
+    sinkEl.srcObject = trackStream;
+    sinkEl.muted = true;
+    sinkEl.autoplay = true;
+    (sinkEl as any).playsInline = true;
+    void sinkEl.play().catch(() => {});
+
+    const src = ctx.createMediaStreamSource(trackStream);
     const node = ctx.createScriptProcessor(PACKET_SAMPLES, 1, 1);
     const muteSink = ctx.createGain();
     muteSink.gain.value = 0;
