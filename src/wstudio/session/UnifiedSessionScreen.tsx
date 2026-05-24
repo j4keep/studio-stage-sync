@@ -368,6 +368,27 @@ export default function UnifiedSessionScreen() {
                     style={{ background: C.inset, color: C.text, border: `1px solid ${C.insetEdge}` }}
                   />
                 </label>
+                <label className="flex flex-col gap-1 text-[10px] uppercase tracking-wider sm:col-span-2" style={{ color: C.dim }}>
+                  Mic input
+                  <select
+                    value={selectedMicDeviceId}
+                    onChange={(e) => setSelectedMicDeviceId(e.target.value)}
+                    className="rounded-[4px] px-2 py-1.5 text-[12px] font-semibold focus:outline-none"
+                    style={{ background: C.inset, color: C.text, border: `1px solid ${C.insetEdge}` }}
+                  >
+                    <option value="default">System default</option>
+                    {audioInputDevices.map((d) => (
+                      <option key={d.deviceId} value={d.deviceId}>
+                        {d.label || `Mic ${d.deviceId.slice(0, 6)}`}
+                      </option>
+                    ))}
+                  </select>
+                  {audioInputDevices.length === 0 && (
+                    <span className="text-[10px] normal-case" style={{ color: C.dim }}>
+                      Tap CONNECT once to grant mic access — devices will populate.
+                    </span>
+                  )}
+                </label>
               </div>
             )}
 
