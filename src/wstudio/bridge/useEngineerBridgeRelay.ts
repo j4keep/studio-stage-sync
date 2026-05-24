@@ -78,6 +78,7 @@ export function useEngineerBridgeRelay(
   const lastErrorRef = useRef<string | null>(null);
   const lastStatusRef = useRef<string | null>(null);
   const lastErrorLogRef = useRef(0);
+  const nextProbeAtRef = useRef(0);
   const announcedRef = useRef(false);
 
   const targetUrl = BRIDGE_URL(slot);
@@ -159,6 +160,16 @@ export function useEngineerBridgeRelay(
         return;
       }
 
+      // Circuit breaker: if the plugin bridge isn't reachable, stop spamming
+      // fetches (every ~10ms) which makes the UI blink "Failed to fetch".
+      // After 5 consecutive failures, back off for an increasing window before
+      // probing again.
+      const nowTs = performance.now();
+      if (consecutiveFailRef.current >= 5 && nowTs < nextProbeAtRef.current) {
+        droppedRef.current++;
+        return;
+      }
+
       if (!announcedRef.current) {
         announcedRef.current = true;
         // eslint-disable-next-line no-console
@@ -181,6 +192,7 @@ export function useEngineerBridgeRelay(
           if (!res.ok) throw new Error(lastStatusRef.current ?? `HTTP ${res.status}`);
           postCountRef.current++;
           consecutiveFailRef.current = 0;
+          nextProbeAtRef.current = 0;
           lastOkAtRef.current = performance.now();
           lastErrorRef.current = null;
         })
@@ -188,11 +200,14 @@ export function useEngineerBridgeRelay(
           failCountRef.current++;
           consecutiveFailRef.current++;
           lastErrorRef.current = err?.message ?? String(err);
+          // Exponential backoff: 500ms → 1s → 2s → 4s, capped at 5s.
+          const backoff = Math.min(5000, 500 * Math.pow(2, Math.max(0, consecutiveFailRef.current - 5)));
+          nextProbeAtRef.current = performance.now() + backoff;
           const now = performance.now();
-          if (now - lastErrorLogRef.current > 2000) {
+          if (now - lastErrorLogRef.current > 5000) {
             lastErrorLogRef.current = now;
             // eslint-disable-next-line no-console
-            console.warn("engineer-relay POST failed", lastErrorRef.current);
+            console.warn("engineer-relay POST failed (backing off)", lastErrorRef.current);
           }
         })
         .finally(() => {

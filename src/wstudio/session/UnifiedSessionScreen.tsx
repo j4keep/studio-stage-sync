@@ -594,8 +594,10 @@ export default function UnifiedSessionScreen() {
   const engineerRecordDimmed = isEngineer && !recording && !armed;
   /** Engineer DAW bridge: isolated vocal bus + session/artist sync (session UI extension only). */
   const bridgePathReady = isEngineer && !!engineerDawVocalIn1 && hasRemoteAudio;
-  /** Local desktop bridge poll (JUCE AU plugin HTTP server on 192.168.12.155:47999). */
-  const localBridge = useLocalBridgePoll(isEngineer);
+  /** Local desktop bridge poll DISABLED — mixed-content HTTPS→http://192.168.x.x caused
+   *  blinking "Failed to fetch". Engineer hears artist only through the AU plugin via the
+   *  silent POST tap in useEngineerBridgeRelay. No WebSocket / DAW-return polling here. */
+  const localBridge = useLocalBridgePoll(false);
   /** Artist mic: local meter only — actual transport is the WebRTC session. */
   const artistBridgeStatsRaw = useArtistMicBridge(localMicMonitorStream ?? localStream ?? null, 0, !!(localMicMonitorStream ?? localStream) && !muted);
   const artistBridgeStats = {
