@@ -603,17 +603,10 @@ export default function UnifiedSessionScreen() {
     level: Math.max(artistBridgeStatsRaw.level, localMicLevel, localTalkbackTxLevel),
     sending: artistBridgeStatsRaw.sending || (!muted && !!(localMicMonitorStream ?? localStream)),
   };
-  /**
-   * Engineer-only: tap inbound remote artist audio (WebRTC) and POST to local
-   * AU plugin bridge (127.0.0.1:47999). The slot index comes from session live
-   * state so Artist 1 → slot 0 … Artist 12 → slot 11 in the AU plugin.
-   * The relay is a PASSIVE audio source only — Mute / Talk / Listen / Gain /
-   * artist selection all stay inside the AU plugin.
-   */
-  const artistSlot = Math.max(0, Math.min(11, Number(live.artistSlot) || 0));
+  /** Engineer-only: tap inbound remote artist audio (WebRTC) and POST to local plugin bridge (127.0.0.1). */
   const engineerRelayStats = useEngineerBridgeRelay(
     isEngineer ? remoteStream ?? null : null,
-    artistSlot,
+    0,
     isEngineer,
   );
   /** Bridge status derives from local-bridge HTTP poll OR audio routing state. */

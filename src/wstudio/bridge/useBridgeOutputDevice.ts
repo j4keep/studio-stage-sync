@@ -433,17 +433,10 @@ export function useBridgeOutputDevice(bridgeStream: MediaStream | null) {
     el.srcObject = bridgeStream;
 
     const applySink = async () => {
-      // IMPORTANT: the engineer-side stream piped through this element is the
-      // REMOTE WebRTC artist mic. The AU plugin (fed via useEngineerBridgeRelay
-      // → 127.0.0.1:47999/artist-audio?slot=N) is the SOLE final controller of
-      // the artist audio (Mute / Talk / Listen / Gain / slot selection). If we
-      // let this <audio> element play back to the engineer's system output at
-      // volume=1 it bypasses the plugin entirely — that's exactly why plugin
-      // Mute/Talk/Gain stopped affecting what the engineer hears.
-      //
-      // Keep the element attached (so the WebRTC track stays decoded and the
-      // bridge relay continues to receive samples) but force volume to 0 so
-      // the only audible artist path is through the AU plugin.
+      // The "W.STUDIO Desktop Bridge" entry is a virtual ID (not a real
+      // audiooutput) — the actual transport is HTTP loopback handled by
+      // useLocalBridgePoll/useArtistMicBridge. Fall back to the default
+      // sink so setSinkId doesn't reject and surface a red error.
       const sinkId =
         selectedDeviceId === WSTUDIO_DESKTOP_BRIDGE_LOCAL_DEVICE_ID ||
         selectedDeviceId === WSTUDIO_PLUGIN_LOCAL_DEVICE_ID
@@ -452,16 +445,13 @@ export function useBridgeOutputDevice(bridgeStream: MediaStream | null) {
       try {
         if (typeof (el as HTMLAudioElement & { setSinkId?: (id: string) => Promise<void> }).setSinkId === "function") {
           await (el as HTMLAudioElement & { setSinkId: (id: string) => Promise<void> }).setSinkId(sinkId);
-          el!.volume = 0;
-          el!.muted = false;
+          el!.volume = 1;
           setRouted(true);
           setRoutingError(null);
         } else {
-          el!.volume = 0;
           setRoutingError("setSinkId not supported in this browser");
         }
       } catch (err) {
-        el!.volume = 0;
         setRoutingError(err instanceof Error ? err.message : "Failed to set output device");
         setRouted(false);
       }
