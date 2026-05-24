@@ -364,7 +364,7 @@ export default function UnifiedSessionScreen() {
                     type="text"
                     value={engineerHost}
                     onChange={(e) => setEngineerHost(e.target.value)}
-                    placeholder="192.168.1.50"
+                    placeholder="192.168.12.155"
                     className="rounded-[4px] px-2 py-1.5 text-[12px] font-semibold focus:outline-none"
                     style={{ background: C.inset, color: C.text, border: `1px solid ${C.insetEdge}` }}
                   />
