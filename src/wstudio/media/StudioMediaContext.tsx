@@ -236,6 +236,32 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const cleanupEngineerTalkback = useCallback(() => {
+    cancelAnimationFrame(engineerTalkbackRafRef.current);
+    engineerTalkbackRafRef.current = 0;
+    stopMediaStream(engineerTalkbackStreamRef.current);
+    engineerTalkbackStreamRef.current = null;
+    try {
+      void engineerTalkbackCtxRef.current?.close();
+    } catch {
+      /* ignore */
+    }
+    engineerTalkbackCtxRef.current = null;
+    const sender = engineerTalkbackTransceiverRef.current?.sender;
+    if (sender) {
+      try {
+        void sender.replaceTrack(null);
+      } catch {
+        /* ignore */
+      }
+    }
+    setLocalMicMonitorStream(roleRef.current === "artist" && rawMicAudioTrackRef.current
+      ? new MediaStream([rawMicAudioTrackRef.current])
+      : null);
+    setLocalMicLevel(0);
+    setLocalTalkbackTxLevel(0);
+  }, []);
+
   const applyMuteAndPttToGraph = useCallback(() => {
     const raw = rawMicAudioTrackRef.current;
     const sendTrack = sendMicAudioTrackRef.current;
