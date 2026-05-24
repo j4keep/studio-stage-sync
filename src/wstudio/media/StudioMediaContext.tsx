@@ -1041,6 +1041,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
         report.forEach((entry) => {
           const stat = entry as any;
           if (stat.type === "media-source") {
+            if (roleRef.current === "engineer" && !talkbackHeld) return;
             const result = readRtcAudioLevel(stat, localStatsEnergyRef.current, 3.5);
             localStatsEnergyRef.current = result.snapshot ?? localStatsEnergyRef.current;
             if (result.level === null) return;
