@@ -1129,11 +1129,13 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
   }, [role, stopScreenPreview]);
 
   useEffect(() => {
-    // Engineer-only: talkback mic captured only while Talk is held AND not muted.
-    if (role !== "engineer" || !sessionId.trim() || !talkbackHeld || muted) {
+    // Engineer-only: talkback mic captured only while Talk is held.
+    // Plugin owns its own Mute/Talk/Listen; web Mute does not gate this path.
+    if (role !== "engineer" || !sessionId.trim() || !talkbackHeld) {
       cleanupEngineerTalkback();
       return;
     }
+
 
 
     let cancelled = false;
@@ -1202,7 +1204,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       cancelled = true;
       cleanupEngineerTalkback();
     };
-  }, [role, sessionId, localStream, talkbackHeld, muted, selectedMicDeviceId, cleanupEngineerTalkback]);
+  }, [role, sessionId, localStream, talkbackHeld, selectedMicDeviceId, cleanupEngineerTalkback]);
 
   useEffect(() => {
     if (role !== "engineer") {
