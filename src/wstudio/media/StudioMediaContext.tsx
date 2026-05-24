@@ -1129,10 +1129,12 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
   }, [role, stopScreenPreview]);
 
   useEffect(() => {
-    if (role !== "engineer" || !sessionId.trim() || !talkbackHeld) {
+    // Engineer-only: talkback mic captured only while Talk is held AND not muted.
+    if (role !== "engineer" || !sessionId.trim() || !talkbackHeld || muted) {
       cleanupEngineerTalkback();
       return;
     }
+
 
     let cancelled = false;
     const scratch = new Float32Array(2048);
