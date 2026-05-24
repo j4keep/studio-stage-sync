@@ -128,6 +128,7 @@ export default function UnifiedSessionScreen() {
 
   const {
     localStream,
+    localMicMonitorStream,
     localMicLevel,
     hasRemoteAudio,
     engineerRelayStats,
@@ -165,8 +166,13 @@ export default function UnifiedSessionScreen() {
   const isArtist = role === "artist";
   const isEngineer = role === "engineer";
 
+  // Use the RAW mic monitor stream (same source as the local meter) so the
+  // posted PCM samples are guaranteed to be the real microphone — not the
+  // cloned/gated WebRTC send track which can emit silence in some browsers.
+  const bridgeSourceStream = isArtist ? localMicMonitorStream ?? localStream : null;
+
   const artistBridgeStats = useArtistBridgePost(
-    isArtist ? localStream : null,
+    bridgeSourceStream,
     engineerHost,
     artistSlot - 1,
     isArtist && armed,
@@ -175,7 +181,7 @@ export default function UnifiedSessionScreen() {
   // Connected indicator semantics:
   //  - Artist: mic is live AND POST relay reports CONNECTED (or armed locally if no host set).
   //  - Engineer: AU plugin relay reports CONNECTED.
-  const micLive = !!localStream && localStream.getAudioTracks().some((t) => t.readyState === "live");
+  const micLive = !!bridgeSourceStream && bridgeSourceStream.getAudioTracks().some((t) => t.readyState === "live");
   const connected = isEngineer
     ? armed || engineerRelayStats?.state === "CONNECTED"
     : isArtist
