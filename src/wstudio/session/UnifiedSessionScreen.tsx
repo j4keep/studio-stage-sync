@@ -131,6 +131,9 @@ export default function UnifiedSessionScreen() {
     localMicLevel,
     hasRemoteAudio,
     engineerRelayStats,
+    audioInputDevices,
+    selectedMicDeviceId,
+    setSelectedMicDeviceId,
   } = useStudioMedia();
 
   const {
