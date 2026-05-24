@@ -1275,7 +1275,7 @@ export default function UnifiedSessionScreen() {
             {/* Artist Video */}
             <Panel accent={C.acMagenta} className="relative overflow-hidden" style={{ aspectRatio: "4/3" }}>
               {artistStream ? (
-                <VideoFeed stream={artistStream} mirrored={artistMirrored} muted={isArtist} volume={isEngineer ? remoteTileVolume : 1} />
+                <VideoFeed stream={artistStream} mirrored={artistMirrored} muted={isArtist || isEngineer} volume={1} />
               ) : (
                 <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
                   <span className="text-[28px] font-black tracking-tight" style={{ color: C.dim }}>W<span style={{ color: C.blue }}>.</span>STUDIO</span>
