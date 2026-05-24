@@ -822,7 +822,7 @@ export default function UnifiedSessionScreen() {
                     {artistStream ? (
                       // Engineer monitors artist via the AU plugin, not the browser tile.
                       // Muting here prevents doubled vocals (browser + plugin output).
-                      <VideoFeed stream={artistStream} mirrored={artistMirrored} muted={isArtist || isEngineer} volume={1} />
+                      <VideoFeed stream={artistStream} mirrored={artistMirrored} muted={isArtist || isEngineer} volume={isEngineer ? 0 : 1} />
                     ) : (
                       <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
                         <span className="text-[20px] font-black tracking-tight" style={{ color: C.dim }}>W<span style={{ color: C.blue }}>.</span>STUDIO</span>
@@ -1273,7 +1273,7 @@ export default function UnifiedSessionScreen() {
             {/* Artist Video */}
             <Panel accent={C.acMagenta} className="relative overflow-hidden" style={{ aspectRatio: "4/3" }}>
               {artistStream ? (
-                <VideoFeed stream={artistStream} mirrored={artistMirrored} muted={isArtist || isEngineer} volume={1} />
+                <VideoFeed stream={artistStream} mirrored={artistMirrored} muted={isArtist || isEngineer} volume={isEngineer ? 0 : 1} />
               ) : (
                 <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
                   <span className="text-[28px] font-black tracking-tight" style={{ color: C.dim }}>W<span style={{ color: C.blue }}>.</span>STUDIO</span>
@@ -1790,8 +1790,8 @@ export default function UnifiedSessionScreen() {
           stream={artistStream}
           mirrored={artistMirrored}
           label="Artist View"
-          audioMuted={isArtist}
-          volume={isEngineer ? remoteTileVolume : 1}
+          audioMuted={isArtist || isEngineer}
+          volume={isEngineer ? 0 : 1}
           onClose={() => setExpandedPanel(null)}
         />
       )}

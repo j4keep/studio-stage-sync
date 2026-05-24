@@ -326,17 +326,6 @@ void WStudioPluginAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     const float duckTarget = (talkbackOn && sessionActive) ? kTalkbackDuckedLevel : 1.f;
     talkbackDuckSmoothed += talkbackDuckSmoothingCoeff * (duckTarget - talkbackDuckSmoothed);
 
-    AudioRouter::MainBusCoeffs c;
-    c.masterGain = gain;
-    c.inputGain = inGain;
-    c.outputMute = outputMute;
-    c.monitorDim = !monitoring;
-    c.micSendMuted = micSendMuted;
-    c.sessionActive = sessionActive;
-    c.talkbackMusicGain = talkbackDuckSmoothed;
-
-    AudioRouter::processMainInsert(buffer, nCh, nSm, c);
-
 #if JUCE_DEBUG
     const float rmsBeforeBridge = channelRms(buffer, 0, nSm);
 #endif
@@ -351,7 +340,21 @@ void WStudioPluginAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
         DBG("W.STUDIO processBlock RMS L before pullAndAdd: " << rmsBeforeBridge << "  after: " << rmsAfterBridge);
 #endif
 
-    // Meters reflect post-insert + web bridge (matches what Logic hears on the insert output).
+    AudioRouter::MainBusCoeffs c;
+    c.masterGain = gain;
+    c.inputGain = inGain;
+    c.outputMute = outputMute;
+    c.monitorDim = !monitoring;
+    c.micSendMuted = micSendMuted;
+    c.sessionActive = sessionActive;
+    c.talkbackMusicGain = talkbackDuckSmoothed;
+
+    // Apply AU controls to the complete DAW insert signal, including the web artist
+    // audio pulled from the loopback bridge. Previously the bridge was added after
+    // mute/gain/talkback processing, so plugin controls could not affect artist audio.
+    AudioRouter::processMainInsert(buffer, nCh, nSm, c);
+
+    // Meters reflect final post-control output (matches what Logic hears on the insert output).
     measureAndSmoothPeaks(buffer, nCh, nSm);
 }
 
