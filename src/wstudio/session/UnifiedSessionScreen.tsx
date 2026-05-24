@@ -177,16 +177,17 @@ export default function UnifiedSessionScreen() {
   //  - Engineer: AU plugin relay reports CONNECTED.
   const micLive = !!localStream && localStream.getAudioTracks().some((t) => t.readyState === "live");
   const connected = isEngineer
-    ? engineerRelayStats?.state === "CONNECTED"
+    ? armed || engineerRelayStats?.state === "CONNECTED"
     : isArtist
       ? armed && micLive && (engineerHost.trim() === "" ? true : artistBridgeStats.state === "CONNECTED")
       : connection === "connected" && hasRemoteAudio;
 
   const statusLabel = useMemo(() => {
     if (isEngineer) {
+      if (!armed) return "Tap to go LIVE";
       if (engineerRelayStats?.state === "CONNECTED") return "Plugin Connected";
       if (engineerRelayStats?.state === "CONNECTING") return "Connecting to Plugin…";
-      return "Waiting for Plugin";
+      return "Live — waiting for plugin packets";
     }
     if (isArtist) {
       if (!armed) return "Tap CONNECT to go LIVE";
