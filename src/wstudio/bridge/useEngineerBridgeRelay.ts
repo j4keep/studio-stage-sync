@@ -78,6 +78,7 @@ export function useEngineerBridgeRelay(
   const lastErrorRef = useRef<string | null>(null);
   const lastStatusRef = useRef<string | null>(null);
   const lastErrorLogRef = useRef(0);
+  const nextProbeAtRef = useRef(0);
   const announcedRef = useRef(false);
 
   const targetUrl = BRIDGE_URL(slot);
