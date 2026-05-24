@@ -96,7 +96,8 @@ export function useArtistMicBridge(
       let sum = 0;
       for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
       const rms = Math.sqrt(sum / buf.length);
-      levelRef.current = Math.min(1, rms * 1.8);
+      // Match engineer-relay 8x input gain so the artist meter reflects the boosted signal sent to the plugin.
+      levelRef.current = Math.min(1, rms * 8 * 1.8);
       setStats({
         connection: "CONNECTED",
         level: levelRef.current,
