@@ -32,11 +32,14 @@ void AudioRouter::processMainInsert(juce::AudioBuffer<float>& buffer, int numCha
         return;
     }
 
+    if (c.micSendMuted)
+    {
+        buffer.clear();
+        return;
+    }
+
     const float mon = c.monitorDim ? c.monitorScalarWhenDimmed : 1.f;
     const float g = c.masterGain * c.inputGain * mon * c.talkbackMusicGain;
-    // Note: micSendMuted reserved for when a separate "send tap" buffer exists (WebRTC uplink).
-
-    juce::ignoreUnused(c.micSendMuted);
 
     for (int ch = 0; ch < numChannels; ++ch)
     {
