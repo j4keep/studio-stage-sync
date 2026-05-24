@@ -1188,7 +1188,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       cancelled = true;
       cleanupEngineerTalkback();
     };
-  }, [role, sessionId, talkbackHeld, selectedMicDeviceId, cleanupEngineerTalkback]);
+  }, [role, sessionId, localStream, talkbackHeld, selectedMicDeviceId, cleanupEngineerTalkback]);
 
   useEffect(() => {
     if (role !== "engineer") {
