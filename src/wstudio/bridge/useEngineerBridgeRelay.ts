@@ -225,6 +225,7 @@ export function useEngineerBridgeRelay(
       try { src.disconnect(); } catch {}
       try { node.disconnect(); } catch {}
       try { muteSink.disconnect(); } catch {}
+      try { sinkEl.pause(); sinkEl.srcObject = null; } catch {}
       void ctx.close().catch(() => {});
       inflightRef.current = 0;
       announcedRef.current = false;
