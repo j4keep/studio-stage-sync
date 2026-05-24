@@ -1,1815 +1,588 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+/**
+ * W.STUDIO Live Session Screen — Plugin-Inspired UI (v2 rebuild)
+ *
+ * This page intentionally mirrors the JUCE AU plugin's visual language
+ * (dark panel, big LIVE button, vertical meters, MUTE/LISTEN/TALK row,
+ * GAIN dial, Artist 1–12 selector). All Lovable-side knobs/buttons here
+ * are VISUAL PLACEHOLDERS — the AU plugin remains the real controller for
+ * Logic-side audio (LIVE / LISTEN / MUTE / GAIN / TALK).
+ *
+ * Audio routing:
+ *  - Artist side: mic captured (via StudioMediaContext); local meter shown.
+ *  - Engineer side: NO audible playback of artist mic in the browser.
+ *    Browser stays silent; the AU plugin (running on the engineer Mac)
+ *    receives artist audio via the persistent engineer→127.0.0.1 relay
+ *    started in StudioMediaContext.
+ *
+ * Booking, session join, navigation, and DB persistence are untouched.
+ */
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useIsMobile } from "@/hooks/use-mobile";
+import {
+  Power,
+  ChevronDown,
+  Radio,
+  LogOut,
+  Mic,
+  MicOff,
+  Headphones,
+  MessageSquare,
+  Activity,
+} from "lucide-react";
 import { useSession } from "./SessionContext";
 import { useStudioMedia } from "../media/StudioMediaContext";
 import { useBookingTimer } from "../booking/BookingTimerContext";
 import { SessionTimerBar } from "../booking/SessionTimerBar";
-import { SessionControlsLockOverlay } from "../booking/SessionControlsLockOverlay";
-import { ExtensionApprovalDialog } from "../booking/ExtensionApprovalDialog";
-import { formatCurrency } from "../booking/bookingTypes";
-import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
-import {
-  useBridgeOutputDevice,
-  WSTUDIO_DESKTOP_BRIDGE_LOCAL_DEVICE_ID,
-  WSTUDIO_PLUGIN_LOCAL_DEVICE_ID,
-  WSTUDIO_PLUGIN_WS_BRIDGE_ENABLED,
-} from "../bridge/useBridgeOutputDevice";
-import { copyAccessTokenForPlugin } from "../lib/copyPluginAccessToken";
-import { useLocalBridgePoll } from "../bridge/useLocalBridgePoll";
-import { useArtistMicBridge } from "../bridge/useArtistMicBridge";
-import { ArtistBridgePanel } from "../bridge/ArtistBridgePanel";
-import { EngineerBridgeDiagnostics } from "../bridge/EngineerBridgeDiagnostics";
 
-const canScreenShare = typeof navigator !== "undefined" && !!navigator.mediaDevices?.getDisplayMedia;
-
-/* ─────────────────────────────────────────────
-   STYLE CONSTANTS — aligned with JUCE WStudioPlugin (cyan #2ee0d8, charcoal shell)
-   ───────────────────────────────────────────── */
+/* Plugin palette (matches JUCE AU shell). */
 const C = {
-  shell: "#121820",
-  shellEdge: "rgba(46, 224, 216, 0.22)",
-  shellDark: "#06080c",
-  panel: "#161b24",
-  panelLight: "#1c222c",
-  panelDark: "#0e1118",
-  panelBorder: "#2a3038",
-  inset: "#06080c",
-  insetBorder: "#1f252e",
-  track: "#111214",
-  text: "#f2f6fa",
-  label: "#9ca3b0",
-  dim: "#6a7380",
+  shellTop: "#0a0d12",
+  shellBot: "#04060a",
+  panel: "#0e1218",
+  panelEdge: "#1a2028",
+  inset: "#05070b",
+  insetEdge: "#171c24",
+  cyan: "#2ee0d8",
+  cyanGlow: "rgba(46,224,216,0.55)",
+  text: "#eef2f7",
+  dim: "#6b7480",
+  label: "#9aa3b0",
   green: "#4ade60",
   yellow: "#f5c842",
   red: "#ef4444",
-  blue: "#2ee0d8",
-  white: "#ffffff",
-  acMagenta: "#e040a0",
-  acGreen: "#40e060",
-  acOrange: "#f08030",
-  acCyan: "#2ee0d8",
-  acPurple: "#a040e0",
-  acLime: "#60e040",
 };
 
-/* ─── Interactive SVG Knob ─── */
-function Knob({ value = 0.5, size = 68, label, onChange, accent }: { value?: number; size?: number; label?: string; onChange?: (v: number) => void; accent?: string }) {
-  const angle = -135 + value * 270;
-  const r = size / 2 - 8;
-  const cx = size / 2;
-  const cy = size / 2;
-  const ticks = 13;
-  const toRad = (d: number) => (d * Math.PI) / 180;
-  const dragRef = useRef<{ startY: number; startVal: number } | null>(null);
+const ARTIST_SLOTS = Array.from({ length: 12 }, (_, i) => i + 1);
 
-  const onPointerDown = (e: React.PointerEvent) => {
-    if (!onChange) return;
-    e.preventDefault();
-    e.stopPropagation();
-    dragRef.current = { startY: e.clientY, startVal: value };
-    const onMove = (ev: PointerEvent) => {
-      if (!dragRef.current) return;
-      const delta = (dragRef.current.startY - ev.clientY) / 120;
-      onChange(Math.min(1, Math.max(0, dragRef.current.startVal + delta)));
-    };
-    const onUp = () => {
-      dragRef.current = null;
-      document.removeEventListener("pointermove", onMove);
-      document.removeEventListener("pointerup", onUp);
-    };
-    document.addEventListener("pointermove", onMove);
-    document.addEventListener("pointerup", onUp);
-  };
+/* ───────── Local components ───────── */
 
-  return (
-    <div className="flex flex-col items-center gap-1.5">
-      <div onPointerDown={onPointerDown} style={{ cursor: onChange ? "ns-resize" : "default", touchAction: "none", userSelect: "none" }}>
-        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ pointerEvents: "none" }}>
-          {Array.from({ length: ticks }).map((_, i) => {
-            const a = toRad(-135 + (i / (ticks - 1)) * 270);
-            return (<line key={i} x1={cx + (r + 3) * Math.cos(a)} y1={cy + (r + 3) * Math.sin(a)} x2={cx + (r + 6) * Math.cos(a)} y2={cy + (r + 6) * Math.sin(a)} stroke={C.dim} strokeWidth={1} strokeLinecap="round" />);
-          })}
-          <circle cx={cx} cy={cy} r={r} fill={`url(#knobBody${size})`} stroke={C.shellDark} strokeWidth={2} />
-          <circle cx={cx} cy={cy} r={r * 0.62} fill={`url(#knobCap${size})`} stroke={C.panelBorder} strokeWidth={1} />
-          <line x1={cx} y1={cy} x2={cx + (r * 0.52) * Math.cos(toRad(angle))} y2={cy + (r * 0.52) * Math.sin(toRad(angle))} stroke={accent || C.white} strokeWidth={2.5} strokeLinecap="round" />
-          {accent && <circle cx={cx} cy={cy} r={r} fill="none" stroke={accent} strokeWidth={1.5} opacity={0.35} />}
-          <defs>
-            <radialGradient id={`knobBody${size}`} cx="38%" cy="34%"><stop offset="0%" stopColor="#484a4e" /><stop offset="60%" stopColor="#2a2c30" /><stop offset="100%" stopColor="#1a1b1e" /></radialGradient>
-            <radialGradient id={`knobCap${size}`} cx="40%" cy="36%"><stop offset="0%" stopColor="#3a3c40" /><stop offset="100%" stopColor="#1e1f22" /></radialGradient>
-          </defs>
-        </svg>
-      </div>
-      {label && <span style={{ color: C.text, fontSize: 12, fontWeight: 500 }}>{label}</span>}
-    </div>
-  );
-}
-
-/** Vertical tick-mark indicator for MONITORING setpoints — static gain style, NOT a live VU meter. */
-function ControlLevelLadder({
-  level = 0.5,
-  height = 90,
-  accent,
+function PluginButton({
+  label,
+  active = false,
+  onClick,
+  accent = false,
+  disabled = false,
 }: {
-  level?: number;
-  height?: number;
-  accent?: string;
+  label: string;
+  active?: boolean;
+  onClick?: () => void;
+  accent?: boolean;
+  disabled?: boolean;
 }) {
-  const segs = 16;
-  const activeIdx = Math.round(level * segs);
-  return (
-    <div className="relative flex flex-col-reverse gap-[2px]" style={{ height, width: 10 }} aria-hidden>
-      {Array.from({ length: segs }).map((_, i) => {
-        const isSetpoint = i === activeIdx - 1;
-        return (
-          <div
-            key={i}
-            className="flex-1 rounded-[1px]"
-            style={{
-              backgroundColor: isSetpoint
-                ? (accent ?? "#888")
-                : "#1a1b1e",
-              border: `1px solid ${isSetpoint ? (accent ? accent + "88" : "#555") : "#222325"}`,
-              boxShadow: isSetpoint ? `0 0 4px ${accent ?? "#888"}44` : undefined,
-            }}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
-function Fader({ value = 0.5, height = 90, onChange }: { value?: number; height?: number; onChange?: (v: number) => void }) {
-  const trackH = height - 16;
-  const thumbY = trackH - value * trackH;
-  const dragRef = useRef<{ startY: number; startVal: number } | null>(null);
-  const onPointerDown = (e: React.PointerEvent) => {
-    if (!onChange) return;
-    e.preventDefault();
-    e.stopPropagation();
-    dragRef.current = { startY: e.clientY, startVal: value };
-    const onMove = (ev: PointerEvent) => {
-      if (!dragRef.current) return;
-      const delta = (dragRef.current.startY - ev.clientY) / trackH;
-      onChange(Math.min(1, Math.max(0, dragRef.current.startVal + delta)));
-    };
-    const onUp = () => {
-      dragRef.current = null;
-      document.removeEventListener("pointermove", onMove);
-      document.removeEventListener("pointerup", onUp);
-    };
-    document.addEventListener("pointermove", onMove);
-    document.addEventListener("pointerup", onUp);
-  };
-  return (
-    <div className="relative" style={{ width: 18, height, cursor: onChange ? "ns-resize" : "default", touchAction: "none", userSelect: "none" }} onPointerDown={onPointerDown}>
-      <div className="absolute left-1/2 -translate-x-1/2 rounded-full" style={{ top: 8, width: 4, height: trackH, background: `linear-gradient(180deg, ${C.inset} 0%, #0d0e10 100%)`, border: `1px solid ${C.insetBorder}` }} />
-      <div className="absolute left-1/2 -translate-x-1/2 rounded-[2px]" style={{ top: 8 + thumbY - 7, width: 20, height: 14, background: `linear-gradient(180deg, #999 0%, #666 100%)`, border: `1px solid ${C.shellEdge}`, boxShadow: `0 2px 6px rgba(0,0,0,0.5)` }}>
-        <div className="absolute left-1/2 top-[4px] h-[1px] w-[10px] -translate-x-1/2 bg-[#555]" />
-        <div className="absolute left-1/2 top-[7px] h-[1px] w-[10px] -translate-x-1/2 bg-[#555]" />
-      </div>
-    </div>
-  );
-}
-
-function HorizontalMeter({ level }: { level: number }) {
-  return (
-    <div className="overflow-hidden rounded-sm" style={{ height: 6, background: C.track, border: `1px solid ${C.insetBorder}` }}>
-      <div className="h-full rounded-sm transition-[width] duration-75" style={{ width: `${Math.min(100, level * 100)}%`, background: `linear-gradient(90deg, ${C.green} 0%, ${C.yellow} 55%, ${C.red} 100%)` }} />
-    </div>
-  );
-}
-
-function SpectrumBars({ level }: { level: number }) {
-  const bars = 48;
-  const active = Math.round(level * bars);
-  return (
-    <div className="flex items-end justify-center gap-[2px]" style={{ height: 22 }}>
-      {Array.from({ length: bars }).map((_, i) => {
-        const on = i < active;
-        const pct = (i + 1) / bars;
-        let color = C.green;
-        if (pct > 0.55) color = C.yellow;
-        if (pct > 0.78) color = C.red;
-        return (<div key={i} className="rounded-[1px]" style={{ width: 3, height: 18, backgroundColor: on ? color : "#1e1f23" }} />);
-      })}
-    </div>
-  );
-}
-
-function FreqLabels() {
-  const labels = ["∞", "350", "5.4k", "700", "320", "100", "50", "20"];
-  return (
-    <div className="flex justify-between px-1" style={{ fontSize: 7, color: C.dim, letterSpacing: "0.08em" }}>
-      {labels.map((l) => (<span key={l}>{l}</span>))}
-    </div>
-  );
-}
-
-function Waveform({ recording, takeCaptured }: { recording: boolean; takeCaptured?: boolean }) {
-  const ref = useRef<HTMLCanvasElement>(null);
-  useEffect(() => {
-    const canvas = ref.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    let frame = 0;
-    const draw = (t: number) => {
-      const w = canvas.width;
-      const h = canvas.height;
-      ctx.fillStyle = C.track;
-      ctx.fillRect(0, 0, w, h);
-      ctx.strokeStyle = "#1e1f23";
-      ctx.lineWidth = 1;
-      for (let x = 0; x <= w; x += 60) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
-      ctx.beginPath(); ctx.moveTo(0, h / 2); ctx.lineTo(w, h / 2); ctx.stroke();
-      ctx.strokeStyle = recording ? "#8a8c92" : takeCaptured ? "#6b7280" : "#3a3c41";
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      for (let x = 0; x < w; x++) {
-        const spd = recording ? t * 0.003 : 0;
-        let amp: number;
-        if (takeCaptured && !recording) {
-          amp = Math.sin(x * 0.028) * 13 + Math.sin(x * 0.065) * 8 + Math.sin(x * 0.11) * 5;
-        } else {
-          amp = Math.sin(x * 0.028 + spd) * 14 + Math.sin(x * 0.065 + spd * 0.7) * 9 + Math.sin(x * 0.14 + spd * 1.4) * 4;
-        }
-        const taper = 0.4 + 0.6 * Math.sin((x / w) * Math.PI);
-        ctx.lineTo(x, h / 2 + amp * taper);
-      }
-      ctx.stroke();
-      frame = requestAnimationFrame(draw);
-    };
-    frame = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(frame);
-  }, [recording, takeCaptured]);
-  return <canvas ref={ref} width={1200} height={64} className="block h-[40px] w-full" />;
-}
-
-function Panel({ children, style, className = "", accent }: { children: React.ReactNode; style?: React.CSSProperties; className?: string; accent?: string }) {
-  return (
-    <div className={`overflow-hidden rounded-[4px] ${className}`} style={{
-      background: `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
-      border: accent ? `1.5px solid ${accent}` : `1px solid ${C.panelBorder}`,
-      boxShadow: accent ? `inset 0 1px 0 rgba(255,255,255,0.04), 0 0 12px ${accent}30, 0 1px 0 rgba(255,255,255,0.02)` : `inset 0 1px 0 rgba(255,255,255,0.04), 0 1px 0 rgba(255,255,255,0.02)`,
-      ...style,
-    }}>{children}</div>
-  );
-}
-
-function Inset({ children, className = "", style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
-  return (
-    <div className={`rounded-[3px] ${className}`} style={{ background: C.inset, border: `1px solid ${C.insetBorder}`, boxShadow: `inset 0 1px 3px rgba(0,0,0,0.6)`, ...style }}>{children}</div>
-  );
-}
-
-function TBtn({ sym, label, disabled = false }: { sym: string; label: string; disabled?: boolean }) {
-  return (
-    <button disabled={disabled} className="flex items-center justify-center gap-2 rounded-[3px] px-5 py-2 text-[14px] font-semibold" style={{
-      background: `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
-      border: `1px solid ${C.panelBorder}`, color: C.text, boxShadow: `inset 0 1px 0 rgba(255,255,255,0.05)`,
-      opacity: disabled ? 0.4 : 1, cursor: disabled ? "not-allowed" : "pointer", minWidth: 120,
-    }}>
-      <span className="font-mono tracking-tight">{sym}</span>
-      <span>{label}</span>
-    </button>
-  );
-}
-
-/* ─── Live Video Feed ─── */
-function VideoFeed({
-  stream,
-  mirrored,
-  /** Local preview: true (default). Remote peer: false so WebRTC audio is audible. */
-  muted = true,
-  /** Output level0–1 for remote monitoring (local preview typically unused). */
-  volume = 1,
-}: {
-  stream: MediaStream | null;
-  mirrored?: boolean;
-  muted?: boolean;
-  volume?: number;
-}) {
-  const ref = useRef<HTMLVideoElement>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    el.srcObject = stream ?? null;
-    el.volume = Math.min(1, Math.max(0, volume));
-    if (stream) {
-      el.play().catch((err) => {
-        console.warn("[W.Studio video]", "play() blocked:", err?.message);
-        // Retry on next user interaction
-        const retryPlay = () => {
-          el.play().catch(() => {});
-          document.removeEventListener("click", retryPlay);
-          document.removeEventListener("touchstart", retryPlay);
-        };
-        document.addEventListener("click", retryPlay, { once: true });
-        document.addEventListener("touchstart", retryPlay, { once: true });
-      });
-    }
-  }, [stream, volume]);
-  if (!stream) return null;
-  return (
-    <video
-      ref={ref}
-      autoPlay
-      playsInline
-      muted={muted}
-      className="absolute inset-0 h-full w-full object-cover"
-      style={mirrored ? { transform: "scaleX(-1)" } : undefined}
-    />
-  );
-}
-
-/* ─── Inline Join Session (shown in video placeholder when no session) ─── */
-function JoinSessionInline({ onJoin }: { onJoin: () => void }) {
   return (
     <button
-      onClick={onJoin}
-      className="mt-2 rounded-lg px-4 py-1.5 text-[11px] font-bold uppercase tracking-wide"
+      onClick={onClick}
+      disabled={disabled}
+      className="rounded-[4px] px-4 py-2 text-[12px] font-bold uppercase tracking-[0.12em] transition"
       style={{
-        background: "linear-gradient(180deg, #f59e0b 0%, #b45309 100%)",
-        color: "#fff",
-        border: "1px solid rgba(245,158,11,0.5)",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
+        background: active
+          ? `linear-gradient(180deg, ${C.cyan} 0%, #1ba9a2 100%)`
+          : `linear-gradient(180deg, #1a2028 0%, #0c1116 100%)`,
+        color: active ? "#04141a" : accent ? C.cyan : C.text,
+        border: `1px solid ${active ? C.cyan : accent ? "rgba(46,224,216,0.45)" : "#222a33"}`,
+        boxShadow: active
+          ? `0 0 12px ${C.cyanGlow}, inset 0 1px 0 rgba(255,255,255,0.2)`
+          : `inset 0 1px 0 rgba(255,255,255,0.04)`,
+        opacity: disabled ? 0.4 : 1,
+        cursor: disabled ? "not-allowed" : "pointer",
+        minWidth: 86,
       }}
     >
-      Join Session
+      {label}
     </button>
   );
 }
 
-/* ─── Overlay action buttons on video tiles ─── */
-function VideoTileActions({
-  hasSession,
-  onJoin,
-  onEnd,
-  expanded,
-  onToggleExpand,
-  isMobile,
-}: {
-  hasSession: boolean;
-  onJoin: () => void;
-  onEnd: () => void;
-  expanded: boolean;
-  onToggleExpand: () => void;
-  isMobile: boolean;
-}) {
+/** Decorative gain dial (visual only — AU plugin owns real gain). */
+function GainDial({ value = 0.6, size = 168 }: { value?: number; size?: number }) {
+  const angle = -135 + value * 270;
+  const cx = size / 2;
+  const cy = size / 2;
+  const r = size / 2 - 12;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const a = toRad(angle);
+  const indX = cx + Math.cos(a) * (r - 14);
+  const indY = cy + Math.sin(a) * (r - 14);
   return (
-    <>
-      {/* Join/End buttons bottom-left */}
-      <div className="absolute bottom-2 left-2 z-10 flex items-center gap-1.5">
-        {!hasSession && (
-          <button
-            onClick={onJoin}
-            className="rounded px-2 py-1 text-[9px] font-bold uppercase tracking-wide"
-            style={{
-              background: "linear-gradient(180deg, #f59e0b 0%, #b45309 100%)",
-              color: "#fff",
-              border: "1px solid rgba(245,158,11,0.5)",
-              boxShadow: "0 2px 6px rgba(0,0,0,0.4)",
-            }}
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <defs>
+        <radialGradient id="dialBody" cx="38%" cy="32%">
+          <stop offset="0%" stopColor="#9ea4ac" />
+          <stop offset="55%" stopColor="#5a6068" />
+          <stop offset="100%" stopColor="#1d2128" />
+        </radialGradient>
+        <radialGradient id="dialCap" cx="42%" cy="36%">
+          <stop offset="0%" stopColor="#b8bec6" />
+          <stop offset="100%" stopColor="#3a3f47" />
+        </radialGradient>
+      </defs>
+      {/* Outer cyan arc */}
+      <circle cx={cx} cy={cy} r={r + 4} fill="none" stroke="#15323a" strokeWidth={2} />
+      <path
+        d={describeArc(cx, cy, r + 4, -135, angle)}
+        stroke={C.cyan}
+        strokeWidth={3}
+        fill="none"
+        strokeLinecap="round"
+        style={{ filter: `drop-shadow(0 0 4px ${C.cyanGlow})` }}
+      />
+      {/* Tick labels (visual only) */}
+      {[
+        { l: "0", a: -135 },
+        { l: "3", a: -90 },
+        { l: "6", a: -45 },
+        { l: "9", a: 45 },
+        { l: "12", a: 135 },
+      ].map((t) => {
+        const ra = toRad(t.a);
+        const lx = cx + Math.cos(ra) * (r + 18);
+        const ly = cy + Math.sin(ra) * (r + 18);
+        return (
+          <text
+            key={t.l}
+            x={lx}
+            y={ly}
+            fill={C.dim}
+            fontSize={10}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fontWeight={600}
           >
-            Join
-          </button>
-        )}
-        {hasSession && (
-          <button
-            onClick={onEnd}
-            className="rounded px-2 py-1 text-[9px] font-bold uppercase tracking-wide"
-            style={{
-              background: "linear-gradient(180deg, #ef4444 0%, #991b1b 100%)",
-              color: "#fff",
-              border: "1px solid rgba(239,68,68,0.5)",
-              boxShadow: "0 2px 6px rgba(0,0,0,0.4)",
-            }}
-          >
-            End
-          </button>
-        )}
-      </div>
-      {/* Expand button bottom-right */}
-      <div className="absolute bottom-2 right-2 z-10">
-        <button
-          onClick={onToggleExpand}
-          className="rounded px-1.5 py-1 text-[9px] font-bold"
-          style={{
-            background: "rgba(0,0,0,0.7)",
-            color: "#e8e8ea",
-            border: "1px solid rgba(255,255,255,0.15)",
-          }}
-        >
-          {expanded ? "▾" : "⛶"}
-        </button>
-      </div>
-    </>
+            {t.l}
+          </text>
+        );
+      })}
+      <circle cx={cx} cy={cy} r={r} fill="url(#dialBody)" stroke="#0a0d12" strokeWidth={2} />
+      <circle cx={cx} cy={cy} r={r * 0.7} fill="url(#dialCap)" stroke="#10141a" strokeWidth={1} />
+      <line x1={cx} y1={cy} x2={indX} y2={indY} stroke={C.cyan} strokeWidth={3} strokeLinecap="round" />
+      <circle cx={indX} cy={indY} r={4} fill={C.cyan} />
+    </svg>
   );
 }
 
-/* ─── Expanded video overlay ─── */
-function ExpandedVideoOverlay({
-  stream,
-  mirrored,
-  label,
-  screenShareStream,
-  audioMuted = true,
-  volume = 1,
-  onClose,
-}: {
-  stream: MediaStream | null;
-  mirrored?: boolean;
-  label: string;
-  screenShareStream?: MediaStream | null;
-  audioMuted?: boolean;
-  volume?: number;
-  onClose: () => void;
-}) {
-  const vidRef = useRef<HTMLVideoElement>(null);
-  const activeStream = screenShareStream || stream;
-  const isMirrored = screenShareStream ? false : mirrored;
+function describeArc(cx: number, cy: number, r: number, start: number, end: number) {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const s = toRad(start);
+  const e = toRad(end);
+  const x1 = cx + Math.cos(s) * r;
+  const y1 = cy + Math.sin(s) * r;
+  const x2 = cx + Math.cos(e) * r;
+  const y2 = cy + Math.sin(e) * r;
+  const large = end - start > 180 ? 1 : 0;
+  return `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}`;
+}
 
-  useEffect(() => {
-    const el = vidRef.current;
-    if (!el) return;
-    el.srcObject = activeStream ?? null;
-    el.volume = Math.min(1, Math.max(0, volume));
-    if (activeStream) void el.play().catch(() => {});
-  }, [activeStream, volume]);
-
+/** Big circular LIVE / CONNECTED indicator (visual). */
+function LiveOrb({ live, size = 168 }: { live: boolean; size?: number }) {
   return (
-    <div className="fixed inset-0 z-[200] flex flex-col" style={{ background: "#000" }}>
-      <div className="flex items-center justify-between px-4 py-2" style={{ background: "rgba(0,0,0,0.9)" }}>
-        <span style={{ color: "#e8e8ea", fontSize: 14, fontWeight: 600 }}>{label}</span>
-        <button
-          onClick={onClose}
-          className="rounded px-3 py-1 text-[11px] font-bold uppercase"
-          style={{
-            background: "rgba(255,255,255,0.1)",
-            color: "#e8e8ea",
-            border: "1px solid rgba(255,255,255,0.2)",
-          }}
-        >
-          ✕ Close
-        </button>
-      </div>
-      <div className="relative flex-1">
-        {activeStream ? (
-          <video
-            ref={vidRef}
-            autoPlay
-            playsInline
-            muted={audioMuted}
-            className="absolute inset-0 h-full w-full object-contain"
-            style={isMirrored ? { transform: "scaleX(-1)" } : undefined}
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center" style={{ color: "#656770" }}>
-            No stream available
-          </div>
-        )}
-      </div>
+    <div
+      className="relative flex items-center justify-center rounded-full"
+      style={{
+        width: size,
+        height: size,
+        background: live
+          ? `radial-gradient(circle at 40% 35%, #1c8b85 0%, #0d3b39 70%, #061a19 100%)`
+          : `radial-gradient(circle at 40% 35%, #21262e 0%, #0c1015 70%, #04060a 100%)`,
+        border: `3px solid ${live ? C.cyan : "#1d242c"}`,
+        boxShadow: live
+          ? `0 0 30px ${C.cyanGlow}, inset 0 0 24px rgba(46,224,216,0.35)`
+          : "inset 0 0 18px rgba(0,0,0,0.6)",
+      }}
+    >
+      <div
+        className="absolute inset-3 rounded-full"
+        style={{
+          border: `1px solid ${live ? "rgba(46,224,216,0.4)" : "#1a2028"}`,
+        }}
+      />
+      <span
+        className="select-none font-black tracking-widest"
+        style={{
+          color: live ? "#eafffd" : C.dim,
+          fontSize: size * 0.18,
+          letterSpacing: "0.18em",
+          textShadow: live ? `0 0 12px ${C.cyanGlow}` : "none",
+        }}
+      >
+        {live ? "LIVE" : "OFF"}
+      </span>
     </div>
   );
 }
 
-/* ═══════════════════════════════════════════════════════════
-   UNIFIED SESSION SCREEN
-   ═══════════════════════════════════════════════════════════ */
+/** Slim vertical meter with -10 / -2 / -10 labels (stereo). */
+function VerticalMeter({ level, height = 168 }: { level: number; height?: number }) {
+  const segs = 24;
+  const active = Math.round(Math.min(1, Math.max(0, level)) * segs);
+  return (
+    <div className="flex items-center gap-1.5">
+      <div className="flex flex-col justify-between" style={{ height, fontSize: 9, color: C.dim }}>
+        <span>-10</span>
+        <span>-2</span>
+        <span>-10</span>
+      </div>
+      {[0, 1].map((ch) => (
+        <div
+          key={ch}
+          className="flex flex-col-reverse gap-[2px] rounded-[2px] p-[2px]"
+          style={{
+            height,
+            width: 10,
+            background: C.inset,
+            border: `1px solid ${C.insetEdge}`,
+          }}
+        >
+          {Array.from({ length: segs }).map((_, i) => {
+            const on = i < active;
+            const pct = (i + 1) / segs;
+            let col = C.green;
+            if (pct > 0.55) col = C.yellow;
+            if (pct > 0.82) col = C.red;
+            return (
+              <div
+                key={i}
+                className="flex-1 rounded-[1px]"
+                style={{
+                  background: on ? col : "#10151c",
+                  boxShadow: on ? `0 0 3px ${col}66` : undefined,
+                }}
+              />
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ───────── Main screen ───────── */
+
 export default function UnifiedSessionScreen() {
   const navigate = useNavigate();
   const {
-    role, connection, sessionDisplayName, muted, toggleMute, talkbackHeld, beginTalkback, endTalkback,
-       live, setSessionRecording, setSessionPlaying, setSessionRecordArmed, updateSessionMonitorLevels, updateSessionHeadphoneLevel,
-    demoClock, leaveSession, screenSharing, toggleScreenShare, collaborationShareActive,
     sessionId,
+    sessionDisplayName,
+    role,
+    connection,
+    leaveSession,
+    muted,
+    toggleMute,
+    live,
   } = useSession();
 
-  const {
-    localStream,
-    localMicMonitorStream,
-    remoteStream,
-    remoteStreamForPlayback,
-    localScreenPreview,
-    localMicLevel,
-    localTalkbackTxLevel,
-    remoteMicLevel,
-    hasRemoteAudio,
-    engineerDawVocalIn1,
-    engineerBridgeVocalLevel,
-    mediaError,
-    restartLocalMedia,
-    audioInputDevices,
-    selectedMicDeviceId,
-    setSelectedMicDeviceId,
-    engineerRelayStats,
-  } = useStudioMedia();
+  const { localMicLevel, remoteMicLevel, hasRemoteAudio, engineerRelayStats } = useStudioMedia();
 
   const {
-    devices: bridgeDevices,
-    selectedDeviceId: bridgeSelectedDevice,
-    setSelectedDeviceId: setBridgeSelectedDevice,
-    routingError: bridgeRoutingError,
-    routed: bridgeRouted,
-    refreshDevices: bridgeRefreshDevices,
-  } = useBridgeOutputDevice(role === "engineer" ? engineerDawVocalIn1 ?? null : null);
-
-  const {
-    booking, totalBookedMinutes, remainingSeconds: bookingRemaining, warningLevel, timerRunning, phase, pendingExtension,
-    sessionValueTotal, startSessionTimer, requestExtension, approveExtension, declineExtension, engineerContinueSession,
-    extensionModalOpen, setExtensionModalOpen, controlsLocked, sessionRates,
+    totalBookedMinutes,
+    remainingSeconds,
+    warningLevel,
+    phase,
+    timerRunning,
   } = useBookingTimer();
 
-  const { user } = useAuth();
+  const [artistSlot, setArtistSlot] = useState(1);
+  const [listenOn, setListenOn] = useState(false);
+  const [talkOn, setTalkOn] = useState(false);
+  const [bypass, setBypass] = useState(false);
 
-  const isEngineer = role === "engineer";
-  const isArtist = role === "artist";
-  const artistMicNeedsReconnect = isArtist && (!localMicMonitorStream || !!mediaError);
-  /** Monitor mix is engineer-driven; artist UI reflects synced `live` values only. */
-  const monitorAdjust = isEngineer ? updateSessionMonitorLevels : undefined;
-  const recording = live.recording;
-  const playing = live.playing;
-  const armed = live.recordArmed;
-  const takeCaptured = live.takeCapturedThisSession;
-  const vocalLevel = live.vocalLevel;
-  const talkbackLevel = live.talkbackLevel;
-  const headphoneLevel = isEngineer ? live.headphoneLevelEngineer : live.headphoneLevelArtist;
-  const cueMix = live.cueMix;
-  const peerPtt = isEngineer ? live.artistPtt : live.engineerPtt;
-  /** Hide analyser noise floor in live meters only; monitoring uses raw knob values. */
-  const meterDisplay = (x: number) => (x < 0.04 ? 0 : x);
-  const spectrumLevel = Math.min(
-    1,
-    Math.max(
-      meterDisplay(localMicLevel),
-      meterDisplay(localTalkbackTxLevel),
-      hasRemoteAudio ? meterDisplay(remoteMicLevel) : 0,
-    ),
-  );
-  const hasBooking = !!booking && booking.bookedMinutes > 0;
-  const isMobile = useIsMobile();
-
-  // Determine which stream goes where based on role (playback stream = processed for artist talkback/HP)
-  const artistStream = isArtist ? localStream : remoteStreamForPlayback;
-  const engineerStream = isEngineer ? localStream : remoteStreamForPlayback;
-  const artistMirrored = isArtist; // mirror local preview
-  const engineerMirrored = isEngineer;
-  const screenShareViewStream = isEngineer ? localScreenPreview : (collaborationShareActive ? remoteStreamForPlayback : null);
- /** Headphone bus: engineer scales remote tile; artist level is applied in Web Audio graph.
-   *  Vocal Level knob (0–1, default 0.55) scales the artist's voice in the engineer's monitor.
-   *  We treat 0.5 as unity gain so default ~1.1x, max 2x at 1.0. */
-  const remoteTileVolume = isEngineer
-    ? Math.min(1, live.headphoneLevelEngineer * (live.vocalLevel * 2))
-    : 1;
-
-  const vocalTakeTitle = recording
-    ? (isMobile ? "Rec..." : "Recording...")
-    : takeCaptured
-      ? "Take saved"
-      : armed
-        ? "Armed — ready"
-        : playing
-          ? "Playing"
-          : "Ready";
-
-  const handleTransportRecord = useCallback(() => {
-    if (!isEngineer) return;
-    if (recording) {
-      setSessionRecording(false);
-      return;
-    }
-    if (!armed) return;
-    setSessionRecording(true);
-    if (!playing) setSessionPlaying(true);
-  }, [isEngineer, recording, armed, playing, setSessionRecording, setSessionPlaying]);
-
-  const handleArmRecordToggle = useCallback(() => {
-    if (!isEngineer || recording) return;
-    setSessionRecordArmed(!armed);
-  }, [isEngineer, recording, armed, setSessionRecordArmed]);
-
-  const engineerRecordDimmed = isEngineer && !recording && !armed;
-  /** Engineer DAW bridge: isolated vocal bus + session/artist sync (session UI extension only). */
-  const bridgePathReady = isEngineer && !!engineerDawVocalIn1 && hasRemoteAudio;
-  /** Local desktop bridge poll DISABLED — mixed-content HTTPS→http://192.168.x.x caused
-   *  blinking "Failed to fetch". Engineer hears artist only through the AU plugin via the
-   *  silent POST tap in useEngineerBridgeRelay. No WebSocket / DAW-return polling here. */
-  const localBridge = useLocalBridgePoll(false);
-  /** Artist mic: local meter only — actual transport is the WebRTC session. */
-  const artistBridgeStatsRaw = useArtistMicBridge(localMicMonitorStream ?? localStream ?? null, 0, !!(localMicMonitorStream ?? localStream) && !muted);
-  const artistBridgeStats = {
-    ...artistBridgeStatsRaw,
-    level: Math.max(artistBridgeStatsRaw.level, localMicLevel, localTalkbackTxLevel),
-    sending: artistBridgeStatsRaw.sending || (!muted && !!(localMicMonitorStream ?? localStream)),
-  };
-  /** Bridge status derives from local-bridge HTTP poll OR audio routing state. */
-  const bridgeStatusLabel = !isEngineer
-    ? ""
-    : localBridge.connected || bridgePathReady
-      ? "Connected"
-      : hasRemoteAudio || sessionId.trim()
-        ? "Connecting"
-        : "Disconnected";
-  const bridgeStatusColor =
-    bridgeStatusLabel === "Connected" ? C.green : bridgeStatusLabel === "Connecting" ? C.yellow : C.dim;
-  const bridgeArtistLabel = live.remoteArtistLabel.trim() || (hasRemoteAudio ? "Artist connected" : "—");
-  /** Feed active when local bridge has fresh samples OR DAW vocal path is receiving remote audio */
-  const bridgeFeedActive = isEngineer && (localBridge.feedActive || bridgePathReady);
-  const bridgeUsingLocalWsBridge =
-    isEngineer &&
-    (bridgeSelectedDevice === WSTUDIO_DESKTOP_BRIDGE_LOCAL_DEVICE_ID ||
-      bridgeSelectedDevice === WSTUDIO_PLUGIN_LOCAL_DEVICE_ID);
-  const goToJoin = useCallback(() => navigate("/wstudio/session/join"), [navigate]);
-
-  const handleEndSession = useCallback(() => {
-    leaveSession();
-    navigate("/wstudio/session/join");
-  }, [leaveSession, navigate]);
-
-  // Engineer marks session complete → update DB + notify artist
-  const handleEngineerMarkComplete = useCallback(async () => {
-    if (!sessionId.trim() || !user) return;
-    try {
-      // Find booking by session code
-      const { data: bookingData } = await (supabase as any)
-        .from("studio_bookings")
-        .select("id, user_id, studio_id, session_code")
-        .eq("session_code", sessionId.trim().toUpperCase())
-        .single();
-      if (bookingData) {
-        await (supabase as any)
-          .from("studio_bookings")
-          .update({
-            engineer_completed_at: new Date().toISOString(),
-            session_status: "awaiting_confirmation",
-          })
-          .eq("id", bookingData.id);
-        // Notify artist to verify
-        await (supabase as any).from("notifications").insert({
-          user_id: bookingData.user_id,
-          type: "booking",
-          title: "✅ Session Complete — Please Verify",
-          body: `Your engineer has marked the session (code: ${bookingData.session_code}) as complete. Please confirm or dispute within 48 hours.`,
-          reference_id: bookingData.id,
-          reference_type: "booking",
-        });
-        toast.success("Session marked complete. Awaiting artist confirmation.");
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to mark session complete");
-    }
-    leaveSession();
-    navigate("/wstudio/session/join");
-  }, [sessionId, user, leaveSession, navigate]);
-
-  // Artist confirms session completion
-  const handleArtistConfirmComplete = useCallback(async () => {
-    if (!sessionId.trim() || !user) return;
-    try {
-      const { data: bookingData } = await (supabase as any)
-        .from("studio_bookings")
-        .select("id, studio_id")
-        .eq("session_code", sessionId.trim().toUpperCase())
-        .single();
-      if (bookingData) {
-        await (supabase as any)
-          .from("studio_bookings")
-          .update({
-            artist_confirmed: true,
-            artist_responded_at: new Date().toISOString(),
-            session_status: "completed",
-            payout_status: "released",
-          })
-          .eq("id", bookingData.id);
-        toast.success("Session confirmed! Payment released.");
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to confirm session");
-    }
-    leaveSession();
-    navigate("/bookings");
-  }, [sessionId, user, leaveSession, navigate]);
-
-  const [expandedPanel, setExpandedPanel] = useState<"artist" | "engineer" | "screen" | null>(null);
-
-  const [autoUpload, setAutoUpload] = useState(true);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const shellRef = useRef<HTMLDivElement>(null);
-  const connected = connection === "connected";
-
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement && shellRef.current) {
-      shellRef.current.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
-    } else if (document.fullscreenElement) {
-      document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
-    }
-  };
-
+  // If no session — bounce back to join page
   useEffect(() => {
-    const handler = () => setIsFullscreen(!!document.fullscreenElement);
-    document.addEventListener("fullscreenchange", handler);
-    return () => document.removeEventListener("fullscreenchange", handler);
-  }, []);
+    if (!sessionId || !role) {
+      navigate("/wstudio/session/join", { replace: true });
+    }
+  }, [sessionId, role, navigate]);
 
-  /* ── Mobile-specific tab state ── */
-  const [mobileTab, setMobileTab] = useState<"video" | "controls" | "monitor">("video");
+  const isArtist = role === "artist";
+  const isEngineer = role === "engineer";
+
+  // Meter level: artist sees own mic; engineer sees inbound artist meter.
+  const meterLevel = isArtist ? localMicLevel : remoteMicLevel;
+
+  // CONNECTED status sources:
+  //  - Artist: WebRTC connection state
+  //  - Engineer: persistent relay (artist → AU plugin) reports CONNECTED when packets flow
+  const connected = isEngineer
+    ? engineerRelayStats?.state === "CONNECTED"
+    : connection === "connected" && hasRemoteAudio;
+
+  const statusLabel = useMemo(() => {
+    if (isEngineer) {
+      if (engineerRelayStats?.state === "CONNECTED") return "Plugin Connected";
+      if (engineerRelayStats?.state === "CONNECTING") return "Connecting to Plugin…";
+      return "Waiting for Plugin";
+    }
+    if (connection === "connected") return "Session Connected";
+    if (connection === "connecting") return "Connecting…";
+    return "Disconnected";
+  }, [isEngineer, engineerRelayStats?.state, connection]);
+
+  const handleEnd = () => {
+    leaveSession();
+    navigate("/wstudio/session/join", { replace: true });
+  };
 
   return (
-    <div ref={shellRef} className={`flex select-none overflow-hidden ${isMobile ? "flex-col overflow-y-auto" : "min-h-screen items-center justify-center"}`} style={{ background: "#111214", padding: isFullscreen ? 0 : isMobile ? 0 : 16 }}>
-      <div className="w-full overflow-hidden flex flex-col" style={{
-        maxWidth: isFullscreen ? "100%" : isMobile ? "100%" : 1100,
-        height: isFullscreen ? "100vh" : isMobile ? "100dvh" : "auto",
-        borderRadius: isFullscreen || isMobile ? 0 : 8,
-        background: `linear-gradient(180deg, ${C.shell} 0%, ${C.shellDark} 100%)`,
-        border: isFullscreen || isMobile ? "none" : `1px solid ${C.shellEdge}`,
-        boxShadow: isFullscreen || isMobile ? "none" : `0 24px 80px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06)`,
-        color: C.text,
-      }}>
-        {/* ─── TITLE BAR ─── */}
-        <div className="flex items-center justify-between px-3 md:px-5" style={{ height: isMobile ? 40 : 48, borderBottom: `1px solid ${C.panelBorder}` }}>
-          <div className="flex items-end gap-2">
-            <span className={`${isMobile ? "text-[16px]" : "text-[20px]"} font-black tracking-tight`} style={{ display: "inline-flex", alignItems: "baseline" }}>
-              <svg width={isMobile ? 18 : 24} height={isMobile ? 14 : 18} viewBox="0 0 24 18" fill="none" style={{ marginRight: 1, position: "relative", top: 1 }}>
-                <path d="M0 1L4 17H5L9 5L13 17H14L18 1H16L13 12L9.5 1H8.5L5 12L2 1H0Z" fill={C.white} />
-                <line x1="17.5" y1="-1" x2="11.5" y2="19" stroke={C.blue} strokeWidth="4" strokeLinecap="round" />
-              </svg>
-              <span style={{ color: C.blue }}>.</span>STUDIO
-            </span>
-            <span style={{ color: C.label, fontSize: isMobile ? 10 : 12, fontWeight: 300, letterSpacing: "0.1em", paddingBottom: 2 }}>RECEIVE</span>
+    <div
+      className="flex min-h-[100dvh] w-full flex-col items-center px-3 pb-6 pt-3"
+      style={{
+        background: `linear-gradient(180deg, ${C.shellTop} 0%, ${C.shellBot} 100%)`,
+      }}
+    >
+      {/* Timer bar (unchanged booking system) */}
+      {totalBookedMinutes > 0 && (
+        <div className="mb-3 w-full max-w-[640px]">
+          <SessionTimerBar
+            totalBookedMinutes={totalBookedMinutes}
+            remainingSeconds={remainingSeconds}
+            warningLevel={warningLevel}
+            phase={phase}
+            timerRunning={timerRunning}
+            compact
+          />
+        </div>
+      )}
+
+      {/* Plugin shell */}
+      <div
+        className="w-full max-w-[640px] overflow-hidden rounded-[10px]"
+        style={{
+          background: `linear-gradient(180deg, #0e1218 0%, #05080c 100%)`,
+          border: `1px solid ${C.panelEdge}`,
+          boxShadow: `0 12px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04)`,
+        }}
+      >
+        {/* Top strip: power + bypass-mode dropdown */}
+        <div className="flex items-center gap-3 px-4 py-3" style={{ background: "#0a0d12", borderBottom: `1px solid ${C.panelEdge}` }}>
+          <button
+            onClick={() => setBypass((b) => !b)}
+            className="flex h-9 w-9 items-center justify-center rounded-full"
+            style={{
+              background: bypass ? "#222" : `radial-gradient(circle at 30% 30%, #4a5058 0%, #1c2028 100%)`,
+              border: `1px solid ${bypass ? "#333" : C.cyan}`,
+              boxShadow: bypass ? "none" : `0 0 8px ${C.cyanGlow}`,
+            }}
+            aria-label="Bypass"
+          >
+            <Power className="h-4 w-4" style={{ color: bypass ? C.dim : C.cyan }} />
+          </button>
+          <div
+            className="flex flex-1 items-center justify-between rounded-[4px] px-3 py-1.5"
+            style={{ background: C.inset, border: `1px solid ${C.insetEdge}`, color: C.text, fontSize: 12 }}
+          >
+            <span>Manual</span>
+            <ChevronDown className="h-3.5 w-3.5" style={{ color: C.dim }} />
           </div>
-          <div className="flex items-center gap-3" style={{ color: C.label }}>
-            {isEngineer && (
-              <button
-                type="button"
-                onPointerDown={(e) => {
-                  e.preventDefault();
-                  void copyAccessTokenForPlugin();
-                }}
-                className="rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide hover:bg-white/10 hover:text-white"
-                title="Copy Supabase access token for the W.Studio DAW plugin (SYNC)"
-              >
-                DAW token
-              </button>
-            )}
-            {!isMobile && (
-              <button onPointerDown={(e) => { e.preventDefault(); toggleFullscreen(); }} className="hover:text-white" title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}>
-                {isFullscreen ? "⊡" : "⛶"}
-              </button>
-            )}
-            <button className="hover:text-white">☰</button>
-            <button onPointerDown={(e) => { e.preventDefault(); leaveSession(); }} className="hover:text-white">✕</button>
+          <button
+            onClick={handleEnd}
+            className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider"
+            style={{ background: "#2a0e0e", color: "#fca5a5", border: "1px solid #4a1818" }}
+            aria-label="End session"
+          >
+            <LogOut className="h-3.5 w-3.5" /> End
+          </button>
+        </div>
+
+        {/* Header band: W.STUDIO logo + Artist selector + Zoom */}
+        <div
+          className="flex items-center gap-3 px-4 py-3"
+          style={{
+            background: `linear-gradient(180deg, ${C.panel} 0%, #0a0e14 100%)`,
+            borderBottom: `1px solid ${C.panelEdge}`,
+          }}
+        >
+          <div className="flex items-center">
+            <span
+              className="text-[22px] font-black italic"
+              style={{ color: C.text, fontFamily: "'Inter', sans-serif" }}
+            >
+              W
+            </span>
+            <span
+              className="mx-0.5 text-[22px] font-black"
+              style={{
+                color: C.cyan,
+                transform: "skewX(-20deg)",
+                display: "inline-block",
+                textShadow: `0 0 6px ${C.cyanGlow}`,
+              }}
+            >
+              /
+            </span>
+            <span className="text-[22px] font-black tracking-[0.22em]" style={{ color: C.text }}>
+              _STUDIO
+            </span>
+          </div>
+          <div className="flex-1" />
+          {/* Artist selector */}
+          <select
+            value={artistSlot}
+            onChange={(e) => setArtistSlot(Number(e.target.value))}
+            className="rounded-[4px] px-3 py-1.5 text-[12px] font-semibold focus:outline-none"
+            style={{ background: C.inset, color: C.text, border: `1px solid ${C.insetEdge}`, minWidth: 110 }}
+          >
+            {ARTIST_SLOTS.map((n) => (
+              <option key={n} value={n}>
+                Artist {n}
+              </option>
+            ))}
+          </select>
+          <div
+            className="rounded-[4px] px-3 py-1.5 text-[12px] font-semibold"
+            style={{ background: C.inset, color: C.text, border: `1px solid ${C.insetEdge}` }}
+          >
+            100%
           </div>
         </div>
 
-        {/* ─── MOBILE TAB BAR ─── */}
-        {isMobile && (
-          <div className="flex" style={{ borderBottom: `1px solid ${C.panelBorder}` }}>
-            {([["video", "📹 Video"], ["controls", "🎛 Controls"], ["monitor", "🎧 Monitor"]] as const).map(([key, label]) => (
-              <button key={key} onPointerDown={(e) => { e.preventDefault(); setMobileTab(key as any); }} className="flex-1 py-2 text-center text-[11px] font-bold uppercase tracking-wide" style={{
-                color: mobileTab === key ? C.white : C.dim,
-                borderBottom: mobileTab === key ? `2px solid ${C.blue}` : "2px solid transparent",
-                background: mobileTab === key ? "rgba(46,224,216,0.1)" : "transparent",
-              }}>{label}</button>
-            ))}
+        {/* Status bar */}
+        <div
+          className="flex items-center justify-between px-4 py-2.5"
+          style={{
+            background: "#0c1117",
+            borderBottom: `1px solid ${C.panelEdge}`,
+          }}
+        >
+          <div className="flex items-center gap-2 text-[13px] font-semibold" style={{ color: C.text }}>
+            <Radio className="h-3.5 w-3.5" style={{ color: connected ? C.green : C.dim }} />
+            <span className="truncate">
+              {sessionDisplayName || `Session ${sessionId}`} — {statusLabel}
+            </span>
           </div>
-        )}
+          <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider">
+            <span
+              className="h-2 w-2 rounded-full"
+              style={{
+                background: connected ? C.green : C.dim,
+                boxShadow: connected ? `0 0 6px ${C.green}` : "none",
+              }}
+            />
+            <span style={{ color: connected ? C.green : C.dim }}>{connected ? "CONNECTED" : "OFFLINE"}</span>
+          </div>
+        </div>
 
-        {/* ─── MAIN GRID ─── */}
-        <div className={`relative ${isMobile ? "flex flex-col gap-2 p-2 flex-1 overflow-y-auto" : `grid gap-2 p-2 ${isFullscreen ? "flex-1" : ""}`}`} style={isMobile ? {} : { gridTemplateColumns: "280px 1fr 260px", gridTemplateRows: isFullscreen ? "auto 1fr auto auto" : "auto auto auto auto" }}>
-          {controlsLocked && <SessionControlsLockOverlay />}
-
-          {/* ══════════ MOBILE LAYOUT ══════════ */}
-          {isMobile ? (
-            <>
-              {/* Session status bar — always visible on mobile */}
-              <Panel accent={C.acCyan} className="flex items-center justify-between px-3" style={{ height: 40 }}>
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="truncate" style={{ fontSize: 13, fontWeight: 500, color: C.text }}>{sessionDisplayName || "Session: Live"}</span>
-                  <span className="shrink-0 rounded px-2 py-0.5 text-[9px] font-bold uppercase" style={{
-                    background: connected ? "linear-gradient(180deg, #4ade60 0%, #22a838 100%)" : C.panelDark,
-                    color: connected ? C.white : C.dim,
-                  }}>
-                    {connected ? "CONNECTED" : connection.toUpperCase()}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <button className="flex h-7 w-7 items-center justify-center rounded text-[13px]" style={{ background: C.panelDark, border: `1px solid ${C.panelBorder}`, color: C.label }}>🔊</button>
-                  {isEngineer && (
-                    <button onClick={() => {
-                      if (!canScreenShare) { toast.error("Screen sharing is not supported on this device. Please use a desktop browser."); return; }
-                      toggleScreenShare(); if (!screenSharing) setMobileTab("video");
-                    }} className="flex h-7 items-center justify-center gap-1 rounded px-2 text-[11px] font-semibold" style={{ background: screenSharing ? "rgba(46,224,216,0.18)" : C.panelDark, border: `1px solid ${screenSharing ? C.blue : C.panelBorder}`, color: screenSharing ? C.blue : C.label }}>
-                      🖥 {screenSharing ? "Stop" : "Share"}
-                    </button>
-                  )}
-                </div>
-              </Panel>
-
-              {/* ── VIDEO TAB ── */}
-              {mobileTab === "video" && (
-                <div className="flex flex-col gap-2">
-                  {/* Artist Video */}
-                  <Panel accent={C.acMagenta} className="relative overflow-hidden" style={{ aspectRatio: "16/9" }}>
-                    {artistStream ? (
-                      // Engineer monitors artist via the AU plugin, not the browser tile.
-                      // Muting here prevents doubled vocals (browser + plugin output).
-                      <VideoFeed stream={artistStream} mirrored={artistMirrored} muted={isArtist || isEngineer} volume={isEngineer ? 0 : 1} />
-                    ) : (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
-                        <span className="text-[20px] font-black tracking-tight" style={{ color: C.dim }}>W<span style={{ color: C.blue }}>.</span>STUDIO</span>
-                        <span style={{ color: C.dim, fontSize: 10, letterSpacing: "0.14em", marginTop: 4 }}>
-                          {isArtist && mediaError ? "⚠ CAMERA ACCESS DENIED" : isArtist ? "STARTING CAMERA..." : "WAITING FOR ARTIST"}
-                        </span>
-                        {isArtist && mediaError && (
-                          <span style={{ color: C.red, fontSize: 9, marginTop: 6, maxWidth: "80%", textAlign: "center" }}>{mediaError}</span>
-                        )}
-                      </div>
-                    )}
-                    <div className="absolute bottom-2 left-2 rounded px-2 py-0.5 text-[10px] font-medium" style={{ background: "rgba(0,0,0,0.6)", color: artistStream ? C.text : C.dim }}>
-                      {artistStream ? (isArtist ? "You (Artist)" : "Artist") : "No one connected"}
-                    </div>
-                    <VideoTileActions hasSession={!!role} onJoin={goToJoin} onEnd={handleEndSession} expanded={expandedPanel === "artist"} onToggleExpand={() => setExpandedPanel(expandedPanel === "artist" ? null : "artist")} isMobile />
-                    <div className="absolute right-2 top-2 flex items-center gap-1.5 rounded-md px-2 py-0.5" style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)" }}>
-                      <span className="font-mono text-[12px] font-bold tabular-nums" style={{ color: (hasBooking ? warningLevel : "ok") === "critical" ? C.red : (hasBooking ? warningLevel : "ok") === "warning" ? C.yellow : C.text }}>
-                        {(() => { const rs = hasBooking ? bookingRemaining : demoClock.remainingSeconds; return `${String(Math.floor(rs / 60)).padStart(2, "0")}:${String(rs % 60).padStart(2, "0")}`; })()}
-                      </span>
-                      <span style={{ width: 6, height: 6, borderRadius: "50%", background: (hasBooking ? phase : demoClock.phase) === "live" ? C.green : (hasBooking ? phase : demoClock.phase) === "ended" ? C.red : C.dim }} />
-                    </div>
-                  </Panel>
-
-                  {/* Engineer Video */}
-                  <Panel accent={C.acGreen} className="relative overflow-hidden" style={{ aspectRatio: "16/9" }}>
-                    {engineerStream ? (
-                      <VideoFeed stream={engineerStream} mirrored={engineerMirrored} muted={isEngineer} />
-                    ) : (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
-                        <span className="text-[20px] font-black tracking-tight" style={{ color: C.dim }}>W<span style={{ color: C.blue }}>.</span>STUDIO</span>
-                        <span style={{ color: C.dim, fontSize: 10, letterSpacing: "0.14em", marginTop: 4 }}>
-                          {isEngineer && mediaError ? "⚠ CAMERA ACCESS DENIED" : isEngineer ? "STARTING CAMERA..." : "WAITING FOR ENGINEER"}
-                        </span>
-                        {isEngineer && mediaError && (
-                          <span style={{ color: C.red, fontSize: 9, marginTop: 6, maxWidth: "80%", textAlign: "center" }}>{mediaError}</span>
-                        )}
-                      </div>
-                    )}
-                    <div className="absolute bottom-2 left-2 z-[5] rounded px-2 py-0.5 text-[10px] font-medium" style={{ background: "rgba(0,0,0,0.6)", color: engineerStream ? C.text : C.dim }}>
-                      {engineerStream ? (isEngineer ? "You (Engineer)" : "Engineer") : "No one connected"}
-                    </div>
-                    <VideoTileActions hasSession={!!role} onJoin={goToJoin} onEnd={handleEndSession} expanded={expandedPanel === "engineer"} onToggleExpand={() => setExpandedPanel(expandedPanel === "engineer" ? null : "engineer")} isMobile />
-                    <div className="absolute right-2 top-2 flex items-center gap-1.5 rounded-md px-2 py-0.5" style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)" }}>
-                      <span className="font-mono text-[12px] font-bold tabular-nums" style={{ color: (hasBooking ? warningLevel : "ok") === "critical" ? C.red : (hasBooking ? warningLevel : "ok") === "warning" ? C.yellow : C.text }}>
-                        {(() => { const rs = hasBooking ? bookingRemaining : demoClock.remainingSeconds; return `${String(Math.floor(rs / 60)).padStart(2, "0")}:${String(rs % 60).padStart(2, "0")}`; })()}
-                      </span>
-                      <span style={{ width: 6, height: 6, borderRadius: "50%", background: (hasBooking ? phase : demoClock.phase) === "live" ? C.green : (hasBooking ? phase : demoClock.phase) === "ended" ? C.red : C.dim }} />
-                    </div>
-                    {isEngineer && (
-                      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-[5] rounded-md px-2 py-0.5" style={{ background: "rgba(0,0,0,0.72)" }}>
-                        <span className="font-mono text-[11px] font-semibold" style={{ color: C.green }}>{formatCurrency(sessionValueTotal)}</span>
-                      </div>
-                    )}
-                  </Panel>
-
-                  {/* Mute / Talk / Settings row */}
-                  <Panel accent={C.acOrange}>
-                    <div className="grid grid-cols-3" style={{ borderTop: `1px solid ${C.panelBorder}` }}>
-                      <button type="button" onPointerDown={(e) => { e.preventDefault(); toggleMute(); }} className="flex flex-col items-center justify-center gap-1 py-2.5">
-                        <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={muted ? C.red : C.label} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
-                          <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                          <line x1="12" y1="19" x2="12" y2="22" />
-                        </svg>
-                        <span style={{ fontSize: 10, color: C.text }}>Mute</span>
-                      </button>
-                      <button
-                        type="button"
-                        onPointerDown={(e) => { e.preventDefault(); beginTalkback(); }}
-                        onPointerUp={(e) => { e.preventDefault(); endTalkback(); }}
-                        onPointerLeave={() => endTalkback()}
-                        onTouchStart={(e) => { e.preventDefault(); beginTalkback(); }}
-                        onTouchEnd={(e) => { e.preventDefault(); endTalkback(); }}
-                        className="flex flex-col items-center justify-center gap-1 py-2.5"
-                        style={{
-                          borderLeft: `1px solid ${C.panelBorder}`,
-                          borderRight: `1px solid ${C.panelBorder}`,
-                          touchAction: "none",
-                        }}
-                      >
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full transition-[box-shadow,transform] duration-100" style={{
-                          background: talkbackHeld
-                            ? `radial-gradient(circle at 35% 30%, rgba(255,255,255,0.45), ${C.blue})`
-                            : peerPtt
-                              ? `radial-gradient(circle at 35% 30%, rgba(255,255,255,0.22), #2563eb)`
-                              : `radial-gradient(circle at 35% 30%, rgba(255,255,255,0.25), ${C.blue})`,
-                          boxShadow: talkbackHeld ? `0 0 20px ${C.blue}80, inset 0 0 12px rgba(255,255,255,0.15)` : peerPtt ? `0 0 12px rgba(46,224,216,0.45)` : "none",
-                          transform: talkbackHeld ? "scale(1.06)" : "scale(1)",
-                        }}>
-                          <span style={{ color: C.white, fontSize: 12 }}>🎙</span>
-                        </div>
-                        <span style={{ fontSize: 10, color: talkbackHeld ? C.blue : C.text, fontWeight: talkbackHeld ? 700 : 400 }}>
-                          {talkbackHeld ? "TALKING" : peerPtt ? "INCOMING" : "Talk"}
-                        </span>
-                      </button>
-                      <button className="flex flex-col items-center justify-center gap-1 py-2.5">
-                        <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={C.label} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-                          <circle cx="12" cy="12" r="3" />
-                        </svg>
-                        <span style={{ fontSize: 10, color: C.text }}>Settings</span>
-                      </button>
-                    </div>
-                  </Panel>
-
-                  {/* Screen share view on mobile */}
-                  {collaborationShareActive && (
-                    <Panel accent={C.acCyan} className="relative flex flex-col overflow-hidden" style={{ minHeight: 160 }}>
-                      <div className="flex items-center justify-between px-3 py-2" style={{ borderBottom: `1px solid ${C.panelBorder}` }}>
-                        <span style={{ fontSize: 11, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>SCREEN SHARE</span>
-                        <div className="flex items-center gap-1">
-                          <span style={{ width: 5, height: 5, borderRadius: "50%", background: C.green }} />
-                          <span style={{ fontSize: 10, color: C.green, fontWeight: 600 }}>LIVE</span>
-                        </div>
-                      </div>
-                      <div className="relative flex-1" style={{ background: C.inset, minHeight: 120 }}>
-                        {screenShareViewStream ? (
-                          <VideoFeed stream={screenShareViewStream} />
-                        ) : (
-                          <div className="flex h-full items-center justify-center">
-                            <div className="flex flex-col items-center gap-1">
-                              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke={C.dim} strokeWidth={1.5}><rect x="2" y="3" width="20" height="14" rx="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></svg>
-                              <span style={{ color: C.label, fontSize: 11, fontWeight: 500 }}>{isEngineer ? "Your screen is being shared" : "Engineer's DAW"}</span>
-                            </div>
-                          </div>
-                        )}
-                        <div className="absolute bottom-2 right-2 z-10">
-                          <button onClick={() => setExpandedPanel(expandedPanel === "screen" ? null : "screen")} className="rounded px-1.5 py-1 text-[9px] font-bold" style={{ background: "rgba(0,0,0,0.7)", color: "#e8e8ea", border: "1px solid rgba(255,255,255,0.15)" }}>⛶</button>
-                        </div>
-                      </div>
-                    </Panel>
-                  )}
-
-                  {/* Artist: Request More Time */}
-                  {isArtist && hasBooking && phase === "live" && (
-                    <Panel accent={C.acOrange} className="p-3">
-                      <div className="mb-2" style={{ fontSize: 11, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>REQUEST MORE TIME</div>
-                      {booking?.pendingExtension ? (
-                        <div className="text-center py-2" style={{ color: C.yellow, fontSize: 12 }}>
-                          ⏳ Waiting for engineer to approve +{booking.pendingExtension.minutes} min...
-                        </div>
-                      ) : (
-                        <div className="flex gap-2">
-                          {([15, 30, 60] as const).map((mins) => (
-                            <button key={mins} onClick={() => requestExtension(mins)} className="flex-1 rounded-lg py-2 text-center text-[12px] font-bold" style={{
-                              background: "linear-gradient(180deg, #f59e0b 0%, #b45309 100%)",
-                              color: "#fff", border: "1px solid rgba(245,158,11,0.5)",
-                            }}>+{mins} min</button>
-                          ))}
-                        </div>
-                      )}
-                    </Panel>
-                  )}
-
-                  {/* Session Complete Actions */}
-                  {hasBooking && (
-                    <Panel accent={C.acGreen} className="p-3">
-                      <div className="flex gap-2">
-                        {isEngineer && (
-                          <button onClick={handleEngineerMarkComplete} className="flex-1 rounded-lg py-2.5 text-center text-[12px] font-bold" style={{
-                            background: "linear-gradient(180deg, #4ade60 0%, #22a838 100%)",
-                            color: "#fff", border: "1px solid rgba(74,222,96,0.5)",
-                          }}>✅ Mark Complete</button>
-                        )}
-                        {isArtist && (
-                          <button onClick={handleArtistConfirmComplete} className="flex-1 rounded-lg py-2.5 text-center text-[12px] font-bold" style={{
-                            background: "linear-gradient(180deg, #4ade60 0%, #22a838 100%)",
-                            color: "#fff", border: "1px solid rgba(74,222,96,0.5)",
-                          }}>✅ Confirm Complete</button>
-                        )}
-                      </div>
-                    </Panel>
-                  )}
-                </div>
-              )}
-
-              {/* ── CONTROLS TAB ── */}
-              {mobileTab === "controls" && (
-                <div className="flex flex-col gap-2">
-                  {/* Sync Controls */}
-                  <Panel accent={C.acPurple} className="p-3">
-                    <div style={{ fontSize: 11, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>SYNC CONTROLS</div>
-                    <div className="my-2 text-center" style={{ fontSize: 14, fontWeight: 600, color: C.text }}>– SYNCED: 120 BPM –</div>
-                    <div className="flex flex-wrap items-center justify-center gap-2">
-                      <button onPointerDown={isEngineer ? (e) => { e.preventDefault(); setSessionPlaying(true); } : undefined} className="flex items-center gap-1.5 rounded-[3px] px-4 py-2 text-[13px] font-semibold" style={{
-                        background: playing ? `linear-gradient(180deg, #1a3a1a 0%, #0e2a0e 100%)` : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
-                        border: `1px solid ${playing ? "#2a6a2a" : C.panelBorder}`, color: C.text,
-                        opacity: isEngineer ? 1 : 0.4, cursor: isEngineer ? "pointer" : "not-allowed",
-                      }}>
-                        <span style={{ color: playing ? C.green : C.text }}>▶</span> Play
-                      </button>
-                      <button onPointerDown={isEngineer ? (e) => { e.preventDefault(); setSessionPlaying(false); if (recording) setSessionRecording(false); } : undefined} className="flex items-center gap-1.5 rounded-[3px] px-4 py-2 text-[13px] font-semibold" style={{
-                        background: `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
-                        border: `1px solid ${C.panelBorder}`, color: C.text,
-                        opacity: isEngineer ? 1 : 0.4, cursor: isEngineer ? "pointer" : "not-allowed",
-                      }}>
-                        <span style={{ color: C.red }}>■</span> Stop
-                      </button>
-                      <button onPointerDown={isEngineer ? (e) => { e.preventDefault(); handleTransportRecord(); } : undefined} className="flex items-center gap-1.5 rounded-[3px] px-4 py-2 text-[13px] font-semibold" style={{
-                        background: recording ? `linear-gradient(180deg, #4a1a1a 0%, #2a0e0e 100%)` : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
-                        border: `1px solid ${recording ? "#6a2222" : C.panelBorder}`, color: C.text,
-                        opacity: isEngineer ? (engineerRecordDimmed ? 0.45 : 1) : 0.4, cursor: isEngineer && !engineerRecordDimmed ? "pointer" : "not-allowed",
-                      }}>
-                        <span className={recording ? "animate-pulse" : ""} style={{ color: C.red }}>●</span> Record
-                      </button>
-                    </div>
-                  </Panel>
-
-                  {/* Vocal Input */}
-                  <Panel accent={C.acPurple} className="p-3">
-                    <div className="mb-2 flex items-center justify-between">
-                      <span style={{ fontSize: 11, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>VOCAL INPUT</span>
-                    </div>
-                    <Inset className="space-y-2 p-2">
-                      <div>
-                        <div className="mb-0.5 flex justify-between" style={{ fontSize: 9, fontWeight: 600, color: C.label, letterSpacing: "0.08em" }}>
-                          <span>LOCAL MIC</span>
-                        </div>
-                        <HorizontalMeter level={meterDisplay(localMicLevel)} />
-                        {isArtist ? (
-                          <button type="button" onClick={restartLocalMedia} className="mt-1 rounded-[3px] px-2 py-1 text-[10px] font-bold uppercase" style={{ background: C.blue, color: C.shellDark, border: `1px solid ${C.blue}` }}>
-                            {artistMicNeedsReconnect ? "Enable mic" : "Reconnect mic"}
-                          </button>
-                        ) : null}
-                        {isArtist ? (
-                          <select
-                            value={selectedMicDeviceId}
-                            onChange={(e) => setSelectedMicDeviceId(e.target.value)}
-                            className="mt-1 w-full rounded-[3px] px-1 py-1 text-[10px]"
-                            style={{ background: C.shellDark, color: C.text, border: `1px solid ${C.insetBorder}` }}
-                          >
-                            <option value="default">Default microphone</option>
-                            {audioInputDevices.map((device, index) => (
-                              <option key={device.deviceId || index} value={device.deviceId || "default"}>
-                                {device.label || `Microphone ${index + 1}`}
-                              </option>
-                            ))}
-                          </select>
-                        ) : null}
-                      </div>
-                      <div>
-                        <div className="mb-0.5" style={{ fontSize: 9, fontWeight: 600, color: C.label, letterSpacing: "0.08em" }}>TALKBACK SEND</div>
-                        <HorizontalMeter level={meterDisplay(localTalkbackTxLevel)} />
-                      </div>
-                      <div>
-                        <div className="mb-0.5 flex justify-between" style={{ fontSize: 9, fontWeight: 600, color: C.label, letterSpacing: "0.08em" }}>
-                          <span>REMOTE IN</span>
-                          <span style={{ color: C.dim, fontWeight: 500 }}>{hasRemoteAudio ? "live" : "no stream"}</span>
-                        </div>
-                        <HorizontalMeter level={hasRemoteAudio ? meterDisplay(remoteMicLevel) : 0} />
-                      </div>
-                      {isEngineer ? (
-                        <div>
-                          <div className="mb-0.5 flex justify-between" style={{ fontSize: 9, fontWeight: 600, color: C.label, letterSpacing: "0.08em" }}>
-                            <span>BRIDGE OUT (DAW FEED)</span>
-                            <span style={{ color: C.dim, fontWeight: 500 }}>{bridgePathReady ? "routed" : "—"}</span>
-                          </div>
-                          <HorizontalMeter level={bridgePathReady ? meterDisplay(engineerBridgeVocalLevel) : 0} />
-                        </div>
-                      ) : null}
-                      <div className="mt-1"><SpectrumBars level={spectrumLevel} /></div>
-                      <div className="mt-0.5"><FreqLabels /></div>
-                    </Inset>
-                    <div className="mt-3 flex justify-center">
-                      <button onPointerDown={isEngineer && !recording ? (e) => { e.preventDefault(); handleArmRecordToggle(); } : undefined} className="rounded-[3px] px-6 py-2 text-[13px] font-bold uppercase tracking-wide" style={{
-                        background: armed ? `linear-gradient(180deg, #4a1a1a 0%, #2a0e0e 100%)` : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
-                        border: `1px solid ${armed ? "#6a2222" : C.panelBorder}`, color: C.text,
-                        opacity: isEngineer && !recording ? 1 : 0.4, cursor: isEngineer && !recording ? "pointer" : "not-allowed",
-                      }}>ARM RECORD</button>
-                    </div>
-                  </Panel>
-
-                  {/* Vocal Take Waveform */}
-                  <Panel accent={C.acCyan} className="flex items-center gap-2 px-3 py-2">
-                    <span className="truncate" style={{ fontSize: 12, fontWeight: 600, color: C.text, whiteSpace: "nowrap" }}>Vocal Take 4 — {vocalTakeTitle}</span>
-                    <Inset className="flex-1 overflow-hidden rounded-[3px] p-0.5">
-                      <Waveform recording={recording} takeCaptured={takeCaptured} />
-                    </Inset>
-                  </Panel>
-
-                  {/* Transport Bar */}
-                  <Panel accent={C.acPurple} className="flex flex-wrap items-center gap-1.5 px-2 py-2">
-                    <button disabled={!isEngineer} className="flex items-center gap-1 rounded-[3px] px-3 py-1.5 text-[11px] font-semibold" style={{ background: `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`, border: `1px solid ${C.panelBorder}`, color: C.text, opacity: isEngineer ? 1 : 0.4 }}>▌▌ Punch</button>
-                    <button disabled={!isEngineer} className="flex items-center gap-1 rounded-[3px] px-3 py-1.5 text-[11px] font-semibold" style={{ background: `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`, border: `1px solid ${C.panelBorder}`, color: C.text, opacity: isEngineer ? 1 : 0.4 }}>&lt;&lt; Rew</button>
-                    <button disabled={!isEngineer} className="flex items-center gap-1 rounded-[3px] px-3 py-1.5 text-[11px] font-semibold" style={{ background: `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`, border: `1px solid ${C.panelBorder}`, color: C.text, opacity: isEngineer ? 1 : 0.4 }}>▶▶ Fwd</button>
-                    <div className="flex items-center gap-1.5 rounded-[3px] px-3 py-1.5 text-[12px] font-bold" style={{
-                      background: recording ? `linear-gradient(180deg, #4a1a1a 0%, #2a0e0e 100%)` : armed ? `linear-gradient(180deg, #3a2a0a 0%, #2a1f08 100%)` : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
-                      border: `1px solid ${recording ? "#6a2222" : armed ? "#6a5a22" : C.panelBorder}`,
-                    }}>
-                      <span className={recording ? "animate-pulse" : ""} style={{ color: recording ? C.red : armed ? C.yellow : C.dim }}>●</span>
-                      <span style={{ color: recording ? C.red : armed ? C.yellow : C.dim }}>REC</span>
-                      {(recording || armed) && (
-                        <span style={{ color: recording ? C.red : C.yellow, fontSize: 10 }}>{recording ? "RECORDING" : "ARMED"}</span>
-                      )}
-                    </div>
-                  </Panel>
-                </div>
-              )}
-
-              {/* ── MONITOR TAB ── */}
-              {mobileTab === "monitor" && (
-                <Panel accent={C.acLime} className="p-3">
-                  <div className="mb-1 flex items-center justify-between">
-                    <span title={isArtist ? "Engineer adjusts monitor mix; values sync here." : undefined} style={{ fontSize: 11, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>MONITORING</span>
-                  </div>
-                  <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-4">
-                    <div className="flex flex-col items-center gap-1">
-                      <span style={{ fontSize: 10, fontWeight: 500, color: C.text }}>Vocal Level</span>
-                      <div className="flex items-end gap-1.5">
-                        <Knob value={vocalLevel} size={50} onChange={monitorAdjust ? (v) => monitorAdjust({ vocalLevel: v }) : undefined} accent={C.acLime} />
-                        <ControlLevelLadder level={vocalLevel} height={60} accent={C.acLime} />
-                        <Fader value={vocalLevel} height={60} onChange={monitorAdjust ? (v) => monitorAdjust({ vocalLevel: v }) : undefined} />
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-center gap-1">
-                      <span style={{ fontSize: 10, fontWeight: 500, color: C.text }}>Talkback Level</span>
-                      <div className="flex items-end gap-1.5">
-                        <Knob value={talkbackLevel} size={50} onChange={monitorAdjust ? (v) => monitorAdjust({ talkbackLevel: v }) : undefined} accent={C.acCyan} />
-                        <ControlLevelLadder level={talkbackLevel} height={60} accent={C.acCyan} />
-                        <Fader value={talkbackLevel} height={60} onChange={monitorAdjust ? (v) => monitorAdjust({ talkbackLevel: v }) : undefined} />
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-center gap-1">
-                      <span style={{ fontSize: 10, fontWeight: 500, color: C.text }}>Headphone</span>
-                      <div className="flex items-end gap-1.5">
-                        <Knob value={headphoneLevel} size={50} onChange={(v) => updateSessionHeadphoneLevel(v)} accent={C.acOrange} />
-                        <ControlLevelLadder level={headphoneLevel} height={60} accent={C.acOrange} />
-                        <Fader value={headphoneLevel} height={60} onChange={(v) => updateSessionHeadphoneLevel(v)} />
-                      </div>
-                      <span style={{ fontSize: 8, color: C.dim }}>🎧 HP OUT</span>
-                    </div>
-                    <div className="flex flex-col items-center gap-1">
-                      <span style={{ fontSize: 10, fontWeight: 500, color: C.text }}>Cue Mix</span>
-                      <Knob value={cueMix} size={50} onChange={monitorAdjust ? (v) => monitorAdjust({ cueMix: v }) : undefined} accent={C.acPurple} />
-                      <div className="flex w-full items-center justify-between px-1" style={{ fontSize: 8, color: C.dim }}>
-                        <span>VOX</span><span>BEAT</span>
-                      </div>
-                      <div className="mt-0.5 overflow-hidden rounded-sm" style={{ height: 4, width: "80%", background: C.track, border: `1px solid ${C.insetBorder}` }}>
-                        <div className="h-full rounded-sm" style={{ width: `${cueMix * 100}%`, background: `linear-gradient(90deg, ${C.blue} 0%, ${C.green} 100%)` }} />
-                      </div>
-                    </div>
-                  </div>
-                  {isEngineer ? (
-                    <div className="mt-4 border-t pt-3" style={{ borderColor: C.panelBorder }}>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>W.STUDIO BRIDGE</div>
-                      <div className="mt-1.5" style={{ fontSize: 8, color: C.dim, lineHeight: 1.4 }}>
-                        Run <span style={{ color: C.text }}>W.STUDIO Desktop Bridge</span> on this Mac — it receives the artist over the web session and plays to your <span style={{ color: C.text }}>current Mac output</span> (it does not appear in System Settings → Sound). Point Logic at the <span style={{ color: C.text }}>input</span> that hears that output (loopback / aggregate). Future <span style={{ color: C.text }}>W.STUDIO Artist Input</span> would show in Sound; not in this build. Use the AU for controls/meters only.
-                        {WSTUDIO_PLUGIN_WS_BRIDGE_ENABLED ? (
-                          <span> This dev build still lists the experimental AU WebSocket output.</span>
-                        ) : null}
-                      </div>
-                      <div className="mt-2 space-y-1" style={{ fontSize: 10, color: C.text, lineHeight: 1.45 }}>
-                        <div>
-                          <span style={{ color: C.dim }}>Status: </span>
-                          <span style={{ color: bridgeStatusColor, fontWeight: 600 }}>{bridgeStatusLabel}</span>
-                        </div>
-                        <div>
-                          <span style={{ color: C.dim }}>Artist: </span>
-                          <span style={{ fontWeight: 500 }}>{bridgeArtistLabel}</span>
-                        </div>
-                        <div>
-                          <span style={{ color: C.dim }}>Feed: </span>
-                          <span style={{ color: bridgeFeedActive ? C.green : C.dim, fontWeight: 600 }}>{bridgeFeedActive ? "Active" : "Inactive"}</span>
-                        </div>
-                        <div>
-                          <span style={{ color: C.dim }}>Output: </span>
-                          {bridgeRouted && bridgeFeedActive ? (
-                            <span style={{ color: C.green, fontWeight: 600 }}>
-                              {bridgeDevices.find(d => d.deviceId === bridgeSelectedDevice)?.label ?? "Routed"}
-                            </span>
-                          ) : bridgeRouted && bridgeUsingLocalWsBridge ? (
-                            <span style={{ color: C.yellow, fontWeight: 600 }}>
-                              Bridge link OK — waiting for artist vocal (same session code)
-                            </span>
-                          ) : bridgeRouted ? (
-                            <span style={{ color: C.green, fontWeight: 600 }}>
-                              {bridgeDevices.find(d => d.deviceId === bridgeSelectedDevice)?.label ?? "Routed"}
-                            </span>
-                          ) : (
-                            <span style={{ color: C.acCyan, fontWeight: 600 }}>Select device ↓</span>
-                          )}
-                        </div>
-                        <div className="mt-1.5">
-                          <select
-                            value={bridgeSelectedDevice}
-                            onChange={(e) => setBridgeSelectedDevice(e.target.value)}
-                            style={{
-                              width: "100%", fontSize: 9, padding: "3px 4px",
-                              background: C.panelDark, color: C.text,
-                              border: `1px solid ${C.panelBorder}`, borderRadius: 4,
-                              outline: "none",
-                            }}
-                          >
-                            <option value="default">Default output</option>
-                            {bridgeDevices
-                              .filter((d) => d.deviceId !== "default")
-                              .map((d) => (
-                                <option key={d.deviceId} value={d.deviceId}>
-                                  {d.label}
-                                </option>
-                              ))}
-                          </select>
-                          <div className="mt-1 flex items-center justify-between">
-                            <span style={{ fontSize: 8, color: bridgeRouted ? C.green : C.dim }}>
-                              {bridgeRouted ? "● Routing" : "○ Not routing"}
-                            </span>
-                            <button type="button" onClick={() => bridgeRefreshDevices()} style={{ fontSize: 8, color: C.dim, background: "none", border: "none", cursor: "pointer" }}>↻ Refresh</button>
-                          </div>
-                          {bridgeRoutingError && <div style={{ fontSize: 8, color: C.red, marginTop: 2 }}>{bridgeRoutingError}</div>}
-                          {isEngineer && !bridgeFeedActive && sessionId.trim() ? (
-                            <div style={{ fontSize: 8, color: C.dim, marginTop: 4, lineHeight: 1.35 }}>
-                              Route the artist vocal (WebRTC) to the bridge (localhost WebSocket). Set Mac Sound output to whatever your DAW records from. Same session code on both sides; REMOTE IN should show &quot;live&quot; before audio reaches Logic.
-                            </div>
-                          ) : null}
-                        </div>
-                      </div>
-                      <div className="mt-2 border-t pt-2" style={{ borderColor: C.panelBorder, fontSize: 9, color: C.dim }}>
-                        <span style={{ color: bridgeStatusColor }}>• {bridgeStatusLabel}</span>
-                        <span style={{ color: C.dim }}> · Artist: </span>
-                        <span style={{ color: C.text }}>{bridgeArtistLabel}</span>
-                        <span style={{ color: C.dim }}> · Feed </span>
-                        <span style={{ color: bridgeFeedActive ? C.green : C.dim }}>{bridgeFeedActive ? "Active" : "Inactive"}</span>
-                      </div>
-                    </div>
-                  ) : null}
-                  {isEngineer ? (
-                    <div className="mt-3">
-                      <EngineerBridgeDiagnostics stats={engineerRelayStats} />
-                    </div>
-                  ) : null}
-                  {isArtist ? (
-                    <div className="mt-4 border-t pt-3" style={{ borderColor: C.panelBorder }}>
-                      <ArtistBridgePanel
-                        stats={artistBridgeStats}
-                        remoteEngineerConnected={hasRemoteAudio || !!live.engineerJoined}
-                      />
-                    </div>
-                  ) : null}
-                </Panel>
-              )}
-
-            </>
-          ) : (
-            <>
-          {/* ══════════ DESKTOP LAYOUT ══════════ */}
-          {/* ── LEFT COLUMN: Videos + Controls (spans all content rows) ── */}
-          <div className="row-span-3 flex flex-col gap-2">
-            {/* Artist Video */}
-            <Panel accent={C.acMagenta} className="relative overflow-hidden" style={{ aspectRatio: "4/3" }}>
-              {artistStream ? (
-                <VideoFeed stream={artistStream} mirrored={artistMirrored} muted={isArtist || isEngineer} volume={isEngineer ? 0 : 1} />
-              ) : (
-                <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
-                  <span className="text-[28px] font-black tracking-tight" style={{ color: C.dim }}>W<span style={{ color: C.blue }}>.</span>STUDIO</span>
-                  <span style={{ color: C.dim, fontSize: 11, letterSpacing: "0.14em", marginTop: 4 }}>
-                    {isArtist && mediaError ? "⚠ CAMERA ACCESS DENIED" : isArtist ? "STARTING CAMERA..." : "WAITING FOR ARTIST"}
-                  </span>
-                  {isArtist && mediaError && (
-                    <span style={{ color: C.red, fontSize: 10, marginTop: 6, maxWidth: "80%", textAlign: "center" }}>{mediaError}</span>
-                  )}
-                </div>
-              )}
-              <div className="absolute bottom-2 left-2 z-[5] rounded px-2 py-1 text-[12px] font-medium" style={{ background: "rgba(0,0,0,0.6)", color: artistStream ? C.text : C.dim }}>
-                {artistStream ? (isArtist ? "You (Artist)" : "Artist") : "No one connected"}
-              </div>
-              <VideoTileActions hasSession={!!role} onJoin={goToJoin} onEnd={handleEndSession} expanded={expandedPanel === "artist"} onToggleExpand={() => setExpandedPanel(expandedPanel === "artist" ? null : "artist")} isMobile={false} />
-              <div className="absolute right-2 top-2 flex items-center gap-1.5 rounded-md px-2 py-1" style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)", border: `1px solid ${(hasBooking ? warningLevel : "ok") === "critical" ? "rgba(239,68,68,0.5)" : (hasBooking ? warningLevel : "ok") === "warning" ? "rgba(245,200,66,0.4)" : "rgba(255,255,255,0.1)"}` }}>
-                <span className={`font-mono text-[14px] font-bold tabular-nums ${(hasBooking ? warningLevel : "ok") === "critical" ? "animate-pulse" : ""}`} style={{ color: (hasBooking ? warningLevel : "ok") === "critical" ? C.red : (hasBooking ? warningLevel : "ok") === "warning" ? C.yellow : C.text }}>
-                  {(() => { const rs = hasBooking ? bookingRemaining : demoClock.remainingSeconds; return `${String(Math.floor(rs / 60)).padStart(2, "0")}:${String(rs % 60).padStart(2, "0")}`; })()}
-                </span>
-                <span style={{ width: 6, height: 6, borderRadius: "50%", background: (hasBooking ? phase : demoClock.phase) === "live" ? C.green : (hasBooking ? phase : demoClock.phase) === "ended" ? C.red : C.dim }} />
-              </div>
-            </Panel>
-
-            {/* Engineer Video */}
-            <Panel accent={C.acGreen} className="relative overflow-hidden" style={{ aspectRatio: "4/3" }}>
-              {engineerStream ? (
-                <VideoFeed stream={engineerStream} mirrored={engineerMirrored} muted={isEngineer} />
-              ) : (
-                <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
-                  <span className="text-[28px] font-black tracking-tight" style={{ color: C.dim }}>W<span style={{ color: C.blue }}>.</span>STUDIO</span>
-                  <span style={{ color: C.dim, fontSize: 11, letterSpacing: "0.14em", marginTop: 4 }}>
-                    {isEngineer && mediaError ? "⚠ CAMERA ACCESS DENIED" : isEngineer ? "STARTING CAMERA..." : "WAITING FOR ENGINEER"}
-                  </span>
-                  {isEngineer && mediaError && (
-                    <span style={{ color: C.red, fontSize: 10, marginTop: 6, maxWidth: "80%", textAlign: "center" }}>{mediaError}</span>
-                  )}
-                </div>
-              )}
-              <div className="absolute bottom-2 left-2 z-[5] rounded px-2 py-1 text-[12px] font-medium" style={{ background: "rgba(0,0,0,0.6)", color: engineerStream ? C.text : C.dim }}>
-                {engineerStream ? (isEngineer ? "You (Engineer)" : "Engineer") : "No one connected"}
-              </div>
-              <VideoTileActions hasSession={!!role} onJoin={goToJoin} onEnd={handleEndSession} expanded={expandedPanel === "engineer"} onToggleExpand={() => setExpandedPanel(expandedPanel === "engineer" ? null : "engineer")} isMobile={false} />
-              <div className="absolute right-2 top-2 flex items-center gap-1.5 rounded-md px-2 py-1" style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)", border: `1px solid ${(hasBooking ? warningLevel : "ok") === "critical" ? "rgba(239,68,68,0.5)" : (hasBooking ? warningLevel : "ok") === "warning" ? "rgba(245,200,66,0.4)" : "rgba(255,255,255,0.1)"}` }}>
-                <span className={`font-mono text-[14px] font-bold tabular-nums ${(hasBooking ? warningLevel : "ok") === "critical" ? "animate-pulse" : ""}`} style={{ color: (hasBooking ? warningLevel : "ok") === "critical" ? C.red : (hasBooking ? warningLevel : "ok") === "warning" ? C.yellow : C.text }}>
-                  {(() => { const rs = hasBooking ? bookingRemaining : demoClock.remainingSeconds; return `${String(Math.floor(rs / 60)).padStart(2, "0")}:${String(rs % 60).padStart(2, "0")}`; })()}
-                </span>
-                <span style={{ width: 6, height: 6, borderRadius: "50%", background: (hasBooking ? phase : demoClock.phase) === "live" ? C.green : (hasBooking ? phase : demoClock.phase) === "ended" ? C.red : C.dim }} />
-              </div>
-              {isEngineer && (
-                <div className="absolute bottom-10 right-2 z-[5] rounded-md px-2 py-1" style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)" }}>
-                  <span className="font-mono text-[12px] font-semibold" style={{ color: C.green }}>{formatCurrency(sessionValueTotal)}</span>
-                </div>
-              )}
-            </Panel>
-
-            {/* Mute / Talk / Settings */}
-            <Panel accent={C.acOrange}>
-              <div className="grid grid-cols-3" style={{ borderTop: `1px solid ${C.panelBorder}` }}>
-                <button type="button" onPointerDown={(e) => { e.preventDefault(); toggleMute(); }} className="flex flex-col items-center justify-center gap-1.5 py-3">
-                  <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={muted ? C.red : C.label} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
-                    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                    <line x1="12" y1="19" x2="12" y2="22" />
-                  </svg>
-                  <span style={{ fontSize: 11, color: C.text }}>Mute</span>
-                </button>
-                <button
-                  type="button"
-                  onPointerDown={(e) => { e.preventDefault(); beginTalkback(); }}
-                  onPointerUp={() => endTalkback()}
-                  onPointerLeave={() => endTalkback()}
-                  onTouchStart={(e) => { e.preventDefault(); beginTalkback(); }}
-                  onTouchEnd={(e) => { e.preventDefault(); endTalkback(); }}
-                  className="flex flex-col items-center justify-center gap-1.5 py-3"
-                  style={{
-                    borderLeft: `1px solid ${C.panelBorder}`,
-                    borderRight: `1px solid ${C.panelBorder}`,
-                    touchAction: "none",
-                    outline: peerPtt && !talkbackHeld ? `1px solid ${C.acCyan}` : undefined,
-                    outlineOffset: 2,
-                  }}
-                >
-                  <div
-                    className="flex h-9 w-9 items-center justify-center rounded-full transition-[box-shadow,transform] duration-100"
-                    style={{
-                      background:
-                        talkbackHeld
-                          ? `radial-gradient(circle at 35% 30%, rgba(255,255,255,0.45), ${C.blue})`
-                          : peerPtt
-                            ? `radial-gradient(circle at 35% 30%, rgba(255,255,255,0.22), #2563eb)`
-                            : `radial-gradient(circle at 35% 30%, rgba(255,255,255,0.25), ${C.blue})`,
-                      boxShadow: talkbackHeld ? `0 0 20px ${C.blue}80, inset 0 0 12px rgba(255,255,255,0.15)` : peerPtt ? `0 0 12px rgba(46,224,216,0.45)` : "none",
-                      transform: talkbackHeld ? "scale(1.06)" : "scale(1)",
-                    }}
-                  >
-                    <span style={{ color: C.white, fontSize: 14 }}>{"\u25B6"}</span>
-                  </div>
-                  <span style={{ fontSize: 11, color: talkbackHeld ? C.blue : C.text, fontWeight: talkbackHeld ? 700 : 400 }}>{talkbackHeld ? "TALKING" : "Talk"}</span>
-                </button>
-                <button className="flex flex-col items-center justify-center gap-1.5 py-3">
-                  <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={C.label} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-                    <circle cx="12" cy="12" r="3" />
-                  </svg>
-                  <span style={{ fontSize: 11, color: C.text }}>Settings</span>
-                </button>
-              </div>
-            </Panel>
+        {/* Main body: Mic toggle | GAIN dial | LIVE orb | meters */}
+        <div className="px-4 py-5" style={{ background: "#0a0e14" }}>
+          {/* Mic toggle row */}
+          <div className="mb-4 flex items-center gap-2">
+            <button
+              onClick={isArtist ? toggleMute : undefined}
+              disabled={!isArtist}
+              className="flex h-5 w-9 items-center rounded-full transition"
+              style={{
+                background: !muted ? C.cyan : "#1a2028",
+                border: `1px solid ${!muted ? C.cyan : "#222a33"}`,
+                boxShadow: !muted ? `0 0 6px ${C.cyanGlow}` : "none",
+                padding: 2,
+                opacity: isArtist ? 1 : 0.6,
+                cursor: isArtist ? "pointer" : "default",
+              }}
+              aria-label="Mic toggle"
+            >
+              <div
+                className="h-3.5 w-3.5 rounded-full transition"
+                style={{
+                  background: "#fff",
+                  transform: !muted ? "translateX(14px)" : "translateX(0)",
+                }}
+              />
+            </button>
+            <span className="text-[14px] font-bold" style={{ color: C.text }}>
+              Mic
+            </span>
+            <span className="text-[10px]" style={{ color: C.dim }}>
+              slot {artistSlot - 1}
+            </span>
           </div>
 
-          {/* ── SESSION STATUS BAR (top, spans center + right) ── */}
-          <Panel accent={C.acCyan} className={`${isMobile ? "" : "col-span-2"} flex items-center justify-between px-4`} style={{ height: 48 }}>
-            <div className="flex items-center gap-3">
-              <span style={{ fontSize: 16, fontWeight: 500, color: C.text }}>{sessionDisplayName || "Session: Live with Jay - Florida"}</span>
-              <span className="rounded px-2.5 py-1 text-[11px] font-bold uppercase" style={{
-                background: connected ? "linear-gradient(180deg, #4ade60 0%, #22a838 100%)" : C.panelDark,
-                color: connected ? C.white : C.dim, letterSpacing: "0.06em",
-                boxShadow: connected ? "inset 0 1px 0 rgba(255,255,255,0.2)" : "none",
-              }}>
-                {connected ? "CONNECTED" : connection.toUpperCase()}
+          {/* Controls row */}
+          <div className="flex items-center justify-between gap-3 sm:gap-5">
+            {/* GAIN dial */}
+            <div className="flex flex-col items-center gap-2">
+              <GainDial value={0.6} size={120} />
+            </div>
+
+            {/* LIVE orb */}
+            <div className="flex flex-col items-center gap-2">
+              <LiveOrb live={connected} size={130} />
+            </div>
+
+            {/* Vertical meter (stereo) */}
+            <div className="flex items-center">
+              <VerticalMeter level={meterLevel} height={130} />
+            </div>
+          </div>
+
+          {/* Action button row (visual placeholders — AU plugin owns actual control) */}
+          <div className="mt-6 grid grid-cols-2 gap-2 sm:flex sm:items-center sm:justify-center sm:gap-3">
+            <PluginButton label="Gain" accent />
+            <PluginButton
+              label="Mute"
+              active={muted}
+              onClick={isArtist ? toggleMute : undefined}
+              disabled={!isArtist}
+            />
+            <PluginButton label="Listen" active={listenOn} onClick={() => setListenOn((v) => !v)} />
+            <PluginButton label="Talk" active={talkOn} onClick={() => setTalkOn((v) => !v)} />
+            <div
+              className="flex items-center justify-between rounded-[4px] px-3 py-2 text-[12px] font-semibold"
+              style={{
+                background: C.inset,
+                color: C.text,
+                border: `1px solid ${C.insetEdge}`,
+                minWidth: 90,
+              }}
+            >
+              Stereo <ChevronDown className="ml-2 h-3.5 w-3.5" style={{ color: C.dim }} />
+            </div>
+          </div>
+
+          {/* Tiny role + relay diagnostic strip */}
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-[10px] uppercase tracking-wider" style={{ color: C.dim }}>
+            <span className="flex items-center gap-1">
+              <Activity className="h-3 w-3" />
+              {isArtist ? "Artist" : "Engineer"} · {role}
+            </span>
+            {isArtist && (
+              <span className="flex items-center gap-1">
+                {muted ? <MicOff className="h-3 w-3" /> : <Mic className="h-3 w-3" />}
+                Mic {muted ? "muted" : "live"}
               </span>
-            </div>
-            <div className="flex items-center gap-2">
-              {[
-                { icon: "🔊", handler: undefined },
-                { icon: "🖥", handler: isEngineer ? () => { if (!canScreenShare) { toast.error("Screen sharing is not supported on this device. Please use a desktop browser."); return; } toggleScreenShare(); } : undefined },
-                { icon: "✕", handler: undefined },
-                { icon: "⚙", handler: undefined },
-              ].map((btn, i) => (
-                <button key={i} onPointerDown={btn.handler ? (e) => { e.preventDefault(); btn.handler!(); } : undefined} className="flex h-9 w-9 items-center justify-center rounded" style={{
-                  background: `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
-                  border: `1px solid ${C.panelBorder}`, color: C.label, fontSize: 15,
-                  cursor: btn.handler ? "pointer" : "default",
-                }}>{btn.icon}</button>
-              ))}
-            </div>
-          </Panel>
-
-          {/* ── CENTER: SYNC CONTROLS + VOCAL INPUT (merged card) ── */}
-          {collaborationShareActive ? (
-            <Panel accent={C.acCyan} className="relative flex flex-col overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-2" style={{ borderBottom: `1px solid ${C.panelBorder}` }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>SCREEN SHARE — DAW VIEW</span>
-                <div className="flex items-center gap-2">
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.green }} />
-                  <span style={{ fontSize: 11, color: C.green, fontWeight: 600 }}>LIVE</span>
-                </div>
-              </div>
-              <div className="relative flex-1" style={{ background: C.inset, minHeight: 180 }}>
-                {screenShareViewStream ? (
-                  <VideoFeed stream={screenShareViewStream} />
-                ) : (
-                  <div className="flex h-full items-center justify-center">
-                    <div className="flex flex-col items-center gap-2">
-                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={C.dim} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="2" y="3" width="20" height="14" rx="2" />
-                        <line x1="8" y1="21" x2="16" y2="21" />
-                        <line x1="12" y1="17" x2="12" y2="21" />
-                      </svg>
-                      <span style={{ color: C.label, fontSize: 13, fontWeight: 500 }}>{isEngineer ? "Your screen is being shared" : "Engineer's DAW"}</span>
-                      <span style={{ color: C.dim, fontSize: 11 }}>Pro Tools / Logic Pro</span>
-                    </div>
-                  </div>
+            )}
+            {isEngineer && (
+              <>
+                <span className="flex items-center gap-1">
+                  <Headphones className="h-3 w-3" />
+                  Browser silent · AU plugin only
+                </span>
+                {engineerRelayStats && (
+                  <span>
+                    pkts {engineerRelayStats.packetsPosted ?? 0} · fail {engineerRelayStats.packetsFailed ?? 0}
+                  </span>
                 )}
-                <div className="absolute bottom-2 right-2 z-10">
-                  <button onClick={() => setExpandedPanel(expandedPanel === "screen" ? null : "screen")} className="rounded px-2 py-1 text-[10px] font-bold" style={{ background: "rgba(0,0,0,0.7)", color: "#e8e8ea", border: "1px solid rgba(255,255,255,0.15)" }}>⛶ Expand</button>
-                </div>
-              </div>
-            </Panel>
-          ) : (
-            <Panel accent={C.acPurple} className="p-4">
-              {/* Sync Controls */}
-              <div style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>SYNC CONTROLS</div>
-              <div className="my-3 text-center" style={{ fontSize: 16, fontWeight: 600, color: C.text }}>– SYNCED: 120 BPM –</div>
-              <div className="flex items-center justify-center gap-2">
-                <button type="button" onPointerDown={isEngineer ? (e) => { e.preventDefault(); setSessionPlaying(true); } : undefined} className="flex items-center gap-2 rounded-[3px] px-5 py-2.5 text-[15px] font-semibold" style={{
-                  background: playing ? `linear-gradient(180deg, #1a3a1a 0%, #0e2a0e 100%)` : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
-                  border: `1px solid ${playing ? "#2a6a2a" : C.panelBorder}`, color: C.text,
-                  boxShadow: playing ? `0 0 14px rgba(74,222,96,0.15)` : `inset 0 1px 0 rgba(255,255,255,0.05)`,
-                  opacity: isEngineer ? 1 : 0.4, cursor: isEngineer ? "pointer" : "not-allowed", minWidth: 110,
-                }}>
-                  <span style={{ color: playing ? C.green : C.text }}>▶</span> Play
-                </button>
-                <button type="button" onPointerDown={isEngineer ? (e) => { e.preventDefault(); setSessionPlaying(false); if (recording) setSessionRecording(false); } : undefined} className="flex items-center gap-2 rounded-[3px] px-5 py-2.5 text-[15px] font-semibold" style={{
-                  background: `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
-                  border: `1px solid ${C.panelBorder}`, color: C.text,
-                  boxShadow: `inset 0 1px 0 rgba(255,255,255,0.05)`,
-                  opacity: isEngineer ? 1 : 0.4, cursor: isEngineer ? "pointer" : "not-allowed", minWidth: 110,
-                }}>
-                  <span style={{ color: C.red }}>■</span> Stop
-                </button>
-                <button type="button" onPointerDown={isEngineer ? (e) => { e.preventDefault(); handleTransportRecord(); } : undefined} className="flex items-center gap-2 rounded-[3px] px-5 py-2.5 text-[15px] font-semibold" style={{
-                  background: recording ? `linear-gradient(180deg, #4a1a1a 0%, #2a0e0e 100%)` : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
-                  border: `1px solid ${recording ? "#6a2222" : C.panelBorder}`, color: C.text,
-                  boxShadow: recording ? `0 0 14px rgba(239,68,68,0.15)` : `inset 0 1px 0 rgba(255,255,255,0.05)`,
-                  opacity: isEngineer ? (engineerRecordDimmed ? 0.45 : 1) : 0.4, cursor: isEngineer && !engineerRecordDimmed ? "pointer" : "not-allowed", minWidth: 110,
-                }}>
-                  <span className={recording ? "animate-pulse" : ""} style={{ color: C.red }}>●</span> Record
-                </button>
-              </div>
+              </>
+            )}
+            <span className="flex items-center gap-1">
+              <MessageSquare className="h-3 w-3" />
+              live: {live.artistJoined ? "A✓" : "A·"} {live.engineerJoined ? "E✓" : "E·"}
+            </span>
+          </div>
+        </div>
 
-              {/* Vocal Input (merged) */}
-              <div className="mt-4" style={{ borderTop: `1px solid ${C.panelBorder}`, paddingTop: 12 }}>
-                <div className="mb-2 flex items-center justify-between">
-                  <span style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>VOCAL INPUT</span>
-                  <div className="flex items-center gap-1 rounded-[3px] px-1.5 py-0.5" style={{ background: C.inset, border: `1px solid ${C.insetBorder}` }}>
-                    <div className="h-2.5 w-1.5 rounded-sm" style={{ background: C.blue }} />
-                    <div className="h-2.5 w-1.5 rounded-sm" style={{ background: C.yellow }} />
-                  </div>
-                </div>
-                <Inset className="space-y-2 p-3">
-                  <div>
-                    <div className="mb-0.5 flex justify-between" style={{ fontSize: 10, fontWeight: 600, color: C.label, letterSpacing: "0.1em" }}>
-                      <span>LOCAL MIC</span>
-                    </div>
-                    <HorizontalMeter level={meterDisplay(localMicLevel)} />
-                    {isArtist ? (
-                      <button type="button" onClick={restartLocalMedia} className="mt-1 rounded-[3px] px-2 py-1 text-[10px] font-bold uppercase" style={{ background: C.blue, color: C.shellDark, border: `1px solid ${C.blue}` }}>
-                        {artistMicNeedsReconnect ? "Enable mic" : "Reconnect mic"}
-                      </button>
-                    ) : null}
-                    {isArtist ? (
-                      <select
-                        value={selectedMicDeviceId}
-                        onChange={(e) => setSelectedMicDeviceId(e.target.value)}
-                        className="mt-1 w-full rounded-[3px] px-1 py-1 text-[10px]"
-                        style={{ background: C.shellDark, color: C.text, border: `1px solid ${C.insetBorder}` }}
-                      >
-                        <option value="default">Default microphone</option>
-                        {audioInputDevices.map((device, index) => (
-                          <option key={device.deviceId || index} value={device.deviceId || "default"}>
-                            {device.label || `Microphone ${index + 1}`}
-                          </option>
-                        ))}
-                      </select>
-                    ) : null}
-                  </div>
-                  <div>
-                    <div className="mb-0.5" style={{ fontSize: 10, fontWeight: 600, color: C.label, letterSpacing: "0.1em" }}>TALKBACK SEND</div>
-                    <HorizontalMeter level={meterDisplay(localTalkbackTxLevel)} />
-                  </div>
-                  <div>
-                    <div className="mb-0.5 flex justify-between" style={{ fontSize: 10, fontWeight: 600, color: C.label, letterSpacing: "0.1em" }}>
-                      <span>REMOTE IN</span>
-                      <span style={{ color: C.dim, fontWeight: 500 }}>{hasRemoteAudio ? "live" : "no stream"}</span>
-                    </div>
-                    <HorizontalMeter level={hasRemoteAudio ? meterDisplay(remoteMicLevel) : 0} />
-                  </div>
-                  {isEngineer ? (
-                    <div>
-                      <div className="mb-0.5 flex justify-between" style={{ fontSize: 10, fontWeight: 600, color: C.label, letterSpacing: "0.1em" }}>
-                        <span>BRIDGE OUT (DAW FEED)</span>
-                        <span style={{ color: C.dim, fontWeight: 500 }}>{bridgePathReady ? "routed" : "—"}</span>
-                      </div>
-                      <HorizontalMeter level={bridgePathReady ? meterDisplay(engineerBridgeVocalLevel) : 0} />
-                    </div>
-                  ) : null}
-                  <div className="mt-2"><SpectrumBars level={spectrumLevel} /></div>
-                  <div className="mt-1"><FreqLabels /></div>
-                </Inset>
-                <div className="mt-4 flex justify-center">
-                  <button type="button" onPointerDown={isEngineer && !recording ? (e) => { e.preventDefault(); handleArmRecordToggle(); } : undefined} className="rounded-[3px] px-8 py-2.5 text-[15px] font-bold uppercase tracking-wide" style={{
-                    background: armed ? `linear-gradient(180deg, #4a1a1a 0%, #2a0e0e 100%)` : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
-                    border: `1px solid ${armed ? "#6a2222" : C.panelBorder}`, color: C.text,
-                    boxShadow: armed ? `0 0 14px rgba(239,68,68,0.15)` : `inset 0 1px 0 rgba(255,255,255,0.05)`,
-                    opacity: isEngineer && !recording ? 1 : 0.4, cursor: isEngineer && !recording ? "pointer" : "not-allowed",
-                  }}>ARM RECORD</button>
-                </div>
-              </div>
-            </Panel>
-          )}
-
-          {/* ── RIGHT: MONITORING (spans 2 rows beside center cards) ── */}
-          <Panel accent={C.acLime} className="p-4">
-            <div className="mb-1 flex items-center justify-between">
-              <span title={isArtist ? "Engineer adjusts monitor mix; values sync here." : undefined} style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>MONITORING</span>
-              <div className="flex gap-[2px]">
-                {[3, 5, 4, 6, 3, 2].map((h, i) => (<div key={i} className="rounded-full" style={{ width: 3, height: h * 2, background: C.label }} />))}
-              </div>
-            </div>
-            <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-4">
-              <div className="flex flex-col items-center gap-1">
-                <span style={{ fontSize: 11, fontWeight: 500, color: C.text }}>Vocal Level</span>
-                <div className="flex items-end gap-2">
-                  <Knob value={vocalLevel} size={58} onChange={monitorAdjust ? (v) => monitorAdjust({ vocalLevel: v }) : undefined} accent={C.acLime} />
-                  <ControlLevelLadder level={vocalLevel} height={72} accent={C.acLime} />
-                  <Fader value={vocalLevel} height={72} onChange={monitorAdjust ? (v) => monitorAdjust({ vocalLevel: v }) : undefined} />
-                </div>
-              </div>
-              <div className="flex flex-col items-center gap-1">
-                <span style={{ fontSize: 11, fontWeight: 500, color: C.text }}>Talkback Level</span>
-                <div className="flex items-end gap-2">
-                  <Knob value={talkbackLevel} size={58} onChange={monitorAdjust ? (v) => monitorAdjust({ talkbackLevel: v }) : undefined} accent={C.acCyan} />
-                  <ControlLevelLadder level={talkbackLevel} height={72} accent={C.acCyan} />
-                  <Fader value={talkbackLevel} height={72} onChange={monitorAdjust ? (v) => monitorAdjust({ talkbackLevel: v }) : undefined} />
-                </div>
-              </div>
-              <div className="flex flex-col items-center gap-1">
-                <span style={{ fontSize: 11, fontWeight: 500, color: C.text }}>Headphone</span>
-                <div className="flex items-end gap-2">
-                  <Knob value={headphoneLevel} size={58} onChange={(v) => updateSessionHeadphoneLevel(v)} accent={C.acOrange} />
-                  <ControlLevelLadder level={headphoneLevel} height={72} accent={C.acOrange} />
-                  <Fader value={headphoneLevel} height={72} onChange={(v) => updateSessionHeadphoneLevel(v)} />
-                </div>
-                <span style={{ fontSize: 8, color: C.dim, letterSpacing: "0.08em" }}>🎧 HP OUT</span>
-              </div>
-              <div className="flex flex-col items-center gap-1">
-                <span style={{ fontSize: 11, fontWeight: 500, color: C.text }}>Cue Mix</span>
-                <Knob value={cueMix} size={58} onChange={monitorAdjust ? (v) => monitorAdjust({ cueMix: v }) : undefined} accent={C.acPurple} />
-                <div className="flex w-full items-center justify-between px-1" style={{ fontSize: 8, color: C.dim }}>
-                  <span>VOX</span><span>BEAT</span>
-                </div>
-                <div className="mt-0.5 overflow-hidden rounded-sm" style={{ height: 4, width: "80%", background: C.track, border: `1px solid ${C.insetBorder}` }}>
-                  <div className="h-full rounded-sm" style={{ width: `${cueMix * 100}%`, background: `linear-gradient(90deg, ${C.blue} 0%, ${C.green} 100%)` }} />
-                </div>
-              </div>
-            </div>
-            {isEngineer ? (
-              <div className="mt-4 border-t pt-3" style={{ borderColor: C.panelBorder }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>W.STUDIO BRIDGE</div>
-                <div className="mt-1.5" style={{ fontSize: 9, color: C.dim, lineHeight: 1.4 }}>
-                  Run <span style={{ color: C.text }}>W.STUDIO Desktop Bridge</span> on this Mac — it receives the artist over the web session and plays to your <span style={{ color: C.text }}>current Mac output</span> (it does not appear in System Settings → Sound). Point Logic at the <span style={{ color: C.text }}>input</span> that hears that output (loopback / aggregate). Future <span style={{ color: C.text }}>W.STUDIO Artist Input</span> would show in Sound; not in this build. Use the AU for controls/meters only.
-                  {WSTUDIO_PLUGIN_WS_BRIDGE_ENABLED ? (
-                    <span> This dev build still lists the experimental AU WebSocket output.</span>
-                  ) : null}
-                </div>
-                <div className="mt-2 space-y-1.5" style={{ fontSize: 12, color: C.text, lineHeight: 1.45 }}>
-                  <div>
-                    <span style={{ color: C.dim }}>Status: </span>
-                    <span style={{ color: bridgeStatusColor, fontWeight: 600 }}>{bridgeStatusLabel}</span>
-                  </div>
-                  <div>
-                    <span style={{ color: C.dim }}>Artist: </span>
-                    <span style={{ fontWeight: 500 }}>{bridgeArtistLabel}</span>
-                  </div>
-                  <div>
-                    <span style={{ color: C.dim }}>Feed: </span>
-                    <span style={{ color: bridgeFeedActive ? C.green : C.dim, fontWeight: 600 }}>{bridgeFeedActive ? "Active" : "Inactive"}</span>
-                  </div>
-                  <div>
-                    <span style={{ color: C.dim }}>Output: </span>
-                    {bridgeRouted && bridgeFeedActive ? (
-                      <span style={{ color: C.green, fontWeight: 600 }}>
-                        {bridgeDevices.find(d => d.deviceId === bridgeSelectedDevice)?.label ?? "Routed"}
-                      </span>
-                    ) : bridgeRouted && bridgeUsingLocalWsBridge ? (
-                      <span style={{ color: C.yellow, fontWeight: 600 }}>
-                        Bridge link OK — waiting for artist vocal (same session code)
-                      </span>
-                    ) : bridgeRouted ? (
-                      <span style={{ color: C.green, fontWeight: 600 }}>
-                        {bridgeDevices.find(d => d.deviceId === bridgeSelectedDevice)?.label ?? "Routed"}
-                      </span>
-                    ) : (
-                      <span style={{ color: C.acCyan, fontWeight: 600 }}>Select device ↓</span>
-                    )}
-                  </div>
-                  <div className="mt-2">
-                    <select
-                      value={bridgeSelectedDevice}
-                      onChange={(e) => setBridgeSelectedDevice(e.target.value)}
-                      style={{
-                        width: "100%", fontSize: 11, padding: "4px 6px",
-                        background: C.panelDark, color: C.text,
-                        border: `1px solid ${C.panelBorder}`, borderRadius: 4,
-                        outline: "none",
-                      }}
-                    >
-                      <option value="default">Default output</option>
-                      {bridgeDevices
-                        .filter((d) => d.deviceId !== "default")
-                        .map((d) => (
-                          <option key={d.deviceId} value={d.deviceId}>
-                            {d.label}
-                          </option>
-                        ))}
-                    </select>
-                    <div className="mt-1 flex items-center justify-between">
-                      <span style={{ fontSize: 9, color: bridgeRouted ? C.green : C.dim }}>
-                        {bridgeRouted ? "● Routing" : "○ Not routing"}
-                      </span>
-                      <button type="button" onClick={() => bridgeRefreshDevices()} style={{ fontSize: 9, color: C.dim, background: "none", border: "none", cursor: "pointer" }}>↻ Refresh</button>
-                    </div>
-                    {bridgeRoutingError && <div style={{ fontSize: 9, color: C.red, marginTop: 2 }}>{bridgeRoutingError}</div>}
-                    {isEngineer && !bridgeFeedActive && sessionId.trim() ? (
-                      <div style={{ fontSize: 9, color: C.dim, marginTop: 4, lineHeight: 1.35 }}>
-                        Route the artist vocal (WebRTC) to the bridge (localhost WebSocket). Set Mac Sound output to whatever your DAW records from. Same session code on both sides; REMOTE IN should show &quot;live&quot; before audio reaches Logic.
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-                <div className="mt-2 border-t pt-2" style={{ borderColor: C.panelBorder, fontSize: 11, color: C.dim }}>
-                  <span style={{ color: bridgeStatusColor }}>• {bridgeStatusLabel}</span>
-                  <span style={{ color: C.dim }}> · Artist: </span>
-                  <span style={{ color: C.text }}>{bridgeArtistLabel}</span>
-                  <span style={{ color: C.dim }}> · Feed </span>
-                  <span style={{ color: bridgeFeedActive ? C.green : C.dim }}>{bridgeFeedActive ? "Active" : "Inactive"}</span>
-                </div>
-              </div>
-            ) : null}
-            {isEngineer ? (
-              <div className="mt-3">
-                <EngineerBridgeDiagnostics stats={engineerRelayStats} />
-              </div>
-            ) : null}
-            {isArtist ? (
-              <div className="mt-4 border-t pt-3" style={{ borderColor: C.panelBorder }}>
-                <ArtistBridgePanel
-                  stats={artistBridgeStats}
-                  remoteEngineerConnected={hasRemoteAudio || !!live.engineerJoined}
-                />
-              </div>
-            ) : null}
-          </Panel>
-
-          {/* ── VOCAL TAKE WAVEFORM (compact, same height as mute/talk/settings) ── */}
-          <Panel accent={C.acCyan} className={`${isMobile ? "" : "col-span-2"} flex items-center gap-3 px-3 py-2`}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: C.text, whiteSpace: "nowrap" }}>Jay&apos;s Vocal Take 4 — {vocalTakeTitle}</span>
-            <Inset className="flex-1 overflow-hidden rounded-[3px] p-0.5">
-              <Waveform recording={recording} takeCaptured={takeCaptured} />
-            </Inset>
-            <span style={{ color: C.dim, fontSize: 13 }}>▐▐</span>
-          </Panel>
-
-          {/* ── Artist Extension Request (Desktop) ── */}
-          {isArtist && hasBooking && phase === "live" && (
-            <Panel accent={C.acOrange} className="col-span-3 flex items-center gap-3 px-4 py-2">
-              <span style={{ fontSize: 12, fontWeight: 600, color: C.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>REQUEST MORE TIME</span>
-              {booking?.pendingExtension ? (
-                <span style={{ color: C.yellow, fontSize: 12 }}>⏳ Waiting for engineer to approve +{booking.pendingExtension.minutes} min...</span>
-              ) : (
-                <div className="flex gap-2">
-                  {([15, 30, 60] as const).map((mins) => (
-                    <button key={mins} onClick={() => requestExtension(mins)} className="rounded-lg px-4 py-1.5 text-[12px] font-bold" style={{
-                      background: "linear-gradient(180deg, #f59e0b 0%, #b45309 100%)",
-                      color: "#fff", border: "1px solid rgba(245,158,11,0.5)",
-                    }}>+{mins} min</button>
-                  ))}
-                </div>
-              )}
-              <div className="ml-auto flex gap-2">
-                {isEngineer && (
-                  <button onClick={handleEngineerMarkComplete} className="rounded-lg px-4 py-1.5 text-[12px] font-bold" style={{
-                    background: "linear-gradient(180deg, #4ade60 0%, #22a838 100%)",
-                    color: "#fff", border: "1px solid rgba(74,222,96,0.5)",
-                  }}>✅ Mark Complete</button>
-                )}
-                {isArtist && (
-                  <button onClick={handleArtistConfirmComplete} className="rounded-lg px-4 py-1.5 text-[12px] font-bold" style={{
-                    background: "linear-gradient(180deg, #4ade60 0%, #22a838 100%)",
-                    color: "#fff", border: "1px solid rgba(74,222,96,0.5)",
-                  }}>✅ Confirm Complete</button>
-                )}
-              </div>
-            </Panel>
-          )}
-
-          {/* ── Desktop: Session Complete Bar ── */}
-          {hasBooking && !isArtist && (
-            <Panel accent={C.acGreen} className="col-span-3 flex items-center justify-between px-4 py-2">
-              <span style={{ fontSize: 12, fontWeight: 600, color: C.label }}>SESSION ACTIONS</span>
-              <button onClick={handleEngineerMarkComplete} className="rounded-lg px-5 py-2 text-[12px] font-bold" style={{
-                background: "linear-gradient(180deg, #4ade60 0%, #22a838 100%)",
-                color: "#fff", border: "1px solid rgba(74,222,96,0.5)",
-              }}>✅ Mark Session Complete</button>
-            </Panel>
-          )}
-
-          {/* ── BOTTOM: TRANSPORT BAR (full width, single long card) ── */}
-          <Panel accent={C.acPurple} className="col-span-3 flex items-center gap-2 px-3 py-2">
-            <TBtn sym="▌▌" label="Punch In" disabled={!isEngineer} />
-            <TBtn sym="<<" label="Rewind" disabled={!isEngineer} />
-            <TBtn sym="▶▶" label="Forward" disabled={!isEngineer} />
-            <div className="ml-2 flex items-center gap-2 rounded-[3px] px-5 py-2 text-[15px] font-bold" style={{
-              background: recording ? `linear-gradient(180deg, #4a1a1a 0%, #2a0e0e 100%)` : armed ? `linear-gradient(180deg, #3a2a0a 0%, #2a1f08 100%)` : `linear-gradient(180deg, ${C.panelLight} 0%, ${C.panelDark} 100%)`,
-              border: `1px solid ${recording ? "#6a2222" : armed ? "#6a5a22" : C.panelBorder}`, minWidth: 240, justifyContent: "center",
-            }}>
-              <span className={recording ? "animate-pulse" : ""} style={{ color: recording ? C.red : armed ? C.yellow : C.dim }}>●</span>
-              <span style={{ color: recording ? C.red : armed ? C.yellow : C.dim }}>REC</span>
-              <span style={{ color: recording ? C.red : armed ? C.yellow : takeCaptured ? C.text : C.dim }}>
-                {recording ? "● RECORDING..." : armed ? "● ARMED — READY" : takeCaptured ? "● TAKE SAVED" : ""}
-              </span>
-            </div>
-            <div className="ml-auto flex items-center gap-3">
-              <div className="flex gap-[3px] rounded-[3px] px-1.5 py-1" style={{ background: C.inset, border: `1px solid ${C.insetBorder}` }}>
-                <span className="rounded-[1px]" style={{ width: 8, height: 12, background: autoUpload ? C.green : C.dim }} />
-                <span className="rounded-[1px]" style={{ width: 8, height: 12, background: autoUpload ? C.green : C.dim }} />
-                <span className="rounded-[1px]" style={{ width: 8, height: 12, background: autoUpload ? C.yellow : C.dim }} />
-                <span className="rounded-[1px]" style={{ width: 8, height: 12, background: C.dim }} />
-              </div>
-              <span style={{ fontSize: 11, color: C.label, letterSpacing: "0.06em", textTransform: "uppercase" }}>AUTO UPLOAD:</span>
-              <button onPointerDown={(e) => { e.preventDefault(); setAutoUpload(!autoUpload); }} style={{ fontSize: 11, fontWeight: 700, color: autoUpload ? C.green : C.red, cursor: "pointer", background: "none", border: "none" }}>
-                {autoUpload ? "ON ▶" : "OFF ■"}
-              </button>
-            </div>
-          </Panel>
-            </>
-          )}
+        {/* Footer */}
+        <div
+          className="flex items-center justify-center py-2 text-[11px] font-semibold tracking-[0.2em]"
+          style={{ background: "#06090d", color: C.dim, borderTop: `1px solid ${C.panelEdge}` }}
+        >
+          W.STUDIO · slot {artistSlot - 1}
         </div>
       </div>
 
-      <ExtensionApprovalDialog
-        open={extensionModalOpen}
-        onOpenChange={setExtensionModalOpen}
-        pending={pendingExtension}
-        rates={sessionRates}
-        onApprove={approveExtension}
-        onDecline={declineExtension}
-      />
-
-      {/* ─── Expanded video overlays ─── */}
-      {expandedPanel === "artist" && (
-        <ExpandedVideoOverlay
-          stream={artistStream}
-          mirrored={artistMirrored}
-          label="Artist View"
-          audioMuted={isArtist || isEngineer}
-          volume={isEngineer ? 0 : 1}
-          onClose={() => setExpandedPanel(null)}
-        />
-      )}
-      {expandedPanel === "engineer" && (
-        <ExpandedVideoOverlay
-          stream={engineerStream}
-          mirrored={engineerMirrored}
-          label="Engineer View"
-          screenShareStream={collaborationShareActive ? screenShareViewStream : null}
-          audioMuted={isEngineer}
-          volume={isArtist ? 1 : remoteTileVolume}
-          onClose={() => setExpandedPanel(null)}
-        />
-      )}
-      {expandedPanel === "screen" && (
-        <ExpandedVideoOverlay
-          stream={screenShareViewStream}
-          label="Screen Share — DAW View"
-          audioMuted={isEngineer}
-          volume={isArtist ? 1 : 1}
-          onClose={() => setExpandedPanel(null)}
-        />
+      {/* Note for engineer about audio path */}
+      {isEngineer && (
+        <p className="mt-4 max-w-[640px] text-center text-[11px]" style={{ color: C.dim }}>
+          Browser playback is intentionally silent. Artist mic is routed to the W.STUDIO AU plugin on
+          your Mac (127.0.0.1:47999). Use Logic + the plugin to monitor, mute, gain, and talk.
+        </p>
       )}
     </div>
   );
