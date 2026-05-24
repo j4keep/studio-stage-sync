@@ -868,6 +868,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
   // Hard cleanup: stop all tracks when provider unmounts (user navigates away)
   useEffect(() => {
     return () => {
+      cleanupEngineerTalkback();
       stopLocalMedia(false);
       stopScreenPreview(false);
       if (pcRef.current) {
@@ -879,7 +880,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       inboundStreamRef.current = null;
       pendingIceRef.current = [];
     };
-  }, [stopLocalMedia, stopScreenPreview]);
+  }, [cleanupEngineerTalkback, stopLocalMedia, stopScreenPreview]);
 
   useEffect(() => {
     if (!sessionId.trim() || !role || !localStream) {
