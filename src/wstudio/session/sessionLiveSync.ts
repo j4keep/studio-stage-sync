@@ -54,6 +54,7 @@ export function defaultLiveState(): SessionLiveState {
     artistJoined: false,
     engineerJoined: false,
     remoteArtistLabel: "",
+    artistSlot: 0,
     playing: false,
     recordArmed: false,
     takeCapturedThisSession: false,
