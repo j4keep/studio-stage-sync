@@ -17,6 +17,7 @@ import {
   type RtcSignalRole,
 } from "./realtimeRtcSignaling";
 import { WSTUDIO_DAW_VOCAL_IN_1, WSTUDIO_DAW_VOCAL_IN_2 } from "./dawRouting";
+import { useEngineerBridgeRelay, type EngineerBridgeRelayStats } from "../bridge/useEngineerBridgeRelay";
 
 const ICE_SERVERS: RTCIceServer[] = [{ urls: "stun:stun.l.google.com:19302" }];
 
@@ -118,6 +119,8 @@ export type StudioMediaContextValue = {
   remoteMicLevel: number;
   /** Live inbound audio track from peer (for UI labels) */
   hasRemoteAudio: boolean;
+  /** Engineer-only persistent artist → AU plugin relay; stays alive across W.STUDIO screens. */
+  engineerRelayStats: EngineerBridgeRelayStats;
 };
 
 const Ctx = createContext<StudioMediaContextValue | null>(null);
@@ -880,6 +883,12 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     });
   }, [localMicLevel, remoteMicLevel, muted, localStream]);
 
+  const engineerRelayStats = useEngineerBridgeRelay(
+    role === "engineer" ? remoteStream ?? null : null,
+    0,
+    role === "engineer",
+  );
+
   // Hard cleanup: stop all tracks when provider unmounts (user navigates away)
   useEffect(() => {
     return () => {
@@ -1282,6 +1291,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       localTalkbackTxLevel,
       remoteMicLevel,
       hasRemoteAudio,
+      engineerRelayStats,
     }),
     [
       localStream,
@@ -1309,6 +1319,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       localTalkbackTxLevel,
       remoteMicLevel,
       hasRemoteAudio,
+      engineerRelayStats,
     ],
   );
 

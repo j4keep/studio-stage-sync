@@ -21,8 +21,9 @@ import { useEffect, useRef, useState } from "react";
  * status, last fetch error.
  */
 const BRIDGE_URL = (slot: number) => `http://127.0.0.1:47999/artist-audio?slot=${slot}`;
-const PACKET_SAMPLES = 512; // ~10.7ms @ 48k
-const MAX_INFLIGHT = 8;
+const PACKET_SAMPLES = 2048; // ~42.7ms @ 48k; keeps the local plugin HTTP server stable
+const MAX_INFLIGHT = 1;
+const RECENT_OK_MS = 5000;
 
 export type EngineerRelayState = "DISCONNECTED" | "CONNECTING" | "CONNECTED";
 
@@ -109,6 +110,10 @@ export function useEngineerBridgeRelay(
     const Ctx: typeof AudioContext =
       (window as any).AudioContext || (window as any).webkitAudioContext;
     const ctx = new Ctx();
+    const wakeRelay = () => {
+      if (ctx.state !== "closed") void ctx.resume().catch(() => {});
+      if (sinkEl.paused) void sinkEl.play().catch(() => {});
+    };
     void ctx.resume().catch(() => {});
 
     // Chrome/WebKit quirk: a remote WebRTC MediaStreamTrack does NOT produce
@@ -129,6 +134,12 @@ export function useEngineerBridgeRelay(
     sinkEl.autoplay = true;
     (sinkEl as any).playsInline = true;
     void sinkEl.play().catch(() => {});
+
+    window.addEventListener("focus", wakeRelay);
+    window.addEventListener("pageshow", wakeRelay);
+    window.addEventListener("pointerdown", wakeRelay, { passive: true });
+    window.addEventListener("keydown", wakeRelay);
+    document.addEventListener("visibilitychange", wakeRelay);
 
     const src = ctx.createMediaStreamSource(trackStream);
     const node = ctx.createScriptProcessor(PACKET_SAMPLES, 1, 1);
@@ -183,7 +194,6 @@ export function useEngineerBridgeRelay(
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body,
-        keepalive: true,
         cache: "no-store",
         mode: "cors",
       })
@@ -218,9 +228,9 @@ export function useEngineerBridgeRelay(
     const tick = window.setInterval(() => {
       if (cancelled) return;
       const now = performance.now();
-      const okRecently = lastOkAtRef.current > 0 && now - lastOkAtRef.current < 1500;
+      const okRecently = lastOkAtRef.current > 0 && now - lastOkAtRef.current < RECENT_OK_MS;
       const state: EngineerRelayState =
-        consecutiveFailRef.current >= 3 && !okRecently
+        consecutiveFailRef.current >= 8 && !okRecently
           ? "DISCONNECTED"
           : okRecently
             ? "CONNECTED"
@@ -248,6 +258,11 @@ export function useEngineerBridgeRelay(
       try { node.disconnect(); } catch {}
       try { muteSink.disconnect(); } catch {}
       try { sinkEl.pause(); sinkEl.srcObject = null; } catch {}
+      window.removeEventListener("focus", wakeRelay);
+      window.removeEventListener("pageshow", wakeRelay);
+      window.removeEventListener("pointerdown", wakeRelay);
+      window.removeEventListener("keydown", wakeRelay);
+      document.removeEventListener("visibilitychange", wakeRelay);
       void ctx.close().catch(() => {});
       inflightRef.current = 0;
       announcedRef.current = false;
