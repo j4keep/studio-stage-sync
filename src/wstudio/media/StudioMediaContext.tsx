@@ -118,7 +118,7 @@ const Ctx = createContext<StudioMediaContextValue | null>(null);
 const DEBUG_AUDIO_TAG = "[W.Studio audio]";
 
 export function StudioMediaProvider({ children }: { children: ReactNode }) {
-  const { sessionId, role, muted, live, screenSharing, toggleScreenShare } = useSession();
+  const { sessionId, role, muted, live, talkbackHeld, screenSharing, toggleScreenShare } = useSession();
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [localMicMonitorStream, setLocalMicMonitorStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
@@ -165,6 +165,10 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
   const dawReturnStreamRef = useRef<MediaStream | null>(null);
   const dawReturnRafRef = useRef(0);
   const dawReturnSenderRef = useRef<RTCRtpSender | null>(null);
+  const engineerTalkbackTransceiverRef = useRef<RTCRtpTransceiver | null>(null);
+  const engineerTalkbackStreamRef = useRef<MediaStream | null>(null);
+  const engineerTalkbackCtxRef = useRef<AudioContext | null>(null);
+  const engineerTalkbackRafRef = useRef(0);
   const localStatsEnergyRef = useRef<AudioEnergySnapshot | null>(null);
   const remoteStatsEnergyRef = useRef<AudioEnergySnapshot | null>(null);
 
