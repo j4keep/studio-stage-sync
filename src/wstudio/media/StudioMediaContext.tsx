@@ -1291,6 +1291,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       localTalkbackTxLevel,
       remoteMicLevel,
       hasRemoteAudio,
+      engineerRelayStats,
     }),
     [
       localStream,
@@ -1318,6 +1319,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       localTalkbackTxLevel,
       remoteMicLevel,
       hasRemoteAudio,
+      engineerRelayStats,
     ],
   );
 
