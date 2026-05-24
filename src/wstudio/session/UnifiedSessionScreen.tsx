@@ -177,16 +177,17 @@ export default function UnifiedSessionScreen() {
   //  - Engineer: AU plugin relay reports CONNECTED.
   const micLive = !!localStream && localStream.getAudioTracks().some((t) => t.readyState === "live");
   const connected = isEngineer
-    ? engineerRelayStats?.state === "CONNECTED"
+    ? armed || engineerRelayStats?.state === "CONNECTED"
     : isArtist
       ? armed && micLive && (engineerHost.trim() === "" ? true : artistBridgeStats.state === "CONNECTED")
       : connection === "connected" && hasRemoteAudio;
 
   const statusLabel = useMemo(() => {
     if (isEngineer) {
+      if (!armed) return "Tap to go LIVE";
       if (engineerRelayStats?.state === "CONNECTED") return "Plugin Connected";
       if (engineerRelayStats?.state === "CONNECTING") return "Connecting to Plugin…";
-      return "Waiting for Plugin";
+      return "Live — waiting for plugin packets";
     }
     if (isArtist) {
       if (!armed) return "Tap CONNECT to go LIVE";
@@ -216,7 +217,7 @@ export default function UnifiedSessionScreen() {
   };
 
   const handleLiveTap = () => {
-    if (!isArtist) return;
+    if (!isArtist && !isEngineer) return;
     setArmed((a) => !a);
   };
 
@@ -310,17 +311,17 @@ export default function UnifiedSessionScreen() {
             <LiveOrb
               live={connected}
               size={150}
-              onClick={isArtist ? handleLiveTap : undefined}
-              disabled={isEngineer}
+              onClick={isArtist || isEngineer ? handleLiveTap : undefined}
+              disabled={false}
               label={
-                isArtist
-                  ? armed
-                    ? connected
-                      ? "LIVE"
-                      : "ARMED"
-                    : "CONNECT"
-                  : connected
+                armed
+                  ? connected
                     ? "LIVE"
+                    : isArtist
+                      ? "ARMED"
+                      : "LIVE"
+                  : isArtist
+                    ? "CONNECT"
                     : "OFF"
               }
             />
