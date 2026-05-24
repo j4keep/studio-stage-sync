@@ -556,7 +556,7 @@ export default function UnifiedSessionScreen() {
                 </span>
                 {engineerRelayStats && (
                   <span>
-                    pkts {engineerRelayStats.packetsSent ?? 0} · fail {engineerRelayStats.packetsFailed ?? 0}
+                    pkts {engineerRelayStats.packetsPosted ?? 0} · fail {engineerRelayStats.packetsFailed ?? 0}
                   </span>
                 )}
               </>
