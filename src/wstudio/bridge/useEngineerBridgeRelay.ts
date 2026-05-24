@@ -120,8 +120,6 @@ export function useEngineerBridgeRelay(
 
     setStats((s) => ({ ...s, enabled: true, hasRemoteAudio: true, state: "CONNECTING", targetUrl }));
 
-    const INPUT_GAIN = 8.0;
-
     node.onaudioprocess = (ev) => {
       if (cancelled) return;
       const ch = ev.inputBuffer.getChannelData(0);
@@ -129,9 +127,7 @@ export function useEngineerBridgeRelay(
       const samples = new Array(ch.length);
       let sumSq = 0;
       for (let i = 0; i < ch.length; i++) {
-        let s = ch[i] * INPUT_GAIN;
-        if (s > 1) s = 1;
-        else if (s < -1) s = -1;
+        const s = ch[i];
         samples[i] = s;
         sumSq += s * s;
       }
