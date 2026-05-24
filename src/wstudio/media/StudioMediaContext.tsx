@@ -255,11 +255,11 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
         /* ignore */
       }
     }
-    setLocalMicMonitorStream(roleRef.current === "artist" && rawMicAudioTrackRef.current
-      ? new MediaStream([rawMicAudioTrackRef.current])
-      : null);
-    setLocalMicLevel(0);
-    setLocalTalkbackTxLevel(0);
+    if (roleRef.current === "engineer") {
+      setLocalMicMonitorStream(null);
+      setLocalMicLevel(0);
+      setLocalTalkbackTxLevel(0);
+    }
   }, []);
 
   const applyMuteAndPttToGraph = useCallback(() => {
