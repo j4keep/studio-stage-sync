@@ -21,7 +21,6 @@ import { copyAccessTokenForPlugin } from "../lib/copyPluginAccessToken";
 import { useLocalBridgePoll } from "../bridge/useLocalBridgePoll";
 import { useArtistMicBridge } from "../bridge/useArtistMicBridge";
 import { ArtistBridgePanel } from "../bridge/ArtistBridgePanel";
-import { useEngineerBridgeRelay } from "../bridge/useEngineerBridgeRelay";
 import { EngineerBridgeDiagnostics } from "../bridge/EngineerBridgeDiagnostics";
 
 const canScreenShare = typeof navigator !== "undefined" && !!navigator.mediaDevices?.getDisplayMedia;
@@ -506,6 +505,7 @@ export default function UnifiedSessionScreen() {
     audioInputDevices,
     selectedMicDeviceId,
     setSelectedMicDeviceId,
+    engineerRelayStats,
   } = useStudioMedia();
 
   const {
@@ -605,12 +605,6 @@ export default function UnifiedSessionScreen() {
     level: Math.max(artistBridgeStatsRaw.level, localMicLevel, localTalkbackTxLevel),
     sending: artistBridgeStatsRaw.sending || (!muted && !!(localMicMonitorStream ?? localStream)),
   };
-  /** Engineer-only: tap inbound remote artist audio (WebRTC) and POST to local plugin bridge (127.0.0.1). */
-  const engineerRelayStats = useEngineerBridgeRelay(
-    isEngineer ? remoteStream ?? null : null,
-    0,
-    isEngineer,
-  );
   /** Bridge status derives from local-bridge HTTP poll OR audio routing state. */
   const bridgeStatusLabel = !isEngineer
     ? ""
