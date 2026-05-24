@@ -360,14 +360,8 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       }
 
       const preferredAttempts: MediaStreamConstraints[] = [
-        {
-          video: { facingMode: { ideal: "user" } },
-          audio: { ...sessionAudioConstraints },
-        },
-        {
-          video: true,
-          audio: { ...sessionAudioConstraints },
-        },
+        { video: { facingMode: { ideal: "user" } }, audio: false },
+        { video: true, audio: false },
       ];
 
       for (const constraints of preferredAttempts) {
@@ -388,14 +382,8 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
         ],
         "video",
       );
-      const audioOnly = await tryOptionalCapture(
-        [{ video: false, audio: { ...sessionAudioConstraints } }],
-        "audio",
-      );
-
       const recoveredTracks = [
         ...(videoOnly?.getTracks() ?? []),
-        ...(audioOnly?.getTracks() ?? []),
       ];
 
       if (recoveredTracks.length > 0) {
@@ -406,9 +394,8 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
         return new MediaStream(recoveredTracks);
       }
 
-      throw lastError instanceof Error
-        ? lastError
-        : new Error("Could not access camera or microphone");
+      console.warn(DEBUG_AUDIO_TAG, "Engineer camera unavailable; continuing without opening microphone", lastError);
+      return new MediaStream();
     };
 
     const tickLocalMeter = (analyser: AnalyserNode) => {
