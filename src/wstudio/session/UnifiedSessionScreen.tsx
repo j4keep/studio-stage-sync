@@ -302,19 +302,19 @@ export default function UnifiedSessionScreen() {
   //  - Artist: WebRTC connection state
   //  - Engineer: persistent relay (artist → AU plugin) reports CONNECTED when packets flow
   const connected = isEngineer
-    ? engineerRelayStats?.connection === "CONNECTED"
+    ? engineerRelayStats?.state === "CONNECTED"
     : connection === "connected" && hasRemoteAudio;
 
   const statusLabel = useMemo(() => {
     if (isEngineer) {
-      if (engineerRelayStats?.connection === "CONNECTED") return "Plugin Connected";
-      if (engineerRelayStats?.connection === "CONNECTING") return "Connecting to Plugin…";
+      if (engineerRelayStats?.state === "CONNECTED") return "Plugin Connected";
+      if (engineerRelayStats?.state === "CONNECTING") return "Connecting to Plugin…";
       return "Waiting for Plugin";
     }
     if (connection === "connected") return "Session Connected";
     if (connection === "connecting") return "Connecting…";
     return "Disconnected";
-  }, [isEngineer, engineerRelayStats?.connection, connection]);
+  }, [isEngineer, engineerRelayStats?.state, connection]);
 
   const handleEnd = () => {
     leaveSession();
