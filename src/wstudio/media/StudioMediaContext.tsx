@@ -35,9 +35,16 @@ function toSignalRole(role: Role): RtcSignalRole | null {
 }
 
 type AudioEnergySnapshot = { energy: number; duration: number };
+type AudioStatsEntry = RTCStats & {
+  audioLevel?: number;
+  totalAudioEnergy?: number;
+  totalSamplesDuration?: number;
+  kind?: string;
+};
+type WebkitAudioWindow = Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext };
 
 function readRtcAudioLevel(
-  entry: any,
+  entry: AudioStatsEntry,
   previous: AudioEnergySnapshot | null,
   scale: number,
 ): { level: number | null; snapshot: AudioEnergySnapshot | null } {
