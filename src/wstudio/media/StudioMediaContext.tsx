@@ -151,6 +151,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
   const toggleScreenShareRef = useRef(toggleScreenShare);
   const screenPreviewStreamRef = useRef<MediaStream | null>(null);
   const mutedRef = useRef(muted);
+  const talkbackHeldRef = useRef(talkbackHeld);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const gainNodeRef = useRef<GainNode | null>(null);
@@ -175,6 +176,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
   roleRef.current = role;
   toggleScreenShareRef.current = toggleScreenShare;
   mutedRef.current = muted;
+  talkbackHeldRef.current = talkbackHeld;
 
   const clearMediaError = useCallback(() => setMediaError(null), []);
   const restartLocalMedia = useCallback(() => {
