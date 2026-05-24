@@ -146,8 +146,8 @@ export default function UnifiedSessionScreen() {
 
   const [artistSlot, setArtistSlot] = useState(1);
   const [engineerHost, setEngineerHost] = useState<string>(() => {
-    if (typeof window === "undefined") return "";
-    return window.localStorage.getItem(ENGINEER_HOST_KEY) ?? "";
+    if (typeof window === "undefined") return "192.168.12.155";
+    return window.localStorage.getItem(ENGINEER_HOST_KEY) ?? "192.168.12.155";
   });
   const [armed, setArmed] = useState(false);
 
@@ -364,7 +364,7 @@ export default function UnifiedSessionScreen() {
                     type="text"
                     value={engineerHost}
                     onChange={(e) => setEngineerHost(e.target.value)}
-                    placeholder="192.168.1.50"
+                    placeholder="192.168.12.155"
                     className="rounded-[4px] px-2 py-1.5 text-[12px] font-semibold focus:outline-none"
                     style={{ background: C.inset, color: C.text, border: `1px solid ${C.insetEdge}` }}
                   />
