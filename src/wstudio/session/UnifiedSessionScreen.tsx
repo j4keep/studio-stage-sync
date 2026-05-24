@@ -820,8 +820,8 @@ export default function UnifiedSessionScreen() {
                   {/* Artist Video */}
                   <Panel accent={C.acMagenta} className="relative overflow-hidden" style={{ aspectRatio: "16/9" }}>
                     {artistStream ? (
-                      {/* Engineer monitors artist via the AU plugin, not the browser tile.
-                          Muting here prevents doubled vocals (browser + plugin). */}
+                      // Engineer monitors artist via the AU plugin, not the browser tile.
+                      // Muting here prevents doubled vocals (browser + plugin output).
                       <VideoFeed stream={artistStream} mirrored={artistMirrored} muted={isArtist || isEngineer} volume={1} />
                     ) : (
                       <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.inset }}>
