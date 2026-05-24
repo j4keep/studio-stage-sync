@@ -1040,7 +1040,9 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       if (track.kind === "audio") localAudioSender = sender;
     }
     if (role === "engineer") {
-      engineerTalkbackTransceiverRef.current = pc.addTransceiver("audio", { direction: "sendonly" });
+      // sendrecv so the artist's audio has an m-line to come back through.
+      // Sender stays track-less (silence) until Talk is held → replaceTrack(mic).
+      engineerTalkbackTransceiverRef.current = pc.addTransceiver("audio", { direction: "sendrecv" });
     } else {
       engineerTalkbackTransceiverRef.current = null;
     }
