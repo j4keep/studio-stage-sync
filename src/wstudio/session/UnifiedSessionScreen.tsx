@@ -879,25 +879,28 @@ export default function UnifiedSessionScreen() {
                   {/* Mute / Talk / Settings row */}
                   <Panel accent={C.acOrange}>
                     <div className="grid grid-cols-3" style={{ borderTop: `1px solid ${C.panelBorder}` }}>
-                      <button onPointerDown={(e) => { e.preventDefault(); toggleMute(); }} className="flex flex-col items-center justify-center gap-1 py-2.5">
+                      <button type="button" onPointerDown={(e) => { e.preventDefault(); toggleMute(); }} className="flex flex-col items-center justify-center gap-1 py-2.5">
                         <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={muted ? C.red : C.label} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                           <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
                           <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
                           <line x1="12" y1="19" x2="12" y2="22" />
                         </svg>
-                        <span style={{ fontSize: 10, color: C.text }}>Mute</span>
+                        <span style={{ fontSize: 10, color: muted ? C.red : C.text, fontWeight: muted ? 700 : 400 }}>{muted ? "MUTED" : "Mute"}</span>
                       </button>
                       <button
-                        onPointerDown={(e) => { e.preventDefault(); beginTalkback(); }}
-                        onPointerUp={(e) => { e.preventDefault(); endTalkback(); }}
-                        onPointerLeave={endTalkback}
-                        onTouchStart={(e) => { e.preventDefault(); beginTalkback(); }}
-                        onTouchEnd={(e) => { e.preventDefault(); endTalkback(); }}
-                        className="flex flex-col items-center justify-center gap-1 py-2.5"
+                        type="button"
+                        disabled={!isEngineer}
+                        onPointerDown={(e) => { if (!isEngineer) return; e.preventDefault(); beginTalkback(); }}
+                        onPointerUp={(e) => { if (!isEngineer) return; e.preventDefault(); endTalkback(); }}
+                        onPointerLeave={() => { if (isEngineer) endTalkback(); }}
+                        onTouchStart={(e) => { if (!isEngineer) return; e.preventDefault(); beginTalkback(); }}
+                        onTouchEnd={(e) => { if (!isEngineer) return; e.preventDefault(); endTalkback(); }}
+                        className="flex flex-col items-center justify-center gap-1 py-2.5 disabled:opacity-40"
                         style={{
                           borderLeft: `1px solid ${C.panelBorder}`,
                           borderRight: `1px solid ${C.panelBorder}`,
                           touchAction: "none",
+                          cursor: isEngineer ? "pointer" : "not-allowed",
                         }}
                       >
                         <div className="flex h-8 w-8 items-center justify-center rounded-full transition-[box-shadow,transform] duration-100" style={{
@@ -1335,20 +1338,22 @@ export default function UnifiedSessionScreen() {
                     <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
                     <line x1="12" y1="19" x2="12" y2="22" />
                   </svg>
-                  <span style={{ fontSize: 11, color: C.text }}>Mute</span>
+                  <span style={{ fontSize: 11, color: muted ? C.red : C.text, fontWeight: muted ? 700 : 400 }}>{muted ? "MUTED" : "Mute"}</span>
                 </button>
                 <button
                   type="button"
-                  onPointerDown={(e) => { e.preventDefault(); beginTalkback(); }}
-                  onPointerUp={endTalkback}
-                  onPointerLeave={endTalkback}
-                  onTouchStart={(e) => { e.preventDefault(); beginTalkback(); }}
-                  onTouchEnd={(e) => { e.preventDefault(); endTalkback(); }}
-                  className="flex flex-col items-center justify-center gap-1.5 py-3"
+                  disabled={!isEngineer}
+                  onPointerDown={(e) => { if (!isEngineer) return; e.preventDefault(); beginTalkback(); }}
+                  onPointerUp={() => { if (isEngineer) endTalkback(); }}
+                  onPointerLeave={() => { if (isEngineer) endTalkback(); }}
+                  onTouchStart={(e) => { if (!isEngineer) return; e.preventDefault(); beginTalkback(); }}
+                  onTouchEnd={(e) => { if (!isEngineer) return; e.preventDefault(); endTalkback(); }}
+                  className="flex flex-col items-center justify-center gap-1.5 py-3 disabled:opacity-40"
                   style={{
                     borderLeft: `1px solid ${C.panelBorder}`,
                     borderRight: `1px solid ${C.panelBorder}`,
                     touchAction: "none",
+                    cursor: isEngineer ? "pointer" : "not-allowed",
                     outline: peerPtt && !talkbackHeld ? `1px solid ${C.acCyan}` : undefined,
                     outlineOffset: 2,
                   }}
@@ -1368,7 +1373,7 @@ export default function UnifiedSessionScreen() {
                   >
                     <span style={{ color: C.white, fontSize: 14 }}>{"\u25B6"}</span>
                   </div>
-                  <span style={{ fontSize: 11, color: C.text }}>Talk</span>
+                  <span style={{ fontSize: 11, color: talkbackHeld ? C.blue : C.text, fontWeight: talkbackHeld ? 700 : 400 }}>{talkbackHeld ? "TALKING" : "Talk"}</span>
                 </button>
                 <button className="flex flex-col items-center justify-center gap-1.5 py-3">
                   <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={C.label} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">

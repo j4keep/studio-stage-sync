@@ -199,17 +199,19 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [talkbackHeld, role, sessionId]);
 
   const beginTalkback = useCallback(() => {
+    // Talk button is engineer-only (artist has its mic always live; only mute gates it).
+    if (role !== "engineer") return;
     if (talkbackHeld) return;
     setTalkbackHeld(true);
-    if (role === "engineer") writeLive(sessionId, { engineerPtt: true });
-    if (role === "artist") writeLive(sessionId, { artistPtt: true });
+    writeLive(sessionId, { engineerPtt: true });
   }, [talkbackHeld, role, sessionId]);
 
   const endTalkback = useCallback(() => {
+    if (role !== "engineer") return;
     setTalkbackHeld(false);
-    if (role === "engineer") writeLive(sessionId, { engineerPtt: false });
-    if (role === "artist") writeLive(sessionId, { artistPtt: false });
+    writeLive(sessionId, { engineerPtt: false });
   }, [role, sessionId]);
+
 
   const startDemoSessionClock = useCallback(() => {
     setDemoClock((c) => ({
