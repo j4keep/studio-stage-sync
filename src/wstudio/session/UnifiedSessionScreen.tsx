@@ -311,17 +311,17 @@ export default function UnifiedSessionScreen() {
             <LiveOrb
               live={connected}
               size={150}
-              onClick={isArtist ? handleLiveTap : undefined}
-              disabled={isEngineer}
+              onClick={isArtist || isEngineer ? handleLiveTap : undefined}
+              disabled={false}
               label={
-                isArtist
-                  ? armed
-                    ? connected
-                      ? "LIVE"
-                      : "ARMED"
-                    : "CONNECT"
-                  : connected
+                armed
+                  ? connected
                     ? "LIVE"
+                    : isArtist
+                      ? "ARMED"
+                      : "LIVE"
+                  : isArtist
+                    ? "CONNECT"
                     : "OFF"
               }
             />
