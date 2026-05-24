@@ -887,22 +887,20 @@ export default function UnifiedSessionScreen() {
                           <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
                           <line x1="12" y1="19" x2="12" y2="22" />
                         </svg>
-                        <span style={{ fontSize: 10, color: muted ? C.red : C.text, fontWeight: muted ? 700 : 400 }}>{muted ? "MUTED" : "Mute"}</span>
+                        <span style={{ fontSize: 10, color: C.text }}>Mute</span>
                       </button>
                       <button
                         type="button"
-                        disabled={!isEngineer}
-                        onPointerDown={(e) => { if (!isEngineer) return; e.preventDefault(); beginTalkback(); }}
-                        onPointerUp={(e) => { if (!isEngineer) return; e.preventDefault(); endTalkback(); }}
-                        onPointerLeave={() => { if (isEngineer) endTalkback(); }}
-                        onTouchStart={(e) => { if (!isEngineer) return; e.preventDefault(); beginTalkback(); }}
-                        onTouchEnd={(e) => { if (!isEngineer) return; e.preventDefault(); endTalkback(); }}
-                        className="flex flex-col items-center justify-center gap-1 py-2.5 disabled:opacity-40"
+                        onPointerDown={(e) => { e.preventDefault(); beginTalkback(); }}
+                        onPointerUp={(e) => { e.preventDefault(); endTalkback(); }}
+                        onPointerLeave={() => endTalkback()}
+                        onTouchStart={(e) => { e.preventDefault(); beginTalkback(); }}
+                        onTouchEnd={(e) => { e.preventDefault(); endTalkback(); }}
+                        className="flex flex-col items-center justify-center gap-1 py-2.5"
                         style={{
                           borderLeft: `1px solid ${C.panelBorder}`,
                           borderRight: `1px solid ${C.panelBorder}`,
                           touchAction: "none",
-                          cursor: isEngineer ? "pointer" : "not-allowed",
                         }}
                       >
                         <div className="flex h-8 w-8 items-center justify-center rounded-full transition-[box-shadow,transform] duration-100" style={{
