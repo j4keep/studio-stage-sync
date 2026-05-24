@@ -422,6 +422,30 @@ export function useBridgeOutputDevice(bridgeStream: MediaStream | null) {
     localWsBridgeRetryCountRef.current = 0;
     stopPluginGraph();
 
+    // For the W.STUDIO Desktop Bridge / Plugin virtual sinks, the engineer
+    // must NOT have any audible <audio> element playing the remote artist
+    // stream — audio reaches the AU plugin exclusively via the silent PCM
+    // POST tap in useEngineerBridgeRelay (http://127.0.0.1:47999/artist-audio).
+    // Creating an Audio element here (even at volume 0 / muted) re-introduces
+    // the browser playback path, can mask plugin controls, and on some Chrome
+    // builds surfaces "Failed to fetch" / sink errors when falling back to
+    // "default". Skip element creation entirely for these virtual sinks.
+    const isLocalBridgeSink =
+      selectedDeviceId === WSTUDIO_DESKTOP_BRIDGE_LOCAL_DEVICE_ID ||
+      selectedDeviceId === WSTUDIO_PLUGIN_LOCAL_DEVICE_ID;
+
+    if (isLocalBridgeSink) {
+      if (audioRef.current) {
+        try { audioRef.current.pause(); } catch { /* ignore */ }
+        audioRef.current.srcObject = null;
+        audioRef.current.muted = true;
+        audioRef.current.volume = 0;
+      }
+      setRouted(true);
+      setRoutingError(null);
+      return () => { /* silent POST path — nothing to tear down here */ };
+    }
+
     let el = audioRef.current;
     if (!el) {
       el = new Audio();
@@ -433,27 +457,11 @@ export function useBridgeOutputDevice(bridgeStream: MediaStream | null) {
     el.srcObject = bridgeStream;
 
     const applySink = async () => {
-      // The "W.STUDIO Desktop Bridge" entry is a virtual ID (not a real
-      // audiooutput) — the actual transport is HTTP loopback handled by
-      // useLocalBridgePoll/useArtistMicBridge. Fall back to the default
-      // sink so setSinkId doesn't reject and surface a red error.
-      const isLocalBridgeSink =
-        selectedDeviceId === WSTUDIO_DESKTOP_BRIDGE_LOCAL_DEVICE_ID ||
-        selectedDeviceId === WSTUDIO_PLUGIN_LOCAL_DEVICE_ID;
-      const sinkId = isLocalBridgeSink ? "default" : selectedDeviceId;
       try {
         if (typeof (el as HTMLAudioElement & { setSinkId?: (id: string) => Promise<void> }).setSinkId === "function") {
-          await (el as HTMLAudioElement & { setSinkId: (id: string) => Promise<void> }).setSinkId(sinkId);
-          // When the selected output is the local plugin / desktop-bridge
-          // virtual entry, audio is delivered to the AU plugin via HTTP
-          // loopback — NOT through speakers. Keep this element silent so
-          // the engineer's live room does not audibly play the artist mic
-          // and mask the AU plugin's own Mute/Gain/Talkback controls. The
-          // remote MediaStream + tracks remain alive (element keeps playing
-          // at volume 0) so meters and the bridge relay continue to receive
-          // samples.
-          el!.volume = isLocalBridgeSink ? 0 : 1;
-          el!.muted = isLocalBridgeSink;
+          await (el as HTMLAudioElement & { setSinkId: (id: string) => Promise<void> }).setSinkId(selectedDeviceId);
+          el!.volume = 1;
+          el!.muted = false;
           setRouted(true);
           setRoutingError(null);
         } else {
