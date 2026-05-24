@@ -128,6 +128,7 @@ export default function UnifiedSessionScreen() {
 
   const {
     localStream,
+    localMicMonitorStream,
     localMicLevel,
     hasRemoteAudio,
     engineerRelayStats,
