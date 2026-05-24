@@ -1338,22 +1338,20 @@ export default function UnifiedSessionScreen() {
                     <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
                     <line x1="12" y1="19" x2="12" y2="22" />
                   </svg>
-                  <span style={{ fontSize: 11, color: muted ? C.red : C.text, fontWeight: muted ? 700 : 400 }}>{muted ? "MUTED" : "Mute"}</span>
+                  <span style={{ fontSize: 11, color: C.text }}>Mute</span>
                 </button>
                 <button
                   type="button"
-                  disabled={!isEngineer}
-                  onPointerDown={(e) => { if (!isEngineer) return; e.preventDefault(); beginTalkback(); }}
-                  onPointerUp={() => { if (isEngineer) endTalkback(); }}
-                  onPointerLeave={() => { if (isEngineer) endTalkback(); }}
-                  onTouchStart={(e) => { if (!isEngineer) return; e.preventDefault(); beginTalkback(); }}
-                  onTouchEnd={(e) => { if (!isEngineer) return; e.preventDefault(); endTalkback(); }}
-                  className="flex flex-col items-center justify-center gap-1.5 py-3 disabled:opacity-40"
+                  onPointerDown={(e) => { e.preventDefault(); beginTalkback(); }}
+                  onPointerUp={() => endTalkback()}
+                  onPointerLeave={() => endTalkback()}
+                  onTouchStart={(e) => { e.preventDefault(); beginTalkback(); }}
+                  onTouchEnd={(e) => { e.preventDefault(); endTalkback(); }}
+                  className="flex flex-col items-center justify-center gap-1.5 py-3"
                   style={{
                     borderLeft: `1px solid ${C.panelBorder}`,
                     borderRight: `1px solid ${C.panelBorder}`,
                     touchAction: "none",
-                    cursor: isEngineer ? "pointer" : "not-allowed",
                     outline: peerPtt && !talkbackHeld ? `1px solid ${C.acCyan}` : undefined,
                     outlineOffset: 2,
                   }}
