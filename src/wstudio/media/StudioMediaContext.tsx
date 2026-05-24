@@ -35,9 +35,16 @@ function toSignalRole(role: Role): RtcSignalRole | null {
 }
 
 type AudioEnergySnapshot = { energy: number; duration: number };
+type AudioStatsEntry = RTCStats & {
+  audioLevel?: number;
+  totalAudioEnergy?: number;
+  totalSamplesDuration?: number;
+  kind?: string;
+};
+type WebkitAudioWindow = Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext };
 
 function readRtcAudioLevel(
-  entry: any,
+  entry: AudioStatsEntry,
   previous: AudioEnergySnapshot | null,
   scale: number,
 ): { level: number | null; snapshot: AudioEnergySnapshot | null } {
@@ -118,7 +125,7 @@ const Ctx = createContext<StudioMediaContextValue | null>(null);
 const DEBUG_AUDIO_TAG = "[W.Studio audio]";
 
 export function StudioMediaProvider({ children }: { children: ReactNode }) {
-  const { sessionId, role, muted, live, screenSharing, toggleScreenShare } = useSession();
+  const { sessionId, role, muted, live, talkbackHeld, screenSharing, toggleScreenShare } = useSession();
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [localMicMonitorStream, setLocalMicMonitorStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
@@ -151,6 +158,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
   const toggleScreenShareRef = useRef(toggleScreenShare);
   const screenPreviewStreamRef = useRef<MediaStream | null>(null);
   const mutedRef = useRef(muted);
+  const talkbackHeldRef = useRef(talkbackHeld);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const gainNodeRef = useRef<GainNode | null>(null);
@@ -165,12 +173,17 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
   const dawReturnStreamRef = useRef<MediaStream | null>(null);
   const dawReturnRafRef = useRef(0);
   const dawReturnSenderRef = useRef<RTCRtpSender | null>(null);
+  const engineerTalkbackTransceiverRef = useRef<RTCRtpTransceiver | null>(null);
+  const engineerTalkbackStreamRef = useRef<MediaStream | null>(null);
+  const engineerTalkbackCtxRef = useRef<AudioContext | null>(null);
+  const engineerTalkbackRafRef = useRef(0);
   const localStatsEnergyRef = useRef<AudioEnergySnapshot | null>(null);
   const remoteStatsEnergyRef = useRef<AudioEnergySnapshot | null>(null);
 
   roleRef.current = role;
   toggleScreenShareRef.current = toggleScreenShare;
   mutedRef.current = muted;
+  talkbackHeldRef.current = talkbackHeld;
 
   const clearMediaError = useCallback(() => setMediaError(null), []);
   const restartLocalMedia = useCallback(() => {
@@ -229,6 +242,32 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     screenPreviewStreamRef.current = null;
     if (updateState) {
       setLocalScreenPreview(null);
+    }
+  }, []);
+
+  const cleanupEngineerTalkback = useCallback(() => {
+    cancelAnimationFrame(engineerTalkbackRafRef.current);
+    engineerTalkbackRafRef.current = 0;
+    stopMediaStream(engineerTalkbackStreamRef.current);
+    engineerTalkbackStreamRef.current = null;
+    try {
+      void engineerTalkbackCtxRef.current?.close();
+    } catch {
+      /* ignore */
+    }
+    engineerTalkbackCtxRef.current = null;
+    const sender = engineerTalkbackTransceiverRef.current?.sender;
+    if (sender) {
+      try {
+        void sender.replaceTrack(null);
+      } catch {
+        /* ignore */
+      }
+    }
+    if (roleRef.current === "engineer") {
+      setLocalMicMonitorStream(null);
+      setLocalMicLevel(0);
+      setLocalTalkbackTxLevel(0);
     }
   }, []);
 
@@ -330,14 +369,8 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       }
 
       const preferredAttempts: MediaStreamConstraints[] = [
-        {
-          video: { facingMode: { ideal: "user" } },
-          audio: { ...sessionAudioConstraints },
-        },
-        {
-          video: true,
-          audio: { ...sessionAudioConstraints },
-        },
+        { video: { facingMode: { ideal: "user" } }, audio: false },
+        { video: true, audio: false },
       ];
 
       for (const constraints of preferredAttempts) {
@@ -358,14 +391,8 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
         ],
         "video",
       );
-      const audioOnly = await tryOptionalCapture(
-        [{ video: false, audio: { ...sessionAudioConstraints } }],
-        "audio",
-      );
-
       const recoveredTracks = [
         ...(videoOnly?.getTracks() ?? []),
-        ...(audioOnly?.getTracks() ?? []),
       ];
 
       if (recoveredTracks.length > 0) {
@@ -376,9 +403,8 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
         return new MediaStream(recoveredTracks);
       }
 
-      throw lastError instanceof Error
-        ? lastError
-        : new Error("Could not access camera or microphone");
+      console.warn(DEBUG_AUDIO_TAG, "Engineer camera unavailable; continuing without opening microphone", lastError);
+      return new MediaStream();
     };
 
     const tickLocalMeter = (analyser: AnalyserNode) => {
@@ -429,11 +455,17 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
         if (!audioTrack) {
           localStreamRef.current = ms;
           setLocalStream(ms);
+          if (roleRef.current === "engineer") {
+            setLocalMicMonitorStream(null);
+            setLocalMicLevel(0);
+            setLocalTalkbackTxLevel(0);
+            setMediaError(null);
+            console.debug(DEBUG_AUDIO_TAG, "Engineer session joined without opening microphone; talkback is push-to-talk only");
+            return;
+          }
           setLocalMicMonitorStream(null);
           setMediaError(
-            roleRef.current === "artist"
-              ? "Microphone is not connected to this session. Tap Enable mic and allow microphone access."
-              : null,
+            "Microphone is not connected to this session. Tap Enable mic and allow microphone access.",
           );
           console.warn(DEBUG_AUDIO_TAG, "No audio track on getUserMedia stream");
           return;
@@ -445,7 +477,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
         const rawMicStream = new MediaStream([audioTrack]);
         setLocalMicMonitorStream(rawMicStream);
 
-        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        const AudioCtx = window.AudioContext || (window as WebkitAudioWindow).webkitAudioContext;
         if (!AudioCtx) {
           throw new Error("This browser does not support live microphone audio.");
         }
@@ -851,6 +883,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
   // Hard cleanup: stop all tracks when provider unmounts (user navigates away)
   useEffect(() => {
     return () => {
+      cleanupEngineerTalkback();
       stopLocalMedia(false);
       stopScreenPreview(false);
       if (pcRef.current) {
@@ -862,7 +895,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       inboundStreamRef.current = null;
       pendingIceRef.current = [];
     };
-  }, [stopLocalMedia, stopScreenPreview]);
+  }, [cleanupEngineerTalkback, stopLocalMedia, stopScreenPreview]);
 
   useEffect(() => {
     if (!sessionId.trim() || !role || !localStream) {
@@ -1006,12 +1039,18 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       const sender = pc.addTrack(track, localStream);
       if (track.kind === "audio") localAudioSender = sender;
     }
+    if (role === "engineer") {
+      engineerTalkbackTransceiverRef.current = pc.addTransceiver("audio", { direction: "sendonly" });
+    } else {
+      engineerTalkbackTransceiverRef.current = null;
+    }
 
     const statsMeterInterval = window.setInterval(() => {
       void pc.getStats().then((report) => {
         report.forEach((entry) => {
-          const stat = entry as any;
+          const stat = entry as AudioStatsEntry;
           if (stat.type === "media-source") {
+            if (roleRef.current === "engineer" && !talkbackHeldRef.current) return;
             const result = readRtcAudioLevel(stat, localStatsEnergyRef.current, 3.5);
             localStatsEnergyRef.current = result.snapshot ?? localStatsEnergyRef.current;
             if (result.level === null) return;
@@ -1074,6 +1113,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       pc.onconnectionstatechange = null;
       pc.close();
       pcRef.current = null;
+      engineerTalkbackTransceiverRef.current = null;
       inboundStreamRef.current = null;
       pendingIceRef.current = [];
       setRemoteStream(null);
@@ -1085,6 +1125,80 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       stopScreenPreview();
     }
   }, [role, stopScreenPreview]);
+
+  useEffect(() => {
+    if (role !== "engineer" || !sessionId.trim() || !talkbackHeld) {
+      cleanupEngineerTalkback();
+      return;
+    }
+
+    let cancelled = false;
+    const scratch = new Float32Array(2048);
+    const talkbackConstraints: MediaTrackConstraints = {
+      echoCancellation: true,
+      noiseSuppression: true,
+      ...(selectedMicDeviceId !== "default" ? { deviceId: { exact: selectedMicDeviceId } } : {}),
+    };
+
+    const startTalkback = async () => {
+      const sender = engineerTalkbackTransceiverRef.current?.sender;
+      if (!sender || pcRef.current?.connectionState === "closed") return;
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: talkbackConstraints });
+        if (cancelled) {
+          stopMediaStream(stream);
+          return;
+        }
+
+        const track = stream.getAudioTracks()[0] ?? null;
+        if (!track) {
+          stopMediaStream(stream);
+          return;
+        }
+
+        engineerTalkbackStreamRef.current = stream;
+        setLocalMicMonitorStream(stream);
+        await sender.replaceTrack(track);
+
+        const AudioCtx = window.AudioContext || (window as WebkitAudioWindow).webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        engineerTalkbackCtxRef.current = ctx;
+        await ctx.resume().catch(() => {});
+        const src = ctx.createMediaStreamSource(new MediaStream([track]));
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 2048;
+        analyser.smoothingTimeConstant = 0.75;
+        src.connect(analyser);
+
+        const tickTalkback = () => {
+          if (cancelled) return;
+          analyser.getFloatTimeDomainData(scratch);
+          let sum = 0;
+          for (let i = 0; i < scratch.length; i++) sum += scratch[i] * scratch[i];
+          const rms = Math.sqrt(sum / scratch.length);
+          const instant = Math.min(1, rms * 5.5);
+          setLocalMicLevel((prev) => prev * 0.82 + instant * 0.18);
+          setLocalTalkbackTxLevel((prev) => prev * 0.82 + instant * 0.18);
+          engineerTalkbackRafRef.current = requestAnimationFrame(tickTalkback);
+        };
+        engineerTalkbackRafRef.current = requestAnimationFrame(tickTalkback);
+      } catch (err) {
+        if (!cancelled) {
+          setMediaError(err instanceof Error ? err.message : "Could not access engineer talkback microphone");
+          cleanupEngineerTalkback();
+        }
+      }
+    };
+
+    void startTalkback();
+
+    return () => {
+      cancelled = true;
+      cleanupEngineerTalkback();
+    };
+  }, [role, sessionId, localStream, talkbackHeld, selectedMicDeviceId, cleanupEngineerTalkback]);
 
   useEffect(() => {
     if (role !== "engineer") {
