@@ -557,7 +557,7 @@ function VideoOverlay({
   const ARTIST_CAPACITY = 12;
   type Tile = { key: string; title: string; subtitle: string; stream: MediaStream | null; mirrored?: boolean; muted: boolean; isHost?: boolean; isArtistSeat?: boolean };
   const tiles: Tile[] = [];
-  tiles.push({
+  const selfTile: Tile = {
     key: "self",
     title: isArtist ? "You (Artist)" : isEngineer ? "You (Engineer · Host)" : "You",
     subtitle: "Local camera",
@@ -566,8 +566,8 @@ function VideoOverlay({
     muted: true,
     isHost: isEngineer,
     isArtistSeat: isArtist,
-  });
-  tiles.push({
+  };
+  const remoteTile: Tile = {
     key: "remote",
     title: isArtist ? "Engineer · Host" : "Artist",
     subtitle: "Remote camera",
@@ -575,7 +575,13 @@ function VideoOverlay({
     muted: true,
     isHost: isArtist,
     isArtistSeat: isEngineer,
-  });
+  };
+  // Engineer (host) always shown first.
+  if (isArtist) {
+    tiles.push(remoteTile, selfTile);
+  } else {
+    tiles.push(selfTile, remoteTile);
+  }
   if (localScreenPreview) {
     tiles.push({
       key: "screen",
@@ -588,7 +594,8 @@ function VideoOverlay({
 
   const artistCount = tiles.filter((t) => t.isArtistSeat).length;
   const placeholderCount = expanded ? Math.max(0, ARTIST_CAPACITY - artistCount) : 0;
-  const cols = expanded ? "grid-cols-2 md:grid-cols-3 lg:grid-cols-4" : "grid-cols-2";
+  // Collapsed nav box shows up to 3 tiles side-by-side at the same size.
+  const cols = expanded ? "grid-cols-2 md:grid-cols-3 lg:grid-cols-4" : "grid-cols-3";
 
   // --- Draggable floating box (only when collapsed) ---
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
@@ -633,7 +640,7 @@ function VideoOverlay({
       className={
         expanded
           ? "fixed inset-0 z-[120] flex flex-col bg-black/95 p-4"
-          : "z-[120] flex w-[340px] max-w-[92vw] flex-col rounded-xl border border-zinc-700 bg-zinc-950/95 p-3 shadow-2xl backdrop-blur"
+          : "z-[120] flex w-[440px] max-w-[94vw] flex-col rounded-xl border border-zinc-700 bg-zinc-950/95 p-3 shadow-2xl backdrop-blur"
       }
     >
       <div
@@ -681,17 +688,17 @@ function VideoOverlay({
       </div>
       <div className={`grid flex-1 gap-2 overflow-auto ${cols}`}>
         {tiles.map((t) => (
-          <div key={t.key} className="relative">
+          <div key={t.key} className="relative aspect-video">
             <VideoPanel
               title={t.title}
               subtitle={t.subtitle}
               stream={t.stream}
               mirrored={t.mirrored}
               videoMuted={t.muted}
-              className={expanded ? "min-h-[180px]" : "min-h-[110px]"}
+              className="absolute inset-0 h-full w-full min-h-0"
             />
             {t.isHost && (
-              <span className="absolute left-1 top-1 rounded bg-cyan-500/90 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-black">
+              <span className="absolute left-1 top-1 z-10 rounded bg-cyan-500/90 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-black">
                 Host
               </span>
             )}
@@ -700,7 +707,7 @@ function VideoOverlay({
         {Array.from({ length: placeholderCount }).map((_, i) => (
           <div
             key={`ph-${i}`}
-            className="flex min-h-[110px] items-center justify-center rounded-xl border border-dashed border-zinc-800 bg-zinc-950/60 text-[10px] uppercase tracking-wider text-zinc-600"
+            className="flex aspect-video items-center justify-center rounded-xl border border-dashed border-zinc-800 bg-zinc-950/60 text-[10px] uppercase tracking-wider text-zinc-600"
           >
             Artist {artistCount + i + 1}
           </div>
