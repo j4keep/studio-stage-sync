@@ -16,7 +16,7 @@
  *
  * Booking, session join, and navigation are untouched.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Power, Radio, LogOut, Mic, MicOff, Activity, Video as VideoIcon, Maximize2, Minimize2, Monitor, X } from "lucide-react";
 import { useSession } from "./SessionContext";
@@ -553,23 +553,28 @@ function VideoOverlay({
   isArtist: boolean;
   isEngineer: boolean;
 }) {
-  // Up to 12 tiles supported. Today: self + remote (+ screenshare preview if present).
-  // Additional remote artist tiles will populate here when multi-peer is wired.
-  const tiles: Array<{ key: string; title: string; subtitle: string; stream: MediaStream | null; mirrored?: boolean; muted: boolean }> = [];
+  // Engineer is the HOST and does NOT count against the 12-artist capacity.
+  const ARTIST_CAPACITY = 12;
+  type Tile = { key: string; title: string; subtitle: string; stream: MediaStream | null; mirrored?: boolean; muted: boolean; isHost?: boolean; isArtistSeat?: boolean };
+  const tiles: Tile[] = [];
   tiles.push({
     key: "self",
-    title: isArtist ? "You (Artist)" : isEngineer ? "You (Engineer)" : "You",
+    title: isArtist ? "You (Artist)" : isEngineer ? "You (Engineer · Host)" : "You",
     subtitle: "Local camera",
     stream: localStream,
     mirrored: true,
     muted: true,
+    isHost: isEngineer,
+    isArtistSeat: isArtist,
   });
   tiles.push({
     key: "remote",
-    title: isArtist ? "Engineer" : "Artist",
+    title: isArtist ? "Engineer · Host" : "Artist",
     subtitle: "Remote camera",
     stream: remoteStream,
-    muted: true, // audio goes through the audio pipeline, not the video tile
+    muted: true,
+    isHost: isArtist,
+    isArtistSeat: isEngineer,
   });
   if (localScreenPreview) {
     tiles.push({
@@ -580,27 +585,71 @@ function VideoOverlay({
       muted: true,
     });
   }
-  // Reserve grid for up to 12; render placeholder slots to communicate capacity.
-  const placeholderCount = Math.max(0, Math.min(12 - tiles.length, expanded ? 12 - tiles.length : 0));
 
+  const artistCount = tiles.filter((t) => t.isArtistSeat).length;
+  const placeholderCount = expanded ? Math.max(0, ARTIST_CAPACITY - artistCount) : 0;
   const cols = expanded ? "grid-cols-2 md:grid-cols-3 lg:grid-cols-4" : "grid-cols-2";
+
+  // --- Draggable floating box (only when collapsed) ---
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const dragRef = useRef<{ ox: number; oy: number; sx: number; sy: number } | null>(null);
+
+  useEffect(() => {
+    if (expanded) return;
+    const onMove = (e: PointerEvent) => {
+      if (!dragRef.current) return;
+      const { ox, oy, sx, sy } = dragRef.current;
+      const nx = Math.max(8, Math.min(window.innerWidth - 100, ox + (e.clientX - sx)));
+      const ny = Math.max(8, Math.min(window.innerHeight - 60, oy + (e.clientY - sy)));
+      setPos({ x: nx, y: ny });
+    };
+    const onUp = () => { dragRef.current = null; };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+  }, [expanded]);
+
+  const startDrag = (e: React.PointerEvent) => {
+    if (expanded) return;
+    const rect = (e.currentTarget.closest("[data-video-overlay]") as HTMLElement)?.getBoundingClientRect();
+    if (!rect) return;
+    dragRef.current = { ox: rect.left, oy: rect.top, sx: e.clientX, sy: e.clientY };
+    if (!pos) setPos({ x: rect.left, y: rect.top });
+  };
+
+  const floatStyle: React.CSSProperties = expanded
+    ? {}
+    : pos
+      ? { position: "fixed", left: pos.x, top: pos.y, right: "auto", bottom: "auto" }
+      : { position: "fixed", right: 16, bottom: 16 };
 
   return (
     <div
+      data-video-overlay
+      style={floatStyle}
       className={
         expanded
           ? "fixed inset-0 z-[120] flex flex-col bg-black/95 p-4"
-          : "fixed bottom-4 right-4 z-[120] flex w-[340px] max-w-[92vw] flex-col rounded-xl border border-zinc-700 bg-zinc-950/95 p-3 shadow-2xl backdrop-blur"
+          : "z-[120] flex w-[340px] max-w-[92vw] flex-col rounded-xl border border-zinc-700 bg-zinc-950/95 p-3 shadow-2xl backdrop-blur"
       }
     >
-      <div className="mb-2 flex items-center gap-2">
+      <div
+        className={`mb-2 flex items-center gap-2 ${expanded ? "" : "cursor-move select-none"}`}
+        onPointerDown={startDrag}
+      >
         <VideoIcon className="h-3.5 w-3.5 text-cyan-300" />
         <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-200">
           Video {expanded ? "· Expanded" : ""}
         </span>
-        <span className="text-[10px] text-zinc-500">({tiles.length}/12)</span>
+        <span className="text-[10px] text-zinc-500">
+          ({artistCount}/{ARTIST_CAPACITY} artists · host separate)
+        </span>
         <div className="flex-1" />
         <button
+          onPointerDown={(e) => e.stopPropagation()}
           onClick={onToggleScreenShare}
           title={screenSharing ? "Stop screen share" : "Share screen"}
           className="flex items-center gap-1 rounded px-2 py-1 text-[10px] font-bold uppercase tracking-wider"
@@ -614,6 +663,7 @@ function VideoOverlay({
           {screenSharing ? "Stop share" : "Share"}
         </button>
         <button
+          onPointerDown={(e) => e.stopPropagation()}
           onClick={onToggleExpand}
           title={expanded ? "Collapse" : "Expand"}
           className="flex items-center justify-center rounded p-1 text-zinc-300 hover:bg-zinc-800"
@@ -621,6 +671,7 @@ function VideoOverlay({
           {expanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
         </button>
         <button
+          onPointerDown={(e) => e.stopPropagation()}
           onClick={onClose}
           title="Close"
           className="flex items-center justify-center rounded p-1 text-zinc-300 hover:bg-zinc-800"
@@ -630,22 +681,28 @@ function VideoOverlay({
       </div>
       <div className={`grid flex-1 gap-2 overflow-auto ${cols}`}>
         {tiles.map((t) => (
-          <VideoPanel
-            key={t.key}
-            title={t.title}
-            subtitle={t.subtitle}
-            stream={t.stream}
-            mirrored={t.mirrored}
-            videoMuted={t.muted}
-            className={expanded ? "min-h-[180px]" : "min-h-[110px]"}
-          />
+          <div key={t.key} className="relative">
+            <VideoPanel
+              title={t.title}
+              subtitle={t.subtitle}
+              stream={t.stream}
+              mirrored={t.mirrored}
+              videoMuted={t.muted}
+              className={expanded ? "min-h-[180px]" : "min-h-[110px]"}
+            />
+            {t.isHost && (
+              <span className="absolute left-1 top-1 rounded bg-cyan-500/90 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-black">
+                Host
+              </span>
+            )}
+          </div>
         ))}
         {Array.from({ length: placeholderCount }).map((_, i) => (
           <div
             key={`ph-${i}`}
             className="flex min-h-[110px] items-center justify-center rounded-xl border border-dashed border-zinc-800 bg-zinc-950/60 text-[10px] uppercase tracking-wider text-zinc-600"
           >
-            Slot {tiles.length + i + 1}
+            Artist {artistCount + i + 1}
           </div>
         ))}
       </div>
