@@ -640,7 +640,7 @@ function VideoOverlay({
       className={
         expanded
           ? "fixed inset-0 z-[120] flex flex-col bg-black/95 p-4"
-          : "z-[120] flex w-[340px] max-w-[92vw] flex-col rounded-xl border border-zinc-700 bg-zinc-950/95 p-3 shadow-2xl backdrop-blur"
+          : "z-[120] flex w-[440px] max-w-[94vw] flex-col rounded-xl border border-zinc-700 bg-zinc-950/95 p-3 shadow-2xl backdrop-blur"
       }
     >
       <div
