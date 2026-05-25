@@ -114,19 +114,13 @@ export function useArtistBridgePost(
       const ch = ev.inputBuffer.getChannelData(0);
       const samples = new Array(ch.length);
       let sumSq = 0;
-      // Input trim multiplier applied to all outgoing PCM samples.
-      const TRIM = 0.08;
-      // Hard safety clamp ±0.8 after trim. No upward normalization, no auto-gain.
-      const CEIL = 0.8;
       for (let i = 0; i < ch.length; i++) {
-        let s = ch[i] * TRIM;
-        if (s > CEIL) s = CEIL;
-        else if (s < -CEIL) s = -CEIL;
+        const s = ch[i];
         samples[i] = s;
         sumSq += s * s;
       }
       const rms = Math.sqrt(sumSq / ch.length);
-      levelRef.current = Math.min(1, rms * 6);
+      levelRef.current = Math.min(1, rms * 1.8);
 
       if (inflight.current >= MAX_INFLIGHT) {
         dropCount.current++;
