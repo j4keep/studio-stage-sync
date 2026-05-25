@@ -114,13 +114,8 @@ export function useArtistBridgePost(
       const ch = ev.inputBuffer.getChannelData(0);
       const samples = new Array(ch.length);
       let sumSq = 0;
-      // Artist 1 (slot 0) trim: gain 0.10, hard clamp ±0.75. No normalize, no AGC.
-      const TRIM = 0.10;
-      const CLAMP = 0.75;
       for (let i = 0; i < ch.length; i++) {
-        let s = ch[i] * TRIM;
-        if (s > CLAMP) s = CLAMP;
-        else if (s < -CLAMP) s = -CLAMP;
+        const s = ch[i];
         samples[i] = s;
         sumSq += s * s;
       }
