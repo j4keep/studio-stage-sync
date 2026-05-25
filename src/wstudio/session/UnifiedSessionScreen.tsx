@@ -286,6 +286,18 @@ export default function UnifiedSessionScreen() {
           </div>
           <div className="flex-1" />
           <button
+            onClick={() => setVideoOpen((v) => !v)}
+            title="Toggle video"
+            className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider mr-1.5"
+            style={{
+              background: videoOpen ? "#0e2a2a" : "#0e1218",
+              color: videoOpen ? C.cyan : C.text,
+              border: `1px solid ${videoOpen ? C.cyan : C.panelEdge}`,
+            }}
+          >
+            <VideoIcon className="h-3.5 w-3.5" /> Video
+          </button>
+          <button
             onClick={handleEnd}
             className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider"
             style={{ background: "#2a0e0e", color: "#fca5a5", border: "1px solid #4a1818" }}
