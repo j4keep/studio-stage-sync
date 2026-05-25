@@ -18,11 +18,12 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Power, Radio, LogOut, Mic, MicOff, Activity } from "lucide-react";
+import { Power, Radio, LogOut, Mic, MicOff, Activity, Video as VideoIcon, Maximize2, Minimize2, Monitor, X } from "lucide-react";
 import { useSession } from "./SessionContext";
 import { useStudioMedia } from "../media/StudioMediaContext";
 import { useBookingTimer } from "../booking/BookingTimerContext";
 import { SessionTimerBar } from "../booking/SessionTimerBar";
+import { VideoPanel } from "../video/VideoPanel";
 import { useArtistBridgePost } from "../bridge/useArtistBridgePost";
 
 const C = {
