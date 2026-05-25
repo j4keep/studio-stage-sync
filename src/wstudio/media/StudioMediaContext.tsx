@@ -313,8 +313,10 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     const buf = new Uint8Array(1024);
     const sessionAudioConstraints: MediaTrackConstraints = {
-      echoCancellation: true,
-      noiseSuppression: true,
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: false,
+      channelCount: 1,
       ...(selectedMicDeviceId !== "default" ? { deviceId: { exact: selectedMicDeviceId } } : {}),
     };
 
