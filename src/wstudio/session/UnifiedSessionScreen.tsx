@@ -520,7 +520,7 @@ export default function UnifiedSessionScreen() {
           localScreenPreview={localScreenPreview}
           screenSharing={screenSharing}
           onToggleScreenShare={toggleScreenShare}
-          role={role}
+          
           isArtist={isArtist}
           isEngineer={isEngineer}
         />
