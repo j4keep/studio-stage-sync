@@ -125,6 +125,8 @@ export default function UnifiedSessionScreen() {
     connection,
     leaveSession,
     muted,
+    screenSharing,
+    toggleScreenShare,
   } = useSession();
 
   const {
@@ -136,6 +138,9 @@ export default function UnifiedSessionScreen() {
     audioInputDevices,
     selectedMicDeviceId,
     setSelectedMicDeviceId,
+    remoteStream,
+    remoteStreamForPlayback,
+    localScreenPreview,
   } = useStudioMedia();
 
   const {
@@ -152,6 +157,8 @@ export default function UnifiedSessionScreen() {
     return window.localStorage.getItem(ENGINEER_HOST_KEY) ?? "192.168.12.155";
   });
   const [armed, setArmed] = useState(false);
+  const [videoOpen, setVideoOpen] = useState(false);
+  const [videoExpanded, setVideoExpanded] = useState(false);
 
   useEffect(() => {
     if (!sessionId || !role) {
