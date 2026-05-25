@@ -114,25 +114,18 @@ export function useArtistBridgePost(
       const ch = ev.inputBuffer.getChannelData(0);
       const samples = new Array(ch.length);
       let sumSq = 0;
-      // Input trim: -18 dB (~0.125x) to tame hot mics before bridge POST.
-      const TRIM = 0.125;
-      // Soft limiter ceiling at ±0.9 with tanh-style knee.
-      const CEIL = 0.9;
-      // Noise gate: below this RMS, treat as silence (very low so speech passes).
-      const GATE_RMS = 0.0015;
+      // Input trim multiplier applied to all outgoing PCM samples.
+      const TRIM = 0.08;
+      // Hard safety clamp ±0.8 after trim. No upward normalization, no auto-gain.
+      const CEIL = 0.8;
       for (let i = 0; i < ch.length; i++) {
         let s = ch[i] * TRIM;
-        // soft limiter: tanh shape scaled to ceiling
-        if (s > CEIL || s < -CEIL) {
-          s = Math.tanh(s / CEIL) * CEIL;
-        }
+        if (s > CEIL) s = CEIL;
+        else if (s < -CEIL) s = -CEIL;
         samples[i] = s;
         sumSq += s * s;
       }
       const rms = Math.sqrt(sumSq / ch.length);
-      if (rms < GATE_RMS) {
-        for (let i = 0; i < samples.length; i++) samples[i] = 0;
-      }
       levelRef.current = Math.min(1, rms * 6);
 
       if (inflight.current >= MAX_INFLIGHT) {
