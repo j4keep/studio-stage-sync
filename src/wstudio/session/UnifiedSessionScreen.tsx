@@ -16,7 +16,7 @@
  *
  * Booking, session join, and navigation are untouched.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Power, Radio, LogOut, Mic, MicOff, Activity, Video as VideoIcon, Maximize2, Minimize2, Monitor, X } from "lucide-react";
 import { useSession } from "./SessionContext";
