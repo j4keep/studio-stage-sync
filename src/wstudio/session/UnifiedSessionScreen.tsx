@@ -18,11 +18,12 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Power, Radio, LogOut, Mic, MicOff, Activity } from "lucide-react";
+import { Power, Radio, LogOut, Mic, MicOff, Activity, Video as VideoIcon, Maximize2, Minimize2, Monitor, X } from "lucide-react";
 import { useSession } from "./SessionContext";
 import { useStudioMedia } from "../media/StudioMediaContext";
 import { useBookingTimer } from "../booking/BookingTimerContext";
 import { SessionTimerBar } from "../booking/SessionTimerBar";
+import { VideoPanel } from "../video/VideoPanel";
 import { useArtistBridgePost } from "../bridge/useArtistBridgePost";
 
 const C = {
@@ -124,6 +125,8 @@ export default function UnifiedSessionScreen() {
     connection,
     leaveSession,
     muted,
+    screenSharing,
+    toggleScreenShare,
   } = useSession();
 
   const {
@@ -135,6 +138,9 @@ export default function UnifiedSessionScreen() {
     audioInputDevices,
     selectedMicDeviceId,
     setSelectedMicDeviceId,
+    remoteStream,
+    remoteStreamForPlayback,
+    localScreenPreview,
   } = useStudioMedia();
 
   const {
@@ -151,6 +157,8 @@ export default function UnifiedSessionScreen() {
     return window.localStorage.getItem(ENGINEER_HOST_KEY) ?? "192.168.12.155";
   });
   const [armed, setArmed] = useState(false);
+  const [videoOpen, setVideoOpen] = useState(false);
+  const [videoExpanded, setVideoExpanded] = useState(false);
 
   useEffect(() => {
     if (!sessionId || !role) {
@@ -277,6 +285,18 @@ export default function UnifiedSessionScreen() {
             <span className="text-[20px] font-black tracking-[0.22em]" style={{ color: C.text }}>_STUDIO</span>
           </div>
           <div className="flex-1" />
+          <button
+            onClick={() => setVideoOpen((v) => !v)}
+            title="Toggle video"
+            className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider mr-1.5"
+            style={{
+              background: videoOpen ? "#0e2a2a" : "#0e1218",
+              color: videoOpen ? C.cyan : C.text,
+              border: `1px solid ${videoOpen ? C.cyan : C.panelEdge}`,
+            }}
+          >
+            <VideoIcon className="h-3.5 w-3.5" /> Video
+          </button>
           <button
             onClick={handleEnd}
             className="flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider"
@@ -486,6 +506,149 @@ export default function UnifiedSessionScreen() {
           engineer's LAN, or have the engineer terminate TLS on the bridge.
         </p>
       )}
+
+      {videoOpen && (
+        <VideoOverlay
+          expanded={videoExpanded}
+          onToggleExpand={() => setVideoExpanded((v) => !v)}
+          onClose={() => {
+            setVideoOpen(false);
+            setVideoExpanded(false);
+          }}
+          localStream={localStream}
+          remoteStream={remoteStreamForPlayback ?? remoteStream}
+          localScreenPreview={localScreenPreview}
+          screenSharing={screenSharing}
+          onToggleScreenShare={toggleScreenShare}
+          
+          isArtist={isArtist}
+          isEngineer={isEngineer}
+        />
+      )}
+    </div>
+  );
+}
+
+function VideoOverlay({
+  expanded,
+  onToggleExpand,
+  onClose,
+  localStream,
+  remoteStream,
+  localScreenPreview,
+  screenSharing,
+  onToggleScreenShare,
+  isArtist,
+  isEngineer,
+}: {
+  expanded: boolean;
+  onToggleExpand: () => void;
+  onClose: () => void;
+  localStream: MediaStream | null;
+  remoteStream: MediaStream | null;
+  localScreenPreview: MediaStream | null;
+  screenSharing: boolean;
+  onToggleScreenShare: () => void;
+  
+  isArtist: boolean;
+  isEngineer: boolean;
+}) {
+  // Up to 12 tiles supported. Today: self + remote (+ screenshare preview if present).
+  // Additional remote artist tiles will populate here when multi-peer is wired.
+  const tiles: Array<{ key: string; title: string; subtitle: string; stream: MediaStream | null; mirrored?: boolean; muted: boolean }> = [];
+  tiles.push({
+    key: "self",
+    title: isArtist ? "You (Artist)" : isEngineer ? "You (Engineer)" : "You",
+    subtitle: "Local camera",
+    stream: localStream,
+    mirrored: true,
+    muted: true,
+  });
+  tiles.push({
+    key: "remote",
+    title: isArtist ? "Engineer" : "Artist",
+    subtitle: "Remote camera",
+    stream: remoteStream,
+    muted: true, // audio goes through the audio pipeline, not the video tile
+  });
+  if (localScreenPreview) {
+    tiles.push({
+      key: "screen",
+      title: "Your screen share",
+      subtitle: "Screen preview",
+      stream: localScreenPreview,
+      muted: true,
+    });
+  }
+  // Reserve grid for up to 12; render placeholder slots to communicate capacity.
+  const placeholderCount = Math.max(0, Math.min(12 - tiles.length, expanded ? 12 - tiles.length : 0));
+
+  const cols = expanded ? "grid-cols-2 md:grid-cols-3 lg:grid-cols-4" : "grid-cols-2";
+
+  return (
+    <div
+      className={
+        expanded
+          ? "fixed inset-0 z-[120] flex flex-col bg-black/95 p-4"
+          : "fixed bottom-4 right-4 z-[120] flex w-[340px] max-w-[92vw] flex-col rounded-xl border border-zinc-700 bg-zinc-950/95 p-3 shadow-2xl backdrop-blur"
+      }
+    >
+      <div className="mb-2 flex items-center gap-2">
+        <VideoIcon className="h-3.5 w-3.5 text-cyan-300" />
+        <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-200">
+          Video {expanded ? "· Expanded" : ""}
+        </span>
+        <span className="text-[10px] text-zinc-500">({tiles.length}/12)</span>
+        <div className="flex-1" />
+        <button
+          onClick={onToggleScreenShare}
+          title={screenSharing ? "Stop screen share" : "Share screen"}
+          className="flex items-center gap-1 rounded px-2 py-1 text-[10px] font-bold uppercase tracking-wider"
+          style={{
+            background: screenSharing ? "#0e2a2a" : "#1a1f26",
+            color: screenSharing ? "#67e8f9" : "#d4d4d8",
+            border: `1px solid ${screenSharing ? "#22d3ee" : "#3f3f46"}`,
+          }}
+        >
+          <Monitor className="h-3 w-3" />
+          {screenSharing ? "Stop share" : "Share"}
+        </button>
+        <button
+          onClick={onToggleExpand}
+          title={expanded ? "Collapse" : "Expand"}
+          className="flex items-center justify-center rounded p-1 text-zinc-300 hover:bg-zinc-800"
+        >
+          {expanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+        </button>
+        <button
+          onClick={onClose}
+          title="Close"
+          className="flex items-center justify-center rounded p-1 text-zinc-300 hover:bg-zinc-800"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      <div className={`grid flex-1 gap-2 overflow-auto ${cols}`}>
+        {tiles.map((t) => (
+          <VideoPanel
+            key={t.key}
+            title={t.title}
+            subtitle={t.subtitle}
+            stream={t.stream}
+            mirrored={t.mirrored}
+            videoMuted={t.muted}
+            className={expanded ? "min-h-[180px]" : "min-h-[110px]"}
+          />
+        ))}
+        {Array.from({ length: placeholderCount }).map((_, i) => (
+          <div
+            key={`ph-${i}`}
+            className="flex min-h-[110px] items-center justify-center rounded-xl border border-dashed border-zinc-800 bg-zinc-950/60 text-[10px] uppercase tracking-wider text-zinc-600"
+          >
+            Slot {tiles.length + i + 1}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
