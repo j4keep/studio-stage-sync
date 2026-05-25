@@ -538,7 +538,6 @@ function VideoOverlay({
   localScreenPreview,
   screenSharing,
   onToggleScreenShare,
-  role,
   isArtist,
   isEngineer,
 }: {
