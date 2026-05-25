@@ -549,7 +549,7 @@ function VideoOverlay({
   localScreenPreview: MediaStream | null;
   screenSharing: boolean;
   onToggleScreenShare: () => void;
-  role: string | null;
+  
   isArtist: boolean;
   isEngineer: boolean;
 }) {
