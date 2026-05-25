@@ -17,7 +17,7 @@ import { useEffect, useRef, useState } from "react";
  *    can see what's happening.
  *  - When `engineerHost` is empty, the hook stays idle (no fetches).
  */
-const PACKET_SAMPLES = 512; // ~10.7 ms @ 48k
+const PACKET_SAMPLES = 2048; // ~42.7 ms @ 48k
 const MAX_INFLIGHT = 1;
 const RECENT_OK_MS = 5000;
 
