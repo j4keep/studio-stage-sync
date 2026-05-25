@@ -557,7 +557,7 @@ function VideoOverlay({
   const ARTIST_CAPACITY = 12;
   type Tile = { key: string; title: string; subtitle: string; stream: MediaStream | null; mirrored?: boolean; muted: boolean; isHost?: boolean; isArtistSeat?: boolean };
   const tiles: Tile[] = [];
-  tiles.push({
+  const selfTile: Tile = {
     key: "self",
     title: isArtist ? "You (Artist)" : isEngineer ? "You (Engineer · Host)" : "You",
     subtitle: "Local camera",
@@ -566,8 +566,8 @@ function VideoOverlay({
     muted: true,
     isHost: isEngineer,
     isArtistSeat: isArtist,
-  });
-  tiles.push({
+  };
+  const remoteTile: Tile = {
     key: "remote",
     title: isArtist ? "Engineer · Host" : "Artist",
     subtitle: "Remote camera",
@@ -575,7 +575,13 @@ function VideoOverlay({
     muted: true,
     isHost: isArtist,
     isArtistSeat: isEngineer,
-  });
+  };
+  // Engineer (host) always shown first.
+  if (isArtist) {
+    tiles.push(remoteTile, selfTile);
+  } else {
+    tiles.push(selfTile, remoteTile);
+  }
   if (localScreenPreview) {
     tiles.push({
       key: "screen",
@@ -588,7 +594,8 @@ function VideoOverlay({
 
   const artistCount = tiles.filter((t) => t.isArtistSeat).length;
   const placeholderCount = expanded ? Math.max(0, ARTIST_CAPACITY - artistCount) : 0;
-  const cols = expanded ? "grid-cols-2 md:grid-cols-3 lg:grid-cols-4" : "grid-cols-2";
+  // Collapsed nav box shows up to 3 tiles side-by-side at the same size.
+  const cols = expanded ? "grid-cols-2 md:grid-cols-3 lg:grid-cols-4" : "grid-cols-3";
 
   // --- Draggable floating box (only when collapsed) ---
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
