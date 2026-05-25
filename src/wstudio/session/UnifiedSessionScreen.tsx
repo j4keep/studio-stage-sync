@@ -688,17 +688,17 @@ function VideoOverlay({
       </div>
       <div className={`grid flex-1 gap-2 overflow-auto ${cols}`}>
         {tiles.map((t) => (
-          <div key={t.key} className="relative">
+          <div key={t.key} className="relative aspect-video">
             <VideoPanel
               title={t.title}
               subtitle={t.subtitle}
               stream={t.stream}
               mirrored={t.mirrored}
               videoMuted={t.muted}
-              className={expanded ? "min-h-[180px]" : "min-h-[110px]"}
+              className="absolute inset-0 h-full w-full min-h-0"
             />
             {t.isHost && (
-              <span className="absolute left-1 top-1 rounded bg-cyan-500/90 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-black">
+              <span className="absolute left-1 top-1 z-10 rounded bg-cyan-500/90 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-black">
                 Host
               </span>
             )}
@@ -707,7 +707,7 @@ function VideoOverlay({
         {Array.from({ length: placeholderCount }).map((_, i) => (
           <div
             key={`ph-${i}`}
-            className="flex min-h-[110px] items-center justify-center rounded-xl border border-dashed border-zinc-800 bg-zinc-950/60 text-[10px] uppercase tracking-wider text-zinc-600"
+            className="flex aspect-video items-center justify-center rounded-xl border border-dashed border-zinc-800 bg-zinc-950/60 text-[10px] uppercase tracking-wider text-zinc-600"
           >
             Artist {artistCount + i + 1}
           </div>
