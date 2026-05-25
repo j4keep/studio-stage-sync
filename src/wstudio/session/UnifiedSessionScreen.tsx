@@ -25,7 +25,6 @@ import { useBookingTimer } from "../booking/BookingTimerContext";
 import { SessionTimerBar } from "../booking/SessionTimerBar";
 import { VideoPanel } from "../video/VideoPanel";
 import { useArtistBridgePost } from "../bridge/useArtistBridgePost";
-import { useArtistBridgePost } from "../bridge/useArtistBridgePost";
 
 const C = {
   shellTop: "#0a0d12",
