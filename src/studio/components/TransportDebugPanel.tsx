@@ -60,8 +60,8 @@ export default function TransportDebugPanel({
             k="packets"
             v={`ok=${stats.packetsPosted} fail=${stats.packetsFailed} drop=${stats.packetsDropped}`}
           />
-          {"level" in stats && (
-            <Row k="mic" v={`${(stats.level * 100).toFixed(0)}`} />
+          {typeof (stats as { level?: number }).level === "number" && (
+            <Row k="mic" v={`${(((stats as { level: number }).level) * 100).toFixed(0)}`} />
           )}
           {stats.lastError && <Row k="err" v={stats.lastError} danger />}
         </>
