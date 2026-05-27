@@ -159,7 +159,7 @@ export default function SessionJoinScreen() {
 
       <div className="relative z-10 flex h-full flex-col items-center px-4 pb-2">
         {/* Back Button */}
-        <div className="w-full max-w-sm pt-2">
+        <div className="w-full max-w-sm pt-2 flex items-center justify-between gap-2">
           <button
             onClick={() => navigate(-1)}
             className="flex items-center gap-1.5 text-foreground/90 hover:text-primary transition"
@@ -167,6 +167,12 @@ export default function SessionJoinScreen() {
             <ChevronLeft className="h-5 w-5" />
             <span className="text-sm font-semibold">Back</span>
           </button>
+          <a
+            href="#/studio"
+            className="rounded-full border border-primary/60 bg-primary/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-primary hover:bg-primary/20 transition"
+          >
+            Open W.STUDIO V2 →
+          </a>
         </div>
 
         <div className="flex w-full min-h-0 flex-1 flex-col items-center justify-between gap-2 py-1.5">
