@@ -1,0 +1,90 @@
+import { useNavigate, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useStudio } from "../state/StudioContext";
+import TopBar from "../components/TopBar";
+import VideoTile from "../components/VideoTile";
+import HQAudioPanel from "../components/HQAudioPanel";
+import TransportBar from "../components/TransportBar";
+import PluginStatusPanel from "../components/PluginStatusPanel";
+import SessionChat from "../components/SessionChat";
+import FileTransfer from "../components/FileTransfer";
+import { Camera, CameraOff, Mic, MicOff, ScreenShare, Maximize2 } from "lucide-react";
+
+export default function EngineerRoom() {
+  const { sessionId } = useParams();
+  const navigate = useNavigate();
+  const { session, micMuted, setMicMuted, cameraOn, setCameraOn, plugin, notes, setNotes, createSession } = useStudio();
+  const [pluginSignalAt, setPluginSignalAt] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!session && sessionId) {
+      createSession({ name: "Live Session", artistName: "Artist", type: "Vocal Recording", engineerName: "Engineer" });
+    }
+  }, [session, sessionId, createSession]);
+
+  useEffect(() => {
+    if (plugin === "connected") {
+      const id = window.setInterval(() => setPluginSignalAt(Date.now()), 2000);
+      setPluginSignalAt(Date.now());
+      return () => window.clearInterval(id);
+    }
+  }, [plugin]);
+
+  const fs = () => document.documentElement.requestFullscreen?.().catch(() => {});
+
+  return (
+    <div className="min-h-screen p-3 sm:p-5 space-y-4">
+      <TopBar />
+
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(320px,420px)_320px] gap-4">
+        {/* LEFT — video */}
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <VideoTile name={session?.artistName ?? "Artist"} quality="good" primary />
+            <VideoTile name={session?.engineerName ?? "Engineer"} isSelf cameraOn={cameraOn} micMuted={micMuted} quality="good" />
+          </div>
+          <div className="studio-card p-3 flex flex-wrap gap-2">
+            <button className="studio-btn" onClick={() => setCameraOn(!cameraOn)}>
+              {cameraOn ? <Camera className="w-4 h-4" /> : <CameraOff className="w-4 h-4" />} {cameraOn ? "Camera On" : "Camera Off"}
+            </button>
+            <button className={`studio-btn ${micMuted ? "studio-btn-danger" : ""}`} onClick={() => setMicMuted(!micMuted)}>
+              {micMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />} {micMuted ? "Unmute" : "Mute"}
+            </button>
+            <button className="studio-btn"><ScreenShare className="w-4 h-4" /> Share Screen</button>
+            <button className="studio-btn ml-auto" onClick={fs}><Maximize2 className="w-4 h-4" /> Fullscreen</button>
+          </div>
+
+          <TransportBar />
+        </div>
+
+        {/* CENTER — HQ + plugin */}
+        <div className="space-y-4">
+          <HQAudioPanel />
+          <PluginStatusPanel status={plugin} lastSignalMs={pluginSignalAt} />
+        </div>
+
+        {/* RIGHT — chat / files / notes */}
+        <div className="space-y-4 flex flex-col">
+          <SessionChat author={session?.engineerName ?? "Engineer"} />
+          <FileTransfer uploader={session?.engineerName ?? "Engineer"} />
+          <div className="studio-card p-4">
+            <div className="text-[11px] uppercase tracking-wider text-[hsl(var(--studio-text-muted))] mb-2">Session Notes</div>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={5}
+              placeholder="Take notes during the session…"
+              className="w-full studio-card-inset px-3 py-2 text-sm resize-none focus:outline-none focus:border-[hsl(var(--studio-blue))]"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="text-center pt-2">
+        <button onClick={() => navigate("/studio")} className="text-xs text-[hsl(var(--studio-text-muted))] hover:text-[hsl(var(--studio-blue))]">
+          End session
+        </button>
+      </div>
+    </div>
+  );
+}
