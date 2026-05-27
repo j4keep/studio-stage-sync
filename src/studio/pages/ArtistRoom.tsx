@@ -1,8 +1,11 @@
+import { useEffect, useRef, useState } from "react";
 import { useStudio } from "../state/StudioContext";
 import VideoTile from "../components/VideoTile";
 import SessionChat from "../components/SessionChat";
 import FileTransfer from "../components/FileTransfer";
-import { Camera, CameraOff, Mic, MicOff, Headphones } from "lucide-react";
+import TransportDebugPanel from "../components/TransportDebugPanel";
+import { useStudioArtistSender, useStudioPluginStatus } from "../audio/useStudioTransport";
+import { Camera, CameraOff, Mic, MicOff, Headphones, Radio } from "lucide-react";
 
 const STATUS_LABEL: Record<string, string> = {
   waiting_for_artist: "Waiting for engineer",
@@ -17,6 +20,31 @@ const STATUS_LABEL: Record<string, string> = {
 
 export default function ArtistRoom() {
   const { session, sessionState, isLive, micMuted, setMicMuted, cameraOn, setCameraOn, checklist } = useStudio();
+  const [micStream, setMicStream] = useState<MediaStream | null>(null);
+  const acquiredRef = useRef(false);
+
+  // Acquire local mic for the active transport (only after the artist is
+  // already in the room — the join page handled permissions).
+  useEffect(() => {
+    if (acquiredRef.current) return;
+    acquiredRef.current = true;
+    navigator.mediaDevices
+      .getUserMedia({ audio: true })
+      .then(setMicStream)
+      .catch(() => setMicStream(null));
+    return () => {
+      micStream?.getTracks().forEach((t) => t.stop());
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Artist HQ audio is sent to the engineer via the active transport.
+  // For the /studio prototype we don't yet have a confirmed engineer
+  // target URL, so we keep sending disabled but still surface status.
+  const senderStats = useStudioArtistSender(micStream, "", 0, false);
+  const pluginStatus = useStudioPluginStatus(false);
+  const transportLive = pluginStatus.state === "LIVE";
+
   const label = isLive ? "● Recording" : (STATUS_LABEL[sessionState] ?? "Connected");
   const tone =
     isLive ? "bg-[hsl(var(--studio-red)/0.12)] text-[hsl(var(--studio-red))]"
@@ -40,7 +68,8 @@ export default function ArtistRoom() {
 
       <div className="studio-card p-3 flex flex-wrap gap-2 justify-center">
         <button className={`studio-btn ${micMuted ? "studio-btn-danger" : ""}`} onClick={() => setMicMuted(!micMuted)}>
-          {micMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />} {micMuted ? "Muted" : "Mute"}
+          {micMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+          {micStream ? (micMuted ? "Muted" : "Mic Live") : "Mic —"}
         </button>
         <button className="studio-btn" onClick={() => setCameraOn(!cameraOn)}>
           {cameraOn ? <Camera className="w-4 h-4" /> : <CameraOff className="w-4 h-4" />} Camera
@@ -49,7 +78,24 @@ export default function ArtistRoom() {
           <Headphones className="w-4 h-4 text-[hsl(var(--studio-blue))]" />
           {checklist.artistHeadphones ? "Headphones OK" : "Headphones —"}
         </div>
+        <div className="studio-btn">
+          <Radio className={`w-4 h-4 ${transportLive ? "text-[hsl(var(--studio-green))]" : "text-[hsl(var(--studio-text-dim))]"}`} />
+          HQ {transportLive ? "Live" : "Standby"}
+        </div>
       </div>
+
+      <TransportDebugPanel
+        role="artist"
+        artistStats={{
+          packetsPosted: senderStats.packetsPosted,
+          packetsFailed: senderStats.packetsFailed,
+          packetsDropped: senderStats.packetsDropped,
+          state: senderStats.state,
+          lastError: senderStats.lastError,
+          targetUrl: senderStats.targetUrl,
+          level: senderStats.level,
+        }}
+      />
 
       <SessionChat author={session?.artistName ?? "Artist"} />
       <FileTransfer uploader={session?.artistName ?? "Artist"} />
