@@ -1,0 +1,147 @@
+/* W.STUDIO V2 — scoped tokens. Electric blue on luxury black. */
+[data-studio-app="true"] {
+  --studio-bg: 0 0% 4%;
+  --studio-bg-2: 0 0% 7%;
+  --studio-card: 0 0% 9%;
+  --studio-card-2: 0 0% 11%;
+  --studio-border: 0 0% 18%;
+  --studio-border-soft: 0 0% 14%;
+  --studio-text: 0 0% 96%;
+  --studio-text-dim: 0 0% 62%;
+  --studio-text-muted: 0 0% 42%;
+  --studio-blue: 205 100% 55%;
+  --studio-blue-soft: 205 100% 65%;
+  --studio-green: 142 76% 50%;
+  --studio-amber: 38 92% 55%;
+  --studio-red: 0 85% 60%;
+
+  background: hsl(var(--studio-bg));
+  color: hsl(var(--studio-text));
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+[data-studio-app="true"] .studio-root {
+  background:
+    radial-gradient(ellipse 90% 60% at 50% -10%, hsl(var(--studio-blue) / 0.08), transparent 60%),
+    linear-gradient(180deg, hsl(var(--studio-bg-2)) 0%, hsl(var(--studio-bg)) 100%);
+}
+
+[data-studio-app="true"] .studio-card {
+  background: linear-gradient(180deg, hsl(var(--studio-card)) 0%, hsl(var(--studio-card-2)) 100%);
+  border: 1px solid hsl(var(--studio-border));
+  border-radius: 16px;
+  box-shadow: 0 8px 24px hsl(0 0% 0% / 0.4), inset 0 1px 0 hsl(0 0% 100% / 0.03);
+}
+
+[data-studio-app="true"] .studio-card-inset {
+  background: hsl(var(--studio-bg) / 0.6);
+  border: 1px solid hsl(var(--studio-border-soft));
+  border-radius: 12px;
+}
+
+[data-studio-app="true"] .studio-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: hsl(var(--studio-card-2));
+  border: 1px solid hsl(var(--studio-border));
+  color: hsl(var(--studio-text));
+  font-weight: 500;
+  font-size: 14px;
+  transition: all 160ms ease;
+  cursor: pointer;
+}
+[data-studio-app="true"] .studio-btn:hover { background: hsl(var(--studio-card)); border-color: hsl(var(--studio-blue) / 0.4); }
+[data-studio-app="true"] .studio-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+[data-studio-app="true"] .studio-btn-primary {
+  background: linear-gradient(180deg, hsl(var(--studio-blue)), hsl(205 100% 45%));
+  border-color: hsl(var(--studio-blue));
+  color: white;
+  box-shadow: 0 0 18px hsl(var(--studio-blue) / 0.35), inset 0 1px 0 hsl(0 0% 100% / 0.2);
+}
+[data-studio-app="true"] .studio-btn-primary:hover { filter: brightness(1.08); }
+
+[data-studio-app="true"] .studio-btn-danger {
+  background: linear-gradient(180deg, hsl(var(--studio-red)), hsl(0 85% 50%));
+  border-color: hsl(var(--studio-red));
+  color: white;
+}
+
+[data-studio-app="true"] .studio-live-orb {
+  width: 96px; height: 96px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, hsl(0 0% 100% / 0.35), transparent 40%),
+              linear-gradient(180deg, hsl(var(--studio-blue)), hsl(205 100% 40%));
+  box-shadow: 0 0 40px hsl(var(--studio-blue) / 0.6), inset 0 2px 4px hsl(0 0% 100% / 0.2);
+  display: flex; align-items: center; justify-content: center;
+  color: white; font-weight: 700; letter-spacing: 0.12em; font-size: 13px;
+  cursor: pointer; transition: transform 160ms ease;
+}
+[data-studio-app="true"] .studio-live-orb:hover { transform: scale(1.04); }
+[data-studio-app="true"] .studio-live-orb.is-live {
+  background: radial-gradient(circle at 35% 30%, hsl(0 0% 100% / 0.45), transparent 40%),
+              linear-gradient(180deg, hsl(var(--studio-red)), hsl(0 85% 45%));
+  box-shadow: 0 0 50px hsl(var(--studio-red) / 0.7), inset 0 2px 4px hsl(0 0% 100% / 0.25);
+  animation: studio-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes studio-pulse {
+  0%,100% { box-shadow: 0 0 50px hsl(var(--studio-red) / 0.7), inset 0 2px 4px hsl(0 0% 100% / 0.25); }
+  50%     { box-shadow: 0 0 70px hsl(var(--studio-red) / 0.95), inset 0 2px 4px hsl(0 0% 100% / 0.25); }
+}
+
+[data-studio-app="true"] .studio-status-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: hsl(var(--studio-text-muted));
+  box-shadow: 0 0 0 2px hsl(var(--studio-bg));
+}
+[data-studio-app="true"] .studio-status-dot.ok { background: hsl(var(--studio-green)); box-shadow: 0 0 8px hsl(var(--studio-green) / 0.6); }
+[data-studio-app="true"] .studio-status-dot.warn { background: hsl(var(--studio-amber)); box-shadow: 0 0 8px hsl(var(--studio-amber) / 0.6); }
+[data-studio-app="true"] .studio-status-dot.live { background: hsl(var(--studio-blue)); box-shadow: 0 0 10px hsl(var(--studio-blue) / 0.8); animation: studio-blink 1.4s ease-in-out infinite; }
+[data-studio-app="true"] .studio-status-dot.err { background: hsl(var(--studio-red)); box-shadow: 0 0 8px hsl(var(--studio-red) / 0.6); }
+
+@keyframes studio-blink {
+  0%,100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+[data-studio-app="true"] .studio-meter-track {
+  position: relative;
+  height: 8px; width: 100%;
+  background: hsl(var(--studio-bg));
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid hsl(var(--studio-border-soft));
+}
+[data-studio-app="true"] .studio-meter-fill {
+  position: absolute; inset: 0; right: auto;
+  background: linear-gradient(90deg,
+    hsl(var(--studio-green)) 0%,
+    hsl(var(--studio-green)) 60%,
+    hsl(var(--studio-amber)) 80%,
+    hsl(var(--studio-red)) 100%);
+  transition: width 80ms linear;
+  border-radius: 999px;
+}
+
+[data-studio-app="true"] .studio-knob {
+  width: 56px; height: 56px; border-radius: 50%;
+  background: radial-gradient(circle at 30% 25%, hsl(0 0% 25%), hsl(0 0% 10%));
+  border: 1px solid hsl(var(--studio-border));
+  box-shadow: inset 0 -2px 6px hsl(0 0% 0% / 0.6), 0 4px 10px hsl(0 0% 0% / 0.4);
+  position: relative;
+  cursor: pointer;
+}
+[data-studio-app="true"] .studio-knob::after {
+  content: ""; position: absolute; left: 50%; top: 6px;
+  width: 2px; height: 18px; background: hsl(var(--studio-blue));
+  box-shadow: 0 0 6px hsl(var(--studio-blue) / 0.8);
+  transform: translateX(-50%);
+  border-radius: 1px;
+}
+
+[data-studio-app="true"] .studio-glow-green { box-shadow: 0 0 30px hsl(var(--studio-green) / 0.35), inset 0 0 0 1px hsl(var(--studio-green) / 0.5); }
+[data-studio-app="true"] .studio-glow-blue { box-shadow: 0 0 30px hsl(var(--studio-blue) / 0.35), inset 0 0 0 1px hsl(var(--studio-blue) / 0.5); }
