@@ -30,13 +30,8 @@ export default function EngineerRoom() {
     }
   }, [session, sessionId, createSession]);
 
-  useEffect(() => {
-    if (plugin === "connected") {
-      const id = window.setInterval(() => setPluginSignalAt(Date.now()), 2000);
-      setPluginSignalAt(Date.now());
-      return () => window.clearInterval(id);
-    }
-  }, [plugin]);
+  // Plugin signal timestamp comes from the transport, not a fake timer.
+  const pluginSignalAt = pluginStatus.state === "LIVE" ? Date.now() : null;
 
   const fs = () => document.documentElement.requestFullscreen?.().catch(() => {});
 
@@ -63,6 +58,17 @@ export default function EngineerRoom() {
           </div>
 
           <TransportBar />
+          <TransportDebugPanel
+            role="engineer"
+            engineerStats={{
+              packetsPosted: relayStats.packetsPosted,
+              packetsFailed: relayStats.packetsFailed,
+              packetsDropped: relayStats.packetsDropped,
+              state: relayStats.state,
+              lastError: relayStats.lastError,
+              targetUrl: relayStats.targetUrl,
+            }}
+          />
         </div>
 
         {/* CENTER — HQ + plugin */}
