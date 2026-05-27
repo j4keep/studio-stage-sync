@@ -55,6 +55,7 @@ import StudioBridgeScreen from "./wstudio/bridge/StudioBridgeScreen";
 
 import TermsAgreementGate from "./components/TermsAgreementGate";
 import ThemePickerSheet from "./components/ThemePickerSheet";
+import StudioApp from "./studio/StudioApp";
 
 const queryClient = new QueryClient();
 const STARTUP_TIMEOUT_MS = 2500;
@@ -246,6 +247,7 @@ const App = () => {
                     <div id="app-bg-layer" className="min-h-screen bg-background text-foreground">
                       <Routes>
                         <Route path="/auth" element={<AuthPage />} />
+                        <Route path="/studio/*" element={<StudioApp />} />
                         <Route path="/index" element={<Navigate to="/" replace />} />
                         <Route path="/*" element={<ProtectedRoutes />} />
                       </Routes>
