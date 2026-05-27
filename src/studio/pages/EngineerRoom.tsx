@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useStudio } from "../state/StudioContext";
 import TopBar from "../components/TopBar";
 import VideoTile from "../components/VideoTile";
@@ -8,13 +8,21 @@ import TransportBar from "../components/TransportBar";
 import PluginStatusPanel from "../components/PluginStatusPanel";
 import SessionChat from "../components/SessionChat";
 import FileTransfer from "../components/FileTransfer";
+import TransportDebugPanel from "../components/TransportDebugPanel";
+import { useStudioEngineerRelay, useStudioPluginStatus } from "../audio/useStudioTransport";
 import { Camera, CameraOff, Mic, MicOff, ScreenShare, Maximize2 } from "lucide-react";
 
 export default function EngineerRoom() {
   const { sessionId } = useParams();
   const navigate = useNavigate();
   const { session, micMuted, setMicMuted, cameraOn, setCameraOn, plugin, notes, setNotes, createSession } = useStudio();
-  const [pluginSignalAt, setPluginSignalAt] = useState<number | null>(null);
+
+  // HQ audio: read from active transport (Phase 2 — no direct bridge calls).
+  const pluginStatus = useStudioPluginStatus(true);
+  // Engineer relay: no remote WebRTC stream wired into /studio prototype yet,
+  // so we pass null + enabled=false. The hook still surfaces status fields
+  // for the dev debug panel without sending packets.
+  const relayStats = useStudioEngineerRelay(null, 0, false);
 
   useEffect(() => {
     if (!session && sessionId) {
