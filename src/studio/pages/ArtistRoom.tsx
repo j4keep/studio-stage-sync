@@ -84,9 +84,17 @@ export default function ArtistRoom() {
   const { remoteStream, connState } = useStudioPeerVideo(sessionId, "artist", localStream);
   const remoteConnected = connState === "connected";
 
-  // Sync to session state.
+  // Sync to session state. Derive cameraOn from actual stream truth so the
+  // engineer banner reflects whether a live video track really exists.
   useEffect(() => { update({ micLive: !!micStream && !micMuted }); }, [micStream, micMuted, update]);
-  useEffect(() => { update({ cameraOn }); }, [cameraOn, update]);
+  const cameraLive = !!camStream?.getVideoTracks().some((t) => t.readyState === "live");
+  useEffect(() => { update({ cameraOn: cameraLive }); }, [cameraLive, update]);
+  // Re-broadcast a snapshot shortly after mount so a late-joining engineer tab
+  // receives the latest artist status even if it subscribed after our first updates.
+  useEffect(() => {
+    const t = setTimeout(() => update({}), 400);
+    return () => clearTimeout(t);
+  }, [update]);
 
   const senderStats = useStudioArtistSender(micStream, "", 0, false);
   const pluginStatus = useStudioPluginStatus(false);
