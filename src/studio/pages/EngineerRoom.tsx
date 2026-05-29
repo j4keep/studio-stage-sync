@@ -24,6 +24,48 @@ export default function EngineerRoom() {
   const relayStats = useStudioEngineerRelay(null, 0, false);
   const { status: artistStatus } = useArtistSessionSync(sessionId);
 
+  // Local A/V capture for the engineer side.
+  const [camStream, setCamStream] = useState<MediaStream | null>(null);
+  const [micStream, setMicStream] = useState<MediaStream | null>(null);
+  const acquiredMicRef = useRef(false);
+
+  useEffect(() => {
+    if (acquiredMicRef.current) return;
+    acquiredMicRef.current = true;
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then(setMicStream).catch(() => setMicStream(null));
+  }, []);
+  useEffect(() => {
+    if (!cameraOn) {
+      setCamStream((prev) => { prev?.getTracks().forEach((t) => t.stop()); return null; });
+      return;
+    }
+    let cancelled = false; let acquired: MediaStream | null = null;
+    navigator.mediaDevices.getUserMedia({ video: true }).then((s) => {
+      if (cancelled) { s.getTracks().forEach((t) => t.stop()); return; }
+      acquired = s; setCamStream(s);
+    }).catch(() => setCamStream(null));
+    return () => { cancelled = true; acquired?.getTracks().forEach((t) => t.stop()); };
+  }, [cameraOn]);
+  useEffect(() => {
+    micStream?.getAudioTracks().forEach((t) => (t.enabled = !micMuted));
+  }, [micStream, micMuted]);
+
+  const localStream = useMemo(() => {
+    const tracks = [
+      ...(camStream?.getVideoTracks() ?? []),
+      ...(micStream?.getAudioTracks() ?? []),
+    ];
+    return tracks.length ? new MediaStream(tracks) : null;
+  }, [camStream, micStream]);
+  const selfPreview = useMemo(() => {
+    const t = camStream?.getVideoTracks() ?? [];
+    return t.length ? new MediaStream(t) : null;
+  }, [camStream]);
+
+  const { remoteStream, connState } = useStudioPeerVideo(sessionId, "engineer", localStream);
+  const remoteConnected = connState === "connected";
+
   useEffect(() => {
     if (!session && sessionId) {
       createSession({ name: "Live Session", artistName: "Artist", type: "Vocal Recording", engineerName: "Engineer" });
