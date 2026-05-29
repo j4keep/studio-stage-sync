@@ -5,9 +5,9 @@ import { useArtistSessionSync } from "../state/sessionSync";
 import VideoTile from "../components/VideoTile";
 import SessionChat from "../components/SessionChat";
 import FileTransfer from "../components/FileTransfer";
-import { Camera, CameraOff, Mic, MicOff, Headphones, Radio, CheckCircle2, Music2 } from "lucide-react";
+import TransportDebugPanel from "../components/TransportDebugPanel";
 import { useStudioArtistSender, useStudioPluginStatus } from "../audio/useStudioTransport";
-import { Camera, CameraOff, Mic, MicOff, Headphones, Radio, CheckCircle2 } from "lucide-react";
+import { Camera, CameraOff, Mic, MicOff, Headphones, Radio, CheckCircle2, Music2 } from "lucide-react";
 
 const STATUS_LABEL: Record<string, string> = {
   waiting_for_artist: "Waiting for engineer",
