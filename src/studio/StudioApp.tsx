@@ -6,6 +6,7 @@ import EngineerRoom from "./pages/EngineerRoom";
 import ArtistJoinPage from "./pages/ArtistJoinPage";
 import ArtistRoom from "./pages/ArtistRoom";
 import DemoRoom from "./pages/DemoRoom";
+import NativeIntegrationReadinessPanel from "./components/NativeIntegrationReadinessPanel";
 import "./studio.css";
 
 export default function StudioApp() {
@@ -21,7 +22,9 @@ export default function StudioApp() {
           <Route path="demo" element={<DemoRoom />} />
           <Route path="*" element={<Navigate to="/studio" replace />} />
         </Routes>
+        <NativeIntegrationReadinessPanel />
       </StudioProvider>
     </div>
   );
 }
+
