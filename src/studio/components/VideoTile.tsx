@@ -9,21 +9,29 @@ export interface VideoTileProps {
   quality?: "good" | "ok" | "poor";
   reconnecting?: boolean;
   primary?: boolean;
+  /** Optional external stream (e.g. remote peer). Overrides self-capture. */
+  stream?: MediaStream | null;
 }
 
 export default function VideoTile({
-  name, isSelf, cameraOn = true, micMuted, quality = "good", reconnecting, primary,
+  name, isSelf, cameraOn = true, micMuted, quality = "good", reconnecting, primary, stream,
 }: VideoTileProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [hasStream, setHasStream] = useState(false);
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
+  // Acquire local camera when isSelf && cameraOn (and no external stream provided).
   useEffect(() => {
-    if (!isSelf || !cameraOn) {
-      setHasStream(false);
+    if (stream || !isSelf || !cameraOn) {
+      setLocalStream((prev) => {
+        prev?.getTracks().forEach((t) => t.stop());
+        return null;
+      });
       return;
     }
-    let stream: MediaStream | null = null;
     let cancelled = false;
+    let acquired: MediaStream | null = null;
+    setError(null);
     navigator.mediaDevices
       ?.getUserMedia({ video: true, audio: false })
       .then((s) => {
@@ -31,19 +39,32 @@ export default function VideoTile({
           s.getTracks().forEach((t) => t.stop());
           return;
         }
-        stream = s;
-        if (videoRef.current) {
-          videoRef.current.srcObject = s;
-          videoRef.current.play().catch(() => {});
-          setHasStream(true);
-        }
+        acquired = s;
+        setLocalStream(s);
       })
-      .catch(() => setHasStream(false));
+      .catch((e) => {
+        if (!cancelled) setError(e?.message || "Camera blocked");
+      });
     return () => {
       cancelled = true;
-      stream?.getTracks().forEach((t) => t.stop());
+      acquired?.getTracks().forEach((t) => t.stop());
     };
-  }, [isSelf, cameraOn]);
+  }, [isSelf, cameraOn, stream]);
+
+  // Bind whichever stream we have to the always-rendered <video>.
+  const active = stream ?? localStream;
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (active && v.srcObject !== active) {
+      v.srcObject = active;
+      v.play().catch(() => {});
+    } else if (!active && v.srcObject) {
+      v.srcObject = null;
+    }
+  }, [active]);
+
+  const showVideo = !!active && cameraOn;
 
   const qColor =
     quality === "good" ? "text-[hsl(var(--studio-green))]"
@@ -54,16 +75,23 @@ export default function VideoTile({
     <div
       className={`studio-card-inset relative overflow-hidden aspect-video ${primary ? "ring-1 ring-[hsl(var(--studio-blue)/0.3)]" : ""}`}
     >
-      {isSelf && cameraOn && hasStream ? (
-        <video ref={videoRef} muted playsInline className="absolute inset-0 w-full h-full object-cover" />
-      ) : (
+      <video
+        ref={videoRef}
+        muted
+        playsInline
+        autoPlay
+        className={`absolute inset-0 w-full h-full object-cover ${showVideo ? "" : "hidden"}`}
+      />
+      {!showVideo && (
         <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[hsl(var(--studio-bg-2))] to-[hsl(var(--studio-bg))]">
           {cameraOn ? (
-            <div className="text-center">
+            <div className="text-center px-3">
               <div className="w-14 h-14 mx-auto rounded-full bg-[hsl(var(--studio-card))] border border-[hsl(var(--studio-border))] flex items-center justify-center text-[hsl(var(--studio-text-dim))] text-lg font-semibold">
                 {name?.[0]?.toUpperCase() ?? "?"}
               </div>
-              <div className="text-xs text-[hsl(var(--studio-text-muted))] mt-2">Waiting for video…</div>
+              <div className="text-xs text-[hsl(var(--studio-text-muted))] mt-2">
+                {isSelf ? (error ?? "Requesting camera…") : "Waiting for remote video…"}
+              </div>
             </div>
           ) : (
             <CameraOff className="w-10 h-10 text-[hsl(var(--studio-text-muted))]" />
