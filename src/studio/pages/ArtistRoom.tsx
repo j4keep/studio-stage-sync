@@ -82,7 +82,7 @@ export default function ArtistRoom() {
   }, [camStream]);
 
   const { remoteStream, connState } = useStudioPeerVideo(sessionId, "artist", localStream);
-  const remoteConnected = connState === "connected" || connState === "completed" as any;
+  const remoteConnected = connState === "connected";
 
   // Sync to session state.
   useEffect(() => { update({ micLive: !!micStream && !micMuted }); }, [micStream, micMuted, update]);
