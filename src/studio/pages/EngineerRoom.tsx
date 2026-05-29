@@ -1,7 +1,8 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useStudio } from "../state/StudioContext";
 import { useArtistSessionSync } from "../state/sessionSync";
+import { useStudioPeerVideo } from "../state/usePeerVideo";
 import TopBar from "../components/TopBar";
 import VideoTile from "../components/VideoTile";
 import HQAudioPanel from "../components/HQAudioPanel";
@@ -11,7 +12,7 @@ import SessionChat from "../components/SessionChat";
 import FileTransfer from "../components/FileTransfer";
 import TransportDebugPanel from "../components/TransportDebugPanel";
 import { useStudioEngineerRelay, useStudioPluginStatus } from "../audio/useStudioTransport";
-import { Camera, CameraOff, Mic, MicOff, ScreenShare, Maximize2, CheckCircle2 } from "lucide-react";
+import { Camera, CameraOff, Mic, MicOff, ScreenShare, Maximize2 } from "lucide-react";
 
 export default function EngineerRoom() {
   const { sessionId } = useParams();
