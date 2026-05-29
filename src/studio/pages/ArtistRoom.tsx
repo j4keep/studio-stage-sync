@@ -99,12 +99,10 @@ export default function ArtistRoom() {
   const senderStats = useStudioArtistSender(micStream, "", 0, false);
   const pluginStatus = useStudioPluginStatus(false);
   const transportLive = pluginStatus.state === "LIVE";
-  useEffect(() => { update({ hqReady: transportLive }); }, [transportLive, update]);
-
   const label = isLive ? "● Recording" : (STATUS_LABEL[sessionState] ?? "Connected");
   const tone =
     isLive ? "bg-[hsl(var(--studio-red)/0.12)] text-[hsl(var(--studio-red))]"
-    : status.artistReady ? "studio-glow-green bg-[hsl(var(--studio-green)/0.08)] text-[hsl(var(--studio-green))]"
+    : remoteConnected ? "studio-glow-green bg-[hsl(var(--studio-green)/0.08)] text-[hsl(var(--studio-green))]"
     : "studio-card-inset text-[hsl(var(--studio-text-dim))]";
 
   return (
@@ -113,6 +111,15 @@ export default function ArtistRoom() {
         <span className="studio-status-dot live" />
         <div className="font-bold tracking-wider">W.STUDIO</div>
         <div className="ml-auto text-xs text-[hsl(var(--studio-text-dim))]">{session?.name ?? "Live Session"}</div>
+      </div>
+
+      <div className={`rounded-xl p-4 text-center font-semibold tracking-wide ${tone} flex items-center justify-center gap-3`}>
+        <span>{label}</span>
+        {status.artistReady && (
+          <span className="text-xs px-2 py-0.5 rounded-full bg-[hsl(var(--studio-green)/0.18)] text-[hsl(var(--studio-green))] border border-[hsl(var(--studio-green)/0.4)]">
+            READY ✓
+          </span>
+        )}
       </div>
 
       <div className={`rounded-xl p-4 text-center font-semibold tracking-wide ${tone}`}>

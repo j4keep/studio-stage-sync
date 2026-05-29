@@ -62,7 +62,16 @@ export function useStudioPeerVideo(
       try {
         if (data.type === "hello") {
           peerReadyRef.current = true;
-          if (role === "engineer") await makeOffer();
+          if (role === "engineer") {
+            await makeOffer();
+          } else {
+            // Artist: reply so engineer (which may have mounted first and
+            // already broadcast its hello) knows we're here and creates an offer.
+            chan.postMessage({ from: role, type: "hello-ack" });
+          }
+        } else if (data.type === "hello-ack" && role === "engineer") {
+          peerReadyRef.current = true;
+          await makeOffer();
         } else if (data.type === "offer" && role === "artist") {
           await pc.setRemoteDescription(data.sdp);
           const answer = await pc.createAnswer();
@@ -77,6 +86,7 @@ export function useStudioPeerVideo(
     };
     chan.addEventListener("message", onMsg);
     chan.postMessage({ from: role, type: "hello" });
+
 
     return () => {
       chan.removeEventListener("message", onMsg);
