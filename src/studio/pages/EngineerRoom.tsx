@@ -122,13 +122,14 @@ export default function EngineerRoom() {
             <VideoTile
               name={session?.artistName ?? "Artist"}
               quality={remoteConnected ? "good" : artistStatus.joinedAt ? "ok" : "poor"}
+            <VideoTile
+              name={session?.artistName ?? "Artist"}
+              quality={remoteConnected ? "good" : artistStatus.joinedAt ? "ok" : "poor"}
               primary
               stream={remoteStream}
-              cameraOn={!!remoteStream?.getVideoTracks().length}
+              cameraOn={!!remoteStream?.getVideoTracks().length || artistStatus.cameraOn}
               micMuted={!artistStatus.micLive}
             />
-            <VideoTile
-              name={session?.engineerName ?? "Engineer"}
               isSelf
               cameraOn={cameraOn}
               micMuted={micMuted}
