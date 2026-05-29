@@ -102,6 +102,13 @@ export default function ArtistRoom() {
           <Headphones className="w-4 h-4 text-[hsl(var(--studio-blue))]" />
           {status.headphonesOk ? "Headphones OK" : "Confirm Headphones"}
         </button>
+        <button
+          className={`studio-btn ${status.artistCanHearBeat ? "studio-glow-green" : ""}`}
+          onClick={() => update({ artistCanHearBeat: !status.artistCanHearBeat })}
+        >
+          <Music2 className="w-4 h-4 text-[hsl(var(--studio-blue))]" />
+          {status.artistCanHearBeat ? "Beat Heard ✓" : "I Can Hear Beat"}
+        </button>
         <div className="studio-btn">
           <Radio className={`w-4 h-4 ${transportLive ? "text-[hsl(var(--studio-green))]" : "text-[hsl(var(--studio-text-dim))]"}`} />
           HQ {transportLive ? "Live" : "Standby"}
