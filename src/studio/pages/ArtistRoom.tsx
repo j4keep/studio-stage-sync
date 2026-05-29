@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useStudio } from "../state/StudioContext";
 import { useArtistSessionSync } from "../state/sessionSync";
+import { useStudioPeerVideo } from "../state/usePeerVideo";
 import VideoTile from "../components/VideoTile";
+import MicLevelMeter from "../components/MicLevelMeter";
 import SessionChat from "../components/SessionChat";
 import FileTransfer from "../components/FileTransfer";
 import TransportDebugPanel from "../components/TransportDebugPanel";
@@ -22,16 +24,17 @@ const STATUS_LABEL: Record<string, string> = {
 
 export default function ArtistRoom() {
   const { sessionId } = useParams();
-  const { session, sessionState, isLive, micMuted, setMicMuted, cameraOn, setCameraOn, checklist } = useStudio();
+  const { session, sessionState, isLive, micMuted, setMicMuted, cameraOn, setCameraOn } = useStudio();
   const [micStream, setMicStream] = useState<MediaStream | null>(null);
-  const acquiredRef = useRef(false);
+  const [camStream, setCamStream] = useState<MediaStream | null>(null);
+  const acquiredMicRef = useRef(false);
 
   const { status, update } = useArtistSessionSync(sessionId);
 
-  // Acquire local mic once the artist enters the room.
+  // Mic acquired once.
   useEffect(() => {
-    if (acquiredRef.current) return;
-    acquiredRef.current = true;
+    if (acquiredMicRef.current) return;
+    acquiredMicRef.current = true;
     navigator.mediaDevices
       .getUserMedia({ audio: true })
       .then((s) => {
@@ -39,27 +42,56 @@ export default function ArtistRoom() {
         update({ joinedAt: Date.now(), micLive: !micMuted });
       })
       .catch(() => setMicStream(null));
-    return () => {
-      micStream?.getTracks().forEach((t) => t.stop());
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Publish mic/camera changes to the shared session.
+  // Camera acquired/released with toggle.
   useEffect(() => {
-    update({ micLive: !!micStream && !micMuted });
-  }, [micStream, micMuted, update]);
+    if (!cameraOn) {
+      setCamStream((prev) => { prev?.getTracks().forEach((t) => t.stop()); return null; });
+      return;
+    }
+    let cancelled = false;
+    let acquired: MediaStream | null = null;
+    navigator.mediaDevices.getUserMedia({ video: true }).then((s) => {
+      if (cancelled) { s.getTracks().forEach((t) => t.stop()); return; }
+      acquired = s;
+      setCamStream(s);
+    }).catch(() => setCamStream(null));
+    return () => { cancelled = true; acquired?.getTracks().forEach((t) => t.stop()); };
+  }, [cameraOn]);
+
+  // Toggle mic track enabled (don't stop, so peer connection keeps sender alive).
   useEffect(() => {
-    update({ cameraOn });
-  }, [cameraOn, update]);
+    micStream?.getAudioTracks().forEach((t) => (t.enabled = !micMuted));
+  }, [micStream, micMuted]);
+
+  // Combined outbound stream for the peer.
+  const localStream = useMemo(() => {
+    const tracks = [
+      ...(camStream?.getVideoTracks() ?? []),
+      ...(micStream?.getAudioTracks() ?? []),
+    ];
+    return tracks.length ? new MediaStream(tracks) : null;
+  }, [camStream, micStream]);
+
+  // Local preview stream (video only) for the self tile.
+  const selfPreview = useMemo(() => {
+    const t = camStream?.getVideoTracks() ?? [];
+    return t.length ? new MediaStream(t) : null;
+  }, [camStream]);
+
+  const { remoteStream, connState } = useStudioPeerVideo(sessionId, "artist", localStream);
+  const remoteConnected = connState === "connected" || connState === "completed" as any;
+
+  // Sync to session state.
+  useEffect(() => { update({ micLive: !!micStream && !micMuted }); }, [micStream, micMuted, update]);
+  useEffect(() => { update({ cameraOn }); }, [cameraOn, update]);
 
   const senderStats = useStudioArtistSender(micStream, "", 0, false);
   const pluginStatus = useStudioPluginStatus(false);
   const transportLive = pluginStatus.state === "LIVE";
-
-  useEffect(() => {
-    update({ hqReady: transportLive });
-  }, [transportLive, update]);
+  useEffect(() => { update({ hqReady: transportLive }); }, [transportLive, update]);
 
   const label = isLive ? "● Recording" : (STATUS_LABEL[sessionState] ?? "Connected");
   const tone =
@@ -80,9 +112,23 @@ export default function ArtistRoom() {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <VideoTile name={session?.engineerName ?? "Engineer"} primary quality="good" />
-        <VideoTile name="You" isSelf cameraOn={cameraOn} micMuted={micMuted} />
+        <VideoTile
+          name={session?.engineerName ?? "Engineer"}
+          primary
+          quality={remoteConnected ? "good" : "ok"}
+          stream={remoteStream}
+          cameraOn={!!remoteStream?.getVideoTracks().length}
+        />
+        <VideoTile name="You" isSelf cameraOn={cameraOn} micMuted={micMuted} stream={selfPreview} />
       </div>
+
+      {!remoteConnected && (
+        <div className="text-[11px] text-center text-[hsl(var(--studio-amber))] bg-[hsl(var(--studio-amber)/0.08)] border border-[hsl(var(--studio-amber)/0.25)] rounded-md px-3 py-1.5">
+          Local preview only — remote WebRTC not connected ({connState})
+        </div>
+      )}
+
+      <MicLevelMeter stream={micStream} muted={micMuted} />
 
       <div className="studio-card p-3 flex flex-wrap gap-2 justify-center">
         <button
