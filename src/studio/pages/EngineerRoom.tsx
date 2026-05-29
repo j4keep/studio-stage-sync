@@ -110,7 +110,11 @@ export default function EngineerRoom() {
             </span>
             <span className="ml-auto flex items-center gap-3 text-[hsl(var(--studio-text-dim))]">
               <span>Mic: <b className={artistStatus.micLive ? "text-[hsl(var(--studio-green))]" : "text-[hsl(var(--studio-text-dim))]"}>{artistStatus.micLive ? "live" : "—"}</b></span>
-              <span>Cam: <b className={artistStatus.cameraOn ? "text-[hsl(var(--studio-green))]" : "text-[hsl(var(--studio-text-dim))]"}>{artistStatus.cameraOn ? "on" : "off"}</b></span>
+              <span>Cam: <b className={(artistStatus.cameraOn || !!remoteStream?.getVideoTracks().length) ? "text-[hsl(var(--studio-green))]" : "text-[hsl(var(--studio-text-dim))]"}>{
+                (artistStatus.cameraOn || !!remoteStream?.getVideoTracks().length)
+                  ? (remoteConnected ? "on" : "on — local preview only")
+                  : "off"
+              }</b></span>
               <span>HP: <b className={artistStatus.headphonesOk ? "text-[hsl(var(--studio-green))]" : "text-[hsl(var(--studio-text-dim))]"}>{artistStatus.headphonesOk ? "ok" : "—"}</b></span>
             </span>
           </div>
