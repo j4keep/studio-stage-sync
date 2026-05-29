@@ -11,6 +11,7 @@ import PluginStatusPanel from "../components/PluginStatusPanel";
 import SessionChat from "../components/SessionChat";
 import FileTransfer from "../components/FileTransfer";
 import TransportDebugPanel from "../components/TransportDebugPanel";
+import HelperAppStatusPanel from "../components/HelperAppStatusPanel";
 import { useStudioEngineerRelay, useStudioPluginStatus } from "../audio/useStudioTransport";
 import { Camera, CameraOff, Mic, MicOff, ScreenShare, Maximize2 } from "lucide-react";
 
