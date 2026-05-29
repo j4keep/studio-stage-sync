@@ -1,6 +1,7 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useEffect } from "react";
 import { useStudio } from "../state/StudioContext";
+import { useArtistSessionSync } from "../state/sessionSync";
 import TopBar from "../components/TopBar";
 import VideoTile from "../components/VideoTile";
 import HQAudioPanel from "../components/HQAudioPanel";
@@ -10,19 +11,17 @@ import SessionChat from "../components/SessionChat";
 import FileTransfer from "../components/FileTransfer";
 import TransportDebugPanel from "../components/TransportDebugPanel";
 import { useStudioEngineerRelay, useStudioPluginStatus } from "../audio/useStudioTransport";
-import { Camera, CameraOff, Mic, MicOff, ScreenShare, Maximize2 } from "lucide-react";
+import { Camera, CameraOff, Mic, MicOff, ScreenShare, Maximize2, CheckCircle2 } from "lucide-react";
 
 export default function EngineerRoom() {
   const { sessionId } = useParams();
   const navigate = useNavigate();
-  const { session, micMuted, setMicMuted, cameraOn, setCameraOn, plugin, notes, setNotes, createSession } = useStudio();
+  const { session, micMuted, setMicMuted, cameraOn, setCameraOn, plugin, notes, setNotes, createSession,
+    toggleCheck, setArtist } = useStudio();
 
-  // HQ audio: read from active transport (Phase 2 — no direct bridge calls).
   const pluginStatus = useStudioPluginStatus(true);
-  // Engineer relay: no remote WebRTC stream wired into /studio prototype yet,
-  // so we pass null + enabled=false. The hook still surfaces status fields
-  // for the dev debug panel without sending packets.
   const relayStats = useStudioEngineerRelay(null, 0, false);
+  const { status: artistStatus } = useArtistSessionSync(sessionId);
 
   useEffect(() => {
     if (!session && sessionId) {
@@ -30,9 +29,19 @@ export default function EngineerRoom() {
     }
   }, [session, sessionId, createSession]);
 
-  // Plugin signal timestamp comes from the transport, not a fake timer.
-  const pluginSignalAt = pluginStatus.state === "LIVE" ? Date.now() : null;
+  // Mirror artist sync state into checklist + artist status.
+  useEffect(() => {
+    toggleCheck("artistMic", artistStatus.micLive);
+  }, [artistStatus.micLive, toggleCheck]);
+  useEffect(() => {
+    toggleCheck("artistHeadphones", artistStatus.headphonesOk);
+  }, [artistStatus.headphonesOk, toggleCheck]);
+  useEffect(() => {
+    if (artistStatus.artistReady) setArtist("ready");
+    else if (artistStatus.joinedAt) setArtist("connected");
+  }, [artistStatus.artistReady, artistStatus.joinedAt, setArtist]);
 
+  const pluginSignalAt = pluginStatus.state === "LIVE" ? Date.now() : null;
   const fs = () => document.documentElement.requestFullscreen?.().catch(() => {});
 
   return (
@@ -42,8 +51,31 @@ export default function EngineerRoom() {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(320px,420px)_320px] gap-4">
         {/* LEFT — video */}
         <div className="space-y-3">
+          <div className={`studio-card px-3 py-2 flex items-center gap-3 text-xs ${
+            artistStatus.artistReady ? "studio-glow-green" : ""
+          }`}>
+            <span className={`studio-status-dot ${artistStatus.joinedAt ? (artistStatus.artistReady ? "live" : "warn") : ""}`} />
+            <span className="font-semibold tracking-wide">
+              {artistStatus.artistReady
+                ? "ARTIST READY"
+                : artistStatus.joinedAt
+                ? "Artist connected"
+                : "Waiting for artist…"}
+            </span>
+            <span className="ml-auto flex items-center gap-3 text-[hsl(var(--studio-text-dim))]">
+              <span>Mic: <b className={artistStatus.micLive ? "text-[hsl(var(--studio-green))]" : "text-[hsl(var(--studio-text-dim))]"}>{artistStatus.micLive ? "live" : "—"}</b></span>
+              <span>Cam: <b className={artistStatus.cameraOn ? "text-[hsl(var(--studio-green))]" : "text-[hsl(var(--studio-text-dim))]"}>{artistStatus.cameraOn ? "on" : "off"}</b></span>
+              <span>HP: <b className={artistStatus.headphonesOk ? "text-[hsl(var(--studio-green))]" : "text-[hsl(var(--studio-text-dim))]"}>{artistStatus.headphonesOk ? "ok" : "—"}</b></span>
+            </span>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <VideoTile name={session?.artistName ?? "Artist"} quality="good" primary />
+            <VideoTile
+              name={session?.artistName ?? "Artist"}
+              quality={artistStatus.joinedAt ? "good" : "poor"}
+              primary
+              cameraOn={artistStatus.cameraOn}
+              micMuted={!artistStatus.micLive}
+            />
             <VideoTile name={session?.engineerName ?? "Engineer"} isSelf cameraOn={cameraOn} micMuted={micMuted} quality="good" />
           </div>
           <div className="studio-card p-3 flex flex-wrap gap-2">
