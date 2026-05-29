@@ -171,6 +171,7 @@ export default function EngineerRoom() {
         <div className="space-y-4">
           <HQAudioPanel />
           <PluginStatusPanel status={plugin} lastSignalMs={pluginSignalAt} />
+          <HelperAppStatusPanel />
         </div>
 
         {/* RIGHT — chat / files / notes */}
