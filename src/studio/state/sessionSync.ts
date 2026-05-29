@@ -8,6 +8,7 @@ export interface ArtistSessionStatus {
   micLive: boolean;
   cameraOn: boolean;
   headphonesOk: boolean;
+  artistCanHearBeat: boolean;
   hqReady: boolean;
   artistReady: boolean;
   joinedAt: number | null;
@@ -17,6 +18,7 @@ export const defaultArtistStatus: ArtistSessionStatus = {
   micLive: false,
   cameraOn: false,
   headphonesOk: false,
+  artistCanHearBeat: false,
   hqReady: false,
   artistReady: false,
   joinedAt: null,
