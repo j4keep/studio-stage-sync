@@ -51,8 +51,31 @@ export default function EngineerRoom() {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(320px,420px)_320px] gap-4">
         {/* LEFT — video */}
         <div className="space-y-3">
+          <div className={`studio-card px-3 py-2 flex items-center gap-3 text-xs ${
+            artistStatus.artistReady ? "studio-glow-green" : ""
+          }`}>
+            <span className={`studio-status-dot ${artistStatus.joinedAt ? (artistStatus.artistReady ? "live" : "warn") : ""}`} />
+            <span className="font-semibold tracking-wide">
+              {artistStatus.artistReady
+                ? "ARTIST READY"
+                : artistStatus.joinedAt
+                ? "Artist connected"
+                : "Waiting for artist…"}
+            </span>
+            <span className="ml-auto flex items-center gap-3 text-[hsl(var(--studio-text-dim))]">
+              <span>Mic: <b className={artistStatus.micLive ? "text-[hsl(var(--studio-green))]" : "text-[hsl(var(--studio-text-dim))]"}>{artistStatus.micLive ? "live" : "—"}</b></span>
+              <span>Cam: <b className={artistStatus.cameraOn ? "text-[hsl(var(--studio-green))]" : "text-[hsl(var(--studio-text-dim))]"}>{artistStatus.cameraOn ? "on" : "off"}</b></span>
+              <span>HP: <b className={artistStatus.headphonesOk ? "text-[hsl(var(--studio-green))]" : "text-[hsl(var(--studio-text-dim))]"}>{artistStatus.headphonesOk ? "ok" : "—"}</b></span>
+            </span>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <VideoTile name={session?.artistName ?? "Artist"} quality="good" primary />
+            <VideoTile
+              name={session?.artistName ?? "Artist"}
+              quality={artistStatus.joinedAt ? "good" : "poor"}
+              primary
+              cameraOn={artistStatus.cameraOn}
+              micMuted={!artistStatus.micLive}
+            />
             <VideoTile name={session?.engineerName ?? "Engineer"} isSelf cameraOn={cameraOn} micMuted={micMuted} quality="good" />
           </div>
           <div className="studio-card p-3 flex flex-wrap gap-2">
