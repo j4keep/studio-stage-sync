@@ -1,7 +1,8 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useStudio } from "../state/StudioContext";
 import { useArtistSessionSync } from "../state/sessionSync";
+import { useStudioPeerVideo } from "../state/usePeerVideo";
 import TopBar from "../components/TopBar";
 import VideoTile from "../components/VideoTile";
 import HQAudioPanel from "../components/HQAudioPanel";
@@ -11,7 +12,7 @@ import SessionChat from "../components/SessionChat";
 import FileTransfer from "../components/FileTransfer";
 import TransportDebugPanel from "../components/TransportDebugPanel";
 import { useStudioEngineerRelay, useStudioPluginStatus } from "../audio/useStudioTransport";
-import { Camera, CameraOff, Mic, MicOff, ScreenShare, Maximize2, CheckCircle2 } from "lucide-react";
+import { Camera, CameraOff, Mic, MicOff, ScreenShare, Maximize2 } from "lucide-react";
 
 export default function EngineerRoom() {
   const { sessionId } = useParams();
@@ -22,6 +23,48 @@ export default function EngineerRoom() {
   const pluginStatus = useStudioPluginStatus(true);
   const relayStats = useStudioEngineerRelay(null, 0, false);
   const { status: artistStatus } = useArtistSessionSync(sessionId);
+
+  // Local A/V capture for the engineer side.
+  const [camStream, setCamStream] = useState<MediaStream | null>(null);
+  const [micStream, setMicStream] = useState<MediaStream | null>(null);
+  const acquiredMicRef = useRef(false);
+
+  useEffect(() => {
+    if (acquiredMicRef.current) return;
+    acquiredMicRef.current = true;
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then(setMicStream).catch(() => setMicStream(null));
+  }, []);
+  useEffect(() => {
+    if (!cameraOn) {
+      setCamStream((prev) => { prev?.getTracks().forEach((t) => t.stop()); return null; });
+      return;
+    }
+    let cancelled = false; let acquired: MediaStream | null = null;
+    navigator.mediaDevices.getUserMedia({ video: true }).then((s) => {
+      if (cancelled) { s.getTracks().forEach((t) => t.stop()); return; }
+      acquired = s; setCamStream(s);
+    }).catch(() => setCamStream(null));
+    return () => { cancelled = true; acquired?.getTracks().forEach((t) => t.stop()); };
+  }, [cameraOn]);
+  useEffect(() => {
+    micStream?.getAudioTracks().forEach((t) => (t.enabled = !micMuted));
+  }, [micStream, micMuted]);
+
+  const localStream = useMemo(() => {
+    const tracks = [
+      ...(camStream?.getVideoTracks() ?? []),
+      ...(micStream?.getAudioTracks() ?? []),
+    ];
+    return tracks.length ? new MediaStream(tracks) : null;
+  }, [camStream, micStream]);
+  const selfPreview = useMemo(() => {
+    const t = camStream?.getVideoTracks() ?? [];
+    return t.length ? new MediaStream(t) : null;
+  }, [camStream]);
+
+  const { remoteStream, connState } = useStudioPeerVideo(sessionId, "engineer", localStream);
+  const remoteConnected = connState === "connected";
 
   useEffect(() => {
     if (!session && sessionId) {
@@ -74,13 +117,26 @@ export default function EngineerRoom() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <VideoTile
               name={session?.artistName ?? "Artist"}
-              quality={artistStatus.joinedAt ? "good" : "poor"}
+              quality={remoteConnected ? "good" : artistStatus.joinedAt ? "ok" : "poor"}
               primary
-              cameraOn={artistStatus.cameraOn}
+              stream={remoteStream}
+              cameraOn={!!remoteStream?.getVideoTracks().length}
               micMuted={!artistStatus.micLive}
             />
-            <VideoTile name={session?.engineerName ?? "Engineer"} isSelf cameraOn={cameraOn} micMuted={micMuted} quality="good" />
+            <VideoTile
+              name={session?.engineerName ?? "Engineer"}
+              isSelf
+              cameraOn={cameraOn}
+              micMuted={micMuted}
+              quality="good"
+              stream={selfPreview}
+            />
           </div>
+          {!remoteConnected && (
+            <div className="text-[11px] text-center text-[hsl(var(--studio-amber))] bg-[hsl(var(--studio-amber)/0.08)] border border-[hsl(var(--studio-amber)/0.25)] rounded-md px-3 py-1.5">
+              Local preview only — remote WebRTC not connected ({connState})
+            </div>
+          )}
           <div className="studio-card p-3 flex flex-wrap gap-2">
             <button className="studio-btn" onClick={() => setCameraOn(!cameraOn)}>
               {cameraOn ? <Camera className="w-4 h-4" /> : <CameraOff className="w-4 h-4" />} {cameraOn ? "Camera On" : "Camera Off"}
