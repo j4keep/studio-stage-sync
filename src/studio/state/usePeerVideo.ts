@@ -1,12 +1,11 @@
 // Minimal WebRTC peer for the /studio V2 prototype.
-// Uses BroadcastChannel as the signaling transport so two tabs in the same
-// browser (engineer + artist) can exchange video/audio with no backend.
-// Engineer is the "offerer", Artist is the "answerer".
+// Signaling over BroadcastChannel so two tabs in the same browser
+// (engineer + artist) can exchange video/audio with no backend.
+// Engineer is the "offerer", Artist the "answerer".
 
 import { useEffect, useRef, useState } from "react";
 
 export type PeerRole = "engineer" | "artist";
-
 const sigChannel = (sid: string) => `studio-v2-peer-${sid}`;
 
 export function useStudioPeerVideo(
@@ -18,9 +17,10 @@ export function useStudioPeerVideo(
   const [connState, setConnState] = useState<RTCPeerConnectionState>("new");
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const chanRef = useRef<BroadcastChannel | null>(null);
-  const sendersRef = useRef<RTCRtpSender[]>([]);
+  const videoTxRef = useRef<RTCRtpTransceiver | null>(null);
+  const audioTxRef = useRef<RTCRtpTransceiver | null>(null);
+  const peerReadyRef = useRef(false);
 
-  // Setup peer connection + signaling for this session.
   useEffect(() => {
     if (!sessionId) return;
 
@@ -31,27 +31,26 @@ export function useStudioPeerVideo(
     const chan = new BroadcastChannel(sigChannel(sessionId));
     chanRef.current = chan;
 
+    // Pre-declare bidirectional media so SDP negotiates send+recv from the start.
+    videoTxRef.current = pc.addTransceiver("video", { direction: "sendrecv" });
+    audioTxRef.current = pc.addTransceiver("audio", { direction: "sendrecv" });
+
     const remote = new MediaStream();
     setRemoteStream(remote);
 
     pc.ontrack = (e) => {
-      e.streams[0]?.getTracks().forEach((t) => {
-        if (!remote.getTracks().find((x) => x.id === t.id)) remote.addTrack(t);
-      });
+      const t = e.track;
+      if (!remote.getTracks().find((x) => x.id === t.id)) remote.addTrack(t);
       setRemoteStream(new MediaStream(remote.getTracks()));
     };
-
     pc.onicecandidate = (e) => {
-      if (e.candidate) {
-        chan.postMessage({ from: role, type: "ice", candidate: e.candidate.toJSON() });
-      }
+      if (e.candidate) chan.postMessage({ from: role, type: "ice", candidate: e.candidate.toJSON() });
     };
-
     pc.onconnectionstatechange = () => setConnState(pc.connectionState);
 
     const makeOffer = async () => {
       try {
-        const offer = await pc.createOffer({ offerToReceiveVideo: true, offerToReceiveAudio: true });
+        const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
         chan.postMessage({ from: role, type: "offer", sdp: offer });
       } catch {}
@@ -61,8 +60,9 @@ export function useStudioPeerVideo(
       const data = e.data;
       if (!data || data.from === role) return;
       try {
-        if (data.type === "hello" && role === "engineer") {
-          await makeOffer();
+        if (data.type === "hello") {
+          peerReadyRef.current = true;
+          if (role === "engineer") await makeOffer();
         } else if (data.type === "offer" && role === "artist") {
           await pc.setRemoteDescription(data.sdp);
           const answer = await pc.createAnswer();
@@ -72,52 +72,34 @@ export function useStudioPeerVideo(
           if (!pc.currentRemoteDescription) await pc.setRemoteDescription(data.sdp);
         } else if (data.type === "ice") {
           try { await pc.addIceCandidate(data.candidate); } catch {}
-        } else if (data.type === "bye") {
-          // peer left; ignore — next hello will renegotiate
         }
       } catch {}
     };
     chan.addEventListener("message", onMsg);
-
-    // Announce presence; artist waits for offer, engineer offers on hello.
     chan.postMessage({ from: role, type: "hello" });
 
     return () => {
-      try { chan.postMessage({ from: role, type: "bye" }); } catch {}
       chan.removeEventListener("message", onMsg);
       chan.close();
-      pc.getSenders().forEach((s) => { try { pc.removeTrack(s); } catch {} });
       pc.close();
       pcRef.current = null;
       chanRef.current = null;
-      sendersRef.current = [];
+      videoTxRef.current = null;
+      audioTxRef.current = null;
+      peerReadyRef.current = false;
       setRemoteStream(null);
       setConnState("closed");
     };
   }, [sessionId, role]);
 
-  // Attach/replace local tracks whenever the local stream changes.
+  // Replace outgoing tracks whenever local stream changes.
   useEffect(() => {
-    const pc = pcRef.current;
-    if (!pc) return;
-    // Remove old senders
-    sendersRef.current.forEach((s) => { try { pc.removeTrack(s); } catch {} });
-    sendersRef.current = [];
-    if (localStream) {
-      localStream.getTracks().forEach((t) => {
-        try { sendersRef.current.push(pc.addTrack(t, localStream)); } catch {}
-      });
-      // Engineer renegotiates after adding tracks.
-      if (pc.signalingState === "stable" && chanRef.current) {
-        (async () => {
-          try {
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            chanRef.current?.postMessage({ from: "engineer-renego", type: "offer", sdp: offer });
-          } catch {}
-        })();
-      }
-    }
+    const v = videoTxRef.current?.sender;
+    const a = audioTxRef.current?.sender;
+    const vt = localStream?.getVideoTracks()[0] ?? null;
+    const at = localStream?.getAudioTracks()[0] ?? null;
+    v?.replaceTrack(vt).catch(() => {});
+    a?.replaceTrack(at).catch(() => {});
   }, [localStream]);
 
   return { remoteStream, connState };
