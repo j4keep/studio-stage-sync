@@ -21,6 +21,23 @@ export type {
   PluginConnectionStatus,
 } from "./plugin/PluginConnection";
 
+// Helper App transport contract (mock-only for now).
+export {
+  getActiveHelperTransport,
+  __setActiveHelperTransport,
+  MockHelperTransport,
+} from "./helper";
+export type {
+  HelperTransport,
+  HelperTransportState,
+  HelperStatus,
+  PluginState,
+  ArtistLevelFrame,
+  DawReturnFrame,
+  LatencyReport,
+  Unsubscribe,
+} from "./helper";
+
 const REGISTRY: Record<HQTransportId, HQAudioTransportAdapter | null> = {
   "localhost-bridge": LocalhostBridgeAdapter,
   "wstudio-helper": WStudioHelperAdapter,
