@@ -117,13 +117,26 @@ export default function EngineerRoom() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <VideoTile
               name={session?.artistName ?? "Artist"}
-              quality={artistStatus.joinedAt ? "good" : "poor"}
+              quality={remoteConnected ? "good" : artistStatus.joinedAt ? "ok" : "poor"}
               primary
-              cameraOn={artistStatus.cameraOn}
+              stream={remoteStream}
+              cameraOn={!!remoteStream?.getVideoTracks().length}
               micMuted={!artistStatus.micLive}
             />
-            <VideoTile name={session?.engineerName ?? "Engineer"} isSelf cameraOn={cameraOn} micMuted={micMuted} quality="good" />
+            <VideoTile
+              name={session?.engineerName ?? "Engineer"}
+              isSelf
+              cameraOn={cameraOn}
+              micMuted={micMuted}
+              quality="good"
+              stream={selfPreview}
+            />
           </div>
+          {!remoteConnected && (
+            <div className="text-[11px] text-center text-[hsl(var(--studio-amber))] bg-[hsl(var(--studio-amber)/0.08)] border border-[hsl(var(--studio-amber)/0.25)] rounded-md px-3 py-1.5">
+              Local preview only — remote WebRTC not connected ({connState})
+            </div>
+          )}
           <div className="studio-card p-3 flex flex-wrap gap-2">
             <button className="studio-btn" onClick={() => setCameraOn(!cameraOn)}>
               {cameraOn ? <Camera className="w-4 h-4" /> : <CameraOff className="w-4 h-4" />} {cameraOn ? "Camera On" : "Camera Off"}
