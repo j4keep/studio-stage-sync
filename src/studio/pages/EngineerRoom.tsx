@@ -32,9 +32,12 @@ export default function EngineerRoom() {
   // Mirror artist sync state into checklist + artist status.
   useEffect(() => {
     toggleCheck("artistMic", artistStatus.micLive);
-  }, [artistStatus.micLive, toggleCheck]);
   useEffect(() => {
     toggleCheck("artistHeadphones", artistStatus.headphonesOk);
+  }, [artistStatus.headphonesOk, toggleCheck]);
+  useEffect(() => {
+    toggleCheck("artistHearsBeat", artistStatus.artistCanHearBeat);
+  }, [artistStatus.artistCanHearBeat, toggleCheck]);
   }, [artistStatus.headphonesOk, toggleCheck]);
   useEffect(() => {
     if (artistStatus.artistReady) setArtist("ready");
