@@ -6,8 +6,6 @@ import { useEffect, useState, useCallback, useRef } from "react";
 
 export interface ArtistSessionStatus {
   micLive: boolean;
-export interface ArtistSessionStatus {
-  micLive: boolean;
   cameraOn: boolean;
   headphonesOk: boolean;
   artistCanHearBeat: boolean;
@@ -25,6 +23,8 @@ export const defaultArtistStatus: ArtistSessionStatus = {
   artistReady: false,
   joinedAt: null,
 };
+
+const storageKey = (sid: string) => `studio.v2.session.${sid}.artist`;
 const channelName = (sid: string) => `studio-v2-session-${sid}`;
 
 function readStored(sid: string): ArtistSessionStatus {
