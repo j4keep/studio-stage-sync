@@ -104,16 +104,7 @@ export function useArtistHelperPost(
       if (consecFails.current >= 5 && now < nextProbeAt.current) { dropCount.current++; return; }
 
       inflight.current++;
-      const body = JSON.stringify({
-        samples,
-        sampleRate: ctx.sampleRate,
-        slot,
-        timestamp: Date.now(),
-      });
-      if (import.meta.env.DEV && postCount.current % 25 === 0) {
-        // eslint-disable-next-line no-console
-        console.log("[studio] POST /artist-audio sampleCount=", samples.length, "slot=", slot);
-      }
+      const body = JSON.stringify({ sampleRate: ctx.sampleRate, slot, samples });
       fetch(targetUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -128,10 +119,6 @@ export function useArtistHelperPost(
         .catch((err) => {
           failCount.current++; consecFails.current++;
           lastErr.current = err?.message ?? String(err);
-          if (import.meta.env.DEV && consecFails.current <= 3) {
-            // eslint-disable-next-line no-console
-            console.warn("[studio] POST /artist-audio failed:", lastErr.current);
-          }
           const backoff = Math.min(5000, 500 * Math.pow(2, Math.max(0, consecFails.current - 5)));
           nextProbeAt.current = performance.now() + backoff;
         })

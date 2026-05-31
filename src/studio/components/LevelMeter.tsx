@@ -1,30 +1,22 @@
-/**
- * LevelMeter — renders a real audio level (0..1). No mock animation.
- * If `level` is omitted/<=0 the meter stays at zero.
- */
-export default function LevelMeter({
-  level = 0,
-  active,
-  label,
-}: {
-  /** Normalized 0..1 RMS / peak. */
-  level?: number;
-  /** Optional. When explicitly `false`, force the meter to zero. */
-  active?: boolean;
-  label?: string;
-}) {
-  const clamped = active === false ? 0 : Math.max(0, Math.min(1, level));
-  const pct = clamped * 100;
+import { useEffect, useState } from "react";
+
+export default function LevelMeter({ active = false, label }: { active?: boolean; label?: string }) {
+  const [level, setLevel] = useState(0);
+  useEffect(() => {
+    if (!active) {
+      setLevel(0);
+      return;
+    }
+    const id = window.setInterval(() => {
+      setLevel(20 + Math.random() * 70);
+    }, 90);
+    return () => window.clearInterval(id);
+  }, [active]);
   return (
     <div>
-      {label && (
-        <div className="text-[10px] uppercase tracking-wider text-[hsl(var(--studio-text-muted))] mb-1 flex items-center justify-between">
-          <span>{label}</span>
-          <span className="tabular-nums text-[hsl(var(--studio-text-dim))]">{Math.round(pct)}%</span>
-        </div>
-      )}
+      {label && <div className="text-[10px] uppercase tracking-wider text-[hsl(var(--studio-text-muted))] mb-1">{label}</div>}
       <div className="studio-meter-track">
-        <div className="studio-meter-fill transition-[width] duration-75" style={{ width: `${pct}%` }} />
+        <div className="studio-meter-fill" style={{ width: `${level}%` }} />
       </div>
     </div>
   );

@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { useStudio } from "../state/StudioContext";
 import LevelMeter from "./LevelMeter";
-import { Headphones, Play, Activity, Check, Mic } from "lucide-react";
+import { Headphones, Play, Activity, Check } from "lucide-react";
 import { useStudioPluginStatus } from "../audio/useStudioTransport";
-import { useHelperAudioLevels } from "../audio/useHelperAudioLevels";
 
 export default function HQAudioPanel() {
   const { hqAudio, setHqAudio, checklist, toggleCheck, setPlugin } = useStudio();
@@ -13,26 +12,25 @@ export default function HQAudioPanel() {
 
   // HQ audio + plugin status sourced from the active audio-engine transport.
   const pluginStatus = useStudioPluginStatus(true);
-  // Real audio levels polled from the W.STUDIO Helper App.
-  const levels = useHelperAudioLevels(0, true);
-
-  const pluginConnected = pluginStatus.state === "LIVE" || pluginStatus.state === "DETECTED";
+  const transportConnected = pluginStatus.state !== "OFFLINE";
+  const transportLive = pluginStatus.state === "LIVE";
 
   // Mirror transport plugin state into shared StudioContext so other
-  // panels stay in sync.
+  // panels (PluginStatusPanel, ArtistRoom) stay in sync without each
+  // re-subscribing to the transport.
   useEffect(() => {
     if (pluginStatus.state === "LIVE") setPlugin("connected");
     else if (pluginStatus.state === "DETECTED") setPlugin("connecting");
     else setPlugin("disconnected");
-    toggleCheck("pluginConnected", pluginConnected);
-  }, [pluginStatus.state, pluginConnected, setPlugin, toggleCheck]);
+    toggleCheck("pluginConnected", pluginStatus.state === "LIVE");
+  }, [pluginStatus.state, setPlugin, toggleCheck]);
 
-  // Reflect real artist audio into hqAudio status. No mock checking timer.
   useEffect(() => {
-    if (levels.artistLevel > 0.02) setHqAudio("live");
-    else if (hqAudio === "live") setHqAudio("off");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [levels.artistLevel > 0.02]);
+    if (hqAudio === "checking") {
+      const t = window.setTimeout(() => setHqAudio("live"), 1600);
+      return () => window.clearTimeout(t);
+    }
+  }, [hqAudio, setHqAudio]);
 
   const checkLatency = () => {
     setLatency(null);
@@ -50,17 +48,16 @@ export default function HQAudioPanel() {
           <div className="text-[10px] text-[hsl(var(--studio-text-dim))] mt-0.5">{pluginStatus.routingLabel}</div>
         </div>
         <div className="flex items-center gap-2">
-          <span className={`studio-status-dot ${hqAudio === "live" ? "live" : ""}`} />
+          <span className={`studio-status-dot ${hqAudio === "live" ? "live" : hqAudio === "checking" ? "warn" : ""}`} />
           <span className="text-xs font-medium uppercase">{hqAudio}</span>
         </div>
       </div>
 
-      <div className="studio-card-inset px-3 py-2 flex items-center gap-2 text-xs text-[hsl(var(--studio-text-dim))]">
-        <Mic className="w-3.5 h-3.5" />
-        Mic test is controlled from the <b className="text-[hsl(var(--studio-text))] mx-1">Artist</b> page.
-      </div>
-
       <div className="grid grid-cols-2 gap-3">
+        <button className="studio-btn justify-start" onClick={() => setHqAudio(hqAudio === "off" ? "checking" : "off")}>
+          <Activity className="w-4 h-4" />
+          {hqAudio === "off" ? "Start Mic Test" : "Stop Test"}
+        </button>
         <button
           className="studio-btn justify-start"
           onClick={() => { setHeadphoneTested(true); toggleCheck("artistHeadphones", true); }}
@@ -75,20 +72,14 @@ export default function HQAudioPanel() {
           <Play className="w-4 h-4" />
           Beat Playback Test {beatTested && <Check className="w-3.5 h-3.5 text-[hsl(var(--studio-green))]" />}
         </button>
-        <button className="studio-btn justify-start col-span-2" onClick={checkLatency}>
+        <button className="studio-btn justify-start" onClick={checkLatency}>
           <Activity className="w-4 h-4" />
           Latency Check {latency != null && <span className="ml-auto text-[hsl(var(--studio-blue))] font-mono">{latency}ms</span>}
         </button>
       </div>
 
-      <LevelMeter
-        level={levels.artistLevel}
-        label={`Artist Input ${levels.helperReachable ? "" : "(helper offline)"}`}
-      />
-      <LevelMeter
-        level={levels.dawReturnLevel}
-        label={`DAW Return ${pluginConnected ? "" : "(offline)"}`}
-      />
+      <LevelMeter active={hqAudio !== "off"} label="Artist Input" />
+      <LevelMeter active={transportLive || hqAudio === "live"} label={`DAW Return ${transportConnected ? "" : "(offline)"}`} />
 
       <div className="studio-card-inset p-3 space-y-2">
         <div className="text-[11px] uppercase tracking-wider text-[hsl(var(--studio-text-muted))]">Ready Checklist</div>

@@ -137,11 +137,6 @@ export class HttpHelperTransport implements HelperTransport {
       const last =
         body.plugin?.lastSeenAt ?? body.plugin?.lastEventAt ?? body.plugin?.lastHelloAt ?? null;
       this.evaluatePluginFreshness(last, body.plugin?.trackName ?? null, body.plugin?.connected);
-      if (import.meta.env.DEV) {
-        const age = last != null ? Date.now() - last : null;
-        // eslint-disable-next-line no-console
-        console.log("[studio] helper /status plugin.connected=", body.plugin?.connected, "lastSeenAge(ms)=", age);
-      }
     } catch (err) {
       // Network/CORS error → helper not reachable on this host.
       const msg = err instanceof Error ? err.message : String(err);
