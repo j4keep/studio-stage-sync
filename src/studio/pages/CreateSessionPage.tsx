@@ -14,6 +14,7 @@ export default function CreateSessionPage() {
   const [type, setType] = useState<SessionType>("Vocal Recording");
   const [engineerName, setEngineerName] = useState("Engineer");
   const [copied, setCopied] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const shareUrl = session ? `${window.location.origin}/#/studio/join/${session.id}` : "";
 
