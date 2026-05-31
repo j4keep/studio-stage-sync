@@ -18,7 +18,7 @@ import { Camera, CameraOff, Mic, MicOff, ScreenShare, Maximize2 } from "lucide-r
 export default function EngineerRoom() {
   const { sessionId } = useParams();
   const navigate = useNavigate();
-  const { session, micMuted, setMicMuted, cameraOn, setCameraOn, plugin, notes, setNotes, createSession,
+  const { session, micMuted, setMicMuted, cameraOn, setCameraOn, notes, setNotes, createSession,
     toggleCheck, setArtist } = useStudio();
 
   const pluginStatus = useStudioPluginStatus(true);
