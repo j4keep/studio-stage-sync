@@ -18,7 +18,7 @@ import { Camera, CameraOff, Mic, MicOff, ScreenShare, Maximize2 } from "lucide-r
 export default function EngineerRoom() {
   const { sessionId } = useParams();
   const navigate = useNavigate();
-  const { session, micMuted, setMicMuted, cameraOn, setCameraOn, plugin, notes, setNotes, createSession,
+  const { session, micMuted, setMicMuted, cameraOn, setCameraOn, notes, setNotes, createSession,
     toggleCheck, setArtist } = useStudio();
 
   const pluginStatus = useStudioPluginStatus(true);
@@ -89,6 +89,11 @@ export default function EngineerRoom() {
   }, [artistStatus.artistReady, artistStatus.joinedAt, setArtist]);
 
   const pluginSignalAt = pluginStatus.state === "LIVE" ? Date.now() : null;
+  // Map transport-layer plugin status → PluginStatusPanel ConnectionStatus.
+  const pluginConn: "connected" | "connecting" | "disconnected" | "error" =
+    pluginStatus.state === "LIVE" || pluginStatus.state === "DETECTED" ? "connected"
+    : pluginStatus.error ? "connecting"
+    : "disconnected";
   const fs = () => document.documentElement.requestFullscreen?.().catch(() => {});
 
   return (
@@ -170,7 +175,7 @@ export default function EngineerRoom() {
         {/* CENTER — HQ + plugin */}
         <div className="space-y-4">
           <HQAudioPanel />
-          <PluginStatusPanel status={plugin} lastSignalMs={pluginSignalAt} />
+          <PluginStatusPanel status={pluginConn} lastSignalMs={pluginSignalAt} />
           <HelperAppStatusPanel />
         </div>
 

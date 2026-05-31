@@ -9,6 +9,7 @@ import SessionChat from "../components/SessionChat";
 import FileTransfer from "../components/FileTransfer";
 import TransportDebugPanel from "../components/TransportDebugPanel";
 import { useStudioArtistSender, useStudioPluginStatus } from "../audio/useStudioTransport";
+import { useArtistHelperPost } from "../audio/useArtistHelperPost";
 import { Camera, CameraOff, Mic, MicOff, Headphones, Radio, CheckCircle2, Music2 } from "lucide-react";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -97,8 +98,11 @@ export default function ArtistRoom() {
   }, [update]);
 
   const senderStats = useStudioArtistSender(micStream, "", 0, false);
-  const pluginStatus = useStudioPluginStatus(false);
-  const transportLive = pluginStatus.state === "LIVE";
+  // Route mic to the Helper App so the Logic plugin / DAW return pipeline
+  // sees artist audio on the same transport that carries plugin events.
+  const helperPost = useArtistHelperPost(micStream, 0, !!micStream && !micMuted);
+  const pluginStatus = useStudioPluginStatus(true);
+  const transportLive = pluginStatus.state === "LIVE" || helperPost.state === "CONNECTED";
   const label = isLive ? "● Recording" : (STATUS_LABEL[sessionState] ?? "Connected");
   const tone =
     isLive ? "bg-[hsl(var(--studio-red)/0.12)] text-[hsl(var(--studio-red))]"

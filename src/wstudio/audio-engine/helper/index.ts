@@ -6,4 +6,6 @@
  */
 export * from "./types";
 export { MockHelperTransport } from "./MockHelperTransport";
+export { HttpHelperTransport } from "./HttpHelperTransport";
 export { getActiveHelperTransport, __setActiveHelperTransport } from "./registry";
+

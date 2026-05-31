@@ -1,27 +1,20 @@
 /**
  * Helper Transport selector — single source of truth.
  *
- * UI calls `getActiveHelperTransport()`; the returned object implements
- * the `HelperTransport` contract. Today we always return a singleton
- * MockHelperTransport. When the real Helper App ships, swap this function
- * to return the native adapter (or read a feature flag) — no UI changes.
- *
- * LocalhostBridgeAdapter remains available for HQ audio transport
- * (`getActiveTransport()` in ../index.ts) as a temporary compatibility
- * path. It is intentionally NOT exposed through the Helper contract.
+ * Default: HttpHelperTransport polling http://127.0.0.1:48000.
+ * Tests can swap in a Mock or fake via __setActiveHelperTransport.
  */
 
-import { MockHelperTransport } from "./MockHelperTransport";
+import { HttpHelperTransport } from "./HttpHelperTransport";
 import type { HelperTransport } from "./types";
 
 let _active: HelperTransport | null = null;
 
 export function getActiveHelperTransport(): HelperTransport {
-  if (!_active) _active = new MockHelperTransport();
+  if (!_active) _active = new HttpHelperTransport();
   return _active;
 }
 
-/** Test-only: replace the active transport (e.g. with a fake). */
 export function __setActiveHelperTransport(t: HelperTransport | null) {
   _active = t;
 }
