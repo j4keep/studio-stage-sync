@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useStudio, SessionType } from "../state/StudioContext";
-import { Copy, Check, ArrowRight } from "lucide-react";
+import { Copy, Check, ArrowRight, Share2 } from "lucide-react";
+import ShareSessionSheet from "../components/ShareSessionSheet";
 
 const TYPES: SessionType[] = ["Vocal Recording", "Mix Review", "Podcast", "Songwriting", "Voiceover"];
 
@@ -13,6 +14,7 @@ export default function CreateSessionPage() {
   const [type, setType] = useState<SessionType>("Vocal Recording");
   const [engineerName, setEngineerName] = useState("Engineer");
   const [copied, setCopied] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const shareUrl = session ? `${window.location.origin}/#/studio/join/${session.id}` : "";
 
@@ -72,14 +74,24 @@ export default function CreateSessionPage() {
             <Field label="Share link with artist">
               <div className="flex gap-2">
                 <input readOnly value={shareUrl} className="studio-input flex-1 font-mono text-xs" />
-                <button type="button" onClick={copy} className="studio-btn">
+                <button type="button" onClick={copy} className="studio-btn" title="Copy link">
                   {copied ? <Check className="w-4 h-4 text-[hsl(var(--studio-green))]" /> : <Copy className="w-4 h-4" />}
                 </button>
               </div>
             </Field>
+            <button type="button" onClick={() => setShareOpen(true)} className="studio-btn w-full justify-center gap-2">
+              <Share2 className="w-4 h-4" /> Share via QR, Text, Email…
+            </button>
             <button onClick={() => navigate(`/studio/engineer/${session.id}`)} className="studio-btn studio-btn-primary w-full">
               Enter Control Room <ArrowRight className="w-4 h-4" />
             </button>
+            <ShareSessionSheet
+              open={shareOpen}
+              onClose={() => setShareOpen(false)}
+              shareUrl={shareUrl}
+              code={session.code}
+              sessionName={session.name}
+            />
           </div>
         )}
       </div>
