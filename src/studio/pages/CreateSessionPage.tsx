@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useStudio, SessionType } from "../state/StudioContext";
-import { Copy, Check, ArrowRight } from "lucide-react";
+import { Copy, Check, ArrowRight, Share2 } from "lucide-react";
+import ShareSessionSheet from "../components/ShareSessionSheet";
 
 const TYPES: SessionType[] = ["Vocal Recording", "Mix Review", "Podcast", "Songwriting", "Voiceover"];
 
