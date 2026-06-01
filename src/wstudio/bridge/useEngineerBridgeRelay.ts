@@ -208,6 +208,10 @@ export function useEngineerBridgeRelay(
           nextProbeAtRef.current = 0;
           lastOkAtRef.current = performance.now();
           lastErrorRef.current = null;
+          if (postCountRef.current === 1 || postCountRef.current % 50 === 0) {
+            // eslint-disable-next-line no-console
+            console.log("ENGINEER_POSTED_TO_HELPER_OK", { url: targetUrl, total: postCountRef.current });
+          }
         })
         .catch((err) => {
           failCountRef.current++;
@@ -220,7 +224,7 @@ export function useEngineerBridgeRelay(
           if (now - lastErrorLogRef.current > 5000) {
             lastErrorLogRef.current = now;
             // eslint-disable-next-line no-console
-            console.warn("engineer-relay POST failed (backing off)", lastErrorRef.current);
+            console.warn("ENGINEER_POSTED_TO_HELPER_FAIL", { url: targetUrl, error: lastErrorRef.current });
           }
         })
         .finally(() => {
