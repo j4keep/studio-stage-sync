@@ -494,7 +494,7 @@ export default function UnifiedSessionScreen() {
 
       {isEngineer && (
         <p className="mt-3 max-w-[560px] text-center text-[11px]" style={{ color: C.dim }}>
-          Browser is silent. Artist audio reaches the W.STUDIO AU plugin on this Mac at 127.0.0.1:47999.
+          Browser is silent. Artist audio reaches the W.STUDIO helper on this Mac at 127.0.0.1:48000.
           Use Logic + the plugin for all monitoring and controls.
         </p>
       )}
