@@ -29,6 +29,7 @@ export default function MicLevelMeter({ stream, label = "Mic Level", muted, onLe
 
     const AudioCtx = (window.AudioContext || (window as any).webkitAudioContext) as typeof AudioContext;
     const ctx = new AudioCtx();
+    void ctx.resume().catch(() => {});
     const src = ctx.createMediaStreamSource(stream);
     const analyser = ctx.createAnalyser();
     analyser.fftSize = 1024;
