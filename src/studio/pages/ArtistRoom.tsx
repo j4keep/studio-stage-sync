@@ -139,16 +139,18 @@ export default function ArtistRoom() {
       </div>
 
       <div className={`rounded-xl p-4 text-center font-semibold tracking-wide ${tone} flex items-center justify-center gap-3`}>
-        <span>{label}</span>
+        <span>
+          {status.artistReady
+            ? "READY — Engineer notified"
+            : remoteConnected
+            ? label
+            : "Waiting for engineer…"}
+        </span>
         {status.artistReady && (
           <span className="text-xs px-2 py-0.5 rounded-full bg-[hsl(var(--studio-green)/0.18)] text-[hsl(var(--studio-green))] border border-[hsl(var(--studio-green)/0.4)]">
             READY ✓
           </span>
         )}
-      </div>
-
-      <div className={`rounded-xl p-4 text-center font-semibold tracking-wide ${tone}`}>
-        {status.artistReady ? "READY — Engineer notified" : label}
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -164,11 +166,16 @@ export default function ArtistRoom() {
 
       {!remoteConnected && (
         <div className="text-[11px] text-center text-[hsl(var(--studio-amber))] bg-[hsl(var(--studio-amber)/0.08)] border border-[hsl(var(--studio-amber)/0.25)] rounded-md px-3 py-1.5">
-          Local preview only — remote WebRTC not connected ({connState})
+          Video link offline ({connState}) — mic still posting to local helper
         </div>
       )}
 
-      <MicLevelMeter stream={micStream} muted={micMuted} />
+      <MicLevelMeter
+        stream={micStream}
+        muted={micMuted}
+        onLevel={(lvl) => update({ micLevel: lvl })}
+      />
+
 
       <div className="studio-card p-3 flex flex-wrap gap-2 justify-center">
         <button
