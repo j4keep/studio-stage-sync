@@ -476,7 +476,7 @@ export default function UnifiedSessionScreen() {
                     </div>
                   </div>
                   <div className="col-span-2 truncate" style={{ color: C.dim }}>
-                    → {engineerRelayStats?.targetUrl ?? "127.0.0.1:47999"}
+                    → {engineerRelayStats?.targetUrl ?? "127.0.0.1:48000"}
                   </div>
                 </>
               )}
