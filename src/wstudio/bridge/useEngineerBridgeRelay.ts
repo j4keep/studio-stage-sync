@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
  * WebRTC session and re-publishes it to the locally-running JUCE AU plugin
  * bridge over plain HTTP loopback:
  *
- *   POST http://127.0.0.1:47999/artist-audio?slot=<slot>
+ *   POST http://127.0.0.1:48000/artist-audio?slot=<slot>
  *   { "sampleRate": <hz>, "slot": <n>, "samples": [-1..1, ...] }
  *
  * Why loopback (127.0.0.1) on the engineer machine:
@@ -15,12 +15,12 @@ import { useEffect, useRef, useState } from "react";
  *   - no Chrome HTTPS → HTTP Mixed Content block (the only POST origin is
  *     the engineer's own browser hitting 127.0.0.1, which Chrome treats as
  *     a Secure Context exception),
- *   - the plugin port stays bound to the engineer's machine.
+ *   - the helper port stays bound to the engineer's machine.
  *
  * Returns live diagnostics: remote signal level, packets posted, last HTTP
  * status, last fetch error.
  */
-const BRIDGE_URL = (slot: number) => `http://127.0.0.1:47999/artist-audio?slot=${slot}`;
+const BRIDGE_URL = (slot: number) => `http://127.0.0.1:48000/artist-audio?slot=${slot}`;
 const PACKET_SAMPLES = 2048; // ~42.7ms @ 48k; keeps the local plugin HTTP server stable
 const MAX_INFLIGHT = 1;
 const RECENT_OK_MS = 5000;
@@ -151,7 +151,10 @@ export function useEngineerBridgeRelay(
     muteSink.connect(ctx.destination);
 
     setStats((s) => ({ ...s, enabled: true, hasRemoteAudio: true, state: "CONNECTING", targetUrl }));
+    // eslint-disable-next-line no-console
+    console.log("ENGINEER_RECEIVED_ARTIST_AUDIO", { trackId: track.id, label: track.label });
 
+    let lastLevelLogAt = 0;
     node.onaudioprocess = (ev) => {
       if (cancelled) return;
       const ch = ev.inputBuffer.getChannelData(0);
@@ -205,6 +208,10 @@ export function useEngineerBridgeRelay(
           nextProbeAtRef.current = 0;
           lastOkAtRef.current = performance.now();
           lastErrorRef.current = null;
+          if (postCountRef.current === 1 || postCountRef.current % 50 === 0) {
+            // eslint-disable-next-line no-console
+            console.log("ENGINEER_POSTED_TO_HELPER_OK", { url: targetUrl, total: postCountRef.current });
+          }
         })
         .catch((err) => {
           failCountRef.current++;
@@ -217,7 +224,7 @@ export function useEngineerBridgeRelay(
           if (now - lastErrorLogRef.current > 5000) {
             lastErrorLogRef.current = now;
             // eslint-disable-next-line no-console
-            console.warn("engineer-relay POST failed (backing off)", lastErrorRef.current);
+            console.warn("ENGINEER_POSTED_TO_HELPER_FAIL", { url: targetUrl, error: lastErrorRef.current });
           }
         })
         .finally(() => {

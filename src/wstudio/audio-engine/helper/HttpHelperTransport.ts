@@ -142,8 +142,9 @@ export class HttpHelperTransport implements HelperTransport {
       // Log only on transition to avoid 1Hz spam.
       if (prevState !== "CONNECTED" || prevPluginConnected !== this.plugin.connected) {
         // eslint-disable-next-line no-console
-        console.log("[/studio] HELPER_STATUS_OK", {
+        console.log("HELPER_STATUS", {
           base: this.baseUrl,
+          state: this.status.state,
           version: this.status.version,
           plugin: this.plugin,
         });

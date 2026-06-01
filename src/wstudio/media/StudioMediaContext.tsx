@@ -410,6 +410,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       return new MediaStream();
     };
 
+    let lastMicLevelLogAt = 0;
     const tickLocalMeter = (analyser: AnalyserNode) => {
       if (cancelled) return;
       analyser.getByteTimeDomainData(buf);
@@ -421,6 +422,14 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       const rms = Math.sqrt(sum / buf.length);
       const instant = Math.min(1, rms * 5.5);
       setLocalMicLevel((prev) => prev * 0.82 + instant * 0.18);
+      if (roleRef.current === "artist") {
+        const now = performance.now();
+        if (now - lastMicLevelLogAt > 1000) {
+          lastMicLevelLogAt = now;
+          // eslint-disable-next-line no-console
+          console.log("ARTIST_MIC_LEVEL", { level: Number(instant.toFixed(3)) });
+        }
+      }
       localLevelRafRef.current = requestAnimationFrame(() => tickLocalMeter(analyser));
     };
 
@@ -543,6 +552,14 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
           sendTrackActive: sendAudioTrack.readyState === "live",
           meterConnected: true,
         });
+        if (roleRef.current === "artist") {
+          // eslint-disable-next-line no-console
+          console.log("ARTIST_MIC_STARTED", {
+            trackId: audioTrack.id,
+            label: audioTrack.label,
+            sampleRate: ctx.sampleRate,
+          });
+        }
       } catch (e) {
         if (!cancelled) {
           setMediaError(e instanceof Error ? e.message : "Could not access camera or microphone");
@@ -1047,6 +1064,13 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
     for (const track of localStream.getTracks()) {
       const sender = pc.addTrack(track, localStream);
       if (track.kind === "audio") localAudioSender = sender;
+    }
+    if (role === "artist" && localAudioSender) {
+      // eslint-disable-next-line no-console
+      console.log("ARTIST_AUDIO_SENT_TO_ENGINEER", {
+        trackId: localAudioSender.track?.id ?? null,
+        kind: localAudioSender.track?.kind ?? null,
+      });
     }
     if (role === "engineer") {
       // sendrecv so the artist's audio has an m-line to come back through.

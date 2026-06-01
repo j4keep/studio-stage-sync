@@ -6,13 +6,12 @@
  * Logic. No mic-input dropdown — the browser uses the system default mic.
  *
  * Audio routing:
- *  - Artist: captures mic and POSTs PCM directly to the engineer's LAN IP
- *    at http://<ENGINEER_LAN_IP>:47999/artist-audio?slot=<slot>. The host
- *    is entered/persisted on the artist page (localStorage).
- *  - Engineer: stays silent in the browser. The AU plugin on the engineer
- *    Mac receives audio on 127.0.0.1:47999. The engineer page shows packet
- *    count from the persistent inbound-WebRTC relay (StudioMediaContext)
- *    plus the artist's direct-POST stats are visible to the artist.
+ *  - Artist: captures mic and sends it through the existing session/WebRTC
+ *    transport to the engineer browser.
+ *  - Engineer: receives the artist mic over the session and forwards PCM to
+ *    the helper at http://127.0.0.1:48000/artist-audio?slot=0. The engineer
+ *    page shows packet count from the inbound-WebRTC relay
+ *    (StudioMediaContext + useEngineerBridgeRelay).
  *
  * Booking, session join, and navigation are untouched.
  */
@@ -477,7 +476,7 @@ export default function UnifiedSessionScreen() {
                     </div>
                   </div>
                   <div className="col-span-2 truncate" style={{ color: C.dim }}>
-                    → {engineerRelayStats?.targetUrl ?? "127.0.0.1:47999"}
+                    → {engineerRelayStats?.targetUrl ?? "127.0.0.1:48000"}
                   </div>
                 </>
               )}
@@ -495,7 +494,7 @@ export default function UnifiedSessionScreen() {
 
       {isEngineer && (
         <p className="mt-3 max-w-[560px] text-center text-[11px]" style={{ color: C.dim }}>
-          Browser is silent. Artist audio reaches the W.STUDIO AU plugin on this Mac at 127.0.0.1:47999.
+          Browser is silent. Artist audio reaches the W.STUDIO helper on this Mac at 127.0.0.1:48000.
           Use Logic + the plugin for all monitoring and controls.
         </p>
       )}
