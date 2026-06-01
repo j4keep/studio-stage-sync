@@ -104,7 +104,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [files, setFiles] = useState<SessionFile[]>([]);
   const [notes, setNotes] = useState("");
-  const [micMuted, setMicMuted] = useState(false);
+  const [micMuted, setMicMuted] = useState(true);
   const [cameraOn, setCameraOn] = useState(true);
   const [isLive, setIsLive] = useState(false);
   const [isTalkback, setIsTalkback] = useState(false);
