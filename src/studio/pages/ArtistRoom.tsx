@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useStudio } from "../state/StudioContext";
 import { useArtistSessionSync } from "../state/sessionSync";
@@ -28,23 +28,44 @@ export default function ArtistRoom() {
   const { session, sessionState, isLive, micMuted, setMicMuted, cameraOn, setCameraOn } = useStudio();
   const [micStream, setMicStream] = useState<MediaStream | null>(null);
   const [camStream, setCamStream] = useState<MediaStream | null>(null);
-  const acquiredMicRef = useRef(false);
+  
 
   const { status, update } = useArtistSessionSync(sessionId);
 
-  // Mic acquired once.
+  // Mic acquisition is GATED by the "Mic Live" toggle (i.e. !micMuted).
+  // We do NOT auto-acquire on mount — the user must explicitly press
+  // Mic Live, which triggers the browser permission prompt and starts
+  // real mic capture. Releasing the toggle stops all tracks.
   useEffect(() => {
-    if (acquiredMicRef.current) return;
-    acquiredMicRef.current = true;
+    if (micMuted) {
+      setMicStream((prev) => {
+        prev?.getTracks().forEach((t) => t.stop());
+        if (prev) console.log("[/studio] MIC_STOPPED");
+        return null;
+      });
+      return;
+    }
+    let cancelled = false;
+    let acquired: MediaStream | null = null;
     navigator.mediaDevices
       .getUserMedia({ audio: true })
       .then((s) => {
+        if (cancelled) { s.getTracks().forEach((t) => t.stop()); return; }
+        acquired = s;
         setMicStream(s);
-        update({ joinedAt: Date.now(), micLive: !micMuted });
+        console.log("[/studio] MIC_STARTED", {
+          tracks: s.getAudioTracks().map((t) => ({ label: t.label, settings: t.getSettings() })),
+        });
+        update({ joinedAt: Date.now(), micLive: true });
       })
-      .catch(() => setMicStream(null));
+      .catch((err) => {
+        console.error("[/studio] MIC_ERROR", err);
+        setMicStream(null);
+      });
+    return () => { cancelled = true; acquired?.getTracks().forEach((t) => t.stop()); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [micMuted]);
+
 
   // Camera acquired/released with toggle.
   useEffect(() => {
@@ -118,16 +139,18 @@ export default function ArtistRoom() {
       </div>
 
       <div className={`rounded-xl p-4 text-center font-semibold tracking-wide ${tone} flex items-center justify-center gap-3`}>
-        <span>{label}</span>
+        <span>
+          {status.artistReady
+            ? "READY — Engineer notified"
+            : remoteConnected
+            ? label
+            : "Waiting for engineer…"}
+        </span>
         {status.artistReady && (
           <span className="text-xs px-2 py-0.5 rounded-full bg-[hsl(var(--studio-green)/0.18)] text-[hsl(var(--studio-green))] border border-[hsl(var(--studio-green)/0.4)]">
             READY ✓
           </span>
         )}
-      </div>
-
-      <div className={`rounded-xl p-4 text-center font-semibold tracking-wide ${tone}`}>
-        {status.artistReady ? "READY — Engineer notified" : label}
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -143,20 +166,27 @@ export default function ArtistRoom() {
 
       {!remoteConnected && (
         <div className="text-[11px] text-center text-[hsl(var(--studio-amber))] bg-[hsl(var(--studio-amber)/0.08)] border border-[hsl(var(--studio-amber)/0.25)] rounded-md px-3 py-1.5">
-          Local preview only — remote WebRTC not connected ({connState})
+          Video link offline ({connState}) — mic still posting to local helper
         </div>
       )}
 
-      <MicLevelMeter stream={micStream} muted={micMuted} />
+      <MicLevelMeter
+        stream={micStream}
+        muted={micMuted}
+        onLevel={(lvl) => update({ micLevel: lvl })}
+      />
+
 
       <div className="studio-card p-3 flex flex-wrap gap-2 justify-center">
         <button
-          className={`studio-btn ${!micMuted && micStream ? "studio-glow-green" : ""} ${micMuted ? "studio-btn-danger" : ""}`}
+          className={`studio-btn ${!micMuted && micStream ? "studio-glow-green" : ""} ${micMuted ? "studio-btn-primary" : ""}`}
           onClick={() => setMicMuted(!micMuted)}
+          title={micMuted ? "Request microphone & start mic" : "Stop microphone"}
         >
           {micMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-          {micStream ? (micMuted ? "Muted" : "Mic Live") : "Mic —"}
+          {micMuted ? "Mic Live" : (micStream ? "Stop Mic" : "Starting…")}
         </button>
+
         <button className="studio-btn" onClick={() => setCameraOn(!cameraOn)}>
           {cameraOn ? <Camera className="w-4 h-4" /> : <CameraOff className="w-4 h-4" />} Camera
         </button>

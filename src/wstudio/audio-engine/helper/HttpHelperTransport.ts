@@ -116,6 +116,8 @@ export class HttpHelperTransport implements HelperTransport {
   }
 
   private async pollOnce(): Promise<void> {
+    const prevState = this.status.state;
+    const prevPluginConnected = this.plugin.connected;
     try {
       const res = await fetch(`${this.baseUrl}/status`, {
         method: "GET",
@@ -137,6 +139,15 @@ export class HttpHelperTransport implements HelperTransport {
       const last =
         body.plugin?.lastSeenAt ?? body.plugin?.lastEventAt ?? body.plugin?.lastHelloAt ?? null;
       this.evaluatePluginFreshness(last, body.plugin?.trackName ?? null, body.plugin?.connected);
+      // Log only on transition to avoid 1Hz spam.
+      if (prevState !== "CONNECTED" || prevPluginConnected !== this.plugin.connected) {
+        // eslint-disable-next-line no-console
+        console.log("[/studio] HELPER_STATUS_OK", {
+          base: this.baseUrl,
+          version: this.status.version,
+          plugin: this.plugin,
+        });
+      }
     } catch (err) {
       // Network/CORS error → helper not reachable on this host.
       const msg = err instanceof Error ? err.message : String(err);
@@ -144,6 +155,7 @@ export class HttpHelperTransport implements HelperTransport {
       this.evaluatePluginFreshness(null);
     }
   }
+
 
   /**
    * Mark the plugin connected when we either:

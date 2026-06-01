@@ -12,6 +12,10 @@ export interface ArtistSessionStatus {
   hqReady: boolean;
   artistReady: boolean;
   joinedAt: number | null;
+  /** 0–100. Real mic RMS measured on the artist tab; engineer reads it for the input meter. */
+  micLevel: number;
+  /** 0–100. Real DAW return level from the helper; 0 until helper emits real data. */
+  dawReturnLevel: number;
 }
 
 export const defaultArtistStatus: ArtistSessionStatus = {
@@ -22,6 +26,8 @@ export const defaultArtistStatus: ArtistSessionStatus = {
   hqReady: false,
   artistReady: false,
   joinedAt: null,
+  micLevel: 0,
+  dawReturnLevel: 0,
 };
 
 const storageKey = (sid: string) => `studio.v2.session.${sid}.artist`;
@@ -80,11 +86,20 @@ export function useArtistSessionSync(sessionId: string | undefined) {
         const next = { ...prev, ...patch };
         try { localStorage.setItem(storageKey(sessionId), JSON.stringify(next)); } catch {}
         chanRef.current?.postMessage({ type: "artist-status", payload: next });
+        // Skip noisy logs for high-rate numeric-only patches (meters).
+        const onlyMeters =
+          Object.keys(patch).length > 0 &&
+          Object.keys(patch).every((k) => k === "micLevel" || k === "dawReturnLevel");
+        if (!onlyMeters) {
+          // eslint-disable-next-line no-console
+          console.log("[/studio] SESSION_STATE_UPDATED", sessionId, patch);
+        }
         return next;
       });
     },
     [sessionId],
   );
+
 
   return { status, update };
 }

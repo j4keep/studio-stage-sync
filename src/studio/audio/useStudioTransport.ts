@@ -1,10 +1,10 @@
 /**
  * /studio Phase 2 — single entry point for HQ audio transport access.
  *
- * UI never imports from `@/wstudio/bridge/*` or hits 127.0.0.1 directly.
- * It calls these hooks, which delegate to whichever transport
- * `getActiveTransport()` currently returns (Localhost bridge today,
- * W.STUDIO Helper App in the future).
+ * Plugin status reads EXCLUSIVELY from the W.STUDIO Helper App
+ * (http://127.0.0.1:48000/status). The legacy localhost-bridge (47999)
+ * is no longer consulted from /studio — it stays available under
+ * /wstudio for backward compatibility only.
  */
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -14,7 +14,6 @@ import {
   type HQEngineerRelayStats,
   type PluginConnectionStatus,
 } from "@/wstudio/audio-engine";
-import { usePluginConnection } from "@/wstudio/audio-engine";
 import {
   getActiveHelperTransport,
   type HelperStatus,
@@ -26,14 +25,14 @@ export function useStudioTransport(): HQAudioTransportAdapter {
 }
 
 /**
- * Plugin status driven primarily by the W.STUDIO Helper App's plugin events.
- * Falls back to the legacy localhost-bridge poll when the helper has not
- * reported a recent plugin event.
+ * Plugin status driven entirely by the W.STUDIO Helper App.
+ *
+ *   state = LIVE      when helper /status reports plugin.connected === true
+ *                     AND a PLUGIN_STATE/HELLO event is fresh (<5s)
+ *   state = DETECTED  when plugin.connected === true but no recent feed
+ *   state = OFFLINE   otherwise (helper unreachable OR no plugin)
  */
-export function useStudioPluginStatus(enabled = true): PluginConnectionStatus {
-  const transport = useStudioTransport();
-  const bridge = usePluginConnection(transport, enabled);
-
+export function useStudioPluginStatus(_enabled = true): PluginConnectionStatus {
   const helper = useMemo(() => getActiveHelperTransport(), []);
   const [helperStatus, setHelperStatus] = useState<HelperStatus>(() => helper.getStatus());
   const [plugin, setPlugin] = useState<PluginState>({
@@ -47,27 +46,30 @@ export function useStudioPluginStatus(enabled = true): PluginConnectionStatus {
   }, [helper]);
 
   return useMemo<PluginConnectionStatus>(() => {
-    // Helper-reported plugin state wins when present.
+    const routing = `${helper.label}${plugin.trackName ? ` · ${plugin.trackName}` : ""}`;
     if (plugin.connected) {
       return {
         state: plugin.feedActive ? "LIVE" : "DETECTED",
-        level: bridge.level,
+        level: 0,
         error: null,
-        routingLabel: `${helper.label}${plugin.trackName ? ` · ${plugin.trackName}` : ""}`,
+        routingLabel: routing,
       };
     }
-    // Helper reachable but no plugin yet → surface that explicitly.
     if (helperStatus.state === "CONNECTED") {
       return {
         state: "OFFLINE",
-        level: bridge.level,
+        level: 0,
         error: "Helper online — waiting for plugin",
         routingLabel: helper.label,
       };
     }
-    // Helper unreachable → fall back to legacy localhost-bridge poll.
-    return bridge;
-  }, [plugin, helperStatus.state, helper, bridge]);
+    return {
+      state: "OFFLINE",
+      level: 0,
+      error: helperStatus.error ?? "Helper App not reachable on 127.0.0.1:48000",
+      routingLabel: helper.label,
+    };
+  }, [plugin, helperStatus, helper]);
 }
 
 export function useStudioEngineerRelay(
