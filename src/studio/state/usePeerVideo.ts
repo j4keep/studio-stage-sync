@@ -72,7 +72,7 @@ export function useStudioPeerVideo(
       if (!pc.remoteDescription || pendingIceRef.current.length === 0) return;
       const queued = pendingIceRef.current.splice(0);
       for (const candidate of queued) {
-        try { await pc.addIceCandidate(candidate); } catch {}
+        try { await pc.addIceCandidate(candidate); } catch { /* candidate may arrive after ICE restart */ }
       }
     };
 
@@ -117,7 +117,7 @@ export function useStudioPeerVideo(
           if (!pc.remoteDescription) {
             pendingIceRef.current.push(data.candidate);
           } else {
-            try { await pc.addIceCandidate(data.candidate); } catch {}
+            try { await pc.addIceCandidate(data.candidate); } catch { /* ignore stale ICE candidate */ }
           }
         }
       } catch (err) {
