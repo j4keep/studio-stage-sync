@@ -1065,6 +1065,13 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       const sender = pc.addTrack(track, localStream);
       if (track.kind === "audio") localAudioSender = sender;
     }
+    if (role === "artist" && localAudioSender) {
+      // eslint-disable-next-line no-console
+      console.log("ARTIST_AUDIO_SENT_TO_ENGINEER", {
+        trackId: localAudioSender.track?.id ?? null,
+        kind: localAudioSender.track?.kind ?? null,
+      });
+    }
     if (role === "engineer") {
       // sendrecv so the artist's audio has an m-line to come back through.
       // Sender stays track-less (silence) until Talk is held → replaceTrack(mic).
