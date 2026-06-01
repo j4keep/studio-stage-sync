@@ -24,6 +24,8 @@ export function useStudioPeerVideo(
   const audioTxRef = useRef<RTCRtpTransceiver | null>(null);
   const makingOfferRef = useRef(false);
   const peerReadyRef = useRef(false);
+  const connStateRef = useRef<RTCPeerConnectionState>("new");
+  const pendingIceRef = useRef<RTCIceCandidateInit[]>([]);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -60,9 +62,18 @@ export function useStudioPeerVideo(
       }
     };
     pc.onconnectionstatechange = () => {
+      connStateRef.current = pc.connectionState;
       setConnState(pc.connectionState);
       // eslint-disable-next-line no-console
       console.log("[/studio] PEER_STATE", role, pc.connectionState);
+    };
+
+    const flushIce = async () => {
+      if (!pc.remoteDescription || pendingIceRef.current.length === 0) return;
+      const queued = pendingIceRef.current.splice(0);
+      for (const candidate of queued) {
+        try { await pc.addIceCandidate(candidate); } catch {}
+      }
     };
 
     const makeOffer = async () => {
@@ -93,15 +104,21 @@ export function useStudioPeerVideo(
           }
         } else if (data.t === "offer" && role === "artist") {
           await pc.setRemoteDescription({ type: "offer", sdp: data.sdp });
+          await flushIce();
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
           sendRtcSignal(sessionId, { t: "answer", sdp: answer.sdp ?? "", from: role });
         } else if (data.t === "answer" && role === "engineer") {
-          if (!pc.currentRemoteDescription) {
+          if (pc.signalingState === "have-local-offer" || !pc.currentRemoteDescription) {
             await pc.setRemoteDescription({ type: "answer", sdp: data.sdp });
+            await flushIce();
           }
         } else if (data.t === "ice") {
-          try { await pc.addIceCandidate(data.candidate); } catch {}
+          if (!pc.remoteDescription) {
+            pendingIceRef.current.push(data.candidate);
+          } else {
+            try { await pc.addIceCandidate(data.candidate); } catch {}
+          }
         }
       } catch (err) {
         // eslint-disable-next-line no-console
