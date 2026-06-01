@@ -55,7 +55,7 @@ import StudioBridgeScreen from "./wstudio/bridge/StudioBridgeScreen";
 
 import TermsAgreementGate from "./components/TermsAgreementGate";
 import ThemePickerSheet from "./components/ThemePickerSheet";
-import StudioApp from "./studio/StudioApp";
+
 
 const queryClient = new QueryClient();
 const STARTUP_TIMEOUT_MS = 2500;
