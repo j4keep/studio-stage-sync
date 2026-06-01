@@ -1,12 +1,16 @@
-// Minimal WebRTC peer for the /studio V2 prototype.
-// Signaling over BroadcastChannel so two tabs in the same browser
-// (engineer + artist) can exchange video/audio with no backend.
+// WebRTC peer for the /studio V2 prototype.
+// Signaling runs over Supabase Realtime so engineer + artist on DIFFERENT
+// devices (phone, laptop, different browsers) can actually connect.
 // Engineer is the "offerer", Artist the "answerer".
 
 import { useEffect, useRef, useState } from "react";
+import {
+  sendRtcSignal,
+  subscribeRtcSignals,
+  type RtcSignalPayload,
+} from "@/wstudio/media/realtimeRtcSignaling";
 
 export type PeerRole = "engineer" | "artist";
-const sigChannel = (sid: string) => `studio-v2-peer-${sid}`;
 
 export function useStudioPeerVideo(
   sessionId: string | undefined,
@@ -16,22 +20,23 @@ export function useStudioPeerVideo(
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [connState, setConnState] = useState<RTCPeerConnectionState>("new");
   const pcRef = useRef<RTCPeerConnection | null>(null);
-  const chanRef = useRef<BroadcastChannel | null>(null);
   const videoTxRef = useRef<RTCRtpTransceiver | null>(null);
   const audioTxRef = useRef<RTCRtpTransceiver | null>(null);
+  const makingOfferRef = useRef(false);
   const peerReadyRef = useRef(false);
 
   useEffect(() => {
     if (!sessionId) return;
 
     const pc = new RTCPeerConnection({
-      iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+      iceServers: [
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:stun1.l.google.com:19302" },
+      ],
     });
     pcRef.current = pc;
-    const chan = new BroadcastChannel(sigChannel(sessionId));
-    chanRef.current = chan;
 
-    // Pre-declare bidirectional media so SDP negotiates send+recv from the start.
+    // Pre-declare bidirectional media so SDP negotiates send+recv from start.
     videoTxRef.current = pc.addTransceiver("video", { direction: "sendrecv" });
     audioTxRef.current = pc.addTransceiver("audio", { direction: "sendrecv" });
 
@@ -42,58 +47,83 @@ export function useStudioPeerVideo(
       const t = e.track;
       if (!remote.getTracks().find((x) => x.id === t.id)) remote.addTrack(t);
       setRemoteStream(new MediaStream(remote.getTracks()));
+      // eslint-disable-next-line no-console
+      console.log("[/studio] PEER_TRACK", role, t.kind);
     };
     pc.onicecandidate = (e) => {
-      if (e.candidate) chan.postMessage({ from: role, type: "ice", candidate: e.candidate.toJSON() });
+      if (e.candidate) {
+        sendRtcSignal(sessionId, {
+          t: "ice",
+          candidate: e.candidate.toJSON(),
+          from: role,
+        });
+      }
     };
-    pc.onconnectionstatechange = () => setConnState(pc.connectionState);
+    pc.onconnectionstatechange = () => {
+      setConnState(pc.connectionState);
+      // eslint-disable-next-line no-console
+      console.log("[/studio] PEER_STATE", role, pc.connectionState);
+    };
 
     const makeOffer = async () => {
+      if (makingOfferRef.current) return;
+      makingOfferRef.current = true;
       try {
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
-        chan.postMessage({ from: role, type: "offer", sdp: offer });
-      } catch {}
+        sendRtcSignal(sessionId, { t: "offer", sdp: offer.sdp ?? "", from: role });
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error("[/studio] OFFER_ERROR", err);
+      } finally {
+        makingOfferRef.current = false;
+      }
     };
 
-    const onMsg = async (e: MessageEvent) => {
-      const data = e.data;
+    const onSignal = async (data: RtcSignalPayload) => {
       if (!data || data.from === role) return;
       try {
-        if (data.type === "hello") {
+        if (data.t === "ready") {
           peerReadyRef.current = true;
           if (role === "engineer") {
             await makeOffer();
           } else {
-            // Artist: reply so engineer (which may have mounted first and
-            // already broadcast its hello) knows we're here and creates an offer.
-            chan.postMessage({ from: role, type: "hello-ack" });
+            // Let the engineer know we're here too.
+            sendRtcSignal(sessionId, { t: "ready", from: role });
           }
-        } else if (data.type === "hello-ack" && role === "engineer") {
-          peerReadyRef.current = true;
-          await makeOffer();
-        } else if (data.type === "offer" && role === "artist") {
-          await pc.setRemoteDescription(data.sdp);
+        } else if (data.t === "offer" && role === "artist") {
+          await pc.setRemoteDescription({ type: "offer", sdp: data.sdp });
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
-          chan.postMessage({ from: role, type: "answer", sdp: answer });
-        } else if (data.type === "answer" && role === "engineer") {
-          if (!pc.currentRemoteDescription) await pc.setRemoteDescription(data.sdp);
-        } else if (data.type === "ice") {
+          sendRtcSignal(sessionId, { t: "answer", sdp: answer.sdp ?? "", from: role });
+        } else if (data.t === "answer" && role === "engineer") {
+          if (!pc.currentRemoteDescription) {
+            await pc.setRemoteDescription({ type: "answer", sdp: data.sdp });
+          }
+        } else if (data.t === "ice") {
           try { await pc.addIceCandidate(data.candidate); } catch {}
         }
-      } catch {}
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error("[/studio] SIGNAL_ERROR", err);
+      }
     };
-    chan.addEventListener("message", onMsg);
-    chan.postMessage({ from: role, type: "hello" });
 
+    const unsubscribe = subscribeRtcSignals(sessionId, onSignal);
+    // Announce presence; the other side will reply with "ready" or an offer.
+    sendRtcSignal(sessionId, { t: "ready", from: role });
+    // Re-announce a moment later in case the peer subscribes after we did.
+    const announceTimer = window.setTimeout(() => {
+      if (!peerReadyRef.current) {
+        sendRtcSignal(sessionId, { t: "ready", from: role });
+      }
+    }, 800);
 
     return () => {
-      chan.removeEventListener("message", onMsg);
-      chan.close();
+      window.clearTimeout(announceTimer);
+      unsubscribe();
       pc.close();
       pcRef.current = null;
-      chanRef.current = null;
       videoTxRef.current = null;
       audioTxRef.current = null;
       peerReadyRef.current = false;

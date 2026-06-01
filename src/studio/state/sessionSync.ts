@@ -1,8 +1,9 @@
-// Lightweight per-session shared state for the /studio V2 prototype.
-// Uses localStorage + BroadcastChannel so Engineer and Artist tabs in the
-// same browser stay in sync without any backend. Scoped per sessionId.
+// Per-session shared state for the /studio V2 prototype.
+// Uses Supabase Realtime (broadcast) so engineer + artist on DIFFERENT
+// devices stay in sync. localStorage is kept as a same-tab cache only.
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface ArtistSessionStatus {
   micLive: boolean;
@@ -12,9 +13,9 @@ export interface ArtistSessionStatus {
   hqReady: boolean;
   artistReady: boolean;
   joinedAt: number | null;
-  /** 0–100. Real mic RMS measured on the artist tab; engineer reads it for the input meter. */
+  /** 0–100. Real mic RMS measured on the artist tab; engineer reads it. */
   micLevel: number;
-  /** 0–100. Real DAW return level from the helper; 0 until helper emits real data. */
+  /** 0–100. Real DAW return level from the helper. */
   dawReturnLevel: number;
 }
 
@@ -31,7 +32,9 @@ export const defaultArtistStatus: ArtistSessionStatus = {
 };
 
 const storageKey = (sid: string) => `studio.v2.session.${sid}.artist`;
-const channelName = (sid: string) => `studio-v2-session-${sid}`;
+const channelName = (sid: string) => `studio-v2-session-${sid.trim()}`;
+const EVENT_STATE = "artist-state";
+const EVENT_REQUEST = "artist-state-request";
 
 function readStored(sid: string): ArtistSessionStatus {
   try {
@@ -45,37 +48,62 @@ export function useArtistSessionSync(sessionId: string | undefined) {
   const [status, setStatus] = useState<ArtistSessionStatus>(() =>
     sessionId ? readStored(sessionId) : defaultArtistStatus,
   );
-  const chanRef = useRef<BroadcastChannel | null>(null);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const subscribedRef = useRef(false);
+  const statusRef = useRef(status);
+  statusRef.current = status;
 
   useEffect(() => {
     if (!sessionId) return;
     setStatus(readStored(sessionId));
-    const chan = new BroadcastChannel(channelName(sessionId));
-    chanRef.current = chan;
-    const onMsg = (e: MessageEvent) => {
-      if (e.data?.type === "artist-status" && e.data.payload) {
-        setStatus((prev) => ({ ...prev, ...e.data.payload }));
-      }
-      if (e.data?.type === "artist-status-request") {
-        // Re-broadcast current snapshot for late joiners
-        chan.postMessage({ type: "artist-status", payload: readStored(sessionId) });
-      }
-    };
-    chan.addEventListener("message", onMsg);
-    // Cross-tab via storage event (BroadcastChannel covers same-origin tabs too)
+
+    const channel = supabase.channel(channelName(sessionId), {
+      config: { broadcast: { ack: false, self: false } },
+    });
+    channelRef.current = channel;
+    subscribedRef.current = false;
+
+    channel
+      .on("broadcast", { event: EVENT_STATE }, ({ payload }) => {
+        if (payload && typeof payload === "object") {
+          setStatus((prev) => {
+            const next = { ...prev, ...(payload as Partial<ArtistSessionStatus>) };
+            try { localStorage.setItem(storageKey(sessionId), JSON.stringify(next)); } catch {}
+            return next;
+          });
+        }
+      })
+      .on("broadcast", { event: EVENT_REQUEST }, () => {
+        // Re-broadcast current snapshot for late joiners.
+        if (subscribedRef.current) {
+          void channel.send({
+            type: "broadcast",
+            event: EVENT_STATE,
+            payload: statusRef.current,
+          });
+        }
+      })
+      .subscribe((s) => {
+        subscribedRef.current = s === "SUBSCRIBED";
+        if (subscribedRef.current) {
+          // Ask peers for the latest state.
+          void channel.send({ type: "broadcast", event: EVENT_REQUEST, payload: {} });
+        }
+      });
+
+    // Same-tab cross-component sync (cheap, no realtime hop).
     const onStorage = (e: StorageEvent) => {
       if (e.key === storageKey(sessionId) && e.newValue) {
         try { setStatus({ ...defaultArtistStatus, ...JSON.parse(e.newValue) }); } catch {}
       }
     };
     window.addEventListener("storage", onStorage);
-    // Ask any peer to re-broadcast latest
-    chan.postMessage({ type: "artist-status-request" });
+
     return () => {
-      chan.removeEventListener("message", onMsg);
-      chan.close();
       window.removeEventListener("storage", onStorage);
-      chanRef.current = null;
+      void supabase.removeChannel(channel);
+      channelRef.current = null;
+      subscribedRef.current = false;
     };
   }, [sessionId]);
 
@@ -85,8 +113,14 @@ export function useArtistSessionSync(sessionId: string | undefined) {
       setStatus((prev) => {
         const next = { ...prev, ...patch };
         try { localStorage.setItem(storageKey(sessionId), JSON.stringify(next)); } catch {}
-        chanRef.current?.postMessage({ type: "artist-status", payload: next });
-        // Skip noisy logs for high-rate numeric-only patches (meters).
+        const channel = channelRef.current;
+        if (channel && subscribedRef.current) {
+          void channel.send({
+            type: "broadcast",
+            event: EVENT_STATE,
+            payload: next,
+          });
+        }
         const onlyMeters =
           Object.keys(patch).length > 0 &&
           Object.keys(patch).every((k) => k === "micLevel" || k === "dawReturnLevel");
@@ -99,7 +133,6 @@ export function useArtistSessionSync(sessionId: string | undefined) {
     },
     [sessionId],
   );
-
 
   return { status, update };
 }
