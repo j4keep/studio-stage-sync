@@ -14,10 +14,14 @@ export default function MicLevelMeter({ stream, label = "Mic Level", muted, onLe
 
   const [level, setLevel] = useState(0);
   const rafRef = useRef<number | null>(null);
+  const onLevelRef = useRef(onLevel);
+  onLevelRef.current = onLevel;
+  const lastEmitRef = useRef(0);
 
   useEffect(() => {
     if (!stream || muted) {
       setLevel(0);
+      onLevelRef.current?.(0);
       return;
     }
     const track = stream.getAudioTracks()[0];
@@ -42,6 +46,13 @@ export default function MicLevelMeter({ stream, label = "Mic Level", muted, onLe
       const rms = Math.sqrt(sum / buf.length);
       const pct = Math.min(100, Math.round(rms * 240));
       setLevel(pct);
+      const now = performance.now();
+      if (onLevelRef.current && now - lastEmitRef.current > 200) {
+        lastEmitRef.current = now;
+        onLevelRef.current(pct);
+        // eslint-disable-next-line no-console
+        console.log("[/studio] MIC_LEVEL", pct);
+      }
       rafRef.current = requestAnimationFrame(tick);
     };
     tick();
@@ -52,6 +63,8 @@ export default function MicLevelMeter({ stream, label = "Mic Level", muted, onLe
       try { ctx.close(); } catch {}
     };
   }, [stream, muted]);
+
+
 
   // Segmented meter, 20 bars.
   const segments = 20;
