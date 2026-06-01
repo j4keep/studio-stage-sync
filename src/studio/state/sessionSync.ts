@@ -86,11 +86,20 @@ export function useArtistSessionSync(sessionId: string | undefined) {
         const next = { ...prev, ...patch };
         try { localStorage.setItem(storageKey(sessionId), JSON.stringify(next)); } catch {}
         chanRef.current?.postMessage({ type: "artist-status", payload: next });
+        // Skip noisy logs for high-rate numeric-only patches (meters).
+        const onlyMeters =
+          Object.keys(patch).length > 0 &&
+          Object.keys(patch).every((k) => k === "micLevel" || k === "dawReturnLevel");
+        if (!onlyMeters) {
+          // eslint-disable-next-line no-console
+          console.log("[/studio] SESSION_STATE_UPDATED", sessionId, patch);
+        }
         return next;
       });
     },
     [sessionId],
   );
+
 
   return { status, update };
 }
