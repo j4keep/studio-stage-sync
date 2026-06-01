@@ -543,6 +543,14 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
           sendTrackActive: sendAudioTrack.readyState === "live",
           meterConnected: true,
         });
+        if (roleRef.current === "artist") {
+          // eslint-disable-next-line no-console
+          console.log("ARTIST_MIC_STARTED", {
+            trackId: audioTrack.id,
+            label: audioTrack.label,
+            sampleRate: ctx.sampleRate,
+          });
+        }
       } catch (e) {
         if (!cancelled) {
           setMediaError(e instanceof Error ? e.message : "Could not access camera or microphone");
