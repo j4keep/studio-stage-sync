@@ -137,6 +137,12 @@ export class HttpHelperTransport implements HelperTransport {
       const last =
         body.plugin?.lastSeenAt ?? body.plugin?.lastEventAt ?? body.plugin?.lastHelloAt ?? null;
       this.evaluatePluginFreshness(last, body.plugin?.trackName ?? null, body.plugin?.connected);
+      // eslint-disable-next-line no-console
+      console.log("[/studio] HELPER_STATUS_OK", {
+        version: this.status.version,
+        plugin: this.plugin,
+      });
+
     } catch (err) {
       // Network/CORS error → helper not reachable on this host.
       const msg = err instanceof Error ? err.message : String(err);
