@@ -135,15 +135,26 @@ export function useStudioPeerVideo(
         sendRtcSignal(sessionId, { t: "ready", from: role });
       }
     }, 800);
+    const reconnectTimer = window.setInterval(() => {
+      const state = connStateRef.current;
+      if (state === "connected" || state === "closed") return;
+      sendRtcSignal(sessionId, { t: "ready", from: role });
+      if (role === "engineer" && pc.signalingState === "stable") {
+        void makeOffer();
+      }
+    }, 2500);
 
     return () => {
       window.clearTimeout(announceTimer);
+      window.clearInterval(reconnectTimer);
       unsubscribe();
       pc.close();
       pcRef.current = null;
       videoTxRef.current = null;
       audioTxRef.current = null;
       peerReadyRef.current = false;
+      pendingIceRef.current = [];
+      connStateRef.current = "closed";
       setRemoteStream(null);
       setConnState("closed");
     };
