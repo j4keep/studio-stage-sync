@@ -113,15 +113,30 @@ export function useArtistHelperPost(
         .then((res) => {
           lastStatus.current = `HTTP ${res.status} ${res.statusText}`;
           if (!res.ok) throw new Error(lastStatus.current ?? `HTTP ${res.status}`);
-          postCount.current++; consecFails.current = 0; nextProbeAt.current = 0;
+          postCount.current++;
+          const firstOk = consecFails.current > 0 || postCount.current === 1;
+          consecFails.current = 0; nextProbeAt.current = 0;
           lastOkAt.current = performance.now(); lastErr.current = null;
+          if (firstOk || postCount.current % 50 === 0) {
+            // eslint-disable-next-line no-console
+            console.log("[/studio] POST_ARTIST_AUDIO_OK", {
+              url: targetUrl, posted: postCount.current,
+            });
+          }
         })
         .catch((err) => {
           failCount.current++; consecFails.current++;
           lastErr.current = err?.message ?? String(err);
           const backoff = Math.min(5000, 500 * Math.pow(2, Math.max(0, consecFails.current - 5)));
           nextProbeAt.current = performance.now() + backoff;
+          if (consecFails.current === 1 || consecFails.current % 10 === 0) {
+            // eslint-disable-next-line no-console
+            console.error("[/studio] POST_ARTIST_AUDIO_ERROR", {
+              url: targetUrl, error: lastErr.current, consecFails: consecFails.current,
+            });
+          }
         })
+
         .finally(() => { inflight.current = Math.max(0, inflight.current - 1); });
     };
 
