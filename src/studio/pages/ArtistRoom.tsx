@@ -28,7 +28,7 @@ export default function ArtistRoom() {
   const { session, sessionState, isLive, micMuted, setMicMuted, cameraOn, setCameraOn } = useStudio();
   const [micStream, setMicStream] = useState<MediaStream | null>(null);
   const [camStream, setCamStream] = useState<MediaStream | null>(null);
-  const acquiredMicRef = useRef(false);
+  
 
   const { status, update } = useArtistSessionSync(sessionId);
 
