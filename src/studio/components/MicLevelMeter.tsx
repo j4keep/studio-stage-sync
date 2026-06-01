@@ -5,10 +5,13 @@ interface Props {
   stream: MediaStream | null;
   label?: string;
   muted?: boolean;
+  /** Fires with the latest 0–100 level so a parent can broadcast it (throttled to ~5 Hz). */
+  onLevel?: (level: number) => void;
 }
 
 /** Live mic input meter (0–100). Green / Amber / Red zones. */
-export default function MicLevelMeter({ stream, label = "Mic Level", muted }: Props) {
+export default function MicLevelMeter({ stream, label = "Mic Level", muted, onLevel }: Props) {
+
   const [level, setLevel] = useState(0);
   const rafRef = useRef<number | null>(null);
 
