@@ -32,19 +32,40 @@ export default function ArtistRoom() {
 
   const { status, update } = useArtistSessionSync(sessionId);
 
-  // Mic acquired once.
+  // Mic acquisition is GATED by the "Mic Live" toggle (i.e. !micMuted).
+  // We do NOT auto-acquire on mount — the user must explicitly press
+  // Mic Live, which triggers the browser permission prompt and starts
+  // real mic capture. Releasing the toggle stops all tracks.
   useEffect(() => {
-    if (acquiredMicRef.current) return;
-    acquiredMicRef.current = true;
+    if (micMuted) {
+      setMicStream((prev) => {
+        prev?.getTracks().forEach((t) => t.stop());
+        if (prev) console.log("[/studio] MIC_STOPPED");
+        return null;
+      });
+      return;
+    }
+    let cancelled = false;
+    let acquired: MediaStream | null = null;
     navigator.mediaDevices
       .getUserMedia({ audio: true })
       .then((s) => {
+        if (cancelled) { s.getTracks().forEach((t) => t.stop()); return; }
+        acquired = s;
         setMicStream(s);
-        update({ joinedAt: Date.now(), micLive: !micMuted });
+        console.log("[/studio] MIC_STARTED", {
+          tracks: s.getAudioTracks().map((t) => ({ label: t.label, settings: t.getSettings() })),
+        });
+        update({ joinedAt: Date.now(), micLive: true });
       })
-      .catch(() => setMicStream(null));
+      .catch((err) => {
+        console.error("[/studio] MIC_ERROR", err);
+        setMicStream(null);
+      });
+    return () => { cancelled = true; acquired?.getTracks().forEach((t) => t.stop()); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [micMuted]);
+
 
   // Camera acquired/released with toggle.
   useEffect(() => {
