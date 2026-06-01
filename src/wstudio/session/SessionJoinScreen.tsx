@@ -167,12 +167,6 @@ export default function SessionJoinScreen() {
             <ChevronLeft className="h-5 w-5" />
             <span className="text-sm font-semibold">Back</span>
           </button>
-          <a
-            href="#/studio"
-            className="rounded-full border border-primary/60 bg-primary/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-primary hover:bg-primary/20 transition"
-          >
-            Open W.STUDIO V2 →
-          </a>
         </div>
 
         <div className="flex w-full min-h-0 flex-1 flex-col items-center justify-between gap-2 py-1.5">
