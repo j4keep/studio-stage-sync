@@ -410,6 +410,7 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       return new MediaStream();
     };
 
+    let lastMicLevelLogAt = 0;
     const tickLocalMeter = (analyser: AnalyserNode) => {
       if (cancelled) return;
       analyser.getByteTimeDomainData(buf);
@@ -421,6 +422,14 @@ export function StudioMediaProvider({ children }: { children: ReactNode }) {
       const rms = Math.sqrt(sum / buf.length);
       const instant = Math.min(1, rms * 5.5);
       setLocalMicLevel((prev) => prev * 0.82 + instant * 0.18);
+      if (roleRef.current === "artist") {
+        const now = performance.now();
+        if (now - lastMicLevelLogAt > 1000) {
+          lastMicLevelLogAt = now;
+          // eslint-disable-next-line no-console
+          console.log("ARTIST_MIC_LEVEL", { level: Number(instant.toFixed(3)) });
+        }
+      }
       localLevelRafRef.current = requestAnimationFrame(() => tickLocalMeter(analyser));
     };
 
