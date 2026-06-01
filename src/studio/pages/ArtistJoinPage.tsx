@@ -93,8 +93,7 @@ export default function ArtistJoinPage() {
             <div className="flex items-center gap-2 text-sm font-medium"><Music2 className="w-4 h-4 text-[hsl(var(--studio-blue))]" /> Beat Check</div>
             <div className="text-xs text-[hsl(var(--studio-text-dim))]">Wait for the engineer to send beat playback.</div>
             <button
-              onClick={() => { toggleCheck("artistHearsBeat", true); setStep("ready"); }}
-              onPointerDown={() => update({ artistCanHearBeat: true })}
+              onClick={() => { toggleCheck("artistHearsBeat", true); update({ artistCanHearBeat: true }); setStep("ready"); }}
               className="studio-btn studio-btn-primary w-full"
             >
               <Check className="w-4 h-4" /> I can hear the track
