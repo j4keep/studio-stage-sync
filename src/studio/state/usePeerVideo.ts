@@ -24,6 +24,8 @@ export function useStudioPeerVideo(
   const audioTxRef = useRef<RTCRtpTransceiver | null>(null);
   const makingOfferRef = useRef(false);
   const peerReadyRef = useRef(false);
+  const connStateRef = useRef<RTCPeerConnectionState>("new");
+  const pendingIceRef = useRef<RTCIceCandidateInit[]>([]);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -47,7 +49,6 @@ export function useStudioPeerVideo(
       const t = e.track;
       if (!remote.getTracks().find((x) => x.id === t.id)) remote.addTrack(t);
       setRemoteStream(new MediaStream(remote.getTracks()));
-      // eslint-disable-next-line no-console
       console.log("[/studio] PEER_TRACK", role, t.kind);
     };
     pc.onicecandidate = (e) => {
@@ -60,9 +61,17 @@ export function useStudioPeerVideo(
       }
     };
     pc.onconnectionstatechange = () => {
+      connStateRef.current = pc.connectionState;
       setConnState(pc.connectionState);
-      // eslint-disable-next-line no-console
       console.log("[/studio] PEER_STATE", role, pc.connectionState);
+    };
+
+    const flushIce = async () => {
+      if (!pc.remoteDescription || pendingIceRef.current.length === 0) return;
+      const queued = pendingIceRef.current.splice(0);
+      for (const candidate of queued) {
+        try { await pc.addIceCandidate(candidate); } catch { /* candidate may arrive after ICE restart */ }
+      }
     };
 
     const makeOffer = async () => {
@@ -73,7 +82,6 @@ export function useStudioPeerVideo(
         await pc.setLocalDescription(offer);
         sendRtcSignal(sessionId, { t: "offer", sdp: offer.sdp ?? "", from: role });
       } catch (err) {
-        // eslint-disable-next-line no-console
         console.error("[/studio] OFFER_ERROR", err);
       } finally {
         makingOfferRef.current = false;
@@ -93,18 +101,23 @@ export function useStudioPeerVideo(
           }
         } else if (data.t === "offer" && role === "artist") {
           await pc.setRemoteDescription({ type: "offer", sdp: data.sdp });
+          await flushIce();
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
           sendRtcSignal(sessionId, { t: "answer", sdp: answer.sdp ?? "", from: role });
         } else if (data.t === "answer" && role === "engineer") {
-          if (!pc.currentRemoteDescription) {
+          if (pc.signalingState === "have-local-offer" || !pc.currentRemoteDescription) {
             await pc.setRemoteDescription({ type: "answer", sdp: data.sdp });
+            await flushIce();
           }
         } else if (data.t === "ice") {
-          try { await pc.addIceCandidate(data.candidate); } catch {}
+          if (!pc.remoteDescription) {
+            pendingIceRef.current.push(data.candidate);
+          } else {
+            try { await pc.addIceCandidate(data.candidate); } catch { /* ignore stale ICE candidate */ }
+          }
         }
       } catch (err) {
-        // eslint-disable-next-line no-console
         console.error("[/studio] SIGNAL_ERROR", err);
       }
     };
@@ -118,15 +131,26 @@ export function useStudioPeerVideo(
         sendRtcSignal(sessionId, { t: "ready", from: role });
       }
     }, 800);
+    const reconnectTimer = window.setInterval(() => {
+      const state = connStateRef.current;
+      if (state === "connected" || state === "closed") return;
+      sendRtcSignal(sessionId, { t: "ready", from: role });
+      if (role === "engineer" && pc.signalingState === "stable") {
+        void makeOffer();
+      }
+    }, 2500);
 
     return () => {
       window.clearTimeout(announceTimer);
+      window.clearInterval(reconnectTimer);
       unsubscribe();
       pc.close();
       pcRef.current = null;
       videoTxRef.current = null;
       audioTxRef.current = null;
       peerReadyRef.current = false;
+      pendingIceRef.current = [];
+      connStateRef.current = "closed";
       setRemoteStream(null);
       setConnState("closed");
     };

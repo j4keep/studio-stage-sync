@@ -27,8 +27,12 @@ export default function MicLevelMeter({ stream, label = "Mic Level", muted, onLe
     const track = stream.getAudioTracks()[0];
     if (!track) return;
 
-    const AudioCtx = (window.AudioContext || (window as any).webkitAudioContext) as typeof AudioContext;
+    const AudioCtx = (
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+    ) as typeof AudioContext;
     const ctx = new AudioCtx();
+    void ctx.resume().catch(() => {});
     const src = ctx.createMediaStreamSource(stream);
     const analyser = ctx.createAnalyser();
     analyser.fftSize = 1024;
@@ -50,7 +54,6 @@ export default function MicLevelMeter({ stream, label = "Mic Level", muted, onLe
       if (onLevelRef.current && now - lastEmitRef.current > 200) {
         lastEmitRef.current = now;
         onLevelRef.current(pct);
-        // eslint-disable-next-line no-console
         console.log("[/studio] MIC_LEVEL", pct);
       }
       rafRef.current = requestAnimationFrame(tick);
@@ -59,8 +62,8 @@ export default function MicLevelMeter({ stream, label = "Mic Level", muted, onLe
 
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      try { src.disconnect(); } catch {}
-      try { ctx.close(); } catch {}
+      try { src.disconnect(); } catch { /* already disconnected */ }
+      try { ctx.close(); } catch { /* already closed */ }
     };
   }, [stream, muted]);
 

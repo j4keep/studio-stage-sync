@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useStudio } from "../state/StudioContext";
+import { useArtistSessionSync } from "../state/sessionSync";
 import VideoTile from "../components/VideoTile";
 import LevelMeter from "../components/LevelMeter";
 import { ArrowRight, Check, Play, Headphones, Music2 } from "lucide-react";
@@ -10,7 +11,8 @@ type Step = "welcome" | "perms" | "headphones" | "beat" | "ready";
 export default function ArtistJoinPage() {
   const { sessionId } = useParams();
   const navigate = useNavigate();
-  const { session, createSession, setArtist, toggleCheck } = useStudio();
+  const { session, createSession, setArtist, toggleCheck, setMicMuted, setCameraOn } = useStudio();
+  const { update } = useArtistSessionSync(sessionId);
   const [step, setStep] = useState<Step>("welcome");
   const [permsGranted, setPermsGranted] = useState(false);
 
@@ -27,6 +29,7 @@ export default function ArtistJoinPage() {
       setPermsGranted(true);
       setArtist("connected");
       toggleCheck("artistMic", true);
+      update({ joinedAt: Date.now(), micLive: false, cameraOn: true });
     } catch {
       setPermsGranted(false);
     }
@@ -74,7 +77,7 @@ export default function ArtistJoinPage() {
             <div className="grid grid-cols-2 gap-2">
               <button
                 className="studio-btn"
-                onClick={() => { toggleCheck("artistHeadphones", true); setStep("beat"); }}
+                onClick={() => { toggleCheck("artistHeadphones", true); update({ headphonesOk: true }); setStep("beat"); }}
               >
                 <Check className="w-4 h-4 text-[hsl(var(--studio-green))]" /> I can hear it
               </button>
@@ -90,7 +93,7 @@ export default function ArtistJoinPage() {
             <div className="flex items-center gap-2 text-sm font-medium"><Music2 className="w-4 h-4 text-[hsl(var(--studio-blue))]" /> Beat Check</div>
             <div className="text-xs text-[hsl(var(--studio-text-dim))]">Wait for the engineer to send beat playback.</div>
             <button
-              onClick={() => { toggleCheck("artistHearsBeat", true); setStep("ready"); }}
+              onClick={() => { toggleCheck("artistHearsBeat", true); update({ artistCanHearBeat: true }); setStep("ready"); }}
               className="studio-btn studio-btn-primary w-full"
             >
               <Check className="w-4 h-4" /> I can hear the track
@@ -109,7 +112,13 @@ export default function ArtistJoinPage() {
               <li className="flex items-center gap-2"><Check className="w-4 h-4 text-[hsl(var(--studio-green))]" /> Beat playback heard</li>
             </ul>
             <button
-              onClick={() => { setArtist("ready"); navigate(`/studio/artist/${sessionId}`); }}
+              onClick={() => {
+                setArtist("ready");
+                setMicMuted(false);
+                setCameraOn(true);
+                update({ joinedAt: Date.now(), artistReady: true, artistCanHearBeat: true, cameraOn: true });
+                navigate(`/studio/artist/${sessionId}`);
+              }}
               className="studio-btn studio-btn-primary w-full"
             >
               Ready To Record <ArrowRight className="w-4 h-4" />

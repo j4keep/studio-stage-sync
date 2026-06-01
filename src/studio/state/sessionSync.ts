@@ -50,6 +50,7 @@ export function useArtistSessionSync(sessionId: string | undefined) {
   );
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const subscribedRef = useRef(false);
+  const pendingBroadcastRef = useRef<ArtistSessionStatus | null>(null);
   const statusRef = useRef(status);
   statusRef.current = status;
 
@@ -88,6 +89,14 @@ export function useArtistSessionSync(sessionId: string | undefined) {
         if (subscribedRef.current) {
           // Ask peers for the latest state.
           void channel.send({ type: "broadcast", event: EVENT_REQUEST, payload: {} });
+          if (pendingBroadcastRef.current) {
+            void channel.send({
+              type: "broadcast",
+              event: EVENT_STATE,
+              payload: pendingBroadcastRef.current,
+            });
+            pendingBroadcastRef.current = null;
+          }
         }
       });
 
@@ -104,6 +113,7 @@ export function useArtistSessionSync(sessionId: string | undefined) {
       void supabase.removeChannel(channel);
       channelRef.current = null;
       subscribedRef.current = false;
+      pendingBroadcastRef.current = null;
     };
   }, [sessionId]);
 
@@ -120,6 +130,8 @@ export function useArtistSessionSync(sessionId: string | undefined) {
             event: EVENT_STATE,
             payload: next,
           });
+        } else {
+          pendingBroadcastRef.current = next;
         }
         const onlyMeters =
           Object.keys(patch).length > 0 &&
