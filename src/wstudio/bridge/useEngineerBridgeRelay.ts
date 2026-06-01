@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
  * WebRTC session and re-publishes it to the locally-running JUCE AU plugin
  * bridge over plain HTTP loopback:
  *
- *   POST http://127.0.0.1:47999/artist-audio?slot=<slot>
+ *   POST http://127.0.0.1:48000/artist-audio?slot=<slot>
  *   { "sampleRate": <hz>, "slot": <n>, "samples": [-1..1, ...] }
  *
  * Why loopback (127.0.0.1) on the engineer machine:
@@ -15,12 +15,12 @@ import { useEffect, useRef, useState } from "react";
  *   - no Chrome HTTPS → HTTP Mixed Content block (the only POST origin is
  *     the engineer's own browser hitting 127.0.0.1, which Chrome treats as
  *     a Secure Context exception),
- *   - the plugin port stays bound to the engineer's machine.
+ *   - the helper port stays bound to the engineer's machine.
  *
  * Returns live diagnostics: remote signal level, packets posted, last HTTP
  * status, last fetch error.
  */
-const BRIDGE_URL = (slot: number) => `http://127.0.0.1:47999/artist-audio?slot=${slot}`;
+const BRIDGE_URL = (slot: number) => `http://127.0.0.1:48000/artist-audio?slot=${slot}`;
 const PACKET_SAMPLES = 2048; // ~42.7ms @ 48k; keeps the local plugin HTTP server stable
 const MAX_INFLIGHT = 1;
 const RECENT_OK_MS = 5000;
