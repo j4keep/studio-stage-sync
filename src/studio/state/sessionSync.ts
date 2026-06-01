@@ -12,6 +12,10 @@ export interface ArtistSessionStatus {
   hqReady: boolean;
   artistReady: boolean;
   joinedAt: number | null;
+  /** 0–100. Real mic RMS measured on the artist tab; engineer reads it for the input meter. */
+  micLevel: number;
+  /** 0–100. Real DAW return level from the helper; 0 until helper emits real data. */
+  dawReturnLevel: number;
 }
 
 export const defaultArtistStatus: ArtistSessionStatus = {
@@ -22,6 +26,8 @@ export const defaultArtistStatus: ArtistSessionStatus = {
   hqReady: false,
   artistReady: false,
   joinedAt: null,
+  micLevel: 0,
+  dawReturnLevel: 0,
 };
 
 const storageKey = (sid: string) => `studio.v2.session.${sid}.artist`;
