@@ -151,7 +151,10 @@ export function useEngineerBridgeRelay(
     muteSink.connect(ctx.destination);
 
     setStats((s) => ({ ...s, enabled: true, hasRemoteAudio: true, state: "CONNECTING", targetUrl }));
+    // eslint-disable-next-line no-console
+    console.log("ENGINEER_RECEIVED_ARTIST_AUDIO", { trackId: track.id, label: track.label });
 
+    let lastLevelLogAt = 0;
     node.onaudioprocess = (ev) => {
       if (cancelled) return;
       const ch = ev.inputBuffer.getChannelData(0);
