@@ -49,7 +49,6 @@ export function useStudioPeerVideo(
       const t = e.track;
       if (!remote.getTracks().find((x) => x.id === t.id)) remote.addTrack(t);
       setRemoteStream(new MediaStream(remote.getTracks()));
-      // eslint-disable-next-line no-console
       console.log("[/studio] PEER_TRACK", role, t.kind);
     };
     pc.onicecandidate = (e) => {
@@ -64,7 +63,6 @@ export function useStudioPeerVideo(
     pc.onconnectionstatechange = () => {
       connStateRef.current = pc.connectionState;
       setConnState(pc.connectionState);
-      // eslint-disable-next-line no-console
       console.log("[/studio] PEER_STATE", role, pc.connectionState);
     };
 
@@ -84,7 +82,6 @@ export function useStudioPeerVideo(
         await pc.setLocalDescription(offer);
         sendRtcSignal(sessionId, { t: "offer", sdp: offer.sdp ?? "", from: role });
       } catch (err) {
-        // eslint-disable-next-line no-console
         console.error("[/studio] OFFER_ERROR", err);
       } finally {
         makingOfferRef.current = false;
@@ -121,7 +118,6 @@ export function useStudioPeerVideo(
           }
         }
       } catch (err) {
-        // eslint-disable-next-line no-console
         console.error("[/studio] SIGNAL_ERROR", err);
       }
     };
