@@ -179,12 +179,14 @@ export default function ArtistRoom() {
 
       <div className="studio-card p-3 flex flex-wrap gap-2 justify-center">
         <button
-          className={`studio-btn ${!micMuted && micStream ? "studio-glow-green" : ""} ${micMuted ? "studio-btn-danger" : ""}`}
+          className={`studio-btn ${!micMuted && micStream ? "studio-glow-green" : ""} ${micMuted ? "studio-btn-primary" : ""}`}
           onClick={() => setMicMuted(!micMuted)}
+          title={micMuted ? "Request microphone & start mic" : "Stop microphone"}
         >
           {micMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-          {micStream ? (micMuted ? "Muted" : "Mic Live") : "Mic —"}
+          {micMuted ? "Mic Live" : (micStream ? "Stop Mic" : "Starting…")}
         </button>
+
         <button className="studio-btn" onClick={() => setCameraOn(!cameraOn)}>
           {cameraOn ? <Camera className="w-4 h-4" /> : <CameraOff className="w-4 h-4" />} Camera
         </button>
