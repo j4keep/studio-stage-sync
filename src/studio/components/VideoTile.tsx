@@ -52,17 +52,19 @@ export default function VideoTile({
   }, [isSelf, cameraOn, stream]);
 
   // Bind whichever stream we have to the always-rendered <video>.
+  // Only self preview is muted; remote tiles must play the peer audio.
   const active = stream ?? localStream;
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
+    v.muted = !!isSelf;
     if (active && v.srcObject !== active) {
       v.srcObject = active;
       v.play().catch(() => {});
     } else if (!active && v.srcObject) {
       v.srcObject = null;
     }
-  }, [active]);
+  }, [active, isSelf]);
 
   const showVideo = !!active && cameraOn;
 
@@ -77,7 +79,7 @@ export default function VideoTile({
     >
       <video
         ref={videoRef}
-        muted
+        muted={!!isSelf}
         playsInline
         autoPlay
         className={`absolute inset-0 w-full h-full object-cover ${showVideo ? "" : "hidden"}`}
