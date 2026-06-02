@@ -342,6 +342,25 @@ void WStudioPluginAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     const int nCh = buffer.getNumChannels();
     const int nSm = buffer.getNumSamples();
 
+    // ────────────────────────────────────────────────────────────────────
+    // PHASE 1 DEFAULT — Pure pass-through control surface.
+    //
+    // The recording pipe lives in the W.STUDIO Helper App + virtual
+    // CoreAudio device, NOT in this plugin. We do not mutate the DAW
+    // insert signal so hosts that drop the AU on a track see no
+    // unexpected gain/mute changes. We still measure local peaks as a
+    // meter fallback when the helper is unreachable.
+    // ────────────────────────────────────────────────────────────────────
+    if (!pluginOnlyFallback.load(std::memory_order_acquire))
+    {
+        measureAndSmoothPeaks(buffer, nCh, nSm);
+        return;
+    }
+
+    // ────────────────────────────────────────────────────────────────────
+    // HIDDEN DEV FALLBACK — original AU-carries-audio path.
+    // Enabled only by setPluginOnlyFallback(true) for internal QA.
+    // ────────────────────────────────────────────────────────────────────
     const auto st = sessionStateAudio.load(std::memory_order_acquire);
     const bool sessionActive = (st == SessionState::Connected || st == SessionState::Live || st == SessionState::Recording);
 
@@ -369,23 +388,13 @@ void WStudioPluginAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
         apvts.getRawParameterValue(WStudioParams::talkbackId) != nullptr
         && apvts.getRawParameterValue(WStudioParams::talkbackId)->load() > 0.5f;
 
-    // Dim the program like a real cue mix when talkback is latched and session is up (voice over music).
     constexpr float kTalkbackDuckedLevel = 0.12f;
     const float duckTarget = (talkbackOn && sessionActive) ? kTalkbackDuckedLevel : 1.f;
     talkbackDuckSmoothed += talkbackDuckSmoothingCoeff * (duckTarget - talkbackDuckSmoothed);
 
-#if JUCE_DEBUG
-    const float rmsBeforeBridge = channelRms(buffer, 0, nSm);
-#endif
 #if WSTUDIO_AU_ENABLE_NETWORK_BRIDGE
     if (networkAudio != nullptr)
         networkAudio->pullAndAdd(buffer, nCh, nSm);
-#endif
-#if JUCE_DEBUG
-    const float rmsAfterBridge = channelRms(buffer, 0, nSm);
-    static int bridgeRmsLogCounter = 0;
-    if ((++bridgeRmsLogCounter % 128) == 0)
-        DBG("W.STUDIO processBlock RMS L before pullAndAdd: " << rmsBeforeBridge << "  after: " << rmsAfterBridge);
 #endif
 
     AudioRouter::MainBusCoeffs c;
@@ -397,12 +406,7 @@ void WStudioPluginAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     c.sessionActive = sessionActive;
     c.talkbackMusicGain = talkbackDuckSmoothed;
 
-    // Apply AU controls to the complete DAW insert signal, including the web artist
-    // audio pulled from the loopback bridge. Previously the bridge was added after
-    // mute/gain/talkback processing, so plugin controls could not affect artist audio.
     AudioRouter::processMainInsert(buffer, nCh, nSm, c);
-
-    // Meters reflect final post-control output (matches what Logic hears on the insert output).
     measureAndSmoothPeaks(buffer, nCh, nSm);
 }
 
