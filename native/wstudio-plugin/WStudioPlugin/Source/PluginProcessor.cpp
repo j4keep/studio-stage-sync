@@ -44,9 +44,57 @@ WStudioPluginAudioProcessor::WStudioPluginAudioProcessor()
                          ),
       apvts(*this, nullptr, "PARAMS", createParameterLayout())
 {
+    // Relay every control surface change to the W.STUDIO Helper App so the
+    // helper / web UI know the AU is connected and what state it's in.
+    for (const auto* id : { WStudioParams::gainId, WStudioParams::muteId,
+                            WStudioParams::monitorId, WStudioParams::talkbackId,
+                            WStudioParams::inputGainId, WStudioParams::inputMuteId,
+                            WStudioParams::liveId })
+        apvts.addParameterListener(id, this);
+
+    // Stream helper /status into our meter source.
+    helperClient.onStatus([this](const HelperClient::Status& s) {
+        helperRemoteLevel.store(s.slotLevel, std::memory_order_relaxed);
+    });
+    helperClient.start();
+
+    // Initial full-state snapshot so the helper has fresh values immediately.
+    auto getF = [this](const char* id) {
+        auto* v = apvts.getRawParameterValue(id); return v ? v->load() : 0.f;
+    };
+    auto getB = [this](const char* id) {
+        auto* v = apvts.getRawParameterValue(id); return v && v->load() > 0.5f;
+    };
+    helperClient.sendFullState(
+        getF(WStudioParams::gainId),
+        getB(WStudioParams::muteId),
+        getB(WStudioParams::monitorId),
+        getB(WStudioParams::talkbackId),
+        getF(WStudioParams::inputGainId),
+        getB(WStudioParams::inputMuteId),
+        getB(WStudioParams::liveId));
 }
 
-WStudioPluginAudioProcessor::~WStudioPluginAudioProcessor() = default;
+WStudioPluginAudioProcessor::~WStudioPluginAudioProcessor()
+{
+    for (const auto* id : { WStudioParams::gainId, WStudioParams::muteId,
+                            WStudioParams::monitorId, WStudioParams::talkbackId,
+                            WStudioParams::inputGainId, WStudioParams::inputMuteId,
+                            WStudioParams::liveId })
+        apvts.removeParameterListener(id, this);
+    helperClient.stopAndJoin();
+}
+
+void WStudioPluginAudioProcessor::parameterChanged(const juce::String& parameterID, float newValue)
+{
+    // Booleans live in APVTS as 0/1 floats — normalize for the helper.
+    const bool isBool = parameterID == WStudioParams::muteId
+                     || parameterID == WStudioParams::monitorId
+                     || parameterID == WStudioParams::talkbackId
+                     || parameterID == WStudioParams::inputMuteId
+                     || parameterID == WStudioParams::liveId;
+    helperClient.sendControlEvent(parameterID, newValue, isBool && newValue > 0.5f);
+}
 
 juce::AudioProcessorValueTreeState::ParameterLayout WStudioPluginAudioProcessor::createParameterLayout()
 {
