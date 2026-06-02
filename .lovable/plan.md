@@ -1,102 +1,73 @@
+# W.STUDIO Phase 1 — Mac Recording Pipe
 
-# W.STUDIO Mac Recording Pipe — Phase 1 Plan
+Goal: Engineer can arm a Logic track on **"W.STUDIO Artist Input"** and record the artist's live mic in real time. No W.STUDIO web UI redesign.
 
-Goal: Logic (or any Mac DAW) sees a real input device called **"W.STUDIO Artist Input"**, arms a track, hits record, and captures the live artist's mic from the W.STUDIO web session. No browser tricks, no AU-as-pipe. AU plugin stays purely as a control surface (meters, gain, mute, talk/listen/send).
-
-Scope of this phase:
-- macOS only
-- 1 artist slot
-- Existing W.STUDIO UI untouched (design, layout, colors, labels — no changes)
-- Multi-artist (up to 12 slots / multi-channel device) deferred to Phase 2
-
----
-
-## Architecture (final shape)
+## Architecture
 
 ```text
- Artist browser (WebRTC mic)
-        │
-        ▼
- Engineer browser (W.STUDIO web)
-        │  HTTP POST PCM frames
-        ▼
- W.STUDIO Helper App  ──────────────► Virtual CoreAudio Device
- (127.0.0.1:48000)                    "W.STUDIO Artist Input"
-        ▲                                       │
-        │ /status, /artist-audio                ▼
-        │                              Logic / Pro Tools / Ableton
- AU Plugin (optional control surface)     (arms + records)
-   meters, gain, mute, talk/listen/send
+Artist browser (mic)
+  → WebRTC over existing session
+    → Engineer browser (W.STUDIO web)
+      → POST http://127.0.0.1:48000/artist-audio/1  (raw Float32 PCM)
+        → Helper App (menubar, Rust)
+          → Shared ring buffer
+            → Virtual CoreAudio Device "W.STUDIO Artist Input"
+              → Logic / any DAW
+
+AU Plugin  ⇄  Helper /plugin-event   (control surface only: meters, gain, mute, send/receive/talk)
 ```
 
-Key principle: **the helper app owns the audio pipe**. The virtual device is the recording surface. The AU plugin is read/write controls only and never touches the recorded signal path.
+The helper app owns the audio pipe. The virtual device is the recording surface in the DAW. The AU plugin does not carry audio in Phase 1 (hidden dev fallback preserved).
 
----
+## Decisions locked in
+
+1. **Unsigned for Phase 1.** Ship `.pkg` unsigned. README includes `xattr -dr com.apple.quarantine` + System Settings → Privacy unblock step. Sign + notarize later when Developer ID is ready.
+2. **Menubar helper.** Tray icon only, no Dock, no main window. Click → small popover with status (Connected / Device installed / Slot 1 level meter / Quit).
+3. **AU plugin = control surface.** `processBlock()` becomes silent pass-through by default. Old `BridgeMicReceiverThread` / `DawAudioSenderThread` kept behind a hidden `kPluginOnlyFallback` flag (off by default, toggled via a dev-only key combo in the plugin UI). All meters/gain/mute/send/receive/talk buttons stay and talk to helper via `/plugin-event`.
 
 ## Build order
 
-### 1. Helper App (Rust, single binary, menubar app)
-- Reuse/extend the existing `native/wstudio-desktop-bridge` Rust crate.
-- HTTP server on `127.0.0.1:48000`:
-  - `GET /status` → `{ helper:{version}, plugin:{connected,trackName,lastSeenAt}, device:{installed,active,sampleRate} }`
-  - `POST /artist-audio/1` → body = raw Float32 PCM @ 48kHz mono (with `Content-Length`, `X-WSTUDIO-Sample-Rate`, `X-WSTUDIO-Channels` headers)
-  - `POST /plugin-event` → AU plugin hello / state
-- Holds a single ring buffer per artist slot (1 for now).
-- Drains ring buffer into the virtual device's IOProc.
-- Tray icon: green = browser posting, amber = device installed only, red = device missing.
+### 1. Helper App (`native/wstudio-desktop-bridge/`, Rust)
+- Switch port → **48000**.
+- Endpoints:
+  - `GET  /status` → `{ ok, device_installed, slot_1: { connected, level, packets, failed } }`
+  - `POST /artist-audio/1` → headers `X-Sample-Rate`, `X-Channels`, body = raw Float32 PCM ArrayBuffer. Writes into ring buffer for slot 1.
+  - `POST /plugin-event` → JSON `{ type, slot, value }` for gain/mute/talk.
+- Ring buffer: lock-free SPSC, ~500ms, 48kHz/32-bit float, mono Phase 1.
+- macOS menubar shell via `tao` + `tray-icon` crates. States: gray (no device), blue (device ok, no audio), green (receiving).
+- Launches at login via LaunchAgent plist installed by pkg.
 
-### 2. Virtual CoreAudio Device
-- Build a CoreAudio User-Space driver (DriverKit / AudioServerPlugIn) named **"W.STUDIO Artist Input"**: 1 input channel, 48kHz, 32-bit float.
-- Driver exposes a shared memory ring buffer the helper writes into.
-- Packaged as `/Library/Audio/Plug-Ins/HAL/WStudio.driver` + installer pkg.
-- Logic sees it under Preferences → Audio → Input Device (or as an Aggregate component).
+### 2. Virtual CoreAudio Device (`native/wstudio-coreaudio-driver/`, C++)
+- AudioServerPlugIn bundle: `WStudio.driver`.
+- Identity: name **"W.STUDIO Artist Input"**, 1 input stream, 48kHz, 32-bit float, mono (stereo later).
+- Shared memory ring buffer with helper via POSIX shm `/wstudio_slot1`.
+- Installs to `/Library/Audio/Plug-Ins/HAL/WStudio.driver`. Requires `sudo killall coreaudiod` once after install (handled by postinstall script).
 
-### 3. Browser → Helper wiring (already 90% in place)
-- `src/wstudio/bridge/useEngineerBridgeRelay.ts` already POSTs to `127.0.0.1:48000`. Lock it to slot `1`. Send raw `ArrayBuffer` PCM (not JSON) with the headers above — much lower CPU than the current JSON path.
-- `HttpHelperTransport` already polls `/status`. Add `device` field to the typed response so the UI can show "Virtual device ready".
-- No layout/design changes. Only update the existing status badges' source data.
+### 3. Browser → Helper wiring (web, function-only)
+- `src/wstudio/audio-engine/helper/HttpHelperTransport.ts` — base URL → `http://127.0.0.1:48000`. Extend `/status` parsing with `device_installed`.
+- `src/wstudio/bridge/useEngineerBridgeRelay.ts` — already POSTs PCM; lock `slot=1`, send raw `ArrayBuffer` with `X-Sample-Rate: 48000`, `X-Channels: 1`. Increment `packetsSent` only on 2xx, `failed` on error. Logs: `ENGINEER_RECEIVED_ARTIST_AUDIO`, `ENGINEER_POSTED_TO_HELPER_OK`, `ENGINEER_POSTED_TO_HELPER_FAIL`, `HELPER_STATUS`.
+- `src/wstudio/media/StudioMediaContext.tsx` — artist side: confirm mic stream + logs `ARTIST_MIC_STARTED`, `ARTIST_MIC_LEVEL`, `ARTIST_AUDIO_SENT_TO_ENGINEER`.
+- `src/wstudio/session/UnifiedSessionScreen.tsx` — "Connected" indicator = helper `/status.ok` AND session WebRTC connected AND `device_installed`. Add tiny "Install Helper" CTA when helper unreachable (links to downloaded pkg). **No layout/color/label changes elsewhere.**
 
-### 4. AU Plugin reduced to control surface
-- Remove `BridgeMicReceiverThread` and `DawAudioSenderThread` from the audio pipe — they stay but **only feed the meters** (no `processBlock` audio output to the DAW track).
-- `processBlock` becomes a pass-through (or silence if no upstream) — the plugin is no longer the recording source.
-- All UI (`PluginEditor.cpp`) preserved as-is. Buttons send state to helper via `POST /plugin-event` → helper forwards to the web session over its existing channel.
-- Plugin advertises itself to helper on load so the green "Plugin connected" badge keeps working.
+### 4. AU plugin reduced (`native/wstudio-plugin/`)
+- `processBlock()` → output silence by default, no network/audio threads in path.
+- Old receiver/sender threads gated behind `kPluginOnlyFallback` static flag (default false).
+- Add `/plugin-event` POSTs for gain/mute/talk button changes (non-audio control).
+- UI untouched.
 
-### 5. Installer + first-run flow
-- Single `.pkg` that installs: Helper.app (login item) + WStudio.driver.
-- First run: helper checks driver presence; if missing, opens a one-click "Install audio device" sheet (admin prompt).
-- W.STUDIO web shows existing "Engineer ready" indicator green only when `/status` reports `device.installed && device.active`.
+### 5. Installer (`scripts/build-wstudio-helper-pkg.sh`)
+- Single `.pkg`: `WStudioHelper.app` → `/Applications`, `WStudio.driver` → `/Library/Audio/Plug-Ins/HAL/`, LaunchAgent plist → `~/Library/LaunchAgents/`.
+- Postinstall: `launchctl load` helper, `killall coreaudiod`.
+- README: unsigned install steps + "Open Logic → New Audio Track → Input: W.STUDIO Artist Input".
 
----
-
-## What changes in this repo (Phase 1)
-
-Web (no design changes, function only):
-- `src/wstudio/bridge/useEngineerBridgeRelay.ts` — switch payload to binary PCM, lock slot=1, keep all existing console logs.
-- `src/wstudio/audio-engine/helper/HttpHelperTransport.ts` — extend status type with `device`.
-- `src/wstudio/audio-engine/helper/types.ts` — add `DeviceStatus`.
-- `src/wstudio/session/UnifiedSessionScreen.tsx` — no visual changes; only wire the existing badge to the new `device` field.
-
-Native:
-- `native/wstudio-desktop-bridge/` — expand from "play to default output" to "HTTP server + ring buffer + virtual device writer".
-- `native/wstudio-coreaudio-driver/` — NEW. AudioServerPlugIn project.
-- `native/wstudio-plugin/` — strip audio routing from `processBlock`, keep editor + meters + control messages.
-- `scripts/build-wstudio-helper-pkg.sh` — NEW. Builds helper + driver + signed pkg.
-
-No DB, no Supabase, no edge function changes.
-
----
+## What does NOT change in Phase 1
+- W.STUDIO web design, layout, colors, buttons, labels.
+- Session join/connect screen.
+- AU plugin UI.
+- Supabase schema.
 
 ## Phase 2 (later, not now)
-- Multi-artist: virtual device grows to N input channels, helper exposes `/artist-audio/{slot}` for slots 1..12, AU plugin's existing 12-slot mixer becomes meaningful.
-- Windows: WASAPI virtual device equivalent.
-- DAW return path (engineer → artist headphones) — already partially in `BridgeDawReturn.tsx`.
+- Multi-artist slots (up to 12), stereo, DAW return path, Windows WASAPI, code signing + notarization.
 
----
-
-## Open questions before I start coding
-1. Driver signing: do you have an Apple Developer ID (required to ship a signed `.driver` so Gatekeeper won't block it)? If not, Phase 1 ships unsigned + a `xattr -dr com.apple.quarantine` step in the README.
-2. Helper packaging: menubar app (recommended, stays out of the Dock) vs full window? Default = menubar.
-3. AU plugin: confirm you want me to **strip the audio pipe entirely** from `processBlock` in Phase 1. If you'd rather leave it as a fallback when the helper is offline, say so and I'll keep a "plugin-only mode" toggle.
-
-Answer those three and I'll start with the Rust helper + driver scaffolding (no web changes until the native side can actually deliver audio to Logic).
+## Open execution note
+This plan involves substantial native code (Rust helper + C++ CoreAudio driver). I will scaffold the directory structure, Rust helper crate, and driver project in this repo, plus wire the web side. Building the actual `.pkg` requires running the build script on a Mac with Xcode — I'll include the script and exact instructions; the artifacts cannot be produced inside this sandbox.
