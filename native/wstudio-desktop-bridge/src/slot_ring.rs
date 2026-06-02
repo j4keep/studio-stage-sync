@@ -75,11 +75,13 @@ impl SlotRing {
         g.last_level = (sum_sq / pcm.len().max(1) as f32).sqrt().min(1.0);
 
         // Push into ring (overwrite oldest on overflow — DAW must be reading).
+        let cap = g.cap;
         for &s in pcm {
-            g.buf[g.head] = s;
-            g.head = (g.head + 1) % g.cap;
-            if g.len == g.cap {
-                g.tail = (g.tail + 1) % g.cap;
+            let head = g.head;
+            g.buf[head] = s;
+            g.head = (head + 1) % cap;
+            if g.len == cap {
+                g.tail = (g.tail + 1) % cap;
             } else {
                 g.len += 1;
             }
