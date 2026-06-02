@@ -20,8 +20,13 @@ import { useEffect, useRef, useState } from "react";
  * Returns live diagnostics: remote signal level, packets posted, last HTTP
  * status, last fetch error.
  */
-const BRIDGE_URL = (slot: number) => `http://127.0.0.1:48000/artist-audio?slot=${slot}`;
-const PACKET_SAMPLES = 2048; // ~42.7ms @ 48k; keeps the local plugin HTTP server stable
+// Phase 1: single-slot recording pipe. Slot is locked to 1 — the helper
+// routes /artist-audio/1 into the "W.STUDIO Artist Input" virtual CoreAudio
+// device. Body is raw Float32 PCM (little-endian, interleaved) with
+// X-Sample-Rate and X-Channels headers, NOT JSON. This is ~8x cheaper
+// than the JSON path and keeps the helper's hot path allocation-free.
+const BRIDGE_URL = (slot: number) => `http://127.0.0.1:48000/artist-audio/${slot}`;
+const PACKET_SAMPLES = 2048; // ~42.7ms @ 48k
 const MAX_INFLIGHT = 1;
 const RECENT_OK_MS = 5000;
 
@@ -191,12 +196,18 @@ export function useEngineerBridgeRelay(
       }
 
       inflightRef.current++;
-      const body = JSON.stringify({ sampleRate: ctx.sampleRate, slot, samples });
+      // Copy into a fresh Float32Array we own — the inputBuffer is reused.
+      const pcm = new Float32Array(ch.length);
+      pcm.set(ch);
 
       fetch(targetUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body,
+        headers: {
+          "Content-Type": "application/octet-stream",
+          "X-Sample-Rate": String(ctx.sampleRate),
+          "X-Channels": "1",
+        },
+        body: pcm.buffer,
         cache: "no-store",
         mode: "cors",
       })
