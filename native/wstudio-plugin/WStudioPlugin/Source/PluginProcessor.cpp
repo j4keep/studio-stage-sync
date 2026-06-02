@@ -18,19 +18,8 @@ static constexpr const char* kRootStateId = "WSTPersistRoot";
 static constexpr int kPluginNetworkAudioPort = 47999;
 #endif
 
-static float channelRms(const juce::AudioBuffer<float>& b, int channel, int numSamples) noexcept
-{
-    if (numSamples <= 0 || channel < 0 || channel >= b.getNumChannels())
-        return 0.f;
-    const float* d = b.getReadPointer(channel);
-    double acc = 0.0;
-    for (int i = 0; i < numSamples; ++i)
-    {
-        const double x = (double)d[i];
-        acc += x * x;
-    }
-    return (float)std::sqrt(acc / (double)numSamples);
-}
+// (channelRms helper removed in Phase 1 — processBlock no longer mutates audio,
+//  so the per-block debug RMS log is gone.)
 }
 
 WStudioPluginAudioProcessor::WStudioPluginAudioProcessor()
