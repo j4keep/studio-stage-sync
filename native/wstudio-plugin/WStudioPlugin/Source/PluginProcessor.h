@@ -70,8 +70,22 @@ public:
     void setInputMute(bool on);
     void setLiveSession(bool on);
 
-    float getLeftLevel() const noexcept { return getInputPeakLeft(); }
-    float getRightLevel() const noexcept { return getInputPeakRight(); }
+    /**
+     * Meter source: when the W.STUDIO Helper App is reachable, return its
+     * slot-1 level (the audio actually being recorded by the DAW via the
+     * virtual CoreAudio device). Otherwise fall back to the local DAW
+     * insert peak so a meter is still visible in pure-pass-through mode.
+     */
+    float getLeftLevel() const noexcept
+    {
+        const float h = helperRemoteLevel.load(std::memory_order_relaxed);
+        return h > 0.0001f ? h : getInputPeakLeft();
+    }
+    float getRightLevel() const noexcept
+    {
+        const float h = helperRemoteLevel.load(std::memory_order_relaxed);
+        return h > 0.0001f ? h : getInputPeakRight();
+    }
 
     bool isMuteEnabled() const;
     bool isMonitorEnabled() const;
