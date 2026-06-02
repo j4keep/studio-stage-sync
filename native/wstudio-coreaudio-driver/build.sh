@@ -11,9 +11,10 @@ rm -rf build && mkdir -p "$OUT/Contents/MacOS" "$OUT/Contents/Resources"
 cp Info.plist "$OUT/Contents/Info.plist"
 
 clang++ -std=c++17 -arch arm64 -arch x86_64 -bundle -O2 \
+  -Wno-deprecated-declarations \
   -framework CoreFoundation -framework CoreAudio \
   -o "$OUT/Contents/MacOS/WStudio" \
-  src/WStudioPlugIn.cpp src/WStudioShmReader.cpp
+  src/WStudioPlugIn.cpp
 
 echo
 echo "Built $OUT"
