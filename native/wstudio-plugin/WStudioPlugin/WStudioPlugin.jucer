@@ -33,6 +33,10 @@
         <FILE id="pnc" name="PluginNetworkAudio.cpp" compile="1" resource="0"
               file="Source/Session/PluginNetworkAudio.cpp"/>
       </GROUP>
+      <GROUP id="GrpNet" name="Net">
+        <FILE id="hch" name="HelperClient.h" compile="0" resource="0" file="Source/Net/HelperClient.h"/>
+        <FILE id="hcc" name="HelperClient.cpp" compile="1" resource="0" file="Source/Net/HelperClient.cpp"/>
+      </GROUP>
     </GROUP>
   </MAINGROUP>
   <MODULES>
