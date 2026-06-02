@@ -18,19 +18,8 @@ static constexpr const char* kRootStateId = "WSTPersistRoot";
 static constexpr int kPluginNetworkAudioPort = 47999;
 #endif
 
-static float channelRms(const juce::AudioBuffer<float>& b, int channel, int numSamples) noexcept
-{
-    if (numSamples <= 0 || channel < 0 || channel >= b.getNumChannels())
-        return 0.f;
-    const float* d = b.getReadPointer(channel);
-    double acc = 0.0;
-    for (int i = 0; i < numSamples; ++i)
-    {
-        const double x = (double)d[i];
-        acc += x * x;
-    }
-    return (float)std::sqrt(acc / (double)numSamples);
-}
+// (channelRms helper removed in Phase 1 — processBlock no longer mutates audio,
+//  so the per-block debug RMS log is gone.)
 }
 
 WStudioPluginAudioProcessor::WStudioPluginAudioProcessor()
@@ -44,9 +33,57 @@ WStudioPluginAudioProcessor::WStudioPluginAudioProcessor()
                          ),
       apvts(*this, nullptr, "PARAMS", createParameterLayout())
 {
+    // Relay every control surface change to the W.STUDIO Helper App so the
+    // helper / web UI know the AU is connected and what state it's in.
+    for (const auto* id : { WStudioParams::gainId, WStudioParams::muteId,
+                            WStudioParams::monitorId, WStudioParams::talkbackId,
+                            WStudioParams::inputGainId, WStudioParams::inputMuteId,
+                            WStudioParams::liveId })
+        apvts.addParameterListener(id, this);
+
+    // Stream helper /status into our meter source.
+    helperClient.onStatus([this](const HelperClient::Status& s) {
+        helperRemoteLevel.store(s.slotLevel, std::memory_order_relaxed);
+    });
+    helperClient.start();
+
+    // Initial full-state snapshot so the helper has fresh values immediately.
+    auto getF = [this](const char* id) {
+        auto* v = apvts.getRawParameterValue(id); return v ? v->load() : 0.f;
+    };
+    auto getB = [this](const char* id) {
+        auto* v = apvts.getRawParameterValue(id); return v && v->load() > 0.5f;
+    };
+    helperClient.sendFullState(
+        getF(WStudioParams::gainId),
+        getB(WStudioParams::muteId),
+        getB(WStudioParams::monitorId),
+        getB(WStudioParams::talkbackId),
+        getF(WStudioParams::inputGainId),
+        getB(WStudioParams::inputMuteId),
+        getB(WStudioParams::liveId));
 }
 
-WStudioPluginAudioProcessor::~WStudioPluginAudioProcessor() = default;
+WStudioPluginAudioProcessor::~WStudioPluginAudioProcessor()
+{
+    for (const auto* id : { WStudioParams::gainId, WStudioParams::muteId,
+                            WStudioParams::monitorId, WStudioParams::talkbackId,
+                            WStudioParams::inputGainId, WStudioParams::inputMuteId,
+                            WStudioParams::liveId })
+        apvts.removeParameterListener(id, this);
+    helperClient.stopAndJoin();
+}
+
+void WStudioPluginAudioProcessor::parameterChanged(const juce::String& parameterID, float newValue)
+{
+    // Booleans live in APVTS as 0/1 floats — normalize for the helper.
+    const bool isBool = parameterID == WStudioParams::muteId
+                     || parameterID == WStudioParams::monitorId
+                     || parameterID == WStudioParams::talkbackId
+                     || parameterID == WStudioParams::inputMuteId
+                     || parameterID == WStudioParams::liveId;
+    helperClient.sendControlEvent(parameterID, newValue, isBool && newValue > 0.5f);
+}
 
 juce::AudioProcessorValueTreeState::ParameterLayout WStudioPluginAudioProcessor::createParameterLayout()
 {
@@ -294,6 +331,25 @@ void WStudioPluginAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     const int nCh = buffer.getNumChannels();
     const int nSm = buffer.getNumSamples();
 
+    // ────────────────────────────────────────────────────────────────────
+    // PHASE 1 DEFAULT — Pure pass-through control surface.
+    //
+    // The recording pipe lives in the W.STUDIO Helper App + virtual
+    // CoreAudio device, NOT in this plugin. We do not mutate the DAW
+    // insert signal so hosts that drop the AU on a track see no
+    // unexpected gain/mute changes. We still measure local peaks as a
+    // meter fallback when the helper is unreachable.
+    // ────────────────────────────────────────────────────────────────────
+    if (!pluginOnlyFallback.load(std::memory_order_acquire))
+    {
+        measureAndSmoothPeaks(buffer, nCh, nSm);
+        return;
+    }
+
+    // ────────────────────────────────────────────────────────────────────
+    // HIDDEN DEV FALLBACK — original AU-carries-audio path.
+    // Enabled only by setPluginOnlyFallback(true) for internal QA.
+    // ────────────────────────────────────────────────────────────────────
     const auto st = sessionStateAudio.load(std::memory_order_acquire);
     const bool sessionActive = (st == SessionState::Connected || st == SessionState::Live || st == SessionState::Recording);
 
@@ -321,23 +377,13 @@ void WStudioPluginAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
         apvts.getRawParameterValue(WStudioParams::talkbackId) != nullptr
         && apvts.getRawParameterValue(WStudioParams::talkbackId)->load() > 0.5f;
 
-    // Dim the program like a real cue mix when talkback is latched and session is up (voice over music).
     constexpr float kTalkbackDuckedLevel = 0.12f;
     const float duckTarget = (talkbackOn && sessionActive) ? kTalkbackDuckedLevel : 1.f;
     talkbackDuckSmoothed += talkbackDuckSmoothingCoeff * (duckTarget - talkbackDuckSmoothed);
 
-#if JUCE_DEBUG
-    const float rmsBeforeBridge = channelRms(buffer, 0, nSm);
-#endif
 #if WSTUDIO_AU_ENABLE_NETWORK_BRIDGE
     if (networkAudio != nullptr)
         networkAudio->pullAndAdd(buffer, nCh, nSm);
-#endif
-#if JUCE_DEBUG
-    const float rmsAfterBridge = channelRms(buffer, 0, nSm);
-    static int bridgeRmsLogCounter = 0;
-    if ((++bridgeRmsLogCounter % 128) == 0)
-        DBG("W.STUDIO processBlock RMS L before pullAndAdd: " << rmsBeforeBridge << "  after: " << rmsAfterBridge);
 #endif
 
     AudioRouter::MainBusCoeffs c;
@@ -349,12 +395,7 @@ void WStudioPluginAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     c.sessionActive = sessionActive;
     c.talkbackMusicGain = talkbackDuckSmoothed;
 
-    // Apply AU controls to the complete DAW insert signal, including the web artist
-    // audio pulled from the loopback bridge. Previously the bridge was added after
-    // mute/gain/talkback processing, so plugin controls could not affect artist audio.
     AudioRouter::processMainInsert(buffer, nCh, nSm, c);
-
-    // Meters reflect final post-control output (matches what Logic hears on the insert output).
     measureAndSmoothPeaks(buffer, nCh, nSm);
 }
 

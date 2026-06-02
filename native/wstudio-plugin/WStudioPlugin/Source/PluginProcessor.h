@@ -4,6 +4,7 @@
 #include <atomic>
 
 #include "Session/WStudioSessionTypes.h"
+#include "Net/HelperClient.h"
 
 #include <memory>
 
@@ -20,7 +21,8 @@ inline constexpr auto liveId = "live";
 inline constexpr auto talkbackId = "talkback";
 }
 
-class WStudioPluginAudioProcessor : public juce::AudioProcessor
+class WStudioPluginAudioProcessor : public juce::AudioProcessor,
+                                    private juce::AudioProcessorValueTreeState::Listener
 {
 public:
     WStudioPluginAudioProcessor();
@@ -68,8 +70,22 @@ public:
     void setInputMute(bool on);
     void setLiveSession(bool on);
 
-    float getLeftLevel() const noexcept { return getInputPeakLeft(); }
-    float getRightLevel() const noexcept { return getInputPeakRight(); }
+    /**
+     * Meter source: when the W.STUDIO Helper App is reachable, return its
+     * slot-1 level (the audio actually being recorded by the DAW via the
+     * virtual CoreAudio device). Otherwise fall back to the local DAW
+     * insert peak so a meter is still visible in pure-pass-through mode.
+     */
+    float getLeftLevel() const noexcept
+    {
+        const float h = helperRemoteLevel.load(std::memory_order_relaxed);
+        return h > 0.0001f ? h : getInputPeakLeft();
+    }
+    float getRightLevel() const noexcept
+    {
+        const float h = helperRemoteLevel.load(std::memory_order_relaxed);
+        return h > 0.0001f ? h : getInputPeakRight();
+    }
 
     bool isMuteEnabled() const;
     bool isMonitorEnabled() const;
@@ -93,7 +109,23 @@ public:
     /** Optional experimental path: loopback WebSocket PCM (off by default; see WSTUDIO_AU_ENABLE_NETWORK_BRIDGE). */
     void ensureNetworkBridgeServerRunning();
 
+    /**
+     * Hidden dev fallback. When TRUE, processBlock applies gain/mute/talkback
+     * to the DAW insert signal and (if compiled in) pulls audio from the old
+     * loopback bridge. When FALSE (the Phase 1 default), the AU is a pure
+     * pass-through: the DAW signal goes through untouched and audio reaches
+     * the DAW via the W.STUDIO Helper App + virtual CoreAudio device instead.
+     * Not exposed in the standard UI; toggled via setPluginOnlyFallback() for
+     * internal QA only.
+     */
+    void setPluginOnlyFallback(bool on) noexcept { pluginOnlyFallback.store(on, std::memory_order_release); }
+    bool isPluginOnlyFallback() const noexcept   { return pluginOnlyFallback.load(std::memory_order_acquire); }
+
+    /** Live helper status snapshot for the UI (meters, badges). */
+    HelperClient::Status getHelperStatus() const { return helperClient.getStatus(); }
+
 private:
+    void parameterChanged(const juce::String& parameterID, float newValue) override;
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     void measureAndSmoothPeaks(const juce::AudioBuffer<float>& buffer, int numChannels, int numSamples) noexcept;
 
@@ -114,6 +146,11 @@ private:
     juce::ValueTree sessionSnapshot { "WStudioSession" };
 
     std::unique_ptr<PluginNetworkAudio> networkAudio;
+
+    /** Phase 1: helper-driven recording pipe replaces the AU's audio path. */
+    std::atomic<bool> pluginOnlyFallback { false };
+    HelperClient helperClient;
+    std::atomic<float> helperRemoteLevel { 0.f };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(WStudioPluginAudioProcessor)
 };
