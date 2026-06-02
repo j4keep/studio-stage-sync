@@ -214,6 +214,6 @@ export class HttpHelperTransport implements HelperTransport {
 
   /* ---------- helper-aware URLs (used by other transports) ---------- */
   artistAudioUrl(slot: number): string {
-    return `${this.baseUrl}/artist-audio?slot=${slot}`;
+    return `${this.baseUrl}/artist-audio/${slot}`;
   }
 }
