@@ -37,14 +37,33 @@ sips -z 32 32 "$SRC_ICON" --out "$BRIDGE/icons/32x32.png" >/dev/null
 sips -z 128 128 "$SRC_ICON" --out "$BRIDGE/icons/128x128.png" >/dev/null
 sips -z 256 256 "$SRC_ICON" --out "$BRIDGE/icons/128x128@2x.png" >/dev/null
 
-echo "Building release bundle..."
-( cd "$BRIDGE" && cargo bundle --release )
+echo "Ensuring both Rust targets are installed (arm64 + x86_64)..."
+rustup target add aarch64-apple-darwin x86_64-apple-darwin >/dev/null
 
-APP_PATH=$(ls -d "$BRIDGE"/target/release/bundle/osx/*.app 2>/dev/null | head -1 || true)
+echo "Building release binaries for both architectures..."
+( cd "$BRIDGE" && cargo build --release --target aarch64-apple-darwin )
+( cd "$BRIDGE" && cargo build --release --target x86_64-apple-darwin )
+
+echo "Bundling .app (arm64 base) via cargo-bundle..."
+( cd "$BRIDGE" && cargo bundle --release --target aarch64-apple-darwin )
+
+APP_PATH=$(ls -d "$BRIDGE"/target/aarch64-apple-darwin/release/bundle/osx/*.app 2>/dev/null | head -1 || true)
 if [[ -z "$APP_PATH" || ! -d "$APP_PATH" ]]; then
-  echo "Bundle not found under $BRIDGE/target/release/bundle/osx/"
+  echo "Bundle not found under $BRIDGE/target/aarch64-apple-darwin/release/bundle/osx/"
   exit 1
 fi
+
+BIN_NAME=$(basename "$APP_PATH" .app)
+ARM_BIN="$BRIDGE/target/aarch64-apple-darwin/release/wstudio-desktop-bridge"
+X86_BIN="$BRIDGE/target/x86_64-apple-darwin/release/wstudio-desktop-bridge"
+APP_BIN="$APP_PATH/Contents/MacOS/$BIN_NAME"
+
+echo "Creating universal (arm64 + x86_64) binary with lipo..."
+lipo -create "$ARM_BIN" "$X86_BIN" -output "$APP_BIN"
+lipo -info "$APP_BIN"
+
+# Strip any quarantine attributes that may have crept in
+xattr -cr "$APP_PATH" || true
 
 echo ""
 echo "✓ Application bundle:"
