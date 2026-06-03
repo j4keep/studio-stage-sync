@@ -84,8 +84,13 @@ chmod +x "$APP_BIN"
 echo "Verifying final app bundle executable mapping + universal architecture..."
 [[ "$(/usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$APP_PATH/Contents/Info.plist")" == "$CFBE" ]]
 [[ -x "$APP_BIN" ]]
-lipo -verify_arch arm64 x86_64 "$APP_BIN"
+# `lipo -verify_arch` takes ONE arch per invocation — call twice.
+lipo -verify_arch arm64  "$APP_BIN"
+lipo -verify_arch x86_64 "$APP_BIN"
 lipo -info "$APP_BIN"
+# Sanity: -info output must mention both architectures.
+lipo -info "$APP_BIN" | grep -q "x86_64"
+lipo -info "$APP_BIN" | grep -q "arm64"
 MACOS_COUNT=$(find "$APP_PATH/Contents/MacOS" -mindepth 1 -maxdepth 1 -type f | wc -l | tr -d ' ')
 [[ "$MACOS_COUNT" == "1" ]]
 ls -la "$APP_PATH/Contents/MacOS"
