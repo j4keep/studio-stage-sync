@@ -266,9 +266,11 @@ mod tray {
         let event_loop = EventLoopBuilder::new().build();
 
         let menu = Menu::new();
-        let quit_item = MenuItem::new("Quit W.STUDIO Helper", true, None);
         let status_item = MenuItem::new("W.STUDIO Helper — running on :48000", false, None);
+        let open_item = MenuItem::new("Open Status Page", true, None);
+        let quit_item = MenuItem::new("Quit W.STUDIO Helper", true, None);
         let _ = menu.append(&status_item);
+        let _ = menu.append(&open_item);
         let _ = menu.append(&quit_item);
 
         // 16x16 transparent placeholder icon. Replace with branded glyph later.
@@ -281,12 +283,19 @@ mod tray {
             .expect("tray");
 
         let quit_id = quit_item.id().clone();
+        let open_id = open_item.id().clone();
         event_loop.run(move |event, _, control_flow| {
             *control_flow = ControlFlow::Wait;
             if let Event::UserEvent(_) = event { /* no-op */ }
             if let Ok(ev) = MenuEvent::receiver().try_recv() {
                 if ev.id == quit_id { *control_flow = ControlFlow::Exit; }
+                else if ev.id == open_id {
+                    let _ = std::process::Command::new("open")
+                        .arg("http://127.0.0.1:48000/")
+                        .spawn();
+                }
             }
         });
     }
 }
+
