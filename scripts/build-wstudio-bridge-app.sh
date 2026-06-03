@@ -44,7 +44,17 @@ echo "Building release binaries for both architectures..."
 ( cd "$BRIDGE" && cargo build --release --target aarch64-apple-darwin )
 ( cd "$BRIDGE" && cargo build --release --target x86_64-apple-darwin )
 
+ARM_BIN="$BRIDGE/target/aarch64-apple-darwin/release/wstudio-desktop-bridge"
+X86_BIN="$BRIDGE/target/x86_64-apple-darwin/release/wstudio-desktop-bridge"
+
+echo "Verifying thin release binary architectures before bundling..."
+test -x "$ARM_BIN"
+test -x "$X86_BIN"
+lipo -verify_arch arm64 "$ARM_BIN"
+lipo -verify_arch x86_64 "$X86_BIN"
+
 echo "Bundling .app (arm64 base) via cargo-bundle..."
+rm -rf "$BRIDGE/target/aarch64-apple-darwin/release/bundle/osx"
 ( cd "$BRIDGE" && cargo bundle --release --target aarch64-apple-darwin )
 
 APP_PATH=$(ls -d "$BRIDGE"/target/aarch64-apple-darwin/release/bundle/osx/*.app 2>/dev/null | head -1 || true)
@@ -53,26 +63,31 @@ if [[ -z "$APP_PATH" || ! -d "$APP_PATH" ]]; then
   exit 1
 fi
 
-ARM_BIN="$BRIDGE/target/aarch64-apple-darwin/release/wstudio-desktop-bridge"
-X86_BIN="$BRIDGE/target/x86_64-apple-darwin/release/wstudio-desktop-bridge"
-
 # Resolve the real CFBundleExecutable from Info.plist (cargo-bundle uses the
 # cargo target name, not the .app folder name) and write the universal binary
 # to THAT exact path. Otherwise macOS sees a mismatched/duplicate executable
 # and refuses to launch with "incorrect executable format".
-CFBE=$(/usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$APP_PATH/Contents/Info.plist")
+CFBE="wstudio-desktop-bridge"
+/usr/libexec/PlistBuddy -c "Set :CFBundleExecutable $CFBE" "$APP_PATH/Contents/Info.plist"
 APP_BIN="$APP_PATH/Contents/MacOS/$CFBE"
 echo "CFBundleExecutable = $CFBE"
 echo "Target binary path = $APP_BIN"
 
-# Remove any stray sibling binaries cargo-bundle or prior runs may have left
-# behind so the bundle contains exactly ONE executable matching Info.plist.
-find "$APP_PATH/Contents/MacOS" -mindepth 1 -maxdepth 1 ! -name "$CFBE" -print -delete || true
+# Remove every executable cargo-bundle or prior runs may have left behind so the
+# bundle contains exactly ONE executable matching Info.plist.
+find "$APP_PATH/Contents/MacOS" -mindepth 1 -maxdepth 1 -print -delete || true
 
 echo "Creating universal (arm64 + x86_64) binary with lipo..."
 lipo -create "$ARM_BIN" "$X86_BIN" -output "$APP_BIN"
 chmod +x "$APP_BIN"
+
+echo "Verifying final app bundle executable mapping + universal architecture..."
+[[ "$(/usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$APP_PATH/Contents/Info.plist")" == "$CFBE" ]]
+[[ -x "$APP_BIN" ]]
+lipo -verify_arch arm64 x86_64 "$APP_BIN"
 lipo -info "$APP_BIN"
+MACOS_COUNT=$(find "$APP_PATH/Contents/MacOS" -mindepth 1 -maxdepth 1 -type f | wc -l | tr -d ' ')
+[[ "$MACOS_COUNT" == "1" ]]
 ls -la "$APP_PATH/Contents/MacOS"
 
 # Re-sign ad-hoc so macOS accepts the modified bundle, then strip quarantine.
