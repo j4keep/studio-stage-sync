@@ -13,7 +13,10 @@ on:
 
 jobs:
   bundle:
-    runs-on: macos-13
+    # macos-14 = Apple Silicon runner (fast queue). We still emit a true universal
+    # binary because scripts/build-wstudio-bridge-app.sh cross-compiles both
+    # aarch64-apple-darwin and x86_64-apple-darwin and lipos them together.
+    runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
 
