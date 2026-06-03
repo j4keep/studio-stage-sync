@@ -209,10 +209,26 @@ async fn handle(
 
 async fn run_http(state: AppState) -> std::io::Result<()> {
     let addr = SocketAddr::from(([127, 0, 0, 1], HELPER_PORT));
-    let listener = TcpListener::bind(addr).await?;
-    eprintln!("W.STUDIO Helper listening on http://{addr}");
+    log_line(&format!("[http] attempting bind {addr}"));
+    let listener = match TcpListener::bind(addr).await {
+        Ok(l) => {
+            log_line(&format!("[http] bind OK — listening on http://{addr}"));
+            l
+        }
+        Err(e) => {
+            log_line(&format!("[http] BIND FAILED on {addr}: {e} (kind={:?})", e.kind()));
+            return Err(e);
+        }
+    };
     loop {
-        let (stream, _) = listener.accept().await?;
+        let (stream, peer) = match listener.accept().await {
+            Ok(v) => v,
+            Err(e) => {
+                log_line(&format!("[http] accept error: {e}"));
+                continue;
+            }
+        };
+        let _ = peer;
         let io = TokioIo::new(stream);
         let st = state.clone();
         tokio::spawn(async move {
@@ -223,37 +239,82 @@ async fn run_http(state: AppState) -> std::io::Result<()> {
     }
 }
 
+/// Append a timestamped line to both stderr and ~/Library/Logs/WStudioHelper.log
+/// so users can `tail -f` the log even when the app was launched from Finder
+/// (where stderr is otherwise discarded).
+fn log_line(msg: &str) {
+    let line = format!("{} {}\n", now_ms(), msg);
+    eprint!("{line}");
+    if let Some(home) = std::env::var_os("HOME") {
+        let mut path = std::path::PathBuf::from(home);
+        path.push("Library/Logs");
+        let _ = std::fs::create_dir_all(&path);
+        path.push("WStudioHelper.log");
+        if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&path) {
+            use std::io::Write;
+            let _ = f.write_all(line.as_bytes());
+        }
+    }
+}
+
+fn install_panic_hook() {
+    let default = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        log_line(&format!("[panic] {info}"));
+        default(info);
+    }));
+}
+
 fn main() {
+    install_panic_hook();
+    log_line(&format!("[main] entered — helper v{HELPER_VERSION} pid={}", std::process::id()));
+
     let state = AppState {
         slot1: Arc::new(SlotRing::new(SLOT_CAPACITY_SAMPLES)),
         plugin: Arc::new(Mutex::new(PluginState::default())),
         device_installed: Arc::new(Mutex::new(shm::is_driver_installed())),
     };
+    log_line("[main] state initialised");
 
     // HTTP server on a dedicated runtime thread so the macOS event loop owns main.
     let st = state.clone();
     std::thread::spawn(move || {
-        let rt = tokio::runtime::Builder::new_multi_thread()
+        log_line("[http-thread] spawned, building tokio runtime");
+        let rt = match tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .worker_threads(2)
             .build()
-            .expect("tokio rt");
+        {
+            Ok(rt) => rt,
+            Err(e) => {
+                log_line(&format!("[http-thread] FAILED to build tokio rt: {e}"));
+                return;
+            }
+        };
+        log_line("[http-thread] tokio runtime built, entering run_http");
         rt.block_on(async move {
             if let Err(e) = run_http(st).await {
-                eprintln!("helper http server crashed: {e}");
+                log_line(&format!("[http-thread] run_http exited with error: {e}"));
+            } else {
+                log_line("[http-thread] run_http exited cleanly (unexpected)");
             }
         });
+        log_line("[http-thread] runtime block_on returned — thread exiting");
     });
 
     #[cfg(target_os = "macos")]
-    tray::run(state);
+    {
+        log_line("[main] starting macOS tray event loop");
+        tray::run(state);
+    }
 
     #[cfg(not(target_os = "macos"))]
     {
-        eprintln!("Helper headless mode (non-macOS) — Ctrl-C to quit.");
+        log_line("Helper headless mode (non-macOS) — Ctrl-C to quit.");
         loop { std::thread::park(); }
     }
 }
+
 
 #[cfg(target_os = "macos")]
 mod tray {
