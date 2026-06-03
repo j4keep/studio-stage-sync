@@ -53,16 +53,30 @@ if [[ -z "$APP_PATH" || ! -d "$APP_PATH" ]]; then
   exit 1
 fi
 
-BIN_NAME=$(basename "$APP_PATH" .app)
 ARM_BIN="$BRIDGE/target/aarch64-apple-darwin/release/wstudio-desktop-bridge"
 X86_BIN="$BRIDGE/target/x86_64-apple-darwin/release/wstudio-desktop-bridge"
-APP_BIN="$APP_PATH/Contents/MacOS/$BIN_NAME"
+
+# Resolve the real CFBundleExecutable from Info.plist (cargo-bundle uses the
+# cargo target name, not the .app folder name) and write the universal binary
+# to THAT exact path. Otherwise macOS sees a mismatched/duplicate executable
+# and refuses to launch with "incorrect executable format".
+CFBE=$(/usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$APP_PATH/Contents/Info.plist")
+APP_BIN="$APP_PATH/Contents/MacOS/$CFBE"
+echo "CFBundleExecutable = $CFBE"
+echo "Target binary path = $APP_BIN"
+
+# Remove any stray sibling binaries cargo-bundle or prior runs may have left
+# behind so the bundle contains exactly ONE executable matching Info.plist.
+find "$APP_PATH/Contents/MacOS" -mindepth 1 -maxdepth 1 ! -name "$CFBE" -print -delete || true
 
 echo "Creating universal (arm64 + x86_64) binary with lipo..."
 lipo -create "$ARM_BIN" "$X86_BIN" -output "$APP_BIN"
+chmod +x "$APP_BIN"
 lipo -info "$APP_BIN"
+ls -la "$APP_PATH/Contents/MacOS"
 
-# Strip any quarantine attributes that may have crept in
+# Re-sign ad-hoc so macOS accepts the modified bundle, then strip quarantine.
+codesign --force --deep --sign - "$APP_PATH" || true
 xattr -cr "$APP_PATH" || true
 
 echo ""
