@@ -16,10 +16,15 @@ rm -rf "$STAGE" "$OUT"
 mkdir -p "$STAGE/Applications" "$STAGE/Library/Audio/Plug-Ins/HAL"
 
 echo "==> Building helper menubar app"
-(cd "$ROOT/native/wstudio-desktop-bridge" && cargo install cargo-bundle --quiet || true)
-(cd "$ROOT/native/wstudio-desktop-bridge" && cargo bundle --release)
-cp -R "$ROOT/native/wstudio-desktop-bridge/target/release/bundle/osx/W.STUDIO Helper.app" \
-      "$STAGE/Applications/WStudioHelper.app"
+bash "$ROOT/scripts/build-wstudio-bridge-app.sh"
+APP_PATH=$(ls -d "$ROOT/native/wstudio-desktop-bridge"/target/aarch64-apple-darwin/release/bundle/osx/*.app 2>/dev/null | head -1 || true)
+if [[ -z "$APP_PATH" || ! -d "$APP_PATH" ]]; then
+  echo "Helper .app bundle was not produced."
+  exit 1
+fi
+cp -R "$APP_PATH" "$STAGE/Applications/W.STUDIO Helper.app"
+HELPER_BIN="$STAGE/Applications/W.STUDIO Helper.app/Contents/MacOS/wstudio-desktop-bridge"
+lipo -verify_arch arm64 x86_64 "$HELPER_BIN"
 
 echo "==> Building CoreAudio driver"
 (cd "$ROOT/native/wstudio-coreaudio-driver" && ./build.sh)
@@ -43,7 +48,7 @@ cat > "$PLIST" <<PL
 <plist version="1.0"><dict>
   <key>Label</key><string>com.wheuat.wstudio.helper</string>
   <key>ProgramArguments</key>
-  <array><string>/Applications/WStudioHelper.app/Contents/MacOS/wstudio-desktop-bridge</string></array>
+  <array><string>/Applications/W.STUDIO Helper.app/Contents/MacOS/wstudio-desktop-bridge</string></array>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
 </dict></plist>
