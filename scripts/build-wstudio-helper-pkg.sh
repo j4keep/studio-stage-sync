@@ -3,7 +3,7 @@
 # Bundles: WStudioHelper.app (menubar) + WStudio.driver (virtual CoreAudio).
 #
 # Phase 1: UNSIGNED. Users will need:
-#   sudo xattr -dr com.apple.quarantine /Applications/WStudioHelper.app
+#   sudo xattr -dr com.apple.quarantine "/Applications/W.STUDIO Helper.app"
 #   sudo xattr -dr com.apple.quarantine /Library/Audio/Plug-Ins/HAL/WStudio.driver
 # until we add Developer ID signing + notarization.
 
