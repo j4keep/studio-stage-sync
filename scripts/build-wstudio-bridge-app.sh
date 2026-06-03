@@ -50,8 +50,8 @@ X86_BIN="$BRIDGE/target/x86_64-apple-darwin/release/wstudio-desktop-bridge"
 echo "Verifying thin release binary architectures before bundling..."
 test -x "$ARM_BIN"
 test -x "$X86_BIN"
-lipo -verify_arch arm64 "$ARM_BIN"
-lipo -verify_arch x86_64 "$X86_BIN"
+lipo "$ARM_BIN" -verify_arch arm64
+lipo "$X86_BIN" -verify_arch x86_64
 
 echo "Bundling .app (arm64 base) via cargo-bundle..."
 rm -rf "$BRIDGE/target/aarch64-apple-darwin/release/bundle/osx"
@@ -84,9 +84,11 @@ chmod +x "$APP_BIN"
 echo "Verifying final app bundle executable mapping + universal architecture..."
 [[ "$(/usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$APP_PATH/Contents/Info.plist")" == "$CFBE" ]]
 [[ -x "$APP_BIN" ]]
-# `lipo -verify_arch` takes ONE arch per invocation — call twice.
-lipo -verify_arch arm64  "$APP_BIN"
-lipo -verify_arch x86_64 "$APP_BIN"
+# `lipo -verify_arch` syntax is: lipo <file> -verify_arch <arch> [<arch> ...]
+# (the file MUST come before the flag, otherwise lipo prints its usage banner
+# and exits 1 — which is exactly what was failing the build at line 453).
+lipo "$APP_BIN" -verify_arch arm64
+lipo "$APP_BIN" -verify_arch x86_64
 lipo -info "$APP_BIN"
 # Sanity: -info output must mention both architectures.
 lipo -info "$APP_BIN" | grep -q "x86_64"
