@@ -68,7 +68,7 @@ npm run wstudio:bridge:app
 
 Outputs:
 
-- **`native/wstudio-desktop-bridge/target/release/bundle/osx/W.STUDIO Bridge.app`**
+- **`native/wstudio-desktop-bridge/target/aarch64-apple-darwin/release/bundle/osx/W.STUDIO Helper.app`**
 - **`dist-bridge/WSTUDIO-Bridge-mac.dmg`** (drag the app to Applications)
 
 **Icon:** uses `src/assets/wheuat-logo.png` if present, else the doc reference PNG. Override:
@@ -82,8 +82,18 @@ WSTUDIO_BRIDGE_ICON=/path/to/your/1024.png npm run wstudio:bridge:app
 **`xattr -cr`:** Clears the “downloaded from internet” quarantine flag. Use it if macOS says the app is damaged or still won’t open:
 
 ```bash
-xattr -cr "/Applications/W.STUDIO Bridge.app"
+xattr -cr "/Applications/W.STUDIO Helper.app"
 ```
+
+**Intel + Apple Silicon verification:** the shipped bundle must contain exactly one executable, and it must be universal:
+
+```bash
+/usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "/Applications/W.STUDIO Helper.app/Contents/Info.plist"
+ls -la "/Applications/W.STUDIO Helper.app/Contents/MacOS"
+lipo -info "/Applications/W.STUDIO Helper.app/Contents/MacOS/wstudio-desktop-bridge"
+```
+
+Expected: `CFBundleExecutable` prints `wstudio-desktop-bridge`; `Contents/MacOS` contains only `wstudio-desktop-bridge`; `lipo -info` includes both `x86_64` and `arm64`.
 
 **Dock icon only bounces:** the process exits right away. The two usual causes:
 
@@ -95,7 +105,7 @@ A **dialog** should explain which case it is. If you don’t see it, open **`/tm
 To see errors in Terminal, run the binary directly:
 
 ```bash
-"/Users/you/Desktop/studio-stage-sync/native/wstudio-desktop-bridge/target/release/bundle/osx/W.STUDIO Bridge.app/Contents/MacOS/wstudio-desktop-bridge"
+"/Applications/W.STUDIO Helper.app/Contents/MacOS/wstudio-desktop-bridge"
 ```
 
 **Lovable / GitHub:** this repo does not auto-upload a binary. After `npm run wstudio:bridge:app`, upload **`dist-bridge/WSTUDIO-Bridge-mac.dmg`** as a [GitHub Release](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository) asset so others can download it.
