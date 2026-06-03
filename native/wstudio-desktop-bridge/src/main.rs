@@ -97,6 +97,27 @@ async fn handle(
     let method = req.method().clone();
 
     match (method, path.as_str()) {
+        (Method::GET, "/") | (Method::GET, "/index.html") => {
+            let html = include_str!("status_page.html");
+            let mut r = Response::new(Full::new(Bytes::from(html)));
+            r.headers_mut().insert(CONTENT_TYPE, HeaderValue::from_static("text/html; charset=utf-8"));
+            return Ok(cors(r));
+        }
+
+        (Method::POST, "/test-tone") => {
+            // Inject 200ms of 440Hz sine into slot 1 so user can verify the pipeline
+            // without needing a browser session.
+            let sr = 48_000u32;
+            let n = (sr as usize) / 5; // 200ms
+            let mut pcm = Vec::with_capacity(n);
+            for i in 0..n {
+                let t = i as f32 / sr as f32;
+                pcm.push((t * 440.0 * 2.0 * std::f32::consts::PI).sin() * 0.3);
+            }
+            state.slot1.write_samples(&pcm, sr, 1);
+            return Ok(json(StatusCode::OK, serde_json::json!({ "ok": true, "wrote": n })));
+        }
+
         (Method::GET, "/status") => {
             let s1 = state.slot1.snapshot();
             let plugin = state.plugin.lock().clone();
@@ -245,9 +266,11 @@ mod tray {
         let event_loop = EventLoopBuilder::new().build();
 
         let menu = Menu::new();
-        let quit_item = MenuItem::new("Quit W.STUDIO Helper", true, None);
         let status_item = MenuItem::new("W.STUDIO Helper — running on :48000", false, None);
+        let open_item = MenuItem::new("Open Status Page", true, None);
+        let quit_item = MenuItem::new("Quit W.STUDIO Helper", true, None);
         let _ = menu.append(&status_item);
+        let _ = menu.append(&open_item);
         let _ = menu.append(&quit_item);
 
         // 16x16 transparent placeholder icon. Replace with branded glyph later.
@@ -260,12 +283,19 @@ mod tray {
             .expect("tray");
 
         let quit_id = quit_item.id().clone();
+        let open_id = open_item.id().clone();
         event_loop.run(move |event, _, control_flow| {
             *control_flow = ControlFlow::Wait;
             if let Event::UserEvent(_) = event { /* no-op */ }
             if let Ok(ev) = MenuEvent::receiver().try_recv() {
                 if ev.id == quit_id { *control_flow = ControlFlow::Exit; }
+                else if ev.id == open_id {
+                    let _ = std::process::Command::new("open")
+                        .arg("http://127.0.0.1:48000/")
+                        .spawn();
+                }
             }
         });
     }
 }
+
