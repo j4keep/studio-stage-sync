@@ -239,12 +239,21 @@ async fn run_http(state: AppState) -> std::io::Result<()> {
     }
 }
 
-/// Append a timestamped line to both stderr and ~/Library/Logs/WStudioHelper.log
-/// so users can `tail -f` the log even when the app was launched from Finder
-/// (where stderr is otherwise discarded).
+/// Append a timestamped line to stderr, /tmp/wstudio-main.log, and
+/// ~/Library/Logs/WStudioHelper.log. /tmp is written first and unconditionally
+/// so we can confirm `main()` was actually entered even if $HOME is unset or
+/// the Library/Logs path is unwritable under the Finder-launched sandbox.
 fn log_line(msg: &str) {
     let line = format!("{} {}\n", now_ms(), msg);
     eprint!("{line}");
+    if let Ok(mut f) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("/tmp/wstudio-main.log")
+    {
+        use std::io::Write;
+        let _ = f.write_all(line.as_bytes());
+    }
     if let Some(home) = std::env::var_os("HOME") {
         let mut path = std::path::PathBuf::from(home);
         path.push("Library/Logs");
@@ -266,8 +275,20 @@ fn install_panic_hook() {
 }
 
 fn main() {
+    // ABSOLUTE FIRST LINE: prove main() was reached, no matter what.
+    let _ = std::fs::write(
+        "/tmp/wstudio-main.log",
+        format!("--- helper main() entered v{HELPER_VERSION} pid={} ---\n", std::process::id()),
+    );
     install_panic_hook();
     log_line(&format!("[main] entered — helper v{HELPER_VERSION} pid={}", std::process::id()));
+
+    // DIAGNOSTIC MODE: skip tray/menubar/LaunchServices integration entirely
+    // and run only the HTTP server so we can isolate whether the bind failure
+    // is caused by tray init crashing the process before the HTTP thread runs.
+    // Toggle off by unsetting WSTUDIO_HELPER_NO_TRAY (default = on for now).
+    let no_tray = std::env::var("WSTUDIO_HELPER_TRAY").ok().as_deref() != Some("1");
+    log_line(&format!("[main] no_tray={no_tray} (set WSTUDIO_HELPER_TRAY=1 to enable tray)"));
 
     let state = AppState {
         slot1: Arc::new(SlotRing::new(SLOT_CAPACITY_SAMPLES)),
@@ -276,7 +297,6 @@ fn main() {
     };
     log_line("[main] state initialised");
 
-    // HTTP server on a dedicated runtime thread so the macOS event loop owns main.
     let st = state.clone();
     std::thread::spawn(move || {
         log_line("[http-thread] spawned, building tokio runtime");
@@ -304,8 +324,13 @@ fn main() {
 
     #[cfg(target_os = "macos")]
     {
-        log_line("[main] starting macOS tray event loop");
-        tray::run(state);
+        if no_tray {
+            log_line("[main] DIAGNOSTIC: tray disabled, parking main thread forever");
+            loop { std::thread::park(); }
+        } else {
+            log_line("[main] starting macOS tray event loop");
+            tray::run(state);
+        }
     }
 
     #[cfg(not(target_os = "macos"))]
