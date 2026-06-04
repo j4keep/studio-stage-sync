@@ -239,12 +239,21 @@ async fn run_http(state: AppState) -> std::io::Result<()> {
     }
 }
 
-/// Append a timestamped line to both stderr and ~/Library/Logs/WStudioHelper.log
-/// so users can `tail -f` the log even when the app was launched from Finder
-/// (where stderr is otherwise discarded).
+/// Append a timestamped line to stderr, /tmp/wstudio-main.log, and
+/// ~/Library/Logs/WStudioHelper.log. /tmp is written first and unconditionally
+/// so we can confirm `main()` was actually entered even if $HOME is unset or
+/// the Library/Logs path is unwritable under the Finder-launched sandbox.
 fn log_line(msg: &str) {
     let line = format!("{} {}\n", now_ms(), msg);
     eprint!("{line}");
+    if let Ok(mut f) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("/tmp/wstudio-main.log")
+    {
+        use std::io::Write;
+        let _ = f.write_all(line.as_bytes());
+    }
     if let Some(home) = std::env::var_os("HOME") {
         let mut path = std::path::PathBuf::from(home);
         path.push("Library/Logs");
