@@ -25,7 +25,10 @@ import { useEffect, useRef, useState } from "react";
 // device. Body is raw Float32 PCM (little-endian, interleaved) with
 // X-Sample-Rate and X-Channels headers, NOT JSON. This is ~8x cheaper
 // than the JSON path and keeps the helper's hot path allocation-free.
-const BRIDGE_URL = (slot: number) => `http://127.0.0.1:48000/artist-audio/${slot}`;
+// NOTE: The UI's "Artist N" selector is 0-indexed but Phase 1 helper only
+// accepts slot 1, so we always post to slot 1 regardless of UI index.
+const PHASE1_HELPER_SLOT = 1;
+const BRIDGE_URL = (_slot: number) => `http://127.0.0.1:48000/artist-audio/${PHASE1_HELPER_SLOT}`;
 const PACKET_SAMPLES = 2048; // ~42.7ms @ 48k
 const MAX_INFLIGHT = 1;
 const RECENT_OK_MS = 5000;
