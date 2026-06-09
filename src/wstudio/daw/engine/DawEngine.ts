@@ -19,6 +19,7 @@ export class DawEngine {
     inserts: BuiltEffect[];
     panner: StereoPannerNode;
     gain: GainNode;
+    monitorGain: GainNode;
     analyser: AnalyserNode;
     splitter: ChannelSplitterNode;
     analyserL: AnalyserNode;
@@ -26,6 +27,9 @@ export class DawEngine {
     reverbSend: GainNode;
     delaySend: GainNode;
     activeSources: AudioScheduledSourceNode[];
+    micSource?: MediaStreamAudioSourceNode | null;
+    savedReverbSend?: number;
+    savedDelaySend?: number;
   }>();
   private startCtxTime = 0;
   private startTransportTime = 0;
