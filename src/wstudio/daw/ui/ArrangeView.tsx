@@ -453,11 +453,7 @@ function TrackHeader({ track, onArm, onMute, onSolo, onRemove, onRename, onVolum
               className="absolute inset-y-0 left-0 bg-gradient-to-r from-emerald-600 via-emerald-400 to-emerald-300"
               style={{ width: `${Math.min(100, track.volume * 100)}%` }}
             />
-            <div className="absolute inset-0 pointer-events-none flex">
-              {Array.from({ length: 10 }).map((_, i) => (
-                <div key={i} className="flex-1 border-r border-black/30 last:border-r-0" />
-              ))}
-            </div>
+            <div className="absolute inset-y-0 pointer-events-none" style={{ left: `${Math.min(100, track.volume * 100)}%`, width: 2, background: "rgba(255,255,255,0.8)" }} />
           </div>
 
           <div className="flex items-center gap-0.5 shrink-0" onPointerDown={stop} onClick={stop} title="Pan L/R">
