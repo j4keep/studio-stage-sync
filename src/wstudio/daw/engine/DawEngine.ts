@@ -173,6 +173,11 @@ export class DawEngine {
     this.startCtxTime = this.ctx.currentTime + 0.05;
     this.startTransportTime = transport.position;
     this.playing = true;
+    this.metroBpm = transport.bpm;
+    this.metroEnabled = !!transport.metronome;
+    this.metroBeatIndex = 0;
+    this.metroNextBeat = this.startCtxTime;
+    this.scheduleMetronome();
 
     const anySolo = tracks.some(t => t.solo);
     for (const clip of clips) {
