@@ -237,7 +237,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
   return (
     <div className="fixed inset-0 bg-black flex flex-col text-neutral-200 dark">
       <TransportBar
-        onPlay={handlePlay}
+        onPlay={handlePlayPause}
         onStop={handleStop}
         onRecord={handleRecord}
         onRewind={handleRewind}
