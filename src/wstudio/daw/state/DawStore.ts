@@ -59,6 +59,7 @@ export const useDawStore = create<DawState>((set, get) => ({
   },
   selectedTrackId: null,
   selectedClipId: null,
+  clipboard: null,
   view: "arrange",
   masterVolume: 0.85,
   pxPerSec: 60,
