@@ -219,20 +219,27 @@ export function ArrangeView({ onArmToggle, onSeek, engine }: Props) {
           {/* Track headers column */}
           <div className="sticky left-0 z-10 bg-neutral-950 border-r border-neutral-800 overflow-hidden" style={{ width: HEADER_W }}>
             <div style={{ height: RULER_H }} className="border-b border-neutral-800" />
-            {tracks.map(t => (
-              <TrackHeader
-                key={t.id}
-                track={t}
-                onArm={() => onArmToggle(t.id)}
-                onMute={() => updateTrack(t.id, { mute: !t.mute })}
-                onSolo={() => updateTrack(t.id, { solo: !t.solo })}
-                onRemove={() => removeTrack(t.id)}
-                onRename={(n) => updateTrack(t.id, { name: n })}
-                onVolume={(v) => updateTrack(t.id, { volume: v })}
-                onPan={(v) => updateTrack(t.id, { pan: v })}
-                onDropTrack={(fromId) => reorderTracks(fromId, t.id)}
-              />
-            ))}
+            {tracks.map(t => {
+              const trackClips = clips.filter(c => c.trackId === t.id);
+              const isStereo = trackClips.some(c => (c.buffer?.numberOfChannels ?? 0) >= 2);
+              const stereo = engine?.getTrackStereoAnalysers(t.id) ?? null;
+              const meters = stereo ? (isStereo ? [stereo.L, stereo.R] : [stereo.L]) : [];
+              return (
+                <TrackHeader
+                  key={t.id}
+                  track={t}
+                  meters={meters}
+                  onArm={() => onArmToggle(t.id)}
+                  onMute={() => updateTrack(t.id, { mute: !t.mute })}
+                  onSolo={() => updateTrack(t.id, { solo: !t.solo })}
+                  onRemove={() => removeTrack(t.id)}
+                  onRename={(n) => updateTrack(t.id, { name: n })}
+                  onVolume={(v) => updateTrack(t.id, { volume: v })}
+                  onPan={(v) => updateTrack(t.id, { pan: v })}
+                  onDropTrack={(fromId) => reorderTracks(fromId, t.id)}
+                />
+              );
+            })}
             {tracks.length === 0 && (
               <div className="p-6 text-center text-neutral-500 text-xs">Add a track to begin.</div>
             )}
