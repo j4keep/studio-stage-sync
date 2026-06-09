@@ -1,73 +1,93 @@
-# W.STUDIO Phase 1 — Mac Recording Pipe
+# W.Studio DAW — Soundtrap-style build
 
-Goal: Engineer can arm a Logic track on **"W.STUDIO Artist Input"** and record the artist's live mic in real time. No W.STUDIO web UI redesign.
+Building a browser DAW at `/wstudio/daw` while keeping the existing session collab (join code, participants list, screen share, WebRTC) intact. The old `UnifiedSessionScreen` stays live until the new DAW is proven, then we point session routes at it.
 
-## Architecture
+## Scope across 3 phases
 
+### Phase 1 — Multitrack DAW core
+- New page `src/pages/WStudioDawPage.tsx` mounted at `/wstudio/daw` and `/wstudio/session/:code/daw`
+- Engine `src/wstudio/daw/engine/DawEngine.ts` — Web Audio graph, transport (play/stop/record/loop), sample-accurate scheduling, BPM + metronome, master bus
+- Track model: unlimited tracks, each = audio OR instrument; per-track gain, pan, mute, solo, arm, input select, output bus
+- Timeline UI `Timeline.tsx` — ruler (bars/beats + time), zoom, snap-to-grid, drag clips, trim, split, duplicate, delete
+- Clip waveform rendering via offline peak extraction (cached)
+- Recording: arm track → record from selected mic input → clip drops on timeline at playhead
+- File import: drag-and-drop WAV/MP3/OGG/M4A → new audio track + clip
+- Export: render master to WAV via OfflineAudioContext
+
+### Phase 2 — Mixer + built-in effects + plug-in uploads
+- Mixer view (toggle from arrange view): vertical channel strips per track + master
+  - Fader (dB-scaled), pan knob, mute/solo, meter (peak + RMS), insert FX slots (up to 6), send to 2 buses (Reverb / Delay)
+- Built-in effects (Web Audio): EQ (3-band + parametric), Compressor, Reverb (convolution), Delay, Chorus, Distortion, Limiter, Auto-tune-style pitch correction (PSOLA approximation)
+- Effect presets per plugin
+- **User plug-in uploads** (Soundtrap-style): users upload `.wasm` + manifest JSON, stored in R2; engine loads them as AudioWorkletProcessors at runtime
+  - Manifest declares params (name, min/max, default), I/O channels
+  - Per-user "My Plug-ins" library page; sandboxed worklet load
+  - Note: native VST/AU `.dll/.vst3/.component` cannot run in browser — UI clearly states "Web plug-ins (WASM) supported". Native plug-in support requires the helper app (parked).
+
+### Phase 3 — Instruments, MIDI, sound library, quantize
+- Virtual instruments: built-in sampler + simple synth (Web Audio oscillators) + drum machine grid
+- MIDI: piano-roll editor per instrument clip (note add/move/resize/velocity), MIDI keyboard input via WebMIDI
+- Quantize: clip + MIDI note quantize to 1/4, 1/8, 1/16, 1/32, triplets, with strength %
+- Sound library: browseable loops/one-shots (seeded set in R2), drag to timeline; per-user uploaded samples
+- Metronome, count-in, loop region
+
+## Keep / reuse
+- `SessionContext`, join-code flow, participants panel, screen share (`StudioMediaContext`), WebRTC signaling — all kept. DAW page wraps in the existing session provider when a session code is present, hides collab chrome when standalone.
+- `IncognitoFeedWindow` continues to float over DAW.
+
+## File layout
 ```text
-Artist browser (mic)
-  → WebRTC over existing session
-    → Engineer browser (W.STUDIO web)
-      → POST http://127.0.0.1:48000/artist-audio/1  (raw Float32 PCM)
-        → Helper App (menubar, Rust)
-          → Shared ring buffer
-            → Virtual CoreAudio Device "W.STUDIO Artist Input"
-              → Logic / any DAW
-
-AU Plugin  ⇄  Helper /plugin-event   (control surface only: meters, gain, mute, send/receive/talk)
+src/wstudio/daw/
+  engine/
+    DawEngine.ts           transport, graph, scheduler
+    Track.ts               track model + per-track chain
+    Clip.ts                audio + MIDI clips
+    Effects.ts             built-in FX factory
+    WasmPluginHost.ts      user plug-in worklet loader
+    Sampler.ts, Synth.ts, DrumMachine.ts
+    Recorder.ts            arm + capture
+    Exporter.ts            offline render to WAV
+    Metronome.ts, Quantize.ts, Peaks.ts
+  state/
+    DawStore.ts            zustand store (tracks, clips, transport, mixer)
+  ui/
+    DawShell.tsx           top bar (transport, BPM, time, view switch)
+    ArrangeView.tsx        timeline + track headers
+    MixerView.tsx          channel strips
+    TrackHeader.tsx, ChannelStrip.tsx, Fader.tsx, Knob.tsx, Meter.tsx
+    ClipView.tsx, WaveformView.tsx
+    PianoRoll.tsx
+    LibraryPanel.tsx       sound + plug-in library, drag source
+    PluginRack.tsx, PluginUploadDialog.tsx
+    CollabSidebar.tsx      wraps existing participants + screen share
+    JoinCodeBadge.tsx      reuses session code display
+src/pages/WStudioDawPage.tsx
 ```
 
-The helper app owns the audio pipe. The virtual device is the recording surface in the DAW. The AU plugin does not carry audio in Phase 1 (hidden dev fallback preserved).
+## Backend additions
+- R2 buckets reused: new prefixes `daw/projects/{userId}/{projectId}/`, `daw/plugins/{userId}/`, `daw/samples/{userId}/`
+- Supabase tables:
+  - `daw_projects` (id, user_id, name, bpm, data jsonb, updated_at) + RLS owner-only + grants
+  - `daw_user_plugins` (id, user_id, name, manifest jsonb, wasm_key, created_at) + RLS owner-only + grants
+- Edge functions reuse `r2-upload` / `r2-presign` / `r2-download`
 
-## Decisions locked in
+## Rollout
+1. Phase 1 ships as `/wstudio/daw` (standalone). Old session screen untouched.
+2. Phase 2 adds mixer + FX + plug-in upload UI.
+3. Phase 3 adds MIDI + instruments + library + quantize.
+4. Add `?session={code}` param so DAW boots inside an active collab session; collab sidebar appears, screen share button reuses existing media context.
+5. Once stable, replace UnifiedSessionScreen route target with DAW.
 
-1. **Unsigned for Phase 1.** Ship `.pkg` unsigned. README includes `xattr -dr com.apple.quarantine` + System Settings → Privacy unblock step. Sign + notarize later when Developer ID is ready.
-2. **Menubar helper.** Tray icon only, no Dock, no main window. Click → small popover with status (Connected / Device installed / Slot 1 level meter / Quit).
-3. **AU plugin = control surface.** `processBlock()` becomes silent pass-through by default. Old `BridgeMicReceiverThread` / `DawAudioSenderThread` kept behind a hidden `kPluginOnlyFallback` flag (off by default, toggled via a dev-only key combo in the plugin UI). All meters/gain/mute/send/receive/talk buttons stay and talk to helper via `/plugin-event`.
+## Technical notes (non-user)
+- Transport uses a lookahead scheduler (25ms tick, 100ms lookahead) over `AudioContext.currentTime` for sample-accurate playback.
+- Peaks computed on a Web Worker; cached by clip hash.
+- Clips reference an AudioBuffer pool keyed by file hash to avoid duplicate decodes.
+- Mixer channel strip = `Track.input → inserts[] → panner → fader → (sends) → master`.
+- AudioWorklet plug-ins receive params via `port.postMessage`; UI knobs bind to manifest params.
+- Project autosave to `daw_projects.data` (debounced 3s).
+- WAV export uses OfflineAudioContext at 44.1kHz/16-bit, streamed to R2 via existing upload flow.
 
-## Build order
-
-### 1. Helper App (`native/wstudio-desktop-bridge/`, Rust)
-- Switch port → **48000**.
-- Endpoints:
-  - `GET  /status` → `{ ok, device_installed, slot_1: { connected, level, packets, failed } }`
-  - `POST /artist-audio/1` → headers `X-Sample-Rate`, `X-Channels`, body = raw Float32 PCM ArrayBuffer. Writes into ring buffer for slot 1.
-  - `POST /plugin-event` → JSON `{ type, slot, value }` for gain/mute/talk.
-- Ring buffer: lock-free SPSC, ~500ms, 48kHz/32-bit float, mono Phase 1.
-- macOS menubar shell via `tao` + `tray-icon` crates. States: gray (no device), blue (device ok, no audio), green (receiving).
-- Launches at login via LaunchAgent plist installed by pkg.
-
-### 2. Virtual CoreAudio Device (`native/wstudio-coreaudio-driver/`, C++)
-- AudioServerPlugIn bundle: `WStudio.driver`.
-- Identity: name **"W.STUDIO Artist Input"**, 1 input stream, 48kHz, 32-bit float, mono (stereo later).
-- Shared memory ring buffer with helper via POSIX shm `/wstudio_slot1`.
-- Installs to `/Library/Audio/Plug-Ins/HAL/WStudio.driver`. Requires `sudo killall coreaudiod` once after install (handled by postinstall script).
-
-### 3. Browser → Helper wiring (web, function-only)
-- `src/wstudio/audio-engine/helper/HttpHelperTransport.ts` — base URL → `http://127.0.0.1:48000`. Extend `/status` parsing with `device_installed`.
-- `src/wstudio/bridge/useEngineerBridgeRelay.ts` — already POSTs PCM; lock `slot=1`, send raw `ArrayBuffer` with `X-Sample-Rate: 48000`, `X-Channels: 1`. Increment `packetsSent` only on 2xx, `failed` on error. Logs: `ENGINEER_RECEIVED_ARTIST_AUDIO`, `ENGINEER_POSTED_TO_HELPER_OK`, `ENGINEER_POSTED_TO_HELPER_FAIL`, `HELPER_STATUS`.
-- `src/wstudio/media/StudioMediaContext.tsx` — artist side: confirm mic stream + logs `ARTIST_MIC_STARTED`, `ARTIST_MIC_LEVEL`, `ARTIST_AUDIO_SENT_TO_ENGINEER`.
-- `src/wstudio/session/UnifiedSessionScreen.tsx` — "Connected" indicator = helper `/status.ok` AND session WebRTC connected AND `device_installed`. Add tiny "Install Helper" CTA when helper unreachable (links to downloaded pkg). **No layout/color/label changes elsewhere.**
-
-### 4. AU plugin reduced (`native/wstudio-plugin/`)
-- `processBlock()` → output silence by default, no network/audio threads in path.
-- Old receiver/sender threads gated behind `kPluginOnlyFallback` static flag (default false).
-- Add `/plugin-event` POSTs for gain/mute/talk button changes (non-audio control).
-- UI untouched.
-
-### 5. Installer (`scripts/build-wstudio-helper-pkg.sh`)
-- Single `.pkg`: `WStudioHelper.app` → `/Applications`, `WStudio.driver` → `/Library/Audio/Plug-Ins/HAL/`, LaunchAgent plist → `~/Library/LaunchAgents/`.
-- Postinstall: `launchctl load` helper, `killall coreaudiod`.
-- README: unsigned install steps + "Open Logic → New Audio Track → Input: W.STUDIO Artist Input".
-
-## What does NOT change in Phase 1
-- W.STUDIO web design, layout, colors, buttons, labels.
-- Session join/connect screen.
-- AU plugin UI.
-- Supabase schema.
-
-## Phase 2 (later, not now)
-- Multi-artist slots (up to 12), stereo, DAW return path, Windows WASAPI, code signing + notarization.
-
-## Open execution note
-This plan involves substantial native code (Rust helper + C++ CoreAudio driver). I will scaffold the directory structure, Rust helper crate, and driver project in this repo, plus wire the web side. Building the actual `.pkg` requires running the build script on a Mac with Xcode — I'll include the script and exact instructions; the artifacts cannot be produced inside this sandbox.
+## Out of scope (explicit)
+- Native VST/AU/AAX plug-ins (browser cannot host these without the parked helper app).
+- Video tracks.
+- Notation view.
