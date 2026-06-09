@@ -206,12 +206,12 @@ export class DawEngine {
     this.metroNextBeat = this.startCtxTime;
     this.scheduleMetronome();
 
-    const anySolo = tracks.some(t => t.solo);
+    // NOTE: We DO NOT skip muted/non-solo clips here. Mute & solo are enforced
+    // live via each track chain's gain node (see updateTrackParams), so the user
+    // can mute/unmute or solo/unsolo during playback without restarting.
     for (const clip of clips) {
       const track = tracks.find(t => t.id === clip.trackId);
       if (!track || !clip.buffer) continue;
-      if (track.mute) continue;
-      if (anySolo && !track.solo) continue;
       const chain = this.trackChains.get(track.id);
       if (!chain) continue;
 
