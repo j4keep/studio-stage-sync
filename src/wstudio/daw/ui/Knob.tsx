@@ -10,9 +10,10 @@ interface Props {
   unit?: string;
   onChange: (v: number) => void;
   color?: string;
+  showValue?: boolean;
 }
 
-export function Knob({ value, min, max, step = 0.01, size = 44, label, unit, onChange, color = "#fff" }: Props) {
+export function Knob({ value, min, max, step = 0.01, size = 44, label, unit, onChange, color = "#fff", showValue = true }: Props) {
   const startX = useRef(0);
   const startY = useRef(0);
   const startVal = useRef(0);
@@ -87,9 +88,11 @@ export function Knob({ value, min, max, step = 0.01, size = 44, label, unit, onC
         />
       </div>
       {label && <div className="text-[9px] uppercase tracking-wider text-neutral-400 mt-1">{label}</div>}
-      <div className="text-[10px] text-neutral-300 tabular-nums">
-        {value.toFixed(step >= 1 ? 0 : 2)}{unit}
-      </div>
+      {showValue && (
+        <div className="text-[10px] text-neutral-300 tabular-nums">
+          {value.toFixed(step >= 1 ? 0 : 2)}{unit}
+        </div>
+      )}
     </div>
   );
 }
