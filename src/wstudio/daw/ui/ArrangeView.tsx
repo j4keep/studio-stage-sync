@@ -104,6 +104,13 @@ export function ArrangeView({ onArmToggle, onSeek }: Props) {
 
   const cycleStart = loopStart ?? 0;
   const cycleEnd = loopEnd ?? 8;
+  const rulerDrag = useRef(false);
+  const seekFromRuler = (clientX: number, el: HTMLElement) => {
+    const rect = el.getBoundingClientRect();
+    const next = Math.max(0, (clientX - rect.left) / pxPerSec);
+    if (onSeek) onSeek(next);
+    else setTransport({ position: next });
+  };
 
   // Clip drag state (pointer-based; supports cross-track move)
   const clipDrag = useRef<{
@@ -234,6 +241,18 @@ export function ArrangeView({ onArmToggle, onSeek }: Props) {
             <div
               className="border-b border-neutral-800 bg-neutral-950 relative cursor-pointer select-none"
               onClick={handleRulerClick}
+              onPointerDown={(e) => {
+                if ((e.target as HTMLElement).dataset.cycle) return;
+                rulerDrag.current = true;
+                (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+                seekFromRuler(e.clientX, e.currentTarget as HTMLElement);
+              }}
+              onPointerMove={(e) => {
+                if (!rulerDrag.current || !(e.buttons & 1)) return;
+                seekFromRuler(e.clientX, e.currentTarget as HTMLElement);
+              }}
+              onPointerUp={() => { rulerDrag.current = false; }}
+              onPointerCancel={() => { rulerDrag.current = false; }}
               style={{ width: timelineLen * pxPerSec, height: RULER_H }}
             >
               {/* Bar markers */}
