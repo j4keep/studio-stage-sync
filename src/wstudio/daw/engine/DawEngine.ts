@@ -26,7 +26,14 @@ export class DawEngine {
   }>();
   private startCtxTime = 0;
   private startTransportTime = 0;
-  private playing = false;
+  playing = false;
+
+  // Metronome
+  private metroEnabled = false;
+  private metroBpm = 120;
+  private metroNextBeat = 0;
+  private metroBeatIndex = 0;
+  private metroTimer: number | null = null;
 
   // Recording
   private micStream: MediaStream | null = null;
