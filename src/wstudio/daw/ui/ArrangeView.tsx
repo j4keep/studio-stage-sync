@@ -1,12 +1,14 @@
 import { useRef, useState, useMemo } from "react";
 import { useDawStore } from "../state/DawStore";
 import { WaveformView } from "./WaveformView";
+import { Knob } from "./Knob";
 import { Trash2, GripVertical } from "lucide-react";
 import { toast } from "sonner";
 import type { Track, Clip } from "../engine/types";
 
 interface Props {
   onArmToggle: (trackId: string) => void;
+  onSeek?: (position: number) => void;
 }
 
 const HEADER_W = 200;
@@ -25,10 +27,13 @@ const TOOL_CURSORS: Record<string, string> = {
   marquee: "crosshair",
 };
 
-export function ArrangeView({ onArmToggle }: Props) {
+export function ArrangeView({ onArmToggle, onSeek }: Props) {
   const tracks = useDawStore(s => s.tracks);
   const clips = useDawStore(s => s.clips);
-  const transport = useDawStore(s => s.transport);
+  const bpm = useDawStore(s => s.transport.bpm);
+  const loopEnabled = useDawStore(s => s.transport.loopEnabled);
+  const loopStart = useDawStore(s => s.transport.loopStart);
+  const loopEnd = useDawStore(s => s.transport.loopEnd);
   const pxPerSec = useDawStore(s => s.pxPerSec);
   const setTransport = useDawStore(s => s.setTransport);
   const updateTrack = useDawStore(s => s.updateTrack);
@@ -53,7 +58,7 @@ export function ArrangeView({ onArmToggle }: Props) {
   const timelineLen = Math.max(60, ...clips.map(c => c.startTime + c.duration)) + 20;
 
   // Bars/beats math (4/4)
-  const secPerBeat = 60 / Math.max(40, transport.bpm);
+  const secPerBeat = 60 / Math.max(40, bpm);
   const secPerBar = secPerBeat * 4;
   const barPx = secPerBar * pxPerSec;
   const beatPx = secPerBeat * pxPerSec;
@@ -69,7 +74,8 @@ export function ArrangeView({ onArmToggle }: Props) {
     if ((e.target as HTMLElement).dataset.cycle) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
-    setTransport({ position: Math.max(0, x / pxPerSec) });
+    const next = Math.max(0, x / pxPerSec);
+    onSeek?.(next) ?? setTransport({ position: next });
   };
 
   // Pointer drag for the cycle (loop) region
@@ -77,7 +83,7 @@ export function ArrangeView({ onArmToggle }: Props) {
   const onCyclePointerDown = (e: React.PointerEvent, mode: "move" | "start" | "end") => {
     e.stopPropagation();
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
-    cycleDrag.current = { mode, startX: e.clientX, startS: transport.loopStart ?? 0, startE: transport.loopEnd ?? 8 };
+    cycleDrag.current = { mode, startX: e.clientX, startS: loopStart ?? 0, startE: loopEnd ?? 8 };
   };
   const onCyclePointerMove = (e: React.PointerEvent) => {
     const d = cycleDrag.current;
@@ -88,15 +94,15 @@ export function ArrangeView({ onArmToggle }: Props) {
       const ns = Math.max(0, d.startS + dx);
       setTransport({ loopStart: ns, loopEnd: ns + len });
     } else if (d.mode === "start") {
-      setTransport({ loopStart: Math.max(0, Math.min((transport.loopEnd ?? 0) - 0.1, d.startS + dx)) });
+      setTransport({ loopStart: Math.max(0, Math.min((loopEnd ?? 0) - 0.1, d.startS + dx)) });
     } else if (d.mode === "end") {
-      setTransport({ loopEnd: Math.max((transport.loopStart ?? 0) + 0.1, d.startE + dx) });
+      setTransport({ loopEnd: Math.max((loopStart ?? 0) + 0.1, d.startE + dx) });
     }
   };
   const onCyclePointerUp = () => { cycleDrag.current = null; };
 
-  const loopStart = transport.loopStart ?? 0;
-  const loopEnd = transport.loopEnd ?? 8;
+  const cycleStart = loopStart ?? 0;
+  const cycleEnd = loopEnd ?? 8;
 
   // Clip drag state (pointer-based; supports cross-track move)
   const clipDrag = useRef<{
@@ -183,9 +189,9 @@ export function ArrangeView({ onArmToggle }: Props) {
         <span className="text-cyan-300/80 uppercase tracking-wider">Tool: {tool}</span>
         <button
           type="button"
-          onClick={() => setTransport({ loopEnabled: !transport.loopEnabled })}
-          className={`h-5 px-2 rounded border text-[9px] uppercase tracking-wider ${transport.loopEnabled ? "bg-amber-500/20 text-amber-300 border-amber-500/40" : "border-neutral-800 text-neutral-500 hover:text-neutral-300"}`}
-        >Cycle {transport.loopEnabled ? "On" : "Off"}</button>
+          onClick={() => setTransport({ loopEnabled: !loopEnabled })}
+          className={`h-5 px-2 rounded border text-[9px] uppercase tracking-wider ${loopEnabled ? "bg-amber-500/20 text-amber-300 border-amber-500/40" : "border-neutral-800 text-neutral-500 hover:text-neutral-300"}`}
+        >Cycle {loopEnabled ? "On" : "Off"}</button>
         <span className="text-neutral-600">Drag amber bar to set loop region</span>
         <div className="flex-1" />
         <span>Zoom</span>
@@ -251,8 +257,8 @@ export function ArrangeView({ onArmToggle }: Props) {
                 onPointerMove={onCyclePointerMove}
                 onPointerUp={onCyclePointerUp}
                 title="Drag to move cycle region — click toggle in toolbar"
-                className={`absolute top-0 h-3 rounded-sm ${transport.loopEnabled ? "bg-amber-400/60 border border-amber-300" : "bg-amber-400/15 border border-amber-400/30"} cursor-grab active:cursor-grabbing`}
-                style={{ left: loopStart * pxPerSec, width: Math.max(4, (loopEnd - loopStart) * pxPerSec) }}
+                className={`absolute top-0 h-3 rounded-sm ${loopEnabled ? "bg-amber-400/60 border border-amber-300" : "bg-amber-400/15 border border-amber-400/30"} cursor-grab active:cursor-grabbing`}
+                style={{ left: cycleStart * pxPerSec, width: Math.max(4, (cycleEnd - cycleStart) * pxPerSec) }}
               >
                 <div
                   data-cycle="1"
@@ -270,20 +276,14 @@ export function ArrangeView({ onArmToggle }: Props) {
                 />
               </div>
 
-              {/* Playhead diamond */}
-              <div
-                className="absolute top-0 bottom-0 w-px bg-emerald-400 pointer-events-none z-30"
-                style={{ left: transport.position * pxPerSec }}
-              >
-                <div className="w-2 h-2 bg-emerald-400 -translate-x-1/2 rotate-45" />
-              </div>
+              <PlayheadMarker pxPerSec={pxPerSec} ruler />
             </div>
 
             {/* Loop region shading down lanes */}
-            {transport.loopEnabled && (
+            {loopEnabled && (
               <div
                 className="absolute top-0 bottom-0 bg-amber-400/5 border-x border-amber-400/30 pointer-events-none z-0"
-                style={{ left: loopStart * pxPerSec, width: Math.max(2, (loopEnd - loopStart) * pxPerSec), marginTop: RULER_H }}
+                style={{ left: cycleStart * pxPerSec, width: Math.max(2, (cycleEnd - cycleStart) * pxPerSec), marginTop: RULER_H }}
               />
             )}
 
@@ -334,10 +334,7 @@ export function ArrangeView({ onArmToggle }: Props) {
                 ))}
               </div>
             ))}
-            <div
-              className="absolute w-px bg-emerald-400/70 pointer-events-none z-20"
-              style={{ left: transport.position * pxPerSec, top: RULER_H, bottom: 0 }}
-            />
+            <PlayheadMarker pxPerSec={pxPerSec} />
           </div>
         </div>
       </div>
@@ -352,7 +349,7 @@ export function ArrangeView({ onArmToggle }: Props) {
             { label: "Cut", sc: "⌘X", action: () => cutClip(ctxMenu.clipId) },
             { label: "Copy", sc: "⌘C", action: () => { copyClip(ctxMenu.clipId); toast.success("Copied"); } },
             { label: "Duplicate", sc: "⌘D", action: () => duplicateClip(ctxMenu.clipId) },
-            { label: "Split at playhead", sc: "", action: () => splitClipAt(ctxMenu.clipId, transport.position) },
+            { label: "Split at playhead", sc: "", action: () => splitClipAt(ctxMenu.clipId, useDawStore.getState().transport.position) },
             { label: "Delete", sc: "Del", action: () => removeClip(ctxMenu.clipId) },
           ].map(item => (
             <button
