@@ -105,9 +105,16 @@ export class DawEngine {
       const gain = this.ctx.createGain();
       const analyser = this.ctx.createAnalyser();
       analyser.fftSize = 512;
+      const splitter = this.ctx.createChannelSplitter(2);
+      const analyserL = this.ctx.createAnalyser();
+      const analyserR = this.ctx.createAnalyser();
+      analyserL.fftSize = 512; analyserR.fftSize = 512;
+      gain.connect(splitter);
+      splitter.connect(analyserL, 0);
+      splitter.connect(analyserR, 1);
       const reverbSend = this.ctx.createGain();
       const delaySend = this.ctx.createGain();
-      chain = { input, inserts: [], panner, gain, analyser, reverbSend, delaySend, activeSources: [] };
+      chain = { input, inserts: [], panner, gain, analyser, splitter, analyserL, analyserR, reverbSend, delaySend, activeSources: [] };
       this.trackChains.set(track.id, chain);
     }
     this.rebuildChain(track, chain);
