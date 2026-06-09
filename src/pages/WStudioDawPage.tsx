@@ -24,7 +24,9 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
 
   const tracks = useDawStore(s => s.tracks);
   const clips = useDawStore(s => s.clips);
-  const transport = useDawStore(s => s.transport);
+  const isRecording = useDawStore(s => s.transport.isRecording);
+  const metronome = useDawStore(s => s.transport.metronome);
+  const bpm = useDawStore(s => s.transport.bpm);
   const setTransport = useDawStore(s => s.setTransport);
   const addClip = useDawStore(s => s.addClip);
   const addTrack = useDawStore(s => s.addTrack);
@@ -121,33 +123,35 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
   const handleRecord = useCallback(async () => {
     const e = engineRef.current;
     if (!e) return;
-    if (transport.isRecording) {
+    const st = useDawStore.getState();
+    if (st.transport.isRecording) {
       e.stopRecording();
       setTransport({ isRecording: false });
       return;
     }
-    let armed = tracks.find(t => t.armed && t.kind === "audio");
+    let armed = st.tracks.find(t => t.armed && t.kind === "audio");
     if (!armed) {
-      const id = addTrack("audio", `Take ${tracks.filter(t => t.kind === "audio").length + 1}`);
+      const id = addTrack("audio", `Take ${st.tracks.filter(t => t.kind === "audio").length + 1}`);
       updateTrack(id, { armed: true });
       await new Promise(r => setTimeout(r, 50));
       armed = useDawStore.getState().tracks.find(t => t.id === id);
     }
     try {
       await e.resume();
-      await e.startRecording(armed!.id, transport.position, armed!.inputDeviceId);
+      const latest = useDawStore.getState();
+      await e.startRecording(armed!.id, latest.transport.position, armed!.inputDeviceId);
       setTransport({ isRecording: true, isPlaying: true });
-      e.play(transport, tracks, clips);
+      e.play(latest.transport, latest.tracks, latest.clips);
     } catch (err: any) {
       toast.error("Mic access denied");
       setTransport({ isRecording: false });
     }
-  }, [transport, tracks, clips, addTrack, updateTrack, setTransport]);
+  }, [addTrack, updateTrack, setTransport]);
 
   // Sync metronome live
   useEffect(() => {
-    engineRef.current?.setMetronome(transport.metronome, transport.bpm);
-  }, [transport.metronome, transport.bpm]);
+    engineRef.current?.setMetronome(metronome, bpm);
+  }, [metronome, bpm]);
 
   // Keyboard shortcuts
   useEffect(() => {
