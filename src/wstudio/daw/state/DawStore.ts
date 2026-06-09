@@ -96,6 +96,45 @@ export const useDawStore = create<DawState>((set, get) => ({
     tracks: get().tracks.map(t => t.id === id ? { ...t, ...patch } : t),
   }),
 
+  reorderTracks: (fromId, toId) => {
+    const list = [...get().tracks];
+    const from = list.findIndex(t => t.id === fromId);
+    const to = list.findIndex(t => t.id === toId);
+    if (from < 0 || to < 0 || from === to) return;
+    const [moved] = list.splice(from, 1);
+    list.splice(to, 0, moved);
+    set({ tracks: list });
+  },
+
+  moveClipToTrack: (clipId, trackId) => set({
+    clips: get().clips.map(c => c.id === clipId ? { ...c, trackId } : c),
+  }),
+
+  copyClip: (id) => {
+    const c = get().clips.find(x => x.id === id);
+    if (c) set({ clipboard: { ...c } });
+  },
+
+  cutClip: (id) => {
+    const c = get().clips.find(x => x.id === id);
+    if (!c) return;
+    set({ clipboard: { ...c }, clips: get().clips.filter(x => x.id !== id) });
+  },
+
+  pasteClipAt: (trackId, time) => {
+    const cb = get().clipboard;
+    if (!cb) return;
+    const clip: Clip = { ...cb, id: newId("clip"), trackId, startTime: Math.max(0, time) };
+    set({ clips: [...get().clips, clip] });
+  },
+
+  duplicateClip: (id) => {
+    const c = get().clips.find(x => x.id === id);
+    if (!c) return;
+    const clip: Clip = { ...c, id: newId("clip"), startTime: c.startTime + c.duration };
+    set({ clips: [...get().clips, clip] });
+  },
+
   addClip: (clip) => set({ clips: [...get().clips, clip] }),
 
   updateClip: (id, patch) => set({
