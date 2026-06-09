@@ -457,14 +457,23 @@ function TrackHeader({ track, meters = [], onArm, onMute, onSolo, onRemove, onRe
             ref={sliderRef}
             onPointerDown={(e) => { stop(e); (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); setVolFromX(e.clientX); }}
             onPointerMove={(e) => { if (!(e.buttons & 1)) return; setVolFromX(e.clientX); }}
-            title="Volume"
-            className="flex-1 min-w-0 h-3 rounded bg-neutral-950 border border-neutral-700 relative cursor-ew-resize overflow-hidden"
+            title={`Volume — drag to adjust  ·  ${meters.length === 2 ? "Stereo" : "Mono"} meter`}
+            className="flex-1 min-w-0 rounded bg-neutral-950 border border-neutral-700 relative cursor-ew-resize overflow-hidden"
+            style={{ height: meters.length === 2 ? 16 : 12 }}
           >
+            {/* Live level meter underlay (1 or 2 bars based on track channels) */}
+            {meters.length > 0 && (
+              <div className="absolute inset-0 pointer-events-none">
+                <HorizontalMeter analysers={meters} height={meters.length === 2 ? 16 : 12} />
+              </div>
+            )}
+            {/* Volume position scrim (dims area to the right of fader position) */}
             <div
-              className="absolute inset-y-0 left-0 bg-gradient-to-r from-emerald-600 via-emerald-400 to-emerald-300"
-              style={{ width: `${Math.min(100, track.volume * 100)}%` }}
+              className="absolute inset-y-0 pointer-events-none bg-black/40"
+              style={{ left: `${Math.min(100, track.volume * 100)}%`, right: 0 }}
             />
-            <div className="absolute inset-y-0 pointer-events-none" style={{ left: `${Math.min(100, track.volume * 100)}%`, width: 2, background: "rgba(255,255,255,0.8)" }} />
+            {/* Fader thumb line */}
+            <div className="absolute inset-y-0 pointer-events-none" style={{ left: `${Math.min(100, track.volume * 100)}%`, width: 2, background: "rgba(255,255,255,0.95)", boxShadow: "0 0 4px rgba(255,255,255,0.6)" }} />
           </div>
 
           <div className="flex items-center gap-0.5 shrink-0" onPointerDown={stop} onClick={stop} title="Pan L/R">
