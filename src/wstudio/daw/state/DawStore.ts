@@ -15,6 +15,7 @@ export interface DawState {
   transport: TransportState;
   selectedTrackId: string | null;
   selectedClipId: string | null;
+  clipboard: Clip | null;
   view: "arrange" | "mixer" | "instrument";
   masterVolume: number;
   pxPerSec: number;
@@ -22,10 +23,16 @@ export interface DawState {
   addTrack: (kind?: "audio" | "instrument", name?: string) => string;
   removeTrack: (id: string) => void;
   updateTrack: (id: string, patch: Partial<Track>) => void;
+  reorderTracks: (fromId: string, toId: string) => void;
+  moveClipToTrack: (clipId: string, trackId: string) => void;
   addClip: (clip: Clip) => void;
   updateClip: (id: string, patch: Partial<Clip>) => void;
   removeClip: (id: string) => void;
   splitClipAt: (id: string, time: number) => void;
+  copyClip: (id: string) => void;
+  cutClip: (id: string) => void;
+  pasteClipAt: (trackId: string, time: number) => void;
+  duplicateClip: (id: string) => void;
   addEffect: (trackId: string, type: EffectId) => void;
   removeEffect: (trackId: string, effectId: string) => void;
   updateEffect: (trackId: string, effectId: string, patch: Partial<EffectInstance>) => void;
