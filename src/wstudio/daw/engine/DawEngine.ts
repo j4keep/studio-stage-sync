@@ -165,11 +165,14 @@ export class DawEngine {
     c.delaySend.gain.value = track.delaySend;
   }
 
-  updateTrackParams(track: Track) {
+  updateTrackParams(track: Track, allTracks?: Track[]) {
     const c = this.trackChains.get(track.id);
     if (!c) return;
     c.panner.pan.value = track.pan;
-    c.gain.gain.value = track.mute ? 0 : track.volume;
+    // Solo-aware live gain: if any other track is soloed and this one isn't, silence it.
+    const anySolo = allTracks ? allTracks.some(t => t.solo) : false;
+    const silencedBySolo = anySolo && !track.solo;
+    c.gain.gain.value = (track.mute || silencedBySolo) ? 0 : track.volume;
     c.reverbSend.gain.value = track.reverbSend;
     c.delaySend.gain.value = track.delaySend;
     // Update insert params
@@ -206,12 +209,12 @@ export class DawEngine {
     this.metroNextBeat = this.startCtxTime;
     this.scheduleMetronome();
 
-    const anySolo = tracks.some(t => t.solo);
+    // NOTE: We DO NOT skip muted/non-solo clips here. Mute & solo are enforced
+    // live via each track chain's gain node (see updateTrackParams), so the user
+    // can mute/unmute or solo/unsolo during playback without restarting.
     for (const clip of clips) {
       const track = tracks.find(t => t.id === clip.trackId);
       if (!track || !clip.buffer) continue;
-      if (track.mute) continue;
-      if (anySolo && !track.solo) continue;
       const chain = this.trackChains.get(track.id);
       if (!chain) continue;
 
@@ -345,7 +348,10 @@ export class DawEngine {
     this.micStream = await navigator.mediaDevices.getUserMedia({
       audio: {
         deviceId: inputDeviceId ? { exact: inputDeviceId } : undefined,
-        echoCancellation: false,
+        // Echo cancellation ON so beats playing through speakers don't bleed
+        // into the vocal recording. Noise suppression / AGC stay OFF so the
+        // captured voice isn't pumped or robotic-sounding.
+        echoCancellation: true,
         noiseSuppression: false,
         autoGainControl: false,
         channelCount: 1,
