@@ -1,12 +1,14 @@
 import { useRef, useState, useMemo } from "react";
 import { useDawStore } from "../state/DawStore";
 import { WaveformView } from "./WaveformView";
+import { Knob } from "./Knob";
 import { Trash2, GripVertical } from "lucide-react";
 import { toast } from "sonner";
 import type { Track, Clip } from "../engine/types";
 
 interface Props {
   onArmToggle: (trackId: string) => void;
+  onSeek?: (position: number) => void;
 }
 
 const HEADER_W = 200;
@@ -25,10 +27,13 @@ const TOOL_CURSORS: Record<string, string> = {
   marquee: "crosshair",
 };
 
-export function ArrangeView({ onArmToggle }: Props) {
+export function ArrangeView({ onArmToggle, onSeek }: Props) {
   const tracks = useDawStore(s => s.tracks);
   const clips = useDawStore(s => s.clips);
-  const transport = useDawStore(s => s.transport);
+  const bpm = useDawStore(s => s.transport.bpm);
+  const loopEnabled = useDawStore(s => s.transport.loopEnabled);
+  const loopStart = useDawStore(s => s.transport.loopStart);
+  const loopEnd = useDawStore(s => s.transport.loopEnd);
   const pxPerSec = useDawStore(s => s.pxPerSec);
   const setTransport = useDawStore(s => s.setTransport);
   const updateTrack = useDawStore(s => s.updateTrack);
@@ -53,7 +58,7 @@ export function ArrangeView({ onArmToggle }: Props) {
   const timelineLen = Math.max(60, ...clips.map(c => c.startTime + c.duration)) + 20;
 
   // Bars/beats math (4/4)
-  const secPerBeat = 60 / Math.max(40, transport.bpm);
+  const secPerBeat = 60 / Math.max(40, bpm);
   const secPerBar = secPerBeat * 4;
   const barPx = secPerBar * pxPerSec;
   const beatPx = secPerBeat * pxPerSec;
@@ -69,7 +74,9 @@ export function ArrangeView({ onArmToggle }: Props) {
     if ((e.target as HTMLElement).dataset.cycle) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
-    setTransport({ position: Math.max(0, x / pxPerSec) });
+    const next = Math.max(0, x / pxPerSec);
+    if (onSeek) onSeek(next);
+    else setTransport({ position: next });
   };
 
   // Pointer drag for the cycle (loop) region
@@ -77,7 +84,7 @@ export function ArrangeView({ onArmToggle }: Props) {
   const onCyclePointerDown = (e: React.PointerEvent, mode: "move" | "start" | "end") => {
     e.stopPropagation();
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
-    cycleDrag.current = { mode, startX: e.clientX, startS: transport.loopStart ?? 0, startE: transport.loopEnd ?? 8 };
+    cycleDrag.current = { mode, startX: e.clientX, startS: loopStart ?? 0, startE: loopEnd ?? 8 };
   };
   const onCyclePointerMove = (e: React.PointerEvent) => {
     const d = cycleDrag.current;
@@ -88,15 +95,22 @@ export function ArrangeView({ onArmToggle }: Props) {
       const ns = Math.max(0, d.startS + dx);
       setTransport({ loopStart: ns, loopEnd: ns + len });
     } else if (d.mode === "start") {
-      setTransport({ loopStart: Math.max(0, Math.min((transport.loopEnd ?? 0) - 0.1, d.startS + dx)) });
+      setTransport({ loopStart: Math.max(0, Math.min((loopEnd ?? 0) - 0.1, d.startS + dx)) });
     } else if (d.mode === "end") {
-      setTransport({ loopEnd: Math.max((transport.loopStart ?? 0) + 0.1, d.startE + dx) });
+      setTransport({ loopEnd: Math.max((loopStart ?? 0) + 0.1, d.startE + dx) });
     }
   };
   const onCyclePointerUp = () => { cycleDrag.current = null; };
 
-  const loopStart = transport.loopStart ?? 0;
-  const loopEnd = transport.loopEnd ?? 8;
+  const cycleStart = loopStart ?? 0;
+  const cycleEnd = loopEnd ?? 8;
+  const rulerDrag = useRef(false);
+  const seekFromRuler = (clientX: number, el: HTMLElement) => {
+    const rect = el.getBoundingClientRect();
+    const next = Math.max(0, (clientX - rect.left) / pxPerSec);
+    if (onSeek) onSeek(next);
+    else setTransport({ position: next });
+  };
 
   // Clip drag state (pointer-based; supports cross-track move)
   const clipDrag = useRef<{
@@ -183,9 +197,9 @@ export function ArrangeView({ onArmToggle }: Props) {
         <span className="text-cyan-300/80 uppercase tracking-wider">Tool: {tool}</span>
         <button
           type="button"
-          onClick={() => setTransport({ loopEnabled: !transport.loopEnabled })}
-          className={`h-5 px-2 rounded border text-[9px] uppercase tracking-wider ${transport.loopEnabled ? "bg-amber-500/20 text-amber-300 border-amber-500/40" : "border-neutral-800 text-neutral-500 hover:text-neutral-300"}`}
-        >Cycle {transport.loopEnabled ? "On" : "Off"}</button>
+          onClick={() => setTransport({ loopEnabled: !loopEnabled })}
+          className={`h-5 px-2 rounded border text-[9px] uppercase tracking-wider ${loopEnabled ? "bg-amber-500/20 text-amber-300 border-amber-500/40" : "border-neutral-800 text-neutral-500 hover:text-neutral-300"}`}
+        >Cycle {loopEnabled ? "On" : "Off"}</button>
         <span className="text-neutral-600">Drag amber bar to set loop region</span>
         <div className="flex-1" />
         <span>Zoom</span>
@@ -227,6 +241,18 @@ export function ArrangeView({ onArmToggle }: Props) {
             <div
               className="border-b border-neutral-800 bg-neutral-950 relative cursor-pointer select-none"
               onClick={handleRulerClick}
+              onPointerDown={(e) => {
+                if ((e.target as HTMLElement).dataset.cycle) return;
+                rulerDrag.current = true;
+                (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+                seekFromRuler(e.clientX, e.currentTarget as HTMLElement);
+              }}
+              onPointerMove={(e) => {
+                if (!rulerDrag.current || !(e.buttons & 1)) return;
+                seekFromRuler(e.clientX, e.currentTarget as HTMLElement);
+              }}
+              onPointerUp={() => { rulerDrag.current = false; }}
+              onPointerCancel={() => { rulerDrag.current = false; }}
               style={{ width: timelineLen * pxPerSec, height: RULER_H }}
             >
               {/* Bar markers */}
@@ -251,8 +277,8 @@ export function ArrangeView({ onArmToggle }: Props) {
                 onPointerMove={onCyclePointerMove}
                 onPointerUp={onCyclePointerUp}
                 title="Drag to move cycle region — click toggle in toolbar"
-                className={`absolute top-0 h-3 rounded-sm ${transport.loopEnabled ? "bg-amber-400/60 border border-amber-300" : "bg-amber-400/15 border border-amber-400/30"} cursor-grab active:cursor-grabbing`}
-                style={{ left: loopStart * pxPerSec, width: Math.max(4, (loopEnd - loopStart) * pxPerSec) }}
+                className={`absolute top-0 h-3 rounded-sm ${loopEnabled ? "bg-amber-400/60 border border-amber-300" : "bg-amber-400/15 border border-amber-400/30"} cursor-grab active:cursor-grabbing`}
+                style={{ left: cycleStart * pxPerSec, width: Math.max(4, (cycleEnd - cycleStart) * pxPerSec) }}
               >
                 <div
                   data-cycle="1"
@@ -270,20 +296,14 @@ export function ArrangeView({ onArmToggle }: Props) {
                 />
               </div>
 
-              {/* Playhead diamond */}
-              <div
-                className="absolute top-0 bottom-0 w-px bg-emerald-400 pointer-events-none z-30"
-                style={{ left: transport.position * pxPerSec }}
-              >
-                <div className="w-2 h-2 bg-emerald-400 -translate-x-1/2 rotate-45" />
-              </div>
+              <PlayheadMarker pxPerSec={pxPerSec} ruler />
             </div>
 
             {/* Loop region shading down lanes */}
-            {transport.loopEnabled && (
+            {loopEnabled && (
               <div
                 className="absolute top-0 bottom-0 bg-amber-400/5 border-x border-amber-400/30 pointer-events-none z-0"
-                style={{ left: loopStart * pxPerSec, width: Math.max(2, (loopEnd - loopStart) * pxPerSec), marginTop: RULER_H }}
+                style={{ left: cycleStart * pxPerSec, width: Math.max(2, (cycleEnd - cycleStart) * pxPerSec), marginTop: RULER_H }}
               />
             )}
 
@@ -334,10 +354,7 @@ export function ArrangeView({ onArmToggle }: Props) {
                 ))}
               </div>
             ))}
-            <div
-              className="absolute w-px bg-emerald-400/70 pointer-events-none z-20"
-              style={{ left: transport.position * pxPerSec, top: RULER_H, bottom: 0 }}
-            />
+            <PlayheadMarker pxPerSec={pxPerSec} />
           </div>
         </div>
       </div>
@@ -352,7 +369,7 @@ export function ArrangeView({ onArmToggle }: Props) {
             { label: "Cut", sc: "⌘X", action: () => cutClip(ctxMenu.clipId) },
             { label: "Copy", sc: "⌘C", action: () => { copyClip(ctxMenu.clipId); toast.success("Copied"); } },
             { label: "Duplicate", sc: "⌘D", action: () => duplicateClip(ctxMenu.clipId) },
-            { label: "Split at playhead", sc: "", action: () => splitClipAt(ctxMenu.clipId, transport.position) },
+            { label: "Split at playhead", sc: "", action: () => splitClipAt(ctxMenu.clipId, useDawStore.getState().transport.position) },
             { label: "Delete", sc: "Del", action: () => removeClip(ctxMenu.clipId) },
           ].map(item => (
             <button
@@ -382,6 +399,8 @@ function TrackHeader({ track, onArm, onMute, onSolo, onRemove, onRename, onVolum
   onDropTrack: (fromId: string) => void;
 }) {
   const stop = (e: React.SyntheticEvent) => e.stopPropagation();
+  const db = track.volume <= 0.001 ? "-∞" : (20 * Math.log10(track.volume)).toFixed(1);
+  const panLabel = track.pan < -0.01 ? `L ${Math.round(Math.abs(track.pan) * 100)}` : track.pan > 0.01 ? `R ${Math.round(track.pan * 100)}` : "C";
   return (
     <div
       className="border-b border-neutral-800 flex overflow-hidden"
@@ -399,7 +418,7 @@ function TrackHeader({ track, onArm, onMute, onSolo, onRemove, onRename, onVolum
         className="w-4 shrink-0 grid place-items-center cursor-grab active:cursor-grabbing text-neutral-600 hover:text-neutral-300"
         title="Drag to reorder track"
       ><GripVertical className="w-3 h-3" /></div>
-      <div className="flex-1 p-2 flex flex-col gap-1 min-w-0">
+      <div className="flex-1 p-2 flex flex-col gap-1.5 min-w-0">
         <div className="flex items-center gap-1 min-w-0">
           <input
             value={track.name}
@@ -414,25 +433,40 @@ function TrackHeader({ track, onArm, onMute, onSolo, onRemove, onRename, onVolum
           <button onPointerDown={stop} onClick={onArm} title="Record-arm" className={`w-5 h-5 grid place-items-center rounded text-[9px] font-bold shrink-0 ${track.armed ? "bg-red-500 text-white" : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700"}`}>R</button>
           <button onPointerDown={stop} onClick={onMute} title="Mute" className={`w-5 h-5 grid place-items-center rounded text-[9px] font-bold shrink-0 ${track.mute ? "bg-amber-500 text-black" : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700"}`}>M</button>
           <button onPointerDown={stop} onClick={onSolo} title="Solo" className={`w-5 h-5 grid place-items-center rounded text-[9px] font-bold shrink-0 ${track.solo ? "bg-cyan-400 text-black" : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700"}`}>S</button>
-          <input
-            type="range" min={0} max={1} step={0.01} value={track.volume}
-            onChange={(e) => onVolume(Number(e.target.value))}
-            onPointerDown={stop}
-            onMouseDown={stop}
-            title="Track volume"
-            className="min-w-0 flex-1 accent-cyan-500 h-1"
-          />
+          <button onPointerDown={stop} title="Input monitor" className="w-5 h-5 grid place-items-center rounded text-[9px] font-bold shrink-0 bg-neutral-800 text-neutral-400 hover:bg-neutral-700">I</button>
+          <div className="ml-auto flex items-center gap-0.5" onPointerDown={stop} onClick={stop} title="Volume buttons">
+            <button type="button" onClick={() => onVolume(Math.max(0, track.volume - 0.03))} className="h-5 w-5 rounded-l border border-neutral-800 bg-gradient-to-b from-neutral-800 to-neutral-950 text-neutral-300 hover:text-cyan-300">−</button>
+            <button type="button" onDoubleClick={() => onVolume(0.8)} className="h-5 w-12 border-y border-neutral-800 bg-black/50 text-[9px] tabular-nums text-emerald-300">{db}</button>
+            <button type="button" onClick={() => onVolume(Math.min(1, track.volume + 0.03))} className="h-5 w-5 rounded-r border border-neutral-800 bg-gradient-to-b from-neutral-800 to-neutral-950 text-neutral-300 hover:text-cyan-300">+</button>
+          </div>
         </div>
-        <input
-          type="range" min={-1} max={1} step={0.01} value={track.pan}
-          onChange={(e) => onPan(Number(e.target.value))}
-          onPointerDown={stop}
-          onMouseDown={stop}
-          title="Pan L/R"
-          className="w-full accent-neutral-400 h-1"
-        />
+        <div className="flex items-center justify-between gap-2 min-w-0">
+          <div className="flex items-center gap-1" onPointerDown={stop} onClick={stop} title="Pan L/R">
+            <span className="text-[9px] text-neutral-500">L</span>
+            <Knob value={track.pan} min={-1} max={1} step={0.01} size={28} onChange={onPan} color={track.color} showValue={false} />
+            <span className="text-[9px] text-neutral-500">R</span>
+          </div>
+          <button type="button" onPointerDown={stop} onClick={() => onPan(0)} className="h-5 w-14 rounded border border-neutral-800 bg-neutral-900 text-[9px] tabular-nums text-neutral-300 hover:text-cyan-300" title="Center pan">{panLabel}</button>
+        </div>
       </div>
     </div>
+  );
+}
+
+function PlayheadMarker({ pxPerSec, ruler = false }: { pxPerSec: number; ruler?: boolean }) {
+  const position = useDawStore(s => s.transport.position);
+  if (ruler) {
+    return (
+      <div className="absolute top-0 bottom-0 w-px bg-emerald-400 pointer-events-none z-30" style={{ transform: `translate3d(${position * pxPerSec}px, 0, 0)` }}>
+        <div className="w-2 h-2 bg-emerald-400 -translate-x-1/2 rotate-45" />
+      </div>
+    );
+  }
+  return (
+    <div
+      className="absolute w-px bg-emerald-400/70 pointer-events-none z-20 will-change-transform"
+      style={{ left: 0, transform: `translate3d(${position * pxPerSec}px, 0, 0)`, top: RULER_H, bottom: 0 }}
+    />
   );
 }
 

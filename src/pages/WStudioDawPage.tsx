@@ -24,7 +24,8 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
 
   const tracks = useDawStore(s => s.tracks);
   const clips = useDawStore(s => s.clips);
-  const transport = useDawStore(s => s.transport);
+  const metronome = useDawStore(s => s.transport.metronome);
+  const bpm = useDawStore(s => s.transport.bpm);
   const setTransport = useDawStore(s => s.setTransport);
   const addClip = useDawStore(s => s.addClip);
   const addTrack = useDawStore(s => s.addTrack);
@@ -104,36 +105,52 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
     }
   }, [setTransport]);
 
+  const handleSeek = useCallback((position: number) => {
+    const e = engineRef.current;
+    const next = Math.max(0, position);
+    const wasPlaying = !!e?.playing;
+    if (e && wasPlaying) e.stop();
+    setTransport({ position: next, isPlaying: wasPlaying, isRecording: false });
+    if (e && wasPlaying) {
+      requestAnimationFrame(() => {
+        const st = useDawStore.getState();
+        e.play({ ...st.transport, position: next, isPlaying: true, isRecording: false }, st.tracks, st.clips);
+      });
+    }
+  }, [setTransport]);
+
   const handleRecord = useCallback(async () => {
     const e = engineRef.current;
     if (!e) return;
-    if (transport.isRecording) {
+    const st = useDawStore.getState();
+    if (st.transport.isRecording) {
       e.stopRecording();
       setTransport({ isRecording: false });
       return;
     }
-    let armed = tracks.find(t => t.armed && t.kind === "audio");
+    let armed = st.tracks.find(t => t.armed && t.kind === "audio");
     if (!armed) {
-      const id = addTrack("audio", `Take ${tracks.filter(t => t.kind === "audio").length + 1}`);
+      const id = addTrack("audio", `Take ${st.tracks.filter(t => t.kind === "audio").length + 1}`);
       updateTrack(id, { armed: true });
       await new Promise(r => setTimeout(r, 50));
       armed = useDawStore.getState().tracks.find(t => t.id === id);
     }
     try {
       await e.resume();
-      await e.startRecording(armed!.id, transport.position, armed!.inputDeviceId);
+      const latest = useDawStore.getState();
+      await e.startRecording(armed!.id, latest.transport.position, armed!.inputDeviceId);
       setTransport({ isRecording: true, isPlaying: true });
-      e.play(transport, tracks, clips);
+      e.play(latest.transport, latest.tracks, latest.clips);
     } catch (err: any) {
       toast.error("Mic access denied");
       setTransport({ isRecording: false });
     }
-  }, [transport, tracks, clips, addTrack, updateTrack, setTransport]);
+  }, [addTrack, updateTrack, setTransport]);
 
   // Sync metronome live
   useEffect(() => {
-    engineRef.current?.setMetronome(transport.metronome, transport.bpm);
-  }, [transport.metronome, transport.bpm]);
+    engineRef.current?.setMetronome(metronome, bpm);
+  }, [metronome, bpm]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -196,7 +213,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
         addClip({
           id: newId("clip"),
           trackId,
-          startTime: 0,
+          startTime: useDawStore.getState().transport.position,
           duration: buffer.duration,
           offset: 0,
           buffer,
@@ -262,6 +279,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
         onStop={handleStop}
         onRecord={handleRecord}
         onRewind={handleRewind}
+        onSeek={handleSeek}
         onExport={handleExport}
         onAddAudio={() => addTrack("audio")}
         onAddInstrument={() => { const id = addTrack("instrument"); updateTrack(id, { instrument: "synth" }); }}
@@ -280,7 +298,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
           onAddUserPlugin={(name) => toast.success(`Added plug-in: ${name}`)}
         />
 
-        {view === "arrange" && <ArrangeView onArmToggle={handleArmToggle} />}
+        {view === "arrange" && <ArrangeView onArmToggle={handleArmToggle} onSeek={handleSeek} />}
         {view === "mixer" && <MixerView engine={engineRef.current} onOpenFx={setFxTrackId} />}
         {view === "instrument" && <InstrumentPanel engine={engineRef.current} />}
 
