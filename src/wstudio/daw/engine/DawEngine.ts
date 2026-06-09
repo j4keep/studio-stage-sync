@@ -348,7 +348,10 @@ export class DawEngine {
     this.micStream = await navigator.mediaDevices.getUserMedia({
       audio: {
         deviceId: inputDeviceId ? { exact: inputDeviceId } : undefined,
-        echoCancellation: false,
+        // Echo cancellation ON so beats playing through speakers don't bleed
+        // into the vocal recording. Noise suppression / AGC stay OFF so the
+        // captured voice isn't pumped or robotic-sounding.
+        echoCancellation: true,
         noiseSuppression: false,
         autoGainControl: false,
         channelCount: 1,
