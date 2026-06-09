@@ -397,8 +397,9 @@ export function ArrangeView({ onArmToggle, onSeek, engine }: Props) {
   );
 }
 
-function TrackHeader({ track, onArm, onMute, onSolo, onRemove, onRename, onVolume, onPan, onDropTrack }: {
+function TrackHeader({ track, meters = [], onArm, onMute, onSolo, onRemove, onRename, onVolume, onPan, onDropTrack }: {
   track: Track;
+  meters?: AnalyserNode[];
   onArm: () => void;
   onMute: () => void;
   onSolo: () => void;
