@@ -1,4 +1,4 @@
-import { useRef, useState, useMemo } from "react";
+import { useRef, useState, useMemo, useEffect } from "react";
 import { useDawStore } from "../state/DawStore";
 import { WaveformView } from "./WaveformView";
 import { Knob } from "./Knob";
@@ -58,6 +58,18 @@ export function ArrangeView({ onArmToggle, onSeek, engine }: Props) {
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; clipId: string } | null>(null);
+  const [liveRec, setLiveRec] = useState<{ trackId: string; peaks: number[]; dur: number } | null>(null);
+
+  useEffect(() => {
+    if (!engine) return;
+    engine.onRecordingProgress = (peaks, dur) => {
+      const tid = engine.getRecordingTrackId();
+      if (!tid || dur <= 0) setLiveRec(null);
+      else setLiveRec({ trackId: tid, peaks: peaks.slice(-2000), dur });
+    };
+    return () => { if (engine) engine.onRecordingProgress = undefined; };
+  }, [engine]);
+
   const timelineLen = Math.max(60, ...clips.map(c => c.startTime + c.duration)) + 20;
 
   // Bars/beats math (4/4)
@@ -362,6 +374,15 @@ export function ArrangeView({ onArmToggle, onSeek, engine }: Props) {
                     onPointerUpDrag={endClipDrag}
                   />
                 ))}
+                {liveRec && liveRec.trackId === t.id && engine && (
+                  <LiveRecordingBlock
+                    startTime={engine.getRecordingStart()}
+                    peaks={liveRec.peaks}
+                    duration={liveRec.dur}
+                    pxPerSec={pxPerSec}
+                    height={TRACK_H}
+                  />
+                )}
               </div>
             ))}
             <PlayheadMarker pxPerSec={pxPerSec} />
@@ -483,6 +504,40 @@ function TrackHeader({ track, meters = [], onArm, onMute, onSolo, onRemove, onRe
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function LiveRecordingBlock({ startTime, peaks, duration, pxPerSec, height }: { startTime: number; peaks: number[]; duration: number; pxPerSec: number; height: number }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const w = Math.max(2, duration * pxPerSec);
+  const h = height - 8;
+  useEffect(() => {
+    const c = canvasRef.current; if (!c) return;
+    const ctx = c.getContext("2d"); if (!ctx) return;
+    c.width = w; c.height = h;
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = "rgba(255,255,255,0.9)";
+    const mid = h / 2;
+    const N = peaks.length;
+    if (N === 0) return;
+    const step = Math.max(1, N / w);
+    for (let x = 0; x < w; x++) {
+      const i = Math.floor(x * step);
+      const p = peaks[i] ?? 0;
+      const barH = Math.max(1, p * h);
+      ctx.fillRect(x, mid - barH / 2, 1, barH);
+    }
+  }, [peaks, w, h]);
+  return (
+    <div
+      className="absolute top-1 bottom-1 rounded overflow-hidden border-2 border-red-400 pointer-events-none"
+      style={{ left: startTime * pxPerSec, width: w, background: "rgba(239,68,68,0.18)", boxShadow: "0 0 12px rgba(239,68,68,0.5)" }}
+    >
+      <div className="px-1.5 py-0.5 text-[10px] text-white bg-red-600/80 flex items-center gap-1">
+        <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" /> Recording…
+      </div>
+      <canvas ref={canvasRef} className="absolute inset-x-0 bottom-0" style={{ height: h }} />
     </div>
   );
 }
