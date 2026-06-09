@@ -67,15 +67,26 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
     const e = engineRef.current;
     if (!e) return;
     await e.resume();
-    if (transport.isPlaying) { e.stop(); setTransport({ isPlaying: false }); return; }
+    if (e.playing) return; // already playing — no-op so spamming doesn't re-trigger
+    const t = useDawStore.getState().transport;
+    const tr = useDawStore.getState().tracks;
+    const cl = useDawStore.getState().clips;
     setTransport({ isPlaying: true });
-    e.play(transport, tracks, clips);
-  }, [transport, tracks, clips, setTransport]);
+    e.play(t, tr, cl);
+  }, [setTransport]);
 
   const handleStop = useCallback(() => {
-    engineRef.current?.stop();
+    const e = engineRef.current;
+    if (!e) return;
+    e.stop();
     setTransport({ isPlaying: false, isRecording: false });
   }, [setTransport]);
+
+  const handlePlayPause = useCallback(async () => {
+    const e = engineRef.current;
+    if (!e) return;
+    if (e.playing) { handleStop(); } else { await handlePlay(); }
+  }, [handlePlay, handleStop]);
 
   const handleRewind = useCallback(() => {
     engineRef.current?.stop();
@@ -94,7 +105,6 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
     if (!armed) {
       const id = addTrack("audio", `Take ${tracks.filter(t => t.kind === "audio").length + 1}`);
       updateTrack(id, { armed: true });
-      // wait a tick for engine chain
       await new Promise(r => setTimeout(r, 50));
       armed = useDawStore.getState().tracks.find(t => t.id === id);
     }
@@ -108,6 +118,53 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
       setTransport({ isRecording: false });
     }
   }, [transport, tracks, clips, addTrack, updateTrack, setTransport]);
+
+  // Sync metronome live
+  useEffect(() => {
+    engineRef.current?.setMetronome(transport.metronome, transport.bpm);
+  }, [transport.metronome, transport.bpm]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const onKey = (ev: KeyboardEvent) => {
+      const tag = (ev.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || (ev.target as HTMLElement)?.isContentEditable) return;
+      const meta = ev.metaKey || ev.ctrlKey;
+      if (ev.code === "Space") {
+        ev.preventDefault();
+        if (ev.shiftKey) handleStop();
+        else handlePlayPause();
+      } else if (ev.code === "Enter") {
+        ev.preventDefault();
+        handleRewind();
+      } else if (ev.key.toLowerCase() === "r" && !meta) {
+        ev.preventDefault();
+        handleRecord();
+      } else if (meta && ev.key.toLowerCase() === "c") {
+        const sel = useDawStore.getState().selectedClipId;
+        if (sel) { useDawStore.getState().copyClip(sel); toast.success("Copied"); }
+      } else if (meta && ev.key.toLowerCase() === "x") {
+        const sel = useDawStore.getState().selectedClipId;
+        if (sel) { useDawStore.getState().cutClip(sel); toast.success("Cut"); }
+      } else if (meta && ev.key.toLowerCase() === "v") {
+        const sel = useDawStore.getState().selectedClipId;
+        const st = useDawStore.getState();
+        const clip = st.clips.find(c => c.id === sel);
+        const trackId = clip?.trackId ?? st.tracks[0]?.id;
+        if (trackId) st.pasteClipAt(trackId, st.transport.position);
+      } else if (meta && ev.key.toLowerCase() === "d") {
+        ev.preventDefault();
+        const sel = useDawStore.getState().selectedClipId;
+        if (sel) useDawStore.getState().duplicateClip(sel);
+      } else if (ev.key === "Delete" || ev.key === "Backspace") {
+        const sel = useDawStore.getState().selectedClipId;
+        if (sel) useDawStore.getState().removeClip(sel);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [handlePlayPause, handleStop, handleRewind, handleRecord]);
+
 
   const handleArmToggle = useCallback((trackId: string) => {
     const t = tracks.find(x => x.id === trackId);
