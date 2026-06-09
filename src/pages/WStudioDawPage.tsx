@@ -11,6 +11,7 @@ import { InstrumentPanel } from "@/wstudio/daw/ui/InstrumentPanel";
 import { FxRack } from "@/wstudio/daw/ui/FxRack";
 import { LibraryPanel } from "@/wstudio/daw/ui/LibraryPanel";
 import { CollabSidebar } from "@/wstudio/daw/ui/CollabSidebar";
+import { MenuBar } from "@/wstudio/daw/ui/MenuBar";
 
 export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessionCode?: string } = {}) {
   const [params] = useSearchParams();
