@@ -298,7 +298,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
           onAddUserPlugin={(name) => toast.success(`Added plug-in: ${name}`)}
         />
 
-        {view === "arrange" && <ArrangeView onArmToggle={handleArmToggle} onSeek={handleSeek} />}
+        {view === "arrange" && <ArrangeView onArmToggle={handleArmToggle} onSeek={handleSeek} engine={engineRef.current} />}
         {view === "mixer" && <MixerView engine={engineRef.current} onOpenFx={setFxTrackId} />}
         {view === "instrument" && <InstrumentPanel engine={engineRef.current} />}
 

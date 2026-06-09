@@ -2,13 +2,16 @@ import { useRef, useState, useMemo } from "react";
 import { useDawStore } from "../state/DawStore";
 import { WaveformView } from "./WaveformView";
 import { Knob } from "./Knob";
+import { HorizontalMeter } from "./HorizontalMeter";
 import { Trash2, GripVertical } from "lucide-react";
 import { toast } from "sonner";
 import type { Track, Clip } from "../engine/types";
+import type { DawEngine } from "../engine/DawEngine";
 
 interface Props {
   onArmToggle: (trackId: string) => void;
   onSeek?: (position: number) => void;
+  engine?: DawEngine | null;
 }
 
 const HEADER_W = 200;
@@ -27,7 +30,7 @@ const TOOL_CURSORS: Record<string, string> = {
   marquee: "crosshair",
 };
 
-export function ArrangeView({ onArmToggle, onSeek }: Props) {
+export function ArrangeView({ onArmToggle, onSeek, engine }: Props) {
   const tracks = useDawStore(s => s.tracks);
   const clips = useDawStore(s => s.clips);
   const bpm = useDawStore(s => s.transport.bpm);
@@ -216,20 +219,27 @@ export function ArrangeView({ onArmToggle, onSeek }: Props) {
           {/* Track headers column */}
           <div className="sticky left-0 z-10 bg-neutral-950 border-r border-neutral-800 overflow-hidden" style={{ width: HEADER_W }}>
             <div style={{ height: RULER_H }} className="border-b border-neutral-800" />
-            {tracks.map(t => (
-              <TrackHeader
-                key={t.id}
-                track={t}
-                onArm={() => onArmToggle(t.id)}
-                onMute={() => updateTrack(t.id, { mute: !t.mute })}
-                onSolo={() => updateTrack(t.id, { solo: !t.solo })}
-                onRemove={() => removeTrack(t.id)}
-                onRename={(n) => updateTrack(t.id, { name: n })}
-                onVolume={(v) => updateTrack(t.id, { volume: v })}
-                onPan={(v) => updateTrack(t.id, { pan: v })}
-                onDropTrack={(fromId) => reorderTracks(fromId, t.id)}
-              />
-            ))}
+            {tracks.map(t => {
+              const trackClips = clips.filter(c => c.trackId === t.id);
+              const isStereo = trackClips.some(c => (c.buffer?.numberOfChannels ?? 0) >= 2);
+              const stereo = engine?.getTrackStereoAnalysers(t.id) ?? null;
+              const meters = stereo ? (isStereo ? [stereo.L, stereo.R] : [stereo.L]) : [];
+              return (
+                <TrackHeader
+                  key={t.id}
+                  track={t}
+                  meters={meters}
+                  onArm={() => onArmToggle(t.id)}
+                  onMute={() => updateTrack(t.id, { mute: !t.mute })}
+                  onSolo={() => updateTrack(t.id, { solo: !t.solo })}
+                  onRemove={() => removeTrack(t.id)}
+                  onRename={(n) => updateTrack(t.id, { name: n })}
+                  onVolume={(v) => updateTrack(t.id, { volume: v })}
+                  onPan={(v) => updateTrack(t.id, { pan: v })}
+                  onDropTrack={(fromId) => reorderTracks(fromId, t.id)}
+                />
+              );
+            })}
             {tracks.length === 0 && (
               <div className="p-6 text-center text-neutral-500 text-xs">Add a track to begin.</div>
             )}
@@ -387,8 +397,9 @@ export function ArrangeView({ onArmToggle, onSeek }: Props) {
   );
 }
 
-function TrackHeader({ track, onArm, onMute, onSolo, onRemove, onRename, onVolume, onPan, onDropTrack }: {
+function TrackHeader({ track, meters = [], onArm, onMute, onSolo, onRemove, onRename, onVolume, onPan, onDropTrack }: {
   track: Track;
+  meters?: AnalyserNode[];
   onArm: () => void;
   onMute: () => void;
   onSolo: () => void;
@@ -446,14 +457,23 @@ function TrackHeader({ track, onArm, onMute, onSolo, onRemove, onRename, onVolum
             ref={sliderRef}
             onPointerDown={(e) => { stop(e); (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); setVolFromX(e.clientX); }}
             onPointerMove={(e) => { if (!(e.buttons & 1)) return; setVolFromX(e.clientX); }}
-            title="Volume"
-            className="flex-1 min-w-0 h-3 rounded bg-neutral-950 border border-neutral-700 relative cursor-ew-resize overflow-hidden"
+            title={`Volume — drag to adjust  ·  ${meters.length === 2 ? "Stereo" : "Mono"} meter`}
+            className="flex-1 min-w-0 rounded bg-neutral-950 border border-neutral-700 relative cursor-ew-resize overflow-hidden"
+            style={{ height: meters.length === 2 ? 16 : 12 }}
           >
+            {/* Live level meter underlay (1 or 2 bars based on track channels) */}
+            {meters.length > 0 && (
+              <div className="absolute inset-0 pointer-events-none">
+                <HorizontalMeter analysers={meters} height={meters.length === 2 ? 16 : 12} />
+              </div>
+            )}
+            {/* Volume position scrim (dims area to the right of fader position) */}
             <div
-              className="absolute inset-y-0 left-0 bg-gradient-to-r from-emerald-600 via-emerald-400 to-emerald-300"
-              style={{ width: `${Math.min(100, track.volume * 100)}%` }}
+              className="absolute inset-y-0 pointer-events-none bg-black/40"
+              style={{ left: `${Math.min(100, track.volume * 100)}%`, right: 0 }}
             />
-            <div className="absolute inset-y-0 pointer-events-none" style={{ left: `${Math.min(100, track.volume * 100)}%`, width: 2, background: "rgba(255,255,255,0.8)" }} />
+            {/* Fader thumb line */}
+            <div className="absolute inset-y-0 pointer-events-none" style={{ left: `${Math.min(100, track.volume * 100)}%`, width: 2, background: "rgba(255,255,255,0.95)", boxShadow: "0 0 4px rgba(255,255,255,0.6)" }} />
           </div>
 
           <div className="flex items-center gap-0.5 shrink-0" onPointerDown={stop} onClick={stop} title="Pan L/R">

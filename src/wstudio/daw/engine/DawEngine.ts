@@ -20,6 +20,9 @@ export class DawEngine {
     panner: StereoPannerNode;
     gain: GainNode;
     analyser: AnalyserNode;
+    splitter: ChannelSplitterNode;
+    analyserL: AnalyserNode;
+    analyserR: AnalyserNode;
     reverbSend: GainNode;
     delaySend: GainNode;
     activeSources: AudioScheduledSourceNode[];
@@ -102,9 +105,16 @@ export class DawEngine {
       const gain = this.ctx.createGain();
       const analyser = this.ctx.createAnalyser();
       analyser.fftSize = 512;
+      const splitter = this.ctx.createChannelSplitter(2);
+      const analyserL = this.ctx.createAnalyser();
+      const analyserR = this.ctx.createAnalyser();
+      analyserL.fftSize = 512; analyserR.fftSize = 512;
+      gain.connect(splitter);
+      splitter.connect(analyserL, 0);
+      splitter.connect(analyserR, 1);
       const reverbSend = this.ctx.createGain();
       const delaySend = this.ctx.createGain();
-      chain = { input, inserts: [], panner, gain, analyser, reverbSend, delaySend, activeSources: [] };
+      chain = { input, inserts: [], panner, gain, analyser, splitter, analyserL, analyserR, reverbSend, delaySend, activeSources: [] };
       this.trackChains.set(track.id, chain);
     }
     this.rebuildChain(track, chain);
@@ -167,6 +177,10 @@ export class DawEngine {
   setMasterVolume(v: number) { this.masterGain.gain.value = v; }
   getMasterAnalyser() { return this.masterAnalyser; }
   getTrackAnalyser(trackId: string) { return this.trackChains.get(trackId)?.analyser ?? null; }
+  getTrackStereoAnalysers(trackId: string) {
+    const c = this.trackChains.get(trackId);
+    return c ? { L: c.analyserL, R: c.analyserR } : null;
+  }
 
   play(transport: TransportState, tracks: Track[], clips: Clip[]) {
     this.stopAllSources();
