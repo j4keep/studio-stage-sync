@@ -26,7 +26,14 @@ export class DawEngine {
   }>();
   private startCtxTime = 0;
   private startTransportTime = 0;
-  private playing = false;
+  playing = false;
+
+  // Metronome
+  private metroEnabled = false;
+  private metroBpm = 120;
+  private metroNextBeat = 0;
+  private metroBeatIndex = 0;
+  private metroTimer: number | null = null;
 
   // Recording
   private micStream: MediaStream | null = null;
@@ -166,6 +173,11 @@ export class DawEngine {
     this.startCtxTime = this.ctx.currentTime + 0.05;
     this.startTransportTime = transport.position;
     this.playing = true;
+    this.metroBpm = transport.bpm;
+    this.metroEnabled = !!transport.metronome;
+    this.metroBeatIndex = 0;
+    this.metroNextBeat = this.startCtxTime;
+    this.scheduleMetronome();
 
     const anySolo = tracks.some(t => t.solo);
     for (const clip of clips) {
@@ -208,10 +220,47 @@ export class DawEngine {
 
   stop() {
     this.playing = false;
+    this.metroEnabled = false;
+    if (this.metroTimer) { clearTimeout(this.metroTimer); this.metroTimer = null; }
     cancelAnimationFrame(this.rafId);
     this.stopAllSources();
     if (this.recordingTrackId) this.stopRecording();
     this.onStop?.();
+  }
+
+  setMetronome(enabled: boolean, bpm?: number) {
+    this.metroEnabled = enabled;
+    if (bpm) this.metroBpm = bpm;
+    if (enabled && this.playing) {
+      this.metroNextBeat = this.ctx.currentTime + 0.05;
+      this.metroBeatIndex = 0;
+      this.scheduleMetronome();
+    } else if (!enabled && this.metroTimer) {
+      clearTimeout(this.metroTimer); this.metroTimer = null;
+    }
+  }
+
+  private scheduleMetronome() {
+    if (!this.metroEnabled || !this.playing) return;
+    const beatDur = 60 / this.metroBpm;
+    const lookahead = this.ctx.currentTime + 0.25;
+    while (this.metroNextBeat < lookahead) {
+      this.playClick(this.metroNextBeat, this.metroBeatIndex % 4 === 0);
+      this.metroNextBeat += beatDur;
+      this.metroBeatIndex++;
+    }
+    this.metroTimer = window.setTimeout(() => this.scheduleMetronome(), 100);
+  }
+
+  private playClick(when: number, accent: boolean) {
+    const osc = this.ctx.createOscillator();
+    const env = this.ctx.createGain();
+    osc.frequency.value = accent ? 1500 : 1000;
+    env.gain.setValueAtTime(0, when);
+    env.gain.linearRampToValueAtTime(accent ? 0.5 : 0.3, when + 0.001);
+    env.gain.exponentialRampToValueAtTime(0.001, when + 0.05);
+    osc.connect(env).connect(this.masterGain);
+    osc.start(when); osc.stop(when + 0.06);
   }
 
   private stopAllSources() {
@@ -220,6 +269,7 @@ export class DawEngine {
       c.activeSources = [];
     });
   }
+
 
   async startRecording(trackId: string, transportPos: number, inputDeviceId?: string) {
     this.recordingTrackId = trackId;

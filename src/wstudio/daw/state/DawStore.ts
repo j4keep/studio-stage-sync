@@ -15,6 +15,7 @@ export interface DawState {
   transport: TransportState;
   selectedTrackId: string | null;
   selectedClipId: string | null;
+  clipboard: Clip | null;
   view: "arrange" | "mixer" | "instrument";
   masterVolume: number;
   pxPerSec: number;
@@ -22,10 +23,16 @@ export interface DawState {
   addTrack: (kind?: "audio" | "instrument", name?: string) => string;
   removeTrack: (id: string) => void;
   updateTrack: (id: string, patch: Partial<Track>) => void;
+  reorderTracks: (fromId: string, toId: string) => void;
+  moveClipToTrack: (clipId: string, trackId: string) => void;
   addClip: (clip: Clip) => void;
   updateClip: (id: string, patch: Partial<Clip>) => void;
   removeClip: (id: string) => void;
   splitClipAt: (id: string, time: number) => void;
+  copyClip: (id: string) => void;
+  cutClip: (id: string) => void;
+  pasteClipAt: (trackId: string, time: number) => void;
+  duplicateClip: (id: string) => void;
   addEffect: (trackId: string, type: EffectId) => void;
   removeEffect: (trackId: string, effectId: string) => void;
   updateEffect: (trackId: string, effectId: string, patch: Partial<EffectInstance>) => void;
@@ -52,6 +59,7 @@ export const useDawStore = create<DawState>((set, get) => ({
   },
   selectedTrackId: null,
   selectedClipId: null,
+  clipboard: null,
   view: "arrange",
   masterVolume: 0.85,
   pxPerSec: 60,
@@ -87,6 +95,45 @@ export const useDawStore = create<DawState>((set, get) => ({
   updateTrack: (id, patch) => set({
     tracks: get().tracks.map(t => t.id === id ? { ...t, ...patch } : t),
   }),
+
+  reorderTracks: (fromId, toId) => {
+    const list = [...get().tracks];
+    const from = list.findIndex(t => t.id === fromId);
+    const to = list.findIndex(t => t.id === toId);
+    if (from < 0 || to < 0 || from === to) return;
+    const [moved] = list.splice(from, 1);
+    list.splice(to, 0, moved);
+    set({ tracks: list });
+  },
+
+  moveClipToTrack: (clipId, trackId) => set({
+    clips: get().clips.map(c => c.id === clipId ? { ...c, trackId } : c),
+  }),
+
+  copyClip: (id) => {
+    const c = get().clips.find(x => x.id === id);
+    if (c) set({ clipboard: { ...c } });
+  },
+
+  cutClip: (id) => {
+    const c = get().clips.find(x => x.id === id);
+    if (!c) return;
+    set({ clipboard: { ...c }, clips: get().clips.filter(x => x.id !== id) });
+  },
+
+  pasteClipAt: (trackId, time) => {
+    const cb = get().clipboard;
+    if (!cb) return;
+    const clip: Clip = { ...cb, id: newId("clip"), trackId, startTime: Math.max(0, time) };
+    set({ clips: [...get().clips, clip] });
+  },
+
+  duplicateClip: (id) => {
+    const c = get().clips.find(x => x.id === id);
+    if (!c) return;
+    const clip: Clip = { ...c, id: newId("clip"), startTime: c.startTime + c.duration };
+    set({ clips: [...get().clips, clip] });
+  },
 
   addClip: (clip) => set({ clips: [...get().clips, clip] }),
 
