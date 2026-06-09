@@ -20,6 +20,9 @@ export class DawEngine {
     panner: StereoPannerNode;
     gain: GainNode;
     analyser: AnalyserNode;
+    splitter: ChannelSplitterNode;
+    analyserL: AnalyserNode;
+    analyserR: AnalyserNode;
     reverbSend: GainNode;
     delaySend: GainNode;
     activeSources: AudioScheduledSourceNode[];
