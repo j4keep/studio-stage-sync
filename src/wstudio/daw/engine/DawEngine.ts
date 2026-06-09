@@ -107,6 +107,8 @@ export class DawEngine {
       const input = this.ctx.createGain();
       const panner = this.ctx.createStereoPanner();
       const gain = this.ctx.createGain();
+      const monitorGain = this.ctx.createGain();
+      monitorGain.gain.value = 1;
       const analyser = this.ctx.createAnalyser();
       analyser.fftSize = 512;
       const splitter = this.ctx.createChannelSplitter(2);
@@ -118,7 +120,7 @@ export class DawEngine {
       splitter.connect(analyserR, 1);
       const reverbSend = this.ctx.createGain();
       const delaySend = this.ctx.createGain();
-      chain = { input, inserts: [], panner, gain, analyser, splitter, analyserL, analyserR, reverbSend, delaySend, activeSources: [] };
+      chain = { input, inserts: [], panner, gain, monitorGain, analyser, splitter, analyserL, analyserR, reverbSend, delaySend, activeSources: [] };
       this.trackChains.set(track.id, chain);
     }
     this.rebuildChain(track, chain);
@@ -129,6 +131,9 @@ export class DawEngine {
     const c = chain as NonNullable<ReturnType<typeof this.trackChains.get>>;
     // Tear down old inserts
     try { c.input.disconnect(); } catch {}
+    try { c.gain.disconnect(); } catch {}
+    try { c.analyser.disconnect(); } catch {}
+    try { c.monitorGain.disconnect(); } catch {}
     c.inserts.forEach((i) => i.dispose());
     c.inserts = [];
 
@@ -143,8 +148,12 @@ export class DawEngine {
     }
     cursor.connect(c.panner);
     c.panner.connect(c.gain);
+    // Meter (pre-monitor, post-fader/pan) — always live so input meters move even when muted to speakers
+    c.gain.connect(c.splitter);
     c.gain.connect(c.analyser);
-    c.analyser.connect(this.masterGain);
+    // Speaker monitor path can be muted independently (used during record)
+    c.analyser.connect(c.monitorGain);
+    c.monitorGain.connect(this.masterGain);
     c.gain.connect(c.reverbSend);
     c.reverbSend.connect(this.reverbBus.input);
     c.gain.connect(c.delaySend);
