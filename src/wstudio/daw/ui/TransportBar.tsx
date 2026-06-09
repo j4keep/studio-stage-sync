@@ -8,6 +8,7 @@ interface Props {
   onStop: () => void;
   onRecord: () => void;
   onRewind: () => void;
+  onSeek?: (position: number) => void;
   onExport: () => void;
   onAddAudio: () => void;
   onAddInstrument: () => void;
@@ -39,7 +40,7 @@ const TOOLS: { id: DawTool; label: string; Icon: any; hint: string }[] = [
   { id: "marquee", label: "Marquee Tool", Icon: BoxSelect, hint: "Box-select a region" },
 ];
 
-export function TransportBar({ onPlay, onStop, onRecord, onRewind, onExport, onAddAudio, onAddInstrument, onImport }: Props) {
+export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExport, onAddAudio, onAddInstrument, onImport }: Props) {
   const transport = useDawStore(s => s.transport);
   const setTransport = useDawStore(s => s.setTransport);
   const view = useDawStore(s => s.view);
@@ -60,8 +61,8 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onExport, onA
     <div className="h-14 bg-gradient-to-b from-neutral-900 to-neutral-950 border-b border-neutral-800 px-3 flex items-center gap-2 text-neutral-200 text-xs shadow-[inset_0_-1px_0_rgba(255,255,255,0.02)]">
       <div className="flex items-center gap-1" title="Transport controls">
         <TBtn onClick={onRewind} title="Return to Start (Enter)"><Rewind className="w-4 h-4" /></TBtn>
-        <TBtn onClick={() => setTransport({ position: transport.position + 5 })} title="Forward 5s"><FastForward className="w-4 h-4" /></TBtn>
-        <TBtn onClick={() => setTransport({ position: Math.max(0, transport.position - 5) })} title="Back 5s"><SkipBack className="w-4 h-4" /></TBtn>
+        <TBtn onClick={() => onSeek ? onSeek(transport.position + 5) : setTransport({ position: transport.position + 5 })} title="Forward 5s"><FastForward className="w-4 h-4" /></TBtn>
+        <TBtn onClick={() => onSeek ? onSeek(Math.max(0, transport.position - 5)) : setTransport({ position: Math.max(0, transport.position - 5) })} title="Back 5s"><SkipBack className="w-4 h-4" /></TBtn>
         <TBtn onClick={onPlay} active={transport.isPlaying} className="!text-emerald-400" title="Play / Pause (Space)"><Play className="w-4 h-4 fill-current" /></TBtn>
         <TBtn onClick={onStop} title="Stop (Shift+Space)"><Square className="w-4 h-4" /></TBtn>
         <TBtn onClick={onRecord} active={transport.isRecording} className="!text-red-400" title="Record on armed track (R)"><Circle className="w-4 h-4 fill-current" /></TBtn>

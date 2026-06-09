@@ -75,7 +75,8 @@ export function ArrangeView({ onArmToggle, onSeek }: Props) {
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const next = Math.max(0, x / pxPerSec);
-    onSeek?.(next) ?? setTransport({ position: next });
+    if (onSeek) onSeek(next);
+    else setTransport({ position: next });
   };
 
   // Pointer drag for the cycle (loop) region
