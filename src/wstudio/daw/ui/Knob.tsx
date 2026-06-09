@@ -13,37 +13,52 @@ interface Props {
 }
 
 export function Knob({ value, min, max, step = 0.01, size = 44, label, unit, onChange, color = "#fff" }: Props) {
+  const startX = useRef(0);
   const startY = useRef(0);
   const startVal = useRef(0);
+  const activePointer = useRef<number | null>(null);
   const range = max - min;
   const norm = (value - min) / range;
   const angle = -135 + norm * 270;
 
   const onPointerDown = (e: React.PointerEvent) => {
     e.preventDefault();
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    e.stopPropagation();
+    activePointer.current = e.pointerId;
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    startX.current = e.clientX;
     startY.current = e.clientY;
     startVal.current = value;
   };
   const onPointerMove = (e: React.PointerEvent) => {
-    if (!(e.buttons & 1)) return;
+    if (activePointer.current !== e.pointerId || !(e.buttons & 1)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const dx = e.clientX - startX.current;
     const dy = startY.current - e.clientY;
-    const delta = (dy / 100) * range;
+    const delta = ((dx + dy) / 140) * range;
     let next = startVal.current + delta;
     next = Math.round(next / step) * step;
     next = Math.max(min, Math.min(max, next));
     onChange(next);
   };
-  const onDoubleClick = () => onChange((max + min) / 2);
+  const onPointerUp = (e: React.PointerEvent) => {
+    if (activePointer.current !== e.pointerId) return;
+    activePointer.current = null;
+    try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch {}
+  };
+  const onDoubleClick = (e: React.MouseEvent) => { e.stopPropagation(); onChange((max + min) / 2); };
 
   return (
     <div className="flex flex-col items-center select-none">
       <div
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
         onDoubleClick={onDoubleClick}
         style={{ width: size, height: size }}
-        className="relative cursor-ns-resize rounded-full bg-neutral-900 border border-neutral-700 shadow-inner"
+        className="relative cursor-ew-resize rounded-full bg-neutral-900 border border-neutral-700 shadow-inner touch-none"
       >
         <div
           className="absolute left-1/2 top-1/2 origin-bottom"
