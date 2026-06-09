@@ -208,11 +208,15 @@ export class DawEngine {
       } catch {}
     }
 
-    // Position loop
+    // Position loop — throttle UI updates to ~20fps so React doesn't
+    // re-render every transport-aware component 60x/sec (which was eating
+    // clicks on Play/Stop because inline subcomponents kept remounting).
+    let lastEmit = 0;
     const tick = () => {
       if (!this.playing) return;
       const pos = this.startTransportTime + (this.ctx.currentTime - this.startCtxTime);
-      this.onPositionChange?.(pos);
+      const now = performance.now();
+      if (now - lastEmit > 50) { this.onPositionChange?.(pos); lastEmit = now; }
       this.rafId = requestAnimationFrame(tick);
     };
     this.rafId = requestAnimationFrame(tick);

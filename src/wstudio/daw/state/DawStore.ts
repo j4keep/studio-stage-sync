@@ -9,7 +9,11 @@ let clipCounter = 0;
 
 export const newId = (prefix: string) => `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
+export type DawTool = "pointer" | "pencil" | "eraser" | "scissors" | "glue" | "mute" | "zoom" | "fade" | "marquee";
+
 export interface DawState {
+  tool: DawTool;
+  setTool: (t: DawTool) => void;
   tracks: Track[];
   clips: Clip[];
   transport: TransportState;
@@ -45,6 +49,8 @@ export interface DawState {
 }
 
 export const useDawStore = create<DawState>((set, get) => ({
+  tool: "pointer",
+  setTool: (t) => set({ tool: t }),
   tracks: [],
   clips: [],
   transport: {
