@@ -1,0 +1,152 @@
+import { create } from "zustand";
+import type { Track, Clip, TransportState, EffectInstance, EffectId } from "../engine/types";
+import { EFFECT_DEFAULTS } from "../engine/Effects";
+
+const TRACK_COLORS = ["#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4", "#3b82f6", "#a855f7", "#ec4899"];
+
+let trackCounter = 0;
+let clipCounter = 0;
+
+export const newId = (prefix: string) => `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+
+export interface DawState {
+  tracks: Track[];
+  clips: Clip[];
+  transport: TransportState;
+  selectedTrackId: string | null;
+  selectedClipId: string | null;
+  view: "arrange" | "mixer" | "instrument";
+  masterVolume: number;
+  pxPerSec: number;
+  // Actions
+  addTrack: (kind?: "audio" | "instrument", name?: string) => string;
+  removeTrack: (id: string) => void;
+  updateTrack: (id: string, patch: Partial<Track>) => void;
+  addClip: (clip: Clip) => void;
+  updateClip: (id: string, patch: Partial<Clip>) => void;
+  removeClip: (id: string) => void;
+  splitClipAt: (id: string, time: number) => void;
+  addEffect: (trackId: string, type: EffectId) => void;
+  removeEffect: (trackId: string, effectId: string) => void;
+  updateEffect: (trackId: string, effectId: string, patch: Partial<EffectInstance>) => void;
+  setTransport: (patch: Partial<TransportState>) => void;
+  setView: (view: DawState["view"]) => void;
+  selectTrack: (id: string | null) => void;
+  selectClip: (id: string | null) => void;
+  setPxPerSec: (v: number) => void;
+  setMasterVolume: (v: number) => void;
+}
+
+export const useDawStore = create<DawState>((set, get) => ({
+  tracks: [],
+  clips: [],
+  transport: {
+    isPlaying: false,
+    isRecording: false,
+    position: 0,
+    bpm: 120,
+    loopEnabled: false,
+    loopStart: 0,
+    loopEnd: 8,
+    metronome: false,
+  },
+  selectedTrackId: null,
+  selectedClipId: null,
+  view: "arrange",
+  masterVolume: 0.85,
+  pxPerSec: 60,
+
+  addTrack: (kind = "audio", name) => {
+    const id = newId("trk");
+    const idx = get().tracks.length;
+    const track: Track = {
+      id,
+      name: name ?? `${kind === "audio" ? "Audio" : "Instrument"} ${++trackCounter}`,
+      kind,
+      color: TRACK_COLORS[idx % TRACK_COLORS.length],
+      volume: 0.8,
+      pan: 0,
+      mute: false,
+      solo: false,
+      armed: false,
+      effects: [],
+      reverbSend: 0,
+      delaySend: 0,
+      instrument: kind === "instrument" ? "synth" : undefined,
+    };
+    set({ tracks: [...get().tracks, track], selectedTrackId: id });
+    return id;
+  },
+
+  removeTrack: (id) => set({
+    tracks: get().tracks.filter(t => t.id !== id),
+    clips: get().clips.filter(c => c.trackId !== id),
+    selectedTrackId: get().selectedTrackId === id ? null : get().selectedTrackId,
+  }),
+
+  updateTrack: (id, patch) => set({
+    tracks: get().tracks.map(t => t.id === id ? { ...t, ...patch } : t),
+  }),
+
+  addClip: (clip) => set({ clips: [...get().clips, clip] }),
+
+  updateClip: (id, patch) => set({
+    clips: get().clips.map(c => c.id === id ? { ...c, ...patch } : c),
+  }),
+
+  removeClip: (id) => set({
+    clips: get().clips.filter(c => c.id !== id),
+    selectedClipId: get().selectedClipId === id ? null : get().selectedClipId,
+  }),
+
+  splitClipAt: (id, time) => {
+    const clip = get().clips.find(c => c.id === id);
+    if (!clip) return;
+    if (time <= clip.startTime || time >= clip.startTime + clip.duration) return;
+    const splitOffset = time - clip.startTime;
+    const left = { ...clip, duration: splitOffset };
+    const right: Clip = {
+      ...clip,
+      id: newId("clip"),
+      startTime: time,
+      offset: clip.offset + splitOffset,
+      duration: clip.duration - splitOffset,
+    };
+    set({ clips: get().clips.map(c => c.id === id ? left : c).concat(right) });
+  },
+
+  addEffect: (trackId, type) => {
+    const fx: EffectInstance = {
+      id: newId("fx"),
+      type,
+      enabled: true,
+      params: { ...(EFFECT_DEFAULTS[type] || {}) },
+    };
+    set({
+      tracks: get().tracks.map(t =>
+        t.id === trackId ? { ...t, effects: [...t.effects, fx] } : t
+      ),
+    });
+  },
+
+  removeEffect: (trackId, effectId) => set({
+    tracks: get().tracks.map(t =>
+      t.id === trackId ? { ...t, effects: t.effects.filter(e => e.id !== effectId) } : t
+    ),
+  }),
+
+  updateEffect: (trackId, effectId, patch) => set({
+    tracks: get().tracks.map(t =>
+      t.id === trackId
+        ? { ...t, effects: t.effects.map(e => e.id === effectId ? { ...e, ...patch, params: { ...e.params, ...(patch.params ?? {}) } } : e) }
+        : t
+    ),
+  }),
+
+  setTransport: (patch) => set({ transport: { ...get().transport, ...patch } }),
+  setView: (view) => set({ view }),
+  selectTrack: (id) => set({ selectedTrackId: id }),
+  selectClip: (id) => set({ selectedClipId: id }),
+  setPxPerSec: (v) => set({ pxPerSec: Math.max(20, Math.min(400, v)) }),
+  setMasterVolume: (v) => set({ masterVolume: v }),
+}));
