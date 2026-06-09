@@ -331,21 +331,63 @@ export class DawEngine {
   }
 
 
+  // Live recording level + waveform progress
+  recordingLivePeaks: number[] = []; // peak per processor block
+  onRecordingProgress?: (peaks: number[], durationSec: number) => void;
+  getRecordingTrackId() { return this.recordingTrackId; }
+
   async startRecording(trackId: string, transportPos: number, inputDeviceId?: string) {
     this.recordingTrackId = trackId;
     this.recordStartTransport = transportPos;
     this.recBuffers = [];
+    this.recordingLivePeaks = [];
     this.micStream = await navigator.mediaDevices.getUserMedia({
-      audio: inputDeviceId ? { deviceId: { exact: inputDeviceId } } : true,
+      audio: {
+        deviceId: inputDeviceId ? { exact: inputDeviceId } : undefined,
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
+        channelCount: 1,
+      } as MediaTrackConstraints,
     });
+
+    const chain = this.trackChains.get(trackId);
     const src = this.ctx.createMediaStreamSource(this.micStream);
-    // ScriptProcessor is deprecated but ubiquitous; sufficient for an MVP
+
+    // Route mic INTO the track chain so the existing meters/effects path is live.
+    // Mute the speaker monitor + sends to prevent feedback howl / robotic doubling.
+    if (chain) {
+      chain.micSource = src;
+      chain.savedReverbSend = chain.reverbSend.gain.value;
+      chain.savedDelaySend = chain.delaySend.gain.value;
+      chain.monitorGain.gain.value = 0;          // no live monitoring through speakers
+      chain.reverbSend.gain.value = 0;
+      chain.delaySend.gain.value = 0;
+      try { src.connect(chain.input); } catch {}
+    }
+
+    // Capture clean mic samples for the clip + drive the live waveform overlay
     const proc = this.ctx.createScriptProcessor(4096, 1, 1);
     src.connect(proc);
-    proc.connect(this.ctx.destination);
+    // ScriptProcessor requires a destination connection to run. Use a silent
+    // sink so the mic NEVER reaches the speakers (no feedback, no distortion).
+    const silentSink = this.ctx.createGain();
+    silentSink.gain.value = 0;
+    proc.connect(silentSink);
+    silentSink.connect(this.ctx.destination);
+
     proc.onaudioprocess = (e) => {
       const ch = e.inputBuffer.getChannelData(0);
       this.recBuffers.push(new Float32Array(ch));
+      // Peak for live waveform overlay
+      let peak = 0;
+      for (let i = 0; i < ch.length; i++) {
+        const v = Math.abs(ch[i]);
+        if (v > peak) peak = v;
+      }
+      this.recordingLivePeaks.push(peak);
+      const dur = this.recBuffers.reduce((s, b) => s + b.length, 0) / this.ctx.sampleRate;
+      this.onRecordingProgress?.(this.recordingLivePeaks, dur);
     };
     this.recProcessor = proc;
   }
@@ -369,12 +411,23 @@ export class DawEngine {
       };
       this.onRecordedClip?.(this.recordingTrackId, clip);
     }
+    // Restore the track's monitor path
+    const chain = this.trackChains.get(this.recordingTrackId);
+    if (chain) {
+      try { chain.micSource?.disconnect(); } catch {}
+      chain.micSource = null;
+      chain.monitorGain.gain.value = 1;
+      if (chain.savedReverbSend != null) chain.reverbSend.gain.value = chain.savedReverbSend;
+      if (chain.savedDelaySend != null) chain.delaySend.gain.value = chain.savedDelaySend;
+    }
     this.recBuffers = [];
+    this.recordingLivePeaks = [];
     try { this.recProcessor?.disconnect(); } catch {}
     this.recProcessor = null;
     this.micStream?.getTracks().forEach(t => t.stop());
     this.micStream = null;
     this.recordingTrackId = null;
+    this.onRecordingProgress?.([], 0);
   }
 
   async decodeFile(file: File | Blob): Promise<AudioBuffer> {
