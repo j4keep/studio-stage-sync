@@ -58,6 +58,18 @@ export function ArrangeView({ onArmToggle, onSeek, engine }: Props) {
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; clipId: string } | null>(null);
+  const [liveRec, setLiveRec] = useState<{ trackId: string; peaks: number[]; dur: number } | null>(null);
+
+  useEffect(() => {
+    if (!engine) return;
+    engine.onRecordingProgress = (peaks, dur) => {
+      const tid = engine.getRecordingTrackId();
+      if (!tid || dur <= 0) setLiveRec(null);
+      else setLiveRec({ trackId: tid, peaks: peaks.slice(-2000), dur });
+    };
+    return () => { if (engine) engine.onRecordingProgress = undefined; };
+  }, [engine]);
+
   const timelineLen = Math.max(60, ...clips.map(c => c.startTime + c.duration)) + 20;
 
   // Bars/beats math (4/4)
