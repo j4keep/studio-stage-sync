@@ -52,6 +52,7 @@ import { WStudioLayout } from "./wstudio/WStudioLayout";
 import SessionJoinScreen from "./wstudio/session/SessionJoinScreen";
 import UnifiedSessionScreen from "./wstudio/session/UnifiedSessionScreen";
 import StudioBridgeScreen from "./wstudio/bridge/StudioBridgeScreen";
+import WStudioDawPage from "./pages/WStudioDawPage";
 
 import TermsAgreementGate from "./components/TermsAgreementGate";
 import ThemePickerSheet from "./components/ThemePickerSheet";
@@ -208,6 +209,7 @@ const ProtectedRoutes = () => {
         <Route path="/my-boosts" element={<MyBoostsPage />} />
         <Route path="/helpdesk" element={<HelpDeskPage />} />
         <Route path="/ask-jhi" element={<AskJhiPage />} />
+        <Route path="/wstudio/daw" element={<WStudioDawPage />} />
         <Route path="/wstudio" element={<WStudioLayout />}>
           <Route index element={<Navigate to="session/join" replace />} />
           <Route path="session/join" element={<SessionJoinScreen />} />
