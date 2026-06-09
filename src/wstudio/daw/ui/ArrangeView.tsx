@@ -122,7 +122,7 @@ export function ArrangeView({ onArmToggle }: Props) {
                     pxPerSec={pxPerSec}
                     selected={selectedClipId === c.id}
                     onSelect={() => selectClip(c.id)}
-                    onMove={(dx) => updateClip(c.id, { startTime: Math.max(0, c.startTime + dx) })}
+                    onMoveTo={(t) => updateClip(c.id, { startTime: Math.max(0, t) })}
                     onDelete={() => removeClip(c.id)}
                     onSplitAtPlayhead={() => splitClipAt(c.id, transport.position)}
                   />
@@ -175,7 +175,7 @@ function TrackHeader({ track, onArm, onMute, onSolo, onRemove, onRename, onVolum
   );
 }
 
-function ClipBlock({ clip, color, pxPerSec, selected, onSelect, onMove, onDelete, onSplitAtPlayhead }: any) {
+function ClipBlock({ clip, color, pxPerSec, selected, onSelect, onMoveTo, onDelete, onSplitAtPlayhead }: any) {
   const startX = useRef(0);
   const startTime = useRef(0);
   const w = clip.duration * pxPerSec;
@@ -193,8 +193,7 @@ function ClipBlock({ clip, color, pxPerSec, selected, onSelect, onMove, onDelete
       onPointerMove={(e) => {
         if (!(e.buttons & 1)) return;
         const dx = (e.clientX - startX.current) / pxPerSec;
-        onMove(dx + (clip.startTime - startTime.current) - (clip.startTime - startTime.current));
-        // We want delta from original startTime; easier:
+        onMoveTo(startTime.current + dx);
       }}
       className={`absolute top-1 bottom-1 rounded overflow-hidden border ${selected ? "border-white" : "border-black/30"} cursor-grab active:cursor-grabbing`}
       style={{ left, width: w, background: color + "22" }}
