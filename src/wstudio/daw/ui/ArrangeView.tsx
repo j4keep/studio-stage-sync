@@ -1,4 +1,4 @@
-import { useRef, useState, useMemo } from "react";
+import { useRef, useState, useMemo, useEffect } from "react";
 import { useDawStore } from "../state/DawStore";
 import { WaveformView } from "./WaveformView";
 import { Knob } from "./Knob";
