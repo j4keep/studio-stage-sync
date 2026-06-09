@@ -11,6 +11,7 @@ import { InstrumentPanel } from "@/wstudio/daw/ui/InstrumentPanel";
 import { FxRack } from "@/wstudio/daw/ui/FxRack";
 import { LibraryPanel } from "@/wstudio/daw/ui/LibraryPanel";
 import { CollabSidebar } from "@/wstudio/daw/ui/CollabSidebar";
+import { MenuBar } from "@/wstudio/daw/ui/MenuBar";
 
 export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessionCode?: string } = {}) {
   const [params] = useSearchParams();
@@ -89,8 +90,18 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
   }, [handlePlay, handleStop]);
 
   const handleRewind = useCallback(() => {
-    engineRef.current?.stop();
+    const e = engineRef.current;
+    if (!e) return;
+    const wasPlaying = e.playing;
+    e.stop();
     setTransport({ position: 0, isPlaying: false, isRecording: false });
+    if (wasPlaying) {
+      setTimeout(() => {
+        const st = useDawStore.getState();
+        setTransport({ isPlaying: true });
+        e.play({ ...st.transport, position: 0 }, st.tracks, st.clips);
+      }, 30);
+    }
   }, [setTransport]);
 
   const handleRecord = useCallback(async () => {
@@ -236,6 +247,16 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
 
   return (
     <div className="fixed inset-0 bg-black flex flex-col text-neutral-200 dark">
+      <MenuBar
+        onImport={() => importInputRef.current?.click()}
+        onExport={handleExport}
+        onAddAudio={() => addTrack("audio")}
+        onAddInstrument={() => { const id = addTrack("instrument"); updateTrack(id, { instrument: "synth" }); }}
+        onPlay={handlePlayPause}
+        onStop={handleStop}
+        onRecord={handleRecord}
+        onRewind={handleRewind}
+      />
       <TransportBar
         onPlay={handlePlayPause}
         onStop={handleStop}
