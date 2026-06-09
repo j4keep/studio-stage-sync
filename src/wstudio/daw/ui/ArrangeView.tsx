@@ -465,7 +465,7 @@ function PlayheadMarker({ pxPerSec, ruler = false }: { pxPerSec: number; ruler?:
   return (
     <div
       className="absolute w-px bg-emerald-400/70 pointer-events-none z-20 will-change-transform"
-      style={{ transform: `translate3d(${position * pxPerSec}px, 0, 0)`, top: RULER_H, bottom: 0 }}
+      style={{ left: 0, transform: `translate3d(${position * pxPerSec}px, 0, 0)`, top: RULER_H, bottom: 0 }}
     />
   );
 }
