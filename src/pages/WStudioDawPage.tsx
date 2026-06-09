@@ -276,6 +276,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
         onStop={handleStop}
         onRecord={handleRecord}
         onRewind={handleRewind}
+        onSeek={handleSeek}
         onExport={handleExport}
         onAddAudio={() => addTrack("audio")}
         onAddInstrument={() => { const id = addTrack("instrument"); updateTrack(id, { instrument: "synth" }); }}
