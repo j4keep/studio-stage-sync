@@ -90,8 +90,18 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
   }, [handlePlay, handleStop]);
 
   const handleRewind = useCallback(() => {
-    engineRef.current?.stop();
+    const e = engineRef.current;
+    if (!e) return;
+    const wasPlaying = e.playing;
+    e.stop();
     setTransport({ position: 0, isPlaying: false, isRecording: false });
+    if (wasPlaying) {
+      setTimeout(() => {
+        const st = useDawStore.getState();
+        setTransport({ isPlaying: true });
+        e.play({ ...st.transport, position: 0 }, st.tracks, st.clips);
+      }, 30);
+    }
   }, [setTransport]);
 
   const handleRecord = useCallback(async () => {
