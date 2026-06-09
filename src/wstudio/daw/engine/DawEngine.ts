@@ -208,15 +208,44 @@ export class DawEngine {
       } catch {}
     }
 
-    // Position loop — throttle UI updates to ~20fps so React doesn't
-    // re-render every transport-aware component 60x/sec (which was eating
-    // clicks on Play/Stop because inline subcomponents kept remounting).
-    let lastEmit = 0;
+    // Position loop. Emit every frame for smooth playhead. The transport
+    // bar and arrange view memoize subcomponents so re-renders are cheap.
+    const loopEnabled = !!transport.loopEnabled;
+    const loopStart = transport.loopStart ?? 0;
+    const loopEnd = transport.loopEnd ?? 0;
     const tick = () => {
       if (!this.playing) return;
-      const pos = this.startTransportTime + (this.ctx.currentTime - this.startCtxTime);
-      const now = performance.now();
-      if (now - lastEmit > 50) { this.onPositionChange?.(pos); lastEmit = now; }
+      let pos = this.startTransportTime + (this.ctx.currentTime - this.startCtxTime);
+      if (loopEnabled && loopEnd > loopStart && pos >= loopEnd) {
+        // wrap by re-arming playback at loopStart
+        const newTransport = { ...transport, position: loopStart };
+        this.stopAllSources();
+        this.startCtxTime = this.ctx.currentTime + 0.02;
+        this.startTransportTime = loopStart;
+        // re-schedule clips from loopStart
+        const anySolo = tracks.some(t => t.solo);
+        for (const clip of clips) {
+          const track = tracks.find(t => t.id === clip.trackId);
+          if (!track || !clip.buffer) continue;
+          if (track.mute) continue;
+          if (anySolo && !track.solo) continue;
+          const chain = this.trackChains.get(track.id);
+          if (!chain) continue;
+          const clipEnd = clip.startTime + clip.duration;
+          if (clipEnd <= loopStart) continue;
+          const src = this.ctx.createBufferSource();
+          src.buffer = clip.buffer;
+          src.connect(chain.input);
+          const playOffsetInClip = Math.max(0, loopStart - clip.startTime);
+          const when = this.startCtxTime + Math.max(0, clip.startTime - loopStart);
+          const offset = clip.offset + playOffsetInClip;
+          const duration = Math.min(clip.duration - playOffsetInClip, loopEnd - Math.max(clip.startTime, loopStart));
+          try { src.start(when, offset, duration); chain.activeSources.push(src); } catch {}
+        }
+        pos = loopStart;
+        void newTransport;
+      }
+      this.onPositionChange?.(pos);
       this.rafId = requestAnimationFrame(tick);
     };
     this.rafId = requestAnimationFrame(tick);

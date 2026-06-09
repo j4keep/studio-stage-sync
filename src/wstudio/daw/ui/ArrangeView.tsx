@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useMemo } from "react";
 import { useDawStore } from "../state/DawStore";
 import { WaveformView } from "./WaveformView";
 import { Trash2, GripVertical } from "lucide-react";
@@ -11,6 +11,7 @@ interface Props {
 
 const HEADER_W = 200;
 const TRACK_H = 80;
+const RULER_H = 32;
 
 const TOOL_CURSORS: Record<string, string> = {
   pointer: "default",
@@ -51,30 +52,106 @@ export function ArrangeView({ onArmToggle }: Props) {
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; clipId: string } | null>(null);
   const timelineLen = Math.max(60, ...clips.map(c => c.startTime + c.duration)) + 20;
 
+  // Bars/beats math (4/4)
+  const secPerBeat = 60 / Math.max(40, transport.bpm);
+  const secPerBar = secPerBeat * 4;
+  const barPx = secPerBar * pxPerSec;
+  const beatPx = secPerBeat * pxPerSec;
+  const totalBars = Math.ceil(timelineLen / secPerBar) + 1;
+
+  const trackIndexById = useMemo(() => {
+    const m = new Map<string, number>();
+    tracks.forEach((t, i) => m.set(t.id, i));
+    return m;
+  }, [tracks]);
+
   const handleRulerClick = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).dataset.cycle) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     setTransport({ position: Math.max(0, x / pxPerSec) });
   };
 
+  // Pointer drag for the cycle (loop) region
+  const cycleDrag = useRef<{ mode: "move" | "start" | "end" | "create"; startX: number; startS: number; startE: number } | null>(null);
+  const onCyclePointerDown = (e: React.PointerEvent, mode: "move" | "start" | "end") => {
+    e.stopPropagation();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    cycleDrag.current = { mode, startX: e.clientX, startS: transport.loopStart ?? 0, startE: transport.loopEnd ?? 8 };
+  };
+  const onCyclePointerMove = (e: React.PointerEvent) => {
+    const d = cycleDrag.current;
+    if (!d) return;
+    const dx = (e.clientX - d.startX) / pxPerSec;
+    if (d.mode === "move") {
+      const len = d.startE - d.startS;
+      const ns = Math.max(0, d.startS + dx);
+      setTransport({ loopStart: ns, loopEnd: ns + len });
+    } else if (d.mode === "start") {
+      setTransport({ loopStart: Math.max(0, Math.min((transport.loopEnd ?? 0) - 0.1, d.startS + dx)) });
+    } else if (d.mode === "end") {
+      setTransport({ loopEnd: Math.max((transport.loopStart ?? 0) + 0.1, d.startE + dx) });
+    }
+  };
+  const onCyclePointerUp = () => { cycleDrag.current = null; };
+
+  const loopStart = transport.loopStart ?? 0;
+  const loopEnd = transport.loopEnd ?? 8;
+
+  // Clip drag state (pointer-based; supports cross-track move)
+  const clipDrag = useRef<{
+    clipId: string;
+    startX: number; startY: number;
+    startTime: number; startTrackId: string; startTrackIdx: number;
+    mode: "move" | "resize";
+    startDur: number;
+  } | null>(null);
+
+  const beginClipDrag = (clip: Clip, e: React.PointerEvent, mode: "move" | "resize") => {
+    const idx = trackIndexById.get(clip.trackId) ?? 0;
+    clipDrag.current = {
+      clipId: clip.id, startX: e.clientX, startY: e.clientY,
+      startTime: clip.startTime, startTrackId: clip.trackId, startTrackIdx: idx,
+      mode, startDur: clip.duration,
+    };
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  };
+  const onClipDragMove = (e: React.PointerEvent) => {
+    const d = clipDrag.current;
+    if (!d) return;
+    const dx = (e.clientX - d.startX) / pxPerSec;
+    if (d.mode === "resize") {
+      updateClip(d.clipId, { duration: Math.max(0.05, d.startDur + dx) });
+      return;
+    }
+    const dy = e.clientY - d.startY;
+    const targetIdx = Math.max(0, Math.min(tracks.length - 1, d.startTrackIdx + Math.round(dy / TRACK_H)));
+    const targetTrack = tracks[targetIdx];
+    const newStart = Math.max(0, d.startTime + dx);
+    updateClip(d.clipId, { startTime: newStart });
+    if (targetTrack && targetTrack.id !== d.startTrackId) {
+      moveClipToTrack(d.clipId, targetTrack.id);
+      d.startTrackId = targetTrack.id;
+      d.startTrackIdx = targetIdx;
+      d.startY = e.clientY;
+    }
+  };
+  const endClipDrag = () => { clipDrag.current = null; };
+
   // Tool actions on a clip click
   const applyToolToClip = (clip: Clip, e: React.MouseEvent) => {
     switch (tool) {
       case "eraser":
-        removeClip(clip.id);
-        return true;
+        removeClip(clip.id); return true;
       case "scissors": {
         const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
         const t = clip.startTime + (e.clientX - rect.left) / pxPerSec;
-        splitClipAt(clip.id, t);
-        return true;
+        splitClipAt(clip.id, t); return true;
       }
       case "mute":
         updateClip(clip.id, { name: clip.name.startsWith("[M] ") ? clip.name.slice(4) : "[M] " + clip.name });
-        // simplest: zero-out by setting duration tiny? Instead we tag the name and keep semantics; user has track mute too
         return true;
       case "glue": {
-        // merge with next clip on same track
         const sameTrack = useDawStore.getState().clips
           .filter(c => c.trackId === clip.trackId && c.id !== clip.id && c.startTime >= clip.startTime)
           .sort((a, b) => a.startTime - b.startTime);
@@ -87,11 +164,9 @@ export function ArrangeView({ onArmToggle }: Props) {
         return true;
       }
       case "zoom":
-        setPxPerSec(e.altKey ? pxPerSec / 1.5 : pxPerSec * 1.5);
-        return true;
+        setPxPerSec(e.altKey ? pxPerSec / 1.5 : pxPerSec * 1.5); return true;
       case "fade":
-        toast("Drag clip edges to set fade length");
-        return false;
+        toast("Drag clip edges to set fade length"); return false;
     }
     return false;
   };
@@ -106,7 +181,12 @@ export function ArrangeView({ onArmToggle }: Props) {
       <div className="h-8 border-b border-neutral-800 bg-neutral-950 flex items-center px-3 gap-3 text-[10px] text-neutral-400">
         <span className="uppercase tracking-wider">Arrange</span>
         <span className="text-cyan-300/80 uppercase tracking-wider">Tool: {tool}</span>
-        <span className="text-neutral-600">Space play · Shift+Space stop · Enter rewind · R record · ⌘C/V/X · ⌘D dup · Del</span>
+        <button
+          type="button"
+          onClick={() => setTransport({ loopEnabled: !transport.loopEnabled })}
+          className={`h-5 px-2 rounded border text-[9px] uppercase tracking-wider ${transport.loopEnabled ? "bg-amber-500/20 text-amber-300 border-amber-500/40" : "border-neutral-800 text-neutral-500 hover:text-neutral-300"}`}
+        >Cycle {transport.loopEnabled ? "On" : "Off"}</button>
+        <span className="text-neutral-600">Drag amber bar to set loop region</span>
         <div className="flex-1" />
         <span>Zoom</span>
         <input
@@ -121,7 +201,7 @@ export function ArrangeView({ onArmToggle }: Props) {
         <div className="flex" style={{ minWidth: HEADER_W + timelineLen * pxPerSec }}>
           {/* Track headers column */}
           <div className="sticky left-0 z-10 bg-neutral-950 border-r border-neutral-800 overflow-hidden" style={{ width: HEADER_W }}>
-            <div className="h-8 border-b border-neutral-800" />
+            <div style={{ height: RULER_H }} className="border-b border-neutral-800" />
             {tracks.map(t => (
               <TrackHeader
                 key={t.id}
@@ -143,21 +223,54 @@ export function ArrangeView({ onArmToggle }: Props) {
 
           {/* Timeline area */}
           <div className="flex-1 relative">
-            {/* Ruler */}
+            {/* Bars/Beats Ruler */}
             <div
-              className="h-8 border-b border-neutral-800 bg-neutral-950 relative cursor-pointer"
+              className="border-b border-neutral-800 bg-neutral-950 relative cursor-pointer select-none"
               onClick={handleRulerClick}
-              style={{ width: timelineLen * pxPerSec }}
+              style={{ width: timelineLen * pxPerSec, height: RULER_H }}
             >
-              {Array.from({ length: Math.ceil(timelineLen) }).map((_, i) => (
+              {/* Bar markers */}
+              {Array.from({ length: totalBars }).map((_, i) => {
+                const left = i * barPx;
+                return (
+                  <div key={`bar-${i}`} className="absolute top-0 bottom-0" style={{ left }}>
+                    <div className="absolute top-0 bottom-0 w-px bg-neutral-700" />
+                    <div className="absolute top-0.5 left-1 text-[10px] font-mono text-amber-300/80 tabular-nums">{i + 1}</div>
+                    {/* Beat subdivisions inside this bar (skip beat 1) */}
+                    {beatPx > 8 && [1, 2, 3].map(b => (
+                      <div key={b} className="absolute top-3 bottom-0 w-px bg-neutral-800/80" style={{ left: b * beatPx }} />
+                    ))}
+                  </div>
+                );
+              })}
+
+              {/* Cycle (loop) region */}
+              <div
+                data-cycle="1"
+                onPointerDown={(e) => onCyclePointerDown(e, "move")}
+                onPointerMove={onCyclePointerMove}
+                onPointerUp={onCyclePointerUp}
+                title="Drag to move cycle region — click toggle in toolbar"
+                className={`absolute top-0 h-3 rounded-sm ${transport.loopEnabled ? "bg-amber-400/60 border border-amber-300" : "bg-amber-400/15 border border-amber-400/30"} cursor-grab active:cursor-grabbing`}
+                style={{ left: loopStart * pxPerSec, width: Math.max(4, (loopEnd - loopStart) * pxPerSec) }}
+              >
                 <div
-                  key={i}
-                  className="absolute top-0 bottom-0 border-l border-neutral-800 text-[9px] text-neutral-500 pl-1"
-                  style={{ left: i * pxPerSec }}
-                >
-                  {i % 5 === 0 ? `${i}s` : ""}
-                </div>
-              ))}
+                  data-cycle="1"
+                  onPointerDown={(e) => onCyclePointerDown(e, "start")}
+                  onPointerMove={onCyclePointerMove}
+                  onPointerUp={onCyclePointerUp}
+                  className="absolute left-0 top-0 bottom-0 w-1.5 bg-amber-300 cursor-ew-resize"
+                />
+                <div
+                  data-cycle="1"
+                  onPointerDown={(e) => onCyclePointerDown(e, "end")}
+                  onPointerMove={onCyclePointerMove}
+                  onPointerUp={onCyclePointerUp}
+                  className="absolute right-0 top-0 bottom-0 w-1.5 bg-amber-300 cursor-ew-resize"
+                />
+              </div>
+
+              {/* Playhead diamond */}
               <div
                 className="absolute top-0 bottom-0 w-px bg-emerald-400 pointer-events-none z-30"
                 style={{ left: transport.position * pxPerSec }}
@@ -166,34 +279,27 @@ export function ArrangeView({ onArmToggle }: Props) {
               </div>
             </div>
 
+            {/* Loop region shading down lanes */}
+            {transport.loopEnabled && (
+              <div
+                className="absolute top-0 bottom-0 bg-amber-400/5 border-x border-amber-400/30 pointer-events-none z-0"
+                style={{ left: loopStart * pxPerSec, width: Math.max(2, (loopEnd - loopStart) * pxPerSec), marginTop: RULER_H }}
+              />
+            )}
+
             {/* Track lanes */}
             {tracks.map(t => (
               <div
                 key={t.id}
                 className="relative border-b border-neutral-800"
                 style={{ height: TRACK_H, background: "linear-gradient(90deg, rgba(255,255,255,0.02), rgba(0,0,0,0))" }}
-                onDragOver={(e) => { e.preventDefault(); }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  const clipId = e.dataTransfer.getData("application/x-daw-clip");
-                  if (clipId) {
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    const newStart = Math.max(0, (e.clientX - rect.left) / pxPerSec);
-                    moveClipToTrack(clipId, t.id);
-                    updateClip(clipId, { startTime: newStart });
-                  }
-                }}
                 onClick={(e) => {
                   if (tool === "pencil") {
                     const rect = e.currentTarget.getBoundingClientRect();
                     const time = Math.max(0, (e.clientX - rect.left) / pxPerSec);
                     addClip({
                       id: `clip_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,
-                      trackId: t.id,
-                      startTime: time,
-                      duration: 2,
-                      offset: 0,
-                      name: "New Region",
+                      trackId: t.id, startTime: time, duration: 2, offset: 0, name: "New Region",
                     });
                   } else if (tool === "zoom") {
                     setPxPerSec(e.altKey ? pxPerSec / 1.5 : pxPerSec * 1.5);
@@ -206,8 +312,9 @@ export function ArrangeView({ onArmToggle }: Props) {
                   pasteClipAt(t.id, time);
                 }}
               >
-                {Array.from({ length: Math.ceil(timelineLen) }).map((_, i) => (
-                  <div key={i} className="absolute top-0 bottom-0 border-l border-neutral-900" style={{ left: i * pxPerSec }} />
+                {/* Bar grid lines on lane */}
+                {Array.from({ length: totalBars }).map((_, i) => (
+                  <div key={i} className="absolute top-0 bottom-0 w-px bg-neutral-800/80" style={{ left: i * barPx }} />
                 ))}
                 {clips.filter(c => c.trackId === t.id).map(c => (
                   <ClipBlock
@@ -218,17 +325,18 @@ export function ArrangeView({ onArmToggle }: Props) {
                     selected={selectedClipId === c.id}
                     tool={tool}
                     onSelect={() => selectClip(c.id)}
-                    onMoveTo={(tt: number) => updateClip(c.id, { startTime: Math.max(0, tt) })}
-                    onResize={(d: number) => updateClip(c.id, { duration: Math.max(0.05, d) })}
                     onContext={(x: number, y: number) => setCtxMenu({ x, y, clipId: c.id })}
                     onToolApply={(e: React.MouseEvent) => applyToolToClip(c, e)}
+                    onPointerDownDrag={(e: React.PointerEvent, mode: "move" | "resize") => beginClipDrag(c, e, mode)}
+                    onPointerMoveDrag={onClipDragMove}
+                    onPointerUpDrag={endClipDrag}
                   />
                 ))}
               </div>
             ))}
             <div
-              className="absolute top-8 bottom-0 w-px bg-emerald-400/70 pointer-events-none z-20"
-              style={{ left: transport.position * pxPerSec }}
+              className="absolute w-px bg-emerald-400/70 pointer-events-none z-20"
+              style={{ left: transport.position * pxPerSec, top: RULER_H, bottom: 0 }}
             />
           </div>
         </div>
@@ -236,7 +344,7 @@ export function ArrangeView({ onArmToggle }: Props) {
 
       {ctxMenu && (
         <div
-          className="fixed z-50 bg-neutral-950 border border-neutral-800 rounded shadow-xl py-1 text-xs text-neutral-200 min-w-[160px]"
+          className="fixed z-50 bg-neutral-950 border border-neutral-800 rounded shadow-xl py-1 text-xs text-neutral-200 min-w-[180px]"
           style={{ left: ctxMenu.x, top: ctxMenu.y }}
           onClick={(e) => e.stopPropagation()}
         >
@@ -273,9 +381,6 @@ function TrackHeader({ track, onArm, onMute, onSolo, onRemove, onRename, onVolum
   onPan: (v: number) => void;
   onDropTrack: (fromId: string) => void;
 }) {
-  // CRITICAL: do NOT mark the whole header as draggable — that intercepts
-  // pointer events on the inner slider and R/M/S buttons. Only the GripVertical
-  // handle initiates a track drag.
   const stop = (e: React.SyntheticEvent) => e.stopPropagation();
   return (
     <div
@@ -331,22 +436,13 @@ function TrackHeader({ track, onArm, onMute, onSolo, onRemove, onRename, onVolum
   );
 }
 
-function ClipBlock({ clip, color, pxPerSec, selected, tool, onSelect, onMoveTo, onResize, onContext, onToolApply }: any) {
-  const startX = useRef(0);
-  const startTime = useRef(0);
-  const startDur = useRef(0);
-  const mode = useRef<"move" | "resize" | null>(null);
+function ClipBlock({ clip, color, pxPerSec, selected, tool, onSelect, onContext, onToolApply, onPointerDownDrag, onPointerMoveDrag, onPointerUpDrag }: any) {
   const w = clip.duration * pxPerSec;
   const left = clip.startTime * pxPerSec;
   const interactive = tool === "pointer";
 
   return (
     <div
-      draggable={interactive}
-      onDragStart={(e) => {
-        e.dataTransfer.setData("application/x-daw-clip", clip.id);
-        e.dataTransfer.effectAllowed = "move";
-      }}
       onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); onSelect(); onContext(e.clientX, e.clientY); }}
       onClick={(e) => {
         e.stopPropagation();
@@ -357,21 +453,14 @@ function ClipBlock({ clip, color, pxPerSec, selected, tool, onSelect, onMoveTo, 
         if (!interactive || e.button !== 0) return;
         e.stopPropagation();
         onSelect();
-        startX.current = e.clientX;
-        startTime.current = clip.startTime;
-        startDur.current = clip.duration;
         const target = e.target as HTMLElement;
-        mode.current = target.dataset.handle === "resize" ? "resize" : "move";
-        target.setPointerCapture(e.pointerId);
+        const mode = target.dataset.handle === "resize" ? "resize" : "move";
+        onPointerDownDrag(e, mode);
       }}
-      onPointerMove={(e) => {
-        if (!interactive || !(e.buttons & 1) || !mode.current) return;
-        const dx = (e.clientX - startX.current) / pxPerSec;
-        if (mode.current === "move") onMoveTo(startTime.current + dx);
-        else onResize(startDur.current + dx);
-      }}
-      onPointerUp={() => { mode.current = null; }}
-      className={`absolute top-1 bottom-1 rounded overflow-hidden border ${selected ? "border-white" : "border-black/30"} ${interactive ? "cursor-grab active:cursor-grabbing" : ""}`}
+      onPointerMove={onPointerMoveDrag}
+      onPointerUp={onPointerUpDrag}
+      onPointerCancel={onPointerUpDrag}
+      className={`absolute top-1 bottom-1 rounded overflow-hidden border touch-none ${selected ? "border-white" : "border-black/30"} ${interactive ? "cursor-grab active:cursor-grabbing" : ""}`}
       style={{ left, width: w, background: color + "22" }}
     >
       <div className="px-1.5 py-0.5 text-[10px] text-white/90 bg-black/30 flex items-center justify-between">
