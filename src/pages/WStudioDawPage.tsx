@@ -58,7 +58,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
   useEffect(() => {
     const e = engineRef.current;
     if (!e) return;
-    tracks.forEach(t => e.updateTrackParams(t));
+    tracks.forEach(t => e.updateTrackParams(t, tracks));
   }, [tracks]);
 
   useEffect(() => {
