@@ -2,13 +2,16 @@ import { useRef, useState, useMemo } from "react";
 import { useDawStore } from "../state/DawStore";
 import { WaveformView } from "./WaveformView";
 import { Knob } from "./Knob";
+import { HorizontalMeter } from "./HorizontalMeter";
 import { Trash2, GripVertical } from "lucide-react";
 import { toast } from "sonner";
 import type { Track, Clip } from "../engine/types";
+import type { DawEngine } from "../engine/DawEngine";
 
 interface Props {
   onArmToggle: (trackId: string) => void;
   onSeek?: (position: number) => void;
+  engine?: DawEngine | null;
 }
 
 const HEADER_W = 200;
