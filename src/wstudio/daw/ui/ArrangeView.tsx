@@ -379,6 +379,8 @@ function TrackHeader({ track, onArm, onMute, onSolo, onRemove, onRename, onVolum
   onDropTrack: (fromId: string) => void;
 }) {
   const stop = (e: React.SyntheticEvent) => e.stopPropagation();
+  const db = track.volume <= 0.001 ? "-∞" : (20 * Math.log10(track.volume)).toFixed(1);
+  const panLabel = track.pan < -0.01 ? `L ${Math.round(Math.abs(track.pan) * 100)}` : track.pan > 0.01 ? `R ${Math.round(track.pan * 100)}` : "C";
   return (
     <div
       className="border-b border-neutral-800 flex overflow-hidden"
@@ -396,7 +398,7 @@ function TrackHeader({ track, onArm, onMute, onSolo, onRemove, onRename, onVolum
         className="w-4 shrink-0 grid place-items-center cursor-grab active:cursor-grabbing text-neutral-600 hover:text-neutral-300"
         title="Drag to reorder track"
       ><GripVertical className="w-3 h-3" /></div>
-      <div className="flex-1 p-2 flex flex-col gap-1 min-w-0">
+      <div className="flex-1 p-2 flex flex-col gap-1.5 min-w-0">
         <div className="flex items-center gap-1 min-w-0">
           <input
             value={track.name}
@@ -411,25 +413,40 @@ function TrackHeader({ track, onArm, onMute, onSolo, onRemove, onRename, onVolum
           <button onPointerDown={stop} onClick={onArm} title="Record-arm" className={`w-5 h-5 grid place-items-center rounded text-[9px] font-bold shrink-0 ${track.armed ? "bg-red-500 text-white" : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700"}`}>R</button>
           <button onPointerDown={stop} onClick={onMute} title="Mute" className={`w-5 h-5 grid place-items-center rounded text-[9px] font-bold shrink-0 ${track.mute ? "bg-amber-500 text-black" : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700"}`}>M</button>
           <button onPointerDown={stop} onClick={onSolo} title="Solo" className={`w-5 h-5 grid place-items-center rounded text-[9px] font-bold shrink-0 ${track.solo ? "bg-cyan-400 text-black" : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700"}`}>S</button>
-          <input
-            type="range" min={0} max={1} step={0.01} value={track.volume}
-            onChange={(e) => onVolume(Number(e.target.value))}
-            onPointerDown={stop}
-            onMouseDown={stop}
-            title="Track volume"
-            className="min-w-0 flex-1 accent-cyan-500 h-1"
-          />
+          <button onPointerDown={stop} title="Input monitor" className="w-5 h-5 grid place-items-center rounded text-[9px] font-bold shrink-0 bg-neutral-800 text-neutral-400 hover:bg-neutral-700">I</button>
+          <div className="ml-auto flex items-center gap-0.5" onPointerDown={stop} onClick={stop} title="Volume buttons">
+            <button type="button" onClick={() => onVolume(Math.max(0, track.volume - 0.03))} className="h-5 w-5 rounded-l border border-neutral-800 bg-gradient-to-b from-neutral-800 to-neutral-950 text-neutral-300 hover:text-cyan-300">−</button>
+            <button type="button" onDoubleClick={() => onVolume(0.8)} className="h-5 w-12 border-y border-neutral-800 bg-black/50 text-[9px] tabular-nums text-emerald-300">{db}</button>
+            <button type="button" onClick={() => onVolume(Math.min(1, track.volume + 0.03))} className="h-5 w-5 rounded-r border border-neutral-800 bg-gradient-to-b from-neutral-800 to-neutral-950 text-neutral-300 hover:text-cyan-300">+</button>
+          </div>
         </div>
-        <input
-          type="range" min={-1} max={1} step={0.01} value={track.pan}
-          onChange={(e) => onPan(Number(e.target.value))}
-          onPointerDown={stop}
-          onMouseDown={stop}
-          title="Pan L/R"
-          className="w-full accent-neutral-400 h-1"
-        />
+        <div className="flex items-center justify-between gap-2 min-w-0">
+          <div className="flex items-center gap-1" onPointerDown={stop} onClick={stop} title="Pan L/R">
+            <span className="text-[9px] text-neutral-500">L</span>
+            <Knob value={track.pan} min={-1} max={1} step={0.01} size={28} onChange={onPan} color={track.color} />
+            <span className="text-[9px] text-neutral-500">R</span>
+          </div>
+          <button type="button" onPointerDown={stop} onClick={() => onPan(0)} className="h-5 w-14 rounded border border-neutral-800 bg-neutral-900 text-[9px] tabular-nums text-neutral-300 hover:text-cyan-300" title="Center pan">{panLabel}</button>
+        </div>
       </div>
     </div>
+  );
+}
+
+function PlayheadMarker({ pxPerSec, ruler = false }: { pxPerSec: number; ruler?: boolean }) {
+  const position = useDawStore(s => s.transport.position);
+  if (ruler) {
+    return (
+      <div className="absolute top-0 bottom-0 w-px bg-emerald-400 pointer-events-none z-30" style={{ transform: `translate3d(${position * pxPerSec}px, 0, 0)` }}>
+        <div className="w-2 h-2 bg-emerald-400 -translate-x-1/2 rotate-45" />
+      </div>
+    );
+  }
+  return (
+    <div
+      className="absolute w-px bg-emerald-400/70 pointer-events-none z-20 will-change-transform"
+      style={{ transform: `translate3d(${position * pxPerSec}px, 0, 0)`, top: RULER_H, bottom: 0 }}
+    />
   );
 }
 
