@@ -237,6 +237,16 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
 
   return (
     <div className="fixed inset-0 bg-black flex flex-col text-neutral-200 dark">
+      <MenuBar
+        onImport={() => importInputRef.current?.click()}
+        onExport={handleExport}
+        onAddAudio={() => addTrack("audio")}
+        onAddInstrument={() => { const id = addTrack("instrument"); updateTrack(id, { instrument: "synth" }); }}
+        onPlay={handlePlayPause}
+        onStop={handleStop}
+        onRecord={handleRecord}
+        onRewind={handleRewind}
+      />
       <TransportBar
         onPlay={handlePlayPause}
         onStop={handleStop}
