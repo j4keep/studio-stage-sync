@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 
 interface Props {
   value: number;
@@ -15,58 +15,66 @@ interface Props {
 
 export function Knob({ value, min, max, step = 0.01, size = 44, label, unit, onChange, color = "#fff", showValue = true }: Props) {
   const range = max - min;
-  const norm = (value - min) / range;
+  const norm = Math.max(0, Math.min(1, (value - min) / range));
   const angle = -135 + norm * 270;
 
-  // Use refs so window-level listeners always see latest values
-  const valueRef = useRef(value);
-  valueRef.current = value;
-  const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
+  const dragRef = useRef<{ x: number; y: number; v: number; pid: number } | null>(null);
+  const elRef = useRef<HTMLDivElement>(null);
 
-  const dragRef = useRef<{ x: number; y: number; v: number } | null>(null);
-
-  useEffect(() => {
-    const move = (e: PointerEvent) => {
-      const d = dragRef.current;
-      if (!d) return;
-      e.preventDefault();
-      const dx = e.clientX - d.x;
-      const dy = d.y - e.clientY;
-      const delta = ((dx + dy) / 140) * range;
-      let next = d.v + delta;
-      next = Math.round(next / step) * step;
-      next = Math.max(min, Math.min(max, next));
-      onChangeRef.current(next);
-    };
-    const up = () => { dragRef.current = null; };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
-    window.addEventListener("pointercancel", up);
-    return () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
-      window.removeEventListener("pointercancel", up);
-    };
-  }, [min, max, range, step]);
-
-  const onPointerDown = (e: React.PointerEvent) => {
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    dragRef.current = { x: e.clientX, y: e.clientY, v: valueRef.current };
+    dragRef.current = { x: e.clientX, y: e.clientY, v: value, pid: e.pointerId };
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
   };
+
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = dragRef.current;
+    if (!d || d.pid !== e.pointerId) return;
+    e.preventDefault();
+    const dx = e.clientX - d.x;
+    const dy = d.y - e.clientY; // up = +
+    const delta = ((dx + dy) / 140) * range;
+    let next = d.v + delta;
+    next = Math.round(next / step) * step;
+    next = Math.max(min, Math.min(max, next));
+    onChange(next);
+  };
+
+  const endDrag = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = dragRef.current;
+    if (d && elRef.current) {
+      try { elRef.current.releasePointerCapture(d.pid); } catch {}
+    }
+    dragRef.current = null;
+  };
+
   const onDoubleClick = (e: React.MouseEvent) => { e.stopPropagation(); onChange((max + min) / 2); };
+
+  const onWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    const delta = (e.deltaY > 0 ? -1 : 1) * (range / 100);
+    let next = value + delta;
+    next = Math.round(next / step) * step;
+    next = Math.max(min, Math.min(max, next));
+    onChange(next);
+  };
 
   return (
     <div className="flex flex-col items-center select-none">
       <div
+        ref={elRef}
         onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
         onDoubleClick={onDoubleClick}
-        style={{ width: size, height: size }}
-        className="relative cursor-ew-resize rounded-full bg-neutral-900 border border-neutral-700 shadow-inner touch-none"
+        onWheel={onWheel}
+        style={{ width: size, height: size, touchAction: "none" }}
+        className="relative cursor-ew-resize rounded-full bg-neutral-900 border border-neutral-700 shadow-inner"
       >
         <div
-          className="absolute inset-1 rounded-full border border-neutral-800"
+          className="absolute inset-1 rounded-full border border-neutral-800 pointer-events-none"
           style={{ background: "radial-gradient(circle at 30% 30%, #2a2a2a, #0a0a0a)" }}
         />
         <div
