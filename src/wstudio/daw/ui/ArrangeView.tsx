@@ -374,6 +374,15 @@ export function ArrangeView({ onArmToggle, onSeek, engine }: Props) {
                     onPointerUpDrag={endClipDrag}
                   />
                 ))}
+                {liveRec && liveRec.trackId === t.id && engine && (
+                  <LiveRecordingBlock
+                    startTime={engine.getRecordingStart()}
+                    peaks={liveRec.peaks}
+                    duration={liveRec.dur}
+                    pxPerSec={pxPerSec}
+                    height={TRACK_H}
+                  />
+                )}
               </div>
             ))}
             <PlayheadMarker pxPerSec={pxPerSec} />
