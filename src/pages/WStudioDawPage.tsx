@@ -104,6 +104,20 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
     }
   }, [setTransport]);
 
+  const handleSeek = useCallback((position: number) => {
+    const e = engineRef.current;
+    const next = Math.max(0, position);
+    const wasPlaying = !!e?.playing;
+    if (e && wasPlaying) e.stop();
+    setTransport({ position: next, isPlaying: wasPlaying, isRecording: false });
+    if (e && wasPlaying) {
+      requestAnimationFrame(() => {
+        const st = useDawStore.getState();
+        e.play({ ...st.transport, position: next, isPlaying: true, isRecording: false }, st.tracks, st.clips);
+      });
+    }
+  }, [setTransport]);
+
   const handleRecord = useCallback(async () => {
     const e = engineRef.current;
     if (!e) return;
@@ -196,7 +210,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
         addClip({
           id: newId("clip"),
           trackId,
-          startTime: 0,
+          startTime: useDawStore.getState().transport.position,
           duration: buffer.duration,
           offset: 0,
           buffer,
@@ -280,7 +294,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
           onAddUserPlugin={(name) => toast.success(`Added plug-in: ${name}`)}
         />
 
-        {view === "arrange" && <ArrangeView onArmToggle={handleArmToggle} />}
+        {view === "arrange" && <ArrangeView onArmToggle={handleArmToggle} onSeek={handleSeek} />}
         {view === "mixer" && <MixerView engine={engineRef.current} onOpenFx={setFxTrackId} />}
         {view === "instrument" && <InstrumentPanel engine={engineRef.current} />}
 
