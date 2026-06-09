@@ -65,7 +65,21 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
         <TBtn onClick={() => onSeek ? onSeek(Math.max(0, transport.position - 5)) : setTransport({ position: Math.max(0, transport.position - 5) })} title="Back 5s"><SkipBack className="w-4 h-4" /></TBtn>
         <TBtn onClick={onPlay} active={transport.isPlaying} className="!text-emerald-400" title="Play / Pause (Space)"><Play className="w-4 h-4 fill-current" /></TBtn>
         <TBtn onClick={onStop} title="Stop (Shift+Space)"><Square className="w-4 h-4" /></TBtn>
-        <TBtn onClick={onRecord} active={transport.isRecording} className="!text-red-400" title="Record on armed track (R)"><Circle className="w-4 h-4 fill-current" /></TBtn>
+        <button
+          type="button"
+          onClick={onRecord}
+          title="Record on armed track (R)"
+          className={`h-9 w-9 grid place-items-center rounded-md border transition relative ${
+            transport.isRecording
+              ? "bg-red-600 border-red-400 text-white shadow-[0_0_12px_rgba(239,68,68,0.8)] animate-pulse"
+              : "bg-gradient-to-b from-neutral-900 to-neutral-950 border-neutral-800 text-red-400 hover:bg-neutral-800 hover:border-red-500/50"
+          }`}
+        >
+          <Circle className="w-4 h-4 fill-current" />
+          {transport.isRecording && (
+            <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-400 animate-ping" />
+          )}
+        </button>
         <TBtn onClick={() => setTransport({ loopEnabled: !transport.loopEnabled })} active={transport.loopEnabled} className={transport.loopEnabled ? "!text-amber-300" : ""} title="Cycle / Loop"><Repeat className="w-4 h-4" /></TBtn>
       </div>
 
