@@ -1,6 +1,7 @@
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { useDawStore } from "../state/DawStore";
 import { toast } from "sonner";
+import { memo } from "react";
 
 interface Props {
   onImport: () => void;
@@ -13,12 +14,16 @@ interface Props {
   onRewind: () => void;
 }
 
-const Item = ({ children, shortcut, onClick, disabled }: any) => (
-  <DropdownMenuItem onClick={onClick} disabled={disabled} className="flex justify-between gap-6 text-[12px]">
-    <span>{children}</span>
-    {shortcut && <span className="text-[10px] text-neutral-500 tracking-wider">{shortcut}</span>}
-  </DropdownMenuItem>
-);
+// Defined OUTSIDE the component so React doesn't remount these items on every
+// position-tick re-render (which was making the dropdown items lose clicks).
+const Item = memo(function Item({ children, shortcut, onClick, disabled }: any) {
+  return (
+    <DropdownMenuItem onClick={onClick} disabled={disabled} className="flex justify-between gap-6 text-[12px]">
+      <span>{children}</span>
+      {shortcut && <span className="text-[10px] text-neutral-500 tracking-wider">{shortcut}</span>}
+    </DropdownMenuItem>
+  );
+});
 
 export function MenuBar({ onImport, onExport, onAddAudio, onAddInstrument, onPlay, onStop, onRecord, onRewind }: Props) {
   const tracks = useDawStore(s => s.tracks);
