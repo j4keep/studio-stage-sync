@@ -27,10 +27,11 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onExport, onA
     return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}.${String(ms).padStart(2, "0")}`;
   };
 
-  const Btn = ({ children, onClick, active, className = "" }: any) => (
+  const Btn = ({ children, onClick, active, className = "", title }: any) => (
     <button
       onClick={onClick}
-      className={`h-9 w-9 grid place-items-center rounded-md border border-neutral-800 hover:bg-neutral-800 transition ${active ? "bg-neutral-700 text-white" : "text-neutral-300"} ${className}`}
+      title={title}
+      className={`h-9 w-9 grid place-items-center rounded-md border border-neutral-800 hover:bg-neutral-800 hover:border-neutral-700 transition shadow-inner shadow-black/40 ${active ? "bg-neutral-700 text-white border-neutral-600" : "text-neutral-300 bg-gradient-to-b from-neutral-900 to-neutral-950"} ${className}`}
     >{children}</button>
   );
 
