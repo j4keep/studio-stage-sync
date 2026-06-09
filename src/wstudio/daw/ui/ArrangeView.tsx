@@ -30,7 +30,7 @@ const TOOL_CURSORS: Record<string, string> = {
   marquee: "crosshair",
 };
 
-export function ArrangeView({ onArmToggle, onSeek }: Props) {
+export function ArrangeView({ onArmToggle, onSeek, engine }: Props) {
   const tracks = useDawStore(s => s.tracks);
   const clips = useDawStore(s => s.clips);
   const bpm = useDawStore(s => s.transport.bpm);
