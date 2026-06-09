@@ -335,6 +335,7 @@ export class DawEngine {
   recordingLivePeaks: number[] = []; // peak per processor block
   onRecordingProgress?: (peaks: number[], durationSec: number) => void;
   getRecordingTrackId() { return this.recordingTrackId; }
+  getRecordingStart() { return this.recordStartTransport; }
 
   async startRecording(trackId: string, transportPos: number, inputDeviceId?: string) {
     this.recordingTrackId = trackId;
