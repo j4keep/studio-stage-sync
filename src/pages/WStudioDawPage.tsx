@@ -12,9 +12,9 @@ import { FxRack } from "@/wstudio/daw/ui/FxRack";
 import { LibraryPanel } from "@/wstudio/daw/ui/LibraryPanel";
 import { CollabSidebar } from "@/wstudio/daw/ui/CollabSidebar";
 
-export default function WStudioDawPage() {
+export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessionCode?: string } = {}) {
   const [params] = useSearchParams();
-  const sessionCode = params.get("session");
+  const sessionCode = sessionCodeProp ?? params.get("session");
 
   const engineRef = useRef<DawEngine | null>(null);
   const [engineReady, setEngineReady] = useState(false);

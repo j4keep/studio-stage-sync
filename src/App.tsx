@@ -51,6 +51,7 @@ import FeedPage from "./pages/FeedPage";
 import { WStudioLayout } from "./wstudio/WStudioLayout";
 import SessionJoinScreen from "./wstudio/session/SessionJoinScreen";
 import UnifiedSessionScreen from "./wstudio/session/UnifiedSessionScreen";
+import SessionDawScreen from "./wstudio/session/SessionDawScreen";
 import StudioBridgeScreen from "./wstudio/bridge/StudioBridgeScreen";
 import WStudioDawPage from "./pages/WStudioDawPage";
 
@@ -213,9 +214,10 @@ const ProtectedRoutes = () => {
         <Route path="/wstudio" element={<WStudioLayout />}>
           <Route index element={<Navigate to="session/join" replace />} />
           <Route path="session/join" element={<SessionJoinScreen />} />
-          <Route path="session/live" element={<UnifiedSessionScreen />} />
-          <Route path="session/artist" element={<UnifiedSessionScreen />} />
-          <Route path="session/engineer" element={<UnifiedSessionScreen />} />
+          <Route path="session/live" element={<SessionDawScreen />} />
+          <Route path="session/artist" element={<SessionDawScreen />} />
+          <Route path="session/engineer" element={<SessionDawScreen />} />
+          <Route path="session/classic" element={<UnifiedSessionScreen />} />
           <Route path="session/bridge" element={<StudioBridgeScreen />} />
           <Route path="session" element={<Navigate to="/wstudio/session/join" replace />} />
           <Route path="artist" element={<Navigate to="/wstudio/session/live" replace />} />
