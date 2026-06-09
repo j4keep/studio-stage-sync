@@ -5,64 +5,104 @@ import { Knob } from "./Knob";
 import type { Track } from "../engine/types";
 import type { DawEngine } from "../engine/DawEngine";
 
+interface RowDef { key: string; label: string; h: number }
 interface Props {
   track: Track;
   engine: DawEngine;
   onOpenFx: () => void;
+  rows?: RowDef[];
 }
 
-export function ChannelStrip({ track, engine, onOpenFx }: Props) {
+export function ChannelStrip({ track, engine, onOpenFx, rows }: Props) {
   const updateTrack = useDawStore(s => s.updateTrack);
   const selectTrack = useDawStore(s => s.selectTrack);
   const selectedTrackId = useDawStore(s => s.selectedTrackId);
   const analyser = engine.getTrackAnalyser(track.id);
+  const isSel = selectedTrackId === track.id;
+
+  // Logic-style stacked rows. If rows are supplied (from MixerView), align to those heights.
+  const r = (key: string) => rows?.find(x => x.key === key)?.h ?? undefined;
+  const Cell: any = ({ h, children, className = "", title }: any) => (
+    <div title={title} className={`w-full border-b border-neutral-900 flex items-center justify-center px-1 ${className}`} style={{ height: h }}>{children}</div>
+  );
+
+  const dB = (20 * Math.log10(track.volume + 1e-9)).toFixed(1);
 
   return (
     <div
       onClick={() => selectTrack(track.id)}
       title={`Channel: ${track.name}`}
-      className={`w-24 shrink-0 bg-gradient-to-b from-neutral-900 to-neutral-950 border-r border-neutral-800 px-2 py-3 flex flex-col items-center gap-2 cursor-pointer ${selectedTrackId === track.id ? "ring-1 ring-cyan-400/40 from-neutral-800 to-neutral-900" : ""}`}
+      className={`w-24 shrink-0 bg-gradient-to-b from-neutral-900 to-neutral-950 border-r border-neutral-800 flex flex-col items-center cursor-pointer text-[10px] text-neutral-300 ${isSel ? "ring-1 ring-cyan-400/40" : ""}`}
     >
-      <div className="w-full h-1.5 rounded shadow-inner shadow-black/40" style={{ background: track.color }} title="Track color" />
-      <div className="text-[10px] text-neutral-300 truncate w-full text-center font-medium" title={track.name}>{track.name}</div>
-
-      {/* FX */}
-      <button
-        onClick={(e) => { e.stopPropagation(); onOpenFx(); }}
-        title="Open FX rack — add EQ, compressor, reverb, plug-ins…"
-        className="text-[9px] uppercase tracking-wider text-neutral-400 border border-neutral-800 rounded px-2 py-0.5 hover:bg-neutral-800 bg-neutral-950 shadow-inner shadow-black/40"
-      >FX ({track.effects.length})</button>
-
-      <div title={`Pan: ${track.pan < 0 ? "L" : track.pan > 0 ? "R" : "C"} ${Math.abs(track.pan * 100).toFixed(0)}%`}>
+      {/* Track header */}
+      <div className="h-6 w-full border-b border-neutral-800 flex items-center gap-1 px-1">
+        <div className="w-1 h-3 rounded-sm" style={{ background: track.color }} />
+        <div className="truncate flex-1 text-[9px] text-neutral-200">{track.name}</div>
+      </div>
+      {/* Setting */}
+      <Cell h={r("setting")} title="Channel preset"><button onClick={(e)=>{e.stopPropagation();}} className="text-[9px] text-neutral-400 border border-neutral-800 rounded px-2 bg-neutral-950 hover:bg-neutral-800 w-full truncate">Setting</button></Cell>
+      {/* EQ */}
+      <Cell h={r("eq")} title="EQ display (click to open)">
+        <button onClick={(e)=>{e.stopPropagation(); onOpenFx();}} className="w-full h-full grid place-items-center bg-neutral-950 border border-neutral-800 rounded">
+          <svg width="60" height="28" viewBox="0 0 60 28"><path d="M0,14 Q15,2 30,14 T60,14" fill="none" stroke="#22d3ee" strokeWidth="1.2" /></svg>
+        </button>
+      </Cell>
+      {/* Input */}
+      <Cell h={r("input")} title="Audio input source"><div className="w-full h-full grid place-items-center bg-neutral-950 border border-neutral-800 rounded text-[9px]">In 1</div></Cell>
+      {/* Audio FX */}
+      <Cell h={r("fx")} title="Audio FX inserts">
+        <button onClick={(e)=>{e.stopPropagation(); onOpenFx();}} className="w-full h-full bg-neutral-950 border border-neutral-800 rounded text-[9px] text-neutral-300 hover:bg-neutral-800 flex flex-col items-center justify-center gap-0.5">
+          <div>FX</div>
+          <div className="text-cyan-300/70 text-[9px]">{track.effects.length || "+"}</div>
+        </button>
+      </Cell>
+      {/* Sends (Rvb / Dly) */}
+      <Cell h={r("sends")}>
+        <div className="grid grid-cols-2 gap-1 w-full">
+          <div title="Reverb send"><Knob value={track.reverbSend} min={0} max={1} step={0.01} size={22} label="Rvb" onChange={(v) => updateTrack(track.id, { reverbSend: v })} color="#a78bfa" /></div>
+          <div title="Delay send"><Knob value={track.delaySend} min={0} max={1} step={0.01} size={22} label="Dly" onChange={(v) => updateTrack(track.id, { delaySend: v })} color="#f472b6" /></div>
+        </div>
+      </Cell>
+      {/* Output */}
+      <Cell h={r("output")} title="Output bus"><div className="w-full h-full grid place-items-center bg-neutral-950 border border-neutral-800 rounded text-[9px]">St Out</div></Cell>
+      {/* Group */}
+      <Cell h={r("group")} title="Mix group"><div className="text-neutral-600 text-[9px]">—</div></Cell>
+      {/* Automation */}
+      <Cell h={r("auto")} title="Automation mode"><div className="text-emerald-400 text-[9px]">Read</div></Cell>
+      {/* Pan */}
+      <Cell h={r("pan")} title={`Pan ${track.pan < 0 ? "L" : track.pan > 0 ? "R" : "C"} ${Math.abs(track.pan * 100).toFixed(0)}%`}>
         <Knob value={track.pan} min={-1} max={1} step={0.01} size={30} label="L  R" onChange={(v) => updateTrack(track.id, { pan: v })} color={track.color} />
-      </div>
-
-      {/* Sends */}
-      <div className="grid grid-cols-2 gap-1 w-full">
-        <div title="Reverb send level"><Knob value={track.reverbSend} min={0} max={1} step={0.01} size={26} label="Rvb" onChange={(v) => updateTrack(track.id, { reverbSend: v })} color="#a78bfa" /></div>
-        <div title="Delay send level"><Knob value={track.delaySend} min={0} max={1} step={0.01} size={26} label="Dly" onChange={(v) => updateTrack(track.id, { delaySend: v })} color="#f472b6" /></div>
-      </div>
-
-      <div className="flex gap-1 mt-1">
-        <button
-          onClick={(e) => { e.stopPropagation(); updateTrack(track.id, { mute: !track.mute }); }}
-          title="Mute this track"
-          className={`w-7 h-5 rounded text-[9px] font-bold border ${track.mute ? "bg-amber-500 text-black border-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.5)]" : "bg-neutral-900 text-neutral-400 border-neutral-800"}`}
-        >M</button>
-        <button
-          onClick={(e) => { e.stopPropagation(); updateTrack(track.id, { solo: !track.solo }); }}
-          title="Solo this track"
-          className={`w-7 h-5 rounded text-[9px] font-bold border ${track.solo ? "bg-cyan-400 text-black border-cyan-300 shadow-[0_0_8px_rgba(34,211,238,0.5)]" : "bg-neutral-900 text-neutral-400 border-neutral-800"}`}
-        >S</button>
-      </div>
-
-      <div className="flex items-end gap-1 mt-1" title="Channel fader and level meter">
-        <Fader value={track.volume} onChange={(v) => updateTrack(track.id, { volume: v })} color={track.color} />
-        <Meter analyser={analyser} />
-      </div>
-
-      <div className="text-[9px] text-neutral-500 tabular-nums" title="Fader level in decibels">
-        {(20 * Math.log10(track.volume + 1e-9)).toFixed(1)} dB
+      </Cell>
+      {/* dB readout */}
+      <Cell h={r("db")} title="Fader level (dB)">
+        <div className="tabular-nums text-[9px] text-neutral-300 bg-black/50 px-1.5 rounded border border-neutral-800">{dB}</div>
+      </Cell>
+      {/* Fader + Meter + M/S + R/I */}
+      <div className="w-full flex flex-col items-center py-2" style={{ height: r("fader") ?? 220 }}>
+        <div className="flex items-end gap-1 flex-1">
+          <Fader value={track.volume} onChange={(v) => updateTrack(track.id, { volume: v })} color={track.color} height={160} />
+          <Meter analyser={analyser} height={160} />
+        </div>
+        <div className="flex gap-1 mt-1.5">
+          <button
+            onClick={(e) => { e.stopPropagation(); updateTrack(track.id, { armed: !track.armed }); }}
+            title="Record-arm"
+            className={`w-5 h-4 rounded text-[8px] font-bold border ${track.armed ? "bg-red-500 text-white border-red-400" : "bg-neutral-900 text-neutral-400 border-neutral-800"}`}
+          >R</button>
+          <button title="Input monitor" className="w-5 h-4 rounded text-[8px] font-bold border bg-neutral-900 text-neutral-400 border-neutral-800">I</button>
+        </div>
+        <div className="flex gap-1 mt-1">
+          <button
+            onClick={(e) => { e.stopPropagation(); updateTrack(track.id, { mute: !track.mute }); }}
+            title="Mute"
+            className={`w-5 h-4 rounded text-[8px] font-bold border ${track.mute ? "bg-amber-500 text-black border-amber-400" : "bg-neutral-900 text-neutral-400 border-neutral-800"}`}
+          >M</button>
+          <button
+            onClick={(e) => { e.stopPropagation(); updateTrack(track.id, { solo: !track.solo }); }}
+            title="Solo"
+            className={`w-5 h-4 rounded text-[8px] font-bold border ${track.solo ? "bg-cyan-400 text-black border-cyan-300" : "bg-neutral-900 text-neutral-400 border-neutral-800"}`}
+          >S</button>
+        </div>
       </div>
     </div>
   );
