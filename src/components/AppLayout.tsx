@@ -11,6 +11,7 @@ import { MessageCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useProGate } from "@/hooks/use-pro-gate";
 import ProGateModal from "./ProGateModal";
+import IncognitoFeedWindow from "./IncognitoFeedWindow";
 
 const AppLayout = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
@@ -96,6 +97,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
       </div>
       <ProGateModal open={showProModal} onClose={closeProModal} featureName={gatedFeature} onSubscribe={activatePro} />
       <UnratedSessionPopup />
+      {location.pathname !== "/auth" && location.pathname !== "/feed" && <IncognitoFeedWindow />}
     </div>
   );
 };
