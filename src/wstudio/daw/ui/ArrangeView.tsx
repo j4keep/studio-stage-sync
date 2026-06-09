@@ -423,7 +423,7 @@ function TrackHeader({ track, onArm, onMute, onSolo, onRemove, onRename, onVolum
         <div className="flex items-center justify-between gap-2 min-w-0">
           <div className="flex items-center gap-1" onPointerDown={stop} onClick={stop} title="Pan L/R">
             <span className="text-[9px] text-neutral-500">L</span>
-            <Knob value={track.pan} min={-1} max={1} step={0.01} size={28} onChange={onPan} color={track.color} />
+            <Knob value={track.pan} min={-1} max={1} step={0.01} size={28} onChange={onPan} color={track.color} showValue={false} />
             <span className="text-[9px] text-neutral-500">R</span>
           </div>
           <button type="button" onPointerDown={stop} onClick={() => onPan(0)} className="h-5 w-14 rounded border border-neutral-800 bg-neutral-900 text-[9px] tabular-nums text-neutral-300 hover:text-cyan-300" title="Center pan">{panLabel}</button>
