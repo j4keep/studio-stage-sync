@@ -235,7 +235,8 @@ export function ArrangeView({ onArmToggle, onSeek, engine }: Props) {
               const trackClips = clips.filter(c => c.trackId === t.id);
               const isStereo = t.kind === "instrument" || trackClips.some(c => (c.buffer?.numberOfChannels ?? 0) >= 2);
               const stereo = engine?.getTrackStereoAnalysers(t.id) ?? null;
-              const meters = stereo ? (isStereo ? [stereo.L, stereo.R] : [stereo.L]) : [];
+              const mono = engine?.getTrackAnalyser(t.id) ?? null;
+              const meters = isStereo && stereo ? [stereo.L, stereo.R] : mono ? [mono] : [];
               return (
                 <TrackHeader
                   key={t.id}

@@ -19,8 +19,9 @@ export function ChannelStrip({ track, engine, onOpenFx, rows }: Props) {
   const selectedTrackId = useDawStore(s => s.selectedTrackId);
   const clips = useDawStore(s => s.clips);
   const stereo = engine.getTrackStereoAnalysers(track.id);
+  const mono = engine.getTrackAnalyser(track.id);
   const isStereo = track.kind === "instrument" || clips.some(c => c.trackId === track.id && (c.buffer?.numberOfChannels ?? 0) >= 2);
-  const meters = stereo ? (isStereo ? [stereo.L, stereo.R] : [stereo.L]) : [];
+  const meters = isStereo && stereo ? [stereo.L, stereo.R] : mono ? [mono] : [];
   const isSel = selectedTrackId === track.id;
 
   // Logic-style stacked rows. If rows are supplied (from MixerView), align to those heights.
