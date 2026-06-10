@@ -403,7 +403,7 @@ export class DawEngine {
 
   private async startInputMonitoring(trackId: string, inputDeviceId?: string) {
     const chain = this.trackChains.get(trackId);
-    if (!chain || chain.inputMonitoring || chain.inputMonitorFailed) return;
+    if (!chain || chain.inputMonitoring) return;
     const token = ++chain.inputMonitorToken;
     try {
       await this.resume();
@@ -430,7 +430,7 @@ export class DawEngine {
       chain.inputMonitoring = true;
       chain.inputMonitorFailed = false;
     } catch {
-      if (chain.inputMonitorToken === token) chain.inputMonitorFailed = true;
+      if (chain.inputMonitorToken === token) chain.inputMonitorFailed = false;
     }
   }
 
