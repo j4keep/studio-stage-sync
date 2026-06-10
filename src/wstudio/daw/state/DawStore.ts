@@ -245,7 +245,12 @@ export const useDawStore = create<DawState>((set, get) => ({
     ),
   }),
 
-  setTransport: (patch) => set({ transport: { ...get().transport, ...patch } }),
+  setTransport: (patch) => {
+    const next = { ...get().transport, ...patch };
+    set({ transport: next });
+    const metroKeys = ["metronome","metronomeVolume","metroAccent","metroCountInBars","metroOutputDeviceId"];
+    if (metroKeys.some(k => k in patch)) persistMetro(next);
+  },
   setView: (view) => set({ view }),
   selectTrack: (id) => set({ selectedTrackId: id }),
   selectClip: (id) => set({ selectedClipId: id }),
@@ -253,6 +258,8 @@ export const useDawStore = create<DawState>((set, get) => ({
   setMasterVolume: (v) => set({ masterVolume: v }),
   setMetronomeVolume: (v) => {
     const vol = Math.max(0, Math.min(1, v));
-    set({ transport: { ...get().transport, metronomeVolume: vol } });
+    const next = { ...get().transport, metronomeVolume: vol };
+    set({ transport: next });
+    persistMetro(next);
   },
 }));
