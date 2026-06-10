@@ -1,6 +1,12 @@
 import type { Track, Clip, TransportState, EffectInstance, MidiNote } from "./types";
 import { buildEffect, type BuiltEffect } from "./Effects";
 
+type SharedInputMonitor = {
+  stream: MediaStream;
+  source: MediaStreamAudioSourceNode;
+  refs: Set<string>;
+};
+
 /**
  * Browser DAW engine. Holds the AudioContext, master bus, sends, and per-track chains.
  * Scheduling: simple "play all clips" — each play() call schedules every clip on every track
@@ -39,11 +45,8 @@ export class DawEngine {
     savedDelaySend?: number;
     effectSignature: string;
   }>();
-  private sharedInputMonitors = new Map<string, {
-    stream: MediaStream;
-    source: MediaStreamAudioSourceNode;
-    refs: Set<string>;
-  }>();
+  private sharedInputMonitors = new Map<string, SharedInputMonitor>();
+  private pendingInputMonitors = new Map<string, Promise<SharedInputMonitor>>();
   private startCtxTime = 0;
   private startTransportTime = 0;
   playing = false;
