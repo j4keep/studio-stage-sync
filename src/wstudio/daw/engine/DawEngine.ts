@@ -376,7 +376,7 @@ export class DawEngine {
 
 
   // Live recording level + waveform progress
-  recordingLivePeaks: number[] = []; // peak per processor block
+  recordingLivePeaks: number[] = []; // interleaved min/max pairs, same shape model as rendered clips
   onRecordingProgress?: (peaks: number[], durationSec: number) => void;
   getRecordingTrackId() { return this.recordingTrackId; }
   getRecordingStart() { return this.recordStartTransport; }
@@ -453,8 +453,8 @@ export class DawEngine {
     this.recBuffers = [];
     this.recordingLivePeaks = [];
     const chain = this.trackChains.get(trackId);
-    this.stopInputMonitoring(trackId);
-    this.micStream = await navigator.mediaDevices.getUserMedia({
+    if (chain && !chain.inputMonitoring) await this.startInputMonitoring(trackId, inputDeviceId);
+    const liveStream = chain?.inputMonitorStream ?? await navigator.mediaDevices.getUserMedia({
       audio: {
         deviceId: inputDeviceId ? { exact: inputDeviceId } : undefined,
         // Record the mic stream, while asking the browser to remove DAW playback
@@ -467,14 +467,9 @@ export class DawEngine {
       } as MediaTrackConstraints,
     });
 
-    const src = this.ctx.createMediaStreamSource(this.micStream);
-
-    // Drive the live input meter only — never connect mic to the main mixer path
-    // so clip playback continues normally and there's no feedback.
-    if (chain) {
-      chain.micSource = src;
-      try { src.connect(chain.inputAnalyser); } catch {}
-    }
+    this.micStream = liveStream;
+    const src = chain?.inputMonitorSource ?? this.ctx.createMediaStreamSource(liveStream);
+    if (chain) chain.micSource = src;
 
     // Capture clean mic samples for the clip + drive the live waveform overlay
     const proc = this.ctx.createScriptProcessor(4096, 1, 1);
@@ -490,13 +485,20 @@ export class DawEngine {
     proc.onaudioprocess = (e) => {
       const ch = e.inputBuffer.getChannelData(0);
       this.recBuffers.push(new Float32Array(ch));
-      // Peak for live waveform overlay
-      let peak = 0;
-      for (let i = 0; i < ch.length; i++) {
-        const v = Math.abs(ch[i]);
-        if (v > peak) peak = v;
+      // Min/max pairs for live waveform overlay, matching computePeaks() so the
+      // region does not redraw into a different-looking shape after stop.
+      const samplesPerPixel = 512;
+      for (let start = 0; start < ch.length; start += samplesPerPixel) {
+        const end = Math.min(start + samplesPerPixel, ch.length);
+        let min = 0;
+        let max = 0;
+        for (let i = start; i < end; i++) {
+          const v = ch[i];
+          if (v < min) min = v;
+          if (v > max) max = v;
+        }
+        this.recordingLivePeaks.push(min, max);
       }
-      this.recordingLivePeaks.push(peak);
       const dur = this.recBuffers.reduce((s, b) => s + b.length, 0) / this.ctx.sampleRate;
       this.onRecordingProgress?.(this.recordingLivePeaks, dur);
     };
@@ -525,7 +527,6 @@ export class DawEngine {
     // Restore the track's monitor path
     const chain = this.trackChains.get(this.recordingTrackId);
     if (chain) {
-      try { chain.micSource?.disconnect(); } catch {}
       chain.micSource = null;
     }
     this.recBuffers = [];
@@ -534,7 +535,9 @@ export class DawEngine {
     try { this.recSilentSink?.disconnect(); } catch {}
     this.recProcessor = null;
     this.recSilentSink = null;
-    this.micStream?.getTracks().forEach(t => t.stop());
+    if (this.micStream && this.micStream !== chain?.inputMonitorStream) {
+      this.micStream.getTracks().forEach(t => t.stop());
+    }
     this.micStream = null;
     this.recordingTrackId = null;
     this.onRecordingProgress?.([], 0);
