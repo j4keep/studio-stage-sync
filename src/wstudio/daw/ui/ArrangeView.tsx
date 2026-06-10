@@ -66,6 +66,11 @@ export function ArrangeView({ onArmToggle, onSeek, engine }: Props) {
   const duplicateClip = useDawStore(s => s.duplicateClip);
   const addClip = useDawStore(s => s.addClip);
   const tool = useDawStore(s => s.tool);
+  const toggleAutomationLane = useDawStore(s => s.toggleAutomationLane);
+  const setAutomationParam = useDawStore(s => s.setAutomationParam);
+  const addAutomationPoint = useDawStore(s => s.addAutomationPoint);
+  const updateAutomationPoint = useDawStore(s => s.updateAutomationPoint);
+  const removeAutomationPoint = useDawStore(s => s.removeAutomationPoint);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; clipId: string } | null>(null);
