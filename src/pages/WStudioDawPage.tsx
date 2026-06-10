@@ -189,6 +189,17 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
     engineRef.current?.setMetronomeVolume(metronomeVolume);
   }, [metronomeVolume]);
 
+  // Sync metronome accent
+  useEffect(() => {
+    engineRef.current?.setMetronomeAccent(metroAccent);
+  }, [metroAccent]);
+
+  // Sync separate metronome output device
+  useEffect(() => {
+    engineRef.current?.setMetronomeOutputDevice(metroOutputDeviceId);
+  }, [metroOutputDeviceId]);
+
+
   // Keyboard shortcuts
   useEffect(() => {
     const onKey = (ev: KeyboardEvent) => {
