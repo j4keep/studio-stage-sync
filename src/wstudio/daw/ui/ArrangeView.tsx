@@ -319,7 +319,7 @@ export function ArrangeView({ onArmToggle, onSeek, engine }: Props) {
                 />
               </div>
 
-              <PlayheadMarker pxPerSec={pxPerSec} ruler />
+              <PlayheadMarker pxPerSec={pxPerSec} ruler recOverride={liveRec ? engine!.getRecordingStart() + liveRec.dur : null} />
             </div>
 
             {/* Loop region shading down lanes */}
