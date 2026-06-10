@@ -326,4 +326,37 @@ export const useDawStore = create<DawState>((set, get) => ({
     set({ transport: next });
     persistMetro(next);
   },
+  toggleAutomationLane: (trackId) => set({
+    tracks: get().tracks.map(t => t.id === trackId ? { ...t, automationOpen: !t.automationOpen, automationParam: t.automationParam ?? "volume" } : t),
+  }),
+  setAutomationParam: (trackId, param) => set({
+    tracks: get().tracks.map(t => t.id === trackId ? { ...t, automationParam: param } : t),
+  }),
+  addAutomationPoint: (trackId, point) => { snap(get, set); set({
+    tracks: get().tracks.map(t => {
+      if (t.id !== trackId) return t;
+      const param = t.automationParam ?? "volume";
+      const lane = [...(t.automation?.[param] ?? []), point].sort((a, b) => a.t - b.t);
+      return { ...t, automation: { ...(t.automation ?? {}), [param]: lane } };
+    }),
+  }); },
+  updateAutomationPoint: (trackId, idx, patch) => { set({
+    tracks: get().tracks.map(t => {
+      if (t.id !== trackId) return t;
+      const param = t.automationParam ?? "volume";
+      const lane = (t.automation?.[param] ?? []).slice();
+      if (!lane[idx]) return t;
+      lane[idx] = { ...lane[idx], ...patch };
+      lane.sort((a, b) => a.t - b.t);
+      return { ...t, automation: { ...(t.automation ?? {}), [param]: lane } };
+    }),
+  }); },
+  removeAutomationPoint: (trackId, idx) => { snap(get, set); set({
+    tracks: get().tracks.map(t => {
+      if (t.id !== trackId) return t;
+      const param = t.automationParam ?? "volume";
+      const lane = (t.automation?.[param] ?? []).filter((_, i) => i !== idx);
+      return { ...t, automation: { ...(t.automation ?? {}), [param]: lane } };
+    }),
+  }); },
 }));
