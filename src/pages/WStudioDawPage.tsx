@@ -222,6 +222,10 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
       } else if (ev.key.toLowerCase() === "r" && !meta) {
         ev.preventDefault();
         handleRecord();
+      } else if (meta && ev.key.toLowerCase() === "z") {
+        ev.preventDefault();
+        if (ev.shiftKey) useDawStore.getState().redo();
+        else useDawStore.getState().undo();
       } else if (meta && ev.key.toLowerCase() === "c") {
         const sel = useDawStore.getState().selectedClipId;
         if (sel) { useDawStore.getState().copyClip(sel); toast.success("Copied"); }
