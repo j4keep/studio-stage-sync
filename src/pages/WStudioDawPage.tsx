@@ -34,6 +34,8 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
   const clips = useDawStore(s => s.clips);
   const metronome = useDawStore(s => s.transport.metronome);
   const metronomeVolume = useDawStore(s => s.transport.metronomeVolume);
+  const metroAccent = useDawStore(s => s.transport.metroAccent);
+  const metroOutputDeviceId = useDawStore(s => s.transport.metroOutputDeviceId);
   const bpm = useDawStore(s => s.transport.bpm);
   const timeSigNum = useDawStore(s => s.transport.timeSigNum);
   const setTransport = useDawStore(s => s.setTransport);
@@ -166,6 +168,12 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
     selectTrack(armed.id);
     try {
       await e.resume();
+      const countBars = useDawStore.getState().transport.metroCountInBars || 0;
+      if (countBars > 0) {
+        const t0 = useDawStore.getState().transport;
+        toast.message(`Count-in: ${countBars} bar${countBars > 1 ? "s" : ""}`);
+        await e.countIn(countBars, t0.timeSigNum || 4, t0.bpm);
+      }
       const latest = useDawStore.getState();
       const recordTrack = latest.tracks.find(t => t.id === armed!.id) ?? armed;
       await e.startRecording(recordTrack.id, latest.transport.position, recordTrack.inputDeviceId);
@@ -186,6 +194,17 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
   useEffect(() => {
     engineRef.current?.setMetronomeVolume(metronomeVolume);
   }, [metronomeVolume]);
+
+  // Sync metronome accent
+  useEffect(() => {
+    engineRef.current?.setMetronomeAccent(metroAccent);
+  }, [metroAccent]);
+
+  // Sync separate metronome output device
+  useEffect(() => {
+    engineRef.current?.setMetronomeOutputDevice(metroOutputDeviceId);
+  }, [metroOutputDeviceId]);
+
 
   // Keyboard shortcuts
   useEffect(() => {

@@ -9,6 +9,35 @@ let clipCounter = 0;
 
 export const newId = (prefix: string) => `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
+const METRO_LS_KEY = "wstudio:daw:metro";
+function loadPersistedMetro(): Partial<TransportState> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(METRO_LS_KEY);
+    if (!raw) return {};
+    const p = JSON.parse(raw);
+    const out: Partial<TransportState> = {};
+    if (typeof p.metronome === "boolean") out.metronome = p.metronome;
+    if (typeof p.metronomeVolume === "number") out.metronomeVolume = p.metronomeVolume;
+    if (typeof p.metroAccent === "boolean") out.metroAccent = p.metroAccent;
+    if (typeof p.metroCountInBars === "number") out.metroCountInBars = p.metroCountInBars;
+    if (typeof p.metroOutputDeviceId === "string") out.metroOutputDeviceId = p.metroOutputDeviceId;
+    return out;
+  } catch { return {}; }
+}
+function persistMetro(t: TransportState) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(METRO_LS_KEY, JSON.stringify({
+      metronome: t.metronome,
+      metronomeVolume: t.metronomeVolume,
+      metroAccent: t.metroAccent,
+      metroCountInBars: t.metroCountInBars,
+      metroOutputDeviceId: t.metroOutputDeviceId,
+    }));
+  } catch {}
+}
+
 export type DawTool = "pointer" | "pencil" | "eraser" | "scissors" | "glue" | "mute" | "zoom" | "fade" | "marquee";
 
 export interface DawState {
@@ -64,11 +93,15 @@ export const useDawStore = create<DawState>((set, get) => ({
     loopEnd: 8,
     metronome: false,
     metronomeVolume: 0.5,
+    metroAccent: true,
+    metroCountInBars: 0,
+    metroOutputDeviceId: undefined,
     keyRoot: "C",
     keyMode: "major",
     timeSigNum: 4,
     timeSigDen: 4,
     tempoMode: "keep",
+    ...loadPersistedMetro(),
   },
   selectedTrackId: null,
   selectedClipId: null,
@@ -212,7 +245,12 @@ export const useDawStore = create<DawState>((set, get) => ({
     ),
   }),
 
-  setTransport: (patch) => set({ transport: { ...get().transport, ...patch } }),
+  setTransport: (patch) => {
+    const next = { ...get().transport, ...patch };
+    set({ transport: next });
+    const metroKeys = ["metronome","metronomeVolume","metroAccent","metroCountInBars","metroOutputDeviceId"];
+    if (metroKeys.some(k => k in patch)) persistMetro(next);
+  },
   setView: (view) => set({ view }),
   selectTrack: (id) => set({ selectedTrackId: id }),
   selectClip: (id) => set({ selectedClipId: id }),
@@ -220,6 +258,8 @@ export const useDawStore = create<DawState>((set, get) => ({
   setMasterVolume: (v) => set({ masterVolume: v }),
   setMetronomeVolume: (v) => {
     const vol = Math.max(0, Math.min(1, v));
-    set({ transport: { ...get().transport, metronomeVolume: vol } });
+    const next = { ...get().transport, metronomeVolume: vol };
+    set({ transport: next });
+    persistMetro(next);
   },
 }));
