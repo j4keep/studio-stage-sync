@@ -103,6 +103,8 @@ export interface TransportState {
   timeSigDen: number;
   /** Smart Tempo mode for imported audio */
   tempoMode: TempoMode;
+  /** How the BBT/time readout in the transport bar renders */
+  bbtDisplayMode: BBTDisplayMode;
 }
 
 export interface UserPlugin {
