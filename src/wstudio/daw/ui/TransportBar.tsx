@@ -224,17 +224,28 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
         <button type="button" onClick={onImport} title="Import audio file(s)" className="h-7 px-2 rounded border border-neutral-800 text-[10px] uppercase flex items-center gap-1 hover:bg-neutral-800"><Plus className="w-3 h-3" /> Import</button>
       </div>
 
-      <div className="flex items-center bg-neutral-900 border border-neutral-800 rounded overflow-hidden" title="Switch workspace view">
-        {(["arrange", "mixer", "instrument"] as const).map(v => (
-          <button
-            type="button"
-            key={v}
-            onClick={() => setView(v)}
-            title={`Switch to ${v} view`}
-            className={`px-3 h-7 text-[10px] uppercase tracking-wider ${view === v ? "bg-cyan-500/20 text-cyan-300" : "text-neutral-400 hover:bg-neutral-800"}`}
-          >{v}</button>
-        ))}
-      </div>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          title="Switch workspace view"
+          className="h-7 px-2 rounded border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-[10px] uppercase tracking-wider text-cyan-300 flex items-center gap-1"
+        >
+          <span className="text-neutral-500">View:</span>
+          <span>{view}</span>
+          <ChevronDown className="w-3 h-3 text-neutral-500" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="bg-neutral-900 border-neutral-800 text-neutral-200 min-w-[160px]">
+          {(["arrange", "mixer", "instrument"] as const).map(v => (
+            <DropdownMenuItem
+              key={v}
+              onClick={() => setView(v)}
+              className="flex items-center justify-between text-[12px] uppercase tracking-wider"
+            >
+              <span>{v}</span>
+              {view === v && <span className="text-cyan-300 text-[10px]">●</span>}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       <div className="flex items-center gap-1.5 ml-2" title="Master output volume">
         <Volume2 className="w-3.5 h-3.5 text-neutral-400" />
