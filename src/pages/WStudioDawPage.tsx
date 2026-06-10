@@ -51,7 +51,21 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
   useEffect(() => {
     const e = new DawEngine();
     engineRef.current = e;
-    e.onPositionChange = (pos) => setTransport({ position: pos });
+    e.onPositionChange = (pos) => {
+      setTransport({ position: pos });
+      // Apply automation lanes (volume/pan) live without thrashing the store.
+      const allTracks = useDawStore.getState().tracks;
+      for (const tr of allTracks) {
+        const volPts = tr.automation?.volume;
+        if (volPts && volPts.length > 0) {
+          e.setLiveTrackVolume(tr.id, interpAutomation(volPts, pos, tr.volume));
+        }
+        const panPts = tr.automation?.pan;
+        if (panPts && panPts.length > 0) {
+          e.setLiveTrackPan(tr.id, interpAutomation(panPts, pos, tr.pan));
+        }
+      }
+    };
     e.onRecordedClip = async (trackId, clip) => {
       clip.peaks = computePeaks(clip.buffer!);
       addClip(clip);
