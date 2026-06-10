@@ -34,6 +34,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
   const clips = useDawStore(s => s.clips);
   const metronome = useDawStore(s => s.transport.metronome);
   const bpm = useDawStore(s => s.transport.bpm);
+  const timeSigNum = useDawStore(s => s.transport.timeSigNum);
   const setTransport = useDawStore(s => s.setTransport);
   const addClip = useDawStore(s => s.addClip);
   const addTrack = useDawStore(s => s.addTrack);
