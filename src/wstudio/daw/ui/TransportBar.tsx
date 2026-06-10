@@ -186,32 +186,8 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
 
       <MetronomePopover />
 
-      {/* Smart Tempo mode (compact dropdown to save header space) */}
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          title="Smart Tempo — how imported audio behaves"
-          className="h-7 px-2 rounded border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-[10px] uppercase tracking-wider text-neutral-300 flex items-center gap-1"
-        >
-          <span className="text-neutral-500">Tempo:</span>
-          <span className="text-amber-300">{transport.tempoMode}</span>
-          <ChevronDown className="w-3 h-3 text-neutral-500" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="bg-neutral-900 border-neutral-800 text-neutral-200 min-w-[220px]">
-          {TEMPO_MODES.map(m => (
-            <DropdownMenuItem
-              key={m.id}
-              onClick={() => setTransport({ tempoMode: m.id })}
-              className="flex flex-col items-start gap-0.5 text-[12px]"
-            >
-              <div className="flex items-center gap-2">
-                <span className="uppercase tracking-wider text-[10px] text-amber-300">{m.label}</span>
-                {transport.tempoMode === m.id && <span className="text-cyan-300 text-[10px]">●</span>}
-              </div>
-              <span className="text-[10px] text-neutral-500">{m.hint}</span>
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+
+
 
 
       {/* Tool palette (Logic-style) */}
