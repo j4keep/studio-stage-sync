@@ -468,16 +468,11 @@ export class DawEngine {
 
     const src = this.ctx.createMediaStreamSource(this.micStream);
 
-    // Route mic INTO the track chain so the existing meters/effects path is live.
-    // Mute the speaker monitor + sends to prevent feedback howl / robotic doubling.
+    // Drive the live input meter only — never connect mic to the main mixer path
+    // so clip playback continues normally and there's no feedback.
     if (chain) {
       chain.micSource = src;
-      chain.savedReverbSend = chain.reverbSend.gain.value;
-      chain.savedDelaySend = chain.delaySend.gain.value;
-      chain.monitorGain.gain.value = 0;          // no live monitoring through speakers
-      chain.reverbSend.gain.value = 0;
-      chain.delaySend.gain.value = 0;
-      try { src.connect(chain.input); } catch {}
+      try { src.connect(chain.inputAnalyser); } catch {}
     }
 
     // Capture clean mic samples for the clip + drive the live waveform overlay
