@@ -527,6 +527,9 @@ function TrackHeader({ track, canRecordInput, meters = [], onArm, onMute, onSolo
             onMouseDown={stop}
             className="flex-1 min-w-0 bg-transparent text-[11px] font-medium text-neutral-100 border-none outline-none"
           />
+          {onToggleAuto && (
+            <button onPointerDown={stop} onClick={onToggleAuto} title="Toggle automation lane" className={`w-5 h-5 grid place-items-center rounded text-[9px] font-bold shrink-0 ${track.automationOpen ? "bg-emerald-400 text-black" : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700"}`}>A</button>
+          )}
           <button onPointerDown={stop} onClick={onRemove} title="Delete track" className="text-neutral-600 hover:text-red-400 shrink-0"><Trash2 className="w-3 h-3" /></button>
         </div>
 
