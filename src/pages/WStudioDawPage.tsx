@@ -208,18 +208,11 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
   const handleArmToggle = useCallback((trackId: string) => {
     const t = tracks.find(x => x.id === trackId);
     if (!t) return;
-    // Exclusive arm
+    // Exclusive arm — input monitoring is always-on for audio tracks, so the
+    // R button just decides which track will capture when record is pressed.
     const shouldArm = !t.armed;
     selectTrack(trackId);
     tracks.forEach(x => updateTrack(x.id, { armed: x.id === trackId ? shouldArm : false }));
-    tracks.forEach(x => {
-      if (x.id !== trackId) engineRef.current?.unmonitorInput(x.id);
-    });
-    if (shouldArm && t.kind === "audio") {
-      engineRef.current?.monitorInput(t.id, t.inputDeviceId).catch(() => toast.error("Mic access denied"));
-    } else {
-      engineRef.current?.unmonitorInput(t.id);
-    }
   }, [tracks, updateTrack, selectTrack]);
 
   const importFiles = useCallback(async (files: FileList) => {

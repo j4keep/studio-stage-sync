@@ -24,6 +24,7 @@ export class DawEngine {
     splitter: ChannelSplitterNode;
     analyserL: AnalyserNode;
     analyserR: AnalyserNode;
+    inputAnalyser: AnalyserNode;
     reverbSend: GainNode;
     delaySend: GainNode;
     activeSources: AudioScheduledSourceNode[];
@@ -124,6 +125,8 @@ export class DawEngine {
       analyserL.fftSize = 512; analyserR.fftSize = 512;
       splitter.connect(analyserL, 0);
       splitter.connect(analyserR, 1);
+      const inputAnalyser = this.ctx.createAnalyser();
+      inputAnalyser.fftSize = 512;
       const reverbSend = this.ctx.createGain();
       const delaySend = this.ctx.createGain();
       chain = {
@@ -136,6 +139,7 @@ export class DawEngine {
         splitter,
         analyserL,
         analyserR,
+        inputAnalyser,
         reverbSend,
         delaySend,
         activeSources: [],
@@ -210,10 +214,9 @@ export class DawEngine {
     const anySolo = allTracks ? allTracks.some(t => t.solo) : false;
     const silencedBySolo = anySolo && !track.solo;
     c.gain.gain.setTargetAtTime((track.mute || silencedBySolo) ? 0 : volume, now, 0.01);
-    const inputOnlyMetering = this.recordingTrackId === track.id || c.inputMonitoring;
-    c.monitorGain.gain.setTargetAtTime(inputOnlyMetering ? 0 : 1, now, 0.01);
-    c.reverbSend.gain.setTargetAtTime(inputOnlyMetering ? 0 : reverb, now, 0.01);
-    c.delaySend.gain.setTargetAtTime(inputOnlyMetering ? 0 : delay, now, 0.01);
+    c.monitorGain.gain.setTargetAtTime(1, now, 0.01);
+    c.reverbSend.gain.setTargetAtTime(reverb, now, 0.01);
+    c.delaySend.gain.setTargetAtTime(delay, now, 0.01);
     // Update insert params
     track.effects.filter(e => e.enabled).forEach((fx, i) => {
       if (c.inserts[i]) c.inserts[i].apply(fx.params);
@@ -233,6 +236,7 @@ export class DawEngine {
   setMasterVolume(v: number) { this.masterGain.gain.value = v; }
   getMasterAnalyser() { return this.masterAnalyser; }
   getTrackAnalyser(trackId: string) { return this.trackChains.get(trackId)?.analyser ?? null; }
+  getTrackInputAnalyser(trackId: string) { return this.trackChains.get(trackId)?.inputAnalyser ?? null; }
   getTrackStereoAnalysers(trackId: string) {
     const c = this.trackChains.get(trackId);
     return c ? { L: c.analyserL, R: c.analyserR } : null;
@@ -378,12 +382,13 @@ export class DawEngine {
   getRecordingStart() { return this.recordStartTransport; }
 
   syncInputMonitoring(tracks: Track[]) {
-    const armedAudioIds = new Set(tracks.filter(t => t.kind === "audio" && t.armed).map(t => t.id));
+    // Always-on input metering for every audio track — independent of arm state.
+    const audioIds = new Set(tracks.filter(t => t.kind === "audio").map(t => t.id));
     this.trackChains.forEach((_, id) => {
-      if (!armedAudioIds.has(id) || this.recordingTrackId === id) this.stopInputMonitoring(id);
+      if (!audioIds.has(id)) this.stopInputMonitoring(id);
     });
     tracks.forEach((track) => {
-      if (track.kind !== "audio" || !track.armed || this.recordingTrackId === track.id) return;
+      if (track.kind !== "audio" || this.recordingTrackId === track.id) return;
       void this.startInputMonitoring(track.id, track.inputDeviceId);
     });
   }
@@ -412,19 +417,18 @@ export class DawEngine {
           sampleRate: this.ctx.sampleRate,
         } as MediaTrackConstraints,
       });
-      if (chain.inputMonitorToken !== token || this.recordingTrackId === trackId) {
+      if (chain.inputMonitorToken !== token) {
         stream.getTracks().forEach(t => t.stop());
         return;
       }
       const src = this.ctx.createMediaStreamSource(stream);
-      src.connect(chain.input);
+      // Route ONLY to dedicated input analyser — never into the main mixer chain,
+      // so there's no feedback and playback of clips is unaffected.
+      src.connect(chain.inputAnalyser);
       chain.inputMonitorSource = src;
       chain.inputMonitorStream = stream;
       chain.inputMonitoring = true;
       chain.inputMonitorFailed = false;
-      chain.monitorGain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.01);
-      chain.reverbSend.gain.setTargetAtTime(0, this.ctx.currentTime, 0.01);
-      chain.delaySend.gain.setTargetAtTime(0, this.ctx.currentTime, 0.01);
     } catch {
       if (chain.inputMonitorToken === token) chain.inputMonitorFailed = true;
     }
@@ -465,16 +469,11 @@ export class DawEngine {
 
     const src = this.ctx.createMediaStreamSource(this.micStream);
 
-    // Route mic INTO the track chain so the existing meters/effects path is live.
-    // Mute the speaker monitor + sends to prevent feedback howl / robotic doubling.
+    // Drive the live input meter only — never connect mic to the main mixer path
+    // so clip playback continues normally and there's no feedback.
     if (chain) {
       chain.micSource = src;
-      chain.savedReverbSend = chain.reverbSend.gain.value;
-      chain.savedDelaySend = chain.delaySend.gain.value;
-      chain.monitorGain.gain.value = 0;          // no live monitoring through speakers
-      chain.reverbSend.gain.value = 0;
-      chain.delaySend.gain.value = 0;
-      try { src.connect(chain.input); } catch {}
+      try { src.connect(chain.inputAnalyser); } catch {}
     }
 
     // Capture clean mic samples for the clip + drive the live waveform overlay
@@ -528,11 +527,6 @@ export class DawEngine {
     if (chain) {
       try { chain.micSource?.disconnect(); } catch {}
       chain.micSource = null;
-      chain.monitorGain.gain.value = 1;
-      if (chain.savedReverbSend != null) chain.reverbSend.gain.value = chain.savedReverbSend;
-      if (chain.savedDelaySend != null) chain.delaySend.gain.value = chain.savedDelaySend;
-      chain.savedReverbSend = undefined;
-      chain.savedDelaySend = undefined;
     }
     this.recBuffers = [];
     this.recordingLivePeaks = [];

@@ -21,8 +21,12 @@ export function ChannelStrip({ track, engine, onOpenFx, onArmToggle, rows }: Pro
   const clips = useDawStore(s => s.clips);
   const stereo = engine.getTrackStereoAnalysers(track.id);
   const mono = engine.getTrackAnalyser(track.id);
+  const inputAn = engine.getTrackInputAnalyser(track.id);
   const isStereo = track.kind === "instrument" || clips.some(c => c.trackId === track.id && (c.buffer?.numberOfChannels ?? 0) >= 2);
-  const meters = isStereo && stereo ? [stereo.L, stereo.R] : mono ? [mono] : [];
+  // For audio tracks, the meter shows live mic input (always-on, independent of arm).
+  const meters = track.kind === "audio" && inputAn
+    ? [inputAn]
+    : (isStereo && stereo ? [stereo.L, stereo.R] : mono ? [mono] : []);
   const isSel = selectedTrackId === track.id;
 
   // Logic-style stacked rows. If rows are supplied (from MixerView), align to those heights.
