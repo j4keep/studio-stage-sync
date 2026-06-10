@@ -28,6 +28,11 @@ export class DawEngine {
     delaySend: GainNode;
     activeSources: AudioScheduledSourceNode[];
     micSource?: MediaStreamAudioSourceNode | null;
+    inputMonitorSource?: MediaStreamAudioSourceNode | null;
+    inputMonitorStream?: MediaStream | null;
+    inputMonitoring: boolean;
+    inputMonitorToken: number;
+    inputMonitorFailed: boolean;
     savedReverbSend?: number;
     savedDelaySend?: number;
     effectSignature: string;
@@ -121,7 +126,24 @@ export class DawEngine {
       splitter.connect(analyserR, 1);
       const reverbSend = this.ctx.createGain();
       const delaySend = this.ctx.createGain();
-      chain = { input, inserts: [], panner, gain, monitorGain, analyser, splitter, analyserL, analyserR, reverbSend, delaySend, activeSources: [], effectSignature: "__new__" };
+      chain = {
+        input,
+        inserts: [],
+        panner,
+        gain,
+        monitorGain,
+        analyser,
+        splitter,
+        analyserL,
+        analyserR,
+        reverbSend,
+        delaySend,
+        activeSources: [],
+        inputMonitoring: false,
+        inputMonitorToken: 0,
+        inputMonitorFailed: false,
+        effectSignature: "__new__",
+      };
       this.trackChains.set(track.id, chain);
     }
     const signature = this.getEffectSignature(track);
@@ -188,10 +210,10 @@ export class DawEngine {
     const anySolo = allTracks ? allTracks.some(t => t.solo) : false;
     const silencedBySolo = anySolo && !track.solo;
     c.gain.gain.setTargetAtTime((track.mute || silencedBySolo) ? 0 : volume, now, 0.01);
-    const recordingIntoTrack = this.recordingTrackId === track.id;
-    c.monitorGain.gain.setTargetAtTime(recordingIntoTrack ? 0 : 1, now, 0.01);
-    c.reverbSend.gain.setTargetAtTime(recordingIntoTrack ? 0 : reverb, now, 0.01);
-    c.delaySend.gain.setTargetAtTime(recordingIntoTrack ? 0 : delay, now, 0.01);
+    const inputOnlyMetering = this.recordingTrackId === track.id || c.inputMonitoring;
+    c.monitorGain.gain.setTargetAtTime(inputOnlyMetering ? 0 : 1, now, 0.01);
+    c.reverbSend.gain.setTargetAtTime(inputOnlyMetering ? 0 : reverb, now, 0.01);
+    c.delaySend.gain.setTargetAtTime(inputOnlyMetering ? 0 : delay, now, 0.01);
     // Update insert params
     track.effects.filter(e => e.enabled).forEach((fx, i) => {
       if (c.inserts[i]) c.inserts[i].apply(fx.params);
