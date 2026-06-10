@@ -54,6 +54,8 @@ export interface Track {
   id: string;
   name: string;
   kind: TrackKind;
+  /** Audio tracks that accept live mic/input recording. Imported beat/file tracks set this false. */
+  inputEnabled?: boolean;
   color: string;
   volume: number; // 0-1 (linear), UI shows dB
   pan: number; // -1..1

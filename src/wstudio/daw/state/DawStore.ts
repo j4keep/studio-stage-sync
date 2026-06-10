@@ -24,7 +24,7 @@ export interface DawState {
   masterVolume: number;
   pxPerSec: number;
   // Actions
-  addTrack: (kind?: "audio" | "instrument", name?: string) => string;
+  addTrack: (kind?: "audio" | "instrument", name?: string, options?: Partial<Pick<Track, "inputEnabled">>) => string;
   removeTrack: (id: string) => void;
   updateTrack: (id: string, patch: Partial<Track>) => void;
   reorderTracks: (fromId: string, toId: string) => void;
@@ -70,13 +70,14 @@ export const useDawStore = create<DawState>((set, get) => ({
   masterVolume: 0.85,
   pxPerSec: 60,
 
-  addTrack: (kind = "audio", name) => {
+  addTrack: (kind = "audio", name, options) => {
     const id = newId("trk");
     const idx = get().tracks.length;
     const track: Track = {
       id,
       name: name ?? `${kind === "audio" ? "Audio" : "Instrument"} ${++trackCounter}`,
       kind,
+      inputEnabled: options?.inputEnabled ?? kind === "audio",
       color: TRACK_COLORS[idx % TRACK_COLORS.length],
       volume: 0.8,
       pan: 0,

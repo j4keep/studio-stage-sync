@@ -382,13 +382,14 @@ export class DawEngine {
   getRecordingStart() { return this.recordStartTransport; }
 
   syncInputMonitoring(tracks: Track[]) {
-    // Always-on input metering for every audio track — independent of arm state.
-    const audioIds = new Set(tracks.filter(t => t.kind === "audio").map(t => t.id));
+    // Always-on input metering only for true mic/input audio tracks.
+    // Imported beat/file audio tracks stay playback-only and never attach a mic source.
+    const inputAudioIds = new Set(tracks.filter(t => t.kind === "audio" && t.inputEnabled !== false).map(t => t.id));
     this.trackChains.forEach((_, id) => {
-      if (!audioIds.has(id)) this.stopInputMonitoring(id);
+      if (!inputAudioIds.has(id)) this.stopInputMonitoring(id);
     });
     tracks.forEach((track) => {
-      if (track.kind !== "audio" || this.recordingTrackId === track.id) return;
+      if (track.kind !== "audio" || track.inputEnabled === false || this.recordingTrackId === track.id) return;
       void this.startInputMonitoring(track.id, track.inputDeviceId);
     });
   }
