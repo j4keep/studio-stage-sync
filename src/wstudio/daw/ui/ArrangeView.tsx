@@ -65,7 +65,11 @@ export function ArrangeView({ onArmToggle, onSeek, engine }: Props) {
     engine.onRecordingProgress = (peaks, dur) => {
       const tid = engine.getRecordingTrackId();
       if (!tid || dur <= 0) setLiveRec(null);
-      else setLiveRec({ trackId: tid, peaks: peaks.slice(-2000), dur });
+      else {
+        const keep = 4000;
+        const start = Math.max(0, peaks.length - keep) & ~1;
+        setLiveRec({ trackId: tid, peaks: peaks.slice(start), dur });
+      }
     };
     return () => { if (engine) engine.onRecordingProgress = undefined; };
   }, [engine]);
