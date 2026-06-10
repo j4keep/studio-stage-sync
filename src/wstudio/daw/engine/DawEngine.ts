@@ -267,12 +267,9 @@ export class DawEngine {
         this.startCtxTime = this.ctx.currentTime + 0.02;
         this.startTransportTime = loopStart;
         // re-schedule clips from loopStart
-        const anySolo = tracks.some(t => t.solo);
         for (const clip of clips) {
           const track = tracks.find(t => t.id === clip.trackId);
           if (!track || !clip.buffer) continue;
-          if (track.mute) continue;
-          if (anySolo && !track.solo) continue;
           const chain = this.trackChains.get(track.id);
           if (!chain) continue;
           const clipEnd = clip.startTime + clip.duration;
@@ -362,13 +359,14 @@ export class DawEngine {
     this.micStream = await navigator.mediaDevices.getUserMedia({
       audio: {
         deviceId: inputDeviceId ? { exact: inputDeviceId } : undefined,
-        // Echo cancellation ON so beats playing through speakers don't bleed
-        // into the vocal recording. Noise suppression / AGC stay OFF so the
-        // captured voice isn't pumped or robotic-sounding.
-        echoCancellation: true,
+        // Browser voice processing was making takes sound robotic/distorted.
+        // Keep the raw mic clean; the backing track is kept out by audio routing,
+        // not by recording the master bus.
+        echoCancellation: false,
         noiseSuppression: false,
         autoGainControl: false,
         channelCount: 1,
+        sampleRate: this.ctx.sampleRate,
       } as MediaTrackConstraints,
     });
 
