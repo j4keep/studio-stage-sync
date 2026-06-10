@@ -108,7 +108,33 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
         </div>
         <div className="w-px h-7 bg-neutral-800" />
         <div className="leading-none">
-          <div className="text-[8px] text-neutral-500 uppercase tracking-widest">Tempo</div>
+          <div className="text-[8px] text-neutral-500 uppercase tracking-widest flex items-center gap-1">
+            <span>Tempo</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                title={`Smart Tempo: ${transport.tempoMode.toUpperCase()} — how imported audio behaves`}
+                className="text-[8px] uppercase tracking-widest text-cyan-300 hover:text-cyan-200 flex items-center gap-0.5 leading-none"
+              >
+                <span>· {transport.tempoMode}</span>
+                <ChevronDown className="w-2.5 h-2.5" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-neutral-900 border-neutral-800 text-neutral-200 min-w-[220px]">
+                {TEMPO_MODES.map(m => (
+                  <DropdownMenuItem
+                    key={m.id}
+                    onClick={() => setTransport({ tempoMode: m.id })}
+                    className="flex flex-col items-start gap-0.5 text-[12px]"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="uppercase tracking-wider text-[10px] text-amber-300">{m.label}</span>
+                      {transport.tempoMode === m.id && <span className="text-cyan-300 text-[10px]">●</span>}
+                    </div>
+                    <span className="text-[10px] text-neutral-500">{m.hint}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
           <input
             type="number"
             value={transport.bpm}
