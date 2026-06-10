@@ -388,6 +388,14 @@ export class DawEngine {
     });
   }
 
+  async monitorInput(trackId: string, inputDeviceId?: string) {
+    await this.startInputMonitoring(trackId, inputDeviceId);
+  }
+
+  unmonitorInput(trackId: string) {
+    this.stopInputMonitoring(trackId);
+  }
+
   private async startInputMonitoring(trackId: string, inputDeviceId?: string) {
     const chain = this.trackChains.get(trackId);
     if (!chain || chain.inputMonitoring || chain.inputMonitorFailed) return;
