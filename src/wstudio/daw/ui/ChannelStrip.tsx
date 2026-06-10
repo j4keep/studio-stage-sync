@@ -17,6 +17,7 @@ export function ChannelStrip({ track, engine, onOpenFx, rows }: Props) {
   const updateTrack = useDawStore(s => s.updateTrack);
   const selectTrack = useDawStore(s => s.selectTrack);
   const selectedTrackId = useDawStore(s => s.selectedTrackId);
+  const tracks = useDawStore(s => s.tracks);
   const clips = useDawStore(s => s.clips);
   const stereo = engine.getTrackStereoAnalysers(track.id);
   const mono = engine.getTrackAnalyser(track.id);
@@ -93,7 +94,11 @@ export function ChannelStrip({ track, engine, onOpenFx, rows }: Props) {
         </div>
         <div className="flex gap-1 mt-1.5">
           <button
-            onClick={(e) => { e.stopPropagation(); updateTrack(track.id, { armed: !track.armed }); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              selectTrack(track.id);
+              tracks.forEach(t => updateTrack(t.id, { armed: t.id === track.id ? !track.armed : false }));
+            }}
             title="Record-arm"
             className={`w-5 h-4 rounded text-[8px] font-bold border ${track.armed ? "bg-red-500 text-white border-red-400" : "bg-neutral-900 text-neutral-400 border-neutral-800"}`}
           >R</button>

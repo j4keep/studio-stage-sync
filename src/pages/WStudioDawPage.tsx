@@ -30,6 +30,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
   const addClip = useDawStore(s => s.addClip);
   const addTrack = useDawStore(s => s.addTrack);
   const updateTrack = useDawStore(s => s.updateTrack);
+  const selectTrack = useDawStore(s => s.selectTrack);
   const view = useDawStore(s => s.view);
   const masterVolume = useDawStore(s => s.masterVolume);
   const importInputRef = useRef<HTMLInputElement>(null);
@@ -128,29 +129,33 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
       setTransport({ isRecording: false });
       return;
     }
-    // A beat/imported audio lane is still an audio track, but it is not a vocal
-    // record lane. If the armed lane already has regions, create a clean vocal
-    // lane so the take never gets recorded on top of the beat track.
-    let armed = st.tracks.find(t => t.armed && t.kind === "audio");
-    const armedHasRegions = armed ? st.clips.some(c => c.trackId === armed!.id) : false;
-    if (!armed || armedHasRegions) {
-      const id = addTrack("audio", `Vocal ${st.tracks.filter(t => t.kind === "audio").length + 1}`);
-      st.tracks.forEach(t => updateTrack(t.id, { armed: false }));
-      updateTrack(id, { armed: true });
-      await new Promise(r => setTimeout(r, 50));
-      armed = useDawStore.getState().tracks.find(t => t.id === id);
+    let armed = st.tracks.find(t => t.kind === "audio" && t.armed && t.id === st.selectedTrackId)
+      ?? st.tracks.find(t => t.kind === "audio" && t.armed);
+    if (!armed && st.selectedTrackId) {
+      const selectedAudio = st.tracks.find(t => t.id === st.selectedTrackId && t.kind === "audio");
+      if (selectedAudio) {
+        st.tracks.forEach(t => updateTrack(t.id, { armed: t.id === selectedAudio.id }));
+        armed = selectedAudio;
+      }
     }
+    if (!armed) {
+      toast.error("Select an audio track and press R to record");
+      return;
+    }
+    st.tracks.forEach(t => updateTrack(t.id, { armed: t.id === armed!.id }));
+    selectTrack(armed.id);
     try {
       await e.resume();
       const latest = useDawStore.getState();
-      await e.startRecording(armed!.id, latest.transport.position, armed!.inputDeviceId);
+      const recordTrack = latest.tracks.find(t => t.id === armed!.id) ?? armed;
+      await e.startRecording(recordTrack.id, latest.transport.position, recordTrack.inputDeviceId);
       setTransport({ isRecording: true, isPlaying: true });
       e.play(latest.transport, latest.tracks, latest.clips);
     } catch (err: any) {
       toast.error("Mic access denied");
       setTransport({ isRecording: false });
     }
-  }, [addTrack, updateTrack, setTransport]);
+  }, [selectTrack, updateTrack, setTransport]);
 
   // Sync metronome live
   useEffect(() => {
@@ -203,8 +208,9 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
     const t = tracks.find(x => x.id === trackId);
     if (!t) return;
     // Exclusive arm
+    selectTrack(trackId);
     tracks.forEach(x => updateTrack(x.id, { armed: x.id === trackId ? !t.armed : false }));
-  }, [tracks, updateTrack]);
+  }, [tracks, updateTrack, selectTrack]);
 
   const importFiles = useCallback(async (files: FileList) => {
     const e = engineRef.current;

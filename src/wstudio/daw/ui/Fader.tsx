@@ -31,7 +31,7 @@ export function Fader({ value, onChange, height = 160, color = "#22d3ee" }: Prop
         if (!(e.buttons & 1)) return;
         handle(e.clientY);
       }}
-      className="relative w-7 bg-neutral-950 border border-neutral-800 rounded-sm mx-auto cursor-ns-resize"
+      className="relative w-10 bg-neutral-950 border border-neutral-800 rounded-sm mx-auto cursor-ns-resize shadow-inner shadow-black/60"
       style={{ height }}
     >
       {/* track */}
@@ -48,12 +48,15 @@ export function Fader({ value, onChange, height = 160, color = "#22d3ee" }: Prop
       />
       {/* cap */}
       <div
-        className="absolute left-1/2 -translate-x-1/2 w-5 h-3 rounded-sm border border-neutral-600 shadow"
+        className="absolute left-1/2 -translate-x-1/2 w-8 h-5 rounded-sm border border-neutral-500 shadow-[0_2px_8px_rgba(0,0,0,0.65)]"
         style={{
-          bottom: `calc(8px + (100% - 16px) * ${value} - 6px)`,
-          background: "linear-gradient(180deg, #444, #1a1a1a)",
+          bottom: `calc(8px + (100% - 16px) * ${value} - 10px)`,
+          background: "linear-gradient(180deg, #5a5a5a 0%, #2d2d2d 45%, #151515 52%, #343434 100%)",
         }}
-      />
+      >
+        <div className="absolute left-1 right-1 top-1/2 h-px bg-white/25" />
+        <div className="absolute inset-x-1 top-1 h-px bg-white/20" />
+      </div>
     </div>
   );
 }
