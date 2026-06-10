@@ -125,6 +125,32 @@ export const useDawStore = create<DawState>((set, get) => ({
   view: "arrange",
   masterVolume: 0.85,
   pxPerSec: 60,
+  _past: [],
+  _future: [],
+  canUndo: () => get()._past.length > 0,
+  canRedo: () => get()._future.length > 0,
+  undo: () => {
+    const { _past, _future, tracks, clips } = get();
+    if (_past.length === 0) return;
+    const prev = _past[_past.length - 1];
+    set({
+      _past: _past.slice(0, -1),
+      _future: [..._future, { tracks, clips }],
+      tracks: prev.tracks,
+      clips: prev.clips,
+    });
+  },
+  redo: () => {
+    const { _past, _future, tracks, clips } = get();
+    if (_future.length === 0) return;
+    const next = _future[_future.length - 1];
+    set({
+      _future: _future.slice(0, -1),
+      _past: [..._past, { tracks, clips }].slice(-HISTORY_LIMIT),
+      tracks: next.tracks,
+      clips: next.clips,
+    });
+  },
 
   addTrack: (kind = "audio", name, options) => {
     const id = newId("trk");
