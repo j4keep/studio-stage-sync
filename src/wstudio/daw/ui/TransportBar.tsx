@@ -1,4 +1,4 @@
-import { Play, Square, Circle, SkipBack, SkipForward, Rewind, FastForward, Repeat, Volume2, Download, Plus, Mic, Music2, MousePointer2, Pencil, Eraser, Scissors, Combine, VolumeX, ZoomIn, Waves, BoxSelect, Timer, ChevronDown } from "lucide-react";
+import { Play, Square, Circle, SkipBack, SkipForward, Rewind, FastForward, Repeat, Volume2, Download, Plus, Mic, Music2, MousePointer2, Pencil, Eraser, Scissors, Combine, VolumeX, ZoomIn, Waves, BoxSelect, Timer, ChevronDown, Type, Activity, Move, MoveHorizontal } from "lucide-react";
 import { useDawStore, type DawTool } from "../state/DawStore";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
@@ -33,11 +33,15 @@ const TOOLS: { id: DawTool; label: string; Icon: any; hint: string }[] = [
   { id: "pointer", label: "Pointer Tool", Icon: MousePointer2, hint: "Select, move, resize clips" },
   { id: "pencil", label: "Pencil Tool", Icon: Pencil, hint: "Draw / create clips" },
   { id: "eraser", label: "Eraser Tool", Icon: Eraser, hint: "Click a clip to delete" },
+  { id: "text", label: "Text Tool", Icon: Type, hint: "Click a clip to rename it" },
   { id: "scissors", label: "Scissors Tool", Icon: Scissors, hint: "Click a clip to split at point" },
   { id: "glue", label: "Glue Tool", Icon: Combine, hint: "Merge overlapping clips on a track" },
+  { id: "trim", label: "Trim Tool", Icon: MoveHorizontal, hint: "Drag clip edges to trim length" },
   { id: "mute", label: "Mute Tool", Icon: VolumeX, hint: "Click clip to toggle mute" },
   { id: "zoom", label: "Zoom Tool", Icon: ZoomIn, hint: "Click to zoom in, Alt-click to zoom out" },
   { id: "fade", label: "Fade Tool", Icon: Waves, hint: "Drag edges to create fades" },
+  { id: "automation", label: "Automation Select", Icon: Activity, hint: "Click a clip to toggle automation lane" },
+  { id: "flex", label: "Flex Tool", Icon: Move, hint: "Time-stretch clip (drag right edge)" },
   { id: "marquee", label: "Marquee Tool", Icon: BoxSelect, hint: "Box-select a region" },
 ];
 

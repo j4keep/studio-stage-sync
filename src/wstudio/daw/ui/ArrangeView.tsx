@@ -18,16 +18,27 @@ const HEADER_W = 200;
 const TRACK_H = 80;
 const RULER_H = 32;
 
+// Build an SVG-based cursor that resembles the selected tool's icon. The icon
+// is white with a black outline so it's legible on both light and dark UI.
+const svgCursor = (inner: string, hx = 4, hy = 4) => {
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'>${inner}<g stroke='white' stroke-width='1.75'>${inner}</g></svg>`;
+  return `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}") ${hx} ${hy}, auto`;
+};
+
 const TOOL_CURSORS: Record<string, string> = {
   pointer: "default",
-  pencil: "crosshair",
-  eraser: "not-allowed",
-  scissors: "crosshair",
-  glue: "cell",
-  mute: "pointer",
-  zoom: "zoom-in",
-  fade: "ew-resize",
-  marquee: "crosshair",
+  pencil: svgCursor(`<path d='M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z'/><path d='m15 5 4 4'/>`, 2, 22),
+  eraser: svgCursor(`<path d='m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21'/><path d='M22 21H7'/><path d='m5 11 9 9'/>`, 4, 20),
+  scissors: svgCursor(`<circle cx='6' cy='6' r='3'/><path d='M8.12 8.12 12 12'/><path d='M20 4 8.12 15.88'/><circle cx='6' cy='18' r='3'/><path d='M14.8 14.8 20 20'/>`, 12, 12),
+  glue: svgCursor(`<path d='M10 18H5a3 3 0 0 1-3-3v-1'/><rect x='8' y='2' width='8' height='8' rx='2'/><path d='m7 21 3-3-3-3'/>`, 12, 12),
+  mute: svgCursor(`<path d='M11 4.7v14.6L6 16H3V8h3z'/><line x1='22' x2='16' y1='9' y2='15'/><line x1='16' x2='22' y1='9' y2='15'/>`, 12, 12),
+  zoom: svgCursor(`<circle cx='11' cy='11' r='8'/><line x1='21' x2='16.65' y1='21' y2='16.65'/><line x1='11' x2='11' y1='8' y2='14'/><line x1='8' x2='14' y1='11' y2='11'/>`, 11, 11),
+  fade: svgCursor(`<path d='M2 12c2 0 3-4 5-4s3 8 5 8 3-8 5-8 3 4 5 4'/>`, 12, 12),
+  marquee: svgCursor(`<path d='M3 5a2 2 0 0 1 2-2'/><path d='M21 5a2 2 0 0 0-2-2'/><path d='M19 21a2 2 0 0 0 2-2'/><path d='M3 19a2 2 0 0 0 2 2'/><path d='M9 3h1M14 3h1M9 21h1M14 21h1M3 9v1M21 9v1M3 14v1M21 14v1'/>`, 12, 12),
+  text: svgCursor(`<polyline points='4 7 4 4 20 4 20 7'/><line x1='9' x2='15' y1='20' y2='20'/><line x1='12' x2='12' y1='4' y2='20'/>`, 12, 12),
+  automation: svgCursor(`<path d='m3 17 6-6 4 4 8-8'/><path d='M14 7h7v7'/>`, 3, 17),
+  flex: svgCursor(`<path d='M12 2v20M2 12h20M15 5l-3-3-3 3M5 9l-3 3 3 3M19 9l3 3-3 3M9 19l3 3 3-3'/>`, 12, 12),
+  trim: svgCursor(`<polyline points='6 8 2 12 6 16'/><polyline points='18 8 22 12 18 16'/><line x1='2' x2='22' y1='12' y2='12'/>`, 12, 12),
 };
 
 export function ArrangeView({ onArmToggle, onSeek, engine }: Props) {
@@ -196,6 +207,21 @@ export function ArrangeView({ onArmToggle, onSeek, engine }: Props) {
         setPxPerSec(e.altKey ? pxPerSec / 1.5 : pxPerSec * 1.5); return true;
       case "fade":
         toast("Drag clip edges to set fade length"); return false;
+      case "text": {
+        const name = window.prompt("Rename clip", clip.name);
+        if (name !== null && name.trim()) updateClip(clip.id, { name: name.trim() });
+        return true;
+      }
+      case "automation":
+        updateClip(clip.id, { name: clip.name.startsWith("[A] ") ? clip.name.slice(4) : "[A] " + clip.name });
+        toast.success("Automation lane toggled");
+        return true;
+      case "flex":
+        toast("Drag the clip's right edge to time-stretch");
+        return false;
+      case "trim":
+        toast("Drag the clip's right edge to trim");
+        return false;
     }
     return false;
   };

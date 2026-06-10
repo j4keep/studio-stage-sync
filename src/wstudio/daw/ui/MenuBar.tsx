@@ -66,8 +66,8 @@ export function MenuBar({ onImport, onExport, onAddAudio, onAddInstrument, onPla
       <DropdownMenu>
         <DropdownMenuTrigger className={triggerClass}>Edit</DropdownMenuTrigger>
         <DropdownMenuContent className="bg-neutral-900 border-neutral-800 text-neutral-200 min-w-[240px]">
-          <Item shortcut="⌘Z" disabled>Undo</Item>
-          <Item shortcut="⇧⌘Z" disabled>Redo</Item>
+          <Item shortcut="⌘Z" disabled={!useDawStore.getState().canUndo()} onClick={() => useDawStore.getState().undo()}>Undo</Item>
+          <Item shortcut="⇧⌘Z" disabled={!useDawStore.getState().canRedo()} onClick={() => useDawStore.getState().redo()}>Redo</Item>
           <DropdownMenuSeparator className="bg-neutral-800" />
           <Item shortcut="⌘X" disabled={!selectedClipId} onClick={() => selectedClipId && (cutClip(selectedClipId), toast.success("Cut"))}>Cut</Item>
           <Item shortcut="⌘C" disabled={!selectedClipId} onClick={() => selectedClipId && (copyClip(selectedClipId), toast.success("Copied"))}>Copy</Item>
