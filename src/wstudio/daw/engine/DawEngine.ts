@@ -225,6 +225,7 @@ export class DawEngine {
     if (!c) return;
     c.activeSources.forEach(s => { try { s.stop(); } catch {} });
     c.inserts.forEach(i => i.dispose());
+    this.stopInputMonitoring(trackId);
     try { c.input.disconnect(); c.panner.disconnect(); c.gain.disconnect(); c.analyser.disconnect(); c.reverbSend.disconnect(); c.delaySend.disconnect(); } catch {}
     this.trackChains.delete(trackId);
   }
@@ -376,13 +377,72 @@ export class DawEngine {
   getRecordingTrackId() { return this.recordingTrackId; }
   getRecordingStart() { return this.recordStartTransport; }
 
+  syncInputMonitoring(tracks: Track[]) {
+    const armedAudioIds = new Set(tracks.filter(t => t.kind === "audio" && t.armed).map(t => t.id));
+    this.trackChains.forEach((_, id) => {
+      if (!armedAudioIds.has(id) || this.recordingTrackId === id) this.stopInputMonitoring(id);
+    });
+    tracks.forEach((track) => {
+      if (track.kind !== "audio" || !track.armed || this.recordingTrackId === track.id) return;
+      void this.startInputMonitoring(track.id, track.inputDeviceId);
+    });
+  }
+
+  private async startInputMonitoring(trackId: string, inputDeviceId?: string) {
+    const chain = this.trackChains.get(trackId);
+    if (!chain || chain.inputMonitoring || chain.inputMonitorFailed) return;
+    const token = ++chain.inputMonitorToken;
+    try {
+      await this.resume();
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          deviceId: inputDeviceId ? { exact: inputDeviceId } : undefined,
+          echoCancellation: true,
+          noiseSuppression: false,
+          autoGainControl: false,
+          channelCount: 1,
+          sampleRate: this.ctx.sampleRate,
+        } as MediaTrackConstraints,
+      });
+      if (chain.inputMonitorToken !== token || this.recordingTrackId === trackId) {
+        stream.getTracks().forEach(t => t.stop());
+        return;
+      }
+      const src = this.ctx.createMediaStreamSource(stream);
+      src.connect(chain.input);
+      chain.inputMonitorSource = src;
+      chain.inputMonitorStream = stream;
+      chain.inputMonitoring = true;
+      chain.inputMonitorFailed = false;
+      chain.monitorGain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.01);
+      chain.reverbSend.gain.setTargetAtTime(0, this.ctx.currentTime, 0.01);
+      chain.delaySend.gain.setTargetAtTime(0, this.ctx.currentTime, 0.01);
+    } catch {
+      if (chain.inputMonitorToken === token) chain.inputMonitorFailed = true;
+    }
+  }
+
+  private stopInputMonitoring(trackId: string) {
+    const chain = this.trackChains.get(trackId);
+    if (!chain) return;
+    chain.inputMonitorToken++;
+    try { chain.inputMonitorSource?.disconnect(); } catch {}
+    chain.inputMonitorStream?.getTracks().forEach(t => t.stop());
+    chain.inputMonitorSource = null;
+    chain.inputMonitorStream = null;
+    chain.inputMonitoring = false;
+  }
+
   async startRecording(trackId: string, transportPos: number, inputDeviceId?: string) {
     if (this.recordingTrackId) this.stopRecording();
     this.recordingTrackId = trackId;
     this.recordStartTransport = transportPos;
     this.recBuffers = [];
     this.recordingLivePeaks = [];
-    this.micStream = await navigator.mediaDevices.getUserMedia({
+    const chain = this.trackChains.get(trackId);
+    const reusableMonitorStream = chain?.inputMonitorStream ?? null;
+    this.stopInputMonitoring(trackId);
+    this.micStream = reusableMonitorStream ?? await navigator.mediaDevices.getUserMedia({
       audio: {
         deviceId: inputDeviceId ? { exact: inputDeviceId } : undefined,
         // Record the mic stream, while asking the browser to remove DAW playback
@@ -395,7 +455,6 @@ export class DawEngine {
       } as MediaTrackConstraints,
     });
 
-    const chain = this.trackChains.get(trackId);
     const src = this.ctx.createMediaStreamSource(this.micStream);
 
     // Route mic INTO the track chain so the existing meters/effects path is live.
