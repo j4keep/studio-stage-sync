@@ -22,6 +22,9 @@ function loadPersistedMetro(): Partial<TransportState> {
     if (typeof p.metroAccent === "boolean") out.metroAccent = p.metroAccent;
     if (typeof p.metroCountInBars === "number") out.metroCountInBars = p.metroCountInBars;
     if (typeof p.metroOutputDeviceId === "string") out.metroOutputDeviceId = p.metroOutputDeviceId;
+    if (p.bbtDisplayMode === "beats-project" || p.bbtDisplayMode === "beats-time" || p.bbtDisplayMode === "beats" || p.bbtDisplayMode === "time") {
+      out.bbtDisplayMode = p.bbtDisplayMode;
+    }
     return out;
   } catch { return {}; }
 }
@@ -34,6 +37,7 @@ function persistMetro(t: TransportState) {
       metroAccent: t.metroAccent,
       metroCountInBars: t.metroCountInBars,
       metroOutputDeviceId: t.metroOutputDeviceId,
+      bbtDisplayMode: t.bbtDisplayMode,
     }));
   } catch {}
 }
@@ -101,6 +105,7 @@ export const useDawStore = create<DawState>((set, get) => ({
     timeSigNum: 4,
     timeSigDen: 4,
     tempoMode: "keep",
+    bbtDisplayMode: "beats-project",
     ...loadPersistedMetro(),
   },
   selectedTrackId: null,
@@ -248,7 +253,7 @@ export const useDawStore = create<DawState>((set, get) => ({
   setTransport: (patch) => {
     const next = { ...get().transport, ...patch };
     set({ transport: next });
-    const metroKeys = ["metronome","metronomeVolume","metroAccent","metroCountInBars","metroOutputDeviceId"];
+    const metroKeys = ["metronome","metronomeVolume","metroAccent","metroCountInBars","metroOutputDeviceId","bbtDisplayMode"];
     if (metroKeys.some(k => k in patch)) persistMetro(next);
   },
   setView: (view) => set({ view }),

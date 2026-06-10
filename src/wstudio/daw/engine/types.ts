@@ -73,6 +73,7 @@ export interface Track {
 export type KeyRoot = "C" | "C#" | "D" | "D#" | "E" | "F" | "F#" | "G" | "G#" | "A" | "A#" | "B";
 export type KeyMode = "major" | "minor";
 export type TempoMode = "keep" | "adapt" | "auto";
+export type BBTDisplayMode = "beats-project" | "beats-time" | "beats" | "time";
 
 export interface TransportState {
   isPlaying: boolean;
@@ -102,6 +103,8 @@ export interface TransportState {
   timeSigDen: number;
   /** Smart Tempo mode for imported audio */
   tempoMode: TempoMode;
+  /** How the BBT/time readout in the transport bar renders */
+  bbtDisplayMode: BBTDisplayMode;
 }
 
 export interface UserPlugin {

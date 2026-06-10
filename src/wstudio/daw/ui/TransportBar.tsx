@@ -57,6 +57,13 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
   const bar = Math.floor(totalBeats / beatsPerBar) + 1;
   const beat = Math.floor(totalBeats % beatsPerBar) + 1;
   const sub = Math.floor((totalBeats * 4) % 4) + 1;
+  const tickFrac = Math.floor(((totalBeats * 4) % 1) * 1000);
+  // Absolute time
+  const secs = transport.position;
+  const hh = Math.floor(secs / 3600);
+  const mm = Math.floor((secs % 3600) / 60);
+  const ss = Math.floor(secs % 60);
+  const ms = Math.floor((secs - Math.floor(secs)) * 1000);
   const ActiveToolIcon = TOOLS.find(t => t.id === tool)?.Icon ?? MousePointer2;
 
   const KEY_ROOTS: import("../engine/types").KeyRoot[] = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
@@ -66,6 +73,13 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
     { id: "adapt", label: "ADAPT", hint: "Project tempo follows the imported audio" },
     { id: "auto", label: "AUTO", hint: "DAW decides automatically" },
   ];
+  const BBT_MODES: Array<{ id: import("../engine/types").BBTDisplayMode; label: string; hint: string }> = [
+    { id: "beats-project", label: "Beats & Project", hint: "Bar.Beat plus tempo/sig/key" },
+    { id: "beats-time",    label: "Beats & Time",    hint: "Bar.Beat plus absolute time" },
+    { id: "beats",         label: "Beats",           hint: "Bar.Beat.Sub.Tick only" },
+    { id: "time",          label: "Time",            hint: "Absolute HH:MM:SS.ms only" },
+  ];
+  const bbtMode = transport.bbtDisplayMode;
 
   return (
     <div className="h-14 bg-gradient-to-b from-neutral-900 to-neutral-950 border-b border-neutral-800 px-3 flex items-center gap-2 text-neutral-200 text-xs shadow-[inset_0_-1px_0_rgba(255,255,255,0.02)]">
@@ -93,95 +107,155 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
         <TBtn onClick={() => setTransport({ loopEnabled: !transport.loopEnabled })} active={transport.loopEnabled} className={transport.loopEnabled ? "!text-amber-300" : ""} title="Cycle / Loop"><Repeat className="w-4 h-4" /></TBtn>
       </div>
 
-      {/* Logic-style BBT display */}
+      {/* Logic-style BBT display (mode-switchable via dropdown on the right) */}
       <div
-        title="Bar . Beat . Subdivision / Tempo / Signature / Key"
+        title="Position display — click ▾ to change format"
         className="mx-2 px-3 py-1.5 bg-black border border-amber-500/30 rounded-md font-mono text-[13px] tabular-nums tracking-wider text-amber-300 shadow-inner shadow-amber-500/10 flex items-center gap-3 select-none"
       >
-        <div className="leading-none">
-          <div className="text-[8px] text-neutral-500 uppercase tracking-widest">Bar</div>
-          <div className="text-amber-300">{String(bar).padStart(3, "0")}</div>
-        </div>
-        <div className="leading-none">
-          <div className="text-[8px] text-neutral-500 uppercase tracking-widest">Beat</div>
-          <div className="text-amber-300">{beat}.{sub}</div>
-        </div>
-        <div className="w-px h-7 bg-neutral-800" />
-        <div className="leading-none">
-          <div className="text-[8px] text-neutral-500 uppercase tracking-widest flex items-center gap-1">
-            <span>Tempo</span>
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                title={`Smart Tempo: ${transport.tempoMode.toUpperCase()} — how imported audio behaves`}
-                className="text-[8px] uppercase tracking-widest text-cyan-300 hover:text-cyan-200 flex items-center gap-0.5 leading-none"
-              >
-                <span>· {transport.tempoMode}</span>
-                <ChevronDown className="w-2.5 h-2.5" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-neutral-900 border-neutral-800 text-neutral-200 min-w-[220px]">
-                {TEMPO_MODES.map(m => (
-                  <DropdownMenuItem
-                    key={m.id}
-                    onClick={() => setTransport({ tempoMode: m.id })}
-                    className="flex flex-col items-start gap-0.5 text-[12px]"
+        {/* Bar / Beat (shown in beats-project, beats-time, beats) */}
+        {bbtMode !== "time" && (
+          <>
+            <div className="leading-none">
+              <div className="text-[8px] text-neutral-500 uppercase tracking-widest">Bar</div>
+              <div className="text-amber-300">{String(bar).padStart(3, "0")}</div>
+            </div>
+            <div className="leading-none">
+              <div className="text-[8px] text-neutral-500 uppercase tracking-widest">Beat</div>
+              <div className="text-amber-300">
+                {bbtMode === "beats"
+                  ? `${beat}.${sub}.${String(tickFrac).padStart(3, "0")}`
+                  : `${beat}.${sub}`}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Absolute time (shown in beats-time and time) */}
+        {(bbtMode === "beats-time" || bbtMode === "time") && (
+          <>
+            {bbtMode === "beats-time" && <div className="w-px h-7 bg-neutral-800" />}
+            <div className="leading-none">
+              <div className="text-[8px] text-neutral-500 uppercase tracking-widest">HR</div>
+              <div className="text-amber-300">{String(hh).padStart(2, "0")}</div>
+            </div>
+            <div className="leading-none">
+              <div className="text-[8px] text-neutral-500 uppercase tracking-widest">Min</div>
+              <div className="text-amber-300">{String(mm).padStart(2, "0")}</div>
+            </div>
+            <div className="leading-none">
+              <div className="text-[8px] text-neutral-500 uppercase tracking-widest">Sec</div>
+              <div className="text-amber-300">{String(ss).padStart(2, "0")}.{String(ms).padStart(3, "0")}</div>
+            </div>
+          </>
+        )}
+
+        {/* Tempo / Sig / Key only in "beats-project" (Logic's default) */}
+        {bbtMode === "beats-project" && (
+          <>
+            <div className="w-px h-7 bg-neutral-800" />
+            <div className="leading-none">
+              <div className="text-[8px] text-neutral-500 uppercase tracking-widest flex items-center gap-1">
+                <span>Tempo</span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    title={`Smart Tempo: ${transport.tempoMode.toUpperCase()} — how imported audio behaves`}
+                    className="text-[8px] uppercase tracking-widest text-cyan-300 hover:text-cyan-200 flex items-center gap-0.5 leading-none"
                   >
-                    <div className="flex items-center gap-2">
-                      <span className="uppercase tracking-wider text-[10px] text-amber-300">{m.label}</span>
-                      {transport.tempoMode === m.id && <span className="text-cyan-300 text-[10px]">●</span>}
-                    </div>
-                    <span className="text-[10px] text-neutral-500">{m.hint}</span>
-                  </DropdownMenuItem>
+                    <span>· {transport.tempoMode}</span>
+                    <ChevronDown className="w-2.5 h-2.5" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="bg-neutral-900 border-neutral-800 text-neutral-200 min-w-[220px]">
+                    {TEMPO_MODES.map(m => (
+                      <DropdownMenuItem
+                        key={m.id}
+                        onClick={() => setTransport({ tempoMode: m.id })}
+                        className="flex flex-col items-start gap-0.5 text-[12px]"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="uppercase tracking-wider text-[10px] text-amber-300">{m.label}</span>
+                          {transport.tempoMode === m.id && <span className="text-cyan-300 text-[10px]">●</span>}
+                        </div>
+                        <span className="text-[10px] text-neutral-500">{m.hint}</span>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              <input
+                type="number"
+                value={transport.bpm}
+                min={40} max={300}
+                onChange={(e) => setTransport({ bpm: Number(e.target.value) || 120 })}
+                className="w-12 bg-transparent border-none outline-none text-amber-300 font-mono text-[13px] p-0"
+                title="BPM"
+              />
+            </div>
+            <div className="leading-none">
+              <div className="text-[8px] text-neutral-500 uppercase tracking-widest">Sig</div>
+              <select
+                value={`${transport.timeSigNum}/${transport.timeSigDen}`}
+                onChange={(e) => {
+                  const [n, d] = e.target.value.split("/").map(Number);
+                  setTransport({ timeSigNum: n, timeSigDen: d });
+                }}
+                className="bg-transparent border-none outline-none text-amber-300 font-mono text-[13px] p-0 cursor-pointer"
+                title="Time signature"
+              >
+                {TIME_SIGS.map(([n, d]) => (
+                  <option key={`${n}/${d}`} value={`${n}/${d}`} className="bg-neutral-900">{n}/{d}</option>
                 ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-          <input
-            type="number"
-            value={transport.bpm}
-            min={40} max={300}
-            onChange={(e) => setTransport({ bpm: Number(e.target.value) || 120 })}
-            className="w-12 bg-transparent border-none outline-none text-amber-300 font-mono text-[13px] p-0"
-            title="BPM"
-          />
-        </div>
-        <div className="leading-none">
-          <div className="text-[8px] text-neutral-500 uppercase tracking-widest">Sig</div>
-          <select
-            value={`${transport.timeSigNum}/${transport.timeSigDen}`}
-            onChange={(e) => {
-              const [n, d] = e.target.value.split("/").map(Number);
-              setTransport({ timeSigNum: n, timeSigDen: d });
-            }}
-            className="bg-transparent border-none outline-none text-amber-300 font-mono text-[13px] p-0 cursor-pointer"
-            title="Time signature"
+              </select>
+            </div>
+            <div className="leading-none">
+              <div className="text-[8px] text-neutral-500 uppercase tracking-widest">Key</div>
+              <div className="flex items-center gap-0.5">
+                <select
+                  value={transport.keyRoot}
+                  onChange={(e) => setTransport({ keyRoot: e.target.value as any })}
+                  className="bg-transparent border-none outline-none text-amber-300 font-mono text-[13px] p-0 cursor-pointer"
+                  title="Key root"
+                >
+                  {KEY_ROOTS.map(k => <option key={k} value={k} className="bg-neutral-900">{k}</option>)}
+                </select>
+                <select
+                  value={transport.keyMode}
+                  onChange={(e) => setTransport({ keyMode: e.target.value as any })}
+                  className="bg-transparent border-none outline-none text-amber-300 font-mono text-[13px] p-0 cursor-pointer"
+                  title="Major / minor"
+                >
+                  <option value="major" className="bg-neutral-900">maj</option>
+                  <option value="minor" className="bg-neutral-900">min</option>
+                </select>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Display-mode picker (Logic's Beats & Project / Beats & Time / Beats / Time) */}
+        <div className="w-px h-7 bg-neutral-800" />
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            title="Position display format"
+            className="text-amber-300/80 hover:text-amber-200 flex items-center"
           >
-            {TIME_SIGS.map(([n, d]) => (
-              <option key={`${n}/${d}`} value={`${n}/${d}`} className="bg-neutral-900">{n}/{d}</option>
+            <ChevronDown className="w-3.5 h-3.5" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="bg-neutral-900 border-neutral-800 text-neutral-200 min-w-[220px]">
+            {BBT_MODES.map(m => (
+              <DropdownMenuItem
+                key={m.id}
+                onClick={() => setTransport({ bbtDisplayMode: m.id })}
+                className="flex flex-col items-start gap-0.5 text-[12px]"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px]">{m.label}</span>
+                  {bbtMode === m.id && <span className="text-cyan-300 text-[10px]">●</span>}
+                </div>
+                <span className="text-[10px] text-neutral-500">{m.hint}</span>
+              </DropdownMenuItem>
             ))}
-          </select>
-        </div>
-        <div className="leading-none">
-          <div className="text-[8px] text-neutral-500 uppercase tracking-widest">Key</div>
-          <div className="flex items-center gap-0.5">
-            <select
-              value={transport.keyRoot}
-              onChange={(e) => setTransport({ keyRoot: e.target.value as any })}
-              className="bg-transparent border-none outline-none text-amber-300 font-mono text-[13px] p-0 cursor-pointer"
-              title="Key root"
-            >
-              {KEY_ROOTS.map(k => <option key={k} value={k} className="bg-neutral-900">{k}</option>)}
-            </select>
-            <select
-              value={transport.keyMode}
-              onChange={(e) => setTransport({ keyMode: e.target.value as any })}
-              className="bg-transparent border-none outline-none text-amber-300 font-mono text-[13px] p-0 cursor-pointer"
-              title="Major / minor"
-            >
-              <option value="major" className="bg-neutral-900">maj</option>
-              <option value="minor" className="bg-neutral-900">min</option>
-            </select>
-          </div>
-        </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <MetronomePopover />
@@ -218,11 +292,30 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
 
       <div className="flex-1" />
 
-      <div className="flex items-center gap-1">
-        <button type="button" onClick={onAddAudio} title="Add new audio track" className="h-7 px-2 rounded border border-neutral-800 text-[10px] uppercase flex items-center gap-1 hover:bg-neutral-800"><Mic className="w-3 h-3" /> Audio</button>
-        <button type="button" onClick={onAddInstrument} title="Add new instrument (synth) track" className="h-7 px-2 rounded border border-neutral-800 text-[10px] uppercase flex items-center gap-1 hover:bg-neutral-800"><Music2 className="w-3 h-3" /> Instr</button>
-        <button type="button" onClick={onImport} title="Import audio file(s)" className="h-7 px-2 rounded border border-neutral-800 text-[10px] uppercase flex items-center gap-1 hover:bg-neutral-800"><Plus className="w-3 h-3" /> Import</button>
-      </div>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          title="Add a track or import audio"
+          className="h-7 px-2 rounded border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-[10px] uppercase tracking-wider text-cyan-300 flex items-center gap-1"
+        >
+          <Plus className="w-3 h-3" />
+          <span>Add</span>
+          <ChevronDown className="w-3 h-3 text-neutral-500" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="bg-neutral-900 border-neutral-800 text-neutral-200 min-w-[200px]">
+          <DropdownMenuItem onClick={onAddAudio} className="flex items-center gap-2 text-[12px]">
+            <Mic className="w-3.5 h-3.5 text-emerald-300" />
+            <span className="flex-1">Audio Track</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onAddInstrument} className="flex items-center gap-2 text-[12px]">
+            <Music2 className="w-3.5 h-3.5 text-purple-300" />
+            <span className="flex-1">Instrument Track</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onImport} className="flex items-center gap-2 text-[12px]">
+            <Plus className="w-3.5 h-3.5 text-cyan-300" />
+            <span className="flex-1">Import Audio File…</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       <DropdownMenu>
         <DropdownMenuTrigger
