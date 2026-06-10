@@ -125,6 +125,8 @@ export class DawEngine {
       analyserL.fftSize = 512; analyserR.fftSize = 512;
       splitter.connect(analyserL, 0);
       splitter.connect(analyserR, 1);
+      const inputAnalyser = this.ctx.createAnalyser();
+      inputAnalyser.fftSize = 512;
       const reverbSend = this.ctx.createGain();
       const delaySend = this.ctx.createGain();
       chain = {
@@ -137,6 +139,7 @@ export class DawEngine {
         splitter,
         analyserL,
         analyserR,
+        inputAnalyser,
         reverbSend,
         delaySend,
         activeSources: [],
