@@ -30,6 +30,7 @@ export class DawEngine {
     micSource?: MediaStreamAudioSourceNode | null;
     savedReverbSend?: number;
     savedDelaySend?: number;
+    effectSignature: string;
   }>();
   private startCtxTime = 0;
   private startTransportTime = 0;
@@ -100,7 +101,7 @@ export class DawEngine {
     if (this.ctx.state === "suspended") await this.ctx.resume();
   }
 
-  /** Ensure a per-track audio chain exists. Re-wires inserts on every update. */
+  /** Ensure a per-track audio chain exists. Re-wires inserts only when the insert layout changes. */
   ensureTrackChain(track: Track) {
     let chain = this.trackChains.get(track.id);
     if (!chain) {
@@ -115,25 +116,36 @@ export class DawEngine {
       const analyserL = this.ctx.createAnalyser();
       const analyserR = this.ctx.createAnalyser();
       analyserL.fftSize = 512; analyserR.fftSize = 512;
-      gain.connect(splitter);
       splitter.connect(analyserL, 0);
       splitter.connect(analyserR, 1);
       const reverbSend = this.ctx.createGain();
       const delaySend = this.ctx.createGain();
-      chain = { input, inserts: [], panner, gain, monitorGain, analyser, splitter, analyserL, analyserR, reverbSend, delaySend, activeSources: [] };
+      chain = { input, inserts: [], panner, gain, monitorGain, analyser, splitter, analyserL, analyserR, reverbSend, delaySend, activeSources: [], effectSignature: "__new__" };
       this.trackChains.set(track.id, chain);
     }
-    this.rebuildChain(track, chain);
+    const signature = this.getEffectSignature(track);
+    if (chain.effectSignature !== signature) {
+      this.rebuildChain(track, chain);
+      chain.effectSignature = signature;
+    }
+    this.updateTrackParams(track);
     return chain;
+  }
+
+  private getEffectSignature(track: Track) {
+    return track.effects.map(fx => `${fx.id}:${fx.type}:${fx.enabled}:${fx.pluginKey ?? ""}`).join("|");
   }
 
   private rebuildChain(track: Track, chain: ReturnType<DawEngine["ensureTrackChain"]> extends infer T ? T : never) {
     const c = chain as NonNullable<ReturnType<typeof this.trackChains.get>>;
     // Tear down old inserts
     try { c.input.disconnect(); } catch {}
+    try { c.panner.disconnect(); } catch {}
     try { c.gain.disconnect(); } catch {}
     try { c.analyser.disconnect(); } catch {}
     try { c.monitorGain.disconnect(); } catch {}
+    try { c.reverbSend.disconnect(); } catch {}
+    try { c.delaySend.disconnect(); } catch {}
     c.inserts.forEach((i) => i.dispose());
     c.inserts = [];
 
@@ -159,22 +171,24 @@ export class DawEngine {
     c.gain.connect(c.delaySend);
     c.delaySend.connect(this.delayBus.input);
 
-    c.panner.pan.value = track.pan;
-    c.gain.gain.value = track.mute ? 0 : track.volume;
-    c.reverbSend.gain.value = track.reverbSend;
-    c.delaySend.gain.value = track.delaySend;
+    this.updateTrackParams(track);
   }
 
   updateTrackParams(track: Track, allTracks?: Track[]) {
     const c = this.trackChains.get(track.id);
     if (!c) return;
-    c.panner.pan.value = track.pan;
+    const now = this.ctx.currentTime;
+    const pan = Math.max(-1, Math.min(1, track.pan));
+    const volume = Math.max(0, Math.min(1, track.volume));
+    const reverb = Math.max(0, Math.min(1, track.reverbSend));
+    const delay = Math.max(0, Math.min(1, track.delaySend));
+    c.panner.pan.setTargetAtTime(pan, now, 0.01);
     // Solo-aware live gain: if any other track is soloed and this one isn't, silence it.
     const anySolo = allTracks ? allTracks.some(t => t.solo) : false;
     const silencedBySolo = anySolo && !track.solo;
-    c.gain.gain.value = (track.mute || silencedBySolo) ? 0 : track.volume;
-    c.reverbSend.gain.value = track.reverbSend;
-    c.delaySend.gain.value = track.delaySend;
+    c.gain.gain.setTargetAtTime((track.mute || silencedBySolo) ? 0 : volume, now, 0.01);
+    c.reverbSend.gain.setTargetAtTime(reverb, now, 0.01);
+    c.delaySend.gain.setTargetAtTime(delay, now, 0.01);
     // Update insert params
     track.effects.filter(e => e.enabled).forEach((fx, i) => {
       if (c.inserts[i]) c.inserts[i].apply(fx.params);
@@ -253,12 +267,9 @@ export class DawEngine {
         this.startCtxTime = this.ctx.currentTime + 0.02;
         this.startTransportTime = loopStart;
         // re-schedule clips from loopStart
-        const anySolo = tracks.some(t => t.solo);
         for (const clip of clips) {
           const track = tracks.find(t => t.id === clip.trackId);
           if (!track || !clip.buffer) continue;
-          if (track.mute) continue;
-          if (anySolo && !track.solo) continue;
           const chain = this.trackChains.get(track.id);
           if (!chain) continue;
           const clipEnd = clip.startTime + clip.duration;
@@ -348,13 +359,14 @@ export class DawEngine {
     this.micStream = await navigator.mediaDevices.getUserMedia({
       audio: {
         deviceId: inputDeviceId ? { exact: inputDeviceId } : undefined,
-        // Echo cancellation ON so beats playing through speakers don't bleed
-        // into the vocal recording. Noise suppression / AGC stay OFF so the
-        // captured voice isn't pumped or robotic-sounding.
-        echoCancellation: true,
+        // Browser voice processing was making takes sound robotic/distorted.
+        // Keep the raw mic clean; the backing track is kept out by audio routing,
+        // not by recording the master bus.
+        echoCancellation: false,
         noiseSuppression: false,
         autoGainControl: false,
         channelCount: 1,
+        sampleRate: this.ctx.sampleRate,
       } as MediaTrackConstraints,
     });
 

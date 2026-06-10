@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 
 interface Props {
   value: number;
@@ -21,6 +21,41 @@ export function Knob({ value, min, max, step = 0.01, size = 44, label, unit, onC
   const dragRef = useRef<{ x: number; y: number; v: number; pid: number } | null>(null);
   const elRef = useRef<HTMLDivElement>(null);
 
+  const commitFromPointer = (clientX: number, clientY: number) => {
+    const d = dragRef.current;
+    if (!d) return;
+    const dx = clientX - d.x;
+    const dy = d.y - clientY; // up = +
+    const delta = ((dx + dy) / 120) * range;
+    let next = d.v + delta;
+    next = Math.round(next / step) * step;
+    next = Math.max(min, Math.min(max, next));
+    onChange(next);
+  };
+
+  useEffect(() => {
+    const move = (e: PointerEvent) => {
+      const d = dragRef.current;
+      if (!d || d.pid !== e.pointerId) return;
+      e.preventDefault();
+      commitFromPointer(e.clientX, e.clientY);
+    };
+    const up = (e: PointerEvent) => {
+      const d = dragRef.current;
+      if (!d || d.pid !== e.pointerId) return;
+      try { elRef.current?.releasePointerCapture(d.pid); } catch {}
+      dragRef.current = null;
+    };
+    window.addEventListener("pointermove", move, { passive: false });
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+    };
+  }, [min, max, step, range, onChange]);
+
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
@@ -32,13 +67,7 @@ export function Knob({ value, min, max, step = 0.01, size = 44, label, unit, onC
     const d = dragRef.current;
     if (!d || d.pid !== e.pointerId) return;
     e.preventDefault();
-    const dx = e.clientX - d.x;
-    const dy = d.y - e.clientY; // up = +
-    const delta = ((dx + dy) / 140) * range;
-    let next = d.v + delta;
-    next = Math.round(next / step) * step;
-    next = Math.max(min, Math.min(max, next));
-    onChange(next);
+    commitFromPointer(e.clientX, e.clientY);
   };
 
   const endDrag = (e: React.PointerEvent<HTMLDivElement>) => {

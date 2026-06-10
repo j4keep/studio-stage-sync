@@ -17,7 +17,11 @@ export function ChannelStrip({ track, engine, onOpenFx, rows }: Props) {
   const updateTrack = useDawStore(s => s.updateTrack);
   const selectTrack = useDawStore(s => s.selectTrack);
   const selectedTrackId = useDawStore(s => s.selectedTrackId);
-  const analyser = engine.getTrackAnalyser(track.id);
+  const clips = useDawStore(s => s.clips);
+  const stereo = engine.getTrackStereoAnalysers(track.id);
+  const mono = engine.getTrackAnalyser(track.id);
+  const isStereo = track.kind === "instrument" || clips.some(c => c.trackId === track.id && (c.buffer?.numberOfChannels ?? 0) >= 2);
+  const meters = isStereo && stereo ? [stereo.L, stereo.R] : mono ? [mono] : [];
   const isSel = selectedTrackId === track.id;
 
   // Logic-style stacked rows. If rows are supplied (from MixerView), align to those heights.
@@ -81,7 +85,11 @@ export function ChannelStrip({ track, engine, onOpenFx, rows }: Props) {
       <div className="w-full flex flex-col items-center py-2" style={{ height: r("fader") ?? 220 }}>
         <div className="flex items-end gap-1 flex-1">
           <Fader value={track.volume} onChange={(v) => updateTrack(track.id, { volume: v })} color={track.color} height={160} />
-          <Meter analyser={analyser} height={160} />
+          <div className="flex items-end gap-0.5">
+            {meters.length ? meters.map((meter, i) => (
+              <Meter key={i} analyser={meter} height={160} width={meters.length === 2 ? 5 : 8} />
+            )) : <Meter analyser={null} height={160} />}
+          </div>
         </div>
         <div className="flex gap-1 mt-1.5">
           <button
