@@ -100,7 +100,6 @@ function snap(get: any, set: any) {
   });
 }
 
-const HISTORY_LIMIT_LOCAL = 0; // (placeholder removed; see HISTORY_LIMIT above)
 
 
 export const useDawStore = create<DawState>((set, get) => ({
