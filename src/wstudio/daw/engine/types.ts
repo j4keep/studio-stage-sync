@@ -70,6 +70,10 @@ export interface Track {
   instrument?: "synth" | "drum";
 }
 
+export type KeyRoot = "C" | "C#" | "D" | "D#" | "E" | "F" | "F#" | "G" | "G#" | "A" | "A#" | "B";
+export type KeyMode = "major" | "minor";
+export type TempoMode = "keep" | "adapt" | "auto";
+
 export interface TransportState {
   isPlaying: boolean;
   isRecording: boolean;
@@ -80,6 +84,16 @@ export interface TransportState {
   loopStart: number;
   loopEnd: number;
   metronome: boolean;
+  /** Musical key root */
+  keyRoot: KeyRoot;
+  /** Major / minor */
+  keyMode: KeyMode;
+  /** Beats per bar (numerator) */
+  timeSigNum: number;
+  /** Beat unit (denominator: 2,4,8,16) */
+  timeSigDen: number;
+  /** Smart Tempo mode for imported audio */
+  tempoMode: TempoMode;
 }
 
 export interface UserPlugin {
