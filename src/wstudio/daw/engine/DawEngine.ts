@@ -24,6 +24,7 @@ export class DawEngine {
     splitter: ChannelSplitterNode;
     analyserL: AnalyserNode;
     analyserR: AnalyserNode;
+    inputAnalyser: AnalyserNode;
     reverbSend: GainNode;
     delaySend: GainNode;
     activeSources: AudioScheduledSourceNode[];
