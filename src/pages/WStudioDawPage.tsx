@@ -12,6 +12,13 @@ import { FxRack } from "@/wstudio/daw/ui/FxRack";
 import { LibraryPanel } from "@/wstudio/daw/ui/LibraryPanel";
 import { CollabSidebar } from "@/wstudio/daw/ui/CollabSidebar";
 import { MenuBar } from "@/wstudio/daw/ui/MenuBar";
+import type { Clip, Track } from "@/wstudio/daw/engine/types";
+
+const isInputAudioTrack = (track: Track, allClips: Clip[]) => (
+  track.kind === "audio"
+  && track.inputEnabled !== false
+  && !(track.inputEnabled === undefined && allClips.some(c => c.trackId === track.id && c.buffer && c.name !== "Recording"))
+);
 
 export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessionCode?: string } = {}) {
   const [params] = useSearchParams();
@@ -53,9 +60,10 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
   useEffect(() => {
     const e = engineRef.current;
     if (!e) return;
-    tracks.forEach(t => e.ensureTrackChain(t));
-    e.syncInputMonitoring(tracks);
-  }, [tracks]);
+    const resolvedTracks = tracks.map(t => isInputAudioTrack(t, clips) ? t : t.kind === "audio" ? { ...t, inputEnabled: false, armed: false } : t);
+    resolvedTracks.forEach(t => e.ensureTrackChain(t));
+    e.syncInputMonitoring(resolvedTracks);
+  }, [tracks, clips]);
 
   useEffect(() => {
     tracks.forEach((track) => {
@@ -137,10 +145,10 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
       setTransport({ isRecording: false });
       return;
     }
-    let armed = st.tracks.find(t => t.kind === "audio" && t.inputEnabled !== false && t.armed && t.id === st.selectedTrackId)
-      ?? st.tracks.find(t => t.kind === "audio" && t.inputEnabled !== false && t.armed);
+    let armed = st.tracks.find(t => isInputAudioTrack(t, st.clips) && t.armed && t.id === st.selectedTrackId)
+      ?? st.tracks.find(t => isInputAudioTrack(t, st.clips) && t.armed);
     if (!armed && st.selectedTrackId) {
-      const selectedAudio = st.tracks.find(t => t.id === st.selectedTrackId && t.kind === "audio" && t.inputEnabled !== false);
+      const selectedAudio = st.tracks.find(t => t.id === st.selectedTrackId && isInputAudioTrack(t, st.clips));
       if (selectedAudio) {
         st.tracks.forEach(t => updateTrack(t.id, { armed: t.id === selectedAudio.id }));
         armed = selectedAudio;
