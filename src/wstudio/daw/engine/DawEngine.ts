@@ -1,6 +1,12 @@
 import type { Track, Clip, TransportState, EffectInstance, MidiNote } from "./types";
 import { buildEffect, type BuiltEffect } from "./Effects";
 
+type SharedInputMonitor = {
+  stream: MediaStream;
+  source: MediaStreamAudioSourceNode;
+  refs: Set<string>;
+};
+
 /**
  * Browser DAW engine. Holds the AudioContext, master bus, sends, and per-track chains.
  * Scheduling: simple "play all clips" — each play() call schedules every clip on every track
@@ -32,12 +38,15 @@ export class DawEngine {
     inputMonitorSource?: MediaStreamAudioSourceNode | null;
     inputMonitorStream?: MediaStream | null;
     inputMonitoring: boolean;
+    inputMonitorDeviceKey?: string;
     inputMonitorToken: number;
     inputMonitorFailed: boolean;
     savedReverbSend?: number;
     savedDelaySend?: number;
     effectSignature: string;
   }>();
+  private sharedInputMonitors = new Map<string, SharedInputMonitor>();
+  private pendingInputMonitors = new Map<string, Promise<SharedInputMonitor>>();
   private startCtxTime = 0;
   private startTransportTime = 0;
   playing = false;
@@ -404,31 +413,50 @@ export class DawEngine {
 
   private async startInputMonitoring(trackId: string, inputDeviceId?: string) {
     const chain = this.trackChains.get(trackId);
-    if (!chain || chain.inputMonitoring) return;
+    const deviceKey = inputDeviceId || "__default__";
+    if (!chain) return;
+    if (chain.inputMonitoring && chain.inputMonitorDeviceKey === deviceKey) return;
+    if (chain.inputMonitoring) this.stopInputMonitoring(trackId);
     const token = ++chain.inputMonitorToken;
     try {
       await this.resume();
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          deviceId: inputDeviceId ? { exact: inputDeviceId } : undefined,
-          echoCancellation: true,
-          noiseSuppression: false,
-          autoGainControl: false,
-          channelCount: 1,
-          sampleRate: this.ctx.sampleRate,
-        } as MediaTrackConstraints,
-      });
+      let shared = this.sharedInputMonitors.get(deviceKey);
+      if (!shared) {
+        let pending = this.pendingInputMonitors.get(deviceKey);
+        if (!pending) {
+          pending = navigator.mediaDevices.getUserMedia({
+          audio: {
+            deviceId: inputDeviceId ? { exact: inputDeviceId } : undefined,
+            echoCancellation: true,
+            noiseSuppression: false,
+            autoGainControl: false,
+            channelCount: 1,
+            sampleRate: this.ctx.sampleRate,
+          } as MediaTrackConstraints,
+          }).then((stream) => {
+            const created = { stream, source: this.ctx.createMediaStreamSource(stream), refs: new Set<string>() };
+            this.sharedInputMonitors.set(deviceKey, created);
+            this.pendingInputMonitors.delete(deviceKey);
+            return created;
+          }).catch((err) => {
+            this.pendingInputMonitors.delete(deviceKey);
+            throw err;
+          });
+          this.pendingInputMonitors.set(deviceKey, pending);
+        }
+        shared = await pending;
+      }
       if (chain.inputMonitorToken !== token) {
-        stream.getTracks().forEach(t => t.stop());
         return;
       }
-      const src = this.ctx.createMediaStreamSource(stream);
       // Route ONLY to dedicated input analyser — never into the main mixer chain,
       // so there's no feedback and playback of clips is unaffected.
-      src.connect(chain.inputAnalyser);
-      chain.inputMonitorSource = src;
-      chain.inputMonitorStream = stream;
+      shared.source.connect(chain.inputAnalyser);
+      shared.refs.add(trackId);
+      chain.inputMonitorSource = shared.source;
+      chain.inputMonitorStream = shared.stream;
       chain.inputMonitoring = true;
+      chain.inputMonitorDeviceKey = deviceKey;
       chain.inputMonitorFailed = false;
     } catch {
       if (chain.inputMonitorToken === token) chain.inputMonitorFailed = false;
@@ -439,11 +467,23 @@ export class DawEngine {
     const chain = this.trackChains.get(trackId);
     if (!chain) return;
     chain.inputMonitorToken++;
-    try { chain.inputMonitorSource?.disconnect(); } catch {}
-    chain.inputMonitorStream?.getTracks().forEach(t => t.stop());
+    if (chain.inputMonitorSource) {
+      try { chain.inputMonitorSource.disconnect(chain.inputAnalyser); } catch {}
+    }
+    const deviceKey = chain.inputMonitorDeviceKey;
+    if (deviceKey) {
+      const shared = this.sharedInputMonitors.get(deviceKey);
+      shared?.refs.delete(trackId);
+      if (shared && shared.refs.size === 0) {
+        try { shared.source.disconnect(); } catch {}
+        shared.stream.getTracks().forEach(t => t.stop());
+        this.sharedInputMonitors.delete(deviceKey);
+      }
+    }
     chain.inputMonitorSource = null;
     chain.inputMonitorStream = null;
     chain.inputMonitoring = false;
+    chain.inputMonitorDeviceKey = undefined;
     chain.inputMonitorFailed = false;
   }
 
@@ -598,6 +638,11 @@ export class DawEngine {
   dispose() {
     this.stop();
     this.trackChains.forEach((_, id) => this.removeTrack(id));
+    this.sharedInputMonitors.forEach((shared) => {
+      try { shared.source.disconnect(); } catch {}
+      shared.stream.getTracks().forEach(t => t.stop());
+    });
+    this.sharedInputMonitors.clear();
     try { this.ctx.close(); } catch {}
   }
 }

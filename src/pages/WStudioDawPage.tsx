@@ -26,6 +26,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
 
   const engineRef = useRef<DawEngine | null>(null);
   const [engineReady, setEngineReady] = useState(false);
+  const [, setEngineGraphVersion] = useState(0);
   const [fxTrackId, setFxTrackId] = useState<string | null>(null);
   const [collabOpen, setCollabOpen] = useState(true);
 
@@ -63,6 +64,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
     const resolvedTracks = tracks.map(t => isInputAudioTrack(t, clips) ? t : t.kind === "audio" ? { ...t, inputEnabled: false, armed: false } : t);
     resolvedTracks.forEach(t => e.ensureTrackChain(t));
     e.syncInputMonitoring(resolvedTracks);
+    setEngineGraphVersion(v => v + 1);
   }, [tracks, clips]);
 
   useEffect(() => {
