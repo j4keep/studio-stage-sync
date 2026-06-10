@@ -73,6 +73,7 @@ export interface Track {
 export type KeyRoot = "C" | "C#" | "D" | "D#" | "E" | "F" | "F#" | "G" | "G#" | "A" | "A#" | "B";
 export type KeyMode = "major" | "minor";
 export type TempoMode = "keep" | "adapt" | "auto";
+export type BBTDisplayMode = "beats-project" | "beats-time" | "beats" | "time";
 
 export interface TransportState {
   isPlaying: boolean;
