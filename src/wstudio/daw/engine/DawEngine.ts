@@ -526,11 +526,6 @@ export class DawEngine {
     if (chain) {
       try { chain.micSource?.disconnect(); } catch {}
       chain.micSource = null;
-      chain.monitorGain.gain.value = 1;
-      if (chain.savedReverbSend != null) chain.reverbSend.gain.value = chain.savedReverbSend;
-      if (chain.savedDelaySend != null) chain.delaySend.gain.value = chain.savedDelaySend;
-      chain.savedReverbSend = undefined;
-      chain.savedDelaySend = undefined;
     }
     this.recBuffers = [];
     this.recordingLivePeaks = [];
