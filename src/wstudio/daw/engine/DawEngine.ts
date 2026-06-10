@@ -453,11 +453,23 @@ export class DawEngine {
     const chain = this.trackChains.get(trackId);
     if (!chain) return;
     chain.inputMonitorToken++;
-    try { chain.inputMonitorSource?.disconnect(); } catch {}
-    chain.inputMonitorStream?.getTracks().forEach(t => t.stop());
+    if (chain.inputMonitorSource) {
+      try { chain.inputMonitorSource.disconnect(chain.inputAnalyser); } catch {}
+    }
+    const deviceKey = chain.inputMonitorDeviceKey;
+    if (deviceKey) {
+      const shared = this.sharedInputMonitors.get(deviceKey);
+      shared?.refs.delete(trackId);
+      if (shared && shared.refs.size === 0) {
+        try { shared.source.disconnect(); } catch {}
+        shared.stream.getTracks().forEach(t => t.stop());
+        this.sharedInputMonitors.delete(deviceKey);
+      }
+    }
     chain.inputMonitorSource = null;
     chain.inputMonitorStream = null;
     chain.inputMonitoring = false;
+    chain.inputMonitorDeviceKey = undefined;
     chain.inputMonitorFailed = false;
   }
 
@@ -612,6 +624,11 @@ export class DawEngine {
   dispose() {
     this.stop();
     this.trackChains.forEach((_, id) => this.removeTrack(id));
+    this.sharedInputMonitors.forEach((shared) => {
+      try { shared.source.disconnect(); } catch {}
+      shared.stream.getTracks().forEach(t => t.stop());
+    });
+    this.sharedInputMonitors.clear();
     try { this.ctx.close(); } catch {}
   }
 }
