@@ -182,6 +182,11 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
     engineRef.current?.setMetronome(metronome, bpm, timeSigNum);
   }, [metronome, bpm, timeSigNum]);
 
+  // Sync metronome volume independently from master mix
+  useEffect(() => {
+    engineRef.current?.setMetronomeVolume(metronomeVolume);
+  }, [metronomeVolume]);
+
   // Keyboard shortcuts
   useEffect(() => {
     const onKey = (ev: KeyboardEvent) => {
