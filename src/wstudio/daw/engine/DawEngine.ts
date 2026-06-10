@@ -258,10 +258,11 @@ export class DawEngine {
     this.startTransportTime = transport.position;
     this.playing = true;
     this.metroBpm = transport.bpm;
+    this.metroBeatsPerBar = transport.timeSigNum || 4;
     this.metroEnabled = !!transport.metronome;
     this.metroBeatIndex = 0;
     this.metroNextBeat = this.startCtxTime;
-    this.scheduleMetronome();
+    if (this.metroEnabled) this.scheduleMetronome();
 
     // NOTE: We DO NOT skip muted/non-solo clips here. Mute & solo are enforced
     // live via each track chain's gain node (see updateTrackParams), so the user
