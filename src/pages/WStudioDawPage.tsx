@@ -311,7 +311,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
         />
 
         {view === "arrange" && <ArrangeView onArmToggle={handleArmToggle} onSeek={handleSeek} engine={engineRef.current} />}
-        {view === "mixer" && <MixerView engine={engineRef.current} onOpenFx={setFxTrackId} />}
+        {view === "mixer" && <MixerView engine={engineRef.current} onOpenFx={setFxTrackId} onArmToggle={handleArmToggle} />}
         {view === "instrument" && <InstrumentPanel engine={engineRef.current} />}
 
         {collabOpen ? (
