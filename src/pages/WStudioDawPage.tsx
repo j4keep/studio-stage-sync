@@ -58,6 +58,13 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
   }, [tracks]);
 
   useEffect(() => {
+    tracks.forEach((track) => {
+      const hasImportedAudio = track.kind === "audio" && track.inputEnabled === undefined && clips.some(c => c.trackId === track.id && c.buffer && c.name !== "Recording");
+      if (hasImportedAudio) updateTrack(track.id, { inputEnabled: false, armed: false });
+    });
+  }, [tracks, clips, updateTrack]);
+
+  useEffect(() => {
     const e = engineRef.current;
     if (!e) return;
     tracks.forEach(t => e.updateTrackParams(t, tracks));
