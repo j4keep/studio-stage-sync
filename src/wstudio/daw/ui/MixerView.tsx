@@ -18,7 +18,7 @@ const ROW_LABELS = [
   { key: "fader", label: "", h: 220 },
 ];
 
-export function MixerView({ engine, onOpenFx }: { engine: DawEngine; onOpenFx: (trackId: string) => void }) {
+export function MixerView({ engine, onOpenFx, onArmToggle }: { engine: DawEngine; onOpenFx: (trackId: string) => void; onArmToggle: (trackId: string) => void }) {
   const tracks = useDawStore(s => s.tracks);
   const masterVolume = useDawStore(s => s.masterVolume);
   const setMasterVolume = useDawStore(s => s.setMasterVolume);
@@ -41,7 +41,7 @@ export function MixerView({ engine, onOpenFx }: { engine: DawEngine; onOpenFx: (
           <div className="flex-1 grid place-items-center text-neutral-600 text-sm">No tracks yet — add one from the toolbar.</div>
         )}
         {tracks.map(t => (
-          <ChannelStrip key={t.id} track={t} engine={engine} onOpenFx={() => onOpenFx(t.id)} rows={ROW_LABELS} />
+          <ChannelStrip key={t.id} track={t} engine={engine} onOpenFx={() => onOpenFx(t.id)} onArmToggle={onArmToggle} rows={ROW_LABELS} />
         ))}
         {/* Master strip */}
         {tracks.length > 0 && (

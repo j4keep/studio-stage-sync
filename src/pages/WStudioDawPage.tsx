@@ -54,6 +54,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
     const e = engineRef.current;
     if (!e) return;
     tracks.forEach(t => e.ensureTrackChain(t));
+    e.syncInputMonitoring(tracks);
   }, [tracks]);
 
   useEffect(() => {
@@ -208,8 +209,17 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
     const t = tracks.find(x => x.id === trackId);
     if (!t) return;
     // Exclusive arm
+    const shouldArm = !t.armed;
     selectTrack(trackId);
-    tracks.forEach(x => updateTrack(x.id, { armed: x.id === trackId ? !t.armed : false }));
+    tracks.forEach(x => updateTrack(x.id, { armed: x.id === trackId ? shouldArm : false }));
+    tracks.forEach(x => {
+      if (x.id !== trackId) engineRef.current?.unmonitorInput(x.id);
+    });
+    if (shouldArm && t.kind === "audio") {
+      engineRef.current?.monitorInput(t.id, t.inputDeviceId).catch(() => toast.error("Mic access denied"));
+    } else {
+      engineRef.current?.unmonitorInput(t.id);
+    }
   }, [tracks, updateTrack, selectTrack]);
 
   const importFiles = useCallback(async (files: FileList) => {
@@ -310,7 +320,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
         />
 
         {view === "arrange" && <ArrangeView onArmToggle={handleArmToggle} onSeek={handleSeek} engine={engineRef.current} />}
-        {view === "mixer" && <MixerView engine={engineRef.current} onOpenFx={setFxTrackId} />}
+        {view === "mixer" && <MixerView engine={engineRef.current} onOpenFx={setFxTrackId} onArmToggle={handleArmToggle} />}
         {view === "instrument" && <InstrumentPanel engine={engineRef.current} />}
 
         {collabOpen ? (
