@@ -214,10 +214,9 @@ export class DawEngine {
     const anySolo = allTracks ? allTracks.some(t => t.solo) : false;
     const silencedBySolo = anySolo && !track.solo;
     c.gain.gain.setTargetAtTime((track.mute || silencedBySolo) ? 0 : volume, now, 0.01);
-    const inputOnlyMetering = this.recordingTrackId === track.id || c.inputMonitoring;
-    c.monitorGain.gain.setTargetAtTime(inputOnlyMetering ? 0 : 1, now, 0.01);
-    c.reverbSend.gain.setTargetAtTime(inputOnlyMetering ? 0 : reverb, now, 0.01);
-    c.delaySend.gain.setTargetAtTime(inputOnlyMetering ? 0 : delay, now, 0.01);
+    c.monitorGain.gain.setTargetAtTime(1, now, 0.01);
+    c.reverbSend.gain.setTargetAtTime(reverb, now, 0.01);
+    c.delaySend.gain.setTargetAtTime(delay, now, 0.01);
     // Update insert params
     track.effects.filter(e => e.enabled).forEach((fx, i) => {
       if (c.inserts[i]) c.inserts[i].apply(fx.params);
