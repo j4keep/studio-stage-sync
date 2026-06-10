@@ -12,7 +12,22 @@ import { FxRack } from "@/wstudio/daw/ui/FxRack";
 import { LibraryPanel } from "@/wstudio/daw/ui/LibraryPanel";
 import { CollabSidebar } from "@/wstudio/daw/ui/CollabSidebar";
 import { MenuBar } from "@/wstudio/daw/ui/MenuBar";
-import type { Clip, Track } from "@/wstudio/daw/engine/types";
+import type { Clip, Track, AutomationPoint } from "@/wstudio/daw/engine/types";
+
+/** Linearly interpolate between automation breakpoints at the given timeline position. */
+function interpAutomation(points: AutomationPoint[], pos: number, fallback: number): number {
+  if (!points.length) return fallback;
+  if (pos <= points[0].t) return points[0].v;
+  if (pos >= points[points.length - 1].t) return points[points.length - 1].v;
+  for (let i = 0; i < points.length - 1; i++) {
+    const a = points[i], b = points[i + 1];
+    if (pos >= a.t && pos <= b.t) {
+      const r = (pos - a.t) / Math.max(0.0001, b.t - a.t);
+      return a.v + (b.v - a.v) * r;
+    }
+  }
+  return fallback;
+}
 
 const isInputAudioTrack = (track: Track, allClips: Clip[]) => (
   track.kind === "audio"
