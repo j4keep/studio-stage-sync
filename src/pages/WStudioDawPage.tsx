@@ -176,10 +176,10 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
     }
   }, [selectTrack, updateTrack, setTransport]);
 
-  // Sync metronome live
+  // Sync metronome live (enabled, tempo, bar length)
   useEffect(() => {
-    engineRef.current?.setMetronome(metronome, bpm);
-  }, [metronome, bpm]);
+    engineRef.current?.setMetronome(metronome, bpm, timeSigNum);
+  }, [metronome, bpm, timeSigNum]);
 
   // Keyboard shortcuts
   useEffect(() => {
