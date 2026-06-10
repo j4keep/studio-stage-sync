@@ -168,6 +168,12 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
     selectTrack(armed.id);
     try {
       await e.resume();
+      const countBars = useDawStore.getState().transport.metroCountInBars || 0;
+      if (countBars > 0) {
+        const t0 = useDawStore.getState().transport;
+        toast.message(`Count-in: ${countBars} bar${countBars > 1 ? "s" : ""}`);
+        await e.countIn(countBars, t0.timeSigNum || 4, t0.bpm);
+      }
       const latest = useDawStore.getState();
       const recordTrack = latest.tracks.find(t => t.id === armed!.id) ?? armed;
       await e.startRecording(recordTrack.id, latest.transport.position, recordTrack.inputDeviceId);
