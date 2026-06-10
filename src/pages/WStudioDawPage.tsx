@@ -128,9 +128,14 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
       setTransport({ isRecording: false });
       return;
     }
+    // A beat/imported audio lane is still an audio track, but it is not a vocal
+    // record lane. If the armed lane already has regions, create a clean vocal
+    // lane so the take never gets recorded on top of the beat track.
     let armed = st.tracks.find(t => t.armed && t.kind === "audio");
-    if (!armed) {
-      const id = addTrack("audio", `Take ${st.tracks.filter(t => t.kind === "audio").length + 1}`);
+    const armedHasRegions = armed ? st.clips.some(c => c.trackId === armed!.id) : false;
+    if (!armed || armedHasRegions) {
+      const id = addTrack("audio", `Vocal ${st.tracks.filter(t => t.kind === "audio").length + 1}`);
+      st.tracks.forEach(t => updateTrack(t.id, { armed: false }));
       updateTrack(id, { armed: true });
       await new Promise(r => setTimeout(r, 50));
       armed = useDawStore.getState().tracks.find(t => t.id === id);
