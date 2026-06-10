@@ -120,7 +120,7 @@ export class DawEngine {
       splitter.connect(analyserR, 1);
       const reverbSend = this.ctx.createGain();
       const delaySend = this.ctx.createGain();
-      chain = { input, inserts: [], panner, gain, monitorGain, analyser, splitter, analyserL, analyserR, reverbSend, delaySend, activeSources: [], effectSignature: "" };
+      chain = { input, inserts: [], panner, gain, monitorGain, analyser, splitter, analyserL, analyserR, reverbSend, delaySend, activeSources: [], effectSignature: "__new__" };
       this.trackChains.set(track.id, chain);
     }
     const signature = this.getEffectSignature(track);
