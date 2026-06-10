@@ -393,9 +393,10 @@ export class DawEngine {
     this.metroTimer = window.setTimeout(() => this.scheduleMetronome(), 100);
   }
 
-  private playClick(when: number, accent: boolean) {
+  private playClick(when: number, downbeat: boolean) {
     const osc = this.ctx.createOscillator();
     const env = this.ctx.createGain();
+    const accent = this.metroAccent && downbeat;
     osc.frequency.value = accent ? 1500 : 1000;
     env.gain.setValueAtTime(0, when);
     env.gain.linearRampToValueAtTime(accent ? 0.5 : 0.3, when + 0.001);
@@ -409,6 +410,62 @@ export class DawEngine {
     if (this.metroGain) {
       this.metroGain.gain.setTargetAtTime(vol, this.ctx.currentTime, 0.01);
     }
+  }
+
+  setMetronomeAccent(on: boolean) {
+    this.metroAccent = !!on;
+  }
+
+  /** Route metronome clicks to a dedicated audio output device (or back to master if undefined). */
+  async setMetronomeOutputDevice(deviceId: string | undefined) {
+    this.metroOutputDeviceId = deviceId;
+    const wantSeparate = !!deviceId;
+    if (wantSeparate) {
+      if (!this.metroDest) {
+        this.metroDest = this.ctx.createMediaStreamDestination();
+        this.metroAudioEl = document.createElement("audio");
+        this.metroAudioEl.autoplay = true;
+        this.metroAudioEl.srcObject = this.metroDest.stream;
+      }
+      // Disconnect from master, route only to dedicated dest
+      if (this.metroRoutedToMaster) {
+        try { this.metroGain.disconnect(this.masterGain); } catch {}
+        this.metroRoutedToMaster = false;
+      }
+      try { this.metroGain.disconnect(this.metroDest); } catch {}
+      this.metroGain.connect(this.metroDest);
+      try {
+        // setSinkId only supported in Chromium-based browsers
+        const el = this.metroAudioEl as any;
+        if (el && typeof el.setSinkId === "function") {
+          await el.setSinkId(deviceId);
+        }
+        await this.metroAudioEl?.play().catch(() => {});
+      } catch {}
+    } else {
+      // Back to master
+      if (this.metroDest) {
+        try { this.metroGain.disconnect(this.metroDest); } catch {}
+      }
+      if (!this.metroRoutedToMaster) {
+        try { this.metroGain.connect(this.masterGain); } catch {}
+        this.metroRoutedToMaster = true;
+      }
+    }
+  }
+
+  /** Schedule N bars of count-in clicks. Resolves when the last click is done. */
+  async countIn(bars: number, beatsPerBar: number, bpm: number): Promise<void> {
+    const totalBeats = Math.max(0, Math.floor(bars)) * Math.max(1, beatsPerBar);
+    if (totalBeats <= 0) return;
+    await this.resume();
+    const beatDur = 60 / Math.max(20, bpm);
+    const start = this.ctx.currentTime + 0.05;
+    for (let i = 0; i < totalBeats; i++) {
+      this.playClick(start + i * beatDur, i % beatsPerBar === 0);
+    }
+    const totalMs = (totalBeats * beatDur + 0.05) * 1000;
+    await new Promise<void>(res => setTimeout(res, totalMs));
   }
 
   private stopAllSources() {
