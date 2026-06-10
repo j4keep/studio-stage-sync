@@ -32,11 +32,17 @@ export class DawEngine {
     inputMonitorSource?: MediaStreamAudioSourceNode | null;
     inputMonitorStream?: MediaStream | null;
     inputMonitoring: boolean;
+    inputMonitorDeviceKey?: string;
     inputMonitorToken: number;
     inputMonitorFailed: boolean;
     savedReverbSend?: number;
     savedDelaySend?: number;
     effectSignature: string;
+  }>();
+  private sharedInputMonitors = new Map<string, {
+    stream: MediaStream;
+    source: MediaStreamAudioSourceNode;
+    refs: Set<string>;
   }>();
   private startCtxTime = 0;
   private startTransportTime = 0;
@@ -404,31 +410,39 @@ export class DawEngine {
 
   private async startInputMonitoring(trackId: string, inputDeviceId?: string) {
     const chain = this.trackChains.get(trackId);
-    if (!chain || chain.inputMonitoring) return;
+    const deviceKey = inputDeviceId || "__default__";
+    if (!chain) return;
+    if (chain.inputMonitoring && chain.inputMonitorDeviceKey === deviceKey) return;
+    if (chain.inputMonitoring) this.stopInputMonitoring(trackId);
     const token = ++chain.inputMonitorToken;
     try {
       await this.resume();
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          deviceId: inputDeviceId ? { exact: inputDeviceId } : undefined,
-          echoCancellation: true,
-          noiseSuppression: false,
-          autoGainControl: false,
-          channelCount: 1,
-          sampleRate: this.ctx.sampleRate,
-        } as MediaTrackConstraints,
-      });
+      let shared = this.sharedInputMonitors.get(deviceKey);
+      if (!shared) {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            deviceId: inputDeviceId ? { exact: inputDeviceId } : undefined,
+            echoCancellation: true,
+            noiseSuppression: false,
+            autoGainControl: false,
+            channelCount: 1,
+            sampleRate: this.ctx.sampleRate,
+          } as MediaTrackConstraints,
+        });
+        shared = { stream, source: this.ctx.createMediaStreamSource(stream), refs: new Set<string>() };
+        this.sharedInputMonitors.set(deviceKey, shared);
+      }
       if (chain.inputMonitorToken !== token) {
-        stream.getTracks().forEach(t => t.stop());
         return;
       }
-      const src = this.ctx.createMediaStreamSource(stream);
       // Route ONLY to dedicated input analyser — never into the main mixer chain,
       // so there's no feedback and playback of clips is unaffected.
-      src.connect(chain.inputAnalyser);
-      chain.inputMonitorSource = src;
-      chain.inputMonitorStream = stream;
+      shared.source.connect(chain.inputAnalyser);
+      shared.refs.add(trackId);
+      chain.inputMonitorSource = shared.source;
+      chain.inputMonitorStream = shared.stream;
       chain.inputMonitoring = true;
+      chain.inputMonitorDeviceKey = deviceKey;
       chain.inputMonitorFailed = false;
     } catch {
       if (chain.inputMonitorToken === token) chain.inputMonitorFailed = false;
