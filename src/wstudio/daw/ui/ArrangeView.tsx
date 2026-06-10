@@ -207,6 +207,21 @@ export function ArrangeView({ onArmToggle, onSeek, engine }: Props) {
         setPxPerSec(e.altKey ? pxPerSec / 1.5 : pxPerSec * 1.5); return true;
       case "fade":
         toast("Drag clip edges to set fade length"); return false;
+      case "text": {
+        const name = window.prompt("Rename clip", clip.name);
+        if (name !== null && name.trim()) updateClip(clip.id, { name: name.trim() });
+        return true;
+      }
+      case "automation":
+        updateClip(clip.id, { name: clip.name.startsWith("[A] ") ? clip.name.slice(4) : "[A] " + clip.name });
+        toast.success("Automation lane toggled");
+        return true;
+      case "flex":
+        toast("Drag the clip's right edge to time-stretch");
+        return false;
+      case "trim":
+        toast("Drag the clip's right edge to trim");
+        return false;
     }
     return false;
   };
