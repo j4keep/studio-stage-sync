@@ -390,56 +390,67 @@ export function ArrangeView({ onArmToggle, onSeek, engine }: Props) {
 
             {/* Track lanes */}
             {tracks.map(t => (
-              <div
-                key={t.id}
-                className="relative border-b border-neutral-800"
-                style={{ height: TRACK_H, background: "linear-gradient(90deg, rgba(255,255,255,0.02), rgba(0,0,0,0))" }}
-                onClick={(e) => {
-                  if (tool === "pencil") {
+              <div key={t.id}>
+                <div
+                  className="relative border-b border-neutral-800"
+                  style={{ height: TRACK_H, background: "linear-gradient(90deg, rgba(255,255,255,0.02), rgba(0,0,0,0))" }}
+                  onClick={(e) => {
+                    if (tool === "pencil") {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const time = Math.max(0, (e.clientX - rect.left) / pxPerSec);
+                      addClip({
+                        id: `clip_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,
+                        trackId: t.id, startTime: time, duration: 2, offset: 0, name: "New Region",
+                      });
+                    } else if (tool === "zoom") {
+                      setPxPerSec(e.altKey ? pxPerSec / 1.5 : pxPerSec * 1.5);
+                    }
+                  }}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
                     const rect = e.currentTarget.getBoundingClientRect();
                     const time = Math.max(0, (e.clientX - rect.left) / pxPerSec);
-                    addClip({
-                      id: `clip_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,
-                      trackId: t.id, startTime: time, duration: 2, offset: 0, name: "New Region",
-                    });
-                  } else if (tool === "zoom") {
-                    setPxPerSec(e.altKey ? pxPerSec / 1.5 : pxPerSec * 1.5);
-                  }
-                }}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const time = Math.max(0, (e.clientX - rect.left) / pxPerSec);
-                  pasteClipAt(t.id, time);
-                }}
-              >
-                {/* Bar grid lines on lane */}
-                {Array.from({ length: totalBars }).map((_, i) => (
-                  <div key={i} className="absolute top-0 bottom-0 w-px bg-neutral-800/80" style={{ left: i * barPx }} />
-                ))}
-                {clips.filter(c => c.trackId === t.id).map(c => (
-                  <ClipBlock
-                    key={c.id}
-                    clip={c}
-                    color={t.color}
+                    pasteClipAt(t.id, time);
+                  }}
+                >
+                  {/* Bar grid lines on lane */}
+                  {Array.from({ length: totalBars }).map((_, i) => (
+                    <div key={i} className="absolute top-0 bottom-0 w-px bg-neutral-800/80" style={{ left: i * barPx }} />
+                  ))}
+                  {clips.filter(c => c.trackId === t.id).map(c => (
+                    <ClipBlock
+                      key={c.id}
+                      clip={c}
+                      color={t.color}
+                      pxPerSec={pxPerSec}
+                      selected={selectedClipId === c.id}
+                      tool={tool}
+                      onSelect={() => selectClip(c.id)}
+                      onContext={(x: number, y: number) => setCtxMenu({ x, y, clipId: c.id })}
+                      onToolApply={(e: React.MouseEvent) => applyToolToClip(c, e)}
+                      onPointerDownDrag={(e: React.PointerEvent, mode: "move" | "resize-left" | "resize-right") => beginClipDrag(c, e, mode)}
+                      onPointerMoveDrag={onClipDragMove}
+                      onPointerUpDrag={endClipDrag}
+                    />
+                  ))}
+                  {liveRec && liveRec.trackId === t.id && engine && (
+                    <LiveRecordingBlock
+                      startTime={engine.getRecordingStart()}
+                      peaks={liveRec.peaks}
+                      duration={liveRec.dur}
+                      pxPerSec={pxPerSec}
+                      height={TRACK_H}
+                    />
+                  )}
+                </div>
+                {t.automationOpen && (
+                  <AutomationLane
+                    track={t}
+                    width={timelineLen * pxPerSec}
                     pxPerSec={pxPerSec}
-                    selected={selectedClipId === c.id}
-                    tool={tool}
-                    onSelect={() => selectClip(c.id)}
-                    onContext={(x: number, y: number) => setCtxMenu({ x, y, clipId: c.id })}
-                    onToolApply={(e: React.MouseEvent) => applyToolToClip(c, e)}
-                    onPointerDownDrag={(e: React.PointerEvent, mode: "move" | "resize-left" | "resize-right") => beginClipDrag(c, e, mode)}
-                    onPointerMoveDrag={onClipDragMove}
-                    onPointerUpDrag={endClipDrag}
-                  />
-                ))}
-                {liveRec && liveRec.trackId === t.id && engine && (
-                  <LiveRecordingBlock
-                    startTime={engine.getRecordingStart()}
-                    peaks={liveRec.peaks}
-                    duration={liveRec.dur}
-                    pxPerSec={pxPerSec}
-                    height={TRACK_H}
+                    onAdd={(p) => addAutomationPoint(t.id, p)}
+                    onUpdate={(i, patch) => updateAutomationPoint(t.id, i, patch)}
+                    onRemove={(i) => removeAutomationPoint(t.id, i)}
                   />
                 )}
               </div>
