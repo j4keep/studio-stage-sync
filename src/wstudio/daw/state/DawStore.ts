@@ -105,6 +105,7 @@ export const useDawStore = create<DawState>((set, get) => ({
     timeSigNum: 4,
     timeSigDen: 4,
     tempoMode: "keep",
+    bbtDisplayMode: "beats-project",
     ...loadPersistedMetro(),
   },
   selectedTrackId: null,
