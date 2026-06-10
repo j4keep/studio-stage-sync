@@ -91,6 +91,11 @@ export interface DawState {
   setPxPerSec: (v: number) => void;
   setMasterVolume: (v: number) => void;
   setMetronomeVolume: (v: number) => void;
+  toggleAutomationLane: (trackId: string) => void;
+  setAutomationParam: (trackId: string, param: import("../engine/types").AutomationParam) => void;
+  addAutomationPoint: (trackId: string, point: import("../engine/types").AutomationPoint) => void;
+  updateAutomationPoint: (trackId: string, idx: number, patch: Partial<import("../engine/types").AutomationPoint>) => void;
+  removeAutomationPoint: (trackId: string, idx: number) => void;
 }
 function snap(get: any, set: any) {
   const s = get();
