@@ -286,20 +286,29 @@ export function ArrangeView({ onArmToggle, onSeek, engine }: Props) {
               const canRecordInput = t.kind === "audio" && t.inputEnabled !== false && !(t.inputEnabled === undefined && trackClips.some(c => c.buffer && c.name !== "Recording"));
               const meters = canRecordInput && inputAn ? [inputAn] : isStereo && stereo ? [stereo.L, stereo.R] : mono ? [mono] : [];
               return (
-                <TrackHeader
-                  key={t.id}
-                  track={t}
-                  canRecordInput={canRecordInput}
-                  meters={meters}
-                  onArm={() => onArmToggle(t.id)}
-                  onMute={() => updateTrack(t.id, { mute: !t.mute })}
-                  onSolo={() => updateTrack(t.id, { solo: !t.solo })}
-                  onRemove={() => removeTrack(t.id)}
-                  onRename={(n) => updateTrack(t.id, { name: n })}
-                  onVolume={(v) => updateTrack(t.id, { volume: v })}
-                  onPan={(v) => updateTrack(t.id, { pan: v })}
-                  onDropTrack={(fromId) => reorderTracks(fromId, t.id)}
-                />
+                <div key={t.id}>
+                  <TrackHeader
+                    track={t}
+                    canRecordInput={canRecordInput}
+                    meters={meters}
+                    onArm={() => onArmToggle(t.id)}
+                    onMute={() => updateTrack(t.id, { mute: !t.mute })}
+                    onSolo={() => updateTrack(t.id, { solo: !t.solo })}
+                    onRemove={() => removeTrack(t.id)}
+                    onRename={(n) => updateTrack(t.id, { name: n })}
+                    onVolume={(v) => updateTrack(t.id, { volume: v })}
+                    onPan={(v) => updateTrack(t.id, { pan: v })}
+                    onDropTrack={(fromId) => reorderTracks(fromId, t.id)}
+                    onToggleAuto={() => toggleAutomationLane(t.id)}
+                  />
+                  {t.automationOpen && (
+                    <AutomationLaneHeader
+                      param={t.automationParam ?? "volume"}
+                      onSelect={(p) => setAutomationParam(t.id, p)}
+                      onClose={() => toggleAutomationLane(t.id)}
+                    />
+                  )}
+                </div>
               );
             })}
             {tracks.length === 0 && (
