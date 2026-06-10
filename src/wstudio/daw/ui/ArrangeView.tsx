@@ -752,35 +752,105 @@ function AutomationLane({ track, width, pxPerSec, onAdd, onUpdate, onRemove }: {
   const ratioToY = (v: number) => h - ((v - min) / (max - min)) * h;
   const yToRatio = (y: number) => Math.max(min, Math.min(max, max - (y / h) * (max - min)));
   const dragRef = useRef<{ idx: number } | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [tip, setTip] = useState<{ x: number; y: number; text: string } | null>(null);
+
+  const formatVal = (v: number) => {
+    if (isPan) {
+      if (Math.abs(v) < 0.02) return "C";
+      const pct = Math.round(Math.abs(v) * 100);
+      return `${pct} ${v < 0 ? "L" : "R"}`;
+    }
+    const db = v <= 0.001 ? -Infinity : 20 * Math.log10(v);
+    return isFinite(db) ? `${db.toFixed(1)} dB` : "-∞ dB";
+  };
+
+  const baseline = isPan ? (track.pan ?? 0) : (track.volume ?? 0.8);
+  const linePts = points.length > 0
+    ? points
+    : [{ t: 0, v: baseline }, { t: width / pxPerSec, v: baseline }];
+
+  const onLanePointerDown = (e: React.PointerEvent) => {
+    if ((e.target as HTMLElement).dataset.autoHit) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const t = Math.max(0, (e.clientX - rect.left) / pxPerSec);
+    const v = yToRatio(e.clientY - rect.top);
+    onAdd({ t, v });
+  };
 
   return (
     <div
-      className="relative border-b border-neutral-800 bg-emerald-950/10"
+      ref={containerRef}
+      className="relative border-b border-neutral-800 bg-emerald-950/10 select-none"
       style={{ height: h, width }}
-      onDoubleClick={(e) => {
-        const rect = e.currentTarget.getBoundingClientRect();
-        const t = Math.max(0, (e.clientX - rect.left) / pxPerSec);
-        const v = yToRatio(e.clientY - rect.top);
-        onAdd({ t, v });
-      }}
+      onPointerDown={onLanePointerDown}
     >
-      {/* Center / zero line */}
-      <div className="absolute left-0 right-0 border-t border-emerald-400/20" style={{ top: ratioToY(isPan ? 0 : 0.8) }} />
-      {/* Polyline connecting points */}
+      <div className="absolute left-0 right-0 border-t border-emerald-400/15" style={{ top: ratioToY(isPan ? 0 : 0.8) }} />
+
       <svg className="absolute inset-0 pointer-events-none" width={width} height={h}>
-        {points.length > 0 && (
-          <polyline
-            points={points.map(p => `${p.t * pxPerSec},${ratioToY(p.v)}`).join(" ")}
-            fill="none"
-            stroke="rgb(52 211 153)"
-            strokeWidth={1.5}
-          />
-        )}
+        <polyline
+          points={linePts.map(p => `${p.t * pxPerSec},${ratioToY(p.v)}`).join(" ")}
+          fill="none"
+          stroke="rgb(52 211 153)"
+          strokeWidth={1.75}
+        />
       </svg>
-      {/* Breakpoint nodes */}
+
+      {points.length >= 2 && points.slice(0, -1).map((p, i) => {
+        const next = points[i + 1];
+        const x1 = p.t * pxPerSec;
+        const x2 = next.t * pxPerSec;
+        const y1 = ratioToY(p.v);
+        const y2 = ratioToY(next.v);
+        const segLeft = Math.min(x1, x2);
+        const segTop = Math.min(y1, y2) - 6;
+        const segW = Math.max(2, Math.abs(x2 - x1));
+        const segH = Math.abs(y2 - y1) + 12;
+        return (
+          <div
+            key={`seg-${i}`}
+            data-auto-hit="1"
+            title="Drag to move segment"
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+              const startY = e.clientY;
+              const startV1 = p.v;
+              const startV2 = next.v;
+              const onMove = (ev: PointerEvent) => {
+                const dy = ev.clientY - startY;
+                const dv = -(dy / h) * (max - min);
+                const nv1 = Math.max(min, Math.min(max, startV1 + dv));
+                const nv2 = Math.max(min, Math.min(max, startV2 + dv));
+                onUpdate(i, { v: nv1 });
+                onUpdate(i + 1, { v: nv2 });
+                const rect = containerRef.current?.getBoundingClientRect();
+                if (rect) {
+                  setTip({
+                    x: ev.clientX - rect.left,
+                    y: ev.clientY - rect.top,
+                    text: formatVal((nv1 + nv2) / 2),
+                  });
+                }
+              };
+              const onUp = () => {
+                window.removeEventListener("pointermove", onMove);
+                window.removeEventListener("pointerup", onUp);
+                setTip(null);
+              };
+              window.addEventListener("pointermove", onMove);
+              window.addEventListener("pointerup", onUp);
+            }}
+            className="absolute cursor-ns-resize"
+            style={{ left: segLeft, top: segTop, width: segW, height: segH }}
+          />
+        );
+      })}
+
       {points.map((p, i) => (
         <div
           key={i}
+          data-auto-hit="1"
           onPointerDown={(e) => {
             e.stopPropagation();
             (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -793,17 +863,29 @@ function AutomationLane({ track, width, pxPerSec, onAdd, onUpdate, onRemove }: {
             const t = Math.max(0, (e.clientX - rect.left) / pxPerSec);
             const v = yToRatio(e.clientY - rect.top);
             onUpdate(dragRef.current.idx, { t, v });
+            setTip({ x: e.clientX - rect.left, y: e.clientY - rect.top, text: formatVal(v) });
           }}
-          onPointerUp={() => { dragRef.current = null; }}
-          onContextMenu={(e) => { e.preventDefault(); onRemove(i); }}
-          title={`${param} ${p.v.toFixed(2)} @ ${p.t.toFixed(2)}s — right-click to remove`}
-          className="absolute w-2.5 h-2.5 -translate-x-1/2 -translate-y-1/2 rounded-sm bg-emerald-400 border border-emerald-200 cursor-move hover:scale-125"
+          onPointerUp={() => { dragRef.current = null; setTip(null); }}
+          onPointerCancel={() => { dragRef.current = null; setTip(null); }}
+          onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(i); }}
+          title={`${param} ${formatVal(p.v)} @ ${p.t.toFixed(2)}s — right-click to remove`}
+          className="absolute w-3 h-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-400 border border-emerald-100 shadow cursor-move hover:scale-125"
           style={{ left: p.t * pxPerSec, top: ratioToY(p.v) }}
         />
       ))}
+
+      {tip && (
+        <div
+          className="absolute z-30 px-1.5 py-0.5 rounded bg-neutral-900/95 border border-emerald-400/40 text-[10px] text-emerald-200 pointer-events-none whitespace-nowrap"
+          style={{ left: tip.x + 10, top: tip.y - 22 }}
+        >
+          {tip.text}
+        </div>
+      )}
+
       {points.length === 0 && (
         <div className="absolute inset-0 grid place-items-center text-[10px] text-neutral-600 pointer-events-none">
-          Double-click to add a {param} automation point
+          Click to add a {param} automation point — drag the line between points to move it
         </div>
       )}
     </div>
