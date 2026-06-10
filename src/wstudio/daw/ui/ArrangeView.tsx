@@ -708,3 +708,103 @@ function ClipBlock({ clip, color, pxPerSec, selected, tool, onSelect, onContext,
     </div>
   );
 }
+
+const AUTO_LANE_H = 70;
+
+function AutomationLaneHeader({ param, onSelect, onClose }: {
+  param: "volume" | "pan";
+  onSelect: (p: "volume" | "pan") => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="border-b border-neutral-800 bg-neutral-950/60 flex items-center px-2 gap-1 text-[9px] uppercase tracking-wider text-neutral-400" style={{ height: AUTO_LANE_H }}>
+      <span className="text-emerald-300">Automation</span>
+      <select
+        value={param}
+        onChange={(e) => onSelect(e.target.value as "volume" | "pan")}
+        className="bg-neutral-900 border border-neutral-700 rounded px-1 py-0.5 text-[9px] text-neutral-200"
+      >
+        <option value="volume">Volume</option>
+        <option value="pan">Pan</option>
+      </select>
+      <div className="flex-1" />
+      <button onClick={onClose} className="text-neutral-500 hover:text-red-400">×</button>
+    </div>
+  );
+}
+
+function AutomationLane({ track, width, pxPerSec, onAdd, onUpdate, onRemove }: {
+  track: Track;
+  width: number;
+  pxPerSec: number;
+  onAdd: (p: { t: number; v: number }) => void;
+  onUpdate: (idx: number, patch: Partial<{ t: number; v: number }>) => void;
+  onRemove: (idx: number) => void;
+}) {
+  const param = track.automationParam ?? "volume";
+  const points = track.automation?.[param] ?? [];
+  const isPan = param === "pan";
+  const min = isPan ? -1 : 0;
+  const max = 1;
+  const h = AUTO_LANE_H;
+  const ratioToY = (v: number) => h - ((v - min) / (max - min)) * h;
+  const yToRatio = (y: number) => Math.max(min, Math.min(max, max - (y / h) * (max - min)));
+  const dragRef = useRef<{ idx: number } | null>(null);
+
+  return (
+    <div
+      className="relative border-b border-neutral-800 bg-emerald-950/10"
+      style={{ height: h, width }}
+      onDoubleClick={(e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const t = Math.max(0, (e.clientX - rect.left) / pxPerSec);
+        const v = yToRatio(e.clientY - rect.top);
+        onAdd({ t, v });
+      }}
+    >
+      {/* Center / zero line */}
+      <div className="absolute left-0 right-0 border-t border-emerald-400/20" style={{ top: ratioToY(isPan ? 0 : 0.8) }} />
+      {/* Polyline connecting points */}
+      <svg className="absolute inset-0 pointer-events-none" width={width} height={h}>
+        {points.length > 0 && (
+          <polyline
+            points={points.map(p => `${p.t * pxPerSec},${ratioToY(p.v)}`).join(" ")}
+            fill="none"
+            stroke="rgb(52 211 153)"
+            strokeWidth={1.5}
+          />
+        )}
+      </svg>
+      {/* Breakpoint nodes */}
+      {points.map((p, i) => (
+        <div
+          key={i}
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+            dragRef.current = { idx: i };
+          }}
+          onPointerMove={(e) => {
+            if (!dragRef.current) return;
+            const parent = (e.currentTarget as HTMLElement).parentElement!;
+            const rect = parent.getBoundingClientRect();
+            const t = Math.max(0, (e.clientX - rect.left) / pxPerSec);
+            const v = yToRatio(e.clientY - rect.top);
+            onUpdate(dragRef.current.idx, { t, v });
+          }}
+          onPointerUp={() => { dragRef.current = null; }}
+          onContextMenu={(e) => { e.preventDefault(); onRemove(i); }}
+          title={`${param} ${p.v.toFixed(2)} @ ${p.t.toFixed(2)}s — right-click to remove`}
+          className="absolute w-2.5 h-2.5 -translate-x-1/2 -translate-y-1/2 rounded-sm bg-emerald-400 border border-emerald-200 cursor-move hover:scale-125"
+          style={{ left: p.t * pxPerSec, top: ratioToY(p.v) }}
+        />
+      ))}
+      {points.length === 0 && (
+        <div className="absolute inset-0 grid place-items-center text-[10px] text-neutral-600 pointer-events-none">
+          Double-click to add a {param} automation point
+        </div>
+      )}
+    </div>
+  );
+}
+
