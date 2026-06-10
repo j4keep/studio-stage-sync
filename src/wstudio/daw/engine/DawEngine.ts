@@ -256,6 +256,18 @@ export class DawEngine {
   }
 
   setMasterVolume(v: number) { this.masterGain.gain.value = v; }
+  /** Live-set a track's gain (used by automation playback). Bypasses the store. */
+  setLiveTrackVolume(trackId: string, v: number) {
+    const c = this.trackChains.get(trackId);
+    if (!c) return;
+    c.gain.gain.setTargetAtTime(Math.max(0, Math.min(1.5, v)), this.ctx.currentTime, 0.01);
+  }
+  /** Live-set a track's pan (-1..1). Bypasses the store. */
+  setLiveTrackPan(trackId: string, p: number) {
+    const c = this.trackChains.get(trackId);
+    if (!c) return;
+    c.panner.pan.setTargetAtTime(Math.max(-1, Math.min(1, p)), this.ctx.currentTime, 0.01);
+  }
   getMasterAnalyser() { return this.masterAnalyser; }
   getTrackAnalyser(trackId: string) { return this.trackChains.get(trackId)?.analyser ?? null; }
   getTrackInputAnalyser(trackId: string) { return this.trackChains.get(trackId)?.inputAnalyser ?? null; }
