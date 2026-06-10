@@ -236,6 +236,7 @@ export class DawEngine {
   setMasterVolume(v: number) { this.masterGain.gain.value = v; }
   getMasterAnalyser() { return this.masterAnalyser; }
   getTrackAnalyser(trackId: string) { return this.trackChains.get(trackId)?.analyser ?? null; }
+  getTrackInputAnalyser(trackId: string) { return this.trackChains.get(trackId)?.inputAnalyser ?? null; }
   getTrackStereoAnalysers(trackId: string) {
     const c = this.trackChains.get(trackId);
     return c ? { L: c.analyserL, R: c.analyserR } : null;
