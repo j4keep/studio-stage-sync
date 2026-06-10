@@ -21,8 +21,10 @@ const RULER_H = 32;
 // Build an SVG-based cursor that resembles the selected tool's icon. The icon
 // is white with a black outline so it's legible on both light and dark UI.
 const svgCursor = (inner: string, hx = 4, hy = 4) => {
-  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'>${inner}<g stroke='white' stroke-width='1.75'>${inner}</g></svg>`;
-  return `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}") ${hx} ${hy}, auto`;
+  // 18x18 keeps the tool icons crisp without looming over small waveforms.
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'>${inner}<g stroke='white' stroke-width='1.75'>${inner}</g></svg>`;
+  const scale = 18 / 28;
+  return `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}") ${Math.round(hx * scale)} ${Math.round(hy * scale)}, auto`;
 };
 
 const TOOL_CURSORS: Record<string, string> = {
