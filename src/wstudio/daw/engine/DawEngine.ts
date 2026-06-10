@@ -58,6 +58,7 @@ export class DawEngine {
   private metroNextBeat = 0;
   private metroBeatIndex = 0;
   private metroTimer: number | null = null;
+  private metroGain: GainNode;
 
   // Recording
   private micStream: MediaStream | null = null;
