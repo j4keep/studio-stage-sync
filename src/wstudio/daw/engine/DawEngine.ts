@@ -422,7 +422,9 @@ export class DawEngine {
       await this.resume();
       let shared = this.sharedInputMonitors.get(deviceKey);
       if (!shared) {
-        const stream = await navigator.mediaDevices.getUserMedia({
+        let pending = this.pendingInputMonitors.get(deviceKey);
+        if (!pending) {
+          pending = navigator.mediaDevices.getUserMedia({
           audio: {
             deviceId: inputDeviceId ? { exact: inputDeviceId } : undefined,
             echoCancellation: true,
@@ -431,9 +433,18 @@ export class DawEngine {
             channelCount: 1,
             sampleRate: this.ctx.sampleRate,
           } as MediaTrackConstraints,
-        });
-        shared = { stream, source: this.ctx.createMediaStreamSource(stream), refs: new Set<string>() };
-        this.sharedInputMonitors.set(deviceKey, shared);
+          }).then((stream) => {
+            const created = { stream, source: this.ctx.createMediaStreamSource(stream), refs: new Set<string>() };
+            this.sharedInputMonitors.set(deviceKey, created);
+            this.pendingInputMonitors.delete(deviceKey);
+            return created;
+          }).catch((err) => {
+            this.pendingInputMonitors.delete(deviceKey);
+            throw err;
+          });
+          this.pendingInputMonitors.set(deviceKey, pending);
+        }
+        shared = await pending;
       }
       if (chain.inputMonitorToken !== token) {
         return;
