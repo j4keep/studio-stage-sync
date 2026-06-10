@@ -414,7 +414,7 @@ export function ArrangeView({ onArmToggle, onSeek, engine }: Props) {
                     onSelect={() => selectClip(c.id)}
                     onContext={(x: number, y: number) => setCtxMenu({ x, y, clipId: c.id })}
                     onToolApply={(e: React.MouseEvent) => applyToolToClip(c, e)}
-                    onPointerDownDrag={(e: React.PointerEvent, mode: "move" | "resize") => beginClipDrag(c, e, mode)}
+                    onPointerDownDrag={(e: React.PointerEvent, mode: "move" | "resize-left" | "resize-right") => beginClipDrag(c, e, mode)}
                     onPointerMoveDrag={onClipDragMove}
                     onPointerUpDrag={endClipDrag}
                   />
