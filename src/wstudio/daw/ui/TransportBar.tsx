@@ -158,34 +158,35 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
         </div>
       </div>
 
-      <div className="flex items-center gap-1.5" title="Metronome level">
-        <button
-          type="button"
-          onClick={() => setTransport({ metronome: !transport.metronome })}
-          title="Metronome — clicks on every beat at current BPM"
-          className={`h-7 px-2 rounded border border-neutral-800 text-[10px] uppercase ${transport.metronome ? "bg-amber-500/20 text-amber-300 border-amber-500/40" : "text-neutral-400"}`}
-        >Metro</button>
-        <input
-          type="range" min={0} max={1} step={0.01}
-          value={transport.metronomeVolume}
-          onChange={(e) => setTransport({ metronomeVolume: Number(e.target.value) })}
-          className="w-16 accent-amber-500"
-          title="Metronome volume"
-        />
-      </div>
+      <MetronomePopover />
 
-      {/* Smart Tempo mode for imported audio */}
-      <div className="flex items-center bg-neutral-900 border border-neutral-800 rounded overflow-hidden" title="Smart Tempo — how imported audio behaves">
-        {TEMPO_MODES.map(m => (
-          <button
-            type="button"
-            key={m.id}
-            onClick={() => setTransport({ tempoMode: m.id })}
-            title={m.hint}
-            className={`px-2 h-7 text-[10px] uppercase tracking-wider ${transport.tempoMode === m.id ? "bg-amber-500/20 text-amber-300" : "text-neutral-400 hover:bg-neutral-800"}`}
-          >{m.label}</button>
-        ))}
-      </div>
+      {/* Smart Tempo mode (compact dropdown to save header space) */}
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          title="Smart Tempo — how imported audio behaves"
+          className="h-7 px-2 rounded border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-[10px] uppercase tracking-wider text-neutral-300 flex items-center gap-1"
+        >
+          <span className="text-neutral-500">Tempo:</span>
+          <span className="text-amber-300">{transport.tempoMode}</span>
+          <ChevronDown className="w-3 h-3 text-neutral-500" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="bg-neutral-900 border-neutral-800 text-neutral-200 min-w-[220px]">
+          {TEMPO_MODES.map(m => (
+            <DropdownMenuItem
+              key={m.id}
+              onClick={() => setTransport({ tempoMode: m.id })}
+              className="flex flex-col items-start gap-0.5 text-[12px]"
+            >
+              <div className="flex items-center gap-2">
+                <span className="uppercase tracking-wider text-[10px] text-amber-300">{m.label}</span>
+                {transport.tempoMode === m.id && <span className="text-cyan-300 text-[10px]">●</span>}
+              </div>
+              <span className="text-[10px] text-neutral-500">{m.hint}</span>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
 
       {/* Tool palette (Logic-style) */}
       <DropdownMenu>
