@@ -440,9 +440,8 @@ export class DawEngine {
     this.recBuffers = [];
     this.recordingLivePeaks = [];
     const chain = this.trackChains.get(trackId);
-    const reusableMonitorStream = chain?.inputMonitorStream ?? null;
     this.stopInputMonitoring(trackId);
-    this.micStream = reusableMonitorStream ?? await navigator.mediaDevices.getUserMedia({
+    this.micStream = await navigator.mediaDevices.getUserMedia({
       audio: {
         deviceId: inputDeviceId ? { exact: inputDeviceId } : undefined,
         // Record the mic stream, while asking the browser to remove DAW playback

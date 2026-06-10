@@ -54,6 +54,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
     const e = engineRef.current;
     if (!e) return;
     tracks.forEach(t => e.ensureTrackChain(t));
+    e.syncInputMonitoring(tracks);
   }, [tracks]);
 
   useEffect(() => {
