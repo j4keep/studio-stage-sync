@@ -54,6 +54,7 @@ export class DawEngine {
   // Metronome
   private metroEnabled = false;
   private metroBpm = 120;
+  private metroBeatsPerBar = 4;
   private metroNextBeat = 0;
   private metroBeatIndex = 0;
   private metroTimer: number | null = null;
@@ -257,10 +258,11 @@ export class DawEngine {
     this.startTransportTime = transport.position;
     this.playing = true;
     this.metroBpm = transport.bpm;
+    this.metroBeatsPerBar = transport.timeSigNum || 4;
     this.metroEnabled = !!transport.metronome;
     this.metroBeatIndex = 0;
     this.metroNextBeat = this.startCtxTime;
-    this.scheduleMetronome();
+    if (this.metroEnabled) this.scheduleMetronome();
 
     // NOTE: We DO NOT skip muted/non-solo clips here. Mute & solo are enforced
     // live via each track chain's gain node (see updateTrackParams), so the user
@@ -333,32 +335,46 @@ export class DawEngine {
 
   stop() {
     this.playing = false;
-    this.metroEnabled = false;
     if (this.metroTimer) { clearTimeout(this.metroTimer); this.metroTimer = null; }
     cancelAnimationFrame(this.rafId);
     this.stopAllSources();
     if (this.recordingTrackId) this.stopRecording();
     this.onStop?.();
+    // If user left metronome on, keep it ticking free-running while stopped.
+    if (this.metroEnabled) {
+      this.metroBeatIndex = 0;
+      this.metroNextBeat = this.ctx.currentTime + 0.05;
+      this.scheduleMetronome();
+    }
   }
 
-  setMetronome(enabled: boolean, bpm?: number) {
+  setMetronome(enabled: boolean, bpm?: number, beatsPerBar?: number) {
+    const wasEnabled = this.metroEnabled;
     this.metroEnabled = enabled;
     if (bpm) this.metroBpm = bpm;
-    if (enabled && this.playing) {
-      this.metroNextBeat = this.ctx.currentTime + 0.05;
-      this.metroBeatIndex = 0;
+    if (beatsPerBar && beatsPerBar > 0) this.metroBeatsPerBar = beatsPerBar;
+    if (enabled) {
+      if (!wasEnabled || !this.metroTimer) {
+        this.metroNextBeat = this.ctx.currentTime + 0.05;
+        this.metroBeatIndex = 0;
+      }
       this.scheduleMetronome();
-    } else if (!enabled && this.metroTimer) {
+    } else if (this.metroTimer) {
       clearTimeout(this.metroTimer); this.metroTimer = null;
     }
   }
 
   private scheduleMetronome() {
-    if (!this.metroEnabled || !this.playing) return;
-    const beatDur = 60 / this.metroBpm;
+    if (!this.metroEnabled) {
+      if (this.metroTimer) { clearTimeout(this.metroTimer); this.metroTimer = null; }
+      return;
+    }
+    try { if (this.ctx.state === "suspended") this.ctx.resume(); } catch {}
+    const beatDur = 60 / Math.max(20, this.metroBpm);
+    const bpb = Math.max(1, this.metroBeatsPerBar);
     const lookahead = this.ctx.currentTime + 0.25;
     while (this.metroNextBeat < lookahead) {
-      this.playClick(this.metroNextBeat, this.metroBeatIndex % 4 === 0);
+      this.playClick(this.metroNextBeat, this.metroBeatIndex % bpb === 0);
       this.metroNextBeat += beatDur;
       this.metroBeatIndex++;
     }

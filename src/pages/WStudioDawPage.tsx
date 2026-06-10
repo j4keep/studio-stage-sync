@@ -34,6 +34,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
   const clips = useDawStore(s => s.clips);
   const metronome = useDawStore(s => s.transport.metronome);
   const bpm = useDawStore(s => s.transport.bpm);
+  const timeSigNum = useDawStore(s => s.transport.timeSigNum);
   const setTransport = useDawStore(s => s.setTransport);
   const addClip = useDawStore(s => s.addClip);
   const addTrack = useDawStore(s => s.addTrack);
@@ -175,10 +176,10 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
     }
   }, [selectTrack, updateTrack, setTransport]);
 
-  // Sync metronome live
+  // Sync metronome live (enabled, tempo, bar length)
   useEffect(() => {
-    engineRef.current?.setMetronome(metronome, bpm);
-  }, [metronome, bpm]);
+    engineRef.current?.setMetronome(metronome, bpm, timeSigNum);
+  }, [metronome, bpm, timeSigNum]);
 
   // Keyboard shortcuts
   useEffect(() => {
