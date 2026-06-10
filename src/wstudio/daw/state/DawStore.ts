@@ -16,13 +16,13 @@ function loadPersistedMetro(): Partial<TransportState> {
     const raw = localStorage.getItem(METRO_LS_KEY);
     if (!raw) return {};
     const p = JSON.parse(raw);
-    return {
-      metronome: !!p.metronome,
-      metronomeVolume: typeof p.metronomeVolume === "number" ? p.metronomeVolume : undefined,
-      metroAccent: typeof p.metroAccent === "boolean" ? p.metroAccent : undefined,
-      metroCountInBars: typeof p.metroCountInBars === "number" ? p.metroCountInBars : undefined,
-      metroOutputDeviceId: typeof p.metroOutputDeviceId === "string" ? p.metroOutputDeviceId : undefined,
-    } as Partial<TransportState>;
+    const out: Partial<TransportState> = {};
+    if (typeof p.metronome === "boolean") out.metronome = p.metronome;
+    if (typeof p.metronomeVolume === "number") out.metronomeVolume = p.metronomeVolume;
+    if (typeof p.metroAccent === "boolean") out.metroAccent = p.metroAccent;
+    if (typeof p.metroCountInBars === "number") out.metroCountInBars = p.metroCountInBars;
+    if (typeof p.metroOutputDeviceId === "string") out.metroOutputDeviceId = p.metroOutputDeviceId;
+    return out;
   } catch { return {}; }
 }
 function persistMetro(t: TransportState) {
