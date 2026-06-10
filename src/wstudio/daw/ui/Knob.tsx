@@ -18,75 +18,56 @@ export function Knob({ value, min, max, step = 0.01, size = 44, label, unit, onC
   const norm = Math.max(0, Math.min(1, (value - min) / range));
   const angle = -135 + norm * 270;
 
-  const dragRef = useRef<{ x: number; y: number; v: number; pid: number } | null>(null);
+  const valueRef = useRef(value);
+  const onChangeRef = useRef(onChange);
   const elRef = useRef<HTMLDivElement>(null);
 
-  const commitFromPointer = (clientX: number, clientY: number) => {
-    const d = dragRef.current;
-    if (!d) return;
-    const dx = clientX - d.x;
-    const dy = d.y - clientY; // up = +
-    const delta = ((dx + dy) / 120) * range;
-    let next = d.v + delta;
+  useEffect(() => { valueRef.current = value; }, [value]);
+  useEffect(() => { onChangeRef.current = onChange; }, [onChange]);
+
+  const commitValue = (next: number) => {
     next = Math.round(next / step) * step;
     next = Math.max(min, Math.min(max, next));
-    onChange(next);
+    valueRef.current = next;
+    onChangeRef.current(next);
   };
-
-  useEffect(() => {
-    const move = (e: PointerEvent) => {
-      const d = dragRef.current;
-      if (!d || d.pid !== e.pointerId) return;
-      e.preventDefault();
-      commitFromPointer(e.clientX, e.clientY);
-    };
-    const up = (e: PointerEvent) => {
-      const d = dragRef.current;
-      if (!d || d.pid !== e.pointerId) return;
-      try { elRef.current?.releasePointerCapture(d.pid); } catch {}
-      dragRef.current = null;
-    };
-    window.addEventListener("pointermove", move, { passive: false });
-    window.addEventListener("pointerup", up);
-    window.addEventListener("pointercancel", up);
-    return () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
-      window.removeEventListener("pointercancel", up);
-    };
-  }, [min, max, step, range, onChange]);
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    dragRef.current = { x: e.clientX, y: e.clientY, v: value, pid: e.pointerId };
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startValue = valueRef.current;
+    const pointerId = e.pointerId;
+    const previousUserSelect = document.body.style.userSelect;
+    document.body.style.userSelect = "none";
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
+    const move = (ev: PointerEvent) => {
+      if (ev.pointerId !== pointerId) return;
+      ev.preventDefault();
+      const dx = ev.clientX - startX;
+      const dy = startY - ev.clientY;
+      commitValue(startValue + ((dx + dy) / 120) * range);
+    };
+    const up = (ev: PointerEvent) => {
+      if (ev.pointerId !== pointerId) return;
+      try { elRef.current?.releasePointerCapture(pointerId); } catch {}
+      document.body.style.userSelect = previousUserSelect;
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+    };
+    window.addEventListener("pointermove", move, { passive: false });
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
   };
 
-  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    const d = dragRef.current;
-    if (!d || d.pid !== e.pointerId) return;
-    e.preventDefault();
-    commitFromPointer(e.clientX, e.clientY);
-  };
-
-  const endDrag = (e: React.PointerEvent<HTMLDivElement>) => {
-    const d = dragRef.current;
-    if (d && elRef.current) {
-      try { elRef.current.releasePointerCapture(d.pid); } catch {}
-    }
-    dragRef.current = null;
-  };
-
-  const onDoubleClick = (e: React.MouseEvent) => { e.stopPropagation(); onChange((max + min) / 2); };
+  const onDoubleClick = (e: React.MouseEvent) => { e.stopPropagation(); commitValue((max + min) / 2); };
 
   const onWheel = (e: React.WheelEvent) => {
     e.preventDefault();
-    const delta = (e.deltaY > 0 ? -1 : 1) * (range / 100);
-    let next = value + delta;
-    next = Math.round(next / step) * step;
-    next = Math.max(min, Math.min(max, next));
-    onChange(next);
+    e.stopPropagation();
+    commitValue(valueRef.current + (e.deltaY > 0 ? -1 : 1) * (range / 100));
   };
 
   return (
@@ -94,11 +75,9 @@ export function Knob({ value, min, max, step = 0.01, size = 44, label, unit, onC
       <div
         ref={elRef}
         onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={endDrag}
-        onPointerCancel={endDrag}
         onDoubleClick={onDoubleClick}
         onWheel={onWheel}
+        onClick={(e) => e.stopPropagation()}
         style={{ width: size, height: size, touchAction: "none" }}
         className="relative cursor-ew-resize rounded-full bg-neutral-900 border border-neutral-700 shadow-inner"
       >
