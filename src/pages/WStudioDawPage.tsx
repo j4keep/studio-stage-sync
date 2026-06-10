@@ -33,6 +33,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
   const tracks = useDawStore(s => s.tracks);
   const clips = useDawStore(s => s.clips);
   const metronome = useDawStore(s => s.transport.metronome);
+  const metronomeVolume = useDawStore(s => s.transport.metronomeVolume);
   const bpm = useDawStore(s => s.transport.bpm);
   const timeSigNum = useDawStore(s => s.transport.timeSigNum);
   const setTransport = useDawStore(s => s.setTransport);
@@ -180,6 +181,11 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
   useEffect(() => {
     engineRef.current?.setMetronome(metronome, bpm, timeSigNum);
   }, [metronome, bpm, timeSigNum]);
+
+  // Sync metronome volume independently from master mix
+  useEffect(() => {
+    engineRef.current?.setMetronomeVolume(metronomeVolume);
+  }, [metronomeVolume]);
 
   // Keyboard shortcuts
   useEffect(() => {

@@ -46,6 +46,7 @@ export interface DawState {
   selectClip: (id: string | null) => void;
   setPxPerSec: (v: number) => void;
   setMasterVolume: (v: number) => void;
+  setMetronomeVolume: (v: number) => void;
 }
 
 export const useDawStore = create<DawState>((set, get) => ({
@@ -62,6 +63,7 @@ export const useDawStore = create<DawState>((set, get) => ({
     loopStart: 0,
     loopEnd: 8,
     metronome: false,
+    metronomeVolume: 0.5,
     keyRoot: "C",
     keyMode: "major",
     timeSigNum: 4,
@@ -216,4 +218,8 @@ export const useDawStore = create<DawState>((set, get) => ({
   selectClip: (id) => set({ selectedClipId: id }),
   setPxPerSec: (v) => set({ pxPerSec: Math.max(20, Math.min(400, v)) }),
   setMasterVolume: (v) => set({ masterVolume: v }),
+  setMetronomeVolume: (v) => {
+    const vol = Math.max(0, Math.min(1, v));
+    set({ transport: { ...get().transport, metronomeVolume: vol } });
+  },
 }));

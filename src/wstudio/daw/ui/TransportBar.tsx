@@ -157,12 +157,21 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
         </div>
       </div>
 
-      <button
-        type="button"
-        onClick={() => setTransport({ metronome: !transport.metronome })}
-        title="Metronome — clicks on every beat at current BPM"
-        className={`h-7 px-2 rounded border border-neutral-800 text-[10px] uppercase ${transport.metronome ? "bg-amber-500/20 text-amber-300 border-amber-500/40" : "text-neutral-400"}`}
-      >Metro</button>
+      <div className="flex items-center gap-1.5" title="Metronome level">
+        <button
+          type="button"
+          onClick={() => setTransport({ metronome: !transport.metronome })}
+          title="Metronome — clicks on every beat at current BPM"
+          className={`h-7 px-2 rounded border border-neutral-800 text-[10px] uppercase ${transport.metronome ? "bg-amber-500/20 text-amber-300 border-amber-500/40" : "text-neutral-400"}`}
+        >Metro</button>
+        <input
+          type="range" min={0} max={1} step={0.01}
+          value={transport.metronomeVolume}
+          onChange={(e) => setTransport({ metronomeVolume: Number(e.target.value) })}
+          className="w-16 accent-amber-500"
+          title="Metronome volume"
+        />
+      </div>
 
       {/* Smart Tempo mode for imported audio */}
       <div className="flex items-center bg-neutral-900 border border-neutral-800 rounded overflow-hidden" title="Smart Tempo — how imported audio behaves">

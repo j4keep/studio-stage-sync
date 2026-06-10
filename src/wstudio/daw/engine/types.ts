@@ -84,6 +84,8 @@ export interface TransportState {
   loopStart: number;
   loopEnd: number;
   metronome: boolean;
+  /** Click level 0..1, independent from master / monitor mix */
+  metronomeVolume: number;
   /** Musical key root */
   keyRoot: KeyRoot;
   /** Major / minor */
