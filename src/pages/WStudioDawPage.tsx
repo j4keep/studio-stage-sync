@@ -12,6 +12,13 @@ import { FxRack } from "@/wstudio/daw/ui/FxRack";
 import { LibraryPanel } from "@/wstudio/daw/ui/LibraryPanel";
 import { CollabSidebar } from "@/wstudio/daw/ui/CollabSidebar";
 import { MenuBar } from "@/wstudio/daw/ui/MenuBar";
+import type { Clip, Track } from "@/wstudio/daw/engine/types";
+
+const isInputAudioTrack = (track: Track, allClips: Clip[]) => (
+  track.kind === "audio"
+  && track.inputEnabled !== false
+  && !(track.inputEnabled === undefined && allClips.some(c => c.trackId === track.id && c.buffer && c.name !== "Recording"))
+);
 
 export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessionCode?: string } = {}) {
   const [params] = useSearchParams();
@@ -53,9 +60,17 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
   useEffect(() => {
     const e = engineRef.current;
     if (!e) return;
-    tracks.forEach(t => e.ensureTrackChain(t));
-    e.syncInputMonitoring(tracks);
-  }, [tracks]);
+    const resolvedTracks = tracks.map(t => isInputAudioTrack(t, clips) ? t : t.kind === "audio" ? { ...t, inputEnabled: false, armed: false } : t);
+    resolvedTracks.forEach(t => e.ensureTrackChain(t));
+    e.syncInputMonitoring(resolvedTracks);
+  }, [tracks, clips]);
+
+  useEffect(() => {
+    tracks.forEach((track) => {
+      const hasImportedAudio = track.kind === "audio" && track.inputEnabled === undefined && clips.some(c => c.trackId === track.id && c.buffer && c.name !== "Recording");
+      if (hasImportedAudio) updateTrack(track.id, { inputEnabled: false, armed: false });
+    });
+  }, [tracks, clips, updateTrack]);
 
   useEffect(() => {
     const e = engineRef.current;
@@ -130,17 +145,17 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
       setTransport({ isRecording: false });
       return;
     }
-    let armed = st.tracks.find(t => t.kind === "audio" && t.armed && t.id === st.selectedTrackId)
-      ?? st.tracks.find(t => t.kind === "audio" && t.armed);
+    let armed = st.tracks.find(t => isInputAudioTrack(t, st.clips) && t.armed && t.id === st.selectedTrackId)
+      ?? st.tracks.find(t => isInputAudioTrack(t, st.clips) && t.armed);
     if (!armed && st.selectedTrackId) {
-      const selectedAudio = st.tracks.find(t => t.id === st.selectedTrackId && t.kind === "audio");
+      const selectedAudio = st.tracks.find(t => t.id === st.selectedTrackId && isInputAudioTrack(t, st.clips));
       if (selectedAudio) {
         st.tracks.forEach(t => updateTrack(t.id, { armed: t.id === selectedAudio.id }));
         armed = selectedAudio;
       }
     }
     if (!armed) {
-      toast.error("Select an audio track and press R to record");
+      toast.error("Select a vocal/input audio track and press R to record");
       return;
     }
     st.tracks.forEach(t => updateTrack(t.id, { armed: t.id === armed!.id }));
@@ -208,12 +223,16 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
   const handleArmToggle = useCallback((trackId: string) => {
     const t = tracks.find(x => x.id === trackId);
     if (!t) return;
+    if (!isInputAudioTrack(t, clips)) {
+      toast.error("Imported beat/audio tracks are playback-only");
+      return;
+    }
     // Exclusive arm — input monitoring is always-on for audio tracks, so the
     // R button just decides which track will capture when record is pressed.
     const shouldArm = !t.armed;
     selectTrack(trackId);
     tracks.forEach(x => updateTrack(x.id, { armed: x.id === trackId ? shouldArm : false }));
-  }, [tracks, updateTrack, selectTrack]);
+  }, [tracks, clips, updateTrack, selectTrack]);
 
   const importFiles = useCallback(async (files: FileList) => {
     const e = engineRef.current;
@@ -221,7 +240,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
     for (const file of Array.from(files)) {
       try {
         const buffer = await e.decodeFile(file);
-        const trackId = addTrack("audio", file.name.replace(/\.[^.]+$/, ""));
+        const trackId = addTrack("audio", file.name.replace(/\.[^.]+$/, ""), { inputEnabled: false });
         await new Promise(r => setTimeout(r, 30));
         const peaks = computePeaks(buffer);
         addClip({
