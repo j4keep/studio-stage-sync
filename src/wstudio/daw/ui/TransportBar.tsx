@@ -119,11 +119,41 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
         </div>
         <div className="leading-none">
           <div className="text-[8px] text-neutral-500 uppercase tracking-widest">Sig</div>
-          <div className="text-amber-300">4/4</div>
+          <select
+            value={`${transport.timeSigNum}/${transport.timeSigDen}`}
+            onChange={(e) => {
+              const [n, d] = e.target.value.split("/").map(Number);
+              setTransport({ timeSigNum: n, timeSigDen: d });
+            }}
+            className="bg-transparent border-none outline-none text-amber-300 font-mono text-[13px] p-0 cursor-pointer"
+            title="Time signature"
+          >
+            {TIME_SIGS.map(([n, d]) => (
+              <option key={`${n}/${d}`} value={`${n}/${d}`} className="bg-neutral-900">{n}/{d}</option>
+            ))}
+          </select>
         </div>
         <div className="leading-none">
           <div className="text-[8px] text-neutral-500 uppercase tracking-widest">Key</div>
-          <div className="text-amber-300">Cmaj</div>
+          <div className="flex items-center gap-0.5">
+            <select
+              value={transport.keyRoot}
+              onChange={(e) => setTransport({ keyRoot: e.target.value as any })}
+              className="bg-transparent border-none outline-none text-amber-300 font-mono text-[13px] p-0 cursor-pointer"
+              title="Key root"
+            >
+              {KEY_ROOTS.map(k => <option key={k} value={k} className="bg-neutral-900">{k}</option>)}
+            </select>
+            <select
+              value={transport.keyMode}
+              onChange={(e) => setTransport({ keyMode: e.target.value as any })}
+              className="bg-transparent border-none outline-none text-amber-300 font-mono text-[13px] p-0 cursor-pointer"
+              title="Major / minor"
+            >
+              <option value="major" className="bg-neutral-900">maj</option>
+              <option value="minor" className="bg-neutral-900">min</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -133,6 +163,19 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
         title="Metronome — clicks on every beat at current BPM"
         className={`h-7 px-2 rounded border border-neutral-800 text-[10px] uppercase ${transport.metronome ? "bg-amber-500/20 text-amber-300 border-amber-500/40" : "text-neutral-400"}`}
       >Metro</button>
+
+      {/* Smart Tempo mode for imported audio */}
+      <div className="flex items-center bg-neutral-900 border border-neutral-800 rounded overflow-hidden" title="Smart Tempo — how imported audio behaves">
+        {TEMPO_MODES.map(m => (
+          <button
+            type="button"
+            key={m.id}
+            onClick={() => setTransport({ tempoMode: m.id })}
+            title={m.hint}
+            className={`px-2 h-7 text-[10px] uppercase tracking-wider ${transport.tempoMode === m.id ? "bg-amber-500/20 text-amber-300" : "text-neutral-400 hover:bg-neutral-800"}`}
+          >{m.label}</button>
+        ))}
+      </div>
 
       {/* Tool palette (Logic-style) */}
       <DropdownMenu>
