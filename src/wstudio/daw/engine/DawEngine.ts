@@ -416,19 +416,18 @@ export class DawEngine {
           sampleRate: this.ctx.sampleRate,
         } as MediaTrackConstraints,
       });
-      if (chain.inputMonitorToken !== token || this.recordingTrackId === trackId) {
+      if (chain.inputMonitorToken !== token) {
         stream.getTracks().forEach(t => t.stop());
         return;
       }
       const src = this.ctx.createMediaStreamSource(stream);
-      src.connect(chain.input);
+      // Route ONLY to dedicated input analyser — never into the main mixer chain,
+      // so there's no feedback and playback of clips is unaffected.
+      src.connect(chain.inputAnalyser);
       chain.inputMonitorSource = src;
       chain.inputMonitorStream = stream;
       chain.inputMonitoring = true;
       chain.inputMonitorFailed = false;
-      chain.monitorGain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.01);
-      chain.reverbSend.gain.setTargetAtTime(0, this.ctx.currentTime, 0.01);
-      chain.delaySend.gain.setTargetAtTime(0, this.ctx.currentTime, 0.01);
     } catch {
       if (chain.inputMonitorToken === token) chain.inputMonitorFailed = true;
     }
