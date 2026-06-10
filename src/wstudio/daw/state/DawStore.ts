@@ -91,6 +91,11 @@ export interface DawState {
   setPxPerSec: (v: number) => void;
   setMasterVolume: (v: number) => void;
   setMetronomeVolume: (v: number) => void;
+  toggleAutomationLane: (trackId: string) => void;
+  setAutomationParam: (trackId: string, param: import("../engine/types").AutomationParam) => void;
+  addAutomationPoint: (trackId: string, point: import("../engine/types").AutomationPoint) => void;
+  updateAutomationPoint: (trackId: string, idx: number, patch: Partial<import("../engine/types").AutomationPoint>) => void;
+  removeAutomationPoint: (trackId: string, idx: number) => void;
 }
 function snap(get: any, set: any) {
   const s = get();
@@ -321,4 +326,37 @@ export const useDawStore = create<DawState>((set, get) => ({
     set({ transport: next });
     persistMetro(next);
   },
+  toggleAutomationLane: (trackId) => set({
+    tracks: get().tracks.map(t => t.id === trackId ? { ...t, automationOpen: !t.automationOpen, automationParam: t.automationParam ?? "volume" } : t),
+  }),
+  setAutomationParam: (trackId, param) => set({
+    tracks: get().tracks.map(t => t.id === trackId ? { ...t, automationParam: param } : t),
+  }),
+  addAutomationPoint: (trackId, point) => { snap(get, set); set({
+    tracks: get().tracks.map(t => {
+      if (t.id !== trackId) return t;
+      const param = t.automationParam ?? "volume";
+      const lane = [...(t.automation?.[param] ?? []), point].sort((a, b) => a.t - b.t);
+      return { ...t, automation: { ...(t.automation ?? {}), [param]: lane } };
+    }),
+  }); },
+  updateAutomationPoint: (trackId, idx, patch) => { set({
+    tracks: get().tracks.map(t => {
+      if (t.id !== trackId) return t;
+      const param = t.automationParam ?? "volume";
+      const lane = (t.automation?.[param] ?? []).slice();
+      if (!lane[idx]) return t;
+      lane[idx] = { ...lane[idx], ...patch };
+      lane.sort((a, b) => a.t - b.t);
+      return { ...t, automation: { ...(t.automation ?? {}), [param]: lane } };
+    }),
+  }); },
+  removeAutomationPoint: (trackId, idx) => { snap(get, set); set({
+    tracks: get().tracks.map(t => {
+      if (t.id !== trackId) return t;
+      const param = t.automationParam ?? "volume";
+      const lane = (t.automation?.[param] ?? []).filter((_, i) => i !== idx);
+      return { ...t, automation: { ...(t.automation ?? {}), [param]: lane } };
+    }),
+  }); },
 }));

@@ -66,6 +66,11 @@ export function ArrangeView({ onArmToggle, onSeek, engine }: Props) {
   const duplicateClip = useDawStore(s => s.duplicateClip);
   const addClip = useDawStore(s => s.addClip);
   const tool = useDawStore(s => s.tool);
+  const toggleAutomationLane = useDawStore(s => s.toggleAutomationLane);
+  const setAutomationParam = useDawStore(s => s.setAutomationParam);
+  const addAutomationPoint = useDawStore(s => s.addAutomationPoint);
+  const updateAutomationPoint = useDawStore(s => s.updateAutomationPoint);
+  const removeAutomationPoint = useDawStore(s => s.removeAutomationPoint);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; clipId: string } | null>(null);
@@ -138,21 +143,22 @@ export function ArrangeView({ onArmToggle, onSeek, engine }: Props) {
     else setTransport({ position: next });
   };
 
-  // Clip drag state (pointer-based; supports cross-track move)
+  // Clip drag state (pointer-based; supports cross-track move + trim on either edge)
   const clipDrag = useRef<{
     clipId: string;
     startX: number; startY: number;
     startTime: number; startTrackId: string; startTrackIdx: number;
-    mode: "move" | "resize";
+    mode: "move" | "resize-right" | "resize-left";
     startDur: number;
+    startOffset: number;
   } | null>(null);
 
-  const beginClipDrag = (clip: Clip, e: React.PointerEvent, mode: "move" | "resize") => {
+  const beginClipDrag = (clip: Clip, e: React.PointerEvent, mode: "move" | "resize-right" | "resize-left") => {
     const idx = trackIndexById.get(clip.trackId) ?? 0;
     clipDrag.current = {
       clipId: clip.id, startX: e.clientX, startY: e.clientY,
       startTime: clip.startTime, startTrackId: clip.trackId, startTrackIdx: idx,
-      mode, startDur: clip.duration,
+      mode, startDur: clip.duration, startOffset: clip.offset ?? 0,
     };
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   };
@@ -160,8 +166,22 @@ export function ArrangeView({ onArmToggle, onSeek, engine }: Props) {
     const d = clipDrag.current;
     if (!d) return;
     const dx = (e.clientX - d.startX) / pxPerSec;
-    if (d.mode === "resize") {
-      updateClip(d.clipId, { duration: Math.max(0.05, d.startDur + dx) });
+    if (d.mode === "resize-right") {
+      // Pure trim: shorten/extend right edge without moving startTime or stretching audio.
+      const clip = useDawStore.getState().clips.find(c => c.id === d.clipId);
+      const bufDur = clip?.buffer?.duration ?? Infinity;
+      const maxDur = Math.max(0.05, bufDur - (clip?.offset ?? 0));
+      updateClip(d.clipId, { duration: Math.max(0.05, Math.min(maxDur, d.startDur + dx)) });
+      return;
+    }
+    if (d.mode === "resize-left") {
+      // Pure trim from the left: change offset + startTime, keep audio content locked to timeline.
+      const delta = Math.max(-d.startOffset, Math.min(d.startDur - 0.05, dx));
+      updateClip(d.clipId, {
+        startTime: Math.max(0, d.startTime + delta),
+        offset: d.startOffset + delta,
+        duration: d.startDur - delta,
+      });
       return;
     }
     const dy = e.clientY - d.startY;
@@ -266,20 +286,29 @@ export function ArrangeView({ onArmToggle, onSeek, engine }: Props) {
               const canRecordInput = t.kind === "audio" && t.inputEnabled !== false && !(t.inputEnabled === undefined && trackClips.some(c => c.buffer && c.name !== "Recording"));
               const meters = canRecordInput && inputAn ? [inputAn] : isStereo && stereo ? [stereo.L, stereo.R] : mono ? [mono] : [];
               return (
-                <TrackHeader
-                  key={t.id}
-                  track={t}
-                  canRecordInput={canRecordInput}
-                  meters={meters}
-                  onArm={() => onArmToggle(t.id)}
-                  onMute={() => updateTrack(t.id, { mute: !t.mute })}
-                  onSolo={() => updateTrack(t.id, { solo: !t.solo })}
-                  onRemove={() => removeTrack(t.id)}
-                  onRename={(n) => updateTrack(t.id, { name: n })}
-                  onVolume={(v) => updateTrack(t.id, { volume: v })}
-                  onPan={(v) => updateTrack(t.id, { pan: v })}
-                  onDropTrack={(fromId) => reorderTracks(fromId, t.id)}
-                />
+                <div key={t.id}>
+                  <TrackHeader
+                    track={t}
+                    canRecordInput={canRecordInput}
+                    meters={meters}
+                    onArm={() => onArmToggle(t.id)}
+                    onMute={() => updateTrack(t.id, { mute: !t.mute })}
+                    onSolo={() => updateTrack(t.id, { solo: !t.solo })}
+                    onRemove={() => removeTrack(t.id)}
+                    onRename={(n) => updateTrack(t.id, { name: n })}
+                    onVolume={(v) => updateTrack(t.id, { volume: v })}
+                    onPan={(v) => updateTrack(t.id, { pan: v })}
+                    onDropTrack={(fromId) => reorderTracks(fromId, t.id)}
+                    onToggleAuto={() => toggleAutomationLane(t.id)}
+                  />
+                  {t.automationOpen && (
+                    <AutomationLaneHeader
+                      param={t.automationParam ?? "volume"}
+                      onSelect={(p) => setAutomationParam(t.id, p)}
+                      onClose={() => toggleAutomationLane(t.id)}
+                    />
+                  )}
+                </div>
               );
             })}
             {tracks.length === 0 && (
@@ -361,56 +390,67 @@ export function ArrangeView({ onArmToggle, onSeek, engine }: Props) {
 
             {/* Track lanes */}
             {tracks.map(t => (
-              <div
-                key={t.id}
-                className="relative border-b border-neutral-800"
-                style={{ height: TRACK_H, background: "linear-gradient(90deg, rgba(255,255,255,0.02), rgba(0,0,0,0))" }}
-                onClick={(e) => {
-                  if (tool === "pencil") {
+              <div key={t.id}>
+                <div
+                  className="relative border-b border-neutral-800"
+                  style={{ height: TRACK_H, background: "linear-gradient(90deg, rgba(255,255,255,0.02), rgba(0,0,0,0))" }}
+                  onClick={(e) => {
+                    if (tool === "pencil") {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const time = Math.max(0, (e.clientX - rect.left) / pxPerSec);
+                      addClip({
+                        id: `clip_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,
+                        trackId: t.id, startTime: time, duration: 2, offset: 0, name: "New Region",
+                      });
+                    } else if (tool === "zoom") {
+                      setPxPerSec(e.altKey ? pxPerSec / 1.5 : pxPerSec * 1.5);
+                    }
+                  }}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
                     const rect = e.currentTarget.getBoundingClientRect();
                     const time = Math.max(0, (e.clientX - rect.left) / pxPerSec);
-                    addClip({
-                      id: `clip_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,
-                      trackId: t.id, startTime: time, duration: 2, offset: 0, name: "New Region",
-                    });
-                  } else if (tool === "zoom") {
-                    setPxPerSec(e.altKey ? pxPerSec / 1.5 : pxPerSec * 1.5);
-                  }
-                }}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const time = Math.max(0, (e.clientX - rect.left) / pxPerSec);
-                  pasteClipAt(t.id, time);
-                }}
-              >
-                {/* Bar grid lines on lane */}
-                {Array.from({ length: totalBars }).map((_, i) => (
-                  <div key={i} className="absolute top-0 bottom-0 w-px bg-neutral-800/80" style={{ left: i * barPx }} />
-                ))}
-                {clips.filter(c => c.trackId === t.id).map(c => (
-                  <ClipBlock
-                    key={c.id}
-                    clip={c}
-                    color={t.color}
+                    pasteClipAt(t.id, time);
+                  }}
+                >
+                  {/* Bar grid lines on lane */}
+                  {Array.from({ length: totalBars }).map((_, i) => (
+                    <div key={i} className="absolute top-0 bottom-0 w-px bg-neutral-800/80" style={{ left: i * barPx }} />
+                  ))}
+                  {clips.filter(c => c.trackId === t.id).map(c => (
+                    <ClipBlock
+                      key={c.id}
+                      clip={c}
+                      color={t.color}
+                      pxPerSec={pxPerSec}
+                      selected={selectedClipId === c.id}
+                      tool={tool}
+                      onSelect={() => selectClip(c.id)}
+                      onContext={(x: number, y: number) => setCtxMenu({ x, y, clipId: c.id })}
+                      onToolApply={(e: React.MouseEvent) => applyToolToClip(c, e)}
+                      onPointerDownDrag={(e: React.PointerEvent, mode: "move" | "resize-left" | "resize-right") => beginClipDrag(c, e, mode)}
+                      onPointerMoveDrag={onClipDragMove}
+                      onPointerUpDrag={endClipDrag}
+                    />
+                  ))}
+                  {liveRec && liveRec.trackId === t.id && engine && (
+                    <LiveRecordingBlock
+                      startTime={engine.getRecordingStart()}
+                      peaks={liveRec.peaks}
+                      duration={liveRec.dur}
+                      pxPerSec={pxPerSec}
+                      height={TRACK_H}
+                    />
+                  )}
+                </div>
+                {t.automationOpen && (
+                  <AutomationLane
+                    track={t}
+                    width={timelineLen * pxPerSec}
                     pxPerSec={pxPerSec}
-                    selected={selectedClipId === c.id}
-                    tool={tool}
-                    onSelect={() => selectClip(c.id)}
-                    onContext={(x: number, y: number) => setCtxMenu({ x, y, clipId: c.id })}
-                    onToolApply={(e: React.MouseEvent) => applyToolToClip(c, e)}
-                    onPointerDownDrag={(e: React.PointerEvent, mode: "move" | "resize") => beginClipDrag(c, e, mode)}
-                    onPointerMoveDrag={onClipDragMove}
-                    onPointerUpDrag={endClipDrag}
-                  />
-                ))}
-                {liveRec && liveRec.trackId === t.id && engine && (
-                  <LiveRecordingBlock
-                    startTime={engine.getRecordingStart()}
-                    peaks={liveRec.peaks}
-                    duration={liveRec.dur}
-                    pxPerSec={pxPerSec}
-                    height={TRACK_H}
+                    onAdd={(p) => addAutomationPoint(t.id, p)}
+                    onUpdate={(i, patch) => updateAutomationPoint(t.id, i, patch)}
+                    onRemove={(i) => removeAutomationPoint(t.id, i)}
                   />
                 )}
               </div>
@@ -448,7 +488,7 @@ export function ArrangeView({ onArmToggle, onSeek, engine }: Props) {
   );
 }
 
-function TrackHeader({ track, canRecordInput, meters = [], onArm, onMute, onSolo, onRemove, onRename, onVolume, onPan, onDropTrack }: {
+function TrackHeader({ track, canRecordInput, meters = [], onArm, onMute, onSolo, onRemove, onRename, onVolume, onPan, onDropTrack, onToggleAuto }: {
   track: Track;
   canRecordInput: boolean;
   meters?: AnalyserNode[];
@@ -460,6 +500,7 @@ function TrackHeader({ track, canRecordInput, meters = [], onArm, onMute, onSolo
   onVolume: (v: number) => void;
   onPan: (v: number) => void;
   onDropTrack: (fromId: string) => void;
+  onToggleAuto?: () => void;
 }) {
   const stop = (e: React.SyntheticEvent) => e.stopPropagation();
   const sliderRef = useRef<HTMLDivElement>(null);
@@ -497,6 +538,9 @@ function TrackHeader({ track, canRecordInput, meters = [], onArm, onMute, onSolo
             onMouseDown={stop}
             className="flex-1 min-w-0 bg-transparent text-[11px] font-medium text-neutral-100 border-none outline-none"
           />
+          {onToggleAuto && (
+            <button onPointerDown={stop} onClick={onToggleAuto} title="Toggle automation lane" className={`w-5 h-5 grid place-items-center rounded text-[9px] font-bold shrink-0 ${track.automationOpen ? "bg-emerald-400 text-black" : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700"}`}>A</button>
+          )}
           <button onPointerDown={stop} onClick={onRemove} title="Delete track" className="text-neutral-600 hover:text-red-400 shrink-0"><Trash2 className="w-3 h-3" /></button>
         </div>
 
@@ -604,17 +648,26 @@ function PlayheadMarker({ pxPerSec, ruler = false, recOverride = null }: { pxPer
   );
 }
 
+// Bracket-style trim cursor: matches DAW convention (Logic / Soundtrap) for clip-edge resize.
+const TRIM_LEFT_CURSOR = svgCursor(`<path d='M14 4 H8 V20 H14'/><path d='M8 12 H2'/><polyline points='5 9 2 12 5 15'/>`, 8, 12);
+const TRIM_RIGHT_CURSOR = svgCursor(`<path d='M10 4 H16 V20 H10'/><path d='M16 12 H22'/><polyline points='19 9 22 12 19 15'/>`, 16, 12);
+
 function ClipBlock({ clip, color, pxPerSec, selected, tool, onSelect, onContext, onToolApply, onPointerDownDrag, onPointerMoveDrag, onPointerUpDrag }: any) {
   const w = clip.duration * pxPerSec;
   const left = clip.startTime * pxPerSec;
-  const interactive = tool === "pointer";
+  const interactive = tool === "pointer" || tool === "trim";
+  // Window the cached full-buffer peaks to the visible [offset .. offset+duration] slice so that
+  // trimming truly shows the trimmed content rather than time-stretching the waveform.
+  const bufDur = clip.buffer?.duration ?? (clip.duration + (clip.offset ?? 0));
+  const offsetRatio = bufDur > 0 ? (clip.offset ?? 0) / bufDur : 0;
+  const spanRatio = bufDur > 0 ? Math.min(1 - offsetRatio, clip.duration / bufDur) : 1;
 
   return (
     <div
       onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); onSelect(); onContext(e.clientX, e.clientY); }}
       onClick={(e) => {
         e.stopPropagation();
-        if (tool !== "pointer") { onToolApply(e); return; }
+        if (tool !== "pointer" && tool !== "trim") { onToolApply(e); return; }
         onSelect();
       }}
       onPointerDown={(e) => {
@@ -622,7 +675,8 @@ function ClipBlock({ clip, color, pxPerSec, selected, tool, onSelect, onContext,
         e.stopPropagation();
         onSelect();
         const target = e.target as HTMLElement;
-        const mode = target.dataset.handle === "resize" ? "resize" : "move";
+        const handle = target.dataset.handle;
+        const mode = handle === "resize-right" ? "resize-right" : handle === "resize-left" ? "resize-left" : tool === "trim" ? "resize-right" : "move";
         onPointerDownDrag(e, mode);
       }}
       onPointerMove={onPointerMoveDrag}
@@ -635,9 +689,122 @@ function ClipBlock({ clip, color, pxPerSec, selected, tool, onSelect, onContext,
         <span className="truncate">{clip.name}</span>
       </div>
       <div className="absolute inset-x-0 top-4 bottom-0 pointer-events-none">
-        {clip.peaks && <WaveformView peaks={clip.peaks} width={Math.max(1, w)} height={TRACK_H - 24} color={color} />}
+        {clip.peaks && <WaveformView peaks={clip.peaks} width={Math.max(1, w)} height={TRACK_H - 24} color={color} offsetRatio={offsetRatio} spanRatio={spanRatio} />}
       </div>
-      <div data-handle="resize" className="absolute top-0 right-0 bottom-0 w-1.5 cursor-ew-resize bg-white/20 hover:bg-white/40" />
+      {/* Left trim handle */}
+      <div
+        data-handle="resize-left"
+        title="Drag to trim left edge"
+        className="absolute top-0 left-0 bottom-0 w-2 bg-white/15 hover:bg-white/40"
+        style={{ cursor: TRIM_LEFT_CURSOR }}
+      />
+      {/* Right trim handle */}
+      <div
+        data-handle="resize-right"
+        title="Drag to trim right edge"
+        className="absolute top-0 right-0 bottom-0 w-2 bg-white/15 hover:bg-white/40"
+        style={{ cursor: TRIM_RIGHT_CURSOR }}
+      />
     </div>
   );
 }
+
+const AUTO_LANE_H = 70;
+
+function AutomationLaneHeader({ param, onSelect, onClose }: {
+  param: "volume" | "pan";
+  onSelect: (p: "volume" | "pan") => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="border-b border-neutral-800 bg-neutral-950/60 flex items-center px-2 gap-1 text-[9px] uppercase tracking-wider text-neutral-400" style={{ height: AUTO_LANE_H }}>
+      <span className="text-emerald-300">Automation</span>
+      <select
+        value={param}
+        onChange={(e) => onSelect(e.target.value as "volume" | "pan")}
+        className="bg-neutral-900 border border-neutral-700 rounded px-1 py-0.5 text-[9px] text-neutral-200"
+      >
+        <option value="volume">Volume</option>
+        <option value="pan">Pan</option>
+      </select>
+      <div className="flex-1" />
+      <button onClick={onClose} className="text-neutral-500 hover:text-red-400">×</button>
+    </div>
+  );
+}
+
+function AutomationLane({ track, width, pxPerSec, onAdd, onUpdate, onRemove }: {
+  track: Track;
+  width: number;
+  pxPerSec: number;
+  onAdd: (p: { t: number; v: number }) => void;
+  onUpdate: (idx: number, patch: Partial<{ t: number; v: number }>) => void;
+  onRemove: (idx: number) => void;
+}) {
+  const param = track.automationParam ?? "volume";
+  const points = track.automation?.[param] ?? [];
+  const isPan = param === "pan";
+  const min = isPan ? -1 : 0;
+  const max = 1;
+  const h = AUTO_LANE_H;
+  const ratioToY = (v: number) => h - ((v - min) / (max - min)) * h;
+  const yToRatio = (y: number) => Math.max(min, Math.min(max, max - (y / h) * (max - min)));
+  const dragRef = useRef<{ idx: number } | null>(null);
+
+  return (
+    <div
+      className="relative border-b border-neutral-800 bg-emerald-950/10"
+      style={{ height: h, width }}
+      onDoubleClick={(e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const t = Math.max(0, (e.clientX - rect.left) / pxPerSec);
+        const v = yToRatio(e.clientY - rect.top);
+        onAdd({ t, v });
+      }}
+    >
+      {/* Center / zero line */}
+      <div className="absolute left-0 right-0 border-t border-emerald-400/20" style={{ top: ratioToY(isPan ? 0 : 0.8) }} />
+      {/* Polyline connecting points */}
+      <svg className="absolute inset-0 pointer-events-none" width={width} height={h}>
+        {points.length > 0 && (
+          <polyline
+            points={points.map(p => `${p.t * pxPerSec},${ratioToY(p.v)}`).join(" ")}
+            fill="none"
+            stroke="rgb(52 211 153)"
+            strokeWidth={1.5}
+          />
+        )}
+      </svg>
+      {/* Breakpoint nodes */}
+      {points.map((p, i) => (
+        <div
+          key={i}
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+            dragRef.current = { idx: i };
+          }}
+          onPointerMove={(e) => {
+            if (!dragRef.current) return;
+            const parent = (e.currentTarget as HTMLElement).parentElement!;
+            const rect = parent.getBoundingClientRect();
+            const t = Math.max(0, (e.clientX - rect.left) / pxPerSec);
+            const v = yToRatio(e.clientY - rect.top);
+            onUpdate(dragRef.current.idx, { t, v });
+          }}
+          onPointerUp={() => { dragRef.current = null; }}
+          onContextMenu={(e) => { e.preventDefault(); onRemove(i); }}
+          title={`${param} ${p.v.toFixed(2)} @ ${p.t.toFixed(2)}s — right-click to remove`}
+          className="absolute w-2.5 h-2.5 -translate-x-1/2 -translate-y-1/2 rounded-sm bg-emerald-400 border border-emerald-200 cursor-move hover:scale-125"
+          style={{ left: p.t * pxPerSec, top: ratioToY(p.v) }}
+        />
+      ))}
+      {points.length === 0 && (
+        <div className="absolute inset-0 grid place-items-center text-[10px] text-neutral-600 pointer-events-none">
+          Double-click to add a {param} automation point
+        </div>
+      )}
+    </div>
+  );
+}
+

@@ -50,10 +50,25 @@ export interface EffectInstance {
   params: Record<string, number>;
 }
 
+export interface AutomationPoint {
+  /** Time in seconds on the timeline */
+  t: number;
+  /** Normalized 0..1 (volume) or -1..1 (pan) */
+  v: number;
+}
+
+export type AutomationParam = "volume" | "pan";
+
 export interface Track {
   id: string;
   name: string;
   kind: TrackKind;
+  /** Per-track automation lanes */
+  automation?: Partial<Record<AutomationParam, AutomationPoint[]>>;
+  /** Whether the automation lane is visible under this track */
+  automationOpen?: boolean;
+  /** Which parameter is being edited in the automation lane */
+  automationParam?: AutomationParam;
   /** Audio tracks that accept live mic/input recording. Imported beat/file tracks set this false. */
   inputEnabled?: boolean;
   color: string;
