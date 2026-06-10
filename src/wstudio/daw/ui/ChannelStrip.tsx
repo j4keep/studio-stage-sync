@@ -18,7 +18,6 @@ export function ChannelStrip({ track, engine, onOpenFx, onArmToggle, rows }: Pro
   const updateTrack = useDawStore(s => s.updateTrack);
   const selectTrack = useDawStore(s => s.selectTrack);
   const selectedTrackId = useDawStore(s => s.selectedTrackId);
-  const tracks = useDawStore(s => s.tracks);
   const clips = useDawStore(s => s.clips);
   const stereo = engine.getTrackStereoAnalysers(track.id);
   const mono = engine.getTrackAnalyser(track.id);
