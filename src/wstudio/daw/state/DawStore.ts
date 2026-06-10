@@ -253,7 +253,7 @@ export const useDawStore = create<DawState>((set, get) => ({
   setTransport: (patch) => {
     const next = { ...get().transport, ...patch };
     set({ transport: next });
-    const metroKeys = ["metronome","metronomeVolume","metroAccent","metroCountInBars","metroOutputDeviceId"];
+    const metroKeys = ["metronome","metronomeVolume","metroAccent","metroCountInBars","metroOutputDeviceId","bbtDisplayMode"];
     if (metroKeys.some(k => k in patch)) persistMetro(next);
   },
   setView: (view) => set({ view }),
