@@ -90,6 +90,11 @@ export class DawEngine {
     this.destStream = this.ctx.createMediaStreamDestination();
     this.masterGain.connect(this.destStream);
 
+    // Metronome click bus (independent level from master monitor)
+    this.metroGain = this.ctx.createGain();
+    this.metroGain.gain.value = 0.5;
+    this.metroGain.connect(this.masterGain);
+
     // Reverb send bus
     const reverbInput = this.ctx.createGain();
     const reverbOutput = this.ctx.createGain();
@@ -389,8 +394,15 @@ export class DawEngine {
     env.gain.setValueAtTime(0, when);
     env.gain.linearRampToValueAtTime(accent ? 0.5 : 0.3, when + 0.001);
     env.gain.exponentialRampToValueAtTime(0.001, when + 0.05);
-    osc.connect(env).connect(this.masterGain);
+    osc.connect(env).connect(this.metroGain);
     osc.start(when); osc.stop(when + 0.06);
+  }
+
+  setMetronomeVolume(v: number) {
+    const vol = Math.max(0, Math.min(1, v));
+    if (this.metroGain) {
+      this.metroGain.gain.setTargetAtTime(vol, this.ctx.currentTime, 0.01);
+    }
   }
 
   private stopAllSources() {
