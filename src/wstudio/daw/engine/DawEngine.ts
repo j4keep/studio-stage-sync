@@ -536,6 +536,7 @@ export class DawEngine {
     // Restore the track's monitor path
     const chain = this.trackChains.get(this.recordingTrackId);
     if (chain) {
+      try { if (this.recProcessor) chain.micSource?.disconnect(this.recProcessor); } catch {}
       chain.micSource = null;
     }
     this.recBuffers = [];
