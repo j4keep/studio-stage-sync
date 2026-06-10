@@ -619,17 +619,26 @@ function PlayheadMarker({ pxPerSec, ruler = false, recOverride = null }: { pxPer
   );
 }
 
+// Bracket-style trim cursor: matches DAW convention (Logic / Soundtrap) for clip-edge resize.
+const TRIM_LEFT_CURSOR = svgCursor(`<path d='M14 4 H8 V20 H14'/><path d='M8 12 H2'/><polyline points='5 9 2 12 5 15'/>`, 8, 12);
+const TRIM_RIGHT_CURSOR = svgCursor(`<path d='M10 4 H16 V20 H10'/><path d='M16 12 H22'/><polyline points='19 9 22 12 19 15'/>`, 16, 12);
+
 function ClipBlock({ clip, color, pxPerSec, selected, tool, onSelect, onContext, onToolApply, onPointerDownDrag, onPointerMoveDrag, onPointerUpDrag }: any) {
   const w = clip.duration * pxPerSec;
   const left = clip.startTime * pxPerSec;
-  const interactive = tool === "pointer";
+  const interactive = tool === "pointer" || tool === "trim";
+  // Window the cached full-buffer peaks to the visible [offset .. offset+duration] slice so that
+  // trimming truly shows the trimmed content rather than time-stretching the waveform.
+  const bufDur = clip.buffer?.duration ?? (clip.duration + (clip.offset ?? 0));
+  const offsetRatio = bufDur > 0 ? (clip.offset ?? 0) / bufDur : 0;
+  const spanRatio = bufDur > 0 ? Math.min(1 - offsetRatio, clip.duration / bufDur) : 1;
 
   return (
     <div
       onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); onSelect(); onContext(e.clientX, e.clientY); }}
       onClick={(e) => {
         e.stopPropagation();
-        if (tool !== "pointer") { onToolApply(e); return; }
+        if (tool !== "pointer" && tool !== "trim") { onToolApply(e); return; }
         onSelect();
       }}
       onPointerDown={(e) => {
@@ -637,7 +646,8 @@ function ClipBlock({ clip, color, pxPerSec, selected, tool, onSelect, onContext,
         e.stopPropagation();
         onSelect();
         const target = e.target as HTMLElement;
-        const mode = target.dataset.handle === "resize" ? "resize" : "move";
+        const handle = target.dataset.handle;
+        const mode = handle === "resize-right" ? "resize-right" : handle === "resize-left" ? "resize-left" : tool === "trim" ? "resize-right" : "move";
         onPointerDownDrag(e, mode);
       }}
       onPointerMove={onPointerMoveDrag}
@@ -650,9 +660,22 @@ function ClipBlock({ clip, color, pxPerSec, selected, tool, onSelect, onContext,
         <span className="truncate">{clip.name}</span>
       </div>
       <div className="absolute inset-x-0 top-4 bottom-0 pointer-events-none">
-        {clip.peaks && <WaveformView peaks={clip.peaks} width={Math.max(1, w)} height={TRACK_H - 24} color={color} />}
+        {clip.peaks && <WaveformView peaks={clip.peaks} width={Math.max(1, w)} height={TRACK_H - 24} color={color} offsetRatio={offsetRatio} spanRatio={spanRatio} />}
       </div>
-      <div data-handle="resize" className="absolute top-0 right-0 bottom-0 w-1.5 cursor-ew-resize bg-white/20 hover:bg-white/40" />
+      {/* Left trim handle */}
+      <div
+        data-handle="resize-left"
+        title="Drag to trim left edge"
+        className="absolute top-0 left-0 bottom-0 w-2 bg-white/15 hover:bg-white/40"
+        style={{ cursor: TRIM_LEFT_CURSOR }}
+      />
+      {/* Right trim handle */}
+      <div
+        data-handle="resize-right"
+        title="Drag to trim right edge"
+        className="absolute top-0 right-0 bottom-0 w-2 bg-white/15 hover:bg-white/40"
+        style={{ cursor: TRIM_RIGHT_CURSOR }}
+      />
     </div>
   );
 }
