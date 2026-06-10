@@ -138,21 +138,22 @@ export function ArrangeView({ onArmToggle, onSeek, engine }: Props) {
     else setTransport({ position: next });
   };
 
-  // Clip drag state (pointer-based; supports cross-track move)
+  // Clip drag state (pointer-based; supports cross-track move + trim on either edge)
   const clipDrag = useRef<{
     clipId: string;
     startX: number; startY: number;
     startTime: number; startTrackId: string; startTrackIdx: number;
-    mode: "move" | "resize";
+    mode: "move" | "resize-right" | "resize-left";
     startDur: number;
+    startOffset: number;
   } | null>(null);
 
-  const beginClipDrag = (clip: Clip, e: React.PointerEvent, mode: "move" | "resize") => {
+  const beginClipDrag = (clip: Clip, e: React.PointerEvent, mode: "move" | "resize-right" | "resize-left") => {
     const idx = trackIndexById.get(clip.trackId) ?? 0;
     clipDrag.current = {
       clipId: clip.id, startX: e.clientX, startY: e.clientY,
       startTime: clip.startTime, startTrackId: clip.trackId, startTrackIdx: idx,
-      mode, startDur: clip.duration,
+      mode, startDur: clip.duration, startOffset: clip.offset ?? 0,
     };
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   };
@@ -160,8 +161,22 @@ export function ArrangeView({ onArmToggle, onSeek, engine }: Props) {
     const d = clipDrag.current;
     if (!d) return;
     const dx = (e.clientX - d.startX) / pxPerSec;
-    if (d.mode === "resize") {
-      updateClip(d.clipId, { duration: Math.max(0.05, d.startDur + dx) });
+    if (d.mode === "resize-right") {
+      // Pure trim: shorten/extend right edge without moving startTime or stretching audio.
+      const clip = useDawStore.getState().clips.find(c => c.id === d.clipId);
+      const bufDur = clip?.buffer?.duration ?? Infinity;
+      const maxDur = Math.max(0.05, bufDur - (clip?.offset ?? 0));
+      updateClip(d.clipId, { duration: Math.max(0.05, Math.min(maxDur, d.startDur + dx)) });
+      return;
+    }
+    if (d.mode === "resize-left") {
+      // Pure trim from the left: change offset + startTime, keep audio content locked to timeline.
+      const delta = Math.max(-d.startOffset, Math.min(d.startDur - 0.05, dx));
+      updateClip(d.clipId, {
+        startTime: Math.max(0, d.startTime + delta),
+        offset: d.startOffset + delta,
+        duration: d.startDur - delta,
+      });
       return;
     }
     const dy = e.clientY - d.startY;
