@@ -153,6 +153,7 @@ export const useDawStore = create<DawState>((set, get) => ({
   },
 
   addTrack: (kind = "audio", name, options) => {
+    snap(get, set);
     const id = newId("trk");
     const idx = get().tracks.length;
     const track: Track = {
@@ -175,29 +176,30 @@ export const useDawStore = create<DawState>((set, get) => ({
     return id;
   },
 
-  removeTrack: (id) => set({
+  removeTrack: (id) => { snap(get, set); set({
     tracks: get().tracks.filter(t => t.id !== id),
     clips: get().clips.filter(c => c.trackId !== id),
     selectedTrackId: get().selectedTrackId === id ? null : get().selectedTrackId,
-  }),
+  }); },
 
-  updateTrack: (id, patch) => set({
+  updateTrack: (id, patch) => { snap(get, set); set({
     tracks: get().tracks.map(t => t.id === id ? { ...t, ...patch } : t),
-  }),
+  }); },
 
   reorderTracks: (fromId, toId) => {
     const list = [...get().tracks];
     const from = list.findIndex(t => t.id === fromId);
     const to = list.findIndex(t => t.id === toId);
     if (from < 0 || to < 0 || from === to) return;
+    snap(get, set);
     const [moved] = list.splice(from, 1);
     list.splice(to, 0, moved);
     set({ tracks: list });
   },
 
-  moveClipToTrack: (clipId, trackId) => set({
+  moveClipToTrack: (clipId, trackId) => { snap(get, set); set({
     clips: get().clips.map(c => c.id === clipId ? { ...c, trackId } : c),
-  }),
+  }); },
 
   copyClip: (id) => {
     const c = get().clips.find(x => x.id === id);
@@ -207,12 +209,14 @@ export const useDawStore = create<DawState>((set, get) => ({
   cutClip: (id) => {
     const c = get().clips.find(x => x.id === id);
     if (!c) return;
+    snap(get, set);
     set({ clipboard: { ...c }, clips: get().clips.filter(x => x.id !== id) });
   },
 
   pasteClipAt: (trackId, time) => {
     const cb = get().clipboard;
     if (!cb) return;
+    snap(get, set);
     const clip: Clip = { ...cb, id: newId("clip"), trackId, startTime: Math.max(0, time) };
     set({ clips: [...get().clips, clip] });
   },
@@ -220,11 +224,13 @@ export const useDawStore = create<DawState>((set, get) => ({
   duplicateClip: (id) => {
     const c = get().clips.find(x => x.id === id);
     if (!c) return;
+    snap(get, set);
     const clip: Clip = { ...c, id: newId("clip"), startTime: c.startTime + c.duration };
     set({ clips: [...get().clips, clip] });
   },
 
   addClip: (clip) => {
+    snap(get, set);
     const importedAudioFile = !!clip.buffer && clip.name !== "Recording";
     set({
       clips: [...get().clips, clip],
@@ -234,19 +240,20 @@ export const useDawStore = create<DawState>((set, get) => ({
     });
   },
 
-  updateClip: (id, patch) => set({
+  updateClip: (id, patch) => { snap(get, set); set({
     clips: get().clips.map(c => c.id === id ? { ...c, ...patch } : c),
-  }),
+  }); },
 
-  removeClip: (id) => set({
+  removeClip: (id) => { snap(get, set); set({
     clips: get().clips.filter(c => c.id !== id),
     selectedClipId: get().selectedClipId === id ? null : get().selectedClipId,
-  }),
+  }); },
 
   splitClipAt: (id, time) => {
     const clip = get().clips.find(c => c.id === id);
     if (!clip) return;
     if (time <= clip.startTime || time >= clip.startTime + clip.duration) return;
+    snap(get, set);
     const splitOffset = time - clip.startTime;
     const left = { ...clip, duration: splitOffset };
     const right: Clip = {
@@ -260,6 +267,7 @@ export const useDawStore = create<DawState>((set, get) => ({
   },
 
   addEffect: (trackId, type) => {
+    snap(get, set);
     const fx: EffectInstance = {
       id: newId("fx"),
       type,
@@ -273,19 +281,19 @@ export const useDawStore = create<DawState>((set, get) => ({
     });
   },
 
-  removeEffect: (trackId, effectId) => set({
+  removeEffect: (trackId, effectId) => { snap(get, set); set({
     tracks: get().tracks.map(t =>
       t.id === trackId ? { ...t, effects: t.effects.filter(e => e.id !== effectId) } : t
     ),
-  }),
+  }); },
 
-  updateEffect: (trackId, effectId, patch) => set({
+  updateEffect: (trackId, effectId, patch) => { snap(get, set); set({
     tracks: get().tracks.map(t =>
       t.id === trackId
         ? { ...t, effects: t.effects.map(e => e.id === effectId ? { ...e, ...patch, params: { ...e.params, ...(patch.params ?? {}) } } : e) }
         : t
     ),
-  }),
+  }); },
 
   setTransport: (patch) => {
     const next = { ...get().transport, ...patch };
