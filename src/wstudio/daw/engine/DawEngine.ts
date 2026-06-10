@@ -469,7 +469,16 @@ export class DawEngine {
 
     this.micStream = liveStream;
     const src = chain?.inputMonitorSource ?? this.ctx.createMediaStreamSource(liveStream);
-    if (chain) chain.micSource = src;
+    if (chain) {
+      chain.micSource = src;
+      if (!chain.inputMonitorSource) {
+        try { src.connect(chain.inputAnalyser); } catch {}
+        chain.inputMonitorSource = src;
+        chain.inputMonitorStream = liveStream;
+        chain.inputMonitoring = true;
+        chain.inputMonitorFailed = false;
+      }
+    }
 
     // Capture clean mic samples for the clip + drive the live waveform overlay
     const proc = this.ctx.createScriptProcessor(4096, 1, 1);
