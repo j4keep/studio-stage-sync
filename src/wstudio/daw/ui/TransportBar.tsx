@@ -250,3 +250,142 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
     </div>
   );
 }
+
+// ===================== Metronome popover (all click settings) =====================
+function MetronomePopover() {
+  const transport = useDawStore(s => s.transport);
+  const setTransport = useDawStore(s => s.setTransport);
+  const [outputs, setOutputs] = useState<MediaDeviceInfo[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const refresh = async () => {
+      try {
+        const devs = await navigator.mediaDevices.enumerateDevices();
+        if (cancelled) return;
+        setOutputs(devs.filter(d => d.kind === "audiooutput"));
+      } catch { /* ignore */ }
+    };
+    refresh();
+    navigator.mediaDevices?.addEventListener?.("devicechange", refresh);
+    return () => {
+      cancelled = true;
+      navigator.mediaDevices?.removeEventListener?.("devicechange", refresh);
+    };
+  }, []);
+
+  const countOptions = [0, 1, 2, 4];
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          title="Metronome — click to open settings"
+          className={`h-7 px-2 rounded border text-[10px] uppercase tracking-wider flex items-center gap-1 ${
+            transport.metronome
+              ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+              : "bg-neutral-900 border-neutral-800 text-neutral-300 hover:bg-neutral-800"
+          }`}
+        >
+          <Timer className="w-3 h-3" />
+          Metro
+          <ChevronDown className="w-3 h-3 opacity-70" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        sideOffset={6}
+        className="w-72 bg-neutral-900 border-neutral-800 text-neutral-200 p-3 space-y-3"
+      >
+        {/* On/off */}
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-[11px] uppercase tracking-wider text-neutral-400">Metronome</div>
+            <div className="text-[10px] text-neutral-500">Click on every beat at project tempo</div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setTransport({ metronome: !transport.metronome })}
+            className={`h-6 px-2 rounded text-[10px] uppercase tracking-wider border ${
+              transport.metronome ? "bg-amber-500/20 text-amber-300 border-amber-500/40" : "bg-neutral-800 text-neutral-400 border-neutral-700"
+            }`}
+          >{transport.metronome ? "On" : "Off"}</button>
+        </div>
+
+        {/* Volume */}
+        <div>
+          <div className="flex items-center justify-between text-[10px] text-neutral-400 mb-1">
+            <span className="uppercase tracking-wider">Volume</span>
+            <span className="text-amber-300">{Math.round(transport.metronomeVolume * 100)}%</span>
+          </div>
+          <input
+            type="range" min={0} max={1} step={0.01}
+            value={transport.metronomeVolume}
+            onChange={(e) => setTransport({ metronomeVolume: Number(e.target.value) })}
+            className="w-full accent-amber-500"
+          />
+        </div>
+
+        {/* Accent */}
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-[11px] uppercase tracking-wider text-neutral-400">Accent downbeat</div>
+            <div className="text-[10px] text-neutral-500">Higher pitch on beat 1 of each bar</div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setTransport({ metroAccent: !transport.metroAccent })}
+            className={`h-6 px-2 rounded text-[10px] uppercase tracking-wider border ${
+              transport.metroAccent ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/40" : "bg-neutral-800 text-neutral-400 border-neutral-700"
+            }`}
+          >{transport.metroAccent ? "On" : "Off"}</button>
+        </div>
+
+        {/* Count-in */}
+        <div>
+          <div className="flex items-center justify-between text-[10px] text-neutral-400 mb-1">
+            <span className="uppercase tracking-wider">Count-in (precount)</span>
+            <span className="text-[10px] text-neutral-500">Bars before record</span>
+          </div>
+          <div className="flex items-center gap-1">
+            {countOptions.map(n => (
+              <button
+                type="button"
+                key={n}
+                onClick={() => setTransport({ metroCountInBars: n })}
+                className={`flex-1 h-7 rounded border text-[10px] uppercase tracking-wider ${
+                  transport.metroCountInBars === n
+                    ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                    : "bg-neutral-800 text-neutral-400 border-neutral-700 hover:bg-neutral-700"
+                }`}
+              >{n === 0 ? "Off" : `${n} bar${n > 1 ? "s" : ""}`}</button>
+            ))}
+          </div>
+        </div>
+
+        {/* Separate click output */}
+        <div>
+          <div className="text-[11px] uppercase tracking-wider text-neutral-400 mb-1">Click output</div>
+          <select
+            value={transport.metroOutputDeviceId ?? ""}
+            onChange={(e) => setTransport({ metroOutputDeviceId: e.target.value || undefined })}
+            className="w-full h-7 rounded bg-neutral-800 border border-neutral-700 text-[11px] text-neutral-200 px-2"
+          >
+            <option value="">Master output (mixed)</option>
+            {outputs.map(d => (
+              <option key={d.deviceId} value={d.deviceId}>
+                {d.label || `Output ${d.deviceId.slice(0, 6)}`}
+              </option>
+            ))}
+          </select>
+          <div className="text-[10px] text-neutral-500 mt-1">
+            Route the click to a separate physical output (e.g. headphones only).
+            Browser support: Chrome/Edge.
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
