@@ -7,10 +7,7 @@ interface Props {
   color?: string;
 }
 
-/**
- * Professional console-style fader. Wide silver cap with a recessed grip line,
- * deep slot, tick marks, and metallic shading — patterned after real mixer fader caps.
- */
+/** Pro Tools-style mixer fader: narrow raised cap on a long recessed throw. */
 export function Fader({ value, onChange, height = 160, color = "#22d3ee" }: Props) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -23,8 +20,9 @@ export function Fader({ value, onChange, height = 160, color = "#22d3ee" }: Prop
     onChange(t);
   };
 
-  const CAP_H = 26;
-  const PAD = 10;
+  const CAP_W = 22;
+  const CAP_H = 34;
+  const PAD = 12;
 
   return (
     <div
@@ -38,27 +36,27 @@ export function Fader({ value, onChange, height = 160, color = "#22d3ee" }: Prop
         if (!(e.buttons & 1)) return;
         handle(e.clientY);
       }}
-      className="relative w-12 mx-auto cursor-ns-resize select-none"
+      className="relative w-9 mx-auto cursor-ns-resize select-none"
       style={{ height }}
     >
       {/* Recessed chassis */}
       <div
-        className="absolute inset-0 rounded-[3px] border border-black/80"
+        className="absolute inset-y-0 left-1/2 w-7 -translate-x-1/2 rounded-[2px] border border-black/80"
         style={{
-          background: "linear-gradient(180deg, #1c1c1c 0%, #2a2a2a 50%, #1c1c1c 100%)",
-          boxShadow: "inset 0 2px 4px rgba(0,0,0,0.85), inset 0 -1px 2px rgba(255,255,255,0.04)",
+          background: "linear-gradient(90deg, #171717 0%, #2d2d2d 46%, #101010 100%)",
+          boxShadow: "inset 3px 0 5px rgba(0,0,0,0.78), inset -2px 0 3px rgba(255,255,255,0.05)",
         }}
       />
 
       {/* Tick marks (left + right of the slot) */}
-      <div className="absolute inset-y-2 left-1 flex flex-col justify-between pointer-events-none">
+      <div className="absolute inset-y-2 left-0.5 flex flex-col justify-between pointer-events-none">
         {Array.from({ length: 11 }).map((_, i) => (
-          <div key={i} className="h-px bg-white/30" style={{ width: i % 5 === 0 ? 5 : 3 }} />
+          <div key={i} className="h-px bg-white/28" style={{ width: i % 5 === 0 ? 5 : 3 }} />
         ))}
       </div>
-      <div className="absolute inset-y-2 right-1 flex flex-col items-end justify-between pointer-events-none">
+      <div className="absolute inset-y-2 right-0.5 flex flex-col items-end justify-between pointer-events-none">
         {Array.from({ length: 11 }).map((_, i) => (
-          <div key={i} className="h-px bg-white/30" style={{ width: i % 5 === 0 ? 5 : 3 }} />
+          <div key={i} className="h-px bg-white/28" style={{ width: i % 5 === 0 ? 5 : 3 }} />
         ))}
       </div>
 
@@ -68,9 +66,9 @@ export function Fader({ value, onChange, height = 160, color = "#22d3ee" }: Prop
         style={{
           top: PAD,
           bottom: PAD,
-          width: 4,
-          background: "linear-gradient(90deg, #000 0%, #111 50%, #000 100%)",
-          boxShadow: "inset 0 0 3px rgba(0,0,0,0.95)",
+          width: 3,
+          background: "linear-gradient(90deg, #050505 0%, #3a3a3a 50%, #050505 100%)",
+          boxShadow: "0 0 0 1px rgba(0,0,0,0.7), inset 0 0 3px rgba(0,0,0,0.95)",
         }}
       />
 
@@ -87,35 +85,33 @@ export function Fader({ value, onChange, height = 160, color = "#22d3ee" }: Prop
         }}
       />
 
-      {/* Cap */}
+      {/* Raised fader cap */}
       <div
-        className="absolute left-1/2 -translate-x-1/2 rounded-[3px] pointer-events-none"
+        className="absolute left-1/2 -translate-x-1/2 rounded-[2px] pointer-events-none"
         style={{
-          width: 40,
+          width: CAP_W,
           height: CAP_H,
           bottom: `calc(${PAD}px + (100% - ${PAD * 2}px) * ${value} - ${CAP_H / 2}px)`,
           background:
-            "linear-gradient(180deg, #6e6e6e 0%, #4a4a4a 18%, #2a2a2a 50%, #1a1a1a 55%, #3a3a3a 85%, #5a5a5a 100%)",
-          border: "1px solid #0a0a0a",
+            "linear-gradient(90deg, #a7a7a7 0%, #f3f3f3 18%, #d8d8d8 50%, #ffffff 76%, #9b9b9b 100%)",
+          border: "1px solid #6f6f6f",
+          clipPath: "polygon(12% 0, 88% 0, 100% 12%, 100% 88%, 88% 100%, 12% 100%, 0 88%, 0 12%)",
           boxShadow:
-            "0 2px 6px rgba(0,0,0,0.85), inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(0,0,0,0.6)",
+            "0 2px 5px rgba(0,0,0,0.85), inset 1px 0 0 rgba(255,255,255,0.8), inset -1px 0 0 rgba(0,0,0,0.22)",
         }}
       >
-        {/* Top highlight ridge */}
-        <div className="absolute inset-x-1 top-[2px] h-px bg-white/40" />
-        {/* Recessed grip line — the white indicator across the middle */}
+        <div className="absolute inset-x-[4px] top-[3px] h-px bg-white/90" />
+        <div className="absolute inset-x-[4px] bottom-[3px] h-px bg-black/20" />
+        <div className="absolute left-[4px] top-[5px] bottom-[5px] w-px bg-black/10" />
+        <div className="absolute right-[4px] top-[5px] bottom-[5px] w-px bg-white/60" />
+        {/* Recessed center line like the reference fader cap */}
         <div
-          className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[3px]"
+          className="absolute inset-x-[2px] top-1/2 -translate-y-1/2 h-[4px]"
           style={{
-            background: "linear-gradient(180deg, #f5f5f5 0%, #cfcfcf 50%, #8a8a8a 100%)",
-            boxShadow: "0 1px 0 rgba(0,0,0,0.6), 0 -1px 0 rgba(0,0,0,0.4)",
+            background: "linear-gradient(180deg, #9b9b9b 0%, #ededed 52%, #7d7d7d 100%)",
+            boxShadow: "inset 0 1px 1px rgba(0,0,0,0.45), 0 1px 0 rgba(255,255,255,0.65)",
           }}
         />
-        {/* Side ridges */}
-        <div className="absolute left-[3px] top-1 bottom-1 w-px bg-black/50" />
-        <div className="absolute right-[3px] top-1 bottom-1 w-px bg-black/50" />
-        {/* Bottom highlight */}
-        <div className="absolute inset-x-1 bottom-[2px] h-px bg-white/15" />
       </div>
     </div>
   );
