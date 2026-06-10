@@ -511,8 +511,9 @@ function TrackHeader({ track, meters = [], onArm, onMute, onSolo, onRemove, onRe
 
 function LiveRecordingBlock({ startTime, peaks, duration, pxPerSec, height }: { startTime: number; peaks: number[]; duration: number; pxPerSec: number; height: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const position = useDawStore(s => s.transport.position);
-  const displayDuration = Math.max(0.02, duration, position - startTime);
+  // Width follows recorded duration ONLY (peaks-based), so the playhead — which is
+  // glued to the same recorded duration above — lands exactly at the wave's edge.
+  const displayDuration = Math.max(0.02, duration);
   const w = Math.max(2, Math.ceil(displayDuration * pxPerSec));
   const h = height - 8;
   useEffect(() => {
@@ -524,9 +525,9 @@ function LiveRecordingBlock({ startTime, peaks, duration, pxPerSec, height }: { 
     const mid = h / 2;
     const N = peaks.length;
     if (N === 0) return;
-    const step = Math.max(1, N / w);
+    // Stretch peaks across the full width so the wave keeps pace with the playhead.
     for (let x = 0; x < w; x++) {
-      const i = Math.floor(x * step);
+      const i = Math.min(N - 1, Math.floor((x / w) * N));
       const p = peaks[i] ?? 0;
       const barH = Math.max(1, p * h);
       ctx.fillRect(x, mid - barH / 2, 1, barH);
@@ -545,8 +546,9 @@ function LiveRecordingBlock({ startTime, peaks, duration, pxPerSec, height }: { 
   );
 }
 
-function PlayheadMarker({ pxPerSec, ruler = false }: { pxPerSec: number; ruler?: boolean }) {
-  const position = useDawStore(s => s.transport.position);
+function PlayheadMarker({ pxPerSec, ruler = false, recOverride = null }: { pxPerSec: number; ruler?: boolean; recOverride?: number | null }) {
+  const transportPos = useDawStore(s => s.transport.position);
+  const position = recOverride != null ? recOverride : transportPos;
   if (ruler) {
     return (
       <div className="absolute top-0 bottom-0 w-px bg-emerald-400 pointer-events-none z-30" style={{ transform: `translate3d(${position * pxPerSec}px, 0, 0)` }}>
