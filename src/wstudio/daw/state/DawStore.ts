@@ -92,6 +92,16 @@ export interface DawState {
   setMasterVolume: (v: number) => void;
   setMetronomeVolume: (v: number) => void;
 }
+function snap(get: any, set: any) {
+  const s = get();
+  set({
+    _past: [...s._past, { tracks: s.tracks, clips: s.clips }].slice(-HISTORY_LIMIT),
+    _future: [],
+  });
+}
+
+const HISTORY_LIMIT_LOCAL = 0; // (placeholder removed; see HISTORY_LIMIT above)
+
 
 export const useDawStore = create<DawState>((set, get) => ({
   tool: "pointer",
