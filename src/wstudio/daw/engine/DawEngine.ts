@@ -54,6 +54,7 @@ export class DawEngine {
   // Metronome
   private metroEnabled = false;
   private metroBpm = 120;
+  private metroBeatsPerBar = 4;
   private metroNextBeat = 0;
   private metroBeatIndex = 0;
   private metroTimer: number | null = null;
