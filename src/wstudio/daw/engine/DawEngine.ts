@@ -378,12 +378,13 @@ export class DawEngine {
   getRecordingStart() { return this.recordStartTransport; }
 
   syncInputMonitoring(tracks: Track[]) {
-    const armedAudioIds = new Set(tracks.filter(t => t.kind === "audio" && t.armed).map(t => t.id));
+    // Always-on input metering for every audio track — independent of arm state.
+    const audioIds = new Set(tracks.filter(t => t.kind === "audio").map(t => t.id));
     this.trackChains.forEach((_, id) => {
-      if (!armedAudioIds.has(id) || this.recordingTrackId === id) this.stopInputMonitoring(id);
+      if (!audioIds.has(id)) this.stopInputMonitoring(id);
     });
     tracks.forEach((track) => {
-      if (track.kind !== "audio" || !track.armed || this.recordingTrackId === track.id) return;
+      if (track.kind !== "audio" || this.recordingTrackId === track.id) return;
       void this.startInputMonitoring(track.id, track.inputDeviceId);
     });
   }
