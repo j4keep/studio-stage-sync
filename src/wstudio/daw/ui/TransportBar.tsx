@@ -292,11 +292,30 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
 
       <div className="flex-1" />
 
-      <div className="flex items-center gap-1">
-        <button type="button" onClick={onAddAudio} title="Add new audio track" className="h-7 px-2 rounded border border-neutral-800 text-[10px] uppercase flex items-center gap-1 hover:bg-neutral-800"><Mic className="w-3 h-3" /> Audio</button>
-        <button type="button" onClick={onAddInstrument} title="Add new instrument (synth) track" className="h-7 px-2 rounded border border-neutral-800 text-[10px] uppercase flex items-center gap-1 hover:bg-neutral-800"><Music2 className="w-3 h-3" /> Instr</button>
-        <button type="button" onClick={onImport} title="Import audio file(s)" className="h-7 px-2 rounded border border-neutral-800 text-[10px] uppercase flex items-center gap-1 hover:bg-neutral-800"><Plus className="w-3 h-3" /> Import</button>
-      </div>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          title="Add a track or import audio"
+          className="h-7 px-2 rounded border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-[10px] uppercase tracking-wider text-cyan-300 flex items-center gap-1"
+        >
+          <Plus className="w-3 h-3" />
+          <span>Add</span>
+          <ChevronDown className="w-3 h-3 text-neutral-500" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="bg-neutral-900 border-neutral-800 text-neutral-200 min-w-[200px]">
+          <DropdownMenuItem onClick={onAddAudio} className="flex items-center gap-2 text-[12px]">
+            <Mic className="w-3.5 h-3.5 text-emerald-300" />
+            <span className="flex-1">Audio Track</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onAddInstrument} className="flex items-center gap-2 text-[12px]">
+            <Music2 className="w-3.5 h-3.5 text-purple-300" />
+            <span className="flex-1">Instrument Track</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onImport} className="flex items-center gap-2 text-[12px]">
+            <Plus className="w-3.5 h-3.5 text-cyan-300" />
+            <span className="flex-1">Import Audio File…</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       <DropdownMenu>
         <DropdownMenuTrigger
