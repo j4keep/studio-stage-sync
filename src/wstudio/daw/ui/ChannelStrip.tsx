@@ -107,7 +107,7 @@ export function ChannelStrip({ track, engine, onOpenFx, onArmToggle, rows }: Pro
             }}
             disabled={!canRecordInput}
             title={canRecordInput ? "Record-arm" : "Playback-only imported audio"}
-            className={`w-5 h-4 rounded text-[8px] font-bold border ${track.armed ? "bg-red-500 text-white border-red-400" : canRecordInput ? "bg-neutral-900 text-neutral-400 border-neutral-800" : "bg-neutral-950 text-neutral-700 border-neutral-900 cursor-not-allowed"}`}
+            className={`w-5 h-4 rounded text-[8px] font-bold border ${canRecordInput && track.armed ? "bg-red-500 text-white border-red-400" : canRecordInput ? "bg-neutral-900 text-neutral-400 border-neutral-800" : "bg-neutral-950 text-neutral-700 border-neutral-900 cursor-not-allowed"}`}
           >R</button>
           <button title="Input monitor" className="w-5 h-4 rounded text-[8px] font-bold border bg-neutral-900 text-neutral-400 border-neutral-800">I</button>
         </div>

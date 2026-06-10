@@ -482,7 +482,7 @@ function TrackHeader({ track, canRecordInput, meters = [], onArm, onMute, onSolo
             onClick={() => { if (canRecordInput) onArm(); }}
             disabled={!canRecordInput}
             title={canRecordInput ? "Record-arm" : "Playback-only imported audio"}
-            className={`w-5 h-5 grid place-items-center rounded text-[9px] font-bold shrink-0 ${track.armed ? "bg-red-500 text-white" : canRecordInput ? "bg-neutral-800 text-neutral-400 hover:bg-neutral-700" : "bg-neutral-950 text-neutral-700 cursor-not-allowed"}`}
+            className={`w-5 h-5 grid place-items-center rounded text-[9px] font-bold shrink-0 ${canRecordInput && track.armed ? "bg-red-500 text-white" : canRecordInput ? "bg-neutral-800 text-neutral-400 hover:bg-neutral-700" : "bg-neutral-950 text-neutral-700 cursor-not-allowed"}`}
           >R</button>
 
           <div
