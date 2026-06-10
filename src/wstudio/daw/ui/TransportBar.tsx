@@ -57,6 +57,13 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
   const bar = Math.floor(totalBeats / beatsPerBar) + 1;
   const beat = Math.floor(totalBeats % beatsPerBar) + 1;
   const sub = Math.floor((totalBeats * 4) % 4) + 1;
+  const tickFrac = Math.floor(((totalBeats * 4) % 1) * 1000);
+  // Absolute time
+  const secs = transport.position;
+  const hh = Math.floor(secs / 3600);
+  const mm = Math.floor((secs % 3600) / 60);
+  const ss = Math.floor(secs % 60);
+  const ms = Math.floor((secs - Math.floor(secs)) * 1000);
   const ActiveToolIcon = TOOLS.find(t => t.id === tool)?.Icon ?? MousePointer2;
 
   const KEY_ROOTS: import("../engine/types").KeyRoot[] = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
@@ -66,6 +73,13 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
     { id: "adapt", label: "ADAPT", hint: "Project tempo follows the imported audio" },
     { id: "auto", label: "AUTO", hint: "DAW decides automatically" },
   ];
+  const BBT_MODES: Array<{ id: import("../engine/types").BBTDisplayMode; label: string; hint: string }> = [
+    { id: "beats-project", label: "Beats & Project", hint: "Bar.Beat plus tempo/sig/key" },
+    { id: "beats-time",    label: "Beats & Time",    hint: "Bar.Beat plus absolute time" },
+    { id: "beats",         label: "Beats",           hint: "Bar.Beat.Sub.Tick only" },
+    { id: "time",          label: "Time",            hint: "Absolute HH:MM:SS.ms only" },
+  ];
+  const bbtMode = transport.bbtDisplayMode;
 
   return (
     <div className="h-14 bg-gradient-to-b from-neutral-900 to-neutral-950 border-b border-neutral-800 px-3 flex items-center gap-2 text-neutral-200 text-xs shadow-[inset_0_-1px_0_rgba(255,255,255,0.02)]">
