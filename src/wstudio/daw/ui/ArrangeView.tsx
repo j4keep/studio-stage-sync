@@ -511,7 +511,9 @@ function TrackHeader({ track, meters = [], onArm, onMute, onSolo, onRemove, onRe
 
 function LiveRecordingBlock({ startTime, peaks, duration, pxPerSec, height }: { startTime: number; peaks: number[]; duration: number; pxPerSec: number; height: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const w = Math.max(2, duration * pxPerSec);
+  const position = useDawStore(s => s.transport.position);
+  const displayDuration = Math.max(0.02, duration, position - startTime);
+  const w = Math.max(2, Math.ceil(displayDuration * pxPerSec));
   const h = height - 8;
   useEffect(() => {
     const c = canvasRef.current; if (!c) return;
