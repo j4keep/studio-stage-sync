@@ -42,7 +42,13 @@ function persistMetro(t: TransportState) {
   } catch {}
 }
 
-export type DawTool = "pointer" | "pencil" | "eraser" | "scissors" | "glue" | "mute" | "zoom" | "fade" | "marquee";
+export type DawTool =
+  | "pointer" | "pencil" | "eraser" | "scissors" | "glue"
+  | "mute" | "zoom" | "fade" | "marquee"
+  | "text" | "automation" | "flex" | "trim";
+
+type HistorySnap = { tracks: Track[]; clips: Clip[] };
+const HISTORY_LIMIT = 80;
 
 export interface DawState {
   tool: DawTool;
@@ -56,7 +62,12 @@ export interface DawState {
   view: "arrange" | "mixer" | "instrument";
   masterVolume: number;
   pxPerSec: number;
-  // Actions
+  _past: HistorySnap[];
+  _future: HistorySnap[];
+  undo: () => void;
+  redo: () => void;
+  canUndo: () => boolean;
+  canRedo: () => boolean;
   addTrack: (kind?: "audio" | "instrument", name?: string, options?: Partial<Pick<Track, "inputEnabled">>) => string;
   removeTrack: (id: string) => void;
   updateTrack: (id: string, patch: Partial<Track>) => void;
