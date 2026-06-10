@@ -50,12 +50,21 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
   const tool = useDawStore(s => s.tool);
   const setTool = useDawStore(s => s.setTool);
 
-  // Logic-style Bar.Beat from seconds + BPM (4/4 assumed)
+  // Bar.Beat from seconds + BPM using current time signature
+  const beatsPerBar = transport.timeSigNum || 4;
   const totalBeats = (transport.position / 60) * transport.bpm;
-  const bar = Math.floor(totalBeats / 4) + 1;
-  const beat = Math.floor(totalBeats % 4) + 1;
+  const bar = Math.floor(totalBeats / beatsPerBar) + 1;
+  const beat = Math.floor(totalBeats % beatsPerBar) + 1;
   const sub = Math.floor((totalBeats * 4) % 4) + 1;
   const ActiveToolIcon = TOOLS.find(t => t.id === tool)?.Icon ?? MousePointer2;
+
+  const KEY_ROOTS: import("../engine/types").KeyRoot[] = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+  const TIME_SIGS: Array<[number, number]> = [[2,4],[3,4],[4,4],[5,4],[6,8],[7,8],[12,8]];
+  const TEMPO_MODES: Array<{ id: import("../engine/types").TempoMode; label: string; hint: string }> = [
+    { id: "keep", label: "KEEP", hint: "Imported audio follows the project tempo" },
+    { id: "adapt", label: "ADAPT", hint: "Project tempo follows the imported audio" },
+    { id: "auto", label: "AUTO", hint: "DAW decides automatically" },
+  ];
 
   return (
     <div className="h-14 bg-gradient-to-b from-neutral-900 to-neutral-950 border-b border-neutral-800 px-3 flex items-center gap-2 text-neutral-200 text-xs shadow-[inset_0_-1px_0_rgba(255,255,255,0.02)]">
