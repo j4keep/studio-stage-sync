@@ -23,8 +23,9 @@ export function ChannelStrip({ track, engine, onOpenFx, onArmToggle, rows }: Pro
   const mono = engine.getTrackAnalyser(track.id);
   const inputAn = engine.getTrackInputAnalyser(track.id);
   const isStereo = track.kind === "instrument" || clips.some(c => c.trackId === track.id && (c.buffer?.numberOfChannels ?? 0) >= 2);
-  // For audio tracks, the meter shows live mic input (always-on, independent of arm).
-  const meters = track.kind === "audio" && inputAn
+  const canRecordInput = track.kind === "audio" && track.inputEnabled !== false;
+  // Vocal/input audio tracks show live mic input; imported beat/file tracks show playback only.
+  const meters = canRecordInput && inputAn
     ? [inputAn]
     : (isStereo && stereo ? [stereo.L, stereo.R] : mono ? [mono] : []);
   const isSel = selectedTrackId === track.id;
@@ -57,7 +58,7 @@ export function ChannelStrip({ track, engine, onOpenFx, onArmToggle, rows }: Pro
         </button>
       </Cell>
       {/* Input */}
-      <Cell h={r("input")} title="Audio input source"><div className="w-full h-full grid place-items-center bg-neutral-950 border border-neutral-800 rounded text-[9px]">In 1</div></Cell>
+      <Cell h={r("input")} title="Audio input source"><div className="w-full h-full grid place-items-center bg-neutral-950 border border-neutral-800 rounded text-[9px]">{canRecordInput ? "In 1" : "File"}</div></Cell>
       {/* Audio FX */}
       <Cell h={r("fx")} title="Audio FX inserts">
         <button onClick={(e)=>{e.stopPropagation(); onOpenFx();}} className="w-full h-full bg-neutral-950 border border-neutral-800 rounded text-[9px] text-neutral-300 hover:bg-neutral-800 flex flex-col items-center justify-center gap-0.5">
@@ -100,10 +101,12 @@ export function ChannelStrip({ track, engine, onOpenFx, onArmToggle, rows }: Pro
           <button
             onClick={(e) => {
               e.stopPropagation();
+              if (!canRecordInput) return;
               onArmToggle(track.id);
             }}
-            title="Record-arm"
-            className={`w-5 h-4 rounded text-[8px] font-bold border ${track.armed ? "bg-red-500 text-white border-red-400" : "bg-neutral-900 text-neutral-400 border-neutral-800"}`}
+            disabled={!canRecordInput}
+            title={canRecordInput ? "Record-arm" : "Playback-only imported audio"}
+            className={`w-5 h-4 rounded text-[8px] font-bold border ${track.armed ? "bg-red-500 text-white border-red-400" : canRecordInput ? "bg-neutral-900 text-neutral-400 border-neutral-800" : "bg-neutral-950 text-neutral-700 border-neutral-900 cursor-not-allowed"}`}
           >R</button>
           <button title="Input monitor" className="w-5 h-4 rounded text-[8px] font-bold border bg-neutral-900 text-neutral-400 border-neutral-800">I</button>
         </div>

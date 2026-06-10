@@ -237,7 +237,8 @@ export function ArrangeView({ onArmToggle, onSeek, engine }: Props) {
               const isStereo = t.kind === "instrument" || trackClips.some(c => (c.buffer?.numberOfChannels ?? 0) >= 2);
               const stereo = engine?.getTrackStereoAnalysers(t.id) ?? null;
               const mono = engine?.getTrackAnalyser(t.id) ?? null;
-              const meters = t.kind === "audio" && inputAn ? [inputAn] : isStereo && stereo ? [stereo.L, stereo.R] : mono ? [mono] : [];
+              const canRecordInput = t.kind === "audio" && t.inputEnabled !== false;
+              const meters = canRecordInput && inputAn ? [inputAn] : isStereo && stereo ? [stereo.L, stereo.R] : mono ? [mono] : [];
               return (
                 <TrackHeader
                   key={t.id}
@@ -474,7 +475,13 @@ function TrackHeader({ track, meters = [], onArm, onMute, onSolo, onRemove, onRe
         <div className="flex items-center gap-1.5 min-w-0">
           <button onPointerDown={stop} onClick={onMute} title="Mute" className={`w-5 h-5 grid place-items-center rounded text-[9px] font-bold shrink-0 ${track.mute ? "bg-amber-500 text-black" : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700"}`}>M</button>
           <button onPointerDown={stop} onClick={onSolo} title="Solo" className={`w-5 h-5 grid place-items-center rounded text-[9px] font-bold shrink-0 ${track.solo ? "bg-cyan-400 text-black" : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700"}`}>S</button>
-          <button onPointerDown={stop} onClick={onArm} title="Record-arm" className={`w-5 h-5 grid place-items-center rounded text-[9px] font-bold shrink-0 ${track.armed ? "bg-red-500 text-white" : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700"}`}>R</button>
+          <button
+            onPointerDown={stop}
+            onClick={() => { if (track.kind === "audio" && track.inputEnabled !== false) onArm(); }}
+            disabled={track.kind !== "audio" || track.inputEnabled === false}
+            title={track.kind === "audio" && track.inputEnabled !== false ? "Record-arm" : "Playback-only imported audio"}
+            className={`w-5 h-5 grid place-items-center rounded text-[9px] font-bold shrink-0 ${track.armed ? "bg-red-500 text-white" : track.kind === "audio" && track.inputEnabled !== false ? "bg-neutral-800 text-neutral-400 hover:bg-neutral-700" : "bg-neutral-950 text-neutral-700 cursor-not-allowed"}`}
+          >R</button>
 
           <div
             ref={sliderRef}
