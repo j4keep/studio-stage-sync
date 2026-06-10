@@ -46,6 +46,7 @@ export class DawEngine {
   // Recording
   private micStream: MediaStream | null = null;
   private recProcessor: ScriptProcessorNode | null = null;
+  private recSilentSink: GainNode | null = null;
   private recBuffers: Float32Array[] = [];
   private recordingTrackId: string | null = null;
   private recordStartTransport = 0;
@@ -187,8 +188,10 @@ export class DawEngine {
     const anySolo = allTracks ? allTracks.some(t => t.solo) : false;
     const silencedBySolo = anySolo && !track.solo;
     c.gain.gain.setTargetAtTime((track.mute || silencedBySolo) ? 0 : volume, now, 0.01);
-    c.reverbSend.gain.setTargetAtTime(reverb, now, 0.01);
-    c.delaySend.gain.setTargetAtTime(delay, now, 0.01);
+    const recordingIntoTrack = this.recordingTrackId === track.id;
+    c.monitorGain.gain.setTargetAtTime(recordingIntoTrack ? 0 : 1, now, 0.01);
+    c.reverbSend.gain.setTargetAtTime(recordingIntoTrack ? 0 : reverb, now, 0.01);
+    c.delaySend.gain.setTargetAtTime(recordingIntoTrack ? 0 : delay, now, 0.01);
     // Update insert params
     track.effects.filter(e => e.enabled).forEach((fx, i) => {
       if (c.inserts[i]) c.inserts[i].apply(fx.params);
@@ -352,6 +355,7 @@ export class DawEngine {
   getRecordingStart() { return this.recordStartTransport; }
 
   async startRecording(trackId: string, transportPos: number, inputDeviceId?: string) {
+    if (this.recordingTrackId) this.stopRecording();
     this.recordingTrackId = trackId;
     this.recordStartTransport = transportPos;
     this.recBuffers = [];
@@ -359,10 +363,9 @@ export class DawEngine {
     this.micStream = await navigator.mediaDevices.getUserMedia({
       audio: {
         deviceId: inputDeviceId ? { exact: inputDeviceId } : undefined,
-        // Browser voice processing was making takes sound robotic/distorted.
-        // Keep the raw mic clean; the backing track is kept out by audio routing,
-        // not by recording the master bus.
-        echoCancellation: false,
+        // Record the mic stream, while asking the browser to remove DAW playback
+        // from the capture so imported beats do not print into the vocal take.
+        echoCancellation: true,
         noiseSuppression: false,
         autoGainControl: false,
         channelCount: 1,
@@ -394,6 +397,7 @@ export class DawEngine {
     silentSink.gain.value = 0;
     proc.connect(silentSink);
     silentSink.connect(this.ctx.destination);
+    this.recSilentSink = silentSink;
 
     proc.onaudioprocess = (e) => {
       const ch = e.inputBuffer.getChannelData(0);
@@ -438,11 +442,15 @@ export class DawEngine {
       chain.monitorGain.gain.value = 1;
       if (chain.savedReverbSend != null) chain.reverbSend.gain.value = chain.savedReverbSend;
       if (chain.savedDelaySend != null) chain.delaySend.gain.value = chain.savedDelaySend;
+      chain.savedReverbSend = undefined;
+      chain.savedDelaySend = undefined;
     }
     this.recBuffers = [];
     this.recordingLivePeaks = [];
     try { this.recProcessor?.disconnect(); } catch {}
+    try { this.recSilentSink?.disconnect(); } catch {}
     this.recProcessor = null;
+    this.recSilentSink = null;
     this.micStream?.getTracks().forEach(t => t.stop());
     this.micStream = null;
     this.recordingTrackId = null;
