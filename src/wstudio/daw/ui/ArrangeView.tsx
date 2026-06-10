@@ -65,7 +65,7 @@ export function ArrangeView({ onArmToggle, onSeek, engine }: Props) {
     engine.onRecordingProgress = (peaks, dur) => {
       const tid = engine.getRecordingTrackId();
       if (!tid || dur <= 0) setLiveRec(null);
-      else setLiveRec({ trackId: tid, peaks: peaks.slice(-2000), dur });
+      else setLiveRec({ trackId: tid, peaks: peaks.slice(), dur });
     };
     return () => { if (engine) engine.onRecordingProgress = undefined; };
   }, [engine]);
@@ -233,10 +233,11 @@ export function ArrangeView({ onArmToggle, onSeek, engine }: Props) {
             <div style={{ height: RULER_H }} className="border-b border-neutral-800" />
             {tracks.map(t => {
               const trackClips = clips.filter(c => c.trackId === t.id);
+              const inputAn = engine?.getTrackInputAnalyser(t.id) ?? null;
               const isStereo = t.kind === "instrument" || trackClips.some(c => (c.buffer?.numberOfChannels ?? 0) >= 2);
               const stereo = engine?.getTrackStereoAnalysers(t.id) ?? null;
               const mono = engine?.getTrackAnalyser(t.id) ?? null;
-              const meters = isStereo && stereo ? [stereo.L, stereo.R] : mono ? [mono] : [];
+              const meters = t.kind === "audio" && inputAn ? [inputAn] : isStereo && stereo ? [stereo.L, stereo.R] : mono ? [mono] : [];
               return (
                 <TrackHeader
                   key={t.id}
@@ -525,12 +526,16 @@ function LiveRecordingBlock({ startTime, peaks, duration, pxPerSec, height }: { 
     const mid = h / 2;
     const N = peaks.length;
     if (N === 0) return;
-    // Stretch peaks across the full width so the wave keeps pace with the playhead.
+    // Draw min/max pairs using the same shape logic as finished clips.
+    const samples = Math.floor(N / 2);
+    const step = samples / w;
     for (let x = 0; x < w; x++) {
-      const i = Math.min(N - 1, Math.floor((x / w) * N));
-      const p = peaks[i] ?? 0;
-      const barH = Math.max(1, p * h);
-      ctx.fillRect(x, mid - barH / 2, 1, barH);
+      const i = Math.min(samples - 1, Math.floor(x * step));
+      const min = peaks[i * 2] ?? 0;
+      const max = peaks[i * 2 + 1] ?? 0;
+      const yTop = mid + min * mid;
+      const yBot = mid + max * mid;
+      ctx.fillRect(x, yTop, 1, Math.max(1, yBot - yTop));
     }
   }, [peaks, w, h]);
   return (
