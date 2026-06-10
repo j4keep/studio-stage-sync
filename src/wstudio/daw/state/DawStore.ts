@@ -22,6 +22,9 @@ function loadPersistedMetro(): Partial<TransportState> {
     if (typeof p.metroAccent === "boolean") out.metroAccent = p.metroAccent;
     if (typeof p.metroCountInBars === "number") out.metroCountInBars = p.metroCountInBars;
     if (typeof p.metroOutputDeviceId === "string") out.metroOutputDeviceId = p.metroOutputDeviceId;
+    if (p.bbtDisplayMode === "beats-project" || p.bbtDisplayMode === "beats-time" || p.bbtDisplayMode === "beats" || p.bbtDisplayMode === "time") {
+      out.bbtDisplayMode = p.bbtDisplayMode;
+    }
     return out;
   } catch { return {}; }
 }
@@ -34,6 +37,7 @@ function persistMetro(t: TransportState) {
       metroAccent: t.metroAccent,
       metroCountInBars: t.metroCountInBars,
       metroOutputDeviceId: t.metroOutputDeviceId,
+      bbtDisplayMode: t.bbtDisplayMode,
     }));
   } catch {}
 }
