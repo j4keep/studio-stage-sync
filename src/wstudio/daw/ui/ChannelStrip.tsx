@@ -19,11 +19,12 @@ export function ChannelStrip({ track, engine, onOpenFx, onArmToggle, rows }: Pro
   const selectTrack = useDawStore(s => s.selectTrack);
   const selectedTrackId = useDawStore(s => s.selectedTrackId);
   const clips = useDawStore(s => s.clips);
+  const trackClips = clips.filter(c => c.trackId === track.id);
   const stereo = engine.getTrackStereoAnalysers(track.id);
   const mono = engine.getTrackAnalyser(track.id);
   const inputAn = engine.getTrackInputAnalyser(track.id);
-  const isStereo = track.kind === "instrument" || clips.some(c => c.trackId === track.id && (c.buffer?.numberOfChannels ?? 0) >= 2);
-  const canRecordInput = track.kind === "audio" && track.inputEnabled !== false;
+  const isStereo = track.kind === "instrument" || trackClips.some(c => (c.buffer?.numberOfChannels ?? 0) >= 2);
+  const canRecordInput = track.kind === "audio" && track.inputEnabled !== false && !(track.inputEnabled === undefined && trackClips.some(c => c.buffer && c.name !== "Recording"));
   // Vocal/input audio tracks show live mic input; imported beat/file tracks show playback only.
   const meters = canRecordInput && inputAn
     ? [inputAn]

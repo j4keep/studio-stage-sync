@@ -223,7 +223,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
   const handleArmToggle = useCallback((trackId: string) => {
     const t = tracks.find(x => x.id === trackId);
     if (!t) return;
-    if (t.kind !== "audio" || t.inputEnabled === false) {
+    if (!isInputAudioTrack(t, clips)) {
       toast.error("Imported beat/audio tracks are playback-only");
       return;
     }
@@ -232,7 +232,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
     const shouldArm = !t.armed;
     selectTrack(trackId);
     tracks.forEach(x => updateTrack(x.id, { armed: x.id === trackId ? shouldArm : false }));
-  }, [tracks, updateTrack, selectTrack]);
+  }, [tracks, clips, updateTrack, selectTrack]);
 
   const importFiles = useCallback(async (files: FileList) => {
     const e = engineRef.current;
