@@ -86,6 +86,12 @@ export interface TransportState {
   metronome: boolean;
   /** Click level 0..1, independent from master / monitor mix */
   metronomeVolume: number;
+  /** Use a different (higher) pitch on beat 1 of each bar */
+  metroAccent: boolean;
+  /** Bars of count-in before recording (0 = off) */
+  metroCountInBars: number;
+  /** Optional dedicated audio output device for click (separate from master) */
+  metroOutputDeviceId?: string;
   /** Musical key root */
   keyRoot: KeyRoot;
   /** Major / minor */
