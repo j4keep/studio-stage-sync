@@ -431,6 +431,7 @@ export class DawEngine {
     chain.inputMonitorSource = null;
     chain.inputMonitorStream = null;
     chain.inputMonitoring = false;
+    chain.inputMonitorFailed = false;
   }
 
   async startRecording(trackId: string, transportPos: number, inputDeviceId?: string) {
