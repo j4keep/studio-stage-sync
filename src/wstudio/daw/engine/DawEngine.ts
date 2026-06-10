@@ -59,6 +59,12 @@ export class DawEngine {
   private metroBeatIndex = 0;
   private metroTimer: number | null = null;
   private metroGain: GainNode;
+  private metroAccent = true;
+  // Separate click output routing
+  private metroDest: MediaStreamAudioDestinationNode | null = null;
+  private metroAudioEl: HTMLAudioElement | null = null;
+  private metroOutputDeviceId: string | undefined = undefined;
+  private metroRoutedToMaster = true;
 
   // Recording
   private micStream: MediaStream | null = null;
