@@ -1,4 +1,4 @@
-import { Play, Square, Circle, SkipBack, SkipForward, Rewind, FastForward, Repeat, Volume2, Download, Plus, Mic, Music2, MousePointer2, Pencil, Eraser, Scissors, Combine, VolumeX, ZoomIn, Waves, BoxSelect, Timer, ChevronDown, Type, Activity, Move, MoveHorizontal } from "lucide-react";
+import { Play, Square, Circle, SkipBack, SkipForward, Rewind, FastForward, Repeat, Volume2, Download, Plus, Mic, Music2, MousePointer2, Pencil, Eraser, Scissors, Combine, VolumeX, ZoomIn, Waves, BoxSelect, Timer, ChevronDown, Type, Activity, Move, MoveHorizontal, Piano, Sun, Moon } from "lucide-react";
 import { useDawStore, type DawTool } from "../state/DawStore";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
@@ -13,7 +13,12 @@ interface Props {
   onExport: () => void;
   onAddAudio: () => void;
   onAddInstrument: () => void;
+  onAddMany?: (kind: "audio" | "instrument", count: number) => void;
   onImport: () => void;
+  onToggleKeyboard?: () => void;
+  keyboardOpen?: boolean;
+  themeMode?: "light" | "dark";
+  onToggleTheme?: () => void;
 }
 
 // CRITICAL: defined OUTSIDE the component to avoid remount-on-every-render
@@ -45,7 +50,7 @@ const TOOLS: { id: DawTool; label: string; Icon: any; hint: string }[] = [
   { id: "marquee", label: "Marquee Tool", Icon: BoxSelect, hint: "Box-select a region" },
 ];
 
-export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExport, onAddAudio, onAddInstrument, onImport }: Props) {
+export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExport, onAddAudio, onAddInstrument, onAddMany, onImport, onToggleKeyboard, keyboardOpen, themeMode, onToggleTheme }: Props) {
   const transport = useDawStore(s => s.transport);
   const setTransport = useDawStore(s => s.setTransport);
   const view = useDawStore(s => s.view);
@@ -264,6 +269,35 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
 
       <MetronomePopover />
 
+      {onToggleKeyboard && (
+        <button
+          type="button"
+          onClick={onToggleKeyboard}
+          title="Show on-screen keyboard (use computer keys as MIDI controller)"
+          className={`h-7 px-2 rounded border text-[10px] uppercase tracking-wider flex items-center gap-1 ${
+            keyboardOpen
+              ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/40"
+              : "bg-neutral-900 border-neutral-800 text-neutral-300 hover:bg-neutral-800"
+          }`}
+        >
+          <Piano className="w-3 h-3" />
+          Keyboard
+        </button>
+      )}
+
+      {onToggleTheme && (
+        <button
+          type="button"
+          onClick={onToggleTheme}
+          title={`Switch to ${themeMode === "dark" ? "light" : "dark"} mode`}
+          className="h-7 px-2 rounded border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 text-[10px] uppercase tracking-wider flex items-center gap-1"
+        >
+          {themeMode === "dark" ? <Sun className="w-3 h-3 text-amber-300" /> : <Moon className="w-3 h-3 text-cyan-300" />}
+          {themeMode === "dark" ? "Light" : "Dark"}
+        </button>
+      )}
+
+
 
 
 
@@ -318,6 +352,7 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
             <Plus className="w-3.5 h-3.5 text-cyan-300" />
             <span className="flex-1">Import Audio File…</span>
           </DropdownMenuItem>
+          {onAddMany && <BulkAddRow onAddMany={onAddMany} />}
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -498,4 +533,42 @@ function MetronomePopover() {
     </Popover>
   );
 }
+
+// ===================== Bulk-add row (Add N tracks at once) =====================
+function BulkAddRow({ onAddMany }: { onAddMany: (kind: "audio" | "instrument", count: number) => void }) {
+  const [count, setCount] = useState(4);
+  const [kind, setKind] = useState<"audio" | "instrument">("audio");
+  return (
+    <div
+      className="px-2 py-2 border-t border-neutral-800 mt-1"
+      onClick={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
+      <div className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1">Add multiple</div>
+      <div className="flex items-center gap-1">
+        <input
+          type="number"
+          min={1}
+          max={32}
+          value={count}
+          onChange={(e) => setCount(Math.max(1, Math.min(32, Number(e.target.value) || 1)))}
+          className="w-12 h-7 bg-neutral-950 border border-neutral-700 rounded text-[11px] text-neutral-200 px-1 text-center"
+        />
+        <select
+          value={kind}
+          onChange={(e) => setKind(e.target.value as "audio" | "instrument")}
+          className="flex-1 h-7 bg-neutral-950 border border-neutral-700 rounded text-[11px] text-neutral-200 px-1"
+        >
+          <option value="audio">Audio</option>
+          <option value="instrument">Instrument</option>
+        </select>
+        <button
+          onClick={() => onAddMany(kind, count)}
+          className="h-7 px-2 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-[10px] uppercase tracking-wider"
+        >Add</button>
+      </div>
+    </div>
+  );
+}
+
 

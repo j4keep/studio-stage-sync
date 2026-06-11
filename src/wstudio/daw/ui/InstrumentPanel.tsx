@@ -103,11 +103,18 @@ export function InstrumentPanel({ engine }: { engine: DawEngine }) {
             <button onClick={() => setOctave(o => Math.min(3, o + 1))} className="w-6 h-6 border border-neutral-800 rounded">+</button>
             <span className="ml-2">Keys: A W S E D F T G Y H U J K</span>
           </div>
-          <div className="relative" style={{ width: 8 * 60, height: 200 }}>
+          <div
+            className="relative touch-none"
+            style={{ width: 8 * 60, height: 200 }}
+            onPointerDown={() => { (window as any).__wsKeyHeld = true; }}
+            onPointerUp={() => { (window as any).__wsKeyHeld = false; }}
+            onPointerLeave={() => { (window as any).__wsKeyHeld = false; }}
+          >
             {KEYS.filter(k => !k.black).map((k, i) => (
               <button
                 key={k.note}
-                onPointerDown={() => triggerSynthNote(engine, active.id, k.note + octave * 12)}
+                onPointerDown={() => { (window as any).__wsKeyHeld = true; triggerSynthNote(engine, active.id, k.note + octave * 12); }}
+                onPointerEnter={() => { if ((window as any).__wsKeyHeld) triggerSynthNote(engine, active.id, k.note + octave * 12); }}
                 className="absolute top-0 bottom-0 bg-white hover:bg-neutral-200 border border-neutral-300 active:bg-cyan-200"
                 style={{ left: i * 60, width: 60 }}
               >
@@ -119,7 +126,8 @@ export function InstrumentPanel({ engine }: { engine: DawEngine }) {
               return (
                 <button
                   key={k.note}
-                  onPointerDown={() => triggerSynthNote(engine, active.id, k.note + octave * 12)}
+                  onPointerDown={() => { (window as any).__wsKeyHeld = true; triggerSynthNote(engine, active.id, k.note + octave * 12); }}
+                  onPointerEnter={() => { if ((window as any).__wsKeyHeld) triggerSynthNote(engine, active.id, k.note + octave * 12); }}
                   className="absolute top-0 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 active:bg-cyan-700 z-10"
                   style={{ left: whiteIdx * 60 - 18, width: 36, height: 120 }}
                 />

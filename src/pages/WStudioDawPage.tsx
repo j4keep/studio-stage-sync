@@ -14,6 +14,7 @@ import { SoundLibraryPanel } from "@/wstudio/daw/ui/SoundLibraryPanel";
 import { BottomDock } from "@/wstudio/daw/ui/BottomDock";
 import { CollabSidebar } from "@/wstudio/daw/ui/CollabSidebar";
 import { MenuBar } from "@/wstudio/daw/ui/MenuBar";
+import { FloatingKeyboard } from "@/wstudio/daw/ui/FloatingKeyboard";
 import type { Clip, Track, AutomationPoint } from "@/wstudio/daw/engine/types";
 
 /** Linearly interpolate between automation breakpoints at the given timeline position. */
@@ -69,6 +70,15 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
   const [dockOpen, setDockOpen] = useState(false);
   const [dockTab, setDockTab] = useState<"instrument" | "chords" | "pianoroll" | "effects">("instrument");
   const openDock = (t: typeof dockTab) => { setDockTab(t); setDockOpen(true); };
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const [themeMode, setThemeMode] = useState<"light" | "dark">(() => {
+    if (typeof window === "undefined") return "dark";
+    return (localStorage.getItem("wstudio:daw:theme") as "light" | "dark") || "dark";
+  });
+  useEffect(() => {
+    try { localStorage.setItem("wstudio:daw:theme", themeMode); } catch {}
+  }, [themeMode]);
+
 
 
   const tracks = useDawStore(s => s.tracks);
@@ -425,7 +435,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
   }
 
   return (
-    <div className="fixed inset-0 bg-black flex flex-col text-neutral-200 dark">
+    <div className={`fixed inset-0 flex flex-col ${themeMode === "dark" ? "bg-black text-neutral-200 dark" : "bg-neutral-100 text-neutral-900"}`}>
       <MenuBar
         onImport={() => importInputRef.current?.click()}
         onExport={handleExport}
@@ -445,7 +455,18 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
         onExport={handleExport}
         onAddAudio={() => addTrack("audio")}
         onAddInstrument={() => { const id = addTrack("instrument"); updateTrack(id, { instrument: "synth" }); }}
+        onAddMany={(kind, count) => {
+          for (let i = 0; i < count; i++) {
+            const id = addTrack(kind);
+            if (kind === "instrument") updateTrack(id, { instrument: "synth" });
+          }
+          toast.success(`Added ${count} ${kind} track${count > 1 ? "s" : ""}`);
+        }}
         onImport={() => importInputRef.current?.click()}
+        onToggleKeyboard={() => setKeyboardOpen(o => !o)}
+        keyboardOpen={keyboardOpen}
+        themeMode={themeMode}
+        onToggleTheme={() => setThemeMode(m => m === "dark" ? "light" : "dark")}
       />
       <input
         ref={importInputRef}
@@ -532,6 +553,9 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
         ))}
       </div>
 
+      {keyboardOpen && (
+        <FloatingKeyboard engine={engineRef.current} onClose={() => setKeyboardOpen(false)} />
+      )}
     </div>
   );
 }
