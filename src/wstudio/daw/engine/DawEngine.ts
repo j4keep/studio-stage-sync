@@ -500,12 +500,12 @@ export class DawEngine {
   syncInputMonitoring(tracks: Track[]) {
     // Always-on input metering only for true mic/input audio tracks.
     // Imported beat/file audio tracks stay playback-only and never attach a mic source.
-    const inputAudioIds = new Set(tracks.filter(t => t.kind === "audio" && t.inputEnabled !== false).map(t => t.id));
+    const inputAudioIds = new Set(tracks.filter(t => (t.kind === "audio" || t.kind === "instrument") && t.inputEnabled !== false).map(t => t.id));
     this.trackChains.forEach((_, id) => {
       if (!inputAudioIds.has(id)) this.stopInputMonitoring(id);
     });
     tracks.forEach((track) => {
-      if (track.kind !== "audio" || track.inputEnabled === false || this.recordingTrackId === track.id) return;
+      if ((track.kind !== "audio" && track.kind !== "instrument") || track.inputEnabled === false || this.recordingTrackId === track.id) return;
       void this.startInputMonitoring(track.id, track.inputDeviceId);
     });
   }
@@ -825,7 +825,7 @@ export function startSynthNote(
   osc.type = wave ?? "sawtooth";
   osc.frequency.value = midiToFreq(midi);
 
-  const peak = Math.max(0, Math.min(1, velocity)) * 0.55;
+    const peak = Math.max(0, Math.min(1, velocity)) * 0.75;
   const sustain = peak * 0.7;
   env.gain.cancelScheduledValues(now);
   env.gain.setValueAtTime(0.0001, now);
