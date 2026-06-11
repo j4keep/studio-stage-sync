@@ -259,7 +259,7 @@ export class DawEngine {
     c.activeSources.forEach(s => { try { s.stop(); } catch {} });
     c.inserts.forEach(i => i.dispose());
     this.stopInputMonitoring(trackId);
-    try { c.input.disconnect(); c.panner.disconnect(); c.gain.disconnect(); c.analyser.disconnect(); c.reverbSend.disconnect(); c.delaySend.disconnect(); } catch {}
+    try { c.input.disconnect(); c.panner.disconnect(); c.gain.disconnect(); c.analyser.disconnect(); c.reverbSend.disconnect(); c.delaySend.disconnect(); c.directMonitor.disconnect(); } catch {}
     this.trackChains.delete(trackId);
   }
 
