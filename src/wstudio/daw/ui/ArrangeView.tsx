@@ -692,6 +692,26 @@ function ClipBlock({ clip, color, pxPerSec, selected, tool, onSelect, onContext,
       </div>
       <div className="absolute inset-x-0 top-4 bottom-0 pointer-events-none">
         {clip.peaks && <WaveformView peaks={clip.peaks} width={Math.max(1, w)} height={TRACK_H - 24} color={color} offsetRatio={offsetRatio} spanRatio={spanRatio} />}
+        {clip.notes && clip.notes.length > 0 && (
+          <div className="absolute inset-1 rounded bg-purple-500/15 border border-purple-300/20 overflow-hidden">
+            {clip.notes.map((n: any) => {
+              const minPitch = Math.min(...clip.notes.map((x: any) => x.pitch));
+              const maxPitch = Math.max(...clip.notes.map((x: any) => x.pitch));
+              const range = Math.max(1, maxPitch - minPitch);
+              return (
+                <div
+                  key={n.id}
+                  className="absolute h-1 rounded-full bg-purple-200/85 shadow-[0_0_4px_rgba(216,180,254,0.7)]"
+                  style={{
+                    left: `${(n.start / Math.max(0.25, clip.duration)) * 100}%`,
+                    width: `${Math.max(3, (n.length / Math.max(0.25, clip.duration)) * 100)}%`,
+                    top: `${8 + (1 - (n.pitch - minPitch) / range) * 70}%`,
+                  }}
+                />
+              );
+            })}
+          </div>
+        )}
       </div>
       {/* Left trim handle */}
       <div
