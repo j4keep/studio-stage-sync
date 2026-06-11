@@ -319,7 +319,7 @@ export const useDawStore = create<DawState>((set, get) => ({
   selectTrack: (id) => set({ selectedTrackId: id }),
   selectClip: (id) => set({ selectedClipId: id }),
   setPxPerSec: (v) => set({ pxPerSec: Math.max(20, Math.min(400, v)) }),
-  setMasterVolume: (v) => set({ masterVolume: v }),
+  setMasterVolume: (v) => set({ masterVolume: Math.max(0, Math.min(2, v)) }),
   setMetronomeVolume: (v) => {
     const vol = Math.max(0, Math.min(1, v));
     const next = { ...get().transport, metronomeVolume: vol };
