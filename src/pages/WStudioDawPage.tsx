@@ -8,7 +8,7 @@ import { TransportBar } from "@/wstudio/daw/ui/TransportBar";
 import { ArrangeView } from "@/wstudio/daw/ui/ArrangeView";
 import { MixerView } from "@/wstudio/daw/ui/MixerView";
 import { InstrumentPanel } from "@/wstudio/daw/ui/InstrumentPanel";
-import { FxRack } from "@/wstudio/daw/ui/FxRack";
+import { PluginWindow } from "@/wstudio/daw/ui/PluginWindow";
 import { LibraryPanel } from "@/wstudio/daw/ui/LibraryPanel";
 import { SoundLibraryPanel } from "@/wstudio/daw/ui/SoundLibraryPanel";
 import { BottomDock } from "@/wstudio/daw/ui/BottomDock";
