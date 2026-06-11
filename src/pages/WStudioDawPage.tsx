@@ -566,6 +566,9 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
         <FloatingKeyboard engine={engineRef.current} onClose={() => setKeyboardOpen(false)} />
       )}
 
+      <ShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+
+
       {exportPrompt && (
         <div className="fixed inset-0 z-[100] bg-black/60 grid place-items-center" onClick={() => setExportPrompt(null)}>
           <div className="bg-neutral-950 border border-neutral-800 rounded-lg p-5 w-[360px] shadow-2xl" onClick={(e) => e.stopPropagation()}>
