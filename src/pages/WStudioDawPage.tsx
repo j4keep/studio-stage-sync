@@ -32,10 +32,11 @@ function interpAutomation(points: AutomationPoint[], pos: number, fallback: numb
 }
 
 const isInputAudioTrack = (track: Track, allClips: Clip[]) => (
-  track.kind === "audio"
+  (track.kind === "audio" || track.kind === "instrument")
   && track.inputEnabled !== false
   && !(track.inputEnabled === undefined && allClips.some(c => c.trackId === track.id && c.buffer && c.name !== "Recording"))
 );
+
 
 export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessionCode?: string } = {}) {
   const [params] = useSearchParams();
