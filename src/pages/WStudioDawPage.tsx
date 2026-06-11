@@ -435,7 +435,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
   }
 
   return (
-    <div className="fixed inset-0 bg-black flex flex-col text-neutral-200 dark">
+    <div className={`fixed inset-0 flex flex-col ${themeMode === "dark" ? "bg-black text-neutral-200 dark" : "bg-neutral-100 text-neutral-900"}`}>
       <MenuBar
         onImport={() => importInputRef.current?.click()}
         onExport={handleExport}
@@ -455,7 +455,18 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
         onExport={handleExport}
         onAddAudio={() => addTrack("audio")}
         onAddInstrument={() => { const id = addTrack("instrument"); updateTrack(id, { instrument: "synth" }); }}
+        onAddMany={(kind, count) => {
+          for (let i = 0; i < count; i++) {
+            const id = addTrack(kind);
+            if (kind === "instrument") updateTrack(id, { instrument: "synth" });
+          }
+          toast.success(`Added ${count} ${kind} track${count > 1 ? "s" : ""}`);
+        }}
         onImport={() => importInputRef.current?.click()}
+        onToggleKeyboard={() => setKeyboardOpen(o => !o)}
+        keyboardOpen={keyboardOpen}
+        themeMode={themeMode}
+        onToggleTheme={() => setThemeMode(m => m === "dark" ? "light" : "dark")}
       />
       <input
         ref={importInputRef}
