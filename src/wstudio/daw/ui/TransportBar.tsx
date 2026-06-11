@@ -71,6 +71,21 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
   const tool = useDawStore(s => s.tool);
   const setTool = useDawStore(s => s.setTool);
 
+  // Live shortcut labels (reflect any user customization)
+  const kPlay = useShortcutLabel("play");
+  const kStop = useShortcutLabel("stop");
+  const kRecord = useShortcutLabel("record");
+  const kRewind = useShortcutLabel("rewind");
+  const kFwd = useShortcutLabel("forward5");
+  const kBack = useShortcutLabel("back5");
+  const kLoop = useShortcutLabel("loop");
+  const kExport = useShortcutLabel("export");
+  const kKeyboard = useShortcutLabel("toggleKeyboard");
+  const kTheme = useShortcutLabel("toggleTheme");
+  const kViewEdit = useShortcutLabel("viewEdit");
+  const kViewMixer = useShortcutLabel("viewMixer");
+  const kShortcuts = useShortcutLabel("openShortcuts");
+
   // Bar.Beat from seconds + BPM using current time signature
   const beatsPerBar = transport.timeSigNum || 4;
   const totalBeats = (transport.position / 60) * transport.bpm;
