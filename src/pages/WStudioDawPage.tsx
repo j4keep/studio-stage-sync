@@ -398,17 +398,24 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
     }
   }, [addClip, updateTrack]);
 
-  const handleExport = useCallback(async () => {
+  const [exportPrompt, setExportPrompt] = useState<{ defaultName: string } | null>(null);
+  const handleExport = useCallback(() => {
+    if (clips.length === 0) { toast.error("Nothing to export"); return; }
+    setExportPrompt({ defaultName: `wstudio-mix-${Date.now()}` });
+  }, [clips]);
+
+  const runExport = useCallback(async (filename: string) => {
     const e = engineRef.current;
     if (!e) return;
-    if (clips.length === 0) { toast.error("Nothing to export"); return; }
+    setExportPrompt(null);
     const len = Math.max(...clips.map(c => c.startTime + c.duration)) + 0.5;
     toast.loading("Rendering...", { id: "exp" });
     try {
       const blob = await e.exportToWav(tracks, clips, len);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url; a.download = `wstudio-mix-${Date.now()}.wav`;
+      const safe = (filename || "wstudio-mix").replace(/[\\/:*?"<>|]+/g, "_").trim() || "wstudio-mix";
+      a.href = url; a.download = `${safe}.wav`;
       a.click();
       URL.revokeObjectURL(url);
       toast.success("Exported WAV", { id: "exp" });
@@ -416,6 +423,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
       toast.error("Export failed", { id: "exp" });
     }
   }, [tracks, clips]);
+
 
   // Drag and drop files onto window
   useEffect(() => {
