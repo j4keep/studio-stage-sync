@@ -1,8 +1,10 @@
-import { useDawStore } from "../state/DawStore";
+import { useState } from "react";
+import { useDawStore, newId } from "../state/DawStore";
 import { Fader, formatGainDb } from "./Fader";
 import { Meter } from "./Meter";
 import { Knob } from "./Knob";
-import type { Track } from "../engine/types";
+import { EFFECT_META } from "../engine/Effects";
+import type { Track, EffectId } from "../engine/types";
 import type { DawEngine } from "../engine/DawEngine";
 
 interface RowDef { key: string; label: string; h: number }
@@ -14,10 +16,16 @@ interface Props {
   rows?: RowDef[];
 }
 
+const FX_LIST: EffectId[] = ["eq3", "compressor", "reverb", "delay", "chorus", "distortion", "limiter", "pitch"];
+
 export function ChannelStrip({ track, engine, onOpenFx, onArmToggle, rows }: Props) {
   const updateTrack = useDawStore(s => s.updateTrack);
   const selectTrack = useDawStore(s => s.selectTrack);
   const selectedTrackId = useDawStore(s => s.selectedTrackId);
+  const addEffect = useDawStore(s => s.addEffect);
+  const clips = useDawStore(s => s.clips);
+  const trackClips = clips.filter(c => c.trackId === track.id);
+  const [fxMenu, setFxMenu] = useState(false);
   const clips = useDawStore(s => s.clips);
   const trackClips = clips.filter(c => c.trackId === track.id);
   const stereo = engine.getTrackStereoAnalysers(track.id);
