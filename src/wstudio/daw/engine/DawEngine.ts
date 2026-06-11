@@ -569,7 +569,7 @@ export class DawEngine {
       }
       shared.source.connect(chain.inputAnalyser);
       if (audible) {
-        try { shared.source.connect(chain.input); } catch {}
+        try { shared.source.connect(chain.directMonitor); } catch {}
       }
       shared.refs.add(trackId);
       chain.inputMonitorSource = shared.source;
@@ -587,9 +587,9 @@ export class DawEngine {
     const chain = this.trackChains.get(trackId);
     if (!chain?.inputMonitorSource || chain.inputMonitorAudible === audible) return;
     if (audible) {
-      try { chain.inputMonitorSource.connect(chain.input); } catch {}
+      try { chain.inputMonitorSource.connect(chain.directMonitor); } catch {}
     } else {
-      try { chain.inputMonitorSource.disconnect(chain.input); } catch {}
+      try { chain.inputMonitorSource.disconnect(chain.directMonitor); } catch {}
     }
     chain.inputMonitorAudible = audible;
   }
