@@ -45,7 +45,7 @@ const TOOL_CURSORS: Record<string, string> = {
   trim: svgCursor(`<polyline points='6 8 2 12 6 16'/><polyline points='18 8 22 12 18 16'/><line x1='2' x2='22' y1='12' y2='12'/>`, 12, 12),
 };
 
-export function ArrangeView({ onArmToggle, onSeek, engine, onOpenInstrumentEditor }: Props) {
+export function ArrangeView({ onArmToggle, onSeek, engine, onOpenInstrumentEditor, onImportFilesAt }: Props) {
   const tracks = useDawStore(s => s.tracks);
   const clips = useDawStore(s => s.clips);
   const bpm = useDawStore(s => s.transport.bpm);
