@@ -119,12 +119,12 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
   return (
     <div className="h-14 bg-gradient-to-b from-neutral-900 to-neutral-950 border-b border-neutral-800 px-3 flex items-center gap-2 text-neutral-200 text-xs shadow-[inset_0_-1px_0_rgba(255,255,255,0.02)]">
       <div className="flex items-center gap-1">
-        <Tip label="Return to Start  ·  Enter"><TBtn onClick={onRewind}><Rewind className="w-4 h-4" /></TBtn></Tip>
-        <Tip label="Forward 5s  ·  →"><TBtn onClick={() => onSeek ? onSeek(transport.position + 5) : setTransport({ position: transport.position + 5 })}><FastForward className="w-4 h-4" /></TBtn></Tip>
-        <Tip label="Back 5s  ·  ←"><TBtn onClick={() => onSeek ? onSeek(Math.max(0, transport.position - 5)) : setTransport({ position: Math.max(0, transport.position - 5) })}><SkipBack className="w-4 h-4" /></TBtn></Tip>
-        <Tip label="Play / Pause  ·  Space"><TBtn onClick={onPlay} active={transport.isPlaying} className="!text-emerald-400"><Play className="w-4 h-4 fill-current" /></TBtn></Tip>
-        <Tip label="Stop  ·  Shift+Space"><TBtn onClick={onStop}><Square className="w-4 h-4" /></TBtn></Tip>
-        <Tip label="Record on armed track  ·  R">
+        <Tip label={`Return to Start  ·  ${kRewind}`}><TBtn onClick={onRewind}><Rewind className="w-4 h-4" /></TBtn></Tip>
+        <Tip label={`Forward 5s  ·  ${kFwd}`}><TBtn onClick={() => onSeek ? onSeek(transport.position + 5) : setTransport({ position: transport.position + 5 })}><FastForward className="w-4 h-4" /></TBtn></Tip>
+        <Tip label={`Back 5s  ·  ${kBack}`}><TBtn onClick={() => onSeek ? onSeek(Math.max(0, transport.position - 5)) : setTransport({ position: Math.max(0, transport.position - 5) })}><SkipBack className="w-4 h-4" /></TBtn></Tip>
+        <Tip label={`Play / Pause  ·  ${kPlay}`}><TBtn onClick={onPlay} active={transport.isPlaying} className="!text-emerald-400"><Play className="w-4 h-4 fill-current" /></TBtn></Tip>
+        <Tip label={`Stop  ·  ${kStop}`}><TBtn onClick={onStop}><Square className="w-4 h-4" /></TBtn></Tip>
+        <Tip label={`Record on armed track  ·  ${kRecord}`}>
           <button
             type="button"
             onClick={onRecord}
@@ -140,8 +140,9 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
             )}
           </button>
         </Tip>
-        <Tip label="Cycle / Loop  ·  C"><TBtn onClick={() => setTransport({ loopEnabled: !transport.loopEnabled })} active={transport.loopEnabled} className={transport.loopEnabled ? "!text-amber-300" : ""}><Repeat className="w-4 h-4" /></TBtn></Tip>
+        <Tip label={`Cycle / Loop  ·  ${kLoop}`}><TBtn onClick={() => setTransport({ loopEnabled: !transport.loopEnabled })} active={transport.loopEnabled} className={transport.loopEnabled ? "!text-amber-300" : ""}><Repeat className="w-4 h-4" /></TBtn></Tip>
       </div>
+
 
       {/* Logic-style BBT display (mode-switchable via dropdown on the right) */}
       <div
