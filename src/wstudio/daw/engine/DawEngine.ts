@@ -38,6 +38,7 @@ export class DawEngine {
     inputMonitorSource?: MediaStreamAudioSourceNode | null;
     inputMonitorStream?: MediaStream | null;
     inputMonitoring: boolean;
+    inputMonitorAudible: boolean;
     inputMonitorDeviceKey?: string;
     inputMonitorToken: number;
     inputMonitorFailed: boolean;
@@ -166,6 +167,7 @@ export class DawEngine {
         delaySend,
         activeSources: [],
         inputMonitoring: false,
+        inputMonitorAudible: false,
         inputMonitorToken: 0,
         inputMonitorFailed: false,
         effectSignature: "__new__",
@@ -498,15 +500,15 @@ export class DawEngine {
   getRecordingStart() { return this.recordStartTransport; }
 
   syncInputMonitoring(tracks: Track[]) {
-    // Always-on input metering only for true mic/input audio tracks.
-    // Imported beat/file audio tracks stay playback-only and never attach a mic source.
-    const inputAudioIds = new Set(tracks.filter(t => (t.kind === "audio" || t.kind === "instrument") && t.inputEnabled !== false).map(t => t.id));
+    // Mic monitoring belongs to real audio-input tracks only. Instrument tracks
+    // record MIDI, so they must never request the microphone.
+    const inputAudioIds = new Set(tracks.filter(t => t.kind === "audio" && t.inputEnabled !== false).map(t => t.id));
     this.trackChains.forEach((_, id) => {
       if (!inputAudioIds.has(id)) this.stopInputMonitoring(id);
     });
     tracks.forEach((track) => {
-      if ((track.kind !== "audio" && track.kind !== "instrument") || track.inputEnabled === false || this.recordingTrackId === track.id) return;
-      void this.startInputMonitoring(track.id, track.inputDeviceId);
+      if (track.kind !== "audio" || track.inputEnabled === false) return;
+      void this.startInputMonitoring(track.id, track.inputDeviceId, !!track.armed);
     });
   }
 
@@ -518,11 +520,14 @@ export class DawEngine {
     this.stopInputMonitoring(trackId);
   }
 
-  private async startInputMonitoring(trackId: string, inputDeviceId?: string) {
+  private async startInputMonitoring(trackId: string, inputDeviceId?: string, audible = false) {
     const chain = this.trackChains.get(trackId);
     const deviceKey = inputDeviceId || "__default__";
     if (!chain) return;
-    if (chain.inputMonitoring && chain.inputMonitorDeviceKey === deviceKey) return;
+    if (chain.inputMonitoring && chain.inputMonitorDeviceKey === deviceKey) {
+      this.setInputMonitorAudible(trackId, audible);
+      return;
+    }
     if (chain.inputMonitoring) this.stopInputMonitoring(trackId);
     const token = ++chain.inputMonitorToken;
     try {
@@ -556,18 +561,31 @@ export class DawEngine {
       if (chain.inputMonitorToken !== token) {
         return;
       }
-      // Route ONLY to dedicated input analyser — never into the main mixer chain,
-      // so there's no feedback and playback of clips is unaffected.
       shared.source.connect(chain.inputAnalyser);
+      if (audible) {
+        try { shared.source.connect(chain.input); } catch {}
+      }
       shared.refs.add(trackId);
       chain.inputMonitorSource = shared.source;
       chain.inputMonitorStream = shared.stream;
       chain.inputMonitoring = true;
+      chain.inputMonitorAudible = audible;
       chain.inputMonitorDeviceKey = deviceKey;
       chain.inputMonitorFailed = false;
     } catch {
       if (chain.inputMonitorToken === token) chain.inputMonitorFailed = false;
     }
+  }
+
+  private setInputMonitorAudible(trackId: string, audible: boolean) {
+    const chain = this.trackChains.get(trackId);
+    if (!chain?.inputMonitorSource || chain.inputMonitorAudible === audible) return;
+    if (audible) {
+      try { chain.inputMonitorSource.connect(chain.input); } catch {}
+    } else {
+      try { chain.inputMonitorSource.disconnect(chain.input); } catch {}
+    }
+    chain.inputMonitorAudible = audible;
   }
 
   private stopInputMonitoring(trackId: string) {
@@ -576,6 +594,7 @@ export class DawEngine {
     chain.inputMonitorToken++;
     if (chain.inputMonitorSource) {
       try { chain.inputMonitorSource.disconnect(chain.inputAnalyser); } catch {}
+      try { chain.inputMonitorSource.disconnect(chain.input); } catch {}
     }
     const deviceKey = chain.inputMonitorDeviceKey;
     if (deviceKey) {
@@ -590,6 +609,7 @@ export class DawEngine {
     chain.inputMonitorSource = null;
     chain.inputMonitorStream = null;
     chain.inputMonitoring = false;
+    chain.inputMonitorAudible = false;
     chain.inputMonitorDeviceKey = undefined;
     chain.inputMonitorFailed = false;
   }
