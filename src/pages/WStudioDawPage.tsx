@@ -405,7 +405,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
               const id = addTrack("instrument", "Drums");
               updateTrack(id, { instrument: "drum" });
             }
-            openDock("patterns");
+            openDock("chords");
           }}
           onPlaySynth={() => {
             const hasSynth = tracks.some(t => t.kind === "instrument" && t.instrument === "synth");
