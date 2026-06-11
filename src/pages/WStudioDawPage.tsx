@@ -10,6 +10,8 @@ import { MixerView } from "@/wstudio/daw/ui/MixerView";
 import { InstrumentPanel } from "@/wstudio/daw/ui/InstrumentPanel";
 import { FxRack } from "@/wstudio/daw/ui/FxRack";
 import { LibraryPanel } from "@/wstudio/daw/ui/LibraryPanel";
+import { SoundLibraryPanel } from "@/wstudio/daw/ui/SoundLibraryPanel";
+import { QuickActionCards } from "@/wstudio/daw/ui/QuickActionCards";
 import { CollabSidebar } from "@/wstudio/daw/ui/CollabSidebar";
 import { MenuBar } from "@/wstudio/daw/ui/MenuBar";
 import type { Clip, Track, AutomationPoint } from "@/wstudio/daw/engine/types";
@@ -44,6 +46,9 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
   const [, setEngineGraphVersion] = useState(0);
   const [fxTrackId, setFxTrackId] = useState<string | null>(null);
   const [collabOpen, setCollabOpen] = useState(true);
+  const [soundLibOpen, setSoundLibOpen] = useState(true);
+  const [soundLibTab, setSoundLibTab] = useState<"sounds" | "packs">("sounds");
+
 
   const tracks = useDawStore(s => s.tracks);
   const clips = useDawStore(s => s.clips);
@@ -392,9 +397,41 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
           onAddUserPlugin={(name) => toast.success(`Added plug-in: ${name}`)}
         />
 
-        {view === "arrange" && <ArrangeView onArmToggle={handleArmToggle} onSeek={handleSeek} engine={engineRef.current} />}
-        {view === "mixer" && <MixerView engine={engineRef.current} onOpenFx={setFxTrackId} onArmToggle={handleArmToggle} />}
-        {view === "instrument" && <InstrumentPanel engine={engineRef.current} />}
+        <div className="flex-1 relative flex flex-col overflow-hidden">
+          {view === "arrange" && <ArrangeView onArmToggle={handleArmToggle} onSeek={handleSeek} engine={engineRef.current} />}
+          {view === "mixer" && <MixerView engine={engineRef.current} onOpenFx={setFxTrackId} onArmToggle={handleArmToggle} />}
+          {view === "instrument" && <InstrumentPanel engine={engineRef.current} />}
+          {view === "arrange" && clips.length === 0 && (
+            <QuickActionCards
+              onBrowseLoops={() => { setSoundLibTab("sounds"); setSoundLibOpen(true); }}
+              onPatterns={() => {
+                const id = addTrack("instrument", "Drums");
+                updateTrack(id, { instrument: "drum" });
+                useDawStore.getState().setView("instrument");
+              }}
+              onPlaySynth={() => {
+                const id = addTrack("instrument", "Synth");
+                updateTrack(id, { instrument: "synth" });
+                useDawStore.getState().setView("instrument");
+              }}
+              onAddTrack={() => addTrack("audio")}
+              onImport={() => importInputRef.current?.click()}
+            />
+          )}
+        </div>
+
+        <SoundLibraryPanel
+          engine={engineRef.current}
+          open={soundLibOpen}
+          onClose={() => setSoundLibOpen(false)}
+          initialTab={soundLibTab}
+        />
+        {!soundLibOpen && (
+          <button
+            onClick={() => setSoundLibOpen(true)}
+            className="absolute right-2 top-4 z-40 px-2 py-1 bg-neutral-900 border border-neutral-800 rounded text-[10px] text-neutral-300 hover:text-cyan-300"
+          >♪ Library</button>
+        )}
 
         {collabOpen ? (
           <CollabSidebar sessionCode={sessionCode} onClose={() => setCollabOpen(false)} />
@@ -407,6 +444,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
 
         {fxTrackId && <FxRack trackId={fxTrackId} onClose={() => setFxTrackId(null)} />}
       </div>
+
     </div>
   );
 }
