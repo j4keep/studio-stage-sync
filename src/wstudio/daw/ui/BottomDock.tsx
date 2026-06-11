@@ -845,3 +845,152 @@ function EffectsTab({ trackId }: { trackId: string }) {
   );
 }
 
+
+/* ===================================================================== */
+/* BEAT GRID TAB — Soundtrap-style step sequencer for drum tracks         */
+/* ===================================================================== */
+
+type DrumRow = { name: string; pitch: number; kind: "kick" | "snare" | "hat" | "clap" | "tom" | "perc" | "ride" | "crash" };
+const DRUM_ROWS: DrumRow[] = [
+  { name: "Kick",          pitch: 36, kind: "kick" },
+  { name: "Snare",         pitch: 38, kind: "snare" },
+  { name: "Clap",          pitch: 39, kind: "clap" },
+  { name: "Hi-Hat Closed", pitch: 42, kind: "hat" },
+  { name: "Hi-Hat Open",   pitch: 46, kind: "hat" },
+  { name: "Crash",         pitch: 49, kind: "crash" },
+  { name: "Ride",          pitch: 51, kind: "ride" },
+  { name: "Low Tom",       pitch: 41, kind: "tom" },
+  { name: "Mid Tom",       pitch: 45, kind: "tom" },
+  { name: "High Tom",      pitch: 48, kind: "tom" },
+];
+
+function BeatGridTab({ engine, trackId }: { engine: DawEngine; trackId: string }) {
+  const allClips = useDawStore(s => s.clips);
+  const trackClips = useMemo(() => allClips.filter(c => c.trackId === trackId && c.notes), [allClips, trackId]);
+  const addClip = useDawStore(s => s.addClip);
+  const updateClip = useDawStore(s => s.updateClip);
+  const bpm = useDawStore(s => s.transport.bpm);
+  const playhead = useDawStore(s => s.transport.position);
+  const [bars, setBars] = useState<1 | 2 | 4 | 8>(2);
+  const [stepsPerBeat, setStepsPerBeat] = useState<2 | 4>(4);
+
+  const beatsPerBar = useDawStore.getState().transport.timeSigNum || 4;
+  const totalSteps = bars * beatsPerBar * stepsPerBeat;
+  const stepBeats = 1 / stepsPerBeat;
+  const secPerBeat = 60 / Math.max(1, bpm);
+
+  const activeClip = useMemo(
+    () => trackClips.find(c => playhead >= c.startTime && playhead < c.startTime + c.duration) ?? trackClips[0],
+    [trackClips, playhead]
+  );
+
+  const ensureClip = (): string => {
+    if (activeClip) return activeClip.id;
+    const id = newId("clip");
+    addClip({
+      id, trackId,
+      startTime: playhead,
+      duration: bars * beatsPerBar * secPerBeat,
+      offset: 0,
+      name: "Beat Pattern",
+      notes: [],
+      color: "#22d3ee",
+    });
+    return id;
+  };
+
+  const hasStep = (pitch: number, step: number): boolean => {
+    if (!activeClip?.notes) return false;
+    const t = step * stepBeats;
+    return activeClip.notes.some(n => n.pitch === pitch && Math.abs(n.start - t) < 0.001);
+  };
+
+  const toggleStep = (pitch: number, step: number) => {
+    const id = activeClip?.id ?? ensureClip();
+    const existing = useDawStore.getState().clips.find(c => c.id === id);
+    const notes = existing?.notes ?? [];
+    const t = step * stepBeats;
+    const matchIdx = notes.findIndex(n => n.pitch === pitch && Math.abs(n.start - t) < 0.001);
+    let next: MidiNote[];
+    if (matchIdx >= 0) {
+      next = notes.filter((_, i) => i !== matchIdx);
+    } else {
+      next = [...notes, { id: newId("n"), pitch, start: t, length: stepBeats * 0.9, velocity: 0.85 }];
+      const row = DRUM_ROWS.find(r => r.pitch === pitch);
+      if (row) triggerDrumHit(engine, trackId, row.kind);
+    }
+    updateClip(id, {
+      notes: next,
+      duration: Math.max(existing?.duration ?? 0, bars * beatsPerBar * secPerBeat),
+    });
+  };
+
+  const clearPattern = () => { if (activeClip) updateClip(activeClip.id, { notes: [] }); };
+
+  const playStep = useMemo(() => {
+    if (!activeClip) return -1;
+    const rel = playhead - activeClip.startTime;
+    if (rel < 0 || rel > activeClip.duration) return -1;
+    return Math.floor((rel / secPerBeat) / stepBeats);
+  }, [playhead, activeClip, secPerBeat, stepBeats]);
+
+  return (
+    <div className="h-full flex flex-col">
+      <div className="px-4 py-2 flex items-center gap-3 border-b border-neutral-900 text-[11px] text-neutral-300">
+        <span className="text-neutral-500 uppercase tracking-wider text-[10px]">Beat Maker</span>
+        <div className="h-4 w-px bg-neutral-800" />
+        <label className="flex items-center gap-1.5">
+          <span className="text-neutral-500">Bars</span>
+          <select value={bars} onChange={e => setBars(Number(e.target.value) as any)} className="bg-neutral-900 border border-neutral-800 rounded px-1.5 py-0.5">
+            <option value={1}>1</option><option value={2}>2</option><option value={4}>4</option><option value={8}>8</option>
+          </select>
+        </label>
+        <label className="flex items-center gap-1.5">
+          <span className="text-neutral-500">Grid</span>
+          <select value={stepsPerBeat} onChange={e => setStepsPerBeat(Number(e.target.value) as any)} className="bg-neutral-900 border border-neutral-800 rounded px-1.5 py-0.5">
+            <option value={2}>1/8</option><option value={4}>1/16</option>
+          </select>
+        </label>
+        <div className="flex-1" />
+        <button onClick={clearPattern} className="h-6 px-2 rounded border border-neutral-800 text-neutral-400 hover:text-neutral-100 hover:border-neutral-700">Clear</button>
+      </div>
+      <div className="flex-1 overflow-auto">
+        <div className="min-w-full inline-block">
+          {DRUM_ROWS.map(row => (
+            <div key={row.pitch} className="flex items-stretch border-b border-neutral-900">
+              <div className="w-32 shrink-0 px-3 flex items-center text-[11px] text-neutral-300 bg-neutral-950 border-r border-neutral-800">
+                <button
+                  onClick={() => triggerDrumHit(engine, trackId, row.kind)}
+                  className="w-5 h-5 grid place-items-center rounded-full bg-neutral-900 border border-neutral-800 hover:border-teal-400/60 text-teal-300 mr-2"
+                  title={`Preview ${row.name}`}
+                ><Play className="w-2.5 h-2.5" /></button>
+                <span className="truncate">{row.name}</span>
+              </div>
+              <div className="flex flex-1 min-w-0">
+                {Array.from({ length: totalSteps }).map((_, step) => {
+                  const on = hasStep(row.pitch, step);
+                  const isDownbeat = step % (beatsPerBar * stepsPerBeat) === 0;
+                  const isBeat = step % stepsPerBeat === 0;
+                  const isPlaying = step === playStep;
+                  return (
+                    <button
+                      key={step}
+                      onClick={() => toggleStep(row.pitch, step)}
+                      className={`flex-1 min-w-[18px] h-8 m-[1px] rounded-sm transition-colors ${
+                        on
+                          ? "bg-cyan-400 hover:bg-cyan-300 shadow-[0_0_6px_rgba(34,211,238,0.6)]"
+                          : isBeat
+                            ? "bg-neutral-800/80 hover:bg-neutral-700/80"
+                            : "bg-neutral-900/80 hover:bg-neutral-800/80"
+                      } ${isDownbeat ? "border-l border-neutral-700" : ""} ${isPlaying ? "ring-1 ring-emerald-400/70" : ""}`}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
