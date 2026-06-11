@@ -463,6 +463,7 @@ function ChordsTab({ engine, trackId }: { engine: DawEngine; trackId: string }) 
   const addClip = useDawStore(s => s.addClip);
   const playhead = useDawStore(s => s.transport.position);
   const bpm = useDawStore(s => s.transport.bpm);
+  const wave = (useDawStore(s => s.tracks.find(t => t.id === trackId)?.synthWave) || "sawtooth") as OscillatorType;
   const [style, setStyle] = useState<"Full Chord" | "On One" | "Stabs" | "Arp Up" | "Arp Down">("Full Chord");
   const [chordType, setChordType] = useState<"Triad" | "7th" | "Add9">("Triad");
   const [strum, setStrum] = useState(0);
@@ -482,10 +483,11 @@ function ChordsTab({ engine, trackId }: { engine: DawEngine; trackId: string }) 
 
   const playChord = (notes: number[]) => {
     const stagger = strum * 0.02;
-    notes.forEach((n, i) => setTimeout(() => triggerSynthNote(engine, trackId, n, style === "Stabs" ? 0.15 : 0.8), i * stagger * 1000));
-    if (style === "Arp Up") notes.forEach((n, i) => setTimeout(() => triggerSynthNote(engine, trackId, n, 0.2), i * 120));
-    if (style === "Arp Down") [...notes].reverse().forEach((n, i) => setTimeout(() => triggerSynthNote(engine, trackId, n, 0.2), i * 120));
+    notes.forEach((n, i) => setTimeout(() => triggerSynthNote(engine, trackId, n, style === "Stabs" ? 0.15 : 0.8, 0.8, wave), i * stagger * 1000));
+    if (style === "Arp Up") notes.forEach((n, i) => setTimeout(() => triggerSynthNote(engine, trackId, n, 0.2, 0.8, wave), i * 120));
+    if (style === "Arp Down") [...notes].reverse().forEach((n, i) => setTimeout(() => triggerSynthNote(engine, trackId, n, 0.2, 0.8, wave), i * 120));
   };
+
 
   const addChordClip = (c: { name: string; notes: number[] }) => {
     const beatsPerBar = useDawStore.getState().transport.timeSigNum || 4;
