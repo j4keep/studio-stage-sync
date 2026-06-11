@@ -492,7 +492,7 @@ export function ArrangeView({ onArmToggle, onSeek, engine, onOpenInstrumentEdito
   );
 }
 
-function TrackHeader({ track, canRecordInput, meters = [], onArm, onMute, onSolo, onRemove, onRename, onVolume, onPan, onDropTrack, onToggleAuto }: {
+function TrackHeader({ track, canRecordInput, meters = [], onArm, onMute, onSolo, onRemove, onRename, onVolume, onPan, onDropTrack, onToggleAuto, onOpenEditor }: {
   track: Track;
   canRecordInput: boolean;
   meters?: AnalyserNode[];
@@ -505,6 +505,7 @@ function TrackHeader({ track, canRecordInput, meters = [], onArm, onMute, onSolo
   onPan: (v: number) => void;
   onDropTrack: (fromId: string) => void;
   onToggleAuto?: () => void;
+  onOpenEditor?: () => void;
 }) {
   const stop = (e: React.SyntheticEvent) => e.stopPropagation();
   const sliderRef = useRef<HTMLDivElement>(null);
