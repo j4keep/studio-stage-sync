@@ -83,6 +83,10 @@ export interface Track {
   delaySend: number; // 0-1
   /** For instrument tracks */
   instrument?: "synth" | "drum";
+  /** Display name of current instrument preset (e.g. "Bright Synth") */
+  instrumentPreset?: string;
+  /** Synth waveform / tone for the simple Web Audio synth */
+  synthWave?: "sine" | "triangle" | "sawtooth" | "square";
 }
 
 export type KeyRoot = "C" | "C#" | "D" | "D#" | "E" | "F" | "F#" | "G" | "G#" | "A" | "A#" | "B";
