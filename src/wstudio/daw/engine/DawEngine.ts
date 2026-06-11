@@ -892,6 +892,7 @@ export function scheduleMidiClips(engine: DawEngine, tracks: Track[], clips: Cli
     const chain = (engine as any).trackChains.get(track.id);
     if (!chain) continue;
     const wave = (track.synthWave as OscillatorType) || "sawtooth";
+    const isDrum = track.instrument === "drum";
 
     for (const n of clip.notes) {
       const noteStartTl = clip.startTime + n.start * secPerBeat;
@@ -901,8 +902,15 @@ export function scheduleMidiClips(engine: DawEngine, tracks: Track[], clips: Cli
       const effectiveStartDelay = Math.max(0, noteStartTl - transportPos);
       const effectiveDur = noteEndTl - Math.max(transportPos, noteStartTl);
       const when = ctxStartTime + effectiveStartDelay;
-
       const ctx = engine.ctx;
+
+      if (isDrum) {
+        // GM-ish drum map → simple synthesized hit scheduled at `when`.
+        const kind = drumKindForPitch(n.pitch);
+        scheduleDrumHit(engine, chain, kind, when, n.velocity ?? 0.85);
+        continue;
+      }
+
       const osc = ctx.createOscillator();
       const env = ctx.createGain();
       osc.type = wave;
@@ -928,6 +936,61 @@ export function scheduleMidiClips(engine: DawEngine, tracks: Track[], clips: Cli
     }
   }
 }
+
+/** GM-style drum pitch → kind. Used by the beat-grid pattern playback. */
+export function drumKindForPitch(pitch: number): "kick" | "snare" | "hat" | "clap" | "tom" | "perc" | "ride" | "crash" {
+  switch (pitch) {
+    case 36: return "kick";
+    case 38: return "snare";
+    case 39: return "clap";
+    case 41: case 45: case 48: return "tom";
+    case 42: return "hat";
+    case 46: return "hat";
+    case 49: return "crash";
+    case 51: return "ride";
+    default: return "perc";
+  }
+}
+
+/** Schedule a drum hit at AudioContext time `when`. Mirrors triggerDrumHit but time-positioned. */
+function scheduleDrumHit(engine: DawEngine, chain: any, kind: "kick" | "snare" | "hat" | "clap" | "tom" | "perc" | "ride" | "crash", when: number, velocity = 0.85) {
+  const ctx = engine.ctx;
+  const v = Math.max(0.05, Math.min(1, velocity));
+  if (kind === "kick" || kind === "tom") {
+    const osc = ctx.createOscillator();
+    const env = ctx.createGain();
+    const startF = kind === "kick" ? 150 : 220;
+    const endF = kind === "kick" ? 40 : 80;
+    const dur = kind === "kick" ? 0.25 : 0.35;
+    osc.frequency.setValueAtTime(startF, when);
+    osc.frequency.exponentialRampToValueAtTime(endF, when + dur * 0.6);
+    env.gain.setValueAtTime(v, when);
+    env.gain.exponentialRampToValueAtTime(0.001, when + dur);
+    osc.connect(env).connect(chain.input);
+    try { osc.start(when); osc.stop(when + dur + 0.05); chain.activeSources.push(osc); } catch {}
+  } else {
+    const decay = kind === "snare" ? 0.18 : kind === "clap" ? 0.14 : kind === "ride" ? 0.4 : kind === "crash" ? 0.9 : kind === "perc" ? 0.08 : 0.05;
+    const gain = (kind === "snare" ? 0.6 : kind === "clap" ? 0.55 : kind === "ride" ? 0.25 : kind === "crash" ? 0.45 : kind === "perc" ? 0.4 : 0.3) * v;
+    const bufLen = Math.ceil(ctx.sampleRate * (decay + 0.1));
+    const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
+    const noise = ctx.createBufferSource(); noise.buffer = buf;
+    const filter = ctx.createBiquadFilter();
+    if (kind === "snare") { filter.type = "bandpass"; filter.frequency.value = 1500; }
+    else if (kind === "clap") { filter.type = "bandpass"; filter.frequency.value = 1200; }
+    else if (kind === "perc") { filter.type = "bandpass"; filter.frequency.value = 3000; }
+    else if (kind === "ride") { filter.type = "highpass"; filter.frequency.value = 6000; }
+    else if (kind === "crash") { filter.type = "highpass"; filter.frequency.value = 5000; }
+    else { filter.type = "highpass"; filter.frequency.value = 7000; }
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(gain, when);
+    env.gain.exponentialRampToValueAtTime(0.001, when + decay);
+    noise.connect(filter).connect(env).connect(chain.input);
+    try { noise.start(when); noise.stop(when + decay + 0.1); chain.activeSources.push(noise); } catch {}
+  }
+}
+
 
 /** Trigger a drum hit (simple noise/click sound). */
 export function triggerDrumHit(engine: DawEngine, trackId: string, kind: "kick" | "snare" | "hat" | "clap" | "tom" | "perc" | "ride" | "crash") {
