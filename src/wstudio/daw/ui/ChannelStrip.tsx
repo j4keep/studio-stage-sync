@@ -11,12 +11,14 @@ interface RowDef { key: string; label: string; h: number }
 interface Props {
   track: Track;
   engine: DawEngine;
-  onOpenFx: () => void;
+  onOpenPlugin: (effectId: string) => void;
   onArmToggle: (trackId: string) => void;
   rows?: RowDef[];
 }
 
 const FX_LIST: EffectId[] = ["eq3", "compressor", "reverb", "delay", "chorus", "distortion", "limiter", "pitch"];
+const INSERT_SLOTS = 5;
+
 
 export function ChannelStrip({ track, engine, onOpenFx, onArmToggle, rows }: Props) {
   const updateTrack = useDawStore(s => s.updateTrack);
