@@ -416,7 +416,20 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
         </div>
       </Tip>
 
-      <Tip label="Export / bounce project to WAV  ·  ⌘E">
+      {onOpenShortcuts && (
+        <Tip label={`Keyboard shortcuts cheat sheet  ·  ${kShortcuts}`}>
+          <button
+            type="button"
+            onClick={onOpenShortcuts}
+            aria-label="Open keyboard shortcuts"
+            className="h-9 w-9 grid place-items-center rounded-md border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 focus-visible:ring-2 focus-visible:ring-cyan-500/60 outline-none"
+          >
+            <KeyboardIcon className="w-4 h-4" />
+          </button>
+        </Tip>
+      )}
+
+      <Tip label={`Export / bounce project to WAV  ·  ${kExport}`}>
         <button
           type="button"
           onClick={onExport}
