@@ -47,7 +47,22 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
   const engineRef = useRef<DawEngine | null>(null);
   const [engineReady, setEngineReady] = useState(false);
   const [, setEngineGraphVersion] = useState(0);
-  const [fxTrackId, setFxTrackId] = useState<string | null>(null);
+  const [openPlugins, setOpenPlugins] = useState<{ trackId: string; effectId: string; order: number }[]>([]);
+  const [pluginOrder, setPluginOrder] = useState(1);
+  const openPluginWindow = useCallback((trackId: string, effectId: string) => {
+    setOpenPlugins(prev => {
+      const next = pluginOrder + 1;
+      setPluginOrder(next);
+      if (prev.some(p => p.effectId === effectId)) {
+        return prev.map(p => p.effectId === effectId ? { ...p, order: next } : p);
+      }
+      return [...prev, { trackId, effectId, order: next }];
+    });
+  }, [pluginOrder]);
+  const closePluginWindow = useCallback((effectId: string) => {
+    setOpenPlugins(prev => prev.filter(p => p.effectId !== effectId));
+  }, []);
+
   const [collabOpen, setCollabOpen] = useState(true);
   const [soundLibOpen, setSoundLibOpen] = useState(true);
   const [soundLibTab, setSoundLibTab] = useState<"sounds" | "packs">("sounds");
