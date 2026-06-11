@@ -28,9 +28,10 @@ export function MixerView({ engine, onOpenPlugin, onArmToggle }: { engine: DawEn
       <div className="h-8 border-b border-neutral-800 bg-neutral-950 flex items-center px-3 text-[10px] uppercase tracking-wider text-neutral-400">
         Mixer · {tracks.length} {tracks.length === 1 ? "track" : "tracks"}
       </div>
-      <div className="flex-1 overflow-x-auto overflow-y-auto flex">
-        {/* Row label column (Logic-style) */}
-        <div className="w-24 shrink-0 bg-neutral-950 border-r border-neutral-800 text-[10px] text-neutral-500 uppercase tracking-wider select-none">
+      <div className="flex-1 overflow-x-auto overflow-y-auto flex daw-mixer-scroll">
+        {/* Row label column — sticky on the left so labels stay visible while
+            track strips scroll horizontally for projects with many tracks. */}
+        <div className="w-24 shrink-0 bg-neutral-950 border-r border-neutral-800 text-[10px] text-neutral-500 uppercase tracking-wider select-none sticky left-0 z-20">
           <div className="h-6 border-b border-neutral-800" />
           {ROW_LABELS.map(r => (
             <div key={r.key} className="border-b border-neutral-900 px-2 flex items-center" style={{ height: r.h }}>{r.label}</div>
@@ -43,9 +44,9 @@ export function MixerView({ engine, onOpenPlugin, onArmToggle }: { engine: DawEn
         {tracks.map(t => (
           <ChannelStrip key={t.id} track={t} engine={engine} onOpenPlugin={(effectId) => onOpenPlugin(t.id, effectId)} onArmToggle={onArmToggle} rows={ROW_LABELS} />
         ))}
-        {/* Master strip */}
+        {/* Master strip — sticky on the right so master fader stays in view. */}
         {tracks.length > 0 && (
-          <div className="w-28 shrink-0 bg-neutral-950 border-l-2 border-cyan-500/40 flex flex-col items-center text-[10px] text-neutral-400">
+          <div className="w-28 shrink-0 bg-neutral-950 border-l-2 border-cyan-500/40 flex flex-col items-center text-[10px] text-neutral-400 sticky right-0 z-20">
             <div className="h-6 w-full border-b border-neutral-800 grid place-items-center text-cyan-300 font-bold">MASTER</div>
             {ROW_LABELS.slice(0, -2).map(r => (
               <div key={r.key} className="w-full border-b border-neutral-900 grid place-items-center text-neutral-700" style={{ height: r.h }}>—</div>
@@ -60,6 +61,7 @@ export function MixerView({ engine, onOpenPlugin, onArmToggle }: { engine: DawEn
           </div>
         )}
       </div>
+
     </div>
   );
 }
