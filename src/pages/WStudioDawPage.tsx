@@ -481,7 +481,18 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
           >Session</button>
         )}
 
-        {fxTrackId && <FxRack trackId={fxTrackId} onClose={() => setFxTrackId(null)} />}
+        {openPlugins.map((p, i) => (
+          <PluginWindow
+            key={p.effectId}
+            trackId={p.trackId}
+            effectId={p.effectId}
+            initialX={220 + i * 32}
+            initialY={120 + i * 28}
+            zIndex={60 + p.order}
+            onFocus={() => openPluginWindow(p.trackId, p.effectId)}
+            onClose={() => closePluginWindow(p.effectId)}
+          />
+        ))}
       </div>
 
     </div>
