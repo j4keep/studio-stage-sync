@@ -761,10 +761,11 @@ function ToolBtn({ active, onClick, icon }: { active: boolean; onClick: () => vo
 
 function EffectsTab({ trackId }: { trackId: string }) {
   return (
-    <div className="relative h-full overflow-auto">
-      <div className="[&>div]:!relative [&>div]:!w-full [&>div]:!border-0 [&>div]:!shadow-none [&>div]:!h-full">
+    <div className="relative h-full w-full">
+      <div className="absolute inset-0 [&>div]:!static [&>div]:!w-full [&>div]:!h-full [&>div]:!border-0 [&>div]:!shadow-none">
         <FxRack trackId={trackId} onClose={() => {}} />
       </div>
     </div>
   );
 }
+
