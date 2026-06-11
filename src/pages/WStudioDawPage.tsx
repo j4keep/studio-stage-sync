@@ -305,7 +305,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
         case "forward5":       ev.preventDefault(); st.setTransport({ position: st.transport.position + 5 }); break;
         case "back5":          ev.preventDefault(); st.setTransport({ position: Math.max(0, st.transport.position - 5) }); break;
         case "loop":           ev.preventDefault(); st.setTransport({ loopEnabled: !st.transport.loopEnabled }); break;
-        case "export":         ev.preventDefault(); handleExport(); break;
+        case "export":         ev.preventDefault(); handleExportRef.current?.(); break;
         case "undo":           ev.preventDefault(); st.undo(); break;
         case "redo":           ev.preventDefault(); st.redo(); break;
         case "copy":           { const sel = st.selectedClipId; if (sel) { st.copyClip(sel); toast.success("Copied"); } break; }
