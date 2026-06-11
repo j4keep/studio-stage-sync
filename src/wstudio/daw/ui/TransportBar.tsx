@@ -338,7 +338,7 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
       <div className="flex-1" />
 
       <DropdownMenu>
-        <Tip label="Add a track or import audio">
+        <Tip label="Add track or import audio  ·  ⌥⌘A audio  ·  ⌥⌘S instrument  ·  ⌘O import">
           <DropdownMenuTrigger
             aria-label="Add track"
             className="h-9 w-9 grid place-items-center rounded-md border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-cyan-300"
