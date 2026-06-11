@@ -29,6 +29,7 @@ interface Props {
   keyboardOpen?: boolean;
   themeMode?: "light" | "dark";
   onToggleTheme?: () => void;
+  onOpenShortcuts?: () => void;
 }
 
 // CRITICAL: defined OUTSIDE the component to avoid remount-on-every-render
