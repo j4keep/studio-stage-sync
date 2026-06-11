@@ -216,6 +216,11 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
       }
       const latest = useDawStore.getState();
       const recordTrack = latest.tracks.find(t => t.id === armed!.id) ?? armed;
+      if (recordTrack.kind === "instrument") {
+        setTransport({ isRecording: true, isPlaying: true });
+        if (!e.playing) e.play(latest.transport, latest.tracks, latest.clips);
+        return;
+      }
       await e.startRecording(recordTrack.id, latest.transport.position, recordTrack.inputDeviceId);
       setTransport({ isRecording: true, isPlaying: true });
       e.play(latest.transport, latest.tracks, latest.clips);
