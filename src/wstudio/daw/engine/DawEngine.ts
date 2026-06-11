@@ -648,7 +648,7 @@ export class DawEngine {
       this.setInputMonitorAudible(trackId, true);
       if (!chain.inputMonitorSource) {
         try { src.connect(chain.inputAnalyser); } catch {}
-        try { src.connect(chain.input); } catch {}
+        try { src.connect(chain.directMonitor); } catch {}
         chain.inputMonitorSource = src;
         chain.inputMonitorStream = liveStream;
         chain.inputMonitoring = true;
