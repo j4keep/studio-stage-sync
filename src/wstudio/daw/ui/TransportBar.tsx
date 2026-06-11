@@ -1,8 +1,17 @@
-import { Play, Square, Circle, SkipBack, SkipForward, Rewind, FastForward, Repeat, Volume2, Download, Plus, Mic, Music2, MousePointer2, Pencil, Eraser, Scissors, Combine, VolumeX, ZoomIn, Waves, BoxSelect, Timer, ChevronDown, Type, Activity, Move, MoveHorizontal, Piano, Sun, Moon } from "lucide-react";
+import { Play, Square, Circle, SkipBack, SkipForward, Rewind, FastForward, Repeat, Volume2, Download, Plus, Mic, Music2, MousePointer2, Pencil, Eraser, Scissors, Combine, VolumeX, ZoomIn, Waves, BoxSelect, Timer, ChevronDown, Type, Activity, Move, MoveHorizontal, Piano, Sun, Moon, LayoutGrid } from "lucide-react";
 import { useDawStore, type DawTool } from "../state/DawStore";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import { memo, useEffect, useState } from "react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { memo, useEffect, useState, type ReactNode } from "react";
+
+/** Wraps any trigger with a hover tooltip (Tooltip provider is mounted globally in App). */
+const Tip = ({ label, children, side = "bottom" }: { label: string; children: ReactNode; side?: "top" | "bottom" | "left" | "right" }) => (
+  <Tooltip delayDuration={150}>
+    <TooltipTrigger asChild>{children}</TooltipTrigger>
+    <TooltipContent side={side} className="text-[11px] px-2 py-1">{label}</TooltipContent>
+  </Tooltip>
+);
 
 interface Props {
   onPlay: () => void;
