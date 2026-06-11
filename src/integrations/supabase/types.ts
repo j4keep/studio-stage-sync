@@ -1543,6 +1543,27 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       videos: {
         Row: {
           cover_url: string | null
@@ -1585,6 +1606,7 @@ export type Database = {
     }
     Functions: {
       expire_pending_bookings: { Args: never; Returns: number }
+      has_role: { Args: { _role: string; _user_id: string }; Returns: boolean }
       increment_battle_views: {
         Args: { battle_id: string }
         Returns: undefined
