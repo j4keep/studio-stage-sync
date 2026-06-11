@@ -326,7 +326,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [handlePlayPause, handleStop, handleRewind, handleRecord, handleExport]);
+  }, [handlePlayPause, handleStop, handleRewind, handleRecord]);
 
 
   const handleArmToggle = useCallback((trackId: string) => {
