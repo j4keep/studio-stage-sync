@@ -288,6 +288,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
 
   // Keyboard shortcuts (customizable — see ShortcutsStore)
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const handleExportRef = useRef<() => void>(() => {});
   useEffect(() => {
     const onKey = (ev: KeyboardEvent) => {
       const tag = (ev.target as HTMLElement)?.tagName;
