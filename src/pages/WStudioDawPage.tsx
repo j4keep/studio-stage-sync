@@ -70,6 +70,15 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
   const [dockOpen, setDockOpen] = useState(false);
   const [dockTab, setDockTab] = useState<"instrument" | "chords" | "pianoroll" | "effects">("instrument");
   const openDock = (t: typeof dockTab) => { setDockTab(t); setDockOpen(true); };
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const [themeMode, setThemeMode] = useState<"light" | "dark">(() => {
+    if (typeof window === "undefined") return "dark";
+    return (localStorage.getItem("wstudio:daw:theme") as "light" | "dark") || "dark";
+  });
+  useEffect(() => {
+    try { localStorage.setItem("wstudio:daw:theme", themeMode); } catch {}
+  }, [themeMode]);
+
 
 
   const tracks = useDawStore(s => s.tracks);
