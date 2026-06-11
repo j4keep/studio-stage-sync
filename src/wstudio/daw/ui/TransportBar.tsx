@@ -279,48 +279,45 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
       <MetronomePopover />
 
       {onToggleKeyboard && (
-        <button
-          type="button"
-          onClick={onToggleKeyboard}
-          title="Show on-screen keyboard (use computer keys as MIDI controller)"
-          className={`h-7 px-2 rounded border text-[10px] uppercase tracking-wider flex items-center gap-1 ${
-            keyboardOpen
-              ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/40"
-              : "bg-neutral-900 border-neutral-800 text-neutral-300 hover:bg-neutral-800"
-          }`}
-        >
-          <Piano className="w-3 h-3" />
-          Keyboard
-        </button>
+        <Tip label="On-screen keyboard (use computer keys as MIDI controller)">
+          <button
+            type="button"
+            onClick={onToggleKeyboard}
+            aria-label="Toggle on-screen keyboard"
+            className={`h-9 w-9 grid place-items-center rounded-md border transition ${
+              keyboardOpen
+                ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/40"
+                : "bg-neutral-900 border-neutral-800 text-neutral-300 hover:bg-neutral-800"
+            }`}
+          >
+            <Piano className="w-4 h-4" />
+          </button>
+        </Tip>
       )}
 
       {onToggleTheme && (
-        <button
-          type="button"
-          onClick={onToggleTheme}
-          title={`Switch to ${themeMode === "dark" ? "light" : "dark"} mode`}
-          className="h-7 px-2 rounded border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 text-[10px] uppercase tracking-wider flex items-center gap-1"
-        >
-          {themeMode === "dark" ? <Sun className="w-3 h-3 text-amber-300" /> : <Moon className="w-3 h-3 text-cyan-300" />}
-          {themeMode === "dark" ? "Light" : "Dark"}
-        </button>
+        <Tip label={`Switch to ${themeMode === "dark" ? "light" : "dark"} mode`}>
+          <button
+            type="button"
+            onClick={onToggleTheme}
+            aria-label="Toggle theme"
+            className="h-9 w-9 grid place-items-center rounded-md border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-neutral-300"
+          >
+            {themeMode === "dark" ? <Sun className="w-4 h-4 text-amber-300" /> : <Moon className="w-4 h-4 text-cyan-300" />}
+          </button>
+        </Tip>
       )}
 
-
-
-
-
-
-      {/* Tool palette (Logic-style) */}
+      {/* Tool palette (icon only) */}
       <DropdownMenu>
-        <DropdownMenuTrigger
-          title={`Tool: ${TOOLS.find(t => t.id === tool)?.label}`}
-          className="h-9 px-2 rounded-md border border-neutral-800 bg-gradient-to-b from-neutral-900 to-neutral-950 hover:bg-neutral-800 flex items-center gap-1.5 text-neutral-200 text-[11px]"
-        >
-          <ActiveToolIcon className="w-4 h-4 text-cyan-300" />
-          <span className="uppercase tracking-wider text-[10px]">{tool}</span>
-          <span className="text-neutral-500">▾</span>
-        </DropdownMenuTrigger>
+        <Tip label={`Tool: ${TOOLS.find(t => t.id === tool)?.label ?? "Pointer"}`}>
+          <DropdownMenuTrigger
+            aria-label="Choose tool"
+            className="h-9 w-9 grid place-items-center rounded-md border border-neutral-800 bg-gradient-to-b from-neutral-900 to-neutral-950 hover:bg-neutral-800 text-cyan-300"
+          >
+            <ActiveToolIcon className="w-4 h-4" />
+          </DropdownMenuTrigger>
+        </Tip>
         <DropdownMenuContent className="bg-neutral-900 border-neutral-800 text-neutral-200 min-w-[220px]">
           {TOOLS.map(({ id, label, Icon, hint }) => (
             <DropdownMenuItem
@@ -340,14 +337,14 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
       <div className="flex-1" />
 
       <DropdownMenu>
-        <DropdownMenuTrigger
-          title="Add a track or import audio"
-          className="h-7 px-2 rounded border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-[10px] uppercase tracking-wider text-cyan-300 flex items-center gap-1"
-        >
-          <Plus className="w-3 h-3" />
-          <span>Add</span>
-          <ChevronDown className="w-3 h-3 text-neutral-500" />
-        </DropdownMenuTrigger>
+        <Tip label="Add a track or import audio">
+          <DropdownMenuTrigger
+            aria-label="Add track"
+            className="h-9 w-9 grid place-items-center rounded-md border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-cyan-300"
+          >
+            <Plus className="w-4 h-4" />
+          </DropdownMenuTrigger>
+        </Tip>
         <DropdownMenuContent className="bg-neutral-900 border-neutral-800 text-neutral-200 min-w-[200px]">
           <DropdownMenuItem onClick={onAddAudio} className="flex items-center gap-2 text-[12px]">
             <Mic className="w-3.5 h-3.5 text-emerald-300" />
@@ -366,14 +363,14 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
       </DropdownMenu>
 
       <DropdownMenu>
-        <DropdownMenuTrigger
-          title="Switch workspace view"
-          className="h-7 px-2 rounded border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-[10px] uppercase tracking-wider text-cyan-300 flex items-center gap-1"
-        >
-          <span className="text-neutral-500">View:</span>
-          <span>{view === "arrange" ? "edit" : view}</span>
-          <ChevronDown className="w-3 h-3 text-neutral-500" />
-        </DropdownMenuTrigger>
+        <Tip label={`View: ${view === "arrange" ? "Edit" : view.charAt(0).toUpperCase() + view.slice(1)}`}>
+          <DropdownMenuTrigger
+            aria-label="Switch view"
+            className="h-9 w-9 grid place-items-center rounded-md border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-cyan-300"
+          >
+            <LayoutGrid className="w-4 h-4" />
+          </DropdownMenuTrigger>
+        </Tip>
         <DropdownMenuContent className="bg-neutral-900 border-neutral-800 text-neutral-200 min-w-[160px]">
           {(["arrange", "mixer", "instrument"] as const).map(v => (
             <DropdownMenuItem
@@ -388,19 +385,28 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <div className="flex items-center gap-1.5 ml-2" title="Master output volume">
-        <Volume2 className="w-3.5 h-3.5 text-neutral-400" />
+      <Tip label={`Master output volume — ${Math.round(masterVolume * 50)}%`}>
+        <div className="flex items-center gap-1.5 ml-2 h-9 px-2 rounded-md border border-neutral-800 bg-neutral-900">
+          <Volume2 className="w-3.5 h-3.5 text-neutral-400" />
           <input
             type="range" min={0} max={2} step={0.01}
-          value={masterVolume}
-          onChange={(e) => setMasterVolume(Number(e.target.value))}
-          className="w-20 accent-cyan-500"
-        />
-      </div>
+            value={masterVolume}
+            onChange={(e) => setMasterVolume(Number(e.target.value))}
+            className="w-20 accent-cyan-500"
+          />
+        </div>
+      </Tip>
 
-      <button type="button" onClick={onExport} title="Bounce project to WAV file" className="h-8 px-3 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-xs flex items-center gap-1.5 shadow-md shadow-cyan-900/30">
-        <Download className="w-3.5 h-3.5" /> Export
-      </button>
+      <Tip label="Export / bounce project to WAV file">
+        <button
+          type="button"
+          onClick={onExport}
+          aria-label="Export to WAV"
+          className="h-9 w-9 grid place-items-center rounded-md bg-cyan-600 hover:bg-cyan-500 text-white shadow-md shadow-cyan-900/30"
+        >
+          <Download className="w-4 h-4" />
+        </button>
+      </Tip>
     </div>
   );
 }
