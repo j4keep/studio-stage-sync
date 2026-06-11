@@ -68,20 +68,25 @@ export function BottomDock({
       {/* Header tabs */}
       <div className="h-11 border-b border-neutral-800 flex items-center px-3 gap-1 shrink-0 bg-gradient-to-b from-neutral-900/80 to-[#0a0a0c]">
         <button onClick={onClose} className="text-neutral-500 hover:text-neutral-200 mr-2"><X className="w-4 h-4" /></button>
-        {(["instrument","chords","pianoroll","effects"] as Tab[]).map(t => (
-          <button
-            key={t}
-            onClick={() => onTab(t)}
-            className={`relative px-4 h-8 text-[12px] capitalize rounded-md transition-colors ${
-              tab === t
-                ? "text-teal-300 bg-teal-500/10"
-                : "text-neutral-400 hover:text-neutral-200"
-            }`}
-          >
-            {t === "pianoroll" ? "Piano Roll" : t === "instrument" ? "Instrument" : t === "chords" ? "Chords" : "Effects"}
-            {tab === t && <span className="absolute left-2 right-2 -bottom-px h-[2px] bg-gradient-to-r from-teal-400 to-purple-400 rounded-full" />}
-          </button>
-        ))}
+        {(["instrument","chords","pianoroll","effects"] as Tab[]).map(t => {
+          const isDrum = active?.instrument === "drum";
+          const label = t === "pianoroll" ? "Piano Roll"
+            : t === "instrument" ? "Instrument"
+            : t === "chords" ? (isDrum ? "Beats" : "Chords")
+            : "Effects";
+          return (
+            <button
+              key={t}
+              onClick={() => onTab(t)}
+              className={`relative px-4 h-8 text-[12px] capitalize rounded-md transition-colors ${
+                tab === t ? "text-teal-300 bg-teal-500/10" : "text-neutral-400 hover:text-neutral-200"
+              }`}
+            >
+              {label}
+              {tab === t && <span className="absolute left-2 right-2 -bottom-px h-[2px] bg-gradient-to-r from-teal-400 to-purple-400 rounded-full" />}
+            </button>
+          );
+        })}
         <div className="flex-1" />
         <div className="text-[10px] text-neutral-500 truncate max-w-[260px]">
           {active ? <>Track: <span className="text-neutral-300">{active.name}</span>{active.instrumentPreset ? <> · <span className="text-purple-300">{active.instrumentPreset}</span></> : null}</> : "No instrument track selected"}
@@ -94,10 +99,13 @@ export function BottomDock({
       <div className="flex-1 overflow-hidden">
         {!active ? <EmptyHint /> :
           tab === "instrument" ? <InstrumentTab engine={engine} trackId={active.id} /> :
-          tab === "chords"     ? <ChordsTab engine={engine} trackId={active.id} /> :
+          tab === "chords"     ? (active.instrument === "drum"
+                                    ? <BeatGridTab engine={engine} trackId={active.id} />
+                                    : <ChordsTab engine={engine} trackId={active.id} />) :
           tab === "pianoroll"  ? <PianoRollTab engine={engine} trackId={active.id} /> :
                                  <EffectsTab trackId={active.id} />}
       </div>
+
     </div>
   );
 }
