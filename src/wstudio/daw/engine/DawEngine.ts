@@ -639,11 +639,14 @@ export class DawEngine {
     const src = chain?.inputMonitorSource ?? this.ctx.createMediaStreamSource(liveStream);
     if (chain) {
       chain.micSource = src;
+      this.setInputMonitorAudible(trackId, true);
       if (!chain.inputMonitorSource) {
         try { src.connect(chain.inputAnalyser); } catch {}
+        try { src.connect(chain.input); } catch {}
         chain.inputMonitorSource = src;
         chain.inputMonitorStream = liveStream;
         chain.inputMonitoring = true;
+        chain.inputMonitorAudible = true;
         chain.inputMonitorFailed = false;
       }
     }
