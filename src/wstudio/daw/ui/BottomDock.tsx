@@ -235,6 +235,10 @@ function InstrumentTab({ engine, trackId }: { engine: DawEngine; trackId: string
 
   useEffect(() => {
     if (isRecording) return;
+    const rec = midiRecRef.current;
+    if (rec) {
+      Array.from(rec.notes.keys()).forEach(recordNoteOff);
+    }
     midiRecRef.current = null;
   }, [isRecording]);
 
