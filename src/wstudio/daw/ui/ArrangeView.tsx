@@ -694,9 +694,9 @@ function ClipBlock({ clip, color, pxPerSec, selected, tool, onSelect, onContext,
         {clip.peaks && <WaveformView peaks={clip.peaks} width={Math.max(1, w)} height={TRACK_H - 24} color={color} offsetRatio={offsetRatio} spanRatio={spanRatio} />}
         {clip.notes && clip.notes.length > 0 && (
           <div className="absolute inset-1 rounded bg-purple-500/15 border border-purple-300/20 overflow-hidden">
-            {clip.notes.map((n: any) => {
-              const minPitch = Math.min(...clip.notes.map((x: any) => x.pitch));
-              const maxPitch = Math.max(...clip.notes.map((x: any) => x.pitch));
+            {clip.notes.map((n: MidiNote) => {
+              const minPitch = Math.min(...clip.notes.map((x: MidiNote) => x.pitch));
+              const maxPitch = Math.max(...clip.notes.map((x: MidiNote) => x.pitch));
               const range = Math.max(1, maxPitch - minPitch);
               const noteStartSec = n.start * (60 / Math.max(1, useDawStore.getState().transport.bpm));
               const noteLenSec = n.length * (60 / Math.max(1, useDawStore.getState().transport.bpm));
