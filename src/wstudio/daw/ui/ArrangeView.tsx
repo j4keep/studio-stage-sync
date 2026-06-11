@@ -13,6 +13,7 @@ interface Props {
   onSeek?: (position: number) => void;
   engine?: DawEngine | null;
   onOpenInstrumentEditor?: (trackId: string) => void;
+  onImportFilesAt?: (trackId: string, startTime: number, files: FileList) => void;
 }
 
 const HEADER_W = 200;
