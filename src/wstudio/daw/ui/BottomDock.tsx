@@ -569,14 +569,19 @@ const PR_PX_PER_BEAT = 48;
 const PR_ROW_H = 16;
 
 function PianoRollTab({ engine, trackId }: { engine: DawEngine; trackId: string }) {
-  const clips = useDawStore(s => s.clips.filter(c => c.trackId === trackId));
+  const allClips = useDawStore(s => s.clips);
+  const clips = useMemo(() => allClips.filter(c => c.trackId === trackId), [allClips, trackId]);
   const addClip = useDawStore(s => s.addClip);
   const updateClip = useDawStore(s => s.updateClip);
   const playhead = useDawStore(s => s.transport.position);
   const bpm = useDawStore(s => s.transport.bpm);
 
   // Find or create active midi clip at playhead
-  const activeClip = clips.find(c => c.notes && playhead >= c.startTime && playhead < c.startTime + c.duration) ?? clips.find(c => c.notes);
+  const activeClip = useMemo(
+    () => clips.find(c => c.notes && playhead >= c.startTime && playhead < c.startTime + c.duration) ?? clips.find(c => c.notes),
+    [clips, playhead]
+  );
+
 
   const ensureClip = (): string => {
     if (activeClip) return activeClip.id;
