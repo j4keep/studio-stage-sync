@@ -480,7 +480,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
         />
 
         <div className="flex-1 relative flex flex-col overflow-hidden">
-          {view === "arrange" && <ArrangeView onArmToggle={handleArmToggle} onSeek={handleSeek} engine={engineRef.current} onOpenInstrumentEditor={(tid) => { selectTrack(tid); openDock("instrument"); }} />}
+          {view === "arrange" && <ArrangeView onArmToggle={handleArmToggle} onSeek={handleSeek} engine={engineRef.current} onOpenInstrumentEditor={(tid) => { selectTrack(tid); openDock("instrument"); }} onImportFilesAt={importFilesAt} />}
           {view === "mixer" && <MixerView engine={engineRef.current} onOpenPlugin={openPluginWindow} onArmToggle={handleArmToggle} />}
           {view === "instrument" && <InstrumentPanel engine={engineRef.current} />}
 
