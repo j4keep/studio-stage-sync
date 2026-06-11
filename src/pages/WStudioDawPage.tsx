@@ -402,6 +402,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
     if (clips.length === 0) { toast.error("Nothing to export"); return; }
     setExportPrompt({ defaultName: `wstudio-mix-${Date.now()}` });
   }, [clips]);
+  useEffect(() => { handleExportRef.current = handleExport; }, [handleExport]);
 
   const runExport = useCallback(async (filename: string) => {
     const e = engineRef.current;
