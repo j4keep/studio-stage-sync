@@ -12,6 +12,7 @@ interface Props {
   onArmToggle: (trackId: string) => void;
   onSeek?: (position: number) => void;
   engine?: DawEngine | null;
+  onOpenInstrumentEditor?: (trackId: string) => void;
 }
 
 const HEADER_W = 200;
