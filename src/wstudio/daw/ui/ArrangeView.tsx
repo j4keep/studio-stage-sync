@@ -698,13 +698,15 @@ function ClipBlock({ clip, color, pxPerSec, selected, tool, onSelect, onContext,
               const minPitch = Math.min(...clip.notes.map((x: any) => x.pitch));
               const maxPitch = Math.max(...clip.notes.map((x: any) => x.pitch));
               const range = Math.max(1, maxPitch - minPitch);
+              const noteStartSec = n.start * (60 / Math.max(1, useDawStore.getState().transport.bpm));
+              const noteLenSec = n.length * (60 / Math.max(1, useDawStore.getState().transport.bpm));
               return (
                 <div
                   key={n.id}
                   className="absolute h-1 rounded-full bg-purple-200/85 shadow-[0_0_4px_rgba(216,180,254,0.7)]"
                   style={{
-                    left: `${(n.start / Math.max(0.25, clip.duration)) * 100}%`,
-                    width: `${Math.max(3, (n.length / Math.max(0.25, clip.duration)) * 100)}%`,
+                    left: `${(noteStartSec / Math.max(0.25, clip.duration)) * 100}%`,
+                    width: `${Math.max(3, (noteLenSec / Math.max(0.25, clip.duration)) * 100)}%`,
                     top: `${8 + (1 - (n.pitch - minPitch) / range) * 70}%`,
                   }}
                 />
