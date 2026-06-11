@@ -269,6 +269,35 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
 
       <MetronomePopover />
 
+      {onToggleKeyboard && (
+        <button
+          type="button"
+          onClick={onToggleKeyboard}
+          title="Show on-screen keyboard (use computer keys as MIDI controller)"
+          className={`h-7 px-2 rounded border text-[10px] uppercase tracking-wider flex items-center gap-1 ${
+            keyboardOpen
+              ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/40"
+              : "bg-neutral-900 border-neutral-800 text-neutral-300 hover:bg-neutral-800"
+          }`}
+        >
+          <Piano className="w-3 h-3" />
+          Keyboard
+        </button>
+      )}
+
+      {onToggleTheme && (
+        <button
+          type="button"
+          onClick={onToggleTheme}
+          title={`Switch to ${themeMode === "dark" ? "light" : "dark"} mode`}
+          className="h-7 px-2 rounded border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 text-[10px] uppercase tracking-wider flex items-center gap-1"
+        >
+          {themeMode === "dark" ? <Sun className="w-3 h-3 text-amber-300" /> : <Moon className="w-3 h-3 text-cyan-300" />}
+          {themeMode === "dark" ? "Light" : "Dark"}
+        </button>
+      )}
+
+
 
 
 
