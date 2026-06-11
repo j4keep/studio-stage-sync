@@ -11,7 +11,7 @@ import { InstrumentPanel } from "@/wstudio/daw/ui/InstrumentPanel";
 import { FxRack } from "@/wstudio/daw/ui/FxRack";
 import { LibraryPanel } from "@/wstudio/daw/ui/LibraryPanel";
 import { SoundLibraryPanel } from "@/wstudio/daw/ui/SoundLibraryPanel";
-import { QuickActionCards } from "@/wstudio/daw/ui/QuickActionCards";
+import { BottomDock } from "@/wstudio/daw/ui/BottomDock";
 import { CollabSidebar } from "@/wstudio/daw/ui/CollabSidebar";
 import { MenuBar } from "@/wstudio/daw/ui/MenuBar";
 import type { Clip, Track, AutomationPoint } from "@/wstudio/daw/engine/types";
@@ -48,6 +48,9 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
   const [collabOpen, setCollabOpen] = useState(true);
   const [soundLibOpen, setSoundLibOpen] = useState(true);
   const [soundLibTab, setSoundLibTab] = useState<"sounds" | "packs">("sounds");
+  const [dockOpen, setDockOpen] = useState(false);
+  const [dockTab, setDockTab] = useState<"instrument" | "patterns" | "pianoroll" | "effects">("instrument");
+  const openDock = (t: typeof dockTab) => { setDockTab(t); setDockOpen(true); };
 
 
   const tracks = useDawStore(s => s.tracks);

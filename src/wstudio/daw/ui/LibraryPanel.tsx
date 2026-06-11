@@ -1,17 +1,40 @@
 import { useState } from "react";
-import { Upload, Music, Puzzle, Folder } from "lucide-react";
+import { Upload, Music, Puzzle, Folder, Grid3x3, Piano, Plus, Music2, UserPlus } from "lucide-react";
 
 interface UserSample { name: string; url: string; }
 interface UserPlugin { name: string; }
 
-export function LibraryPanel({ onImportFiles, onAddUserPlugin }: {
+export function LibraryPanel({
+  onImportFiles,
+  onAddUserPlugin,
+  onBrowseLoops,
+  onPatterns,
+  onPlaySynth,
+  onAddTrack,
+  onImport,
+}: {
   onImportFiles: (files: FileList) => void;
   onAddUserPlugin: (name: string) => void;
+  onBrowseLoops?: () => void;
+  onPatterns?: () => void;
+  onPlaySynth?: () => void;
+  onAddTrack?: () => void;
+  onImport?: () => void;
 }) {
   const [tab, setTab] = useState<"samples" | "plugins">("samples");
   const [samples] = useState<UserSample[]>([]);
   const [plugins, setPlugins] = useState<UserPlugin[]>([]);
   const [pluginName, setPluginName] = useState("");
+
+  const QuickBtn = ({ icon: Icon, label, onClick }: { icon: any; label: string; onClick?: () => void }) => (
+    <button
+      onClick={onClick}
+      className="flex flex-col items-center justify-center gap-1 h-16 rounded-lg bg-neutral-900/70 border border-neutral-800 hover:border-cyan-500/50 hover:bg-neutral-800 text-neutral-300 hover:text-white transition-colors"
+    >
+      <Icon className="w-4 h-4" />
+      <div className="text-[9px] text-center leading-tight">{label}</div>
+    </button>
+  );
 
   return (
     <div className="w-64 shrink-0 bg-neutral-950 border-r border-neutral-800 flex flex-col">
@@ -28,8 +51,18 @@ export function LibraryPanel({ onImportFiles, onAddUserPlugin }: {
 
       {tab === "samples" && (
         <div className="flex-1 overflow-y-auto p-2 space-y-2">
-          <label className="block">
-            <div className="border border-dashed border-neutral-800 rounded p-4 text-center cursor-pointer hover:border-cyan-500/60 hover:bg-neutral-900">
+          <div className="text-[10px] uppercase text-neutral-500 px-1">Quick start</div>
+          <div className="grid grid-cols-2 gap-1.5">
+            <QuickBtn icon={Music2} label="Browse loops" onClick={onBrowseLoops} />
+            <QuickBtn icon={Grid3x3} label="Patterns Beatmaker" onClick={onPatterns} />
+            <QuickBtn icon={Piano} label="Play the synth" onClick={onPlaySynth} />
+            <QuickBtn icon={Plus} label="Add new track" onClick={onAddTrack} />
+            <QuickBtn icon={Upload} label="Import file" onClick={onImport} />
+            <QuickBtn icon={UserPlus} label="Invite a friend" />
+          </div>
+
+          <label className="block pt-2">
+            <div className="border border-dashed border-neutral-800 rounded p-3 text-center cursor-pointer hover:border-cyan-500/60 hover:bg-neutral-900">
               <Upload className="w-4 h-4 mx-auto text-neutral-500 mb-1" />
               <div className="text-[10px] text-neutral-400">Upload samples</div>
               <div className="text-[9px] text-neutral-600">WAV, MP3, OGG, M4A</div>
@@ -41,7 +74,7 @@ export function LibraryPanel({ onImportFiles, onAddUserPlugin }: {
             />
           </label>
           <div className="text-[10px] uppercase text-neutral-500 mt-3 px-1">My Samples</div>
-          {samples.length === 0 && <div className="text-[10px] text-neutral-600 text-center py-4">No samples uploaded</div>}
+          {samples.length === 0 && <div className="text-[10px] text-neutral-600 text-center py-2">No samples uploaded</div>}
           {samples.map(s => (
             <div key={s.url} className="text-[11px] text-neutral-300 p-1.5 rounded hover:bg-neutral-900 cursor-grab flex items-center gap-1">
               <Music className="w-3 h-3 text-neutral-500" />
