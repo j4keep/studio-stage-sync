@@ -289,32 +289,41 @@ function Toggle({ label, on, onClick }: { label: string; on: boolean; onClick: (
   );
 }
 
-function PianoKeyboard({ onPlay, octave }: { onPlay: (n: number) => void; octave: number }) {
+function PianoKeyboard({ onDown, onUp, octave }: { onDown: (n: number) => void; onUp: (n: number) => void; octave: number }) {
   // Render 2 octaves of white keys starting at C4
   const whites: { midi: number; idx: number }[] = [];
-  const blacks: { midi: number; whiteBefore: number }[] = [];
-  const semitones = [0,2,4,5,7,9,11]; // white offsets in an octave
-  const blacksMap = [1,3,6,8,10];     // black offsets
+  const semitones = [0,2,4,5,7,9,11];
   let wi = 0;
   for (let o = 0; o < 2; o++) {
     for (const s of semitones) { whites.push({ midi: 60 + o * 12 + s, idx: wi }); wi++; }
   }
-  for (let o = 0; o < 2; o++) {
-    for (const b of blacksMap) {
-      const before = whites.findIndex(w => w.midi > 60 + o * 12 + b) - 1;
-      blacks.push({ midi: 60 + o * 12 + b, whiteBefore: before });
-    }
-  }
+
+  // Pointer handlers that fire note-on on press and note-off on release/leave.
+  // Using onPointerDown + onPointerUp + onPointerLeave avoids stuck notes if
+  // the cursor drags off the key before releasing.
+  const press = (n: number) => (e: React.PointerEvent) => {
+    e.preventDefault();
+    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+    onDown(n);
+  };
+  const release = (n: number) => (e: React.PointerEvent) => {
+    try { (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId); } catch {}
+    onUp(n);
+  };
 
   return (
     <div className="relative h-full w-full" style={{ minHeight: 140 }}>
       <div className="absolute inset-0 flex">
         {whites.map(w => {
           const label = KEY_LABELS[w.midi];
+          const midi = w.midi + octave * 12;
           return (
             <button
               key={w.midi}
-              onPointerDown={() => onPlay(w.midi + octave * 12)}
+              onPointerDown={press(midi)}
+              onPointerUp={release(midi)}
+              onPointerLeave={release(midi)}
+              onPointerCancel={release(midi)}
               className="flex-1 mx-[1px] rounded-b-md bg-gradient-to-b from-white to-neutral-200 hover:from-teal-50 hover:to-teal-200 active:from-teal-200 active:to-teal-300 border border-neutral-300 shadow-inner relative"
             >
               {label && (
@@ -326,13 +335,16 @@ function PianoKeyboard({ onPlay, octave }: { onPlay: (n: number) => void; octave
       </div>
       <div className="absolute inset-0 flex pointer-events-none">
         {whites.map((w, i) => {
-          const isLastInOct = i % 7 === 2 || i % 7 === 6; // E, B have no black after
+          const isLastInOct = i % 7 === 2 || i % 7 === 6;
           if (isLastInOct) return <div key={i} className="flex-1" />;
-          const midi = w.midi + 1;
+          const midi = w.midi + 1 + octave * 12;
           return (
             <div key={i} className="flex-1 relative">
               <button
-                onPointerDown={() => onPlay(midi + octave * 12)}
+                onPointerDown={press(midi)}
+                onPointerUp={release(midi)}
+                onPointerLeave={release(midi)}
+                onPointerCancel={release(midi)}
                 className="absolute right-0 translate-x-1/2 top-0 h-[62%] w-[60%] bg-gradient-to-b from-neutral-800 to-black hover:from-purple-700 hover:to-purple-900 active:from-purple-600 rounded-b-md border border-neutral-900 z-10 pointer-events-auto shadow-lg"
               />
             </div>
@@ -342,6 +354,7 @@ function PianoKeyboard({ onPlay, octave }: { onPlay: (n: number) => void; octave
     </div>
   );
 }
+
 
 /* ===================================================================== */
 /* PRESET MODAL                                                           */
