@@ -327,7 +327,7 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
           className="h-7 px-2 rounded border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-[10px] uppercase tracking-wider text-cyan-300 flex items-center gap-1"
         >
           <span className="text-neutral-500">View:</span>
-          <span>{view}</span>
+          <span>{view === "arrange" ? "edit" : view}</span>
           <ChevronDown className="w-3 h-3 text-neutral-500" />
         </DropdownMenuTrigger>
         <DropdownMenuContent className="bg-neutral-900 border-neutral-800 text-neutral-200 min-w-[160px]">
@@ -337,7 +337,7 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
               onClick={() => setView(v)}
               className="flex items-center justify-between text-[12px] uppercase tracking-wider"
             >
-              <span>{v}</span>
+              <span>{v === "arrange" ? "edit" : v}</span>
               {view === v && <span className="text-cyan-300 text-[10px]">●</span>}
             </DropdownMenuItem>
           ))}
