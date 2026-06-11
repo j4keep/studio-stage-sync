@@ -435,7 +435,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
   }
 
   return (
-    <div className={`fixed inset-0 flex flex-col ${themeMode === "dark" ? "bg-black text-neutral-200 dark" : "bg-neutral-100 text-neutral-900"}`}>
+    <div className={`fixed inset-0 flex flex-col ${themeMode === "dark" ? "bg-black text-neutral-200 dark" : "bg-white text-neutral-900 daw-light"}`}>
       <MenuBar
         onImport={() => importInputRef.current?.click()}
         onExport={handleExport}
