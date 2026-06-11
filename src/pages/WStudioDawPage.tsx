@@ -46,6 +46,9 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
   const [, setEngineGraphVersion] = useState(0);
   const [fxTrackId, setFxTrackId] = useState<string | null>(null);
   const [collabOpen, setCollabOpen] = useState(true);
+  const [soundLibOpen, setSoundLibOpen] = useState(true);
+  const [soundLibTab, setSoundLibTab] = useState<"sounds" | "packs">("sounds");
+
 
   const tracks = useDawStore(s => s.tracks);
   const clips = useDawStore(s => s.clips);
