@@ -1,5 +1,5 @@
 import { useDawStore } from "../state/DawStore";
-import { Fader } from "./Fader";
+import { Fader, formatGainDb } from "./Fader";
 import { Meter } from "./Meter";
 import { Knob } from "./Knob";
 import type { Track } from "../engine/types";
@@ -24,7 +24,7 @@ export function ChannelStrip({ track, engine, onOpenFx, onArmToggle, rows }: Pro
   const mono = engine.getTrackAnalyser(track.id);
   const inputAn = engine.getTrackInputAnalyser(track.id);
   const isStereo = track.kind === "instrument" || trackClips.some(c => (c.buffer?.numberOfChannels ?? 0) >= 2);
-  const canRecordInput = track.kind === "audio" && track.inputEnabled !== false && !(track.inputEnabled === undefined && trackClips.some(c => c.buffer && c.name !== "Recording"));
+  const canRecordInput = track.kind === "instrument" || (track.kind === "audio" && track.inputEnabled !== false && !(track.inputEnabled === undefined && trackClips.some(c => c.buffer && c.name !== "Recording")));
   // Vocal/input audio tracks show live mic input; imported beat/file tracks show playback only.
   const meters = canRecordInput && inputAn
     ? [inputAn]
@@ -37,7 +37,7 @@ export function ChannelStrip({ track, engine, onOpenFx, onArmToggle, rows }: Pro
     <div title={title} className={`w-full border-b border-neutral-900 flex items-center justify-center px-1 ${className}`} style={{ height: h }}>{children}</div>
   );
 
-  const dB = (20 * Math.log10(track.volume + 1e-9)).toFixed(1);
+  const dB = formatGainDb(track.volume);
 
   return (
     <div
@@ -59,7 +59,7 @@ export function ChannelStrip({ track, engine, onOpenFx, onArmToggle, rows }: Pro
         </button>
       </Cell>
       {/* Input */}
-      <Cell h={r("input")} title="Audio input source"><div className="w-full h-full grid place-items-center bg-neutral-950 border border-neutral-800 rounded text-[9px]">{canRecordInput ? "In 1" : "File"}</div></Cell>
+      <Cell h={r("input")} title="Audio input source"><div className="w-full h-full grid place-items-center bg-neutral-950 border border-neutral-800 rounded text-[9px]">{track.kind === "instrument" ? "Inst" : canRecordInput ? "In 1" : "File"}</div></Cell>
       {/* Audio FX */}
       <Cell h={r("fx")} title="Audio FX inserts">
         <button onClick={(e)=>{e.stopPropagation(); onOpenFx();}} className="w-full h-full bg-neutral-950 border border-neutral-800 rounded text-[9px] text-neutral-300 hover:bg-neutral-800 flex flex-col items-center justify-center gap-0.5">

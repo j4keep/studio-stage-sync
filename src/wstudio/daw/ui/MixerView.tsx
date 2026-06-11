@@ -1,6 +1,6 @@
 import { useDawStore } from "../state/DawStore";
 import { ChannelStrip } from "./ChannelStrip";
-import { Fader } from "./Fader";
+import { Fader, formatGainDb } from "./Fader";
 import { Meter } from "./Meter";
 import type { DawEngine } from "../engine/DawEngine";
 
@@ -51,7 +51,7 @@ export function MixerView({ engine, onOpenFx, onArmToggle }: { engine: DawEngine
               <div key={r.key} className="w-full border-b border-neutral-900 grid place-items-center text-neutral-700" style={{ height: r.h }}>—</div>
             ))}
             <div className="border-b border-neutral-900 w-full grid place-items-center" style={{ height: 26 }}>
-              <span className="tabular-nums text-[9px]">{(20 * Math.log10(masterVolume + 1e-9)).toFixed(1)} dB</span>
+              <span className="tabular-nums text-[9px]">{formatGainDb(masterVolume)} dB</span>
             </div>
             <div className="flex items-end gap-1.5 py-3" style={{ height: 220 }}>
               <Fader value={masterVolume} onChange={setMasterVolume} color="#22d3ee" height={200} />

@@ -32,9 +32,11 @@ function interpAutomation(points: AutomationPoint[], pos: number, fallback: numb
 }
 
 const isInputAudioTrack = (track: Track, allClips: Clip[]) => (
-  (track.kind === "audio" || track.kind === "instrument")
-  && track.inputEnabled !== false
-  && !(track.inputEnabled === undefined && allClips.some(c => c.trackId === track.id && c.buffer && c.name !== "Recording"))
+  track.kind === "instrument" || (
+    track.kind === "audio"
+    && track.inputEnabled !== false
+    && !(track.inputEnabled === undefined && allClips.some(c => c.trackId === track.id && c.buffer && c.name !== "Recording"))
+  )
 );
 
 
@@ -199,7 +201,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
       }
     }
     if (!armed) {
-      toast.error("Select a vocal/input audio track and press R to record");
+      toast.error("Select an audio or instrument track and press R to record");
       return;
     }
     st.tracks.forEach(t => updateTrack(t.id, { armed: t.id === armed!.id }));

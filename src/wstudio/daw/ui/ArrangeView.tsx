@@ -285,7 +285,7 @@ export function ArrangeView({ onArmToggle, onSeek, engine }: Props) {
               const isStereo = t.kind === "instrument" || trackClips.some(c => (c.buffer?.numberOfChannels ?? 0) >= 2);
               const stereo = engine?.getTrackStereoAnalysers(t.id) ?? null;
               const mono = engine?.getTrackAnalyser(t.id) ?? null;
-              const canRecordInput = t.kind === "audio" && t.inputEnabled !== false && !(t.inputEnabled === undefined && trackClips.some(c => c.buffer && c.name !== "Recording"));
+              const canRecordInput = t.kind === "instrument" || (t.kind === "audio" && t.inputEnabled !== false && !(t.inputEnabled === undefined && trackClips.some(c => c.buffer && c.name !== "Recording")));
               const meters = canRecordInput && inputAn ? [inputAn] : isStereo && stereo ? [stereo.L, stereo.R] : mono ? [mono] : [];
               return (
                 <div key={t.id}>
@@ -511,7 +511,7 @@ function TrackHeader({ track, canRecordInput, meters = [], onArm, onMute, onSolo
     if (!el) return;
     const r = el.getBoundingClientRect();
     const t = Math.max(0, Math.min(1, (clientX - r.left) / r.width));
-    onVolume(t);
+    onVolume(t * 2);
   };
   return (
     <div
@@ -563,7 +563,7 @@ function TrackHeader({ track, canRecordInput, meters = [], onArm, onMute, onSolo
             onPointerMove={(e) => { if (!(e.buttons & 1)) return; setVolFromX(e.clientX); }}
             title={`Volume — drag to adjust  ·  ${meters.length === 2 ? "Stereo" : "Mono"} meter`}
             className="flex-1 min-w-0 rounded bg-neutral-950 border border-neutral-700 relative cursor-ew-resize overflow-hidden"
-            style={{ height: meters.length === 2 ? 16 : 12 }}
+              style={{ height: meters.length === 2 ? 16 : 12 }}
           >
             {/* Live level meter underlay (1 or 2 bars based on track channels) */}
             {meters.length > 0 && (
@@ -574,10 +574,10 @@ function TrackHeader({ track, canRecordInput, meters = [], onArm, onMute, onSolo
             {/* Volume position scrim (dims area to the right of fader position) */}
             <div
               className="absolute inset-y-0 pointer-events-none bg-black/40"
-              style={{ left: `${Math.min(100, track.volume * 100)}%`, right: 0 }}
+              style={{ left: `${Math.min(100, (track.volume / 2) * 100)}%`, right: 0 }}
             />
             {/* Fader thumb line */}
-            <div className="absolute inset-y-0 pointer-events-none" style={{ left: `${Math.min(100, track.volume * 100)}%`, width: 2, background: "rgba(255,255,255,0.95)", boxShadow: "0 0 4px rgba(255,255,255,0.6)" }} />
+            <div className="absolute inset-y-0 pointer-events-none" style={{ left: `${Math.min(100, (track.volume / 2) * 100)}%`, width: 2, background: "rgba(255,255,255,0.95)", boxShadow: "0 0 4px rgba(255,255,255,0.6)" }} />
           </div>
 
           <div className="flex items-center gap-0.5 shrink-0" onPointerDown={stop} onClick={stop} title="Pan L/R">

@@ -346,8 +346,8 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
 
       <div className="flex items-center gap-1.5 ml-2" title="Master output volume">
         <Volume2 className="w-3.5 h-3.5 text-neutral-400" />
-        <input
-          type="range" min={0} max={1} step={0.01}
+          <input
+            type="range" min={0} max={2} step={0.01}
           value={masterVolume}
           onChange={(e) => setMasterVolume(Number(e.target.value))}
           className="w-20 accent-cyan-500"

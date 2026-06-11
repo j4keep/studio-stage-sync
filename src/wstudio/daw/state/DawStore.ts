@@ -137,7 +137,7 @@ export const useDawStore = create<DawState>((set, get) => ({
   selectedClipId: null,
   clipboard: null,
   view: "arrange",
-  masterVolume: 0.85,
+  masterVolume: 1,
   pxPerSec: 60,
   _past: [],
   _future: [],
@@ -174,9 +174,9 @@ export const useDawStore = create<DawState>((set, get) => ({
       id,
       name: name ?? `${kind === "audio" ? "Audio" : "Instrument"} ${++trackCounter}`,
       kind,
-      inputEnabled: options?.inputEnabled ?? kind === "audio",
+      inputEnabled: options?.inputEnabled ?? true,
       color: TRACK_COLORS[idx % TRACK_COLORS.length],
-      volume: 0.8,
+      volume: 1,
       pan: 0,
       mute: false,
       solo: false,
@@ -319,7 +319,7 @@ export const useDawStore = create<DawState>((set, get) => ({
   selectTrack: (id) => set({ selectedTrackId: id }),
   selectClip: (id) => set({ selectedClipId: id }),
   setPxPerSec: (v) => set({ pxPerSec: Math.max(20, Math.min(400, v)) }),
-  setMasterVolume: (v) => set({ masterVolume: v }),
+  setMasterVolume: (v) => set({ masterVolume: Math.max(0, Math.min(2, v)) }),
   setMetronomeVolume: (v) => {
     const vol = Math.max(0, Math.min(1, v));
     const next = { ...get().transport, metronomeVolume: vol };
