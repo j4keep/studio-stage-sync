@@ -41,7 +41,7 @@ export function MixerView({ engine, onOpenPlugin, onArmToggle }: { engine: DawEn
           <div className="flex-1 grid place-items-center text-neutral-600 text-sm">No tracks yet — add one from the toolbar.</div>
         )}
         {tracks.map(t => (
-          <ChannelStrip key={t.id} track={t} engine={engine} onOpenFx={() => onOpenFx(t.id)} onArmToggle={onArmToggle} rows={ROW_LABELS} />
+          <ChannelStrip key={t.id} track={t} engine={engine} onOpenPlugin={(effectId) => onOpenPlugin(t.id, effectId)} onArmToggle={onArmToggle} rows={ROW_LABELS} />
         ))}
         {/* Master strip */}
         {tracks.length > 0 && (
