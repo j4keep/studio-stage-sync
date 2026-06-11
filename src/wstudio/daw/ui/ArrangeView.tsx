@@ -286,7 +286,7 @@ export function ArrangeView({ onArmToggle, onSeek, engine }: Props) {
               const stereo = engine?.getTrackStereoAnalysers(t.id) ?? null;
               const mono = engine?.getTrackAnalyser(t.id) ?? null;
               const canRecordInput = t.kind === "instrument" || (t.kind === "audio" && t.inputEnabled !== false && !(t.inputEnabled === undefined && trackClips.some(c => c.buffer && c.name !== "Recording")));
-              const meters = canRecordInput && inputAn ? [inputAn] : isStereo && stereo ? [stereo.L, stereo.R] : mono ? [mono] : [];
+              const meters = t.kind === "audio" && canRecordInput && inputAn ? [inputAn] : isStereo && stereo ? [stereo.L, stereo.R] : mono ? [mono] : [];
               return (
                 <div key={t.id}>
                   <TrackHeader
