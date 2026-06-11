@@ -10,6 +10,8 @@ import { MixerView } from "@/wstudio/daw/ui/MixerView";
 import { InstrumentPanel } from "@/wstudio/daw/ui/InstrumentPanel";
 import { FxRack } from "@/wstudio/daw/ui/FxRack";
 import { LibraryPanel } from "@/wstudio/daw/ui/LibraryPanel";
+import { SoundLibraryPanel } from "@/wstudio/daw/ui/SoundLibraryPanel";
+import { QuickActionCards } from "@/wstudio/daw/ui/QuickActionCards";
 import { CollabSidebar } from "@/wstudio/daw/ui/CollabSidebar";
 import { MenuBar } from "@/wstudio/daw/ui/MenuBar";
 import type { Clip, Track, AutomationPoint } from "@/wstudio/daw/engine/types";
