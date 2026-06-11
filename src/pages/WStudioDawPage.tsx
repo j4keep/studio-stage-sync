@@ -475,6 +475,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
         keyboardOpen={keyboardOpen}
         themeMode={themeMode}
         onToggleTheme={() => setThemeMode(m => m === "dark" ? "light" : "dark")}
+        onOpenShortcuts={() => setShortcutsOpen(true)}
       />
       <input
         ref={importInputRef}
