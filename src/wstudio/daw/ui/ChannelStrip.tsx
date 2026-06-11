@@ -26,7 +26,8 @@ export function ChannelStrip({ track, engine, onOpenFx, onArmToggle, rows }: Pro
   const isStereo = track.kind === "instrument" || trackClips.some(c => (c.buffer?.numberOfChannels ?? 0) >= 2);
   const canRecordInput = track.kind === "instrument" || (track.kind === "audio" && track.inputEnabled !== false && !(track.inputEnabled === undefined && trackClips.some(c => c.buffer && c.name !== "Recording")));
   // Vocal/input audio tracks show live mic input; imported beat/file tracks show playback only.
-  const meters = canRecordInput && inputAn
+  // Audio input tracks show live mic meter; instrument & imported audio tracks show post-fader output.
+  const meters = track.kind === "audio" && canRecordInput && inputAn
     ? [inputAn]
     : (isStereo && stereo ? [stereo.L, stereo.R] : mono ? [mono] : []);
   const isSel = selectedTrackId === track.id;
