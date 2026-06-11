@@ -311,7 +311,7 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
 
       {/* Tool palette (icon only) */}
       <DropdownMenu>
-        <Tip label={`Tool: ${TOOLS.find(t => t.id === tool)?.label ?? "Pointer"}`}>
+        <Tip label={`Tool: ${TOOLS.find(t => t.id === tool)?.label ?? "Pointer"}  ·  T  (V pointer, B pencil, E eraser, S scissors)`}>
           <DropdownMenuTrigger
             aria-label="Choose tool"
             className="h-9 w-9 grid place-items-center rounded-md border border-neutral-800 bg-gradient-to-b from-neutral-900 to-neutral-950 hover:bg-neutral-800 text-cyan-300"
