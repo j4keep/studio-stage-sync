@@ -340,3 +340,28 @@
 :fullscreen .wstudio-main {
   padding-bottom: 0 !important;
 }
+
+/* W.Studio DAW – light mode overrides.
+   The DAW UI is built dark-first with hard-coded neutral classes.
+   When the user toggles light mode we flip the most common dark surfaces to white. */
+.daw-light { background: #ffffff !important; color: #111 !important; }
+.daw-light .bg-black,
+.daw-light .bg-neutral-950,
+.daw-light .bg-neutral-900 { background-color: #ffffff !important; }
+.daw-light .bg-neutral-800 { background-color: #f1f1f1 !important; }
+.daw-light .bg-gradient-to-b.from-neutral-900,
+.daw-light .bg-gradient-to-b.from-neutral-950 {
+  background-image: none !important;
+  background-color: #fafafa !important;
+}
+.daw-light .text-neutral-100,
+.daw-light .text-neutral-200,
+.daw-light .text-neutral-300,
+.daw-light .text-neutral-400 { color: #1a1a1a !important; }
+.daw-light .text-neutral-500,
+.daw-light .text-neutral-600 { color: #6b6b6b !important; }
+.daw-light .border-neutral-700,
+.daw-light .border-neutral-800,
+.daw-light .border-neutral-900 { border-color: #d4d4d4 !important; }
+.daw-light .shadow-inner.shadow-black\/40,
+.daw-light .shadow-2xl.shadow-black\/60 { box-shadow: 0 1px 2px rgba(0,0,0,0.06) !important; }
