@@ -49,7 +49,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
   const [soundLibOpen, setSoundLibOpen] = useState(true);
   const [soundLibTab, setSoundLibTab] = useState<"sounds" | "packs">("sounds");
   const [dockOpen, setDockOpen] = useState(false);
-  const [dockTab, setDockTab] = useState<"instrument" | "patterns" | "pianoroll" | "effects">("instrument");
+  const [dockTab, setDockTab] = useState<"instrument" | "chords" | "pianoroll" | "effects">("instrument");
   const openDock = (t: typeof dockTab) => { setDockTab(t); setDockOpen(true); };
 
 
