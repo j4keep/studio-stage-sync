@@ -564,6 +564,33 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
       {keyboardOpen && (
         <FloatingKeyboard engine={engineRef.current} onClose={() => setKeyboardOpen(false)} />
       )}
+
+      {exportPrompt && (
+        <div className="fixed inset-0 z-[100] bg-black/60 grid place-items-center" onClick={() => setExportPrompt(null)}>
+          <div className="bg-neutral-950 border border-neutral-800 rounded-lg p-5 w-[360px] shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="text-sm text-neutral-200 font-medium mb-1">Name your bounce</div>
+            <div className="text-[11px] text-neutral-500 mb-3">Saved as a WAV file to your downloads.</div>
+            <input
+              autoFocus
+              defaultValue={exportPrompt.defaultName}
+              onKeyDown={(e) => { if (e.key === "Enter") runExport((e.target as HTMLInputElement).value); if (e.key === "Escape") setExportPrompt(null); }}
+              id="wstudio-export-name"
+              className="w-full h-9 px-3 rounded bg-neutral-900 border border-neutral-800 text-neutral-100 text-sm outline-none focus:border-cyan-400/60"
+            />
+            <div className="flex justify-end gap-2 mt-4">
+              <button onClick={() => setExportPrompt(null)} className="h-8 px-3 rounded text-xs text-neutral-300 hover:text-neutral-100">Cancel</button>
+              <button
+                onClick={() => {
+                  const el = document.getElementById("wstudio-export-name") as HTMLInputElement | null;
+                  runExport(el?.value || exportPrompt.defaultName);
+                }}
+                className="h-8 px-4 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-medium"
+              >Export</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+
   );
 }
