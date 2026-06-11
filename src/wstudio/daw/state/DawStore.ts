@@ -81,9 +81,10 @@ export interface DawState {
   cutClip: (id: string) => void;
   pasteClipAt: (trackId: string, time: number) => void;
   duplicateClip: (id: string) => void;
-  addEffect: (trackId: string, type: EffectId) => void;
+  addEffect: (trackId: string, type: EffectId) => string | null;
   removeEffect: (trackId: string, effectId: string) => void;
   updateEffect: (trackId: string, effectId: string, patch: Partial<EffectInstance>) => void;
+  replaceEffectAtSlot: (trackId: string, slotIndex: number, type: EffectId | null) => string | null;
   setTransport: (patch: Partial<TransportState>) => void;
   setView: (view: DawState["view"]) => void;
   selectTrack: (id: string | null) => void;
