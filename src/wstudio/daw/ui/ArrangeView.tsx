@@ -5,7 +5,7 @@ import { Knob } from "./Knob";
 import { HorizontalMeter } from "./HorizontalMeter";
 import { Trash2, GripVertical } from "lucide-react";
 import { toast } from "sonner";
-import type { Track, Clip } from "../engine/types";
+import type { Track, Clip, MidiNote } from "../engine/types";
 import type { DawEngine } from "../engine/DawEngine";
 
 interface Props {
