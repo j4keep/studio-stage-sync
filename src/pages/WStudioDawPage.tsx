@@ -553,6 +553,9 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
         ))}
       </div>
 
+      {keyboardOpen && (
+        <FloatingKeyboard engine={engineRef.current} onClose={() => setKeyboardOpen(false)} />
+      )}
     </div>
   );
 }
