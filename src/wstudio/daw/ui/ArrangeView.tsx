@@ -654,7 +654,19 @@ function PlayheadMarker({ pxPerSec, ruler = false, recOverride = null }: { pxPer
 const TRIM_LEFT_CURSOR = svgCursor(`<path d='M14 4 H8 V20 H14'/><path d='M8 12 H2'/><polyline points='5 9 2 12 5 15'/>`, 8, 12);
 const TRIM_RIGHT_CURSOR = svgCursor(`<path d='M10 4 H16 V20 H10'/><path d='M16 12 H22'/><polyline points='19 9 22 12 19 15'/>`, 16, 12);
 
-function ClipBlock({ clip, color, pxPerSec, selected, tool, onSelect, onContext, onToolApply, onPointerDownDrag, onPointerMoveDrag, onPointerUpDrag }: any) {
+function ClipBlock({ clip, color, pxPerSec, selected, tool, onSelect, onContext, onToolApply, onPointerDownDrag, onPointerMoveDrag, onPointerUpDrag }: {
+  clip: Clip;
+  color: string;
+  pxPerSec: number;
+  selected: boolean;
+  tool: string;
+  onSelect: () => void;
+  onContext: (x: number, y: number) => void;
+  onToolApply: (e: React.MouseEvent) => void;
+  onPointerDownDrag: (e: React.PointerEvent, mode: "move" | "resize-left" | "resize-right") => void;
+  onPointerMoveDrag: (e: React.PointerEvent) => void;
+  onPointerUpDrag: () => void;
+}) {
   const w = clip.duration * pxPerSec;
   const left = clip.startTime * pxPerSec;
   const interactive = tool === "pointer" || tool === "trim";
