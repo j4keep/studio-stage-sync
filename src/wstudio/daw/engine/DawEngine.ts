@@ -31,6 +31,8 @@ export class DawEngine {
     analyserL: AnalyserNode;
     analyserR: AnalyserNode;
     inputAnalyser: AnalyserNode;
+    /** Dry, low-gain mic monitor that bypasses inserts/sends to prevent feedback/echo. */
+    directMonitor: GainNode;
     reverbSend: GainNode;
     delaySend: GainNode;
     activeSources: AudioScheduledSourceNode[];
