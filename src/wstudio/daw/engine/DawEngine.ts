@@ -7,6 +7,17 @@ type SharedInputMonitor = {
   refs: Set<string>;
 };
 
+const makeLowLatencyMicConstraints = (inputDeviceId?: string): MediaStreamConstraints => ({
+  audio: {
+    deviceId: inputDeviceId ? { exact: inputDeviceId } : undefined,
+    echoCancellation: false,
+    noiseSuppression: false,
+    autoGainControl: false,
+    channelCount: { ideal: 1 },
+    latency: { ideal: 0.01 },
+  } as MediaTrackConstraints,
+});
+
 /**
  * Browser DAW engine. Holds the AudioContext, master bus, sends, and per-track chains.
  * Scheduling: simple "play all clips" — each play() call schedules every clip on every track
@@ -88,7 +99,7 @@ export class DawEngine {
   private rafId = 0;
 
   constructor() {
-    this.ctx = new AudioContext();
+    this.ctx = new AudioContext({ latencyHint: "interactive" });
     this.masterGain = this.ctx.createGain();
     this.masterGain.gain.value = 1;
     this.masterAnalyser = this.ctx.createAnalyser();
@@ -155,7 +166,7 @@ export class DawEngine {
       const reverbSend = this.ctx.createGain();
       const delaySend = this.ctx.createGain();
       const directMonitor = this.ctx.createGain();
-      directMonitor.gain.value = 0.5; // -6 dB dry monitor to prevent feedback
+      directMonitor.gain.value = 0.35; // dry low-latency monitor with headroom to avoid clipping
       directMonitor.connect(this.masterGain);
       chain = {
         input,
@@ -542,16 +553,7 @@ export class DawEngine {
       if (!shared) {
         let pending = this.pendingInputMonitors.get(deviceKey);
         if (!pending) {
-          pending = navigator.mediaDevices.getUserMedia({
-          audio: {
-            deviceId: inputDeviceId ? { exact: inputDeviceId } : undefined,
-            echoCancellation: true,
-            noiseSuppression: false,
-            autoGainControl: false,
-            channelCount: 1,
-            sampleRate: this.ctx.sampleRate,
-          } as MediaTrackConstraints,
-          }).then((stream) => {
+          pending = navigator.mediaDevices.getUserMedia(makeLowLatencyMicConstraints(inputDeviceId)).then((stream) => {
             const created = { stream, source: this.ctx.createMediaStreamSource(stream), refs: new Set<string>() };
             this.sharedInputMonitors.set(deviceKey, created);
             this.pendingInputMonitors.delete(deviceKey);
@@ -628,18 +630,7 @@ export class DawEngine {
     this.recordingLivePeaks = [];
     const chain = this.trackChains.get(trackId);
     if (chain && !chain.inputMonitoring) await this.startInputMonitoring(trackId, inputDeviceId);
-    const liveStream = chain?.inputMonitorStream ?? await navigator.mediaDevices.getUserMedia({
-      audio: {
-        deviceId: inputDeviceId ? { exact: inputDeviceId } : undefined,
-        // Record the mic stream, while asking the browser to remove DAW playback
-        // from the capture so imported beats do not print into the vocal take.
-        echoCancellation: true,
-        noiseSuppression: false,
-        autoGainControl: false,
-        channelCount: 1,
-        sampleRate: this.ctx.sampleRate,
-      } as MediaTrackConstraints,
-    });
+    const liveStream = chain?.inputMonitorStream ?? await navigator.mediaDevices.getUserMedia(makeLowLatencyMicConstraints(inputDeviceId));
 
     this.micStream = liveStream;
     const src = chain?.inputMonitorSource ?? this.ctx.createMediaStreamSource(liveStream);
