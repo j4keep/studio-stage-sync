@@ -87,7 +87,7 @@ export class DawEngine {
   constructor() {
     this.ctx = new AudioContext();
     this.masterGain = this.ctx.createGain();
-    this.masterGain.gain.value = 0.85;
+    this.masterGain.gain.value = 1;
     this.masterAnalyser = this.ctx.createAnalyser();
     this.masterAnalyser.fftSize = 1024;
     this.masterGain.connect(this.masterAnalyser);
@@ -228,7 +228,7 @@ export class DawEngine {
     if (!c) return;
     const now = this.ctx.currentTime;
     const pan = Math.max(-1, Math.min(1, track.pan));
-    const volume = Math.max(0, Math.min(1, track.volume));
+    const volume = Math.max(0, Math.min(2, track.volume));
     const reverb = Math.max(0, Math.min(1, track.reverbSend));
     const delay = Math.max(0, Math.min(1, track.delaySend));
     c.panner.pan.setTargetAtTime(pan, now, 0.01);
@@ -255,7 +255,7 @@ export class DawEngine {
     this.trackChains.delete(trackId);
   }
 
-  setMasterVolume(v: number) { this.masterGain.gain.value = v; }
+  setMasterVolume(v: number) { this.masterGain.gain.value = Math.max(0, Math.min(2, v)); }
   /** Live-set a track's gain (used by automation playback). Bypasses the store. */
   setLiveTrackVolume(trackId: string, v: number) {
     const c = this.trackChains.get(trackId);
