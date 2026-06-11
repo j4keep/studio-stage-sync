@@ -536,6 +536,17 @@ function TrackHeader({ track, canRecordInput, meters = [], onArm, onMute, onSolo
     <div
       className="border-b border-neutral-800 flex overflow-hidden bg-gradient-to-b from-neutral-900 to-neutral-950"
       style={{ height: TRACK_H }}
+      draggable
+      onDragStart={(e) => {
+        // Don't initiate a track-reorder drag when the user grabs an input/button
+        const tag = (e.target as HTMLElement)?.tagName;
+        if (tag === "INPUT" || tag === "BUTTON" || tag === "TEXTAREA" || tag === "SELECT") {
+          e.preventDefault();
+          return;
+        }
+        e.dataTransfer.setData("application/x-daw-track", track.id);
+        e.dataTransfer.effectAllowed = "move";
+      }}
       onDragOver={(e) => { if (e.dataTransfer.types.includes("application/x-daw-track")) e.preventDefault(); }}
       onDrop={(e) => {
         const id = e.dataTransfer.getData("application/x-daw-track");
@@ -544,11 +555,10 @@ function TrackHeader({ track, canRecordInput, meters = [], onArm, onMute, onSolo
     >
       <div className="w-1.5 shrink-0" style={{ background: track.color }} />
       <div
-        draggable
-        onDragStart={(e) => e.dataTransfer.setData("application/x-daw-track", track.id)}
         className="w-3 shrink-0 grid place-items-center cursor-grab active:cursor-grabbing text-neutral-600 hover:text-neutral-300"
-        title="Drag to reorder track"
+        title="Drag the row to reorder this track"
       ><GripVertical className="w-3 h-3" /></div>
+
 
       <div className="flex-1 p-1.5 flex flex-col gap-1 min-w-0">
         <div className="flex items-center gap-1 min-w-0">
