@@ -399,6 +399,21 @@ export function ArrangeView({ onArmToggle, onSeek, engine, onOpenInstrumentEdito
                 <div
                   className="relative border-b border-neutral-800"
                   style={{ height: TRACK_H, background: "linear-gradient(90deg, rgba(255,255,255,0.02), rgba(0,0,0,0))" }}
+                  onDragOver={(e) => {
+                    if (e.dataTransfer.types.includes("Files")) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      e.dataTransfer.dropEffect = "copy";
+                    }
+                  }}
+                  onDrop={(e) => {
+                    if (!e.dataTransfer.files?.length || !onImportFilesAt) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const time = Math.max(0, (e.clientX - rect.left) / pxPerSec);
+                    onImportFilesAt(t.id, time, e.dataTransfer.files);
+                  }}
                   onClick={(e) => {
                     if (tool === "pencil") {
                       const rect = e.currentTarget.getBoundingClientRect();
