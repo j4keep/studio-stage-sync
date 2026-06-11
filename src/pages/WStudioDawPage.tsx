@@ -286,50 +286,46 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
   }, [metroOutputDeviceId]);
 
 
-  // Keyboard shortcuts
+  // Keyboard shortcuts (customizable — see ShortcutsStore)
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   useEffect(() => {
     const onKey = (ev: KeyboardEvent) => {
       const tag = (ev.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || (ev.target as HTMLElement)?.isContentEditable) return;
-      const meta = ev.metaKey || ev.ctrlKey;
-      if (ev.code === "Space") {
-        ev.preventDefault();
-        if (ev.shiftKey) handleStop();
-        else handlePlayPause();
-      } else if (ev.code === "Enter") {
-        ev.preventDefault();
-        handleRewind();
-      } else if (ev.key.toLowerCase() === "r" && !meta) {
-        ev.preventDefault();
-        handleRecord();
-      } else if (meta && ev.key.toLowerCase() === "z") {
-        ev.preventDefault();
-        if (ev.shiftKey) useDawStore.getState().redo();
-        else useDawStore.getState().undo();
-      } else if (meta && ev.key.toLowerCase() === "c") {
-        const sel = useDawStore.getState().selectedClipId;
-        if (sel) { useDawStore.getState().copyClip(sel); toast.success("Copied"); }
-      } else if (meta && ev.key.toLowerCase() === "x") {
-        const sel = useDawStore.getState().selectedClipId;
-        if (sel) { useDawStore.getState().cutClip(sel); toast.success("Cut"); }
-      } else if (meta && ev.key.toLowerCase() === "v") {
-        const sel = useDawStore.getState().selectedClipId;
-        const st = useDawStore.getState();
-        const clip = st.clips.find(c => c.id === sel);
-        const trackId = clip?.trackId ?? st.tracks[0]?.id;
-        if (trackId) st.pasteClipAt(trackId, st.transport.position);
-      } else if (meta && ev.key.toLowerCase() === "d") {
-        ev.preventDefault();
-        const sel = useDawStore.getState().selectedClipId;
-        if (sel) useDawStore.getState().duplicateClip(sel);
-      } else if (ev.key === "Delete" || ev.key === "Backspace") {
-        const sel = useDawStore.getState().selectedClipId;
-        if (sel) useDawStore.getState().removeClip(sel);
+      const bindings = useShortcutsStore.getState().bindings;
+      const action = matchAction(ev, bindings);
+      if (!action) return;
+      const st = useDawStore.getState();
+      switch (action) {
+        case "play":           ev.preventDefault(); handlePlayPause(); break;
+        case "stop":           ev.preventDefault(); handleStop(); break;
+        case "record":         ev.preventDefault(); handleRecord(); break;
+        case "rewind":         ev.preventDefault(); handleRewind(); break;
+        case "forward5":       ev.preventDefault(); st.setTransport({ position: st.transport.position + 5 }); break;
+        case "back5":          ev.preventDefault(); st.setTransport({ position: Math.max(0, st.transport.position - 5) }); break;
+        case "loop":           ev.preventDefault(); st.setTransport({ loopEnabled: !st.transport.loopEnabled }); break;
+        case "export":         ev.preventDefault(); handleExport(); break;
+        case "undo":           ev.preventDefault(); st.undo(); break;
+        case "redo":           ev.preventDefault(); st.redo(); break;
+        case "copy":           { const sel = st.selectedClipId; if (sel) { st.copyClip(sel); toast.success("Copied"); } break; }
+        case "cut":            { const sel = st.selectedClipId; if (sel) { st.cutClip(sel); toast.success("Cut"); } break; }
+        case "paste":          { const sel = st.selectedClipId; const clip = st.clips.find(c => c.id === sel); const trackId = clip?.trackId ?? st.tracks[0]?.id; if (trackId) st.pasteClipAt(trackId, st.transport.position); break; }
+        case "duplicate":      { ev.preventDefault(); const sel = st.selectedClipId; if (sel) st.duplicateClip(sel); break; }
+        case "deleteClip":     { const sel = st.selectedClipId; if (sel) st.removeClip(sel); break; }
+        case "toggleKeyboard": ev.preventDefault(); setKeyboardOpen(o => !o); break;
+        case "toggleTheme":    ev.preventDefault(); setThemeMode(m => m === "dark" ? "light" : "dark"); break;
+        case "toolPointer":    st.setTool("pointer"); break;
+        case "toolPencil":     st.setTool("pencil"); break;
+        case "toolEraser":     st.setTool("eraser"); break;
+        case "toolScissors":   st.setTool("scissors"); break;
+        case "viewEdit":       st.setView("arrange"); break;
+        case "viewMixer":      st.setView("mixer"); break;
+        case "openShortcuts":  ev.preventDefault(); setShortcutsOpen(o => !o); break;
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [handlePlayPause, handleStop, handleRewind, handleRecord]);
+  }, [handlePlayPause, handleStop, handleRewind, handleRecord, handleExport]);
 
 
   const handleArmToggle = useCallback((trackId: string) => {
