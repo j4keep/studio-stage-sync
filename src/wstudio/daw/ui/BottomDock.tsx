@@ -137,24 +137,60 @@ function InstrumentTab({ engine, trackId }: { engine: DawEngine; trackId: string
     updateTrack(trackId, { instrumentPreset: p.name, synthWave: p.wave, name: p.name });
   };
 
-  const play = (midi: number) => {
-    const dur = sustain ? 1.2 : 0.4;
-    if (autoChords) {
-      [0, 4, 7].forEach(off => triggerSynthNote(engine, trackId, midi + off, dur));
-    } else {
-      triggerSynthNote(engine, trackId, midi, dur);
+  // Active voice map for sustained note-on / note-off (keyboard + mouse).
+  // Keyed by midi pitch so the same key can't double-trigger and create
+  // stuck notes — repeated key-down before key-up is a no-op.
+  const voicesRef = useRef<Map<number, SynthVoice[]>>(new Map());
+
+  const noteOn = (midi: number) => {
+    const existing = voicesRef.current.get(midi);
+    if (existing && existing.length > 0) return; // prevent stuck notes
+    const wave = preset.wave;
+    const targets = autoChords ? [0, 4, 7] : [0];
+    const voices: SynthVoice[] = [];
+    for (const off of targets) {
+      const v = startSynthNote(engine, trackId, midi + off, 0.85, wave);
+      if (v) voices.push(v);
+    }
+    voicesRef.current.set(midi, voices);
+    // If user prefers staccato (sustain off) auto-release shortly.
+    if (!sustain) {
+      setTimeout(() => noteOff(midi), 220);
     }
   };
+
+  const noteOff = (midi: number) => {
+    const voices = voicesRef.current.get(midi);
+    if (!voices) return;
+    voicesRef.current.delete(midi);
+    voices.forEach(v => v.stop(0.18));
+  };
+
+  // Clean up any held voices on unmount or preset/track switch.
+  useEffect(() => {
+    return () => {
+      voicesRef.current.forEach(arr => arr.forEach(v => v.stop(0.05)));
+      voicesRef.current.clear();
+    };
+  }, [trackId]);
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement)?.tagName === "INPUT") return;
       const n = KEY_MAP[e.key.toLowerCase()];
-      if (n != null && !e.repeat) play(n + octave * 12);
+      if (n != null && !e.repeat) noteOn(n + octave * 12);
+    };
+    const up = (e: KeyboardEvent) => {
+      const n = KEY_MAP[e.key.toLowerCase()];
+      if (n != null) noteOff(n + octave * 12);
     };
     window.addEventListener("keydown", down);
-    return () => window.removeEventListener("keydown", down);
-  }, [octave, sustain, autoChords, trackId]);
+    window.addEventListener("keyup", up);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+    };
+  }, [octave, sustain, autoChords, trackId, preset.wave]);
 
   return (
     <div className="h-full flex flex-col">
@@ -200,8 +236,9 @@ function InstrumentTab({ engine, trackId }: { engine: DawEngine; trackId: string
 
       {/* Keyboard */}
       <div className="flex-1 overflow-hidden p-3">
-        <PianoKeyboard onPlay={play} octave={octave} />
+        <PianoKeyboard onDown={noteOn} onUp={noteOff} octave={octave} />
       </div>
+
 
       {presetOpen && (
         <PresetModal
