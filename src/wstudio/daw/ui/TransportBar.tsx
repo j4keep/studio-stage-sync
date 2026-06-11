@@ -398,7 +398,7 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
         </div>
       </Tip>
 
-      <Tip label="Export / bounce project to WAV file">
+      <Tip label="Export / bounce project to WAV  ·  ⌘E">
         <button
           type="button"
           onClick={onExport}
