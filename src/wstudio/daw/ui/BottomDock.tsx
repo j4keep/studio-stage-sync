@@ -3,7 +3,7 @@ import { X, Maximize2, Minimize2, ChevronLeft, ChevronRight, ChevronDown, Search
 import { useDawStore, newId } from "../state/DawStore";
 import { FxRack } from "./FxRack";
 import type { DawEngine } from "../engine/DawEngine";
-import { triggerSynthNote, midiToFreq, startSynthNote, type SynthVoice } from "../engine/DawEngine";
+import { triggerSynthNote, midiToFreq, startSynthNote, triggerDrumHit, type SynthVoice } from "../engine/DawEngine";
 import type { MidiNote, Clip } from "../engine/types";
 
 type Tab = "instrument" | "chords" | "pianoroll" | "effects";
