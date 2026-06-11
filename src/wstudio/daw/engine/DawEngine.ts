@@ -317,6 +317,9 @@ export class DawEngine {
       } catch {}
     }
 
+    // Schedule MIDI notes for instrument tracks via the simple synth engine.
+    scheduleMidiClips(this, tracks, clips, transport.position, this.startCtxTime, transport.bpm);
+
     // Position loop. Emit every frame for smooth playhead. The transport
     // bar and arrange view memoize subcomponents so re-renders are cheap.
     const loopEnabled = !!transport.loopEnabled;
@@ -793,22 +796,117 @@ export function midiToFreq(note: number): number {
   return 440 * Math.pow(2, (note - 69) / 12);
 }
 
-/** Trigger a one-shot synth note immediately on a track's input. */
-export function triggerSynthNote(engine: DawEngine, trackId: string, midi: number, durationSec = 0.4, velocity = 0.8) {
+/** Voice handle for a sustained synth note. Calling stop twice is a safe no-op. */
+export interface SynthVoice {
+  stop: (releaseSec?: number) => void;
+  midi: number;
+  trackId: string;
+}
+
+/**
+ * Start a sustained synth note. The note rings until `stop()` is called.
+ * Single-osc with ADSR. Waveform is resolved from the track's `synthWave`
+ * preset unless `wave` is explicitly passed.
+ */
+export function startSynthNote(
+  engine: DawEngine,
+  trackId: string,
+  midi: number,
+  velocity = 0.8,
+  wave?: OscillatorType,
+): SynthVoice | null {
   const chain = (engine as any).trackChains.get(trackId);
-  if (!chain) return;
+  if (!chain) return null;
   const ctx = engine.ctx;
   const now = ctx.currentTime;
+
   const osc = ctx.createOscillator();
   const env = ctx.createGain();
-  osc.type = "sawtooth";
+  osc.type = wave ?? "sawtooth";
   osc.frequency.value = midiToFreq(midi);
-  env.gain.setValueAtTime(0, now);
-  env.gain.linearRampToValueAtTime(velocity * 0.6, now + 0.01);
-  env.gain.exponentialRampToValueAtTime(0.0001, now + durationSec);
+
+  const peak = Math.max(0, Math.min(1, velocity)) * 0.55;
+  const sustain = peak * 0.7;
+  env.gain.cancelScheduledValues(now);
+  env.gain.setValueAtTime(0.0001, now);
+  env.gain.linearRampToValueAtTime(peak, now + 0.01);
+  env.gain.linearRampToValueAtTime(sustain, now + 0.11);
+
   osc.connect(env).connect(chain.input);
   osc.start(now);
-  osc.stop(now + durationSec + 0.05);
+
+  let stopped = false;
+  const stop = (releaseSec = 0.2) => {
+    if (stopped) return;
+    stopped = true;
+    const t = ctx.currentTime;
+    const r = Math.max(0.03, releaseSec);
+    try {
+      env.gain.cancelScheduledValues(t);
+      env.gain.setValueAtTime(env.gain.value, t);
+      env.gain.exponentialRampToValueAtTime(0.0001, t + r);
+      osc.stop(t + r + 0.02);
+    } catch {}
+  };
+  return { stop, midi, trackId };
+}
+
+/** One-shot: start a note and release it after `durationSec`. */
+export function triggerSynthNote(engine: DawEngine, trackId: string, midi: number, durationSec = 0.4, velocity = 0.8, wave?: OscillatorType) {
+  const v = startSynthNote(engine, trackId, midi, velocity, wave);
+  if (!v) return;
+  setTimeout(() => v.stop(0.15), Math.max(20, durationSec * 1000));
+}
+
+/**
+ * Schedule all MIDI notes inside MIDI clips for playback. Called from play().
+ * Each scheduled voice is registered as an active source so stop()/stopAllSources()
+ * will tear it down cleanly. Notes with start times before `transportPos` are skipped.
+ */
+export function scheduleMidiClips(engine: DawEngine, tracks: Track[], clips: Clip[], transportPos: number, ctxStartTime: number, bpm: number) {
+  const secPerBeat = 60 / Math.max(1, bpm);
+  for (const clip of clips) {
+    if (!clip.notes || clip.notes.length === 0) continue;
+    const track = tracks.find(t => t.id === clip.trackId);
+    if (!track || track.kind !== "instrument") continue;
+    const chain = (engine as any).trackChains.get(track.id);
+    if (!chain) continue;
+    const wave = (track.synthWave as OscillatorType) || "sawtooth";
+
+    for (const n of clip.notes) {
+      const noteStartTl = clip.startTime + n.start * secPerBeat;
+      const noteDur = Math.max(0.05, n.length * secPerBeat);
+      const noteEndTl = noteStartTl + noteDur;
+      if (noteEndTl <= transportPos) continue;
+      const effectiveStartDelay = Math.max(0, noteStartTl - transportPos);
+      const effectiveDur = noteEndTl - Math.max(transportPos, noteStartTl);
+      const when = ctxStartTime + effectiveStartDelay;
+
+      const ctx = engine.ctx;
+      const osc = ctx.createOscillator();
+      const env = ctx.createGain();
+      osc.type = wave;
+      osc.frequency.value = midiToFreq(n.pitch);
+      const peak = Math.max(0, Math.min(1, n.velocity ?? 0.8)) * 0.55;
+      const sustain = peak * 0.7;
+      env.gain.setValueAtTime(0.0001, when);
+      env.gain.linearRampToValueAtTime(peak, when + 0.01);
+      env.gain.linearRampToValueAtTime(sustain, when + Math.min(0.11, effectiveDur * 0.3));
+      const releaseStart = when + effectiveDur;
+      env.gain.setValueAtTime(env.gain.value, releaseStart);
+      env.gain.exponentialRampToValueAtTime(0.0001, releaseStart + 0.18);
+
+      osc.connect(env).connect(chain.input);
+      try {
+        osc.start(when);
+        osc.stop(releaseStart + 0.22);
+        chain.activeSources.push(osc);
+        osc.onended = () => {
+          chain.activeSources = chain.activeSources.filter((s: AudioScheduledSourceNode) => s !== osc);
+        };
+      } catch {}
+    }
+  }
 }
 
 /** Trigger a drum hit (simple noise/click sound). */

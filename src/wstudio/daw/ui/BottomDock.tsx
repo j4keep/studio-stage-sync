@@ -3,7 +3,7 @@ import { X, Maximize2, Minimize2, ChevronLeft, ChevronRight, ChevronDown, Search
 import { useDawStore, newId } from "../state/DawStore";
 import { FxRack } from "./FxRack";
 import type { DawEngine } from "../engine/DawEngine";
-import { triggerSynthNote, midiToFreq } from "../engine/DawEngine";
+import { triggerSynthNote, midiToFreq, startSynthNote, type SynthVoice } from "../engine/DawEngine";
 import type { MidiNote, Clip } from "../engine/types";
 
 type Tab = "instrument" | "chords" | "pianoroll" | "effects";
@@ -137,24 +137,60 @@ function InstrumentTab({ engine, trackId }: { engine: DawEngine; trackId: string
     updateTrack(trackId, { instrumentPreset: p.name, synthWave: p.wave, name: p.name });
   };
 
-  const play = (midi: number) => {
-    const dur = sustain ? 1.2 : 0.4;
-    if (autoChords) {
-      [0, 4, 7].forEach(off => triggerSynthNote(engine, trackId, midi + off, dur));
-    } else {
-      triggerSynthNote(engine, trackId, midi, dur);
+  // Active voice map for sustained note-on / note-off (keyboard + mouse).
+  // Keyed by midi pitch so the same key can't double-trigger and create
+  // stuck notes — repeated key-down before key-up is a no-op.
+  const voicesRef = useRef<Map<number, SynthVoice[]>>(new Map());
+
+  const noteOn = (midi: number) => {
+    const existing = voicesRef.current.get(midi);
+    if (existing && existing.length > 0) return; // prevent stuck notes
+    const wave = preset.wave;
+    const targets = autoChords ? [0, 4, 7] : [0];
+    const voices: SynthVoice[] = [];
+    for (const off of targets) {
+      const v = startSynthNote(engine, trackId, midi + off, 0.85, wave);
+      if (v) voices.push(v);
+    }
+    voicesRef.current.set(midi, voices);
+    // If user prefers staccato (sustain off) auto-release shortly.
+    if (!sustain) {
+      setTimeout(() => noteOff(midi), 220);
     }
   };
+
+  const noteOff = (midi: number) => {
+    const voices = voicesRef.current.get(midi);
+    if (!voices) return;
+    voicesRef.current.delete(midi);
+    voices.forEach(v => v.stop(0.18));
+  };
+
+  // Clean up any held voices on unmount or preset/track switch.
+  useEffect(() => {
+    return () => {
+      voicesRef.current.forEach(arr => arr.forEach(v => v.stop(0.05)));
+      voicesRef.current.clear();
+    };
+  }, [trackId]);
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement)?.tagName === "INPUT") return;
       const n = KEY_MAP[e.key.toLowerCase()];
-      if (n != null && !e.repeat) play(n + octave * 12);
+      if (n != null && !e.repeat) noteOn(n + octave * 12);
+    };
+    const up = (e: KeyboardEvent) => {
+      const n = KEY_MAP[e.key.toLowerCase()];
+      if (n != null) noteOff(n + octave * 12);
     };
     window.addEventListener("keydown", down);
-    return () => window.removeEventListener("keydown", down);
-  }, [octave, sustain, autoChords, trackId]);
+    window.addEventListener("keyup", up);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+    };
+  }, [octave, sustain, autoChords, trackId, preset.wave]);
 
   return (
     <div className="h-full flex flex-col">
@@ -200,8 +236,9 @@ function InstrumentTab({ engine, trackId }: { engine: DawEngine; trackId: string
 
       {/* Keyboard */}
       <div className="flex-1 overflow-hidden p-3">
-        <PianoKeyboard onPlay={play} octave={octave} />
+        <PianoKeyboard onDown={noteOn} onUp={noteOff} octave={octave} />
       </div>
+
 
       {presetOpen && (
         <PresetModal
@@ -252,32 +289,41 @@ function Toggle({ label, on, onClick }: { label: string; on: boolean; onClick: (
   );
 }
 
-function PianoKeyboard({ onPlay, octave }: { onPlay: (n: number) => void; octave: number }) {
+function PianoKeyboard({ onDown, onUp, octave }: { onDown: (n: number) => void; onUp: (n: number) => void; octave: number }) {
   // Render 2 octaves of white keys starting at C4
   const whites: { midi: number; idx: number }[] = [];
-  const blacks: { midi: number; whiteBefore: number }[] = [];
-  const semitones = [0,2,4,5,7,9,11]; // white offsets in an octave
-  const blacksMap = [1,3,6,8,10];     // black offsets
+  const semitones = [0,2,4,5,7,9,11];
   let wi = 0;
   for (let o = 0; o < 2; o++) {
     for (const s of semitones) { whites.push({ midi: 60 + o * 12 + s, idx: wi }); wi++; }
   }
-  for (let o = 0; o < 2; o++) {
-    for (const b of blacksMap) {
-      const before = whites.findIndex(w => w.midi > 60 + o * 12 + b) - 1;
-      blacks.push({ midi: 60 + o * 12 + b, whiteBefore: before });
-    }
-  }
+
+  // Pointer handlers that fire note-on on press and note-off on release/leave.
+  // Using onPointerDown + onPointerUp + onPointerLeave avoids stuck notes if
+  // the cursor drags off the key before releasing.
+  const press = (n: number) => (e: React.PointerEvent) => {
+    e.preventDefault();
+    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+    onDown(n);
+  };
+  const release = (n: number) => (e: React.PointerEvent) => {
+    try { (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId); } catch {}
+    onUp(n);
+  };
 
   return (
     <div className="relative h-full w-full" style={{ minHeight: 140 }}>
       <div className="absolute inset-0 flex">
         {whites.map(w => {
           const label = KEY_LABELS[w.midi];
+          const midi = w.midi + octave * 12;
           return (
             <button
               key={w.midi}
-              onPointerDown={() => onPlay(w.midi + octave * 12)}
+              onPointerDown={press(midi)}
+              onPointerUp={release(midi)}
+              onPointerLeave={release(midi)}
+              onPointerCancel={release(midi)}
               className="flex-1 mx-[1px] rounded-b-md bg-gradient-to-b from-white to-neutral-200 hover:from-teal-50 hover:to-teal-200 active:from-teal-200 active:to-teal-300 border border-neutral-300 shadow-inner relative"
             >
               {label && (
@@ -289,13 +335,16 @@ function PianoKeyboard({ onPlay, octave }: { onPlay: (n: number) => void; octave
       </div>
       <div className="absolute inset-0 flex pointer-events-none">
         {whites.map((w, i) => {
-          const isLastInOct = i % 7 === 2 || i % 7 === 6; // E, B have no black after
+          const isLastInOct = i % 7 === 2 || i % 7 === 6;
           if (isLastInOct) return <div key={i} className="flex-1" />;
-          const midi = w.midi + 1;
+          const midi = w.midi + 1 + octave * 12;
           return (
             <div key={i} className="flex-1 relative">
               <button
-                onPointerDown={() => onPlay(midi + octave * 12)}
+                onPointerDown={press(midi)}
+                onPointerUp={release(midi)}
+                onPointerLeave={release(midi)}
+                onPointerCancel={release(midi)}
                 className="absolute right-0 translate-x-1/2 top-0 h-[62%] w-[60%] bg-gradient-to-b from-neutral-800 to-black hover:from-purple-700 hover:to-purple-900 active:from-purple-600 rounded-b-md border border-neutral-900 z-10 pointer-events-auto shadow-lg"
               />
             </div>
@@ -305,6 +354,7 @@ function PianoKeyboard({ onPlay, octave }: { onPlay: (n: number) => void; octave
     </div>
   );
 }
+
 
 /* ===================================================================== */
 /* PRESET MODAL                                                           */
@@ -413,6 +463,7 @@ function ChordsTab({ engine, trackId }: { engine: DawEngine; trackId: string }) 
   const addClip = useDawStore(s => s.addClip);
   const playhead = useDawStore(s => s.transport.position);
   const bpm = useDawStore(s => s.transport.bpm);
+  const wave = (useDawStore(s => s.tracks.find(t => t.id === trackId)?.synthWave) || "sawtooth") as OscillatorType;
   const [style, setStyle] = useState<"Full Chord" | "On One" | "Stabs" | "Arp Up" | "Arp Down">("Full Chord");
   const [chordType, setChordType] = useState<"Triad" | "7th" | "Add9">("Triad");
   const [strum, setStrum] = useState(0);
@@ -432,10 +483,11 @@ function ChordsTab({ engine, trackId }: { engine: DawEngine; trackId: string }) 
 
   const playChord = (notes: number[]) => {
     const stagger = strum * 0.02;
-    notes.forEach((n, i) => setTimeout(() => triggerSynthNote(engine, trackId, n, style === "Stabs" ? 0.15 : 0.8), i * stagger * 1000));
-    if (style === "Arp Up") notes.forEach((n, i) => setTimeout(() => triggerSynthNote(engine, trackId, n, 0.2), i * 120));
-    if (style === "Arp Down") [...notes].reverse().forEach((n, i) => setTimeout(() => triggerSynthNote(engine, trackId, n, 0.2), i * 120));
+    notes.forEach((n, i) => setTimeout(() => triggerSynthNote(engine, trackId, n, style === "Stabs" ? 0.15 : 0.8, 0.8, wave), i * stagger * 1000));
+    if (style === "Arp Up") notes.forEach((n, i) => setTimeout(() => triggerSynthNote(engine, trackId, n, 0.2, 0.8, wave), i * 120));
+    if (style === "Arp Down") [...notes].reverse().forEach((n, i) => setTimeout(() => triggerSynthNote(engine, trackId, n, 0.2, 0.8, wave), i * 120));
   };
+
 
   const addChordClip = (c: { name: string; notes: number[] }) => {
     const beatsPerBar = useDawStore.getState().transport.timeSigNum || 4;
