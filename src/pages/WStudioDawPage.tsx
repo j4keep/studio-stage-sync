@@ -398,30 +398,43 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
         <LibraryPanel
           onImportFiles={importFiles}
           onAddUserPlugin={(name) => toast.success(`Added plug-in: ${name}`)}
+          onBrowseLoops={() => { setSoundLibTab("sounds"); setSoundLibOpen(true); }}
+          onPatterns={() => {
+            const hasDrum = tracks.some(t => t.kind === "instrument" && t.instrument === "drum");
+            if (!hasDrum) {
+              const id = addTrack("instrument", "Drums");
+              updateTrack(id, { instrument: "drum" });
+            }
+            openDock("patterns");
+          }}
+          onPlaySynth={() => {
+            const hasSynth = tracks.some(t => t.kind === "instrument" && t.instrument === "synth");
+            if (!hasSynth) {
+              const id = addTrack("instrument", "Synth");
+              updateTrack(id, { instrument: "synth" });
+            }
+            openDock("instrument");
+          }}
+          onAddTrack={() => addTrack("audio")}
+          onImport={() => importInputRef.current?.click()}
         />
 
         <div className="flex-1 relative flex flex-col overflow-hidden">
           {view === "arrange" && <ArrangeView onArmToggle={handleArmToggle} onSeek={handleSeek} engine={engineRef.current} />}
           {view === "mixer" && <MixerView engine={engineRef.current} onOpenFx={setFxTrackId} onArmToggle={handleArmToggle} />}
           {view === "instrument" && <InstrumentPanel engine={engineRef.current} />}
-          {view === "arrange" && clips.length === 0 && (
-            <QuickActionCards
-              onBrowseLoops={() => { setSoundLibTab("sounds"); setSoundLibOpen(true); }}
-              onPatterns={() => {
-                const id = addTrack("instrument", "Drums");
-                updateTrack(id, { instrument: "drum" });
-                useDawStore.getState().setView("instrument");
-              }}
-              onPlaySynth={() => {
-                const id = addTrack("instrument", "Synth");
-                updateTrack(id, { instrument: "synth" });
-                useDawStore.getState().setView("instrument");
-              }}
-              onAddTrack={() => addTrack("audio")}
-              onImport={() => importInputRef.current?.click()}
+
+          {view === "arrange" && (
+            <BottomDock
+              engine={engineRef.current}
+              open={dockOpen}
+              tab={dockTab}
+              onTab={setDockTab}
+              onClose={() => setDockOpen(false)}
             />
           )}
         </div>
+
 
         <SoundLibraryPanel
           engine={engineRef.current}
