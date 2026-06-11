@@ -317,6 +317,9 @@ export class DawEngine {
       } catch {}
     }
 
+    // Schedule MIDI notes for instrument tracks via the simple synth engine.
+    scheduleMidiClips(this, tracks, clips, transport.position, this.startCtxTime, transport.bpm);
+
     // Position loop. Emit every frame for smooth playhead. The transport
     // bar and arrange view memoize subcomponents so re-renders are cheap.
     const loopEnabled = !!transport.loopEnabled;
