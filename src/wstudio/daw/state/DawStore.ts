@@ -249,7 +249,7 @@ export const useDawStore = create<DawState>((set, get) => ({
     set({
       clips: [...get().clips, clip],
       tracks: importedAudioFile
-        ? get().tracks.map(t => t.id === clip.trackId ? { ...t, inputEnabled: false, armed: false } : t)
+        ? get().tracks.map(t => t.id === clip.trackId && t.kind === "audio" ? { ...t, inputEnabled: false, armed: false } : t)
         : get().tracks,
     });
   },
