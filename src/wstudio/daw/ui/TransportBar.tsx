@@ -297,7 +297,7 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
       )}
 
       {onToggleTheme && (
-        <Tip label={`Switch to ${themeMode === "dark" ? "light" : "dark"} mode`}>
+        <Tip label={`Switch to ${themeMode === "dark" ? "light" : "dark"} mode  ·  Shift+D`}>
           <button
             type="button"
             onClick={onToggleTheme}
