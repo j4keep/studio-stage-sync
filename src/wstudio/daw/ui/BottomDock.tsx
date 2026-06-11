@@ -125,6 +125,9 @@ function EmptyHint() {
 function InstrumentTab({ engine, trackId }: { engine: DawEngine; trackId: string }) {
   const track = useDawStore(s => s.tracks.find(t => t.id === trackId)!);
   const updateTrack = useDawStore(s => s.updateTrack);
+  const addClip = useDawStore(s => s.addClip);
+  const updateClip = useDawStore(s => s.updateClip);
+  const isRecording = useDawStore(s => s.transport.isRecording);
   const [octave, setOctave] = useState(0);
   const [sustain, setSustain] = useState(false);
   const [autoChords, setAutoChords] = useState(false);
@@ -141,6 +144,60 @@ function InstrumentTab({ engine, trackId }: { engine: DawEngine; trackId: string
   // Keyed by midi pitch so the same key can't double-trigger and create
   // stuck notes — repeated key-down before key-up is a no-op.
   const voicesRef = useRef<Map<number, SynthVoice[]>>(new Map());
+  const midiRecRef = useRef<{
+    clipId: string;
+    clipStart: number;
+    notes: Map<number, { id: string; startBeat: number }>;
+  } | null>(null);
+
+  const recordNoteOn = (midi: number, velocity = 0.85) => {
+    const st = useDawStore.getState();
+    const recTrack = st.tracks.find(t => t.id === trackId);
+    if (!st.transport.isRecording || !recTrack?.armed || recTrack.kind !== "instrument") return;
+    const secPerBeat = 60 / Math.max(1, st.transport.bpm);
+    const clipStart = midiRecRef.current?.clipStart ?? st.transport.position;
+    const startBeat = Math.max(0, (st.transport.position - clipStart) / secPerBeat);
+    if (!midiRecRef.current) {
+      const clipId = newId("clip");
+      midiRecRef.current = { clipId, clipStart, notes: new Map() };
+      addClip({
+        id: clipId,
+        trackId,
+        startTime: clipStart,
+        duration: Math.max(secPerBeat, secPerBeat * 4),
+        offset: 0,
+        name: "MIDI Recording",
+        notes: [],
+        color: "#a855f7",
+      });
+    }
+    if (midiRecRef.current.notes.has(midi)) return;
+    const noteId = newId("n");
+    midiRecRef.current.notes.set(midi, { id: noteId, startBeat });
+    const clip = useDawStore.getState().clips.find(c => c.id === midiRecRef.current?.clipId);
+    const notes = clip?.notes ?? [];
+    updateClip(midiRecRef.current.clipId, {
+      notes: [...notes, { id: noteId, start: startBeat, length: 0.25, pitch: midi, velocity }],
+    });
+  };
+
+  const recordNoteOff = (midi: number) => {
+    const rec = midiRecRef.current;
+    if (!rec) return;
+    const held = rec.notes.get(midi);
+    if (!held) return;
+    rec.notes.delete(midi);
+    const st = useDawStore.getState();
+    const secPerBeat = 60 / Math.max(1, st.transport.bpm);
+    const endBeat = Math.max(held.startBeat + 0.125, (st.transport.position - rec.clipStart) / secPerBeat);
+    const length = Math.max(0.125, endBeat - held.startBeat);
+    const clip = st.clips.find(c => c.id === rec.clipId);
+    const notes = (clip?.notes ?? []).map(n => n.id === held.id ? { ...n, length } : n);
+    updateClip(rec.clipId, {
+      notes,
+      duration: Math.max(clip?.duration ?? 0, (held.startBeat + length) * secPerBeat),
+    });
+  };
 
   const noteOn = (midi: number) => {
     const existing = voicesRef.current.get(midi);
@@ -149,8 +206,10 @@ function InstrumentTab({ engine, trackId }: { engine: DawEngine; trackId: string
     const targets = autoChords ? [0, 4, 7] : [0];
     const voices: SynthVoice[] = [];
     for (const off of targets) {
-      const v = startSynthNote(engine, trackId, midi + off, 0.85, wave);
+      const pitch = midi + off;
+      const v = startSynthNote(engine, trackId, pitch, 0.85, wave);
       if (v) voices.push(v);
+      recordNoteOn(pitch, 0.85);
     }
     voicesRef.current.set(midi, voices);
     // If user prefers staccato (sustain off) auto-release shortly.
@@ -163,7 +222,7 @@ function InstrumentTab({ engine, trackId }: { engine: DawEngine; trackId: string
     const voices = voicesRef.current.get(midi);
     if (!voices) return;
     voicesRef.current.delete(midi);
-    voices.forEach(v => v.stop(0.18));
+    voices.forEach(v => { v.stop(0.18); recordNoteOff(v.midi); });
   };
 
   // Clean up any held voices on unmount or preset/track switch.
@@ -173,6 +232,15 @@ function InstrumentTab({ engine, trackId }: { engine: DawEngine; trackId: string
       voicesRef.current.clear();
     };
   }, [trackId]);
+
+  useEffect(() => {
+    if (isRecording) return;
+    const rec = midiRecRef.current;
+    if (rec) {
+      Array.from(rec.notes.keys()).forEach(recordNoteOff);
+    }
+    midiRecRef.current = null;
+  }, [isRecording]);
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {

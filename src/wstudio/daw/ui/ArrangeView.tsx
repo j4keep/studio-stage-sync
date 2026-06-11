@@ -5,7 +5,7 @@ import { Knob } from "./Knob";
 import { HorizontalMeter } from "./HorizontalMeter";
 import { Trash2, GripVertical } from "lucide-react";
 import { toast } from "sonner";
-import type { Track, Clip } from "../engine/types";
+import type { Track, Clip, MidiNote } from "../engine/types";
 import type { DawEngine } from "../engine/DawEngine";
 
 interface Props {
@@ -654,7 +654,19 @@ function PlayheadMarker({ pxPerSec, ruler = false, recOverride = null }: { pxPer
 const TRIM_LEFT_CURSOR = svgCursor(`<path d='M14 4 H8 V20 H14'/><path d='M8 12 H2'/><polyline points='5 9 2 12 5 15'/>`, 8, 12);
 const TRIM_RIGHT_CURSOR = svgCursor(`<path d='M10 4 H16 V20 H10'/><path d='M16 12 H22'/><polyline points='19 9 22 12 19 15'/>`, 16, 12);
 
-function ClipBlock({ clip, color, pxPerSec, selected, tool, onSelect, onContext, onToolApply, onPointerDownDrag, onPointerMoveDrag, onPointerUpDrag }: any) {
+function ClipBlock({ clip, color, pxPerSec, selected, tool, onSelect, onContext, onToolApply, onPointerDownDrag, onPointerMoveDrag, onPointerUpDrag }: {
+  clip: Clip;
+  color: string;
+  pxPerSec: number;
+  selected: boolean;
+  tool: string;
+  onSelect: () => void;
+  onContext: (x: number, y: number) => void;
+  onToolApply: (e: React.MouseEvent) => void;
+  onPointerDownDrag: (e: React.PointerEvent, mode: "move" | "resize-left" | "resize-right") => void;
+  onPointerMoveDrag: (e: React.PointerEvent) => void;
+  onPointerUpDrag: () => void;
+}) {
   const w = clip.duration * pxPerSec;
   const left = clip.startTime * pxPerSec;
   const interactive = tool === "pointer" || tool === "trim";
@@ -692,6 +704,28 @@ function ClipBlock({ clip, color, pxPerSec, selected, tool, onSelect, onContext,
       </div>
       <div className="absolute inset-x-0 top-4 bottom-0 pointer-events-none">
         {clip.peaks && <WaveformView peaks={clip.peaks} width={Math.max(1, w)} height={TRACK_H - 24} color={color} offsetRatio={offsetRatio} spanRatio={spanRatio} />}
+        {clip.notes && clip.notes.length > 0 && (
+          <div className="absolute inset-1 rounded bg-purple-500/15 border border-purple-300/20 overflow-hidden">
+            {clip.notes.map((n: MidiNote) => {
+              const minPitch = Math.min(...clip.notes.map((x: MidiNote) => x.pitch));
+              const maxPitch = Math.max(...clip.notes.map((x: MidiNote) => x.pitch));
+              const range = Math.max(1, maxPitch - minPitch);
+              const noteStartSec = n.start * (60 / Math.max(1, useDawStore.getState().transport.bpm));
+              const noteLenSec = n.length * (60 / Math.max(1, useDawStore.getState().transport.bpm));
+              return (
+                <div
+                  key={n.id}
+                  className="absolute h-1 rounded-full bg-purple-200/85 shadow-[0_0_4px_rgba(216,180,254,0.7)]"
+                  style={{
+                    left: `${(noteStartSec / Math.max(0.25, clip.duration)) * 100}%`,
+                    width: `${Math.max(3, (noteLenSec / Math.max(0.25, clip.duration)) * 100)}%`,
+                    top: `${8 + (1 - (n.pitch - minPitch) / range) * 70}%`,
+                  }}
+                />
+              );
+            })}
+          </div>
+        )}
       </div>
       {/* Left trim handle */}
       <div
