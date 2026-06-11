@@ -303,6 +303,7 @@ export function ArrangeView({ onArmToggle, onSeek, engine, onOpenInstrumentEdito
                     onPan={(v) => updateTrack(t.id, { pan: v })}
                     onDropTrack={(fromId) => reorderTracks(fromId, t.id)}
                     onToggleAuto={() => toggleAutomationLane(t.id)}
+                    onOpenEditor={t.kind === "instrument" && onOpenInstrumentEditor ? () => onOpenInstrumentEditor(t.id) : undefined}
                   />
                   {t.automationOpen && (
                     <AutomationLaneHeader
