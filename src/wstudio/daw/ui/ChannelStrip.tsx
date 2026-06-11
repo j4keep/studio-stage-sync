@@ -20,14 +20,15 @@ const FX_LIST: EffectId[] = ["eq3", "compressor", "reverb", "delay", "chorus", "
 const INSERT_SLOTS = 5;
 
 
-export function ChannelStrip({ track, engine, onOpenFx, onArmToggle, rows }: Props) {
+export function ChannelStrip({ track, engine, onOpenPlugin, onArmToggle, rows }: Props) {
   const updateTrack = useDawStore(s => s.updateTrack);
   const selectTrack = useDawStore(s => s.selectTrack);
   const selectedTrackId = useDawStore(s => s.selectedTrackId);
-  const addEffect = useDawStore(s => s.addEffect);
+  const replaceEffectAtSlot = useDawStore(s => s.replaceEffectAtSlot);
   const clips = useDawStore(s => s.clips);
   const trackClips = clips.filter(c => c.trackId === track.id);
-  const [fxMenu, setFxMenu] = useState(false);
+  const [openSlot, setOpenSlot] = useState<number | null>(null);
+
   const stereo = engine.getTrackStereoAnalysers(track.id);
   const mono = engine.getTrackAnalyser(track.id);
   const inputAn = engine.getTrackInputAnalyser(track.id);
