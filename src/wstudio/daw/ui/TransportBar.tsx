@@ -382,7 +382,7 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
       </DropdownMenu>
 
       <DropdownMenu>
-        <Tip label={`View: ${view === "arrange" ? "Edit" : view.charAt(0).toUpperCase() + view.slice(1)}  ·  X edit  ·  M mixer`}>
+        <Tip label={`View: ${view === "arrange" ? "Edit" : view.charAt(0).toUpperCase() + view.slice(1)}  ·  ${kViewEdit} edit  ·  ${kViewMixer} mixer`}>
           <DropdownMenuTrigger
             aria-label="Switch view"
             className="h-9 w-9 grid place-items-center rounded-md border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-cyan-300"
