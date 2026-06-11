@@ -649,7 +649,7 @@ export class DawEngine {
     }
 
     // Capture clean mic samples for the clip + drive the live waveform overlay
-    const proc = this.ctx.createScriptProcessor(4096, 1, 1);
+    const proc = this.ctx.createScriptProcessor(256, 1, 1);
     src.connect(proc);
     // ScriptProcessor requires a destination connection to run. Use a silent
     // sink so the mic NEVER reaches the speakers (no feedback, no distortion).
