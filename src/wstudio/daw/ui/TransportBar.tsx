@@ -438,21 +438,21 @@ function MetronomePopover() {
 
   return (
     <Popover>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          title="Metronome — click to open settings"
-          className={`h-7 px-2 rounded border text-[10px] uppercase tracking-wider flex items-center gap-1 ${
-            transport.metronome
-              ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
-              : "bg-neutral-900 border-neutral-800 text-neutral-300 hover:bg-neutral-800"
-          }`}
-        >
-          <Timer className="w-3 h-3" />
-          Metro
-          <ChevronDown className="w-3 h-3 opacity-70" />
-        </button>
-      </PopoverTrigger>
+      <Tip label={`Metronome ${transport.metronome ? "On" : "Off"} — click for settings`}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            aria-label="Metronome settings"
+            className={`h-9 w-9 grid place-items-center rounded-md border ${
+              transport.metronome
+                ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                : "bg-neutral-900 border-neutral-800 text-neutral-300 hover:bg-neutral-800"
+            }`}
+          >
+            <Timer className="w-4 h-4" />
+          </button>
+        </PopoverTrigger>
+      </Tip>
       <PopoverContent
         align="start"
         sideOffset={6}
