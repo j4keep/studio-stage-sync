@@ -8,7 +8,7 @@ const ROW_LABELS = [
   { key: "setting", label: "Setting", h: 26 },
   { key: "eq", label: "EQ", h: 50 },
   { key: "input", label: "Input", h: 26 },
-  { key: "fx", label: "Audio FX", h: 60 },
+  { key: "fx", label: "Audio FX", h: 100 },
   { key: "sends", label: "Sends", h: 50 },
   { key: "output", label: "Output", h: 26 },
   { key: "group", label: "Group", h: 22 },
@@ -18,7 +18,7 @@ const ROW_LABELS = [
   { key: "fader", label: "", h: 220 },
 ];
 
-export function MixerView({ engine, onOpenFx, onArmToggle }: { engine: DawEngine; onOpenFx: (trackId: string) => void; onArmToggle: (trackId: string) => void }) {
+export function MixerView({ engine, onOpenPlugin, onArmToggle }: { engine: DawEngine; onOpenPlugin: (trackId: string, effectId: string) => void; onArmToggle: (trackId: string) => void }) {
   const tracks = useDawStore(s => s.tracks);
   const masterVolume = useDawStore(s => s.masterVolume);
   const setMasterVolume = useDawStore(s => s.setMasterVolume);
