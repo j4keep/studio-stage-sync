@@ -99,7 +99,7 @@ export function MenuBar({ onImport, onExport, onAddAudio, onAddInstrument, onPla
           }}>Delete Unused Tracks</Item>
           <DropdownMenuSeparator className="bg-neutral-800" />
           <Item onClick={() => setView("mixer")}>Open Mixer</Item>
-          <Item onClick={() => setView("arrange")}>Open Arrange</Item>
+          <Item onClick={() => setView("arrange")}>Open Edit</Item>
         </DropdownMenuContent>
       </DropdownMenu>
 
