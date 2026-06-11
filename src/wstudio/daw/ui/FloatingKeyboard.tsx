@@ -55,12 +55,14 @@ export function FloatingKeyboard({ engine, onClose }: Props) {
 
   const [octaveStart, setOctaveStart] = useState(48); // C3
   const [octaves, setOctaves] = useState(3);
+  const [mode, setMode] = useState<"piano" | "typing">("piano");
   const keys = useMemo(() => buildKeys(octaveStart, octaves), [octaveStart, octaves]);
   const whiteCount = keys.filter(k => !k.black).length;
   const WHITE_W = 26;
   const WHITE_H = 110;
   const BLACK_W = 16;
   const BLACK_H = 70;
+
 
   // Drag-to-move window
   const [pos, setPos] = useState({ x: 80, y: window.innerHeight - 220 });
