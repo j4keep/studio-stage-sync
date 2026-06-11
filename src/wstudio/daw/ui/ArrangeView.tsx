@@ -549,7 +549,12 @@ function TrackHeader({ track, canRecordInput, meters = [], onArm, onMute, onSolo
           <button onPointerDown={stop} onClick={onRemove} title="Delete track" className="text-neutral-600 hover:text-red-400 shrink-0"><Trash2 className="w-3 h-3" /></button>
         </div>
 
-        <div className="flex items-center gap-1.5 min-w-0">
+        <div
+          className="flex items-center gap-1.5 min-w-0"
+          onClick={onOpenEditor ? () => onOpenEditor() : undefined}
+          title={onOpenEditor ? "Click to reopen instrument editor" : undefined}
+          style={onOpenEditor ? { cursor: "pointer" } : undefined}
+        >
           <button onPointerDown={stop} onClick={onMute} title="Mute" className={`w-5 h-5 grid place-items-center rounded text-[9px] font-bold shrink-0 ${track.mute ? "bg-amber-500 text-black" : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700"}`}>M</button>
           <button onPointerDown={stop} onClick={onSolo} title="Solo" className={`w-5 h-5 grid place-items-center rounded text-[9px] font-bold shrink-0 ${track.solo ? "bg-cyan-400 text-black" : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700"}`}>S</button>
           <button
