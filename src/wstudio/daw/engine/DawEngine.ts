@@ -553,16 +553,7 @@ export class DawEngine {
       if (!shared) {
         let pending = this.pendingInputMonitors.get(deviceKey);
         if (!pending) {
-          pending = navigator.mediaDevices.getUserMedia({
-          audio: {
-            deviceId: inputDeviceId ? { exact: inputDeviceId } : undefined,
-            echoCancellation: true,
-            noiseSuppression: false,
-            autoGainControl: false,
-            channelCount: 1,
-            sampleRate: this.ctx.sampleRate,
-          } as MediaTrackConstraints,
-          }).then((stream) => {
+          pending = navigator.mediaDevices.getUserMedia(makeLowLatencyMicConstraints(inputDeviceId)).then((stream) => {
             const created = { stream, source: this.ctx.createMediaStreamSource(stream), refs: new Set<string>() };
             this.sharedInputMonitors.set(deviceKey, created);
             this.pendingInputMonitors.delete(deviceKey);
@@ -639,18 +630,7 @@ export class DawEngine {
     this.recordingLivePeaks = [];
     const chain = this.trackChains.get(trackId);
     if (chain && !chain.inputMonitoring) await this.startInputMonitoring(trackId, inputDeviceId);
-    const liveStream = chain?.inputMonitorStream ?? await navigator.mediaDevices.getUserMedia({
-      audio: {
-        deviceId: inputDeviceId ? { exact: inputDeviceId } : undefined,
-        // Record the mic stream, while asking the browser to remove DAW playback
-        // from the capture so imported beats do not print into the vocal take.
-        echoCancellation: true,
-        noiseSuppression: false,
-        autoGainControl: false,
-        channelCount: 1,
-        sampleRate: this.ctx.sampleRate,
-      } as MediaTrackConstraints,
-    });
+    const liveStream = chain?.inputMonitorStream ?? await navigator.mediaDevices.getUserMedia(makeLowLatencyMicConstraints(inputDeviceId));
 
     this.micStream = liveStream;
     const src = chain?.inputMonitorSource ?? this.ctx.createMediaStreamSource(liveStream);
