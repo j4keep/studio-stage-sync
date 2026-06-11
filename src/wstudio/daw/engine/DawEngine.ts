@@ -600,7 +600,7 @@ export class DawEngine {
     chain.inputMonitorToken++;
     if (chain.inputMonitorSource) {
       try { chain.inputMonitorSource.disconnect(chain.inputAnalyser); } catch {}
-      try { chain.inputMonitorSource.disconnect(chain.input); } catch {}
+      try { chain.inputMonitorSource.disconnect(chain.directMonitor); } catch {}
     }
     const deviceKey = chain.inputMonitorDeviceKey;
     if (deviceKey) {
