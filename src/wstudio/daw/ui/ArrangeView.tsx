@@ -12,6 +12,7 @@ interface Props {
   onArmToggle: (trackId: string) => void;
   onSeek?: (position: number) => void;
   engine?: DawEngine | null;
+  onOpenInstrumentEditor?: (trackId: string) => void;
 }
 
 const HEADER_W = 200;
@@ -43,7 +44,7 @@ const TOOL_CURSORS: Record<string, string> = {
   trim: svgCursor(`<polyline points='6 8 2 12 6 16'/><polyline points='18 8 22 12 18 16'/><line x1='2' x2='22' y1='12' y2='12'/>`, 12, 12),
 };
 
-export function ArrangeView({ onArmToggle, onSeek, engine }: Props) {
+export function ArrangeView({ onArmToggle, onSeek, engine, onOpenInstrumentEditor }: Props) {
   const tracks = useDawStore(s => s.tracks);
   const clips = useDawStore(s => s.clips);
   const bpm = useDawStore(s => s.transport.bpm);
@@ -286,7 +287,7 @@ export function ArrangeView({ onArmToggle, onSeek, engine }: Props) {
               const stereo = engine?.getTrackStereoAnalysers(t.id) ?? null;
               const mono = engine?.getTrackAnalyser(t.id) ?? null;
               const canRecordInput = t.kind === "instrument" || (t.kind === "audio" && t.inputEnabled !== false && !(t.inputEnabled === undefined && trackClips.some(c => c.buffer && c.name !== "Recording")));
-              const meters = canRecordInput && inputAn ? [inputAn] : isStereo && stereo ? [stereo.L, stereo.R] : mono ? [mono] : [];
+              const meters = t.kind === "audio" && canRecordInput && inputAn ? [inputAn] : isStereo && stereo ? [stereo.L, stereo.R] : mono ? [mono] : [];
               return (
                 <div key={t.id}>
                   <TrackHeader
@@ -302,6 +303,7 @@ export function ArrangeView({ onArmToggle, onSeek, engine }: Props) {
                     onPan={(v) => updateTrack(t.id, { pan: v })}
                     onDropTrack={(fromId) => reorderTracks(fromId, t.id)}
                     onToggleAuto={() => toggleAutomationLane(t.id)}
+                    onOpenEditor={t.kind === "instrument" && onOpenInstrumentEditor ? () => onOpenInstrumentEditor(t.id) : undefined}
                   />
                   {t.automationOpen && (
                     <AutomationLaneHeader
@@ -490,7 +492,7 @@ export function ArrangeView({ onArmToggle, onSeek, engine }: Props) {
   );
 }
 
-function TrackHeader({ track, canRecordInput, meters = [], onArm, onMute, onSolo, onRemove, onRename, onVolume, onPan, onDropTrack, onToggleAuto }: {
+function TrackHeader({ track, canRecordInput, meters = [], onArm, onMute, onSolo, onRemove, onRename, onVolume, onPan, onDropTrack, onToggleAuto, onOpenEditor }: {
   track: Track;
   canRecordInput: boolean;
   meters?: AnalyserNode[];
@@ -503,6 +505,7 @@ function TrackHeader({ track, canRecordInput, meters = [], onArm, onMute, onSolo
   onPan: (v: number) => void;
   onDropTrack: (fromId: string) => void;
   onToggleAuto?: () => void;
+  onOpenEditor?: () => void;
 }) {
   const stop = (e: React.SyntheticEvent) => e.stopPropagation();
   const sliderRef = useRef<HTMLDivElement>(null);
@@ -546,7 +549,12 @@ function TrackHeader({ track, canRecordInput, meters = [], onArm, onMute, onSolo
           <button onPointerDown={stop} onClick={onRemove} title="Delete track" className="text-neutral-600 hover:text-red-400 shrink-0"><Trash2 className="w-3 h-3" /></button>
         </div>
 
-        <div className="flex items-center gap-1.5 min-w-0">
+        <div
+          className="flex items-center gap-1.5 min-w-0"
+          onClick={onOpenEditor ? () => onOpenEditor() : undefined}
+          title={onOpenEditor ? "Click to reopen instrument editor" : undefined}
+          style={onOpenEditor ? { cursor: "pointer" } : undefined}
+        >
           <button onPointerDown={stop} onClick={onMute} title="Mute" className={`w-5 h-5 grid place-items-center rounded text-[9px] font-bold shrink-0 ${track.mute ? "bg-amber-500 text-black" : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700"}`}>M</button>
           <button onPointerDown={stop} onClick={onSolo} title="Solo" className={`w-5 h-5 grid place-items-center rounded text-[9px] font-bold shrink-0 ${track.solo ? "bg-cyan-400 text-black" : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700"}`}>S</button>
           <button

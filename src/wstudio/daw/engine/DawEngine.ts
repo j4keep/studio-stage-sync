@@ -31,6 +31,8 @@ export class DawEngine {
     analyserL: AnalyserNode;
     analyserR: AnalyserNode;
     inputAnalyser: AnalyserNode;
+    /** Dry, low-gain mic monitor that bypasses inserts/sends to prevent feedback/echo. */
+    directMonitor: GainNode;
     reverbSend: GainNode;
     delaySend: GainNode;
     activeSources: AudioScheduledSourceNode[];
@@ -152,6 +154,9 @@ export class DawEngine {
       inputAnalyser.fftSize = 512;
       const reverbSend = this.ctx.createGain();
       const delaySend = this.ctx.createGain();
+      const directMonitor = this.ctx.createGain();
+      directMonitor.gain.value = 0.5; // -6 dB dry monitor to prevent feedback
+      directMonitor.connect(this.masterGain);
       chain = {
         input,
         inserts: [],
@@ -163,6 +168,7 @@ export class DawEngine {
         analyserL,
         analyserR,
         inputAnalyser,
+        directMonitor,
         reverbSend,
         delaySend,
         activeSources: [],
@@ -253,7 +259,7 @@ export class DawEngine {
     c.activeSources.forEach(s => { try { s.stop(); } catch {} });
     c.inserts.forEach(i => i.dispose());
     this.stopInputMonitoring(trackId);
-    try { c.input.disconnect(); c.panner.disconnect(); c.gain.disconnect(); c.analyser.disconnect(); c.reverbSend.disconnect(); c.delaySend.disconnect(); } catch {}
+    try { c.input.disconnect(); c.panner.disconnect(); c.gain.disconnect(); c.analyser.disconnect(); c.reverbSend.disconnect(); c.delaySend.disconnect(); c.directMonitor.disconnect(); } catch {}
     this.trackChains.delete(trackId);
   }
 
@@ -563,7 +569,7 @@ export class DawEngine {
       }
       shared.source.connect(chain.inputAnalyser);
       if (audible) {
-        try { shared.source.connect(chain.input); } catch {}
+        try { shared.source.connect(chain.directMonitor); } catch {}
       }
       shared.refs.add(trackId);
       chain.inputMonitorSource = shared.source;
@@ -581,9 +587,9 @@ export class DawEngine {
     const chain = this.trackChains.get(trackId);
     if (!chain?.inputMonitorSource || chain.inputMonitorAudible === audible) return;
     if (audible) {
-      try { chain.inputMonitorSource.connect(chain.input); } catch {}
+      try { chain.inputMonitorSource.connect(chain.directMonitor); } catch {}
     } else {
-      try { chain.inputMonitorSource.disconnect(chain.input); } catch {}
+      try { chain.inputMonitorSource.disconnect(chain.directMonitor); } catch {}
     }
     chain.inputMonitorAudible = audible;
   }
@@ -594,7 +600,7 @@ export class DawEngine {
     chain.inputMonitorToken++;
     if (chain.inputMonitorSource) {
       try { chain.inputMonitorSource.disconnect(chain.inputAnalyser); } catch {}
-      try { chain.inputMonitorSource.disconnect(chain.input); } catch {}
+      try { chain.inputMonitorSource.disconnect(chain.directMonitor); } catch {}
     }
     const deviceKey = chain.inputMonitorDeviceKey;
     if (deviceKey) {
@@ -642,7 +648,7 @@ export class DawEngine {
       this.setInputMonitorAudible(trackId, true);
       if (!chain.inputMonitorSource) {
         try { src.connect(chain.inputAnalyser); } catch {}
-        try { src.connect(chain.input); } catch {}
+        try { src.connect(chain.directMonitor); } catch {}
         chain.inputMonitorSource = src;
         chain.inputMonitorStream = liveStream;
         chain.inputMonitoring = true;

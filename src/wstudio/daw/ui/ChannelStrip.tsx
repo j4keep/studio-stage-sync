@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { useDawStore } from "../state/DawStore";
 import { Fader, formatGainDb } from "./Fader";
 import { Meter } from "./Meter";
 import { Knob } from "./Knob";
-import type { Track } from "../engine/types";
+import { EFFECT_META } from "../engine/Effects";
+import type { Track, EffectId } from "../engine/types";
 import type { DawEngine } from "../engine/DawEngine";
 
 interface RowDef { key: string; label: string; h: number }
@@ -14,19 +16,24 @@ interface Props {
   rows?: RowDef[];
 }
 
+const FX_LIST: EffectId[] = ["eq3", "compressor", "reverb", "delay", "chorus", "distortion", "limiter", "pitch"];
+
 export function ChannelStrip({ track, engine, onOpenFx, onArmToggle, rows }: Props) {
   const updateTrack = useDawStore(s => s.updateTrack);
   const selectTrack = useDawStore(s => s.selectTrack);
   const selectedTrackId = useDawStore(s => s.selectedTrackId);
+  const addEffect = useDawStore(s => s.addEffect);
   const clips = useDawStore(s => s.clips);
   const trackClips = clips.filter(c => c.trackId === track.id);
+  const [fxMenu, setFxMenu] = useState(false);
   const stereo = engine.getTrackStereoAnalysers(track.id);
   const mono = engine.getTrackAnalyser(track.id);
   const inputAn = engine.getTrackInputAnalyser(track.id);
   const isStereo = track.kind === "instrument" || trackClips.some(c => (c.buffer?.numberOfChannels ?? 0) >= 2);
   const canRecordInput = track.kind === "instrument" || (track.kind === "audio" && track.inputEnabled !== false && !(track.inputEnabled === undefined && trackClips.some(c => c.buffer && c.name !== "Recording")));
   // Vocal/input audio tracks show live mic input; imported beat/file tracks show playback only.
-  const meters = canRecordInput && inputAn
+  // Audio input tracks show live mic meter; instrument & imported audio tracks show post-fader output.
+  const meters = track.kind === "audio" && canRecordInput && inputAn
     ? [inputAn]
     : (isStereo && stereo ? [stereo.L, stereo.R] : mono ? [mono] : []);
   const isSel = selectedTrackId === track.id;
@@ -60,12 +67,44 @@ export function ChannelStrip({ track, engine, onOpenFx, onArmToggle, rows }: Pro
       </Cell>
       {/* Input */}
       <Cell h={r("input")} title="Audio input source"><div className="w-full h-full grid place-items-center bg-neutral-950 border border-neutral-800 rounded text-[9px]">{track.kind === "instrument" ? "Inst" : canRecordInput ? "In 1" : "File"}</div></Cell>
-      {/* Audio FX */}
+      {/* Audio FX — click for plug-in dropdown; selecting one adds it + opens the floating plug-in window */}
       <Cell h={r("fx")} title="Audio FX inserts">
-        <button onClick={(e)=>{e.stopPropagation(); onOpenFx();}} className="w-full h-full bg-neutral-950 border border-neutral-800 rounded text-[9px] text-neutral-300 hover:bg-neutral-800 flex flex-col items-center justify-center gap-0.5">
-          <div>FX</div>
-          <div className="text-cyan-300/70 text-[9px]">{track.effects.length || "+"}</div>
-        </button>
+        <div className="relative w-full h-full">
+          <button
+            onClick={(e) => { e.stopPropagation(); setFxMenu(v => !v); }}
+            className="w-full h-full bg-neutral-950 border border-neutral-800 rounded text-[9px] text-neutral-300 hover:bg-neutral-800 flex flex-col items-center justify-center gap-0.5"
+          >
+            <div className="flex items-center gap-0.5">FX <span className="text-neutral-500">▾</span></div>
+            <div className="text-cyan-300/70 text-[9px]">{track.effects.length ? `${track.effects.length} plug-in${track.effects.length > 1 ? "s" : ""}` : "+ add"}</div>
+          </button>
+          {fxMenu && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setFxMenu(false); }} />
+              <div className="absolute left-full ml-1 top-0 z-50 w-44 bg-neutral-900 border border-neutral-700 rounded shadow-2xl py-1 text-left" onClick={(e) => e.stopPropagation()}>
+                <div className="px-2 py-1 text-[9px] uppercase tracking-wider text-neutral-500 border-b border-neutral-800">Insert plug-in</div>
+                {FX_LIST.map(t => (
+                  <button
+                    key={t}
+                    onClick={() => { addEffect(track.id, t); setFxMenu(false); onOpenFx(); }}
+                    className="w-full text-left px-2 py-1 text-[11px] text-neutral-200 hover:bg-teal-500/20 hover:text-teal-200"
+                  >{EFFECT_META[t].label}</button>
+                ))}
+                {track.effects.length > 0 && (
+                  <>
+                    <div className="px-2 py-1 mt-1 text-[9px] uppercase tracking-wider text-neutral-500 border-t border-neutral-800">Active</div>
+                    {track.effects.map(fx => (
+                      <button
+                        key={fx.id}
+                        onClick={() => { setFxMenu(false); onOpenFx(); }}
+                        className="w-full text-left px-2 py-1 text-[11px] text-cyan-300 hover:bg-neutral-800"
+                      >{EFFECT_META[fx.type as keyof typeof EFFECT_META]?.label ?? fx.type}</button>
+                    ))}
+                  </>
+                )}
+              </div>
+            </>
+          )}
+        </div>
       </Cell>
       {/* Sends (Rvb / Dly) */}
       <Cell h={r("sends")}>
