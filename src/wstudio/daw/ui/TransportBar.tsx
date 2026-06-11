@@ -439,7 +439,7 @@ function MetronomePopover() {
 
   return (
     <Popover>
-      <Tip label={`Metronome ${transport.metronome ? "On" : "Off"} — click for settings`}>
+      <Tip label={`Metronome ${transport.metronome ? "On" : "Off"}  ·  K-metronome shortcut (click for settings)`}>
         <PopoverTrigger asChild>
           <button
             type="button"
