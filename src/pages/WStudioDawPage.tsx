@@ -15,6 +15,8 @@ import { BottomDock } from "@/wstudio/daw/ui/BottomDock";
 import { CollabSidebar } from "@/wstudio/daw/ui/CollabSidebar";
 import { MenuBar } from "@/wstudio/daw/ui/MenuBar";
 import { FloatingKeyboard } from "@/wstudio/daw/ui/FloatingKeyboard";
+import { ShortcutsModal } from "@/wstudio/daw/ui/ShortcutsModal";
+import { useShortcutsStore, matchAction } from "@/wstudio/daw/state/ShortcutsStore";
 import type { Clip, Track, AutomationPoint } from "@/wstudio/daw/engine/types";
 
 /** Linearly interpolate between automation breakpoints at the given timeline position. */
