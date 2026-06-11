@@ -1,4 +1,5 @@
-import { Play, Square, Circle, SkipBack, SkipForward, Rewind, FastForward, Repeat, Volume2, Download, Plus, Mic, Music2, MousePointer2, Pencil, Eraser, Scissors, Combine, VolumeX, ZoomIn, Waves, BoxSelect, Timer, ChevronDown, Type, Activity, Move, MoveHorizontal, Piano, Sun, Moon, LayoutGrid } from "lucide-react";
+import { Play, Square, Circle, SkipBack, SkipForward, Rewind, FastForward, Repeat, Volume2, Download, Plus, Mic, Music2, MousePointer2, Pencil, Eraser, Scissors, Combine, VolumeX, ZoomIn, Waves, BoxSelect, Timer, ChevronDown, Type, Activity, Move, MoveHorizontal, Piano, Sun, Moon, LayoutGrid, Keyboard as KeyboardIcon } from "lucide-react";
+import { useShortcutLabel } from "../state/ShortcutsStore";
 import { useDawStore, type DawTool } from "../state/DawStore";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
@@ -28,6 +29,7 @@ interface Props {
   keyboardOpen?: boolean;
   themeMode?: "light" | "dark";
   onToggleTheme?: () => void;
+  onOpenShortcuts?: () => void;
 }
 
 // CRITICAL: defined OUTSIDE the component to avoid remount-on-every-render
@@ -59,7 +61,7 @@ const TOOLS: { id: DawTool; label: string; Icon: any; hint: string }[] = [
   { id: "marquee", label: "Marquee Tool", Icon: BoxSelect, hint: "Box-select a region" },
 ];
 
-export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExport, onAddAudio, onAddInstrument, onAddMany, onImport, onToggleKeyboard, keyboardOpen, themeMode, onToggleTheme }: Props) {
+export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExport, onAddAudio, onAddInstrument, onAddMany, onImport, onToggleKeyboard, keyboardOpen, themeMode, onToggleTheme, onOpenShortcuts }: Props) {
   const transport = useDawStore(s => s.transport);
   const setTransport = useDawStore(s => s.setTransport);
   const view = useDawStore(s => s.view);
@@ -68,6 +70,21 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
   const setMasterVolume = useDawStore(s => s.setMasterVolume);
   const tool = useDawStore(s => s.tool);
   const setTool = useDawStore(s => s.setTool);
+
+  // Live shortcut labels (reflect any user customization)
+  const kPlay = useShortcutLabel("play");
+  const kStop = useShortcutLabel("stop");
+  const kRecord = useShortcutLabel("record");
+  const kRewind = useShortcutLabel("rewind");
+  const kFwd = useShortcutLabel("forward5");
+  const kBack = useShortcutLabel("back5");
+  const kLoop = useShortcutLabel("loop");
+  const kExport = useShortcutLabel("export");
+  const kKeyboard = useShortcutLabel("toggleKeyboard");
+  const kTheme = useShortcutLabel("toggleTheme");
+  const kViewEdit = useShortcutLabel("viewEdit");
+  const kViewMixer = useShortcutLabel("viewMixer");
+  const kShortcuts = useShortcutLabel("openShortcuts");
 
   // Bar.Beat from seconds + BPM using current time signature
   const beatsPerBar = transport.timeSigNum || 4;
@@ -102,12 +119,12 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
   return (
     <div className="h-14 bg-gradient-to-b from-neutral-900 to-neutral-950 border-b border-neutral-800 px-3 flex items-center gap-2 text-neutral-200 text-xs shadow-[inset_0_-1px_0_rgba(255,255,255,0.02)]">
       <div className="flex items-center gap-1">
-        <Tip label="Return to Start  ·  Enter"><TBtn onClick={onRewind}><Rewind className="w-4 h-4" /></TBtn></Tip>
-        <Tip label="Forward 5s  ·  →"><TBtn onClick={() => onSeek ? onSeek(transport.position + 5) : setTransport({ position: transport.position + 5 })}><FastForward className="w-4 h-4" /></TBtn></Tip>
-        <Tip label="Back 5s  ·  ←"><TBtn onClick={() => onSeek ? onSeek(Math.max(0, transport.position - 5)) : setTransport({ position: Math.max(0, transport.position - 5) })}><SkipBack className="w-4 h-4" /></TBtn></Tip>
-        <Tip label="Play / Pause  ·  Space"><TBtn onClick={onPlay} active={transport.isPlaying} className="!text-emerald-400"><Play className="w-4 h-4 fill-current" /></TBtn></Tip>
-        <Tip label="Stop  ·  Shift+Space"><TBtn onClick={onStop}><Square className="w-4 h-4" /></TBtn></Tip>
-        <Tip label="Record on armed track  ·  R">
+        <Tip label={`Return to Start  ·  ${kRewind}`}><TBtn onClick={onRewind}><Rewind className="w-4 h-4" /></TBtn></Tip>
+        <Tip label={`Forward 5s  ·  ${kFwd}`}><TBtn onClick={() => onSeek ? onSeek(transport.position + 5) : setTransport({ position: transport.position + 5 })}><FastForward className="w-4 h-4" /></TBtn></Tip>
+        <Tip label={`Back 5s  ·  ${kBack}`}><TBtn onClick={() => onSeek ? onSeek(Math.max(0, transport.position - 5)) : setTransport({ position: Math.max(0, transport.position - 5) })}><SkipBack className="w-4 h-4" /></TBtn></Tip>
+        <Tip label={`Play / Pause  ·  ${kPlay}`}><TBtn onClick={onPlay} active={transport.isPlaying} className="!text-emerald-400"><Play className="w-4 h-4 fill-current" /></TBtn></Tip>
+        <Tip label={`Stop  ·  ${kStop}`}><TBtn onClick={onStop}><Square className="w-4 h-4" /></TBtn></Tip>
+        <Tip label={`Record on armed track  ·  ${kRecord}`}>
           <button
             type="button"
             onClick={onRecord}
@@ -123,8 +140,9 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
             )}
           </button>
         </Tip>
-        <Tip label="Cycle / Loop  ·  C"><TBtn onClick={() => setTransport({ loopEnabled: !transport.loopEnabled })} active={transport.loopEnabled} className={transport.loopEnabled ? "!text-amber-300" : ""}><Repeat className="w-4 h-4" /></TBtn></Tip>
+        <Tip label={`Cycle / Loop  ·  ${kLoop}`}><TBtn onClick={() => setTransport({ loopEnabled: !transport.loopEnabled })} active={transport.loopEnabled} className={transport.loopEnabled ? "!text-amber-300" : ""}><Repeat className="w-4 h-4" /></TBtn></Tip>
       </div>
+
 
       {/* Logic-style BBT display (mode-switchable via dropdown on the right) */}
       <div
@@ -280,7 +298,7 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
       <MetronomePopover />
 
       {onToggleKeyboard && (
-        <Tip label="On-screen keyboard  ·  K  (computer keys A W S E D F T G Y H U J K play MIDI)">
+        <Tip label={`On-screen keyboard  ·  ${kKeyboard}  (computer keys A W S E D F T G Y H U J K play MIDI)`}>
           <button
             type="button"
             onClick={onToggleKeyboard}
@@ -297,7 +315,7 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
       )}
 
       {onToggleTheme && (
-        <Tip label={`Switch to ${themeMode === "dark" ? "light" : "dark"} mode  ·  Shift+D`}>
+        <Tip label={`Switch to ${themeMode === "dark" ? "light" : "dark"} mode  ·  ${kTheme}`}>
           <button
             type="button"
             onClick={onToggleTheme}
@@ -364,7 +382,7 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
       </DropdownMenu>
 
       <DropdownMenu>
-        <Tip label={`View: ${view === "arrange" ? "Edit" : view.charAt(0).toUpperCase() + view.slice(1)}  ·  X edit  ·  M mixer`}>
+        <Tip label={`View: ${view === "arrange" ? "Edit" : view.charAt(0).toUpperCase() + view.slice(1)}  ·  ${kViewEdit} edit  ·  ${kViewMixer} mixer`}>
           <DropdownMenuTrigger
             aria-label="Switch view"
             className="h-9 w-9 grid place-items-center rounded-md border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-cyan-300"
@@ -398,7 +416,20 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
         </div>
       </Tip>
 
-      <Tip label="Export / bounce project to WAV  ·  ⌘E">
+      {onOpenShortcuts && (
+        <Tip label={`Keyboard shortcuts cheat sheet  ·  ${kShortcuts}`}>
+          <button
+            type="button"
+            onClick={onOpenShortcuts}
+            aria-label="Open keyboard shortcuts"
+            className="h-9 w-9 grid place-items-center rounded-md border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 focus-visible:ring-2 focus-visible:ring-cyan-500/60 outline-none"
+          >
+            <KeyboardIcon className="w-4 h-4" />
+          </button>
+        </Tip>
+      )}
+
+      <Tip label={`Export / bounce project to WAV  ·  ${kExport}`}>
         <button
           type="button"
           onClick={onExport}

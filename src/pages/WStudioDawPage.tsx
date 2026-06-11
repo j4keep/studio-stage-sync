@@ -15,6 +15,8 @@ import { BottomDock } from "@/wstudio/daw/ui/BottomDock";
 import { CollabSidebar } from "@/wstudio/daw/ui/CollabSidebar";
 import { MenuBar } from "@/wstudio/daw/ui/MenuBar";
 import { FloatingKeyboard } from "@/wstudio/daw/ui/FloatingKeyboard";
+import { ShortcutsModal } from "@/wstudio/daw/ui/ShortcutsModal";
+import { useShortcutsStore, matchAction } from "@/wstudio/daw/state/ShortcutsStore";
 import type { Clip, Track, AutomationPoint } from "@/wstudio/daw/engine/types";
 
 /** Linearly interpolate between automation breakpoints at the given timeline position. */
@@ -284,45 +286,42 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
   }, [metroOutputDeviceId]);
 
 
-  // Keyboard shortcuts
+  // Keyboard shortcuts (customizable — see ShortcutsStore)
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const handleExportRef = useRef<() => void>(() => {});
   useEffect(() => {
     const onKey = (ev: KeyboardEvent) => {
       const tag = (ev.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || (ev.target as HTMLElement)?.isContentEditable) return;
-      const meta = ev.metaKey || ev.ctrlKey;
-      if (ev.code === "Space") {
-        ev.preventDefault();
-        if (ev.shiftKey) handleStop();
-        else handlePlayPause();
-      } else if (ev.code === "Enter") {
-        ev.preventDefault();
-        handleRewind();
-      } else if (ev.key.toLowerCase() === "r" && !meta) {
-        ev.preventDefault();
-        handleRecord();
-      } else if (meta && ev.key.toLowerCase() === "z") {
-        ev.preventDefault();
-        if (ev.shiftKey) useDawStore.getState().redo();
-        else useDawStore.getState().undo();
-      } else if (meta && ev.key.toLowerCase() === "c") {
-        const sel = useDawStore.getState().selectedClipId;
-        if (sel) { useDawStore.getState().copyClip(sel); toast.success("Copied"); }
-      } else if (meta && ev.key.toLowerCase() === "x") {
-        const sel = useDawStore.getState().selectedClipId;
-        if (sel) { useDawStore.getState().cutClip(sel); toast.success("Cut"); }
-      } else if (meta && ev.key.toLowerCase() === "v") {
-        const sel = useDawStore.getState().selectedClipId;
-        const st = useDawStore.getState();
-        const clip = st.clips.find(c => c.id === sel);
-        const trackId = clip?.trackId ?? st.tracks[0]?.id;
-        if (trackId) st.pasteClipAt(trackId, st.transport.position);
-      } else if (meta && ev.key.toLowerCase() === "d") {
-        ev.preventDefault();
-        const sel = useDawStore.getState().selectedClipId;
-        if (sel) useDawStore.getState().duplicateClip(sel);
-      } else if (ev.key === "Delete" || ev.key === "Backspace") {
-        const sel = useDawStore.getState().selectedClipId;
-        if (sel) useDawStore.getState().removeClip(sel);
+      const bindings = useShortcutsStore.getState().bindings;
+      const action = matchAction(ev, bindings);
+      if (!action) return;
+      const st = useDawStore.getState();
+      switch (action) {
+        case "play":           ev.preventDefault(); handlePlayPause(); break;
+        case "stop":           ev.preventDefault(); handleStop(); break;
+        case "record":         ev.preventDefault(); handleRecord(); break;
+        case "rewind":         ev.preventDefault(); handleRewind(); break;
+        case "forward5":       ev.preventDefault(); st.setTransport({ position: st.transport.position + 5 }); break;
+        case "back5":          ev.preventDefault(); st.setTransport({ position: Math.max(0, st.transport.position - 5) }); break;
+        case "loop":           ev.preventDefault(); st.setTransport({ loopEnabled: !st.transport.loopEnabled }); break;
+        case "export":         ev.preventDefault(); handleExportRef.current?.(); break;
+        case "undo":           ev.preventDefault(); st.undo(); break;
+        case "redo":           ev.preventDefault(); st.redo(); break;
+        case "copy":           { const sel = st.selectedClipId; if (sel) { st.copyClip(sel); toast.success("Copied"); } break; }
+        case "cut":            { const sel = st.selectedClipId; if (sel) { st.cutClip(sel); toast.success("Cut"); } break; }
+        case "paste":          { const sel = st.selectedClipId; const clip = st.clips.find(c => c.id === sel); const trackId = clip?.trackId ?? st.tracks[0]?.id; if (trackId) st.pasteClipAt(trackId, st.transport.position); break; }
+        case "duplicate":      { ev.preventDefault(); const sel = st.selectedClipId; if (sel) st.duplicateClip(sel); break; }
+        case "deleteClip":     { const sel = st.selectedClipId; if (sel) st.removeClip(sel); break; }
+        case "toggleKeyboard": ev.preventDefault(); setKeyboardOpen(o => !o); break;
+        case "toggleTheme":    ev.preventDefault(); setThemeMode(m => m === "dark" ? "light" : "dark"); break;
+        case "toolPointer":    st.setTool("pointer"); break;
+        case "toolPencil":     st.setTool("pencil"); break;
+        case "toolEraser":     st.setTool("eraser"); break;
+        case "toolScissors":   st.setTool("scissors"); break;
+        case "viewEdit":       st.setView("arrange"); break;
+        case "viewMixer":      st.setView("mixer"); break;
+        case "openShortcuts":  ev.preventDefault(); setShortcutsOpen(o => !o); break;
       }
     };
     window.addEventListener("keydown", onKey);
@@ -403,6 +402,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
     if (clips.length === 0) { toast.error("Nothing to export"); return; }
     setExportPrompt({ defaultName: `wstudio-mix-${Date.now()}` });
   }, [clips]);
+  useEffect(() => { handleExportRef.current = handleExport; }, [handleExport]);
 
   const runExport = useCallback(async (filename: string) => {
     const e = engineRef.current;
@@ -475,6 +475,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
         keyboardOpen={keyboardOpen}
         themeMode={themeMode}
         onToggleTheme={() => setThemeMode(m => m === "dark" ? "light" : "dark")}
+        onOpenShortcuts={() => setShortcutsOpen(true)}
       />
       <input
         ref={importInputRef}
@@ -564,6 +565,9 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
       {keyboardOpen && (
         <FloatingKeyboard engine={engineRef.current} onClose={() => setKeyboardOpen(false)} />
       )}
+
+      <ShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+
 
       {exportPrompt && (
         <div className="fixed inset-0 z-[100] bg-black/60 grid place-items-center" onClick={() => setExportPrompt(null)}>
