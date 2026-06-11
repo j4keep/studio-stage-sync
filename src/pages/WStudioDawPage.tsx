@@ -359,6 +359,35 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
     }
   }, [addTrack, addClip]);
 
+  // Drop files onto an existing track lane: import as a clip at the drop time
+  // and lock that track to playback-only (no recording input) so the imported
+  // beat/sample doesn't get overwritten by the mic.
+  const importFilesAt = useCallback(async (trackId: string, startTime: number, files: FileList) => {
+    const e = engineRef.current;
+    if (!e) return;
+    let cursor = startTime;
+    for (const file of Array.from(files)) {
+      try {
+        const buffer = await e.decodeFile(file);
+        const peaks = computePeaks(buffer);
+        addClip({
+          id: newId("clip"),
+          trackId,
+          startTime: cursor,
+          duration: buffer.duration,
+          offset: 0,
+          buffer,
+          peaks,
+          name: file.name,
+        });
+        cursor += buffer.duration;
+        updateTrack(trackId, { inputEnabled: false, armed: false });
+      } catch (err) {
+        toast.error(`Couldn't import ${file.name}`);
+      }
+    }
+  }, [addClip, updateTrack]);
+
   const handleExport = useCallback(async () => {
     const e = engineRef.current;
     if (!e) return;
@@ -451,7 +480,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
         />
 
         <div className="flex-1 relative flex flex-col overflow-hidden">
-          {view === "arrange" && <ArrangeView onArmToggle={handleArmToggle} onSeek={handleSeek} engine={engineRef.current} onOpenInstrumentEditor={(tid) => { selectTrack(tid); openDock("instrument"); }} />}
+          {view === "arrange" && <ArrangeView onArmToggle={handleArmToggle} onSeek={handleSeek} engine={engineRef.current} onOpenInstrumentEditor={(tid) => { selectTrack(tid); openDock("instrument"); }} onImportFilesAt={importFilesAt} />}
           {view === "mixer" && <MixerView engine={engineRef.current} onOpenPlugin={openPluginWindow} onArmToggle={handleArmToggle} />}
           {view === "instrument" && <InstrumentPanel engine={engineRef.current} />}
 

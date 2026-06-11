@@ -13,6 +13,7 @@ interface Props {
   onSeek?: (position: number) => void;
   engine?: DawEngine | null;
   onOpenInstrumentEditor?: (trackId: string) => void;
+  onImportFilesAt?: (trackId: string, startTime: number, files: FileList) => void;
 }
 
 const HEADER_W = 200;
@@ -44,7 +45,7 @@ const TOOL_CURSORS: Record<string, string> = {
   trim: svgCursor(`<polyline points='6 8 2 12 6 16'/><polyline points='18 8 22 12 18 16'/><line x1='2' x2='22' y1='12' y2='12'/>`, 12, 12),
 };
 
-export function ArrangeView({ onArmToggle, onSeek, engine, onOpenInstrumentEditor }: Props) {
+export function ArrangeView({ onArmToggle, onSeek, engine, onOpenInstrumentEditor, onImportFilesAt }: Props) {
   const tracks = useDawStore(s => s.tracks);
   const clips = useDawStore(s => s.clips);
   const bpm = useDawStore(s => s.transport.bpm);
@@ -257,7 +258,7 @@ export function ArrangeView({ onArmToggle, onSeek, engine, onOpenInstrumentEdito
     >
       {/* Toolbar */}
       <div className="h-8 border-b border-neutral-800 bg-neutral-950 flex items-center px-3 gap-3 text-[10px] text-neutral-400">
-        <span className="uppercase tracking-wider">Arrange</span>
+        <span className="uppercase tracking-wider">Edit</span>
         <span className="text-cyan-300/80 uppercase tracking-wider">Tool: {tool}</span>
         <button
           type="button"
@@ -398,6 +399,21 @@ export function ArrangeView({ onArmToggle, onSeek, engine, onOpenInstrumentEdito
                 <div
                   className="relative border-b border-neutral-800"
                   style={{ height: TRACK_H, background: "linear-gradient(90deg, rgba(255,255,255,0.02), rgba(0,0,0,0))" }}
+                  onDragOver={(e) => {
+                    if (e.dataTransfer.types.includes("Files")) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      e.dataTransfer.dropEffect = "copy";
+                    }
+                  }}
+                  onDrop={(e) => {
+                    if (!e.dataTransfer.files?.length || !onImportFilesAt) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const time = Math.max(0, (e.clientX - rect.left) / pxPerSec);
+                    onImportFilesAt(t.id, time, e.dataTransfer.files);
+                  }}
                   onClick={(e) => {
                     if (tool === "pencil") {
                       const rect = e.currentTarget.getBoundingClientRect();
