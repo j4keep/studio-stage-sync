@@ -887,7 +887,7 @@ export function scheduleMidiClips(engine: DawEngine, tracks: Track[], clips: Cli
       const env = ctx.createGain();
       osc.type = wave;
       osc.frequency.value = midiToFreq(n.pitch);
-      const peak = Math.max(0, Math.min(1, n.velocity ?? 0.8)) * 0.55;
+      const peak = Math.max(0, Math.min(1, n.velocity ?? 0.8)) * 0.75;
       const sustain = peak * 0.7;
       env.gain.setValueAtTime(0.0001, when);
       env.gain.linearRampToValueAtTime(peak, when + 0.01);
