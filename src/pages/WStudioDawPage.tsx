@@ -139,6 +139,14 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
     tracks.forEach(t => e.updateTrackParams(t, tracks));
   }, [tracks]);
 
+  // Prune plug-in windows whose effect no longer exists (deleted via "No plug-in" or track removal).
+  useEffect(() => {
+    setOpenPlugins(prev => prev.filter(p => {
+      const tr = tracks.find(t => t.id === p.trackId);
+      return tr?.effects.some(e => e.id === p.effectId);
+    }));
+  }, [tracks]);
+
   useEffect(() => {
     engineRef.current?.setMasterVolume(masterVolume);
   }, [masterVolume]);
