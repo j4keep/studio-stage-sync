@@ -812,7 +812,7 @@ export function triggerSynthNote(engine: DawEngine, trackId: string, midi: numbe
 }
 
 /** Trigger a drum hit (simple noise/click sound). */
-export function triggerDrumHit(engine: DawEngine, trackId: string, kind: "kick" | "snare" | "hat") {
+export function triggerDrumHit(engine: DawEngine, trackId: string, kind: "kick" | "snare" | "hat" | "clap" | "tom" | "perc" | "ride" | "crash") {
   const chain = (engine as any).trackChains.get(trackId);
   if (!chain) return;
   const ctx = engine.ctx;
@@ -826,21 +826,36 @@ export function triggerDrumHit(engine: DawEngine, trackId: string, kind: "kick" 
     env.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
     osc.connect(env).connect(chain.input);
     osc.start(now); osc.stop(now + 0.3);
+  } else if (kind === "tom") {
+    const osc = ctx.createOscillator();
+    const env = ctx.createGain();
+    osc.frequency.setValueAtTime(220, now);
+    osc.frequency.exponentialRampToValueAtTime(80, now + 0.25);
+    env.gain.setValueAtTime(0.8, now);
+    env.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+    osc.connect(env).connect(chain.input);
+    osc.start(now); osc.stop(now + 0.4);
   } else {
-    const bufferSize = ctx.sampleRate * 0.2;
+    const bufferSize = ctx.sampleRate * 0.3;
     const noiseBuf = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
     const data = noiseBuf.getChannelData(0);
     for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
     const noise = ctx.createBufferSource();
     noise.buffer = noiseBuf;
     const filter = ctx.createBiquadFilter();
-    filter.type = kind === "snare" ? "bandpass" : "highpass";
-    filter.frequency.value = kind === "snare" ? 1500 : 7000;
+    let freq = 7000, decay = 0.05, gain = 0.3;
+    if (kind === "snare") { filter.type = "bandpass"; freq = 1500; decay = 0.18; gain = 0.6; }
+    else if (kind === "clap") { filter.type = "bandpass"; freq = 1200; decay = 0.14; gain = 0.55; }
+    else if (kind === "perc") { filter.type = "bandpass"; freq = 3000; decay = 0.08; gain = 0.4; }
+    else if (kind === "ride") { filter.type = "highpass"; freq = 6000; decay = 0.4; gain = 0.25; }
+    else if (kind === "crash") { filter.type = "highpass"; freq = 5000; decay = 0.9; gain = 0.45; }
+    else { filter.type = "highpass"; freq = 7000; decay = 0.05; gain = 0.3; }
+    filter.frequency.value = freq;
     const env = ctx.createGain();
-    env.gain.setValueAtTime(kind === "snare" ? 0.6 : 0.3, now);
-    env.gain.exponentialRampToValueAtTime(0.001, now + (kind === "snare" ? 0.18 : 0.05));
+    env.gain.setValueAtTime(gain, now);
+    env.gain.exponentialRampToValueAtTime(0.001, now + decay);
     noise.connect(filter).connect(env).connect(chain.input);
-    noise.start(now); noise.stop(now + 0.25);
+    noise.start(now); noise.stop(now + decay + 0.05);
   }
 }
 
