@@ -154,6 +154,9 @@ export class DawEngine {
       inputAnalyser.fftSize = 512;
       const reverbSend = this.ctx.createGain();
       const delaySend = this.ctx.createGain();
+      const directMonitor = this.ctx.createGain();
+      directMonitor.gain.value = 0.5; // -6 dB dry monitor to prevent feedback
+      directMonitor.connect(this.masterGain);
       chain = {
         input,
         inserts: [],
@@ -165,6 +168,7 @@ export class DawEngine {
         analyserL,
         analyserR,
         inputAnalyser,
+        directMonitor,
         reverbSend,
         delaySend,
         activeSources: [],
