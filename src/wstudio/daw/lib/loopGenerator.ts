@@ -220,7 +220,7 @@ export function generateLoop(def: LoopDef): AudioBuffer {
       case "808": {
         const pattern = [0, -2, 3, -4, 0, 5, -2, 0];
         const noteSteps = 4; // every quarter
-        for (let i = 0; i < (steps / noteSteps) | 0; i++) {
+        for (let i = 0; i < ((steps / noteSteps) | 0); i++) {
           const semis = pattern[i % pattern.length];
           add808(L, stepFrame(i * noteSteps), rootHz * Math.pow(2, semis / 12), beatSec * 0.95);
         }
