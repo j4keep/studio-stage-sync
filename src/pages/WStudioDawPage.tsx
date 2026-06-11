@@ -8,7 +8,7 @@ import { TransportBar } from "@/wstudio/daw/ui/TransportBar";
 import { ArrangeView } from "@/wstudio/daw/ui/ArrangeView";
 import { MixerView } from "@/wstudio/daw/ui/MixerView";
 import { InstrumentPanel } from "@/wstudio/daw/ui/InstrumentPanel";
-import { FxRack } from "@/wstudio/daw/ui/FxRack";
+import { PluginWindow } from "@/wstudio/daw/ui/PluginWindow";
 import { LibraryPanel } from "@/wstudio/daw/ui/LibraryPanel";
 import { SoundLibraryPanel } from "@/wstudio/daw/ui/SoundLibraryPanel";
 import { BottomDock } from "@/wstudio/daw/ui/BottomDock";
@@ -47,7 +47,22 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
   const engineRef = useRef<DawEngine | null>(null);
   const [engineReady, setEngineReady] = useState(false);
   const [, setEngineGraphVersion] = useState(0);
-  const [fxTrackId, setFxTrackId] = useState<string | null>(null);
+  const [openPlugins, setOpenPlugins] = useState<{ trackId: string; effectId: string; order: number }[]>([]);
+  const [pluginOrder, setPluginOrder] = useState(1);
+  const openPluginWindow = useCallback((trackId: string, effectId: string) => {
+    setOpenPlugins(prev => {
+      const next = pluginOrder + 1;
+      setPluginOrder(next);
+      if (prev.some(p => p.effectId === effectId)) {
+        return prev.map(p => p.effectId === effectId ? { ...p, order: next } : p);
+      }
+      return [...prev, { trackId, effectId, order: next }];
+    });
+  }, [pluginOrder]);
+  const closePluginWindow = useCallback((effectId: string) => {
+    setOpenPlugins(prev => prev.filter(p => p.effectId !== effectId));
+  }, []);
+
   const [collabOpen, setCollabOpen] = useState(true);
   const [soundLibOpen, setSoundLibOpen] = useState(true);
   const [soundLibTab, setSoundLibTab] = useState<"sounds" | "packs">("sounds");
@@ -122,6 +137,14 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
     const e = engineRef.current;
     if (!e) return;
     tracks.forEach(t => e.updateTrackParams(t, tracks));
+  }, [tracks]);
+
+  // Prune plug-in windows whose effect no longer exists (deleted via "No plug-in" or track removal).
+  useEffect(() => {
+    setOpenPlugins(prev => prev.filter(p => {
+      const tr = tracks.find(t => t.id === p.trackId);
+      return tr?.effects.some(e => e.id === p.effectId);
+    }));
   }, [tracks]);
 
   useEffect(() => {
@@ -429,7 +452,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
 
         <div className="flex-1 relative flex flex-col overflow-hidden">
           {view === "arrange" && <ArrangeView onArmToggle={handleArmToggle} onSeek={handleSeek} engine={engineRef.current} onOpenInstrumentEditor={(tid) => { selectTrack(tid); openDock("instrument"); }} />}
-          {view === "mixer" && <MixerView engine={engineRef.current} onOpenFx={setFxTrackId} onArmToggle={handleArmToggle} />}
+          {view === "mixer" && <MixerView engine={engineRef.current} onOpenPlugin={openPluginWindow} onArmToggle={handleArmToggle} />}
           {view === "instrument" && <InstrumentPanel engine={engineRef.current} />}
 
           {view === "arrange" && (
@@ -466,7 +489,18 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
           >Session</button>
         )}
 
-        {fxTrackId && <FxRack trackId={fxTrackId} onClose={() => setFxTrackId(null)} />}
+        {openPlugins.map((p, i) => (
+          <PluginWindow
+            key={p.effectId}
+            trackId={p.trackId}
+            effectId={p.effectId}
+            initialX={220 + i * 32}
+            initialY={120 + i * 28}
+            zIndex={60 + p.order}
+            onFocus={() => openPluginWindow(p.trackId, p.effectId)}
+            onClose={() => closePluginWindow(p.effectId)}
+          />
+        ))}
       </div>
 
     </div>

@@ -11,21 +11,24 @@ interface RowDef { key: string; label: string; h: number }
 interface Props {
   track: Track;
   engine: DawEngine;
-  onOpenFx: () => void;
+  onOpenPlugin: (effectId: string) => void;
   onArmToggle: (trackId: string) => void;
   rows?: RowDef[];
 }
 
 const FX_LIST: EffectId[] = ["eq3", "compressor", "reverb", "delay", "chorus", "distortion", "limiter", "pitch"];
+const INSERT_SLOTS = 5;
 
-export function ChannelStrip({ track, engine, onOpenFx, onArmToggle, rows }: Props) {
+
+export function ChannelStrip({ track, engine, onOpenPlugin, onArmToggle, rows }: Props) {
   const updateTrack = useDawStore(s => s.updateTrack);
   const selectTrack = useDawStore(s => s.selectTrack);
   const selectedTrackId = useDawStore(s => s.selectedTrackId);
-  const addEffect = useDawStore(s => s.addEffect);
+  const replaceEffectAtSlot = useDawStore(s => s.replaceEffectAtSlot);
   const clips = useDawStore(s => s.clips);
   const trackClips = clips.filter(c => c.trackId === track.id);
-  const [fxMenu, setFxMenu] = useState(false);
+  const [openSlot, setOpenSlot] = useState<number | null>(null);
+
   const stereo = engine.getTrackStereoAnalysers(track.id);
   const mono = engine.getTrackAnalyser(track.id);
   const inputAn = engine.getTrackInputAnalyser(track.id);
@@ -60,52 +63,75 @@ export function ChannelStrip({ track, engine, onOpenFx, onArmToggle, rows }: Pro
       {/* Setting */}
       <Cell h={r("setting")} title="Channel preset"><button onClick={(e)=>{e.stopPropagation();}} className="text-[9px] text-neutral-400 border border-neutral-800 rounded px-2 bg-neutral-950 hover:bg-neutral-800 w-full truncate">Setting</button></Cell>
       {/* EQ */}
-      <Cell h={r("eq")} title="EQ display (click to open)">
-        <button onClick={(e)=>{e.stopPropagation(); onOpenFx();}} className="w-full h-full grid place-items-center bg-neutral-950 border border-neutral-800 rounded">
+      <Cell h={r("eq")} title="EQ display">
+        <div className="w-full h-full grid place-items-center bg-neutral-950 border border-neutral-800 rounded">
           <svg width="60" height="28" viewBox="0 0 60 28"><path d="M0,14 Q15,2 30,14 T60,14" fill="none" stroke="#22d3ee" strokeWidth="1.2" /></svg>
-        </button>
+        </div>
       </Cell>
       {/* Input */}
       <Cell h={r("input")} title="Audio input source"><div className="w-full h-full grid place-items-center bg-neutral-950 border border-neutral-800 rounded text-[9px]">{track.kind === "instrument" ? "Inst" : canRecordInput ? "In 1" : "File"}</div></Cell>
-      {/* Audio FX — click for plug-in dropdown; selecting one adds it + opens the floating plug-in window */}
+      {/* Audio FX — 5 insert slots (Logic-style). Click empty = pick plug-in.
+           Click filled = open floating plug-in window. Use the chevron to swap/remove. */}
       <Cell h={r("fx")} title="Audio FX inserts">
-        <div className="relative w-full h-full">
-          <button
-            onClick={(e) => { e.stopPropagation(); setFxMenu(v => !v); }}
-            className="w-full h-full bg-neutral-950 border border-neutral-800 rounded text-[9px] text-neutral-300 hover:bg-neutral-800 flex flex-col items-center justify-center gap-0.5"
-          >
-            <div className="flex items-center gap-0.5">FX <span className="text-neutral-500">▾</span></div>
-            <div className="text-cyan-300/70 text-[9px]">{track.effects.length ? `${track.effects.length} plug-in${track.effects.length > 1 ? "s" : ""}` : "+ add"}</div>
-          </button>
-          {fxMenu && (
-            <>
-              <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setFxMenu(false); }} />
-              <div className="absolute left-full ml-1 top-0 z-50 w-44 bg-neutral-900 border border-neutral-700 rounded shadow-2xl py-1 text-left" onClick={(e) => e.stopPropagation()}>
-                <div className="px-2 py-1 text-[9px] uppercase tracking-wider text-neutral-500 border-b border-neutral-800">Insert plug-in</div>
-                {FX_LIST.map(t => (
-                  <button
-                    key={t}
-                    onClick={() => { addEffect(track.id, t); setFxMenu(false); onOpenFx(); }}
-                    className="w-full text-left px-2 py-1 text-[11px] text-neutral-200 hover:bg-teal-500/20 hover:text-teal-200"
-                  >{EFFECT_META[t].label}</button>
-                ))}
-                {track.effects.length > 0 && (
+        <div className="w-full h-full flex flex-col gap-[2px] justify-between py-[1px]">
+          {Array.from({ length: INSERT_SLOTS }).map((_, slotIndex) => {
+            const fx = track.effects[slotIndex];
+            const meta = fx ? EFFECT_META[fx.type as keyof typeof EFFECT_META] : null;
+            const isOpen = openSlot === slotIndex;
+            const usedTypes = new Set(track.effects.map(e => e.type as EffectId));
+            return (
+              <div key={slotIndex} className="relative flex-1 min-h-0">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (fx) onOpenPlugin(fx.id);
+                    else setOpenSlot(v => v === slotIndex ? null : slotIndex);
+                  }}
+                  className={`w-full h-full rounded-[3px] flex items-center justify-between gap-1 px-1.5 text-[9px] border ${fx ? "bg-sky-500/80 border-sky-400 text-white" : "bg-neutral-900/80 border-neutral-700 text-neutral-500 hover:bg-neutral-800"}`}
+                >
+                  <span className="truncate flex-1 text-left">{meta ? meta.label : ""}</span>
+                  <span
+                    role="button"
+                    onClick={(e) => { e.stopPropagation(); setOpenSlot(v => v === slotIndex ? null : slotIndex); }}
+                    className="text-[8px] opacity-70 hover:opacity-100 cursor-pointer"
+                  >▾</span>
+                </button>
+                {isOpen && (
                   <>
-                    <div className="px-2 py-1 mt-1 text-[9px] uppercase tracking-wider text-neutral-500 border-t border-neutral-800">Active</div>
-                    {track.effects.map(fx => (
+                    <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setOpenSlot(null); }} />
+                    <div className="absolute left-full ml-1 top-0 z-50 w-40 bg-neutral-900 border border-neutral-700 rounded shadow-2xl py-1 text-left" onClick={(e) => e.stopPropagation()}>
+                      <div className="px-2 py-1 text-[9px] uppercase tracking-wider text-neutral-500 border-b border-neutral-800">
+                        Insert {slotIndex + 1}
+                      </div>
                       <button
-                        key={fx.id}
-                        onClick={() => { setFxMenu(false); onOpenFx(); }}
-                        className="w-full text-left px-2 py-1 text-[11px] text-cyan-300 hover:bg-neutral-800"
-                      >{EFFECT_META[fx.type as keyof typeof EFFECT_META]?.label ?? fx.type}</button>
-                    ))}
+                        onClick={() => { replaceEffectAtSlot(track.id, slotIndex, null); setOpenSlot(null); }}
+                        className="w-full text-left px-2 py-1 text-[11px] text-neutral-400 hover:bg-neutral-800"
+                      >No plug-in</button>
+                      <div className="border-t border-neutral-800 my-0.5" />
+                      {FX_LIST.map(t => {
+                        const disabled = usedTypes.has(t) && fx?.type !== t;
+                        return (
+                          <button
+                            key={t}
+                            disabled={disabled}
+                            onClick={() => {
+                              const id = replaceEffectAtSlot(track.id, slotIndex, t);
+                              setOpenSlot(null);
+                              if (id) onOpenPlugin(id);
+                            }}
+                            className={`w-full text-left px-2 py-1 text-[11px] ${disabled ? "text-neutral-700 cursor-not-allowed" : fx?.type === t ? "text-sky-300 bg-sky-500/10" : "text-neutral-200 hover:bg-sky-500/20"}`}
+                          >{EFFECT_META[t].label}{disabled ? " · in use" : ""}</button>
+                        );
+                      })}
+                    </div>
                   </>
                 )}
               </div>
-            </>
-          )}
+            );
+          })}
         </div>
       </Cell>
+
       {/* Sends (Rvb / Dly) */}
       <Cell h={r("sends")}>
         <div className="grid grid-cols-2 gap-1 w-full">

@@ -81,9 +81,10 @@ export interface DawState {
   cutClip: (id: string) => void;
   pasteClipAt: (trackId: string, time: number) => void;
   duplicateClip: (id: string) => void;
-  addEffect: (trackId: string, type: EffectId) => void;
+  addEffect: (trackId: string, type: EffectId) => string | null;
   removeEffect: (trackId: string, effectId: string) => void;
   updateEffect: (trackId: string, effectId: string, patch: Partial<EffectInstance>) => void;
+  replaceEffectAtSlot: (trackId: string, slotIndex: number, type: EffectId | null) => string | null;
   setTransport: (patch: Partial<TransportState>) => void;
   setView: (view: DawState["view"]) => void;
   selectTrack: (id: string | null) => void;
@@ -281,6 +282,10 @@ export const useDawStore = create<DawState>((set, get) => ({
   },
 
   addEffect: (trackId, type) => {
+    const track = get().tracks.find(t => t.id === trackId);
+    if (!track) return null;
+    // No duplicate plug-in type per track (user constraint)
+    if (track.effects.some(e => e.type === type)) return null;
     snap(get, set);
     const fx: EffectInstance = {
       id: newId("fx"),
@@ -293,6 +298,7 @@ export const useDawStore = create<DawState>((set, get) => ({
         t.id === trackId ? { ...t, effects: [...t.effects, fx] } : t
       ),
     });
+    return fx.id;
   },
 
   removeEffect: (trackId, effectId) => { snap(get, set); set({
@@ -308,6 +314,46 @@ export const useDawStore = create<DawState>((set, get) => ({
         : t
     ),
   }); },
+
+  replaceEffectAtSlot: (trackId, slotIndex, type) => {
+    const track = get().tracks.find(t => t.id === trackId);
+    if (!track) return null;
+    const existing = track.effects[slotIndex];
+    // Clearing slot → remove
+    if (type === null) {
+      if (!existing) return null;
+      snap(get, set);
+      set({
+        tracks: get().tracks.map(t =>
+          t.id === trackId ? { ...t, effects: t.effects.filter((_, i) => i !== slotIndex) } : t
+        ),
+      });
+      return null;
+    }
+    // Prevent duplicates anywhere on this track unless it's the same slot keeping its type
+    if (track.effects.some((e, i) => e.type === type && i !== slotIndex)) return null;
+    snap(get, set);
+    const fx: EffectInstance = existing && existing.type === type ? existing : {
+      id: newId("fx"),
+      type,
+      enabled: true,
+      params: { ...(EFFECT_DEFAULTS[type] || {}) },
+    };
+    const newEffects = [...track.effects];
+    if (existing) newEffects[slotIndex] = fx;
+    else {
+      while (newEffects.length < slotIndex) newEffects.push(undefined as any);
+      newEffects[slotIndex] = fx;
+    }
+    // Strip undefined holes
+    const compact = newEffects.filter(Boolean);
+    set({
+      tracks: get().tracks.map(t =>
+        t.id === trackId ? { ...t, effects: compact } : t
+      ),
+    });
+    return fx.id;
+  },
 
   setTransport: (patch) => {
     const next = { ...get().transport, ...patch };
