@@ -534,3 +534,41 @@ function MetronomePopover() {
   );
 }
 
+// ===================== Bulk-add row (Add N tracks at once) =====================
+function BulkAddRow({ onAddMany }: { onAddMany: (kind: "audio" | "instrument", count: number) => void }) {
+  const [count, setCount] = useState(4);
+  const [kind, setKind] = useState<"audio" | "instrument">("audio");
+  return (
+    <div
+      className="px-2 py-2 border-t border-neutral-800 mt-1"
+      onClick={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
+      <div className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1">Add multiple</div>
+      <div className="flex items-center gap-1">
+        <input
+          type="number"
+          min={1}
+          max={32}
+          value={count}
+          onChange={(e) => setCount(Math.max(1, Math.min(32, Number(e.target.value) || 1)))}
+          className="w-12 h-7 bg-neutral-950 border border-neutral-700 rounded text-[11px] text-neutral-200 px-1 text-center"
+        />
+        <select
+          value={kind}
+          onChange={(e) => setKind(e.target.value as "audio" | "instrument")}
+          className="flex-1 h-7 bg-neutral-950 border border-neutral-700 rounded text-[11px] text-neutral-200 px-1"
+        >
+          <option value="audio">Audio</option>
+          <option value="instrument">Instrument</option>
+        </select>
+        <button
+          onClick={() => onAddMany(kind, count)}
+          className="h-7 px-2 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-[10px] uppercase tracking-wider"
+        >Add</button>
+      </div>
+    </div>
+  );
+}
+
+
