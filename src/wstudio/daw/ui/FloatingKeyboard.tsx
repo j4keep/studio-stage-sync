@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useDawStore } from "../state/DawStore";
 import { triggerSynthNote, type DawEngine } from "../engine/DawEngine";
-import { X, Minus, Plus, Music2 } from "lucide-react";
+import { X, Minus, Plus, Music2, Piano, Keyboard as KeyboardIcon } from "lucide-react";
+
 
 /**
  * On-screen MIDI keyboard. Sends notes to the currently selected (or first)
