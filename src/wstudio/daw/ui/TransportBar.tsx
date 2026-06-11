@@ -280,7 +280,7 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
       <MetronomePopover />
 
       {onToggleKeyboard && (
-        <Tip label="On-screen keyboard (use computer keys as MIDI controller)">
+        <Tip label="On-screen keyboard  ·  K  (computer keys A W S E D F T G Y H U J K play MIDI)">
           <button
             type="button"
             onClick={onToggleKeyboard}
