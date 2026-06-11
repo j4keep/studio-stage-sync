@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useDawStore, newId } from "../state/DawStore";
+import { useDawStore } from "../state/DawStore";
 import { Fader, formatGainDb } from "./Fader";
 import { Meter } from "./Meter";
 import { Knob } from "./Knob";
