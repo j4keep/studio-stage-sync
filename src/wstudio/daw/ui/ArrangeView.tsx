@@ -258,7 +258,7 @@ export function ArrangeView({ onArmToggle, onSeek, engine, onOpenInstrumentEdito
     >
       {/* Toolbar */}
       <div className="h-8 border-b border-neutral-800 bg-neutral-950 flex items-center px-3 gap-3 text-[10px] text-neutral-400">
-        <span className="uppercase tracking-wider">Arrange</span>
+        <span className="uppercase tracking-wider">Edit</span>
         <span className="text-cyan-300/80 uppercase tracking-wider">Tool: {tool}</span>
         <button
           type="button"
