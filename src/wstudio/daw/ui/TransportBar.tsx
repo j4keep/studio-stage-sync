@@ -352,6 +352,7 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
             <Plus className="w-3.5 h-3.5 text-cyan-300" />
             <span className="flex-1">Import Audio File…</span>
           </DropdownMenuItem>
+          {onAddMany && <BulkAddRow onAddMany={onAddMany} />}
         </DropdownMenuContent>
       </DropdownMenu>
 
