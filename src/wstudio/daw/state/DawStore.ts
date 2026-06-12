@@ -62,6 +62,19 @@ export interface DawState {
   view: "arrange" | "mixer" | "instrument";
   masterVolume: number;
   pxPerSec: number;
+  /** Vertical zoom factor applied to track rows in the arrange view (0.5–3). */
+  verticalZoom: number;
+  setVerticalZoom: (v: number) => void;
+  /** Current project name shown in the header. */
+  projectName: string;
+  setProjectName: (name: string) => void;
+  /** Optional file handle for "Save" (when using File System Access API). */
+  projectFileHandle: any | null;
+  setProjectFileHandle: (h: any | null) => void;
+  /** Wipe tracks/clips and reset transport position — used by New / Open. */
+  resetProject: (name?: string) => void;
+  /** Replace entire project state at once — used by Open. */
+  loadProject: (data: { name: string; tracks: Track[]; clips: Clip[]; transport?: Partial<TransportState>; pxPerSec?: number; verticalZoom?: number }) => void;
   _past: HistorySnap[];
   _future: HistorySnap[];
   undo: () => void;
