@@ -37,9 +37,10 @@ function buildKeys(startMidi: number, octaves: number): Key[] {
   return out;
 }
 
-interface Props { engine: DawEngine; onClose: () => void; }
+interface Props { engine: DawEngine; onClose: () => void; embedded?: boolean }
 
-export function FloatingKeyboard({ engine, onClose }: Props) {
+export function FloatingKeyboard({ engine, onClose, embedded = false }: Props) {
+
   const tracks = useDawStore(s => s.tracks);
   const selectedTrackId = useDawStore(s => s.selectedTrackId);
   const addTrack = useDawStore(s => s.addTrack);
