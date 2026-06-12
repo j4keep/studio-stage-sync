@@ -107,39 +107,39 @@
   }
 
   .light {
-    --background: 0 0% 98%;
-    --foreground: 0 0% 10%;
+    --background: 220 14% 96%;
+    --foreground: 222 25% 10%;
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 10%;
+    --card-foreground: 222 25% 10%;
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 10%;
+    --popover-foreground: 222 25% 10%;
     --primary: 204 100% 45%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 92%;
-    --secondary-foreground: 0 0% 25%;
-    --muted: 0 0% 94%;
-    --muted-foreground: 0 0% 45%;
+    --secondary: 220 13% 91%;
+    --secondary-foreground: 222 25% 18%;
+    --muted: 220 13% 93%;
+    --muted-foreground: 220 10% 38%;
     --accent: 204 100% 45%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 85%;
-    --input: 0 0% 85%;
+    --border: 220 13% 85%;
+    --input: 220 13% 85%;
     --ring: 204 100% 45%;
-    --sidebar-background: 0 0% 96%;
-    --sidebar-foreground: 0 0% 25%;
+    --sidebar-background: 220 14% 94%;
+    --sidebar-foreground: 222 25% 18%;
     --sidebar-primary: 204 100% 45%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 92%;
-    --sidebar-accent-foreground: 0 0% 25%;
-    --sidebar-border: 0 0% 85%;
+    --sidebar-accent: 220 13% 91%;
+    --sidebar-accent-foreground: 222 25% 18%;
+    --sidebar-border: 220 13% 85%;
     --sidebar-ring: 204 100% 45%;
 
     --glow-primary: 0 0 20px hsl(204 100% 45% / 0.2);
     --glow-primary-strong: 0 0 30px hsl(204 100% 45% / 0.3);
     --gradient-primary: linear-gradient(135deg, hsl(204 100% 45%), hsl(220 100% 55%));
-    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(0 0% 97%));
-    --gradient-surface: linear-gradient(180deg, hsl(0 0% 98%), hsl(0 0% 95%));
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(220 14% 96%));
+    --gradient-surface: linear-gradient(180deg, hsl(220 14% 97%), hsl(220 13% 93%));
   }
 }
 
@@ -342,39 +342,45 @@
 }
 
 /* W.Studio DAW – light mode overrides.
-   The DAW UI is built dark-first with hard-coded neutral classes.
-   When the user toggles light mode we flip the most common dark surfaces to white. */
-.daw-light { background: #ffffff !important; color: #111 !important; }
+   Premium pro look: warm light gray base, bolder labels, subtle elevation. */
+.daw-light {
+  background:
+    radial-gradient(ellipse 140% 60% at 50% -10%, hsl(204 100% 45% / 0.05), transparent 60%),
+    linear-gradient(180deg, hsl(220 14% 97%) 0%, hsl(220 13% 93%) 100%) !important;
+  color: hsl(222 25% 10%) !important;
+}
 .daw-light .bg-black,
-.daw-light .bg-neutral-950,
-.daw-light .bg-neutral-900 { background-color: #ffffff !important; }
-.daw-light .bg-neutral-800 { background-color: #f1f1f1 !important; }
+.daw-light .bg-neutral-950 { background-color: hsl(220 14% 97%) !important; }
+.daw-light .bg-neutral-900 { background-color: hsl(0 0% 100%) !important; }
+.daw-light .bg-neutral-800 { background-color: hsl(220 13% 90%) !important; }
 .daw-light .bg-gradient-to-b.from-neutral-900,
 .daw-light .bg-gradient-to-b.from-neutral-950 {
-  background-image: none !important;
-  background-color: #fafafa !important;
+  background-image: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 14% 96%) 100%) !important;
+  background-color: hsl(0 0% 100%) !important;
 }
 .daw-light .text-neutral-100,
-.daw-light .text-neutral-200,
+.daw-light .text-neutral-200 { color: hsl(222 25% 10%) !important; font-weight: 600; }
 .daw-light .text-neutral-300,
-.daw-light .text-neutral-400 { color: #1a1a1a !important; }
+.daw-light .text-neutral-400 { color: hsl(222 20% 22%) !important; font-weight: 500; }
 .daw-light .text-neutral-500,
-.daw-light .text-neutral-600 { color: #6b6b6b !important; }
+.daw-light .text-neutral-600 { color: hsl(220 10% 42%) !important; font-weight: 500; }
+.daw-light .text-white { color: hsl(222 25% 10%) !important; }
 .daw-light .border-neutral-700,
 .daw-light .border-neutral-800,
-.daw-light .border-neutral-900 { border-color: #d4d4d4 !important; }
+.daw-light .border-neutral-900 { border-color: hsl(220 13% 84%) !important; }
 .daw-light .shadow-inner.shadow-black\/40,
-.daw-light .shadow-2xl.shadow-black\/60 { box-shadow: 0 1px 2px rgba(0,0,0,0.06) !important; }
-/* Kill the dark beat-grid / bar-line dividers that bleed through as black bars
-   when the user flips to light mode. Tailwind's slash-opacity variants compile
-   to dedicated classes so they need their own light-mode overrides. */
+.daw-light .shadow-2xl.shadow-black\/60 { box-shadow: 0 1px 2px rgba(15,23,42,0.08), 0 2px 6px rgba(15,23,42,0.04) !important; }
 .daw-light .bg-neutral-800\/80,
 .daw-light .bg-neutral-800\/60,
 .daw-light .bg-neutral-900\/80,
-.daw-light .bg-neutral-900\/60 { background-color: rgba(0,0,0,0.06) !important; }
-.daw-light .bg-neutral-700 { background-color: #d4d4d4 !important; }
-/* Waveform canvases render with a bright color on dark; invert to a soft dark
-   ink on light so they remain visible without showing the underlying gridlines
-   as harsh black streaks across the wave. */
+.daw-light .bg-neutral-900\/60 { background-color: rgba(15,23,42,0.06) !important; }
+.daw-light .bg-neutral-700 { background-color: hsl(220 13% 80%) !important; }
 .daw-light canvas { filter: invert(0.85) hue-rotate(180deg); }
+/* Bolden section labels (SETTING, EQ, INPUT, etc.) */
+.daw-light .uppercase { font-weight: 700 !important; letter-spacing: 0.06em; }
+/* Subtle elevation on panels */
+.daw-light .bg-neutral-900,
+.daw-light .bg-neutral-950 {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 2px rgba(15,23,42,0.04);
+}
 

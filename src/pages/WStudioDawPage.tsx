@@ -443,7 +443,8 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
   }
 
   return (
-    <div className={`fixed inset-0 flex flex-col ${themeMode === "dark" ? "bg-black text-neutral-200 dark" : "bg-white text-neutral-900 daw-light"}`}>
+    <div className={`fixed inset-0 z-[60] flex flex-col ${themeMode === "dark" ? "bg-black text-neutral-200 dark" : "daw-light"}`}>
+
       <MenuBar
         onImport={() => importInputRef.current?.click()}
         onExport={handleExport}
@@ -476,6 +477,11 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
         themeMode={themeMode}
         onToggleTheme={() => setThemeMode(m => m === "dark" ? "light" : "dark")}
         onOpenShortcuts={() => setShortcutsOpen(true)}
+        onToggleLibrary={() => setSoundLibOpen(o => !o)}
+        libraryOpen={soundLibOpen}
+        onToggleSession={() => setCollabOpen(o => !o)}
+        sessionOpen={collabOpen}
+
       />
       <input
         ref={importInputRef}
@@ -532,21 +538,12 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
           onClose={() => setSoundLibOpen(false)}
           initialTab={soundLibTab}
         />
-        {!soundLibOpen && (
-          <button
-            onClick={() => setSoundLibOpen(true)}
-            className="absolute right-2 top-4 z-40 px-2 py-1 bg-neutral-900 border border-neutral-800 rounded text-[10px] text-neutral-300 hover:text-cyan-300"
-          >♪ Library</button>
+        {!soundLibOpen ? null : null}
+
+        {collabOpen && (
+          <CollabSidebar sessionCode={sessionCode} onClose={() => setCollabOpen(false)} />
         )}
 
-        {collabOpen ? (
-          <CollabSidebar sessionCode={sessionCode} onClose={() => setCollabOpen(false)} />
-        ) : (
-          <button
-            onClick={() => setCollabOpen(true)}
-            className="absolute right-2 top-16 z-40 px-2 py-1 bg-neutral-900 border border-neutral-800 rounded text-[10px] text-neutral-300"
-          >Session</button>
-        )}
 
         {openPlugins.map((p, i) => (
           <PluginWindow

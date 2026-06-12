@@ -1,4 +1,4 @@
-import { Play, Square, Circle, SkipBack, SkipForward, Rewind, FastForward, Repeat, Volume2, Download, Plus, Mic, Music2, MousePointer2, Pencil, Eraser, Scissors, Combine, VolumeX, ZoomIn, Waves, BoxSelect, Timer, ChevronDown, Type, Activity, Move, MoveHorizontal, Piano, Sun, Moon, LayoutGrid, Keyboard as KeyboardIcon } from "lucide-react";
+import { Play, Square, Circle, SkipBack, SkipForward, Rewind, FastForward, Repeat, Volume2, Download, Plus, Mic, Music2, MousePointer2, Pencil, Eraser, Scissors, Combine, VolumeX, ZoomIn, Waves, BoxSelect, Timer, ChevronDown, Type, Activity, Move, MoveHorizontal, Piano, Sun, Moon, LayoutGrid, Keyboard as KeyboardIcon, FolderOpen, Users } from "lucide-react";
 import { useShortcutLabel } from "../state/ShortcutsStore";
 import { useDawStore, type DawTool } from "../state/DawStore";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
@@ -30,6 +30,10 @@ interface Props {
   themeMode?: "light" | "dark";
   onToggleTheme?: () => void;
   onOpenShortcuts?: () => void;
+  onToggleLibrary?: () => void;
+  libraryOpen?: boolean;
+  onToggleSession?: () => void;
+  sessionOpen?: boolean;
 }
 
 // CRITICAL: defined OUTSIDE the component to avoid remount-on-every-render
@@ -61,7 +65,7 @@ const TOOLS: { id: DawTool; label: string; Icon: any; hint: string }[] = [
   { id: "marquee", label: "Marquee Tool", Icon: BoxSelect, hint: "Box-select a region" },
 ];
 
-export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExport, onAddAudio, onAddInstrument, onAddMany, onImport, onToggleKeyboard, keyboardOpen, themeMode, onToggleTheme, onOpenShortcuts }: Props) {
+export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExport, onAddAudio, onAddInstrument, onAddMany, onImport, onToggleKeyboard, keyboardOpen, themeMode, onToggleTheme, onOpenShortcuts, onToggleLibrary, libraryOpen, onToggleSession, sessionOpen }: Props) {
   const transport = useDawStore(s => s.transport);
   const setTransport = useDawStore(s => s.setTransport);
   const view = useDawStore(s => s.view);
@@ -326,6 +330,28 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
           </button>
         </Tip>
       )}
+
+      {onToggleLibrary && (
+        <Tip label={`${libraryOpen ? "Hide" : "Show"} sound library`}>
+          <button
+            type="button"
+            onClick={onToggleLibrary}
+            aria-label="Toggle library"
+            className={`h-9 w-9 grid place-items-center rounded-md border transition ${libraryOpen ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/40" : "bg-neutral-900 border-neutral-800 text-neutral-300 hover:bg-neutral-800"}`}
+          ><FolderOpen className="w-4 h-4" /></button>
+        </Tip>
+      )}
+      {onToggleSession && (
+        <Tip label={`${sessionOpen ? "Hide" : "Show"} session & video chat`}>
+          <button
+            type="button"
+            onClick={onToggleSession}
+            aria-label="Toggle session panel"
+            className={`h-9 w-9 grid place-items-center rounded-md border transition ${sessionOpen ? "bg-purple-500/20 text-purple-300 border-purple-500/40" : "bg-neutral-900 border-neutral-800 text-neutral-300 hover:bg-neutral-800"}`}
+          ><Users className="w-4 h-4" /></button>
+        </Tip>
+      )}
+
 
       {/* Tool palette (icon only) */}
       <DropdownMenu>
