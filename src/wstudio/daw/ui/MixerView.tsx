@@ -28,7 +28,7 @@ export function MixerView({ engine, onOpenPlugin, onArmToggle }: { engine: DawEn
       <div className="h-8 border-b border-neutral-800 bg-neutral-950 flex items-center px-3 text-[10px] uppercase tracking-wider text-neutral-400">
         Mixer · {tracks.length} {tracks.length === 1 ? "track" : "tracks"}
       </div>
-      <div className="flex-1 overflow-x-auto overflow-y-auto flex daw-mixer-scroll">
+      <div className="flex-1 overflow-x-auto overflow-y-auto flex items-start daw-mixer-scroll">
         {/* Row label column — sticky on the left so labels stay visible while
             track strips scroll horizontally for projects with many tracks. */}
         <div className="w-24 shrink-0 bg-neutral-950 border-r border-neutral-800 text-[10px] text-neutral-500 uppercase tracking-wider select-none sticky left-0 z-20">
