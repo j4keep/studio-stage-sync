@@ -18,6 +18,7 @@ import { FloatingKeyboard } from "@/wstudio/daw/ui/FloatingKeyboard";
 import { ShortcutsModal } from "@/wstudio/daw/ui/ShortcutsModal";
 import { useShortcutsStore, matchAction } from "@/wstudio/daw/state/ShortcutsStore";
 import type { Clip, Track, AutomationPoint } from "@/wstudio/daw/engine/types";
+import { saveProjectTo, saveAsProject, openProject } from "@/wstudio/daw/lib/projectIO";
 
 /** Linearly interpolate between automation breakpoints at the given timeline position. */
 function interpAutomation(points: AutomationPoint[], pos: number, fallback: number): number {
