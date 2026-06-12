@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { supabase } from "@/integrations/supabase/client";
 
 export type ShortcutActionId =
   | "play" | "stop" | "record" | "rewind" | "forward5" | "back5" | "loop"
@@ -49,7 +50,7 @@ export const SHORTCUT_ACTIONS: ShortcutAction[] = [
 
 const LS_KEY = "wstudio:daw:shortcuts:v1";
 
-function loadBindings(): Record<string, string> {
+function loadLocal(): Record<string, string> {
   if (typeof window === "undefined") return {};
   try {
     const raw = localStorage.getItem(LS_KEY);
@@ -57,8 +58,16 @@ function loadBindings(): Record<string, string> {
   } catch {}
   return {};
 }
-function persist(bindings: Record<string, string>) {
+function persistLocal(bindings: Record<string, string>) {
   try { localStorage.setItem(LS_KEY, JSON.stringify(bindings)); } catch {}
+}
+
+async function persistRemote(bindings: Record<string, string>) {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase.from("profiles").update({ daw_shortcuts: bindings } as any).eq("user_id", user.id);
+  } catch {}
 }
 
 function defaults(): Record<ShortcutActionId, string> {
@@ -69,24 +78,54 @@ function defaults(): Record<ShortcutActionId, string> {
 
 interface ShortcutsState {
   bindings: Record<ShortcutActionId, string>;
+  hydrated: boolean;
   setBinding: (id: ShortcutActionId, combo: string) => void;
   clearBinding: (id: ShortcutActionId) => void;
   resetAll: () => void;
+  /** Replace all bindings (used by import). Merges with defaults to keep unknown ids safe. */
+  replaceAll: (next: Partial<Record<ShortcutActionId, string>>) => void;
+  /** Fetch bindings from the user profile and merge into local state. */
+  hydrateFromProfile: () => Promise<void>;
+}
+
+function commit(next: Record<ShortcutActionId, string>) {
+  persistLocal(next);
+  void persistRemote(next);
 }
 
 export const useShortcutsStore = create<ShortcutsState>((set, get) => ({
-  bindings: { ...defaults(), ...(loadBindings() as Record<ShortcutActionId, string>) },
+  bindings: { ...defaults(), ...(loadLocal() as Record<ShortcutActionId, string>) },
+  hydrated: false,
   setBinding: (id, combo) => {
     const next = { ...get().bindings, [id]: combo };
-    set({ bindings: next }); persist(next);
+    set({ bindings: next }); commit(next);
   },
   clearBinding: (id) => {
     const next = { ...get().bindings, [id]: "" };
-    set({ bindings: next }); persist(next);
+    set({ bindings: next }); commit(next);
   },
   resetAll: () => {
     const d = defaults();
-    set({ bindings: d }); persist(d);
+    set({ bindings: d }); commit(d);
+  },
+  replaceAll: (next) => {
+    const merged = { ...defaults(), ...next } as Record<ShortcutActionId, string>;
+    set({ bindings: merged }); commit(merged);
+  },
+  hydrateFromProfile: async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { set({ hydrated: true }); return; }
+      const { data } = await supabase.from("profiles").select("daw_shortcuts").eq("user_id", user.id).maybeSingle();
+      const remote = (data as any)?.daw_shortcuts as Record<string, string> | null | undefined;
+      if (remote && typeof remote === "object") {
+        const merged = { ...defaults(), ...remote } as Record<ShortcutActionId, string>;
+        set({ bindings: merged, hydrated: true });
+        persistLocal(merged);
+        return;
+      }
+    } catch {}
+    set({ hydrated: true });
   },
 }));
 
@@ -139,4 +178,9 @@ export function matchAction(ev: KeyboardEvent, bindings: Record<string, string>)
 export function useShortcutLabel(id: ShortcutActionId): string {
   const combo = useShortcutsStore(s => s.bindings[id]);
   return formatCombo(combo);
+}
+
+/** Get the label for an action id. */
+export function actionLabel(id: ShortcutActionId): string {
+  return SHORTCUT_ACTIONS.find(a => a.id === id)?.label ?? id;
 }

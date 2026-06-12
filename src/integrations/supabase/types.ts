@@ -901,6 +901,7 @@ export type Database = {
           bio: string | null
           created_at: string
           custom_accent_color: string | null
+          daw_shortcuts: Json | null
           display_name: string | null
           email: string | null
           id: string
@@ -916,6 +917,7 @@ export type Database = {
           bio?: string | null
           created_at?: string
           custom_accent_color?: string | null
+          daw_shortcuts?: Json | null
           display_name?: string | null
           email?: string | null
           id?: string
@@ -931,6 +933,7 @@ export type Database = {
           bio?: string | null
           created_at?: string
           custom_accent_color?: string | null
+          daw_shortcuts?: Json | null
           display_name?: string | null
           email?: string | null
           id?: string
