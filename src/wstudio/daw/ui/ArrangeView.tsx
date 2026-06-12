@@ -720,6 +720,7 @@ function ClipBlock({ clip, color, pxPerSec, selected, tool, onSelect, onContext,
   onPointerMoveDrag: (e: React.PointerEvent) => void;
   onPointerUpDrag: () => void;
 }) {
+  const TRACK_H = Math.round(TRACK_H_BASE * useDawStore(s => s.verticalZoom));
   const w = clip.duration * pxPerSec;
   const left = clip.startTime * pxPerSec;
   const interactive = tool === "pointer" || tool === "trim";
