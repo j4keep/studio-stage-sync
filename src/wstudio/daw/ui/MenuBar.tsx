@@ -11,6 +11,10 @@ interface Props {
   onStop: () => void;
   onRecord: () => void;
   onRewind: () => void;
+  onNewProject?: () => void;
+  onOpenProject?: () => void;
+  onSaveProject?: () => void;
+  onSaveAsProject?: () => void;
 }
 
 // Plain (non-memoized) wrapper. Memoizing broke Radix's ref forwarding to
