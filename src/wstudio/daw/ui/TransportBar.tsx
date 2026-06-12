@@ -331,6 +331,28 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
         </Tip>
       )}
 
+      {onToggleLibrary && (
+        <Tip label={`${libraryOpen ? "Hide" : "Show"} sound library`}>
+          <button
+            type="button"
+            onClick={onToggleLibrary}
+            aria-label="Toggle library"
+            className={`h-9 w-9 grid place-items-center rounded-md border transition ${libraryOpen ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/40" : "bg-neutral-900 border-neutral-800 text-neutral-300 hover:bg-neutral-800"}`}
+          ><FolderOpen className="w-4 h-4" /></button>
+        </Tip>
+      )}
+      {onToggleSession && (
+        <Tip label={`${sessionOpen ? "Hide" : "Show"} session & video chat`}>
+          <button
+            type="button"
+            onClick={onToggleSession}
+            aria-label="Toggle session panel"
+            className={`h-9 w-9 grid place-items-center rounded-md border transition ${sessionOpen ? "bg-purple-500/20 text-purple-300 border-purple-500/40" : "bg-neutral-900 border-neutral-800 text-neutral-300 hover:bg-neutral-800"}`}
+          ><Users className="w-4 h-4" /></button>
+        </Tip>
+      )}
+
+
       {/* Tool palette (icon only) */}
       <DropdownMenu>
         <Tip label={`Tool: ${TOOLS.find(t => t.id === tool)?.label ?? "Pointer"}  ·  T  (V pointer, B pencil, E eraser, S scissors)`}>
