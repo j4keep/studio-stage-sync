@@ -517,7 +517,11 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
   }
 
   return (
-    <div className={`fixed inset-0 z-[60] flex flex-col ${themeMode === "dark" ? "bg-black text-neutral-200 dark" : "daw-light"}`}>
+    <div
+      className={`fixed inset-0 z-[60] flex flex-col overflow-hidden overscroll-none ${themeMode === "dark" ? "bg-black text-neutral-200 dark" : "daw-light"}`}
+      style={{ touchAction: "none" }}
+    >
+
 
       <MenuBar
         onImport={() => importInputRef.current?.click()}
