@@ -17,7 +17,7 @@ interface Props {
 }
 
 const HEADER_W = 200;
-const TRACK_H = 80;
+const TRACK_H_BASE = 80;
 const RULER_H = 32;
 
 // Build an SVG-based cursor that resembles the selected tool's icon. The icon
