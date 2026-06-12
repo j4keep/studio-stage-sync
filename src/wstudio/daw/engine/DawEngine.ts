@@ -774,7 +774,7 @@ export class DawEngine {
   }
 }
 
-function audioBufferToWav(buffer: AudioBuffer): Blob {
+export function audioBufferToWav(buffer: AudioBuffer): Blob {
   const numCh = buffer.numberOfChannels;
   const sampleRate = buffer.sampleRate;
   const numSamples = buffer.length;
