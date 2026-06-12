@@ -9,9 +9,9 @@ import type { MidiNote, Clip } from "../engine/types";
 type Tab = "instrument" | "chords" | "pianoroll" | "effects";
 
 /* ---------- Preset catalog ---------- */
-type Preset = { name: string; wave: "sine" | "triangle" | "sawtooth" | "square"; cat: string; sub: string };
-const PRESET_CATS = ["My Presets", "Guitar", "Bass & 808s", "Orchestral", "Keys", "Synths", "Drums & Machines", "FX"] as const;
-const PRESETS: Preset[] = [
+export type Preset = { name: string; wave: "sine" | "triangle" | "sawtooth" | "square"; cat: string; sub: string };
+export const PRESET_CATS = ["My Presets", "Guitar", "Bass & 808s", "Orchestral", "Keys", "Synths", "Drums & Machines", "FX"] as const;
+export const PRESETS: Preset[] = [
   { name: "Bright Synth",   wave: "sawtooth", cat: "Synths",       sub: "Leads" },
   { name: "Pluck Lead",     wave: "triangle", cat: "Synths",       sub: "Leads" },
   { name: "Warm Pad",       wave: "sine",     cat: "Synths",       sub: "Pads" },
@@ -29,6 +29,7 @@ const PRESETS: Preset[] = [
   { name: "Drum Kit",       wave: "square",   cat: "Drums & Machines", sub: "Kits" },
   { name: "FX Riser",       wave: "sawtooth", cat: "FX",           sub: "Risers" },
 ];
+
 
 /* ---------- Keyboard ---------- */
 const KEY_MAP: Record<string, number> = {
