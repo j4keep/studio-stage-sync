@@ -538,7 +538,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
         onSaveAsProject={handleSaveAsProject}
       />
       {/* Project name strip — centered, editable, sits above the transport */}
-      <div className="h-7 bg-gradient-to-b from-neutral-900 to-neutral-950 border-b border-neutral-800 flex items-center justify-center relative">
+      <div className="h-7 shrink-0 bg-gradient-to-b from-neutral-900 to-neutral-950 border-b border-neutral-800 flex items-center justify-center relative">
         <input
           value={projectName}
           onChange={(e) => setProjectName(e.target.value)}
