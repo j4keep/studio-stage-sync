@@ -270,10 +270,11 @@ export function ArrangeView({ onArmToggle, onSeek, engine, onOpenInstrumentEdito
 
   return (
     <div
-      className="flex-1 flex flex-col overflow-hidden bg-neutral-900"
+      className="flex-1 flex flex-col overflow-hidden bg-neutral-900 min-h-0 min-w-0"
       onClick={() => setCtxMenu(null)}
       style={{ cursor: TOOL_CURSORS[tool] }}
     >
+
       {/* Toolbar */}
       <div className="h-8 border-b border-neutral-800 bg-neutral-950 flex items-center px-3 gap-3 text-[10px] text-neutral-400">
         <span className="uppercase tracking-wider">Edit</span>
