@@ -1,93 +1,54 @@
-# W.Studio DAW — Soundtrap-style build
+# W.Studio Edit Window Overhaul
 
-Building a browser DAW at `/wstudio/daw` while keeping the existing session collab (join code, participants list, screen share, WebRTC) intact. The old `UnifiedSessionScreen` stays live until the new DAW is proven, then we point session routes at it.
+A big refresh covering bug fixes, polish, and several new features. Grouping the work so it can ship in clear passes.
 
-## Scope across 3 phases
+## 1. Bug fixes
+- **Clip drag doesn't follow audio to new track** — when a clip is dragged to a different track, the audio still plays on the original track. Fix the drop handler to re-assign the clip's `trackId` and rebuild routing so playback follows the visual move.
+- **Mixer cut off at the bottom** — `R / M / S` buttons under the fader are clipped. Make the mixer area's vertical scroll reach the full strip height (independent of the bottom nav and tracks panel).
+- **Light-mode invisible text** — several toolbar/panel labels are hardcoded white. Replace with semantic tokens (`text-foreground`, `text-muted-foreground`) so they read in both themes.
 
-### Phase 1 — Multitrack DAW core
-- New page `src/pages/WStudioDawPage.tsx` mounted at `/wstudio/daw` and `/wstudio/session/:code/daw`
-- Engine `src/wstudio/daw/engine/DawEngine.ts` — Web Audio graph, transport (play/stop/record/loop), sample-accurate scheduling, BPM + metronome, master bus
-- Track model: unlimited tracks, each = audio OR instrument; per-track gain, pan, mute, solo, arm, input select, output bus
-- Timeline UI `Timeline.tsx` — ruler (bars/beats + time), zoom, snap-to-grid, drag clips, trim, split, duplicate, delete
-- Clip waveform rendering via offline peak extraction (cached)
-- Recording: arm track → record from selected mic input → clip drops on timeline at playhead
-- File import: drag-and-drop WAV/MP3/OGG/M4A → new audio track + clip
-- Export: render master to WAV via OfflineAudioContext
+## 2. Light mode "pro" look
+- Move base background from pure white to a soft warm gray (`hsl(220 14% 96%)` ish), with subtle elevation on panels.
+- Bold the section labels (SETTING, EQ, INPUT, etc.) and toolbar text.
+- Add a faint inner shadow / hairline border on panels for depth.
+- Audit `text-white`, `bg-white`, `bg-black` in DAW components and swap to tokens.
 
-### Phase 2 — Mixer + built-in effects + plug-in uploads
-- Mixer view (toggle from arrange view): vertical channel strips per track + master
-  - Fader (dB-scaled), pan knob, mute/solo, meter (peak + RMS), insert FX slots (up to 6), send to 2 buses (Reverb / Delay)
-- Built-in effects (Web Audio): EQ (3-band + parametric), Compressor, Reverb (convolution), Delay, Chorus, Distortion, Limiter, Auto-tune-style pitch correction (PSOLA approximation)
-- Effect presets per plugin
-- **User plug-in uploads** (Soundtrap-style): users upload `.wasm` + manifest JSON, stored in R2; engine loads them as AudioWorkletProcessors at runtime
-  - Manifest declares params (name, min/max, default), I/O channels
-  - Per-user "My Plug-ins" library page; sandboxed worklet load
-  - Note: native VST/AU `.dll/.vst3/.component` cannot run in browser — UI clearly states "Web plug-ins (WASM) supported". Native plug-in support requires the helper app (parked).
+## 3. Collapsible Session / Library panel
+- The right-side **Session** panel (with participants + Share screen) and the **Library** tab become a single dockable panel.
+- Add a sidebar **icon toggle** in the top toolbar (open/close). When closed, the Edit canvas expands full width.
+- The same panel will host the **video chat tiles** when in a live session.
 
-### Phase 3 — Instruments, MIDI, sound library, quantize
-- Virtual instruments: built-in sampler + simple synth (Web Audio oscillators) + drum machine grid
-- MIDI: piano-roll editor per instrument clip (note add/move/resize/velocity), MIDI keyboard input via WebMIDI
-- Quantize: clip + MIDI note quantize to 1/4, 1/8, 1/16, 1/32, triplets, with strength %
-- Sound library: browseable loops/one-shots (seeded set in R2), drag to timeline; per-user uploaded samples
-- Metronome, count-in, loop region
+## 4. Quick Start refresh (iTunes-inspired)
+- Re-skin the Quick Start tiles with a vivid gradient background (orange → pink → purple → cyan, like the iTunes reference) and white iconography.
+- Swap flat lucide glyphs for layered/3D-feel icon treatments (gradient fill + soft drop shadow + subtle bevel using CSS).
+- Keep existing actions (Browse loops, Patterns Beatmaker, Play the synth, Add new track, Import file, Invite a friend).
 
-## Keep / reuse
-- `SessionContext`, join-code flow, participants panel, screen share (`StudioMediaContext`), WebRTC signaling — all kept. DAW page wraps in the existing session provider when a session code is present, hides collab chrome when standalone.
-- `IncognitoFeedWindow` continues to float over DAW.
+## 5. Floating Keyboard upgrades
+- **Musical-typing color highlights** — color-code the key chips like Logic's musical typing panel (image 2): octave keys (Z/X) blue, sustain (Tab) green, velocity (1–8) orange/red.
+- **Hardware-style instrument keyboard** — redesign the floating keyboard shell to look like image 3 (StudioLogic SL73): dark brushed body, colored knobs strip across the top, and a small LCD-style screen that displays the **currently selected instrument name** (updates when the user changes the active instrument track).
+- Keep all existing controls (octave, mode toggle, glissando, computer-key mapping).
+- Restore the **full piano keyboard look** from image 4 (proper proportions, octave labels under C keys, wider black-to-white ratio).
 
-## File layout
-```text
-src/wstudio/daw/
-  engine/
-    DawEngine.ts           transport, graph, scheduler
-    Track.ts               track model + per-track chain
-    Clip.ts                audio + MIDI clips
-    Effects.ts             built-in FX factory
-    WasmPluginHost.ts      user plug-in worklet loader
-    Sampler.ts, Synth.ts, DrumMachine.ts
-    Recorder.ts            arm + capture
-    Exporter.ts            offline render to WAV
-    Metronome.ts, Quantize.ts, Peaks.ts
-  state/
-    DawStore.ts            zustand store (tracks, clips, transport, mixer)
-  ui/
-    DawShell.tsx           top bar (transport, BPM, time, view switch)
-    ArrangeView.tsx        timeline + track headers
-    MixerView.tsx          channel strips
-    TrackHeader.tsx, ChannelStrip.tsx, Fader.tsx, Knob.tsx, Meter.tsx
-    ClipView.tsx, WaveformView.tsx
-    PianoRoll.tsx
-    LibraryPanel.tsx       sound + plug-in library, drag source
-    PluginRack.tsx, PluginUploadDialog.tsx
-    CollabSidebar.tsx      wraps existing participants + screen share
-    JoinCodeBadge.tsx      reuses session code display
-src/pages/WStudioDawPage.tsx
-```
+## 6. Piano Roll feature parity (Logic Pro)
+Add a full inspector column on the left of the piano roll:
+- **Time Quantize** dropdown — full list: 1/1, 1/2, 1/4, 1/8, 1/16, 1/32, 1/64, plus triplets (1/2 → 1/128) and swing variants (1/16 A–F, 1/8 A–F) and tuplets (5/4, 5/8, 7, 9), plus combined (1/16 & 1/16T, etc.) — matching image 6.
+- **Strength** slider (0–100) and **Swing** slider (0–100).
+- **Scale Quantize** — root note picker (Off, C, C#, D, D#, Eb, E, F, F#, G, G#, Ab, A, A#, Bb, B) + scale type picker (Major, Natural Minor, Chromatic, Major/Minor, Major+b7, Harmonic Minor, Melodic Minor, Major Pentatonic, Minor Pentatonic, Major Blues, Minor Blues, Lydian, Mixolydian, Dorian, Phrygian, Locrian, Klezmer, Japanese, South-East Asian) — matching images 7 & 8.
+- **Velocity** slider (1–127) for new notes.
+- **Pencil tool** inside the piano roll for drawing notes (in addition to current select/erase tools).
 
-## Backend additions
-- R2 buckets reused: new prefixes `daw/projects/{userId}/{projectId}/`, `daw/plugins/{userId}/`, `daw/samples/{userId}/`
-- Supabase tables:
-  - `daw_projects` (id, user_id, name, bpm, data jsonb, updated_at) + RLS owner-only + grants
-  - `daw_user_plugins` (id, user_id, name, manifest jsonb, wasm_key, created_at) + RLS owner-only + grants
-- Edge functions reuse `r2-upload` / `r2-presign` / `r2-download`
+## 7. Reference pass
+Quick look at Logic Pro on the web layout to confirm icon ordering and inspector grouping before final styling.
 
-## Rollout
-1. Phase 1 ships as `/wstudio/daw` (standalone). Old session screen untouched.
-2. Phase 2 adds mixer + FX + plug-in upload UI.
-3. Phase 3 adds MIDI + instruments + library + quantize.
-4. Add `?session={code}` param so DAW boots inside an active collab session; collab sidebar appears, screen share button reuses existing media context.
-5. Once stable, replace UnifiedSessionScreen route target with DAW.
+---
 
-## Technical notes (non-user)
-- Transport uses a lookahead scheduler (25ms tick, 100ms lookahead) over `AudioContext.currentTime` for sample-accurate playback.
-- Peaks computed on a Web Worker; cached by clip hash.
-- Clips reference an AudioBuffer pool keyed by file hash to avoid duplicate decodes.
-- Mixer channel strip = `Track.input → inserts[] → panner → fader → (sends) → master`.
-- AudioWorklet plug-ins receive params via `port.postMessage`; UI knobs bind to manifest params.
-- Project autosave to `daw_projects.data` (debounced 3s).
-- WAV export uses OfflineAudioContext at 44.1kHz/16-bit, streamed to R2 via existing upload flow.
+## Technical notes
+- Clip-move fix lives in `DawStore.moveClip` / drag handler in `TracksView` / `ClipBlock`.
+- Mixer scroll fix is a follow-up to the recent `items-start` change in `MixerView.tsx` — likely needs `min-h-0` on parent + `overflow-y-auto` on the strips container.
+- Light-mode tokens edited in `src/index.css` (`:root` block).
+- New `SidePanelToggle` button in `TransportBar.tsx` driving a Zustand flag in `DawStore`.
+- Piano-roll inspector becomes a new component `PianoRollInspector.tsx`; quantize/scale data lives in a new `pianoRollOptions.ts` constants file.
+- Pencil tool wired into existing tool enum in `DawStore`.
 
-## Out of scope (explicit)
-- Native VST/AU/AAX plug-ins (browser cannot host these without the parked helper app).
-- Video tracks.
-- Notation view.
+## Scope check
+This is ~8–10 hrs of work and touches a lot of files. Want me to do it all in one pass, or split into shippable chunks (e.g., bug fixes + light mode first, then piano roll, then keyboard redesign)?
