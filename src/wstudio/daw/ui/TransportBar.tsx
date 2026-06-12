@@ -205,7 +205,7 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
                     <span>· {transport.tempoMode}</span>
                     <ChevronDown className="w-2.5 h-2.5" />
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent className="bg-neutral-900 border-neutral-800 text-neutral-200 min-w-[220px]">
+                  <DropdownMenuContent className="z-[200] bg-neutral-900 border-neutral-800 text-neutral-200 min-w-[220px]">
                     {TEMPO_MODES.map(m => (
                       <DropdownMenuItem
                         key={m.id}
@@ -281,7 +281,7 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
           >
             <ChevronDown className="w-3.5 h-3.5" />
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="bg-neutral-900 border-neutral-800 text-neutral-200 min-w-[220px]">
+          <DropdownMenuContent className="z-[200] bg-neutral-900 border-neutral-800 text-neutral-200 min-w-[220px]">
             {BBT_MODES.map(m => (
               <DropdownMenuItem
                 key={m.id}
@@ -363,7 +363,7 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
             <ActiveToolIcon className="w-4 h-4" />
           </DropdownMenuTrigger>
         </Tip>
-        <DropdownMenuContent className="bg-neutral-900 border-neutral-800 text-neutral-200 min-w-[220px]">
+        <DropdownMenuContent className="z-[200] bg-neutral-900 border-neutral-800 text-neutral-200 min-w-[220px]">
           {TOOLS.map(({ id, label, Icon, hint }) => (
             <DropdownMenuItem
               key={id}
@@ -390,7 +390,7 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
             <Plus className="w-4 h-4" />
           </DropdownMenuTrigger>
         </Tip>
-        <DropdownMenuContent className="bg-neutral-900 border-neutral-800 text-neutral-200 min-w-[200px]">
+        <DropdownMenuContent className="z-[200] bg-neutral-900 border-neutral-800 text-neutral-200 min-w-[200px]">
           <DropdownMenuItem onSelect={onAddAudio} className="flex items-center gap-2 text-[12px]">
             <Mic className="w-3.5 h-3.5 text-emerald-300" />
             <span className="flex-1">Audio Track</span>
@@ -416,7 +416,7 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
             <LayoutGrid className="w-4 h-4" />
           </DropdownMenuTrigger>
         </Tip>
-        <DropdownMenuContent className="bg-neutral-900 border-neutral-800 text-neutral-200 min-w-[160px]">
+        <DropdownMenuContent className="z-[200] bg-neutral-900 border-neutral-800 text-neutral-200 min-w-[160px]">
           {(["arrange", "mixer", "instrument"] as const).map(v => (
             <DropdownMenuItem
               key={v}
@@ -514,7 +514,7 @@ function MetronomePopover() {
       <PopoverContent
         align="start"
         sideOffset={6}
-        className="w-72 bg-neutral-900 border-neutral-800 text-neutral-200 p-3 space-y-3"
+        className="z-[200] w-72 bg-neutral-900 border-neutral-800 text-neutral-200 p-3 space-y-3"
       >
         {/* On/off */}
         <div className="flex items-center justify-between">
