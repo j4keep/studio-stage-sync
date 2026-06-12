@@ -236,6 +236,26 @@ function InstrumentTab({ engine, trackId }: { engine: DawEngine; trackId: string
     midiRecRef.current = null;
   }, [isRecording]);
 
+  // While recording, continuously extend the clip's duration so it keeps
+  // visually growing past the initial 1-bar bound and never appears to "stop".
+  useEffect(() => {
+    if (!isRecording) return;
+    const tick = setInterval(() => {
+      const rec = midiRecRef.current;
+      if (!rec) return;
+      const st = useDawStore.getState();
+      const secPerBeat = 60 / Math.max(1, st.transport.bpm);
+      const elapsed = Math.max(0, st.transport.position - rec.clipStart);
+      const clip = st.clips.find(c => c.id === rec.clipId);
+      if (!clip) return;
+      const target = Math.max(clip.duration, elapsed + secPerBeat); // always 1 beat ahead of playhead
+      if (target > clip.duration + 0.01) {
+        updateClip(rec.clipId, { duration: target });
+      }
+    }, 250);
+    return () => clearInterval(tick);
+  }, [isRecording, updateClip]);
+
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement)?.tagName === "INPUT") return;
