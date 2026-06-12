@@ -37,24 +37,6 @@ function buildKeys(startMidi: number, octaves: number): Key[] {
 
 interface Props { engine: DawEngine; onClose: () => void; }
 
-/** Decorative knob – pure visual, no audio binding. */
-function HwKnob({ color, label }: { color: string; label: string }) {
-  return (
-    <div className="flex flex-col items-center gap-0.5">
-      <div
-        className="w-7 h-7 rounded-full border border-neutral-700 shadow-inner shadow-black/80 relative"
-        style={{ background: `radial-gradient(circle at 30% 25%, #4a4a4a, #1a1a1a 65%)` }}
-      >
-        <div
-          className="absolute left-1/2 top-1 w-[2px] h-3 -translate-x-1/2 rounded"
-          style={{ background: color, boxShadow: `0 0 6px ${color}` }}
-        />
-      </div>
-      <div className="text-[7px] uppercase tracking-wider text-neutral-500">{label}</div>
-    </div>
-  );
-}
-
 export function FloatingKeyboard({ engine, onClose }: Props) {
   const tracks = useDawStore(s => s.tracks);
   const selectedTrackId = useDawStore(s => s.selectedTrackId);
