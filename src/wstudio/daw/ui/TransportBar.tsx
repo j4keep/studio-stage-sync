@@ -285,7 +285,7 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
             {BBT_MODES.map(m => (
               <DropdownMenuItem
                 key={m.id}
-                onClick={() => setTransport({ bbtDisplayMode: m.id })}
+                onSelect={() => setTransport({ bbtDisplayMode: m.id })}
                 className="flex flex-col items-start gap-0.5 text-[12px]"
               >
                 <div className="flex items-center gap-2">
