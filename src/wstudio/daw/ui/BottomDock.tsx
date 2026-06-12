@@ -672,10 +672,10 @@ function PianoRollTab({ engine, trackId }: { engine: DawEngine; trackId: string 
   const handleDown = (e: React.PointerEvent) => {
     if (!gridRef.current) return;
     const rect = gridRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left + gridRef.current.scrollLeft;
+    const x = e.clientX - rect.left + gridRef.current.scrollLeft - 48; // minus key column width
     const y = e.clientY - rect.top + gridRef.current.scrollTop;
-    const beat = Math.max(0, Math.round((x / PR_PX_PER_BEAT) / snapBeats) * snapBeats);
-    let pitch = PR_TOP_PITCH - Math.floor(y / PR_ROW_H);
+    const beat = Math.max(0, Math.round((x / pxPerBeat) / snapBeats) * snapBeats);
+    let pitch = PR_TOP_PITCH - Math.floor(y / rowH);
     pitch = snapToScale(pitch);
     if (tool === "pencil") {
       const id = activeClip?.id ?? ensureClip();
