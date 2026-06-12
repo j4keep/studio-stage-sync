@@ -437,7 +437,7 @@ function PianoKeyboard({ onDown, onUp, octave }: { onDown: (n: number) => void; 
 /* PRESET MODAL                                                           */
 /* ===================================================================== */
 
-function PresetModal({ currentName, onClose, onPick }: { currentName: string; onClose: () => void; onPick: (p: Preset) => void }) {
+export function PresetModal({ currentName, onClose, onPick }: { currentName: string; onClose: () => void; onPick: (p: Preset) => void }) {
   const [cat, setCat] = useState<string>("Synths");
   const [sub, setSub] = useState<string | null>(null);
   const [q, setQ] = useState("");
