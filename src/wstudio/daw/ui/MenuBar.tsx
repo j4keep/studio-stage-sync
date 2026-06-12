@@ -1,7 +1,6 @@
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { useDawStore } from "../state/DawStore";
 import { toast } from "sonner";
-import { memo } from "react";
 
 interface Props {
   onImport: () => void;
@@ -14,16 +13,16 @@ interface Props {
   onRewind: () => void;
 }
 
-// Defined OUTSIDE the component so React doesn't remount these items on every
-// position-tick re-render (which was making the dropdown items lose clicks).
-const Item = memo(function Item({ children, shortcut, onClick, disabled }: any) {
+// Plain (non-memoized) wrapper. Memoizing broke Radix's ref forwarding to
+// DropdownMenuItem which caused menus to open in the DOM but never paint.
+function Item({ children, shortcut, onClick, disabled }: any) {
   return (
-    <DropdownMenuItem onClick={onClick} disabled={disabled} className="flex justify-between gap-6 text-[12px]">
+    <DropdownMenuItem onSelect={onClick} disabled={disabled} className="flex justify-between gap-6 text-[12px] cursor-pointer">
       <span>{children}</span>
       {shortcut && <span className="text-[10px] text-neutral-500 tracking-wider">{shortcut}</span>}
     </DropdownMenuItem>
   );
-});
+}
 
 export function MenuBar({ onImport, onExport, onAddAudio, onAddInstrument, onPlay, onStop, onRecord, onRewind }: Props) {
   const tracks = useDawStore(s => s.tracks);
