@@ -216,20 +216,18 @@ export function FloatingKeyboard({ engine, onClose }: Props) {
 
         <div className="flex-1" />
 
-        {/* Mode toggle */}
-        <div className="flex items-center rounded border border-neutral-800 overflow-hidden">
+        {/* Mode toggle — explicit Piano vs Computer-Keyboard */}
+        <div className="flex items-center rounded border border-neutral-700 overflow-hidden bg-neutral-950" onPointerDown={(e) => e.stopPropagation()}>
           <button
-            onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); setMode("piano"); }}
-            title="Piano view"
-            className={`w-7 h-6 grid place-items-center ${mode === "piano" ? "bg-cyan-500/30 text-cyan-200" : "text-neutral-500 hover:text-neutral-300"}`}
-          ><Piano className="w-3.5 h-3.5" /></button>
+            title="Real piano keys"
+            className={`h-7 px-2 flex items-center gap-1 text-[10px] font-semibold ${mode === "piano" ? "bg-cyan-500/30 text-cyan-100" : "text-neutral-500 hover:text-neutral-300"}`}
+          ><Piano className="w-3.5 h-3.5" />PIANO</button>
           <button
-            onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); setMode("typing"); }}
-            title="Musical typing"
-            className={`w-7 h-6 grid place-items-center border-l border-neutral-800 ${mode === "typing" ? "bg-cyan-500/30 text-cyan-200" : "text-neutral-500 hover:text-neutral-300"}`}
-          ><KeyboardIcon className="w-3.5 h-3.5" /></button>
+            title="Computer keyboard typing"
+            className={`h-7 px-2 flex items-center gap-1 text-[10px] font-semibold border-l border-neutral-700 ${mode === "typing" ? "bg-amber-500/30 text-amber-100" : "text-neutral-500 hover:text-neutral-300"}`}
+          ><KeyboardIcon className="w-3.5 h-3.5" />TYPE</button>
         </div>
 
         {/* Octave */}
