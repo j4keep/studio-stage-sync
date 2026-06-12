@@ -583,7 +583,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
         onChange={(e) => e.target.files && importFiles(e.target.files)}
       />
 
-      <div className="flex-1 flex overflow-hidden relative">
+      <div className="flex-1 flex overflow-hidden relative min-h-0 min-w-0">
         <LibraryPanel
           onImportFiles={importFiles}
           onAddUserPlugin={(name) => toast.success(`Added plug-in: ${name}`)}
