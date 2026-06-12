@@ -10,27 +10,6 @@ import { FloatingKeyboard } from "./FloatingKeyboard";
 
 type Tab = "instrument" | "chords" | "pianoroll" | "effects";
 
-/* ---------- Preset catalog ---------- */
-export type Preset = { name: string; wave: "sine" | "triangle" | "sawtooth" | "square"; cat: string; sub: string };
-export const PRESET_CATS = ["My Presets", "Guitar", "Bass & 808s", "Orchestral", "Keys", "Synths", "Drums & Machines", "FX"] as const;
-export const PRESETS: Preset[] = [
-  { name: "Bright Synth",   wave: "sawtooth", cat: "Synths",       sub: "Leads" },
-  { name: "Pluck Lead",     wave: "triangle", cat: "Synths",       sub: "Leads" },
-  { name: "Warm Pad",       wave: "sine",     cat: "Synths",       sub: "Pads" },
-  { name: "Trap Bells",     wave: "sine",     cat: "Synths",       sub: "Bells" },
-  { name: "Bright Piano",   wave: "triangle", cat: "Keys",         sub: "Piano" },
-  { name: "Soft Keys",      wave: "sine",     cat: "Keys",         sub: "Electric Piano" },
-  { name: "Electric Piano", wave: "triangle", cat: "Keys",         sub: "Electric Piano" },
-  { name: "808 Bass",       wave: "sine",     cat: "Bass & 808s",  sub: "808" },
-  { name: "Sub Bass",       wave: "sine",     cat: "Bass & 808s",  sub: "Bass" },
-  { name: "Reese Bass",     wave: "sawtooth", cat: "Bass & 808s",  sub: "Bass" },
-  { name: "Clean Guitar",   wave: "triangle", cat: "Guitar",       sub: "Clean" },
-  { name: "Crunch Guitar",  wave: "sawtooth", cat: "Guitar",       sub: "Distorted" },
-  { name: "Strings",        wave: "sawtooth", cat: "Orchestral",   sub: "Strings" },
-  { name: "Brass Stab",     wave: "square",   cat: "Orchestral",   sub: "Brass" },
-  { name: "Drum Kit",       wave: "square",   cat: "Drums & Machines", sub: "Kits" },
-  { name: "FX Riser",       wave: "sawtooth", cat: "FX",           sub: "Risers" },
-];
 
 
 /* ---------- Keyboard ---------- */
