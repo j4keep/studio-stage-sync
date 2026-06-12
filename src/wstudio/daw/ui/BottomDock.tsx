@@ -783,8 +783,8 @@ function PianoRollTab({ engine, trackId }: { engine: DawEngine; trackId: string 
       {/* Grid */}
       <div ref={gridRef} className="flex-1 overflow-auto relative bg-[#0a0a0c]" onPointerDown={handleDown}>
         <div className="relative" style={{ width: PR_BEATS * PR_PX_PER_BEAT + 40, height: PR_NOTES * PR_ROW_H }}>
-          {/* Piano keys – proper white/black look matching the floating keyboard */}
-          <div className="absolute left-0 top-0 w-12 h-full z-10 border-r border-neutral-700">
+          {/* Piano keys – sticky mini-keyboard column matching the floating keyboard */}
+          <div className="sticky left-0 top-0 float-left w-12 h-full z-20 border-r border-neutral-700 bg-[#0a0a0c] shadow-[2px_0_6px_rgba(0,0,0,0.6)]">
             {Array.from({ length: PR_NOTES }).map((_, r) => {
               const pitch = PR_TOP_PITCH - r;
               const isBlack = [1,3,6,8,10].includes(((pitch % 12) + 12) % 12);
@@ -801,6 +801,7 @@ function PianoRollTab({ engine, trackId }: { engine: DawEngine; trackId: string 
               );
             })}
           </div>
+
           {/* Rows */}
           <div className="absolute left-12 top-0 right-0 bottom-0">
             {Array.from({ length: PR_NOTES }).map((_, r) => {
