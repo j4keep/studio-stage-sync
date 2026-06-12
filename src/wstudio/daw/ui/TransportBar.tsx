@@ -209,7 +209,7 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
                     {TEMPO_MODES.map(m => (
                       <DropdownMenuItem
                         key={m.id}
-                        onClick={() => setTransport({ tempoMode: m.id })}
+                        onSelect={() => setTransport({ tempoMode: m.id })}
                         className="flex flex-col items-start gap-0.5 text-[12px]"
                       >
                         <div className="flex items-center gap-2">
@@ -285,7 +285,7 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
             {BBT_MODES.map(m => (
               <DropdownMenuItem
                 key={m.id}
-                onClick={() => setTransport({ bbtDisplayMode: m.id })}
+                onSelect={() => setTransport({ bbtDisplayMode: m.id })}
                 className="flex flex-col items-start gap-0.5 text-[12px]"
               >
                 <div className="flex items-center gap-2">
@@ -367,7 +367,7 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
           {TOOLS.map(({ id, label, Icon, hint }) => (
             <DropdownMenuItem
               key={id}
-              onClick={() => setTool(id)}
+              onSelect={() => setTool(id)}
               className="flex items-center gap-2 text-[12px]"
               title={hint}
             >
@@ -391,15 +391,15 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
           </DropdownMenuTrigger>
         </Tip>
         <DropdownMenuContent className="bg-neutral-900 border-neutral-800 text-neutral-200 min-w-[200px]">
-          <DropdownMenuItem onClick={onAddAudio} className="flex items-center gap-2 text-[12px]">
+          <DropdownMenuItem onSelect={onAddAudio} className="flex items-center gap-2 text-[12px]">
             <Mic className="w-3.5 h-3.5 text-emerald-300" />
             <span className="flex-1">Audio Track</span>
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={onAddInstrument} className="flex items-center gap-2 text-[12px]">
+          <DropdownMenuItem onSelect={onAddInstrument} className="flex items-center gap-2 text-[12px]">
             <Music2 className="w-3.5 h-3.5 text-purple-300" />
             <span className="flex-1">Instrument Track</span>
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={onImport} className="flex items-center gap-2 text-[12px]">
+          <DropdownMenuItem onSelect={onImport} className="flex items-center gap-2 text-[12px]">
             <Plus className="w-3.5 h-3.5 text-cyan-300" />
             <span className="flex-1">Import Audio File…</span>
           </DropdownMenuItem>
@@ -420,7 +420,7 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
           {(["arrange", "mixer", "instrument"] as const).map(v => (
             <DropdownMenuItem
               key={v}
-              onClick={() => setView(v)}
+              onSelect={() => setView(v)}
               className="flex items-center justify-between text-[12px] uppercase tracking-wider"
             >
               <span>{v === "arrange" ? "edit" : v}</span>
