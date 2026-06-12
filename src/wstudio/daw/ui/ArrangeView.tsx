@@ -62,6 +62,9 @@ export function ArrangeView({ onArmToggle, onSeek, engine, onOpenInstrumentEdito
   const selectedClipId = useDawStore(s => s.selectedClipId);
   const splitClipAt = useDawStore(s => s.splitClipAt);
   const setPxPerSec = useDawStore(s => s.setPxPerSec);
+  const verticalZoom = useDawStore(s => s.verticalZoom);
+  const setVerticalZoom = useDawStore(s => s.setVerticalZoom);
+  const TRACK_H = Math.round(TRACK_H_BASE * verticalZoom);
   const reorderTracks = useDawStore(s => s.reorderTracks);
   const moveClipToTrack = useDawStore(s => s.moveClipToTrack);
   const copyClip = useDawStore(s => s.copyClip);
