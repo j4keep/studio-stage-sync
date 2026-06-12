@@ -1,13 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useDawStore } from "../state/DawStore";
 import { triggerSynthNote, type DawEngine } from "../engine/DawEngine";
-import { X, Minus, Plus, Music2, Piano, Keyboard as KeyboardIcon } from "lucide-react";
-
+import { X, Minus, Plus, Piano, Keyboard as KeyboardIcon } from "lucide-react";
 
 /**
- * On-screen MIDI keyboard. Sends notes to the currently selected (or first)
- * instrument track. Computer keyboard acts as a MIDI controller (A W S E D F T G Y H U J K).
- * Supports slide-to-play: hold mouse/touch and drag across keys to glissando.
+ * Hardware-inspired floating MIDI keyboard. Computer keys act as MIDI input
+ * (A W S E D F T G Y H U J K). LCD shows the currently selected instrument.
  */
 
 const KEYBOARD_MAP: Record<string, number> = {
@@ -18,7 +16,7 @@ interface Key {
   midi: number;
   label: string;
   black: boolean;
-  whiteIndex: number; // index among white keys (for positioning)
+  whiteIndex: number;
 }
 
 function buildKeys(startMidi: number, octaves: number): Key[] {
@@ -35,9 +33,24 @@ function buildKeys(startMidi: number, octaves: number): Key[] {
   return out;
 }
 
-interface Props {
-  engine: DawEngine;
-  onClose: () => void;
+interface Props { engine: DawEngine; onClose: () => void; }
+
+/** Decorative knob – pure visual, no audio binding. */
+function HwKnob({ color, label }: { color: string; label: string }) {
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <div
+        className="w-7 h-7 rounded-full border border-neutral-700 shadow-inner shadow-black/80 relative"
+        style={{ background: `radial-gradient(circle at 30% 25%, #4a4a4a, #1a1a1a 65%)` }}
+      >
+        <div
+          className="absolute left-1/2 top-1 w-[2px] h-3 -translate-x-1/2 rounded"
+          style={{ background: color, boxShadow: `0 0 6px ${color}` }}
+        />
+      </div>
+      <div className="text-[7px] uppercase tracking-wider text-neutral-500">{label}</div>
+    </div>
+  );
 }
 
 export function FloatingKeyboard({ engine, onClose }: Props) {
@@ -48,26 +61,23 @@ export function FloatingKeyboard({ engine, onClose }: Props) {
   const selectTrack = useDawStore(s => s.selectTrack);
 
   const instruments = tracks.filter(t => t.kind === "instrument");
-  const active =
-    instruments.find(t => t.id === selectedTrackId) ||
-    instruments[0] ||
-    null;
+  const active = instruments.find(t => t.id === selectedTrackId) || instruments[0] || null;
 
   const [octaveStart, setOctaveStart] = useState(48); // C3
   const [octaves, setOctaves] = useState(3);
   const [mode, setMode] = useState<"piano" | "typing">("piano");
+  const [sustain, setSustain] = useState(false);
+  const [velocity, setVelocity] = useState(5); // 1..8
   const keys = useMemo(() => buildKeys(octaveStart, octaves), [octaveStart, octaves]);
   const whiteCount = keys.filter(k => !k.black).length;
-  const WHITE_W = 26;
-  const WHITE_H = 110;
-  const BLACK_W = 16;
-  const BLACK_H = 70;
-
+  const WHITE_W = 28;
+  const WHITE_H = 120;
+  const BLACK_W = 18;
+  const BLACK_H = 78;
 
   // Drag-to-move window
-  const [pos, setPos] = useState({ x: 80, y: window.innerHeight - 220 });
+  const [pos, setPos] = useState({ x: 80, y: window.innerHeight - 260 });
   const dragRef = useRef<{ dx: number; dy: number } | null>(null);
-
   const onHeaderDown = (e: React.PointerEvent) => {
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     dragRef.current = { dx: e.clientX - pos.x, dy: e.clientY - pos.y };
@@ -78,215 +88,239 @@ export function FloatingKeyboard({ engine, onClose }: Props) {
   };
   const onHeaderUp = () => { dragRef.current = null; };
 
-  // Active key flash
   const [flashed, setFlashed] = useState<Set<number>>(new Set());
   const flash = (m: number) => {
-    setFlashed(prev => {
-      const n = new Set(prev);
-      n.add(m);
-      return n;
-    });
-    setTimeout(() => {
-      setFlashed(prev => {
-        const n = new Set(prev);
-        n.delete(m);
-        return n;
-      });
-    }, 220);
+    setFlashed(prev => { const n = new Set(prev); n.add(m); return n; });
+    setTimeout(() => setFlashed(prev => { const n = new Set(prev); n.delete(m); return n; }), 220);
   };
 
   const playNote = (midi: number) => {
+    const vel = velocity / 8;
     let t = active;
     if (!t) {
       const id = addTrack("instrument", "Synth");
       updateTrack(id, { instrument: "synth" });
       selectTrack(id);
-      // Defer note until next tick so chain exists
-      setTimeout(() => triggerSynthNote(engine, id, midi), 30);
+      setTimeout(() => triggerSynthNote(engine, id, midi, sustain ? 0.6 : 0.3, vel), 30);
       flash(midi);
       return;
     }
-    triggerSynthNote(engine, t.id, midi);
+    triggerSynthNote(engine, t.id, midi, sustain ? 0.6 : 0.3, vel);
     flash(midi);
   };
 
-  // Computer-keyboard MIDI input
+  // Computer-keyboard MIDI input + meta keys (Z/X octave, Tab sustain, 1-8 vel)
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement)?.isContentEditable) return;
-      const n = KEYBOARD_MAP[e.key.toLowerCase()];
+      const k = e.key.toLowerCase();
+      if (k === "z") { e.preventDefault(); setOctaveStart(o => Math.max(0, o - 12)); return; }
+      if (k === "x") { e.preventDefault(); setOctaveStart(o => Math.min(96, o + 12)); return; }
+      if (e.key === "Tab") { e.preventDefault(); setSustain(s => !s); return; }
+      if (/^[1-8]$/.test(e.key)) { setVelocity(Number(e.key)); return; }
+      const n = KEYBOARD_MAP[k];
       if (n != null && !e.repeat) {
-        const base = octaveStart - 48; // offset from C3
+        const base = octaveStart - 48;
         playNote(n + base);
       }
     };
     window.addEventListener("keydown", down);
     return () => window.removeEventListener("keydown", down);
-  }, [octaveStart, active?.id, engine]);
+  }, [octaveStart, active?.id, engine, sustain, velocity]);
 
-  // Slide-to-play: track if mouse is pressed
+  // Slide-to-play
   const pressedRef = useRef(false);
   const lastNoteRef = useRef<number | null>(null);
-
   const onKeyDown = (m: number) => (e: React.PointerEvent) => {
-    e.stopPropagation();
-    pressedRef.current = true;
-    lastNoteRef.current = m;
-    playNote(m);
+    e.stopPropagation(); pressedRef.current = true; lastNoteRef.current = m; playNote(m);
   };
   const onKeyEnter = (m: number) => () => {
     if (!pressedRef.current) return;
     if (lastNoteRef.current === m) return;
-    lastNoteRef.current = m;
-    playNote(m);
+    lastNoteRef.current = m; playNote(m);
   };
   useEffect(() => {
     const up = () => { pressedRef.current = false; lastNoteRef.current = null; };
     window.addEventListener("pointerup", up);
     window.addEventListener("pointercancel", up);
-    return () => {
-      window.removeEventListener("pointerup", up);
-      window.removeEventListener("pointercancel", up);
-    };
+    return () => { window.removeEventListener("pointerup", up); window.removeEventListener("pointercancel", up); };
   }, []);
 
-  const width = whiteCount * WHITE_W;
+  const width = Math.max(560, whiteCount * WHITE_W + 24);
+  const lcdLine1 = active ? active.name : "— NO TRACK —";
+  const lcdLine2 = active?.instrumentPreset || (active?.instrument === "drum" ? "Drum Kit" : "Default Synth");
 
   return (
     <div
-      className="fixed z-[80] rounded-lg border border-neutral-700 bg-neutral-950/95 backdrop-blur shadow-2xl shadow-black/60 select-none"
-      style={{ left: pos.x, top: pos.y }}
+      className="fixed z-[80] rounded-xl select-none shadow-2xl shadow-black/80"
+      style={{
+        left: pos.x, top: pos.y, width,
+        background: "linear-gradient(180deg,#1a1a1d 0%,#0a0a0b 100%)",
+        border: "1px solid #2a2a2d",
+        boxShadow: "0 18px 48px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.06)",
+      }}
     >
+      {/* Brushed-metal header: drag handle + LCD + hardware knob strip */}
       <div
         onPointerDown={onHeaderDown}
         onPointerMove={onHeaderMove}
         onPointerUp={onHeaderUp}
-        className="h-7 px-2 flex items-center gap-2 border-b border-neutral-800 cursor-move bg-gradient-to-b from-neutral-900 to-neutral-950 rounded-t-lg"
+        className="h-14 px-3 flex items-center gap-3 cursor-move rounded-t-xl"
+        style={{
+          background:
+            "repeating-linear-gradient(90deg, #1f1f22 0px, #232326 2px, #1f1f22 4px), linear-gradient(180deg,#28282b,#161618)",
+          borderBottom: "1px solid #000",
+        }}
       >
-        <Music2 className="w-3 h-3 text-cyan-300" />
-        <span className="text-[10px] uppercase tracking-wider text-neutral-300">
-          Keyboard {active ? `— ${active.name}` : "— no instrument track"}
-        </span>
+        <span className="text-[9px] uppercase tracking-[0.2em] text-neutral-500 font-semibold">W.STUDIO · SL73</span>
 
-        {/* Mode toggle (piano vs musical-typing) — mirrors Logic's two icons */}
-        <div className="ml-2 flex items-center rounded border border-neutral-800 overflow-hidden">
+        {/* LCD screen */}
+        <div
+          className="ml-1 px-3 py-1.5 rounded-md font-mono leading-tight tabular-nums"
+          style={{
+            minWidth: 200,
+            background: "linear-gradient(180deg,#0d1f12,#081308)",
+            border: "1px solid #1c2a1c",
+            boxShadow: "inset 0 0 12px rgba(0,255,120,0.15), inset 0 0 0 1px #000",
+            color: "#7cf2a6", textShadow: "0 0 6px rgba(124,242,166,0.6)",
+          }}
+        >
+          <div className="text-[11px] truncate">{lcdLine1}</div>
+          <div className="text-[9px] opacity-70 truncate">{lcdLine2}</div>
+        </div>
+
+        {/* Knob strip */}
+        <div className="flex items-end gap-2 px-2">
+          <HwKnob color="#ef4444" label="Cutoff" />
+          <HwKnob color="#f59e0b" label="Res" />
+          <HwKnob color="#22d3ee" label="Attack" />
+          <HwKnob color="#a855f7" label="Release" />
+        </div>
+
+        <div className="flex-1" />
+
+        {/* Mode toggle */}
+        <div className="flex items-center rounded border border-neutral-800 overflow-hidden">
           <button
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); setMode("piano"); }}
             title="Piano view"
-            className={`w-6 h-5 grid place-items-center ${mode === "piano" ? "bg-cyan-500/30 text-cyan-200" : "text-neutral-500 hover:text-neutral-300"}`}
-          ><Piano className="w-3 h-3" /></button>
+            className={`w-7 h-6 grid place-items-center ${mode === "piano" ? "bg-cyan-500/30 text-cyan-200" : "text-neutral-500 hover:text-neutral-300"}`}
+          ><Piano className="w-3.5 h-3.5" /></button>
           <button
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); setMode("typing"); }}
-            title="Musical typing (computer keyboard)"
-            className={`w-6 h-5 grid place-items-center border-l border-neutral-800 ${mode === "typing" ? "bg-cyan-500/30 text-cyan-200" : "text-neutral-500 hover:text-neutral-300"}`}
-          ><KeyboardIcon className="w-3 h-3" /></button>
+            title="Musical typing"
+            className={`w-7 h-6 grid place-items-center border-l border-neutral-800 ${mode === "typing" ? "bg-cyan-500/30 text-cyan-200" : "text-neutral-500 hover:text-neutral-300"}`}
+          ><KeyboardIcon className="w-3.5 h-3.5" /></button>
         </div>
 
-        <div className="flex-1" />
-        <button
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => { e.stopPropagation(); setOctaveStart(o => Math.max(0, o - 12)); }}
-          className="w-5 h-5 grid place-items-center text-neutral-400 hover:text-cyan-300 rounded border border-neutral-800"
-          title="Octave down"
-        ><Minus className="w-3 h-3" /></button>
-        <span className="text-[9px] text-neutral-500 tabular-nums">C{Math.floor(octaveStart / 12) - 1}</span>
-        <button
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => { e.stopPropagation(); setOctaveStart(o => Math.min(96, o + 12)); }}
-          className="w-5 h-5 grid place-items-center text-neutral-400 hover:text-cyan-300 rounded border border-neutral-800"
-          title="Octave up"
-        ><Plus className="w-3 h-3" /></button>
+        {/* Octave */}
+        <button onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); setOctaveStart(o => Math.max(0, o - 12)); }}
+          className="w-6 h-6 grid place-items-center text-neutral-400 hover:text-cyan-300 rounded border border-neutral-800" title="Octave down (Z)">
+          <Minus className="w-3 h-3" />
+        </button>
+        <span className="text-[10px] text-neutral-400 tabular-nums w-7 text-center">C{Math.floor(octaveStart / 12) - 1}</span>
+        <button onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); setOctaveStart(o => Math.min(96, o + 12)); }}
+          className="w-6 h-6 grid place-items-center text-neutral-400 hover:text-cyan-300 rounded border border-neutral-800" title="Octave up (X)">
+          <Plus className="w-3 h-3" />
+        </button>
+
         {mode === "piano" && (
-          <>
-            <button
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => { e.stopPropagation(); setOctaves(o => Math.max(2, o - 1)); }}
-              className="px-1 text-[9px] text-neutral-500 hover:text-neutral-300"
-              title="Fewer octaves"
-            >−</button>
-            <span className="text-[9px] text-neutral-500">{octaves} oct</span>
-            <button
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => { e.stopPropagation(); setOctaves(o => Math.min(5, o + 1)); }}
-              className="px-1 text-[9px] text-neutral-500 hover:text-neutral-300"
-              title="More octaves"
-            >+</button>
-          </>
+          <div className="flex items-center gap-1">
+            <button onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); setOctaves(o => Math.max(2, o - 1)); }}
+              className="px-1 text-[10px] text-neutral-500 hover:text-neutral-300">−</button>
+            <span className="text-[10px] text-neutral-500">{octaves} oct</span>
+            <button onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); setOctaves(o => Math.min(5, o + 1)); }}
+              className="px-1 text-[10px] text-neutral-500 hover:text-neutral-300">+</button>
+          </div>
         )}
+
         <button
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => { e.stopPropagation(); onClose(); }}
-          className="w-5 h-5 grid place-items-center text-neutral-400 hover:text-red-400 rounded border border-neutral-800"
+          className="w-6 h-6 grid place-items-center text-neutral-400 hover:text-red-400 rounded border border-neutral-800"
           title="Close keyboard"
         ><X className="w-3 h-3" /></button>
       </div>
 
-      {mode === "piano" ? (
-        <div className="p-2">
-          <div className="relative touch-none" style={{ width, height: WHITE_H }}>
-            {keys.filter(k => !k.black).map((k) => (
-              <button
-                key={k.midi}
-                onPointerDown={onKeyDown(k.midi)}
-                onPointerEnter={onKeyEnter(k.midi)}
-                className={`absolute top-0 border border-neutral-300 rounded-b-sm transition-colors ${
-                  flashed.has(k.midi) ? "bg-cyan-200" : "bg-white hover:bg-neutral-100"
-                }`}
-                style={{ left: k.whiteIndex * WHITE_W, width: WHITE_W, height: WHITE_H }}
-              >
-                <span className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[8px] text-neutral-500 pointer-events-none">
-                  {k.midi % 12 === 0 ? k.label : ""}
-                </span>
-              </button>
-            ))}
-            {keys.filter(k => k.black).map((k) => {
-              const prevWhite = keys.filter(x => !x.black && x.midi < k.midi).length;
-              const left = prevWhite * WHITE_W - BLACK_W / 2;
-              return (
+      {/* Body */}
+      <div
+        className="p-3"
+        style={{ background: "linear-gradient(180deg,#0a0a0b 0%,#050506 100%)" }}
+      >
+        {mode === "piano" ? (
+          <>
+            <div className="relative touch-none mx-auto" style={{ width: whiteCount * WHITE_W, height: WHITE_H }}>
+              {keys.filter(k => !k.black).map((k) => (
                 <button
                   key={k.midi}
                   onPointerDown={onKeyDown(k.midi)}
                   onPointerEnter={onKeyEnter(k.midi)}
-                  className={`absolute top-0 z-10 border border-neutral-700 rounded-b-sm transition-colors ${
-                    flashed.has(k.midi) ? "bg-cyan-700" : "bg-neutral-900 hover:bg-neutral-800"
+                  className={`absolute top-0 rounded-b-md transition-colors ${
+                    flashed.has(k.midi) ? "bg-cyan-200" : "bg-gradient-to-b from-white to-neutral-200 hover:from-neutral-50 hover:to-neutral-200"
                   }`}
-                  style={{ left, width: BLACK_W, height: BLACK_H }}
-                />
-              );
-            })}
-          </div>
-          <div className="mt-1 text-[9px] text-neutral-500 text-center">
-            Slide across keys to glissando · Computer keys: A W S E D F T G Y H U J K
-          </div>
-        </div>
-      ) : (
-        <TypingView
-          octaveStart={octaveStart}
-          flashed={flashed}
-          onTap={(m) => playNote(m)}
-        />
-      )}
+                  style={{
+                    left: k.whiteIndex * WHITE_W, width: WHITE_W - 1, height: WHITE_H,
+                    border: "1px solid #999", borderTop: "2px solid #444",
+                    boxShadow: "inset 0 -6px 6px rgba(0,0,0,0.18)",
+                  }}
+                >
+                  <span className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[8px] text-neutral-500 pointer-events-none">
+                    {k.midi % 12 === 0 ? k.label : ""}
+                  </span>
+                </button>
+              ))}
+              {keys.filter(k => k.black).map((k) => {
+                const prevWhite = keys.filter(x => !x.black && x.midi < k.midi).length;
+                const left = prevWhite * WHITE_W - BLACK_W / 2;
+                return (
+                  <button
+                    key={k.midi}
+                    onPointerDown={onKeyDown(k.midi)}
+                    onPointerEnter={onKeyEnter(k.midi)}
+                    className={`absolute top-0 z-10 rounded-b-md transition-colors ${
+                      flashed.has(k.midi) ? "bg-cyan-700" : "bg-gradient-to-b from-neutral-800 to-black hover:from-neutral-700"
+                    }`}
+                    style={{
+                      left, width: BLACK_W, height: BLACK_H,
+                      border: "1px solid #000",
+                      boxShadow: "inset 0 -4px 6px rgba(255,255,255,0.08), 0 2px 4px rgba(0,0,0,0.6)",
+                    }}
+                  />
+                );
+              })}
+            </div>
+            <div className="mt-2 text-[9px] text-neutral-500 text-center">
+              Slide for glissando · Computer keys A-K play MIDI · <span className="text-blue-400">Z/X</span> octave · <span className="text-emerald-400">Tab</span> sustain · <span className="text-amber-400">1-8</span> velocity
+            </div>
+          </>
+        ) : (
+          <TypingView
+            octaveStart={octaveStart}
+            flashed={flashed}
+            sustain={sustain}
+            velocity={velocity}
+            onTap={(m) => playNote(m)}
+          />
+        )}
+      </div>
     </div>
   );
 }
 
-/** Musical-typing layout — shows the computer-keyboard mapping like Logic Pro's musical typing. */
+/** Logic-style musical typing layout with color-coded meta keys. */
 function TypingView({
-  octaveStart,
-  flashed,
-  onTap,
+  octaveStart, flashed, sustain, velocity, onTap,
 }: {
   octaveStart: number;
   flashed: Set<number>;
+  sustain: boolean;
+  velocity: number;
   onTap: (midi: number) => void;
 }) {
-  // Layout based on Logic's musical typing
-  // Top row (black-key-ish): W E _ T Y U _ O P
-  // Bottom row (white keys): A S D F G H J K L ;
-  const base = octaveStart - 48; // offset relative to C3 baseline (KEYBOARD_MAP is C3 based)
+  const base = octaveStart - 48;
   const blackRow: Array<{ key: string; midi: number | null }> = [
     { key: "W", midi: 61 + base }, { key: "E", midi: 63 + base }, { key: "", midi: null },
     { key: "T", midi: 66 + base }, { key: "Y", midi: 68 + base }, { key: "U", midi: 70 + base },
@@ -298,20 +332,48 @@ function TypingView({
     { key: "J", midi: 71 + base }, { key: "K", midi: 72 + base }, { key: "L", midi: 74 + base },
     { key: ";", midi: 76 + base },
   ];
-  const KEY_W = 36;
+  const KEY_W = 40;
+  const velColor = (n: number) => n <= 3 ? "#fb923c" : n <= 6 ? "#f97316" : "#ef4444";
+
   return (
-    <div className="p-3">
-      <div className="flex gap-1 mb-1 ml-[18px]">
+    <div className="px-1 pt-1 pb-2">
+      {/* Meta row: octave (blue), sustain (green), velocity (orange/red) */}
+      <div className="flex items-center gap-2 mb-2 px-1">
+        <div className="flex gap-1">
+          <span className="px-2 h-6 grid place-items-center rounded text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40">Z ◀</span>
+          <span className="px-2 h-6 grid place-items-center rounded text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40">▶ X</span>
+          <span className="px-2 h-6 grid place-items-center rounded text-[9px] uppercase text-blue-400/70">Octave</span>
+        </div>
+        <span className={`px-2 h-6 grid place-items-center rounded text-[10px] font-bold border ${sustain ? "bg-emerald-500/30 text-emerald-200 border-emerald-400/60 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-emerald-500/10 text-emerald-300/70 border-emerald-500/30"}`}>
+          Tab · Sustain {sustain ? "ON" : "OFF"}
+        </span>
+        <div className="flex items-center gap-1">
+          <span className="text-[9px] uppercase text-amber-400/70">Velocity</span>
+          {[1,2,3,4,5,6,7,8].map(n => (
+            <span
+              key={n}
+              className="w-5 h-6 grid place-items-center rounded text-[10px] font-bold border"
+              style={{
+                background: n === velocity ? velColor(n) : "transparent",
+                color: n === velocity ? "#000" : velColor(n),
+                borderColor: velColor(n) + "66",
+              }}
+            >{n}</span>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex gap-1 mb-1 ml-[20px]">
         {blackRow.map((b, i) => (
           b.midi != null ? (
             <button
               key={i}
               onPointerDown={(e) => { e.stopPropagation(); onTap(b.midi!); }}
-              style={{ width: KEY_W, height: 42 }}
-              className={`rounded text-[10px] font-semibold ${flashed.has(b.midi) ? "bg-cyan-500 text-black" : "bg-neutral-800 text-neutral-200 hover:bg-neutral-700 border border-neutral-700"}`}
+              style={{ width: KEY_W, height: 46 }}
+              className={`rounded text-[11px] font-semibold ${flashed.has(b.midi) ? "bg-cyan-500 text-black" : "bg-neutral-800 text-neutral-200 hover:bg-neutral-700 border border-neutral-700"}`}
             >{b.key}</button>
           ) : (
-            <div key={i} style={{ width: KEY_W, height: 42 }} />
+            <div key={i} style={{ width: KEY_W, height: 46 }} />
           )
         ))}
       </div>
@@ -320,15 +382,11 @@ function TypingView({
           <button
             key={w.key}
             onPointerDown={(e) => { e.stopPropagation(); onTap(w.midi); }}
-            style={{ width: KEY_W, height: 56 }}
-            className={`rounded text-[11px] font-semibold border ${flashed.has(w.midi) ? "bg-cyan-300 text-black border-cyan-200" : "bg-white text-neutral-700 hover:bg-neutral-100 border-neutral-300"}`}
+            style={{ width: KEY_W, height: 62 }}
+            className={`rounded text-[12px] font-bold border ${flashed.has(w.midi) ? "bg-cyan-300 text-black border-cyan-200" : "bg-gradient-to-b from-white to-neutral-200 text-neutral-700 hover:from-neutral-50 border-neutral-300"}`}
           >{w.key}</button>
         ))}
-      </div>
-      <div className="mt-2 text-[9px] text-neutral-500 text-center">
-        Press the highlighted keys on your computer keyboard to play
       </div>
     </div>
   );
 }
-
