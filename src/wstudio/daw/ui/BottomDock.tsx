@@ -599,6 +599,11 @@ function PianoRollTab({ engine, trackId }: { engine: DawEngine; trackId: string 
   const pxPerBeat = PR_PX_PER_BEAT * zoomX;
   const rowH = Math.max(8, Math.round(PR_ROW_H * zoomY));
 
+  const activeClip = useMemo(
+    () => clips.find(c => c.notes && playhead >= c.startTime && playhead < c.startTime + c.duration) ?? clips.find(c => c.notes),
+    [clips, playhead]
+  );
+
   const ensureClip = (): string => {
     if (activeClip) return activeClip.id;
     const id = newId("clip");
