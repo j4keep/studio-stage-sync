@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useDawStore } from "../state/DawStore";
-import { triggerSynthNote, type DawEngine } from "../engine/DawEngine";
+import { useDawStore, newId } from "../state/DawStore";
+import { triggerSynthNote, startSynthNote, type DawEngine, type SynthVoice } from "../engine/DawEngine";
+import type { MidiNote } from "../engine/types";
 import { X, Minus, Plus, Piano, Keyboard as KeyboardIcon } from "lucide-react";
+import { Knob } from "./Knob";
 
 /**
  * Hardware-inspired floating MIDI keyboard. Computer keys act as MIDI input
@@ -34,24 +36,6 @@ function buildKeys(startMidi: number, octaves: number): Key[] {
 }
 
 interface Props { engine: DawEngine; onClose: () => void; }
-
-/** Decorative knob – pure visual, no audio binding. */
-function HwKnob({ color, label }: { color: string; label: string }) {
-  return (
-    <div className="flex flex-col items-center gap-0.5">
-      <div
-        className="w-7 h-7 rounded-full border border-neutral-700 shadow-inner shadow-black/80 relative"
-        style={{ background: `radial-gradient(circle at 30% 25%, #4a4a4a, #1a1a1a 65%)` }}
-      >
-        <div
-          className="absolute left-1/2 top-1 w-[2px] h-3 -translate-x-1/2 rounded"
-          style={{ background: color, boxShadow: `0 0 6px ${color}` }}
-        />
-      </div>
-      <div className="text-[7px] uppercase tracking-wider text-neutral-500">{label}</div>
-    </div>
-  );
-}
 
 export function FloatingKeyboard({ engine, onClose }: Props) {
   const tracks = useDawStore(s => s.tracks);
@@ -94,18 +78,50 @@ export function FloatingKeyboard({ engine, onClose }: Props) {
     setTimeout(() => setFlashed(prev => { const n = new Set(prev); n.delete(m); return n; }), 220);
   };
 
+  // Record-on-arm: append notes into a MIDI clip while transport is recording.
+  const addClip = useDawStore(s => s.addClip);
+  const updateClip = useDawStore(s => s.updateClip);
+  const midiRecRef = useRef<{ clipId: string; clipStart: number; notes: Map<number, { id: string; startBeat: number }> } | null>(null);
+  const recordNoteOn = (trackId: string, midi: number, vel: number) => {
+    const st = useDawStore.getState();
+    const recTrack = st.tracks.find(t => t.id === trackId);
+    if (!st.transport.isRecording || !recTrack?.armed || recTrack.kind !== "instrument") return;
+    const secPerBeat = 60 / Math.max(1, st.transport.bpm);
+    const clipStart = midiRecRef.current?.clipStart ?? st.transport.position;
+    const startBeat = Math.max(0, (st.transport.position - clipStart) / secPerBeat);
+    if (!midiRecRef.current) {
+      const clipId = newId("clip");
+      midiRecRef.current = { clipId, clipStart, notes: new Map() };
+      addClip({ id: clipId, trackId, startTime: clipStart, duration: Math.max(secPerBeat, secPerBeat * 4), offset: 0, name: "MIDI Recording", notes: [], color: "#a855f7" });
+    }
+    if (midiRecRef.current.notes.has(midi)) return;
+    const noteId = newId("n");
+    midiRecRef.current.notes.set(midi, { id: noteId, startBeat });
+    const clip = useDawStore.getState().clips.find(c => c.id === midiRecRef.current?.clipId);
+    updateClip(midiRecRef.current.clipId, {
+      notes: [...(clip?.notes ?? []), { id: noteId, start: startBeat, length: 0.25, pitch: midi, velocity: vel } as MidiNote],
+    });
+  };
+  const isRecording = useDawStore(s => s.transport.isRecording);
+  useEffect(() => { if (!isRecording) midiRecRef.current = null; }, [isRecording]);
+
   const playNote = (midi: number) => {
     const vel = velocity / 8;
     let t = active;
     if (!t) {
       const id = addTrack("instrument", "Synth");
-      updateTrack(id, { instrument: "synth" });
+      updateTrack(id, { instrument: "synth", instrumentPreset: "Bright Synth", synthWave: "sawtooth" });
       selectTrack(id);
-      setTimeout(() => triggerSynthNote(engine, id, midi, sustain ? 0.6 : 0.3, vel), 30);
+      setTimeout(() => {
+        const tr = useDawStore.getState().tracks.find(x => x.id === id);
+        triggerSynthNote(engine, id, midi, sustain ? 0.6 : 0.3, vel, (tr?.synthWave as OscillatorType) || "sawtooth");
+      }, 30);
       flash(midi);
       return;
     }
-    triggerSynthNote(engine, t.id, midi, sustain ? 0.6 : 0.3, vel);
+    // Use this track's preset waveform so the LCD label and the sound match.
+    triggerSynthNote(engine, t.id, midi, sustain ? 0.6 : 0.3, vel, (t.synthWave as OscillatorType) || "sawtooth");
+    recordNoteOn(t.id, midi, vel);
     flash(midi);
   };
 
@@ -190,30 +206,28 @@ export function FloatingKeyboard({ engine, onClose }: Props) {
           <div className="text-[9px] opacity-70 truncate">{lcdLine2}</div>
         </div>
 
-        {/* Knob strip */}
-        <div className="flex items-end gap-2 px-2">
-          <HwKnob color="#ef4444" label="Cutoff" />
-          <HwKnob color="#f59e0b" label="Res" />
-          <HwKnob color="#22d3ee" label="Attack" />
-          <HwKnob color="#a855f7" label="Release" />
+        {/* Functional knob strip — wired to selected track */}
+        <div className="flex items-end gap-3 px-2" onPointerDown={(e) => e.stopPropagation()}>
+          <Knob size={28} min={0} max={1} value={active?.volume ?? 1} onChange={(v) => active && updateTrack(active.id, { volume: v })} label="Vol" color="#22d3ee" showValue={false} />
+          <Knob size={28} min={-1} max={1} value={active?.pan ?? 0} onChange={(v) => active && updateTrack(active.id, { pan: v })} label="Pan" color="#a855f7" showValue={false} />
+          <Knob size={28} min={0} max={1} value={active?.reverbSend ?? 0} onChange={(v) => active && updateTrack(active.id, { reverbSend: v })} label="Rev" color="#f59e0b" showValue={false} />
+          <Knob size={28} min={0} max={1} value={active?.delaySend ?? 0} onChange={(v) => active && updateTrack(active.id, { delaySend: v })} label="Dly" color="#ef4444" showValue={false} />
         </div>
 
         <div className="flex-1" />
 
-        {/* Mode toggle */}
-        <div className="flex items-center rounded border border-neutral-800 overflow-hidden">
+        {/* Mode toggle — explicit Piano vs Computer-Keyboard */}
+        <div className="flex items-center rounded border border-neutral-700 overflow-hidden bg-neutral-950" onPointerDown={(e) => e.stopPropagation()}>
           <button
-            onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); setMode("piano"); }}
-            title="Piano view"
-            className={`w-7 h-6 grid place-items-center ${mode === "piano" ? "bg-cyan-500/30 text-cyan-200" : "text-neutral-500 hover:text-neutral-300"}`}
-          ><Piano className="w-3.5 h-3.5" /></button>
+            title="Real piano keys"
+            className={`h-7 px-2 flex items-center gap-1 text-[10px] font-semibold ${mode === "piano" ? "bg-cyan-500/30 text-cyan-100" : "text-neutral-500 hover:text-neutral-300"}`}
+          ><Piano className="w-3.5 h-3.5" />PIANO</button>
           <button
-            onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); setMode("typing"); }}
-            title="Musical typing"
-            className={`w-7 h-6 grid place-items-center border-l border-neutral-800 ${mode === "typing" ? "bg-cyan-500/30 text-cyan-200" : "text-neutral-500 hover:text-neutral-300"}`}
-          ><KeyboardIcon className="w-3.5 h-3.5" /></button>
+            title="Computer keyboard typing"
+            className={`h-7 px-2 flex items-center gap-1 text-[10px] font-semibold border-l border-neutral-700 ${mode === "typing" ? "bg-amber-500/30 text-amber-100" : "text-neutral-500 hover:text-neutral-300"}`}
+          ><KeyboardIcon className="w-3.5 h-3.5" />TYPE</button>
         </div>
 
         {/* Octave */}

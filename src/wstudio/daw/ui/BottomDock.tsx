@@ -646,16 +646,31 @@ const PR_ROW_H = 16;
 
 // Logic-style time quantize grid (in quarter-note beats)
 const PR_QUANTIZE: Array<{ id: string; label: string; beats: number }> = [
-  { id: "1/1",   label: "1/1",   beats: 4 },
-  { id: "1/2",   label: "1/2",   beats: 2 },
-  { id: "1/4",   label: "1/4",   beats: 1 },
-  { id: "1/4T",  label: "1/4 Triplet",  beats: 2/3 },
-  { id: "1/8",   label: "1/8",   beats: 0.5 },
-  { id: "1/8T",  label: "1/8 Triplet",  beats: 1/3 },
-  { id: "1/16",  label: "1/16",  beats: 0.25 },
-  { id: "1/16T", label: "1/16 Triplet", beats: 1/6 },
-  { id: "1/32",  label: "1/32",  beats: 0.125 },
-  { id: "1/64",  label: "1/64",  beats: 0.0625 },
+  { id: "1/1",   label: "1/1 Note",  beats: 4 },
+  { id: "1/2",   label: "1/2 Note",  beats: 2 },
+  { id: "1/4",   label: "1/4 Note",  beats: 1 },
+  { id: "1/8",   label: "1/8 Note",  beats: 0.5 },
+  { id: "1/16",  label: "1/16 Note", beats: 0.25 },
+  { id: "1/32",  label: "1/32 Note", beats: 0.125 },
+  { id: "1/64",  label: "1/64 Note", beats: 0.0625 },
+  { id: "1/2T",  label: "1/2 Triplet (1/3)",   beats: 4/3 },
+  { id: "1/4T",  label: "1/4 Triplet (1/6)",   beats: 2/3 },
+  { id: "1/8T",  label: "1/8 Triplet (1/12)",  beats: 1/3 },
+  { id: "1/16T", label: "1/16 Triplet (1/24)", beats: 1/6 },
+  { id: "1/32T", label: "1/32 Triplet (1/48)", beats: 1/12 },
+  { id: "1/64T", label: "1/64 Triplet (1/96)", beats: 1/24 },
+  { id: "1/16SA", label: "1/16 Swing A", beats: 0.25 },
+  { id: "1/16SB", label: "1/16 Swing B", beats: 0.25 },
+  { id: "1/16SC", label: "1/16 Swing C", beats: 0.25 },
+  { id: "1/16SD", label: "1/16 Swing D", beats: 0.25 },
+  { id: "1/16SE", label: "1/16 Swing E", beats: 0.25 },
+  { id: "1/16SF", label: "1/16 Swing F", beats: 0.25 },
+  { id: "1/8SA",  label: "1/8 Swing A",  beats: 0.5 },
+  { id: "1/8SB",  label: "1/8 Swing B",  beats: 0.5 },
+  { id: "1/8SC",  label: "1/8 Swing C",  beats: 0.5 },
+  { id: "1/8SD",  label: "1/8 Swing D",  beats: 0.5 },
+  { id: "1/8SE",  label: "1/8 Swing E",  beats: 0.5 },
+  { id: "1/8SF",  label: "1/8 Swing F",  beats: 0.5 },
 ];
 
 // Logic-style scale quantize presets
@@ -709,6 +724,11 @@ function PianoRollTab({ engine, trackId }: { engine: DawEngine; trackId: string 
   const [scaleId, setScaleId] = useState<string>("off");
 
   const snapBeats = useMemo(() => PR_QUANTIZE.find(q => q.id === quantizeId)?.beats ?? 0.25, [quantizeId]);
+  // Swing presets A–F → 50/54/58/62/66/70 % swing applied automatically.
+  useEffect(() => {
+    const m = quantizeId.match(/S([A-F])$/);
+    if (m) setSwing(50 + (m[1].charCodeAt(0) - 65) * 4);
+  }, [quantizeId]);
   const scale = useMemo(() => PR_SCALES.find(s => s.id === scaleId) ?? PR_SCALES[0], [scaleId]);
   const scaleSet = useMemo(() => {
     if (!scale.intervals) return null;
@@ -868,29 +888,36 @@ function PianoRollTab({ engine, trackId }: { engine: DawEngine; trackId: string 
       {/* Grid */}
       <div ref={gridRef} className="flex-1 overflow-auto relative bg-[#0a0a0c]" onPointerDown={handleDown}>
         <div className="relative" style={{ width: PR_BEATS * PR_PX_PER_BEAT + 40, height: PR_NOTES * PR_ROW_H }}>
-          {/* Piano keys */}
-          <div className="absolute left-0 top-0 w-10 h-full bg-neutral-950 border-r border-neutral-800 z-10">
+          {/* Piano keys – proper white/black look matching the floating keyboard */}
+          <div className="absolute left-0 top-0 w-12 h-full z-10 border-r border-neutral-700">
             {Array.from({ length: PR_NOTES }).map((_, r) => {
               const pitch = PR_TOP_PITCH - r;
-              const isBlack = [1,3,6,8,10].includes(pitch % 12);
+              const isBlack = [1,3,6,8,10].includes(((pitch % 12) + 12) % 12);
+              const isC = pitch % 12 === 0;
               return (
-                <div key={r} className={`text-[8px] ${isBlack ? "bg-neutral-900 text-neutral-600" : "bg-neutral-950 text-neutral-500"} border-b border-neutral-900 px-1 grid items-center`} style={{ height: PR_ROW_H }}>
-                  {NOTE_NAMES[pitch % 12]}{Math.floor(pitch / 12) - 1}
+                <div
+                  key={r}
+                  onPointerDown={(e) => { e.stopPropagation(); triggerSynthNote(engine, trackId, pitch, 0.3, 0.8); }}
+                  className={`text-[8px] border-b ${isBlack ? "bg-neutral-900 text-neutral-300 border-neutral-950" : "bg-gradient-to-r from-neutral-100 to-neutral-300 text-neutral-700 border-neutral-400"} px-1 grid items-center cursor-pointer hover:brightness-110`}
+                  style={{ height: PR_ROW_H }}
+                >
+                  {isC ? `C${Math.floor(pitch / 12) - 1}` : isBlack ? "" : NOTE_NAMES[pitch % 12]}
                 </div>
               );
             })}
           </div>
           {/* Rows */}
-          <div className="absolute left-10 top-0 right-0 bottom-0">
+          <div className="absolute left-12 top-0 right-0 bottom-0">
             {Array.from({ length: PR_NOTES }).map((_, r) => {
               const pitch = PR_TOP_PITCH - r;
-              const isBlack = [1,3,6,8,10].includes(pitch % 12);
-              return <div key={r} className={`${isBlack ? "bg-neutral-950" : "bg-[#0d0d12]"} border-b border-neutral-900/70`} style={{ height: PR_ROW_H }} />;
+              const isBlack = [1,3,6,8,10].includes(((pitch % 12) + 12) % 12);
+              const isC = pitch % 12 === 0;
+              return <div key={r} className={`${isBlack ? "bg-neutral-900/70" : "bg-[#15151c]"} ${isC ? "border-b border-neutral-600/70" : "border-b border-neutral-700/40"}`} style={{ height: PR_ROW_H }} />;
             })}
-            {/* Beat lines */}
+            {/* Beat lines — brighter so they read on the dark grid */}
             <div className="absolute inset-0 pointer-events-none">
               {Array.from({ length: PR_BEATS + 1 }).map((_, b) => (
-                <div key={b} className={`absolute top-0 bottom-0 ${b % 4 === 0 ? "bg-neutral-700/40" : "bg-neutral-800/30"}`} style={{ left: b * PR_PX_PER_BEAT, width: 1 }} />
+                <div key={b} className={`absolute top-0 bottom-0`} style={{ left: b * PR_PX_PER_BEAT, width: b % 4 === 0 ? 2 : 1, background: b % 4 === 0 ? "rgba(165,180,200,0.55)" : "rgba(120,130,150,0.30)" }} />
               ))}
             </div>
             {/* Notes */}
