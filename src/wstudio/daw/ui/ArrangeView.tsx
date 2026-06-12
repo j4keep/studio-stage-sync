@@ -542,6 +542,7 @@ function TrackHeader({ track, canRecordInput, meters = [], onArm, onMute, onSolo
   onOpenEditor?: () => void;
 }) {
   const stop = (e: React.SyntheticEvent) => e.stopPropagation();
+  const TRACK_H = Math.round(TRACK_H_BASE * useDawStore(s => s.verticalZoom));
   const sliderRef = useRef<HTMLDivElement>(null);
   const setVolFromX = (clientX: number) => {
     const el = sliderRef.current;
