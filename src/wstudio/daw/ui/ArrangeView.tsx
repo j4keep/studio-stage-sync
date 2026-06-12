@@ -291,6 +291,16 @@ export function ArrangeView({ onArmToggle, onSeek, engine, onOpenInstrumentEdito
           value={pxPerSec}
           onChange={(e) => setPxPerSec(Number(e.target.value))}
           className="w-32 accent-cyan-500"
+          title="Horizontal zoom"
+        />
+        <span className="text-neutral-600">·</span>
+        <span>V-Zoom</span>
+        <input
+          type="range" min={0.5} max={3} step={0.1}
+          value={verticalZoom}
+          onChange={(e) => setVerticalZoom(Number(e.target.value))}
+          className="w-24 accent-purple-500"
+          title="Vertical (track height) zoom"
         />
       </div>
 
