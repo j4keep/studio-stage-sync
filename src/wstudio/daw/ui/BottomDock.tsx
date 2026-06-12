@@ -724,6 +724,11 @@ function PianoRollTab({ engine, trackId }: { engine: DawEngine; trackId: string 
   const [scaleId, setScaleId] = useState<string>("off");
 
   const snapBeats = useMemo(() => PR_QUANTIZE.find(q => q.id === quantizeId)?.beats ?? 0.25, [quantizeId]);
+  // Swing presets A–F → 50/54/58/62/66/70 % swing applied automatically.
+  useEffect(() => {
+    const m = quantizeId.match(/S([A-F])$/);
+    if (m) setSwing(50 + (m[1].charCodeAt(0) - 65) * 4);
+  }, [quantizeId]);
   const scale = useMemo(() => PR_SCALES.find(s => s.id === scaleId) ?? PR_SCALES[0], [scaleId]);
   const scaleSet = useMemo(() => {
     if (!scale.intervals) return null;
