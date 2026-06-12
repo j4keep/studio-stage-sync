@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useDawStore } from "../state/DawStore";
-import { triggerSynthNote, type DawEngine } from "../engine/DawEngine";
+import { useDawStore, newId } from "../state/DawStore";
+import { triggerSynthNote, startSynthNote, type DawEngine, type SynthVoice } from "../engine/DawEngine";
+import type { MidiNote } from "../engine/types";
 import { X, Minus, Plus, Piano, Keyboard as KeyboardIcon } from "lucide-react";
+import { Knob } from "./Knob";
 
 /**
  * Hardware-inspired floating MIDI keyboard. Computer keys act as MIDI input
