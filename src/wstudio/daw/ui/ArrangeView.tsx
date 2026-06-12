@@ -305,7 +305,12 @@ export function ArrangeView({ onArmToggle, onSeek, engine, onOpenInstrumentEdito
         />
       </div>
 
-      <div className="flex-1 overflow-auto" ref={scrollRef}>
+      <div
+        className="flex-1 overflow-auto min-h-0 min-w-0 overscroll-contain"
+        ref={scrollRef}
+        style={{ touchAction: "pan-x pan-y" }}
+      >
+
         <div className="flex" style={{ minWidth: HEADER_W + timelineLen * pxPerSec }}>
           {/* Track headers column */}
           <div className="sticky left-0 z-10 bg-neutral-950 border-r border-neutral-800 overflow-hidden" style={{ width: HEADER_W }}>
