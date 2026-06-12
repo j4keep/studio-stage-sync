@@ -168,8 +168,10 @@ function InstrumentTab({ engine, trackId }: { engine: DawEngine; trackId: string
     midiRecRef.current.notes.set(midi, { id: noteId, startBeat });
     const clip = useDawStore.getState().clips.find(c => c.id === midiRecRef.current?.clipId);
     const notes = clip?.notes ?? [];
+    const grownDuration = Math.max(clip?.duration ?? 0, (startBeat + 0.5) * secPerBeat);
     updateClip(midiRecRef.current.clipId, {
       notes: [...notes, { id: noteId, start: startBeat, length: 0.25, pitch: midi, velocity }],
+      duration: grownDuration,
     });
   };
 
