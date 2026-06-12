@@ -99,7 +99,16 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
   const selectTrack = useDawStore(s => s.selectTrack);
   const view = useDawStore(s => s.view);
   const masterVolume = useDawStore(s => s.masterVolume);
+  const pxPerSec = useDawStore(s => s.pxPerSec);
+  const verticalZoom = useDawStore(s => s.verticalZoom);
+  const projectName = useDawStore(s => s.projectName);
+  const setProjectName = useDawStore(s => s.setProjectName);
+  const projectFileHandle = useDawStore(s => s.projectFileHandle);
+  const setProjectFileHandle = useDawStore(s => s.setProjectFileHandle);
+  const resetProject = useDawStore(s => s.resetProject);
+  const loadProject = useDawStore(s => s.loadProject);
   const importInputRef = useRef<HTMLInputElement>(null);
+  const [newProjectPrompt, setNewProjectPrompt] = useState<string | null>(null);
 
   // Init engine
   useEffect(() => {
