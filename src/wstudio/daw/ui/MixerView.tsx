@@ -9,11 +9,11 @@ const ROW_LABELS = [
   { key: "eq", label: "EQ", h: 50 },
   { key: "input", label: "Input", h: 26 },
   { key: "fx", label: "Audio FX", h: 100 },
-  { key: "sends", label: "Sends", h: 50 },
+  { key: "sends", label: "Sends", h: 64 },
   { key: "output", label: "Output", h: 26 },
   { key: "group", label: "Group", h: 22 },
   { key: "auto", label: "Automation", h: 26 },
-  { key: "pan", label: "Pan", h: 50 },
+  { key: "pan", label: "Pan", h: 64 },
   { key: "db", label: "dB", h: 26 },
   { key: "fader", label: "", h: 220 },
 ];
