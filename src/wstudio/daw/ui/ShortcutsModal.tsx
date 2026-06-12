@@ -157,7 +157,7 @@ export function ShortcutsModal({ open, onClose }: Props) {
   return (
     <>
       <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col bg-neutral-950 border-neutral-800 text-neutral-100">
+        <DialogContent className="z-[200] max-w-2xl max-h-[80vh] overflow-hidden flex flex-col bg-neutral-950 border-neutral-800 text-neutral-100">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Keyboard className="w-4 h-4 text-cyan-400" />
