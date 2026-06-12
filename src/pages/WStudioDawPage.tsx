@@ -686,7 +686,37 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
           </div>
         </div>
       )}
+
+      {newProjectPrompt !== null && (
+        <div className="fixed inset-0 z-[100] bg-black/60 grid place-items-center" onClick={() => setNewProjectPrompt(null)}>
+          <div className="bg-neutral-950 border border-neutral-800 rounded-lg p-5 w-[360px] shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="text-sm text-neutral-200 font-medium mb-1">Name your new project</div>
+            <div className="text-[11px] text-neutral-500 mb-3">You can rename it any time from the header.</div>
+            <input
+              autoFocus
+              defaultValue={newProjectPrompt}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") createNewProject((e.target as HTMLInputElement).value);
+                if (e.key === "Escape") setNewProjectPrompt(null);
+              }}
+              id="wstudio-newproj-name"
+              className="w-full h-9 px-3 rounded bg-neutral-900 border border-neutral-800 text-neutral-100 text-sm outline-none focus:border-cyan-400/60"
+            />
+            <div className="flex justify-end gap-2 mt-4">
+              <button onClick={() => setNewProjectPrompt(null)} className="h-8 px-3 rounded text-xs text-neutral-300 hover:text-neutral-100">Cancel</button>
+              <button
+                onClick={() => {
+                  const el = document.getElementById("wstudio-newproj-name") as HTMLInputElement | null;
+                  createNewProject(el?.value || newProjectPrompt);
+                }}
+                className="h-8 px-4 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-medium"
+              >Create</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+
 
   );
 }
