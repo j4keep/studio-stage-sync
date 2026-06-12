@@ -65,7 +65,7 @@ const TOOLS: { id: DawTool; label: string; Icon: any; hint: string }[] = [
   { id: "marquee", label: "Marquee Tool", Icon: BoxSelect, hint: "Box-select a region" },
 ];
 
-export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExport, onAddAudio, onAddInstrument, onAddMany, onImport, onToggleKeyboard, keyboardOpen, themeMode, onToggleTheme, onOpenShortcuts }: Props) {
+export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExport, onAddAudio, onAddInstrument, onAddMany, onImport, onToggleKeyboard, keyboardOpen, themeMode, onToggleTheme, onOpenShortcuts, onToggleLibrary, libraryOpen, onToggleSession, sessionOpen }: Props) {
   const transport = useDawStore(s => s.transport);
   const setTransport = useDawStore(s => s.setTransport);
   const view = useDawStore(s => s.view);
