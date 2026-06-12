@@ -6,6 +6,8 @@ import type { DawEngine } from "../engine/DawEngine";
 import { triggerSynthNote, midiToFreq, startSynthNote, triggerDrumHit, type SynthVoice } from "../engine/DawEngine";
 import type { MidiNote, Clip } from "../engine/types";
 import { FloatingKeyboard } from "./FloatingKeyboard";
+import { PRESETS, PRESET_CATS, PresetModal, type Preset } from "./presets";
+
 
 
 type Tab = "instrument" | "chords" | "pianoroll" | "effects";
