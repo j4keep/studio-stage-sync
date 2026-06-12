@@ -46,7 +46,7 @@ export function BottomDock({
 
   return (
     <div
-      className="absolute left-0 right-0 bottom-0 bg-[#0a0a0c] border-t border-neutral-800 z-30 flex flex-col shadow-[0_-12px_40px_rgba(0,0,0,0.7)]"
+      className="relative w-full bg-[#0a0a0c] border-t border-neutral-800 z-30 flex flex-col shadow-[0_-12px_40px_rgba(0,0,0,0.7)] shrink-0"
       style={{ height }}
     >
       {/* Header tabs */}
