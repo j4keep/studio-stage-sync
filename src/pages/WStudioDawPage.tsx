@@ -517,7 +517,11 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
   }
 
   return (
-    <div className={`fixed inset-0 z-[60] flex flex-col ${themeMode === "dark" ? "bg-black text-neutral-200 dark" : "daw-light"}`}>
+    <div
+      className={`fixed inset-0 z-[60] flex flex-col overflow-hidden overscroll-none ${themeMode === "dark" ? "bg-black text-neutral-200 dark" : "daw-light"}`}
+      style={{ touchAction: "none" }}
+    >
+
 
       <MenuBar
         onImport={() => importInputRef.current?.click()}
@@ -534,7 +538,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
         onSaveAsProject={handleSaveAsProject}
       />
       {/* Project name strip — centered, editable, sits above the transport */}
-      <div className="h-7 bg-gradient-to-b from-neutral-900 to-neutral-950 border-b border-neutral-800 flex items-center justify-center relative">
+      <div className="h-7 shrink-0 bg-gradient-to-b from-neutral-900 to-neutral-950 border-b border-neutral-800 flex items-center justify-center relative">
         <input
           value={projectName}
           onChange={(e) => setProjectName(e.target.value)}
@@ -579,7 +583,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
         onChange={(e) => e.target.files && importFiles(e.target.files)}
       />
 
-      <div className="flex-1 flex overflow-hidden relative">
+      <div className="flex-1 flex overflow-hidden relative min-h-0 min-w-0">
         <LibraryPanel
           onImportFiles={importFiles}
           onAddUserPlugin={(name) => toast.success(`Added plug-in: ${name}`)}
@@ -610,7 +614,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
           onImport={() => importInputRef.current?.click()}
         />
 
-        <div className="flex-1 relative flex flex-col overflow-hidden">
+        <div className="flex-1 relative flex flex-col overflow-hidden min-h-0 min-w-0">
           {view === "arrange" && <ArrangeView onArmToggle={handleArmToggle} onSeek={handleSeek} engine={engineRef.current} onOpenInstrumentEditor={(tid) => { selectTrack(tid); openDock("instrument"); }} onImportFilesAt={importFilesAt} />}
           {view === "mixer" && <MixerView engine={engineRef.current} onOpenPlugin={openPluginWindow} onArmToggle={handleArmToggle} />}
           {view === "instrument" && <InstrumentPanel engine={engineRef.current} />}
