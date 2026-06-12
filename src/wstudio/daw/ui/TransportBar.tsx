@@ -367,7 +367,7 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
           {TOOLS.map(({ id, label, Icon, hint }) => (
             <DropdownMenuItem
               key={id}
-              onClick={() => setTool(id)}
+              onSelect={() => setTool(id)}
               className="flex items-center gap-2 text-[12px]"
               title={hint}
             >
