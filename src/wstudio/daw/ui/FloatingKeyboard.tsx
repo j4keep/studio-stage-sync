@@ -4,7 +4,7 @@ import { triggerSynthNote, startSynthNote, type DawEngine, type SynthVoice } fro
 import type { MidiNote } from "../engine/types";
 import { X, Minus, Plus, Piano, Keyboard as KeyboardIcon } from "lucide-react";
 import { Knob } from "./Knob";
-import { PRESETS, PresetModal, type Preset } from "./BottomDock";
+import { PRESETS, PresetModal, type Preset } from "./presets";
 
 
 /**
