@@ -67,12 +67,12 @@ export function LibraryPanel({
         <div className="flex-1 overflow-y-auto p-2 space-y-2">
           <div className="text-[10px] uppercase text-neutral-500 px-1">Quick start</div>
           <div className="grid grid-cols-2 gap-1.5">
-            <QuickBtn icon={Music2} label="Browse loops" onClick={onBrowseLoops} grad="from-orange-400 to-pink-500" />
-            <QuickBtn icon={Grid3x3} label="Patterns Beatmaker" onClick={onPatterns} grad="from-pink-500 to-purple-600" />
-            <QuickBtn icon={Piano} label="Play the synth" onClick={onPlaySynth} grad="from-purple-500 to-indigo-600" />
-            <QuickBtn icon={Plus} label="Add new track" onClick={onAddTrack} grad="from-indigo-500 to-cyan-500" />
-            <QuickBtn icon={Upload} label="Import file" onClick={onImport} grad="from-cyan-500 to-emerald-500" />
-            <QuickBtn icon={UserPlus} label="Invite a friend" grad="from-emerald-500 to-yellow-400" />
+            <QuickBtn icon={Music2} label="Browse loops" onClick={onBrowseLoops} grad={GRADS[0]} />
+            <QuickBtn icon={Grid3x3} label="Patterns Beatmaker" onClick={onPatterns} grad={GRADS[1]} />
+            <QuickBtn icon={Piano} label="Play the synth" onClick={onPlaySynth} grad={GRADS[2]} />
+            <QuickBtn icon={Plus} label="Add new track" onClick={onAddTrack} grad={GRADS[3]} />
+            <QuickBtn icon={Upload} label="Import file" onClick={onImport} grad={GRADS[4]} />
+            <QuickBtn icon={UserPlus} label="Invite a friend" grad={GRADS[5]} />
           </div>
 
           <label className="block pt-2">
