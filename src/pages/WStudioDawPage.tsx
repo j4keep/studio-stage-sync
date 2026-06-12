@@ -528,7 +528,22 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
         onStop={handleStop}
         onRecord={handleRecord}
         onRewind={handleRewind}
+        onNewProject={handleNewProject}
+        onOpenProject={handleOpenProject}
+        onSaveProject={handleSaveProject}
+        onSaveAsProject={handleSaveAsProject}
       />
+      {/* Project name strip — centered, editable, sits above the transport */}
+      <div className="h-7 bg-gradient-to-b from-neutral-900 to-neutral-950 border-b border-neutral-800 flex items-center justify-center relative">
+        <input
+          value={projectName}
+          onChange={(e) => setProjectName(e.target.value)}
+          onBlur={(e) => { if (!e.target.value.trim()) setProjectName("Untitled Project"); }}
+          spellCheck={false}
+          className="bg-transparent text-center text-[12px] font-medium text-neutral-100 outline-none border border-transparent hover:border-neutral-800 focus:border-cyan-500/60 rounded px-3 py-0.5 min-w-[180px] max-w-[420px] w-[max-content]"
+          title="Project name — shown on save"
+        />
+      </div>
       <TransportBar
         onPlay={handlePlayPause}
         onStop={handleStop}
