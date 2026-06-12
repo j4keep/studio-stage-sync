@@ -209,7 +209,7 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
                     {TEMPO_MODES.map(m => (
                       <DropdownMenuItem
                         key={m.id}
-                        onClick={() => setTransport({ tempoMode: m.id })}
+                        onSelect={() => setTransport({ tempoMode: m.id })}
                         className="flex flex-col items-start gap-0.5 text-[12px]"
                       >
                         <div className="flex items-center gap-2">
