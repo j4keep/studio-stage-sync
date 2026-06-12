@@ -432,7 +432,70 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
     } catch {
       toast.error("Export failed", { id: "exp" });
     }
-  }, [tracks, clips]);
+
+  // ──────────────────────────────────────────────────────────────
+  // Project Save / Open / Save As
+  // ──────────────────────────────────────────────────────────────
+  const collectProjectOpts = useCallback(() => {
+    const st = useDawStore.getState();
+    return {
+      name: st.projectName,
+      tracks: st.tracks,
+      clips: st.clips,
+      transport: st.transport,
+      pxPerSec: st.pxPerSec,
+      verticalZoom: st.verticalZoom,
+    };
+  }, []);
+
+  const handleSaveProject = useCallback(async () => {
+    try {
+      toast.loading("Saving project…", { id: "save" });
+      const handle = await saveProjectTo(projectFileHandle, collectProjectOpts());
+      if (handle) setProjectFileHandle(handle);
+      toast.success("Project saved", { id: "save" });
+    } catch (err) {
+      toast.error("Couldn't save project", { id: "save" });
+    }
+  }, [projectFileHandle, setProjectFileHandle, collectProjectOpts]);
+
+  const handleSaveAsProject = useCallback(async () => {
+    try {
+      toast.loading("Saving project…", { id: "saveas" });
+      const handle = await saveAsProject(collectProjectOpts());
+      if (handle) setProjectFileHandle(handle);
+      toast.success("Project saved", { id: "saveas" });
+    } catch {
+      toast.error("Couldn't save project", { id: "saveas" });
+    }
+  }, [collectProjectOpts, setProjectFileHandle]);
+
+  const handleOpenProject = useCallback(async () => {
+    const e = engineRef.current;
+    if (!e) return;
+    try {
+      const result = await openProject(e);
+      if (!result) return;
+      loadProject(result.parsed);
+      setProjectFileHandle(result.handle);
+      toast.success(`Opened "${result.parsed.name}"`);
+    } catch (err) {
+      toast.error("Couldn't open project — invalid file");
+    }
+  }, [loadProject, setProjectFileHandle]);
+
+  const handleNewProject = useCallback(() => {
+    setNewProjectPrompt("Untitled Project");
+  }, []);
+
+  const createNewProject = useCallback((name: string) => {
+    const trimmed = (name || "").trim() || "Untitled Project";
+    engineRef.current?.stop();
+    resetProject(trimmed);
+    setNewProjectPrompt(null);
+    toast.success(`Created "${trimmed}"`);
+  }, [resetProject]);
+
 
 
   // Drag and drop files onto window
