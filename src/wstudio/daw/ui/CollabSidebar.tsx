@@ -50,6 +50,16 @@ export function CollabSidebar({ sessionCode, onClose }: Props) {
       )}
 
       <div className="p-3 border-b border-neutral-800">
+        <div className="text-[10px] uppercase tracking-wider text-neutral-500 mb-2">Video chat</div>
+        <div className="grid grid-cols-2 gap-1.5">
+          <div className="aspect-video rounded bg-gradient-to-br from-cyan-900/40 to-neutral-900 border border-cyan-500/30 grid place-items-center text-[10px] text-cyan-300">YOU</div>
+          <div className="aspect-video rounded bg-neutral-900 border border-dashed border-neutral-800 grid place-items-center text-[9px] text-neutral-600">Empty</div>
+          <div className="aspect-video rounded bg-neutral-900 border border-dashed border-neutral-800 grid place-items-center text-[9px] text-neutral-600">Empty</div>
+          <div className="aspect-video rounded bg-neutral-900 border border-dashed border-neutral-800 grid place-items-center text-[9px] text-neutral-600">Empty</div>
+        </div>
+      </div>
+
+      <div className="p-3 border-b border-neutral-800">
         <div className="text-[10px] uppercase tracking-wider text-neutral-500 mb-2">Participants</div>
         <div className="flex items-center gap-2 text-xs text-neutral-300 mb-1">
           <div className="w-6 h-6 rounded-full bg-cyan-500/20 grid place-items-center text-cyan-300 text-[10px]">YOU</div>
