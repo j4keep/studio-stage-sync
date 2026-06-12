@@ -644,6 +644,39 @@ const PR_BEATS = 16;
 const PR_PX_PER_BEAT = 48;
 const PR_ROW_H = 16;
 
+// Logic-style time quantize grid (in quarter-note beats)
+const PR_QUANTIZE: Array<{ id: string; label: string; beats: number }> = [
+  { id: "1/1",   label: "1/1",   beats: 4 },
+  { id: "1/2",   label: "1/2",   beats: 2 },
+  { id: "1/4",   label: "1/4",   beats: 1 },
+  { id: "1/4T",  label: "1/4 Triplet",  beats: 2/3 },
+  { id: "1/8",   label: "1/8",   beats: 0.5 },
+  { id: "1/8T",  label: "1/8 Triplet",  beats: 1/3 },
+  { id: "1/16",  label: "1/16",  beats: 0.25 },
+  { id: "1/16T", label: "1/16 Triplet", beats: 1/6 },
+  { id: "1/32",  label: "1/32",  beats: 0.125 },
+  { id: "1/64",  label: "1/64",  beats: 0.0625 },
+];
+
+// Logic-style scale quantize presets
+const PR_SCALES: Array<{ id: string; label: string; intervals: number[] | null }> = [
+  { id: "off",        label: "Off",            intervals: null },
+  { id: "major",      label: "Major",          intervals: [0,2,4,5,7,9,11] },
+  { id: "minor",      label: "Natural Minor",  intervals: [0,2,3,5,7,8,10] },
+  { id: "harmonic",   label: "Harmonic Minor", intervals: [0,2,3,5,7,8,11] },
+  { id: "melodic",    label: "Melodic Minor",  intervals: [0,2,3,5,7,9,11] },
+  { id: "dorian",     label: "Dorian",         intervals: [0,2,3,5,7,9,10] },
+  { id: "phrygian",   label: "Phrygian",       intervals: [0,1,3,5,7,8,10] },
+  { id: "lydian",     label: "Lydian",         intervals: [0,2,4,6,7,9,11] },
+  { id: "mixolydian", label: "Mixolydian",     intervals: [0,2,4,5,7,9,10] },
+  { id: "locrian",    label: "Locrian",        intervals: [0,1,3,5,6,8,10] },
+  { id: "majorPent",  label: "Major Pent",     intervals: [0,2,4,7,9] },
+  { id: "minorPent",  label: "Minor Pent",     intervals: [0,3,5,7,10] },
+  { id: "majorBlues", label: "Major Blues",    intervals: [0,2,3,4,7,9] },
+  { id: "minorBlues", label: "Minor Blues",    intervals: [0,3,5,6,7,10] },
+  { id: "chromatic",  label: "Chromatic",      intervals: [0,1,2,3,4,5,6,7,8,9,10,11] },
+];
+
 function PianoRollTab({ engine, trackId }: { engine: DawEngine; trackId: string }) {
   const allClips = useDawStore(s => s.clips);
   const clips = useMemo(() => allClips.filter(c => c.trackId === trackId), [allClips, trackId]);
@@ -652,17 +685,13 @@ function PianoRollTab({ engine, trackId }: { engine: DawEngine; trackId: string 
   const playhead = useDawStore(s => s.transport.position);
   const bpm = useDawStore(s => s.transport.bpm);
 
-  // Find or create active midi clip at playhead
   const activeClip = useMemo(
     () => clips.find(c => c.notes && playhead >= c.startTime && playhead < c.startTime + c.duration) ?? clips.find(c => c.notes),
     [clips, playhead]
   );
 
-
   const ensureClip = (): string => {
     if (activeClip) return activeClip.id;
-    const beatsPerBar = useDawStore.getState().transport.timeSigNum || 4;
-    const durSec = (PR_BEATS / beatsPerBar) * beatsPerBar * (60 / bpm);
     const id = newId("clip");
     addClip({
       id, trackId, startTime: playhead, duration: PR_BEATS * (60 / bpm),
@@ -673,15 +702,50 @@ function PianoRollTab({ engine, trackId }: { engine: DawEngine; trackId: string 
 
   const [tool, setTool] = useState<PRTool>("pencil");
   const [velocity, setVelocity] = useState(0.8);
-  const [snap, setSnap] = useState<0.25 | 0.5 | 1>(0.25);
-  const [snapToKey, setSnapToKey] = useState(false);
-  const keyRoot = useDawStore(s => s.transport.keyRoot);
-  const scaleSet = useMemo(() => new Set(SCALE_INTERVALS.map(i => (NOTE_NAMES.indexOf(keyRoot) + i) % 12)), [keyRoot]);
+  const [quantizeId, setQuantizeId] = useState<string>("1/16");
+  const [strength, setStrength] = useState(100);
+  const [swing, setSwing] = useState(0);
+  const [scaleRoot, setScaleRoot] = useState<string>("C");
+  const [scaleId, setScaleId] = useState<string>("off");
+
+  const snapBeats = useMemo(() => PR_QUANTIZE.find(q => q.id === quantizeId)?.beats ?? 0.25, [quantizeId]);
+  const scale = useMemo(() => PR_SCALES.find(s => s.id === scaleId) ?? PR_SCALES[0], [scaleId]);
+  const scaleSet = useMemo(() => {
+    if (!scale.intervals) return null;
+    const rootIdx = NOTE_NAMES.indexOf(scaleRoot);
+    return new Set(scale.intervals.map(i => (rootIdx + i + 12) % 12));
+  }, [scale, scaleRoot]);
+
+  const snapToScale = (pitch: number): number => {
+    if (!scaleSet) return pitch;
+    let p = pitch;
+    for (let i = 0; i < 12; i++) {
+      if (scaleSet.has(((p % 12) + 12) % 12)) return p;
+      p--;
+    }
+    return pitch;
+  };
 
   const notes = activeClip?.notes ?? [];
   const setNotes = (next: MidiNote[]) => {
     const id = activeClip?.id ?? ensureClip();
     updateClip(id, { notes: next });
+  };
+
+  const applyQuantize = () => {
+    if (!activeClip || notes.length === 0) return;
+    const str = strength / 100;
+    const sw = swing / 100;
+    const next = notes.map(n => {
+      const target = Math.round(n.start / snapBeats) * snapBeats;
+      let start = n.start + (target - n.start) * str;
+      // Swing: delay off-beats (odd-indexed grid positions)
+      const gridIdx = Math.round(start / snapBeats);
+      if (gridIdx % 2 === 1) start += snapBeats * 0.5 * sw;
+      const pitch = snapToScale(n.pitch);
+      return { ...n, start: Math.max(0, start), pitch };
+    });
+    setNotes(next);
   };
 
   const gridRef = useRef<HTMLDivElement | null>(null);
@@ -691,15 +755,13 @@ function PianoRollTab({ engine, trackId }: { engine: DawEngine; trackId: string 
     const rect = gridRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left + gridRef.current.scrollLeft;
     const y = e.clientY - rect.top + gridRef.current.scrollTop;
-    const beat = Math.max(0, Math.floor((x / PR_PX_PER_BEAT) / snap) * snap);
+    const beat = Math.max(0, Math.round((x / PR_PX_PER_BEAT) / snapBeats) * snapBeats);
     let pitch = PR_TOP_PITCH - Math.floor(y / PR_ROW_H);
-    if (snapToKey) {
-      while (!scaleSet.has(pitch % 12) && pitch > 0) pitch--;
-    }
+    pitch = snapToScale(pitch);
     if (tool === "pencil") {
       const id = activeClip?.id ?? ensureClip();
       const cur = useDawStore.getState().clips.find(c => c.id === id)?.notes ?? [];
-      updateClip(id, { notes: [...cur, { id: newId("n"), start: beat, length: 1, pitch, velocity }] });
+      updateClip(id, { notes: [...cur, { id: newId("n"), start: beat, length: Math.max(0.25, snapBeats), pitch, velocity }] });
       triggerSynthNote(engine, trackId, pitch, 0.3, velocity);
     } else if (tool === "eraser") {
       const hit = notes.find(n => n.pitch === pitch && beat >= n.start && beat < n.start + n.length);
@@ -709,30 +771,82 @@ function PianoRollTab({ engine, trackId }: { engine: DawEngine; trackId: string 
 
   return (
     <div className="h-full flex">
-      {/* Sidebar */}
-      <div className="w-48 shrink-0 border-r border-neutral-900 p-3 space-y-3 overflow-y-auto">
+      {/* Inspector (Logic-style) */}
+      <div className="w-56 shrink-0 border-r border-neutral-900 p-3 space-y-3 overflow-y-auto bg-[#0c0c10]">
         <div>
-          <div className="text-[10px] uppercase text-neutral-500 mb-1.5">Tools</div>
+          <div className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1.5">Tools</div>
           <div className="grid grid-cols-4 gap-1">
-            <ToolBtn active={tool === "pointer"} onClick={() => setTool("pointer")} icon={<MousePointer2 className="w-3.5 h-3.5" />} />
-            <ToolBtn active={tool === "pencil"} onClick={() => setTool("pencil")} icon={<Pencil className="w-3.5 h-3.5" />} />
+            <ToolBtn active={tool === "pointer"}  onClick={() => setTool("pointer")}  icon={<MousePointer2 className="w-3.5 h-3.5" />} />
+            <ToolBtn active={tool === "pencil"}   onClick={() => setTool("pencil")}   icon={<Pencil className="w-3.5 h-3.5" />} />
             <ToolBtn active={tool === "velocity"} onClick={() => setTool("velocity")} icon={<Sliders className="w-3.5 h-3.5" />} />
-            <ToolBtn active={tool === "eraser"} onClick={() => setTool("eraser")} icon={<Trash2 className="w-3.5 h-3.5" />} />
+            <ToolBtn active={tool === "eraser"}   onClick={() => setTool("eraser")}   icon={<Trash2 className="w-3.5 h-3.5" />} />
           </div>
         </div>
+
+        {/* Time Quantize */}
         <div>
-          <div className="text-[10px] uppercase text-neutral-500 mb-1">Velocity {Math.round(velocity * 100)}</div>
-          <input type="range" min={0} max={1} step={0.01} value={velocity} onChange={e => setVelocity(Number(e.target.value))} className="w-full accent-teal-400" />
-        </div>
-        <div>
-          <div className="text-[10px] uppercase text-neutral-500 mb-1">Quantize</div>
-          <select value={snap} onChange={e => setSnap(Number(e.target.value) as 0.25 | 0.5 | 1)} className="w-full h-7 bg-neutral-900 border border-neutral-800 rounded text-[11px] text-neutral-200 px-1">
-            <option value={0.25}>1/16</option>
-            <option value={0.5}>1/8</option>
-            <option value={1}>1/4</option>
+          <div className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1">Time Quantize</div>
+          <select
+            value={quantizeId}
+            onChange={e => setQuantizeId(e.target.value)}
+            className="w-full h-7 bg-neutral-900 border border-neutral-800 rounded text-[11px] text-neutral-200 px-1"
+          >
+            {PR_QUANTIZE.map(q => <option key={q.id} value={q.id}>{q.label}</option>)}
           </select>
         </div>
-        <button onClick={() => setSnapToKey(s => !s)} className={`w-full h-7 rounded text-[11px] ${snapToKey ? "bg-purple-500/15 text-purple-200 border border-purple-500/40" : "bg-neutral-900 border border-neutral-800 text-neutral-300"}`}>Snap to Key</button>
+
+        {/* Strength + Swing */}
+        <div>
+          <div className="flex items-center justify-between text-[10px] text-neutral-500">
+            <span className="uppercase tracking-wider">Strength</span>
+            <span className="text-teal-300">{strength}</span>
+          </div>
+          <input type="range" min={0} max={100} value={strength} onChange={e => setStrength(Number(e.target.value))} className="w-full accent-teal-400" />
+        </div>
+        <div>
+          <div className="flex items-center justify-between text-[10px] text-neutral-500">
+            <span className="uppercase tracking-wider">Swing</span>
+            <span className="text-teal-300">{swing}</span>
+          </div>
+          <input type="range" min={0} max={100} value={swing} onChange={e => setSwing(Number(e.target.value))} className="w-full accent-teal-400" />
+        </div>
+
+        {/* Scale Quantize */}
+        <div className="pt-1 border-t border-neutral-900">
+          <div className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1 mt-2">Scale Quantize</div>
+          <div className="grid grid-cols-2 gap-1 mb-1">
+            <select
+              value={scaleRoot}
+              onChange={e => setScaleRoot(e.target.value)}
+              disabled={scaleId === "off"}
+              className="h-7 bg-neutral-900 border border-neutral-800 rounded text-[11px] text-neutral-200 px-1 disabled:opacity-40"
+            >
+              {NOTE_NAMES.map(n => <option key={n} value={n}>{n}</option>)}
+            </select>
+            <select
+              value={scaleId}
+              onChange={e => setScaleId(e.target.value)}
+              className="h-7 bg-neutral-900 border border-neutral-800 rounded text-[11px] text-neutral-200 px-1"
+            >
+              {PR_SCALES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+            </select>
+          </div>
+        </div>
+
+        {/* Velocity */}
+        <div>
+          <div className="flex items-center justify-between text-[10px] text-neutral-500">
+            <span className="uppercase tracking-wider">Velocity</span>
+            <span className="text-purple-300">{Math.round(velocity * 127)}</span>
+          </div>
+          <input type="range" min={1} max={127} value={Math.round(velocity * 127)} onChange={e => setVelocity(Number(e.target.value) / 127)} className="w-full accent-purple-400" />
+        </div>
+
+        <button
+          onClick={applyQuantize}
+          className="w-full h-8 rounded text-[11px] font-medium bg-gradient-to-r from-teal-500/30 to-purple-500/30 border border-teal-500/40 text-teal-100 hover:from-teal-500/40 hover:to-purple-500/40"
+        >Quantize Now</button>
+
         <button
           onClick={() => {
             if (!activeClip || notes.length < 2) return;
@@ -746,9 +860,10 @@ function PianoRollTab({ engine, trackId }: { engine: DawEngine; trackId: string 
             }
             setNotes(merged);
           }}
-          className="w-full h-7 rounded text-[11px] bg-neutral-900 border border-neutral-800 text-neutral-300"
+          className="w-full h-7 rounded text-[11px] bg-neutral-900 border border-neutral-800 text-neutral-300 hover:border-neutral-700"
         >Glue Notes</button>
       </div>
+
 
       {/* Grid */}
       <div ref={gridRef} className="flex-1 overflow-auto relative bg-[#0a0a0c]" onPointerDown={handleDown}>
@@ -800,11 +915,11 @@ function PianoRollTab({ engine, trackId }: { engine: DawEngine; trackId: string 
                     const dx = (ev.clientX - start.x) / PR_PX_PER_BEAT;
                     const dy = Math.round((ev.clientY - start.y) / PR_ROW_H);
                     if (edge) {
-                      setNotes(notes.map(x => x.id === n.id ? { ...x, length: Math.max(snap, Math.round((start.n.length + dx) / snap) * snap) } : x));
+                      setNotes(notes.map(x => x.id === n.id ? { ...x, length: Math.max(snapBeats, Math.round((start.n.length + dx) / snapBeats) * snapBeats) } : x));
                     } else {
                       setNotes(notes.map(x => x.id === n.id ? {
                         ...x,
-                        start: Math.max(0, Math.round((start.n.start + dx) / snap) * snap),
+                        start: Math.max(0, Math.round((start.n.start + dx) / snapBeats) * snapBeats),
                         pitch: Math.max(0, Math.min(127, start.n.pitch - dy)),
                       } : x));
                     }
