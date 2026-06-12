@@ -353,9 +353,18 @@ export function FloatingKeyboard({ engine, onClose, embedded = false }: Props) {
           />
         )}
       </div>
+
+      {presetOpen && (
+        <PresetModal
+          currentName={active?.instrumentPreset || "Bright Synth"}
+          onClose={() => setPresetOpen(false)}
+          onPick={applyPreset}
+        />
+      )}
     </div>
   );
 }
+
 
 /** Logic-style musical typing layout with color-coded meta keys. */
 function TypingView({
