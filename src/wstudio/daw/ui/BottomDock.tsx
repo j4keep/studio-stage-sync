@@ -915,11 +915,11 @@ function PianoRollTab({ engine, trackId }: { engine: DawEngine; trackId: string 
                     const dx = (ev.clientX - start.x) / PR_PX_PER_BEAT;
                     const dy = Math.round((ev.clientY - start.y) / PR_ROW_H);
                     if (edge) {
-                      setNotes(notes.map(x => x.id === n.id ? { ...x, length: Math.max(snap, Math.round((start.n.length + dx) / snap) * snap) } : x));
+                      setNotes(notes.map(x => x.id === n.id ? { ...x, length: Math.max(snapBeats, Math.round((start.n.length + dx) / snapBeats) * snapBeats) } : x));
                     } else {
                       setNotes(notes.map(x => x.id === n.id ? {
                         ...x,
-                        start: Math.max(0, Math.round((start.n.start + dx) / snap) * snap),
+                        start: Math.max(0, Math.round((start.n.start + dx) / snapBeats) * snapBeats),
                         pitch: Math.max(0, Math.min(127, start.n.pitch - dy)),
                       } : x));
                     }
