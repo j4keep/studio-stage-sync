@@ -1,7 +1,6 @@
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { useDawStore } from "../state/DawStore";
 import { toast } from "sonner";
-import { memo } from "react";
 
 interface Props {
   onImport: () => void;
@@ -14,16 +13,16 @@ interface Props {
   onRewind: () => void;
 }
 
-// Defined OUTSIDE the component so React doesn't remount these items on every
-// position-tick re-render (which was making the dropdown items lose clicks).
-const Item = memo(function Item({ children, shortcut, onClick, disabled }: any) {
+// Plain (non-memoized) wrapper. Memoizing broke Radix's ref forwarding to
+// DropdownMenuItem which caused menus to open in the DOM but never paint.
+function Item({ children, shortcut, onClick, disabled }: any) {
   return (
-    <DropdownMenuItem onClick={onClick} disabled={disabled} className="flex justify-between gap-6 text-[12px]">
+    <DropdownMenuItem onSelect={onClick} disabled={disabled} className="flex justify-between gap-6 text-[12px] cursor-pointer">
       <span>{children}</span>
       {shortcut && <span className="text-[10px] text-neutral-500 tracking-wider">{shortcut}</span>}
     </DropdownMenuItem>
   );
-});
+}
 
 export function MenuBar({ onImport, onExport, onAddAudio, onAddInstrument, onPlay, onStop, onRecord, onRewind }: Props) {
   const tracks = useDawStore(s => s.tracks);
@@ -51,7 +50,7 @@ export function MenuBar({ onImport, onExport, onAddAudio, onAddInstrument, onPla
       {/* File */}
       <DropdownMenu>
         <DropdownMenuTrigger className={triggerClass}>File</DropdownMenuTrigger>
-        <DropdownMenuContent className="bg-neutral-900 border-neutral-800 text-neutral-200 min-w-[220px]">
+        <DropdownMenuContent className="z-[200] bg-neutral-900 border-neutral-800 text-neutral-200 min-w-[220px]">
           <Item shortcut="⌘N" onClick={() => { useDawStore.getState().tracks.forEach(t => removeTrack(t.id)); toast.success("New project"); }}>New Project</Item>
           <Item shortcut="⌘O" onClick={onImport}>Open / Import…</Item>
           <DropdownMenuSeparator className="bg-neutral-800" />
@@ -65,7 +64,7 @@ export function MenuBar({ onImport, onExport, onAddAudio, onAddInstrument, onPla
       {/* Edit */}
       <DropdownMenu>
         <DropdownMenuTrigger className={triggerClass}>Edit</DropdownMenuTrigger>
-        <DropdownMenuContent className="bg-neutral-900 border-neutral-800 text-neutral-200 min-w-[240px]">
+        <DropdownMenuContent className="z-[200] bg-neutral-900 border-neutral-800 text-neutral-200 min-w-[240px]">
           <Item shortcut="⌘Z" disabled={!useDawStore.getState().canUndo()} onClick={() => useDawStore.getState().undo()}>Undo</Item>
           <Item shortcut="⇧⌘Z" disabled={!useDawStore.getState().canRedo()} onClick={() => useDawStore.getState().redo()}>Redo</Item>
           <DropdownMenuSeparator className="bg-neutral-800" />
@@ -87,7 +86,7 @@ export function MenuBar({ onImport, onExport, onAddAudio, onAddInstrument, onPla
       {/* Track */}
       <DropdownMenu>
         <DropdownMenuTrigger className={triggerClass}>Track</DropdownMenuTrigger>
-        <DropdownMenuContent className="bg-neutral-900 border-neutral-800 text-neutral-200 min-w-[240px]">
+        <DropdownMenuContent className="z-[200] bg-neutral-900 border-neutral-800 text-neutral-200 min-w-[240px]">
           <Item shortcut="⌥⌘A" onClick={onAddAudio}>New Audio Track</Item>
           <Item shortcut="⌥⌘S" onClick={onAddInstrument}>New Instrument Track</Item>
           <DropdownMenuSeparator className="bg-neutral-800" />
@@ -106,7 +105,7 @@ export function MenuBar({ onImport, onExport, onAddAudio, onAddInstrument, onPla
       {/* Transport */}
       <DropdownMenu>
         <DropdownMenuTrigger className={triggerClass}>Transport</DropdownMenuTrigger>
-        <DropdownMenuContent className="bg-neutral-900 border-neutral-800 text-neutral-200 min-w-[220px]">
+        <DropdownMenuContent className="z-[200] bg-neutral-900 border-neutral-800 text-neutral-200 min-w-[220px]">
           <Item shortcut="Space" onClick={onPlay}>Play / Pause</Item>
           <Item shortcut="⇧Space" onClick={onStop}>Stop</Item>
           <Item shortcut="Enter" onClick={onRewind}>Return to Start</Item>
@@ -119,7 +118,7 @@ export function MenuBar({ onImport, onExport, onAddAudio, onAddInstrument, onPla
       {/* Help */}
       <DropdownMenu>
         <DropdownMenuTrigger className={triggerClass}>Help</DropdownMenuTrigger>
-        <DropdownMenuContent className="bg-neutral-900 border-neutral-800 text-neutral-200 min-w-[260px]">
+        <DropdownMenuContent className="z-[200] bg-neutral-900 border-neutral-800 text-neutral-200 min-w-[260px]">
           <DropdownMenuLabel className="text-[10px] text-neutral-500 uppercase tracking-wider">Keyboard Shortcuts</DropdownMenuLabel>
           <Item shortcut="Space">Play / Pause</Item>
           <Item shortcut="⇧Space">Stop</Item>
