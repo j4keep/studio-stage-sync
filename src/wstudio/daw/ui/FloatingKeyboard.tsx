@@ -194,9 +194,9 @@ export function FloatingKeyboard({ engine, onClose, embedded = false }: Props) {
 
   return (
     <div
-      className="fixed z-[80] rounded-xl select-none shadow-2xl shadow-black/80"
+      className={`${embedded ? "relative w-full" : "fixed z-[80]"} rounded-xl select-none shadow-2xl shadow-black/80`}
       style={{
-        left: pos.x, top: pos.y, width,
+        ...(embedded ? {} : { left: pos.x, top: pos.y, width }),
         background: "linear-gradient(180deg,#1a1a1d 0%,#0a0a0b 100%)",
         border: "1px solid #2a2a2d",
         boxShadow: "0 18px 48px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.06)",
@@ -204,6 +204,26 @@ export function FloatingKeyboard({ engine, onClose, embedded = false }: Props) {
     >
       {/* Brushed-metal header: drag handle + LCD + hardware knob strip */}
       <div
+        onPointerDown={onHeaderDown}
+        onPointerMove={onHeaderMove}
+        onPointerUp={onHeaderUp}
+        className={`h-14 px-3 flex items-center gap-3 ${embedded ? "" : "cursor-move"} rounded-t-xl`}
+        style={{
+          background:
+            "repeating-linear-gradient(90deg, #1f1f22 0px, #232326 2px, #1f1f22 4px), linear-gradient(180deg,#28282b,#161618)",
+          borderBottom: "1px solid #000",
+        }}
+      >
+        <span className="text-[9px] uppercase tracking-[0.2em] text-neutral-500 font-semibold">W.STUDIO · SL73</span>
+
+        {/* LCD screen — click to browse instrument presets */}
+        <button
+          type="button"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => { e.stopPropagation(); setPresetOpen(true); }}
+          className="ml-1 px-3 py-1.5 rounded-md font-mono leading-tight tabular-nums text-left hover:brightness-110 active:brightness-95"
+          title="Open instrument preset library"
+
         onPointerDown={onHeaderDown}
         onPointerMove={onHeaderMove}
         onPointerUp={onHeaderUp}
