@@ -391,15 +391,15 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
           </DropdownMenuTrigger>
         </Tip>
         <DropdownMenuContent className="bg-neutral-900 border-neutral-800 text-neutral-200 min-w-[200px]">
-          <DropdownMenuItem onClick={onAddAudio} className="flex items-center gap-2 text-[12px]">
+          <DropdownMenuItem onSelect={onAddAudio} className="flex items-center gap-2 text-[12px]">
             <Mic className="w-3.5 h-3.5 text-emerald-300" />
             <span className="flex-1">Audio Track</span>
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={onAddInstrument} className="flex items-center gap-2 text-[12px]">
+          <DropdownMenuItem onSelect={onAddInstrument} className="flex items-center gap-2 text-[12px]">
             <Music2 className="w-3.5 h-3.5 text-purple-300" />
             <span className="flex-1">Instrument Track</span>
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={onImport} className="flex items-center gap-2 text-[12px]">
+          <DropdownMenuItem onSelect={onImport} className="flex items-center gap-2 text-[12px]">
             <Plus className="w-3.5 h-3.5 text-cyan-300" />
             <span className="flex-1">Import Audio File…</span>
           </DropdownMenuItem>
