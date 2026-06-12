@@ -477,6 +477,11 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
         themeMode={themeMode}
         onToggleTheme={() => setThemeMode(m => m === "dark" ? "light" : "dark")}
         onOpenShortcuts={() => setShortcutsOpen(true)}
+        onToggleLibrary={() => setSoundLibOpen(o => !o)}
+        libraryOpen={soundLibOpen}
+        onToggleSession={() => setCollabOpen(o => !o)}
+        sessionOpen={collabOpen}
+
       />
       <input
         ref={importInputRef}
