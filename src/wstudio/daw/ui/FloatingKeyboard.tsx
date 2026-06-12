@@ -62,18 +62,40 @@ export function FloatingKeyboard({ engine, onClose, embedded = false }: Props) {
   const BLACK_W = 18;
   const BLACK_H = 78;
 
-  // Drag-to-move window
-  const [pos, setPos] = useState({ x: 80, y: window.innerHeight - 260 });
+  // Drag-to-move window (only when floating)
+  const [pos, setPos] = useState(() => ({
+    x: 80,
+    y: typeof window !== "undefined" ? Math.max(40, window.innerHeight - 260) : 200,
+  }));
   const dragRef = useRef<{ dx: number; dy: number } | null>(null);
   const onHeaderDown = (e: React.PointerEvent) => {
+    if (embedded) return;
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     dragRef.current = { dx: e.clientX - pos.x, dy: e.clientY - pos.y };
   };
   const onHeaderMove = (e: React.PointerEvent) => {
-    if (!dragRef.current) return;
-    setPos({ x: e.clientX - dragRef.current.dx, y: e.clientY - dragRef.current.dy });
+    if (!dragRef.current || embedded) return;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const nx = Math.max(0, Math.min(vw - 200, e.clientX - dragRef.current.dx));
+    const ny = Math.max(0, Math.min(vh - 60, e.clientY - dragRef.current.dy));
+    setPos({ x: nx, y: ny });
   };
   const onHeaderUp = () => { dragRef.current = null; };
+
+  // Instrument-preset picker (opened by tapping the LCD)
+  const [presetOpen, setPresetOpen] = useState(false);
+  const applyPreset = (p: Preset) => {
+    let t = active;
+    if (!t) {
+      const id = addTrack("instrument", p.name);
+      updateTrack(id, { instrument: "synth", instrumentPreset: p.name, synthWave: p.wave, name: p.name });
+      selectTrack(id);
+    } else {
+      updateTrack(t.id, { instrumentPreset: p.name, synthWave: p.wave, name: p.name });
+    }
+    setPresetOpen(false);
+  };
+
 
   const [flashed, setFlashed] = useState<Set<number>>(new Set());
   const flash = (m: number) => {
