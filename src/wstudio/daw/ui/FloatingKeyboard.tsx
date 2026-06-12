@@ -78,18 +78,50 @@ export function FloatingKeyboard({ engine, onClose }: Props) {
     setTimeout(() => setFlashed(prev => { const n = new Set(prev); n.delete(m); return n; }), 220);
   };
 
+  // Record-on-arm: append notes into a MIDI clip while transport is recording.
+  const addClip = useDawStore(s => s.addClip);
+  const updateClip = useDawStore(s => s.updateClip);
+  const midiRecRef = useRef<{ clipId: string; clipStart: number; notes: Map<number, { id: string; startBeat: number }> } | null>(null);
+  const recordNoteOn = (trackId: string, midi: number, vel: number) => {
+    const st = useDawStore.getState();
+    const recTrack = st.tracks.find(t => t.id === trackId);
+    if (!st.transport.isRecording || !recTrack?.armed || recTrack.kind !== "instrument") return;
+    const secPerBeat = 60 / Math.max(1, st.transport.bpm);
+    const clipStart = midiRecRef.current?.clipStart ?? st.transport.position;
+    const startBeat = Math.max(0, (st.transport.position - clipStart) / secPerBeat);
+    if (!midiRecRef.current) {
+      const clipId = newId("clip");
+      midiRecRef.current = { clipId, clipStart, notes: new Map() };
+      addClip({ id: clipId, trackId, startTime: clipStart, duration: Math.max(secPerBeat, secPerBeat * 4), offset: 0, name: "MIDI Recording", notes: [], color: "#a855f7" });
+    }
+    if (midiRecRef.current.notes.has(midi)) return;
+    const noteId = newId("n");
+    midiRecRef.current.notes.set(midi, { id: noteId, startBeat });
+    const clip = useDawStore.getState().clips.find(c => c.id === midiRecRef.current?.clipId);
+    updateClip(midiRecRef.current.clipId, {
+      notes: [...(clip?.notes ?? []), { id: noteId, start: startBeat, length: 0.25, pitch: midi, velocity: vel } as MidiNote],
+    });
+  };
+  const isRecording = useDawStore(s => s.transport.isRecording);
+  useEffect(() => { if (!isRecording) midiRecRef.current = null; }, [isRecording]);
+
   const playNote = (midi: number) => {
     const vel = velocity / 8;
     let t = active;
     if (!t) {
       const id = addTrack("instrument", "Synth");
-      updateTrack(id, { instrument: "synth" });
+      updateTrack(id, { instrument: "synth", instrumentPreset: "Bright Synth", synthWave: "sawtooth" });
       selectTrack(id);
-      setTimeout(() => triggerSynthNote(engine, id, midi, sustain ? 0.6 : 0.3, vel), 30);
+      setTimeout(() => {
+        const tr = useDawStore.getState().tracks.find(x => x.id === id);
+        triggerSynthNote(engine, id, midi, sustain ? 0.6 : 0.3, vel, (tr?.synthWave as OscillatorType) || "sawtooth");
+      }, 30);
       flash(midi);
       return;
     }
-    triggerSynthNote(engine, t.id, midi, sustain ? 0.6 : 0.3, vel);
+    // Use this track's preset waveform so the LCD label and the sound match.
+    triggerSynthNote(engine, t.id, midi, sustain ? 0.6 : 0.3, vel, (t.synthWave as OscillatorType) || "sawtooth");
+    recordNoteOn(t.id, midi, vel);
     flash(midi);
   };
 
