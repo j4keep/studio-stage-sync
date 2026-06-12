@@ -496,18 +496,24 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
           onAddUserPlugin={(name) => toast.success(`Added plug-in: ${name}`)}
           onBrowseLoops={() => { setSoundLibTab("sounds"); setSoundLibOpen(true); }}
           onPatterns={() => {
-            const hasDrum = tracks.some(t => t.kind === "instrument" && t.instrument === "drum");
-            if (!hasDrum) {
+            const existingDrum = tracks.find(t => t.kind === "instrument" && t.instrument === "drum");
+            if (existingDrum) {
+              selectTrack(existingDrum.id);
+            } else {
               const id = addTrack("instrument", "Drums");
               updateTrack(id, { instrument: "drum" });
+              selectTrack(id);
             }
             openDock("chords");
           }}
           onPlaySynth={() => {
-            const hasSynth = tracks.some(t => t.kind === "instrument" && t.instrument === "synth");
-            if (!hasSynth) {
+            const existingSynth = tracks.find(t => t.kind === "instrument" && t.instrument === "synth");
+            if (existingSynth) {
+              selectTrack(existingSynth.id);
+            } else {
               const id = addTrack("instrument", "Synth");
               updateTrack(id, { instrument: "synth" });
+              selectTrack(id);
             }
             openDock("instrument");
           }}
