@@ -223,22 +223,6 @@ export function FloatingKeyboard({ engine, onClose, embedded = false }: Props) {
           onClick={(e) => { e.stopPropagation(); setPresetOpen(true); }}
           className="ml-1 px-3 py-1.5 rounded-md font-mono leading-tight tabular-nums text-left hover:brightness-110 active:brightness-95"
           title="Open instrument preset library"
-
-        onPointerDown={onHeaderDown}
-        onPointerMove={onHeaderMove}
-        onPointerUp={onHeaderUp}
-        className="h-14 px-3 flex items-center gap-3 cursor-move rounded-t-xl"
-        style={{
-          background:
-            "repeating-linear-gradient(90deg, #1f1f22 0px, #232326 2px, #1f1f22 4px), linear-gradient(180deg,#28282b,#161618)",
-          borderBottom: "1px solid #000",
-        }}
-      >
-        <span className="text-[9px] uppercase tracking-[0.2em] text-neutral-500 font-semibold">W.STUDIO · SL73</span>
-
-        {/* LCD screen */}
-        <div
-          className="ml-1 px-3 py-1.5 rounded-md font-mono leading-tight tabular-nums"
           style={{
             minWidth: 200,
             background: "linear-gradient(180deg,#0d1f12,#081308)",
@@ -249,7 +233,8 @@ export function FloatingKeyboard({ engine, onClose, embedded = false }: Props) {
         >
           <div className="text-[11px] truncate">{lcdLine1}</div>
           <div className="text-[9px] opacity-70 truncate">{lcdLine2}</div>
-        </div>
+        </button>
+
 
         {/* Functional knob strip — wired to selected track */}
         <div className="flex items-end gap-3 px-2" onPointerDown={(e) => e.stopPropagation()}>
