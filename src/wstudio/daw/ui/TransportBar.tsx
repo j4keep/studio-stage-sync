@@ -30,6 +30,10 @@ interface Props {
   themeMode?: "light" | "dark";
   onToggleTheme?: () => void;
   onOpenShortcuts?: () => void;
+  onToggleLibrary?: () => void;
+  libraryOpen?: boolean;
+  onToggleSession?: () => void;
+  sessionOpen?: boolean;
 }
 
 // CRITICAL: defined OUTSIDE the component to avoid remount-on-every-render
