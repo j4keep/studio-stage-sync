@@ -62,6 +62,19 @@ export interface DawState {
   view: "arrange" | "mixer" | "instrument";
   masterVolume: number;
   pxPerSec: number;
+  /** Vertical zoom factor applied to track rows in the arrange view (0.5–3). */
+  verticalZoom: number;
+  setVerticalZoom: (v: number) => void;
+  /** Current project name shown in the header. */
+  projectName: string;
+  setProjectName: (name: string) => void;
+  /** Optional file handle for "Save" (when using File System Access API). */
+  projectFileHandle: any | null;
+  setProjectFileHandle: (h: any | null) => void;
+  /** Wipe tracks/clips and reset transport position — used by New / Open. */
+  resetProject: (name?: string) => void;
+  /** Replace entire project state at once — used by Open. */
+  loadProject: (data: { name: string; tracks: Track[]; clips: Clip[]; transport?: Partial<TransportState>; pxPerSec?: number; verticalZoom?: number }) => void;
   _past: HistorySnap[];
   _future: HistorySnap[];
   undo: () => void;
@@ -140,6 +153,32 @@ export const useDawStore = create<DawState>((set, get) => ({
   view: "arrange",
   masterVolume: 1,
   pxPerSec: 60,
+  verticalZoom: 1,
+  setVerticalZoom: (v) => set({ verticalZoom: Math.max(0.5, Math.min(3, v)) }),
+  projectName: (typeof window !== "undefined" && localStorage.getItem("wstudio:daw:projectName")) || "Untitled Project",
+  setProjectName: (name) => {
+    const safe = (name || "Untitled Project").slice(0, 80);
+    set({ projectName: safe });
+    if (typeof window !== "undefined") { try { localStorage.setItem("wstudio:daw:projectName", safe); } catch {} }
+  },
+  projectFileHandle: null,
+  setProjectFileHandle: (h) => set({ projectFileHandle: h }),
+  resetProject: (name) => set({
+    tracks: [], clips: [], selectedTrackId: null, selectedClipId: null,
+    clipboard: null, _past: [], _future: [],
+    projectName: name ?? "Untitled Project",
+    projectFileHandle: null,
+    transport: { ...get().transport, position: 0, isPlaying: false, isRecording: false },
+  }),
+  loadProject: (data) => set({
+    tracks: data.tracks, clips: data.clips,
+    selectedTrackId: null, selectedClipId: null, clipboard: null,
+    _past: [], _future: [],
+    projectName: data.name || "Untitled Project",
+    pxPerSec: data.pxPerSec ?? get().pxPerSec,
+    verticalZoom: data.verticalZoom ?? 1,
+    transport: { ...get().transport, ...(data.transport ?? {}), position: 0, isPlaying: false, isRecording: false },
+  }),
   _past: [],
   _future: [],
   canUndo: () => get()._past.length > 0,

@@ -11,6 +11,10 @@ interface Props {
   onStop: () => void;
   onRecord: () => void;
   onRewind: () => void;
+  onNewProject?: () => void;
+  onOpenProject?: () => void;
+  onSaveProject?: () => void;
+  onSaveAsProject?: () => void;
 }
 
 // Plain (non-memoized) wrapper. Memoizing broke Radix's ref forwarding to
@@ -24,7 +28,7 @@ function Item({ children, shortcut, onClick, disabled }: any) {
   );
 }
 
-export function MenuBar({ onImport, onExport, onAddAudio, onAddInstrument, onPlay, onStop, onRecord, onRewind }: Props) {
+export function MenuBar({ onImport, onExport, onAddAudio, onAddInstrument, onPlay, onStop, onRecord, onRewind, onNewProject, onOpenProject, onSaveProject, onSaveAsProject }: Props) {
   const tracks = useDawStore(s => s.tracks);
   const clips = useDawStore(s => s.clips);
   const selectedClipId = useDawStore(s => s.selectedClipId);
@@ -51,13 +55,14 @@ export function MenuBar({ onImport, onExport, onAddAudio, onAddInstrument, onPla
       <DropdownMenu>
         <DropdownMenuTrigger className={triggerClass}>File</DropdownMenuTrigger>
         <DropdownMenuContent className="z-[200] bg-neutral-900 border-neutral-800 text-neutral-200 min-w-[220px]">
-          <Item shortcut="⌘N" onClick={() => { useDawStore.getState().tracks.forEach(t => removeTrack(t.id)); toast.success("New project"); }}>New Project</Item>
-          <Item shortcut="⌘O" onClick={onImport}>Open / Import…</Item>
+          <Item shortcut="⌘N" onClick={() => onNewProject?.()}>New Project…</Item>
+          <Item shortcut="⌘O" onClick={() => onOpenProject?.()}>Open Project…</Item>
+          <Item onClick={onImport}>Import Audio File…</Item>
           <DropdownMenuSeparator className="bg-neutral-800" />
-          <Item shortcut="⌘S" onClick={() => toast.success("Project autosaved")}>Save</Item>
+          <Item shortcut="⌘S" onClick={() => onSaveProject?.()}>Save Project</Item>
+          <Item shortcut="⇧⌘S" onClick={() => onSaveAsProject?.()}>Save Project As…</Item>
+          <DropdownMenuSeparator className="bg-neutral-800" />
           <Item onClick={onExport}>Export Mix as WAV…</Item>
-          <DropdownMenuSeparator className="bg-neutral-800" />
-          <Item onClick={() => toast("Bounce coming soon")}>Bounce Project…</Item>
         </DropdownMenuContent>
       </DropdownMenu>
 

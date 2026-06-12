@@ -17,7 +17,7 @@ interface Props {
 }
 
 const HEADER_W = 200;
-const TRACK_H = 80;
+const TRACK_H_BASE = 80;
 const RULER_H = 32;
 
 // Build an SVG-based cursor that resembles the selected tool's icon. The icon
@@ -62,6 +62,9 @@ export function ArrangeView({ onArmToggle, onSeek, engine, onOpenInstrumentEdito
   const selectedClipId = useDawStore(s => s.selectedClipId);
   const splitClipAt = useDawStore(s => s.splitClipAt);
   const setPxPerSec = useDawStore(s => s.setPxPerSec);
+  const verticalZoom = useDawStore(s => s.verticalZoom);
+  const setVerticalZoom = useDawStore(s => s.setVerticalZoom);
+  const TRACK_H = Math.round(TRACK_H_BASE * verticalZoom);
   const reorderTracks = useDawStore(s => s.reorderTracks);
   const moveClipToTrack = useDawStore(s => s.moveClipToTrack);
   const copyClip = useDawStore(s => s.copyClip);
@@ -288,6 +291,16 @@ export function ArrangeView({ onArmToggle, onSeek, engine, onOpenInstrumentEdito
           value={pxPerSec}
           onChange={(e) => setPxPerSec(Number(e.target.value))}
           className="w-32 accent-cyan-500"
+          title="Horizontal zoom"
+        />
+        <span className="text-neutral-600">·</span>
+        <span>V-Zoom</span>
+        <input
+          type="range" min={0.5} max={3} step={0.1}
+          value={verticalZoom}
+          onChange={(e) => setVerticalZoom(Number(e.target.value))}
+          className="w-24 accent-purple-500"
+          title="Vertical (track height) zoom"
         />
       </div>
 
@@ -539,6 +552,7 @@ function TrackHeader({ track, canRecordInput, meters = [], onArm, onMute, onSolo
   onOpenEditor?: () => void;
 }) {
   const stop = (e: React.SyntheticEvent) => e.stopPropagation();
+  const TRACK_H = Math.round(TRACK_H_BASE * useDawStore(s => s.verticalZoom));
   const sliderRef = useRef<HTMLDivElement>(null);
   const setVolFromX = (clientX: number) => {
     const el = sliderRef.current;
@@ -716,6 +730,7 @@ function ClipBlock({ clip, color, pxPerSec, selected, tool, onSelect, onContext,
   onPointerMoveDrag: (e: React.PointerEvent) => void;
   onPointerUpDrag: () => void;
 }) {
+  const TRACK_H = Math.round(TRACK_H_BASE * useDawStore(s => s.verticalZoom));
   const w = clip.duration * pxPerSec;
   const left = clip.startTime * pxPerSec;
   const interactive = tool === "pointer" || tool === "trim";

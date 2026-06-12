@@ -594,6 +594,10 @@ function PianoRollTab({ engine, trackId }: { engine: DawEngine; trackId: string 
   const updateClip = useDawStore(s => s.updateClip);
   const playhead = useDawStore(s => s.transport.position);
   const bpm = useDawStore(s => s.transport.bpm);
+  const [zoomX, setZoomX] = useState(1);
+  const [zoomY, setZoomY] = useState(1);
+  const pxPerBeat = PR_PX_PER_BEAT * zoomX;
+  const rowH = Math.max(8, Math.round(PR_ROW_H * zoomY));
 
   const activeClip = useMemo(
     () => clips.find(c => c.notes && playhead >= c.startTime && playhead < c.startTime + c.duration) ?? clips.find(c => c.notes),
@@ -668,10 +672,10 @@ function PianoRollTab({ engine, trackId }: { engine: DawEngine; trackId: string 
   const handleDown = (e: React.PointerEvent) => {
     if (!gridRef.current) return;
     const rect = gridRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left + gridRef.current.scrollLeft;
+    const x = e.clientX - rect.left + gridRef.current.scrollLeft - 48; // minus key column width
     const y = e.clientY - rect.top + gridRef.current.scrollTop;
-    const beat = Math.max(0, Math.round((x / PR_PX_PER_BEAT) / snapBeats) * snapBeats);
-    let pitch = PR_TOP_PITCH - Math.floor(y / PR_ROW_H);
+    const beat = Math.max(0, Math.round((x / pxPerBeat) / snapBeats) * snapBeats);
+    let pitch = PR_TOP_PITCH - Math.floor(y / rowH);
     pitch = snapToScale(pitch);
     if (tool === "pencil") {
       const id = activeClip?.id ?? ensureClip();
@@ -777,12 +781,25 @@ function PianoRollTab({ engine, trackId }: { engine: DawEngine; trackId: string 
           }}
           className="w-full h-7 rounded text-[11px] bg-neutral-900 border border-neutral-800 text-neutral-300 hover:border-neutral-700"
         >Glue Notes</button>
+
+        {/* Zoom */}
+        <div className="pt-2 border-t border-neutral-900">
+          <div className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1">Zoom</div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[9px] text-neutral-500 w-3">H</span>
+            <input type="range" min={0.5} max={4} step={0.1} value={zoomX} onChange={e => setZoomX(Number(e.target.value))} className="w-full accent-cyan-400" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[9px] text-neutral-500 w-3">V</span>
+            <input type="range" min={0.5} max={4} step={0.1} value={zoomY} onChange={e => setZoomY(Number(e.target.value))} className="w-full accent-purple-400" />
+          </div>
+        </div>
       </div>
 
 
       {/* Grid */}
       <div ref={gridRef} className="flex-1 overflow-auto relative bg-[#0a0a0c]" onPointerDown={handleDown}>
-        <div className="relative" style={{ width: PR_BEATS * PR_PX_PER_BEAT + 40, height: PR_NOTES * PR_ROW_H }}>
+        <div className="relative" style={{ width: PR_BEATS * pxPerBeat + 48, height: PR_NOTES * rowH }}>
           {/* Piano keys – sticky mini-keyboard column matching the floating keyboard */}
           <div className="sticky left-0 top-0 float-left w-12 h-full z-20 border-r border-neutral-700 bg-[#0a0a0c] shadow-[2px_0_6px_rgba(0,0,0,0.6)]">
             {Array.from({ length: PR_NOTES }).map((_, r) => {
@@ -794,7 +811,7 @@ function PianoRollTab({ engine, trackId }: { engine: DawEngine; trackId: string 
                   key={r}
                   onPointerDown={(e) => { e.stopPropagation(); triggerSynthNote(engine, trackId, pitch, 0.3, 0.8); }}
                   className={`text-[8px] border-b ${isBlack ? "bg-neutral-900 text-neutral-300 border-neutral-950" : "bg-gradient-to-r from-neutral-100 to-neutral-300 text-neutral-700 border-neutral-400"} px-1 grid items-center cursor-pointer hover:brightness-110`}
-                  style={{ height: PR_ROW_H }}
+                  style={{ height: rowH }}
                 >
                   {isC ? `C${Math.floor(pitch / 12) - 1}` : isBlack ? "" : NOTE_NAMES[pitch % 12]}
                 </div>
@@ -808,51 +825,67 @@ function PianoRollTab({ engine, trackId }: { engine: DawEngine; trackId: string 
               const pitch = PR_TOP_PITCH - r;
               const isBlack = [1,3,6,8,10].includes(((pitch % 12) + 12) % 12);
               const isC = pitch % 12 === 0;
-              return <div key={r} className={`${isBlack ? "bg-neutral-900/70" : "bg-[#15151c]"} ${isC ? "border-b border-neutral-600/70" : "border-b border-neutral-700/40"}`} style={{ height: PR_ROW_H }} />;
+              return <div key={r} className={`${isBlack ? "bg-neutral-900/70" : "bg-[#15151c]"} ${isC ? "border-b border-neutral-600/70" : "border-b border-neutral-700/40"}`} style={{ height: rowH }} />;
             })}
-            {/* Beat lines — brighter so they read on the dark grid */}
+            {/* Beat lines */}
             <div className="absolute inset-0 pointer-events-none">
               {Array.from({ length: PR_BEATS + 1 }).map((_, b) => (
-                <div key={b} className={`absolute top-0 bottom-0`} style={{ left: b * PR_PX_PER_BEAT, width: b % 4 === 0 ? 2 : 1, background: b % 4 === 0 ? "rgba(165,180,200,0.55)" : "rgba(120,130,150,0.30)" }} />
+                <div key={b} className={`absolute top-0 bottom-0`} style={{ left: b * pxPerBeat, width: b % 4 === 0 ? 2 : 1, background: b % 4 === 0 ? "rgba(165,180,200,0.55)" : "rgba(120,130,150,0.30)" }} />
               ))}
             </div>
-            {/* Notes */}
-            {notes.map(n => (
-              <div
-                key={n.id}
-                className="absolute rounded-sm bg-gradient-to-r from-purple-400 to-teal-300 border border-purple-300 shadow"
-                style={{
-                  left: n.start * PR_PX_PER_BEAT,
-                  top: (PR_TOP_PITCH - n.pitch) * PR_ROW_H + 1,
-                  width: Math.max(6, n.length * PR_PX_PER_BEAT - 2),
-                  height: PR_ROW_H - 2,
-                  opacity: 0.6 + n.velocity * 0.4,
-                }}
-                onPointerDown={(e) => {
-                  e.stopPropagation();
-                  if (tool === "eraser") { setNotes(notes.filter(x => x.id !== n.id)); return; }
-                  const start = { x: e.clientX, y: e.clientY, n: { ...n } };
-                  const target = e.currentTarget;
-                  const edge = e.nativeEvent.offsetX > target.clientWidth - 6;
-                  const move = (ev: PointerEvent) => {
-                    const dx = (ev.clientX - start.x) / PR_PX_PER_BEAT;
-                    const dy = Math.round((ev.clientY - start.y) / PR_ROW_H);
-                    if (edge) {
-                      setNotes(notes.map(x => x.id === n.id ? { ...x, length: Math.max(snapBeats, Math.round((start.n.length + dx) / snapBeats) * snapBeats) } : x));
-                    } else {
-                      setNotes(notes.map(x => x.id === n.id ? {
-                        ...x,
-                        start: Math.max(0, Math.round((start.n.start + dx) / snapBeats) * snapBeats),
-                        pitch: Math.max(0, Math.min(127, start.n.pitch - dy)),
-                      } : x));
-                    }
-                  };
-                  const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
-                  window.addEventListener("pointermove", move);
-                  window.addEventListener("pointerup", up);
-                }}
-              />
-            ))}
+            {/* Notes — square (no rounding) with left + right resize handles */}
+            {notes.map(n => {
+              const noteW = Math.max(6, n.length * pxPerBeat - 2);
+              return (
+                <div
+                  key={n.id}
+                  className="absolute bg-gradient-to-r from-purple-400 to-teal-300 border border-purple-300 shadow"
+                  style={{
+                    left: n.start * pxPerBeat,
+                    top: (PR_TOP_PITCH - n.pitch) * rowH + 1,
+                    width: noteW,
+                    height: rowH - 2,
+                    opacity: 0.6 + n.velocity * 0.4,
+                  }}
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    if (tool === "eraser") { setNotes(notes.filter(x => x.id !== n.id)); return; }
+                    const start = { x: e.clientX, y: e.clientY, n: { ...n } };
+                    const target = e.currentTarget as HTMLElement;
+                    const localX = e.nativeEvent.offsetX;
+                    const HANDLE = 6;
+                    const mode: "resize-left" | "resize-right" | "move" =
+                      localX < HANDLE ? "resize-left" :
+                      localX > target.clientWidth - HANDLE ? "resize-right" : "move";
+                    const move = (ev: PointerEvent) => {
+                      const dx = (ev.clientX - start.x) / pxPerBeat;
+                      const dy = Math.round((ev.clientY - start.y) / rowH);
+                      if (mode === "resize-right") {
+                        setNotes(notes.map(x => x.id === n.id ? { ...x, length: Math.max(snapBeats, Math.round((start.n.length + dx) / snapBeats) * snapBeats) } : x));
+                      } else if (mode === "resize-left") {
+                        const newStart = Math.max(0, Math.round((start.n.start + dx) / snapBeats) * snapBeats);
+                        const delta = newStart - start.n.start;
+                        const newLen = Math.max(snapBeats, start.n.length - delta);
+                        setNotes(notes.map(x => x.id === n.id ? { ...x, start: newStart, length: newLen } : x));
+                      } else {
+                        setNotes(notes.map(x => x.id === n.id ? {
+                          ...x,
+                          start: Math.max(0, Math.round((start.n.start + dx) / snapBeats) * snapBeats),
+                          pitch: Math.max(0, Math.min(127, start.n.pitch - dy)),
+                        } : x));
+                      }
+                    };
+                    const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
+                    window.addEventListener("pointermove", move);
+                    window.addEventListener("pointerup", up);
+                  }}
+                >
+                  {/* Visual edge handles (the resize logic above triggers on the outer 6px of the note) */}
+                  <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-white/30 cursor-ew-resize" style={{ pointerEvents: "none" }} />
+                  <div className="absolute right-0 top-0 bottom-0 w-1.5 bg-white/30 cursor-ew-resize" style={{ pointerEvents: "none" }} />
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

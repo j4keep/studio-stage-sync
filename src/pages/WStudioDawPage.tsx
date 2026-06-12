@@ -18,6 +18,7 @@ import { FloatingKeyboard } from "@/wstudio/daw/ui/FloatingKeyboard";
 import { ShortcutsModal } from "@/wstudio/daw/ui/ShortcutsModal";
 import { useShortcutsStore, matchAction } from "@/wstudio/daw/state/ShortcutsStore";
 import type { Clip, Track, AutomationPoint } from "@/wstudio/daw/engine/types";
+import { saveProjectTo, saveAsProject, openProject } from "@/wstudio/daw/lib/projectIO";
 
 /** Linearly interpolate between automation breakpoints at the given timeline position. */
 function interpAutomation(points: AutomationPoint[], pos: number, fallback: number): number {
@@ -98,7 +99,16 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
   const selectTrack = useDawStore(s => s.selectTrack);
   const view = useDawStore(s => s.view);
   const masterVolume = useDawStore(s => s.masterVolume);
+  const pxPerSec = useDawStore(s => s.pxPerSec);
+  const verticalZoom = useDawStore(s => s.verticalZoom);
+  const projectName = useDawStore(s => s.projectName);
+  const setProjectName = useDawStore(s => s.setProjectName);
+  const projectFileHandle = useDawStore(s => s.projectFileHandle);
+  const setProjectFileHandle = useDawStore(s => s.setProjectFileHandle);
+  const resetProject = useDawStore(s => s.resetProject);
+  const loadProject = useDawStore(s => s.loadProject);
   const importInputRef = useRef<HTMLInputElement>(null);
+  const [newProjectPrompt, setNewProjectPrompt] = useState<string | null>(null);
 
   // Init engine
   useEffect(() => {
@@ -424,6 +434,70 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
     }
   }, [tracks, clips]);
 
+  // ──────────────────────────────────────────────────────────────
+  // Project Save / Open / Save As
+  // ──────────────────────────────────────────────────────────────
+  const collectProjectOpts = useCallback(() => {
+    const st = useDawStore.getState();
+    return {
+      name: st.projectName,
+      tracks: st.tracks,
+      clips: st.clips,
+      transport: st.transport,
+      pxPerSec: st.pxPerSec,
+      verticalZoom: st.verticalZoom,
+    };
+  }, []);
+
+  const handleSaveProject = useCallback(async () => {
+    try {
+      toast.loading("Saving project…", { id: "save" });
+      const handle = await saveProjectTo(projectFileHandle, collectProjectOpts());
+      if (handle) setProjectFileHandle(handle);
+      toast.success("Project saved", { id: "save" });
+    } catch (err) {
+      toast.error("Couldn't save project", { id: "save" });
+    }
+  }, [projectFileHandle, setProjectFileHandle, collectProjectOpts]);
+
+  const handleSaveAsProject = useCallback(async () => {
+    try {
+      toast.loading("Saving project…", { id: "saveas" });
+      const handle = await saveAsProject(collectProjectOpts());
+      if (handle) setProjectFileHandle(handle);
+      toast.success("Project saved", { id: "saveas" });
+    } catch {
+      toast.error("Couldn't save project", { id: "saveas" });
+    }
+  }, [collectProjectOpts, setProjectFileHandle]);
+
+  const handleOpenProject = useCallback(async () => {
+    const e = engineRef.current;
+    if (!e) return;
+    try {
+      const result = await openProject(e);
+      if (!result) return;
+      loadProject(result.parsed);
+      setProjectFileHandle(result.handle);
+      toast.success(`Opened "${result.parsed.name}"`);
+    } catch (err) {
+      toast.error("Couldn't open project — invalid file");
+    }
+  }, [loadProject, setProjectFileHandle]);
+
+  const handleNewProject = useCallback(() => {
+    setNewProjectPrompt("Untitled Project");
+  }, []);
+
+  const createNewProject = useCallback((name: string) => {
+    const trimmed = (name || "").trim() || "Untitled Project";
+    engineRef.current?.stop();
+    resetProject(trimmed);
+    setNewProjectPrompt(null);
+    toast.success(`Created "${trimmed}"`);
+  }, [resetProject]);
+
+
 
   // Drag and drop files onto window
   useEffect(() => {
@@ -454,7 +528,22 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
         onStop={handleStop}
         onRecord={handleRecord}
         onRewind={handleRewind}
+        onNewProject={handleNewProject}
+        onOpenProject={handleOpenProject}
+        onSaveProject={handleSaveProject}
+        onSaveAsProject={handleSaveAsProject}
       />
+      {/* Project name strip — centered, editable, sits above the transport */}
+      <div className="h-7 bg-gradient-to-b from-neutral-900 to-neutral-950 border-b border-neutral-800 flex items-center justify-center relative">
+        <input
+          value={projectName}
+          onChange={(e) => setProjectName(e.target.value)}
+          onBlur={(e) => { if (!e.target.value.trim()) setProjectName("Untitled Project"); }}
+          spellCheck={false}
+          className="bg-transparent text-center text-[12px] font-medium text-neutral-100 outline-none border border-transparent hover:border-neutral-800 focus:border-cyan-500/60 rounded px-3 py-0.5 min-w-[180px] max-w-[420px] w-[max-content]"
+          title="Project name — shown on save"
+        />
+      </div>
       <TransportBar
         onPlay={handlePlayPause}
         onStop={handleStop}
@@ -597,7 +686,37 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
           </div>
         </div>
       )}
+
+      {newProjectPrompt !== null && (
+        <div className="fixed inset-0 z-[100] bg-black/60 grid place-items-center" onClick={() => setNewProjectPrompt(null)}>
+          <div className="bg-neutral-950 border border-neutral-800 rounded-lg p-5 w-[360px] shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="text-sm text-neutral-200 font-medium mb-1">Name your new project</div>
+            <div className="text-[11px] text-neutral-500 mb-3">You can rename it any time from the header.</div>
+            <input
+              autoFocus
+              defaultValue={newProjectPrompt}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") createNewProject((e.target as HTMLInputElement).value);
+                if (e.key === "Escape") setNewProjectPrompt(null);
+              }}
+              id="wstudio-newproj-name"
+              className="w-full h-9 px-3 rounded bg-neutral-900 border border-neutral-800 text-neutral-100 text-sm outline-none focus:border-cyan-400/60"
+            />
+            <div className="flex justify-end gap-2 mt-4">
+              <button onClick={() => setNewProjectPrompt(null)} className="h-8 px-3 rounded text-xs text-neutral-300 hover:text-neutral-100">Cancel</button>
+              <button
+                onClick={() => {
+                  const el = document.getElementById("wstudio-newproj-name") as HTMLInputElement | null;
+                  createNewProject(el?.value || newProjectPrompt);
+                }}
+                className="h-8 px-4 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-medium"
+              >Create</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+
 
   );
 }
