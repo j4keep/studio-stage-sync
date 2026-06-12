@@ -206,12 +206,12 @@ export function FloatingKeyboard({ engine, onClose }: Props) {
           <div className="text-[9px] opacity-70 truncate">{lcdLine2}</div>
         </div>
 
-        {/* Knob strip */}
-        <div className="flex items-end gap-2 px-2">
-          <HwKnob color="#ef4444" label="Cutoff" />
-          <HwKnob color="#f59e0b" label="Res" />
-          <HwKnob color="#22d3ee" label="Attack" />
-          <HwKnob color="#a855f7" label="Release" />
+        {/* Functional knob strip — wired to selected track */}
+        <div className="flex items-end gap-3 px-2" onPointerDown={(e) => e.stopPropagation()}>
+          <Knob size={28} min={0} max={1} value={active?.volume ?? 1} onChange={(v) => active && updateTrack(active.id, { volume: v })} label="Vol" color="#22d3ee" showValue={false} />
+          <Knob size={28} min={-1} max={1} value={active?.pan ?? 0} onChange={(v) => active && updateTrack(active.id, { pan: v })} label="Pan" color="#a855f7" showValue={false} />
+          <Knob size={28} min={0} max={1} value={active?.reverbSend ?? 0} onChange={(v) => active && updateTrack(active.id, { reverbSend: v })} label="Rev" color="#f59e0b" showValue={false} />
+          <Knob size={28} min={0} max={1} value={active?.delaySend ?? 0} onChange={(v) => active && updateTrack(active.id, { delaySend: v })} label="Dly" color="#ef4444" showValue={false} />
         </div>
 
         <div className="flex-1" />
