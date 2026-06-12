@@ -313,10 +313,11 @@ function InstrumentTab({ engine, trackId }: { engine: DawEngine; trackId: string
         <Toggle label="Auto-chords" on={autoChords} onClick={() => setAutoChords(s => !s)} />
       </div>
 
-      {/* Keyboard */}
-      <div className="flex-1 overflow-hidden p-3">
-        <PianoKeyboard onDown={noteOn} onUp={noteOff} octave={octave} />
+      {/* Keyboard — embedded floating-keyboard style */}
+      <div className="flex-1 overflow-auto p-3 bg-black/40">
+        <FloatingKeyboard engine={engine} onClose={() => {}} embedded />
       </div>
+
 
 
       {presetOpen && (
