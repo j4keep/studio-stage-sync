@@ -5,6 +5,8 @@ import { FxRack } from "./FxRack";
 import type { DawEngine } from "../engine/DawEngine";
 import { triggerSynthNote, midiToFreq, startSynthNote, triggerDrumHit, type SynthVoice } from "../engine/DawEngine";
 import type { MidiNote, Clip } from "../engine/types";
+import { FloatingKeyboard } from "./FloatingKeyboard";
+
 
 type Tab = "instrument" | "chords" | "pianoroll" | "effects";
 
