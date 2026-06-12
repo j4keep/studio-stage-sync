@@ -432,6 +432,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
     } catch {
       toast.error("Export failed", { id: "exp" });
     }
+  }, [tracks, clips]);
 
   // ──────────────────────────────────────────────────────────────
   // Project Save / Open / Save As
