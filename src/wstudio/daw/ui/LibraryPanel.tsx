@@ -26,15 +26,29 @@ export function LibraryPanel({
   const [plugins, setPlugins] = useState<UserPlugin[]>([]);
   const [pluginName, setPluginName] = useState("");
 
-  const QuickBtn = ({ icon: Icon, label, onClick }: { icon: any; label: string; onClick?: () => void }) => (
+  const QuickBtn = ({ icon: Icon, label, onClick, grad }: { icon: any; label: string; onClick?: () => void; grad: string }) => (
     <button
       onClick={onClick}
-      className="flex flex-col items-center justify-center gap-1 h-16 rounded-lg bg-neutral-900/70 border border-neutral-800 hover:border-cyan-500/50 hover:bg-neutral-800 text-neutral-300 hover:text-white transition-colors"
+      className="group relative flex flex-col items-center justify-center gap-1.5 h-20 rounded-xl text-white overflow-hidden transition-transform hover:scale-[1.03] active:scale-95 shadow-[0_4px_14px_rgba(0,0,0,0.35)]"
+      style={{ background: grad }}
     >
-      <Icon className="w-4 h-4" />
-      <div className="text-[9px] text-center leading-tight">{label}</div>
+      <div className="absolute inset-0 bg-gradient-to-b from-white/25 via-transparent to-black/20 pointer-events-none" />
+      <div className="absolute inset-0 ring-1 ring-inset ring-white/30 rounded-xl pointer-events-none" />
+      <div className="relative w-8 h-8 grid place-items-center rounded-full bg-white/20 backdrop-blur-sm shadow-inner">
+        <Icon className="w-4 h-4 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]" strokeWidth={2.5} />
+      </div>
+      <div className="relative text-[10px] font-semibold text-center leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">{label}</div>
     </button>
   );
+
+  const GRADS = [
+    "linear-gradient(135deg,#ff6b35 0%,#f7468a 50%,#a855f7 100%)",
+    "linear-gradient(135deg,#f7468a 0%,#a855f7 50%,#3b82f6 100%)",
+    "linear-gradient(135deg,#a855f7 0%,#3b82f6 50%,#06b6d4 100%)",
+    "linear-gradient(135deg,#3b82f6 0%,#06b6d4 50%,#10b981 100%)",
+    "linear-gradient(135deg,#06b6d4 0%,#10b981 50%,#f59e0b 100%)",
+    "linear-gradient(135deg,#10b981 0%,#f59e0b 50%,#ff6b35 100%)",
+  ];
 
   return (
     <div className="w-64 shrink-0 bg-neutral-950 border-r border-neutral-800 flex flex-col">
