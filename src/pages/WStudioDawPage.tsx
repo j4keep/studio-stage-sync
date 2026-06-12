@@ -538,21 +538,12 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
           onClose={() => setSoundLibOpen(false)}
           initialTab={soundLibTab}
         />
-        {!soundLibOpen && (
-          <button
-            onClick={() => setSoundLibOpen(true)}
-            className="absolute right-2 top-4 z-40 px-2 py-1 bg-neutral-900 border border-neutral-800 rounded text-[10px] text-neutral-300 hover:text-cyan-300"
-          >♪ Library</button>
+        {!soundLibOpen ? null : null}
+
+        {collabOpen && (
+          <CollabSidebar sessionCode={sessionCode} onClose={() => setCollabOpen(false)} />
         )}
 
-        {collabOpen ? (
-          <CollabSidebar sessionCode={sessionCode} onClose={() => setCollabOpen(false)} />
-        ) : (
-          <button
-            onClick={() => setCollabOpen(true)}
-            className="absolute right-2 top-16 z-40 px-2 py-1 bg-neutral-900 border border-neutral-800 rounded text-[10px] text-neutral-300"
-          >Session</button>
-        )}
 
         {openPlugins.map((p, i) => (
           <PluginWindow
