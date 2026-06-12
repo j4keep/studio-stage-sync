@@ -200,7 +200,22 @@ export function ArrangeView({ onArmToggle, onSeek, engine, onOpenInstrumentEdito
       d.startY = e.clientY;
     }
   };
-  const endClipDrag = () => { clipDrag.current = null; };
+  const endClipDrag = () => {
+    const d = clipDrag.current;
+    clipDrag.current = null;
+    // If the clip was moved to another track or its start time changed while
+    // playback was active, the engine's scheduled audio is now stale. Restart
+    // playback from the current position so audio follows the visual move.
+    if (d && engine?.playing) {
+      const st = useDawStore.getState();
+      const pos = st.transport.position;
+      engine.stop();
+      requestAnimationFrame(() => {
+        const fresh = useDawStore.getState();
+        engine.play({ ...fresh.transport, position: pos, isPlaying: true }, fresh.tracks, fresh.clips);
+      });
+    }
+  };
 
   // Tool actions on a clip click
   const applyToolToClip = (clip: Clip, e: React.MouseEvent) => {
