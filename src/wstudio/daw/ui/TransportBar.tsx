@@ -420,7 +420,7 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
           {(["arrange", "mixer", "instrument"] as const).map(v => (
             <DropdownMenuItem
               key={v}
-              onClick={() => setView(v)}
+              onSelect={() => setView(v)}
               className="flex items-center justify-between text-[12px] uppercase tracking-wider"
             >
               <span>{v === "arrange" ? "edit" : v}</span>
