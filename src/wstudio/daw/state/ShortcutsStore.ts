@@ -66,7 +66,7 @@ async function persistRemote(bindings: Record<string, string>) {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    await supabase.from("profiles").update({ daw_shortcuts: bindings as any }).eq("user_id", user.id);
+    await supabase.from("profiles").update({ daw_shortcuts: bindings } as any).eq("user_id", user.id);
   } catch {}
 }
 
