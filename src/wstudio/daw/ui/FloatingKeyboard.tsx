@@ -281,12 +281,15 @@ export function FloatingKeyboard({ engine, onClose, embedded = false }: Props) {
           </div>
         )}
 
-        <button
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => { e.stopPropagation(); onClose(); }}
-          className="w-6 h-6 grid place-items-center text-neutral-400 hover:text-red-400 rounded border border-neutral-800"
-          title="Close keyboard"
-        ><X className="w-3 h-3" /></button>
+        {!embedded && (
+          <button
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); onClose(); }}
+            className="w-6 h-6 grid place-items-center text-neutral-400 hover:text-red-400 rounded border border-neutral-800"
+            title="Close keyboard"
+          ><X className="w-3 h-3" /></button>
+        )}
+
       </div>
 
       {/* Body */}
