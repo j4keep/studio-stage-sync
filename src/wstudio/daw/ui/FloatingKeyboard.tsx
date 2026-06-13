@@ -98,6 +98,7 @@ export function FloatingKeyboard({ engine, onClose, embedded = false }: Props) {
 
 
   const [flashed, setFlashed] = useState<Set<number>>(new Set());
+  const voicesRef = useRef<Map<number, SynthVoice>>(new Map());
   const flash = (m: number) => {
     setFlashed(prev => { const n = new Set(prev); n.add(m); return n; });
     setTimeout(() => setFlashed(prev => { const n = new Set(prev); n.delete(m); return n; }), 220);
@@ -123,12 +124,52 @@ export function FloatingKeyboard({ engine, onClose, embedded = false }: Props) {
     const noteId = newId("n");
     midiRecRef.current.notes.set(midi, { id: noteId, startBeat });
     const clip = useDawStore.getState().clips.find(c => c.id === midiRecRef.current?.clipId);
+    const grownDuration = Math.max(clip?.duration ?? 0, (startBeat + 0.5) * secPerBeat);
     updateClip(midiRecRef.current.clipId, {
       notes: [...(clip?.notes ?? []), { id: noteId, start: startBeat, length: 0.25, pitch: midi, velocity: vel } as MidiNote],
+      duration: grownDuration,
+    });
+  };
+  const recordNoteOff = (midi: number) => {
+    const rec = midiRecRef.current;
+    if (!rec) return;
+    const held = rec.notes.get(midi);
+    if (!held) return;
+    rec.notes.delete(midi);
+    const st = useDawStore.getState();
+    const secPerBeat = 60 / Math.max(1, st.transport.bpm);
+    const endBeat = Math.max(held.startBeat + 0.125, (st.transport.position - rec.clipStart) / secPerBeat);
+    const length = Math.max(0.125, endBeat - held.startBeat);
+    const clip = st.clips.find(c => c.id === rec.clipId);
+    updateClip(rec.clipId, {
+      notes: (clip?.notes ?? []).map(n => n.id === held.id ? { ...n, length } : n),
+      duration: Math.max(clip?.duration ?? 0, (held.startBeat + length) * secPerBeat),
     });
   };
   const isRecording = useDawStore(s => s.transport.isRecording);
-  useEffect(() => { if (!isRecording) midiRecRef.current = null; }, [isRecording]);
+  useEffect(() => {
+    if (!isRecording) {
+      const rec = midiRecRef.current;
+      if (rec) Array.from(rec.notes.keys()).forEach(recordNoteOff);
+      midiRecRef.current = null;
+    }
+  }, [isRecording]);
+
+  useEffect(() => {
+    if (!isRecording) return;
+    const tick = window.setInterval(() => {
+      const rec = midiRecRef.current;
+      if (!rec) return;
+      const st = useDawStore.getState();
+      const secPerBeat = 60 / Math.max(1, st.transport.bpm);
+      const elapsed = Math.max(0, st.transport.position - rec.clipStart);
+      const clip = st.clips.find(c => c.id === rec.clipId);
+      if (!clip) return;
+      const target = Math.max(clip.duration, elapsed + secPerBeat);
+      if (target > clip.duration + 0.01) updateClip(rec.clipId, { duration: target });
+    }, 250);
+    return () => window.clearInterval(tick);
+  }, [isRecording, updateClip]);
 
   const playNote = (midi: number) => {
     const vel = velocity / 8;
