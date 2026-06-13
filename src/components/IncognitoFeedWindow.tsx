@@ -72,7 +72,7 @@ const IncognitoFeedWindow = () => {
   });
   const dragRef = useRef<{ dx: number; dy: number; startX: number; startY: number; moved: boolean } | null>(null);
   const draggedRecentlyRef = useRef(false);
-  const dragResetTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
+  const dragResetTimerRef = useRef<number | null>(null);
   const windowRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
