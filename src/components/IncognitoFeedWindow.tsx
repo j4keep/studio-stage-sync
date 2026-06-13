@@ -91,6 +91,21 @@ const IncognitoFeedWindow = () => {
   }, [sizeMode]);
 
   useEffect(() => {
+    try {
+      sessionStorage.setItem(OPEN_KEY, String(open));
+      sessionStorage.setItem(MINIMIZED_KEY, String(minimized));
+    } catch {}
+  }, [open, minimized]);
+
+  useEffect(() => {
+    if (location.pathname.startsWith("/wstudio")) {
+      try {
+        localStorage.setItem(LAST_STUDIO_ROUTE_KEY, `${location.pathname}${location.search}${location.hash}`);
+      } catch {}
+    }
+  }, [location.pathname, location.search, location.hash]);
+
+  useEffect(() => {
     if (!open || minimized) return;
     const container = scrollRef.current;
     if (!container) return;
@@ -119,10 +134,8 @@ const IncognitoFeedWindow = () => {
     const move = (e: MouseEvent | TouchEvent) => {
       if (!dragRef.current) return;
       const point = "touches" in e ? e.touches[0] : (e as MouseEvent);
-      const w = windowRef.current?.offsetWidth ?? 320;
-      const h = windowRef.current?.offsetHeight ?? 560;
-      const x = Math.min(Math.max(0, point.clientX - dragRef.current.dx), window.innerWidth - w);
-      const y = Math.min(Math.max(0, point.clientY - dragRef.current.dy), window.innerHeight - h);
+      const x = point.clientX - dragRef.current.dx;
+      const y = point.clientY - dragRef.current.dy;
       setPos({ x, y });
     };
     const stop = () => {
