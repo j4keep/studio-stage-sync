@@ -423,7 +423,10 @@ export function FloatingKeyboard({ engine, onClose, embedded = false }: Props) {
             flashed={flashed}
             sustain={sustain}
             velocity={velocity}
-            onTap={(m) => beginNote(m)}
+            onTap={(m) => {
+              beginNote(m);
+              window.setTimeout(() => endNote(m), sustain ? 650 : 240);
+            }}
           />
         )}
       </div>
