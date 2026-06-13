@@ -294,7 +294,7 @@ export function FloatingKeyboard({ engine, onClose, embedded = false }: Props) {
 
       {/* Body */}
       <div
-        className="p-3"
+        className={embedded ? "p-2 overflow-auto" : "p-3"}
         style={{ background: "linear-gradient(180deg,#0a0a0b 0%,#050506 100%)" }}
       >
         {mode === "piano" ? (
