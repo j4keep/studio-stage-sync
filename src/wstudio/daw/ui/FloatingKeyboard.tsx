@@ -171,7 +171,8 @@ export function FloatingKeyboard({ engine, onClose, embedded = false }: Props) {
     return () => window.clearInterval(tick);
   }, [isRecording, updateClip]);
 
-  const playNote = (midi: number) => {
+  const beginNote = (midi: number) => {
+    if (voicesRef.current.has(midi)) return;
     const vel = velocity / 8;
     let t = active;
     if (!t) {
@@ -180,15 +181,27 @@ export function FloatingKeyboard({ engine, onClose, embedded = false }: Props) {
       selectTrack(id);
       setTimeout(() => {
         const tr = useDawStore.getState().tracks.find(x => x.id === id);
-        triggerSynthNote(engine, id, midi, sustain ? 0.6 : 0.3, vel, (tr?.synthWave as OscillatorType) || "sawtooth");
+        const v = startSynthNote(engine, id, midi, vel, (tr?.synthWave as OscillatorType) || "sawtooth");
+        if (v) voicesRef.current.set(midi, v);
+        if (!sustain) window.setTimeout(() => endNote(midi), 220);
       }, 30);
       flash(midi);
       return;
     }
     // Use this track's preset waveform so the LCD label and the sound match.
-    triggerSynthNote(engine, t.id, midi, sustain ? 0.6 : 0.3, vel, (t.synthWave as OscillatorType) || "sawtooth");
+    const v = startSynthNote(engine, t.id, midi, vel, (t.synthWave as OscillatorType) || "sawtooth");
+    if (v) voicesRef.current.set(midi, v);
     recordNoteOn(t.id, midi, vel);
+    if (!sustain) window.setTimeout(() => endNote(midi), 220);
     flash(midi);
+  };
+
+  const endNote = (midi: number) => {
+    const voice = voicesRef.current.get(midi);
+    if (!voice) return;
+    voicesRef.current.delete(midi);
+    voice.stop(0.12);
+    recordNoteOff(midi);
   };
 
   // Computer-keyboard MIDI input + meta keys (Z/X octave, Tab sustain, 1-8 vel)
@@ -204,29 +217,49 @@ export function FloatingKeyboard({ engine, onClose, embedded = false }: Props) {
       const n = KEYBOARD_MAP[k];
       if (n != null && !e.repeat) {
         const base = octaveStart - 48;
-        playNote(n + base);
+        beginNote(n + base);
       }
     };
+    const up = (e: KeyboardEvent) => {
+      const n = KEYBOARD_MAP[e.key.toLowerCase()];
+      if (n != null) endNote(n + octaveStart - 48);
+    };
     window.addEventListener("keydown", down);
-    return () => window.removeEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+    };
   }, [octaveStart, active?.id, engine, sustain, velocity]);
 
   // Slide-to-play
   const pressedRef = useRef(false);
   const lastNoteRef = useRef<number | null>(null);
   const onKeyDown = (m: number) => (e: React.PointerEvent) => {
-    e.stopPropagation(); pressedRef.current = true; lastNoteRef.current = m; playNote(m);
+    e.stopPropagation(); pressedRef.current = true; lastNoteRef.current = m; beginNote(m);
   };
   const onKeyEnter = (m: number) => () => {
     if (!pressedRef.current) return;
     if (lastNoteRef.current === m) return;
-    lastNoteRef.current = m; playNote(m);
+    if (lastNoteRef.current != null) endNote(lastNoteRef.current);
+    lastNoteRef.current = m; beginNote(m);
   };
   useEffect(() => {
-    const up = () => { pressedRef.current = false; lastNoteRef.current = null; };
+    const up = () => {
+      if (lastNoteRef.current != null) endNote(lastNoteRef.current);
+      pressedRef.current = false;
+      lastNoteRef.current = null;
+    };
     window.addEventListener("pointerup", up);
     window.addEventListener("pointercancel", up);
     return () => { window.removeEventListener("pointerup", up); window.removeEventListener("pointercancel", up); };
+  }, [active?.id, sustain, velocity]);
+
+  useEffect(() => {
+    return () => {
+      voicesRef.current.forEach(v => v.stop(0.05));
+      voicesRef.current.clear();
+    };
   }, []);
 
   const width = Math.max(560, whiteCount * WHITE_W + 24);
