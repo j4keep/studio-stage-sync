@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
-import { X, Minus, Eye, GripHorizontal, Home, ImagePlus, Music, User, Maximize2, Minimize2 } from "lucide-react";
+import { X, Minus, Eye, GripHorizontal, Home, ImagePlus, Music, User, Maximize2, Minimize2, ExternalLink } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchFeedItems } from "@/lib/feed-items";
@@ -9,6 +9,10 @@ import FeedPostCard from "@/components/feed/FeedPostCard";
 
 const STORAGE_KEY = "incognito-feed-window-pos";
 const SIZE_KEY = "incognito-feed-window-size";
+const OPEN_KEY = "incognito-feed-window-open";
+const MINIMIZED_KEY = "incognito-feed-window-minimized";
+const LAST_STUDIO_ROUTE_KEY = "wheuat-last-wstudio-route";
+const DEFAULT_STUDIO_ROUTE = "/wstudio/session/join";
 
 interface Pos {
   x: number;
@@ -22,12 +26,32 @@ const SIZE_DIMS: Record<SizeMode, { w: number; h: number }> = {
   large: { w: 320, h: 560 },
 };
 
+const getStoredStudioRoute = () => {
+  try {
+    return localStorage.getItem(LAST_STUDIO_ROUTE_KEY) || DEFAULT_STUDIO_ROUTE;
+  } catch {
+    return DEFAULT_STUDIO_ROUTE;
+  }
+};
+
 const IncognitoFeedWindow = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [open, setOpen] = useState(false);
-  const [minimized, setMinimized] = useState(false);
+  const [open, setOpen] = useState(() => {
+    try {
+      return sessionStorage.getItem(OPEN_KEY) === "true";
+    } catch {
+      return false;
+    }
+  });
+  const [minimized, setMinimized] = useState(() => {
+    try {
+      return sessionStorage.getItem(MINIMIZED_KEY) === "true";
+    } catch {
+      return false;
+    }
+  });
   const [sizeMode, setSizeMode] = useState<SizeMode>(() => {
     try {
       const raw = localStorage.getItem(SIZE_KEY);
