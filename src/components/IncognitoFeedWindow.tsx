@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { X, Minus, Eye, GripHorizontal, Home, ImagePlus, Music, User, Maximize2, Minimize2 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -119,18 +120,19 @@ const IncognitoFeedWindow = () => {
 
   // Floating bubble (closed)
   if (!open) {
-    return (
+    return createPortal(
       <button
         onClick={() => {
           setOpen(true);
           setMinimized(false);
         }}
-        className="fixed z-[60] w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-2xl flex items-center justify-center active:scale-95 transition-transform"
+        className="fixed z-[9999] w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-2xl flex items-center justify-center active:scale-95 transition-transform"
         style={{ right: 16, bottom: 96 }}
         aria-label="Open incognito feed"
       >
         <Eye className="w-5 h-5" />
-      </button>
+      </button>,
+      document.body
     );
   }
 
@@ -145,10 +147,10 @@ const IncognitoFeedWindow = () => {
     { path: "/profile", icon: User, label: "Profile" },
   ];
 
-  return (
+  return createPortal(
     <div
       ref={windowRef}
-      className="fixed z-[60] rounded-2xl bg-card border border-border shadow-2xl overflow-hidden flex flex-col"
+      className="fixed z-[9999] rounded-2xl bg-card border border-border shadow-2xl overflow-hidden flex flex-col"
       style={{ left: pos.x, top: pos.y, width, height }}
     >
       <div
@@ -238,7 +240,8 @@ const IncognitoFeedWindow = () => {
           )}
         </div>
       )}
-    </div>
+    </div>,
+    document.body
   );
 };
 
