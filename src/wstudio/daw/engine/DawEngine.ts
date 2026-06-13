@@ -104,7 +104,14 @@ export class DawEngine {
     this.masterGain.gain.value = 1;
     this.masterAnalyser = this.ctx.createAnalyser();
     this.masterAnalyser.fftSize = 1024;
-    this.masterGain.connect(this.masterAnalyser);
+    const safetyLimiter = this.ctx.createDynamicsCompressor();
+    safetyLimiter.threshold.value = -2;
+    safetyLimiter.knee.value = 0;
+    safetyLimiter.ratio.value = 20;
+    safetyLimiter.attack.value = 0.002;
+    safetyLimiter.release.value = 0.08;
+    this.masterGain.connect(safetyLimiter);
+    safetyLimiter.connect(this.masterAnalyser);
     this.masterAnalyser.connect(this.ctx.destination);
 
     this.destStream = this.ctx.createMediaStreamDestination();
@@ -371,6 +378,7 @@ export class DawEngine {
           try { src.start(when, offset, duration); chain.activeSources.push(src); } catch {}
         }
         pos = loopStart;
+        scheduleMidiClips(this, tracks, clips, loopStart, this.startCtxTime, transport.bpm);
         void newTransport;
       }
       this.onPositionChange?.(pos);
