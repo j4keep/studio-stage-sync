@@ -20,6 +20,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   const isStudioPage =
     location.pathname.startsWith("/wstudio") || location.pathname === "/ai-studio";
   const isWStudioJoinPage = location.pathname === "/wstudio/session/join";
+  const isWStudioDawPage = location.pathname === "/wstudio/daw" || location.pathname.startsWith("/wstudio/session/");
   const isFullScreenPage = ["/feed"].includes(location.pathname);
   const showTopBar = !isStudioPage && !["/auth", "/feed", "/ai-studio"].includes(location.pathname);
 
@@ -63,7 +64,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
 
   // W.Studio pages get full width (no max-w-lg) so DAW fills the screen
   const containerClass = isStudioPage
-    ? `bg-background text-foreground relative ${isWStudioJoinPage ? "h-dvh overflow-hidden" : "min-h-screen"}`
+    ? `bg-background text-foreground relative ${isWStudioJoinPage || isWStudioDawPage ? "h-dvh overflow-hidden" : "min-h-screen"}`
     : "min-h-screen bg-background text-foreground max-w-lg mx-auto relative";
 
   return (
@@ -88,7 +89,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
           <NotificationBell />
         </div>
       )}
-      <main className={isStudioPage ? `wstudio-main ${isWStudioJoinPage ? "h-full overflow-hidden" : ""}` : "pb-20"}>{children}</main>
+      <main className={isStudioPage ? `wstudio-main ${isWStudioJoinPage || isWStudioDawPage ? "h-full overflow-hidden" : ""}` : "pb-20"}>{children}</main>
       <GlobalRadioPlayer />
       <GlobalPlaylistPlayer />
       <PlaylistPlayerSheet />
