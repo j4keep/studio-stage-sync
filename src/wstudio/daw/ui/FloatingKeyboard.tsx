@@ -423,7 +423,7 @@ export function FloatingKeyboard({ engine, onClose, embedded = false }: Props) {
             flashed={flashed}
             sustain={sustain}
             velocity={velocity}
-            onTap={(m) => playNote(m)}
+            onTap={(m) => beginNote(m)}
           />
         )}
       </div>
