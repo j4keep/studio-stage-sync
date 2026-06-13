@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { X, Minus, Eye, GripHorizontal, Home, ImagePlus, Music, User, Maximize2, Minimize2, ExternalLink } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { fetchFeedItems } from "@/lib/feed-items";
+import { fetchFeedItems, type FeedItem } from "@/lib/feed-items";
 import FeedPostCard from "@/components/feed/FeedPostCard";
 
 const STORAGE_KEY = "incognito-feed-window-pos";
@@ -56,14 +56,18 @@ const IncognitoFeedWindow = () => {
     try {
       const raw = localStorage.getItem(SIZE_KEY);
       if (raw === "small" || raw === "large") return raw;
-    } catch {}
+    } catch (error) {
+      void error;
+    }
     return "large";
   });
   const [pos, setPos] = useState<Pos>(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) return JSON.parse(raw);
-    } catch {}
+    } catch (error) {
+      void error;
+    }
     return { x: Math.max(16, window.innerWidth - 340), y: Math.max(60, window.innerHeight - 600) };
   });
   const dragRef = useRef<{ dx: number; dy: number } | null>(null);
@@ -76,32 +80,40 @@ const IncognitoFeedWindow = () => {
     queryFn: () => fetchFeedItems({ currentUserId: user?.id }),
     enabled: open,
   });
-  const feedPosts = items.filter((it: any) => it.itemType === "post");
+  const feedPosts = items.filter((it): it is Extract<FeedItem, { itemType: "post" }> => it.itemType === "post");
 
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(pos));
-    } catch {}
+    } catch (error) {
+      void error;
+    }
   }, [pos]);
 
   useEffect(() => {
     try {
       localStorage.setItem(SIZE_KEY, sizeMode);
-    } catch {}
+    } catch (error) {
+      void error;
+    }
   }, [sizeMode]);
 
   useEffect(() => {
     try {
       sessionStorage.setItem(OPEN_KEY, String(open));
       sessionStorage.setItem(MINIMIZED_KEY, String(minimized));
-    } catch {}
+    } catch (error) {
+      void error;
+    }
   }, [open, minimized]);
 
   useEffect(() => {
     if (location.pathname.startsWith("/wstudio")) {
       try {
         localStorage.setItem(LAST_STUDIO_ROUTE_KEY, `${location.pathname}${location.search}${location.hash}`);
-      } catch {}
+      } catch (error) {
+        void error;
+      }
     }
   }, [location.pathname, location.search, location.hash]);
 
@@ -193,7 +205,9 @@ const IncognitoFeedWindow = () => {
     try {
       sessionStorage.setItem(OPEN_KEY, "true");
       sessionStorage.setItem(MINIMIZED_KEY, "false");
-    } catch {}
+    } catch (error) {
+      void error;
+    }
     window.open(window.location.href, "wheuat-incognito-window", "popup=yes,width=360,height=640,left=80,top=80");
   };
 
@@ -292,7 +306,7 @@ const IncognitoFeedWindow = () => {
               <p className="text-white/60 text-xs text-center">No posts yet</p>
             </div>
           ) : (
-            feedPosts.map((item: any, index: number) => (
+            feedPosts.map((item, index) => (
               <div
                 key={item.id}
                 data-index={index}
