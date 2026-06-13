@@ -58,6 +58,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
         <GlobalPlaylistPlayer />
         <PlaylistPlayerSheet />
         <BottomNav />
+        <IncognitoFeedWindow />
       </div>
     );
   }
