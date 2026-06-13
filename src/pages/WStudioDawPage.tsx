@@ -565,34 +565,36 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
           title="Project name — shown on save"
         />
       </div>
-      <TransportBar
-        onPlay={handlePlayPause}
-        onStop={handleStop}
-        onRecord={handleRecord}
-        onRewind={handleRewind}
-        onSeek={handleSeek}
-        onExport={handleExport}
-        onAddAudio={() => addTrack("audio")}
-        onAddInstrument={() => { const id = addTrack("instrument"); updateTrack(id, { instrument: "synth" }); }}
-        onAddMany={(kind, count) => {
-          for (let i = 0; i < count; i++) {
-            const id = addTrack(kind);
-            if (kind === "instrument") updateTrack(id, { instrument: "synth" });
-          }
-          toast.success(`Added ${count} ${kind} track${count > 1 ? "s" : ""}`);
-        }}
-        onImport={() => importInputRef.current?.click()}
-        onToggleKeyboard={() => setKeyboardOpen(o => !o)}
-        keyboardOpen={keyboardOpen}
-        themeMode={themeMode}
-        onToggleTheme={() => setThemeMode(m => m === "dark" ? "light" : "dark")}
-        onOpenShortcuts={() => setShortcutsOpen(true)}
-        onToggleLibrary={() => setSoundLibOpen(o => !o)}
-        libraryOpen={soundLibOpen}
-        onToggleSession={() => setCollabOpen(o => !o)}
-        sessionOpen={collabOpen}
+      <div className="shrink-0 w-full overflow-x-auto overflow-y-hidden">
+        <TransportBar
+          onPlay={handlePlayPause}
+          onStop={handleStop}
+          onRecord={handleRecord}
+          onRewind={handleRewind}
+          onSeek={handleSeek}
+          onExport={handleExport}
+          onAddAudio={() => addTrack("audio")}
+          onAddInstrument={() => { const id = addTrack("instrument"); updateTrack(id, { instrument: "synth" }); }}
+          onAddMany={(kind, count) => {
+            for (let i = 0; i < count; i++) {
+              const id = addTrack(kind);
+              if (kind === "instrument") updateTrack(id, { instrument: "synth" });
+            }
+            toast.success(`Added ${count} ${kind} track${count > 1 ? "s" : ""}`);
+          }}
+          onImport={() => importInputRef.current?.click()}
+          onToggleKeyboard={() => setKeyboardOpen(o => !o)}
+          keyboardOpen={keyboardOpen}
+          themeMode={themeMode}
+          onToggleTheme={() => setThemeMode(m => m === "dark" ? "light" : "dark")}
+          onOpenShortcuts={() => setShortcutsOpen(true)}
+          onToggleLibrary={() => setSoundLibOpen(o => !o)}
+          libraryOpen={soundLibOpen}
+          onToggleSession={() => setCollabOpen(o => !o)}
+          sessionOpen={collabOpen}
+        />
+      </div>
 
-      />
       <input
         ref={importInputRef}
         type="file" multiple accept=".wav,.mp3,.ogg,.m4a,audio/*"
