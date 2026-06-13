@@ -185,9 +185,17 @@ const IncognitoFeedWindow = () => {
   const navTabs = [
     { path: "/", icon: Home, label: "Home" },
     { path: "/feed", icon: ImagePlus, label: "Feed" },
-    { path: "/wstudio/session/join", icon: Music, label: "W.Studio", matchPrefix: "/wstudio/session" },
+    { path: getStoredStudioRoute, icon: Music, label: "W.Studio", matchPrefix: "/wstudio" },
     { path: "/profile", icon: User, label: "Profile" },
   ];
+
+  const openStandaloneWindow = () => {
+    try {
+      sessionStorage.setItem(OPEN_KEY, "true");
+      sessionStorage.setItem(MINIMIZED_KEY, "false");
+    } catch {}
+    window.open(window.location.href, "wheuat-incognito-window", "popup=yes,width=360,height=640,left=80,top=80");
+  };
 
   return createPortal(
     <div
@@ -196,7 +204,13 @@ const IncognitoFeedWindow = () => {
       style={{ left: pos.x, top: pos.y, width, height }}
     >
       <div
-        className="flex items-center gap-1 px-2 py-1.5 bg-muted/80 backdrop-blur cursor-grab active:cursor-grabbing select-none"
+        className="flex items-center gap-1 px-2 py-1.5 bg-muted/80 backdrop-blur cursor-grab active:cursor-grabbing select-none touch-none"
+        style={{ touchAction: "none" }}
+        onPointerDown={(e) => {
+          if ((e.target as HTMLElement).closest("[data-no-drag]")) return;
+          startDrag(e.clientX, e.clientY);
+          e.currentTarget.setPointerCapture(e.pointerId);
+        }}
         onMouseDown={(e) => {
           if ((e.target as HTMLElement).closest("[data-no-drag]")) return;
           startDrag(e.clientX, e.clientY);
@@ -210,13 +224,14 @@ const IncognitoFeedWindow = () => {
         <div className="flex items-center gap-0.5 flex-1 justify-center" data-no-drag>
           {navTabs.map((tab) => {
             const Icon = tab.icon;
+            const path = typeof tab.path === "function" ? tab.path() : tab.path;
             const isActive = tab.matchPrefix
               ? location.pathname.startsWith(tab.matchPrefix)
-              : location.pathname === tab.path;
+              : location.pathname === path;
             return (
               <button
-                key={tab.path}
-                onClick={() => navigate(tab.path)}
+                key={tab.label}
+                onClick={() => navigate(path)}
                 className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors ${
                   isActive ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-background/60 hover:text-foreground"
                 }`}
@@ -229,6 +244,14 @@ const IncognitoFeedWindow = () => {
           })}
         </div>
         <div className="flex items-center gap-0.5" data-no-drag>
+          <button
+            onClick={openStandaloneWindow}
+            className="w-6 h-6 rounded-full hover:bg-background/60 flex items-center justify-center"
+            aria-label="Open standalone"
+            title="Open standalone"
+          >
+            <ExternalLink className="w-3 h-3" />
+          </button>
           <button
             onClick={() => setSizeMode((m) => (m === "small" ? "large" : "small"))}
             className="w-6 h-6 rounded-full hover:bg-background/60 flex items-center justify-center"
