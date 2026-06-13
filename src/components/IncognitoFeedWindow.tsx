@@ -70,7 +70,9 @@ const IncognitoFeedWindow = () => {
     }
     return { x: Math.max(16, window.innerWidth - 340), y: Math.max(60, window.innerHeight - 600) };
   });
-  const dragRef = useRef<{ dx: number; dy: number } | null>(null);
+  const dragRef = useRef<{ dx: number; dy: number; startX: number; startY: number; moved: boolean } | null>(null);
+  const draggedRecentlyRef = useRef(false);
+  const dragResetTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
   const windowRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -139,7 +141,7 @@ const IncognitoFeedWindow = () => {
   const startDrag = (clientX: number, clientY: number) => {
     if (!windowRef.current) return;
     const rect = windowRef.current.getBoundingClientRect();
-    dragRef.current = { dx: clientX - rect.left, dy: clientY - rect.top };
+    dragRef.current = { dx: clientX - rect.left, dy: clientY - rect.top, startX: clientX, startY: clientY, moved: false };
   };
 
   useEffect(() => {
@@ -147,11 +149,21 @@ const IncognitoFeedWindow = () => {
       if (!dragRef.current) return;
       if ("preventDefault" in e) e.preventDefault();
       const point = "touches" in e ? e.touches[0] : (e as MouseEvent | PointerEvent);
+      if (Math.hypot(point.clientX - dragRef.current.startX, point.clientY - dragRef.current.startY) > 4) {
+        dragRef.current.moved = true;
+      }
       const x = point.clientX - dragRef.current.dx;
       const y = point.clientY - dragRef.current.dy;
       setPos({ x, y });
     };
     const stop = () => {
+      if (dragRef.current?.moved) {
+        draggedRecentlyRef.current = true;
+        if (dragResetTimerRef.current) window.clearTimeout(dragResetTimerRef.current);
+        dragResetTimerRef.current = window.setTimeout(() => {
+          draggedRecentlyRef.current = false;
+        }, 120);
+      }
       dragRef.current = null;
     };
     window.addEventListener("pointermove", move);
@@ -167,6 +179,7 @@ const IncognitoFeedWindow = () => {
       window.removeEventListener("mouseup", stop);
       window.removeEventListener("touchmove", move);
       window.removeEventListener("touchend", stop);
+      if (dragResetTimerRef.current) window.clearTimeout(dragResetTimerRef.current);
     };
   }, []);
 
@@ -235,7 +248,7 @@ const IncognitoFeedWindow = () => {
         }}
       >
         <GripHorizontal className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-        <div className="flex items-center gap-0.5 flex-1 justify-center" data-no-drag>
+        <div className="flex items-center gap-0.5 flex-1 justify-center">
           {navTabs.map((tab) => {
             const Icon = tab.icon;
             const path = typeof tab.path === "function" ? tab.path() : tab.path;
@@ -245,7 +258,13 @@ const IncognitoFeedWindow = () => {
             return (
               <button
                 key={tab.label}
-                onClick={() => navigate(path)}
+                onClick={(event) => {
+                  if (draggedRecentlyRef.current) {
+                    event.preventDefault();
+                    return;
+                  }
+                  navigate(path);
+                }}
                 className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors ${
                   isActive ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-background/60 hover:text-foreground"
                 }`}
