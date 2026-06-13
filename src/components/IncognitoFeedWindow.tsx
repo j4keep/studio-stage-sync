@@ -131,9 +131,10 @@ const IncognitoFeedWindow = () => {
   };
 
   useEffect(() => {
-    const move = (e: MouseEvent | TouchEvent) => {
+    const move = (e: MouseEvent | TouchEvent | PointerEvent) => {
       if (!dragRef.current) return;
-      const point = "touches" in e ? e.touches[0] : (e as MouseEvent);
+      if ("preventDefault" in e) e.preventDefault();
+      const point = "touches" in e ? e.touches[0] : (e as MouseEvent | PointerEvent);
       const x = point.clientX - dragRef.current.dx;
       const y = point.clientY - dragRef.current.dy;
       setPos({ x, y });
@@ -141,11 +142,15 @@ const IncognitoFeedWindow = () => {
     const stop = () => {
       dragRef.current = null;
     };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", stop);
     window.addEventListener("mousemove", move);
     window.addEventListener("mouseup", stop);
-    window.addEventListener("touchmove", move, { passive: true });
+    window.addEventListener("touchmove", move, { passive: false });
     window.addEventListener("touchend", stop);
     return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", stop);
       window.removeEventListener("mousemove", move);
       window.removeEventListener("mouseup", stop);
       window.removeEventListener("touchmove", move);
