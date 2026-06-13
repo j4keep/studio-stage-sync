@@ -104,7 +104,14 @@ export class DawEngine {
     this.masterGain.gain.value = 1;
     this.masterAnalyser = this.ctx.createAnalyser();
     this.masterAnalyser.fftSize = 1024;
-    this.masterGain.connect(this.masterAnalyser);
+    const safetyLimiter = this.ctx.createDynamicsCompressor();
+    safetyLimiter.threshold.value = -2;
+    safetyLimiter.knee.value = 0;
+    safetyLimiter.ratio.value = 20;
+    safetyLimiter.attack.value = 0.002;
+    safetyLimiter.release.value = 0.08;
+    this.masterGain.connect(safetyLimiter);
+    safetyLimiter.connect(this.masterAnalyser);
     this.masterAnalyser.connect(this.ctx.destination);
 
     this.destStream = this.ctx.createMediaStreamDestination();
@@ -371,6 +378,7 @@ export class DawEngine {
           try { src.start(when, offset, duration); chain.activeSources.push(src); } catch {}
         }
         pos = loopStart;
+        scheduleMidiClips(this, tracks, clips, loopStart, this.startCtxTime, transport.bpm);
         void newTransport;
       }
       this.onPositionChange?.(pos);
@@ -845,7 +853,7 @@ export function startSynthNote(
   osc.type = wave ?? "sawtooth";
   osc.frequency.value = midiToFreq(midi);
 
-    const peak = Math.max(0, Math.min(1, velocity)) * 0.75;
+  const peak = Math.max(0, Math.min(1, velocity)) * 0.42;
   const sustain = peak * 0.7;
   env.gain.cancelScheduledValues(now);
   env.gain.setValueAtTime(0.0001, now);
@@ -915,7 +923,7 @@ export function scheduleMidiClips(engine: DawEngine, tracks: Track[], clips: Cli
       const env = ctx.createGain();
       osc.type = wave;
       osc.frequency.value = midiToFreq(n.pitch);
-      const peak = Math.max(0, Math.min(1, n.velocity ?? 0.8)) * 0.75;
+      const peak = Math.max(0, Math.min(1, n.velocity ?? 0.8)) * 0.42;
       const sustain = peak * 0.7;
       env.gain.setValueAtTime(0.0001, when);
       env.gain.linearRampToValueAtTime(peak, when + 0.01);

@@ -281,14 +281,15 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
       }
       const latest = useDawStore.getState();
       const recordTrack = latest.tracks.find(t => t.id === armed!.id) ?? armed;
+      const recordingTransport = { ...latest.transport, isRecording: true, isPlaying: true };
       if (recordTrack.kind === "instrument") {
         setTransport({ isRecording: true, isPlaying: true });
-        if (!e.playing) e.play(latest.transport, latest.tracks, latest.clips);
+        if (!e.playing) e.play(recordingTransport, latest.tracks, latest.clips);
         return;
       }
       await e.startRecording(recordTrack.id, latest.transport.position, recordTrack.inputDeviceId);
       setTransport({ isRecording: true, isPlaying: true });
-      e.play(latest.transport, latest.tracks, latest.clips);
+      e.play(recordingTransport, latest.tracks, latest.clips);
     } catch (err: any) {
       toast.error("Mic access denied");
       setTransport({ isRecording: false });
@@ -323,6 +324,14 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
     const onKey = (ev: KeyboardEvent) => {
       const tag = (ev.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || (ev.target as HTMLElement)?.isContentEditable) return;
+      if (ev.key === "Backspace") {
+        const sel = useDawStore.getState().selectedClipId;
+        if (sel) {
+          ev.preventDefault();
+          useDawStore.getState().removeClip(sel);
+        }
+        return;
+      }
       const bindings = useShortcutsStore.getState().bindings;
       const action = matchAction(ev, bindings);
       if (!action) return;
@@ -342,7 +351,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
         case "cut":            { const sel = st.selectedClipId; if (sel) { st.cutClip(sel); toast.success("Cut"); } break; }
         case "paste":          { const sel = st.selectedClipId; const clip = st.clips.find(c => c.id === sel); const trackId = clip?.trackId ?? st.tracks[0]?.id; if (trackId) st.pasteClipAt(trackId, st.transport.position); break; }
         case "duplicate":      { ev.preventDefault(); const sel = st.selectedClipId; if (sel) st.duplicateClip(sel); break; }
-        case "deleteClip":     { const sel = st.selectedClipId; if (sel) st.removeClip(sel); break; }
+        case "deleteClip":     { ev.preventDefault(); const sel = st.selectedClipId; if (sel) st.removeClip(sel); break; }
         case "toggleKeyboard": ev.preventDefault(); setKeyboardOpen(o => !o); break;
         case "toggleTheme":    ev.preventDefault(); setThemeMode(m => m === "dark" ? "light" : "dark"); break;
         case "toolPointer":    st.setTool("pointer"); break;
