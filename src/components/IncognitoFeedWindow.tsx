@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { X, Minus, Eye, GripHorizontal, Home, ImagePlus, Music, User, Maximize2, Minimize2 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
