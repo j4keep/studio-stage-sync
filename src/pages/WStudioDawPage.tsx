@@ -88,6 +88,9 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
     const previousBodyOverflow = document.body.style.overflow;
     const previousBodyOverscroll = document.body.style.overscrollBehavior;
 
+    window.scrollTo(0, 0);
+    document.documentElement.scrollLeft = 0;
+    document.body.scrollLeft = 0;
     document.documentElement.style.overflow = "hidden";
     document.body.style.overflow = "hidden";
     document.body.style.overscrollBehavior = "none";
@@ -535,8 +538,8 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
 
   return (
     <div
-      className={`fixed inset-0 z-[60] flex h-dvh w-screen max-w-[100vw] flex-col overflow-hidden overscroll-none ${themeMode === "dark" ? "bg-black text-neutral-200 dark" : "daw-light"}`}
-      style={{ touchAction: "none", width: "100vw", maxWidth: "100vw" }}
+      className={`fixed inset-0 z-[60] flex h-dvh w-full max-w-full flex-col overflow-hidden overscroll-none ${themeMode === "dark" ? "bg-black text-neutral-200 dark" : "daw-light"}`}
+      style={{ width: "100%", maxWidth: "100%" }}
     >
 
 
@@ -565,7 +568,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
           title="Project name — shown on save"
         />
       </div>
-      <div className="shrink-0 w-full overflow-x-auto overflow-y-hidden">
+      <div className="shrink-0 w-full max-w-full overflow-hidden">
         <TransportBar
           onPlay={handlePlayPause}
           onStop={handleStop}

@@ -121,8 +121,8 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
   const bbtMode = transport.bbtDisplayMode;
 
   return (
-    <div className="h-14 bg-gradient-to-b from-neutral-900 to-neutral-950 border-b border-neutral-800 px-3 flex items-center gap-2 text-neutral-200 text-xs shadow-[inset_0_-1px_0_rgba(255,255,255,0.02)]">
-      <div className="flex items-center gap-1">
+    <div className="min-h-14 bg-gradient-to-b from-neutral-900 to-neutral-950 border-b border-neutral-800 px-2 sm:px-3 flex flex-wrap items-center gap-1.5 text-neutral-200 text-xs shadow-[inset_0_-1px_0_rgba(255,255,255,0.02)] overflow-hidden">
+      <div className="flex items-center gap-1 shrink-0">
         <Tip label={`Return to Start  ·  ${kRewind}`}><TBtn onClick={onRewind}><Rewind className="w-4 h-4" /></TBtn></Tip>
         <Tip label={`Forward 5s  ·  ${kFwd}`}><TBtn onClick={() => onSeek ? onSeek(transport.position + 5) : setTransport({ position: transport.position + 5 })}><FastForward className="w-4 h-4" /></TBtn></Tip>
         <Tip label={`Back 5s  ·  ${kBack}`}><TBtn onClick={() => onSeek ? onSeek(Math.max(0, transport.position - 5)) : setTransport({ position: Math.max(0, transport.position - 5) })}><SkipBack className="w-4 h-4" /></TBtn></Tip>
@@ -151,7 +151,7 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
       {/* Logic-style BBT display (mode-switchable via dropdown on the right) */}
       <div
         title="Position display — click ▾ to change format"
-        className="mx-2 px-3 py-1.5 bg-black border border-amber-500/30 rounded-md font-mono text-[13px] tabular-nums tracking-wider text-amber-300 shadow-inner shadow-amber-500/10 flex items-center gap-3 select-none"
+        className="mx-0 sm:mx-2 px-2 sm:px-3 py-1.5 bg-black border border-amber-500/30 rounded-md font-mono text-[12px] sm:text-[13px] tabular-nums text-amber-300 shadow-inner shadow-amber-500/10 flex items-center gap-2 sm:gap-3 select-none shrink-0"
       >
         {/* Bar / Beat (shown in beats-project, beats-time, beats) */}
         {bbtMode !== "time" && (
@@ -379,7 +379,7 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <div className="flex-1" />
+      <div className="hidden min-[1180px]:block flex-1" />
 
       <DropdownMenu>
         <Tip label="Add track or import audio  ·  ⌥⌘A audio  ·  ⌥⌘S instrument  ·  ⌘O import">
@@ -431,7 +431,7 @@ export function TransportBar({ onPlay, onStop, onRecord, onRewind, onSeek, onExp
       </DropdownMenu>
 
       <Tip label={`Master output volume — ${Math.round(masterVolume * 50)}%`}>
-        <div className="flex items-center gap-1.5 ml-2 h-9 px-2 rounded-md border border-neutral-800 bg-neutral-900">
+        <div className="hidden lg:flex items-center gap-1.5 ml-1 h-9 px-2 rounded-md border border-neutral-800 bg-neutral-900">
           <Volume2 className="w-3.5 h-3.5 text-neutral-400" />
           <input
             type="range" min={0} max={2} step={0.01}
