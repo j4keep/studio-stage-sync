@@ -57,10 +57,10 @@ export function FloatingKeyboard({ engine, onClose, embedded = false }: Props) {
   const [velocity, setVelocity] = useState(5); // 1..8
   const keys = useMemo(() => buildKeys(octaveStart, octaves), [octaveStart, octaves]);
   const whiteCount = keys.filter(k => !k.black).length;
-  const WHITE_W = 28;
-  const WHITE_H = 120;
-  const BLACK_W = 18;
-  const BLACK_H = 78;
+  const WHITE_W = embedded ? 24 : 28;
+  const WHITE_H = embedded ? 88 : 120;
+  const BLACK_W = embedded ? 15 : 18;
+  const BLACK_H = embedded ? 56 : 78;
 
   // Drag-to-move window (only when floating)
   const [pos, setPos] = useState(() => ({
@@ -294,7 +294,7 @@ export function FloatingKeyboard({ engine, onClose, embedded = false }: Props) {
 
       {/* Body */}
       <div
-        className="p-3"
+        className={embedded ? "p-2 overflow-auto" : "p-3"}
         style={{ background: "linear-gradient(180deg,#0a0a0b 0%,#050506 100%)" }}
       >
         {mode === "piano" ? (
