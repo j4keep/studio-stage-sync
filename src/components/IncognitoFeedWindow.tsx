@@ -1,21 +1,39 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { X, Minus, Eye, GripHorizontal } from "lucide-react";
+import { X, Minus, Eye, GripHorizontal, Home, ImagePlus, Music, User, Maximize2, Minimize2 } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchFeedItems } from "@/lib/feed-items";
 import FeedPostCard from "@/components/feed/FeedPostCard";
 
 const STORAGE_KEY = "incognito-feed-window-pos";
+const SIZE_KEY = "incognito-feed-window-size";
 
 interface Pos {
   x: number;
   y: number;
 }
 
+type SizeMode = "small" | "large";
+
+const SIZE_DIMS: Record<SizeMode, { w: number; h: number }> = {
+  small: { w: 220, h: 360 },
+  large: { w: 320, h: 560 },
+};
+
 const IncognitoFeedWindow = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [open, setOpen] = useState(false);
   const [minimized, setMinimized] = useState(false);
+  const [sizeMode, setSizeMode] = useState<SizeMode>(() => {
+    try {
+      const raw = localStorage.getItem(SIZE_KEY);
+      if (raw === "small" || raw === "large") return raw;
+    } catch {}
+    return "large";
+  });
   const [pos, setPos] = useState<Pos>(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -40,6 +58,12 @@ const IncognitoFeedWindow = () => {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(pos));
     } catch {}
   }, [pos]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SIZE_KEY, sizeMode);
+    } catch {}
+  }, [sizeMode]);
 
   useEffect(() => {
     if (!open || minimized) return;
@@ -110,8 +134,16 @@ const IncognitoFeedWindow = () => {
     );
   }
 
-  const width = 320;
-  const height = minimized ? 44 : 560;
+  const dims = SIZE_DIMS[sizeMode];
+  const width = dims.w;
+  const height = minimized ? 44 : dims.h;
+
+  const navTabs = [
+    { path: "/", icon: Home, label: "Home" },
+    { path: "/feed", icon: ImagePlus, label: "Feed" },
+    { path: "/wstudio/session/join", icon: Music, label: "W.Studio", matchPrefix: "/wstudio/session" },
+    { path: "/profile", icon: User, label: "Profile" },
+  ];
 
   return (
     <div
@@ -120,29 +152,60 @@ const IncognitoFeedWindow = () => {
       style={{ left: pos.x, top: pos.y, width, height }}
     >
       <div
-        className="flex items-center justify-between gap-2 px-3 py-2 bg-muted/80 backdrop-blur cursor-grab active:cursor-grabbing select-none"
-        onMouseDown={(e) => startDrag(e.clientX, e.clientY)}
-        onTouchStart={(e) => startDrag(e.touches[0].clientX, e.touches[0].clientY)}
+        className="flex items-center gap-1 px-2 py-1.5 bg-muted/80 backdrop-blur cursor-grab active:cursor-grabbing select-none"
+        onMouseDown={(e) => {
+          if ((e.target as HTMLElement).closest("[data-no-drag]")) return;
+          startDrag(e.clientX, e.clientY);
+        }}
+        onTouchStart={(e) => {
+          if ((e.target as HTMLElement).closest("[data-no-drag]")) return;
+          startDrag(e.touches[0].clientX, e.touches[0].clientY);
+        }}
       >
-        <div className="flex items-center gap-1.5 min-w-0">
-          <GripHorizontal className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-          <Eye className="w-3.5 h-3.5 text-primary flex-shrink-0" />
-          <span className="text-[11px] font-semibold text-foreground truncate">Incognito Feed</span>
+        <GripHorizontal className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+        <div className="flex items-center gap-0.5 flex-1 justify-center" data-no-drag>
+          {navTabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = tab.matchPrefix
+              ? location.pathname.startsWith(tab.matchPrefix)
+              : location.pathname === tab.path;
+            return (
+              <button
+                key={tab.path}
+                onClick={() => navigate(tab.path)}
+                className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors ${
+                  isActive ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-background/60 hover:text-foreground"
+                }`}
+                aria-label={tab.label}
+                title={tab.label}
+              >
+                <Icon className="w-3.5 h-3.5" />
+              </button>
+            );
+          })}
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5" data-no-drag>
+          <button
+            onClick={() => setSizeMode((m) => (m === "small" ? "large" : "small"))}
+            className="w-6 h-6 rounded-full hover:bg-background/60 flex items-center justify-center"
+            aria-label={sizeMode === "small" ? "Expand" : "Shrink"}
+            title={sizeMode === "small" ? "Expand" : "Shrink"}
+          >
+            {sizeMode === "small" ? <Maximize2 className="w-3 h-3" /> : <Minimize2 className="w-3 h-3" />}
+          </button>
           <button
             onClick={() => setMinimized((m) => !m)}
             className="w-6 h-6 rounded-full hover:bg-background/60 flex items-center justify-center"
             aria-label="Minimize"
           >
-            <Minus className="w-3.5 h-3.5" />
+            <Minus className="w-3 h-3" />
           </button>
           <button
             onClick={() => setOpen(false)}
             className="w-6 h-6 rounded-full hover:bg-background/60 flex items-center justify-center"
             aria-label="Close"
           >
-            <X className="w-3.5 h-3.5" />
+            <X className="w-3 h-3" />
           </button>
         </div>
       </div>
@@ -167,7 +230,7 @@ const IncognitoFeedWindow = () => {
                 key={item.id}
                 data-index={index}
                 className="h-full w-full snap-start snap-always relative"
-                style={{ scrollSnapAlign: "start", height: height - 44 }}
+                style={{ scrollSnapAlign: "start", height: height - 40 }}
               >
                 <FeedPostCard post={item} currentUserId={user?.id} isActive={index === currentIndex} />
               </div>
