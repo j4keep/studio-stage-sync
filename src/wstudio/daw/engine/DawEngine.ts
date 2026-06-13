@@ -853,7 +853,7 @@ export function startSynthNote(
   osc.type = wave ?? "sawtooth";
   osc.frequency.value = midiToFreq(midi);
 
-    const peak = Math.max(0, Math.min(1, velocity)) * 0.75;
+  const peak = Math.max(0, Math.min(1, velocity)) * 0.42;
   const sustain = peak * 0.7;
   env.gain.cancelScheduledValues(now);
   env.gain.setValueAtTime(0.0001, now);
@@ -923,7 +923,7 @@ export function scheduleMidiClips(engine: DawEngine, tracks: Track[], clips: Cli
       const env = ctx.createGain();
       osc.type = wave;
       osc.frequency.value = midiToFreq(n.pitch);
-      const peak = Math.max(0, Math.min(1, n.velocity ?? 0.8)) * 0.75;
+      const peak = Math.max(0, Math.min(1, n.velocity ?? 0.8)) * 0.42;
       const sustain = peak * 0.7;
       env.gain.setValueAtTime(0.0001, when);
       env.gain.linearRampToValueAtTime(peak, when + 0.01);
