@@ -98,7 +98,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
       </div>
       <ProGateModal open={showProModal} onClose={closeProModal} featureName={gatedFeature} onSubscribe={activatePro} />
       <UnratedSessionPopup />
-      {location.pathname !== "/auth" && location.pathname !== "/feed" && <IncognitoFeedWindow />}
+      {location.pathname !== "/auth" && <IncognitoFeedWindow />}
     </div>
   );
 };
