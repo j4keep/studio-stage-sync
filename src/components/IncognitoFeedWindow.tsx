@@ -120,18 +120,19 @@ const IncognitoFeedWindow = () => {
 
   // Floating bubble (closed)
   if (!open) {
-    return (
+    return createPortal(
       <button
         onClick={() => {
           setOpen(true);
           setMinimized(false);
         }}
-        className="fixed z-[60] w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-2xl flex items-center justify-center active:scale-95 transition-transform"
+        className="fixed z-[9999] w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-2xl flex items-center justify-center active:scale-95 transition-transform"
         style={{ right: 16, bottom: 96 }}
         aria-label="Open incognito feed"
       >
         <Eye className="w-5 h-5" />
-      </button>
+      </button>,
+      document.body
     );
   }
 
