@@ -67,8 +67,9 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
     setOpenPlugins(prev => prev.filter(p => p.effectId !== effectId));
   }, []);
 
-  const [collabOpen, setCollabOpen] = useState(true);
-  const [soundLibOpen, setSoundLibOpen] = useState(true);
+  const isNarrow = typeof window !== "undefined" && window.innerWidth < 900;
+  const [collabOpen, setCollabOpen] = useState(!isNarrow);
+  const [soundLibOpen, setSoundLibOpen] = useState(!isNarrow);
   const [soundLibTab, setSoundLibTab] = useState<"sounds" | "packs">("sounds");
   const [dockOpen, setDockOpen] = useState(false);
   const [dockTab, setDockTab] = useState<"instrument" | "chords" | "pianoroll" | "effects">("instrument");
@@ -564,34 +565,36 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
           title="Project name — shown on save"
         />
       </div>
-      <TransportBar
-        onPlay={handlePlayPause}
-        onStop={handleStop}
-        onRecord={handleRecord}
-        onRewind={handleRewind}
-        onSeek={handleSeek}
-        onExport={handleExport}
-        onAddAudio={() => addTrack("audio")}
-        onAddInstrument={() => { const id = addTrack("instrument"); updateTrack(id, { instrument: "synth" }); }}
-        onAddMany={(kind, count) => {
-          for (let i = 0; i < count; i++) {
-            const id = addTrack(kind);
-            if (kind === "instrument") updateTrack(id, { instrument: "synth" });
-          }
-          toast.success(`Added ${count} ${kind} track${count > 1 ? "s" : ""}`);
-        }}
-        onImport={() => importInputRef.current?.click()}
-        onToggleKeyboard={() => setKeyboardOpen(o => !o)}
-        keyboardOpen={keyboardOpen}
-        themeMode={themeMode}
-        onToggleTheme={() => setThemeMode(m => m === "dark" ? "light" : "dark")}
-        onOpenShortcuts={() => setShortcutsOpen(true)}
-        onToggleLibrary={() => setSoundLibOpen(o => !o)}
-        libraryOpen={soundLibOpen}
-        onToggleSession={() => setCollabOpen(o => !o)}
-        sessionOpen={collabOpen}
+      <div className="shrink-0 w-full overflow-x-auto overflow-y-hidden">
+        <TransportBar
+          onPlay={handlePlayPause}
+          onStop={handleStop}
+          onRecord={handleRecord}
+          onRewind={handleRewind}
+          onSeek={handleSeek}
+          onExport={handleExport}
+          onAddAudio={() => addTrack("audio")}
+          onAddInstrument={() => { const id = addTrack("instrument"); updateTrack(id, { instrument: "synth" }); }}
+          onAddMany={(kind, count) => {
+            for (let i = 0; i < count; i++) {
+              const id = addTrack(kind);
+              if (kind === "instrument") updateTrack(id, { instrument: "synth" });
+            }
+            toast.success(`Added ${count} ${kind} track${count > 1 ? "s" : ""}`);
+          }}
+          onImport={() => importInputRef.current?.click()}
+          onToggleKeyboard={() => setKeyboardOpen(o => !o)}
+          keyboardOpen={keyboardOpen}
+          themeMode={themeMode}
+          onToggleTheme={() => setThemeMode(m => m === "dark" ? "light" : "dark")}
+          onOpenShortcuts={() => setShortcutsOpen(true)}
+          onToggleLibrary={() => setSoundLibOpen(o => !o)}
+          libraryOpen={soundLibOpen}
+          onToggleSession={() => setCollabOpen(o => !o)}
+          sessionOpen={collabOpen}
+        />
+      </div>
 
-      />
       <input
         ref={importInputRef}
         type="file" multiple accept=".wav,.mp3,.ogg,.m4a,audio/*"
@@ -600,6 +603,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
       />
 
       <div className="flex-1 flex overflow-hidden relative min-h-0 min-w-0">
+        <div className="hidden md:flex shrink-0">
         <LibraryPanel
           onImportFiles={importFiles}
           onAddUserPlugin={(name) => toast.success(`Added plug-in: ${name}`)}
@@ -629,6 +633,8 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
           onAddTrack={() => addTrack("audio")}
           onImport={() => importInputRef.current?.click()}
         />
+        </div>
+
 
         <div className="flex-1 relative flex flex-col overflow-hidden min-h-0 min-w-0">
           {view === "arrange" && <ArrangeView onArmToggle={handleArmToggle} onSeek={handleSeek} engine={engineRef.current} onOpenInstrumentEditor={(tid) => { selectTrack(tid); openDock("instrument"); }} onImportFilesAt={importFilesAt} />}
