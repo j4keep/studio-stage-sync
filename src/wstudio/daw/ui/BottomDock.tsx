@@ -256,24 +256,6 @@ function InstrumentTab({ engine, trackId }: { engine: DawEngine; trackId: string
     return () => clearInterval(tick);
   }, [isRecording, updateClip]);
 
-  useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement)?.tagName === "INPUT") return;
-      const n = KEY_MAP[e.key.toLowerCase()];
-      if (n != null && !e.repeat) noteOn(n + octave * 12);
-    };
-    const up = (e: KeyboardEvent) => {
-      const n = KEY_MAP[e.key.toLowerCase()];
-      if (n != null) noteOff(n + octave * 12);
-    };
-    window.addEventListener("keydown", down);
-    window.addEventListener("keyup", up);
-    return () => {
-      window.removeEventListener("keydown", down);
-      window.removeEventListener("keyup", up);
-    };
-  }, [octave, sustain, autoChords, trackId, preset.wave]);
-
   return (
     <div className="h-full flex flex-col">
       {/* Controls row */}
