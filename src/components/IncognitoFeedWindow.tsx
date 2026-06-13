@@ -248,7 +248,7 @@ const IncognitoFeedWindow = () => {
         }}
       >
         <GripHorizontal className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-        <div className="flex items-center gap-0.5 flex-1 justify-center">
+        <div className="flex items-center gap-0.5 flex-1 justify-center" data-no-drag>
           {navTabs.map((tab) => {
             const Icon = tab.icon;
             const path = typeof tab.path === "function" ? tab.path() : tab.path;
