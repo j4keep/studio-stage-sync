@@ -633,6 +633,8 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
           onAddTrack={() => addTrack("audio")}
           onImport={() => importInputRef.current?.click()}
         />
+        </div>
+
 
         <div className="flex-1 relative flex flex-col overflow-hidden min-h-0 min-w-0">
           {view === "arrange" && <ArrangeView onArmToggle={handleArmToggle} onSeek={handleSeek} engine={engineRef.current} onOpenInstrumentEditor={(tid) => { selectTrack(tid); openDock("instrument"); }} onImportFilesAt={importFilesAt} />}
