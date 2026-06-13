@@ -214,53 +214,12 @@ const IncognitoFeedWindow = () => {
     { path: "/profile", icon: User, label: "Profile" },
   ];
 
-  const openStandaloneWindow = async () => {
+  const openStandaloneWindow = () => {
     try {
       sessionStorage.setItem(OPEN_KEY, "true");
       sessionStorage.setItem(MINIMIZED_KEY, "false");
     } catch (error) {
       void error;
-    }
-    // Prefer Document Picture-in-Picture (always-on-top, no chrome) when available.
-    const dpip = (window as unknown as { documentPictureInPicture?: { requestWindow: (opts: { width: number; height: number }) => Promise<Window> } }).documentPictureInPicture;
-    if (dpip && windowRef.current) {
-      try {
-        const pipWin = await dpip.requestWindow({ width: dims.w, height: dims.h });
-        // Copy all stylesheets so Tailwind/shadcn classes render inside the PiP window.
-        [...document.styleSheets].forEach((sheet) => {
-          try {
-            const cssText = [...(sheet.cssRules || [])].map((r) => r.cssText).join("\n");
-            const style = pipWin.document.createElement("style");
-            style.textContent = cssText;
-            pipWin.document.head.appendChild(style);
-          } catch {
-            if (sheet.href) {
-              const link = pipWin.document.createElement("link");
-              link.rel = "stylesheet";
-              link.href = sheet.href;
-              pipWin.document.head.appendChild(link);
-            }
-          }
-        });
-        pipWin.document.body.style.margin = "0";
-        pipWin.document.body.style.background = "transparent";
-        const host = pipWin.document.createElement("div");
-        pipWin.document.body.appendChild(host);
-        const node = windowRef.current;
-        const placeholder = document.createComment("incognito-pip");
-        node.parentNode?.insertBefore(placeholder, node);
-        host.appendChild(node);
-        // When PiP closes, return the node to its original place.
-        pipWin.addEventListener("pagehide", () => {
-          if (placeholder.parentNode) {
-            placeholder.parentNode.insertBefore(node, placeholder);
-            placeholder.remove();
-          }
-        });
-        return;
-      } catch (err) {
-        console.warn("[incognito] PiP failed, falling back to popup", err);
-      }
     }
     window.open(window.location.href, "wheuat-incognito-window", "popup=yes,width=360,height=640,left=80,top=80");
   };
@@ -289,7 +248,7 @@ const IncognitoFeedWindow = () => {
         }}
       >
         <GripHorizontal className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-        <div className="flex items-center gap-0.5 flex-1 justify-center">
+        <div className="flex items-center gap-0.5 flex-1 justify-center" data-no-drag>
           {navTabs.map((tab) => {
             const Icon = tab.icon;
             const path = typeof tab.path === "function" ? tab.path() : tab.path;
