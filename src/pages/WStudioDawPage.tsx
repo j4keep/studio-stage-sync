@@ -67,8 +67,9 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
     setOpenPlugins(prev => prev.filter(p => p.effectId !== effectId));
   }, []);
 
-  const [collabOpen, setCollabOpen] = useState(true);
-  const [soundLibOpen, setSoundLibOpen] = useState(true);
+  const isNarrow = typeof window !== "undefined" && window.innerWidth < 900;
+  const [collabOpen, setCollabOpen] = useState(!isNarrow);
+  const [soundLibOpen, setSoundLibOpen] = useState(!isNarrow);
   const [soundLibTab, setSoundLibTab] = useState<"sounds" | "packs">("sounds");
   const [dockOpen, setDockOpen] = useState(false);
   const [dockTab, setDockTab] = useState<"instrument" | "chords" | "pianoroll" | "effects">("instrument");
