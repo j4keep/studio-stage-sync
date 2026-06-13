@@ -650,9 +650,14 @@ function PianoRollTab({ engine, trackId }: { engine: DawEngine; trackId: string 
   };
 
   const notes = activeClip?.notes ?? [];
+  const secPerBeat = 60 / Math.max(1, bpm);
+  const durationForNotes = (next: MidiNote[], fallback = activeClip?.duration ?? PR_BEATS * secPerBeat) => {
+    const lastBeat = next.reduce((max, n) => Math.max(max, n.start + n.length), 0);
+    return Math.max(fallback, lastBeat * secPerBeat);
+  };
   const setNotes = (next: MidiNote[]) => {
     const id = activeClip?.id ?? ensureClip();
-    updateClip(id, { notes: next });
+    updateClip(id, { notes: next, duration: durationForNotes(next) });
   };
 
   const applyQuantize = () => {
@@ -684,7 +689,8 @@ function PianoRollTab({ engine, trackId }: { engine: DawEngine; trackId: string 
     if (tool === "pencil") {
       const id = activeClip?.id ?? ensureClip();
       const cur = useDawStore.getState().clips.find(c => c.id === id)?.notes ?? [];
-      updateClip(id, { notes: [...cur, { id: newId("n"), start: beat, length: Math.max(0.25, snapBeats), pitch, velocity }] });
+      const next = [...cur, { id: newId("n"), start: beat, length: Math.max(0.25, snapBeats), pitch, velocity }];
+      updateClip(id, { notes: next, duration: durationForNotes(next) });
       triggerSynthNote(engine, trackId, pitch, 0.3, velocity);
     } else if (tool === "eraser") {
       const hit = notes.find(n => n.pitch === pitch && beat >= n.start && beat < n.start + n.length);
