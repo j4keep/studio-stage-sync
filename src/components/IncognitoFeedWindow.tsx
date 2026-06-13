@@ -240,7 +240,8 @@ const IncognitoFeedWindow = () => {
           )}
         </div>
       )}
-    </div>
+    </div>,
+    document.body
   );
 };
 
