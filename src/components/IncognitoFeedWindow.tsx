@@ -147,10 +147,10 @@ const IncognitoFeedWindow = () => {
     { path: "/profile", icon: User, label: "Profile" },
   ];
 
-  return (
+  return createPortal(
     <div
       ref={windowRef}
-      className="fixed z-[60] rounded-2xl bg-card border border-border shadow-2xl overflow-hidden flex flex-col"
+      className="fixed z-[9999] rounded-2xl bg-card border border-border shadow-2xl overflow-hidden flex flex-col"
       style={{ left: pos.x, top: pos.y, width, height }}
     >
       <div
