@@ -51,7 +51,7 @@ export function LibraryPanel({
   ];
 
   return (
-    <div className="w-64 shrink-0 bg-neutral-950 border-r border-neutral-800 flex flex-col">
+    <div className="w-64 shrink-0 bg-neutral-950 border-r border-neutral-800 flex flex-col min-h-0 h-full overflow-hidden">
       <div className="h-8 border-b border-neutral-800 flex">
         <button
           onClick={() => setTab("samples")}
