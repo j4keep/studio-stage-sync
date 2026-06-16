@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Search, Play, Pause, Plus, Heart, X, Music2 } from "lucide-react";
+import { Search, Play, Pause, Plus, Heart, X, Music2, Lock, Loader2 } from "lucide-react";
 import { ALL_LOOPS, CATEGORY_CHIPS, LOOP_PACKS } from "../lib/loopCatalog";
 import { generateLoop, type LoopDef } from "../lib/loopGenerator";
 import { computePeaks } from "../engine/Peaks";
 import { useDawStore, newId } from "../state/DawStore";
 import type { DawEngine } from "../engine/DawEngine";
+import { useProGate } from "@/hooks/use-pro-gate";
+import {
+  listUserSounds, userRowToLoopDef, fetchAndDecodeUserSound, type UserSoundRow,
+} from "@/lib/userSoundLibrary";
 
 const bufferCache = new Map<string, AudioBuffer>();
 function getOrGenerate(def: LoopDef): AudioBuffer {
