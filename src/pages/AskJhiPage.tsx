@@ -1,37 +1,116 @@
 import { useState, useRef, useEffect } from "react";
-import { ArrowUp, Trash2 } from "lucide-react";
+import { ArrowUp, Trash2, Paperclip, X, Music2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import JhiIcon from "@/components/JhiIcon";
 import ReactMarkdown from "react-markdown";
 
-type Msg = { role: "user" | "assistant"; content: string };
+type ContentPart =
+  | { type: "text"; text: string }
+  | { type: "input_audio"; input_audio: { data: string; format: string } };
+
+type Msg = {
+  role: "user" | "assistant";
+  content: string | ContentPart[];
+  // UI-only metadata for rendering a user message with an attached clip
+  audioName?: string;
+};
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ask-jhi`;
 
 const SUGGESTIONS = [
-  "How do I upload a song?",
-  "What's included in PRO?",
-  "Who is the #1 artist in the US right now?",
-  "Give me tips to grow my fanbase",
+  "Give me a 4-bar 808 loop like Lil Jon's Get Low",
+  "Suggest a chord progression for an R&B ballad in F minor",
+  "What BPM and key works for a drill beat?",
+  "How do I mix vocals so they sit on top of the beat?",
 ];
+
+// Map a File's MIME type to the format string Lovable AI Gateway expects.
+function audioFormatFromMime(mime: string): string | null {
+  const m = mime.toLowerCase();
+  if (m.includes("webm")) return "webm";
+  if (m.includes("mp4") || m.includes("m4a") || m.includes("aac")) return "m4a";
+  if (m.includes("mpeg") || m.includes("mp3")) return "mp3";
+  if (m.includes("wav") || m.includes("wave")) return "wav";
+  if (m.includes("ogg")) return "ogg";
+  if (m.includes("flac")) return "flac";
+  return null;
+}
+
+async function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      const comma = result.indexOf(",");
+      resolve(comma >= 0 ? result.slice(comma + 1) : result);
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+// Strip UI-only fields and convert string content to plain text for the API.
+function toApiMessages(messages: Msg[]) {
+  return messages.map((m) => ({ role: m.role, content: m.content }));
+}
 
 const AskJhiPage = () => {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
+  const [audioFile, setAudioFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
+  const handlePickAudio = () => fileInputRef.current?.click();
+
+  const handleAudioChosen = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("audio/")) {
+      toast({ title: "Audio only", description: "Pick an audio file (mp3, wav, m4a, webm).", variant: "destructive" });
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      toast({ title: "Too long", description: "Keep clips under ~8MB (a few seconds is plenty).", variant: "destructive" });
+      return;
+    }
+    if (!audioFormatFromMime(file.type)) {
+      toast({ title: "Unsupported format", description: "Use mp3, wav, m4a, webm, ogg, or flac.", variant: "destructive" });
+      return;
+    }
+    setAudioFile(file);
+  };
+
   const sendMessage = async (text: string) => {
-    if (!text.trim() || isLoading) return;
-    const userMsg: Msg = { role: "user", content: text.trim() };
+    if ((!text.trim() && !audioFile) || isLoading) return;
+
+    let userContent: string | ContentPart[];
+    let audioName: string | undefined;
+
+    if (audioFile) {
+      const format = audioFormatFromMime(audioFile.type)!;
+      const data = await fileToBase64(audioFile);
+      audioName = audioFile.name;
+      userContent = [
+        { type: "text", text: text.trim() || "Listen to this clip — analyze it and tell me what you hear." },
+        { type: "input_audio", input_audio: { data, format } },
+      ];
+    } else {
+      userContent = text.trim();
+    }
+
+    const userMsg: Msg = { role: "user", content: userContent, audioName };
     const allMessages = [...messages, userMsg];
     setMessages(allMessages);
     setInput("");
+    setAudioFile(null);
     setIsLoading(true);
 
     let assistantSoFar = "";
@@ -53,7 +132,7 @@ const AskJhiPage = () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({ messages: allMessages }),
+        body: JSON.stringify({ messages: toApiMessages(allMessages) }),
       });
 
       if (!resp.ok) {
@@ -93,7 +172,6 @@ const AskJhiPage = () => {
         }
       }
 
-      // flush remaining
       if (textBuffer.trim()) {
         for (let raw of textBuffer.split("\n")) {
           if (!raw) continue;
@@ -112,7 +190,6 @@ const AskJhiPage = () => {
     } catch (e: any) {
       console.error("Jhi error:", e);
       toast({ title: "Oops!", description: e.message || "Something went wrong", variant: "destructive" });
-      // Remove the user message if no response
       if (assistantSoFar === "") {
         setMessages((prev) => prev.slice(0, -1));
       }
@@ -133,6 +210,23 @@ const AskJhiPage = () => {
     toast({ title: "Chat cleared" });
   };
 
+  const renderUserContent = (msg: Msg) => {
+    const text = typeof msg.content === "string"
+      ? msg.content
+      : (msg.content.find((p) => p.type === "text") as { text: string } | undefined)?.text ?? "";
+    return (
+      <div className="space-y-1.5">
+        {msg.audioName && (
+          <div className="flex items-center gap-1.5 text-[11px] opacity-90">
+            <Music2 className="w-3 h-3" />
+            <span className="truncate max-w-[180px]">{msg.audioName}</span>
+          </div>
+        )}
+        {text && <div>{text}</div>}
+      </div>
+    );
+  };
+
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)]">
       {/* Header */}
@@ -143,7 +237,7 @@ const AskJhiPage = () => {
           </div>
           <div>
             <h1 className="text-sm font-display font-bold text-foreground">Ask Jhi</h1>
-            <p className="text-[10px] text-muted-foreground">Your AI assistant · Powered by WHEUAT</p>
+            <p className="text-[10px] text-muted-foreground">Producer · Engineer · WHEUAT guide</p>
           </div>
         </div>
         {messages.length > 0 && (
@@ -161,12 +255,12 @@ const AskJhiPage = () => {
               <JhiIcon className="w-10 h-10" active />
             </div>
             <div className="text-center">
-              <h2 className="text-lg font-display font-bold text-foreground">Hey! I'm Jhi 👋</h2>
-              <p className="text-xs text-muted-foreground mt-1 max-w-[260px]">
-                Your WHEUAT AI assistant. Ask me anything about the platform, music industry, or the world!
+              <h2 className="text-lg font-display font-bold text-foreground">Hey! I'm Jhi 🎛️</h2>
+              <p className="text-xs text-muted-foreground mt-1 max-w-[280px]">
+                Your in-house producer. Ask for beats, chord progressions, mix tips — or attach a clip and I'll break down the BPM, key, and vibe.
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-2 w-full max-w-sm mt-2">
+            <div className="grid grid-cols-1 gap-2 w-full max-w-sm mt-2">
               {SUGGESTIONS.map((s) => (
                 <button
                   key={s}
@@ -188,10 +282,10 @@ const AskJhiPage = () => {
               }`}>
                 {msg.role === "assistant" ? (
                   <div className="prose prose-sm dark:prose-invert max-w-none [&>p]:my-1 [&>ul]:my-1 [&>ol]:my-1 [&>h1]:text-base [&>h2]:text-sm [&>h3]:text-sm">
-                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    <ReactMarkdown>{typeof msg.content === "string" ? msg.content : ""}</ReactMarkdown>
                   </div>
                 ) : (
-                  msg.content
+                  renderUserContent(msg)
                 )}
               </div>
             </div>
@@ -211,21 +305,45 @@ const AskJhiPage = () => {
       </div>
 
       {/* Input */}
-      <div className="px-4 pb-4 pt-2 border-t border-border">
-        <div className="flex items-end gap-2 bg-card border border-border rounded-2xl px-3 py-2">
+      <div className="px-4 pb-4 pt-2 border-t border-border space-y-2">
+        {audioFile && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/10 border border-primary/30 text-xs text-foreground">
+            <Music2 className="w-3.5 h-3.5 text-primary" />
+            <span className="flex-1 truncate">{audioFile.name}</span>
+            <button onClick={() => setAudioFile(null)} className="text-muted-foreground hover:text-destructive">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+        <div className="flex items-end gap-2 bg-card border border-border rounded-2xl px-2 py-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="audio/*,.mp3,.wav,.m4a,.webm,.ogg,.flac,.aac"
+            className="hidden"
+            onChange={handleAudioChosen}
+          />
+          <button
+            onClick={handlePickAudio}
+            disabled={isLoading}
+            className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-primary disabled:opacity-40 transition-colors shrink-0"
+            title="Attach an audio clip"
+          >
+            <Paperclip className="w-4 h-4" />
+          </button>
           <textarea
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask Jhi anything..."
+            placeholder={audioFile ? "Add a note (optional)..." : "Ask Jhi anything..."}
             rows={1}
             className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground resize-none outline-none max-h-24"
             style={{ minHeight: "24px" }}
           />
           <button
             onClick={() => sendMessage(input)}
-            disabled={!input.trim() || isLoading}
+            disabled={(!input.trim() && !audioFile) || isLoading}
             className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center text-primary-foreground disabled:opacity-40 transition-opacity shrink-0"
           >
             <ArrowUp className="w-4 h-4" />
