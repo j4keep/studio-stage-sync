@@ -16,6 +16,7 @@ import { CollabSidebar } from "@/wstudio/daw/ui/CollabSidebar";
 import { MenuBar } from "@/wstudio/daw/ui/MenuBar";
 import { FloatingKeyboard } from "@/wstudio/daw/ui/FloatingKeyboard";
 import { ShortcutsModal } from "@/wstudio/daw/ui/ShortcutsModal";
+import { JhiDawPanel } from "@/wstudio/daw/ui/JhiDawPanel";
 import { useShortcutsStore, matchAction } from "@/wstudio/daw/state/ShortcutsStore";
 import type { Clip, Track, AutomationPoint } from "@/wstudio/daw/engine/types";
 import { saveProjectTo, saveAsProject, openProject } from "@/wstudio/daw/lib/projectIO";
@@ -697,6 +698,9 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
       )}
 
       <ShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+
+      <JhiDawPanel themeMode={themeMode} />
+
 
 
       {exportPrompt && (
