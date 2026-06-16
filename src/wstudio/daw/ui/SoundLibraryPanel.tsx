@@ -99,22 +99,29 @@ export function SoundLibraryPanel({
     }
   };
 
-  const addToTimeline = (def: LoopDef) => {
-    const buf = getOrGenerate(def);
-    const trackId = addTrack("audio", def.name.split(" - ")[1]?.replace(/[()]/g, "").trim() || def.name, { inputEnabled: false });
-    setTimeout(() => {
-      addClip({
-        id: newId("clip"),
-        trackId,
-        startTime: useDawStore.getState().transport.position,
-        duration: buf.duration,
-        offset: 0,
-        buffer: buf,
-        peaks: computePeaks(buf),
-        name: def.name,
-        color: def.color,
-      });
-    }, 20);
+  const addToTimeline = async (def: LoopDef) => {
+    setBusyId(def.id);
+    try {
+      const buf = await resolveBuffer(def);
+      const trackId = addTrack("audio", def.name.split(" - ")[1]?.replace(/[()]/g, "").trim() || def.name, { inputEnabled: false });
+      setTimeout(() => {
+        addClip({
+          id: newId("clip"),
+          trackId,
+          startTime: useDawStore.getState().transport.position,
+          duration: buf.duration,
+          offset: 0,
+          buffer: buf,
+          peaks: computePeaks(buf),
+          name: def.name,
+          color: def.color,
+        });
+      }, 20);
+    } catch (err) {
+      console.error("[SoundLibrary] add failed:", err);
+    } finally {
+      setBusyId(null);
+    }
   };
 
   const toggleFav = (id: string) => {
@@ -134,6 +141,12 @@ export function SoundLibraryPanel({
       <div className="flex border-b border-neutral-800">
         <button onClick={() => { setTab("sounds"); setActivePack(null); }} className={`flex-1 h-9 text-xs ${tab === "sounds" ? "text-cyan-300 border-b border-cyan-300" : "text-neutral-400"}`}>♪ Sounds</button>
         <button onClick={() => setTab("packs")} className={`flex-1 h-9 text-xs ${tab === "packs" ? "text-cyan-300 border-b border-cyan-300" : "text-neutral-400"}`}>▣ Packs</button>
+        <button
+          onClick={() => requirePro("My Library", () => { setTab("mine"); setActivePack(null); })}
+          className={`flex-1 h-9 text-xs flex items-center justify-center gap-1 ${tab === "mine" ? "text-cyan-300 border-b border-cyan-300" : "text-neutral-400"}`}
+        >
+          {!isPro && <Lock className="w-3 h-3" />} ★ Mine
+        </button>
       </div>
 
       <div className="px-3 pt-3">
@@ -170,18 +183,27 @@ export function SoundLibraryPanel({
         </div>
       )}
 
-      {(tab === "sounds" || (tab === "packs" && activePack)) && (
+      {(tab === "sounds" || tab === "mine" || (tab === "packs" && activePack)) && (
         <div className="flex-1 overflow-y-auto px-2 py-2">
           {tab === "packs" && activePack && (
             <button onClick={() => setActivePack(null)} className="text-[11px] text-neutral-400 hover:text-cyan-300 mb-2 px-1">‹ Back to packs</button>
           )}
-          {list.length === 0 && <div className="text-center text-neutral-600 text-xs py-8">No loops match</div>}
+          {tab === "mine" && loadingUser && (
+            <div className="text-center text-neutral-600 text-xs py-8"><Loader2 className="w-4 h-4 inline animate-spin" /> Loading your library…</div>
+          )}
+          {tab === "mine" && !loadingUser && list.length === 0 && (
+            <div className="text-center text-neutral-600 text-xs py-8 px-4">
+              No uploaded sounds yet. An admin can add sounds at <span className="text-cyan-300">/admin/sounds</span>.
+            </div>
+          )}
+          {tab !== "mine" && list.length === 0 && <div className="text-center text-neutral-600 text-xs py-8">No loops match</div>}
           {list.map(l => {
             const isPlaying = playingId === l.id;
+            const isBusy = busyId === l.id;
             return (
               <div key={l.id} className="group flex items-center gap-2 px-2 py-1.5 rounded hover:bg-neutral-900">
-                <button onClick={() => preview(l)} className="w-7 h-7 rounded-full grid place-items-center text-neutral-300 hover:text-white border border-neutral-800 hover:border-cyan-500/60 shrink-0">
-                  {isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3 ml-0.5" />}
+                <button onClick={() => preview(l)} disabled={isBusy} className="w-7 h-7 rounded-full grid place-items-center text-neutral-300 hover:text-white border border-neutral-800 hover:border-cyan-500/60 shrink-0 disabled:opacity-50">
+                  {isBusy ? <Loader2 className="w-3 h-3 animate-spin" /> : isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3 ml-0.5" />}
                 </button>
                 <div className="w-1 h-6 rounded shrink-0" style={{ background: l.color }} />
                 <div className="flex-1 min-w-0">
@@ -191,7 +213,7 @@ export function SoundLibraryPanel({
                 <button onClick={() => toggleFav(l.id)} className={`opacity-60 hover:opacity-100 ${favs.has(l.id) ? "text-pink-400 opacity-100" : "text-neutral-500"}`}>
                   <Heart className="w-3.5 h-3.5" fill={favs.has(l.id) ? "currentColor" : "none"} />
                 </button>
-                <button onClick={() => addToTimeline(l)} title="Add to track" className="w-6 h-6 rounded grid place-items-center text-neutral-400 hover:text-cyan-300 hover:bg-neutral-800">
+                <button onClick={() => addToTimeline(l)} disabled={isBusy} title="Add to track" className="w-6 h-6 rounded grid place-items-center text-neutral-400 hover:text-cyan-300 hover:bg-neutral-800 disabled:opacity-50">
                   <Plus className="w-3.5 h-3.5" />
                 </button>
               </div>
