@@ -28,15 +28,19 @@ export function SoundLibraryPanel({
   engine: DawEngine;
   open: boolean;
   onClose: () => void;
-  initialTab?: "sounds" | "packs";
+  initialTab?: "sounds" | "packs" | "mine";
 }) {
-  const [tab, setTab] = useState<"sounds" | "packs">(initialTab);
+  const [tab, setTab] = useState<"sounds" | "packs" | "mine">(initialTab);
   const [query, setQuery] = useState("");
   const [cat, setCat] = useState<LoopDef["category"] | null>(null);
   const [favs, setFavs] = useState<Set<string>>(new Set());
   const [activePack, setActivePack] = useState<string | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
+  const [userSounds, setUserSounds] = useState<UserSoundRow[]>([]);
+  const [loadingUser, setLoadingUser] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
   const sourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const { isPro, requirePro } = useProGate();
 
   const addTrack = useDawStore(s => s.addTrack);
   const addClip = useDawStore(s => s.addClip);
@@ -44,8 +48,21 @@ export function SoundLibraryPanel({
   useEffect(() => () => { sourceRef.current?.stop(); sourceRef.current = null; }, []);
   useEffect(() => { if (!open) { sourceRef.current?.stop(); setPlayingId(null); } }, [open]);
 
+  useEffect(() => {
+    if (!open || tab !== "mine" || !isPro) return;
+    setLoadingUser(true);
+    listUserSounds().then((rows) => { setUserSounds(rows); setLoadingUser(false); });
+  }, [open, tab, isPro]);
+
+  const userLoops = useMemo(() => userSounds.map(userRowToLoopDef), [userSounds]);
+  const userRowById = useMemo(() => {
+    const m = new Map<string, UserSoundRow>();
+    userSounds.forEach((r) => m.set(`user-${r.id}`, r));
+    return m;
+  }, [userSounds]);
+
   const list = useMemo(() => {
-    let items = ALL_LOOPS;
+    let items: LoopDef[] = tab === "mine" ? userLoops : ALL_LOOPS;
     if (tab === "packs" && activePack) items = items.filter(l => l.pack.toLowerCase() === activePack.toLowerCase());
     if (cat) items = items.filter(l => l.category === cat);
     if (query.trim()) {
@@ -53,20 +70,33 @@ export function SoundLibraryPanel({
       items = items.filter(l => l.name.toLowerCase().includes(q) || l.pack.toLowerCase().includes(q) || l.genre.toLowerCase().includes(q));
     }
     return items;
-  }, [tab, activePack, cat, query]);
+  }, [tab, activePack, cat, query, userLoops]);
+
+  const resolveBuffer = async (def: LoopDef): Promise<AudioBuffer> => {
+    const row = userRowById.get(def.id);
+    if (row) return fetchAndDecodeUserSound(row, engine.ctx);
+    return getOrGenerate(def);
+  };
 
   const preview = async (def: LoopDef) => {
     await engine.resume();
     if (sourceRef.current) { try { sourceRef.current.stop(); } catch {} sourceRef.current = null; }
     if (playingId === def.id) { setPlayingId(null); return; }
-    const buf = getOrGenerate(def);
-    const src = engine.ctx.createBufferSource();
-    src.buffer = buf;
-    src.connect(engine.ctx.destination);
-    src.onended = () => { if (sourceRef.current === src) { sourceRef.current = null; setPlayingId(null); } };
-    src.start();
-    sourceRef.current = src;
-    setPlayingId(def.id);
+    setBusyId(def.id);
+    try {
+      const buf = await resolveBuffer(def);
+      const src = engine.ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(engine.ctx.destination);
+      src.onended = () => { if (sourceRef.current === src) { sourceRef.current = null; setPlayingId(null); } };
+      src.start();
+      sourceRef.current = src;
+      setPlayingId(def.id);
+    } catch (err) {
+      console.error("[SoundLibrary] preview failed:", err);
+    } finally {
+      setBusyId(null);
+    }
   };
 
   const addToTimeline = (def: LoopDef) => {
