@@ -1199,6 +1199,60 @@ export type Database = {
         }
         Relationships: []
       }
+      sound_library: {
+        Row: {
+          bpm: number | null
+          category: string
+          color: string | null
+          created_at: string
+          duration_sec: number | null
+          genre: string | null
+          id: string
+          is_active: boolean
+          musical_key: string | null
+          name: string
+          pack: string | null
+          r2_key: string
+          tags: string[] | null
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          bpm?: number | null
+          category: string
+          color?: string | null
+          created_at?: string
+          duration_sec?: number | null
+          genre?: string | null
+          id?: string
+          is_active?: boolean
+          musical_key?: string | null
+          name: string
+          pack?: string | null
+          r2_key: string
+          tags?: string[] | null
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          bpm?: number | null
+          category?: string
+          color?: string | null
+          created_at?: string
+          duration_sec?: number | null
+          genre?: string | null
+          id?: string
+          is_active?: boolean
+          musical_key?: string | null
+          name?: string
+          pack?: string | null
+          r2_key?: string
+          tags?: string[] | null
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
       store_products: {
         Row: {
           artist_name: string | null
