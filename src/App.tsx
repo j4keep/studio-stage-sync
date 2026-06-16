@@ -46,6 +46,7 @@ import NewsCategoryPage from "./pages/NewsCategoryPage";
 import MyBoostsPage from "./pages/MyBoostsPage";
 import HelpDeskPage from "./pages/HelpDeskPage";
 import AdminTicketsPage from "./pages/AdminTicketsPage";
+import AdminSoundLibraryPage from "./pages/AdminSoundLibraryPage";
 import AskJhiPage from "./pages/AskJhiPage";
 import FeedPage from "./pages/FeedPage";
 import { WStudioLayout } from "./wstudio/WStudioLayout";
@@ -225,6 +226,7 @@ const ProtectedRoutes = () => {
         </Route>
         <Route path="/ai-studio" element={<Navigate to="/wstudio/session/join" replace />} />
         <Route path="/admin/tickets" element={<AdminTicketsPage />} />
+        <Route path="/admin/sounds" element={<AdminSoundLibraryPage />} />
         <Route path="/battles" element={<BattlesPage />} />
         <Route path="/battle/:battleId" element={<MusicBattlePlayerPage />} />
         <Route path="/feed" element={<FeedPage />} />
