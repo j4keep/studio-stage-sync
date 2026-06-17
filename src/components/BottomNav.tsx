@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Home, ImagePlus, User, Tv, Users } from "lucide-react";
+import { Home, ImagePlus, User, Tv } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import ProGateModal from "@/components/ProGateModal";
 import { useProGate } from "@/hooks/use-pro-gate";
@@ -27,7 +27,6 @@ const BottomNav = () => {
   const tabs = [
     { path: "/", label: "Home", icon: Home, pro: false },
     { path: "/feed", label: "Feed", icon: ImagePlus, pro: false },
-    { path: "/m/savings-circles", label: "Circle", icon: Users, pro: false, matchPrefix: "/m" },
     { path: "/tv", label: "TV", icon: Tv, pro: false, matchPrefix: "/tv" },
     { path: "/profile", label: "Profile", icon: User, pro: false },
   ];
