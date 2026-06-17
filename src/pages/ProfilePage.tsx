@@ -33,6 +33,9 @@ const ProfilePage = () => {
   const [showFollowers, setShowFollowers] = useState(false);
   const [showWins, setShowWins] = useState(false);
   const [showProjects, setShowProjects] = useState(false);
+  const [circlesCount, setCirclesCount] = useState(0);
+  const [completedCircles, setCompletedCircles] = useState(0);
+  const [isCircleAdmin, setIsCircleAdmin] = useState(false);
   const [profileInfo, setProfileInfo] = useState<{ display_name: string; email: string; avatar_url: string | null; banner_url: string | null }>({
     display_name: "",
     email: "",
