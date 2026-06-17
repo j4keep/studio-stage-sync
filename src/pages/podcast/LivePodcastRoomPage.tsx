@@ -9,14 +9,14 @@ import {
   useTracks,
   useLocalParticipant,
 } from "@livekit/components-react";
-import { Track } from "livekit-client";
+import { Track, VideoPresets, ScreenSharePresets } from "livekit-client";
 import "@livekit/components-styles";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, Circle, Square, Copy, Users, StopCircle } from "lucide-react";
+import { ArrowLeft, Circle, Copy, MonitorUp, Settings2, Sparkles, StopCircle, Video } from "lucide-react";
 
 type TokenResponse = {
   token: string;
@@ -40,6 +40,24 @@ const LivePodcastRoomPage = () => {
   const [joining, setJoining] = useState(false);
   const [guestName, setGuestName] = useState("");
   const [askGuestName, setAskGuestName] = useState(false);
+  const [quality, setQuality] = useState<"720p" | "1080p" | "4K">("1080p");
+  const [layoutMode, setLayoutMode] = useState<"Grid" | "Speaker" | "Screen">("Grid");
+
+  const videoOptions = useMemo(() => {
+    const preset = quality === "4K" ? VideoPresets.h2160 : quality === "1080p" ? VideoPresets.h1080 : VideoPresets.h720;
+    return {
+      resolution: preset.resolution,
+    };
+  }, [quality]);
+
+  const publishOptions = useMemo(() => {
+    const preset = quality === "4K" ? VideoPresets.h2160 : quality === "1080p" ? VideoPresets.h1080 : VideoPresets.h720;
+    return {
+      videoEncoding: preset.encoding,
+      screenShareEncoding: ScreenSharePresets.h1080fps30.encoding,
+      simulcast: quality !== "4K",
+    };
+  }, [quality]);
 
   useEffect(() => {
     const load = async () => {
