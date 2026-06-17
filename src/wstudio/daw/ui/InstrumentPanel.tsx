@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDawStore } from "../state/DawStore";
 import { triggerSynthNote, triggerDrumHit, type DawEngine } from "../engine/DawEngine";
-import { DRUM_KITS, DRUM_PIECES_ORDER, DRUM_PIECE_LABELS, type DrumPiece } from "../engine/presetData";
+import { DRUM_KITS, DRUM_PIECES_ORDER, DRUM_PIECE_LABELS, getPresetByName, type DrumPiece } from "../engine/presetData";
 import { Music2, Drum } from "lucide-react";
 
 const KEYS = [
@@ -36,6 +36,10 @@ export function InstrumentPanel({ engine }: { engine: DawEngine }) {
   const activeId = (selectedTrackId && tracks.find(t => t.id === selectedTrackId && t.kind === "instrument")?.id) || instrumentTracks[0]?.id || null;
   const active = instrumentTracks.find(t => t.id === activeId);
   const kitName = active?.drumKit || "808";
+  const activePreset = useMemo(
+    () => getPresetByName(active?.instrumentPreset) || undefined,
+    [active?.instrumentPreset],
+  );
 
   const [octave, setOctave] = useState(0);
   const [steps, setSteps] = useState<Record<DrumPiece, boolean[]>>(() => ({
@@ -50,11 +54,11 @@ export function InstrumentPanel({ engine }: { engine: DawEngine }) {
     if (!active || active.instrument !== "synth") return;
     const down = (e: KeyboardEvent) => {
       const n = KEYBOARD_MAP[e.key.toLowerCase()];
-      if (n != null && !e.repeat) triggerSynthNote(engine, active.id, n + octave * 12);
+      if (n != null && !e.repeat) triggerSynthNote(engine, active.id, n + octave * 12, 0.4, 0.85, activePreset);
     };
     window.addEventListener("keydown", down);
     return () => window.removeEventListener("keydown", down);
-  }, [active, engine, octave]);
+  }, [active, engine, octave, activePreset]);
 
   useEffect(() => {
     if (!seqPlaying || !active || active.instrument !== "drum") return;
@@ -113,8 +117,8 @@ export function InstrumentPanel({ engine }: { engine: DawEngine }) {
             {KEYS.filter(k => !k.black).map((k, i) => (
               <button
                 key={k.note}
-                onPointerDown={() => { (window as any).__wsKeyHeld = true; triggerSynthNote(engine, active.id, k.note + octave * 12); }}
-                onPointerEnter={() => { if ((window as any).__wsKeyHeld) triggerSynthNote(engine, active.id, k.note + octave * 12); }}
+                onPointerDown={() => { (window as any).__wsKeyHeld = true; triggerSynthNote(engine, active.id, k.note + octave * 12, 0.4, 0.85, activePreset); }}
+                onPointerEnter={() => { if ((window as any).__wsKeyHeld) triggerSynthNote(engine, active.id, k.note + octave * 12, 0.4, 0.85, activePreset); }}
                 className="absolute top-0 bottom-0 bg-white hover:bg-neutral-200 border border-neutral-300 active:bg-cyan-200"
                 style={{ left: i * 60, width: 60 }}
               >
@@ -126,8 +130,8 @@ export function InstrumentPanel({ engine }: { engine: DawEngine }) {
               return (
                 <button
                   key={k.note}
-                  onPointerDown={() => { (window as any).__wsKeyHeld = true; triggerSynthNote(engine, active.id, k.note + octave * 12); }}
-                  onPointerEnter={() => { if ((window as any).__wsKeyHeld) triggerSynthNote(engine, active.id, k.note + octave * 12); }}
+                  onPointerDown={() => { (window as any).__wsKeyHeld = true; triggerSynthNote(engine, active.id, k.note + octave * 12, 0.4, 0.85, activePreset); }}
+                  onPointerEnter={() => { if ((window as any).__wsKeyHeld) triggerSynthNote(engine, active.id, k.note + octave * 12, 0.4, 0.85, activePreset); }}
                   className="absolute top-0 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 active:bg-cyan-700 z-10"
                   style={{ left: whiteIdx * 60 - 18, width: 36, height: 120 }}
                 />
