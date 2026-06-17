@@ -7,9 +7,8 @@ import { uploadToR2, generateR2Key, deleteFromR2 } from "@/lib/r2-storage";
 import { toast } from "sonner";
 import {
   categorizeFilename, detectBpm, detectKey, sanitizeCategory, colorForCategory,
-  listUserSounds, type UserSoundRow,
+  listUserSounds, type UserSoundRow, type LoopCategory,
 } from "@/lib/userSoundLibrary";
-import type { LoopCategory } from "@/wstudio/daw/lib/loopGenerator";
 
 const CATEGORIES: LoopCategory[] = [
   "drums","808","hi-hats","snare","kick","clap","synth","bass","piano","guitar","sfx","vocal",

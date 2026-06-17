@@ -11,8 +11,8 @@ const STORAGE_KEY = "incognito-feed-window-pos";
 const SIZE_KEY = "incognito-feed-window-size";
 const OPEN_KEY = "incognito-feed-window-open";
 const MINIMIZED_KEY = "incognito-feed-window-minimized";
-const LAST_STUDIO_ROUTE_KEY = "wheuat-last-wstudio-route";
-const DEFAULT_STUDIO_ROUTE = "/wstudio/session/join";
+const LAST_STUDIO_ROUTE_KEY = "wheuat-last-tv-route";
+const DEFAULT_STUDIO_ROUTE = "/tv";
 
 interface Pos {
   x: number;
@@ -110,7 +110,7 @@ const IncognitoFeedWindow = () => {
   }, [open, minimized]);
 
   useEffect(() => {
-    if (location.pathname.startsWith("/wstudio")) {
+    if (location.pathname.startsWith("/tv")) {
       try {
         localStorage.setItem(LAST_STUDIO_ROUTE_KEY, `${location.pathname}${location.search}${location.hash}`);
       } catch (error) {
@@ -210,7 +210,7 @@ const IncognitoFeedWindow = () => {
   const navTabs = [
     { path: "/", icon: Home, label: "Home" },
     { path: "/feed", icon: ImagePlus, label: "Feed" },
-    { path: getStoredStudioRoute, icon: Music, label: "W.Studio", matchPrefix: "/wstudio" },
+    { path: getStoredStudioRoute, icon: Music, label: "TV", matchPrefix: "/tv" },
     { path: "/profile", icon: User, label: "Profile" },
   ];
 

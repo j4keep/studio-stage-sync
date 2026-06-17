@@ -1,5 +1,3 @@
 import { Navigate } from "react-router-dom";
-
-const AIMusicTab = () => <Navigate to="/wstudio/session/join" replace />;
-
+const AIMusicTab = () => <Navigate to="/tv" replace />;
 export default AIMusicTab;
