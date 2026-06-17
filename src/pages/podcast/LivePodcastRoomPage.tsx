@@ -433,6 +433,29 @@ const RadioBroadcast = () => (
   </svg>
 );
 
+const Segmented = ({
+  value,
+  options,
+  onChange,
+}: {
+  value: string;
+  options: string[];
+  onChange: (value: string) => void;
+}) => (
+  <div className="flex rounded-md border border-border bg-background p-0.5">
+    {options.map((option) => (
+      <button
+        key={option}
+        type="button"
+        onClick={() => onChange(option)}
+        className={`rounded px-2 py-1 text-xs font-semibold ${value === option ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
+      >
+        {option}
+      </button>
+    ))}
+  </div>
+);
+
 const formatTime = (s: number) => {
   const m = Math.floor(s / 60).toString().padStart(2, "0");
   const sec = (s % 60).toString().padStart(2, "0");
