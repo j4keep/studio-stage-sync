@@ -8,9 +8,13 @@ export type LoopCategory =
 export interface LoopDef {
   id: string;
   name: string;
+  pack?: string;
+  genre?: string;
   category: LoopCategory;
   bpm?: number;
+  bars?: number;
   key?: string;
+  color?: string;
   url?: string;
 }
 
