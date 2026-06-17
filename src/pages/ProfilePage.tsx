@@ -18,8 +18,6 @@ import FollowersSheet from "@/components/FollowersSheet";
 import ProfileFeedSection from "@/components/ProfileFeedSection";
 import BattleWinsSheet from "@/components/BattleWinsSheet";
 import UserProjectsSheet from "@/components/UserProjectsSheet";
-import ReputationScore from "@/components/atchup/ReputationScore";
-import { PiggyBank, HeartHandshake, PlusCircle, LogIn, BadgeCheck, FileText, ShieldCheck, IdCard } from "lucide-react";
 
 const ProfilePage = () => {
   const navigate = useNavigate();
@@ -33,9 +31,6 @@ const ProfilePage = () => {
   const [showFollowers, setShowFollowers] = useState(false);
   const [showWins, setShowWins] = useState(false);
   const [showProjects, setShowProjects] = useState(false);
-  const [circlesCount, setCirclesCount] = useState(0);
-  const [completedCircles, setCompletedCircles] = useState(0);
-  const [isCircleAdmin, setIsCircleAdmin] = useState(false);
   const [profileInfo, setProfileInfo] = useState<{ display_name: string; email: string; avatar_url: string | null; banner_url: string | null }>({
     display_name: "",
     email: "",
@@ -114,26 +109,6 @@ const ProfilePage = () => {
       setTotalViews(total >= 1000 ? `${(total / 1000).toFixed(1)}K` : String(total));
     };
     fetchViews();
-
-    // Atchup Savings Circle stats
-    (supabase as any)
-      .from("savings_circle_members")
-      .select("circle_id, has_received_pot")
-      .eq("user_id", user.id)
-      .then(({ data }: any) => {
-        if (data) {
-          setCirclesCount(data.length);
-          setCompletedCircles(data.filter((m: any) => m.has_received_pot).length);
-        }
-      });
-
-    (supabase as any)
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .eq("role", "admin")
-      .maybeSingle()
-      .then(({ data }: any) => setIsCircleAdmin(!!data));
   }, [user]);
 
   // Refetch likes when page regains focus (e.g. navigating back)
