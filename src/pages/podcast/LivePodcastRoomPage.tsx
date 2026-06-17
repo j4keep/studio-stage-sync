@@ -358,11 +358,14 @@ const GoLiveButton = ({ episodeId }: { episodeId: string }) => {
       const { data, error } = await supabase.functions.invoke("livekit-egress", { body: { action: "start", episodeId } });
       if (error) throw error;
       if ((data as { error?: string })?.error) throw new Error((data as { error: string }).error);
-      const id = (data as { egressId: string }).egressId;
+      const id = (data as { egressId?: string }).egressId;
       setEgressId(id);
-      localStorage.setItem(`egress_${episodeId}`, id);
+      if (id) localStorage.setItem(`egress_${episodeId}`, id);
       setLive(true);
-      toast({ title: "You're live!", description: "Streaming to all enabled destinations." });
+      toast({
+        title: "You're live!",
+        description: (data as { inAppOnly?: boolean }).inAppOnly ? "Live on WHEUAT. Add RTMP to simulcast." : "Streaming to all enabled destinations.",
+      });
     } catch (e) {
       toast({ title: "Couldn't go live", description: e instanceof Error ? e.message : "Add a destination first.", variant: "destructive" });
     } finally {
@@ -373,7 +376,9 @@ const GoLiveButton = ({ episodeId }: { episodeId: string }) => {
   const stop = async () => {
     setBusy(true);
     try {
-      await supabase.functions.invoke("livekit-egress", { body: { action: "stop", episodeId, egressId } });
+      const { error, data } = await supabase.functions.invoke("livekit-egress", { body: { action: "stop", episodeId, egressId } });
+      if (error) throw error;
+      if ((data as { error?: string })?.error) throw new Error((data as { error: string }).error);
       setLive(false);
       setEgressId(null);
       localStorage.removeItem(`egress_${episodeId}`);

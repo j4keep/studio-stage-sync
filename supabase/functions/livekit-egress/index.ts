@@ -12,33 +12,31 @@ const corsHeaders = {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
-    const apiKey = Deno.env.get("LIVEKIT_API_KEY");
-    const apiSecret = Deno.env.get("LIVEKIT_API_SECRET");
-    const url = Deno.env.get("LIVEKIT_URL");
-    if (!apiKey || !apiSecret || !url) return json({ error: "LiveKit not configured" }, 500);
-
     const { action, episodeId, egressId } = (await req.json()) as {
       action: "start" | "stop";
       episodeId?: string;
       egressId?: string;
     };
+    if (action !== "start" && action !== "stop") return json({ error: "Invalid action" }, 400);
 
-    // LiveKit's EgressClient expects an https host, not the wss one used by clients.
-    const httpHost = url.replace(/^wss?:\/\//, "https://");
-    const egress = new EgressClient(httpHost, apiKey, apiSecret);
+    const apiKey = Deno.env.get("LIVEKIT_API_KEY");
+    const apiSecret = Deno.env.get("LIVEKIT_API_SECRET");
+    const url = Deno.env.get("LIVEKIT_URL");
+    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     if (action === "stop") {
-      if (!egressId) return json({ error: "egressId required" }, 400);
-      await egress.stopEgress(egressId);
+      if (egressId && apiKey && apiSecret && url) {
+        const httpHost = url.replace(/^wss?:\/\//, "https://");
+        const egress = new EgressClient(httpHost, apiKey, apiSecret);
+        await egress.stopEgress(egressId);
+      }
       if (episodeId) {
-        const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-        await supabase.from("podcast_episodes").update({ is_streaming: false }).eq("id", episodeId);
+        await supabase.from("podcast_episodes").update({ is_streaming: false, status: "lobby" }).eq("id", episodeId);
       }
       return json({ ok: true });
     }
 
     if (!episodeId) return json({ error: "episodeId required" }, 400);
-    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const { data: ep } = await supabase
       .from("podcast_episodes")
       .select("id, livekit_room")
@@ -55,7 +53,15 @@ Deno.serve(async (req) => {
     const urls = (dests ?? []).map((d) =>
       d.rtmp_url.endsWith("/") ? `${d.rtmp_url}${d.stream_key}` : `${d.rtmp_url}/${d.stream_key}`,
     );
-    if (urls.length === 0) return json({ error: "No enabled stream destinations" }, 400);
+    if (urls.length === 0) {
+      await supabase.from("podcast_episodes").update({ is_streaming: true, status: "live" }).eq("id", episodeId);
+      return json({ ok: true, inAppOnly: true, message: "Live on WHEUAT. Add an RTMP destination to simulcast." });
+    }
+    if (!apiKey || !apiSecret || !url) return json({ error: "RTMP streaming is not configured yet, but your in-app live room is still available." }, 500);
+
+    // LiveKit's EgressClient expects an https host, not the wss one used by clients.
+    const httpHost = url.replace(/^wss?:\/\//, "https://");
+    const egress = new EgressClient(httpHost, apiKey, apiSecret);
 
     const info = await egress.startRoomCompositeEgress(
       ep.livekit_room,
