@@ -192,6 +192,7 @@ export function FloatingKeyboard({ engine, onClose, embedded = false }: Props) {
     if (t.instrument === "drum") {
       triggerDrumHit(engine, t.id, drumKindForPitch(midi), t.drumKit || "808", vel);
       recordNoteOn(t.id, midi, vel);
+      window.setTimeout(() => recordNoteOff(midi), 90);
       flash(midi);
       return;
     }
