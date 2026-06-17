@@ -302,9 +302,9 @@ export function FloatingKeyboard({ engine, onClose, embedded = false }: Props) {
         <button
           type="button"
           onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => { e.stopPropagation(); setPresetOpen(true); }}
+          onClick={(e) => { e.stopPropagation(); if (active?.instrument !== "drum") setPresetOpen(true); }}
           className="ml-1 px-3 py-1.5 rounded-md font-mono leading-tight tabular-nums text-left hover:brightness-110 active:brightness-95"
-          title="Open instrument preset library"
+          title={active?.instrument === "drum" ? "Drum kit selected" : "Open instrument preset library"}
           style={{
             minWidth: 200,
             background: "linear-gradient(180deg,#0d1f12,#081308)",
