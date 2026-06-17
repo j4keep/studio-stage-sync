@@ -15,8 +15,9 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isPro, requirePro, showProModal, gatedFeature, closeProModal, activatePro } = useProGate();
-  const isFullScreenPage = ["/feed"].includes(location.pathname);
-  const showTopBar = !["/auth", "/feed"].includes(location.pathname);
+  const isPodcastWorkspace = location.pathname.startsWith("/tv/podcast/") && location.pathname !== "/tv/podcast";
+  const isFullScreenPage = ["/feed"].includes(location.pathname) || isPodcastWorkspace;
+  const showTopBar = !["/auth", "/feed"].includes(location.pathname) && !isPodcastWorkspace;
 
   const handleAskJhi = () => {
     if (!isPro) {
