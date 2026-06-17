@@ -1,88 +1,100 @@
-# Transfer Atchup → Circle tab
 
-Goal: pressing the **Circle** tab opens the live Atchup app exactly as it exists in `atchup-daily-rise`, with its own pages, components, navigation, fundraisers, donations, verified+, support, etc. — using **this project's** unified auth and Supabase backend.
+# Live Podcast Studio (Riverside-style)
 
-## 1. Files to copy as-is
+A full podcast recording, editing, AI repurposing, and live-streaming product, added as a "Live Podcast" card on the TV page. Everything else in the app stays untouched.
 
-From `atchup-daily-rise` → this project:
+## What the user gets
 
-- **Pages** (`src/pages/m/*`) → `src/pages/atchup/m/*`
-  SavingsCirclesHome, CreateCircle, JoinCircle, CircleDetail, Fundraisers, CreateFundraiser, FundraiserDetail, Profile, EditProfile, UserProfile, Messages, RateMember, VerifiedPlusUpgrade, Onboarding, SupportAdmin, TermsConditions, PrivacyPolicy
-- **Pages** (root): `Help.tsx`, `PromoDownloads.tsx`, `IdVerification.tsx` → `src/pages/atchup/`
-- **Components** (non-ui, 22 files) → `src/components/atchup/`
-- **Hooks**: `useCircleLimits`, `useFollow`, `useMessageSound` → `src/hooks/`
-- **Lib**: `dateHelpers.ts`, `verifiedPlus.ts` → `src/lib/`
-- **Assets**: all `src/assets/atchup-*`, `ask-chup-*`, `hero-backdrop`, `welcome-bg`
+**Lobby (host)**
+- Create a new episode (title, cover, description)
+- Pick mic, camera, speaker; live preview tile
+- One-click "Start recording"
+- Copy guest invite link (no install, opens in any browser)
+- Library of past episodes with status (Recording / Processing / Ready)
 
-Skipped (we already have unified auth): `Landing`, `Welcome`, `Verify`, `AccountSettings`.
+**Live room (host + guests)**
+- HD video + audio for every participant via LiveKit Cloud
+- Up to 10 participants
+- Per-participant local recording in their browser (MediaRecorder, 1080p), uploaded in 5-second chunks to R2 — survives Wi-Fi drops, like Riverside
+- Screen share (separate uploaded track)
+- Live chat
+- Producer panel: mute guest, remove guest, end session
 
-## 2. Routing
+**Live streaming (simulcast)**
+- Schedule a stream, attach destinations (YouTube, Twitch, custom RTMP — Facebook/LinkedIn via custom RTMP URL)
+- Go live with one click → LiveKit Egress fans out to all destinations
+- Pull-in chat from YouTube + Twitch (Omnichat), reply once → posts to all
+- Clickable lower-thirds during the stream
 
-Mount Atchup at its original paths so its internal `navigate('/m/...')` calls all just work, plus a redirect from `/circle`:
+**After recording → Episode page**
+- Auto-uploaded high-quality tracks per participant (video + audio, separately downloadable)
+- Auto-transcript (Lovable AI speech-to-text), word-level timestamps
+- AI: summary, takeaways, suggested titles, soundbites, YouTube-ready chapter markers
+- Magic Audio (noise/reverb reduction) toggle per track
+- Text-based editor: delete words/sentences in the transcript → cuts the video
+- Format switcher: 16:9 / 9:16 / 1:1 with layout presets (stacked, split, picture-in-picture)
+- Animated captions (style presets + custom)
+- Magic Clips: auto-generate 30–60s vertical shorts; topic search ("clips mentioning X")
+- Brand kit: upload intro/outro, default background image, default caption style — applied per format
+- Export to MP4 (per-format) + downloadable per-participant raw tracks
 
-```
-/circle                        → redirect to /m/savings-circles
-/m/savings-circles             SavingsCirclesHome
-/m/savings-circles/create      CreateCircle
-/m/savings-circles/join        JoinCircle
-/m/savings-circles/:id         CircleDetail
-/m/fundraisers                 Fundraisers
-/m/fundraiser/create           CreateFundraiser
-/m/fundraiser/:id              FundraiserDetail
-/m/messages                    Messages
-/m/profile                     Profile  (Atchup's profile, not ours)
-/m/edit-profile, /m/rate-member, /m/user/:userId
-/m/verified-plus-upgrade, /m/support-admin
-/m/terms-conditions, /m/privacy-policy
-/help, /promo, /id-verification
-```
+## Where it lives
 
-Bottom-nav **Circle** tab: path `/m/savings-circles`, `matchPrefix: "/m"`.
+- New card "Live Podcast" on **TV page** with a studio mic visual
+- Routes: `/podcast` (library), `/podcast/new`, `/podcast/live/:episodeId`, `/podcast/episode/:episodeId` (editor), `/podcast/join/:inviteCode` (guest)
 
-## 3. Supabase client / auth
+## Tech details
 
-- All Atchup files import `@/integrations/supabase/client` — that path resolves to **our** client, so they automatically use our backend & unified session. No code change needed inside the copied files.
-- Drop Atchup's `Landing/Welcome/Verify/AccountSettings` (replaced by our existing auth).
-- Keep Atchup's `ForceUpgradeGate` and `Gated` wrapper so age/verified+ flow works inside Circle.
+**WebRTC**: LiveKit Cloud. Server token minting in an edge function (`livekit-token`). Client uses `@livekit/components-react`. Requires secrets `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, `LIVEKIT_URL`.
 
-## 4. Database migrations
+**Local-first recording**: each participant's browser runs `MediaRecorder` on its own mic + camera at 1080p VP9/Opus, slices to 5s chunks, multipart-uploads to R2 under `podcast/{episodeId}/{participantId}/{chunkIndex}.webm`. A finalize edge function concatenates chunks (server-side `ffmpeg` via Deno binary or a follow-up Cloudflare Worker — for v1 we keep chunks and stream them as MSE for playback, and use LiveKit Egress for the merged master).
 
-72 Atchup migrations include tables that overlap with ours (`profiles`, `notifications`, `messages`, `conversations`, `support_tickets`, `ticket_replies`). I will **not** blindly replay all 72. Instead one consolidated migration that:
+**Live streaming**: LiveKit Egress (RoomCompositeEgress) → RTMP outputs. Edge function `livekit-stream-start` / `-stop`.
 
-- Creates **only Atchup-specific tables** that don't exist here: `savings_circles`, `circle_members`, `circle_contributions`, `circle_invites`, `fundraisers`, `fundraiser_donations`, `verified_plus_subscriptions`, `payment_methods`, `member_ratings`, `follows_atchup` (if conflicts), `id_verifications`, `circle_messages`, plus any enums/triggers/functions referenced.
-- Adds missing columns to existing tables only where the Atchup code reads them (e.g. `profiles.verified_plus`, `profiles.reputation_score`).
-- Includes GRANTs + RLS for every new table.
+**Transcription**: edge function `transcribe-episode` calls `https://ai.gateway.lovable.dev/v1/audio/transcriptions` with `openai/gpt-4o-mini-transcribe`, stores word-level timestamps.
 
-Exact list compiled by reading every Atchup migration first; surfaced for your approval before running.
+**AI summary/chapters/clips**: edge function `generate-podcast-ai` calls `google/gemini-2.5-pro` via Lovable AI Gateway, returns JSON (summary, takeaways, titles, soundbites with timestamps, chapter list, suggested vertical-clip ranges).
 
-## 5. Edge functions
+**Magic Audio**: client-side `AudioWorklet` noise-suppression chain (RNNoise WASM) applied at export time.
 
-Copy these to `supabase/functions/` (they already use stripe `@2024-11-20.acacia`):
+**Editor**: text-based timeline. Deleting transcript tokens removes the matching time ranges; export pipeline (client `ffmpeg.wasm` for short clips, edge function with `ffmpeg` for full episodes) re-encodes.
 
-- `check-payment-method`, `check-verified-plus`, `create-donation-checkout`, `create-fundraiser-donation`, `create-notification`, `create-verified-plus-checkout`, `customer-portal`, `help-chat`, `send-payment-reminders`, `support-ticket-notification`
+## Database (new tables)
 
-Stripe secret already configured in Atchup → I'll add the same secret (`STRIPE_SECRET_KEY`) here via the secret tool.
+- `podcast_episodes` — host_id, title, description, cover_url, status (`scheduled|live|processing|ready`), livekit_room, scheduled_for, started_at, ended_at, duration_seconds, master_video_url, transcript_json, ai_json, brand_kit_id
+- `podcast_participants` — episode_id, user_id (nullable for guests), display_name, role (`host|guest`), invite_code, joined_at, left_at, video_url, audio_url, screen_url
+- `podcast_recordings` — episode_id, participant_id, chunk_index, kind (`camera|mic|screen`), r2_key, started_at, duration_ms, bytes
+- `podcast_clips` — episode_id, kind (`magic_clip|full_episode|short`), format (`16x9|9x16|1x1`), title, start_ms, end_ms, captions_json, export_url, status
+- `podcast_brand_kits` — user_id, intro_url, outro_url, background_url, captions_style_json, default_format
+- `podcast_stream_destinations` — episode_id, platform, rtmp_url, stream_key (encrypted), label
+- `podcast_chat_messages` — episode_id, author, source (`local|youtube|twitch`), text, sent_at
 
-## 6. Dependencies to add
+All tables get GRANTs + RLS scoped to host/participant access.
 
-`@emoji-mart/data`, `@emoji-mart/react`, `emoji-mart`, `qrcode.react`, `leaflet`, `react-leaflet`, `@types/leaflet`, `react-helmet-async`, `react-markdown`, `uuid`, `@huggingface/transformers`.
+## Edge functions (new)
 
-## 7. Cleanup
+- `livekit-token` — mints room tokens for host/guest
+- `livekit-egress-start` / `livekit-egress-stop` — composite recording + RTMP simulcast
+- `podcast-finalize` — called when episode ends; assembles chunk manifest, kicks off transcribe + AI
+- `transcribe-episode` — Lovable AI speech-to-text
+- `generate-podcast-ai` — summary/chapters/titles/soundbites/clip suggestions
+- `podcast-export-clip` — server-side ffmpeg job for full-episode + 9:16 exports
+- `r2-multipart-init` / `-complete` — chunked upload signing (extending existing `r2-presign`)
 
-Delete the stub `src/pages/CircleHomePage.tsx` (replaced by Atchup's real `SavingsCirclesHome`).
+## Out of scope for v1 (call out)
 
-## Risks
+- Native iOS/Android apps (browser-only; mobile web still works)
+- Real-time on-the-fly noise reduction in the live call (we apply Magic Audio at export instead)
+- 4K capture (browser MediaRecorder maxes at 1080p reliably)
 
-- **Schema collisions** on shared tables — handled by only adding Atchup-specific tables/columns in step 4.
-- **Stripe** — Atchup's existing Stripe account key needs to be added as a secret.
-- Some Atchup pages reference our existing tables (e.g. `notifications`) — schema differences may need small code patches; addressed file-by-file as they surface.
+## What I need from you to start
 
-## Order of execution
+1. Confirm I should add the LiveKit secrets (I'll prompt you with the secret form).
+2. Confirm you want me to default brand colors / fonts to your existing theme (I will).
 
-1. Copy all assets, components, pages, hooks, lib (parallel).
-2. Add npm deps.
-3. Wire routes + bottom nav.
-4. Copy edge functions.
-5. Add Stripe secret.
-6. Run consolidated migration (you approve).
-7. Smoke-test Circle tab end-to-end.
+After approval, I'll ship in this order:
+1. Secrets + DB migration
+2. Token + invite flow + live room (recording works end-to-end, raw files visible in library)
+3. Transcription + AI summary/chapters
+4. Editor + magic clips + exports
+5. Live streaming (Egress + RTMP destinations + Omnichat)
