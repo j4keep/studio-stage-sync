@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useDawStore, newId } from "../state/DawStore";
-import { triggerSynthNote, startSynthNote, type DawEngine, type SynthVoice } from "../engine/DawEngine";
+import { triggerDrumHit, startSynthNote, drumKindForPitch, type DawEngine, type SynthVoice } from "../engine/DawEngine";
 import type { MidiNote } from "../engine/types";
 import { X, Minus, Plus, Piano, Keyboard as KeyboardIcon } from "lucide-react";
 import { Knob } from "./Knob";
-import { PRESETS, PresetModal, type Preset } from "./presets";
+import { PresetModal, type Preset } from "./presets";
+import { getPresetByName } from "../engine/presetData";
 
 
 /**
@@ -177,19 +178,25 @@ export function FloatingKeyboard({ engine, onClose, embedded = false }: Props) {
     let t = active;
     if (!t) {
       const id = addTrack("instrument", "Synth");
-      updateTrack(id, { instrument: "synth", instrumentPreset: "Bright Synth", synthWave: "sawtooth" });
+      updateTrack(id, { instrument: "synth", instrumentPreset: "Platinum Anthem Lead", synthWave: "sawtooth" });
       selectTrack(id);
       setTimeout(() => {
         const tr = useDawStore.getState().tracks.find(x => x.id === id);
-        const v = startSynthNote(engine, id, midi, vel, (tr?.synthWave as OscillatorType) || "sawtooth");
+        const v = startSynthNote(engine, id, midi, vel, getPresetByName(tr?.instrumentPreset) || (tr?.synthWave as OscillatorType) || "sawtooth");
         if (v) voicesRef.current.set(midi, v);
         if (!sustain) window.setTimeout(() => endNote(midi), 220);
       }, 30);
       flash(midi);
       return;
     }
-    // Use this track's preset waveform so the LCD label and the sound match.
-    const v = startSynthNote(engine, t.id, midi, vel, (t.synthWave as OscillatorType) || "sawtooth");
+    if (t.instrument === "drum") {
+      triggerDrumHit(engine, t.id, drumKindForPitch(midi), t.drumKit || "808", vel);
+      recordNoteOn(t.id, midi, vel);
+      flash(midi);
+      return;
+    }
+    // Use the full selected preset so the LCD label and sound match.
+    const v = startSynthNote(engine, t.id, midi, vel, getPresetByName(t.instrumentPreset) || (t.synthWave as OscillatorType) || "sawtooth");
     if (v) voicesRef.current.set(midi, v);
     recordNoteOn(t.id, midi, vel);
     if (!sustain) window.setTimeout(() => endNote(midi), 220);
@@ -264,7 +271,7 @@ export function FloatingKeyboard({ engine, onClose, embedded = false }: Props) {
 
   const width = Math.max(560, whiteCount * WHITE_W + 24);
   const lcdLine1 = active ? active.name : "— NO TRACK —";
-  const lcdLine2 = active?.instrumentPreset || (active?.instrument === "drum" ? "Drum Kit" : "Default Synth");
+  const lcdLine2 = active?.instrument === "drum" ? (active.drumKit || "808") : (active?.instrumentPreset || "Platinum Anthem Lead");
 
   return (
     <div
