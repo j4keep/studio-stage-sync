@@ -49,7 +49,8 @@ ${combined}
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${key}`,
+        "Lovable-API-Key": key,
+        "X-Lovable-AIG-SDK": "edge-function",
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-pro",

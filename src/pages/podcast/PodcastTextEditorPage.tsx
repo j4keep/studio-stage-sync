@@ -1,19 +1,18 @@
-// Word-level text-based editor + client-side "Magic Audio" export pipeline.
-// Click any word to mark it deleted (struck-through). The exporter rebuilds audio
-// from the non-deleted words, runs a gentle noise gate + normalization, and uploads
-// the result to R2 as the recording's processed audio.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, Wand2, Play, Pause, Download, RotateCcw } from "lucide-react";
+import { ArrowLeft, Download, Loader2, Pause, Play, Plus, RotateCcw, Scissors, Trash2, Type, Wand2, Waves } from "lucide-react";
 
 type Word = { word: string; start: number; end: number };
+type Range = { start: number; end: number; label?: string };
 
 const SUPABASE_URL = "https://cdcdlqbjyptamtleitdp.supabase.co";
-const PAD = 0.04; // 40ms of crossfade padding around each kept range
+const PAD = 0.04;
 
 const PodcastTextEditorPage = () => {
   const { episodeId, recordingId } = useParams();
@@ -21,27 +20,32 @@ const PodcastTextEditorPage = () => {
   const { user } = useAuth();
 
   const [words, setWords] = useState<Word[]>([]);
-  const [deleted, setDeleted] = useState<Set<number>>(new Set());
+  const [deletedWords, setDeletedWords] = useState<Set<number>>(new Set());
+  const [manualCuts, setManualCuts] = useState<Range[]>([]);
+  const [cutDraft, setCutDraft] = useState({ start: "0", end: "10", label: "Cut" });
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
-  const [progress, setProgress] = useState<string>("");
+  const [progress, setProgress] = useState("");
   const [processedKey, setProcessedKey] = useState<string | null>(null);
-  const [recPrefix, setRecPrefix] = useState<string>("");
+  const [recPrefix, setRecPrefix] = useState("");
   const [chunkCount, setChunkCount] = useState(0);
-  const [mime, setMime] = useState("audio/webm");
+  const [mime, setMime] = useState("video/webm");
   const [episodeTitle, setEpisodeTitle] = useState("");
+  const [duration, setDuration] = useState(0);
+  const [magicAudio, setMagicAudio] = useState(true);
+  const [playing, setPlaying] = useState(false);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const sourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const originalBufferRef = useRef<AudioBuffer | null>(null);
   const previewBufferRef = useRef<AudioBuffer | null>(null);
-  const [playing, setPlaying] = useState(false);
 
   useEffect(() => {
     (async () => {
       if (!episodeId || !recordingId) return;
       const [{ data: rec }, { data: tr }, { data: ep }] = await Promise.all([
         supabase.from("podcast_recordings")
-          .select("r2_prefix, chunk_count, mime_type, edl, processed_audio_key")
+          .select("r2_prefix, chunk_count, mime_type, duration_seconds, edl, processed_audio_key")
           .eq("id", recordingId).maybeSingle(),
         supabase.from("podcast_transcripts")
           .select("words")
@@ -54,44 +58,56 @@ const PodcastTextEditorPage = () => {
       if (rec) {
         setRecPrefix(rec.r2_prefix);
         setChunkCount(rec.chunk_count);
-        setMime(rec.mime_type || "audio/webm");
+        setMime(rec.mime_type || "video/webm");
+        setDuration(rec.duration_seconds || rec.chunk_count * 5 || 60);
         setProcessedKey(rec.processed_audio_key);
-        if (Array.isArray(rec.edl)) {
-          // Restore deletion state by matching ranges to words
-          const ws = (tr?.words as Word[] | undefined) ?? [];
-          const next = new Set<number>();
-          ws.forEach((w, i) => {
-            const kept = (rec.edl as Array<{ start: number; end: number }>).some(
-              (r) => w.start >= r.start - 0.01 && w.end <= r.end + 0.01
-            );
-            if (!kept) next.add(i);
-          });
-          setDeleted(next);
-        }
+        if (Array.isArray(rec.edl)) setManualCuts([]);
       }
-      if (tr?.words) setWords(tr.words as Word[]);
+      if (Array.isArray(tr?.words)) setWords(tr.words as Word[]);
       if (ep) setEpisodeTitle(ep.title);
       setLoading(false);
     })();
   }, [episodeId, recordingId]);
 
-  const keptRanges = useMemo(() => buildRanges(words, deleted), [words, deleted]);
+  const wordCutRanges = useMemo(() => buildWordCutRanges(words, deletedWords), [words, deletedWords]);
+  const cutRanges = useMemo(() => mergeRanges([...manualCuts, ...wordCutRanges], duration || 60), [manualCuts, wordCutRanges, duration]);
+  const keepRanges = useMemo(() => invertRanges(cutRanges, duration || Math.max(60, words.at(-1)?.end || 0)), [cutRanges, duration, words]);
+  const keptSeconds = keepRanges.reduce((n, r) => n + Math.max(0, r.end - r.start), 0);
 
-  const toggle = (i: number) => {
-    setDeleted((prev) => {
-      const next = new Set(prev);
-      if (next.has(i)) next.delete(i); else next.add(i);
-      return next;
-    });
+  const invalidatePreview = () => {
+    previewBufferRef.current = null;
+    sourceRef.current?.stop();
+    setPlaying(false);
   };
 
-  const fetchMergedAudio = async (): Promise<ArrayBuffer> => {
+  const addCut = () => {
+    const start = Number(cutDraft.start);
+    const end = Number(cutDraft.end);
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+      toast({ title: "Use a valid start and end time", variant: "destructive" });
+      return;
+    }
+    setManualCuts((cuts) => [...cuts, { start, end, label: cutDraft.label || "Cut" }]);
+    setCutDraft({ start: String(end), end: String(end + 10), label: "Cut" });
+    invalidatePreview();
+  };
+
+  const toggleWord = (i: number) => {
+    setDeletedWords((prev) => {
+      const next = new Set(prev);
+      next.has(i) ? next.delete(i) : next.add(i);
+      return next;
+    });
+    invalidatePreview();
+  };
+
+  const fetchMergedMedia = async (): Promise<ArrayBuffer> => {
     const buffers: ArrayBuffer[] = [];
     for (let i = 0; i < chunkCount; i++) {
       setProgress(`Downloading chunk ${i + 1} / ${chunkCount}…`);
       const key = `${recPrefix}${i.toString().padStart(6, "0")}.webm`;
       const r = await fetch(`${SUPABASE_URL}/functions/v1/r2-download?key=${encodeURIComponent(key)}`);
-      if (!r.ok) throw new Error(`Failed chunk ${i}`);
+      if (!r.ok) throw new Error(`Failed to download chunk ${i + 1}`);
       buffers.push(await r.arrayBuffer());
     }
     const total = buffers.reduce((n, b) => n + b.byteLength, 0);
@@ -101,55 +117,47 @@ const PodcastTextEditorPage = () => {
     return merged.buffer;
   };
 
-  const buildEditedBuffer = async (): Promise<AudioBuffer> => {
-    setProgress("Decoding audio…");
+  const getDecodedAudio = async () => {
+    if (originalBufferRef.current) return originalBufferRef.current;
+    setProgress("Decoding recording…");
     const ctx = audioCtxRef.current ?? new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
     audioCtxRef.current = ctx;
-    const merged = await fetchMergedAudio();
+    const merged = await fetchMergedMedia();
     const decoded = await ctx.decodeAudioData(merged.slice(0));
-    setProgress("Applying edits…");
+    originalBufferRef.current = decoded;
+    if (!duration) setDuration(decoded.duration);
+    return decoded;
+  };
 
-    const ranges = keptRanges.length ? keptRanges : [{ start: 0, end: decoded.duration }];
+  const buildEditedBuffer = async () => {
+    const decoded = await getDecodedAudio();
+    setProgress("Applying timeline edits…");
+    const ctx = audioCtxRef.current!;
+    const ranges = keepRanges.length ? keepRanges : [{ start: 0, end: decoded.duration }];
     const sr = decoded.sampleRate;
-    const totalSamples = ranges.reduce((n, r) => n + Math.max(0, Math.floor((r.end - r.start) * sr)), 0);
-    if (totalSamples === 0) throw new Error("Nothing to export — every word is deleted.");
-    const channels = decoded.numberOfChannels;
-    const out = ctx.createBuffer(channels, totalSamples, sr);
+    const totalSamples = ranges.reduce((n, r) => n + Math.max(0, Math.floor((Math.min(decoded.duration, r.end) - r.start) * sr)), 0);
+    if (totalSamples <= 0) throw new Error("Nothing to export — all audio is cut.");
+    const out = ctx.createBuffer(decoded.numberOfChannels, totalSamples, sr);
 
-    for (let ch = 0; ch < channels; ch++) {
+    for (let ch = 0; ch < decoded.numberOfChannels; ch++) {
       const src = decoded.getChannelData(ch);
       const dst = out.getChannelData(ch);
       let cursor = 0;
       for (const r of ranges) {
         const startIdx = Math.max(0, Math.floor(r.start * sr));
-        const endIdx = Math.min(src.length, Math.floor(r.end * sr));
+        const endIdx = Math.min(src.length, Math.floor(Math.min(decoded.duration, r.end) * sr));
         const len = endIdx - startIdx;
         if (len <= 0) continue;
-        // Copy with short fade in/out to avoid clicks at cut boundaries.
-        const fade = Math.min(Math.floor(0.005 * sr), Math.floor(len / 2));
+        const fade = Math.min(Math.floor(0.006 * sr), Math.floor(len / 2));
         for (let i = 0; i < len; i++) {
-          let g = 1;
-          if (i < fade) g = i / fade;
-          else if (i >= len - fade) g = (len - i) / fade;
-          dst[cursor + i] = src[startIdx + i] * g;
+          let gain = 1;
+          if (fade > 0 && i < fade) gain = i / fade;
+          else if (fade > 0 && i >= len - fade) gain = (len - i) / fade;
+          dst[cursor + i] = src[startIdx + i] * gain;
         }
         cursor += len;
       }
-
-      // Magic Audio: gentle noise gate + peak normalization.
-      // Gate: zero out samples below a learned noise floor (10th percentile of |x|).
-      const sorted = Float32Array.from(dst).map(Math.abs).sort();
-      const floor = sorted[Math.floor(sorted.length * 0.1)] || 0;
-      const gate = Math.max(0.002, floor * 1.5);
-      let peak = 0;
-      for (let i = 0; i < dst.length; i++) {
-        if (Math.abs(dst[i]) < gate) dst[i] *= 0.15; // soft duck (not hard cut)
-        if (Math.abs(dst[i]) > peak) peak = Math.abs(dst[i]);
-      }
-      if (peak > 0) {
-        const target = 0.95 / peak;
-        for (let i = 0; i < dst.length; i++) dst[i] *= target;
-      }
+      if (magicAudio) processMagicAudio(dst);
     }
     return out;
   };
@@ -187,24 +195,22 @@ const PodcastTextEditorPage = () => {
       previewBufferRef.current = buf;
       setProgress("Encoding WAV…");
       const wav = encodeWAV(buf);
-      setProgress("Uploading…");
       const key = `podcast-exports/${recordingId}-${Date.now()}.wav`;
+      setProgress("Uploading export…");
       const r = await fetch(`${SUPABASE_URL}/functions/v1/r2-upload`, {
-        method: "PUT",
-        headers: { "x-upload-key": key, "x-upload-content-type": "audio/wav" },
+        method: "POST",
+        headers: { "x-upload-key": key, "x-upload-content-type": "audio/wav", "Content-Type": "audio/wav" },
         body: wav,
       });
       if (!r.ok) throw new Error("Upload failed");
-
-      const edl = keptRanges;
       await supabase.from("podcast_recordings").update({
-        edl,
+        edl: keepRanges,
         processed_audio_key: key,
         magic_audio_status: "ready",
       }).eq("id", recordingId);
       setProcessedKey(key);
       setProgress("");
-      toast({ title: "Magic Audio ready", description: "Edited, de-noised, and normalized." });
+      toast({ title: "Export ready", description: "Timeline edits and Magic Audio were applied." });
     } catch (e) {
       await supabase.from("podcast_recordings").update({ magic_audio_status: "failed" }).eq("id", recordingId);
       toast({ title: "Export failed", description: e instanceof Error ? e.message : "Unknown", variant: "destructive" });
@@ -213,153 +219,185 @@ const PodcastTextEditorPage = () => {
     }
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading transcript…</div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading editor…</div>;
   if (!user) return <div className="p-8 text-center text-muted-foreground">Sign in required.</div>;
-  if (!words.length) {
-    return (
-      <div className="max-w-2xl mx-auto px-4 pt-4 pb-24">
-        <Header title={episodeTitle} onBack={() => navigate(`/tv/podcast/${episodeId}/edit`)} />
-        <div className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-          No transcript words available. Run "Transcribe" from the episode page first.
-        </div>
-      </div>
-    );
-  }
-
-  const totalKept = keptRanges.reduce((n, r) => n + (r.end - r.start), 0);
-  const totalAll = words.length ? words[words.length - 1].end : 0;
 
   return (
-    <div className="max-w-2xl mx-auto px-4 pt-4 pb-32">
-      <Header title={episodeTitle} onBack={() => navigate(`/tv/podcast/${episodeId}/edit`)} />
-
-      <div className="rounded-2xl border border-border bg-card p-4 mb-4">
-        <div className="flex items-center justify-between mb-3 text-xs text-muted-foreground">
-          <span>Click any word to cut it. {deleted.size} cut · {fmt(totalKept)} / {fmt(totalAll)}</span>
-          {deleted.size > 0 && (
-            <button className="flex items-center gap-1 hover:text-foreground" onClick={() => { setDeleted(new Set()); previewBufferRef.current = null; }}>
-              <RotateCcw className="w-3 h-3" /> Restore all
-            </button>
-          )}
-        </div>
-        <div className="leading-loose text-[15px] text-foreground select-text">
-          {words.map((w, i) => (
-            <span key={i}>
-              <button
-                onClick={() => { toggle(i); previewBufferRef.current = null; }}
-                className={
-                  "px-0.5 rounded transition " +
-                  (deleted.has(i)
-                    ? "line-through text-muted-foreground/60 bg-destructive/10"
-                    : "hover:bg-primary/10")
-                }
-              >
-                {w.word}
-              </button>{" "}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      <div className="fixed bottom-0 left-0 right-0 z-30 bg-background/95 backdrop-blur border-t border-border">
-        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-2">
-          <Button variant="outline" onClick={preview} disabled={exporting} className="flex-1">
-            {playing ? <Pause className="w-4 h-4 mr-1" /> : <Play className="w-4 h-4 mr-1" />}
-            {playing ? "Stop" : "Preview"}
+    <div className="dark min-h-screen bg-background text-foreground">
+      <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3">
+          <button onClick={() => navigate(`/tv/podcast/${episodeId}/edit`)} className="p-2 -ml-2 rounded-md hover:bg-muted" aria-label="Back">
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div className="min-w-0 flex-1">
+            <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Timeline editor</div>
+            <h1 className="text-xl font-display font-bold truncate">{episodeTitle}</h1>
+          </div>
+          <Button variant="outline" onClick={preview} disabled={exporting}>
+            {playing ? <Pause className="w-4 h-4 mr-2" /> : <Play className="w-4 h-4 mr-2" />}{playing ? "Stop" : "Preview"}
           </Button>
-          <Button onClick={exportMagicAudio} disabled={exporting} className="flex-1">
-            {exporting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Wand2 className="w-4 h-4 mr-1" />}
-            Export Magic Audio
+          <Button onClick={exportMagicAudio} disabled={exporting}>
+            {exporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Wand2 className="w-4 h-4 mr-2" />} Export
           </Button>
-          {processedKey && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => window.open(`${SUPABASE_URL}/functions/v1/r2-download?key=${encodeURIComponent(processedKey)}`, "_blank")}
-              title="Download last export"
-            >
-              <Download className="w-4 h-4" />
-            </Button>
-          )}
         </div>
-        {progress && <div className="px-4 pb-2 text-[11px] text-muted-foreground">{progress}</div>}
-      </div>
+      </header>
+
+      <main className="mx-auto grid max-w-7xl gap-4 px-4 py-4 lg:grid-cols-[1.35fr_0.8fr]">
+        <section className="space-y-4 min-w-0">
+          <div className="rounded-lg border border-border bg-card p-4">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2 font-semibold"><Waves className="w-4 h-4 text-primary" /> Recording timeline</div>
+                <div className="text-xs text-muted-foreground">{formatTime(keptSeconds)} kept from {formatTime(duration)} · {mime}</div>
+              </div>
+              <button className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted" onClick={() => { setManualCuts([]); setDeletedWords(new Set()); invalidatePreview(); }}>
+                <RotateCcw className="w-3 h-3" /> Reset edits
+              </button>
+            </div>
+            <Timeline duration={duration || 60} cuts={cutRanges} />
+            <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_120px_120px_auto]">
+              <Input placeholder="Cut label" value={cutDraft.label} onChange={(e) => setCutDraft((s) => ({ ...s, label: e.target.value }))} />
+              <Input value={cutDraft.start} onChange={(e) => setCutDraft((s) => ({ ...s, start: e.target.value }))} placeholder="Start sec" />
+              <Input value={cutDraft.end} onChange={(e) => setCutDraft((s) => ({ ...s, end: e.target.value }))} placeholder="End sec" />
+              <Button onClick={addCut}><Plus className="w-4 h-4 mr-1" /> Cut</Button>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-border bg-card p-4">
+            <div className="mb-3 flex items-center gap-2 font-semibold"><Type className="w-4 h-4 text-primary" /> Text cuts</div>
+            {words.length ? (
+              <div className="leading-loose text-[15px] select-text">
+                {words.map((w, i) => (
+                  <span key={i}>
+                    <button onClick={() => toggleWord(i)} className={`rounded px-0.5 transition ${deletedWords.has(i) ? "bg-destructive/10 text-muted-foreground line-through" : "hover:bg-primary/10"}`}>{w.word}</button>{" "}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">Text editing appears here after transcription. Timeline cuts, preview, and Magic Audio work now without a transcript.</div>
+            )}
+          </div>
+        </section>
+
+        <aside className="space-y-4 min-w-0">
+          <div className="rounded-lg border border-border bg-card p-4">
+            <div className="mb-3 flex items-center gap-2 font-semibold"><Scissors className="w-4 h-4 text-primary" /> Cut list</div>
+            {cutRanges.length === 0 ? <div className="text-sm text-muted-foreground">No cuts added.</div> : (
+              <div className="space-y-2">
+                {cutRanges.map((cut, i) => (
+                  <div key={`${cut.start}-${cut.end}-${i}`} className="flex items-center gap-2 rounded-md border border-border p-2">
+                    <div className="min-w-0 flex-1"><div className="text-sm font-medium">{cut.label || `Cut ${i + 1}`}</div><div className="text-xs text-muted-foreground">{formatTime(cut.start)} → {formatTime(cut.end)}</div></div>
+                    {manualCuts.includes(cut) && <button className="rounded p-2 text-muted-foreground hover:bg-muted" onClick={() => { setManualCuts((cuts) => cuts.filter((_, idx) => idx !== i)); invalidatePreview(); }}><Trash2 className="w-4 h-4" /></button>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-lg border border-border bg-card p-4">
+            <div className="mb-3 flex items-center gap-2 font-semibold"><Wand2 className="w-4 h-4 text-primary" /> Magic Audio</div>
+            <div className="flex items-center justify-between rounded-md border border-border p-3">
+              <div><div className="text-sm font-medium">Noise cleanup + normalize</div><div className="text-xs text-muted-foreground">Soft gate, de-click fades, peak leveling</div></div>
+              <Switch checked={magicAudio} onCheckedChange={(v) => { setMagicAudio(v); invalidatePreview(); }} />
+            </div>
+            {processedKey && <Button className="mt-3 w-full" variant="secondary" onClick={() => window.open(`${SUPABASE_URL}/functions/v1/r2-download?key=${encodeURIComponent(processedKey)}`, "_blank")}><Download className="w-4 h-4 mr-2" /> Download last export</Button>}
+            {progress && <div className="mt-3 rounded-md bg-muted p-2 text-xs text-muted-foreground">{progress}</div>}
+          </div>
+        </aside>
+      </main>
     </div>
   );
 };
 
-const Header = ({ title, onBack }: { title: string; onBack: () => void }) => (
-  <div className="flex items-center gap-2 mb-4">
-    <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-muted">
-      <ArrowLeft className="w-5 h-5" />
-    </button>
-    <div>
-      <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Text Editor</div>
-      <h1 className="text-lg font-display font-bold text-foreground truncate">{title}</h1>
+const Timeline = ({ duration, cuts }: { duration: number; cuts: Range[] }) => (
+  <div className="relative h-24 overflow-hidden rounded-lg border border-border bg-background">
+    <div className="absolute inset-x-0 top-1/2 h-px bg-border" />
+    <div className="absolute inset-x-3 top-5 flex items-end gap-1">
+      {Array.from({ length: 64 }).map((_, i) => <div key={i} className="w-full rounded-sm bg-primary/35" style={{ height: `${18 + ((i * 17) % 42)}px` }} />)}
     </div>
+    {cuts.map((cut, i) => (
+      <div key={`${cut.start}-${cut.end}-${i}`} className="absolute top-0 h-full bg-destructive/35 border-x border-destructive" style={{ left: `${(cut.start / duration) * 100}%`, width: `${Math.max(1, ((cut.end - cut.start) / duration) * 100)}%` }} />
+    ))}
+    <div className="absolute bottom-2 left-3 text-xs text-muted-foreground">0:00</div>
+    <div className="absolute bottom-2 right-3 text-xs text-muted-foreground">{formatTime(duration)}</div>
   </div>
 );
 
-const fmt = (s: number) => {
-  const m = Math.floor(s / 60);
-  const sec = Math.floor(s % 60).toString().padStart(2, "0");
-  return `${m}:${sec}`;
-};
-
-// Merge consecutive non-deleted words into kept ranges with padding, then clamp/merge overlaps.
-function buildRanges(words: Word[], deleted: Set<number>): Array<{ start: number; end: number }> {
-  const ranges: Array<{ start: number; end: number }> = [];
-  let cur: { start: number; end: number } | null = null;
+function buildWordCutRanges(words: Word[], deleted: Set<number>): Range[] {
+  const ranges: Range[] = [];
+  let current: Range | null = null;
   words.forEach((w, i) => {
-    if (deleted.has(i)) {
-      if (cur) { ranges.push(cur); cur = null; }
+    if (!deleted.has(i)) {
+      if (current) { ranges.push(current); current = null; }
       return;
     }
-    const s = Math.max(0, w.start - PAD);
-    const e = w.end + PAD;
-    if (!cur) cur = { start: s, end: e };
-    else if (s <= cur.end) cur.end = Math.max(cur.end, e);
-    else { ranges.push(cur); cur = { start: s, end: e }; }
+    const start = Math.max(0, w.start - PAD);
+    const end = w.end + PAD;
+    if (!current) current = { start, end, label: "Text cut" };
+    else if (start <= current.end + 0.1) current.end = Math.max(current.end, end);
+    else { ranges.push(current); current = { start, end, label: "Text cut" }; }
   });
-  if (cur) ranges.push(cur);
+  if (current) ranges.push(current);
   return ranges;
 }
 
-// Encode a Web Audio AudioBuffer to a 16-bit PCM WAV ArrayBuffer.
+function mergeRanges(ranges: Range[], duration: number): Range[] {
+  const sorted = ranges.map((r) => ({ ...r, start: Math.max(0, r.start), end: Math.min(duration, r.end) })).filter((r) => r.end > r.start).sort((a, b) => a.start - b.start);
+  const merged: Range[] = [];
+  sorted.forEach((r) => {
+    const last = merged[merged.length - 1];
+    if (last && r.start <= last.end) last.end = Math.max(last.end, r.end);
+    else merged.push(r);
+  });
+  return merged;
+}
+
+function invertRanges(cuts: Range[], duration: number): Range[] {
+  const keep: Range[] = [];
+  let cursor = 0;
+  cuts.forEach((cut) => {
+    if (cut.start > cursor) keep.push({ start: cursor, end: cut.start });
+    cursor = Math.max(cursor, cut.end);
+  });
+  if (cursor < duration) keep.push({ start: cursor, end: duration });
+  return keep;
+}
+
+function processMagicAudio(samples: Float32Array) {
+  const abs = Array.from(samples, Math.abs).sort((a, b) => a - b);
+  const floor = abs[Math.floor(abs.length * 0.12)] || 0;
+  const gate = Math.max(0.002, floor * 1.8);
+  let peak = 0;
+  for (let i = 0; i < samples.length; i++) {
+    if (Math.abs(samples[i]) < gate) samples[i] *= 0.18;
+    peak = Math.max(peak, Math.abs(samples[i]));
+  }
+  if (peak > 0) {
+    const gain = 0.95 / peak;
+    for (let i = 0; i < samples.length; i++) samples[i] *= gain;
+  }
+}
+
 function encodeWAV(buffer: AudioBuffer): ArrayBuffer {
-  const numCh = buffer.numberOfChannels;
+  const channels = buffer.numberOfChannels;
   const sr = buffer.sampleRate;
   const len = buffer.length;
-  const bytesPerSample = 2;
-  const dataSize = len * numCh * bytesPerSample;
+  const dataSize = len * channels * 2;
   const ab = new ArrayBuffer(44 + dataSize);
   const view = new DataView(ab);
-  const writeStr = (off: number, str: string) => { for (let i = 0; i < str.length; i++) view.setUint8(off + i, str.charCodeAt(i)); };
-  writeStr(0, "RIFF");
-  view.setUint32(4, 36 + dataSize, true);
-  writeStr(8, "WAVE");
-  writeStr(12, "fmt ");
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, numCh, true);
-  view.setUint32(24, sr, true);
-  view.setUint32(28, sr * numCh * bytesPerSample, true);
-  view.setUint16(32, numCh * bytesPerSample, true);
-  view.setUint16(34, bytesPerSample * 8, true);
-  writeStr(36, "data");
-  view.setUint32(40, dataSize, true);
-
-  const channels: Float32Array[] = [];
-  for (let c = 0; c < numCh; c++) channels.push(buffer.getChannelData(c));
-  let off = 44;
-  for (let i = 0; i < len; i++) {
-    for (let c = 0; c < numCh; c++) {
-      const s = Math.max(-1, Math.min(1, channels[c][i]));
-      view.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7fff, true);
-      off += 2;
-    }
-  }
+  const write = (offset: number, text: string) => { for (let i = 0; i < text.length; i++) view.setUint8(offset + i, text.charCodeAt(i)); };
+  write(0, "RIFF"); view.setUint32(4, 36 + dataSize, true); write(8, "WAVE"); write(12, "fmt ");
+  view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, channels, true); view.setUint32(24, sr, true);
+  view.setUint32(28, sr * channels * 2, true); view.setUint16(32, channels * 2, true); view.setUint16(34, 16, true); write(36, "data"); view.setUint32(40, dataSize, true);
+  const data = Array.from({ length: channels }, (_, i) => buffer.getChannelData(i));
+  let offset = 44;
+  for (let i = 0; i < len; i++) for (let ch = 0; ch < channels; ch++) { const s = Math.max(-1, Math.min(1, data[ch][i])); view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true); offset += 2; }
   return ab;
 }
+
+const formatTime = (seconds: number) => {
+  const safe = Math.max(0, Math.floor(seconds || 0));
+  return `${Math.floor(safe / 60)}:${String(safe % 60).padStart(2, "0")}`;
+};
 
 export default PodcastTextEditorPage;

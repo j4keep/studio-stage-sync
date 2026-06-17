@@ -9,14 +9,14 @@ import {
   useTracks,
   useLocalParticipant,
 } from "@livekit/components-react";
-import { Track } from "livekit-client";
+import { Track, VideoPresets, ScreenSharePresets } from "livekit-client";
 import "@livekit/components-styles";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, Circle, Square, Copy, Users, StopCircle } from "lucide-react";
+import { ArrowLeft, Circle, Copy, StopCircle } from "lucide-react";
 
 type TokenResponse = {
   token: string;
@@ -40,6 +40,24 @@ const LivePodcastRoomPage = () => {
   const [joining, setJoining] = useState(false);
   const [guestName, setGuestName] = useState("");
   const [askGuestName, setAskGuestName] = useState(false);
+  const [quality, setQuality] = useState<"720p" | "1080p" | "4K">("1080p");
+  const [layoutMode, setLayoutMode] = useState<"Grid" | "Speaker" | "Screen">("Grid");
+
+  const videoOptions = useMemo(() => {
+    const preset = quality === "4K" ? VideoPresets.h2160 : quality === "1080p" ? VideoPresets.h1080 : VideoPresets.h720;
+    return {
+      resolution: preset.resolution,
+    };
+  }, [quality]);
+
+  const publishOptions = useMemo(() => {
+    const preset = quality === "4K" ? VideoPresets.h2160 : quality === "1080p" ? VideoPresets.h1080 : VideoPresets.h720;
+    return {
+      videoEncoding: preset.encoding,
+      screenShareEncoding: ScreenSharePresets.h1080fps30.encoding,
+      simulcast: quality !== "4K",
+    };
+  }, [quality]);
 
   useEffect(() => {
     const load = async () => {
@@ -136,16 +154,18 @@ const LivePodcastRoomPage = () => {
   const isHost = tokenInfo.role === "host";
 
   return (
-    <div className="h-screen flex flex-col bg-black">
-      <div className="flex items-center justify-between px-4 py-2 bg-zinc-950 text-white border-b border-zinc-800">
-        <button onClick={() => navigate(isHost ? "/tv/podcast" : "/tv")} className="flex items-center gap-1 text-sm">
+    <div className="dark h-screen flex flex-col bg-background text-foreground">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 bg-card border-b border-border">
+        <button onClick={() => navigate(isHost ? "/tv/podcast" : "/tv")} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="w-4 h-4" /> Leave
         </button>
-        <div className="text-sm font-medium truncate">{episode.title}</div>
-        <div className="flex items-center gap-2">
+        <div className="min-w-0 flex-1 text-center text-sm font-medium truncate">{episode.title}</div>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Segmented value={quality} options={["720p", "1080p", "4K"]} onChange={(v) => setQuality(v as "720p" | "1080p" | "4K")} />
+          <Segmented value={layoutMode} options={["Grid", "Speaker", "Screen"]} onChange={(v) => setLayoutMode(v as "Grid" | "Speaker" | "Screen")} />
           {isHost && <GoLiveButton episodeId={episode.id} />}
           {isHost && (
-            <button onClick={copyInviteLink} className="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 flex items-center gap-1">
+            <button onClick={copyInviteLink} className="text-xs px-2 py-1 rounded-md bg-muted hover:bg-secondary flex items-center gap-1">
               <Copy className="w-3 h-3" /> Invite
             </button>
           )}
@@ -156,8 +176,9 @@ const LivePodcastRoomPage = () => {
           token={tokenInfo.token}
           serverUrl={tokenInfo.url}
           connect
-          video
+          video={videoOptions}
           audio
+          options={{ videoCaptureDefaults: videoOptions, publishDefaults: publishOptions }}
           data-lk-theme="default"
           className="h-full"
           onDisconnected={() => navigate(isHost ? "/tv/podcast" : "/tv")}
@@ -165,10 +186,10 @@ const LivePodcastRoomPage = () => {
           <RoomAudioRenderer />
           <div className="flex h-full flex-col">
             <div className="flex-1 min-h-0">
-              <Stage />
+              <Stage layoutMode={layoutMode} />
             </div>
-            <div className="border-t border-zinc-800 bg-zinc-950">
-              <LocalRecorder episodeId={episode.id} participantIdentity={tokenInfo.identity} displayName={tokenInfo.displayName} />
+            <div className="border-t border-border bg-card">
+              <LocalRecorder episodeId={episode.id} participantIdentity={tokenInfo.identity} displayName={tokenInfo.displayName} quality={quality} />
               <ControlBar variation="minimal" controls={{ microphone: true, camera: true, screenShare: true, leave: true, chat: false }} />
             </div>
           </div>
@@ -178,7 +199,7 @@ const LivePodcastRoomPage = () => {
   );
 };
 
-const Stage = () => {
+const Stage = ({ layoutMode }: { layoutMode: "Grid" | "Speaker" | "Screen" }) => {
   const tracks = useTracks(
     [
       { source: Track.Source.Camera, withPlaceholder: true },
@@ -186,8 +207,9 @@ const Stage = () => {
     ],
     { onlySubscribed: false },
   );
+  const stageClass = layoutMode === "Speaker" ? "h-full [&_.lk-grid-layout]:grid-cols-1" : layoutMode === "Screen" ? "h-full [&_.lk-grid-layout]:grid-cols-1" : "h-full";
   return (
-    <GridLayout tracks={tracks} className="h-full">
+    <GridLayout tracks={tracks} className={stageClass}>
       <ParticipantTile />
     </GridLayout>
   );
@@ -197,10 +219,12 @@ const LocalRecorder = ({
   episodeId,
   participantIdentity,
   displayName,
+  quality,
 }: {
   episodeId: string;
   participantIdentity: string;
   displayName: string;
+  quality: "720p" | "1080p" | "4K";
 }) => {
   const { localParticipant } = useLocalParticipant();
   const [recording, setRecording] = useState(false);
@@ -285,7 +309,8 @@ const LocalRecorder = ({
       if (error) throw error;
       setRecordingId(rec.id);
 
-      const mr = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 4_000_000 });
+      const videoBitsPerSecond = quality === "4K" ? 14_000_000 : quality === "1080p" ? 8_000_000 : 4_000_000;
+      const mr = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond });
       mediaRecorderRef.current = mr;
       mr.ondataavailable = async (ev) => {
         if (ev.data && ev.data.size > 0) {
@@ -406,6 +431,29 @@ const RadioBroadcast = () => (
     <circle cx="12" cy="12" r="2" fill="currentColor" />
     <path d="M8 8a5.66 5.66 0 0 0 0 8M16 8a5.66 5.66 0 0 1 0 8M5 5a9 9 0 0 0 0 14M19 5a9 9 0 0 1 0 14" />
   </svg>
+);
+
+const Segmented = ({
+  value,
+  options,
+  onChange,
+}: {
+  value: string;
+  options: string[];
+  onChange: (value: string) => void;
+}) => (
+  <div className="flex rounded-md border border-border bg-background p-0.5">
+    {options.map((option) => (
+      <button
+        key={option}
+        type="button"
+        onClick={() => onChange(option)}
+        className={`rounded px-2 py-1 text-xs font-semibold ${value === option ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
+      >
+        {option}
+      </button>
+    ))}
+  </div>
 );
 
 const formatTime = (s: number) => {

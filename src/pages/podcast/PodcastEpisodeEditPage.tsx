@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,18 +9,25 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import {
   ArrowLeft,
-  Sparkles,
-  FileText,
+  BadgeCheck,
+  Clapperboard,
+  Copy,
   Download,
+  FileText,
+  Gauge,
+  LayoutTemplate,
   Loader2,
   Mic,
-  Scissors,
-  Radio as RadioIcon,
+  MonitorUp,
   Plus,
+  Radio as RadioIcon,
+  Scissors,
+  Settings2,
+  Sparkles,
   Trash2,
-  Wand2,
   Type,
-  Music,
+  Wand2,
+  Waves,
 } from "lucide-react";
 
 type Episode = {
@@ -85,6 +93,8 @@ const PodcastEpisodeEditPage = () => {
   const [aiBusy, setAiBusy] = useState(false);
   const [clipsBusy, setClipsBusy] = useState(false);
   const [newDest, setNewDest] = useState({ platform: "youtube", rtmp_url: "", stream_key: "" });
+  const [manualClip, setManualClip] = useState({ title: "", start: "0", end: "60", format: "9x16" });
+  const [videoSettings, setVideoSettings] = useState({ quality: "4K", layout: "Auto grid", captions: true, noise: true, loudness: "Podcast" });
 
   const load = async () => {
     if (!episodeId) return;
@@ -109,6 +119,10 @@ const PodcastEpisodeEditPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [episodeId]);
 
+  const readyTranscript = transcripts.find((t) => t.status === "ready" && t.text.trim());
+  const totalDuration = useMemo(() => recordings.reduce((sum, r) => sum + (r.duration_seconds ?? Math.max(30, r.chunk_count * 5)), 0), [recordings]);
+  const isHost = user?.id === episode?.host_user_id;
+
   const transcribe = async (recordingId: string) => {
     setBusyRec(recordingId);
     try {
@@ -125,8 +139,8 @@ const PodcastEpisodeEditPage = () => {
 
   const generateAi = async () => {
     if (!episodeId) return;
-    if (!transcripts.some((t) => t.status === "ready" && t.text.trim())) {
-      toast({ title: "Transcribe a recording first", description: "AI insights need transcript text before they can run." });
+    if (!readyTranscript) {
+      toast({ title: "Transcript needed for AI writing", description: "Editing, trimming, clips, and Magic Audio work without transcripts." });
       return;
     }
     setAiBusy(true);
@@ -145,16 +159,23 @@ const PodcastEpisodeEditPage = () => {
 
   const generateClips = async () => {
     if (!episodeId) return;
-    if (!transcripts.some((t) => t.status === "ready" && t.text.trim())) {
-      toast({ title: "Transcribe a recording first", description: "Magic Clips need transcript text before they can pick moments." });
-      return;
-    }
     setClipsBusy(true);
     try {
-      const { error, data } = await supabase.functions.invoke("generate-podcast-clips", { body: { episodeId, count: 5 } });
-      if (error) throw error;
-      if ((data as { error?: string })?.error) throw new Error((data as { error: string }).error);
-      toast({ title: "Magic clips ready", description: `${(data as { count: number }).count} viral moments picked.` });
+      if (readyTranscript) {
+        const { error, data } = await supabase.functions.invoke("generate-podcast-clips", { body: { episodeId, count: 5 } });
+        if (error) throw error;
+        if ((data as { error?: string })?.error) throw new Error((data as { error: string }).error);
+        toast({ title: "Magic clips ready", description: `${(data as { count: number }).count} moments picked.` });
+      } else {
+        const base = Math.max(180, totalDuration || 300);
+        const rows = [0.08, 0.28, 0.48, 0.68, 0.84].map((point, i) => {
+          const start = Math.max(0, Math.floor(base * point));
+          return { episode_id: episodeId, title: `Draft clip ${i + 1}`, start_seconds: start, end_seconds: Math.min(Math.floor(base), start + 45), format: i % 2 ? "16x9" : "9x16" };
+        });
+        const { error } = await supabase.from("podcast_clips").insert(rows);
+        if (error) throw error;
+        toast({ title: "Draft clips created", description: "Fine-tune the clip timing in the editor." });
+      }
       load();
     } catch (e) {
       toast({ title: "Clip generation failed", description: e instanceof Error ? e.message : "Unknown", variant: "destructive" });
@@ -163,21 +184,37 @@ const PodcastEpisodeEditPage = () => {
     }
   };
 
-  const downloadChunk = (key: string) => {
-    window.open(`${SUPABASE_URL}/functions/v1/r2-download?key=${encodeURIComponent(key)}`, "_blank");
+  const addManualClip = async () => {
+    if (!episodeId) return;
+    const start = Number(manualClip.start);
+    const end = Number(manualClip.end);
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+      toast({ title: "Clip timing needs a valid start and end", variant: "destructive" });
+      return;
+    }
+    const { error } = await supabase.from("podcast_clips").insert({
+      episode_id: episodeId,
+      title: manualClip.title || "Manual clip",
+      start_seconds: start,
+      end_seconds: end,
+      format: manualClip.format,
+    });
+    if (error) {
+      toast({ title: "Couldn't add clip", description: error.message, variant: "destructive" });
+      return;
+    }
+    setManualClip({ title: "", start: String(Math.max(0, end)), end: String(end + 60), format: manualClip.format });
+    load();
   };
+
+  const downloadKey = (key: string) => window.open(`${SUPABASE_URL}/functions/v1/r2-download?key=${encodeURIComponent(key)}`, "_blank");
 
   const addDestination = async () => {
     if (!episodeId || !newDest.rtmp_url || !newDest.stream_key) {
       toast({ title: "RTMP URL and stream key required", variant: "destructive" });
       return;
     }
-    const { error } = await supabase.from("podcast_stream_destinations").insert({
-      episode_id: episodeId,
-      platform: newDest.platform,
-      rtmp_url: newDest.rtmp_url,
-      stream_key: newDest.stream_key,
-    });
+    const { error } = await supabase.from("podcast_stream_destinations").insert({ episode_id: episodeId, ...newDest });
     if (error) {
       toast({ title: "Couldn't add destination", description: error.message, variant: "destructive" });
       return;
@@ -186,214 +223,194 @@ const PodcastEpisodeEditPage = () => {
     load();
   };
 
-  const toggleDestination = async (d: Destination) => {
-    await supabase.from("podcast_stream_destinations").update({ enabled: !d.enabled }).eq("id", d.id);
-    load();
+  const copyExportPlan = async () => {
+    await navigator.clipboard.writeText(`${videoSettings.quality} • ${videoSettings.layout} • captions ${videoSettings.captions ? "on" : "off"} • ${videoSettings.loudness} loudness`);
+    toast({ title: "Export settings copied" });
   };
 
-  const deleteDestination = async (id: string) => {
-    await supabase.from("podcast_stream_destinations").delete().eq("id", id);
-    load();
-  };
-
-  if (!episode) {
-    return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading…</div>;
-  }
-
-  const isHost = user?.id === episode.host_user_id;
+  if (!episode) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading…</div>;
 
   return (
-    <div className="px-4 pt-4 pb-24 max-w-2xl mx-auto">
-      <div className="flex items-center gap-2 mb-4">
-        <button onClick={() => navigate("/tv/podcast")} className="p-2 -ml-2 rounded-full hover:bg-muted">
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <h1 className="text-xl font-display font-bold text-foreground truncate flex-1">{episode.title}</h1>
-        {episode.is_streaming && (
-          <span className="text-[10px] uppercase font-bold tracking-wider bg-red-500 text-white px-2 py-0.5 rounded animate-pulse">Live</span>
-        )}
-      </div>
-
-      {/* Recordings */}
-      <Section icon={<Mic className="w-3.5 h-3.5" />} title="Recordings">
-        {recordings.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No recordings yet. Enter the studio and press Record.</p>
-        ) : (
-          <div className="space-y-2">
-            {recordings.map((r) => {
-              const tr = transcripts.find((t) => t.recording_id === r.id);
-              return (
-                <div key={r.id} className="rounded-xl border border-border p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="text-sm">
-                      <div className="font-medium text-foreground">{r.chunk_count} chunks • {r.status}</div>
-                      <div className="text-[11px] text-muted-foreground">{new Date(r.created_at).toLocaleString()}</div>
-                    </div>
-                    <Button size="sm" variant="outline" onClick={() => transcribe(r.id)} disabled={busyRec === r.id || tr?.status === "processing"}>
-                      {tr?.status === "processing" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
-                      <span className="ml-1">Transcribe</span>
-                    </Button>
-                  </div>
-                  {tr?.status === "ready" && (
-                    <div className="mt-2 text-xs text-foreground max-h-40 overflow-y-auto whitespace-pre-wrap bg-muted/30 rounded p-2">{tr.text}</div>
-                  )}
-                  {tr?.status === "failed" && <div className="mt-2 text-xs text-destructive">Failed: {tr.error}</div>}
-                  {tr?.status === "ready" && (
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      <Button size="sm" variant="secondary" onClick={() => navigate(`/tv/podcast/${episodeId}/recording/${r.id}/editor`)}>
-                        <Type className="w-3.5 h-3.5 mr-1" /> Text editor & Magic Audio
-                      </Button>
-                      {r.processed_audio_key && (
-                        <Button size="sm" variant="outline" onClick={() => downloadChunk(r.processed_audio_key!)}>
-                          <Music className="w-3.5 h-3.5 mr-1" /> Download Magic Audio
-                        </Button>
-                      )}
-                      {r.magic_audio_status === "processing" && (
-                        <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Processing…</span>
-                      )}
-                    </div>
-                  )}
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {Array.from({ length: r.chunk_count }).map((_, i) => {
-                      const key = `${r.r2_prefix}${i.toString().padStart(6, "0")}.webm`;
-                      return (
-                        <button key={i} onClick={() => downloadChunk(key)} className="text-[10px] px-1.5 py-0.5 rounded bg-muted hover:bg-muted/70 flex items-center gap-1">
-                          <Download className="w-2.5 h-2.5" /> {i + 1}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
+    <div className="dark min-h-screen bg-background text-foreground">
+      <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3">
+          <button onClick={() => navigate("/tv/podcast")} className="p-2 -ml-2 rounded-md hover:bg-muted" aria-label="Back">
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div className="min-w-0 flex-1">
+            <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Podcast production</div>
+            <h1 className="text-xl font-display font-bold truncate">{episode.title}</h1>
           </div>
-        )}
-      </Section>
-
-      {/* Magic Clips */}
-      <Section
-        icon={<Scissors className="w-3.5 h-3.5" />}
-        title="Magic Clips"
-        action={isHost && (
-          <Button size="sm" onClick={generateClips} disabled={clipsBusy}>
-            {clipsBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Wand2 className="w-3.5 h-3.5 mr-1" />}
-            Find viral moments
+          {episode.is_streaming && <span className="rounded-md bg-destructive px-2 py-1 text-xs font-bold text-destructive-foreground">LIVE</span>}
+          <Button onClick={() => navigate(`/tv/podcast/${episode.id}`)}>
+            <MonitorUp className="w-4 h-4 mr-2" /> Studio
           </Button>
-        )}
-      >
-        {clips.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Transcribe a recording, then let AI pick your top 5 share-worthy clips.</p>
-        ) : (
-          <div className="space-y-2">
-            {clips.map((c) => (
-              <div key={c.id} className="rounded-xl border border-border p-3 flex items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="font-medium text-foreground truncate">{c.title}</div>
-                  <div className="text-[11px] text-muted-foreground">
-                    {formatTime(c.start_seconds)} → {formatTime(c.end_seconds)} • {c.format}
+        </div>
+      </header>
+
+      <main className="mx-auto grid max-w-7xl gap-4 px-4 py-4 lg:grid-cols-[1.45fr_0.9fr]">
+        <section className="space-y-4 min-w-0">
+          <div className="grid gap-3 sm:grid-cols-4">
+            <Metric icon={<Mic />} label="Recordings" value={String(recordings.length)} />
+            <Metric icon={<Scissors />} label="Clips" value={String(clips.length)} />
+            <Metric icon={<Gauge />} label="Runtime" value={formatTime(totalDuration)} />
+            <Metric icon={<BadgeCheck />} label="Quality" value={videoSettings.quality} />
+          </div>
+
+          <Panel icon={<Clapperboard className="w-4 h-4" />} title="Video Studio" action={<Button size="sm" variant="secondary" onClick={copyExportPlan}><Copy className="w-4 h-4 mr-1" /> Copy preset</Button>}>
+            <div className="grid gap-3 md:grid-cols-5">
+              <Control label="Export quality">
+                <Segment value={videoSettings.quality} options={["720p", "1080p", "4K"]} onChange={(quality) => setVideoSettings((s) => ({ ...s, quality }))} />
+              </Control>
+              <Control label="Canvas">
+                <Segment value={videoSettings.layout} options={["Auto grid", "Speaker", "Split"]} onChange={(layout) => setVideoSettings((s) => ({ ...s, layout }))} />
+              </Control>
+              <Control label="Format">
+                <Segment value={manualClip.format} options={["9x16", "16x9", "1x1"]} onChange={(format) => setManualClip((s) => ({ ...s, format }))} />
+              </Control>
+              <Control label="Captions">
+                <div className="flex h-10 items-center justify-between rounded-md border border-border px-3"><span className="text-sm">Burn in</span><Switch checked={videoSettings.captions} onCheckedChange={(captions) => setVideoSettings((s) => ({ ...s, captions }))} /></div>
+              </Control>
+              <Control label="Audio clean-up">
+                <div className="flex h-10 items-center justify-between rounded-md border border-border px-3"><span className="text-sm">Magic</span><Switch checked={videoSettings.noise} onCheckedChange={(noise) => setVideoSettings((s) => ({ ...s, noise }))} /></div>
+              </Control>
+            </div>
+          </Panel>
+
+          <Panel icon={<Mic className="w-4 h-4" />} title="Recordings">
+            {recordings.length === 0 ? (
+              <Empty title="No recordings yet" body="Enter the studio and press Record." />
+            ) : (
+              <div className="space-y-3">
+                {recordings.map((r) => {
+                  const tr = transcripts.find((t) => t.recording_id === r.id);
+                  return (
+                    <div key={r.id} className="rounded-lg border border-border bg-muted/25 p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="font-semibold">Recording {recordings.indexOf(r) + 1}</div>
+                          <div className="text-xs text-muted-foreground">{r.chunk_count} chunks · {r.status} · {new Date(r.created_at).toLocaleString()}</div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Button size="sm" variant="secondary" onClick={() => navigate(`/tv/podcast/${episodeId}/recording/${r.id}/editor`)}>
+                            <Settings2 className="w-4 h-4 mr-1" /> Edit
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => transcribe(r.id)} disabled={busyRec === r.id || tr?.status === "processing"}>
+                            {tr?.status === "processing" ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <FileText className="w-4 h-4 mr-1" />} Transcribe
+                          </Button>
+                          {r.processed_audio_key && <Button size="sm" variant="outline" onClick={() => downloadKey(r.processed_audio_key!)}><Waves className="w-4 h-4 mr-1" /> Audio</Button>}
+                        </div>
+                      </div>
+                      {tr?.status === "ready" && <div className="mt-3 line-clamp-3 rounded-md bg-background/60 p-2 text-xs text-muted-foreground">{tr.text}</div>}
+                      {tr?.status === "failed" && <div className="mt-3 rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">Transcription failed. The model is now updated — click Transcribe again.</div>}
+                      <div className="mt-3 flex flex-wrap gap-1">
+                        {Array.from({ length: r.chunk_count }).map((_, i) => (
+                          <button key={i} onClick={() => downloadKey(`${r.r2_prefix}${i.toString().padStart(6, "0")}.webm`)} className="inline-flex items-center gap-1 rounded bg-muted px-2 py-1 text-xs hover:bg-secondary">
+                            <Download className="w-3 h-3" /> {i + 1}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Panel>
+        </section>
+
+        <aside className="space-y-4 min-w-0">
+          <Panel icon={<Scissors className="w-4 h-4" />} title="Clips" action={isHost && <Button size="sm" onClick={generateClips} disabled={clipsBusy}>{clipsBusy ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Wand2 className="w-4 h-4 mr-1" />} Magic</Button>}>
+            <div className="grid grid-cols-[1fr_72px_72px] gap-2">
+              <Input placeholder="Clip title" value={manualClip.title} onChange={(e) => setManualClip((s) => ({ ...s, title: e.target.value }))} />
+              <Input value={manualClip.start} onChange={(e) => setManualClip((s) => ({ ...s, start: e.target.value }))} />
+              <Input value={manualClip.end} onChange={(e) => setManualClip((s) => ({ ...s, end: e.target.value }))} />
+            </div>
+            <Button className="mt-2 w-full" variant="secondary" onClick={addManualClip}><Plus className="w-4 h-4 mr-1" /> Add manual clip</Button>
+            <div className="mt-3 space-y-2">
+              {clips.length === 0 ? <Empty title="No clips yet" body="Add clips manually or use Magic to draft moments." /> : clips.map((c) => (
+                <div key={c.id} className="flex items-center gap-2 rounded-lg border border-border p-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-medium">{c.title || "Clip"}</div>
+                    <div className="text-xs text-muted-foreground">{formatTime(c.start_seconds)} → {formatTime(c.end_seconds)} · {c.format}</div>
                   </div>
+                  <button className="rounded p-2 text-muted-foreground hover:bg-muted" onClick={async () => { await supabase.from("podcast_clips").delete().eq("id", c.id); load(); }}><Trash2 className="w-4 h-4" /></button>
                 </div>
-                <button
-                  className="p-2 rounded hover:bg-muted text-muted-foreground"
-                  onClick={async () => { await supabase.from("podcast_clips").delete().eq("id", c.id); load(); }}
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </Section>
-
-      {/* AI Insights */}
-      <Section
-        icon={<Sparkles className="w-3.5 h-3.5" />}
-        title="AI Insights"
-        action={isHost && (
-          <Button size="sm" onClick={generateAi} disabled={aiBusy}>
-            {aiBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Sparkles className="w-3.5 h-3.5 mr-1" />}
-            Generate
-          </Button>
-        )}
-      >
-        {episode.ai_summary ? (
-          <div className="space-y-3">
-            <Sub label="Summary"><p className="text-sm whitespace-pre-wrap">{episode.ai_summary}</p></Sub>
-            {episode.ai_titles?.length ? <Sub label="Title ideas"><ul className="text-sm list-disc pl-5 space-y-0.5">{episode.ai_titles.map((t, i) => <li key={i}>{t}</li>)}</ul></Sub> : null}
-            {episode.ai_chapters?.length ? <Sub label="Chapters"><ul className="text-sm space-y-0.5">{episode.ai_chapters.map((c, i) => <li key={i} className="flex gap-2"><span className="font-mono text-muted-foreground text-xs">{formatTime(c.start_seconds)}</span><span>{c.title}</span></li>)}</ul></Sub> : null}
-            {episode.ai_soundbites?.length ? <Sub label="Soundbites"><ul className="text-sm list-disc pl-5 space-y-0.5">{episode.ai_soundbites.map((s, i) => <li key={i} className="italic">"{s}"</li>)}</ul></Sub> : null}
-            {episode.ai_show_notes ? <Sub label="Show notes"><pre className="text-xs whitespace-pre-wrap bg-muted/30 rounded p-2 max-h-72 overflow-y-auto">{episode.ai_show_notes}</pre></Sub> : null}
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">Transcribe at least one recording, then click Generate for a summary, chapters, soundbites, and show notes.</p>
-        )}
-      </Section>
-
-      {/* Live Streaming Destinations */}
-      {isHost && (
-        <Section icon={<RadioIcon className="w-3.5 h-3.5" />} title="Live Streaming">
-          <p className="text-xs text-muted-foreground mb-3">
-            Add YouTube, Twitch, or any RTMP destination. When you go Live from the studio, the room composite streams to every enabled destination.
-          </p>
-          <div className="space-y-2 mb-3">
-            {destinations.map((d) => (
-              <div key={d.id} className="rounded-xl border border-border p-3 flex items-center gap-2">
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-foreground text-sm capitalize">{d.platform}</div>
-                  <div className="text-[11px] text-muted-foreground truncate">{d.rtmp_url}</div>
-                </div>
-                <Switch checked={d.enabled} onCheckedChange={() => toggleDestination(d)} />
-                <button className="p-2 rounded hover:bg-muted text-muted-foreground" onClick={() => deleteDestination(d.id)}>
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ))}
-          </div>
-          <div className="rounded-xl border border-dashed border-border p-3 space-y-2">
-            <div className="flex gap-2">
-              <select
-                value={newDest.platform}
-                onChange={(e) => setNewDest((d) => ({ ...d, platform: e.target.value }))}
-                className="rounded-md border border-border bg-background text-sm px-2"
-              >
-                <option value="youtube">YouTube</option>
-                <option value="twitch">Twitch</option>
-                <option value="custom">Custom RTMP</option>
-              </select>
-              <Input placeholder="RTMP URL (e.g. rtmp://a.rtmp.youtube.com/live2)" value={newDest.rtmp_url} onChange={(e) => setNewDest((d) => ({ ...d, rtmp_url: e.target.value }))} />
+              ))}
             </div>
-            <div className="flex gap-2">
-              <Input placeholder="Stream key" value={newDest.stream_key} onChange={(e) => setNewDest((d) => ({ ...d, stream_key: e.target.value }))} />
-              <Button onClick={addDestination}><Plus className="w-4 h-4 mr-1" /> Add</Button>
-            </div>
-          </div>
-        </Section>
-      )}
+          </Panel>
+
+          <Panel icon={<Sparkles className="w-4 h-4" />} title="AI Notes" action={isHost && <Button size="sm" onClick={generateAi} disabled={aiBusy}>{aiBusy ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Sparkles className="w-4 h-4 mr-1" />} Generate</Button>}>
+            {episode.ai_summary ? (
+              <div className="space-y-3 text-sm">
+                <Sub label="Summary"><p className="whitespace-pre-wrap text-muted-foreground">{episode.ai_summary}</p></Sub>
+                {episode.ai_titles?.length ? <Sub label="Titles"><ul className="list-disc pl-5 text-muted-foreground">{episode.ai_titles.map((t, i) => <li key={i}>{t}</li>)}</ul></Sub> : null}
+                {episode.ai_chapters?.length ? <Sub label="Chapters"><ul className="space-y-1 text-muted-foreground">{episode.ai_chapters.map((c, i) => <li key={i}><span className="font-mono text-xs">{formatTime(c.start_seconds)}</span> {c.title}</li>)}</ul></Sub> : null}
+              </div>
+            ) : <Empty title="Transcript-powered notes" body="AI notes need transcript text. Editing tools do not." />}
+          </Panel>
+
+          {isHost && (
+            <Panel icon={<RadioIcon className="w-4 h-4" />} title="RTMP Live">
+              <div className="space-y-2">
+                {destinations.map((d) => (
+                  <div key={d.id} className="flex items-center gap-2 rounded-lg border border-border p-2">
+                    <div className="min-w-0 flex-1"><div className="text-sm font-medium capitalize">{d.platform}</div><div className="truncate text-xs text-muted-foreground">{d.rtmp_url}</div></div>
+                    <Switch checked={d.enabled} onCheckedChange={async () => { await supabase.from("podcast_stream_destinations").update({ enabled: !d.enabled }).eq("id", d.id); load(); }} />
+                    <button className="rounded p-2 text-muted-foreground hover:bg-muted" onClick={async () => { await supabase.from("podcast_stream_destinations").delete().eq("id", d.id); load(); }}><Trash2 className="w-4 h-4" /></button>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 space-y-2 rounded-lg border border-border p-3">
+                <select value={newDest.platform} onChange={(e) => setNewDest((d) => ({ ...d, platform: e.target.value }))} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm">
+                  <option value="youtube">YouTube</option><option value="twitch">Twitch</option><option value="custom">Custom RTMP</option>
+                </select>
+                <Input placeholder="RTMP URL" value={newDest.rtmp_url} onChange={(e) => setNewDest((d) => ({ ...d, rtmp_url: e.target.value }))} />
+                <Input placeholder="Stream key" value={newDest.stream_key} onChange={(e) => setNewDest((d) => ({ ...d, stream_key: e.target.value }))} />
+                <Button className="w-full" onClick={addDestination}><Plus className="w-4 h-4 mr-1" /> Add destination</Button>
+              </div>
+            </Panel>
+          )}
+        </aside>
+      </main>
     </div>
   );
 };
 
-const Section = ({ icon, title, action, children }: { icon: React.ReactNode; title: string; action?: React.ReactNode; children: React.ReactNode }) => (
-  <div className="rounded-2xl border border-border bg-card p-4 mb-4">
-    <div className="flex items-center justify-between mb-2">
-      <div className="text-xs font-semibold text-muted-foreground uppercase flex items-center gap-1">{icon} {title}</div>
+const Panel = ({ icon, title, action, children }: { icon: ReactNode; title: string; action?: ReactNode; children: ReactNode }) => (
+  <section className="rounded-lg border border-border bg-card p-4 shadow-sm">
+    <div className="mb-3 flex items-center justify-between gap-3">
+      <div className="flex items-center gap-2 text-sm font-semibold"><span className="text-primary">{icon}</span>{title}</div>
       {action}
     </div>
-    {children}
-  </div>
-);
-
-const Sub = ({ label, children }: { label: string; children: React.ReactNode }) => (
-  <section>
-    <div className="text-xs font-semibold mb-1">{label}</div>
     {children}
   </section>
 );
 
-const formatTime = (s: number) => {
-  const m = Math.floor(s / 60);
-  const sec = Math.floor(s % 60).toString().padStart(2, "0");
-  return `${m}:${sec}`;
+const Metric = ({ icon, label, value }: { icon: ReactNode; label: string; value: string }) => (
+  <div className="rounded-lg border border-border bg-card p-3">
+    <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-md bg-muted text-primary">{icon}</div>
+    <div className="text-xs text-muted-foreground">{label}</div>
+    <div className="text-lg font-bold">{value}</div>
+  </div>
+);
+
+const Control = ({ label, children }: { label: string; children: ReactNode }) => <label className="block text-xs font-semibold text-muted-foreground"><span className="mb-1 block">{label}</span>{children}</label>;
+
+const Segment = ({ value, options, onChange }: { value: string; options: string[]; onChange: (v: string) => void }) => (
+  <div className="grid h-10 grid-cols-3 rounded-md border border-border bg-background p-1">
+    {options.map((option) => <button key={option} onClick={() => onChange(option)} className={`rounded text-xs font-semibold ${value === option ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}>{option}</button>)}
+  </div>
+);
+
+const Empty = ({ title, body }: { title: string; body: string }) => <div className="rounded-lg border border-dashed border-border p-4 text-sm"><div className="font-medium">{title}</div><div className="mt-1 text-muted-foreground">{body}</div></div>;
+
+const Sub = ({ label, children }: { label: string; children: ReactNode }) => <section><div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>{children}</section>;
+
+const formatTime = (seconds: number) => {
+  const safe = Math.max(0, Math.floor(seconds || 0));
+  const m = Math.floor(safe / 60);
+  const s = String(safe % 60).padStart(2, "0");
+  return `${m}:${s}`;
 };
 
 export default PodcastEpisodeEditPage;
