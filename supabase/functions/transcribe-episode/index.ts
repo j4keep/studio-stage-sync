@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
 
     const { data: rec, error: recErr } = await supabase
       .from("podcast_recordings")
-      .select("id, episode_id, r2_prefix, mime_type, chunk_count")
+      .select("id, episode_id, r2_prefix, mime_type, chunk_count, duration_seconds")
       .eq("id", recordingId)
       .maybeSingle();
     if (recErr || !rec) return json({ error: "Recording not found" }, 404);
@@ -69,18 +69,31 @@ Deno.serve(async (req) => {
 
         const fd = new FormData();
         const ext = rec.mime_type?.includes("mp4") ? "mp4" : "webm";
-        // whisper-1 returns verbose_json + per-word timestamps for the text-based editor.
-        fd.append("model", "openai/whisper-1");
+        // Lovable AI Gateway supports OpenAI-compatible transcription models.
+        fd.append("model", "openai/gpt-4o-mini-transcribe");
         fd.append("response_format", "verbose_json");
         fd.append("timestamp_granularities[]", "word");
         fd.append("timestamp_granularities[]", "segment");
         fd.append("file", new Blob([merged.buffer as ArrayBuffer], { type: rec.mime_type || "video/webm" }), `recording.${ext}`);
 
-        const resp = await fetch("https://ai.gateway.lovable.dev/v1/audio/transcriptions", {
+        let resp = await fetch("https://ai.gateway.lovable.dev/v1/audio/transcriptions", {
           method: "POST",
-          headers: { Authorization: `Bearer ${lovableKey}` },
+          headers: { "Lovable-API-Key": lovableKey, "X-Lovable-AIG-SDK": "edge-function" },
           body: fd,
         });
+        if (!resp.ok) {
+          const firstError = await resp.text().catch(() => "");
+          console.warn("verbose transcription failed, retrying json", firstError);
+          const retry = new FormData();
+          retry.append("model", "openai/gpt-4o-mini-transcribe");
+          retry.append("response_format", "json");
+          retry.append("file", new Blob([merged.buffer as ArrayBuffer], { type: rec.mime_type || "video/webm" }), `recording.${ext}`);
+          resp = await fetch("https://ai.gateway.lovable.dev/v1/audio/transcriptions", {
+            method: "POST",
+            headers: { "Lovable-API-Key": lovableKey, "X-Lovable-AIG-SDK": "edge-function" },
+            body: retry,
+          });
+        }
         if (!resp.ok) throw new Error(`STT failed: ${resp.status} ${await resp.text().catch(() => "")}`);
         const data = await resp.json();
 
@@ -97,6 +110,12 @@ Deno.serve(async (req) => {
               words.push({ word: t, start: s.start + i * dur, end: s.start + (i + 1) * dur });
             });
           }
+        }
+        if (!words.length && data.text) {
+          const tokens = String(data.text).trim().split(/\s+/).filter(Boolean);
+          const duration = Math.max(1, Number(data.duration || rec.duration_seconds || tokens.length * 0.45));
+          const step = duration / Math.max(1, tokens.length);
+          words = tokens.map((word: string, i: number) => ({ word, start: i * step, end: (i + 1) * step }));
         }
 
         await supabase.from("podcast_transcripts").update({
