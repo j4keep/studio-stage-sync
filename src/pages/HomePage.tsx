@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Play, Pause, TrendingUp, Music, Video, DollarSign, Headphones, Radio, Building2, ShoppingBag, Swords } from "lucide-react";
+import { Play, Pause, TrendingUp, Music, Mic2, DollarSign, Headphones, Radio, Building2, ShoppingBag, Swords } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -90,7 +90,7 @@ const CATEGORY_CARDS = [
   { label: "Store", img: cardStore, path: "/store", wide: false, icon: ShoppingBag },
   { label: "Studios", img: cardStudios, path: "/studios", wide: false, icon: Building2 },
   { label: "Songs", img: cardSongs, path: "/browse-songs", wide: false, icon: Music },
-  { label: "Videos", img: cardVideos, path: "/browse-videos", wide: false, icon: Video },
+  { label: "Recording Studio", img: cardVideos, path: "/wstudio/daw", wide: false, icon: Mic2 },
   { label: "Projects", img: cardProjects, path: "/my-projects", wide: true, icon: DollarSign },
 ];
 
