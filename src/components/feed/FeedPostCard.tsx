@@ -12,6 +12,7 @@ import {
   VolumeX,
   Play,
   Pause,
+  Users,
 } from "lucide-react";
 import { incrementPostViews } from "@/hooks/use-likes";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -424,6 +425,15 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
 
           <button onClick={handleShare} className="flex flex-col items-center gap-0.5 z-50">
             <Forward className="w-7 h-7 text-white drop-shadow-lg" />
+          </button>
+
+          <button
+            onClick={(e) => { e.stopPropagation(); navigate("/circle"); }}
+            className="flex flex-col items-center gap-0.5 z-50"
+            aria-label="Open Catch Up Circle"
+          >
+            <Users className="w-7 h-7 text-white drop-shadow-lg" />
+            <span className="text-[10px] font-semibold text-white drop-shadow">Circle</span>
           </button>
 
           {post.media_type === "video" && (

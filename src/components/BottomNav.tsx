@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Home, ImagePlus, User, Tv } from "lucide-react";
+import { Home, ImagePlus, User, Tv, Users } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import ProGateModal from "@/components/ProGateModal";
 import { useProGate } from "@/hooks/use-pro-gate";
@@ -27,6 +27,7 @@ const BottomNav = () => {
   const tabs = [
     { path: "/", label: "Home", icon: Home, pro: false },
     { path: "/feed", label: "Feed", icon: ImagePlus, pro: false },
+    { path: "/circle", label: "Circle", icon: Users, pro: false, matchPrefix: "/circle" },
     { path: "/tv", label: "TV", icon: Tv, pro: false, matchPrefix: "/tv" },
     { path: "/profile", label: "Profile", icon: User, pro: false },
   ];
@@ -42,7 +43,7 @@ const BottomNav = () => {
   return (
     <>
       <nav className={`fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/90 backdrop-blur-xl safe-area-bottom transition-transform duration-300 ${hidden ? "translate-y-full" : "translate-y-0"}`}>
-        <div className="flex items-center justify-around py-2 px-1 max-w-lg mx-auto">
+        <div className="flex items-center justify-around py-2 px-1 max-w-lg mx-auto gap-0">
           {tabs.map((tab) => {
             const isActive =
               "matchPrefix" in tab && tab.matchPrefix
@@ -53,7 +54,7 @@ const BottomNav = () => {
               <button
                 key={tab.path}
                 onClick={() => handleTabClick(tab)}
-                className={`relative flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg transition-all duration-200 ${
+                className={`relative flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg transition-all duration-200 ${
                   isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
