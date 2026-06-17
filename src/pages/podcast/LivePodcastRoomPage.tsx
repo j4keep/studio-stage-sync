@@ -359,7 +359,7 @@ const GoLiveButton = ({ episodeId }: { episodeId: string }) => {
       if (error) throw error;
       if ((data as { error?: string })?.error) throw new Error((data as { error: string }).error);
       const id = (data as { egressId?: string }).egressId;
-      setEgressId(id);
+      setEgressId(id ?? null);
       if (id) localStorage.setItem(`egress_${episodeId}`, id);
       setLive(true);
       toast({
