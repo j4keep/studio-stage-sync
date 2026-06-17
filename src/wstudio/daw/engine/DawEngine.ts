@@ -832,65 +832,166 @@ export interface SynthVoice {
   trackId: string;
 }
 
+function makeDistCurve(amount: number): Float32Array {
+  const n = 1024;
+  const curve = new Float32Array(n);
+  const k = amount * 100;
+  for (let i = 0; i < n; i++) {
+    const x = (i / (n - 1)) * 2 - 1;
+    curve[i] = ((3 + k) * x * 20 * (Math.PI / 180)) / (Math.PI + k * Math.abs(x));
+  }
+  return curve;
+}
+
 /**
- * Start a sustained synth note. The note rings until `stop()` is called.
- * Single-osc with ADSR. Waveform is resolved from the track's `synthWave`
- * preset unless `wave` is explicitly passed.
+ * Start a sustained synth voice using full preset synthesis: main osc + optional
+ * detuned unison + sub osc + filter with envelope + amp ADSR + optional LFO + drive.
+ * Backward compatible: if `presetOrWave` is undefined/string, builds a sensible default.
  */
 export function startSynthNote(
   engine: DawEngine,
   trackId: string,
   midi: number,
   velocity = 0.8,
-  wave?: OscillatorType,
+  presetOrWave?: Preset | OscillatorType,
 ): SynthVoice | null {
   const chain = (engine as any).trackChains.get(trackId);
   if (!chain) return null;
   const ctx = engine.ctx;
   const now = ctx.currentTime;
 
-  const osc = ctx.createOscillator();
-  const env = ctx.createGain();
-  osc.type = wave ?? "sawtooth";
-  osc.frequency.value = midiToFreq(midi);
+  const preset: Preset = (presetOrWave && typeof presetOrWave === "object")
+    ? presetOrWave
+    : { name: "Default", cat: "", sub: "", wave: ((presetOrWave as OscillatorType) || "sawtooth") };
 
-  const peak = Math.max(0, Math.min(1, velocity)) * 0.42;
-  const sustain = peak * 0.7;
+  const wave = preset.wave;
+  const oct = preset.octave ?? 0;
+  const baseFreq = midiToFreq(midi + oct * 12);
+  const vel = Math.max(0, Math.min(1, velocity));
+  const masterGain = (preset.gain ?? 0.42) * vel;
+
+  const oscs: OscillatorNode[] = [];
+  const mix = ctx.createGain();
+  mix.gain.value = 1;
+
+  const detuneCents = preset.detune ?? 0;
+  const unison = Math.max(1, Math.min(3, preset.unison ?? 1));
+  for (let i = 0; i < unison; i++) {
+    const o = ctx.createOscillator();
+    o.type = wave;
+    o.frequency.value = baseFreq;
+    if (unison > 1 && detuneCents) {
+      o.detune.value = detuneCents * ((i / (unison - 1)) * 2 - 1);
+    } else if (detuneCents) {
+      o.detune.value = detuneCents;
+    }
+    const g = ctx.createGain();
+    g.gain.value = 1 / Math.sqrt(unison);
+    o.connect(g).connect(mix);
+    oscs.push(o);
+  }
+
+  let subOsc: OscillatorNode | null = null;
+  if ((preset.subLevel ?? 0) > 0.001) {
+    subOsc = ctx.createOscillator();
+    subOsc.type = "sine";
+    subOsc.frequency.value = baseFreq / 2;
+    const sg = ctx.createGain();
+    sg.gain.value = preset.subLevel!;
+    subOsc.connect(sg).connect(mix);
+  }
+
+  let lfo: OscillatorNode | null = null;
+  if ((preset.lfoDepth ?? 0) > 0.01 && (preset.lfoRate ?? 0) > 0.01) {
+    lfo = ctx.createOscillator();
+    lfo.type = "sine";
+    lfo.frequency.value = preset.lfoRate!;
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.value = preset.lfoDepth!;
+    lfo.connect(lfoGain);
+    oscs.forEach(o => lfoGain.connect(o.detune));
+    if (subOsc) lfoGain.connect(subOsc.detune);
+  }
+
+  const filter = ctx.createBiquadFilter();
+  filter.type = "lowpass";
+  const fHz = preset.filterHz ?? 8000;
+  filter.frequency.value = fHz;
+  filter.Q.value = preset.filterQ ?? 0.7;
+  mix.connect(filter);
+
+  const fEnv = preset.filterEnv ?? 0;
+  const fDec = preset.filterDecay ?? 0.25;
+  if (fEnv > 0.001) {
+    const peakHz = Math.min(18000, fHz + fEnv * 6000);
+    filter.frequency.cancelScheduledValues(now);
+    filter.frequency.setValueAtTime(fHz, now);
+    filter.frequency.linearRampToValueAtTime(peakHz, now + 0.005);
+    filter.frequency.exponentialRampToValueAtTime(Math.max(40, fHz), now + 0.005 + fDec);
+  }
+
+  let postFilter: AudioNode = filter;
+  if ((preset.drive ?? 0) > 0.001) {
+    const shaper = ctx.createWaveShaper();
+    shaper.curve = makeDistCurve(preset.drive!);
+    shaper.oversample = "2x";
+    const post = ctx.createGain();
+    post.gain.value = 1 / (1 + preset.drive! * 0.6);
+    filter.connect(shaper).connect(post);
+    postFilter = post;
+  }
+
+  const a = Math.max(0.001, preset.attack ?? 0.01);
+  const d = Math.max(0.001, preset.decay ?? 0.15);
+  const s = Math.max(0,    Math.min(1, preset.sustain ?? 0.7));
+  const env = ctx.createGain();
   env.gain.cancelScheduledValues(now);
   env.gain.setValueAtTime(0.0001, now);
-  env.gain.linearRampToValueAtTime(peak, now + 0.01);
-  env.gain.linearRampToValueAtTime(sustain, now + 0.11);
+  env.gain.linearRampToValueAtTime(masterGain, now + a);
+  env.gain.linearRampToValueAtTime(masterGain * s, now + a + d);
+  postFilter.connect(env).connect(chain.input);
 
-  osc.connect(env).connect(chain.input);
-  osc.start(now);
+  try {
+    oscs.forEach(o => o.start(now));
+    if (subOsc) subOsc.start(now);
+    if (lfo) lfo.start(now);
+  } catch {}
 
   let stopped = false;
-  const stop = (releaseSec = 0.2) => {
+  const stop = (releaseSecOverride?: number) => {
     if (stopped) return;
     stopped = true;
     const t = ctx.currentTime;
-    const r = Math.max(0.03, releaseSec);
+    const r = Math.max(0.03, releaseSecOverride ?? (preset.release ?? 0.2));
     try {
       env.gain.cancelScheduledValues(t);
       env.gain.setValueAtTime(env.gain.value, t);
       env.gain.exponentialRampToValueAtTime(0.0001, t + r);
-      osc.stop(t + r + 0.02);
+      oscs.forEach(o => { try { o.stop(t + r + 0.05); } catch {} });
+      if (subOsc) { try { subOsc.stop(t + r + 0.05); } catch {} }
+      if (lfo) { try { lfo.stop(t + r + 0.05); } catch {} }
     } catch {}
   };
   return { stop, midi, trackId };
 }
 
 /** One-shot: start a note and release it after `durationSec`. */
-export function triggerSynthNote(engine: DawEngine, trackId: string, midi: number, durationSec = 0.4, velocity = 0.8, wave?: OscillatorType) {
-  const v = startSynthNote(engine, trackId, midi, velocity, wave);
+export function triggerSynthNote(
+  engine: DawEngine,
+  trackId: string,
+  midi: number,
+  durationSec = 0.4,
+  velocity = 0.8,
+  presetOrWave?: Preset | OscillatorType,
+) {
+  const v = startSynthNote(engine, trackId, midi, velocity, presetOrWave);
   if (!v) return;
-  setTimeout(() => v.stop(0.15), Math.max(20, durationSec * 1000));
+  setTimeout(() => v.stop(), Math.max(20, durationSec * 1000));
 }
 
 /**
- * Schedule all MIDI notes inside MIDI clips for playback. Called from play().
- * Each scheduled voice is registered as an active source so stop()/stopAllSources()
- * will tear it down cleanly. Notes with start times before `transportPos` are skipped.
+ * Schedule all MIDI notes inside MIDI clips for playback. Resolves each track's
+ * instrument preset by name for full synthesis on playback.
  */
 export function scheduleMidiClips(engine: DawEngine, tracks: Track[], clips: Clip[], transportPos: number, ctxStartTime: number, bpm: number) {
   const secPerBeat = 60 / Math.max(1, bpm);
@@ -900,8 +1001,10 @@ export function scheduleMidiClips(engine: DawEngine, tracks: Track[], clips: Cli
     if (!track || track.kind !== "instrument") continue;
     const chain = (engine as any).trackChains.get(track.id);
     if (!chain) continue;
-    const wave = (track.synthWave as OscillatorType) || "sawtooth";
     const isDrum = track.instrument === "drum";
+    const preset = getPresetByName(track.instrumentPreset)
+      || { name: "fallback", cat: "", sub: "", wave: (track.synthWave as OscillatorType) || "sawtooth" } as Preset;
+    const kitName = (track as any).drumKit as string | undefined;
 
     for (const n of clip.notes) {
       const noteStartTl = clip.startTime + n.start * secPerBeat;
@@ -911,142 +1014,121 @@ export function scheduleMidiClips(engine: DawEngine, tracks: Track[], clips: Cli
       const effectiveStartDelay = Math.max(0, noteStartTl - transportPos);
       const effectiveDur = noteEndTl - Math.max(transportPos, noteStartTl);
       const when = ctxStartTime + effectiveStartDelay;
-      const ctx = engine.ctx;
 
       if (isDrum) {
-        // GM-ish drum map → simple synthesized hit scheduled at `when`.
         const kind = drumKindForPitch(n.pitch);
-        scheduleDrumHit(engine, chain, kind, when, n.velocity ?? 0.85);
+        scheduleDrumHit(engine, chain, kind, when, n.velocity ?? 0.85, kitName);
         continue;
       }
 
-      const osc = ctx.createOscillator();
-      const env = ctx.createGain();
-      osc.type = wave;
-      osc.frequency.value = midiToFreq(n.pitch);
-      const peak = Math.max(0, Math.min(1, n.velocity ?? 0.8)) * 0.42;
-      const sustain = peak * 0.7;
-      env.gain.setValueAtTime(0.0001, when);
-      env.gain.linearRampToValueAtTime(peak, when + 0.01);
-      env.gain.linearRampToValueAtTime(sustain, when + Math.min(0.11, effectiveDur * 0.3));
-      const releaseStart = when + effectiveDur;
-      env.gain.setValueAtTime(env.gain.value, releaseStart);
-      env.gain.exponentialRampToValueAtTime(0.0001, releaseStart + 0.18);
-
-      osc.connect(env).connect(chain.input);
-      try {
-        osc.start(when);
-        osc.stop(releaseStart + 0.22);
-        chain.activeSources.push(osc);
-        osc.onended = () => {
-          chain.activeSources = chain.activeSources.filter((s: AudioScheduledSourceNode) => s !== osc);
-        };
-      } catch {}
+      const delayMs = Math.max(0, (when - engine.ctx.currentTime) * 1000);
+      setTimeout(() => {
+        const v = startSynthNote(engine, track.id, n.pitch, n.velocity ?? 0.85, preset);
+        if (v) setTimeout(() => v.stop(), effectiveDur * 1000);
+      }, delayMs);
     }
   }
 }
 
-/** GM-style drum pitch → kind. Used by the beat-grid pattern playback. */
-export function drumKindForPitch(pitch: number): "kick" | "snare" | "hat" | "clap" | "tom" | "perc" | "ride" | "crash" {
+/** GM-style drum pitch → kind. */
+export function drumKindForPitch(pitch: number): DrumPiece {
   switch (pitch) {
     case 36: return "kick";
+    case 37: return "rim";
     case 38: return "snare";
     case 39: return "clap";
     case 41: case 45: case 48: return "tom";
     case 42: return "hat";
-    case 46: return "hat";
+    case 44: return "perc";
+    case 46: return "openhat";
     case 49: return "crash";
     case 51: return "ride";
+    case 56: return "cowbell";
     default: return "perc";
   }
 }
 
-/** Schedule a drum hit at AudioContext time `when`. Mirrors triggerDrumHit but time-positioned. */
-function scheduleDrumHit(engine: DawEngine, chain: any, kind: "kick" | "snare" | "hat" | "clap" | "tom" | "perc" | "ride" | "crash", when: number, velocity = 0.85) {
+function scheduleDrumHit(engine: DawEngine, chain: any, kind: DrumPiece, when: number, velocity = 0.85, kitName?: string) {
   const ctx = engine.ctx;
   const v = Math.max(0.05, Math.min(1, velocity));
-  if (kind === "kick" || kind === "tom") {
+  const kit = getKitByName(kitName);
+  const spec: KitVoiceSpec = kit.voices[kind] || {};
+
+  const hasPitchSweep = spec.startHz != null && spec.endHz != null;
+  if (hasPitchSweep) {
     const osc = ctx.createOscillator();
     const env = ctx.createGain();
-    const startF = kind === "kick" ? 150 : 220;
-    const endF = kind === "kick" ? 40 : 80;
-    const dur = kind === "kick" ? 0.25 : 0.35;
-    osc.frequency.setValueAtTime(startF, when);
-    osc.frequency.exponentialRampToValueAtTime(endF, when + dur * 0.6);
+    const dur = spec.dur ?? 0.3;
+    osc.frequency.setValueAtTime(spec.startHz!, when);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(20, spec.endHz!), when + dur * 0.7);
     env.gain.setValueAtTime(v, when);
     env.gain.exponentialRampToValueAtTime(0.001, when + dur);
-    osc.connect(env).connect(chain.input);
+    osc.connect(env);
+    let out: AudioNode = env;
+    if ((spec.drive ?? 0) > 0.001) {
+      const shaper = ctx.createWaveShaper();
+      shaper.curve = makeDistCurve(spec.drive!);
+      shaper.oversample = "2x";
+      env.connect(shaper);
+      out = shaper;
+    }
+    out.connect(chain.input);
     try { osc.start(when); osc.stop(when + dur + 0.05); chain.activeSources.push(osc); } catch {}
-  } else {
-    const decay = kind === "snare" ? 0.18 : kind === "clap" ? 0.14 : kind === "ride" ? 0.4 : kind === "crash" ? 0.9 : kind === "perc" ? 0.08 : 0.05;
-    const gain = (kind === "snare" ? 0.6 : kind === "clap" ? 0.55 : kind === "ride" ? 0.25 : kind === "crash" ? 0.45 : kind === "perc" ? 0.4 : 0.3) * v;
+    return;
+  }
+
+  // Pure-tone (cowbell)
+  if (spec.tone && spec.toneHz && (!spec.noiseDecay || (spec.noiseGain ?? 0) === 0)) {
+    const osc = ctx.createOscillator();
+    const env = ctx.createGain();
+    const dur = spec.dur ?? 0.18;
+    osc.type = "square";
+    osc.frequency.value = spec.toneHz;
+    env.gain.setValueAtTime(v * spec.tone, when);
+    env.gain.exponentialRampToValueAtTime(0.001, when + dur);
+    osc.connect(env).connect(chain.input);
+    try { osc.start(when); osc.stop(when + dur + 0.02); chain.activeSources.push(osc); } catch {}
+    return;
+  }
+
+  // Noise-based voice with optional tonal body
+  if (spec.noiseDecay && spec.noiseDecay > 0) {
+    const decay = spec.noiseDecay;
+    const gain = (spec.noiseGain ?? 0.4) * v;
     const bufLen = Math.ceil(ctx.sampleRate * (decay + 0.1));
     const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
     const data = buf.getChannelData(0);
     for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
     const noise = ctx.createBufferSource(); noise.buffer = buf;
     const filter = ctx.createBiquadFilter();
-    if (kind === "snare") { filter.type = "bandpass"; filter.frequency.value = 1500; }
-    else if (kind === "clap") { filter.type = "bandpass"; filter.frequency.value = 1200; }
-    else if (kind === "perc") { filter.type = "bandpass"; filter.frequency.value = 3000; }
-    else if (kind === "ride") { filter.type = "highpass"; filter.frequency.value = 6000; }
-    else if (kind === "crash") { filter.type = "highpass"; filter.frequency.value = 5000; }
-    else { filter.type = "highpass"; filter.frequency.value = 7000; }
+    filter.type = spec.filterType ?? "highpass";
+    filter.frequency.value = spec.filterHz ?? 6000;
+    filter.Q.value = spec.filterQ ?? 0.7;
     const env = ctx.createGain();
     env.gain.setValueAtTime(gain, when);
     env.gain.exponentialRampToValueAtTime(0.001, when + decay);
     noise.connect(filter).connect(env).connect(chain.input);
     try { noise.start(when); noise.stop(when + decay + 0.1); chain.activeSources.push(noise); } catch {}
+
+    if (spec.tone && spec.toneHz) {
+      const osc = ctx.createOscillator();
+      const tEnv = ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.value = spec.toneHz;
+      tEnv.gain.setValueAtTime(v * spec.tone, when);
+      tEnv.gain.exponentialRampToValueAtTime(0.001, when + Math.min(0.15, decay));
+      osc.connect(tEnv).connect(chain.input);
+      try { osc.start(when); osc.stop(when + decay + 0.02); chain.activeSources.push(osc); } catch {}
+    }
   }
 }
 
-
-/** Trigger a drum hit (simple noise/click sound). */
-export function triggerDrumHit(engine: DawEngine, trackId: string, kind: "kick" | "snare" | "hat" | "clap" | "tom" | "perc" | "ride" | "crash") {
+/** Trigger a drum hit immediately (used by pads / step seq UI). */
+export function triggerDrumHit(engine: DawEngine, trackId: string, kind: DrumPiece, kitName?: string, velocity = 0.95) {
   const chain = (engine as any).trackChains.get(trackId);
   if (!chain) return;
-  const ctx = engine.ctx;
-  const now = ctx.currentTime;
-  if (kind === "kick") {
-    const osc = ctx.createOscillator();
-    const env = ctx.createGain();
-    osc.frequency.setValueAtTime(150, now);
-    osc.frequency.exponentialRampToValueAtTime(40, now + 0.15);
-    env.gain.setValueAtTime(1, now);
-    env.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
-    osc.connect(env).connect(chain.input);
-    osc.start(now); osc.stop(now + 0.3);
-  } else if (kind === "tom") {
-    const osc = ctx.createOscillator();
-    const env = ctx.createGain();
-    osc.frequency.setValueAtTime(220, now);
-    osc.frequency.exponentialRampToValueAtTime(80, now + 0.25);
-    env.gain.setValueAtTime(0.8, now);
-    env.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
-    osc.connect(env).connect(chain.input);
-    osc.start(now); osc.stop(now + 0.4);
-  } else {
-    const bufferSize = ctx.sampleRate * 0.3;
-    const noiseBuf = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = noiseBuf.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
-    const noise = ctx.createBufferSource();
-    noise.buffer = noiseBuf;
-    const filter = ctx.createBiquadFilter();
-    let freq = 7000, decay = 0.05, gain = 0.3;
-    if (kind === "snare") { filter.type = "bandpass"; freq = 1500; decay = 0.18; gain = 0.6; }
-    else if (kind === "clap") { filter.type = "bandpass"; freq = 1200; decay = 0.14; gain = 0.55; }
-    else if (kind === "perc") { filter.type = "bandpass"; freq = 3000; decay = 0.08; gain = 0.4; }
-    else if (kind === "ride") { filter.type = "highpass"; freq = 6000; decay = 0.4; gain = 0.25; }
-    else if (kind === "crash") { filter.type = "highpass"; freq = 5000; decay = 0.9; gain = 0.45; }
-    else { filter.type = "highpass"; freq = 7000; decay = 0.05; gain = 0.3; }
-    filter.frequency.value = freq;
-    const env = ctx.createGain();
-    env.gain.setValueAtTime(gain, now);
-    env.gain.exponentialRampToValueAtTime(0.001, now + decay);
-    noise.connect(filter).connect(env).connect(chain.input);
-    noise.start(now); noise.stop(now + decay + 0.05);
-  }
+  scheduleDrumHit(engine, chain, kind, engine.ctx.currentTime, velocity, kitName);
 }
 
 export type { MidiNote };
+
