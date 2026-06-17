@@ -881,12 +881,23 @@ export function startSynthNote(
   const mix = ctx.createGain();
   mix.gain.value = 1;
 
+  const pitchDrop = Math.max(0, preset.pitchDrop ?? 0);
+  const pitchDropTime = Math.max(0.01, preset.pitchDropTime ?? 0.05);
+  const setVoicePitch = (osc: OscillatorNode, freq: number) => {
+    if (pitchDrop > 0.01) {
+      osc.frequency.setValueAtTime(freq * Math.pow(2, pitchDrop / 12), now);
+      osc.frequency.exponentialRampToValueAtTime(Math.max(1, freq), now + pitchDropTime);
+    } else {
+      osc.frequency.value = freq;
+    }
+  };
+
   const detuneCents = preset.detune ?? 0;
-  const unison = Math.max(1, Math.min(3, preset.unison ?? 1));
+  const unison = Math.max(1, Math.min(7, preset.unison ?? 1));
   for (let i = 0; i < unison; i++) {
     const o = ctx.createOscillator();
     o.type = wave;
-    o.frequency.value = baseFreq;
+    setVoicePitch(o, baseFreq);
     if (unison > 1 && detuneCents) {
       o.detune.value = detuneCents * ((i / (unison - 1)) * 2 - 1);
     } else if (detuneCents) {
@@ -898,11 +909,22 @@ export function startSynthNote(
     oscs.push(o);
   }
 
+  if ((preset.layerLevel ?? 0) > 0.001 && preset.layerWave) {
+    const layer = ctx.createOscillator();
+    layer.type = preset.layerWave;
+    setVoicePitch(layer, baseFreq * Math.pow(2, (preset.layerOctave ?? 0) / 12));
+    layer.detune.value = preset.layerDetune ?? 0;
+    const lg = ctx.createGain();
+    lg.gain.value = Math.max(0, Math.min(1, preset.layerLevel ?? 0));
+    layer.connect(lg).connect(mix);
+    oscs.push(layer);
+  }
+
   let subOsc: OscillatorNode | null = null;
   if ((preset.subLevel ?? 0) > 0.001) {
     subOsc = ctx.createOscillator();
     subOsc.type = "sine";
-    subOsc.frequency.value = baseFreq / 2;
+    setVoicePitch(subOsc, baseFreq / 2);
     const sg = ctx.createGain();
     sg.gain.value = preset.subLevel!;
     subOsc.connect(sg).connect(mix);
