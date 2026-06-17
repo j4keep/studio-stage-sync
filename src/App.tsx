@@ -21,7 +21,7 @@ import StudiosPage from "./pages/StudiosPage";
 import MyStudiosPage from "./pages/MyStudiosPage";
 import MyBookingsPage from "./pages/MyBookingsPage";
 import WStudioDawPage from "./pages/WStudioDawPage";
-import WStudioLayout from "./wstudio/WStudioLayout";
+import { WStudioLayout } from "./wstudio/WStudioLayout";
 
 import ProfilePage from "./pages/ProfilePage";
 import TermsPage from "./pages/TermsPage";
