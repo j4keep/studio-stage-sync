@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { X, Maximize2, Minimize2, ChevronLeft, ChevronRight, ChevronDown, Search, Play, Plus, Save, Pencil, MousePointer2, Trash2, Sliders } from "lucide-react";
+import { X, Maximize2, Minimize2, ChevronLeft, ChevronRight, ChevronDown, Play, Plus, Save, Pencil, MousePointer2, Trash2, Sliders } from "lucide-react";
 import { useDawStore, newId } from "../state/DawStore";
 import { FxRack } from "./FxRack";
 import type { DawEngine } from "../engine/DawEngine";
-import { triggerSynthNote, midiToFreq, startSynthNote, triggerDrumHit, type SynthVoice } from "../engine/DawEngine";
+import { triggerSynthNote, startSynthNote, triggerDrumHit, drumKindForPitch, type SynthVoice } from "../engine/DawEngine";
 import type { MidiNote, Clip } from "../engine/types";
 import { FloatingKeyboard } from "./FloatingKeyboard";
-import { PRESETS, PRESET_CATS, PresetModal, type Preset } from "./presets";
+import { PRESETS, PresetModal, type Preset } from "./presets";
+import { DRUM_KITS, getPresetByName, type DrumPiece } from "../engine/presetData";
 
 
 
@@ -73,7 +74,7 @@ export function BottomDock({
         })}
         <div className="flex-1" />
         <div className="text-[10px] text-neutral-500 truncate max-w-[260px]">
-          {active ? <>Track: <span className="text-neutral-300">{active.name}</span>{active.instrumentPreset ? <> · <span className="text-purple-300">{active.instrumentPreset}</span></> : null}</> : "No instrument track selected"}
+          {active ? <>Track: <span className="text-neutral-300">{active.name}</span> · <span className="text-purple-300">{active.instrument === "drum" ? (active.drumKit || "808") : (active.instrumentPreset || "Platinum Anthem Lead")}</span></> : "No instrument track selected"}
         </div>
         <button onClick={() => setExpanded(v => !v)} className="text-neutral-500 hover:text-neutral-200 ml-2">
           {expanded ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
@@ -82,7 +83,7 @@ export function BottomDock({
 
       <div className="flex-1 overflow-hidden">
         {!active ? <EmptyHint /> :
-          tab === "instrument" ? <InstrumentTab engine={engine} trackId={active.id} /> :
+          tab === "instrument" ? (active.instrument === "drum" ? <BeatGridTab engine={engine} trackId={active.id} /> : <InstrumentTab engine={engine} trackId={active.id} />) :
           tab === "chords"     ? (active.instrument === "drum"
                                     ? <BeatGridTab engine={engine} trackId={active.id} />
                                     : <ChordsTab engine={engine} trackId={active.id} />) :
@@ -102,7 +103,7 @@ function EmptyHint() {
       <div>
         <div className="text-neutral-500 text-sm mb-3">Add an instrument track to start playing</div>
         <button
-          onClick={() => { const id = addTrack("instrument", "Synth"); updateTrack(id, { instrument: "synth", instrumentPreset: "Bright Synth", synthWave: "sawtooth" }); }}
+          onClick={() => { const id = addTrack("instrument", "Synth"); updateTrack(id, { instrument: "synth", instrumentPreset: "Platinum Anthem Lead", synthWave: "sawtooth" }); }}
           className="px-4 py-2 rounded-md bg-gradient-to-r from-teal-500 to-purple-500 text-black text-xs font-medium"
         >+ Create Synth Track</button>
       </div>
@@ -125,7 +126,7 @@ function InstrumentTab({ engine, trackId }: { engine: DawEngine; trackId: string
   const [autoChords, setAutoChords] = useState(false);
   const [presetOpen, setPresetOpen] = useState(false);
 
-  const presetIdx = Math.max(0, PRESETS.findIndex(p => p.name === (track.instrumentPreset || "Bright Synth")));
+  const presetIdx = Math.max(0, PRESETS.findIndex(p => p.name === (track.instrumentPreset || "Platinum Anthem Lead")));
   const preset = PRESETS[presetIdx];
 
   const applyPreset = (p: Preset) => {
@@ -592,6 +593,7 @@ const PR_SCALES: Array<{ id: string; label: string; intervals: number[] | null }
 ];
 
 function PianoRollTab({ engine, trackId }: { engine: DawEngine; trackId: string }) {
+  const track = useDawStore(s => s.tracks.find(t => t.id === trackId));
   const allClips = useDawStore(s => s.clips);
   const clips = useMemo(() => allClips.filter(c => c.trackId === trackId), [allClips, trackId]);
   const addClip = useDawStore(s => s.addClip);
@@ -625,6 +627,12 @@ function PianoRollTab({ engine, trackId }: { engine: DawEngine; trackId: string 
   const [swing, setSwing] = useState(0);
   const [scaleRoot, setScaleRoot] = useState<string>("C");
   const [scaleId, setScaleId] = useState<string>("off");
+  const rollPreset = useMemo(() => getPresetByName(track?.instrumentPreset) || PRESETS[0], [track?.instrumentPreset]);
+  const rollKitName = track?.drumKit || "808";
+  const auditionNote = (pitch: number, duration = 0.3, vel = 0.8) => {
+    if (track?.instrument === "drum") triggerDrumHit(engine, trackId, drumKindForPitch(pitch), rollKitName, vel);
+    else triggerSynthNote(engine, trackId, pitch, duration, vel, rollPreset);
+  };
 
   const snapBeats = useMemo(() => PR_QUANTIZE.find(q => q.id === quantizeId)?.beats ?? 0.25, [quantizeId]);
   // Swing presets A–F → 50/54/58/62/66/70 % swing applied automatically.
@@ -691,7 +699,7 @@ function PianoRollTab({ engine, trackId }: { engine: DawEngine; trackId: string 
       const cur = useDawStore.getState().clips.find(c => c.id === id)?.notes ?? [];
       const next = [...cur, { id: newId("n"), start: beat, length: Math.max(0.25, snapBeats), pitch, velocity }];
       updateClip(id, { notes: next, duration: durationForNotes(next) });
-      triggerSynthNote(engine, trackId, pitch, 0.3, velocity);
+      auditionNote(pitch, 0.3, velocity);
     } else if (tool === "eraser") {
       const hit = notes.find(n => n.pitch === pitch && beat >= n.start && beat < n.start + n.length);
       if (hit) setNotes(notes.filter(n => n.id !== hit.id));
@@ -819,7 +827,7 @@ function PianoRollTab({ engine, trackId }: { engine: DawEngine; trackId: string 
               return (
                 <div
                   key={r}
-                  onPointerDown={(e) => { e.stopPropagation(); triggerSynthNote(engine, trackId, pitch, 0.3, 0.8); }}
+                  onPointerDown={(e) => { e.stopPropagation(); auditionNote(pitch, 0.3, 0.8); }}
                   className={`text-[8px] border-b ${isBlack ? "bg-neutral-900 text-neutral-300 border-neutral-950" : "bg-gradient-to-r from-neutral-100 to-neutral-300 text-neutral-700 border-neutral-400"} px-1 grid items-center cursor-pointer hover:brightness-110`}
                   style={{ height: rowH }}
                 >
@@ -931,21 +939,26 @@ function EffectsTab({ trackId }: { trackId: string }) {
 /* BEAT GRID TAB — Soundtrap-style step sequencer for drum tracks         */
 /* ===================================================================== */
 
-type DrumRow = { name: string; pitch: number; kind: "kick" | "snare" | "hat" | "clap" | "tom" | "perc" | "ride" | "crash" };
+type DrumRow = { name: string; pitch: number; kind: DrumPiece };
 const DRUM_ROWS: DrumRow[] = [
   { name: "Kick",          pitch: 36, kind: "kick" },
+  { name: "Rim",           pitch: 37, kind: "rim" },
   { name: "Snare",         pitch: 38, kind: "snare" },
   { name: "Clap",          pitch: 39, kind: "clap" },
   { name: "Hi-Hat Closed", pitch: 42, kind: "hat" },
-  { name: "Hi-Hat Open",   pitch: 46, kind: "hat" },
+  { name: "Perc",          pitch: 44, kind: "perc" },
+  { name: "Hi-Hat Open",   pitch: 46, kind: "openhat" },
   { name: "Crash",         pitch: 49, kind: "crash" },
   { name: "Ride",          pitch: 51, kind: "ride" },
+  { name: "Cowbell",       pitch: 56, kind: "cowbell" },
   { name: "Low Tom",       pitch: 41, kind: "tom" },
   { name: "Mid Tom",       pitch: 45, kind: "tom" },
   { name: "High Tom",      pitch: 48, kind: "tom" },
 ];
 
 function BeatGridTab({ engine, trackId }: { engine: DawEngine; trackId: string }) {
+  const drumKit = useDawStore(s => s.tracks.find(t => t.id === trackId)?.drumKit || "808");
+  const updateTrack = useDawStore(s => s.updateTrack);
   const allClips = useDawStore(s => s.clips);
   const trackClips = useMemo(() => allClips.filter(c => c.trackId === trackId && c.notes), [allClips, trackId]);
   const addClip = useDawStore(s => s.addClip);
@@ -998,7 +1011,7 @@ function BeatGridTab({ engine, trackId }: { engine: DawEngine; trackId: string }
     } else {
       next = [...notes, { id: newId("n"), pitch, start: t, length: stepBeats * 0.9, velocity: 0.85 }];
       const row = DRUM_ROWS.find(r => r.pitch === pitch);
-      if (row) triggerDrumHit(engine, trackId, row.kind);
+      if (row) triggerDrumHit(engine, trackId, row.kind, drumKit);
     }
     updateClip(id, {
       notes: next,
@@ -1021,6 +1034,12 @@ function BeatGridTab({ engine, trackId }: { engine: DawEngine; trackId: string }
         <span className="text-neutral-500 uppercase tracking-wider text-[10px]">Beat Maker</span>
         <div className="h-4 w-px bg-neutral-800" />
         <label className="flex items-center gap-1.5">
+          <span className="text-neutral-500">Kit</span>
+          <select value={drumKit} onChange={e => updateTrack(trackId, { drumKit: e.target.value })} className="bg-neutral-900 border border-neutral-800 rounded px-1.5 py-0.5">
+            {DRUM_KITS.map(k => <option key={k.name} value={k.name}>{k.name}</option>)}
+          </select>
+        </label>
+        <label className="flex items-center gap-1.5">
           <span className="text-neutral-500">Bars</span>
           <select value={bars} onChange={e => setBars(Number(e.target.value) as any)} className="bg-neutral-900 border border-neutral-800 rounded px-1.5 py-0.5">
             <option value={1}>1</option><option value={2}>2</option><option value={4}>4</option><option value={8}>8</option>
@@ -1041,7 +1060,7 @@ function BeatGridTab({ engine, trackId }: { engine: DawEngine; trackId: string }
             <div key={row.pitch} className="flex items-stretch border-b border-neutral-900">
               <div className="w-32 shrink-0 px-3 flex items-center text-[11px] text-neutral-300 bg-neutral-950 border-r border-neutral-800">
                 <button
-                  onClick={() => triggerDrumHit(engine, trackId, row.kind)}
+                  onClick={() => triggerDrumHit(engine, trackId, row.kind, drumKit)}
                   className="w-5 h-5 grid place-items-center rounded-full bg-neutral-900 border border-neutral-800 hover:border-teal-400/60 text-teal-300 mr-2"
                   title={`Preview ${row.name}`}
                 ><Play className="w-2.5 h-2.5" /></button>

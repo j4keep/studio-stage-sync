@@ -225,6 +225,8 @@ export const useDawStore = create<DawState>((set, get) => ({
       reverbSend: 0,
       delaySend: 0,
       instrument: kind === "instrument" ? "synth" : undefined,
+      instrumentPreset: kind === "instrument" ? "Platinum Anthem Lead" : undefined,
+      synthWave: kind === "instrument" ? "sawtooth" : undefined,
     };
     set({ tracks: [...get().tracks, track], selectedTrackId: id });
     return id;

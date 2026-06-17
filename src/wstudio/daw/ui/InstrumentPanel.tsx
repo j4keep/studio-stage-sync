@@ -24,7 +24,7 @@ const KEYBOARD_MAP: Record<string, number> = {
   a: 60, w: 61, s: 62, e: 63, d: 64, f: 65, t: 66, g: 67, y: 68, h: 69, u: 70, j: 71, k: 72,
 };
 
-const SEQ_ROWS: DrumPiece[] = ["kick", "snare", "hat", "openhat", "clap", "perc"];
+const SEQ_ROWS: DrumPiece[] = DRUM_PIECES_ORDER;
 
 export function InstrumentPanel({ engine }: { engine: DawEngine }) {
   const tracks = useDawStore(s => s.tracks);
@@ -37,7 +37,7 @@ export function InstrumentPanel({ engine }: { engine: DawEngine }) {
   const active = instrumentTracks.find(t => t.id === activeId);
   const kitName = active?.drumKit || "808";
   const activePreset = useMemo(
-    () => getPresetByName(active?.instrumentPreset) || undefined,
+    () => getPresetByName(active?.instrumentPreset) || getPresetByName("Platinum Anthem Lead") || undefined,
     [active?.instrumentPreset],
   );
 
@@ -45,7 +45,8 @@ export function InstrumentPanel({ engine }: { engine: DawEngine }) {
   const [steps, setSteps] = useState<Record<DrumPiece, boolean[]>>(() => ({
     kick: Array(16).fill(false), snare: Array(16).fill(false), hat: Array(16).fill(false),
     openhat: Array(16).fill(false), clap: Array(16).fill(false), perc: Array(16).fill(false),
-    rim: [], tom: [], ride: [], crash: [], cowbell: [],
+    rim: Array(16).fill(false), tom: Array(16).fill(false), ride: Array(16).fill(false),
+    crash: Array(16).fill(false), cowbell: Array(16).fill(false),
   }));
   const [seqPlaying, setSeqPlaying] = useState(false);
   const [stepIdx, setStepIdx] = useState(0);
@@ -82,7 +83,7 @@ export function InstrumentPanel({ engine }: { engine: DawEngine }) {
         <span>Instruments</span>
         <div className="flex-1" />
         <button
-          onClick={() => { const id = addTrack("instrument", "Synth"); updateTrack(id, { instrument: "synth", instrumentPreset: "Bright Saw Lead", synthWave: "sawtooth" }); }}
+          onClick={() => { const id = addTrack("instrument", "Synth"); updateTrack(id, { instrument: "synth", instrumentPreset: "Platinum Anthem Lead", synthWave: "sawtooth" }); }}
           className="h-6 px-2 rounded border border-neutral-800 hover:bg-neutral-800 flex items-center gap-1 normal-case"
         ><Music2 className="w-3 h-3" /> Add Synth</button>
         <button

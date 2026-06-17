@@ -881,12 +881,23 @@ export function startSynthNote(
   const mix = ctx.createGain();
   mix.gain.value = 1;
 
+  const pitchDrop = Math.max(0, preset.pitchDrop ?? 0);
+  const pitchDropTime = Math.max(0.01, preset.pitchDropTime ?? 0.05);
+  const setVoicePitch = (osc: OscillatorNode, freq: number) => {
+    if (pitchDrop > 0.01) {
+      osc.frequency.setValueAtTime(freq * Math.pow(2, pitchDrop / 12), now);
+      osc.frequency.exponentialRampToValueAtTime(Math.max(1, freq), now + pitchDropTime);
+    } else {
+      osc.frequency.value = freq;
+    }
+  };
+
   const detuneCents = preset.detune ?? 0;
-  const unison = Math.max(1, Math.min(3, preset.unison ?? 1));
+  const unison = Math.max(1, Math.min(7, preset.unison ?? 1));
   for (let i = 0; i < unison; i++) {
     const o = ctx.createOscillator();
     o.type = wave;
-    o.frequency.value = baseFreq;
+    setVoicePitch(o, baseFreq);
     if (unison > 1 && detuneCents) {
       o.detune.value = detuneCents * ((i / (unison - 1)) * 2 - 1);
     } else if (detuneCents) {
@@ -898,11 +909,22 @@ export function startSynthNote(
     oscs.push(o);
   }
 
+  if ((preset.layerLevel ?? 0) > 0.001 && preset.layerWave) {
+    const layer = ctx.createOscillator();
+    layer.type = preset.layerWave;
+    setVoicePitch(layer, baseFreq * Math.pow(2, (preset.layerOctave ?? 0) / 12));
+    layer.detune.value = preset.layerDetune ?? 0;
+    const lg = ctx.createGain();
+    lg.gain.value = Math.max(0, Math.min(1, preset.layerLevel ?? 0));
+    layer.connect(lg).connect(mix);
+    oscs.push(layer);
+  }
+
   let subOsc: OscillatorNode | null = null;
   if ((preset.subLevel ?? 0) > 0.001) {
     subOsc = ctx.createOscillator();
     subOsc.type = "sine";
-    subOsc.frequency.value = baseFreq / 2;
+    setVoicePitch(subOsc, baseFreq / 2);
     const sg = ctx.createGain();
     sg.gain.value = preset.subLevel!;
     subOsc.connect(sg).connect(mix);
@@ -921,11 +943,40 @@ export function startSynthNote(
   }
 
   const filter = ctx.createBiquadFilter();
-  filter.type = "lowpass";
+  filter.type = preset.filterType ?? "lowpass";
   const fHz = preset.filterHz ?? 8000;
   filter.frequency.value = fHz;
   filter.Q.value = preset.filterQ ?? 0.7;
-  mix.connect(filter);
+  let toneSource: AudioNode = mix;
+
+  if ((preset.noiseLevel ?? 0) > 0.001) {
+    const noiseLen = Math.ceil(ctx.sampleRate * Math.max(0.03, (preset.noiseDecay ?? 0.05) + 0.05));
+    const noiseBuf = ctx.createBuffer(1, noiseLen, ctx.sampleRate);
+    const data = noiseBuf.getChannelData(0);
+    for (let i = 0; i < noiseLen; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / noiseLen);
+    const noise = ctx.createBufferSource();
+    noise.buffer = noiseBuf;
+    const nf = ctx.createBiquadFilter();
+    nf.type = "bandpass";
+    nf.frequency.value = preset.noiseFilterHz ?? 5000;
+    nf.Q.value = 0.9;
+    const ng = ctx.createGain();
+    ng.gain.setValueAtTime((preset.noiseLevel ?? 0) * vel, now);
+    ng.gain.exponentialRampToValueAtTime(0.0001, now + Math.max(0.01, preset.noiseDecay ?? 0.05));
+    noise.connect(nf).connect(ng).connect(mix);
+    try { noise.start(now); noise.stop(now + Math.max(0.03, (preset.noiseDecay ?? 0.05) + 0.04)); } catch {}
+  }
+
+  if ((preset.highpassHz ?? 0) > 0) {
+    const hp = ctx.createBiquadFilter();
+    hp.type = "highpass";
+    hp.frequency.value = Math.max(20, preset.highpassHz!);
+    hp.Q.value = 0.7;
+    mix.connect(hp);
+    toneSource = hp;
+  }
+
+  toneSource.connect(filter);
 
   const fEnv = preset.filterEnv ?? 0;
   const fDec = preset.filterDecay ?? 0.25;
@@ -957,6 +1008,17 @@ export function startSynthNote(
   env.gain.linearRampToValueAtTime(masterGain, now + a);
   env.gain.linearRampToValueAtTime(masterGain * s, now + a + d);
   postFilter.connect(env).connect(chain.input);
+
+  if ((preset.clickLevel ?? 0) > 0.001) {
+    const click = ctx.createOscillator();
+    click.type = "triangle";
+    click.frequency.value = preset.clickHz ?? 3500;
+    const cg = ctx.createGain();
+    cg.gain.setValueAtTime((preset.clickLevel ?? 0) * vel, now);
+    cg.gain.exponentialRampToValueAtTime(0.0001, now + Math.max(0.004, preset.clickDecay ?? 0.01));
+    click.connect(cg).connect(chain.input);
+    try { click.start(now); click.stop(now + Math.max(0.008, (preset.clickDecay ?? 0.01) + 0.01)); } catch {}
+  }
 
   try {
     oscs.forEach(o => o.start(now));
@@ -1010,6 +1072,7 @@ export function scheduleMidiClips(engine: DawEngine, tracks: Track[], clips: Cli
     if (!chain) continue;
     const isDrum = track.instrument === "drum";
     const preset = getPresetByName(track.instrumentPreset)
+      || getPresetByName("Platinum Anthem Lead")
       || { name: "fallback", cat: "", sub: "", wave: (track.synthWave as OscillatorType) || "sawtooth" } as Preset;
     const kitName = (track as any).drumKit as string | undefined;
 
