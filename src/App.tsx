@@ -17,6 +17,7 @@ import MusicBattlePlayerPage from "./pages/MusicBattlePlayerPage";
 import ArtistProfilePage from "./pages/ArtistProfilePage";
 import RadioPage from "./pages/RadioPage";
 import TvHomePage from "./pages/TvHomePage";
+import CircleHomePage from "./pages/CircleHomePage";
 
 import ProfilePage from "./pages/ProfilePage";
 import TermsPage from "./pages/TermsPage";
@@ -201,6 +202,8 @@ const ProtectedRoutes = () => {
         <Route path="/helpdesk" element={<HelpDeskPage />} />
         <Route path="/ask-jhi" element={<AskJhiPage />} />
         <Route path="/tv" element={<TvHomePage />} />
+        <Route path="/circle" element={<CircleHomePage />} />
+        <Route path="/circle/*" element={<CircleHomePage />} />
         <Route path="/wstudio/*" element={<Navigate to="/tv" replace />} />
         <Route path="/studios" element={<Navigate to="/tv" replace />} />
         <Route path="/my-studios" element={<Navigate to="/" replace />} />
