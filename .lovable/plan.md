@@ -1,54 +1,100 @@
-# W.Studio Edit Window Overhaul
+# Pivot Plan: Nuke W.Studio → WHEUAT TV + Atchup Integration
 
-A big refresh covering bug fixes, polish, and several new features. Grouping the work so it can ship in clear passes.
+This is a large, destructive change. Please confirm before I touch anything.
 
-## 1. Bug fixes
-- **Clip drag doesn't follow audio to new track** — when a clip is dragged to a different track, the audio still plays on the original track. Fix the drop handler to re-assign the clip's `trackId` and rebuild routing so playback follows the visual move.
-- **Mixer cut off at the bottom** — `R / M / S` buttons under the fader are clipped. Make the mixer area's vertical scroll reach the full strip height (independent of the bottom nav and tracks panel).
-- **Light-mode invisible text** — several toolbar/panel labels are hardcoded white. Replace with semantic tokens (`text-foreground`, `text-muted-foreground`) so they read in both themes.
+## Phase 1 — Nuke W.Studio (Option B, full)
 
-## 2. Light mode "pro" look
-- Move base background from pure white to a soft warm gray (`hsl(220 14% 96%)` ish), with subtle elevation on panels.
-- Bold the section labels (SETTING, EQ, INPUT, etc.) and toolbar text.
-- Add a faint inner shadow / hairline border on panels for depth.
-- Audit `text-white`, `bg-white`, `bg-black` in DAW components and swap to tokens.
+Delete everything DAW, sessions, bridges, plugins, native helpers.
 
-## 3. Collapsible Session / Library panel
-- The right-side **Session** panel (with participants + Share screen) and the **Library** tab become a single dockable panel.
-- Add a sidebar **icon toggle** in the top toolbar (open/close). When closed, the Edit canvas expands full width.
-- The same panel will host the **video chat tiles** when in a live session.
+**Frontend deletes:**
+- `src/wstudio/` (entire folder: daw, session, booking, audio-engine, bridge, audio, connection, media, receive, video, components, lib)
+- `src/pages/WStudioDawPage.tsx`
+- `src/pages/MyBookingsPage.tsx`, `MyStudiosPage.tsx` (studio engineer booking)
+- `src/components/CreateStudioSheet.tsx`, `EditStudioSheet.tsx`, `RateSessionModal.tsx`, `UnratedSessionPopup.tsx`, `SessionControlsLockOverlay.tsx`-style files
+- `src/pages/StudiosPage.tsx`
+- `src/hooks/use-studio-engine.ts`, `use-recording-engine.ts`
 
-## 4. Quick Start refresh (iTunes-inspired)
-- Re-skin the Quick Start tiles with a vivid gradient background (orange → pink → purple → cyan, like the iTunes reference) and white iconography.
-- Swap flat lucide glyphs for layered/3D-feel icon treatments (gradient fill + soft drop shadow + subtle bevel using CSS).
-- Keep existing actions (Browse loops, Patterns Beatmaker, Play the synth, Add new track, Import file, Invite a friend).
+**Backend deletes (edge functions):**
+- `auto-confirm-sessions`, `expire-bookings`, `session-lookup`
+- Tables to drop (migration): `studios`, `studio_availability`, `studio_bookings`, `studio_photos`, `studio_reviews`, `live_sessions`, `live_session_participants`, `recording_sessions`, `recording_takes`, `recording_exports`, `no_show_strikes`
 
-## 5. Floating Keyboard upgrades
-- **Musical-typing color highlights** — color-code the key chips like Logic's musical typing panel (image 2): octave keys (Z/X) blue, sustain (Tab) green, velocity (1–8) orange/red.
-- **Hardware-style instrument keyboard** — redesign the floating keyboard shell to look like image 3 (StudioLogic SL73): dark brushed body, colored knobs strip across the top, and a small LCD-style screen that displays the **currently selected instrument name** (updates when the user changes the active instrument track).
-- Keep all existing controls (octave, mode toggle, glissando, computer-key mapping).
-- Restore the **full piano keyboard look** from image 4 (proper proportions, octave labels under C keys, wider black-to-white ratio).
+**Native deletes:**
+- `native/` (entire folder: wstudio-coreaudio-driver, wstudio-desktop-bridge, wstudio-plugin)
+- `scripts/build-wstudio-*.sh`, `scripts/wstudio-*.sh`, `scripts/fix-wstudio-*.sh`
+- `.github/workflows/wstudio-bridge-macos.yml`
+- `public/wstudio-bg.mp4.asset.json`
 
-## 6. Piano Roll feature parity (Logic Pro)
-Add a full inspector column on the left of the piano roll:
-- **Time Quantize** dropdown — full list: 1/1, 1/2, 1/4, 1/8, 1/16, 1/32, 1/64, plus triplets (1/2 → 1/128) and swing variants (1/16 A–F, 1/8 A–F) and tuplets (5/4, 5/8, 7, 9), plus combined (1/16 & 1/16T, etc.) — matching image 6.
-- **Strength** slider (0–100) and **Swing** slider (0–100).
-- **Scale Quantize** — root note picker (Off, C, C#, D, D#, Eb, E, F, F#, G, G#, Ab, A, A#, Bb, B) + scale type picker (Major, Natural Minor, Chromatic, Major/Minor, Major+b7, Harmonic Minor, Melodic Minor, Major Pentatonic, Minor Pentatonic, Major Blues, Minor Blues, Lydian, Mixolydian, Dorian, Phrygian, Locrian, Klezmer, Japanese, South-East Asian) — matching images 7 & 8.
-- **Velocity** slider (1–127) for new notes.
-- **Pencil tool** inside the piano roll for drawing notes (in addition to current select/erase tools).
+**Routes:** strip all `/wstudio/*`, `/studios`, `/my-bookings`, `/my-studios` routes from `App.tsx`.
 
-## 7. Reference pass
-Quick look at Logic Pro on the web layout to confirm icon ordering and inspector grouping before final styling.
+## Phase 2 — Build WHEUAT TV (new section)
 
----
+New route group `/tv` replacing where W.Studio lived.
 
-## Technical notes
-- Clip-move fix lives in `DawStore.moveClip` / drag handler in `TracksView` / `ClipBlock`.
-- Mixer scroll fix is a follow-up to the recent `items-start` change in `MixerView.tsx` — likely needs `min-h-0` on parent + `overflow-y-auto` on the strips container.
-- Light-mode tokens edited in `src/index.css` (`:root` block).
-- New `SidePanelToggle` button in `TransportBar.tsx` driving a Zustand flag in `DawStore`.
-- Piano-roll inspector becomes a new component `PianoRollInspector.tsx`; quantize/scale data lives in a new `pianoRollOptions.ts` constants file.
-- Pencil tool wired into existing tool enum in `DawStore`.
+**Pages (new):**
+- `src/pages/tv/TvHomePage.tsx` — landing: Live podcasts, Short Films, Music Videos tabs
+- `src/pages/tv/TvLivePodcastPage.tsx` — host/join live podcast (WebRTC multi-party), record session, download MP4/MP3 to device or save to user library
+- `src/pages/tv/TvUploadPage.tsx` — upload short films & music videos (R2)
+- `src/pages/tv/TvChannelPage.tsx` — per-creator channel with Support/Donate tab
+- `src/pages/tv/TvWatchPage.tsx` — video player
 
-## Scope check
-This is ~8–10 hrs of work and touches a lot of files. Want me to do it all in one pass, or split into shippable chunks (e.g., bug fixes + light mode first, then piano roll, then keyboard redesign)?
+**Backend:**
+- New tables: `tv_channels`, `tv_videos` (type: podcast | short_film | music_video), `tv_live_rooms`, `tv_donations`
+- Reuse existing R2 upload edge functions (`r2-presign`, `r2-upload`, `r2-download`)
+- Reuse WebRTC signaling pattern from old `realtimeRtcSignaling.ts` for multi-party podcast rooms (single salvaged file)
+
+**Recording approach (browser-only, simple):**
+- MediaRecorder API mixing all peer audio + video tracks to WebM
+- Download direct to device or upload to R2
+
+## Phase 3 — Retrain Jhi
+
+Update `supabase/functions/ask-jhi/index.ts` system prompt:
+- Remove all W.Studio / DAW / engineer booking context
+- Add WHEUAT TV (podcasts, films, videos, donations) + Atchup Savings Circle context
+
+## Phase 4 — Import Atchup as "Savings Circle"
+
+Bring `atchup-daily-rise` project in as a section, not a separate app.
+
+**Copy from atchup-daily-rise:**
+- All `src/pages/*` → `src/pages/circle/*` (Landing, Welcome, AccountSettings, Help, HostCode, IdVerification, PromoDownloads, Verify, m/*)
+- All `src/components/*` (except `ui/`) → `src/components/circle/*`
+- `src/integrations/` Atchup-specific helpers → `src/integrations/circle/`
+- `src/lib/`, `src/hooks/` Atchup-specific → namespaced under `circle/`
+- All Atchup `supabase/migrations/*` → re-run here (creates circle tables in same DB)
+- All Atchup `supabase/functions/*` → deploy here
+
+**Unified auth:**
+- Strip Atchup's separate sign-up flow. Use existing WHEUAT auth (`AuthContext`, `AuthPage`).
+- Atchup profile data (display name, avatar) sourced from existing `profiles` table — no duplicate signup, no separate profile picture.
+- Keep Atchup's KYC/IdVerification as a feature gate inside Circle only.
+
+**Privacy/Legal:**
+- Copy Atchup's privacy/terms/legal pages over, replacing current `TermsPage.tsx` content with Atchup's versions.
+
+**Navigation:**
+- Add "Circle" tab to `BottomNav.tsx` next to Feed tab (using Atchup icon)
+- Add small Circle button on `FeedPage` post card, right after share icon → routes to `/circle`
+
+## Phase 5 — Rebrand WHEUAT → Atchup
+
+- Copy Atchup logo assets (`atchup-logo-transparent.png`, `atchup-icon-only.png`, etc.) into `src/assets/`
+- Replace `JhiIcon`/WHEUAT logo usage app-wide with Atchup logo
+- Tagline: "Catch up with your greatness"
+- Update `index.html` title, meta, favicon → Atchup
+- Update memory `mem://index.md` core rules to reflect Atchup branding (keep Jhi as AI assistant name)
+
+## Technical / Risk Notes
+
+- **Data loss:** dropping studio/session tables is permanent. Any existing bookings/recordings are gone.
+- **Scale:** this touches ~150+ files across deletes, copies, and edits. Will take multiple turns.
+- **Atchup auth tables:** Atchup likely has its own `profiles`/auth schema. I will merge into existing WHEUAT `profiles` table, dropping Atchup's duplicates.
+- **Atchup Stripe/payments:** if Atchup has its own Stripe edge functions for circle contributions, I'll deploy those alongside existing WHEUAT Stripe Connect.
+- **Recording quality:** browser MediaRecorder for live podcasts will be ~720p WebM. Good enough for download; pro editing happens off-platform.
+
+## Questions before I start
+
+1. **Confirm full nuke** of bookings, studios, recording_sessions, live_sessions DB tables (permanent data loss)?
+2. **Keep WHEUAT name in URL/domain** (`studio-stage-sync.lovable.app`) but rebrand UI to Atchup, or do you want me to flag domain change for you to do in settings?
+3. **One-tab or section?** Should Circle be its own bottom-nav tab AND replace one of the current tabs (Home/Feed/Profile/etc), or just be added as a 5th tab?
+4. **TV recording downloads** — okay with WebM format (browser-native, no transcoding)?
