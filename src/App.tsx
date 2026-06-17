@@ -213,11 +213,23 @@ const ProtectedRoutes = () => {
         <Route path="/circle" element={<Navigate to="/" replace />} />
         <Route path="/circle/*" element={<Navigate to="/" replace />} />
         <Route path="/m/*" element={<Navigate to="/" replace />} />
-        <Route path="/wstudio/*" element={<Navigate to="/tv" replace />} />
-        <Route path="/studios" element={<Navigate to="/tv" replace />} />
-        <Route path="/my-studios" element={<Navigate to="/" replace />} />
-        <Route path="/my-bookings" element={<Navigate to="/" replace />} />
-        <Route path="/ai-studio" element={<Navigate to="/tv" replace />} />
+        <Route path="/studios" element={<StudiosPage />} />
+        <Route path="/my-studios" element={<MyStudiosPage />} />
+        <Route path="/my-bookings" element={<MyBookingsPage />} />
+        <Route path="/wstudio/daw" element={<WStudioDawPage />} />
+        <Route path="/wstudio" element={<WStudioLayout />}>
+          <Route index element={<Navigate to="session/join" replace />} />
+          <Route path="session/join" element={<SessionJoinScreen />} />
+          <Route path="session/live" element={<SessionDawScreen />} />
+          <Route path="session/artist" element={<SessionDawScreen />} />
+          <Route path="session/engineer" element={<SessionDawScreen />} />
+          <Route path="session/classic" element={<UnifiedSessionScreen />} />
+          <Route path="session/bridge" element={<StudioBridgeScreen />} />
+          <Route path="session" element={<Navigate to="/wstudio/session/join" replace />} />
+          <Route path="artist" element={<Navigate to="/wstudio/session/live" replace />} />
+          <Route path="engineer" element={<Navigate to="/wstudio/session/live" replace />} />
+        </Route>
+        <Route path="/ai-studio" element={<Navigate to="/wstudio/session/join" replace />} />
         <Route path="/admin/tickets" element={<AdminTicketsPage />} />
         <Route path="/admin/sounds" element={<AdminSoundLibraryPage />} />
         <Route path="/battles" element={<BattlesPage />} />
