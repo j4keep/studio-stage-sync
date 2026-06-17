@@ -340,6 +340,55 @@ const ProfilePage = () => {
         </div>
       </div>
 
+      {/* Savings Circle (Atchup) */}
+      <div className="px-4 mt-6">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Savings Circle</p>
+
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          <div className="p-3 rounded-xl bg-card border border-border text-center">
+            <p className="text-base font-display font-bold text-primary">{circlesCount}</p>
+            <p className="text-[10px] text-muted-foreground">Circles</p>
+          </div>
+          <div className="p-3 rounded-xl bg-card border border-border text-center">
+            <p className="text-base font-display font-bold text-primary">{completedCircles}</p>
+            <p className="text-[10px] text-muted-foreground">Completed</p>
+          </div>
+        </div>
+
+        {user && (
+          <div className="mb-3">
+            <ReputationScore userId={user.id} />
+          </div>
+        )}
+
+        <div className="flex flex-col gap-1.5">
+          {[
+            { icon: PiggyBank, label: "View My Circles", action: () => navigate("/m/savings-circles") },
+            { icon: PlusCircle, label: "Create New Circle", action: () => navigate("/m/savings-circles/create") },
+            { icon: LogIn, label: "Join a Circle", action: () => navigate("/m/savings-circles/join") },
+            { icon: HeartHandshake, label: "Fundraisers & Donations", action: () => navigate("/m/fundraisers") },
+            { icon: BadgeCheck, label: "Upgrade to Verified+", action: () => navigate("/m/verified-plus-upgrade") },
+            { icon: IdCard, label: "ID Verification", action: () => navigate("/id-verification") },
+            ...(isCircleAdmin ? [{ icon: ShieldCheck, label: "Circle Admin Dashboard", action: () => navigate("/m/support-admin") }] : []),
+            { icon: ShieldCheck, label: "Privacy Policy", action: () => navigate("/m/privacy-policy") },
+            { icon: FileText, label: "Terms & Conditions", action: () => navigate("/m/terms-conditions") },
+          ].map((item) => (
+            <button
+              key={item.label}
+              onClick={item.action}
+              className="flex items-center gap-3 p-3.5 rounded-xl bg-card border border-border hover:border-primary/30 transition-all"
+            >
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                <item.icon className="w-4 h-4 text-primary" />
+              </div>
+              <span className="flex-1 text-sm font-medium text-foreground text-left">{item.label}</span>
+              <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+            </button>
+          ))}
+        </div>
+      </div>
+
+
       {/* My Posts */}
       {user && (
         <div className="px-4 mt-5">
