@@ -627,7 +627,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
               selectTrack(existingDrum.id);
             } else {
               const id = addTrack("instrument", "Drums");
-              updateTrack(id, { instrument: "drum" });
+              updateTrack(id, { instrument: "drum", drumKit: "808" });
               selectTrack(id);
             }
             openDock("chords");
@@ -638,7 +638,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
               selectTrack(existingSynth.id);
             } else {
               const id = addTrack("instrument", "Synth");
-              updateTrack(id, { instrument: "synth" });
+              updateTrack(id, { instrument: "synth", instrumentPreset: "Platinum Anthem Lead", synthWave: "sawtooth" });
               selectTrack(id);
             }
             openDock("instrument");
