@@ -90,7 +90,7 @@ const CATEGORY_CARDS = [
   { label: "Store", img: cardStore, path: "/store", wide: false, icon: ShoppingBag },
   { label: "Studios", img: cardStudios, path: "/studios", wide: false, icon: Building2 },
   { label: "Songs", img: cardSongs, path: "/browse-songs", wide: false, icon: Music },
-  { label: "Recording Studio", img: cardVideos, path: "/wstudio/daw", wide: false, icon: Mic2 },
+  { label: "Recording Studio", img: cardVideos, path: "/wstudio/session/join", wide: false, icon: Mic2 },
   { label: "Projects", img: cardProjects, path: "/my-projects", wide: true, icon: DollarSign },
 ];
 
