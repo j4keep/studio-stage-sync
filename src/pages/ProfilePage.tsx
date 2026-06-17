@@ -18,6 +18,8 @@ import FollowersSheet from "@/components/FollowersSheet";
 import ProfileFeedSection from "@/components/ProfileFeedSection";
 import BattleWinsSheet from "@/components/BattleWinsSheet";
 import UserProjectsSheet from "@/components/UserProjectsSheet";
+import ReputationScore from "@/components/atchup/ReputationScore";
+import { PiggyBank, HeartHandshake, PlusCircle, LogIn, BadgeCheck, FileText, ShieldCheck, IdCard } from "lucide-react";
 
 const ProfilePage = () => {
   const navigate = useNavigate();
