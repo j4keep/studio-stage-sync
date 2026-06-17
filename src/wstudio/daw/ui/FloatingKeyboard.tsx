@@ -182,7 +182,7 @@ export function FloatingKeyboard({ engine, onClose, embedded = false }: Props) {
       selectTrack(id);
       setTimeout(() => {
         const tr = useDawStore.getState().tracks.find(x => x.id === id);
-        const v = startSynthNote(engine, id, midi, vel, getPresetByName(tr?.instrumentPreset) || (tr?.synthWave as OscillatorType) || "sawtooth");
+        const v = startSynthNote(engine, id, midi, vel, getPresetByName(tr?.instrumentPreset) || getPresetByName("Platinum Anthem Lead") || (tr?.synthWave as OscillatorType) || "sawtooth");
         if (v) voicesRef.current.set(midi, v);
         if (!sustain) window.setTimeout(() => endNote(midi), 220);
       }, 30);
@@ -196,7 +196,7 @@ export function FloatingKeyboard({ engine, onClose, embedded = false }: Props) {
       return;
     }
     // Use the full selected preset so the LCD label and sound match.
-    const v = startSynthNote(engine, t.id, midi, vel, getPresetByName(t.instrumentPreset) || (t.synthWave as OscillatorType) || "sawtooth");
+    const v = startSynthNote(engine, t.id, midi, vel, getPresetByName(t.instrumentPreset) || getPresetByName("Platinum Anthem Lead") || (t.synthWave as OscillatorType) || "sawtooth");
     if (v) voicesRef.current.set(midi, v);
     recordNoteOn(t.id, midi, vel);
     if (!sustain) window.setTimeout(() => endNote(midi), 220);

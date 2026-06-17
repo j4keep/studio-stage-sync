@@ -1072,6 +1072,7 @@ export function scheduleMidiClips(engine: DawEngine, tracks: Track[], clips: Cli
     if (!chain) continue;
     const isDrum = track.instrument === "drum";
     const preset = getPresetByName(track.instrumentPreset)
+      || getPresetByName("Platinum Anthem Lead")
       || { name: "fallback", cat: "", sub: "", wave: (track.synthWave as OscillatorType) || "sawtooth" } as Preset;
     const kitName = (track as any).drumKit as string | undefined;
 

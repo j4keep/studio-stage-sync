@@ -37,7 +37,7 @@ export function InstrumentPanel({ engine }: { engine: DawEngine }) {
   const active = instrumentTracks.find(t => t.id === activeId);
   const kitName = active?.drumKit || "808";
   const activePreset = useMemo(
-    () => getPresetByName(active?.instrumentPreset) || undefined,
+    () => getPresetByName(active?.instrumentPreset) || getPresetByName("Platinum Anthem Lead") || undefined,
     [active?.instrumentPreset],
   );
 
