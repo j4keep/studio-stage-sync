@@ -102,16 +102,25 @@ export class DawEngine {
   constructor() {
     this.ctx = new AudioContext({ latencyHint: "interactive" });
     this.masterGain = this.ctx.createGain();
-    this.masterGain.gain.value = 1;
+    this.masterGain.gain.value = 0.7;
     this.masterAnalyser = this.ctx.createAnalyser();
     this.masterAnalyser.fftSize = 1024;
+    // Two-stage protection: gentle bus compressor, then hard safety limiter.
+    // Keeps headroom when 10–30 tracks sum without crunching the master.
+    const busComp = this.ctx.createDynamicsCompressor();
+    busComp.threshold.value = -14;
+    busComp.knee.value = 8;
+    busComp.ratio.value = 3;
+    busComp.attack.value = 0.005;
+    busComp.release.value = 0.12;
     const safetyLimiter = this.ctx.createDynamicsCompressor();
-    safetyLimiter.threshold.value = -2;
+    safetyLimiter.threshold.value = -3;
     safetyLimiter.knee.value = 0;
     safetyLimiter.ratio.value = 20;
-    safetyLimiter.attack.value = 0.002;
+    safetyLimiter.attack.value = 0.001;
     safetyLimiter.release.value = 0.08;
-    this.masterGain.connect(safetyLimiter);
+    this.masterGain.connect(busComp);
+    busComp.connect(safetyLimiter);
     safetyLimiter.connect(this.masterAnalyser);
     this.masterAnalyser.connect(this.ctx.destination);
 
