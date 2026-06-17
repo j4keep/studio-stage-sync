@@ -16,7 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, Circle, Copy, MonitorUp, Settings2, Sparkles, StopCircle, Video } from "lucide-react";
+import { ArrowLeft, Circle, Copy, StopCircle } from "lucide-react";
 
 type TokenResponse = {
   token: string;
@@ -199,7 +199,7 @@ const LivePodcastRoomPage = () => {
   );
 };
 
-const Stage = () => {
+const Stage = ({ layoutMode }: { layoutMode: "Grid" | "Speaker" | "Screen" }) => {
   const tracks = useTracks(
     [
       { source: Track.Source.Camera, withPlaceholder: true },
@@ -207,8 +207,9 @@ const Stage = () => {
     ],
     { onlySubscribed: false },
   );
+  const stageClass = layoutMode === "Speaker" ? "h-full [&_.lk-grid-layout]:grid-cols-1" : layoutMode === "Screen" ? "h-full [&_.lk-grid-layout]:grid-cols-1" : "h-full";
   return (
-    <GridLayout tracks={tracks} className="h-full">
+    <GridLayout tracks={tracks} className={stageClass}>
       <ParticipantTile />
     </GridLayout>
   );
@@ -218,10 +219,12 @@ const LocalRecorder = ({
   episodeId,
   participantIdentity,
   displayName,
+  quality,
 }: {
   episodeId: string;
   participantIdentity: string;
   displayName: string;
+  quality: "720p" | "1080p" | "4K";
 }) => {
   const { localParticipant } = useLocalParticipant();
   const [recording, setRecording] = useState(false);
@@ -306,7 +309,8 @@ const LocalRecorder = ({
       if (error) throw error;
       setRecordingId(rec.id);
 
-      const mr = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 4_000_000 });
+      const videoBitsPerSecond = quality === "4K" ? 14_000_000 : quality === "1080p" ? 8_000_000 : 4_000_000;
+      const mr = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond });
       mediaRecorderRef.current = mr;
       mr.ondataavailable = async (ev) => {
         if (ev.data && ev.data.size > 0) {
