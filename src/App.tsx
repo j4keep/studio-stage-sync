@@ -22,6 +22,10 @@ import MyStudiosPage from "./pages/MyStudiosPage";
 import MyBookingsPage from "./pages/MyBookingsPage";
 import WStudioDawPage from "./pages/WStudioDawPage";
 import { WStudioLayout } from "./wstudio/WStudioLayout";
+import SessionJoinScreen from "./wstudio/session/SessionJoinScreen";
+import SessionDawScreen from "./wstudio/session/SessionDawScreen";
+import UnifiedSessionScreen from "./wstudio/session/UnifiedSessionScreen";
+import StudioBridgeScreen from "./wstudio/bridge/StudioBridgeScreen";
 
 import ProfilePage from "./pages/ProfilePage";
 import TermsPage from "./pages/TermsPage";
