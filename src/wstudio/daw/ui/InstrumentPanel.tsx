@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useDawStore } from "../state/DawStore";
 import { triggerSynthNote, triggerDrumHit, type DawEngine } from "../engine/DawEngine";
+import { DRUM_KITS, DRUM_PIECES_ORDER, DRUM_PIECE_LABELS, type DrumPiece } from "../engine/presetData";
 import { Music2, Drum } from "lucide-react";
 
 const KEYS = [
@@ -23,6 +24,8 @@ const KEYBOARD_MAP: Record<string, number> = {
   a: 60, w: 61, s: 62, e: 63, d: 64, f: 65, t: 66, g: 67, y: 68, h: 69, u: 70, j: 71, k: 72,
 };
 
+const SEQ_ROWS: DrumPiece[] = ["kick", "snare", "hat", "openhat", "clap", "perc"];
+
 export function InstrumentPanel({ engine }: { engine: DawEngine }) {
   const tracks = useDawStore(s => s.tracks);
   const selectedTrackId = useDawStore(s => s.selectedTrackId);
@@ -32,30 +35,27 @@ export function InstrumentPanel({ engine }: { engine: DawEngine }) {
   const instrumentTracks = tracks.filter(t => t.kind === "instrument");
   const activeId = (selectedTrackId && tracks.find(t => t.id === selectedTrackId && t.kind === "instrument")?.id) || instrumentTracks[0]?.id || null;
   const active = instrumentTracks.find(t => t.id === activeId);
+  const kitName = active?.drumKit || "808";
 
   const [octave, setOctave] = useState(0);
-  const [steps, setSteps] = useState<{ kick: boolean[]; snare: boolean[]; hat: boolean[] }>({
-    kick: Array(16).fill(false),
-    snare: Array(16).fill(false),
-    hat: Array(16).fill(false),
-  });
+  const [steps, setSteps] = useState<Record<DrumPiece, boolean[]>>(() => ({
+    kick: Array(16).fill(false), snare: Array(16).fill(false), hat: Array(16).fill(false),
+    openhat: Array(16).fill(false), clap: Array(16).fill(false), perc: Array(16).fill(false),
+    rim: [], tom: [], ride: [], crash: [], cowbell: [],
+  }));
   const [seqPlaying, setSeqPlaying] = useState(false);
   const [stepIdx, setStepIdx] = useState(0);
 
-  // Keyboard input
   useEffect(() => {
     if (!active || active.instrument !== "synth") return;
     const down = (e: KeyboardEvent) => {
       const n = KEYBOARD_MAP[e.key.toLowerCase()];
-      if (n != null && !e.repeat) {
-        triggerSynthNote(engine, active.id, n + octave * 12);
-      }
+      if (n != null && !e.repeat) triggerSynthNote(engine, active.id, n + octave * 12);
     };
     window.addEventListener("keydown", down);
     return () => window.removeEventListener("keydown", down);
   }, [active, engine, octave]);
 
-  // Drum sequencer
   useEffect(() => {
     if (!seqPlaying || !active || active.instrument !== "drum") return;
     const bpm = useDawStore.getState().transport.bpm;
@@ -63,14 +63,14 @@ export function InstrumentPanel({ engine }: { engine: DawEngine }) {
     const id = window.setInterval(() => {
       setStepIdx(prev => {
         const next = (prev + 1) % 16;
-        if (steps.kick[next]) triggerDrumHit(engine, active.id, "kick");
-        if (steps.snare[next]) triggerDrumHit(engine, active.id, "snare");
-        if (steps.hat[next]) triggerDrumHit(engine, active.id, "hat");
+        SEQ_ROWS.forEach(piece => {
+          if (steps[piece][next]) triggerDrumHit(engine, active.id, piece, kitName);
+        });
         return next;
       });
     }, stepMs);
     return () => clearInterval(id);
-  }, [seqPlaying, active, engine, steps]);
+  }, [seqPlaying, active, engine, steps, kitName]);
 
   return (
     <div className="flex-1 bg-neutral-900 overflow-hidden flex flex-col">
@@ -78,11 +78,11 @@ export function InstrumentPanel({ engine }: { engine: DawEngine }) {
         <span>Instruments</span>
         <div className="flex-1" />
         <button
-          onClick={() => { const id = addTrack("instrument", "Synth"); updateTrack(id, { instrument: "synth" }); }}
+          onClick={() => { const id = addTrack("instrument", "Synth"); updateTrack(id, { instrument: "synth", instrumentPreset: "Bright Saw Lead", synthWave: "sawtooth" }); }}
           className="h-6 px-2 rounded border border-neutral-800 hover:bg-neutral-800 flex items-center gap-1 normal-case"
         ><Music2 className="w-3 h-3" /> Add Synth</button>
         <button
-          onClick={() => { const id = addTrack("instrument", "Drums"); updateTrack(id, { instrument: "drum" }); }}
+          onClick={() => { const id = addTrack("instrument", "Drums"); updateTrack(id, { instrument: "drum", drumKit: "808" }); }}
           className="h-6 px-2 rounded border border-neutral-800 hover:bg-neutral-800 flex items-center gap-1 normal-case"
         ><Drum className="w-3 h-3" /> Add Drums</button>
       </div>
@@ -138,18 +138,40 @@ export function InstrumentPanel({ engine }: { engine: DawEngine }) {
       )}
 
       {active?.instrument === "drum" && (
-        <div className="flex-1 p-6 flex flex-col gap-4">
-          <div className="flex items-center gap-3 text-xs text-neutral-300">
+        <div className="flex-1 p-6 flex flex-col gap-4 overflow-y-auto">
+          <div className="flex items-center gap-3 text-xs text-neutral-300 flex-wrap">
             <span>Track: <span className="text-neutral-100 font-medium">{active.name}</span></span>
+            <label className="flex items-center gap-2 ml-2">
+              <span className="text-[10px] uppercase text-neutral-500">Kit</span>
+              <select
+                value={kitName}
+                onChange={(e) => updateTrack(active.id, { drumKit: e.target.value })}
+                className="bg-neutral-800 text-neutral-100 text-xs rounded px-2 py-1 border border-neutral-700"
+              >
+                {DRUM_KITS.map(k => <option key={k.name} value={k.name}>{k.name}</option>)}
+              </select>
+            </label>
             <button
               onClick={() => setSeqPlaying(s => !s)}
               className={`px-3 py-1 rounded text-[10px] uppercase ${seqPlaying ? "bg-emerald-500 text-black" : "bg-neutral-800 text-neutral-300"}`}
             >{seqPlaying ? "Stop" : "Run"}</button>
-            <button onClick={() => setSteps({ kick: Array(16).fill(false), snare: Array(16).fill(false), hat: Array(16).fill(false) })} className="px-3 py-1 rounded text-[10px] uppercase bg-neutral-800 text-neutral-400">Clear</button>
+            <button
+              onClick={() => setSteps(s => {
+                const cleared = { ...s };
+                SEQ_ROWS.forEach(p => { cleared[p] = Array(16).fill(false); });
+                return cleared;
+              })}
+              className="px-3 py-1 rounded text-[10px] uppercase bg-neutral-800 text-neutral-400"
+            >Clear</button>
           </div>
-          {(["kick", "snare", "hat"] as const).map(row => (
+
+          {SEQ_ROWS.map(row => (
             <div key={row} className="flex items-center gap-2">
-              <div className="w-14 text-[11px] uppercase text-neutral-400">{row}</div>
+              <button
+                onClick={() => triggerDrumHit(engine, active.id, row, kitName)}
+                className="w-20 text-[11px] uppercase text-neutral-300 hover:text-cyan-300 text-left"
+                title={`Trigger ${DRUM_PIECE_LABELS[row]}`}
+              >{DRUM_PIECE_LABELS[row]}</button>
               <div className="flex gap-1">
                 {steps[row].map((on, i) => (
                   <button
@@ -161,10 +183,15 @@ export function InstrumentPanel({ engine }: { engine: DawEngine }) {
               </div>
             </div>
           ))}
-          <div className="flex gap-2 mt-2">
-            <button onClick={() => triggerDrumHit(engine, active.id, "kick")} className="px-4 py-3 bg-neutral-800 rounded text-xs text-neutral-200">Kick</button>
-            <button onClick={() => triggerDrumHit(engine, active.id, "snare")} className="px-4 py-3 bg-neutral-800 rounded text-xs text-neutral-200">Snare</button>
-            <button onClick={() => triggerDrumHit(engine, active.id, "hat")} className="px-4 py-3 bg-neutral-800 rounded text-xs text-neutral-200">Hat</button>
+
+          <div className="flex flex-wrap gap-2 mt-2">
+            {DRUM_PIECES_ORDER.map(piece => (
+              <button
+                key={piece}
+                onClick={() => triggerDrumHit(engine, active.id, piece, kitName)}
+                className="px-3 py-3 bg-neutral-800 hover:bg-neutral-700 rounded text-xs text-neutral-200 min-w-[72px]"
+              >{DRUM_PIECE_LABELS[piece]}</button>
+            ))}
           </div>
         </div>
       )}
