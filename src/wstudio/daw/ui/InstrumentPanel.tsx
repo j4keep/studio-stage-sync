@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDawStore } from "../state/DawStore";
 import { triggerSynthNote, triggerDrumHit, type DawEngine } from "../engine/DawEngine";
-import { DRUM_KITS, DRUM_PIECES_ORDER, DRUM_PIECE_LABELS, type DrumPiece } from "../engine/presetData";
+import { DRUM_KITS, DRUM_PIECES_ORDER, DRUM_PIECE_LABELS, getPresetByName, type DrumPiece } from "../engine/presetData";
 import { Music2, Drum } from "lucide-react";
 
 const KEYS = [
