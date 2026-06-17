@@ -7,7 +7,7 @@ import { triggerSynthNote, startSynthNote, triggerDrumHit, drumKindForPitch, typ
 import type { MidiNote, Clip } from "../engine/types";
 import { FloatingKeyboard } from "./FloatingKeyboard";
 import { PRESETS, PresetModal, type Preset } from "./presets";
-import { getPresetByName, type DrumPiece } from "../engine/presetData";
+import { DRUM_KITS, getPresetByName, type DrumPiece } from "../engine/presetData";
 
 
 
@@ -958,6 +958,7 @@ const DRUM_ROWS: DrumRow[] = [
 
 function BeatGridTab({ engine, trackId }: { engine: DawEngine; trackId: string }) {
   const drumKit = useDawStore(s => s.tracks.find(t => t.id === trackId)?.drumKit || "808");
+  const updateTrack = useDawStore(s => s.updateTrack);
   const allClips = useDawStore(s => s.clips);
   const trackClips = useMemo(() => allClips.filter(c => c.trackId === trackId && c.notes), [allClips, trackId]);
   const addClip = useDawStore(s => s.addClip);
@@ -1032,6 +1033,12 @@ function BeatGridTab({ engine, trackId }: { engine: DawEngine; trackId: string }
       <div className="px-4 py-2 flex items-center gap-3 border-b border-neutral-900 text-[11px] text-neutral-300">
         <span className="text-neutral-500 uppercase tracking-wider text-[10px]">Beat Maker</span>
         <div className="h-4 w-px bg-neutral-800" />
+        <label className="flex items-center gap-1.5">
+          <span className="text-neutral-500">Kit</span>
+          <select value={drumKit} onChange={e => updateTrack(trackId, { drumKit: e.target.value })} className="bg-neutral-900 border border-neutral-800 rounded px-1.5 py-0.5">
+            {DRUM_KITS.map(k => <option key={k.name} value={k.name}>{k.name}</option>)}
+          </select>
+        </label>
         <label className="flex items-center gap-1.5">
           <span className="text-neutral-500">Bars</span>
           <select value={bars} onChange={e => setBars(Number(e.target.value) as any)} className="bg-neutral-900 border border-neutral-800 rounded px-1.5 py-0.5">

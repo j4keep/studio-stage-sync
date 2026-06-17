@@ -413,6 +413,81 @@ export const DRUM_KITS: DrumKit[] = [
   },
 ];
 
+DRUM_KITS.push(
+  {
+    name: "Drill",
+    description: "Hard sliding 808-style kick, icy hats, sharp snares.",
+    voices: {
+      kick: { startHz: 95, endHz: 30, dur: 0.7, drive: 0.62 }, snare: { ...baseSnare, noiseDecay: 0.13, noiseGain: 0.72, filterHz: 2100, tone: 0.22, toneHz: 230 },
+      hat: { ...baseHat, noiseDecay: 0.03, filterHz: 10500 }, openhat: { ...baseOpen, noiseDecay: 0.2, filterHz: 9000 }, clap: { ...baseClap, filterHz: 1600 },
+      rim: { ...baseRim, toneHz: 1700 }, tom: { startHz: 180, endHz: 70, dur: 0.32, drive: 0.15 }, perc: { ...basePerc, filterHz: 4800 }, ride: { ...baseRide, filterHz: 7500 }, crash: { ...baseCrash, filterHz: 6500 }, cowbell: { ...baseCow, toneHz: 640 },
+    },
+  },
+  {
+    name: "Jersey",
+    description: "Bounce kit with tight kick, bright claps, and quick hats.",
+    voices: {
+      kick: { startHz: 150, endHz: 46, dur: 0.24, drive: 0.34 }, snare: { ...baseSnare, noiseDecay: 0.1, noiseGain: 0.62, filterHz: 2200, tone: 0.28, toneHz: 260 },
+      hat: { ...baseHat, noiseDecay: 0.028, filterHz: 9800 }, openhat: { ...baseOpen, noiseDecay: 0.18, filterHz: 8600 }, clap: { ...baseClap, noiseDecay: 0.1, filterHz: 1700 },
+      rim: { ...baseRim, toneHz: 1500 }, tom: { startHz: 210, endHz: 95, dur: 0.22 }, perc: { ...basePerc, noiseDecay: 0.055, filterHz: 5200 }, ride: { ...baseRide, noiseDecay: 0.38 }, crash: { ...baseCrash, noiseDecay: 0.85 }, cowbell: { ...baseCow, toneHz: 700 },
+    },
+  },
+  {
+    name: "R&B Velvet",
+    description: "Polished warm drums for R&B, pop, and melodic rap.",
+    voices: {
+      kick: { startHz: 118, endHz: 42, dur: 0.42, drive: 0.18 }, snare: { ...baseSnare, noiseDecay: 0.2, noiseGain: 0.48, filterHz: 1250, tone: 0.48, toneHz: 185 },
+      hat: { ...baseHat, noiseDecay: 0.055, filterHz: 6800, noiseGain: 0.22 }, openhat: { ...baseOpen, noiseDecay: 0.34, filterHz: 6200 }, clap: { ...baseClap, noiseGain: 0.42, filterHz: 1050 },
+      rim: { ...baseRim, toneHz: 950 }, tom: { startHz: 155, endHz: 62, dur: 0.42, drive: 0.08 }, perc: { ...basePerc, filterHz: 2600, noiseGain: 0.28 }, ride: { ...baseRide, filterHz: 4700, noiseGain: 0.2 }, crash: { ...baseCrash, filterHz: 4300, noiseGain: 0.32 }, cowbell: { ...baseCow, toneHz: 470 },
+    },
+  },
+  {
+    name: "Pop Punch",
+    description: "Clean modern pop drums with loud, controlled transients.",
+    voices: {
+      kick: { startHz: 170, endHz: 52, dur: 0.3, drive: 0.28 }, snare: { ...baseSnare, noiseDecay: 0.18, noiseGain: 0.68, filterHz: 1850, tone: 0.42, toneHz: 225 },
+      hat: { ...baseHat, noiseDecay: 0.042, filterHz: 8800 }, openhat: { ...baseOpen, noiseDecay: 0.28, filterHz: 7600 }, clap: { ...baseClap, noiseGain: 0.62, filterHz: 1450 },
+      rim: { ...baseRim, toneHz: 1350 }, tom: { startHz: 205, endHz: 76, dur: 0.36 }, perc: { ...basePerc, filterHz: 3600 }, ride: { ...baseRide, filterHz: 6100 }, crash: { ...baseCrash, filterHz: 5600 }, cowbell: { ...baseCow, toneHz: 580 },
+    },
+  },
+  {
+    name: "Afro Swing",
+    description: "Rounded kick, woody percussion, and bright dance hats.",
+    voices: {
+      kick: { startHz: 135, endHz: 48, dur: 0.32, drive: 0.2 }, snare: { ...baseSnare, noiseDecay: 0.14, noiseGain: 0.5, filterHz: 1500, tone: 0.32, toneHz: 210 },
+      hat: { ...baseHat, noiseDecay: 0.045, filterHz: 8200 }, openhat: { ...baseOpen, noiseDecay: 0.26, filterHz: 7200 }, clap: { ...baseClap, filterHz: 1250 },
+      rim: { ...baseRim, toneHz: 1150, noiseDecay: 0.05 }, tom: { startHz: 175, endHz: 78, dur: 0.28 }, perc: { ...basePerc, filterHz: 4200, noiseDecay: 0.065, tone: 0.18, toneHz: 820 }, ride: { ...baseRide, filterHz: 5800 }, crash: { ...baseCrash, filterHz: 5200 }, cowbell: { ...baseCow, toneHz: 610 },
+    },
+  },
+  {
+    name: "Hyperpop",
+    description: "Plastic, clipped, bright electronic drums.",
+    voices: {
+      kick: { startHz: 210, endHz: 58, dur: 0.2, drive: 0.65 }, snare: { ...baseSnare, noiseDecay: 0.09, noiseGain: 0.82, filterHz: 2600, tone: 0.2, toneHz: 300 },
+      hat: { ...baseHat, noiseDecay: 0.026, filterHz: 11500 }, openhat: { ...baseOpen, noiseDecay: 0.16, filterHz: 10000 }, clap: { ...baseClap, noiseDecay: 0.08, filterHz: 2000 },
+      rim: { ...baseRim, toneHz: 1900 }, tom: { startHz: 240, endHz: 100, dur: 0.18, drive: 0.25 }, perc: { ...basePerc, noiseDecay: 0.04, filterHz: 6500 }, ride: { ...baseRide, noiseDecay: 0.32, filterHz: 8500 }, crash: { ...baseCrash, noiseDecay: 0.7, filterHz: 7800 }, cowbell: { ...baseCow, toneHz: 760 },
+    },
+  },
+  {
+    name: "Cinematic Impact",
+    description: "Big trailer-style hits, deep toms, and long cymbals.",
+    voices: {
+      kick: { startHz: 105, endHz: 36, dur: 0.82, drive: 0.32 }, snare: { ...baseSnare, noiseDecay: 0.28, noiseGain: 0.76, filterHz: 1050, tone: 0.5, toneHz: 150 },
+      hat: { ...baseHat, noiseDecay: 0.08, filterHz: 5400 }, openhat: { ...baseOpen, noiseDecay: 0.55, filterHz: 5200 }, clap: { ...baseClap, noiseDecay: 0.22, filterHz: 950 },
+      rim: { ...baseRim, toneHz: 850 }, tom: { startHz: 170, endHz: 42, dur: 0.72, drive: 0.25 }, perc: { ...basePerc, noiseDecay: 0.12, filterHz: 2100 }, ride: { ...baseRide, noiseDecay: 0.85, filterHz: 4200 }, crash: { ...baseCrash, noiseDecay: 1.8, filterHz: 3800 }, cowbell: { ...baseCow, toneHz: 430 },
+    },
+  },
+  {
+    name: "Rock Room",
+    description: "Larger acoustic-style drums with extra body.",
+    voices: {
+      kick: { startHz: 155, endHz: 50, dur: 0.48, drive: 0.22 }, snare: { ...baseSnare, noiseDecay: 0.26, noiseGain: 0.72, filterHz: 1450, tone: 0.52, toneHz: 190 },
+      hat: { ...baseHat, noiseDecay: 0.075, filterHz: 6500 }, openhat: { ...baseOpen, noiseDecay: 0.46, filterHz: 6000 }, clap: { ...baseClap, filterHz: 1200 },
+      rim: { ...baseRim, toneHz: 1200 }, tom: { startHz: 195, endHz: 62, dur: 0.58, drive: 0.14 }, perc: { ...basePerc, filterHz: 2600 }, ride: { ...baseRide, noiseDecay: 0.72, filterHz: 5200 }, crash: { ...baseCrash, noiseDecay: 1.5, filterHz: 4800 }, cowbell: { ...baseCow, toneHz: 535 },
+    },
+  },
+);
+
 export const DRUM_PIECE_LABELS: Record<DrumPiece, string> = {
   kick: "Kick", snare: "Snare", hat: "Closed Hat", openhat: "Open Hat",
   clap: "Clap", rim: "Rim", tom: "Tom", perc: "Perc",
