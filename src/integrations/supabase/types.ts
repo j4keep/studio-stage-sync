@@ -904,6 +904,281 @@ export type Database = {
         }
         Relationships: []
       }
+      podcast_chat_messages: {
+        Row: {
+          body: string
+          created_at: string
+          episode_id: string
+          id: string
+          sender_name: string
+          sender_user_id: string | null
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          episode_id: string
+          id?: string
+          sender_name: string
+          sender_user_id?: string | null
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          episode_id?: string
+          id?: string
+          sender_name?: string
+          sender_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "podcast_chat_messages_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "podcast_episodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      podcast_clips: {
+        Row: {
+          created_at: string
+          end_seconds: number
+          episode_id: string
+          format: string
+          id: string
+          r2_key: string | null
+          start_seconds: number
+          title: string | null
+        }
+        Insert: {
+          created_at?: string
+          end_seconds: number
+          episode_id: string
+          format?: string
+          id?: string
+          r2_key?: string | null
+          start_seconds: number
+          title?: string | null
+        }
+        Update: {
+          created_at?: string
+          end_seconds?: number
+          episode_id?: string
+          format?: string
+          id?: string
+          r2_key?: string | null
+          start_seconds?: number
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "podcast_clips_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "podcast_episodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      podcast_episodes: {
+        Row: {
+          cover_url: string | null
+          created_at: string
+          description: string | null
+          duration_seconds: number | null
+          ended_at: string | null
+          host_user_id: string
+          id: string
+          is_streaming: boolean
+          livekit_room: string
+          scheduled_at: string | null
+          started_at: string | null
+          status: string
+          title: string
+          updated_at: string
+          visibility: string
+        }
+        Insert: {
+          cover_url?: string | null
+          created_at?: string
+          description?: string | null
+          duration_seconds?: number | null
+          ended_at?: string | null
+          host_user_id: string
+          id?: string
+          is_streaming?: boolean
+          livekit_room: string
+          scheduled_at?: string | null
+          started_at?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          visibility?: string
+        }
+        Update: {
+          cover_url?: string | null
+          created_at?: string
+          description?: string | null
+          duration_seconds?: number | null
+          ended_at?: string | null
+          host_user_id?: string
+          id?: string
+          is_streaming?: boolean
+          livekit_room?: string
+          scheduled_at?: string | null
+          started_at?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          visibility?: string
+        }
+        Relationships: []
+      }
+      podcast_participants: {
+        Row: {
+          created_at: string
+          display_name: string
+          episode_id: string
+          id: string
+          invite_token: string
+          joined_at: string | null
+          left_at: string | null
+          role: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          display_name: string
+          episode_id: string
+          id?: string
+          invite_token?: string
+          joined_at?: string | null
+          left_at?: string | null
+          role?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          display_name?: string
+          episode_id?: string
+          id?: string
+          invite_token?: string
+          joined_at?: string | null
+          left_at?: string | null
+          role?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "podcast_participants_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "podcast_episodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      podcast_recordings: {
+        Row: {
+          byte_size: number | null
+          chunk_count: number
+          created_at: string
+          duration_seconds: number | null
+          episode_id: string
+          id: string
+          mime_type: string
+          participant_id: string | null
+          r2_prefix: string
+          status: string
+          track_kind: string
+          updated_at: string
+          uploader_user_id: string | null
+        }
+        Insert: {
+          byte_size?: number | null
+          chunk_count?: number
+          created_at?: string
+          duration_seconds?: number | null
+          episode_id: string
+          id?: string
+          mime_type?: string
+          participant_id?: string | null
+          r2_prefix: string
+          status?: string
+          track_kind?: string
+          updated_at?: string
+          uploader_user_id?: string | null
+        }
+        Update: {
+          byte_size?: number | null
+          chunk_count?: number
+          created_at?: string
+          duration_seconds?: number | null
+          episode_id?: string
+          id?: string
+          mime_type?: string
+          participant_id?: string | null
+          r2_prefix?: string
+          status?: string
+          track_kind?: string
+          updated_at?: string
+          uploader_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "podcast_recordings_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "podcast_episodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "podcast_recordings_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "podcast_participants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      podcast_stream_destinations: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          episode_id: string
+          id: string
+          platform: string
+          rtmp_url: string
+          stream_key: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          episode_id: string
+          id?: string
+          platform: string
+          rtmp_url: string
+          stream_key: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          episode_id?: string
+          id?: string
+          platform?: string
+          rtmp_url?: string
+          stream_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "podcast_stream_destinations_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "podcast_episodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       podcasts: {
         Row: {
           cover_url: string | null
@@ -2294,6 +2569,10 @@ export type Database = {
       increment_song_plays: { Args: { song_id: string }; Returns: undefined }
       increment_video_views: { Args: { video_id: string }; Returns: undefined }
       is_blocked: { Args: { user_a: string; user_b: string }; Returns: boolean }
+      is_podcast_participant: {
+        Args: { _episode: string; _user: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

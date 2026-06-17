@@ -1,0 +1,353 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import {
+  LiveKitRoom,
+  GridLayout,
+  ParticipantTile,
+  RoomAudioRenderer,
+  ControlBar,
+  useTracks,
+  useLocalParticipant,
+} from "@livekit/components-react";
+import { Track } from "livekit-client";
+import "@livekit/components-styles";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { toast } from "@/hooks/use-toast";
+import { ArrowLeft, Circle, Square, Copy, Users, StopCircle } from "lucide-react";
+
+type TokenResponse = {
+  token: string;
+  url: string;
+  room: string;
+  identity: string;
+  role: string;
+  displayName: string;
+};
+
+const LivePodcastRoomPage = () => {
+  const { episodeId } = useParams();
+  const [search] = useSearchParams();
+  const inviteToken = search.get("invite") || undefined;
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const [episode, setEpisode] = useState<{ id: string; title: string; host_user_id: string; livekit_room: string } | null>(null);
+  const [tokenInfo, setTokenInfo] = useState<TokenResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [joining, setJoining] = useState(false);
+  const [guestName, setGuestName] = useState("");
+  const [askGuestName, setAskGuestName] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      if (!episodeId) return;
+      const { data, error } = await supabase
+        .from("podcast_episodes")
+        .select("id,title,host_user_id,livekit_room")
+        .eq("id", episodeId)
+        .maybeSingle();
+      if (error || !data) {
+        setError("Episode not found");
+        return;
+      }
+      setEpisode(data);
+    };
+    load();
+  }, [episodeId]);
+
+  const requestToken = async () => {
+    if (!episodeId) return;
+    setJoining(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("livekit-token", {
+        body: { episodeId, inviteToken },
+      });
+      if (error) throw error;
+      if ((data as { error?: string })?.error) throw new Error((data as { error: string }).error);
+      setTokenInfo(data as TokenResponse);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to join");
+    } finally {
+      setJoining(false);
+    }
+  };
+
+  const copyInviteLink = async () => {
+    if (!episode || !user || episode.host_user_id !== user.id) return;
+    // Create or fetch a generic guest invite
+    const displayName = prompt("Guest's display name?")?.trim();
+    if (!displayName) return;
+    const { data, error } = await supabase
+      .from("podcast_participants")
+      .insert({ episode_id: episode.id, display_name: displayName, role: "guest" })
+      .select("invite_token")
+      .single();
+    if (error || !data) {
+      toast({ title: "Couldn't create invite", description: error?.message, variant: "destructive" });
+      return;
+    }
+    const link = `${window.location.origin}/#/tv/podcast/${episode.id}?invite=${data.invite_token}`;
+    await navigator.clipboard.writeText(link);
+    toast({ title: "Invite link copied", description: link });
+  };
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center text-center px-6">
+        <p className="text-destructive font-medium">{error}</p>
+        <Button onClick={() => navigate("/tv/podcast")} className="mt-4" variant="outline">Back to lobby</Button>
+      </div>
+    );
+  }
+
+  if (!episode) {
+    return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading…</div>;
+  }
+
+  if (!tokenInfo) {
+    const isHost = !!user && user.id === episode.host_user_id;
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 max-w-md mx-auto">
+        <button onClick={() => navigate(isHost ? "/tv/podcast" : "/tv")} className="self-start mb-4 flex items-center gap-1 text-sm text-muted-foreground">
+          <ArrowLeft className="w-4 h-4" /> Back
+        </button>
+        <h1 className="text-2xl font-display font-bold mb-1 text-center">{episode.title}</h1>
+        <p className="text-sm text-muted-foreground mb-6 text-center">
+          {isHost ? "Ready to host this episode?" : "You've been invited to join this podcast."}
+        </p>
+        {!user && !inviteToken && (
+          <p className="text-sm text-destructive mb-3">Sign in or use a valid invite link.</p>
+        )}
+        <Button size="lg" onClick={requestToken} disabled={joining} className="w-full">
+          {joining ? "Joining…" : "Enter Studio"}
+        </Button>
+        {isHost && (
+          <Button variant="outline" className="w-full mt-3" onClick={copyInviteLink}>
+            <Copy className="w-4 h-4 mr-2" /> Create Guest Invite Link
+          </Button>
+        )}
+      </div>
+    );
+  }
+
+  const isHost = tokenInfo.role === "host";
+
+  return (
+    <div className="h-screen flex flex-col bg-black">
+      <div className="flex items-center justify-between px-4 py-2 bg-zinc-950 text-white border-b border-zinc-800">
+        <button onClick={() => navigate(isHost ? "/tv/podcast" : "/tv")} className="flex items-center gap-1 text-sm">
+          <ArrowLeft className="w-4 h-4" /> Leave
+        </button>
+        <div className="text-sm font-medium truncate">{episode.title}</div>
+        <div className="flex items-center gap-2">
+          {isHost && (
+            <button onClick={copyInviteLink} className="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 flex items-center gap-1">
+              <Copy className="w-3 h-3" /> Invite
+            </button>
+          )}
+        </div>
+      </div>
+      <div className="flex-1 min-h-0">
+        <LiveKitRoom
+          token={tokenInfo.token}
+          serverUrl={tokenInfo.url}
+          connect
+          video
+          audio
+          data-lk-theme="default"
+          className="h-full"
+          onDisconnected={() => navigate(isHost ? "/tv/podcast" : "/tv")}
+        >
+          <RoomAudioRenderer />
+          <div className="flex h-full flex-col">
+            <div className="flex-1 min-h-0">
+              <Stage />
+            </div>
+            <div className="border-t border-zinc-800 bg-zinc-950">
+              <LocalRecorder episodeId={episode.id} participantIdentity={tokenInfo.identity} displayName={tokenInfo.displayName} />
+              <ControlBar variation="minimal" controls={{ microphone: true, camera: true, screenShare: true, leave: true, chat: false }} />
+            </div>
+          </div>
+        </LiveKitRoom>
+      </div>
+    </div>
+  );
+};
+
+const Stage = () => {
+  const tracks = useTracks(
+    [
+      { source: Track.Source.Camera, withPlaceholder: true },
+      { source: Track.Source.ScreenShare, withPlaceholder: false },
+    ],
+    { onlySubscribed: false },
+  );
+  return (
+    <GridLayout tracks={tracks} className="h-full">
+      <ParticipantTile />
+    </GridLayout>
+  );
+};
+
+const LocalRecorder = ({
+  episodeId,
+  participantIdentity,
+  displayName,
+}: {
+  episodeId: string;
+  participantIdentity: string;
+  displayName: string;
+}) => {
+  const { localParticipant } = useLocalParticipant();
+  const [recording, setRecording] = useState(false);
+  const [recordingId, setRecordingId] = useState<string | null>(null);
+  const [seconds, setSeconds] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunkIndexRef = useRef(0);
+  const timerRef = useRef<number | null>(null);
+  const r2PrefixRef = useRef<string>("");
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) window.clearInterval(timerRef.current);
+      if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop();
+    };
+  }, []);
+
+  const mimeCandidates = [
+    "video/webm;codecs=vp9,opus",
+    "video/webm;codecs=vp8,opus",
+    "video/webm",
+    "video/mp4",
+  ];
+
+  const pickMime = () => mimeCandidates.find((m) => MediaRecorder.isTypeSupported(m)) || "video/webm";
+
+  const captureCombinedStream = async (): Promise<MediaStream> => {
+    // Combine local microphone + camera tracks from LiveKit's local publications.
+    const stream = new MediaStream();
+    const camPub = localParticipant.getTrackPublication(Track.Source.Camera);
+    const micPub = localParticipant.getTrackPublication(Track.Source.Microphone);
+    if (camPub?.track?.mediaStreamTrack) stream.addTrack(camPub.track.mediaStreamTrack);
+    if (micPub?.track?.mediaStreamTrack) stream.addTrack(micPub.track.mediaStreamTrack);
+    if (stream.getTracks().length === 0) {
+      // Fallback: getUserMedia directly
+      const direct = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+      direct.getTracks().forEach((t) => stream.addTrack(t));
+    }
+    return stream;
+  };
+
+  const uploadChunk = async (blob: Blob, index: number, mime: string) => {
+    const key = `${r2PrefixRef.current}${index.toString().padStart(6, "0")}.webm`;
+    const buf = await blob.arrayBuffer();
+    try {
+      const url = `https://cdcdlqbjyptamtleitdp.supabase.co/functions/v1/r2-upload`;
+      await fetch(url, {
+        method: "POST",
+        headers: {
+          "x-upload-key": key,
+          "x-upload-content-type": mime,
+          "Content-Type": mime,
+          "Content-Length": String(buf.byteLength),
+        },
+        body: buf,
+      });
+    } catch (e) {
+      console.error("chunk upload failed", e);
+    }
+  };
+
+  const start = async () => {
+    try {
+      const stream = await captureCombinedStream();
+      const mime = pickMime();
+      const safeId = participantIdentity.replace(/[^a-zA-Z0-9_-]/g, "_");
+      const prefix = `podcast/${episodeId}/${safeId}/`;
+      r2PrefixRef.current = prefix;
+      chunkIndexRef.current = 0;
+
+      const { data: rec, error } = await supabase
+        .from("podcast_recordings")
+        .insert({
+          episode_id: episodeId,
+          uploader_user_id: (await supabase.auth.getUser()).data.user?.id ?? null,
+          mime_type: mime,
+          r2_prefix: prefix,
+          status: "recording",
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      setRecordingId(rec.id);
+
+      const mr = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 4_000_000 });
+      mediaRecorderRef.current = mr;
+      mr.ondataavailable = async (ev) => {
+        if (ev.data && ev.data.size > 0) {
+          const idx = chunkIndexRef.current++;
+          await uploadChunk(ev.data, idx, mime);
+          await supabase
+            .from("podcast_recordings")
+            .update({ chunk_count: idx + 1 })
+            .eq("id", rec.id);
+        }
+      };
+      mr.onstop = async () => {
+        await supabase.from("podcast_recordings").update({ status: "uploaded", duration_seconds: seconds }).eq("id", rec.id);
+      };
+      mr.start(5000); // 5s chunks
+      setRecording(true);
+      setSeconds(0);
+      timerRef.current = window.setInterval(() => setSeconds((s) => s + 1), 1000);
+      toast({ title: "Recording started", description: "Your tracks upload to your library as you talk." });
+    } catch (e) {
+      toast({ title: "Couldn't start recording", description: e instanceof Error ? e.message : "Unknown", variant: "destructive" });
+    }
+  };
+
+  const stop = () => {
+    if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop();
+    if (timerRef.current) window.clearInterval(timerRef.current);
+    setRecording(false);
+    toast({ title: "Recording stopped", description: "Final chunks uploading…" });
+  };
+
+  return (
+    <div className="flex items-center justify-between px-4 py-2 text-white text-sm">
+      <div className="flex items-center gap-2">
+        {recording ? (
+          <>
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            <span className="font-mono">{formatTime(seconds)}</span>
+            <span className="text-xs text-zinc-400">Recording locally</span>
+          </>
+        ) : (
+          <span className="text-xs text-zinc-400">Not recording</span>
+        )}
+      </div>
+      <div>
+        {recording ? (
+          <Button size="sm" variant="destructive" onClick={stop}>
+            <StopCircle className="w-4 h-4 mr-1" /> Stop
+          </Button>
+        ) : (
+          <Button size="sm" onClick={start}>
+            <Circle className="w-4 h-4 mr-1 fill-current" /> Record
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const formatTime = (s: number) => {
+  const m = Math.floor(s / 60).toString().padStart(2, "0");
+  const sec = (s % 60).toString().padStart(2, "0");
+  return `${m}:${sec}`;
+};
+
+export default LivePodcastRoomPage;
