@@ -943,11 +943,40 @@ export function startSynthNote(
   }
 
   const filter = ctx.createBiquadFilter();
-  filter.type = "lowpass";
+  filter.type = preset.filterType ?? "lowpass";
   const fHz = preset.filterHz ?? 8000;
   filter.frequency.value = fHz;
   filter.Q.value = preset.filterQ ?? 0.7;
-  mix.connect(filter);
+  let toneSource: AudioNode = mix;
+
+  if ((preset.noiseLevel ?? 0) > 0.001) {
+    const noiseLen = Math.ceil(ctx.sampleRate * Math.max(0.03, (preset.noiseDecay ?? 0.05) + 0.05));
+    const noiseBuf = ctx.createBuffer(1, noiseLen, ctx.sampleRate);
+    const data = noiseBuf.getChannelData(0);
+    for (let i = 0; i < noiseLen; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / noiseLen);
+    const noise = ctx.createBufferSource();
+    noise.buffer = noiseBuf;
+    const nf = ctx.createBiquadFilter();
+    nf.type = "bandpass";
+    nf.frequency.value = preset.noiseFilterHz ?? 5000;
+    nf.Q.value = 0.9;
+    const ng = ctx.createGain();
+    ng.gain.setValueAtTime((preset.noiseLevel ?? 0) * vel, now);
+    ng.gain.exponentialRampToValueAtTime(0.0001, now + Math.max(0.01, preset.noiseDecay ?? 0.05));
+    noise.connect(nf).connect(ng).connect(mix);
+    try { noise.start(now); noise.stop(now + Math.max(0.03, (preset.noiseDecay ?? 0.05) + 0.04)); } catch {}
+  }
+
+  if ((preset.highpassHz ?? 0) > 0) {
+    const hp = ctx.createBiquadFilter();
+    hp.type = "highpass";
+    hp.frequency.value = Math.max(20, preset.highpassHz!);
+    hp.Q.value = 0.7;
+    mix.connect(hp);
+    toneSource = hp;
+  }
+
+  toneSource.connect(filter);
 
   const fEnv = preset.filterEnv ?? 0;
   const fDec = preset.filterDecay ?? 0.25;
@@ -979,6 +1008,17 @@ export function startSynthNote(
   env.gain.linearRampToValueAtTime(masterGain, now + a);
   env.gain.linearRampToValueAtTime(masterGain * s, now + a + d);
   postFilter.connect(env).connect(chain.input);
+
+  if ((preset.clickLevel ?? 0) > 0.001) {
+    const click = ctx.createOscillator();
+    click.type = "triangle";
+    click.frequency.value = preset.clickHz ?? 3500;
+    const cg = ctx.createGain();
+    cg.gain.setValueAtTime((preset.clickLevel ?? 0) * vel, now);
+    cg.gain.exponentialRampToValueAtTime(0.0001, now + Math.max(0.004, preset.clickDecay ?? 0.01));
+    click.connect(cg).connect(chain.input);
+    try { click.start(now); click.stop(now + Math.max(0.008, (preset.clickDecay ?? 0.01) + 0.01)); } catch {}
+  }
 
   try {
     oscs.forEach(o => o.start(now));
