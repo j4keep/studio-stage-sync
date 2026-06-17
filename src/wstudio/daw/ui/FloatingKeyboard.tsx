@@ -440,7 +440,7 @@ export function FloatingKeyboard({ engine, onClose, embedded = false }: Props) {
 
       {presetOpen && (
         <PresetModal
-          currentName={active?.instrumentPreset || "Bright Synth"}
+          currentName={active?.instrumentPreset || "Platinum Anthem Lead"}
           onClose={() => setPresetOpen(false)}
           onPick={applyPreset}
         />
