@@ -860,9 +860,10 @@ export function startSynthNote(
   const ctx = engine.ctx;
   const now = ctx.currentTime;
 
+  const wavedef: any = (presetOrWave && typeof presetOrWave === "string" && presetOrWave !== "custom") ? presetOrWave : "sawtooth";
   const preset: Preset = (presetOrWave && typeof presetOrWave === "object")
-    ? presetOrWave
-    : { name: "Default", cat: "", sub: "", wave: ((presetOrWave as OscillatorType) || "sawtooth") };
+    ? (presetOrWave as Preset)
+    : { name: "Default", cat: "", sub: "", wave: wavedef };
 
   const wave = preset.wave;
   const oct = preset.octave ?? 0;
@@ -933,7 +934,7 @@ export function startSynthNote(
   let postFilter: AudioNode = filter;
   if ((preset.drive ?? 0) > 0.001) {
     const shaper = ctx.createWaveShaper();
-    shaper.curve = makeDistCurve(preset.drive!);
+    shaper.curve = makeDistCurve(preset.drive!) as any;
     shaper.oversample = "2x";
     const post = ctx.createGain();
     post.gain.value = 1 / (1 + preset.drive! * 0.6);
@@ -1067,7 +1068,7 @@ function scheduleDrumHit(engine: DawEngine, chain: any, kind: DrumPiece, when: n
     let out: AudioNode = env;
     if ((spec.drive ?? 0) > 0.001) {
       const shaper = ctx.createWaveShaper();
-      shaper.curve = makeDistCurve(spec.drive!);
+      shaper.curve = makeDistCurve(spec.drive!) as any;
       shaper.oversample = "2x";
       env.connect(shaper);
       out = shaper;
