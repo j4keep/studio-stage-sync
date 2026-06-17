@@ -281,6 +281,27 @@ export type Database = {
         }
         Relationships: []
       }
+      blocks: {
+        Row: {
+          blocked_id: string
+          blocker_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          blocked_id: string
+          blocker_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          blocked_id?: string
+          blocker_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
       boosts: {
         Row: {
           budget: number
@@ -681,6 +702,9 @@ export type Database = {
           created_at: string
           id: string
           is_read: boolean
+          link: string | null
+          message: string | null
+          read: boolean
           reference_id: string | null
           reference_type: string | null
           title: string
@@ -692,6 +716,9 @@ export type Database = {
           created_at?: string
           id?: string
           is_read?: boolean
+          link?: string | null
+          message?: string | null
+          read?: boolean
           reference_id?: string | null
           reference_type?: string | null
           title: string
@@ -703,6 +730,9 @@ export type Database = {
           created_at?: string
           id?: string
           is_read?: boolean
+          link?: string | null
+          message?: string | null
+          read?: boolean
           reference_id?: string | null
           reference_type?: string | null
           title?: string
@@ -1637,6 +1667,7 @@ export type Database = {
       }
       users: {
         Row: {
+          avatar_url: string | null
           bio: string | null
           created_at: string
           email: string | null
@@ -1659,6 +1690,7 @@ export type Database = {
           username_lower: string | null
         }
         Insert: {
+          avatar_url?: string | null
           bio?: string | null
           created_at?: string
           email?: string | null
@@ -1681,6 +1713,7 @@ export type Database = {
           username_lower?: string | null
         }
         Update: {
+          avatar_url?: string | null
           bio?: string | null
           created_at?: string
           email?: string | null

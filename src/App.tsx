@@ -17,7 +17,25 @@ import MusicBattlePlayerPage from "./pages/MusicBattlePlayerPage";
 import ArtistProfilePage from "./pages/ArtistProfilePage";
 import RadioPage from "./pages/RadioPage";
 import TvHomePage from "./pages/TvHomePage";
-import CircleHomePage from "./pages/CircleHomePage";
+import AtchupAgeGate from "./components/atchup/AgeGate";
+import SavingsCirclesHome from "./pages/m/SavingsCirclesHome";
+import CreateCircle from "./pages/m/CreateCircle";
+import JoinCircle from "./pages/m/JoinCircle";
+import CircleDetail from "./pages/m/CircleDetail";
+import AtchupFundraisers from "./pages/m/Fundraisers";
+import CreateFundraiser from "./pages/m/CreateFundraiser";
+import FundraiserDetail from "./pages/m/FundraiserDetail";
+import AtchupMessages from "./pages/m/Messages";
+import AtchupProfile from "./pages/m/Profile";
+import AtchupEditProfile from "./pages/m/EditProfile";
+import AtchupUserProfile from "./pages/m/UserProfile";
+import VerifiedPlusUpgrade from "./pages/m/VerifiedPlusUpgrade";
+import AtchupOnboarding from "./pages/m/Onboarding";
+import SupportAdmin from "./pages/m/SupportAdmin";
+import AtchupTerms from "./pages/m/TermsConditions";
+import AtchupPrivacy from "./pages/m/PrivacyPolicy";
+import RateMember from "./pages/m/RateMember";
+import IdVerification from "./pages/IdVerification";
 
 import ProfilePage from "./pages/ProfilePage";
 import TermsPage from "./pages/TermsPage";
@@ -202,8 +220,27 @@ const ProtectedRoutes = () => {
         <Route path="/helpdesk" element={<HelpDeskPage />} />
         <Route path="/ask-jhi" element={<AskJhiPage />} />
         <Route path="/tv" element={<TvHomePage />} />
-        <Route path="/circle" element={<CircleHomePage />} />
-        <Route path="/circle/*" element={<CircleHomePage />} />
+        <Route path="/circle" element={<Navigate to="/m/savings-circles" replace />} />
+        <Route path="/circle/*" element={<Navigate to="/m/savings-circles" replace />} />
+        {/* Atchup Savings Circles & Fundraisers (18+) */}
+        <Route path="/m/savings-circles" element={<AtchupAgeGate><SavingsCirclesHome /></AtchupAgeGate>} />
+        <Route path="/m/savings-circles/create" element={<AtchupAgeGate><CreateCircle /></AtchupAgeGate>} />
+        <Route path="/m/savings-circles/join" element={<AtchupAgeGate><JoinCircle /></AtchupAgeGate>} />
+        <Route path="/m/savings-circles/:id" element={<AtchupAgeGate><CircleDetail /></AtchupAgeGate>} />
+        <Route path="/m/fundraisers" element={<AtchupAgeGate><AtchupFundraisers /></AtchupAgeGate>} />
+        <Route path="/m/fundraiser/create" element={<AtchupAgeGate><CreateFundraiser /></AtchupAgeGate>} />
+        <Route path="/m/fundraiser/:id" element={<AtchupAgeGate><FundraiserDetail /></AtchupAgeGate>} />
+        <Route path="/m/messages" element={<AtchupAgeGate><AtchupMessages /></AtchupAgeGate>} />
+        <Route path="/m/profile" element={<AtchupAgeGate><AtchupProfile /></AtchupAgeGate>} />
+        <Route path="/m/edit-profile" element={<AtchupAgeGate><AtchupEditProfile /></AtchupAgeGate>} />
+        <Route path="/m/user/:userId" element={<AtchupAgeGate><AtchupUserProfile /></AtchupAgeGate>} />
+        <Route path="/m/verified-plus-upgrade" element={<AtchupAgeGate><VerifiedPlusUpgrade /></AtchupAgeGate>} />
+        <Route path="/m/onboarding" element={<AtchupAgeGate><AtchupOnboarding /></AtchupAgeGate>} />
+        <Route path="/m/rate-member" element={<AtchupAgeGate><RateMember /></AtchupAgeGate>} />
+        <Route path="/m/support-admin" element={<AtchupAgeGate><SupportAdmin /></AtchupAgeGate>} />
+        <Route path="/m/terms-conditions" element={<AtchupTerms />} />
+        <Route path="/m/privacy-policy" element={<AtchupPrivacy />} />
+        <Route path="/id-verification" element={<AtchupAgeGate><IdVerification /></AtchupAgeGate>} />
         <Route path="/wstudio/*" element={<Navigate to="/tv" replace />} />
         <Route path="/studios" element={<Navigate to="/tv" replace />} />
         <Route path="/my-studios" element={<Navigate to="/" replace />} />
