@@ -74,7 +74,7 @@ export function BottomDock({
         })}
         <div className="flex-1" />
         <div className="text-[10px] text-neutral-500 truncate max-w-[260px]">
-          {active ? <>Track: <span className="text-neutral-300">{active.name}</span>{active.instrumentPreset ? <> · <span className="text-purple-300">{active.instrumentPreset}</span></> : null}</> : "No instrument track selected"}
+          {active ? <>Track: <span className="text-neutral-300">{active.name}</span> · <span className="text-purple-300">{active.instrument === "drum" ? (active.drumKit || "808") : (active.instrumentPreset || "Platinum Anthem Lead")}</span></> : "No instrument track selected"}
         </div>
         <button onClick={() => setExpanded(v => !v)} className="text-neutral-500 hover:text-neutral-200 ml-2">
           {expanded ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
@@ -83,7 +83,7 @@ export function BottomDock({
 
       <div className="flex-1 overflow-hidden">
         {!active ? <EmptyHint /> :
-          tab === "instrument" ? <InstrumentTab engine={engine} trackId={active.id} /> :
+          tab === "instrument" ? (active.instrument === "drum" ? <BeatGridTab engine={engine} trackId={active.id} /> : <InstrumentTab engine={engine} trackId={active.id} />) :
           tab === "chords"     ? (active.instrument === "drum"
                                     ? <BeatGridTab engine={engine} trackId={active.id} />
                                     : <ChordsTab engine={engine} trackId={active.id} />) :
