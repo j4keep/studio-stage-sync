@@ -594,6 +594,100 @@ export type Database = {
         }
         Relationships: []
       }
+      live_session_participants: {
+        Row: {
+          client_instance_id: string | null
+          display_name: string | null
+          id: string
+          is_live: boolean
+          joined_at: string
+          left_at: string | null
+          live_session_id: string
+          mic_muted: boolean
+          role: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          client_instance_id?: string | null
+          display_name?: string | null
+          id?: string
+          is_live?: boolean
+          joined_at?: string
+          left_at?: string | null
+          live_session_id: string
+          mic_muted?: boolean
+          role?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          client_instance_id?: string | null
+          display_name?: string | null
+          id?: string
+          is_live?: boolean
+          joined_at?: string
+          left_at?: string | null
+          live_session_id?: string
+          mic_muted?: boolean
+          role?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_session_participants_live_session_id_fkey"
+            columns: ["live_session_id"]
+            isOneToOne: false
+            referencedRelation: "live_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      live_sessions: {
+        Row: {
+          booking_id: string | null
+          created_at: string
+          created_by: string
+          ended_at: string | null
+          id: string
+          session_code: string
+          started_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          booking_id?: string | null
+          created_at?: string
+          created_by: string
+          ended_at?: string | null
+          id?: string
+          session_code: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          booking_id?: string | null
+          created_at?: string
+          created_by?: string
+          ended_at?: string | null
+          id?: string
+          session_code?: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_sessions_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "studio_bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string | null
@@ -695,6 +789,48 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      no_show_strikes: {
+        Row: {
+          booking_id: string
+          created_at: string
+          engineer_id: string
+          id: string
+          reported_by: string
+          studio_id: string
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string
+          engineer_id: string
+          id?: string
+          reported_by: string
+          studio_id: string
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string
+          engineer_id?: string
+          id?: string
+          reported_by?: string
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "no_show_strikes_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "studio_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "no_show_strikes_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications: {
         Row: {
@@ -1040,6 +1176,136 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "store_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recording_exports: {
+        Row: {
+          artist_name: string | null
+          audio_url: string | null
+          cover_url: string | null
+          created_at: string
+          id: string
+          session_id: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          artist_name?: string | null
+          audio_url?: string | null
+          cover_url?: string | null
+          created_at?: string
+          id?: string
+          session_id?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          artist_name?: string | null
+          audio_url?: string | null
+          cover_url?: string | null
+          created_at?: string
+          id?: string
+          session_id?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recording_exports_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "recording_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recording_sessions: {
+        Row: {
+          beat_name: string | null
+          beat_url: string | null
+          cover_url: string | null
+          created_at: string
+          id: string
+          is_draft: boolean
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          beat_name?: string | null
+          beat_url?: string | null
+          cover_url?: string | null
+          created_at?: string
+          id?: string
+          is_draft?: boolean
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          beat_name?: string | null
+          beat_url?: string | null
+          cover_url?: string | null
+          created_at?: string
+          id?: string
+          is_draft?: boolean
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      recording_takes: {
+        Row: {
+          audio_url: string | null
+          created_at: string
+          duration: number
+          id: string
+          muted: boolean
+          name: string
+          session_id: string
+          solo: boolean
+          trim_end: number
+          trim_start: number
+          user_id: string
+          waveform_data: Json | null
+        }
+        Insert: {
+          audio_url?: string | null
+          created_at?: string
+          duration?: number
+          id?: string
+          muted?: boolean
+          name?: string
+          session_id: string
+          solo?: boolean
+          trim_end?: number
+          trim_start?: number
+          user_id: string
+          waveform_data?: Json | null
+        }
+        Update: {
+          audio_url?: string | null
+          created_at?: string
+          duration?: number
+          id?: string
+          muted?: boolean
+          name?: string
+          session_id?: string
+          solo?: boolean
+          trim_end?: number
+          trim_start?: number
+          user_id?: string
+          waveform_data?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recording_takes_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "recording_sessions"
             referencedColumns: ["id"]
           },
         ]
@@ -1415,6 +1681,237 @@ export type Database = {
         }
         Relationships: []
       }
+      studio_availability: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          is_booked: boolean | null
+          studio_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          id?: string
+          is_booked?: boolean | null
+          studio_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          is_booked?: boolean | null
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_availability_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_bookings: {
+        Row: {
+          approval_deadline: string | null
+          artist_confirmed: boolean | null
+          artist_responded_at: string | null
+          booking_date: string
+          cancellation_fee: number
+          cancelled_at: string | null
+          created_at: string
+          engineer_completed_at: string | null
+          hours: number
+          id: string
+          payout_status: string
+          session_code: string | null
+          session_status: string
+          status: string
+          studio_id: string
+          total_amount: number
+          user_id: string
+        }
+        Insert: {
+          approval_deadline?: string | null
+          artist_confirmed?: boolean | null
+          artist_responded_at?: string | null
+          booking_date: string
+          cancellation_fee?: number
+          cancelled_at?: string | null
+          created_at?: string
+          engineer_completed_at?: string | null
+          hours?: number
+          id?: string
+          payout_status?: string
+          session_code?: string | null
+          session_status?: string
+          status?: string
+          studio_id: string
+          total_amount?: number
+          user_id: string
+        }
+        Update: {
+          approval_deadline?: string | null
+          artist_confirmed?: boolean | null
+          artist_responded_at?: string | null
+          booking_date?: string
+          cancellation_fee?: number
+          cancelled_at?: string | null
+          created_at?: string
+          engineer_completed_at?: string | null
+          hours?: number
+          id?: string
+          payout_status?: string
+          session_code?: string | null
+          session_status?: string
+          status?: string
+          studio_id?: string
+          total_amount?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_bookings_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_photos: {
+        Row: {
+          created_at: string
+          display_order: number | null
+          id: string
+          photo_url: string
+          studio_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          photo_url: string
+          studio_id: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          photo_url?: string
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_photos_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_reviews: {
+        Row: {
+          booking_id: string
+          comment: string | null
+          created_at: string
+          id: string
+          rating: number
+          studio_id: string
+          user_id: string
+        }
+        Insert: {
+          booking_id: string
+          comment?: string | null
+          created_at?: string
+          id?: string
+          rating: number
+          studio_id: string
+          user_id: string
+        }
+        Update: {
+          booking_id?: string
+          comment?: string | null
+          created_at?: string
+          id?: string
+          rating?: number
+          studio_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "studio_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_reviews_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studios: {
+        Row: {
+          auto_accept: boolean
+          created_at: string
+          daily_rate: number | null
+          description: string | null
+          engineer_available: boolean | null
+          equipment: string[] | null
+          hourly_rate: number
+          id: string
+          location: string
+          name: string
+          no_show_count: number | null
+          rating: number | null
+          reviews_count: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auto_accept?: boolean
+          created_at?: string
+          daily_rate?: number | null
+          description?: string | null
+          engineer_available?: boolean | null
+          equipment?: string[] | null
+          hourly_rate?: number
+          id?: string
+          location: string
+          name: string
+          no_show_count?: number | null
+          rating?: number | null
+          reviews_count?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auto_accept?: boolean
+          created_at?: string
+          daily_rate?: number | null
+          description?: string | null
+          engineer_available?: boolean | null
+          equipment?: string[] | null
+          hourly_rate?: number
+          id?: string
+          location?: string
+          name?: string
+          no_show_count?: number | null
+          rating?: number | null
+          reviews_count?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       support_tickets: {
         Row: {
           admin_response: string | null
@@ -1778,6 +2275,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      expire_pending_bookings: { Args: never; Returns: number }
       has_role: { Args: { _role: string; _user_id: string }; Returns: boolean }
       increment_battle_views: {
         Args: { battle_id: string }
