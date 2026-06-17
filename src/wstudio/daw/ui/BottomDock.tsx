@@ -7,7 +7,7 @@ import { triggerSynthNote, startSynthNote, triggerDrumHit, drumKindForPitch, typ
 import type { MidiNote, Clip } from "../engine/types";
 import { FloatingKeyboard } from "./FloatingKeyboard";
 import { PRESETS, PresetModal, type Preset } from "./presets";
-import { getPresetByName } from "../engine/presetData";
+import { getPresetByName, type DrumPiece } from "../engine/presetData";
 
 
 
@@ -939,21 +939,25 @@ function EffectsTab({ trackId }: { trackId: string }) {
 /* BEAT GRID TAB — Soundtrap-style step sequencer for drum tracks         */
 /* ===================================================================== */
 
-type DrumRow = { name: string; pitch: number; kind: "kick" | "snare" | "hat" | "clap" | "tom" | "perc" | "ride" | "crash" };
+type DrumRow = { name: string; pitch: number; kind: DrumPiece };
 const DRUM_ROWS: DrumRow[] = [
   { name: "Kick",          pitch: 36, kind: "kick" },
+  { name: "Rim",           pitch: 37, kind: "rim" },
   { name: "Snare",         pitch: 38, kind: "snare" },
   { name: "Clap",          pitch: 39, kind: "clap" },
   { name: "Hi-Hat Closed", pitch: 42, kind: "hat" },
-  { name: "Hi-Hat Open",   pitch: 46, kind: "hat" },
+  { name: "Perc",          pitch: 44, kind: "perc" },
+  { name: "Hi-Hat Open",   pitch: 46, kind: "openhat" },
   { name: "Crash",         pitch: 49, kind: "crash" },
   { name: "Ride",          pitch: 51, kind: "ride" },
+  { name: "Cowbell",       pitch: 56, kind: "cowbell" },
   { name: "Low Tom",       pitch: 41, kind: "tom" },
   { name: "Mid Tom",       pitch: 45, kind: "tom" },
   { name: "High Tom",      pitch: 48, kind: "tom" },
 ];
 
 function BeatGridTab({ engine, trackId }: { engine: DawEngine; trackId: string }) {
+  const drumKit = useDawStore(s => s.tracks.find(t => t.id === trackId)?.drumKit || "808");
   const allClips = useDawStore(s => s.clips);
   const trackClips = useMemo(() => allClips.filter(c => c.trackId === trackId && c.notes), [allClips, trackId]);
   const addClip = useDawStore(s => s.addClip);
@@ -1006,7 +1010,7 @@ function BeatGridTab({ engine, trackId }: { engine: DawEngine; trackId: string }
     } else {
       next = [...notes, { id: newId("n"), pitch, start: t, length: stepBeats * 0.9, velocity: 0.85 }];
       const row = DRUM_ROWS.find(r => r.pitch === pitch);
-      if (row) triggerDrumHit(engine, trackId, row.kind);
+      if (row) triggerDrumHit(engine, trackId, row.kind, drumKit);
     }
     updateClip(id, {
       notes: next,
@@ -1049,7 +1053,7 @@ function BeatGridTab({ engine, trackId }: { engine: DawEngine; trackId: string }
             <div key={row.pitch} className="flex items-stretch border-b border-neutral-900">
               <div className="w-32 shrink-0 px-3 flex items-center text-[11px] text-neutral-300 bg-neutral-950 border-r border-neutral-800">
                 <button
-                  onClick={() => triggerDrumHit(engine, trackId, row.kind)}
+                  onClick={() => triggerDrumHit(engine, trackId, row.kind, drumKit)}
                   className="w-5 h-5 grid place-items-center rounded-full bg-neutral-900 border border-neutral-800 hover:border-teal-400/60 text-teal-300 mr-2"
                   title={`Preview ${row.name}`}
                 ><Play className="w-2.5 h-2.5" /></button>
