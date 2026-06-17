@@ -36,6 +36,10 @@ export function InstrumentPanel({ engine }: { engine: DawEngine }) {
   const activeId = (selectedTrackId && tracks.find(t => t.id === selectedTrackId && t.kind === "instrument")?.id) || instrumentTracks[0]?.id || null;
   const active = instrumentTracks.find(t => t.id === activeId);
   const kitName = active?.drumKit || "808";
+  const activePreset = useMemo(
+    () => getPresetByName(active?.instrumentPreset) || undefined,
+    [active?.instrumentPreset],
+  );
 
   const [octave, setOctave] = useState(0);
   const [steps, setSteps] = useState<Record<DrumPiece, boolean[]>>(() => ({
@@ -50,11 +54,11 @@ export function InstrumentPanel({ engine }: { engine: DawEngine }) {
     if (!active || active.instrument !== "synth") return;
     const down = (e: KeyboardEvent) => {
       const n = KEYBOARD_MAP[e.key.toLowerCase()];
-      if (n != null && !e.repeat) triggerSynthNote(engine, active.id, n + octave * 12);
+      if (n != null && !e.repeat) triggerSynthNote(engine, active.id, n + octave * 12, 0.4, 0.85, activePreset);
     };
     window.addEventListener("keydown", down);
     return () => window.removeEventListener("keydown", down);
-  }, [active, engine, octave]);
+  }, [active, engine, octave, activePreset]);
 
   useEffect(() => {
     if (!seqPlaying || !active || active.instrument !== "drum") return;
