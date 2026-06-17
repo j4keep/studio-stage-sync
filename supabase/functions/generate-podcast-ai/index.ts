@@ -59,7 +59,7 @@ ${combined}
     });
     if (!resp.ok) {
       const t = await resp.text().catch(() => "");
-      return json({ error: `AI error: ${resp.status} ${t}` }, resp.status);
+      return json({ error: `AI error: ${resp.status} ${t}` });
     }
     const body = await resp.json();
     const content = body?.choices?.[0]?.message?.content ?? "{}";

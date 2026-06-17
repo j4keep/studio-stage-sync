@@ -46,7 +46,7 @@ ${combined}
         response_format: { type: "json_object" },
       }),
     });
-    if (!resp.ok) return json({ error: `AI error: ${resp.status} ${await resp.text().catch(() => "")}` }, resp.status);
+    if (!resp.ok) return json({ error: `AI error: ${resp.status} ${await resp.text().catch(() => "")}` });
     const body = await resp.json();
     const parsed = JSON.parse(body?.choices?.[0]?.message?.content ?? "{}");
     const clips: Array<{ title: string; quote: string; start_seconds: number; end_seconds: number }> = parsed.clips ?? [];
