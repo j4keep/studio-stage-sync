@@ -18,6 +18,8 @@ import {
   Plus,
   Trash2,
   Wand2,
+  Type,
+  Music,
 } from "lucide-react";
 
 type Episode = {
