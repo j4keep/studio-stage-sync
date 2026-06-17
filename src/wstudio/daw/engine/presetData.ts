@@ -29,12 +29,26 @@ export interface Preset {
   unison?: number;       // # detuned voices (1..3)
   subLevel?: number;     // 0..1 sine sub one octave below
   octave?: number;       // octave shift (-2..+2)
+  layerWave?: SynthWave;  // second oscillator layer for richer patches
+  layerLevel?: number;    // 0..1 layer gain
+  layerOctave?: number;   // semitone octave-ish offset for layer
+  layerDetune?: number;   // cents for layer oscillator
+  pitchDrop?: number;     // semitones above target at note-on, drops into pitch
+  pitchDropTime?: number; // seconds for 808/kick-style pitch drop
+  clickLevel?: number;    // short attack click amount
+  clickHz?: number;       // click oscillator frequency
+  clickDecay?: number;    // click length
+  noiseLevel?: number;    // breath/pick/noise transient
+  noiseDecay?: number;    // noise transient length
+  noiseFilterHz?: number; // noise color
   // Modulation
   lfoRate?: number;      // Hz
   lfoDepth?: number;     // cents pitch wobble
   // Color / drive
   drive?: number;        // 0..1 waveshaper
   gain?: number;         // 0..1 voice level
+  filterType?: BiquadFilterType;
+  highpassHz?: number;
 }
 
 export const PRESET_CATS = [
@@ -174,6 +188,69 @@ export const PRESETS: Preset[] = [
   { name: "FX Stab",          wave: "sawtooth", cat: "FX", sub: "Stabs",              attack: 0.001, decay: 0.5,  sustain: 0,   release: 0.4,  filterHz: 3000, filterQ: 3, drive: 0.3 },
   { name: "FX Zap",           wave: "square",   cat: "FX", sub: "Stabs",              attack: 0.001, decay: 0.15, sustain: 0,   release: 0.1,  filterHz: 4500, filterEnv: 0.7, filterDecay: 0.1, drive: 0.4 },
 ];
+
+const EXPANDED_PRESETS: Preset[] = [
+  // ── Pro 808s / subs ──
+  { name: "808 Clean Long", wave: "sine", cat: "Bass & 808s", sub: "808 Pro", attack: 0.002, decay: 1.1, sustain: 0.58, release: 1.1, octave: -2, filterHz: 180, pitchDrop: 14, pitchDropTime: 0.07, clickLevel: 0.08, clickHz: 2600, clickDecay: 0.012, drive: 0.12, gain: 0.86 },
+  { name: "808 Hard Clip", wave: "sine", cat: "Bass & 808s", sub: "808 Pro", attack: 0.001, decay: 0.8, sustain: 0.46, release: 0.75, octave: -2, filterHz: 260, pitchDrop: 18, pitchDropTime: 0.055, clickLevel: 0.12, clickHz: 3200, clickDecay: 0.01, drive: 0.62, gain: 0.78 },
+  { name: "808 Drill Slide", wave: "sine", cat: "Bass & 808s", sub: "808 Pro", attack: 0.003, decay: 0.95, sustain: 0.52, release: 0.9, octave: -2, filterHz: 220, pitchDrop: 22, pitchDropTime: 0.09, layerWave: "triangle", layerLevel: 0.14, layerOctave: 0, drive: 0.35, gain: 0.82 },
+  { name: "808 Short Knock", wave: "sine", cat: "Bass & 808s", sub: "808 Pro", attack: 0.001, decay: 0.28, sustain: 0.12, release: 0.24, octave: -2, filterHz: 320, pitchDrop: 20, pitchDropTime: 0.045, clickLevel: 0.16, clickHz: 3800, clickDecay: 0.008, drive: 0.38, gain: 0.84 },
+  { name: "808 RnB Velvet", wave: "sine", cat: "Bass & 808s", sub: "808 Pro", attack: 0.008, decay: 1.2, sustain: 0.64, release: 1.4, octave: -2, filterHz: 150, pitchDrop: 8, pitchDropTime: 0.08, drive: 0.08, gain: 0.78 },
+  { name: "808 Memphis Buzz", wave: "triangle", cat: "Bass & 808s", sub: "808 Pro", attack: 0.002, decay: 0.7, sustain: 0.38, release: 0.62, octave: -2, filterHz: 520, pitchDrop: 16, pitchDropTime: 0.055, layerWave: "square", layerLevel: 0.1, drive: 0.5, gain: 0.76 },
+  { name: "Sub Cinema", wave: "sine", cat: "Bass & 808s", sub: "Sub", attack: 0.03, decay: 0.5, sustain: 0.9, release: 0.9, octave: -2, filterHz: 120, gain: 0.72 },
+  { name: "Sub Club Round", wave: "sine", cat: "Bass & 808s", sub: "Sub", attack: 0.006, decay: 0.35, sustain: 0.82, release: 0.45, octave: -1, filterHz: 170, layerWave: "triangle", layerLevel: 0.12, drive: 0.1, gain: 0.76 },
+  { name: "Reese Wide Pro", wave: "sawtooth", cat: "Bass & 808s", sub: "Bass", attack: 0.01, decay: 0.45, sustain: 0.82, release: 0.55, octave: -1, filterHz: 620, filterQ: 2.8, unison: 5, detune: 24, subLevel: 0.34, drive: 0.28, gain: 0.64 },
+  { name: "Neuro Reese", wave: "sawtooth", cat: "Bass & 808s", sub: "Bass", attack: 0.004, decay: 0.5, sustain: 0.74, release: 0.35, octave: -1, filterHz: 760, filterQ: 6, unison: 5, detune: 31, lfoRate: 2.2, lfoDepth: 10, drive: 0.45, gain: 0.6 },
+  { name: "Analog Mono Bass", wave: "sawtooth", cat: "Bass & 808s", sub: "Bass", attack: 0.004, decay: 0.25, sustain: 0.55, release: 0.24, octave: -1, filterHz: 520, filterQ: 3.5, filterEnv: 0.45, filterDecay: 0.18, subLevel: 0.28, drive: 0.18, gain: 0.7 },
+  { name: "House Rubber Bass", wave: "square", cat: "Bass & 808s", sub: "Bass", attack: 0.002, decay: 0.16, sustain: 0.2, release: 0.16, octave: -1, filterHz: 700, filterQ: 5, filterEnv: 0.55, filterDecay: 0.12, drive: 0.16, gain: 0.72 },
+
+  // ── Pro leads ──
+  { name: "Platinum Anthem Lead", wave: "sawtooth", cat: "Leads", sub: "Pro Leads", attack: 0.008, decay: 0.22, sustain: 0.82, release: 0.28, filterHz: 7200, filterQ: 1.2, unison: 7, detune: 19, layerWave: "square", layerLevel: 0.18, drive: 0.16, gain: 0.58 },
+  { name: "Metro Lead", wave: "sawtooth", cat: "Leads", sub: "Pro Leads", attack: 0.006, decay: 0.2, sustain: 0.72, release: 0.22, filterHz: 4300, filterQ: 2.2, unison: 5, detune: 15, layerWave: "triangle", layerLevel: 0.16, drive: 0.22, gain: 0.62 },
+  { name: "Neon Mono Lead", wave: "square", cat: "Leads", sub: "Pro Leads", attack: 0.004, decay: 0.18, sustain: 0.68, release: 0.18, filterHz: 3600, filterQ: 2.8, layerWave: "sawtooth", layerLevel: 0.24, layerDetune: 7, drive: 0.18, gain: 0.64 },
+  { name: "Silky RnB Lead", wave: "triangle", cat: "Leads", sub: "Pro Leads", attack: 0.025, decay: 0.24, sustain: 0.66, release: 0.42, filterHz: 5200, lfoRate: 5.2, lfoDepth: 7, layerWave: "sine", layerLevel: 0.25, gain: 0.66 },
+  { name: "Drill Whistle", wave: "sine", cat: "Leads", sub: "Pro Leads", attack: 0.012, decay: 0.18, sustain: 0.78, release: 0.2, octave: 1, filterHz: 7000, lfoRate: 6, lfoDepth: 9, layerWave: "triangle", layerLevel: 0.18, gain: 0.56 },
+  { name: "Future Bounce Lead", wave: "sawtooth", cat: "Leads", sub: "Pro Leads", attack: 0.003, decay: 0.16, sustain: 0.52, release: 0.16, filterHz: 5400, filterQ: 2, filterEnv: 0.35, filterDecay: 0.14, unison: 5, detune: 21, drive: 0.2, gain: 0.58 },
+  { name: "EDM Festival Stack", wave: "sawtooth", cat: "Leads", sub: "Pro Leads", attack: 0.012, decay: 0.28, sustain: 0.86, release: 0.36, filterHz: 8500, unison: 7, detune: 28, layerWave: "sawtooth", layerLevel: 0.28, layerOctave: 12, drive: 0.2, gain: 0.52 },
+  { name: "Trap Snake Lead", wave: "square", cat: "Leads", sub: "Pro Leads", attack: 0.002, decay: 0.12, sustain: 0.45, release: 0.14, filterHz: 2600, filterQ: 6, filterEnv: 0.4, filterDecay: 0.1, drive: 0.28, gain: 0.62 },
+  { name: "West Coast Lead", wave: "triangle", cat: "Leads", sub: "Pro Leads", attack: 0.018, decay: 0.2, sustain: 0.74, release: 0.26, filterHz: 4200, lfoRate: 5.8, lfoDepth: 12, layerWave: "square", layerLevel: 0.2, drive: 0.14, gain: 0.62 },
+  { name: "Laser Lead", wave: "sawtooth", cat: "Leads", sub: "Pro Leads", attack: 0.001, decay: 0.12, sustain: 0.18, release: 0.12, filterHz: 6200, filterQ: 4, pitchDrop: 7, pitchDropTime: 0.035, drive: 0.3, gain: 0.58 },
+  { name: "Air Lead", wave: "sine", cat: "Leads", sub: "Soft Leads", attack: 0.05, decay: 0.25, sustain: 0.74, release: 0.5, filterHz: 6200, noiseLevel: 0.04, noiseDecay: 0.08, noiseFilterHz: 9000, lfoRate: 4.8, lfoDepth: 5, gain: 0.58 },
+  { name: "Carbon Lead", wave: "sawtooth", cat: "Leads", sub: "Hard Leads", attack: 0.004, decay: 0.2, sustain: 0.76, release: 0.22, filterHz: 3800, filterQ: 3, unison: 3, detune: 13, drive: 0.48, highpassHz: 110, gain: 0.58 },
+  { name: "Hyperpop Lead", wave: "square", cat: "Leads", sub: "Hard Leads", attack: 0.001, decay: 0.1, sustain: 0.72, release: 0.08, filterHz: 9000, layerWave: "sawtooth", layerLevel: 0.35, layerOctave: 12, drive: 0.34, gain: 0.52 },
+  { name: "Analog Solo Lead", wave: "sawtooth", cat: "Leads", sub: "Vintage", attack: 0.015, decay: 0.25, sustain: 0.7, release: 0.34, filterHz: 3100, filterQ: 2.4, filterEnv: 0.22, filterDecay: 0.18, lfoRate: 5, lfoDepth: 5, drive: 0.18, gain: 0.64 },
+  { name: "Liquid Lead", wave: "triangle", cat: "Leads", sub: "Soft Leads", attack: 0.03, decay: 0.28, sustain: 0.8, release: 0.45, filterHz: 5000, unison: 3, detune: 9, lfoRate: 4, lfoDepth: 8, gain: 0.6 },
+
+  // ── Keys, plucks, bells with transients/layers ──
+  { name: "Studio Grand Synth", wave: "triangle", cat: "Keys", sub: "Piano", attack: 0.002, decay: 0.8, sustain: 0.24, release: 0.7, filterHz: 6200, layerWave: "sine", layerLevel: 0.32, layerOctave: 12, clickLevel: 0.06, clickHz: 5200, clickDecay: 0.01, gain: 0.68 },
+  { name: "Dark Trap Piano", wave: "triangle", cat: "Keys", sub: "Piano", attack: 0.003, decay: 0.95, sustain: 0.2, release: 0.8, filterHz: 3200, layerWave: "sine", layerLevel: 0.25, highpassHz: 65, drive: 0.08, gain: 0.64 },
+  { name: "Velvet Rhodes", wave: "sine", cat: "Keys", sub: "Electric Piano", attack: 0.006, decay: 0.7, sustain: 0.48, release: 0.8, filterHz: 4300, layerWave: "triangle", layerLevel: 0.3, lfoRate: 5.4, lfoDepth: 4, drive: 0.12, gain: 0.64 },
+  { name: "Glass EP", wave: "triangle", cat: "Keys", sub: "Electric Piano", attack: 0.002, decay: 0.55, sustain: 0.32, release: 0.55, filterHz: 7200, layerWave: "sine", layerLevel: 0.42, layerOctave: 12, clickLevel: 0.04, clickHz: 7000, clickDecay: 0.008, gain: 0.58 },
+  { name: "Tape Organ", wave: "sine", cat: "Keys", sub: "Organ", attack: 0.01, decay: 0.12, sustain: 0.95, release: 0.25, filterHz: 3600, subLevel: 0.38, layerWave: "square", layerLevel: 0.18, lfoRate: 6.2, lfoDepth: 5, drive: 0.18, gain: 0.58 },
+  { name: "Afro Pluck", wave: "triangle", cat: "Plucks", sub: "World", attack: 0.001, decay: 0.22, sustain: 0, release: 0.14, filterHz: 5200, filterQ: 2, layerWave: "sine", layerLevel: 0.28, clickLevel: 0.05, clickHz: 4500, clickDecay: 0.006, gain: 0.64 },
+  { name: "Jersey Pluck", wave: "square", cat: "Plucks", sub: "Synth Plucks", attack: 0.001, decay: 0.14, sustain: 0.04, release: 0.09, filterHz: 7600, filterQ: 2.5, layerWave: "sawtooth", layerLevel: 0.18, drive: 0.16, gain: 0.6 },
+  { name: "Luxury Pluck", wave: "sine", cat: "Plucks", sub: "Synth Plucks", attack: 0.002, decay: 0.34, sustain: 0, release: 0.28, filterHz: 6500, layerWave: "triangle", layerLevel: 0.45, layerOctave: 12, noiseLevel: 0.03, noiseDecay: 0.04, gain: 0.58 },
+  { name: "Pop Mallet", wave: "sine", cat: "Plucks", sub: "Mallet", attack: 0.001, decay: 0.38, sustain: 0, release: 0.22, filterHz: 7200, layerWave: "triangle", layerLevel: 0.35, layerOctave: 12, clickLevel: 0.05, clickHz: 6200, clickDecay: 0.008, gain: 0.6 },
+  { name: "Crystal Trap Bell", wave: "sine", cat: "Bells", sub: "Trap Bells", attack: 0.001, decay: 1.15, sustain: 0, release: 0.95, filterHz: 8400, layerWave: "triangle", layerLevel: 0.5, layerOctave: 12, lfoRate: 3.8, lfoDepth: 3, gain: 0.54 },
+  { name: "Ice Bell", wave: "triangle", cat: "Bells", sub: "Glass", attack: 0.001, decay: 0.95, sustain: 0, release: 0.8, filterHz: 9000, layerWave: "sine", layerLevel: 0.38, layerOctave: 24, gain: 0.5 },
+  { name: "Dark Bell Pro", wave: "sine", cat: "Bells", sub: "Tubular", attack: 0.002, decay: 1.4, sustain: 0, release: 1.2, octave: -1, filterHz: 3000, layerWave: "triangle", layerLevel: 0.24, drive: 0.08, gain: 0.58 },
+
+  // ── Pads / atmospheres ──
+  { name: "Ocean Wide Pad", wave: "sawtooth", cat: "Pads", sub: "Ambient", attack: 0.8, decay: 0.9, sustain: 0.82, release: 2.4, filterHz: 1700, unison: 7, detune: 22, layerWave: "triangle", layerLevel: 0.24, lfoRate: 0.28, lfoDepth: 14, gain: 0.42 },
+  { name: "Luxury Choir Pad", wave: "triangle", cat: "Pads", sub: "Choir", attack: 0.9, decay: 0.7, sustain: 0.86, release: 2.2, filterHz: 2600, unison: 5, detune: 18, layerWave: "sine", layerLevel: 0.35, lfoRate: 0.42, lfoDepth: 9, gain: 0.46 },
+  { name: "Dark Cinema Pad", wave: "sawtooth", cat: "Pads", sub: "Ambient", attack: 1.1, decay: 0.8, sustain: 0.78, release: 2.6, filterHz: 900, filterQ: 1.8, unison: 5, detune: 15, subLevel: 0.18, noiseLevel: 0.02, noiseDecay: 1.5, noiseFilterHz: 3000, gain: 0.42 },
+  { name: "Warm Tape Pad", wave: "sawtooth", cat: "Pads", sub: "Warm", attack: 0.55, decay: 0.65, sustain: 0.82, release: 1.8, filterHz: 2100, unison: 5, detune: 16, layerWave: "triangle", layerLevel: 0.26, drive: 0.12, gain: 0.48 },
+  { name: "Air Strings", wave: "sawtooth", cat: "Orchestral", sub: "Strings", attack: 0.28, decay: 0.5, sustain: 0.84, release: 1.3, filterHz: 3400, unison: 5, detune: 11, layerWave: "triangle", layerLevel: 0.22, lfoRate: 4.7, lfoDepth: 5, gain: 0.48 },
+  { name: "Trailer Brass", wave: "sawtooth", cat: "Orchestral", sub: "Brass", attack: 0.035, decay: 0.28, sustain: 0.78, release: 0.42, filterHz: 2800, filterQ: 2, layerWave: "square", layerLevel: 0.18, drive: 0.28, gain: 0.58 },
+  { name: "Breathy Flute", wave: "sine", cat: "Orchestral", sub: "Woodwind", attack: 0.06, decay: 0.22, sustain: 0.82, release: 0.45, filterHz: 5200, noiseLevel: 0.05, noiseDecay: 0.16, noiseFilterHz: 8500, lfoRate: 5, lfoDepth: 6, gain: 0.56 },
+
+  // ── FX / risers ──
+  { name: "Producer Riser", wave: "sawtooth", cat: "FX", sub: "Risers", attack: 1.2, decay: 0.2, sustain: 1, release: 0.45, filterHz: 700, filterQ: 5, filterEnv: 1, filterDecay: 1.25, unison: 7, detune: 28, noiseLevel: 0.08, noiseDecay: 1.2, noiseFilterHz: 9000, gain: 0.42 },
+  { name: "Impact Stab", wave: "sawtooth", cat: "FX", sub: "Stabs", attack: 0.001, decay: 0.55, sustain: 0, release: 0.45, filterHz: 1800, filterQ: 3, pitchDrop: 12, pitchDropTime: 0.08, noiseLevel: 0.08, noiseDecay: 0.14, drive: 0.38, gain: 0.58 },
+  { name: "Vinyl Noise Hit", wave: "triangle", cat: "FX", sub: "Stabs", attack: 0.001, decay: 0.25, sustain: 0, release: 0.2, filterHz: 2500, noiseLevel: 0.2, noiseDecay: 0.22, noiseFilterHz: 4500, highpassHz: 220, gain: 0.46 },
+];
+
+PRESETS.push(...EXPANDED_PRESETS);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Drum kits — each defines per-piece tuning/character. All synthesized in code.
