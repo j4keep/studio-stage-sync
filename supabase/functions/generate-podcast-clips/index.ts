@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
       .eq("status", "ready");
 
     const combined = (transcripts ?? []).map((t) => t.text).filter(Boolean).join("\n\n").slice(0, 60000);
-    if (!combined.trim()) return json({ error: "No transcript yet — transcribe first." }, 400);
+    if (!combined.trim()) return json({ error: "Transcribe a recording first." });
 
     const prompt = `You are an expert podcast clipper. From the transcript below, pick the ${count} MOST viral, quotable, share-worthy moments (30-90 seconds each). For each clip return: a punchy title, the verbatim quote, and approximate start/end timestamps in seconds (estimate evenly across transcript length: total runtime is roughly ${Math.round(combined.length / 15)} seconds — distribute your picks across the timeline).
 

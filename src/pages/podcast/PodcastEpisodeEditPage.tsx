@@ -125,6 +125,10 @@ const PodcastEpisodeEditPage = () => {
 
   const generateAi = async () => {
     if (!episodeId) return;
+    if (!transcripts.some((t) => t.status === "ready" && t.text.trim())) {
+      toast({ title: "Transcribe a recording first", description: "AI insights need transcript text before they can run." });
+      return;
+    }
     setAiBusy(true);
     try {
       const { error, data } = await supabase.functions.invoke("generate-podcast-ai", { body: { episodeId } });
@@ -141,6 +145,10 @@ const PodcastEpisodeEditPage = () => {
 
   const generateClips = async () => {
     if (!episodeId) return;
+    if (!transcripts.some((t) => t.status === "ready" && t.text.trim())) {
+      toast({ title: "Transcribe a recording first", description: "Magic Clips need transcript text before they can pick moments." });
+      return;
+    }
     setClipsBusy(true);
     try {
       const { error, data } = await supabase.functions.invoke("generate-podcast-clips", { body: { episodeId, count: 5 } });
@@ -164,12 +172,16 @@ const PodcastEpisodeEditPage = () => {
       toast({ title: "RTMP URL and stream key required", variant: "destructive" });
       return;
     }
-    await supabase.from("podcast_stream_destinations").insert({
+    const { error } = await supabase.from("podcast_stream_destinations").insert({
       episode_id: episodeId,
       platform: newDest.platform,
       rtmp_url: newDest.rtmp_url,
       stream_key: newDest.stream_key,
     });
+    if (error) {
+      toast({ title: "Couldn't add destination", description: error.message, variant: "destructive" });
+      return;
+    }
     setNewDest({ platform: "youtube", rtmp_url: "", stream_key: "" });
     load();
   };

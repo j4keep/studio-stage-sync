@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
       await supabase.from("podcast_episodes").update({ is_streaming: true, status: "live" }).eq("id", episodeId);
       return json({ ok: true, inAppOnly: true, message: "Live on WHEUAT. Add an RTMP destination to simulcast." });
     }
-    if (!apiKey || !apiSecret || !url) return json({ error: "RTMP streaming is not configured yet, but your in-app live room is still available." }, 500);
+    if (!apiKey || !apiSecret || !url) return json({ error: "RTMP streaming is not configured yet, but your in-app live room is still available." });
 
     // LiveKit's EgressClient expects an https host, not the wss one used by clients.
     const httpHost = url.replace(/^wss?:\/\//, "https://");
