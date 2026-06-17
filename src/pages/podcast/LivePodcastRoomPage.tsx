@@ -143,6 +143,7 @@ const LivePodcastRoomPage = () => {
         </button>
         <div className="text-sm font-medium truncate">{episode.title}</div>
         <div className="flex items-center gap-2">
+          {isHost && <GoLiveButton episodeId={episode.id} />}
           {isHost && (
             <button onClick={copyInviteLink} className="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 flex items-center gap-1">
               <Copy className="w-3 h-3" /> Invite
