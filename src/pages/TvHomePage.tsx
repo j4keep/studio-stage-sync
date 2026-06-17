@@ -1,6 +1,9 @@
 import { Tv, Radio, Film, Video, Heart } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const TvHomePage = () => {
+  const navigate = useNavigate();
+
   return (
     <div className="px-4 pt-6 pb-24 max-w-lg mx-auto">
       <div className="flex items-center gap-3 mb-6">
@@ -9,18 +12,22 @@ const TvHomePage = () => {
         </div>
         <div>
           <h1 className="text-2xl font-display font-bold text-foreground">WHEUAT TV</h1>
-          <p className="text-xs text-muted-foreground">Live podcasts, films, music videos & creator support</p>
+          <p className="text-xs text-muted-foreground">Together we show up</p>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <div className="aspect-square rounded-2xl bg-card border border-border p-4 flex flex-col justify-between">
+        <button
+          type="button"
+          onClick={() => navigate("/tv/podcast")}
+          className="aspect-square rounded-2xl bg-card border border-border p-4 flex flex-col justify-between text-left hover:border-primary/50 hover:bg-card/80 transition-colors"
+        >
           <Radio className="w-6 h-6 text-primary" />
           <div>
             <div className="font-semibold text-foreground">Live Podcasts</div>
             <div className="text-[11px] text-muted-foreground">Record & download</div>
           </div>
-        </div>
+        </button>
         <div className="aspect-square rounded-2xl bg-card border border-border p-4 flex flex-col justify-between">
           <Film className="w-6 h-6 text-primary" />
           <div>
@@ -42,13 +49,6 @@ const TvHomePage = () => {
             <div className="text-[11px] text-muted-foreground">Tips & donations</div>
           </div>
         </div>
-      </div>
-
-      <div className="mt-8 p-4 rounded-2xl bg-muted/30 border border-border">
-        <p className="text-sm text-foreground font-medium mb-1">Coming soon</p>
-        <p className="text-xs text-muted-foreground">
-          WHEUAT TV is being built. You'll be able to host live podcast rooms, record sessions, upload short films and music videos, and accept tips — all from your channel.
-        </p>
       </div>
     </div>
   );
