@@ -3,10 +3,11 @@ import { X, Maximize2, Minimize2, ChevronLeft, ChevronRight, ChevronDown, Search
 import { useDawStore, newId } from "../state/DawStore";
 import { FxRack } from "./FxRack";
 import type { DawEngine } from "../engine/DawEngine";
-import { triggerSynthNote, midiToFreq, startSynthNote, triggerDrumHit, type SynthVoice } from "../engine/DawEngine";
+import { triggerSynthNote, midiToFreq, startSynthNote, triggerDrumHit, drumKindForPitch, type SynthVoice } from "../engine/DawEngine";
 import type { MidiNote, Clip } from "../engine/types";
 import { FloatingKeyboard } from "./FloatingKeyboard";
 import { PRESETS, PRESET_CATS, PresetModal, type Preset } from "./presets";
+import { getPresetByName } from "../engine/presetData";
 
 
 
@@ -102,7 +103,7 @@ function EmptyHint() {
       <div>
         <div className="text-neutral-500 text-sm mb-3">Add an instrument track to start playing</div>
         <button
-          onClick={() => { const id = addTrack("instrument", "Synth"); updateTrack(id, { instrument: "synth", instrumentPreset: "Bright Synth", synthWave: "sawtooth" }); }}
+          onClick={() => { const id = addTrack("instrument", "Synth"); updateTrack(id, { instrument: "synth", instrumentPreset: "Platinum Anthem Lead", synthWave: "sawtooth" }); }}
           className="px-4 py-2 rounded-md bg-gradient-to-r from-teal-500 to-purple-500 text-black text-xs font-medium"
         >+ Create Synth Track</button>
       </div>
