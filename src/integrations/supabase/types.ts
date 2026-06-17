@@ -1099,10 +1099,13 @@ export type Database = {
           chunk_count: number
           created_at: string
           duration_seconds: number | null
+          edl: Json | null
           episode_id: string
           id: string
+          magic_audio_status: string | null
           mime_type: string
           participant_id: string | null
+          processed_audio_key: string | null
           r2_prefix: string
           status: string
           track_kind: string
@@ -1114,10 +1117,13 @@ export type Database = {
           chunk_count?: number
           created_at?: string
           duration_seconds?: number | null
+          edl?: Json | null
           episode_id: string
           id?: string
+          magic_audio_status?: string | null
           mime_type?: string
           participant_id?: string | null
+          processed_audio_key?: string | null
           r2_prefix: string
           status?: string
           track_kind?: string
@@ -1129,10 +1135,13 @@ export type Database = {
           chunk_count?: number
           created_at?: string
           duration_seconds?: number | null
+          edl?: Json | null
           episode_id?: string
           id?: string
+          magic_audio_status?: string | null
           mime_type?: string
           participant_id?: string | null
+          processed_audio_key?: string | null
           r2_prefix?: string
           status?: string
           track_kind?: string
@@ -1206,6 +1215,7 @@ export type Database = {
           status: string
           text: string
           updated_at: string
+          words: Json | null
         }
         Insert: {
           created_at?: string
@@ -1218,6 +1228,7 @@ export type Database = {
           status?: string
           text?: string
           updated_at?: string
+          words?: Json | null
         }
         Update: {
           created_at?: string
@@ -1230,6 +1241,7 @@ export type Database = {
           status?: string
           text?: string
           updated_at?: string
+          words?: Json | null
         }
         Relationships: [
           {

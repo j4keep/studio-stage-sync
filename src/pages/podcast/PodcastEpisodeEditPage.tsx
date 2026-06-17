@@ -18,6 +18,8 @@ import {
   Plus,
   Trash2,
   Wand2,
+  Type,
+  Music,
 } from "lucide-react";
 
 type Episode = {
@@ -40,6 +42,8 @@ type Recording = {
   status: string;
   duration_seconds: number | null;
   created_at: string;
+  processed_audio_key: string | null;
+  magic_audio_status: string | null;
 };
 
 type Transcript = {
@@ -86,7 +90,7 @@ const PodcastEpisodeEditPage = () => {
     if (!episodeId) return;
     const [{ data: ep }, { data: recs }, { data: trs }, { data: cls }, { data: dsts }] = await Promise.all([
       supabase.from("podcast_episodes").select("id,title,host_user_id,is_streaming,ai_summary,ai_chapters,ai_titles,ai_soundbites,ai_show_notes").eq("id", episodeId).maybeSingle(),
-      supabase.from("podcast_recordings").select("id,r2_prefix,mime_type,chunk_count,status,duration_seconds,created_at").eq("episode_id", episodeId).order("created_at"),
+      supabase.from("podcast_recordings").select("id,r2_prefix,mime_type,chunk_count,status,duration_seconds,created_at,processed_audio_key,magic_audio_status").eq("episode_id", episodeId).order("created_at"),
       supabase.from("podcast_transcripts").select("id,recording_id,text,status,error").eq("episode_id", episodeId),
       supabase.from("podcast_clips").select("id,title,start_seconds,end_seconds,format").eq("episode_id", episodeId).order("start_seconds"),
       supabase.from("podcast_stream_destinations").select("id,platform,rtmp_url,stream_key,enabled").eq("episode_id", episodeId),
@@ -222,6 +226,21 @@ const PodcastEpisodeEditPage = () => {
                     <div className="mt-2 text-xs text-foreground max-h-40 overflow-y-auto whitespace-pre-wrap bg-muted/30 rounded p-2">{tr.text}</div>
                   )}
                   {tr?.status === "failed" && <div className="mt-2 text-xs text-destructive">Failed: {tr.error}</div>}
+                  {tr?.status === "ready" && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      <Button size="sm" variant="secondary" onClick={() => navigate(`/tv/podcast/${episodeId}/recording/${r.id}/editor`)}>
+                        <Type className="w-3.5 h-3.5 mr-1" /> Text editor & Magic Audio
+                      </Button>
+                      {r.processed_audio_key && (
+                        <Button size="sm" variant="outline" onClick={() => downloadChunk(r.processed_audio_key!)}>
+                          <Music className="w-3.5 h-3.5 mr-1" /> Download Magic Audio
+                        </Button>
+                      )}
+                      {r.magic_audio_status === "processing" && (
+                        <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Processing…</span>
+                      )}
+                    </div>
+                  )}
                   <div className="mt-2 flex flex-wrap gap-1">
                     {Array.from({ length: r.chunk_count }).map((_, i) => {
                       const key = `${r.r2_prefix}${i.toString().padStart(6, "0")}.webm`;

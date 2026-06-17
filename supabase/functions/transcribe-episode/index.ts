@@ -69,7 +69,11 @@ Deno.serve(async (req) => {
 
         const fd = new FormData();
         const ext = rec.mime_type?.includes("mp4") ? "mp4" : "webm";
-        fd.append("model", "openai/gpt-4o-mini-transcribe");
+        // whisper-1 returns verbose_json + per-word timestamps for the text-based editor.
+        fd.append("model", "openai/whisper-1");
+        fd.append("response_format", "verbose_json");
+        fd.append("timestamp_granularities[]", "word");
+        fd.append("timestamp_granularities[]", "segment");
         fd.append("file", new Blob([merged.buffer as ArrayBuffer], { type: rec.mime_type || "video/webm" }), `recording.${ext}`);
 
         const resp = await fetch("https://ai.gateway.lovable.dev/v1/audio/transcriptions", {
@@ -79,11 +83,34 @@ Deno.serve(async (req) => {
         });
         if (!resp.ok) throw new Error(`STT failed: ${resp.status} ${await resp.text().catch(() => "")}`);
         const data = await resp.json();
+
+        // Build words array. If whisper didn't return per-word timings, fall back to splitting
+        // each segment evenly across its tokens.
+        type Word = { word: string; start: number; end: number };
+        let words: Word[] = Array.isArray(data.words) ? data.words : [];
+        if (!words.length && Array.isArray(data.segments)) {
+          for (const s of data.segments) {
+            const tokens = String(s.text || "").trim().split(/\s+/).filter(Boolean);
+            if (!tokens.length) continue;
+            const dur = (s.end - s.start) / tokens.length;
+            tokens.forEach((t: string, i: number) => {
+              words.push({ word: t, start: s.start + i * dur, end: s.start + (i + 1) * dur });
+            });
+          }
+        }
+
         await supabase.from("podcast_transcripts").update({
           text: data.text || "",
           segments: data.segments ?? null,
+          words,
           status: "ready",
         }).eq("id", tr.id);
+
+        if (typeof data.duration === "number") {
+          await supabase.from("podcast_recordings")
+            .update({ duration_seconds: Math.round(data.duration) })
+            .eq("id", rec.id);
+        }
       } catch (e) {
         console.error("transcribe error", e);
         await supabase.from("podcast_transcripts").update({
