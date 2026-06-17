@@ -404,12 +404,8 @@ export class DawEngine {
     this.stopAllSources();
     if (this.recordingTrackId) this.stopRecording();
     this.onStop?.();
-    // If user left metronome on, keep it ticking free-running while stopped.
-    if (this.metroEnabled) {
-      this.metroBeatIndex = 0;
-      this.metroNextBeat = this.ctx.currentTime + 0.05;
-      this.scheduleMetronome();
-    }
+    // Metronome should NOT free-run when transport is stopped.
+    // It will resume on the next play() if metroEnabled is still true.
   }
 
   setMetronome(enabled: boolean, bpm?: number, beatsPerBar?: number) {
@@ -417,7 +413,8 @@ export class DawEngine {
     this.metroEnabled = enabled;
     if (bpm) this.metroBpm = bpm;
     if (beatsPerBar && beatsPerBar > 0) this.metroBeatsPerBar = beatsPerBar;
-    if (enabled) {
+    // Only tick while transport is playing — no free-running click when stopped.
+    if (enabled && this.playing) {
       if (!wasEnabled || !this.metroTimer) {
         this.metroNextBeat = this.ctx.currentTime + 0.05;
         this.metroBeatIndex = 0;
