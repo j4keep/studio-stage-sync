@@ -45,7 +45,8 @@ export function InstrumentPanel({ engine }: { engine: DawEngine }) {
   const [steps, setSteps] = useState<Record<DrumPiece, boolean[]>>(() => ({
     kick: Array(16).fill(false), snare: Array(16).fill(false), hat: Array(16).fill(false),
     openhat: Array(16).fill(false), clap: Array(16).fill(false), perc: Array(16).fill(false),
-    rim: [], tom: [], ride: [], crash: [], cowbell: [],
+    rim: Array(16).fill(false), tom: Array(16).fill(false), ride: Array(16).fill(false),
+    crash: Array(16).fill(false), cowbell: Array(16).fill(false),
   }));
   const [seqPlaying, setSeqPlaying] = useState(false);
   const [stepIdx, setStepIdx] = useState(0);
