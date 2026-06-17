@@ -12,7 +12,7 @@ const TvHomePage = () => {
         </div>
         <div>
           <h1 className="text-2xl font-display font-bold text-foreground">WHEUAT TV</h1>
-          <p className="text-xs text-muted-foreground">Together we show up</p>
+          <p className="text-xs text-muted-foreground">Live podcasts, films, videos</p>
         </div>
       </div>
 

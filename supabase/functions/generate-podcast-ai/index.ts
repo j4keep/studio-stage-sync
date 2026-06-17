@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
       .eq("status", "ready");
 
     const combined = (transcripts ?? []).map((t) => t.text).filter(Boolean).join("\n\n").slice(0, 60000);
-    if (!combined.trim()) return json({ error: "No transcript available — transcribe recordings first." }, 400);
+    if (!combined.trim()) return json({ error: "Transcribe a recording first." });
 
     const prompt = `You are an audio podcast producer. Given the transcript below, produce:
 1. A 2-3 paragraph SUMMARY.
@@ -59,7 +59,7 @@ ${combined}
     });
     if (!resp.ok) {
       const t = await resp.text().catch(() => "");
-      return json({ error: `AI error: ${resp.status} ${t}` }, resp.status);
+      return json({ error: `AI error: ${resp.status} ${t}` });
     }
     const body = await resp.json();
     const content = body?.choices?.[0]?.message?.content ?? "{}";
