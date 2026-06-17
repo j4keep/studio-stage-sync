@@ -85,8 +85,10 @@ export interface Track {
   instrument?: "synth" | "drum";
   /** Display name of current instrument preset (e.g. "Bright Synth") */
   instrumentPreset?: string;
-  /** Synth waveform / tone for the simple Web Audio synth */
+  /** Synth waveform / tone for the simple Web Audio synth (legacy fallback) */
   synthWave?: "sine" | "triangle" | "sawtooth" | "square";
+  /** For drum instrument tracks — selected drum kit name (e.g. "808", "909") */
+  drumKit?: string;
 }
 
 export type KeyRoot = "C" | "C#" | "D" | "D#" | "E" | "F" | "F#" | "G" | "G#" | "A" | "A#" | "B";
