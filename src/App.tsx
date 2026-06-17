@@ -58,6 +58,7 @@ import AskJhiPage from "./pages/AskJhiPage";
 import FeedPage from "./pages/FeedPage";
 import LivePodcastLobbyPage from "./pages/podcast/LivePodcastLobbyPage";
 import LivePodcastRoomPage from "./pages/podcast/LivePodcastRoomPage";
+import PodcastEpisodeEditPage from "./pages/podcast/PodcastEpisodeEditPage";
 
 import TermsAgreementGate from "./components/TermsAgreementGate";
 import ThemePickerSheet from "./components/ThemePickerSheet";
@@ -214,6 +215,7 @@ const ProtectedRoutes = () => {
         <Route path="/tv" element={<TvHomePage />} />
         <Route path="/tv/podcast" element={<LivePodcastLobbyPage />} />
         <Route path="/tv/podcast/:episodeId" element={<LivePodcastRoomPage />} />
+        <Route path="/tv/podcast/:episodeId/edit" element={<PodcastEpisodeEditPage />} />
         <Route path="/circle" element={<Navigate to="/" replace />} />
         <Route path="/circle/*" element={<Navigate to="/" replace />} />
         <Route path="/m/*" element={<Navigate to="/" replace />} />
