@@ -117,8 +117,8 @@ export function InstrumentPanel({ engine }: { engine: DawEngine }) {
             {KEYS.filter(k => !k.black).map((k, i) => (
               <button
                 key={k.note}
-                onPointerDown={() => { (window as any).__wsKeyHeld = true; triggerSynthNote(engine, active.id, k.note + octave * 12); }}
-                onPointerEnter={() => { if ((window as any).__wsKeyHeld) triggerSynthNote(engine, active.id, k.note + octave * 12); }}
+                onPointerDown={() => { (window as any).__wsKeyHeld = true; triggerSynthNote(engine, active.id, k.note + octave * 12, 0.4, 0.85, activePreset); }}
+                onPointerEnter={() => { if ((window as any).__wsKeyHeld) triggerSynthNote(engine, active.id, k.note + octave * 12, 0.4, 0.85, activePreset); }}
                 className="absolute top-0 bottom-0 bg-white hover:bg-neutral-200 border border-neutral-300 active:bg-cyan-200"
                 style={{ left: i * 60, width: 60 }}
               >
@@ -130,8 +130,8 @@ export function InstrumentPanel({ engine }: { engine: DawEngine }) {
               return (
                 <button
                   key={k.note}
-                  onPointerDown={() => { (window as any).__wsKeyHeld = true; triggerSynthNote(engine, active.id, k.note + octave * 12); }}
-                  onPointerEnter={() => { if ((window as any).__wsKeyHeld) triggerSynthNote(engine, active.id, k.note + octave * 12); }}
+                  onPointerDown={() => { (window as any).__wsKeyHeld = true; triggerSynthNote(engine, active.id, k.note + octave * 12, 0.4, 0.85, activePreset); }}
+                  onPointerEnter={() => { if ((window as any).__wsKeyHeld) triggerSynthNote(engine, active.id, k.note + octave * 12, 0.4, 0.85, activePreset); }}
                   className="absolute top-0 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 active:bg-cyan-700 z-10"
                   style={{ left: whiteIdx * 60 - 18, width: 36, height: 120 }}
                 />
