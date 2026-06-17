@@ -26,36 +26,29 @@ const TermsAgreementGate = ({ onAccept }: { onAccept: () => void }) => {
           Please review and accept our terms before continuing.
         </p>
 
-        {/* Scrollable terms summary */}
         <div className="w-full max-h-48 overflow-y-auto rounded-xl bg-card border border-border p-4 mb-6 text-xs text-muted-foreground leading-relaxed space-y-3">
-          <p>By using WHEUAT, you agree to the following:</p>
+          <p>By using Atchup, you agree to the following:</p>
           <ul className="list-disc list-inside space-y-1">
-            <li>Artists must upload only original or properly licensed content.</li>
-            <li>No external copyrighted music is allowed on Radio.</li>
-            <li>Platform fees: 10% studio bookings, 8% project funding, 15% downloads.</li>
-            <li>Pro Artist subscription is $10/month or $100/year with DMs, Store, Analytics, Legal Vault, Boosts, Jhi AI, and Zero Ads.</li>
-            <li>All payments processed through Stripe. Payouts via Stripe Connect.</li>
-            <li>Cancellation fee: 10% of booking total. Remaining 90% refunded.</li>
-            <li>Session completion requires two-sided confirmation (engineer + artist).</li>
-            <li>No-show reports result in strikes; 3+ strikes display a public warning.</li>
-            <li>False reporting, fraud, or false accusations may result in account suspension or permanent deactivation.</li>
-            <li>Disputes are held for admin review; abuse of disputes is punishable.</li>
+            <li>Atchup is a unified platform: creator app, TV, and the Catch Up Circle (community savings & fundraisers).</li>
+            <li>One account works across the entire platform.</li>
+            <li>The Catch Up Circle (savings rotations, fundraisers, payouts) is restricted to users aged 18 and over.</li>
+            <li>Artists must upload only original or properly licensed content. No external copyrighted music on Radio.</li>
+            <li>Platform fees: 8% project funding, 15% downloads, plus Circle/Stripe processing fees where applicable.</li>
+            <li>Pro tier is $10/month with DMs, Store, Analytics, Legal Vault, Boosts, Jhi AI, and Zero Ads.</li>
+            <li>Payments processed through Stripe and Stripe Connect.</li>
+            <li>False reporting, fraud, or false accusations may result in suspension or permanent deactivation.</li>
             <li>Prohibited: harmful content, impersonation, fraud, harassment.</li>
-            <li>WHEUAT provides the platform "as is" with no warranties.</li>
+            <li>Atchup provides the platform "as is" with no warranties.</li>
           </ul>
           <p>
             For full terms, view the{" "}
-            <button
-              onClick={() => navigate("/terms")}
-              className="text-primary underline"
-            >
-              complete Terms of Use
+            <button onClick={() => navigate("/terms")} className="text-primary underline">
+              complete Terms of Use & Privacy Policy
             </button>
             .
           </p>
         </div>
 
-        {/* Agreement checkbox */}
         <label className="flex items-start gap-3 mb-4 cursor-pointer w-full">
           <Checkbox
             checked={agreed}
@@ -63,11 +56,10 @@ const TermsAgreementGate = ({ onAccept }: { onAccept: () => void }) => {
             className="mt-0.5"
           />
           <span className="text-xs text-muted-foreground leading-relaxed">
-            I have read and agree to the WHEUAT Terms of Use and Privacy Policy.
+            I have read and agree to the Atchup Terms of Use and Privacy Policy.
           </span>
         </label>
 
-        {/* Accept button */}
         <button
           onClick={onAccept}
           disabled={!agreed}
@@ -77,7 +69,7 @@ const TermsAgreementGate = ({ onAccept }: { onAccept: () => void }) => {
               : "bg-muted text-muted-foreground cursor-not-allowed"
           }`}
         >
-          Continue to WHEUAT
+          Continue to Atchup
         </button>
       </motion.div>
     </div>
