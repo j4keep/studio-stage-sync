@@ -19,7 +19,7 @@ import cardRadio from "@/assets/card-radio.jpg";
 import cardStore from "@/assets/card-store.jpg";
 import cardStudios from "@/assets/card-studios.jpg";
 import cardSongs from "@/assets/card-songs.jpg";
-import cardVideos from "@/assets/card-videos.jpg";
+import cardVideos from "@/assets/card-recording-studio.jpg";
 import cardProjects from "@/assets/card-projects.jpg";
 import cardBattles from "@/assets/card-battles.jpg";
 import NewsFeed from "@/components/NewsFeed";
