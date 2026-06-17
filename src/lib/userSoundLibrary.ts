@@ -1,6 +1,22 @@
 import { supabase } from "@/integrations/supabase/client";
 import { downloadFromR2 } from "@/lib/r2-storage";
-import type { LoopDef, LoopCategory } from "@/wstudio/daw/lib/loopGenerator";
+
+export type LoopCategory =
+  | "drums" | "808" | "hi-hats" | "snare" | "kick" | "clap"
+  | "synth" | "bass" | "piano" | "guitar" | "sfx" | "vocal";
+
+export interface LoopDef {
+  id: string;
+  name: string;
+  pack?: string;
+  genre?: string;
+  category: LoopCategory;
+  bpm?: number;
+  bars?: number;
+  key?: string;
+  color?: string;
+  url?: string;
+}
 
 export interface UserSoundRow {
   id: string;

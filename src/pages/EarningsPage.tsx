@@ -48,51 +48,20 @@ const EarningsPage = () => {
     enabled: !!user?.id,
   });
 
-  // Fetch studio bookings where user owns the studio
-  const { data: bookingData, isLoading: bookingsLoading } = useQuery({
-    queryKey: ["earnings-bookings", user?.id],
-    queryFn: async () => {
-      if (!user?.id) return [];
-      const { data: studios } = await supabase
-        .from("studios")
-        .select("id, name")
-        .eq("user_id", user.id);
-      if (!studios || studios.length === 0) return [];
-
-      const studioIds = studios.map((s) => s.id);
-      const studioMap = Object.fromEntries(studios.map((s) => [s.id, s]));
-
-      const { data: bookings } = await supabase
-        .from("studio_bookings")
-        .select("*")
-        .in("studio_id", studioIds)
-        .eq("status", "confirmed")
-        .order("created_at", { ascending: false });
-
-      return (bookings || []).map((b) => ({
-        type: "Studio Booking",
-        item: `${studioMap[b.studio_id]?.name || "Studio"} - ${b.hours}hrs`,
-        amount: b.total_amount,
-        date: new Date(b.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
-        icon: Building2,
-      }));
-    },
-    enabled: !!user?.id,
-  });
+  const bookingData: EarningTransaction[] = [];
+  const bookingsLoading = false;
 
   const isLoading = salesLoading || bookingsLoading;
   const allTransactions: EarningTransaction[] = [
     ...(salesData || []),
-    ...(bookingData || []),
+    ...bookingData,
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const downloadTotal = (salesData || []).reduce((sum, e) => sum + e.amount, 0);
-  const bookingTotal = (bookingData || []).reduce((sum, e) => sum + e.amount, 0);
-  const totalEarnings = downloadTotal + bookingTotal;
+  const totalEarnings = downloadTotal;
 
   const breakdown = [
     { label: "Downloads", amount: downloadTotal, icon: Download },
-    { label: "Studio Bookings", amount: bookingTotal, icon: Building2 },
     { label: "Tips", amount: 0, icon: Heart },
     { label: "Streaming", amount: 0, icon: Music },
   ];

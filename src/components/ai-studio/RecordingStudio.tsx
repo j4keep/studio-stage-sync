@@ -1,5 +1,3 @@
 import { Navigate } from "react-router-dom";
-
-export default function RecordingStudio() {
-  return <Navigate to="/wstudio/session/join" replace />;
-}
+const RecordingStudio = () => <Navigate to="/tv" replace />;
+export default RecordingStudio;
