@@ -143,6 +143,7 @@ const LivePodcastRoomPage = () => {
         </button>
         <div className="text-sm font-medium truncate">{episode.title}</div>
         <div className="flex items-center gap-2">
+          {isHost && <GoLiveButton episodeId={episode.id} />}
           {isHost && (
             <button onClick={copyInviteLink} className="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 flex items-center gap-1">
               <Copy className="w-3 h-3" /> Invite
@@ -343,6 +344,64 @@ const LocalRecorder = ({
     </div>
   );
 };
+
+const GoLiveButton = ({ episodeId }: { episodeId: string }) => {
+  const [live, setLive] = useState(false);
+  const [egressId, setEgressId] = useState<string | null>(() => localStorage.getItem(`egress_${episodeId}`));
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => { if (egressId) setLive(true); }, [egressId]);
+
+  const start = async () => {
+    setBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("livekit-egress", { body: { action: "start", episodeId } });
+      if (error) throw error;
+      if ((data as { error?: string })?.error) throw new Error((data as { error: string }).error);
+      const id = (data as { egressId: string }).egressId;
+      setEgressId(id);
+      localStorage.setItem(`egress_${episodeId}`, id);
+      setLive(true);
+      toast({ title: "You're live!", description: "Streaming to all enabled destinations." });
+    } catch (e) {
+      toast({ title: "Couldn't go live", description: e instanceof Error ? e.message : "Add a destination first.", variant: "destructive" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const stop = async () => {
+    setBusy(true);
+    try {
+      await supabase.functions.invoke("livekit-egress", { body: { action: "stop", episodeId, egressId } });
+      setLive(false);
+      setEgressId(null);
+      localStorage.removeItem(`egress_${episodeId}`);
+      toast({ title: "Stream stopped" });
+    } catch (e) {
+      toast({ title: "Couldn't stop", description: e instanceof Error ? e.message : "Unknown", variant: "destructive" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return live ? (
+    <button onClick={stop} disabled={busy} className="text-xs px-2 py-1 rounded bg-red-600 hover:bg-red-500 text-white flex items-center gap-1 font-semibold">
+      <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" /> LIVE — Stop
+    </button>
+  ) : (
+    <button onClick={start} disabled={busy} className="text-xs px-2 py-1 rounded bg-red-600/80 hover:bg-red-500 text-white flex items-center gap-1">
+      <RadioBroadcast /> Go Live
+    </button>
+  );
+};
+
+const RadioBroadcast = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+    <circle cx="12" cy="12" r="2" fill="currentColor" />
+    <path d="M8 8a5.66 5.66 0 0 0 0 8M16 8a5.66 5.66 0 0 1 0 8M5 5a9 9 0 0 0 0 14M19 5a9 9 0 0 1 0 14" />
+  </svg>
+);
 
 const formatTime = (s: number) => {
   const m = Math.floor(s / 60).toString().padStart(2, "0");
