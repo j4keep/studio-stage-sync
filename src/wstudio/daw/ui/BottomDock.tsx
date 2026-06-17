@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { X, Maximize2, Minimize2, ChevronLeft, ChevronRight, ChevronDown, Search, Play, Plus, Save, Pencil, MousePointer2, Trash2, Sliders } from "lucide-react";
+import { X, Maximize2, Minimize2, ChevronLeft, ChevronRight, ChevronDown, Play, Plus, Save, Pencil, MousePointer2, Trash2, Sliders } from "lucide-react";
 import { useDawStore, newId } from "../state/DawStore";
 import { FxRack } from "./FxRack";
 import type { DawEngine } from "../engine/DawEngine";
-import { triggerSynthNote, midiToFreq, startSynthNote, triggerDrumHit, drumKindForPitch, type SynthVoice } from "../engine/DawEngine";
+import { triggerSynthNote, startSynthNote, triggerDrumHit, drumKindForPitch, type SynthVoice } from "../engine/DawEngine";
 import type { MidiNote, Clip } from "../engine/types";
 import { FloatingKeyboard } from "./FloatingKeyboard";
-import { PRESETS, PRESET_CATS, PresetModal, type Preset } from "./presets";
+import { PRESETS, PresetModal, type Preset } from "./presets";
 import { getPresetByName } from "../engine/presetData";
 
 
@@ -126,7 +126,7 @@ function InstrumentTab({ engine, trackId }: { engine: DawEngine; trackId: string
   const [autoChords, setAutoChords] = useState(false);
   const [presetOpen, setPresetOpen] = useState(false);
 
-  const presetIdx = Math.max(0, PRESETS.findIndex(p => p.name === (track.instrumentPreset || "Bright Synth")));
+  const presetIdx = Math.max(0, PRESETS.findIndex(p => p.name === (track.instrumentPreset || "Platinum Anthem Lead")));
   const preset = PRESETS[presetIdx];
 
   const applyPreset = (p: Preset) => {
@@ -593,6 +593,7 @@ const PR_SCALES: Array<{ id: string; label: string; intervals: number[] | null }
 ];
 
 function PianoRollTab({ engine, trackId }: { engine: DawEngine; trackId: string }) {
+  const track = useDawStore(s => s.tracks.find(t => t.id === trackId));
   const allClips = useDawStore(s => s.clips);
   const clips = useMemo(() => allClips.filter(c => c.trackId === trackId), [allClips, trackId]);
   const addClip = useDawStore(s => s.addClip);
@@ -626,6 +627,12 @@ function PianoRollTab({ engine, trackId }: { engine: DawEngine; trackId: string 
   const [swing, setSwing] = useState(0);
   const [scaleRoot, setScaleRoot] = useState<string>("C");
   const [scaleId, setScaleId] = useState<string>("off");
+  const rollPreset = useMemo(() => getPresetByName(track?.instrumentPreset) || PRESETS[0], [track?.instrumentPreset]);
+  const rollKitName = track?.drumKit || "808";
+  const auditionNote = (pitch: number, duration = 0.3, vel = 0.8) => {
+    if (track?.instrument === "drum") triggerDrumHit(engine, trackId, drumKindForPitch(pitch), rollKitName, vel);
+    else triggerSynthNote(engine, trackId, pitch, duration, vel, rollPreset);
+  };
 
   const snapBeats = useMemo(() => PR_QUANTIZE.find(q => q.id === quantizeId)?.beats ?? 0.25, [quantizeId]);
   // Swing presets A–F → 50/54/58/62/66/70 % swing applied automatically.
@@ -692,7 +699,7 @@ function PianoRollTab({ engine, trackId }: { engine: DawEngine; trackId: string 
       const cur = useDawStore.getState().clips.find(c => c.id === id)?.notes ?? [];
       const next = [...cur, { id: newId("n"), start: beat, length: Math.max(0.25, snapBeats), pitch, velocity }];
       updateClip(id, { notes: next, duration: durationForNotes(next) });
-      triggerSynthNote(engine, trackId, pitch, 0.3, velocity);
+      auditionNote(pitch, 0.3, velocity);
     } else if (tool === "eraser") {
       const hit = notes.find(n => n.pitch === pitch && beat >= n.start && beat < n.start + n.length);
       if (hit) setNotes(notes.filter(n => n.id !== hit.id));
@@ -820,7 +827,7 @@ function PianoRollTab({ engine, trackId }: { engine: DawEngine; trackId: string 
               return (
                 <div
                   key={r}
-                  onPointerDown={(e) => { e.stopPropagation(); triggerSynthNote(engine, trackId, pitch, 0.3, 0.8); }}
+                  onPointerDown={(e) => { e.stopPropagation(); auditionNote(pitch, 0.3, 0.8); }}
                   className={`text-[8px] border-b ${isBlack ? "bg-neutral-900 text-neutral-300 border-neutral-950" : "bg-gradient-to-r from-neutral-100 to-neutral-300 text-neutral-700 border-neutral-400"} px-1 grid items-center cursor-pointer hover:brightness-110`}
                   style={{ height: rowH }}
                 >
