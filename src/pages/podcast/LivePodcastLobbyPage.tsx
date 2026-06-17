@@ -121,18 +121,24 @@ const LivePodcastLobbyPage = () => {
               <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
                 <Mic className="w-5 h-5 text-primary" />
               </div>
-              <Link to={`/tv/podcast/${ep.id}`} className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0">
                 <div className="font-medium text-foreground truncate">{ep.title}</div>
                 <div className="text-[11px] text-muted-foreground flex items-center gap-2">
                   <span className="capitalize">{ep.status}</span>
                   <span>•</span>
                   <span>{new Date(ep.created_at).toLocaleDateString()}</span>
                 </div>
-              </Link>
+              </div>
+              <Link to={`/tv/podcast/${ep.id}/edit`} className="text-xs px-2 py-1 rounded bg-muted hover:bg-muted/70">Edit</Link>
+              <Link to={`/tv/podcast/${ep.id}`} className="text-xs px-2 py-1 rounded bg-primary text-primary-foreground">Enter</Link>
               <button
                 onClick={() => removeEpisode(ep.id)}
                 className="p-2 rounded-full hover:bg-muted text-muted-foreground"
                 aria-label="Delete"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
               >
                 <Trash2 className="w-4 h-4" />
               </button>
