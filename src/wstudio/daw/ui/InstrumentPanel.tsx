@@ -83,7 +83,7 @@ export function InstrumentPanel({ engine }: { engine: DawEngine }) {
         <span>Instruments</span>
         <div className="flex-1" />
         <button
-          onClick={() => { const id = addTrack("instrument", "Synth"); updateTrack(id, { instrument: "synth", instrumentPreset: "Bright Saw Lead", synthWave: "sawtooth" }); }}
+          onClick={() => { const id = addTrack("instrument", "Synth"); updateTrack(id, { instrument: "synth", instrumentPreset: "Platinum Anthem Lead", synthWave: "sawtooth" }); }}
           className="h-6 px-2 rounded border border-neutral-800 hover:bg-neutral-800 flex items-center gap-1 normal-case"
         ><Music2 className="w-3 h-3" /> Add Synth</button>
         <button
