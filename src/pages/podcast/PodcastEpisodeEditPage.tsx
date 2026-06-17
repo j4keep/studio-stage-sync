@@ -90,7 +90,7 @@ const PodcastEpisodeEditPage = () => {
     if (!episodeId) return;
     const [{ data: ep }, { data: recs }, { data: trs }, { data: cls }, { data: dsts }] = await Promise.all([
       supabase.from("podcast_episodes").select("id,title,host_user_id,is_streaming,ai_summary,ai_chapters,ai_titles,ai_soundbites,ai_show_notes").eq("id", episodeId).maybeSingle(),
-      supabase.from("podcast_recordings").select("id,r2_prefix,mime_type,chunk_count,status,duration_seconds,created_at").eq("episode_id", episodeId).order("created_at"),
+      supabase.from("podcast_recordings").select("id,r2_prefix,mime_type,chunk_count,status,duration_seconds,created_at,processed_audio_key,magic_audio_status").eq("episode_id", episodeId).order("created_at"),
       supabase.from("podcast_transcripts").select("id,recording_id,text,status,error").eq("episode_id", episodeId),
       supabase.from("podcast_clips").select("id,title,start_seconds,end_seconds,format").eq("episode_id", episodeId).order("start_seconds"),
       supabase.from("podcast_stream_destinations").select("id,platform,rtmp_url,stream_key,enabled").eq("episode_id", episodeId),
