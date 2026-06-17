@@ -154,16 +154,18 @@ const LivePodcastRoomPage = () => {
   const isHost = tokenInfo.role === "host";
 
   return (
-    <div className="h-screen flex flex-col bg-black">
-      <div className="flex items-center justify-between px-4 py-2 bg-zinc-950 text-white border-b border-zinc-800">
-        <button onClick={() => navigate(isHost ? "/tv/podcast" : "/tv")} className="flex items-center gap-1 text-sm">
+    <div className="dark h-screen flex flex-col bg-background text-foreground">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 bg-card border-b border-border">
+        <button onClick={() => navigate(isHost ? "/tv/podcast" : "/tv")} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="w-4 h-4" /> Leave
         </button>
-        <div className="text-sm font-medium truncate">{episode.title}</div>
-        <div className="flex items-center gap-2">
+        <div className="min-w-0 flex-1 text-center text-sm font-medium truncate">{episode.title}</div>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Segmented value={quality} options={["720p", "1080p", "4K"]} onChange={(v) => setQuality(v as "720p" | "1080p" | "4K")} />
+          <Segmented value={layoutMode} options={["Grid", "Speaker", "Screen"]} onChange={(v) => setLayoutMode(v as "Grid" | "Speaker" | "Screen")} />
           {isHost && <GoLiveButton episodeId={episode.id} />}
           {isHost && (
-            <button onClick={copyInviteLink} className="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 flex items-center gap-1">
+            <button onClick={copyInviteLink} className="text-xs px-2 py-1 rounded-md bg-muted hover:bg-secondary flex items-center gap-1">
               <Copy className="w-3 h-3" /> Invite
             </button>
           )}
@@ -174,8 +176,9 @@ const LivePodcastRoomPage = () => {
           token={tokenInfo.token}
           serverUrl={tokenInfo.url}
           connect
-          video
+          video={videoOptions}
           audio
+          options={{ videoCaptureDefaults: videoOptions, publishDefaults: publishOptions }}
           data-lk-theme="default"
           className="h-full"
           onDisconnected={() => navigate(isHost ? "/tv/podcast" : "/tv")}
@@ -183,10 +186,10 @@ const LivePodcastRoomPage = () => {
           <RoomAudioRenderer />
           <div className="flex h-full flex-col">
             <div className="flex-1 min-h-0">
-              <Stage />
+              <Stage layoutMode={layoutMode} />
             </div>
-            <div className="border-t border-zinc-800 bg-zinc-950">
-              <LocalRecorder episodeId={episode.id} participantIdentity={tokenInfo.identity} displayName={tokenInfo.displayName} />
+            <div className="border-t border-border bg-card">
+              <LocalRecorder episodeId={episode.id} participantIdentity={tokenInfo.identity} displayName={tokenInfo.displayName} quality={quality} />
               <ControlBar variation="minimal" controls={{ microphone: true, camera: true, screenShare: true, leave: true, chat: false }} />
             </div>
           </div>
