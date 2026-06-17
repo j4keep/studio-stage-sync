@@ -226,6 +226,21 @@ const PodcastEpisodeEditPage = () => {
                     <div className="mt-2 text-xs text-foreground max-h-40 overflow-y-auto whitespace-pre-wrap bg-muted/30 rounded p-2">{tr.text}</div>
                   )}
                   {tr?.status === "failed" && <div className="mt-2 text-xs text-destructive">Failed: {tr.error}</div>}
+                  {tr?.status === "ready" && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      <Button size="sm" variant="secondary" onClick={() => navigate(`/tv/podcast/${episodeId}/recording/${r.id}/editor`)}>
+                        <Type className="w-3.5 h-3.5 mr-1" /> Text editor & Magic Audio
+                      </Button>
+                      {r.processed_audio_key && (
+                        <Button size="sm" variant="outline" onClick={() => downloadChunk(r.processed_audio_key!)}>
+                          <Music className="w-3.5 h-3.5 mr-1" /> Download Magic Audio
+                        </Button>
+                      )}
+                      {r.magic_audio_status === "processing" && (
+                        <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Processing…</span>
+                      )}
+                    </div>
+                  )}
                   <div className="mt-2 flex flex-wrap gap-1">
                     {Array.from({ length: r.chunk_count }).map((_, i) => {
                       const key = `${r.r2_prefix}${i.toString().padStart(6, "0")}.webm`;
