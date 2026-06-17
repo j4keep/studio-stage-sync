@@ -1,0 +1,6 @@
+Builds/
+JuceLibraryCode/
+JUCE/
+*.xcuserstate
+xcuserdata/
+.DS_Store
