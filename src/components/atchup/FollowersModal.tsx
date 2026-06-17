@@ -5,7 +5,7 @@
  import { ScrollArea } from '@/components/ui/scroll-area';
  import { supabase } from '@/integrations/supabase/client';
  import { useFollow } from '@/hooks/useFollow';
- import VerifiedBadge from '@/components/VerifiedBadge';
+ import VerifiedBadge from '@/components/atchup/VerifiedBadge';
  import { useNavigate } from 'react-router-dom';
  
  interface FollowerUser {

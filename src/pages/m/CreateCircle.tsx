@@ -13,11 +13,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import SavingsCircleAgreementDialog from "@/components/SavingsCircleAgreementDialog";
-import CircleLimitGate from "@/components/CircleLimitGate";
+import SavingsCircleAgreementDialog from "@/components/atchup/SavingsCircleAgreementDialog";
+import CircleLimitGate from "@/components/atchup/CircleLimitGate";
 import { useCircleLimits, FREE_MAX_MEMBERS } from "@/hooks/useCircleLimits";
 import { autoFollowCircleMembers } from "@/hooks/useFollow";
-import PaymentMethodSelector, { AllowedPaymentMethodsSelector, PAYMENT_METHODS } from "@/components/PaymentMethodSelector";
+import PaymentMethodSelector, { AllowedPaymentMethodsSelector, PAYMENT_METHODS } from "@/components/atchup/PaymentMethodSelector";
 import {
   Dialog,
   DialogContent,

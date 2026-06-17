@@ -2,7 +2,7 @@
  import { useNavigate } from 'react-router-dom';
  import { supabase } from '@/integrations/supabase/client';
  import { toast } from 'sonner';
- import BottomTabBar from '@/components/BottomTabBar';
+ import BottomTabBar from '@/components/atchup/BottomTabBar';
  import { Upload } from 'lucide-react';
  
  type UsernameStatus = 'idle' | 'checking' | 'ok' | 'taken' | 'same';

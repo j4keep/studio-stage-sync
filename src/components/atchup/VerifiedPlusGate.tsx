@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import SubscriptionPausedCard from "@/components/SubscriptionPausedCard";
+import SubscriptionPausedCard from "@/components/atchup/SubscriptionPausedCard";
 
 interface VerifiedPlusGateProps {
   children: React.ReactNode;

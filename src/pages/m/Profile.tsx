@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Camera, ChevronLeft, Settings } from 'lucide-react';
-import BottomTabBar from '@/components/BottomTabBar';
-import MessagesIcon from '@/components/MessagesIcon';
-import NotificationBell from '@/components/NotificationBell';
-import VerifiedBadge from '@/components/VerifiedBadge';
-import ReputationScore from '@/components/ReputationScore';
-import FollowersModal from '@/components/FollowersModal';
+import BottomTabBar from '@/components/atchup/BottomTabBar';
+import MessagesIcon from '@/components/atchup/MessagesIcon';
+import NotificationBell from '@/components/atchup/NotificationBell';
+import VerifiedBadge from '@/components/atchup/VerifiedBadge';
+import ReputationScore from '@/components/atchup/ReputationScore';
+import FollowersModal from '@/components/atchup/FollowersModal';
 import { useFollowerCounts } from '@/hooks/useFollow';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';

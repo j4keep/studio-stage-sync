@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import SavingsCircleAgreementDialog from "@/components/SavingsCircleAgreementDialog";
-import BottomTabBar from "@/components/BottomTabBar";
-import NotificationBell from "@/components/NotificationBell";
+import SavingsCircleAgreementDialog from "@/components/atchup/SavingsCircleAgreementDialog";
+import BottomTabBar from "@/components/atchup/BottomTabBar";
+import NotificationBell from "@/components/atchup/NotificationBell";
 
 interface Circle {
   id: string;

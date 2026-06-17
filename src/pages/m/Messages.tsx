@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { ArrowLeft, Send, Search, UserPlus, Ban, Tag, Camera, Mic, Image, Plus, Users, Loader2 } from "lucide-react";
-import EmojiPicker from "@/components/EmojiPicker";
+import EmojiPicker from "@/components/atchup/EmojiPicker";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,8 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import BottomTabBar from "@/components/BottomTabBar";
-import NotificationBell from "@/components/NotificationBell";
+import BottomTabBar from "@/components/atchup/BottomTabBar";
+import NotificationBell from "@/components/atchup/NotificationBell";
 import { z } from "zod";
 import { toast } from "sonner";
 import { useMessageSound } from "@/hooks/useMessageSound";

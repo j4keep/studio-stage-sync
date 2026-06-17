@@ -3,11 +3,11 @@
  import { ChevronLeft } from 'lucide-react';
  import { Button } from '@/components/ui/button';
  import { supabase } from '@/integrations/supabase/client';
- import VerifiedBadge from '@/components/VerifiedBadge';
- import ReputationScore from '@/components/ReputationScore';
- import FollowersModal from '@/components/FollowersModal';
+ import VerifiedBadge from '@/components/atchup/VerifiedBadge';
+ import ReputationScore from '@/components/atchup/ReputationScore';
+ import FollowersModal from '@/components/atchup/FollowersModal';
  import { useFollow, useFollowerCounts } from '@/hooks/useFollow';
- import BottomTabBar from '@/components/BottomTabBar';
+ import BottomTabBar from '@/components/atchup/BottomTabBar';
  
  export default function UserProfile() {
    const navigate = useNavigate();

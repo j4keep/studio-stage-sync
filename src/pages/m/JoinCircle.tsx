@@ -8,12 +8,12 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import SavingsCircleAgreementDialog from "@/components/SavingsCircleAgreementDialog";
-import MemberReputationPreview from "@/components/MemberReputationPreview";
-import CircleLimitGate from "@/components/CircleLimitGate";
+import SavingsCircleAgreementDialog from "@/components/atchup/SavingsCircleAgreementDialog";
+import MemberReputationPreview from "@/components/atchup/MemberReputationPreview";
+import CircleLimitGate from "@/components/atchup/CircleLimitGate";
 import { useCircleLimits } from "@/hooks/useCircleLimits";
 import { autoFollowCircleMembers } from "@/hooks/useFollow";
-import PaymentMethodSelector, { PAYMENT_METHODS } from "@/components/PaymentMethodSelector";
+import PaymentMethodSelector, { PAYMENT_METHODS } from "@/components/atchup/PaymentMethodSelector";
 
 interface CirclePreview {
   id: string;

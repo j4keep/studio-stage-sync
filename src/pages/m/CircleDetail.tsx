@@ -9,10 +9,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import CircleQRCode from "@/components/CircleQRCode";
-import MemberReputationPreview from "@/components/MemberReputationPreview";
-import { DonationModal } from "@/components/DonationModal";
-import { getPaymentMethodIcon, getPaymentMethodLabel } from "@/components/PaymentMethodSelector";
+import CircleQRCode from "@/components/atchup/CircleQRCode";
+import MemberReputationPreview from "@/components/atchup/MemberReputationPreview";
+import { DonationModal } from "@/components/atchup/DonationModal";
+import { getPaymentMethodIcon, getPaymentMethodLabel } from "@/components/atchup/PaymentMethodSelector";
 import {
   AlertDialog,
   AlertDialogAction,
