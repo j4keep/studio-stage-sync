@@ -1,5 +1,6 @@
 import type { Track, Clip, TransportState, EffectInstance, MidiNote } from "./types";
 import { buildEffect, type BuiltEffect } from "./Effects";
+import { getPresetByName, getKitByName, type Preset, type DrumPiece, type KitVoiceSpec } from "./presetData";
 
 type SharedInputMonitor = {
   stream: MediaStream;
