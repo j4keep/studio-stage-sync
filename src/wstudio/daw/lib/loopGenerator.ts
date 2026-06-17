@@ -13,11 +13,11 @@ export interface LoopDef {
   name: string;
   pack?: string;
   category: LoopCategory;
-  genre: string;
-  bpm: number;
-  bars: number;
+  genre?: string;
+  bpm?: number;
+  bars?: number;
   key?: string; // root note name e.g. "C2"
-  color: string;
+  color?: string;
 }
 
 const SR = 44100;
