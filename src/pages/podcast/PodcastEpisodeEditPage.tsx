@@ -42,6 +42,8 @@ type Recording = {
   status: string;
   duration_seconds: number | null;
   created_at: string;
+  processed_audio_key: string | null;
+  magic_audio_status: string | null;
 };
 
 type Transcript = {
