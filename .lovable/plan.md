@@ -1,100 +1,88 @@
-# Pivot Plan: Nuke W.Studio → WHEUAT TV + Atchup Integration
+# Transfer Atchup → Circle tab
 
-This is a large, destructive change. Please confirm before I touch anything.
+Goal: pressing the **Circle** tab opens the live Atchup app exactly as it exists in `atchup-daily-rise`, with its own pages, components, navigation, fundraisers, donations, verified+, support, etc. — using **this project's** unified auth and Supabase backend.
 
-## Phase 1 — Nuke W.Studio (Option B, full)
+## 1. Files to copy as-is
 
-Delete everything DAW, sessions, bridges, plugins, native helpers.
+From `atchup-daily-rise` → this project:
 
-**Frontend deletes:**
-- `src/wstudio/` (entire folder: daw, session, booking, audio-engine, bridge, audio, connection, media, receive, video, components, lib)
-- `src/pages/WStudioDawPage.tsx`
-- `src/pages/MyBookingsPage.tsx`, `MyStudiosPage.tsx` (studio engineer booking)
-- `src/components/CreateStudioSheet.tsx`, `EditStudioSheet.tsx`, `RateSessionModal.tsx`, `UnratedSessionPopup.tsx`, `SessionControlsLockOverlay.tsx`-style files
-- `src/pages/StudiosPage.tsx`
-- `src/hooks/use-studio-engine.ts`, `use-recording-engine.ts`
+- **Pages** (`src/pages/m/*`) → `src/pages/atchup/m/*`
+  SavingsCirclesHome, CreateCircle, JoinCircle, CircleDetail, Fundraisers, CreateFundraiser, FundraiserDetail, Profile, EditProfile, UserProfile, Messages, RateMember, VerifiedPlusUpgrade, Onboarding, SupportAdmin, TermsConditions, PrivacyPolicy
+- **Pages** (root): `Help.tsx`, `PromoDownloads.tsx`, `IdVerification.tsx` → `src/pages/atchup/`
+- **Components** (non-ui, 22 files) → `src/components/atchup/`
+- **Hooks**: `useCircleLimits`, `useFollow`, `useMessageSound` → `src/hooks/`
+- **Lib**: `dateHelpers.ts`, `verifiedPlus.ts` → `src/lib/`
+- **Assets**: all `src/assets/atchup-*`, `ask-chup-*`, `hero-backdrop`, `welcome-bg`
 
-**Backend deletes (edge functions):**
-- `auto-confirm-sessions`, `expire-bookings`, `session-lookup`
-- Tables to drop (migration): `studios`, `studio_availability`, `studio_bookings`, `studio_photos`, `studio_reviews`, `live_sessions`, `live_session_participants`, `recording_sessions`, `recording_takes`, `recording_exports`, `no_show_strikes`
+Skipped (we already have unified auth): `Landing`, `Welcome`, `Verify`, `AccountSettings`.
 
-**Native deletes:**
-- `native/` (entire folder: wstudio-coreaudio-driver, wstudio-desktop-bridge, wstudio-plugin)
-- `scripts/build-wstudio-*.sh`, `scripts/wstudio-*.sh`, `scripts/fix-wstudio-*.sh`
-- `.github/workflows/wstudio-bridge-macos.yml`
-- `public/wstudio-bg.mp4.asset.json`
+## 2. Routing
 
-**Routes:** strip all `/wstudio/*`, `/studios`, `/my-bookings`, `/my-studios` routes from `App.tsx`.
+Mount Atchup at its original paths so its internal `navigate('/m/...')` calls all just work, plus a redirect from `/circle`:
 
-## Phase 2 — Build WHEUAT TV (new section)
+```
+/circle                        → redirect to /m/savings-circles
+/m/savings-circles             SavingsCirclesHome
+/m/savings-circles/create      CreateCircle
+/m/savings-circles/join        JoinCircle
+/m/savings-circles/:id         CircleDetail
+/m/fundraisers                 Fundraisers
+/m/fundraiser/create           CreateFundraiser
+/m/fundraiser/:id              FundraiserDetail
+/m/messages                    Messages
+/m/profile                     Profile  (Atchup's profile, not ours)
+/m/edit-profile, /m/rate-member, /m/user/:userId
+/m/verified-plus-upgrade, /m/support-admin
+/m/terms-conditions, /m/privacy-policy
+/help, /promo, /id-verification
+```
 
-New route group `/tv` replacing where W.Studio lived.
+Bottom-nav **Circle** tab: path `/m/savings-circles`, `matchPrefix: "/m"`.
 
-**Pages (new):**
-- `src/pages/tv/TvHomePage.tsx` — landing: Live podcasts, Short Films, Music Videos tabs
-- `src/pages/tv/TvLivePodcastPage.tsx` — host/join live podcast (WebRTC multi-party), record session, download MP4/MP3 to device or save to user library
-- `src/pages/tv/TvUploadPage.tsx` — upload short films & music videos (R2)
-- `src/pages/tv/TvChannelPage.tsx` — per-creator channel with Support/Donate tab
-- `src/pages/tv/TvWatchPage.tsx` — video player
+## 3. Supabase client / auth
 
-**Backend:**
-- New tables: `tv_channels`, `tv_videos` (type: podcast | short_film | music_video), `tv_live_rooms`, `tv_donations`
-- Reuse existing R2 upload edge functions (`r2-presign`, `r2-upload`, `r2-download`)
-- Reuse WebRTC signaling pattern from old `realtimeRtcSignaling.ts` for multi-party podcast rooms (single salvaged file)
+- All Atchup files import `@/integrations/supabase/client` — that path resolves to **our** client, so they automatically use our backend & unified session. No code change needed inside the copied files.
+- Drop Atchup's `Landing/Welcome/Verify/AccountSettings` (replaced by our existing auth).
+- Keep Atchup's `ForceUpgradeGate` and `Gated` wrapper so age/verified+ flow works inside Circle.
 
-**Recording approach (browser-only, simple):**
-- MediaRecorder API mixing all peer audio + video tracks to WebM
-- Download direct to device or upload to R2
+## 4. Database migrations
 
-## Phase 3 — Retrain Jhi
+72 Atchup migrations include tables that overlap with ours (`profiles`, `notifications`, `messages`, `conversations`, `support_tickets`, `ticket_replies`). I will **not** blindly replay all 72. Instead one consolidated migration that:
 
-Update `supabase/functions/ask-jhi/index.ts` system prompt:
-- Remove all W.Studio / DAW / engineer booking context
-- Add WHEUAT TV (podcasts, films, videos, donations) + Atchup Savings Circle context
+- Creates **only Atchup-specific tables** that don't exist here: `savings_circles`, `circle_members`, `circle_contributions`, `circle_invites`, `fundraisers`, `fundraiser_donations`, `verified_plus_subscriptions`, `payment_methods`, `member_ratings`, `follows_atchup` (if conflicts), `id_verifications`, `circle_messages`, plus any enums/triggers/functions referenced.
+- Adds missing columns to existing tables only where the Atchup code reads them (e.g. `profiles.verified_plus`, `profiles.reputation_score`).
+- Includes GRANTs + RLS for every new table.
 
-## Phase 4 — Import Atchup as "Savings Circle"
+Exact list compiled by reading every Atchup migration first; surfaced for your approval before running.
 
-Bring `atchup-daily-rise` project in as a section, not a separate app.
+## 5. Edge functions
 
-**Copy from atchup-daily-rise:**
-- All `src/pages/*` → `src/pages/circle/*` (Landing, Welcome, AccountSettings, Help, HostCode, IdVerification, PromoDownloads, Verify, m/*)
-- All `src/components/*` (except `ui/`) → `src/components/circle/*`
-- `src/integrations/` Atchup-specific helpers → `src/integrations/circle/`
-- `src/lib/`, `src/hooks/` Atchup-specific → namespaced under `circle/`
-- All Atchup `supabase/migrations/*` → re-run here (creates circle tables in same DB)
-- All Atchup `supabase/functions/*` → deploy here
+Copy these to `supabase/functions/` (they already use stripe `@2024-11-20.acacia`):
 
-**Unified auth:**
-- Strip Atchup's separate sign-up flow. Use existing WHEUAT auth (`AuthContext`, `AuthPage`).
-- Atchup profile data (display name, avatar) sourced from existing `profiles` table — no duplicate signup, no separate profile picture.
-- Keep Atchup's KYC/IdVerification as a feature gate inside Circle only.
+- `check-payment-method`, `check-verified-plus`, `create-donation-checkout`, `create-fundraiser-donation`, `create-notification`, `create-verified-plus-checkout`, `customer-portal`, `help-chat`, `send-payment-reminders`, `support-ticket-notification`
 
-**Privacy/Legal:**
-- Copy Atchup's privacy/terms/legal pages over, replacing current `TermsPage.tsx` content with Atchup's versions.
+Stripe secret already configured in Atchup → I'll add the same secret (`STRIPE_SECRET_KEY`) here via the secret tool.
 
-**Navigation:**
-- Add "Circle" tab to `BottomNav.tsx` next to Feed tab (using Atchup icon)
-- Add small Circle button on `FeedPage` post card, right after share icon → routes to `/circle`
+## 6. Dependencies to add
 
-## Phase 5 — Rebrand WHEUAT → Atchup
+`@emoji-mart/data`, `@emoji-mart/react`, `emoji-mart`, `qrcode.react`, `leaflet`, `react-leaflet`, `@types/leaflet`, `react-helmet-async`, `react-markdown`, `uuid`, `@huggingface/transformers`.
 
-- Copy Atchup logo assets (`atchup-logo-transparent.png`, `atchup-icon-only.png`, etc.) into `src/assets/`
-- Replace `JhiIcon`/WHEUAT logo usage app-wide with Atchup logo
-- Tagline: "Catch up with your greatness"
-- Update `index.html` title, meta, favicon → Atchup
-- Update memory `mem://index.md` core rules to reflect Atchup branding (keep Jhi as AI assistant name)
+## 7. Cleanup
 
-## Technical / Risk Notes
+Delete the stub `src/pages/CircleHomePage.tsx` (replaced by Atchup's real `SavingsCirclesHome`).
 
-- **Data loss:** dropping studio/session tables is permanent. Any existing bookings/recordings are gone.
-- **Scale:** this touches ~150+ files across deletes, copies, and edits. Will take multiple turns.
-- **Atchup auth tables:** Atchup likely has its own `profiles`/auth schema. I will merge into existing WHEUAT `profiles` table, dropping Atchup's duplicates.
-- **Atchup Stripe/payments:** if Atchup has its own Stripe edge functions for circle contributions, I'll deploy those alongside existing WHEUAT Stripe Connect.
-- **Recording quality:** browser MediaRecorder for live podcasts will be ~720p WebM. Good enough for download; pro editing happens off-platform.
+## Risks
 
-## Questions before I start
+- **Schema collisions** on shared tables — handled by only adding Atchup-specific tables/columns in step 4.
+- **Stripe** — Atchup's existing Stripe account key needs to be added as a secret.
+- Some Atchup pages reference our existing tables (e.g. `notifications`) — schema differences may need small code patches; addressed file-by-file as they surface.
 
-1. **Confirm full nuke** of bookings, studios, recording_sessions, live_sessions DB tables (permanent data loss)?
-2. **Keep WHEUAT name in URL/domain** (`studio-stage-sync.lovable.app`) but rebrand UI to Atchup, or do you want me to flag domain change for you to do in settings?
-3. **One-tab or section?** Should Circle be its own bottom-nav tab AND replace one of the current tabs (Home/Feed/Profile/etc), or just be added as a 5th tab?
-4. **TV recording downloads** — okay with WebM format (browser-native, no transcoding)?
+## Order of execution
+
+1. Copy all assets, components, pages, hooks, lib (parallel).
+2. Add npm deps.
+3. Wire routes + bottom nav.
+4. Copy edge functions.
+5. Add Stripe secret.
+6. Run consolidated migration (you approve).
+7. Smoke-test Circle tab end-to-end.

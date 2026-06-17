@@ -376,6 +376,27 @@ export type Database = {
         }
         Relationships: []
       }
+      followers: {
+        Row: {
+          created_at: string
+          follower_id: string
+          following_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          follower_id: string
+          following_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          follower_id?: string
+          following_id?: string
+          id?: string
+        }
+        Relationships: []
+      }
       follows: {
         Row: {
           created_at: string
@@ -396,6 +417,92 @@ export type Database = {
           id?: string
         }
         Relationships: []
+      }
+      fundraiser_campaigns: {
+        Row: {
+          category: string
+          cover_image: string | null
+          created_at: string
+          description: string
+          expires_at: string | null
+          goal_amount: number
+          id: string
+          raised_amount: number
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          cover_image?: string | null
+          created_at?: string
+          description: string
+          expires_at?: string | null
+          goal_amount: number
+          id?: string
+          raised_amount?: number
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          cover_image?: string | null
+          created_at?: string
+          description?: string
+          expires_at?: string | null
+          goal_amount?: number
+          id?: string
+          raised_amount?: number
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      fundraiser_donations: {
+        Row: {
+          amount: number
+          anonymous: boolean
+          campaign_id: string
+          created_at: string
+          donor_user_id: string | null
+          id: string
+          message: string | null
+          stripe_session_id: string | null
+        }
+        Insert: {
+          amount: number
+          anonymous?: boolean
+          campaign_id: string
+          created_at?: string
+          donor_user_id?: string | null
+          id?: string
+          message?: string | null
+          stripe_session_id?: string | null
+        }
+        Update: {
+          amount?: number
+          anonymous?: boolean
+          campaign_id?: string
+          created_at?: string
+          donor_user_id?: string | null
+          id?: string
+          message?: string | null
+          stripe_session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fundraiser_donations_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "fundraiser_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       legal_documents: {
         Row: {
@@ -475,7 +582,11 @@ export type Database = {
           file_type: string | null
           file_url: string | null
           id: string
+          images: string[] | null
+          read: boolean | null
+          receiver_id: string | null
           sender_id: string
+          thread_id: string | null
         }
         Insert: {
           content?: string | null
@@ -485,7 +596,11 @@ export type Database = {
           file_type?: string | null
           file_url?: string | null
           id?: string
+          images?: string[] | null
+          read?: boolean | null
+          receiver_id?: string | null
           sender_id: string
+          thread_id?: string | null
         }
         Update: {
           content?: string | null
@@ -495,7 +610,11 @@ export type Database = {
           file_type?: string | null
           file_url?: string | null
           id?: string
+          images?: string[] | null
+          read?: boolean | null
+          receiver_id?: string | null
           sender_id?: string
+          thread_id?: string | null
         }
         Relationships: [
           {
@@ -503,6 +622,13 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "threads"
             referencedColumns: ["id"]
           },
         ]
@@ -888,6 +1014,227 @@ export type Database = {
           },
         ]
       }
+      savings_circle_donations: {
+        Row: {
+          amount: number
+          circle_id: string
+          created_at: string
+          donor_member_id: string
+          id: string
+          period_number: number
+          reason: string | null
+          recipient_member_id: string
+        }
+        Insert: {
+          amount: number
+          circle_id: string
+          created_at?: string
+          donor_member_id: string
+          id?: string
+          period_number: number
+          reason?: string | null
+          recipient_member_id: string
+        }
+        Update: {
+          amount?: number
+          circle_id?: string
+          created_at?: string
+          donor_member_id?: string
+          id?: string
+          period_number?: number
+          reason?: string | null
+          recipient_member_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "savings_circle_donations_circle_id_fkey"
+            columns: ["circle_id"]
+            isOneToOne: false
+            referencedRelation: "savings_circles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      savings_circle_members: {
+        Row: {
+          circle_id: string
+          display_name: string
+          has_received_pot: boolean
+          id: string
+          joined_at: string
+          payment_method: string | null
+          position: number
+          user_id: string
+        }
+        Insert: {
+          circle_id: string
+          display_name: string
+          has_received_pot?: boolean
+          id?: string
+          joined_at?: string
+          payment_method?: string | null
+          position: number
+          user_id: string
+        }
+        Update: {
+          circle_id?: string
+          display_name?: string
+          has_received_pot?: boolean
+          id?: string
+          joined_at?: string
+          payment_method?: string | null
+          position?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "savings_circle_members_circle_id_fkey"
+            columns: ["circle_id"]
+            isOneToOne: false
+            referencedRelation: "savings_circles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      savings_circle_payments: {
+        Row: {
+          circle_id: string
+          id: string
+          member_id: string
+          paid: boolean
+          paid_at: string | null
+          period_number: number
+        }
+        Insert: {
+          circle_id: string
+          id?: string
+          member_id: string
+          paid?: boolean
+          paid_at?: string | null
+          period_number: number
+        }
+        Update: {
+          circle_id?: string
+          id?: string
+          member_id?: string
+          paid?: boolean
+          paid_at?: string | null
+          period_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "savings_circle_payments_circle_id_fkey"
+            columns: ["circle_id"]
+            isOneToOne: false
+            referencedRelation: "savings_circles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      savings_circle_periods: {
+        Row: {
+          circle_id: string
+          due_date: string
+          id: string
+          period_number: number
+          status: string
+        }
+        Insert: {
+          circle_id: string
+          due_date: string
+          id?: string
+          period_number: number
+          status?: string
+        }
+        Update: {
+          circle_id?: string
+          due_date?: string
+          id?: string
+          period_number?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "savings_circle_periods_circle_id_fkey"
+            columns: ["circle_id"]
+            isOneToOne: false
+            referencedRelation: "savings_circles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      savings_circle_terms_acceptance: {
+        Row: {
+          accepted_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          accepted_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          accepted_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      savings_circles: {
+        Row: {
+          allowed_payment_methods: string[] | null
+          amount_per_period: number
+          created_at: string
+          current_members: number
+          current_period: number
+          frequency: string
+          id: string
+          invite_code: string | null
+          max_members: number
+          name: string
+          owner_id: string
+          requires_verified_plus: boolean | null
+          start_date: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          allowed_payment_methods?: string[] | null
+          amount_per_period: number
+          created_at?: string
+          current_members?: number
+          current_period?: number
+          frequency: string
+          id?: string
+          invite_code?: string | null
+          max_members: number
+          name: string
+          owner_id: string
+          requires_verified_plus?: boolean | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          allowed_payment_methods?: string[] | null
+          amount_per_period?: number
+          created_at?: string
+          current_members?: number
+          current_period?: number
+          frequency?: string
+          id?: string
+          invite_code?: string | null
+          max_members?: number
+          name?: string
+          owner_id?: string
+          requires_verified_plus?: boolean | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       songs: {
         Row: {
           album: string | null
@@ -1040,33 +1387,95 @@ export type Database = {
       }
       support_tickets: {
         Row: {
+          admin_response: string | null
+          category: string | null
           created_at: string
           id: string
+          images: string[] | null
           message: string
+          priority: string | null
+          responded_at: string | null
+          responded_by: string | null
           status: string
           subject: string
           updated_at: string
+          user_email: string | null
           user_id: string
+          user_name: string | null
         }
         Insert: {
+          admin_response?: string | null
+          category?: string | null
           created_at?: string
           id?: string
+          images?: string[] | null
           message: string
+          priority?: string | null
+          responded_at?: string | null
+          responded_by?: string | null
           status?: string
           subject: string
           updated_at?: string
+          user_email?: string | null
           user_id: string
+          user_name?: string | null
         }
         Update: {
+          admin_response?: string | null
+          category?: string | null
           created_at?: string
           id?: string
+          images?: string[] | null
           message?: string
+          priority?: string | null
+          responded_at?: string | null
+          responded_by?: string | null
           status?: string
           subject?: string
           updated_at?: string
+          user_email?: string | null
           user_id?: string
+          user_name?: string | null
         }
         Relationships: []
+      }
+      threads: {
+        Row: {
+          circle_id: string | null
+          created_at: string
+          group_name: string | null
+          id: string
+          is_group: boolean | null
+          last_message_at: string
+          participant_ids: string[]
+        }
+        Insert: {
+          circle_id?: string | null
+          created_at?: string
+          group_name?: string | null
+          id?: string
+          is_group?: boolean | null
+          last_message_at?: string
+          participant_ids: string[]
+        }
+        Update: {
+          circle_id?: string | null
+          created_at?: string
+          group_name?: string | null
+          id?: string
+          is_group?: boolean | null
+          last_message_at?: string
+          participant_ids?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "threads_circle_id_fkey"
+            columns: ["circle_id"]
+            isOneToOne: false
+            referencedRelation: "savings_circles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ticket_replies: {
         Row: {
@@ -1103,6 +1512,66 @@ export type Database = {
           },
         ]
       }
+      user_ratings: {
+        Row: {
+          comment: string | null
+          context_id: string
+          context_type: string
+          created_at: string
+          id: string
+          ratee_id: string
+          rater_id: string
+          score: number
+          tags: string | null
+        }
+        Insert: {
+          comment?: string | null
+          context_id: string
+          context_type: string
+          created_at?: string
+          id?: string
+          ratee_id: string
+          rater_id: string
+          score: number
+          tags?: string | null
+        }
+        Update: {
+          comment?: string | null
+          context_id?: string
+          context_type?: string
+          created_at?: string
+          id?: string
+          ratee_id?: string
+          rater_id?: string
+          score?: number
+          tags?: string | null
+        }
+        Relationships: []
+      }
+      user_reputation_summary: {
+        Row: {
+          last_updated: string
+          reliability_score: number
+          savings_ratings_count: number
+          savings_score: number
+          user_id: string
+        }
+        Insert: {
+          last_updated?: string
+          reliability_score?: number
+          savings_ratings_count?: number
+          savings_score?: number
+          user_id: string
+        }
+        Update: {
+          last_updated?: string
+          reliability_score?: number
+          savings_ratings_count?: number
+          savings_score?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -1121,6 +1590,117 @@ export type Database = {
           id?: string
           role?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      user_subscriptions: {
+        Row: {
+          created_at: string
+          end_date: string | null
+          id: string
+          payment_status: string | null
+          plan_type: string
+          start_date: string
+          status: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          payment_status?: string | null
+          plan_type?: string
+          start_date?: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          payment_status?: string | null
+          plan_type?: string
+          start_date?: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      users: {
+        Row: {
+          bio: string | null
+          created_at: string
+          email: string | null
+          has_payment_method: boolean | null
+          id: string
+          language: string | null
+          location: string | null
+          name: string | null
+          notification_member_joined: boolean | null
+          notification_message_sound: boolean | null
+          notification_payment_due: boolean | null
+          notification_payment_received: boolean | null
+          photo_url: string | null
+          privacy_show_email: boolean | null
+          streak_count: number | null
+          stripe_customer_id: string | null
+          tagline: string | null
+          updated_at: string
+          username: string | null
+          username_lower: string | null
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string
+          email?: string | null
+          has_payment_method?: boolean | null
+          id: string
+          language?: string | null
+          location?: string | null
+          name?: string | null
+          notification_member_joined?: boolean | null
+          notification_message_sound?: boolean | null
+          notification_payment_due?: boolean | null
+          notification_payment_received?: boolean | null
+          photo_url?: string | null
+          privacy_show_email?: boolean | null
+          streak_count?: number | null
+          stripe_customer_id?: string | null
+          tagline?: string | null
+          updated_at?: string
+          username?: string | null
+          username_lower?: string | null
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string
+          email?: string | null
+          has_payment_method?: boolean | null
+          id?: string
+          language?: string | null
+          location?: string | null
+          name?: string | null
+          notification_member_joined?: boolean | null
+          notification_message_sound?: boolean | null
+          notification_payment_due?: boolean | null
+          notification_payment_received?: boolean | null
+          photo_url?: string | null
+          privacy_show_email?: boolean | null
+          streak_count?: number | null
+          stripe_customer_id?: string | null
+          tagline?: string | null
+          updated_at?: string
+          username?: string | null
+          username_lower?: string | null
         }
         Relationships: []
       }
@@ -1182,6 +1762,7 @@ export type Database = {
       increment_post_views: { Args: { post_id: string }; Returns: undefined }
       increment_song_plays: { Args: { song_id: string }; Returns: undefined }
       increment_video_views: { Args: { video_id: string }; Returns: undefined }
+      is_blocked: { Args: { user_a: string; user_b: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
