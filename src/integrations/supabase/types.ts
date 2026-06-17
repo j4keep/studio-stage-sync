@@ -982,6 +982,11 @@ export type Database = {
       }
       podcast_episodes: {
         Row: {
+          ai_chapters: Json | null
+          ai_show_notes: string | null
+          ai_soundbites: Json | null
+          ai_summary: string | null
+          ai_titles: Json | null
           cover_url: string | null
           created_at: string
           description: string | null
@@ -999,6 +1004,11 @@ export type Database = {
           visibility: string
         }
         Insert: {
+          ai_chapters?: Json | null
+          ai_show_notes?: string | null
+          ai_soundbites?: Json | null
+          ai_summary?: string | null
+          ai_titles?: Json | null
           cover_url?: string | null
           created_at?: string
           description?: string | null
@@ -1016,6 +1026,11 @@ export type Database = {
           visibility?: string
         }
         Update: {
+          ai_chapters?: Json | null
+          ai_show_notes?: string | null
+          ai_soundbites?: Json | null
+          ai_summary?: string | null
+          ai_titles?: Json | null
           cover_url?: string | null
           created_at?: string
           description?: string | null
@@ -1175,6 +1190,60 @@ export type Database = {
             columns: ["episode_id"]
             isOneToOne: false
             referencedRelation: "podcast_episodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      podcast_transcripts: {
+        Row: {
+          created_at: string
+          episode_id: string
+          error: string | null
+          id: string
+          language: string | null
+          recording_id: string | null
+          segments: Json | null
+          status: string
+          text: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          episode_id: string
+          error?: string | null
+          id?: string
+          language?: string | null
+          recording_id?: string | null
+          segments?: Json | null
+          status?: string
+          text?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          episode_id?: string
+          error?: string | null
+          id?: string
+          language?: string | null
+          recording_id?: string | null
+          segments?: Json | null
+          status?: string
+          text?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "podcast_transcripts_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "podcast_episodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "podcast_transcripts_recording_id_fkey"
+            columns: ["recording_id"]
+            isOneToOne: false
+            referencedRelation: "podcast_recordings"
             referencedColumns: ["id"]
           },
         ]
