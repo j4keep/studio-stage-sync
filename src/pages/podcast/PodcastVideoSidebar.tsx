@@ -147,10 +147,25 @@ export function PodcastVideoSidebar({ engine, onClose }: Props) {
     }
   }, [engine, ensureRecordTrack, updateTrack, selectTrack, setTransport, setPending]);
 
-  const stopRecord = useCallback(() => {
-    try { recorderRef.current?.stop(); } catch {}
+  const stopRecord = useCallback(async () => {
+    const rec = recorderRef.current;
     recorderRef.current = null;
     setRecording(false);
+
+    // Wait for MediaRecorder.onstop to fire so setPending() lands BEFORE
+    // the engine emits its recorded clip (which triggers attachPending).
+    // Without this await, attachPending runs synchronously and finds no
+    // pending video — leaving LINKED CLIPS at 0 with no video strip.
+    if (rec && rec.state !== "inactive") {
+      await new Promise<void>((resolve) => {
+        const prevOnStop = rec.onstop;
+        rec.onstop = (ev) => {
+          try { prevOnStop?.call(rec, ev); } finally { resolve(); }
+        };
+        try { rec.stop(); } catch { resolve(); }
+      });
+    }
+
     if (engine) {
       engine.stopRecording();
       engine.stop();
