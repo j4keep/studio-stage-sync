@@ -2,11 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
-  Mic, Video as VideoIcon, VideoOff, Share2, Smile, FileText, LayoutGrid, LogOut,
+  Mic, Video as VideoIcon, VideoOff, Share2, Smile, FileText, FolderOpen, LogOut,
   Users, MessageCircle, Sparkles, Type, Music, Settings as SettingsIcon, HelpCircle,
   Home, ChevronUp, ChevronDown, Circle, Square, Link as LinkIcon, Upload, X,
   Scissors, MousePointer2, ZoomIn, ZoomOut, Download, Pencil, Eraser, Save,
-  Play, Pause, SkipBack, SkipForward,
+  Play, Pause, SkipBack, SkipForward, Maximize2, Minimize2, ArrowLeftToLine,
 } from "lucide-react";
 import { DawEngine } from "@/wstudio/daw/engine/DawEngine";
 import { computePeaks } from "@/wstudio/daw/engine/Peaks";
@@ -25,7 +25,22 @@ const isInputAudioTrack = (track: Track, allClips: Clip[]) => (
   )
 );
 
-type RightPanel = null | "people" | "chat" | "effects" | "text" | "media" | "settings" | "help";
+type RightPanel = null | "people" | "chat" | "effects" | "text" | "media" | "settings" | "help" | "projects";
+
+const BG_LIBRARY: { id: string; label: string; url: string }[] = [
+  { id: "studio-warm", label: "Warm Studio", url: "https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?w=1600&q=80" },
+  { id: "neon", label: "Neon Booth", url: "https://images.unsplash.com/photo-1535223289827-42f1e9919769?w=1600&q=80" },
+  { id: "books", label: "Library", url: "https://images.unsplash.com/photo-1507842217343-583bb7270b66?w=1600&q=80" },
+  { id: "brick", label: "Brick Wall", url: "https://images.unsplash.com/photo-1517411032315-54ef2cb783bb?w=1600&q=80" },
+  { id: "plants", label: "Plant Wall", url: "https://images.unsplash.com/photo-1545241047-6083a3684587?w=1600&q=80" },
+  { id: "city", label: "City Night", url: "https://images.unsplash.com/photo-1444723121867-7a241cacace9?w=1600&q=80" },
+  { id: "vinyl", label: "Vinyl Wall", url: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=1600&q=80" },
+  { id: "concrete", label: "Concrete", url: "https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?w=1600&q=80" },
+  { id: "moody", label: "Moody Blue", url: "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=1600&q=80" },
+  { id: "sunset", label: "Sunset", url: "https://images.unsplash.com/photo-1495616811223-4d98c6e9c869?w=1600&q=80" },
+  { id: "forest", label: "Forest", url: "https://images.unsplash.com/photo-1448375240586-882707db888b?w=1600&q=80" },
+  { id: "stage", label: "Stage Lights", url: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1600&q=80" },
+];
 
 const LAYOUTS = [
   { id: "speaker", label: "Speaker", svg: <rect x="2" y="3" width="20" height="14" rx="2" /> },
@@ -67,8 +82,12 @@ export default function PodcastStudioPage() {
   const [rightPanel, setRightPanel] = useState<RightPanel>(null);
   const [layoutId, setLayoutId] = useState("speaker");
   const [tracksOpen, setTracksOpen] = useState(false);
+  const [tracksFull, setTracksFull] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [bgUrl, setBgUrl] = useState<string | null>(null);
+  const [customBgs, setCustomBgs] = useState<string[]>([]);
   const importInputRef = useRef<HTMLInputElement>(null);
+  const bgUploadRef = useRef<HTMLInputElement>(null);
 
   // Camera state (inline; replaces sidebar)
   const previewRef = useRef<HTMLVideoElement | null>(null);
@@ -134,6 +153,16 @@ export default function PodcastStudioPage() {
   }, []);
 
   useEffect(() => () => stopCamera(), [stopCamera]);
+
+  // Re-attach camera stream when layout changes remount the <video> element
+  useEffect(() => {
+    const v = previewRef.current;
+    const s = camStreamRef.current;
+    if (v && s && v.srcObject !== s) {
+      v.srcObject = s;
+      v.play().catch(() => {});
+    }
+  }, [layoutId, camOn, tracksFull]);
 
   const ensureRecordTrack = useCallback(() => {
     const audioTrack = tracks.find(t => t.kind === "audio");
@@ -295,7 +324,10 @@ export default function PodcastStudioPage() {
         {/* Stage (center) */}
         <div className="flex-1 flex flex-col min-w-0 relative">
           <div className="flex-1 relative grid place-items-center p-4 min-h-0">
-            <div className={`relative w-full max-w-3xl bg-black rounded-2xl overflow-hidden border border-violet-500/40 shadow-[0_0_0_2px_rgba(139,92,246,0.15)] aspect-video`}>
+            <div
+              className={`relative w-full max-w-3xl rounded-2xl overflow-hidden border border-violet-500/40 shadow-[0_0_0_2px_rgba(139,92,246,0.15)] aspect-video bg-black`}
+              style={bgUrl ? { backgroundImage: `url(${bgUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
+            >
               <StageLayout
                 layoutId={layoutId}
                 hostVideoRef={previewRef}
@@ -303,6 +335,7 @@ export default function PodcastStudioPage() {
                 camOn={camOn}
                 mirrored={mirrored}
                 onStartCamera={startCamera}
+                bgUrl={bgUrl}
               />
               {videoRec && (
                 <div className="absolute top-3 left-3 px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center gap-1 z-30">
@@ -397,9 +430,22 @@ export default function PodcastStudioPage() {
             <div className="flex-1 overflow-y-auto p-4 text-sm">
               {rightPanel === "people" && <PeoplePanel onInvite={inviteGuest} />}
               {rightPanel === "chat" && <div className="text-neutral-500 text-xs">Chat coming soon.</div>}
-              {rightPanel === "effects" && <EffectsPanel mirrored={mirrored} setMirrored={setMirrored} />}
+              {rightPanel === "effects" && (
+                <EffectsPanel
+                  mirrored={mirrored} setMirrored={setMirrored}
+                  bgUrl={bgUrl} setBgUrl={setBgUrl}
+                  customBgs={customBgs}
+                  onAddCustomBg={() => bgUploadRef.current?.click()}
+                />
+              )}
               {rightPanel === "text" && <div className="text-neutral-500 text-xs">Lower-thirds & captions.</div>}
               {rightPanel === "media" && <MediaPanel onImport={() => importInputRef.current?.click()} />}
+              {rightPanel === "projects" && (
+                <ProjectsPanel
+                  onClose={() => setRightPanel(null)}
+                  onOpenInEditor={() => { setRightPanel(null); setTracksOpen(true); setTracksFull(true); }}
+                />
+              )}
               {rightPanel === "settings" && (
                 <SettingsPanel
                   resolution={resolution} setResolution={setResolution}
@@ -416,14 +462,17 @@ export default function PodcastStudioPage() {
 
         {/* Tracks drawer (slides up from above bottom bar) */}
         <div
-          className={`absolute left-0 right-16 bottom-0 bg-neutral-950 border-t border-neutral-900 transition-transform duration-300 z-20 ${tracksOpen ? "translate-y-0" : "translate-y-full"}`}
-          style={{ height: "55%" }}
+          className={`absolute left-0 right-16 bottom-0 bg-neutral-950 border-t border-neutral-900 transition-all duration-300 z-20 ${tracksOpen ? "translate-y-0" : "translate-y-full"}`}
+          style={{ height: tracksFull ? "calc(100% - 8px)" : "55%" }}
         >
           <div className="h-10 flex items-center gap-2 px-3 border-b border-neutral-900">
-            <div className="text-[11px] uppercase tracking-wider text-neutral-500 mr-2">Tracks · {tracks.length}</div>
+            <div className="text-[11px] uppercase tracking-wider text-neutral-500 mr-2">Edit · {tracks.length} tracks</div>
             <TransportControls engineRef={engineRef} />
             <div className="flex-1" />
-            <button onClick={() => setTracksOpen(false)} className="p-1 text-neutral-500 hover:text-neutral-200"><ChevronDown className="w-4 h-4" /></button>
+            <button onClick={() => setTracksFull(f => !f)} className="p-1 text-neutral-400 hover:text-neutral-100" title={tracksFull ? "Restore" : "Maximize editor"}>
+              {tracksFull ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            </button>
+            <button onClick={() => { setTracksFull(false); setTracksOpen(false); }} className="p-1 text-neutral-500 hover:text-neutral-200" title="Hide editor"><ChevronDown className="w-4 h-4" /></button>
           </div>
           <div className="h-[calc(100%-2.5rem)]">
             {view === "arrange" && (
@@ -444,7 +493,7 @@ export default function PodcastStudioPage() {
             onClick={() => setTracksOpen(true)}
             className="absolute left-3 bottom-3 z-10 h-8 px-3 rounded-full bg-neutral-900/90 border border-neutral-800 text-[11px] text-neutral-300 hover:text-white flex items-center gap-1.5"
           >
-            <ChevronUp className="w-3.5 h-3.5" /> Tracks
+            <ChevronUp className="w-3.5 h-3.5" /> Edit
           </button>
         )}
       </div>
@@ -463,7 +512,7 @@ export default function PodcastStudioPage() {
         <BottomAction onClick={inviteGuest} icon={<Share2 className="w-5 h-5" />} label="Share" />
         <BottomAction onClick={() => toast.message("Reactions coming soon")} icon={<Smile className="w-5 h-5" />} label="React" />
         <BottomAction onClick={() => toast.message("Script coming soon")} icon={<FileText className="w-5 h-5" />} label="Script" />
-        <BottomAction onClick={() => setRightPanel("people")} icon={<LayoutGrid className="w-5 h-5" />} label="Layout" />
+        <BottomAction onClick={() => setRightPanel("projects")} icon={<FolderOpen className="w-5 h-5" />} label="Projects" />
         <BottomAction onClick={() => navigate("/tv/podcast")} icon={<LogOut className="w-5 h-5 text-red-400" />} label="Leave" />
       </footer>
 
@@ -472,6 +521,17 @@ export default function PodcastStudioPage() {
         accept=".wav,.mp3,.ogg,.m4a,.mp4,.webm,.mov,.m4v,audio/*,video/*"
         className="hidden"
         onChange={(e) => e.target.files && importFiles(e.target.files)}
+      />
+      <input
+        ref={bgUploadRef} type="file" accept="image/*,.jpg,.jpeg,.png,.webp"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0]; if (!f) return;
+          const url = URL.createObjectURL(f);
+          setCustomBgs(p => [url, ...p]);
+          setBgUrl(url);
+          e.target.value = "";
+        }}
       />
 
       <PodcastExportSheet
@@ -518,17 +578,76 @@ function PeoplePanel({ onInvite }: { onInvite: () => void }) {
   );
 }
 
-function EffectsPanel({ mirrored, setMirrored }: { mirrored: boolean; setMirrored: (b: boolean) => void }) {
+function EffectsPanel({
+  mirrored, setMirrored, bgUrl, setBgUrl, customBgs, onAddCustomBg,
+}: {
+  mirrored: boolean; setMirrored: (b: boolean) => void;
+  bgUrl: string | null; setBgUrl: (u: string | null) => void;
+  customBgs: string[]; onAddCustomBg: () => void;
+}) {
+  const Cell = ({ url, label, selected, onClick }: { url: string | null; label: string; selected: boolean; onClick: () => void }) => (
+    <button
+      onClick={onClick}
+      className={`relative aspect-video rounded-md overflow-hidden border transition ${selected ? "border-cyan-400 ring-2 ring-cyan-500/40" : "border-neutral-800 hover:border-neutral-600"}`}
+      style={url ? { backgroundImage: `url(${url})`, backgroundSize: "cover", backgroundPosition: "center" } : { background: "#0a0a0a" }}
+      title={label}
+    >
+      {!url && <div className="absolute inset-0 grid place-items-center text-[10px] text-neutral-500">None</div>}
+      <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 to-transparent text-[9px] text-white px-1 py-0.5 truncate">{label}</div>
+    </button>
+  );
   return (
     <div className="space-y-4">
-      <Row label="Mirror my video">
-        <Toggle on={mirrored} onChange={setMirrored} />
-      </Row>
-      <div className="text-[11px] uppercase tracking-wider text-neutral-500">Backgrounds</div>
+      <Row label="Mirror my video"><Toggle on={mirrored} onChange={setMirrored} /></Row>
+      <div className="flex items-center justify-between">
+        <div className="text-[11px] uppercase tracking-wider text-neutral-500">Backgrounds</div>
+        <button onClick={onAddCustomBg} className="text-[10px] text-cyan-400 hover:text-cyan-300 flex items-center gap-1">
+          <Upload className="w-3 h-3" /> Upload
+        </button>
+      </div>
       <div className="grid grid-cols-3 gap-2">
-        {[null, "blur", "studio", "warm", "cool", "books"].map((bg, i) => (
-          <div key={i} className="aspect-video rounded-md border border-neutral-800 bg-neutral-900 grid place-items-center text-[10px] text-neutral-500">
-            {bg ?? "None"}
+        <Cell url={null} label="None" selected={!bgUrl} onClick={() => setBgUrl(null)} />
+        {customBgs.map((u, i) => (
+          <Cell key={`c-${i}`} url={u} label={`Custom ${i + 1}`} selected={bgUrl === u} onClick={() => setBgUrl(u)} />
+        ))}
+        {BG_LIBRARY.map(bg => (
+          <Cell key={bg.id} url={bg.url} label={bg.label} selected={bgUrl === bg.url} onClick={() => setBgUrl(bg.url)} />
+        ))}
+      </div>
+      <p className="text-[10px] text-neutral-500">Tip: backgrounds show through when your camera is off. Full chroma-key removal coming soon.</p>
+    </div>
+  );
+}
+
+function ProjectsPanel({ onClose, onOpenInEditor }: { onClose: () => void; onOpenInEditor: () => void }) {
+  const videos = usePodcastVideoStore(s => s.videos);
+  const entries = Object.entries(videos);
+  return (
+    <div className="space-y-3">
+      <div className="text-[11px] uppercase tracking-wider text-neutral-500">Recorded videos · {entries.length}</div>
+      {entries.length === 0 && (
+        <div className="text-xs text-neutral-500 border border-dashed border-neutral-800 rounded-lg p-6 text-center">
+          No recordings yet. Hit <span className="text-red-400 font-medium">Record</span> to capture your first clip.
+        </div>
+      )}
+      <div className="space-y-3">
+        {entries.map(([clipId, v]) => (
+          <div key={clipId} className="rounded-lg border border-neutral-800 bg-neutral-900 overflow-hidden">
+            <video src={v.url} controls playsInline className="w-full aspect-video bg-black" />
+            <div className="p-2 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <div className="text-xs text-neutral-200 truncate">{v.participantLabel || "Take"}</div>
+                <div className="text-[10px] text-neutral-500">{v.durationSec ? `${v.durationSec.toFixed(1)}s` : ""} · {v.mime.split(";")[0]}</div>
+              </div>
+              <div className="flex items-center gap-1">
+                <a href={v.url} download={`take-${clipId}.webm`} className="p-1.5 rounded text-neutral-300 hover:text-white hover:bg-neutral-800" title="Download">
+                  <Download className="w-3.5 h-3.5" />
+                </a>
+                <button onClick={onOpenInEditor} className="h-7 px-2 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-[11px] flex items-center gap-1" title="Open in editor">
+                  <ArrowLeftToLine className="w-3 h-3" /> Edit
+                </button>
+              </div>
+            </div>
           </div>
         ))}
       </div>
@@ -598,7 +717,7 @@ function Toggle({ on, onChange }: { on: boolean; onChange: (b: boolean) => void 
 /* ----------------------------- Stage Layout ----------------------------- */
 
 function StageLayout({
-  layoutId, hostVideoRef, hostName, camOn, mirrored, onStartCamera,
+  layoutId, hostVideoRef, hostName, camOn, mirrored, onStartCamera, bgUrl,
 }: {
   layoutId: string;
   hostVideoRef: React.RefObject<HTMLVideoElement>;
@@ -606,9 +725,10 @@ function StageLayout({
   camOn: boolean;
   mirrored: boolean;
   onStartCamera: () => void;
+  bgUrl: string | null;
 }) {
   const Host = (
-    <div className="relative w-full h-full bg-black">
+    <div className="relative w-full h-full bg-black" style={bgUrl ? { backgroundImage: `url(${bgUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}>
       <video
         ref={hostVideoRef}
         muted
