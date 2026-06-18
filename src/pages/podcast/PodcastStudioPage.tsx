@@ -12,7 +12,7 @@ import { PluginWindow } from "@/wstudio/daw/ui/PluginWindow";
 import { LibraryPanel } from "@/wstudio/daw/ui/LibraryPanel";
 import { SoundLibraryPanel } from "@/wstudio/daw/ui/SoundLibraryPanel";
 import { BottomDock } from "@/wstudio/daw/ui/BottomDock";
-import { CollabSidebar } from "@/wstudio/daw/ui/CollabSidebar";
+import { PodcastVideoSidebar } from "./PodcastVideoSidebar";
 import { MenuBar } from "@/wstudio/daw/ui/MenuBar";
 import { FloatingKeyboard } from "@/wstudio/daw/ui/FloatingKeyboard";
 import { ShortcutsModal } from "@/wstudio/daw/ui/ShortcutsModal";
@@ -675,7 +675,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
         {!soundLibOpen ? null : null}
 
         {collabOpen && (
-          <CollabSidebar sessionCode={sessionCode} onClose={() => setCollabOpen(false)} />
+          <PodcastVideoSidebar engine={engineRef.current} onClose={() => setCollabOpen(false)} />
         )}
 
 
