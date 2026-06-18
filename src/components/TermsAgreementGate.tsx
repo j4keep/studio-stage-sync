@@ -27,9 +27,9 @@ const TermsAgreementGate = ({ onAccept }: { onAccept: () => void }) => {
         </p>
 
         <div className="w-full max-h-48 overflow-y-auto rounded-xl bg-card border border-border p-4 mb-6 text-xs text-muted-foreground leading-relaxed space-y-3">
-          <p>By using Atchup, you agree to the following:</p>
+          <p>By using WHEUAT, you agree to the following:</p>
           <ul className="list-disc list-inside space-y-1">
-            <li>Atchup is a unified platform: creator app, TV, and the Catch Up Circle (community savings & fundraisers).</li>
+            <li>WHEUAT is a unified platform: creator app, TV, and the Catch Up Circle (community savings & fundraisers).</li>
             <li>One account works across the entire platform.</li>
             <li>The Catch Up Circle (savings rotations, fundraisers, payouts) is restricted to users aged 18 and over.</li>
             <li>Artists must upload only original or properly licensed content. No external copyrighted music on Radio.</li>
@@ -38,7 +38,7 @@ const TermsAgreementGate = ({ onAccept }: { onAccept: () => void }) => {
             <li>Payments processed through Stripe and Stripe Connect.</li>
             <li>False reporting, fraud, or false accusations may result in suspension or permanent deactivation.</li>
             <li>Prohibited: harmful content, impersonation, fraud, harassment.</li>
-            <li>Atchup provides the platform "as is" with no warranties.</li>
+            <li>WHEUAT provides the platform "as is" with no warranties.</li>
           </ul>
           <p>
             For full terms, view the{" "}
@@ -56,7 +56,7 @@ const TermsAgreementGate = ({ onAccept }: { onAccept: () => void }) => {
             className="mt-0.5"
           />
           <span className="text-xs text-muted-foreground leading-relaxed">
-            I have read and agree to the Atchup Terms of Use and Privacy Policy.
+            I have read and agree to the WHEUAT Terms of Use and Privacy Policy.
           </span>
         </label>
 
@@ -69,7 +69,7 @@ const TermsAgreementGate = ({ onAccept }: { onAccept: () => void }) => {
               : "bg-muted text-muted-foreground cursor-not-allowed"
           }`}
         >
-          Continue to Atchup
+          Continue to WHEUAT
         </button>
       </motion.div>
     </div>

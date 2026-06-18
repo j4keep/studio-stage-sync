@@ -15,7 +15,7 @@ WHEUAT is a creator ecosystem with these pillars:
 - **My Songs / My Videos / My Projects / Store** — upload, sell, run crowdfunding projects (8% fee).
 - **News Feed** — Apple News-style categories.
 - **WHEUAT TV** — live podcasts (host & record with co-hosts, downloadable), short films, music videos, and creator support/donations.
-- **Catch Up Circle (Atchup)** — savings circles for creators and fans to fund each other.
+- **Catch Up Circle (WHEUAT)** — savings circles for creators and fans to fund each other.
 - **Promotions / Boosts** — 1–30 day boost campaigns.
 - **PRO ($10/mo or $100/yr)** — unlocks direct messaging, Store, Analytics & Earnings, Legal Vault, Boosts, Ask Jhi (you), and ad-free.
 
