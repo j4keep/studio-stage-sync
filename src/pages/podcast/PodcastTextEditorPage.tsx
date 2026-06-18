@@ -332,7 +332,7 @@ const PodcastTextEditorPage = () => {
 
       <main className="mx-auto grid max-w-7xl gap-4 px-4 py-4 lg:grid-cols-[1.35fr_0.8fr]">
         <section className="space-y-4 min-w-0">
-          <div className="rounded-lg border border-border bg-card p-4">
+          <div id="podcast-text-cuts" className="rounded-lg border border-border bg-card p-4">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2 font-semibold"><Film className="w-4 h-4 text-primary" /> Video preview</div>
               <div className="flex gap-2">
