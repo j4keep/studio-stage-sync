@@ -195,7 +195,7 @@ const LivePodcastLobbyPage = () => {
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = `atchup-podcast-${recording.id}.webm`;
+      anchor.download = `wheuat-podcast-${recording.id}.webm`;
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
@@ -267,7 +267,7 @@ const LivePodcastLobbyPage = () => {
           <header className="sticky top-0 z-20 border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
             <div className="mx-auto flex max-w-7xl flex-col gap-3 lg:flex-row lg:items-center">
               <div className="min-w-0 flex-1">
-                <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Atchup Studio</div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">WHEUAT Studio</div>
                 <h1 className="truncate text-2xl font-bold">Podcast Home</h1>
               </div>
               <label className="flex h-11 min-w-0 items-center gap-2 rounded-md border border-border bg-card px-3 lg:w-[360px]">
