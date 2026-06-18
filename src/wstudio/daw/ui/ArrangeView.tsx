@@ -1,6 +1,8 @@
 import { useRef, useState, useMemo, useEffect } from "react";
 import { useDawStore } from "../state/DawStore";
 import { WaveformView } from "./WaveformView";
+import { ClipVideoStrip } from "@/pages/podcast/ClipVideoStrip";
+import { usePodcastVideoStore } from "@/pages/podcast/podcastVideoStore";
 import { Knob } from "./Knob";
 import { HorizontalMeter } from "./HorizontalMeter";
 import { Trash2, GripVertical } from "lucide-react";
@@ -740,11 +742,11 @@ function ClipBlock({ clip, color, pxPerSec, selected, tool, onSelect, onContext,
   const w = clip.duration * pxPerSec;
   const left = clip.startTime * pxPerSec;
   const interactive = tool === "pointer" || tool === "trim";
-  // Window the cached full-buffer peaks to the visible [offset .. offset+duration] slice so that
-  // trimming truly shows the trimmed content rather than time-stretching the waveform.
   const bufDur = clip.buffer?.duration ?? (clip.duration + (clip.offset ?? 0));
   const offsetRatio = bufDur > 0 ? (clip.offset ?? 0) / bufDur : 0;
   const spanRatio = bufDur > 0 ? Math.min(1 - offsetRatio, clip.duration / bufDur) : 1;
+  const hasVideo = !!usePodcastVideoStore(s => s.videos[clip.id]);
+  const VIDEO_STRIP_H = hasVideo ? Math.min(48, Math.max(28, Math.round((TRACK_H - 24) * 0.4))) : 0;
 
   return (
     <div
@@ -772,8 +774,16 @@ function ClipBlock({ clip, color, pxPerSec, selected, tool, onSelect, onContext,
       <div className="px-1.5 py-0.5 text-[10px] text-white/90 bg-black/30 flex items-center justify-between">
         <span className="truncate">{clip.name}</span>
       </div>
-      <div className="absolute inset-x-0 top-4 bottom-0 pointer-events-none">
-        {clip.peaks && <WaveformView peaks={clip.peaks} width={Math.max(1, w)} height={TRACK_H - 24} color={color} offsetRatio={offsetRatio} spanRatio={spanRatio} />}
+      {hasVideo && (
+        <div
+          className="absolute inset-x-0 pointer-events-none overflow-hidden border-b border-black/40"
+          style={{ top: 16, height: VIDEO_STRIP_H, background: "#000" }}
+        >
+          <ClipVideoStrip clipId={clip.id} width={Math.max(1, w)} height={VIDEO_STRIP_H} offsetSec={clip.offset ?? 0} durationSec={clip.duration} />
+        </div>
+      )}
+      <div className="absolute inset-x-0 bottom-0 pointer-events-none" style={{ top: 16 + VIDEO_STRIP_H }}>
+        {clip.peaks && <WaveformView peaks={clip.peaks} width={Math.max(1, w)} height={Math.max(8, TRACK_H - 24 - VIDEO_STRIP_H)} color={color} offsetRatio={offsetRatio} spanRatio={spanRatio} />}
         {clip.notes && clip.notes.length > 0 && (
           <div className="absolute inset-1 rounded bg-purple-500/15 border border-purple-300/20 overflow-hidden">
             {clip.notes.map((n: MidiNote) => {
