@@ -109,13 +109,13 @@ const PodcastTextEditorPage = () => {
     if (mediaBufferRef.current) return mediaBufferRef.current.slice(0);
     const buffers: ArrayBuffer[] = [];
     for (let i = 0; i < chunkCount; i++) {
-      setProgress(`Downloading chunk ${i + 1} / ${chunkCount}…`);
+      setProgress(`Loading saved video ${i + 1} / ${chunkCount}…`);
       const key = `${recPrefix}${i.toString().padStart(6, "0")}.webm`;
       const r = await fetch(`${SUPABASE_URL}/functions/v1/r2-download?key=${encodeURIComponent(key)}`);
-      if (!r.ok) throw new Error(`Failed to download chunk ${i + 1}`);
+      if (!r.ok) throw new Error(`Failed to load saved video part ${i + 1}`);
       buffers.push(await r.arrayBuffer());
     }
-    if (buffers.length === 0) throw new Error("No saved recording chunks were found. Record again and wait for the saved take to appear before editing.");
+    if (buffers.length === 0) throw new Error("No saved video was found. Record again and wait for the saved episode to appear before editing.");
     const total = buffers.reduce((n, b) => n + b.byteLength, 0);
     const merged = new Uint8Array(total);
     let off = 0;

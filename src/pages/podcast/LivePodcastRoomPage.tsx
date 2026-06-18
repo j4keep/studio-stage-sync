@@ -455,7 +455,7 @@ const LocalRecorder = ({
               .update({ chunk_count: uploadedChunksRef.current })
               .eq("id", rec.id);
           } catch (e) {
-            toast({ title: "Recording chunk failed", description: e instanceof Error ? e.message : "Upload failed", variant: "destructive" });
+            toast({ title: "Video save failed", description: e instanceof Error ? e.message : "Upload failed", variant: "destructive" });
           }
         }
       };
@@ -463,7 +463,7 @@ const LocalRecorder = ({
         await supabase.from("podcast_recordings").update({ status: uploadedChunksRef.current > 0 ? "uploaded" : "failed", duration_seconds: secondsRef.current, chunk_count: uploadedChunksRef.current }).eq("id", rec.id);
         if (uploadedChunksRef.current > 0) setSavedRecording({ id: rec.id, seconds: secondsRef.current });
       };
-      mr.start(5000); // 5s chunks
+      mr.start(5000);
       setRecording(true);
       setSeconds(0);
       timerRef.current = window.setInterval(() => setSeconds((s) => { secondsRef.current = s + 1; return s + 1; }), 1000);
