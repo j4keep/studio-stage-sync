@@ -1,6 +1,31 @@
-import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Bot, CalendarDays, Clapperboard, Download, Film, FolderOpen, Home, Loader2, MessageSquareText, Mic, MoreHorizontal, Plus, Radio, Scissors, Share2, Sparkles, Trash2, Upload, UserPlus, Video } from "lucide-react";
+import { ChangeEvent, ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  CalendarDays,
+  ChevronDown,
+  Clapperboard,
+  Copy,
+  Download,
+  Edit3,
+  ExternalLink,
+  Film,
+  FolderOpen,
+  Gauge,
+  HelpCircle,
+  Home,
+  Loader2,
+  MessageSquareText,
+  MoreHorizontal,
+  Plus,
+  Radio,
+  Scissors,
+  Search,
+  Settings,
+  Trash2,
+  Upload,
+  Users,
+  Video,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -13,6 +38,7 @@ type Episode = {
   status: string;
   created_at: string;
   scheduled_at: string | null;
+  is_streaming?: boolean | null;
 };
 
 type Recording = {
@@ -26,6 +52,8 @@ type Recording = {
   created_at: string;
 };
 
+type ViewMode = "home" | "projects" | "planner";
+
 const SUPABASE_URL = "https://cdcdlqbjyptamtleitdp.supabase.co";
 
 const LivePodcastLobbyPage = () => {
@@ -38,20 +66,30 @@ const LivePodcastLobbyPage = () => {
   const [creating, setCreating] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [title, setTitle] = useState("");
-  const [activeTab, setActiveTab] = useState("Recordings");
+  const [search, setSearch] = useState("");
+  const [viewMode, setViewMode] = useState<ViewMode>("home");
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
   const [busyRecording, setBusyRecording] = useState<string | null>(null);
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
 
   const load = async () => {
     if (!user) return;
     setLoading(true);
-    const { data: eps } = await supabase
+    const { data: eps, error: epsError } = await supabase
       .from("podcast_episodes")
-      .select("id,title,status,created_at,scheduled_at")
+      .select("id,title,status,created_at,scheduled_at,is_streaming")
       .eq("host_user_id", user.id)
       .order("created_at", { ascending: false });
+
+    if (epsError) {
+      toast({ title: "Episodes could not load", description: epsError.message, variant: "destructive" });
+      setLoading(false);
+      return;
+    }
+
     const episodeRows = (eps as Episode[]) ?? [];
     setEpisodes(episodeRows);
+
     if (episodeRows.length) {
       const { data: recs } = await supabase
         .from("podcast_recordings")
@@ -71,18 +109,28 @@ const LivePodcastLobbyPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
-  const episodesWithRecordings = useMemo(() => episodes.map((episode) => ({
-    episode,
-    takes: recordings.filter((recording) => recording.episode_id === episode.id),
-  })), [episodes, recordings]);
+  const episodeRows = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+    return episodes
+      .filter((episode) => !normalizedSearch || episode.title.toLowerCase().includes(normalizedSearch))
+      .map((episode) => ({
+        episode,
+        takes: recordings.filter((recording) => recording.episode_id === episode.id),
+      }));
+  }, [episodes, recordings, search]);
 
-  const createEpisode = async () => {
+  const recentRows = useMemo(() => episodeRows.filter(({ takes }) => takes.length > 0).slice(0, 8), [episodeRows]);
+  const nextScheduled = useMemo(() => episodes.filter((ep) => ep.scheduled_at).slice(0, 4), [episodes]);
+
+  const createEpisode = async (mode: "record" | "edit" | "live" | "schedule" = "record") => {
     if (!user) return;
     setCreating(true);
     const room = `pod_${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}`;
+    const nextTitle = title.trim() || (mode === "schedule" ? "Scheduled Episode" : "Untitled Episode");
+    const scheduled_at = mode === "schedule" ? new Date(Date.now() + 60 * 60 * 1000).toISOString() : null;
     const { data, error } = await supabase
       .from("podcast_episodes")
-      .insert({ host_user_id: user.id, title: title.trim() || "Untitled Episode", livekit_room: room })
+      .insert({ host_user_id: user.id, title: nextTitle, livekit_room: room, scheduled_at })
       .select("id")
       .single();
     setCreating(false);
@@ -91,12 +139,28 @@ const LivePodcastLobbyPage = () => {
       return;
     }
     setTitle("");
-    navigate(`/tv/podcast/${data.id}`);
+    if (mode === "edit") navigate(`/tv/podcast/${data.id}/edit`);
+    else if (mode === "schedule") {
+      setViewMode("planner");
+      toast({ title: "Episode scheduled", description: "Open the studio when you're ready to record." });
+      load();
+    } else navigate(`/tv/podcast/${data.id}`);
+  };
+
+  const openLatestEditor = () => {
+    const firstWithRecording = episodeRows.find(({ takes }) => takes.length > 0);
+    if (firstWithRecording) {
+      navigate(`/tv/podcast/${firstWithRecording.episode.id}/recording/${firstWithRecording.takes[0].id}/editor`);
+      return;
+    }
+    if (episodes[0]) navigate(`/tv/podcast/${episodes[0].id}/edit`);
+    else createEpisode("edit");
   };
 
   const removeEpisode = async (id: string) => {
-    if (!confirm("Delete this episode and its saved takes?")) return;
+    if (!confirm("Delete this episode and its saved recording?")) return;
     await supabase.from("podcast_episodes").delete().eq("id", id);
+    setOpenMenu(null);
     load();
   };
 
@@ -131,7 +195,7 @@ const LivePodcastLobbyPage = () => {
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = `wheuat-${recording.id}.webm`;
+      anchor.download = `atchup-podcast-${recording.id}.webm`;
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
@@ -141,6 +205,13 @@ const LivePodcastLobbyPage = () => {
     } finally {
       setBusyRecording(null);
     }
+  };
+
+  const copyPreviewLink = async (episodeId: string) => {
+    const link = `${window.location.origin}/#/tv/podcast/${episodeId}/edit`;
+    await navigator.clipboard.writeText(link);
+    toast({ title: "Project link copied" });
+    setOpenMenu(null);
   };
 
   const uploadEpisodeFile = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -166,7 +237,8 @@ const LivePodcastLobbyPage = () => {
       });
       if (!upload.ok) throw new Error("Upload failed.");
       await supabase.from("podcast_recordings").insert({ episode_id: episode.id, uploader_user_id: user.id, mime_type: file.type || "video/webm", r2_prefix: prefix, status: "uploaded", chunk_count: 1, byte_size: file.size });
-      toast({ title: "Episode uploaded" });
+      toast({ title: "Episode uploaded", description: "Your video/audio is now in Projects." });
+      setViewMode("projects");
       load();
     } catch (error) {
       toast({ title: "Upload failed", description: error instanceof Error ? error.message : "Try another file.", variant: "destructive" });
@@ -175,103 +247,236 @@ const LivePodcastLobbyPage = () => {
     }
   };
 
+  const activeRows = viewMode === "home" ? recentRows : episodeRows;
+
   return (
-    <div className="dark min-h-screen bg-background text-foreground">
-      <div className="grid min-h-screen lg:grid-cols-[96px_1fr_380px]">
-        <aside className="hidden border-r border-border bg-card/60 px-3 py-5 lg:flex lg:flex-col lg:items-center lg:gap-4">
-          <SideIcon icon={<Radio />} label="Studio" active />
-          <SideIcon icon={<Home />} label="Home" />
-          <SideIcon icon={<FolderOpen />} label="Projects" />
-          <SideIcon icon={<CalendarDays />} label="Planner" />
-          <SideIcon icon={<MessageSquareText />} label="Messages" />
+    <div className="dark min-h-screen bg-background text-foreground lg:h-screen lg:overflow-hidden">
+      <div className="grid min-h-screen lg:h-screen lg:grid-cols-[104px_minmax(0,1fr)]">
+        <aside className="hidden border-r border-border bg-card/70 lg:flex lg:flex-col lg:items-center lg:gap-2 lg:px-3 lg:py-4">
+          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-md bg-primary text-primary-foreground"><Radio className="h-6 w-6" /></div>
+          <SideButton icon={<Home />} label="Home" active={viewMode === "home"} onClick={() => setViewMode("home")} />
+          <SideButton icon={<FolderOpen />} label="Projects" active={viewMode === "projects"} onClick={() => setViewMode("projects")} />
+          <SideButton icon={<CalendarDays />} label="Planner" active={viewMode === "planner"} onClick={() => setViewMode("planner")} />
+          <SideButton icon={<MessageSquareText />} label="Messages" onClick={() => navigate("/messages")} />
+          <SideButton icon={<Settings />} label="Settings" onClick={() => navigate("/settings")} />
           <div className="mt-auto" />
-          <SideIcon icon={<UserPlus />} label="Invite" />
-          <SideIcon icon={<Video />} label="Record" />
+          <SideButton icon={<HelpCircle />} label="Help" onClick={() => navigate("/help")} />
         </aside>
 
-        <main className="min-w-0 border-r border-border">
-          <header className="sticky top-0 z-20 border-b border-border bg-background/95 px-4 py-4 backdrop-blur">
-            <div className="mx-auto flex max-w-6xl items-center gap-3">
-              <button onClick={() => navigate("/tv")} className="rounded-md p-2 hover:bg-muted" aria-label="Back to TV"><ArrowLeft className="h-5 w-5" /></button>
+        <main className="min-w-0 lg:h-screen lg:overflow-y-auto">
+          <header className="sticky top-0 z-20 border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
+            <div className="mx-auto flex max-w-7xl flex-col gap-3 lg:flex-row lg:items-center">
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground"><span>Projects</span><span>/</span><span className="text-foreground">Podcast</span></div>
-                <h1 className="truncate text-2xl font-bold">Your Episodes</h1>
+                <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Atchup Studio</div>
+                <h1 className="truncate text-2xl font-bold">Podcast Home</h1>
               </div>
-              <Button variant="secondary" onClick={() => fileInputRef.current?.click()} disabled={uploading}>{uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />} Upload</Button>
-              <Button onClick={createEpisode} disabled={creating}>{creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />} Create</Button>
-              <input ref={fileInputRef} type="file" accept="video/webm,.webm,video/mp4,.mp4,audio/webm,.weba,audio/mpeg,.mp3,audio/wav,.wav" className="hidden" onChange={uploadEpisodeFile} />
+              <label className="flex h-11 min-w-0 items-center gap-2 rounded-md border border-border bg-card px-3 lg:w-[360px]">
+                <Search className="h-4 w-4 text-muted-foreground" />
+                <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search recordings and projects" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" />
+              </label>
             </div>
           </header>
 
-          <section className="mx-auto max-w-6xl space-y-6 px-4 py-5">
+          <section className="mx-auto max-w-7xl px-4 py-5">
             <div className="rounded-lg border border-border bg-card p-4">
-              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">New episode</div>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Episode title" className="bg-background" />
-                <Button onClick={createEpisode} disabled={creating}>{creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Video className="mr-2 h-4 w-4" />} Record</Button>
-              </div>
-            </div>
-
-            <nav className="flex flex-wrap gap-2 border-b border-border pb-3">
-              {["Recordings", "Made for You", "Edits", "Exports"].map((tab) => <button key={tab} onClick={() => setActiveTab(tab)} className={`rounded-md px-3 py-2 text-sm font-semibold ${activeTab === tab ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>{tab}</button>)}
-            </nav>
-
-            {loading ? <div className="text-sm text-muted-foreground">Loading episodes…</div> : episodes.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-border p-10 text-center">
-                <Clapperboard className="mx-auto mb-4 h-12 w-12 text-primary" />
-                <h2 className="text-xl font-bold">Start creating</h2>
-                <p className="mt-2 text-sm text-muted-foreground">Record live, upload a finished video, or open the editor.</p>
-                <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                  <ActionTile icon={<Video />} title="Record" body="Open the studio." onClick={createEpisode} />
-                  <ActionTile icon={<Upload />} title="Upload" body="Add video or audio." onClick={() => fileInputRef.current?.click()} />
-                  <ActionTile icon={<Scissors />} title="Edit" body="Cut episodes." onClick={createEpisode} />
+              <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+                <div>
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">New recording or project</label>
+                  <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Episode title" className="h-11 bg-background" />
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-5 md:flex">
+                  <ActionButton icon={<Video />} label="Record" active onClick={() => createEpisode("record")} disabled={creating} />
+                  <ActionButton icon={<Scissors />} label="Edit" onClick={openLatestEditor} />
+                  <ActionButton icon={<Radio />} label="Go live" onClick={() => createEpisode("live")} disabled={creating} />
+                  <ActionButton icon={<CalendarDays />} label="Schedule" onClick={() => createEpisode("schedule")} disabled={creating} />
+                  <ActionButton icon={<Upload />} label={uploading ? "Uploading" : "Upload"} onClick={() => fileInputRef.current?.click()} disabled={uploading} />
                 </div>
               </div>
-            ) : (
-              <div className="space-y-6">
-                {episodesWithRecordings.map(({ episode, takes }) => {
-                  const primaryTake = takes[0];
-                  return (
-                    <article key={episode.id} className="rounded-lg border border-border bg-card p-4">
-                      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                        <div className="min-w-0"><h2 className="truncate text-xl font-bold">{episode.title}</h2><p className="text-xs text-muted-foreground">{new Date(episode.created_at).toLocaleString()} · {takes.length ? `${takes.length} saved take${takes.length > 1 ? "s" : ""}` : "No saved take yet"}</p></div>
-                        <div className="flex gap-2"><Link to={`/tv/podcast/${episode.id}`} className="rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground">Record</Link><Link to={`/tv/podcast/${episode.id}/edit`} className="rounded-md bg-secondary px-3 py-2 text-sm font-semibold text-secondary-foreground">Edit</Link><button onClick={() => removeEpisode(episode.id)} className="rounded-md p-2 text-muted-foreground hover:bg-muted" aria-label="Delete episode"><Trash2 className="h-4 w-4" /></button></div>
-                      </div>
-                      {primaryTake ? (
-                        <div className="grid gap-4 lg:grid-cols-[minmax(260px,0.7fr)_1fr]">
-                          <div className="overflow-hidden rounded-lg border border-border bg-background">
-                            {previewUrls[primaryTake.id] ? <video src={previewUrls[primaryTake.id]} controls className="aspect-video w-full object-cover" /> : <button onClick={() => playRecording(primaryTake)} className="flex aspect-video w-full flex-col items-center justify-center gap-3 bg-muted/40 text-sm text-muted-foreground"><Film className="h-10 w-10 text-primary" />{busyRecording === primaryTake.id ? "Loading saved video…" : "Play saved episode"}</button>}
-                          </div>
-                          <div className="space-y-3">
-                            <div className="grid gap-2 sm:grid-cols-3"><Stat label="Duration" value={formatTime(primaryTake.duration_seconds ?? primaryTake.chunk_count * 5)} /><Stat label="Status" value={primaryTake.status} /><Stat label="Tracks" value="Video + audio" /></div>
-                            <div className="flex flex-wrap gap-2"><Button variant="secondary" onClick={() => navigate(`/tv/podcast/${episode.id}/recording/${primaryTake.id}/editor`)}><Scissors className="mr-2 h-4 w-4" /> Cut video/audio</Button><Button variant="outline" onClick={() => downloadRecording(primaryTake)} disabled={busyRecording === primaryTake.id}><Download className="mr-2 h-4 w-4" /> Download episode</Button><Button variant="outline"><Share2 className="mr-2 h-4 w-4" /> Share</Button></div>
-                          </div>
-                        </div>
-                      ) : <div className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">Record or upload once, then the finished video/audio episode appears here.</div>}
-                    </article>
-                  );
-                })}
-              </div>
-            )}
+              <input ref={fileInputRef} type="file" accept="video/webm,.webm,video/mp4,.mp4,audio/webm,.weba,audio/mpeg,.mp3,audio/wav,.wav" className="hidden" onChange={uploadEpisodeFile} />
+            </div>
+
+            <div className="mt-5 flex gap-2 overflow-x-auto pb-1 lg:hidden">
+              <MobileTab label="Home" active={viewMode === "home"} onClick={() => setViewMode("home")} />
+              <MobileTab label="Projects" active={viewMode === "projects"} onClick={() => setViewMode("projects")} />
+              <MobileTab label="Planner" active={viewMode === "planner"} onClick={() => setViewMode("planner")} />
+              <MobileTab label="Messages" onClick={() => navigate("/messages")} />
+            </div>
+
+            <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+              <section className="min-w-0">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-xl font-bold">{viewMode === "planner" ? "Planner" : viewMode === "projects" ? "Projects" : "Recents"}</h2>
+                    <p className="text-sm text-muted-foreground">Saved videos and audio stay as full episodes here.</p>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={load} disabled={loading}>{loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Gauge className="mr-2 h-4 w-4" />} Refresh</Button>
+                </div>
+
+                {viewMode === "planner" ? (
+                  <Planner episodes={nextScheduled} onOpen={(id) => navigate(`/tv/podcast/${id}`)} />
+                ) : loading ? (
+                  <div className="rounded-lg border border-border bg-card p-8 text-sm text-muted-foreground">Loading episodes…</div>
+                ) : activeRows.length === 0 ? (
+                  <EmptyState onRecord={() => createEpisode("record")} onUpload={() => fileInputRef.current?.click()} />
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {activeRows.map(({ episode, takes }) => {
+                      const take = takes[0];
+                      return (
+                        <EpisodeCard
+                          key={episode.id}
+                          episode={episode}
+                          take={take}
+                          previewUrl={take ? previewUrls[take.id] : undefined}
+                          loadingPreview={take ? busyRecording === take.id : false}
+                          menuOpen={openMenu === episode.id}
+                          onToggleMenu={() => setOpenMenu(openMenu === episode.id ? null : episode.id)}
+                          onPlay={() => take && playRecording(take)}
+                          onRecord={() => navigate(`/tv/podcast/${episode.id}`)}
+                          onProject={() => navigate(`/tv/podcast/${episode.id}/edit`)}
+                          onEdit={() => take ? navigate(`/tv/podcast/${episode.id}/recording/${take.id}/editor`) : navigate(`/tv/podcast/${episode.id}/edit`)}
+                          onDownload={() => take && downloadRecording(take)}
+                          onCopy={() => copyPreviewLink(episode.id)}
+                          onDelete={() => removeEpisode(episode.id)}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
+
+              <aside className="space-y-4">
+                <Panel title="Project tools">
+                  <ToolRow icon={<Users />} title="People" body="Invite guests from the studio." onClick={() => episodes[0] ? navigate(`/tv/podcast/${episodes[0].id}`) : createEpisode("record")} />
+                  <ToolRow icon={<MessageSquareText />} title="Chat" body="Open messages." onClick={() => navigate("/messages")} />
+                  <ToolRow icon={<Clapperboard />} title="Brand" body="Backgrounds, lower thirds, and layouts live in Studio." onClick={() => episodes[0] ? navigate(`/tv/podcast/${episodes[0].id}`) : createEpisode("record")} />
+                  <ToolRow icon={<Edit3 />} title="Text" body="Transcript editing appears after transcription." onClick={openLatestEditor} />
+                  <ToolRow icon={<FolderOpen />} title="Media" body="Recordings, uploads, clips, and exports." onClick={() => setViewMode("projects")} />
+                </Panel>
+                <Panel title="Quick stats">
+                  <div className="grid grid-cols-3 gap-2">
+                    <Stat label="Projects" value={String(episodes.length)} />
+                    <Stat label="Videos" value={String(recordings.length)} />
+                    <Stat label="Hours" value={(recordings.reduce((sum, rec) => sum + (rec.duration_seconds ?? rec.chunk_count * 5), 0) / 3600).toFixed(1)} />
+                  </div>
+                </Panel>
+              </aside>
+            </div>
           </section>
         </main>
-
-        <aside className="hidden bg-card/40 p-4 lg:block">
-          <div className="sticky top-4 rounded-lg border border-border bg-card p-4">
-            <div className="mb-5 flex items-center justify-between"><div className="flex items-center gap-2 font-bold"><Bot className="h-5 w-5 text-primary" /> Co-Creator</div><MoreHorizontal className="h-4 w-4 text-muted-foreground" /></div>
-            <div className="space-y-3"><Suggestion icon={<Film />} title="Thumbnail" /><Suggestion icon={<Clapperboard />} title="Magic clip" /><Suggestion icon={<Sparkles />} title="Instagram caption" /></div>
-            <div className="mt-6 rounded-lg border border-border p-3"><Input placeholder="Ask Co-Creator" className="border-0 bg-transparent focus-visible:ring-0" /><div className="mt-3 flex justify-between text-muted-foreground"><Plus className="h-4 w-4" /><Sparkles className="h-4 w-4" /></div></div>
-          </div>
-        </aside>
       </div>
     </div>
   );
 };
 
-const SideIcon = ({ icon, label, active }: { icon: JSX.Element; label: string; active?: boolean }) => <div className={`flex w-full flex-col items-center gap-1 rounded-lg py-3 text-xs ${active ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>{icon}<span>{label}</span></div>;
-const ActionTile = ({ icon, title, body, onClick }: { icon: JSX.Element; title: string; body: string; onClick: () => void }) => <button onClick={onClick} className="rounded-lg border border-border bg-card p-4 text-left hover:border-primary/50"><div className="mb-4 text-primary">{icon}</div><div className="font-semibold">{title}</div><div className="text-xs text-muted-foreground">{body}</div></button>;
-const Stat = ({ label, value }: { label: string; value: string }) => <div className="rounded-md border border-border bg-background p-3"><div className="text-xs text-muted-foreground">{label}</div><div className="font-semibold capitalize">{value}</div></div>;
-const Suggestion = ({ icon, title }: { icon: JSX.Element; title: string }) => <button className="flex w-full items-center gap-3 rounded-lg border border-border bg-background p-3 text-left hover:bg-muted"><span className="text-primary">{icon}</span><span className="font-medium">{title}</span></button>;
+const SideButton = ({ icon, label, active, onClick }: { icon: ReactNode; label: string; active?: boolean; onClick: () => void }) => (
+  <button onClick={onClick} className={`flex w-full flex-col items-center gap-1 rounded-lg py-3 text-xs transition ${active ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
+    {icon}<span>{label}</span>
+  </button>
+);
+
+const MobileTab = ({ label, active, onClick }: { label: string; active?: boolean; onClick: () => void }) => (
+  <button onClick={onClick} className={`shrink-0 rounded-md border px-4 py-2 text-sm font-semibold ${active ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground"}`}>{label}</button>
+);
+
+const ActionButton = ({ icon, label, active, disabled, onClick }: { icon: ReactNode; label: string; active?: boolean; disabled?: boolean; onClick: () => void }) => (
+  <button disabled={disabled} onClick={onClick} className={`flex min-h-20 flex-col items-center justify-center gap-2 rounded-lg border px-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 md:min-w-[92px] ${active ? "border-primary bg-primary/15 text-primary" : "border-border bg-background hover:border-primary/60"}`}>
+    {disabled ? <Loader2 className="h-5 w-5 animate-spin" /> : icon}<span>{label}</span>
+  </button>
+);
+
+const EpisodeCard = ({ episode, take, previewUrl, loadingPreview, menuOpen, onToggleMenu, onPlay, onRecord, onProject, onEdit, onDownload, onCopy, onDelete }: {
+  episode: Episode;
+  take?: Recording;
+  previewUrl?: string;
+  loadingPreview: boolean;
+  menuOpen: boolean;
+  onToggleMenu: () => void;
+  onPlay: () => void;
+  onRecord: () => void;
+  onProject: () => void;
+  onEdit: () => void;
+  onDownload: () => void;
+  onCopy: () => void;
+  onDelete: () => void;
+}) => (
+  <article className="group relative overflow-hidden rounded-lg border border-border bg-card">
+    <div className="relative bg-background">
+      {take && previewUrl ? (
+        <video src={previewUrl} controls className="aspect-video w-full object-cover" />
+      ) : take ? (
+        <button onClick={onPlay} className="flex aspect-video w-full flex-col items-center justify-center gap-3 bg-muted/35 text-sm text-muted-foreground">
+          {loadingPreview ? <Loader2 className="h-8 w-8 animate-spin text-primary" /> : <Film className="h-10 w-10 text-primary" />}
+          {loadingPreview ? "Loading video…" : "Play saved episode"}
+        </button>
+      ) : (
+        <button onClick={onRecord} className="flex aspect-video w-full flex-col items-center justify-center gap-3 bg-muted/35 text-sm text-muted-foreground">
+          <Video className="h-10 w-10 text-primary" />Record this episode
+        </button>
+      )}
+      {take && <span className="absolute bottom-2 right-2 rounded-md bg-background/85 px-2 py-1 text-xs font-semibold">{formatTime(take.duration_seconds ?? take.chunk_count * 5)}</span>}
+    </div>
+    <div className="space-y-3 p-3">
+      <div className="flex items-start gap-2">
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate font-bold">{episode.title}</h3>
+          <p className="text-xs text-muted-foreground">{take ? `Recorded ${new Date(take.created_at).toLocaleString()}` : "No recording yet"}</p>
+        </div>
+        <button onClick={onToggleMenu} className="rounded-md p-2 text-muted-foreground hover:bg-muted" aria-label="Episode actions"><MoreHorizontal className="h-4 w-4" /></button>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" onClick={onEdit}><Scissors className="mr-1 h-4 w-4" /> Edit</Button>
+        <Button size="sm" variant="secondary" onClick={onProject}><FolderOpen className="mr-1 h-4 w-4" /> Project</Button>
+        <Button size="sm" variant="outline" onClick={onRecord}><Video className="mr-1 h-4 w-4" /> Studio</Button>
+      </div>
+    </div>
+    {menuOpen && (
+      <div className="absolute right-3 top-[52%] z-10 w-56 rounded-lg border border-border bg-popover p-2 shadow-xl">
+        <MenuItem icon={<FolderOpen />} label="Go to project" onClick={onProject} />
+        <MenuItem icon={<Copy />} label="Copy project link" onClick={onCopy} />
+        <MenuItem icon={<Scissors />} label="Edit video/audio" onClick={onEdit} />
+        <MenuItem icon={<Download />} label="Export download" onClick={onDownload} disabled={!take} />
+        <MenuItem icon={<Trash2 />} label="Remove" onClick={onDelete} danger />
+      </div>
+    )}
+  </article>
+);
+
+const MenuItem = ({ icon, label, onClick, disabled, danger }: { icon: ReactNode; label: string; onClick: () => void; disabled?: boolean; danger?: boolean }) => (
+  <button disabled={disabled} onClick={onClick} className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm disabled:opacity-40 ${danger ? "text-destructive hover:bg-destructive/10" : "hover:bg-muted"}`}>
+    {icon}<span>{label}</span>
+  </button>
+);
+
+const Panel = ({ title, children }: { title: string; children: ReactNode }) => <section className="rounded-lg border border-border bg-card p-4"><h3 className="mb-3 font-bold">{title}</h3>{children}</section>;
+
+const ToolRow = ({ icon, title, body, onClick }: { icon: ReactNode; title: string; body: string; onClick: () => void }) => (
+  <button onClick={onClick} className="flex w-full items-center gap-3 rounded-lg border border-border bg-background p-3 text-left hover:border-primary/50">
+    <span className="text-primary">{icon}</span><span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{title}</span><span className="block text-xs text-muted-foreground">{body}</span></span><ExternalLink className="h-4 w-4 text-muted-foreground" />
+  </button>
+);
+
+const Stat = ({ label, value }: { label: string; value: string }) => <div className="rounded-md border border-border bg-background p-3"><div className="text-xs text-muted-foreground">{label}</div><div className="text-xl font-bold">{value}</div></div>;
+
+const EmptyState = ({ onRecord, onUpload }: { onRecord: () => void; onUpload: () => void }) => (
+  <div className="rounded-lg border border-dashed border-border bg-card p-8 text-center">
+    <Clapperboard className="mx-auto mb-4 h-12 w-12 text-primary" />
+    <h2 className="text-xl font-bold">Start with one episode</h2>
+    <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">Record live or upload a file. The saved video and audio will appear here as one editable episode.</p>
+    <div className="mt-5 flex flex-col justify-center gap-2 sm:flex-row"><Button onClick={onRecord}><Video className="mr-2 h-4 w-4" /> Record</Button><Button variant="secondary" onClick={onUpload}><Upload className="mr-2 h-4 w-4" /> Upload</Button></div>
+  </div>
+);
+
+const Planner = ({ episodes, onOpen }: { episodes: Episode[]; onOpen: (id: string) => void }) => (
+  <div className="rounded-lg border border-border bg-card p-4">
+    {episodes.length === 0 ? <div className="text-sm text-muted-foreground">No scheduled episodes yet. Use Schedule above to create one.</div> : episodes.map((episode) => (
+      <button key={episode.id} onClick={() => onOpen(episode.id)} className="flex w-full items-center justify-between gap-3 border-b border-border py-3 text-left last:border-b-0">
+        <span><span className="block font-semibold">{episode.title}</span><span className="block text-xs text-muted-foreground">{episode.scheduled_at ? new Date(episode.scheduled_at).toLocaleString() : "Not scheduled"}</span></span><ChevronDown className="h-4 w-4 -rotate-90 text-muted-foreground" />
+      </button>
+    ))}
+  </div>
+);
+
 const formatTime = (seconds: number) => `${Math.floor(Math.max(0, seconds) / 60)}:${String(Math.floor(Math.max(0, seconds)) % 60).padStart(2, "0")}`;
 
 export default LivePodcastLobbyPage;
