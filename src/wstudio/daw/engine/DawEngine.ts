@@ -544,7 +544,10 @@ export class DawEngine {
     });
     tracks.forEach((track) => {
       if (track.kind !== "audio" || track.inputEnabled === false) return;
-      void this.startInputMonitoring(track.id, track.inputDeviceId, !!track.armed);
+      // Keep meters/live waveform ready, but never route the live mic into the
+      // master mix just because a track is armed. That doubled the vocal with
+      // the recorded clip on playback/export and made it sound robotic.
+      void this.startInputMonitoring(track.id, track.inputDeviceId, false);
     });
   }
 
