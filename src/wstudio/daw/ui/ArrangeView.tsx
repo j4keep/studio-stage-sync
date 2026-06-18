@@ -530,11 +530,11 @@ export function ArrangeView({ onArmToggle, onSeek, engine, onOpenInstrumentEdito
           onClick={(e) => e.stopPropagation()}
         >
           {[
-            { label: "Cut", sc: "⌘X", action: () => cutClip(ctxMenu.clipId) },
-            { label: "Copy", sc: "⌘C", action: () => { copyClip(ctxMenu.clipId); toast.success("Copied"); } },
-            { label: "Duplicate", sc: "⌘D", action: () => duplicateClip(ctxMenu.clipId) },
-            { label: "Split at playhead", sc: "", action: () => splitClipAt(ctxMenu.clipId, useDawStore.getState().transport.position) },
-            { label: "Delete", sc: "Del", action: () => removeClip(ctxMenu.clipId) },
+            { label: "Cut", sc: "⌘X", action: () => { usePodcastVideoStore.getState().copyVideoToClipboard(ctxMenu.clipId); cutClip(ctxMenu.clipId); } },
+            { label: "Copy", sc: "⌘C", action: () => { copyClip(ctxMenu.clipId); usePodcastVideoStore.getState().copyVideoToClipboard(ctxMenu.clipId); toast.success("Copied"); } },
+            { label: "Duplicate", sc: "⌘D", action: () => { const id = duplicateClip(ctxMenu.clipId); if (id) usePodcastVideoStore.getState().cloneVideo(ctxMenu.clipId, id); } },
+            { label: "Split at playhead", sc: "", action: () => { const id = splitClipAt(ctxMenu.clipId, useDawStore.getState().transport.position); if (id) usePodcastVideoStore.getState().cloneVideo(ctxMenu.clipId, id); } },
+            { label: "Delete", sc: "Del", action: () => { usePodcastVideoStore.getState().removeVideo(ctxMenu.clipId); removeClip(ctxMenu.clipId); } },
           ].map(item => (
             <button
               key={item.label}
