@@ -317,6 +317,7 @@ const StudioSidePanel = ({
 };
 
 const ToolSection = ({ title, body, children }: { title: string; body: string; children: JSX.Element | JSX.Element[] }) => <section><h3 className="font-semibold">{title}</h3><p className="mt-1 mb-4 text-sm text-muted-foreground">{body}</p>{children}</section>;
+const Control = ({ label, children }: { label: string; children: JSX.Element | JSX.Element[] }) => <label className="block text-xs font-semibold text-muted-foreground"><span className="mb-2 block">{label}</span>{children}</label>;
 const MediaButton = ({ icon, label }: { icon: JSX.Element; label: string }) => <button className="rounded-lg border border-border p-4 text-left hover:bg-muted"><span className="text-primary">{icon}</span><div className="mt-3 text-sm font-semibold">{label}</div></button>;
 const UploadIcon = () => <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M20 16v4H4v-4"/></svg>;
 
