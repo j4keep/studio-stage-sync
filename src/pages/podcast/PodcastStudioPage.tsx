@@ -419,11 +419,13 @@ export default function PodcastStudioPage() {
           className={`absolute left-0 right-16 bottom-0 bg-neutral-950 border-t border-neutral-900 transition-transform duration-300 z-20 ${tracksOpen ? "translate-y-0" : "translate-y-full"}`}
           style={{ height: "55%" }}
         >
-          <div className="h-8 flex items-center justify-between px-3 border-b border-neutral-900">
-            <div className="text-[11px] uppercase tracking-wider text-neutral-500">Tracks · {tracks.length}</div>
+          <div className="h-10 flex items-center gap-2 px-3 border-b border-neutral-900">
+            <div className="text-[11px] uppercase tracking-wider text-neutral-500 mr-2">Tracks · {tracks.length}</div>
+            <TransportControls engineRef={engineRef} />
+            <div className="flex-1" />
             <button onClick={() => setTracksOpen(false)} className="p-1 text-neutral-500 hover:text-neutral-200"><ChevronDown className="w-4 h-4" /></button>
           </div>
-          <div className="h-[calc(100%-2rem)]">
+          <div className="h-[calc(100%-2.5rem)]">
             {view === "arrange" && (
               <ArrangeView
                 onArmToggle={(id) => { const t = tracks.find(x => x.id === id); if (t) updateTrack(id, { armed: !t.armed }); }}
