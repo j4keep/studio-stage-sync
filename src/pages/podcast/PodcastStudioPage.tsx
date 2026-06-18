@@ -154,6 +154,16 @@ export default function PodcastStudioPage() {
 
   useEffect(() => () => stopCamera(), [stopCamera]);
 
+  // Re-attach camera stream when layout changes remount the <video> element
+  useEffect(() => {
+    const v = previewRef.current;
+    const s = camStreamRef.current;
+    if (v && s && v.srcObject !== s) {
+      v.srcObject = s;
+      v.play().catch(() => {});
+    }
+  }, [layoutId, camOn, tracksFull]);
+
   const ensureRecordTrack = useCallback(() => {
     const audioTrack = tracks.find(t => t.kind === "audio");
     if (audioTrack) { selectTrack(audioTrack.id); return audioTrack.id; }
