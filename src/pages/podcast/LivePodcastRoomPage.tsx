@@ -358,7 +358,7 @@ const LocalRecorder = ({
   const navigate = useNavigate();
   const [recording, setRecording] = useState(false);
   const [recordingId, setRecordingId] = useState<string | null>(null);
-  const [savedRecording, setSavedRecording] = useState<{ id: string; chunks: number; seconds: number } | null>(null);
+  const [savedRecording, setSavedRecording] = useState<{ id: string; seconds: number } | null>(null);
   const [seconds, setSeconds] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunkIndexRef = useRef(0);
@@ -461,7 +461,7 @@ const LocalRecorder = ({
       };
       mr.onstop = async () => {
         await supabase.from("podcast_recordings").update({ status: uploadedChunksRef.current > 0 ? "uploaded" : "failed", duration_seconds: secondsRef.current, chunk_count: uploadedChunksRef.current }).eq("id", rec.id);
-        if (uploadedChunksRef.current > 0) setSavedRecording({ id: rec.id, chunks: uploadedChunksRef.current, seconds: secondsRef.current });
+        if (uploadedChunksRef.current > 0) setSavedRecording({ id: rec.id, seconds: secondsRef.current });
       };
       mr.start(5000); // 5s chunks
       setRecording(true);
@@ -477,7 +477,7 @@ const LocalRecorder = ({
     if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop();
     if (timerRef.current) window.clearInterval(timerRef.current);
     setRecording(false);
-    toast({ title: "Recording stopped", description: "Final chunks uploading…" });
+    toast({ title: "Recording stopped", description: "Final video/audio is saving to Your Episodes…" });
   };
 
   return (
@@ -487,11 +487,11 @@ const LocalRecorder = ({
           <>
             <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
             <span className="font-mono">{formatTime(seconds)}</span>
-            <span className="text-xs text-zinc-400">Recording locally</span>
+            <span className="text-xs text-zinc-400">Saving video + audio</span>
           </>
         ) : savedRecording ? (
           <button onClick={() => navigate(`/tv/podcast/${episodeId}/recording/${savedRecording.id}/editor`)} className="min-w-0 text-left text-xs text-muted-foreground hover:text-foreground">
-            <span className="font-semibold text-foreground">Saved take</span> · {formatTime(savedRecording.seconds)} · {savedRecording.chunks} chunks · tap to trim
+            <span className="font-semibold text-foreground">Saved episode</span> · {formatTime(savedRecording.seconds)} · tap to edit timeline
           </button>
         ) : (
           <span className="text-xs text-muted-foreground">Not recording</span>
