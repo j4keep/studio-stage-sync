@@ -385,6 +385,12 @@ const Timeline = ({ duration, cuts }: { duration: number; cuts: Range[] }) => (
   </div>
 );
 
+const Segment = ({ value, options, onChange }: { value: string; options: string[]; onChange: (value: string) => void }) => (
+  <div className="grid h-9 grid-cols-3 rounded-md border border-border bg-background p-1">
+    {options.map((option) => <button key={option} onClick={() => onChange(option)} className={`rounded px-2 text-xs font-semibold ${value === option ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}>{option}</button>)}
+  </div>
+);
+
 function buildWordCutRanges(words: Word[], deleted: Set<number>): Range[] {
   const ranges: Range[] = [];
   let current: Range | null = null;
