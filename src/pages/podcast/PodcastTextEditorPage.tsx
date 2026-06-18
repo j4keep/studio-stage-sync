@@ -125,6 +125,22 @@ const PodcastTextEditorPage = () => {
     }
   };
 
+  const saveEditorSettings = async () => {
+    if (!recordingId) return;
+    setExporting(true);
+    try {
+      await supabase.from("podcast_recordings").update({
+        edl: keepRanges,
+        export_settings: { format: exportFormat, layout, magicAudio },
+      }).eq("id", recordingId);
+      toast({ title: "Export settings saved" });
+    } catch (e) {
+      toast({ title: "Settings could not save", description: e instanceof Error ? e.message : "Unknown", variant: "destructive" });
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const toggleWord = (i: number) => {
     setDeletedWords((prev) => {
       const next = new Set(prev);
@@ -375,8 +391,8 @@ const PodcastTextEditorPage = () => {
             <div className="mb-3 flex items-center gap-2 font-semibold"><LayoutTemplate className="w-4 h-4 text-primary" /> Layout tools</div>
             <div className="space-y-3 text-sm">
               <div className="rounded-md border border-border p-3"><div className="font-medium">Canvas</div><div className="text-muted-foreground">{exportFormat} · {layout}</div></div>
-              <div className="grid grid-cols-2 gap-2"><Button variant="secondary"><Type className="mr-2 h-4 w-4" /> Text</Button><Button variant="secondary"><MessageSquareText className="mr-2 h-4 w-4" /> Captions</Button></div>
-              <Button className="w-full" variant="outline"><Settings className="mr-2 h-4 w-4" /> Export settings</Button>
+              <div className="grid grid-cols-2 gap-2"><Button variant="secondary" onClick={() => document.getElementById("podcast-text-cuts")?.scrollIntoView({ behavior: "smooth", block: "start" })}><Type className="mr-2 h-4 w-4" /> Text</Button><Button variant="secondary" onClick={() => document.getElementById("podcast-text-cuts")?.scrollIntoView({ behavior: "smooth", block: "start" })}><MessageSquareText className="mr-2 h-4 w-4" /> Captions</Button></div>
+              <Button className="w-full" variant="outline" onClick={saveEditorSettings} disabled={exporting}><Settings className="mr-2 h-4 w-4" /> Export settings</Button>
             </div>
           </div>
 
