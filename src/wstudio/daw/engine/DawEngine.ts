@@ -684,13 +684,15 @@ export class DawEngine {
     const chunks: Blob[] = [];
     const mime = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"]
       .find(m => MediaRecorder.isTypeSupported(m)) || "audio/webm";
+    const mediaRecordTrackId = trackId;
+    const mediaRecordStart = transportPos;
     const mediaRecorder = new MediaRecorder(liveStream, {
       mimeType: mime,
       audioBitsPerSecond: 160_000,
     });
     mediaRecorder.ondataavailable = (e) => { if (e.data?.size) chunks.push(e.data); };
     mediaRecorder.onstop = async () => {
-      const stoppedTrackId = this.recordingTrackId;
+      const stoppedTrackId = mediaRecordTrackId;
       if (!stoppedTrackId || chunks.length === 0) return;
       try {
         const blob = new Blob(chunks, { type: mime });
@@ -705,7 +707,7 @@ export class DawEngine {
         const clip: Clip = {
           id: `clip_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
           trackId: stoppedTrackId,
-          startTime: this.recordStartTransport,
+          startTime: mediaRecordStart,
           duration: mono.duration,
           offset: 0,
           buffer: mono,
