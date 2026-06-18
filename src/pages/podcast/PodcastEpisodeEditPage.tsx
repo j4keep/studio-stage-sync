@@ -13,6 +13,7 @@ import {
   Clapperboard,
   Copy,
   Download,
+  Film,
   FileText,
   Gauge,
   LayoutTemplate,
@@ -207,7 +208,23 @@ const PodcastEpisodeEditPage = () => {
     load();
   };
 
-  const downloadKey = (key: string) => window.open(`${SUPABASE_URL}/functions/v1/r2-download?key=${encodeURIComponent(key)}`, "_blank");
+  const downloadKey = async (key: string) => {
+    try {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/r2-download?key=${encodeURIComponent(key)}`);
+      if (!res.ok) throw new Error(await res.text().catch(() => `Download failed: ${res.status}`));
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = key.split("/").pop() || "podcast-recording.webm";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      toast({ title: "Download not available", description: e instanceof Error ? e.message : "The file was not found in storage.", variant: "destructive" });
+    }
+  };
 
   const addDestination = async () => {
     if (!episodeId || !newDest.rtmp_url || !newDest.stream_key) {
@@ -275,6 +292,10 @@ const PodcastEpisodeEditPage = () => {
                 <div className="flex h-10 items-center justify-between rounded-md border border-border px-3"><span className="text-sm">Magic</span><Switch checked={videoSettings.noise} onCheckedChange={(noise) => setVideoSettings((s) => ({ ...s, noise }))} /></div>
               </Control>
             </div>
+          </Panel>
+
+          <Panel icon={<Film className="w-4 h-4" />} title="Saved timeline">
+            <ProductionTimeline recordings={recordings} clips={clips} duration={Math.max(totalDuration, 60)} />
           </Panel>
 
           <Panel icon={<Mic className="w-4 h-4" />} title="Recordings">
