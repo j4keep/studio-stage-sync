@@ -298,38 +298,38 @@ const PodcastEpisodeEditPage = () => {
             <ProductionTimeline recordings={recordings} clips={clips} duration={Math.max(totalDuration, 60)} />
           </Panel>
 
-          <Panel icon={<Mic className="w-4 h-4" />} title="Recordings">
+          <Panel icon={<Mic className="w-4 h-4" />} title="Your Episodes">
             {recordings.length === 0 ? (
-              <Empty title="No recordings yet" body="Enter the studio and press Record." />
+              <Empty title="No saved videos yet" body="Record or upload once, then the full video/audio episode appears here." />
             ) : (
               <div className="space-y-3">
                 {recordings.map((r) => {
                   const tr = transcripts.find((t) => t.recording_id === r.id);
                   return (
                     <div key={r.id} className="rounded-lg border border-border bg-muted/25 p-3">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="grid gap-3 md:grid-cols-[170px_1fr]">
+                        <div className="flex aspect-video items-center justify-center rounded-md border border-border bg-background">
+                          <Film className="h-8 w-8 text-primary" />
+                        </div>
                         <div className="min-w-0">
-                          <div className="font-semibold">Recording {recordings.indexOf(r) + 1}</div>
-                          <div className="text-xs text-muted-foreground">{r.chunk_count} chunks · {r.status} · {new Date(r.created_at).toLocaleString()}</div>
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="font-semibold">Episode take {recordings.indexOf(r) + 1}</div>
+                              <div className="text-xs text-muted-foreground">Video + audio · {formatTime(r.duration_seconds ?? r.chunk_count * 5)} · {r.status} · {new Date(r.created_at).toLocaleString()}</div>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              <Button size="sm" variant="secondary" onClick={() => navigate(`/tv/podcast/${episodeId}/recording/${r.id}/editor`)}>
+                                <Scissors className="w-4 h-4 mr-1" /> Cut video/audio
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => transcribe(r.id)} disabled={busyRec === r.id || tr?.status === "processing"}>
+                                {tr?.status === "processing" ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <FileText className="w-4 h-4 mr-1" />} Transcribe
+                              </Button>
+                              {r.processed_audio_key && <Button size="sm" variant="outline" onClick={() => downloadKey(r.processed_audio_key!)}><Waves className="w-4 h-4 mr-1" /> Magic audio</Button>}
+                            </div>
+                          </div>
+                          {tr?.status === "ready" && <div className="mt-3 line-clamp-3 rounded-md bg-background/60 p-2 text-xs text-muted-foreground">{tr.text}</div>}
+                          {tr?.status === "failed" && <div className="mt-3 rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">Transcription failed. Click Transcribe again.</div>}
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                          <Button size="sm" variant="secondary" onClick={() => navigate(`/tv/podcast/${episodeId}/recording/${r.id}/editor`)}>
-                            <Settings2 className="w-4 h-4 mr-1" /> Edit
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => transcribe(r.id)} disabled={busyRec === r.id || tr?.status === "processing"}>
-                            {tr?.status === "processing" ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <FileText className="w-4 h-4 mr-1" />} Transcribe
-                          </Button>
-                          {r.processed_audio_key && <Button size="sm" variant="outline" onClick={() => downloadKey(r.processed_audio_key!)}><Waves className="w-4 h-4 mr-1" /> Audio</Button>}
-                        </div>
-                      </div>
-                      {tr?.status === "ready" && <div className="mt-3 line-clamp-3 rounded-md bg-background/60 p-2 text-xs text-muted-foreground">{tr.text}</div>}
-                      {tr?.status === "failed" && <div className="mt-3 rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">Transcription failed. The model is now updated — click Transcribe again.</div>}
-                      <div className="mt-3 flex flex-wrap gap-1">
-                        {Array.from({ length: r.chunk_count }).map((_, i) => (
-                          <button key={i} onClick={() => downloadKey(`${r.r2_prefix}${i.toString().padStart(6, "0")}.webm`)} className="inline-flex items-center gap-1 rounded bg-muted px-2 py-1 text-xs hover:bg-secondary">
-                            <Download className="w-3 h-3" /> {i + 1}
-                          </button>
-                        ))}
                       </div>
                     </div>
                   );
