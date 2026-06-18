@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, Download, Film, LayoutTemplate, Loader2, MessageSquareText, Monitor, Pause, Play, Plus, RotateCcw, Scissors, Settings, Trash2, Type, Wand2, Waves } from "lucide-react";
+import { ArrowLeft, Download, Film, LayoutTemplate, Loader2, MessageSquareText, Monitor, Pause, Play, Plus, RotateCcw, Save, Scissors, Settings, Trash2, Type, Wand2, Waves } from "lucide-react";
 
 type Word = { word: string; start: number; end: number };
 type Range = { start: number; end: number; label?: string };
@@ -37,12 +37,14 @@ const PodcastTextEditorPage = () => {
   const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
   const [exportFormat, setExportFormat] = useState("16:9");
   const [layout, setLayout] = useState("Grid");
+  const [currentTime, setCurrentTime] = useState(0);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const sourceRef = useRef<AudioBufferSourceNode | null>(null);
   const originalBufferRef = useRef<AudioBuffer | null>(null);
   const previewBufferRef = useRef<AudioBuffer | null>(null);
   const mediaBufferRef = useRef<ArrayBuffer | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -94,6 +96,33 @@ const PodcastTextEditorPage = () => {
     setManualCuts((cuts) => [...cuts, { start, end, label: cutDraft.label || "Cut" }]);
     setCutDraft({ start: String(end), end: String(end + 10), label: "Cut" });
     invalidatePreview();
+  };
+
+  const setCutPoint = (field: "start" | "end", value: number) => {
+    const next = Math.max(0, Math.min(duration || 60, value));
+    setCutDraft((draft) => {
+      if (field === "start") {
+        const end = Math.max(next + 1, Number(draft.end) || next + 1);
+        return { ...draft, start: String(Math.floor(next)), end: String(Math.min(duration || 60, Math.floor(end))) };
+      }
+      const start = Math.min(Number(draft.start) || 0, next - 1);
+      return { ...draft, start: String(Math.max(0, Math.floor(start))), end: String(Math.floor(next)) };
+    });
+    if (videoRef.current) videoRef.current.currentTime = next;
+    setCurrentTime(next);
+  };
+
+  const saveTimeline = async () => {
+    if (!recordingId) return;
+    setExporting(true);
+    try {
+      await supabase.from("podcast_recordings").update({ edl: keepRanges }).eq("id", recordingId);
+      toast({ title: "Timeline saved", description: "Your video/audio cut list is saved on this episode." });
+    } catch (e) {
+      toast({ title: "Save failed", description: e instanceof Error ? e.message : "Unknown", variant: "destructive" });
+    } finally {
+      setExporting(false);
+    }
   };
 
   const toggleWord = (i: number) => {
@@ -276,6 +305,9 @@ const PodcastTextEditorPage = () => {
           <Button variant="outline" onClick={preview} disabled={exporting}>
             {playing ? <Pause className="w-4 h-4 mr-2" /> : <Play className="w-4 h-4 mr-2" />}{playing ? "Stop" : "Preview"}
           </Button>
+          <Button variant="secondary" onClick={saveTimeline} disabled={exporting}>
+            <Save className="w-4 h-4 mr-2" /> Save cuts
+          </Button>
           <Button onClick={exportMagicAudio} disabled={exporting}>
             {exporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Wand2 className="w-4 h-4 mr-2" />} Export
           </Button>
@@ -293,7 +325,7 @@ const PodcastTextEditorPage = () => {
               </div>
             </div>
             <div className="overflow-hidden rounded-lg border border-border bg-background">
-              {videoPreviewUrl ? <video src={videoPreviewUrl} controls className="mx-auto aspect-video max-h-[360px] w-full object-contain" /> : <button onClick={loadVideoPreview} className="flex aspect-video w-full flex-col items-center justify-center gap-3 text-sm text-muted-foreground"><Monitor className="h-12 w-12 text-primary" /> Load saved video/audio</button>}
+              {videoPreviewUrl ? <video ref={videoRef} src={videoPreviewUrl} controls onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)} className="mx-auto aspect-video max-h-[360px] w-full object-contain" /> : <button onClick={loadVideoPreview} className="flex aspect-video w-full flex-col items-center justify-center gap-3 text-sm text-muted-foreground"><Monitor className="h-12 w-12 text-primary" /> Load saved video/audio</button>}
             </div>
           </div>
 
@@ -307,8 +339,14 @@ const PodcastTextEditorPage = () => {
                 <RotateCcw className="w-3 h-3" /> Reset edits
               </button>
             </div>
-            <Timeline duration={duration || 60} cuts={cutRanges} />
-            <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_120px_120px_auto]">
+            <Timeline duration={duration || 60} cuts={cutRanges} currentTime={currentTime} draftStart={Number(cutDraft.start) || 0} draftEnd={Number(cutDraft.end) || 0} onSeek={(seconds) => setCutPoint("start", seconds)} />
+            <div className="mt-4 space-y-3 rounded-lg border border-border bg-background p-3">
+              <div className="grid gap-3 md:grid-cols-2">
+                <label className="text-xs font-semibold text-muted-foreground">Cut starts at {formatTime(Number(cutDraft.start) || 0)}<input type="range" min="0" max={Math.max(1, duration || 60)} value={Number(cutDraft.start) || 0} onChange={(event) => setCutPoint("start", Number(event.target.value))} className="mt-2 w-full accent-primary" /></label>
+                <label className="text-xs font-semibold text-muted-foreground">Cut ends at {formatTime(Number(cutDraft.end) || 0)}<input type="range" min="0" max={Math.max(1, duration || 60)} value={Number(cutDraft.end) || 0} onChange={(event) => setCutPoint("end", Number(event.target.value))} className="mt-2 w-full accent-primary" /></label>
+              </div>
+            </div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_120px_120px_auto]">
               <Input placeholder="Cut label" value={cutDraft.label} onChange={(e) => setCutDraft((s) => ({ ...s, label: e.target.value }))} />
               <Input value={cutDraft.start} onChange={(e) => setCutDraft((s) => ({ ...s, start: e.target.value }))} placeholder="Start sec" />
               <Input value={cutDraft.end} onChange={(e) => setCutDraft((s) => ({ ...s, end: e.target.value }))} placeholder="End sec" />
