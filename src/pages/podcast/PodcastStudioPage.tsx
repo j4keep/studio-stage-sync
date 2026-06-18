@@ -324,7 +324,10 @@ export default function PodcastStudioPage() {
         {/* Stage (center) */}
         <div className="flex-1 flex flex-col min-w-0 relative">
           <div className="flex-1 relative grid place-items-center p-4 min-h-0">
-            <div className={`relative w-full max-w-3xl bg-black rounded-2xl overflow-hidden border border-violet-500/40 shadow-[0_0_0_2px_rgba(139,92,246,0.15)] aspect-video`}>
+            <div
+              className={`relative w-full max-w-3xl rounded-2xl overflow-hidden border border-violet-500/40 shadow-[0_0_0_2px_rgba(139,92,246,0.15)] aspect-video bg-black`}
+              style={bgUrl ? { backgroundImage: `url(${bgUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
+            >
               <StageLayout
                 layoutId={layoutId}
                 hostVideoRef={previewRef}
@@ -332,6 +335,7 @@ export default function PodcastStudioPage() {
                 camOn={camOn}
                 mirrored={mirrored}
                 onStartCamera={startCamera}
+                bgUrl={bgUrl}
               />
               {videoRec && (
                 <div className="absolute top-3 left-3 px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center gap-1 z-30">
