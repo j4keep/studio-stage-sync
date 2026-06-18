@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, Download, Loader2, Pause, Play, Plus, RotateCcw, Scissors, Trash2, Type, Wand2, Waves } from "lucide-react";
+import { ArrowLeft, Download, Film, LayoutTemplate, Loader2, MessageSquareText, Monitor, Pause, Play, Plus, RotateCcw, Scissors, Settings, Trash2, Type, Wand2, Waves } from "lucide-react";
 
 type Word = { word: string; start: number; end: number };
 type Range = { start: number; end: number; label?: string };
@@ -34,11 +34,15 @@ const PodcastTextEditorPage = () => {
   const [duration, setDuration] = useState(0);
   const [magicAudio, setMagicAudio] = useState(true);
   const [playing, setPlaying] = useState(false);
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
+  const [exportFormat, setExportFormat] = useState("16:9");
+  const [layout, setLayout] = useState("Grid");
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const sourceRef = useRef<AudioBufferSourceNode | null>(null);
   const originalBufferRef = useRef<AudioBuffer | null>(null);
   const previewBufferRef = useRef<AudioBuffer | null>(null);
+  const mediaBufferRef = useRef<ArrayBuffer | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -102,6 +106,7 @@ const PodcastTextEditorPage = () => {
   };
 
   const fetchMergedMedia = async (): Promise<ArrayBuffer> => {
+    if (mediaBufferRef.current) return mediaBufferRef.current.slice(0);
     const buffers: ArrayBuffer[] = [];
     for (let i = 0; i < chunkCount; i++) {
       setProgress(`Downloading chunk ${i + 1} / ${chunkCount}…`);
@@ -115,7 +120,22 @@ const PodcastTextEditorPage = () => {
     const merged = new Uint8Array(total);
     let off = 0;
     for (const b of buffers) { merged.set(new Uint8Array(b), off); off += b.byteLength; }
-    return merged.buffer;
+    mediaBufferRef.current = merged.buffer;
+    return merged.buffer.slice(0);
+  };
+
+  const loadVideoPreview = async () => {
+    if (videoPreviewUrl) return;
+    try {
+      setProgress("Loading video preview…");
+      const merged = await fetchMergedMedia();
+      const blob = new Blob([merged], { type: mime || "video/webm" });
+      setVideoPreviewUrl(URL.createObjectURL(blob));
+      setProgress("");
+    } catch (e) {
+      setProgress("");
+      toast({ title: "Video preview failed", description: e instanceof Error ? e.message : "Unknown", variant: "destructive" });
+    }
   };
 
   const getDecodedAudio = async () => {
