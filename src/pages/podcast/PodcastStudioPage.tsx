@@ -16,6 +16,18 @@ import { PodcastExportSheet } from "./PodcastExportSheet";
 import { usePodcastVideoStore } from "./podcastVideoStore";
 import type { Clip, Track } from "@/wstudio/daw/engine/types";
 import { saveProjectTo, openProject } from "@/wstudio/daw/lib/projectIO";
+import studio1 from "@/assets/studio-1.jpg";
+import studio2 from "@/assets/studio-2.jpg";
+import studio3 from "@/assets/studio-3.jpg";
+import studio4 from "@/assets/studio-4.jpg";
+import podcast1 from "@/assets/podcast-1.jpg";
+import podcast2 from "@/assets/podcast-2.jpg";
+import cardPodcasts from "@/assets/card-podcasts.jpg";
+import cardRecordingStudio from "@/assets/card-recording-studio.jpg";
+import battleStageLights from "@/assets/battle-bg-stage-lights.jpg";
+import battleNeonCity from "@/assets/battle-bg-neon-city.jpg";
+import wstudioMic from "@/assets/wstudio-orbit-mic.jpg";
+import wstudioMixer from "@/assets/wstudio-orbit-mixer.jpg";
 
 const isInputAudioTrack = (track: Track, allClips: Clip[]) => (
   track.kind === "instrument" || (
@@ -28,18 +40,18 @@ const isInputAudioTrack = (track: Track, allClips: Clip[]) => (
 type RightPanel = null | "people" | "chat" | "effects" | "text" | "media" | "settings" | "help" | "projects";
 
 const BG_LIBRARY: { id: string; label: string; url: string }[] = [
-  { id: "studio-warm", label: "Warm Studio", url: "https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?w=1600&q=80" },
-  { id: "neon", label: "Neon Booth", url: "https://images.unsplash.com/photo-1535223289827-42f1e9919769?w=1600&q=80" },
-  { id: "books", label: "Library", url: "https://images.unsplash.com/photo-1507842217343-583bb7270b66?w=1600&q=80" },
-  { id: "brick", label: "Brick Wall", url: "https://images.unsplash.com/photo-1517411032315-54ef2cb783bb?w=1600&q=80" },
-  { id: "plants", label: "Plant Wall", url: "https://images.unsplash.com/photo-1545241047-6083a3684587?w=1600&q=80" },
-  { id: "city", label: "City Night", url: "https://images.unsplash.com/photo-1444723121867-7a241cacace9?w=1600&q=80" },
-  { id: "vinyl", label: "Vinyl Wall", url: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=1600&q=80" },
-  { id: "concrete", label: "Concrete", url: "https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?w=1600&q=80" },
-  { id: "moody", label: "Moody Blue", url: "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=1600&q=80" },
-  { id: "sunset", label: "Sunset", url: "https://images.unsplash.com/photo-1495616811223-4d98c6e9c869?w=1600&q=80" },
-  { id: "forest", label: "Forest", url: "https://images.unsplash.com/photo-1448375240586-882707db888b?w=1600&q=80" },
-  { id: "stage", label: "Stage Lights", url: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1600&q=80" },
+  { id: "studio-1", label: "Studio A", url: studio1 },
+  { id: "studio-2", label: "Studio B", url: studio2 },
+  { id: "studio-3", label: "Studio C", url: studio3 },
+  { id: "studio-4", label: "Studio D", url: studio4 },
+  { id: "podcast-1", label: "Podcast Set", url: podcast1 },
+  { id: "podcast-2", label: "Interview Room", url: podcast2 },
+  { id: "creator", label: "Creator Desk", url: cardPodcasts },
+  { id: "recording", label: "Recording Room", url: cardRecordingStudio },
+  { id: "stage-lights", label: "Stage Lights", url: battleStageLights },
+  { id: "neon-city", label: "Neon City", url: battleNeonCity },
+  { id: "mic", label: "Mic Booth", url: wstudioMic },
+  { id: "mixer", label: "Mixer Room", url: wstudioMixer },
 ];
 
 const LAYOUTS = [
