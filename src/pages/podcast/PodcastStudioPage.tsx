@@ -462,14 +462,17 @@ export default function PodcastStudioPage() {
 
         {/* Tracks drawer (slides up from above bottom bar) */}
         <div
-          className={`absolute left-0 right-16 bottom-0 bg-neutral-950 border-t border-neutral-900 transition-transform duration-300 z-20 ${tracksOpen ? "translate-y-0" : "translate-y-full"}`}
-          style={{ height: "55%" }}
+          className={`absolute left-0 right-16 bottom-0 bg-neutral-950 border-t border-neutral-900 transition-all duration-300 z-20 ${tracksOpen ? "translate-y-0" : "translate-y-full"}`}
+          style={{ height: tracksFull ? "calc(100% - 8px)" : "55%" }}
         >
           <div className="h-10 flex items-center gap-2 px-3 border-b border-neutral-900">
-            <div className="text-[11px] uppercase tracking-wider text-neutral-500 mr-2">Tracks · {tracks.length}</div>
+            <div className="text-[11px] uppercase tracking-wider text-neutral-500 mr-2">Edit · {tracks.length} tracks</div>
             <TransportControls engineRef={engineRef} />
             <div className="flex-1" />
-            <button onClick={() => setTracksOpen(false)} className="p-1 text-neutral-500 hover:text-neutral-200"><ChevronDown className="w-4 h-4" /></button>
+            <button onClick={() => setTracksFull(f => !f)} className="p-1 text-neutral-400 hover:text-neutral-100" title={tracksFull ? "Restore" : "Maximize editor"}>
+              {tracksFull ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            </button>
+            <button onClick={() => { setTracksFull(false); setTracksOpen(false); }} className="p-1 text-neutral-500 hover:text-neutral-200" title="Hide editor"><ChevronDown className="w-4 h-4" /></button>
           </div>
           <div className="h-[calc(100%-2.5rem)]">
             {view === "arrange" && (
@@ -490,7 +493,7 @@ export default function PodcastStudioPage() {
             onClick={() => setTracksOpen(true)}
             className="absolute left-3 bottom-3 z-10 h-8 px-3 rounded-full bg-neutral-900/90 border border-neutral-800 text-[11px] text-neutral-300 hover:text-white flex items-center gap-1.5"
           >
-            <ChevronUp className="w-3.5 h-3.5" /> Tracks
+            <ChevronUp className="w-3.5 h-3.5" /> Edit
           </button>
         )}
       </div>
