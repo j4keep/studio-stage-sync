@@ -21,7 +21,6 @@ import {
   Scissors,
   Search,
   Settings,
-  Share2,
   Trash2,
   Upload,
   Users,
