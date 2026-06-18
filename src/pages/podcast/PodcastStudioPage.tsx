@@ -421,10 +421,7 @@ export default function PodcastStudioPage() {
         {/* Stage (center) */}
         <div className="flex-1 flex flex-col min-w-0 relative">
           <div className="flex-1 relative grid place-items-center p-4 min-h-0">
-            <div
-              className={`relative w-full max-w-3xl rounded-2xl overflow-hidden border border-violet-500/40 shadow-[0_0_0_2px_rgba(139,92,246,0.15)] aspect-video bg-black`}
-              style={bgUrl ? { backgroundImage: `url(${bgUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
-            >
+            <div className="relative w-full max-w-3xl rounded-2xl overflow-hidden border border-violet-500/40 shadow-[0_0_0_2px_rgba(139,92,246,0.15)] aspect-video bg-black">
               <StageLayout
                 layoutId={layoutId}
                 hostVideoRef={previewRef}
@@ -825,12 +822,18 @@ function StageLayout({
   bgUrl: string | null;
 }) {
   const Host = (
-    <div className="relative w-full h-full bg-black" style={bgUrl ? { backgroundImage: `url(${bgUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}>
+    <div className="relative w-full h-full overflow-hidden bg-black">
+      {bgUrl && (
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url(${bgUrl})` }}
+        />
+      )}
       <video
         ref={hostVideoRef}
         muted
         playsInline
-        className={`w-full h-full object-cover ${mirrored ? "scale-x-[-1]" : ""} ${camOn ? "" : "hidden"}`}
+        className={`${bgUrl ? "absolute inset-[7%] w-[86%] h-[86%] rounded-xl shadow-2xl" : "relative w-full h-full"} object-cover ${mirrored ? "scale-x-[-1]" : ""} ${camOn ? "" : "hidden"}`}
       />
       {!camOn && (
         <div className="absolute inset-0 grid place-items-center text-neutral-500 text-sm gap-3">
