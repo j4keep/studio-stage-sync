@@ -58,7 +58,7 @@ export function PodcastVideoSidebar({ engine, onClose }: Props) {
       // Camera ONLY — mic is captured by the DAW engine when we record so
       // the live waveform overlay draws while you speak.
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" },
+        video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30, max: 30 }, facingMode: "user" },
         audio: false,
       });
       camStreamRef.current = stream;
@@ -113,9 +113,9 @@ export function PodcastVideoSidebar({ engine, onClose }: Props) {
 
       // Video-only stream from the camera
       const videoOnly = new MediaStream(cam.getVideoTracks());
-      const mime = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"]
+      const mime = ["video/webm;codecs=vp8", "video/webm;codecs=vp9", "video/webm"]
         .find(m => MediaRecorder.isTypeSupported(m)) || "video/webm";
-      const rec = new MediaRecorder(videoOnly, { mimeType: mime });
+      const rec = new MediaRecorder(videoOnly, { mimeType: mime, videoBitsPerSecond: 2_500_000 });
       recChunksRef.current = [];
       recTrackIdRef.current = trackId;
       recMimeRef.current = mime;
