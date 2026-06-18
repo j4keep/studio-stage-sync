@@ -655,14 +655,17 @@ export class DawEngine {
     const src = chain?.inputMonitorSource ?? this.ctx.createMediaStreamSource(liveStream);
     if (chain) {
       chain.micSource = src;
-      this.setInputMonitorAudible(trackId, true);
+      // Podcast/local recording should capture a clean mic signal without
+      // routing the live mic back into the master bus. Monitoring the same
+      // microphone through speakers/headphones while recording was doubling
+      // the path and making exported vocals sound phasey/robotic.
+      this.setInputMonitorAudible(trackId, false);
       if (!chain.inputMonitorSource) {
         try { src.connect(chain.inputAnalyser); } catch {}
-        try { src.connect(chain.directMonitor); } catch {}
         chain.inputMonitorSource = src;
         chain.inputMonitorStream = liveStream;
         chain.inputMonitoring = true;
-        chain.inputMonitorAudible = true;
+        chain.inputMonitorAudible = false;
         chain.inputMonitorFailed = false;
       }
     }
