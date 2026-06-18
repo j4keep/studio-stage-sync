@@ -16,7 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, Circle, Copy, Download, Image, Loader2, Radio, Scissors, Sparkles, StopCircle } from "lucide-react";
+import { ArrowLeft, Circle, Copy, Image, Loader2, Sparkles, StopCircle } from "lucide-react";
 
 type TokenResponse = {
   token: string;
@@ -452,6 +452,60 @@ const GoLiveButton = ({ episodeId }: { episodeId: string }) => {
     <button onClick={start} disabled={busy} className="text-xs px-2 py-1 rounded bg-red-600/80 hover:bg-red-500 text-white flex items-center gap-1">
       <RadioBroadcast /> Go Live
     </button>
+  );
+};
+
+const BackgroundPicker = ({ value, onChange }: { value: StudioBackground; onChange: (background: StudioBackground) => void }) => {
+  const [open, setOpen] = useState(false);
+  const [prompt, setPrompt] = useState("premium podcast studio, cinematic lights");
+  const [generated, setGenerated] = useState<StudioBackground[]>([]);
+  const [busy, setBusy] = useState(false);
+
+  const generate = async () => {
+    if (!prompt.trim()) return;
+    setBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-podcast-background", { body: { prompt } });
+      if (error) throw error;
+      const imageUrl = (data as { imageUrl?: string; error?: string })?.imageUrl;
+      if (!imageUrl) throw new Error((data as { error?: string })?.error || "No background generated");
+      const bg: StudioBackground = { id: `ai-${Date.now()}`, name: "AI", imageUrl, css: "linear-gradient(135deg, hsl(var(--background)), hsl(var(--muted)))" };
+      setGenerated((items) => [bg, ...items].slice(0, 4));
+      onChange(bg);
+      toast({ title: "AI background ready" });
+    } catch (e) {
+      toast({ title: "Background failed", description: e instanceof Error ? e.message : "Unknown", variant: "destructive" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const options = [...BACKGROUND_PRESETS, ...generated];
+
+  return (
+    <div className="relative">
+      <button onClick={() => setOpen((v) => !v)} className="text-xs px-2 py-1 rounded-md bg-muted hover:bg-secondary flex items-center gap-1">
+        <Image className="w-3 h-3" /> {value.name}
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full z-50 mt-2 w-72 rounded-lg border border-border bg-card p-3 shadow-xl">
+          <div className="grid grid-cols-2 gap-2">
+            {options.map((bg) => (
+              <button key={bg.id} onClick={() => onChange(bg)} className={`overflow-hidden rounded-md border text-left ${value.id === bg.id ? "border-primary" : "border-border"}`}>
+                <div className="h-14 bg-cover bg-center" style={{ backgroundImage: bg.imageUrl ? `url(${bg.imageUrl})` : bg.css }} />
+                <div className="truncate px-2 py-1 text-xs font-medium">{bg.name}</div>
+              </button>
+            ))}
+          </div>
+          <div className="mt-3 flex gap-2">
+            <Input value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="AI studio background" className="h-9 text-xs" />
+            <Button size="sm" onClick={generate} disabled={busy}>
+              {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 
