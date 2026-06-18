@@ -531,7 +531,7 @@ export function ArrangeView({ onArmToggle, onSeek, engine, onOpenInstrumentEdito
           onClick={(e) => e.stopPropagation()}
         >
           {[
-            { label: "Cut", sc: "⌘X", action: () => { usePodcastVideoStore.getState().copyVideoToClipboard(ctxMenu.clipId); cutClip(ctxMenu.clipId); } },
+            { label: "Cut", sc: "⌘X", action: () => { usePodcastVideoStore.getState().copyVideoToClipboard(ctxMenu.clipId); usePodcastVideoStore.getState().removeVideo(ctxMenu.clipId); cutClip(ctxMenu.clipId); } },
             { label: "Copy", sc: "⌘C", action: () => { copyClip(ctxMenu.clipId); usePodcastVideoStore.getState().copyVideoToClipboard(ctxMenu.clipId); toast.success("Copied"); } },
             { label: "Duplicate", sc: "⌘D", action: () => { const id = duplicateClip(ctxMenu.clipId); if (id) usePodcastVideoStore.getState().cloneVideo(ctxMenu.clipId, id); } },
             { label: "Split at playhead", sc: "", action: () => { const id = splitClipAt(ctxMenu.clipId, useDawStore.getState().transport.position); if (id) usePodcastVideoStore.getState().cloneVideo(ctxMenu.clipId, id); } },
