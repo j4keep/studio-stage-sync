@@ -16,7 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, Circle, CircleHelp, Copy, Image, LayoutTemplate, Loader2, MessageSquareText, Mic, Music, Palette, Plus, Settings, Share2, Smile, Sparkles, StopCircle, Type, Users, Video } from "lucide-react";
+import { ArrowLeft, Circle, CircleHelp, Copy, Image, Loader2, MessageSquareText, Music, Palette, Plus, Settings, Share2, Sparkles, StopCircle, Type, Users } from "lucide-react";
 
 type TokenResponse = {
   token: string;

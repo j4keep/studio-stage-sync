@@ -1,6 +1,6 @@
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Bot, CalendarDays, Clapperboard, Download, FileAudio, Film, FolderOpen, Home, Loader2, MessageSquareText, Mic, MoreHorizontal, Plus, Radio, Scissors, Share2, Sparkles, Trash2, Upload, UserPlus, Video } from "lucide-react";
+import { ArrowLeft, Bot, CalendarDays, Clapperboard, Download, Film, FolderOpen, Home, Loader2, MessageSquareText, Mic, MoreHorizontal, Plus, Radio, Scissors, Share2, Sparkles, Trash2, Upload, UserPlus, Video } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
