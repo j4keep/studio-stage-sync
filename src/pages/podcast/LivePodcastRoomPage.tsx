@@ -249,8 +249,10 @@ const LocalRecorder = ({
   background: StudioBackground;
 }) => {
   const { localParticipant } = useLocalParticipant();
+  const navigate = useNavigate();
   const [recording, setRecording] = useState(false);
   const [recordingId, setRecordingId] = useState<string | null>(null);
+  const [savedRecording, setSavedRecording] = useState<{ id: string; chunks: number; seconds: number } | null>(null);
   const [seconds, setSeconds] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunkIndexRef = useRef(0);
@@ -353,6 +355,7 @@ const LocalRecorder = ({
       };
       mr.onstop = async () => {
         await supabase.from("podcast_recordings").update({ status: uploadedChunksRef.current > 0 ? "uploaded" : "failed", duration_seconds: secondsRef.current, chunk_count: uploadedChunksRef.current }).eq("id", rec.id);
+        if (uploadedChunksRef.current > 0) setSavedRecording({ id: rec.id, chunks: uploadedChunksRef.current, seconds: secondsRef.current });
       };
       mr.start(5000); // 5s chunks
       setRecording(true);
@@ -373,15 +376,19 @@ const LocalRecorder = ({
 
   return (
     <div className="flex items-center justify-between px-4 py-2 text-white text-sm">
-      <div className="flex items-center gap-2">
+      <div className="flex min-w-0 items-center gap-2">
         {recording ? (
           <>
             <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
             <span className="font-mono">{formatTime(seconds)}</span>
             <span className="text-xs text-zinc-400">Recording locally</span>
           </>
+        ) : savedRecording ? (
+          <button onClick={() => navigate(`/tv/podcast/${episodeId}/recording/${savedRecording.id}/editor`)} className="min-w-0 text-left text-xs text-muted-foreground hover:text-foreground">
+            <span className="font-semibold text-foreground">Saved take</span> · {formatTime(savedRecording.seconds)} · {savedRecording.chunks} chunks · tap to trim
+          </button>
         ) : (
-          <span className="text-xs text-zinc-400">Not recording</span>
+          <span className="text-xs text-muted-foreground">Not recording</span>
         )}
       </div>
       <div>
