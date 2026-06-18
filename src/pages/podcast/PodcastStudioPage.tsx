@@ -430,9 +430,22 @@ export default function PodcastStudioPage() {
             <div className="flex-1 overflow-y-auto p-4 text-sm">
               {rightPanel === "people" && <PeoplePanel onInvite={inviteGuest} />}
               {rightPanel === "chat" && <div className="text-neutral-500 text-xs">Chat coming soon.</div>}
-              {rightPanel === "effects" && <EffectsPanel mirrored={mirrored} setMirrored={setMirrored} />}
+              {rightPanel === "effects" && (
+                <EffectsPanel
+                  mirrored={mirrored} setMirrored={setMirrored}
+                  bgUrl={bgUrl} setBgUrl={setBgUrl}
+                  customBgs={customBgs}
+                  onAddCustomBg={() => bgUploadRef.current?.click()}
+                />
+              )}
               {rightPanel === "text" && <div className="text-neutral-500 text-xs">Lower-thirds & captions.</div>}
               {rightPanel === "media" && <MediaPanel onImport={() => importInputRef.current?.click()} />}
+              {rightPanel === "projects" && (
+                <ProjectsPanel
+                  onClose={() => setRightPanel(null)}
+                  onOpenInEditor={() => { setRightPanel(null); setTracksOpen(true); setTracksFull(true); }}
+                />
+              )}
               {rightPanel === "settings" && (
                 <SettingsPanel
                   resolution={resolution} setResolution={setResolution}
