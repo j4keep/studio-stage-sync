@@ -89,7 +89,7 @@ export interface DawState {
   addClip: (clip: Clip) => void;
   updateClip: (id: string, patch: Partial<Clip>) => void;
   removeClip: (id: string) => void;
-  splitClipAt: (id: string, time: number) => void;
+  splitClipAt: (id: string, time: number) => string | null;
   copyClip: (id: string) => void;
   cutClip: (id: string) => void;
   pasteClipAt: (trackId: string, time: number) => void;
@@ -307,8 +307,8 @@ export const useDawStore = create<DawState>((set, get) => ({
 
   splitClipAt: (id, time) => {
     const clip = get().clips.find(c => c.id === id);
-    if (!clip) return;
-    if (time <= clip.startTime || time >= clip.startTime + clip.duration) return;
+    if (!clip) return null;
+    if (time <= clip.startTime || time >= clip.startTime + clip.duration) return null;
     snap(get, set);
     const splitOffset = time - clip.startTime;
     const left = { ...clip, duration: splitOffset };
@@ -320,6 +320,7 @@ export const useDawStore = create<DawState>((set, get) => ({
       duration: clip.duration - splitOffset,
     };
     set({ clips: get().clips.map(c => c.id === id ? left : c).concat(right) });
+    return right.id;
   },
 
   addEffect: (trackId, type) => {
