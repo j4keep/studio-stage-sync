@@ -222,6 +222,104 @@ const LivePodcastRoomPage = () => {
   );
 };
 
+type StudioTool = "People" | "Chat" | "Brand" | "Text" | "Media" | "Settings" | "Help";
+
+const TOOL_ITEMS: { id: StudioTool; icon: JSX.Element }[] = [
+  { id: "People", icon: <Users className="h-5 w-5" /> },
+  { id: "Chat", icon: <MessageSquareText className="h-5 w-5" /> },
+  { id: "Brand", icon: <Palette className="h-5 w-5" /> },
+  { id: "Text", icon: <Type className="h-5 w-5" /> },
+  { id: "Media", icon: <Music className="h-5 w-5" /> },
+  { id: "Settings", icon: <Settings className="h-5 w-5" /> },
+  { id: "Help", icon: <CircleHelp className="h-5 w-5" /> },
+];
+
+const StudioToolDock = ({ activeTool, setActiveTool }: { activeTool: StudioTool; setActiveTool: (tool: StudioTool) => void }) => (
+  <nav className="hidden w-20 flex-col items-center gap-2 border-l border-border bg-background/95 py-4 lg:flex">
+    {TOOL_ITEMS.map((tool) => (
+      <button key={tool.id} onClick={() => setActiveTool(tool.id)} className={`flex w-16 flex-col items-center gap-1 rounded-lg px-2 py-3 text-[11px] ${activeTool === tool.id ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
+        {tool.icon}<span>{tool.id}</span>
+      </button>
+    ))}
+  </nav>
+);
+
+const StudioSidePanel = ({
+  episodeId,
+  displayName,
+  activeTool,
+  quality,
+  setQuality,
+  layoutMode,
+  setLayoutMode,
+  background,
+  setBackground,
+}: {
+  episodeId: string;
+  displayName: string;
+  activeTool: StudioTool;
+  quality: "720p" | "1080p" | "4K";
+  setQuality: (quality: "720p" | "1080p" | "4K") => void;
+  layoutMode: "Grid" | "Speaker" | "Screen";
+  setLayoutMode: (layout: "Grid" | "Speaker" | "Screen") => void;
+  background: StudioBackground;
+  setBackground: (background: StudioBackground) => void;
+}) => {
+  const [messages, setMessages] = useState<{ id: string; sender_name: string; body: string; created_at: string }[]>([]);
+  const [chatText, setChatText] = useState("");
+  const [lowerThird, setLowerThird] = useState("Subscribe • Like • Share");
+
+  useEffect(() => {
+    if (activeTool !== "Chat") return;
+    let alive = true;
+    const loadMessages = async () => {
+      const { data } = await supabase.from("podcast_chat_messages").select("id,sender_name,body,created_at").eq("episode_id", episodeId).order("created_at", { ascending: true }).limit(40);
+      if (alive) setMessages((data as typeof messages) ?? []);
+    };
+    loadMessages();
+    const interval = window.setInterval(loadMessages, 2500);
+    return () => { alive = false; window.clearInterval(interval); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTool, episodeId]);
+
+  const sendMessage = async () => {
+    if (!chatText.trim()) return;
+    const { error } = await supabase.from("podcast_chat_messages").insert({ episode_id: episodeId, sender_name: displayName, body: chatText.trim() });
+    if (error) {
+      toast({ title: "Chat failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    setChatText("");
+  };
+
+  return (
+    <aside className="flex h-full flex-col p-4">
+      <div className="mb-5 flex items-center justify-between">
+        <h2 className="text-lg font-bold">{activeTool}</h2>
+        <Sparkles className="h-4 w-4 text-primary" />
+      </div>
+
+      {activeTool === "People" && <ToolSection title="Participants" body="Host and guests show here while they join."><div className="rounded-lg border border-border p-3"><div className="font-semibold">{displayName}</div><div className="text-xs text-muted-foreground">In studio now</div></div><Button className="mt-3 w-full" variant="secondary"><Plus className="mr-2 h-4 w-4" /> Invite guest</Button></ToolSection>}
+
+      {activeTool === "Chat" && <div className="flex min-h-0 flex-1 flex-col"><div className="min-h-0 flex-1 space-y-2 overflow-auto rounded-lg border border-border p-3">{messages.length ? messages.map((message) => <div key={message.id} className="rounded-md bg-muted p-2 text-sm"><div className="text-xs font-semibold text-primary">{message.sender_name}</div>{message.body}</div>) : <div className="text-sm text-muted-foreground">No chat yet.</div>}</div><div className="mt-3 flex gap-2"><Input value={chatText} onChange={(event) => setChatText(event.target.value)} placeholder="Message guests" onKeyDown={(event) => { if (event.key === "Enter") sendMessage(); }} /><Button onClick={sendMessage}>Send</Button></div></div>}
+
+      {activeTool === "Brand" && <ToolSection title="Brand kit" body="Choose overlays and virtual backgrounds."><div className="space-y-3"><Control label="AI / preset background"><BackgroundPicker value={background} onChange={setBackground} /></Control><Control label="Lower third"><Input value={lowerThird} onChange={(event) => setLowerThird(event.target.value)} /></Control><div className="rounded-lg border border-border p-3 text-sm"><div className="font-semibold">Overlay preview</div><div className="mt-2 rounded-md bg-primary/15 p-2 text-primary">{lowerThird}</div></div></div></ToolSection>}
+
+      {activeTool === "Text" && <ToolSection title="On-screen text" body="Add titles, lower thirds, and captions for the recording."><div className="space-y-2"><Input placeholder="Title text" /><Button className="w-full" variant="secondary"><Type className="mr-2 h-4 w-4" /> Add text layer</Button><Button className="w-full" variant="outline">Captions after transcript</Button></div></ToolSection>}
+
+      {activeTool === "Media" && <ToolSection title="Media" body="Bring in audio, video, images, and screen share assets."><div className="grid grid-cols-2 gap-2"><MediaButton icon={<UploadIcon />} label="Upload" /><MediaButton icon={<Share2 className="h-4 w-4" />} label="Share screen" /><MediaButton icon={<Music className="h-4 w-4" />} label="Audio" /><MediaButton icon={<Image className="h-4 w-4" />} label="Image" /></div></ToolSection>}
+
+      {activeTool === "Settings" && <ToolSection title="Quick settings" body="Set recording quality before starting."><div className="space-y-4"><Control label="Recording resolution"><Segmented value={quality} options={["720p", "1080p", "4K"]} onChange={(v) => setQuality(v as "720p" | "1080p" | "4K")} /></Control><Control label="Layout"><Segmented value={layoutMode} options={["Grid", "Speaker", "Screen"]} onChange={(v) => setLayoutMode(v as "Grid" | "Speaker" | "Screen")} /></Control><Control label="Noise reduction"><div className="rounded-md border border-border p-3 text-sm">Magic Audio is available in the editor export.</div></Control></div></ToolSection>}
+
+      {activeTool === "Help" && <ToolSection title="Help" body="Studio support tools."><div className="space-y-2"><Button className="w-full" variant="secondary">Chat support</Button><Button className="w-full" variant="secondary">Help center</Button><Button className="w-full" variant="outline" onClick={() => navigator.clipboard.writeText(`${navigator.userAgent}\nEpisode: ${episodeId}`)}>Copy tech details</Button></div></ToolSection>}
+    </aside>
+  );
+};
+
+const ToolSection = ({ title, body, children }: { title: string; body: string; children: JSX.Element | JSX.Element[] }) => <section><h3 className="font-semibold">{title}</h3><p className="mt-1 mb-4 text-sm text-muted-foreground">{body}</p>{children}</section>;
+const MediaButton = ({ icon, label }: { icon: JSX.Element; label: string }) => <button className="rounded-lg border border-border p-4 text-left hover:bg-muted"><span className="text-primary">{icon}</span><div className="mt-3 text-sm font-semibold">{label}</div></button>;
+const UploadIcon = () => <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M20 16v4H4v-4"/></svg>;
+
 const Stage = ({ layoutMode, background }: { layoutMode: "Grid" | "Speaker" | "Screen"; background: StudioBackground }) => {
   const tracks = useTracks(
     [
