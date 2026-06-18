@@ -183,7 +183,7 @@ export class DawEngine {
       const reverbSend = this.ctx.createGain();
       const delaySend = this.ctx.createGain();
       const directMonitor = this.ctx.createGain();
-      directMonitor.gain.value = 0.35; // dry low-latency monitor with headroom to avoid clipping
+      directMonitor.gain.value = 0.18; // low headroom monitor; kept disconnected unless explicitly enabled
       directMonitor.connect(this.masterGain);
       chain = {
         input,
@@ -310,6 +310,10 @@ export class DawEngine {
   getTrackStereoAnalysers(trackId: string) {
     const c = this.trackChains.get(trackId);
     return c ? { L: c.analyserL, R: c.analyserR } : null;
+  }
+  currentPosition() {
+    if (!this.playing) return Math.max(0, this.startTransportTime);
+    return Math.max(0, this.startTransportTime + (this.ctx.currentTime - this.startCtxTime));
   }
 
   play(transport: TransportState, tracks: Track[], clips: Clip[]) {
