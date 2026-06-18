@@ -110,6 +110,7 @@ const PodcastTextEditorPage = () => {
       if (!r.ok) throw new Error(`Failed to download chunk ${i + 1}`);
       buffers.push(await r.arrayBuffer());
     }
+    if (buffers.length === 0) throw new Error("No saved recording chunks were found. Record again and wait for the saved take to appear before editing.");
     const total = buffers.reduce((n, b) => n + b.byteLength, 0);
     const merged = new Uint8Array(total);
     let off = 0;
@@ -219,6 +220,25 @@ const PodcastTextEditorPage = () => {
     }
   };
 
+  const downloadProcessed = async () => {
+    if (!processedKey) return;
+    try {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/r2-download?key=${encodeURIComponent(processedKey)}`);
+      if (!res.ok) throw new Error(await res.text().catch(() => `Download failed: ${res.status}`));
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = processedKey.split("/").pop() || "podcast-export.wav";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      toast({ title: "Download not available", description: e instanceof Error ? e.message : "The export was not found.", variant: "destructive" });
+    }
+  };
+
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading editor…</div>;
   if (!user) return <div className="p-8 text-center text-muted-foreground">Sign in required.</div>;
 
@@ -300,7 +320,7 @@ const PodcastTextEditorPage = () => {
               <div><div className="text-sm font-medium">Noise cleanup + normalize</div><div className="text-xs text-muted-foreground">Soft gate, de-click fades, peak leveling</div></div>
               <Switch checked={magicAudio} onCheckedChange={(v) => { setMagicAudio(v); invalidatePreview(); }} />
             </div>
-            {processedKey && <Button className="mt-3 w-full" variant="secondary" onClick={() => window.open(`${SUPABASE_URL}/functions/v1/r2-download?key=${encodeURIComponent(processedKey)}`, "_blank")}><Download className="w-4 h-4 mr-2" /> Download last export</Button>}
+            {processedKey && <Button className="mt-3 w-full" variant="secondary" onClick={downloadProcessed}><Download className="w-4 h-4 mr-2" /> Download last export</Button>}
             {progress && <div className="mt-3 rounded-md bg-muted p-2 text-xs text-muted-foreground">{progress}</div>}
           </div>
         </aside>
