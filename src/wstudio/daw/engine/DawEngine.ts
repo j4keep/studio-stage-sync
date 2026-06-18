@@ -676,8 +676,9 @@ export class DawEngine {
       }
     }
 
-    // Capture clean mic samples for the clip + drive the live waveform overlay
-    const proc = this.ctx.createScriptProcessor(2048, 1, 1);
+    // Capture clean mic samples for the clip + drive the live waveform overlay.
+    // 4096 buffer is more forgiving than 2048 — fewer underruns = no robot voice.
+    const proc = this.ctx.createScriptProcessor(4096, 1, 1);
     src.connect(proc);
     // ScriptProcessor requires a destination connection to run. Use a silent
     // sink so the mic NEVER reaches the speakers (no feedback, no distortion).
