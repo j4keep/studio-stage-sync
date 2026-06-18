@@ -717,7 +717,7 @@ function Toggle({ on, onChange }: { on: boolean; onChange: (b: boolean) => void 
 /* ----------------------------- Stage Layout ----------------------------- */
 
 function StageLayout({
-  layoutId, hostVideoRef, hostName, camOn, mirrored, onStartCamera,
+  layoutId, hostVideoRef, hostName, camOn, mirrored, onStartCamera, bgUrl,
 }: {
   layoutId: string;
   hostVideoRef: React.RefObject<HTMLVideoElement>;
@@ -725,9 +725,10 @@ function StageLayout({
   camOn: boolean;
   mirrored: boolean;
   onStartCamera: () => void;
+  bgUrl: string | null;
 }) {
   const Host = (
-    <div className="relative w-full h-full bg-black">
+    <div className="relative w-full h-full bg-black" style={bgUrl ? { backgroundImage: `url(${bgUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}>
       <video
         ref={hostVideoRef}
         muted
