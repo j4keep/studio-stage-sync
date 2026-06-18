@@ -16,6 +16,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   const location = useLocation();
   const { isPro, requirePro, showProModal, gatedFeature, closeProModal, activatePro } = useProGate();
   const isPodcastWorkspace = location.pathname.startsWith("/tv/podcast/") && location.pathname !== "/tv/podcast";
+  const isPodcastLobby = location.pathname === "/tv/podcast";
   const isFullScreenPage = ["/feed"].includes(location.pathname) || isPodcastWorkspace;
   const showTopBar = !["/auth", "/feed"].includes(location.pathname) && !isPodcastWorkspace;
 
@@ -44,8 +45,12 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
     );
   }
 
+  // Podcast lobby: full-width on desktop, mobile-width on small screens, with bottom nav
+  const containerWidthClass = isPodcastLobby ? "md:max-w-none max-w-lg" : "max-w-lg";
+
   return (
-    <div className="min-h-screen bg-background text-foreground max-w-lg mx-auto relative">
+    <div className={`min-h-screen bg-background text-foreground ${containerWidthClass} mx-auto relative`}>
+
       {showTopBar && (
         <div className="sticky top-0 z-40 bg-background/90 backdrop-blur-xl border-b border-border px-4 py-2 flex items-center justify-end gap-2">
           <button
