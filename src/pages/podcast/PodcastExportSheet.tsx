@@ -4,6 +4,7 @@ import JSZip from "jszip";
 import { X, Grid3x3, Rows, Mic, Video, Layers, User, FileAudio } from "lucide-react";
 import type { DawEngine } from "@/wstudio/daw/engine/DawEngine";
 import type { Track, Clip } from "@/wstudio/daw/engine/types";
+import { useDawStore } from "@/wstudio/daw/state/DawStore";
 import { usePodcastVideoStore } from "./podcastVideoStore";
 
 type Mode = "grid" | "rows" | "speaker" | "pip" | "audio" | "pertrack" | "stems";
