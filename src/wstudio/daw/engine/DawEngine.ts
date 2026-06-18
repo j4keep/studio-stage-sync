@@ -16,7 +16,7 @@ const makeLowLatencyMicConstraints = (inputDeviceId?: string): MediaStreamConstr
     // were causing buffer underruns and the "robotic" artefact during record.
     echoCancellation: true,
     noiseSuppression: true,
-    autoGainControl: true,
+    autoGainControl: false,
     channelCount: { ideal: 1 },
     sampleRate: { ideal: 48000 },
   } as MediaTrackConstraints,
@@ -86,6 +86,7 @@ export class DawEngine {
 
   // Recording
   private micStream: MediaStream | null = null;
+  private recMediaRecorder: MediaRecorder | null = null;
   private recProcessor: ScriptProcessorNode | null = null;
   private recSilentSink: GainNode | null = null;
   private recBuffers: Float32Array[] = [];
