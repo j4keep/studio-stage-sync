@@ -27,6 +27,20 @@ type TokenResponse = {
   displayName: string;
 };
 
+type StudioBackground = {
+  id: string;
+  name: string;
+  imageUrl?: string;
+  css: string;
+};
+
+const BACKGROUND_PRESETS: StudioBackground[] = [
+  { id: "none", name: "Clean", css: "linear-gradient(135deg, hsl(var(--background)), hsl(var(--muted)))" },
+  { id: "newsroom", name: "Newsroom", css: "radial-gradient(circle at 30% 20%, hsl(var(--primary) / 0.35), transparent 28%), linear-gradient(135deg, hsl(220 24% 10%), hsl(0 0% 4%))" },
+  { id: "cinema", name: "Cinema", css: "linear-gradient(135deg, hsl(0 78% 14%), hsl(240 18% 5%) 58%, hsl(204 100% 18%))" },
+  { id: "gallery", name: "Gallery", css: "linear-gradient(135deg, hsl(38 18% 16%), hsl(190 18% 9%))" },
+];
+
 const LivePodcastRoomPage = () => {
   const { episodeId } = useParams();
   const [search] = useSearchParams();
