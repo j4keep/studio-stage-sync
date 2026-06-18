@@ -16,7 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, Circle, Copy, Image, Loader2, Sparkles, StopCircle } from "lucide-react";
+import { ArrowLeft, Circle, CircleHelp, Copy, Image, LayoutTemplate, Loader2, MessageSquareText, Mic, Music, Palette, Plus, Settings, Share2, Smile, Sparkles, StopCircle, Type, Users, Video } from "lucide-react";
 
 type TokenResponse = {
   token: string;
@@ -57,6 +57,7 @@ const LivePodcastRoomPage = () => {
   const [quality, setQuality] = useState<"720p" | "1080p" | "4K">("1080p");
   const [layoutMode, setLayoutMode] = useState<"Grid" | "Speaker" | "Screen">("Grid");
   const [background, setBackground] = useState<StudioBackground>(BACKGROUND_PRESETS[0]);
+  const [activeTool, setActiveTool] = useState<StudioTool>("Settings");
 
   const videoOptions = useMemo(() => {
     const preset = quality === "4K" ? VideoPresets.h2160 : quality === "1080p" ? VideoPresets.h1080 : VideoPresets.h720;
@@ -200,14 +201,20 @@ const LivePodcastRoomPage = () => {
           onDisconnected={() => navigate(isHost ? "/tv/podcast" : "/tv")}
         >
           <RoomAudioRenderer />
-          <div className="flex h-full flex-col">
-            <div className="flex-1 min-h-0">
-              <Stage layoutMode={layoutMode} background={background} />
+          <div className="flex h-full min-h-0">
+            <div className="flex min-w-0 flex-1 flex-col">
+              <div className="flex-1 min-h-0">
+                <Stage layoutMode={layoutMode} background={background} />
+              </div>
+              <div className="border-t border-border bg-card">
+                <LocalRecorder episodeId={episode.id} participantIdentity={tokenInfo.identity} displayName={tokenInfo.displayName} quality={quality} background={background} />
+                <ControlBar variation="minimal" controls={{ microphone: true, camera: true, screenShare: true, leave: true, chat: false }} />
+              </div>
             </div>
-            <div className="border-t border-border bg-card">
-              <LocalRecorder episodeId={episode.id} participantIdentity={tokenInfo.identity} displayName={tokenInfo.displayName} quality={quality} background={background} />
-              <ControlBar variation="minimal" controls={{ microphone: true, camera: true, screenShare: true, leave: true, chat: false }} />
+            <div className="hidden w-[360px] border-l border-border bg-card/80 lg:block">
+              <StudioSidePanel episodeId={episode.id} displayName={tokenInfo.displayName} activeTool={activeTool} quality={quality} setQuality={setQuality} layoutMode={layoutMode} setLayoutMode={setLayoutMode} background={background} setBackground={setBackground} />
             </div>
+            <StudioToolDock activeTool={activeTool} setActiveTool={setActiveTool} />
           </div>
         </LiveKitRoom>
       </div>
