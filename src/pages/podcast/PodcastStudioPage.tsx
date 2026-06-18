@@ -172,6 +172,80 @@ export default function PodcastStudioPage() {
     setCamOn(false);
   }, []);
 
+  const makeStageRecordingStream = useCallback((sourceStream: MediaStream) => {
+    const videoTrack = sourceStream.getVideoTracks()[0];
+    if (!videoTrack) return null;
+    const canvas = document.createElement("canvas");
+    canvas.width = resolution === "1080p" ? 1920 : resolution === "480p" ? 854 : 1280;
+    canvas.height = resolution === "1080p" ? 1080 : resolution === "480p" ? 480 : 720;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+
+    const video = document.createElement("video");
+    video.srcObject = new MediaStream([videoTrack]);
+    video.muted = true;
+    video.playsInline = true;
+    video.play().catch(() => {});
+
+    const bg = new Image();
+    bg.crossOrigin = "anonymous";
+    let bgReady = false;
+    if (bgUrl) {
+      bg.onload = () => { bgReady = true; };
+      bg.src = bgUrl;
+    }
+
+    const drawCover = (img: CanvasImageSource, x: number, y: number, w: number, h: number) => {
+      const sw = (img as HTMLVideoElement).videoWidth || (img as HTMLImageElement).naturalWidth || w;
+      const sh = (img as HTMLVideoElement).videoHeight || (img as HTMLImageElement).naturalHeight || h;
+      const scale = Math.max(w / sw, h / sh);
+      const dw = sw * scale;
+      const dh = sh * scale;
+      ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+    };
+
+    const paint = () => {
+      const W = canvas.width;
+      const H = canvas.height;
+      ctx.fillStyle = "#050505";
+      ctx.fillRect(0, 0, W, H);
+      if (bgReady) drawCover(bg, 0, 0, W, H);
+      if (video.readyState >= 2) {
+        if (bgUrl) {
+          const pad = Math.round(Math.min(W, H) * 0.07);
+          const x = pad;
+          const y = pad;
+          const w = W - pad * 2;
+          const h = H - pad * 2;
+          ctx.save();
+          ctx.shadowColor = "rgba(0,0,0,0.35)";
+          ctx.shadowBlur = 28;
+          if (mirrored) {
+            ctx.translate(W, 0);
+            ctx.scale(-1, 1);
+            drawCover(video, x, y, w, h);
+          } else {
+            drawCover(video, x, y, w, h);
+          }
+          ctx.restore();
+        } else {
+          if (mirrored) {
+            ctx.save();
+            ctx.translate(W, 0);
+            ctx.scale(-1, 1);
+            drawCover(video, 0, 0, W, H);
+            ctx.restore();
+          } else {
+            drawCover(video, 0, 0, W, H);
+          }
+        }
+      }
+      videoCompositeRafRef.current = requestAnimationFrame(paint);
+    };
+    paint();
+    return canvas.captureStream(Math.min(frameRate, 30));
+  }, [bgUrl, frameRate, mirrored, resolution]);
+
   useEffect(() => () => stopCamera(), [stopCamera]);
 
   // Re-attach camera stream when layout changes remount the <video> element
