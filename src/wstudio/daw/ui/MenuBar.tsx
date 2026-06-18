@@ -1,5 +1,6 @@
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { useDawStore } from "../state/DawStore";
+import { usePodcastVideoStore } from "@/pages/podcast/podcastVideoStore";
 import { toast } from "sonner";
 
 interface Props {
@@ -73,17 +74,20 @@ export function MenuBar({ onImport, onExport, onAddAudio, onAddInstrument, onPla
           <Item shortcut="⌘Z" disabled={!useDawStore.getState().canUndo()} onClick={() => useDawStore.getState().undo()}>Undo</Item>
           <Item shortcut="⇧⌘Z" disabled={!useDawStore.getState().canRedo()} onClick={() => useDawStore.getState().redo()}>Redo</Item>
           <DropdownMenuSeparator className="bg-neutral-800" />
-          <Item shortcut="⌘X" disabled={!selectedClipId} onClick={() => selectedClipId && (cutClip(selectedClipId), toast.success("Cut"))}>Cut</Item>
-          <Item shortcut="⌘C" disabled={!selectedClipId} onClick={() => selectedClipId && (copyClip(selectedClipId), toast.success("Copied"))}>Copy</Item>
+          <Item shortcut="⌘X" disabled={!selectedClipId} onClick={() => selectedClipId && (usePodcastVideoStore.getState().copyVideoToClipboard(selectedClipId), usePodcastVideoStore.getState().removeVideo(selectedClipId), cutClip(selectedClipId), toast.success("Cut"))}>Cut</Item>
+          <Item shortcut="⌘C" disabled={!selectedClipId} onClick={() => selectedClipId && (copyClip(selectedClipId), usePodcastVideoStore.getState().copyVideoToClipboard(selectedClipId), toast.success("Copied"))}>Copy</Item>
           <Item shortcut="⌘V" onClick={() => {
             const st = useDawStore.getState();
             const tid = st.clips.find(c => c.id === selectedClipId)?.trackId ?? st.tracks[0]?.id;
-            if (tid) pasteClipAt(tid, st.transport.position);
+            if (tid) {
+              const id = pasteClipAt(tid, st.transport.position);
+              if (id) usePodcastVideoStore.getState().pasteVideoFromClipboard(id);
+            }
           }}>Paste at Playhead</Item>
-          <Item shortcut="⌘D" disabled={!selectedClipId} onClick={() => selectedClipId && duplicateClip(selectedClipId)}>Duplicate</Item>
-          <Item shortcut="Del" disabled={!selectedClipId} onClick={() => selectedClipId && removeClip(selectedClipId)}>Delete</Item>
+          <Item shortcut="⌘D" disabled={!selectedClipId} onClick={() => { if (selectedClipId) { const id = duplicateClip(selectedClipId); if (id) usePodcastVideoStore.getState().cloneVideo(selectedClipId, id); } }}>Duplicate</Item>
+          <Item shortcut="Del" disabled={!selectedClipId} onClick={() => selectedClipId && (usePodcastVideoStore.getState().removeVideo(selectedClipId), removeClip(selectedClipId))}>Delete</Item>
           <DropdownMenuSeparator className="bg-neutral-800" />
-          <Item onClick={() => selectedClipId && splitClipAt(selectedClipId, transport.position)} disabled={!selectedClipId}>Split at Playhead</Item>
+          <Item onClick={() => { if (selectedClipId) { const id = splitClipAt(selectedClipId, transport.position); if (id) usePodcastVideoStore.getState().cloneVideo(selectedClipId, id); } }} disabled={!selectedClipId}>Split at Playhead</Item>
           <Item onClick={() => setTransport({ loopEnabled: !transport.loopEnabled })}>Toggle Loop ({transport.loopEnabled ? "On" : "Off"})</Item>
         </DropdownMenuContent>
       </DropdownMenu>
