@@ -512,7 +512,7 @@ export default function PodcastStudioPage() {
         <BottomAction onClick={inviteGuest} icon={<Share2 className="w-5 h-5" />} label="Share" />
         <BottomAction onClick={() => toast.message("Reactions coming soon")} icon={<Smile className="w-5 h-5" />} label="React" />
         <BottomAction onClick={() => toast.message("Script coming soon")} icon={<FileText className="w-5 h-5" />} label="Script" />
-        <BottomAction onClick={() => setRightPanel("people")} icon={<LayoutGrid className="w-5 h-5" />} label="Layout" />
+        <BottomAction onClick={() => setRightPanel("projects")} icon={<FolderOpen className="w-5 h-5" />} label="Projects" />
         <BottomAction onClick={() => navigate("/tv/podcast")} icon={<LogOut className="w-5 h-5 text-red-400" />} label="Leave" />
       </footer>
 
@@ -521,6 +521,17 @@ export default function PodcastStudioPage() {
         accept=".wav,.mp3,.ogg,.m4a,.mp4,.webm,.mov,.m4v,audio/*,video/*"
         className="hidden"
         onChange={(e) => e.target.files && importFiles(e.target.files)}
+      />
+      <input
+        ref={bgUploadRef} type="file" accept="image/*,.jpg,.jpeg,.png,.webp"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0]; if (!f) return;
+          const url = URL.createObjectURL(f);
+          setCustomBgs(p => [url, ...p]);
+          setBgUrl(url);
+          e.target.value = "";
+        }}
       />
 
       <PodcastExportSheet
