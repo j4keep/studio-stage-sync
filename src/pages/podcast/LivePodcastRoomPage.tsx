@@ -215,7 +215,7 @@ const LivePodcastRoomPage = () => {
   );
 };
 
-const Stage = ({ layoutMode }: { layoutMode: "Grid" | "Speaker" | "Screen" }) => {
+const Stage = ({ layoutMode, background }: { layoutMode: "Grid" | "Speaker" | "Screen"; background: StudioBackground }) => {
   const tracks = useTracks(
     [
       { source: Track.Source.Camera, withPlaceholder: true },
@@ -225,9 +225,13 @@ const Stage = ({ layoutMode }: { layoutMode: "Grid" | "Speaker" | "Screen" }) =>
   );
   const stageClass = layoutMode === "Speaker" ? "h-full [&_.lk-grid-layout]:grid-cols-1" : layoutMode === "Screen" ? "h-full [&_.lk-grid-layout]:grid-cols-1" : "h-full";
   return (
-    <GridLayout tracks={tracks} className={stageClass}>
-      <ParticipantTile />
-    </GridLayout>
+    <div className="relative h-full overflow-hidden" style={{ backgroundImage: background.css, backgroundSize: "cover", backgroundPosition: "center" }}>
+      {background.imageUrl && <img src={background.imageUrl} alt="Studio background" className="absolute inset-0 h-full w-full object-cover" />}
+      <div className="absolute inset-0 bg-background/20" />
+      <GridLayout tracks={tracks} className={`relative z-10 ${stageClass}`}>
+        <ParticipantTile />
+      </GridLayout>
+    </div>
   );
 };
 
@@ -236,11 +240,13 @@ const LocalRecorder = ({
   participantIdentity,
   displayName,
   quality,
+  background,
 }: {
   episodeId: string;
   participantIdentity: string;
   displayName: string;
   quality: "720p" | "1080p" | "4K";
+  background: StudioBackground;
 }) => {
   const { localParticipant } = useLocalParticipant();
   const [recording, setRecording] = useState(false);
