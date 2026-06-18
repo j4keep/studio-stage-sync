@@ -82,8 +82,12 @@ export default function PodcastStudioPage() {
   const [rightPanel, setRightPanel] = useState<RightPanel>(null);
   const [layoutId, setLayoutId] = useState("speaker");
   const [tracksOpen, setTracksOpen] = useState(false);
+  const [tracksFull, setTracksFull] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [bgUrl, setBgUrl] = useState<string | null>(null);
+  const [customBgs, setCustomBgs] = useState<string[]>([]);
   const importInputRef = useRef<HTMLInputElement>(null);
+  const bgUploadRef = useRef<HTMLInputElement>(null);
 
   // Camera state (inline; replaces sidebar)
   const previewRef = useRef<HTMLVideoElement | null>(null);
