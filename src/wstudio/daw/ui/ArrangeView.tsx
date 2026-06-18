@@ -226,11 +226,14 @@ export function ArrangeView({ onArmToggle, onSeek, engine, onOpenInstrumentEdito
   const applyToolToClip = (clip: Clip, e: React.MouseEvent) => {
     switch (tool) {
       case "eraser":
+        usePodcastVideoStore.getState().removeVideo(clip.id);
         removeClip(clip.id); return true;
       case "scissors": {
         const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
         const t = clip.startTime + (e.clientX - rect.left) / pxPerSec;
-        splitClipAt(clip.id, t); return true;
+        const rightClipId = splitClipAt(clip.id, t);
+        if (rightClipId) usePodcastVideoStore.getState().cloneVideo(clip.id, rightClipId);
+        return true;
       }
       case "mute":
         updateClip(clip.id, { name: clip.name.startsWith("[M] ") ? clip.name.slice(4) : "[M] " + clip.name });
@@ -241,7 +244,11 @@ export function ArrangeView({ onArmToggle, onSeek, engine, onOpenInstrumentEdito
           .sort((a, b) => a.startTime - b.startTime);
         const next = sameTrack[0];
         if (next) {
+          if (!usePodcastVideoStore.getState().videos[clip.id] && usePodcastVideoStore.getState().videos[next.id]) {
+            usePodcastVideoStore.getState().cloneVideo(next.id, clip.id);
+          }
           updateClip(clip.id, { duration: Math.max(clip.duration, next.startTime + next.duration - clip.startTime) });
+          usePodcastVideoStore.getState().removeVideo(next.id);
           removeClip(next.id);
           toast.success("Glued clips");
         }
