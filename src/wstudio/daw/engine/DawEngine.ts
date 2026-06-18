@@ -730,6 +730,7 @@ export class DawEngine {
     const chain = this.trackChains.get(this.recordingTrackId);
     if (chain) {
       try { if (this.recProcessor) chain.micSource?.disconnect(this.recProcessor); } catch {}
+      this.setInputMonitorAudible(this.recordingTrackId, false);
       chain.micSource = null;
     }
     this.recBuffers = [];
