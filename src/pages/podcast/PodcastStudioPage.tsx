@@ -13,6 +13,8 @@ import { LibraryPanel } from "@/wstudio/daw/ui/LibraryPanel";
 import { SoundLibraryPanel } from "@/wstudio/daw/ui/SoundLibraryPanel";
 import { BottomDock } from "@/wstudio/daw/ui/BottomDock";
 import { PodcastVideoSidebar } from "./PodcastVideoSidebar";
+import { PodcastExportSheet } from "./PodcastExportSheet";
+import { usePodcastVideoStore } from "./podcastVideoStore";
 import { MenuBar } from "@/wstudio/daw/ui/MenuBar";
 import { FloatingKeyboard } from "@/wstudio/daw/ui/FloatingKeyboard";
 import { ShortcutsModal } from "@/wstudio/daw/ui/ShortcutsModal";
@@ -153,6 +155,9 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
     e.onRecordedClip = async (trackId, clip) => {
       clip.peaks = computePeaks(clip.buffer!);
       addClip(clip);
+      // If the podcast sidebar had a pending video for this track, attach it
+      // to the freshly created clip so the video lane lights up immediately.
+      usePodcastVideoStore.getState().attachPending(trackId, clip.id);
       setTransport({ isRecording: false, isPlaying: false });
     };
     setEngineReady(true);
@@ -437,12 +442,16 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
     }
   }, [addClip, updateTrack]);
 
-  const [exportPrompt, setExportPrompt] = useState<{ defaultName: string } | null>(null);
+  const [exportOpen, setExportOpen] = useState(false);
   const handleExport = useCallback(() => {
     if (clips.length === 0) { toast.error("Nothing to export"); return; }
-    setExportPrompt({ defaultName: `wstudio-mix-${Date.now()}` });
+    setExportOpen(true);
   }, [clips]);
   useEffect(() => { handleExportRef.current = handleExport; }, [handleExport]);
+
+  const runExport = useCallback(async (_filename: string) => {
+    setExportOpen(true);
+  }, []);
 
   const runExport = useCallback(async (filename: string) => {
     const e = engineRef.current;
