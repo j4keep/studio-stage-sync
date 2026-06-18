@@ -295,14 +295,17 @@ export default function PodcastStudioPage() {
 
       const cam = camStreamRef.current;
       if (cam) {
-        const videoOnly = new MediaStream(cam.getVideoTracks());
+        if (videoCompositeRafRef.current) cancelAnimationFrame(videoCompositeRafRef.current);
+        const videoOnly = makeStageRecordingStream(cam) ?? new MediaStream(cam.getVideoTracks());
         const mime = ["video/webm;codecs=vp8", "video/webm;codecs=vp9", "video/webm"].find(m => MediaRecorder.isTypeSupported(m)) || "video/webm";
-        const mr = new MediaRecorder(videoOnly, { mimeType: mime, videoBitsPerSecond: 2_500_000 });
+        const mr = new MediaRecorder(videoOnly, { mimeType: mime, videoBitsPerSecond: 4_500_000 });
         recChunksRef.current = [];
         recTrackIdRef.current = trackId;
         recStartRef.current = startPos;
         mr.ondataavailable = (ev) => { if (ev.data?.size) recChunksRef.current.push(ev.data); };
         mr.onstop = () => {
+          if (videoCompositeRafRef.current) cancelAnimationFrame(videoCompositeRafRef.current);
+          videoCompositeRafRef.current = null;
           const blob = new Blob(recChunksRef.current, { type: mime });
           recChunksRef.current = [];
           const dur = useDawStore.getState().transport.position - recStartRef.current;
@@ -319,7 +322,7 @@ export default function PodcastStudioPage() {
       toast.error(err?.message || "Could not start recording");
       setTransport({ isRecording: false, isPlaying: false });
     }
-  }, [ensureRecordTrack, setPending, setTransport, startCamera, updateTrack]);
+  }, [ensureRecordTrack, makeStageRecordingStream, setPending, setTransport, startCamera, updateTrack]);
 
   const importFiles = useCallback(async (files: FileList) => {
     const e = engineRef.current; if (!e) return;
