@@ -17,8 +17,8 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   const { isPro, requirePro, showProModal, gatedFeature, closeProModal, activatePro } = useProGate();
   const isPodcastWorkspace = location.pathname.startsWith("/tv/podcast/") && location.pathname !== "/tv/podcast";
   const isPodcastLobby = location.pathname === "/tv/podcast";
-  const isFullScreenPage = ["/feed"].includes(location.pathname) || isPodcastWorkspace;
-  const showTopBar = !["/auth", "/feed"].includes(location.pathname) && !isPodcastWorkspace;
+  const isFullScreenPage = ["/feed"].includes(location.pathname) || isPodcastWorkspace || isPodcastLobby;
+  const showTopBar = !["/auth", "/feed"].includes(location.pathname) && !isPodcastWorkspace && !isPodcastLobby;
 
   const handleAskJhi = () => {
     if (!isPro) {
@@ -29,7 +29,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   };
 
   if (isFullScreenPage) {
-    if (isPodcastWorkspace) {
+    if (isPodcastWorkspace || isPodcastLobby) {
       return <div className="min-h-screen bg-background text-foreground relative">{children}</div>;
     }
 
@@ -45,8 +45,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
     );
   }
 
-  // Podcast lobby: full-width on desktop, mobile-width on small screens, with bottom nav
-  const containerWidthClass = isPodcastLobby ? "md:max-w-none max-w-lg" : "max-w-lg";
+  const containerWidthClass = "max-w-lg";
 
   return (
     <div className={`min-h-screen bg-background text-foreground ${containerWidthClass} mx-auto relative`}>
