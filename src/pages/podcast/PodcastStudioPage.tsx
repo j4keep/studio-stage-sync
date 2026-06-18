@@ -689,8 +689,17 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
 
 
 
-      {exportPrompt && (
-        <div className="fixed inset-0 z-[100] bg-black/60 grid place-items-center" onClick={() => setExportPrompt(null)}>
+      <PodcastExportSheet
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        engine={engineRef.current}
+        tracks={tracks}
+        clips={clips}
+        projectName={projectName}
+      />
+
+      {false && (
+        <div className="fixed inset-0 z-[100] bg-black/60 grid place-items-center" onClick={() => setExportOpen(false)}>
           <div className="bg-neutral-950 border border-neutral-800 rounded-lg p-5 w-[360px] shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="text-sm text-neutral-200 font-medium mb-1">Name your bounce</div>
             <div className="text-[11px] text-neutral-500 mb-3">Saved as a WAV file to your downloads.</div>
