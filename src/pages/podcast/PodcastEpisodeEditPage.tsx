@@ -423,6 +423,30 @@ const Segment = ({ value, options, onChange }: { value: string; options: string[
   </div>
 );
 
+const ProductionTimeline = ({ recordings, clips, duration }: { recordings: Recording[]; clips: Clip[]; duration: number }) => (
+  <div className="space-y-3">
+    <div className="relative h-24 overflow-hidden rounded-lg border border-border bg-background">
+      <div className="absolute inset-x-3 top-4 flex h-10 items-end gap-1">
+        {Array.from({ length: 72 }).map((_, i) => <span key={i} className="w-full rounded-sm bg-primary/30" style={{ height: `${10 + ((i * 11) % 30)}px` }} />)}
+      </div>
+      {clips.map((clip) => (
+        <div key={clip.id} className="absolute bottom-8 h-8 rounded-sm border border-primary bg-primary/25" style={{ left: `${Math.max(0, (clip.start_seconds / duration) * 100)}%`, width: `${Math.max(2, ((clip.end_seconds - clip.start_seconds) / duration) * 100)}%` }} />
+      ))}
+      <div className="absolute bottom-2 left-3 text-xs text-muted-foreground">0:00</div>
+      <div className="absolute bottom-2 right-3 text-xs text-muted-foreground">{formatTime(duration)}</div>
+    </div>
+    <div className="grid gap-2 sm:grid-cols-3">
+      {recordings.map((recording, i) => (
+        <div key={recording.id} className="rounded-md border border-border p-2 text-xs">
+          <div className="font-semibold">Recording {i + 1}</div>
+          <div className="text-muted-foreground">{formatTime(recording.duration_seconds ?? recording.chunk_count * 5)} · {recording.status}</div>
+        </div>
+      ))}
+      {recordings.length === 0 && <div className="text-sm text-muted-foreground">Saved recordings appear here immediately after you stop recording.</div>}
+    </div>
+  </div>
+);
+
 const Empty = ({ title, body }: { title: string; body: string }) => <div className="rounded-lg border border-dashed border-border p-4 text-sm"><div className="font-medium">{title}</div><div className="mt-1 text-muted-foreground">{body}</div></div>;
 
 const Sub = ({ label, children }: { label: string; children: ReactNode }) => <section><div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>{children}</section>;
