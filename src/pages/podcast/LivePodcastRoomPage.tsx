@@ -254,6 +254,8 @@ const LocalRecorder = ({
   const [seconds, setSeconds] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunkIndexRef = useRef(0);
+  const uploadedChunksRef = useRef(0);
+  const secondsRef = useRef(0);
   const timerRef = useRef<number | null>(null);
   const r2PrefixRef = useRef<string>("");
 
@@ -291,31 +293,27 @@ const LocalRecorder = ({
   const uploadChunk = async (blob: Blob, index: number, mime: string) => {
     const key = `${r2PrefixRef.current}${index.toString().padStart(6, "0")}.webm`;
     const buf = await blob.arrayBuffer();
-    try {
-      const url = `https://cdcdlqbjyptamtleitdp.supabase.co/functions/v1/r2-upload`;
-      await fetch(url, {
-        method: "POST",
-        headers: {
-          "x-upload-key": key,
-          "x-upload-content-type": mime,
-          "Content-Type": mime,
-          "Content-Length": String(buf.byteLength),
-        },
-        body: buf,
-      });
-    } catch (e) {
-      console.error("chunk upload failed", e);
-    }
+    const url = `https://cdcdlqbjyptamtleitdp.supabase.co/functions/v1/r2-upload`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "x-upload-key": key,
+        "x-upload-content-type": mime,
+        "Content-Type": mime,
+        "Content-Length": String(buf.byteLength),
+      },
+      body: buf,
+    });
+    if (!res.ok) throw new Error(`Chunk ${index + 1} upload failed (${res.status})`);
   };
 
   const start = async () => {
     try {
       const stream = await captureCombinedStream();
       const mime = pickMime();
-      const safeId = participantIdentity.replace(/[^a-zA-Z0-9_-]/g, "_");
-      const prefix = `podcast/${episodeId}/${safeId}/`;
-      r2PrefixRef.current = prefix;
       chunkIndexRef.current = 0;
+      uploadedChunksRef.current = 0;
+      secondsRef.current = 0;
 
       const { data: rec, error } = await supabase
         .from("podcast_recordings")
@@ -323,12 +321,16 @@ const LocalRecorder = ({
           episode_id: episodeId,
           uploader_user_id: (await supabase.auth.getUser()).data.user?.id ?? null,
           mime_type: mime,
-          r2_prefix: prefix,
+          r2_prefix: "pending",
           status: "recording",
         })
         .select("id")
         .single();
       if (error) throw error;
+      const safeId = participantIdentity.replace(/[^a-zA-Z0-9_-]/g, "_");
+      const prefix = `podcast/${episodeId}/${rec.id}-${safeId}/`;
+      r2PrefixRef.current = prefix;
+      await supabase.from("podcast_recordings").update({ r2_prefix: prefix }).eq("id", rec.id);
       setRecordingId(rec.id);
 
       const videoBitsPerSecond = quality === "4K" ? 14_000_000 : quality === "1080p" ? 8_000_000 : 4_000_000;
@@ -337,21 +339,26 @@ const LocalRecorder = ({
       mr.ondataavailable = async (ev) => {
         if (ev.data && ev.data.size > 0) {
           const idx = chunkIndexRef.current++;
-          await uploadChunk(ev.data, idx, mime);
-          await supabase
-            .from("podcast_recordings")
-            .update({ chunk_count: idx + 1 })
-            .eq("id", rec.id);
+          try {
+            await uploadChunk(ev.data, idx, mime);
+            uploadedChunksRef.current += 1;
+            await supabase
+              .from("podcast_recordings")
+              .update({ chunk_count: uploadedChunksRef.current })
+              .eq("id", rec.id);
+          } catch (e) {
+            toast({ title: "Recording chunk failed", description: e instanceof Error ? e.message : "Upload failed", variant: "destructive" });
+          }
         }
       };
       mr.onstop = async () => {
-        await supabase.from("podcast_recordings").update({ status: "uploaded", duration_seconds: seconds }).eq("id", rec.id);
+        await supabase.from("podcast_recordings").update({ status: uploadedChunksRef.current > 0 ? "uploaded" : "failed", duration_seconds: secondsRef.current, chunk_count: uploadedChunksRef.current }).eq("id", rec.id);
       };
       mr.start(5000); // 5s chunks
       setRecording(true);
       setSeconds(0);
-      timerRef.current = window.setInterval(() => setSeconds((s) => s + 1), 1000);
-      toast({ title: "Recording started", description: "Your tracks upload to your library as you talk." });
+      timerRef.current = window.setInterval(() => setSeconds((s) => { secondsRef.current = s + 1; return s + 1; }), 1000);
+      toast({ title: "Recording started", description: `${displayName}'s ${quality} take is saving with ${background.name} background.` });
     } catch (e) {
       toast({ title: "Couldn't start recording", description: e instanceof Error ? e.message : "Unknown", variant: "destructive" });
     }
