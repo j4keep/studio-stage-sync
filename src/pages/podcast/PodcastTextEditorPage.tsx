@@ -130,8 +130,7 @@ const PodcastTextEditorPage = () => {
     setExporting(true);
     try {
       await supabase.from("podcast_recordings").update({
-        edl: keepRanges,
-        export_settings: { format: exportFormat, layout, magicAudio },
+        edl: { keepRanges, exportSettings: { format: exportFormat, layout, magicAudio } },
       }).eq("id", recordingId);
       toast({ title: "Export settings saved" });
     } catch (e) {
