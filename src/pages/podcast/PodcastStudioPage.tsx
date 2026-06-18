@@ -578,17 +578,76 @@ function PeoplePanel({ onInvite }: { onInvite: () => void }) {
   );
 }
 
-function EffectsPanel({ mirrored, setMirrored }: { mirrored: boolean; setMirrored: (b: boolean) => void }) {
+function EffectsPanel({
+  mirrored, setMirrored, bgUrl, setBgUrl, customBgs, onAddCustomBg,
+}: {
+  mirrored: boolean; setMirrored: (b: boolean) => void;
+  bgUrl: string | null; setBgUrl: (u: string | null) => void;
+  customBgs: string[]; onAddCustomBg: () => void;
+}) {
+  const Cell = ({ url, label, selected, onClick }: { url: string | null; label: string; selected: boolean; onClick: () => void }) => (
+    <button
+      onClick={onClick}
+      className={`relative aspect-video rounded-md overflow-hidden border transition ${selected ? "border-cyan-400 ring-2 ring-cyan-500/40" : "border-neutral-800 hover:border-neutral-600"}`}
+      style={url ? { backgroundImage: `url(${url})`, backgroundSize: "cover", backgroundPosition: "center" } : { background: "#0a0a0a" }}
+      title={label}
+    >
+      {!url && <div className="absolute inset-0 grid place-items-center text-[10px] text-neutral-500">None</div>}
+      <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 to-transparent text-[9px] text-white px-1 py-0.5 truncate">{label}</div>
+    </button>
+  );
   return (
     <div className="space-y-4">
-      <Row label="Mirror my video">
-        <Toggle on={mirrored} onChange={setMirrored} />
-      </Row>
-      <div className="text-[11px] uppercase tracking-wider text-neutral-500">Backgrounds</div>
+      <Row label="Mirror my video"><Toggle on={mirrored} onChange={setMirrored} /></Row>
+      <div className="flex items-center justify-between">
+        <div className="text-[11px] uppercase tracking-wider text-neutral-500">Backgrounds</div>
+        <button onClick={onAddCustomBg} className="text-[10px] text-cyan-400 hover:text-cyan-300 flex items-center gap-1">
+          <Upload className="w-3 h-3" /> Upload
+        </button>
+      </div>
       <div className="grid grid-cols-3 gap-2">
-        {[null, "blur", "studio", "warm", "cool", "books"].map((bg, i) => (
-          <div key={i} className="aspect-video rounded-md border border-neutral-800 bg-neutral-900 grid place-items-center text-[10px] text-neutral-500">
-            {bg ?? "None"}
+        <Cell url={null} label="None" selected={!bgUrl} onClick={() => setBgUrl(null)} />
+        {customBgs.map((u, i) => (
+          <Cell key={`c-${i}`} url={u} label={`Custom ${i + 1}`} selected={bgUrl === u} onClick={() => setBgUrl(u)} />
+        ))}
+        {BG_LIBRARY.map(bg => (
+          <Cell key={bg.id} url={bg.url} label={bg.label} selected={bgUrl === bg.url} onClick={() => setBgUrl(bg.url)} />
+        ))}
+      </div>
+      <p className="text-[10px] text-neutral-500">Tip: backgrounds show through when your camera is off. Full chroma-key removal coming soon.</p>
+    </div>
+  );
+}
+
+function ProjectsPanel({ onClose, onOpenInEditor }: { onClose: () => void; onOpenInEditor: () => void }) {
+  const videos = usePodcastVideoStore(s => s.videos);
+  const entries = Object.entries(videos);
+  return (
+    <div className="space-y-3">
+      <div className="text-[11px] uppercase tracking-wider text-neutral-500">Recorded videos · {entries.length}</div>
+      {entries.length === 0 && (
+        <div className="text-xs text-neutral-500 border border-dashed border-neutral-800 rounded-lg p-6 text-center">
+          No recordings yet. Hit <span className="text-red-400 font-medium">Record</span> to capture your first clip.
+        </div>
+      )}
+      <div className="space-y-3">
+        {entries.map(([clipId, v]) => (
+          <div key={clipId} className="rounded-lg border border-neutral-800 bg-neutral-900 overflow-hidden">
+            <video src={v.url} controls playsInline className="w-full aspect-video bg-black" />
+            <div className="p-2 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <div className="text-xs text-neutral-200 truncate">{v.participantLabel || "Take"}</div>
+                <div className="text-[10px] text-neutral-500">{v.durationSec ? `${v.durationSec.toFixed(1)}s` : ""} · {v.mime.split(";")[0]}</div>
+              </div>
+              <div className="flex items-center gap-1">
+                <a href={v.url} download={`take-${clipId}.webm`} className="p-1.5 rounded text-neutral-300 hover:text-white hover:bg-neutral-800" title="Download">
+                  <Download className="w-3.5 h-3.5" />
+                </a>
+                <button onClick={onOpenInEditor} className="h-7 px-2 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-[11px] flex items-center gap-1" title="Open in editor">
+                  <ArrowLeftToLine className="w-3 h-3" /> Edit
+                </button>
+              </div>
+            </div>
           </div>
         ))}
       </div>
