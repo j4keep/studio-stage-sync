@@ -16,7 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, Circle, Copy, StopCircle } from "lucide-react";
+import { ArrowLeft, Circle, Copy, Download, Image, Loader2, Radio, Scissors, Sparkles, StopCircle } from "lucide-react";
 
 type TokenResponse = {
   token: string;
@@ -42,6 +42,7 @@ const LivePodcastRoomPage = () => {
   const [askGuestName, setAskGuestName] = useState(false);
   const [quality, setQuality] = useState<"720p" | "1080p" | "4K">("1080p");
   const [layoutMode, setLayoutMode] = useState<"Grid" | "Speaker" | "Screen">("Grid");
+  const [background, setBackground] = useState<StudioBackground>(BACKGROUND_PRESETS[0]);
 
   const videoOptions = useMemo(() => {
     const preset = quality === "4K" ? VideoPresets.h2160 : quality === "1080p" ? VideoPresets.h1080 : VideoPresets.h720;
@@ -160,9 +161,10 @@ const LivePodcastRoomPage = () => {
           <ArrowLeft className="w-4 h-4" /> Leave
         </button>
         <div className="min-w-0 flex-1 text-center text-sm font-medium truncate">{episode.title}</div>
-        <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
           <Segmented value={quality} options={["720p", "1080p", "4K"]} onChange={(v) => setQuality(v as "720p" | "1080p" | "4K")} />
           <Segmented value={layoutMode} options={["Grid", "Speaker", "Screen"]} onChange={(v) => setLayoutMode(v as "Grid" | "Speaker" | "Screen")} />
+            <BackgroundPicker value={background} onChange={setBackground} />
           {isHost && <GoLiveButton episodeId={episode.id} />}
           {isHost && (
             <button onClick={copyInviteLink} className="text-xs px-2 py-1 rounded-md bg-muted hover:bg-secondary flex items-center gap-1">
@@ -186,10 +188,10 @@ const LivePodcastRoomPage = () => {
           <RoomAudioRenderer />
           <div className="flex h-full flex-col">
             <div className="flex-1 min-h-0">
-              <Stage layoutMode={layoutMode} />
+              <Stage layoutMode={layoutMode} background={background} />
             </div>
             <div className="border-t border-border bg-card">
-              <LocalRecorder episodeId={episode.id} participantIdentity={tokenInfo.identity} displayName={tokenInfo.displayName} quality={quality} />
+              <LocalRecorder episodeId={episode.id} participantIdentity={tokenInfo.identity} displayName={tokenInfo.displayName} quality={quality} background={background} />
               <ControlBar variation="minimal" controls={{ microphone: true, camera: true, screenShare: true, leave: true, chat: false }} />
             </div>
           </div>
