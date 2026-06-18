@@ -28,6 +28,10 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   };
 
   if (isFullScreenPage) {
+    if (isPodcastWorkspace) {
+      return <div className="min-h-screen bg-background text-foreground relative">{children}</div>;
+    }
+
     return (
       <div className="min-h-screen bg-black text-foreground max-w-lg mx-auto relative">
         {children}

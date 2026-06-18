@@ -13,6 +13,7 @@ import {
   Clapperboard,
   Copy,
   Download,
+  Film,
   FileText,
   Gauge,
   LayoutTemplate,
@@ -207,7 +208,23 @@ const PodcastEpisodeEditPage = () => {
     load();
   };
 
-  const downloadKey = (key: string) => window.open(`${SUPABASE_URL}/functions/v1/r2-download?key=${encodeURIComponent(key)}`, "_blank");
+  const downloadKey = async (key: string) => {
+    try {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/r2-download?key=${encodeURIComponent(key)}`);
+      if (!res.ok) throw new Error(await res.text().catch(() => `Download failed: ${res.status}`));
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = key.split("/").pop() || "podcast-recording.webm";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      toast({ title: "Download not available", description: e instanceof Error ? e.message : "The file was not found in storage.", variant: "destructive" });
+    }
+  };
 
   const addDestination = async () => {
     if (!episodeId || !newDest.rtmp_url || !newDest.stream_key) {
@@ -275,6 +292,10 @@ const PodcastEpisodeEditPage = () => {
                 <div className="flex h-10 items-center justify-between rounded-md border border-border px-3"><span className="text-sm">Magic</span><Switch checked={videoSettings.noise} onCheckedChange={(noise) => setVideoSettings((s) => ({ ...s, noise }))} /></div>
               </Control>
             </div>
+          </Panel>
+
+          <Panel icon={<Film className="w-4 h-4" />} title="Saved timeline">
+            <ProductionTimeline recordings={recordings} clips={clips} duration={Math.max(totalDuration, 60)} />
           </Panel>
 
           <Panel icon={<Mic className="w-4 h-4" />} title="Recordings">
@@ -399,6 +420,30 @@ const Control = ({ label, children }: { label: string; children: ReactNode }) =>
 const Segment = ({ value, options, onChange }: { value: string; options: string[]; onChange: (v: string) => void }) => (
   <div className="grid h-10 grid-cols-3 rounded-md border border-border bg-background p-1">
     {options.map((option) => <button key={option} onClick={() => onChange(option)} className={`rounded text-xs font-semibold ${value === option ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}>{option}</button>)}
+  </div>
+);
+
+const ProductionTimeline = ({ recordings, clips, duration }: { recordings: Recording[]; clips: Clip[]; duration: number }) => (
+  <div className="space-y-3">
+    <div className="relative h-24 overflow-hidden rounded-lg border border-border bg-background">
+      <div className="absolute inset-x-3 top-4 flex h-10 items-end gap-1">
+        {Array.from({ length: 72 }).map((_, i) => <span key={i} className="w-full rounded-sm bg-primary/30" style={{ height: `${10 + ((i * 11) % 30)}px` }} />)}
+      </div>
+      {clips.map((clip) => (
+        <div key={clip.id} className="absolute bottom-8 h-8 rounded-sm border border-primary bg-primary/25" style={{ left: `${Math.max(0, (clip.start_seconds / duration) * 100)}%`, width: `${Math.max(2, ((clip.end_seconds - clip.start_seconds) / duration) * 100)}%` }} />
+      ))}
+      <div className="absolute bottom-2 left-3 text-xs text-muted-foreground">0:00</div>
+      <div className="absolute bottom-2 right-3 text-xs text-muted-foreground">{formatTime(duration)}</div>
+    </div>
+    <div className="grid gap-2 sm:grid-cols-3">
+      {recordings.map((recording, i) => (
+        <div key={recording.id} className="rounded-md border border-border p-2 text-xs">
+          <div className="font-semibold">Recording {i + 1}</div>
+          <div className="text-muted-foreground">{formatTime(recording.duration_seconds ?? recording.chunk_count * 5)} · {recording.status}</div>
+        </div>
+      ))}
+      {recordings.length === 0 && <div className="text-sm text-muted-foreground">Saved recordings appear here immediately after you stop recording.</div>}
+    </div>
   </div>
 );
 

@@ -16,7 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, Circle, Copy, StopCircle } from "lucide-react";
+import { ArrowLeft, Circle, Copy, Image, Loader2, Sparkles, StopCircle } from "lucide-react";
 
 type TokenResponse = {
   token: string;
@@ -26,6 +26,20 @@ type TokenResponse = {
   role: string;
   displayName: string;
 };
+
+type StudioBackground = {
+  id: string;
+  name: string;
+  imageUrl?: string;
+  css: string;
+};
+
+const BACKGROUND_PRESETS: StudioBackground[] = [
+  { id: "none", name: "Clean", css: "linear-gradient(135deg, hsl(var(--background)), hsl(var(--muted)))" },
+  { id: "newsroom", name: "Newsroom", css: "radial-gradient(circle at 30% 20%, hsl(var(--primary) / 0.35), transparent 28%), linear-gradient(135deg, hsl(220 24% 10%), hsl(0 0% 4%))" },
+  { id: "cinema", name: "Cinema", css: "linear-gradient(135deg, hsl(0 78% 14%), hsl(240 18% 5%) 58%, hsl(204 100% 18%))" },
+  { id: "gallery", name: "Gallery", css: "linear-gradient(135deg, hsl(38 18% 16%), hsl(190 18% 9%))" },
+];
 
 const LivePodcastRoomPage = () => {
   const { episodeId } = useParams();
@@ -42,6 +56,7 @@ const LivePodcastRoomPage = () => {
   const [askGuestName, setAskGuestName] = useState(false);
   const [quality, setQuality] = useState<"720p" | "1080p" | "4K">("1080p");
   const [layoutMode, setLayoutMode] = useState<"Grid" | "Speaker" | "Screen">("Grid");
+  const [background, setBackground] = useState<StudioBackground>(BACKGROUND_PRESETS[0]);
 
   const videoOptions = useMemo(() => {
     const preset = quality === "4K" ? VideoPresets.h2160 : quality === "1080p" ? VideoPresets.h1080 : VideoPresets.h720;
@@ -160,9 +175,10 @@ const LivePodcastRoomPage = () => {
           <ArrowLeft className="w-4 h-4" /> Leave
         </button>
         <div className="min-w-0 flex-1 text-center text-sm font-medium truncate">{episode.title}</div>
-        <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
           <Segmented value={quality} options={["720p", "1080p", "4K"]} onChange={(v) => setQuality(v as "720p" | "1080p" | "4K")} />
           <Segmented value={layoutMode} options={["Grid", "Speaker", "Screen"]} onChange={(v) => setLayoutMode(v as "Grid" | "Speaker" | "Screen")} />
+            <BackgroundPicker value={background} onChange={setBackground} />
           {isHost && <GoLiveButton episodeId={episode.id} />}
           {isHost && (
             <button onClick={copyInviteLink} className="text-xs px-2 py-1 rounded-md bg-muted hover:bg-secondary flex items-center gap-1">
@@ -186,10 +202,10 @@ const LivePodcastRoomPage = () => {
           <RoomAudioRenderer />
           <div className="flex h-full flex-col">
             <div className="flex-1 min-h-0">
-              <Stage layoutMode={layoutMode} />
+              <Stage layoutMode={layoutMode} background={background} />
             </div>
             <div className="border-t border-border bg-card">
-              <LocalRecorder episodeId={episode.id} participantIdentity={tokenInfo.identity} displayName={tokenInfo.displayName} quality={quality} />
+              <LocalRecorder episodeId={episode.id} participantIdentity={tokenInfo.identity} displayName={tokenInfo.displayName} quality={quality} background={background} />
               <ControlBar variation="minimal" controls={{ microphone: true, camera: true, screenShare: true, leave: true, chat: false }} />
             </div>
           </div>
@@ -199,7 +215,7 @@ const LivePodcastRoomPage = () => {
   );
 };
 
-const Stage = ({ layoutMode }: { layoutMode: "Grid" | "Speaker" | "Screen" }) => {
+const Stage = ({ layoutMode, background }: { layoutMode: "Grid" | "Speaker" | "Screen"; background: StudioBackground }) => {
   const tracks = useTracks(
     [
       { source: Track.Source.Camera, withPlaceholder: true },
@@ -209,9 +225,13 @@ const Stage = ({ layoutMode }: { layoutMode: "Grid" | "Speaker" | "Screen" }) =>
   );
   const stageClass = layoutMode === "Speaker" ? "h-full [&_.lk-grid-layout]:grid-cols-1" : layoutMode === "Screen" ? "h-full [&_.lk-grid-layout]:grid-cols-1" : "h-full";
   return (
-    <GridLayout tracks={tracks} className={stageClass}>
-      <ParticipantTile />
-    </GridLayout>
+    <div className="relative h-full overflow-hidden" style={{ backgroundImage: background.css, backgroundSize: "cover", backgroundPosition: "center" }}>
+      {background.imageUrl && <img src={background.imageUrl} alt="Studio background" className="absolute inset-0 h-full w-full object-cover" />}
+      <div className="absolute inset-0 bg-background/20" />
+      <GridLayout tracks={tracks} className={`relative z-10 ${stageClass}`}>
+        <ParticipantTile />
+      </GridLayout>
+    </div>
   );
 };
 
@@ -220,18 +240,24 @@ const LocalRecorder = ({
   participantIdentity,
   displayName,
   quality,
+  background,
 }: {
   episodeId: string;
   participantIdentity: string;
   displayName: string;
   quality: "720p" | "1080p" | "4K";
+  background: StudioBackground;
 }) => {
   const { localParticipant } = useLocalParticipant();
+  const navigate = useNavigate();
   const [recording, setRecording] = useState(false);
   const [recordingId, setRecordingId] = useState<string | null>(null);
+  const [savedRecording, setSavedRecording] = useState<{ id: string; chunks: number; seconds: number } | null>(null);
   const [seconds, setSeconds] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunkIndexRef = useRef(0);
+  const uploadedChunksRef = useRef(0);
+  const secondsRef = useRef(0);
   const timerRef = useRef<number | null>(null);
   const r2PrefixRef = useRef<string>("");
 
@@ -269,31 +295,27 @@ const LocalRecorder = ({
   const uploadChunk = async (blob: Blob, index: number, mime: string) => {
     const key = `${r2PrefixRef.current}${index.toString().padStart(6, "0")}.webm`;
     const buf = await blob.arrayBuffer();
-    try {
-      const url = `https://cdcdlqbjyptamtleitdp.supabase.co/functions/v1/r2-upload`;
-      await fetch(url, {
-        method: "POST",
-        headers: {
-          "x-upload-key": key,
-          "x-upload-content-type": mime,
-          "Content-Type": mime,
-          "Content-Length": String(buf.byteLength),
-        },
-        body: buf,
-      });
-    } catch (e) {
-      console.error("chunk upload failed", e);
-    }
+    const url = `https://cdcdlqbjyptamtleitdp.supabase.co/functions/v1/r2-upload`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "x-upload-key": key,
+        "x-upload-content-type": mime,
+        "Content-Type": mime,
+        "Content-Length": String(buf.byteLength),
+      },
+      body: buf,
+    });
+    if (!res.ok) throw new Error(`Chunk ${index + 1} upload failed (${res.status})`);
   };
 
   const start = async () => {
     try {
       const stream = await captureCombinedStream();
       const mime = pickMime();
-      const safeId = participantIdentity.replace(/[^a-zA-Z0-9_-]/g, "_");
-      const prefix = `podcast/${episodeId}/${safeId}/`;
-      r2PrefixRef.current = prefix;
       chunkIndexRef.current = 0;
+      uploadedChunksRef.current = 0;
+      secondsRef.current = 0;
 
       const { data: rec, error } = await supabase
         .from("podcast_recordings")
@@ -301,12 +323,16 @@ const LocalRecorder = ({
           episode_id: episodeId,
           uploader_user_id: (await supabase.auth.getUser()).data.user?.id ?? null,
           mime_type: mime,
-          r2_prefix: prefix,
+          r2_prefix: "pending",
           status: "recording",
         })
         .select("id")
         .single();
       if (error) throw error;
+      const safeId = participantIdentity.replace(/[^a-zA-Z0-9_-]/g, "_");
+      const prefix = `podcast/${episodeId}/${rec.id}-${safeId}/`;
+      r2PrefixRef.current = prefix;
+      await supabase.from("podcast_recordings").update({ r2_prefix: prefix }).eq("id", rec.id);
       setRecordingId(rec.id);
 
       const videoBitsPerSecond = quality === "4K" ? 14_000_000 : quality === "1080p" ? 8_000_000 : 4_000_000;
@@ -315,21 +341,27 @@ const LocalRecorder = ({
       mr.ondataavailable = async (ev) => {
         if (ev.data && ev.data.size > 0) {
           const idx = chunkIndexRef.current++;
-          await uploadChunk(ev.data, idx, mime);
-          await supabase
-            .from("podcast_recordings")
-            .update({ chunk_count: idx + 1 })
-            .eq("id", rec.id);
+          try {
+            await uploadChunk(ev.data, idx, mime);
+            uploadedChunksRef.current += 1;
+            await supabase
+              .from("podcast_recordings")
+              .update({ chunk_count: uploadedChunksRef.current })
+              .eq("id", rec.id);
+          } catch (e) {
+            toast({ title: "Recording chunk failed", description: e instanceof Error ? e.message : "Upload failed", variant: "destructive" });
+          }
         }
       };
       mr.onstop = async () => {
-        await supabase.from("podcast_recordings").update({ status: "uploaded", duration_seconds: seconds }).eq("id", rec.id);
+        await supabase.from("podcast_recordings").update({ status: uploadedChunksRef.current > 0 ? "uploaded" : "failed", duration_seconds: secondsRef.current, chunk_count: uploadedChunksRef.current }).eq("id", rec.id);
+        if (uploadedChunksRef.current > 0) setSavedRecording({ id: rec.id, chunks: uploadedChunksRef.current, seconds: secondsRef.current });
       };
       mr.start(5000); // 5s chunks
       setRecording(true);
       setSeconds(0);
-      timerRef.current = window.setInterval(() => setSeconds((s) => s + 1), 1000);
-      toast({ title: "Recording started", description: "Your tracks upload to your library as you talk." });
+      timerRef.current = window.setInterval(() => setSeconds((s) => { secondsRef.current = s + 1; return s + 1; }), 1000);
+      toast({ title: "Recording started", description: `${displayName}'s ${quality} take is saving with ${background.name} background.` });
     } catch (e) {
       toast({ title: "Couldn't start recording", description: e instanceof Error ? e.message : "Unknown", variant: "destructive" });
     }
@@ -344,15 +376,19 @@ const LocalRecorder = ({
 
   return (
     <div className="flex items-center justify-between px-4 py-2 text-white text-sm">
-      <div className="flex items-center gap-2">
+      <div className="flex min-w-0 items-center gap-2">
         {recording ? (
           <>
             <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
             <span className="font-mono">{formatTime(seconds)}</span>
             <span className="text-xs text-zinc-400">Recording locally</span>
           </>
+        ) : savedRecording ? (
+          <button onClick={() => navigate(`/tv/podcast/${episodeId}/recording/${savedRecording.id}/editor`)} className="min-w-0 text-left text-xs text-muted-foreground hover:text-foreground">
+            <span className="font-semibold text-foreground">Saved take</span> · {formatTime(savedRecording.seconds)} · {savedRecording.chunks} chunks · tap to trim
+          </button>
         ) : (
-          <span className="text-xs text-zinc-400">Not recording</span>
+          <span className="text-xs text-muted-foreground">Not recording</span>
         )}
       </div>
       <div>
@@ -423,6 +459,60 @@ const GoLiveButton = ({ episodeId }: { episodeId: string }) => {
     <button onClick={start} disabled={busy} className="text-xs px-2 py-1 rounded bg-red-600/80 hover:bg-red-500 text-white flex items-center gap-1">
       <RadioBroadcast /> Go Live
     </button>
+  );
+};
+
+const BackgroundPicker = ({ value, onChange }: { value: StudioBackground; onChange: (background: StudioBackground) => void }) => {
+  const [open, setOpen] = useState(false);
+  const [prompt, setPrompt] = useState("premium podcast studio, cinematic lights");
+  const [generated, setGenerated] = useState<StudioBackground[]>([]);
+  const [busy, setBusy] = useState(false);
+
+  const generate = async () => {
+    if (!prompt.trim()) return;
+    setBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-podcast-background", { body: { prompt } });
+      if (error) throw error;
+      const imageUrl = (data as { imageUrl?: string; error?: string })?.imageUrl;
+      if (!imageUrl) throw new Error((data as { error?: string })?.error || "No background generated");
+      const bg: StudioBackground = { id: `ai-${Date.now()}`, name: "AI", imageUrl, css: "linear-gradient(135deg, hsl(var(--background)), hsl(var(--muted)))" };
+      setGenerated((items) => [bg, ...items].slice(0, 4));
+      onChange(bg);
+      toast({ title: "AI background ready" });
+    } catch (e) {
+      toast({ title: "Background failed", description: e instanceof Error ? e.message : "Unknown", variant: "destructive" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const options = [...BACKGROUND_PRESETS, ...generated];
+
+  return (
+    <div className="relative">
+      <button onClick={() => setOpen((v) => !v)} className="text-xs px-2 py-1 rounded-md bg-muted hover:bg-secondary flex items-center gap-1">
+        <Image className="w-3 h-3" /> {value.name}
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full z-50 mt-2 w-72 rounded-lg border border-border bg-card p-3 shadow-xl">
+          <div className="grid grid-cols-2 gap-2">
+            {options.map((bg) => (
+              <button key={bg.id} onClick={() => onChange(bg)} className={`overflow-hidden rounded-md border text-left ${value.id === bg.id ? "border-primary" : "border-border"}`}>
+                <div className="h-14 bg-cover bg-center" style={{ backgroundImage: bg.imageUrl ? `url(${bg.imageUrl})` : bg.css }} />
+                <div className="truncate px-2 py-1 text-xs font-medium">{bg.name}</div>
+              </button>
+            ))}
+          </div>
+          <div className="mt-3 flex gap-2">
+            <Input value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="AI studio background" className="h-9 text-xs" />
+            <Button size="sm" onClick={generate} disabled={busy}>
+              {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 
