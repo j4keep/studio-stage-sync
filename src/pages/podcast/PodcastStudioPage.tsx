@@ -108,6 +108,7 @@ export default function PodcastStudioPage() {
   const recChunksRef = useRef<Blob[]>([]);
   const recTrackIdRef = useRef<string | null>(null);
   const recStartRef = useRef<number>(0);
+  const videoCompositeRafRef = useRef<number | null>(null);
   const [camOn, setCamOn] = useState(false);
   const [micOn, setMicOn] = useState(true);
   const [videoRec, setVideoRec] = useState(false);
@@ -143,7 +144,12 @@ export default function PodcastStudioPage() {
     try {
       const dims = resolution === "1080p" ? { width: 1920, height: 1080 } : resolution === "480p" ? { width: 854, height: 480 } : { width: 1280, height: 720 };
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { ...dims, frameRate: { ideal: frameRate }, facingMode: "user" },
+        video: {
+          width: { ideal: dims.width },
+          height: { ideal: dims.height },
+          frameRate: { ideal: Math.min(frameRate, 30), max: 30 },
+          facingMode: "user",
+        },
         audio: false,
       });
       camStreamRef.current = stream;
@@ -157,6 +163,8 @@ export default function PodcastStudioPage() {
   const stopCamera = useCallback(() => {
     try { recorderRef.current?.stop(); } catch {}
     recorderRef.current = null;
+    if (videoCompositeRafRef.current) cancelAnimationFrame(videoCompositeRafRef.current);
+    videoCompositeRafRef.current = null;
     setVideoRec(false);
     const s = camStreamRef.current;
     if (s) { s.getTracks().forEach(t => t.stop()); camStreamRef.current = null; }
