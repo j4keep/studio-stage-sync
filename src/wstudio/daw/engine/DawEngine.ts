@@ -11,11 +11,14 @@ type SharedInputMonitor = {
 const makeLowLatencyMicConstraints = (inputDeviceId?: string): MediaStreamConstraints => ({
   audio: {
     deviceId: inputDeviceId ? { exact: inputDeviceId } : undefined,
-    echoCancellation: false,
-    noiseSuppression: false,
-    autoGainControl: false,
+    // Podcast-friendly defaults: let the browser clean up the mic so vocals
+    // sound natural instead of phasey/robotic. Aggressive low-latency hints
+    // were causing buffer underruns and the "robotic" artefact during record.
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: true,
     channelCount: { ideal: 1 },
-    latency: { ideal: 0.01 },
+    sampleRate: { ideal: 48000 },
   } as MediaTrackConstraints,
 });
 
