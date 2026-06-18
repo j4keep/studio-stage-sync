@@ -125,7 +125,7 @@ export class DawEngine {
     this.masterAnalyser.connect(this.ctx.destination);
 
     this.destStream = this.ctx.createMediaStreamDestination();
-    this.masterGain.connect(this.destStream);
+    this.masterAnalyser.connect(this.destStream);
 
     // Metronome click bus (independent level from master monitor)
     this.metroGain = this.ctx.createGain();
