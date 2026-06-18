@@ -6,6 +6,7 @@ import {
   Users, MessageCircle, Sparkles, Type, Music, Settings as SettingsIcon, HelpCircle,
   Home, ChevronUp, ChevronDown, Circle, Square, Link as LinkIcon, Upload, X,
   Scissors, MousePointer2, ZoomIn, ZoomOut, Download, Pencil, Eraser, Save,
+  Play, Pause, SkipBack, SkipForward,
 } from "lucide-react";
 import { DawEngine } from "@/wstudio/daw/engine/DawEngine";
 import { computePeaks } from "@/wstudio/daw/engine/Peaks";
@@ -111,7 +112,7 @@ export default function PodcastStudioPage() {
     try {
       const dims = resolution === "1080p" ? { width: 1920, height: 1080 } : resolution === "480p" ? { width: 854, height: 480 } : { width: 1280, height: 720 };
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { ...dims, frameRate: { ideal: frameRate, max: frameRate }, facingMode: "user" },
+        video: { ...dims, frameRate: { ideal: frameRate }, facingMode: "user" },
         audio: false,
       });
       camStreamRef.current = stream;
@@ -294,27 +295,20 @@ export default function PodcastStudioPage() {
         {/* Stage (center) */}
         <div className="flex-1 flex flex-col min-w-0 relative">
           <div className="flex-1 relative grid place-items-center p-4 min-h-0">
-            <div className={`relative w-full max-w-3xl ${layoutId === "pip" ? "" : ""} bg-black rounded-2xl overflow-hidden border border-violet-500/40 shadow-[0_0_0_2px_rgba(139,92,246,0.15)] aspect-video`}>
-              <video
-                ref={previewRef}
-                muted
-                playsInline
-                className={`w-full h-full object-cover ${mirrored ? "scale-x-[-1]" : ""} ${camOn ? "" : "hidden"}`}
+            <div className={`relative w-full max-w-3xl bg-black rounded-2xl overflow-hidden border border-violet-500/40 shadow-[0_0_0_2px_rgba(139,92,246,0.15)] aspect-video`}>
+              <StageLayout
+                layoutId={layoutId}
+                hostVideoRef={previewRef}
+                hostName="jay"
+                camOn={camOn}
+                mirrored={mirrored}
+                onStartCamera={startCamera}
               />
-              {!camOn && (
-                <div className="absolute inset-0 grid place-items-center text-neutral-500 text-sm gap-3">
-                  <VideoOff className="w-10 h-10 opacity-40" />
-                  <button onClick={startCamera} className="h-9 px-4 rounded-full bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-medium">
-                    Turn on camera
-                  </button>
-                </div>
-              )}
               {videoRec && (
-                <div className="absolute top-3 left-3 px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center gap-1">
+                <div className="absolute top-3 left-3 px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center gap-1 z-30">
                   <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" /> REC
                 </div>
               )}
-              <div className="absolute bottom-3 left-3 px-2 py-0.5 rounded bg-black/50 text-white text-xs">jay</div>
             </div>
           </div>
 
@@ -425,11 +419,13 @@ export default function PodcastStudioPage() {
           className={`absolute left-0 right-16 bottom-0 bg-neutral-950 border-t border-neutral-900 transition-transform duration-300 z-20 ${tracksOpen ? "translate-y-0" : "translate-y-full"}`}
           style={{ height: "55%" }}
         >
-          <div className="h-8 flex items-center justify-between px-3 border-b border-neutral-900">
-            <div className="text-[11px] uppercase tracking-wider text-neutral-500">Tracks · {tracks.length}</div>
+          <div className="h-10 flex items-center gap-2 px-3 border-b border-neutral-900">
+            <div className="text-[11px] uppercase tracking-wider text-neutral-500 mr-2">Tracks · {tracks.length}</div>
+            <TransportControls engineRef={engineRef} />
+            <div className="flex-1" />
             <button onClick={() => setTracksOpen(false)} className="p-1 text-neutral-500 hover:text-neutral-200"><ChevronDown className="w-4 h-4" /></button>
           </div>
-          <div className="h-[calc(100%-2rem)]">
+          <div className="h-[calc(100%-2.5rem)]">
             {view === "arrange" && (
               <ArrangeView
                 onArmToggle={(id) => { const t = tracks.find(x => x.id === id); if (t) updateTrack(id, { armed: !t.armed }); }}
@@ -596,5 +592,147 @@ function Toggle({ on, onChange }: { on: boolean; onChange: (b: boolean) => void 
     <button onClick={() => onChange(!on)} className={`w-9 h-5 rounded-full transition relative ${on ? "bg-cyan-500" : "bg-neutral-700"}`}>
       <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition ${on ? "left-[18px]" : "left-0.5"}`} />
     </button>
+  );
+}
+
+/* ----------------------------- Stage Layout ----------------------------- */
+
+function StageLayout({
+  layoutId, hostVideoRef, hostName, camOn, mirrored, onStartCamera,
+}: {
+  layoutId: string;
+  hostVideoRef: React.RefObject<HTMLVideoElement>;
+  hostName: string;
+  camOn: boolean;
+  mirrored: boolean;
+  onStartCamera: () => void;
+}) {
+  const Host = (
+    <div className="relative w-full h-full bg-black">
+      <video
+        ref={hostVideoRef}
+        muted
+        playsInline
+        className={`w-full h-full object-cover ${mirrored ? "scale-x-[-1]" : ""} ${camOn ? "" : "hidden"}`}
+      />
+      {!camOn && (
+        <div className="absolute inset-0 grid place-items-center text-neutral-500 text-sm gap-3">
+          <VideoOff className="w-8 h-8 opacity-40" />
+          <button onClick={onStartCamera} className="h-8 px-3 rounded-full bg-cyan-600 hover:bg-cyan-500 text-white text-[11px] font-medium">
+            Turn on camera
+          </button>
+        </div>
+      )}
+      <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-black/50 text-white text-xs z-10">{hostName}</div>
+    </div>
+  );
+
+  const Guest = ({ label }: { label: string }) => (
+    <div className="relative w-full h-full bg-neutral-900 grid place-items-center">
+      <div className="w-12 h-12 rounded-full bg-neutral-700 grid place-items-center text-sm text-neutral-300 font-semibold">
+        {label[0]}
+      </div>
+      <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-black/50 text-white text-xs">{label}</div>
+    </div>
+  );
+
+  if (layoutId === "grid2") {
+    return <div className="grid grid-cols-2 gap-1 w-full h-full">{Host}<Guest label="Guest 1" /></div>;
+  }
+  if (layoutId === "grid3") {
+    return <div className="grid grid-cols-3 gap-1 w-full h-full">{Host}<Guest label="Guest 1" /><Guest label="Guest 2" /></div>;
+  }
+  if (layoutId === "grid4") {
+    return <div className="grid grid-cols-2 grid-rows-2 gap-1 w-full h-full">{Host}<Guest label="Guest 1" /><Guest label="Guest 2" /><Guest label="Guest 3" /></div>;
+  }
+  if (layoutId === "pip") {
+    return (
+      <div className="relative w-full h-full">
+        <Guest label="Guest 1" />
+        <div className="absolute bottom-3 right-3 w-1/4 aspect-video rounded-lg overflow-hidden border-2 border-white/30 shadow-xl">
+          {Host}
+        </div>
+      </div>
+    );
+  }
+  if (layoutId === "side") {
+    return (
+      <div className="grid w-full h-full" style={{ gridTemplateColumns: "1fr 25%", gap: 4 }}>
+        {Host}
+        <div className="grid grid-rows-3 gap-1"><Guest label="G1" /><Guest label="G2" /><Guest label="G3" /></div>
+      </div>
+    );
+  }
+  if (layoutId === "stage") {
+    return (
+      <div className="grid w-full h-full" style={{ gridTemplateRows: "1fr 25%", gap: 4 }}>
+        {Host}
+        <div className="grid grid-cols-3 gap-1"><Guest label="G1" /><Guest label="G2" /><Guest label="G3" /></div>
+      </div>
+    );
+  }
+  return Host;
+}
+
+/* --------------------------- Transport Controls ------------------------- */
+
+function TransportControls({ engineRef }: { engineRef: React.MutableRefObject<DawEngine | null> }) {
+  const transport = useDawStore(s => s.transport);
+  const setTransport = useDawStore(s => s.setTransport);
+  const tracks = useDawStore(s => s.tracks);
+  const clips = useDawStore(s => s.clips);
+
+  const onPlay = useCallback(async () => {
+    const e = engineRef.current; if (!e) return;
+    if (transport.isPlaying) {
+      e.stop();
+      setTransport({ isPlaying: false });
+    } else {
+      await e.resume();
+      const t = useDawStore.getState().transport;
+      setTransport({ isPlaying: true });
+      e.play({ ...t, isPlaying: true }, tracks, clips);
+    }
+  }, [transport.isPlaying, setTransport, tracks, clips, engineRef]);
+
+  const onStop = useCallback(() => {
+    const e = engineRef.current; if (!e) return;
+    e.stop();
+    setTransport({ isPlaying: false, position: 0 });
+  }, [setTransport, engineRef]);
+
+  const onRewind = useCallback(() => {
+    setTransport({ position: Math.max(0, transport.position - 5) });
+  }, [transport.position, setTransport]);
+
+  const onForward = useCallback(() => {
+    setTransport({ position: transport.position + 5 });
+  }, [transport.position, setTransport]);
+
+  const fmt = (s: number) => {
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    const cs = Math.floor((s % 1) * 100);
+    return `${m}:${sec.toString().padStart(2, "0")}.${cs.toString().padStart(2, "0")}`;
+  };
+
+  return (
+    <div className="flex items-center gap-1">
+      <button onClick={onRewind} title="Back 5s" className="w-8 h-7 rounded grid place-items-center text-neutral-300 hover:bg-neutral-800 hover:text-white">
+        <SkipBack className="w-4 h-4" />
+      </button>
+      <button onClick={onPlay} title={transport.isPlaying ? "Pause" : "Play"} className={`w-9 h-7 rounded grid place-items-center ${transport.isPlaying ? "bg-cyan-600 text-white" : "bg-neutral-800 text-neutral-100 hover:bg-neutral-700"}`}>
+        {transport.isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 fill-current" />}
+      </button>
+      <button onClick={onStop} title="Stop" className="w-8 h-7 rounded grid place-items-center text-neutral-300 hover:bg-neutral-800 hover:text-white">
+        <Square className="w-3.5 h-3.5 fill-current" />
+      </button>
+      <button onClick={onForward} title="Forward 5s" className="w-8 h-7 rounded grid place-items-center text-neutral-300 hover:bg-neutral-800 hover:text-white">
+        <SkipForward className="w-4 h-4" />
+      </button>
+      <span className="ml-2 px-2 py-0.5 rounded bg-neutral-900 border border-neutral-800 text-[11px] font-mono text-neutral-300 tabular-nums">
+        {fmt(transport.position)}
+      </span>
+    </div>
   );
 }
