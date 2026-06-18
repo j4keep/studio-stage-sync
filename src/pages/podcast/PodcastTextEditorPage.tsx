@@ -285,10 +285,23 @@ const PodcastTextEditorPage = () => {
       <main className="mx-auto grid max-w-7xl gap-4 px-4 py-4 lg:grid-cols-[1.35fr_0.8fr]">
         <section className="space-y-4 min-w-0">
           <div className="rounded-lg border border-border bg-card p-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2 font-semibold"><Film className="w-4 h-4 text-primary" /> Video preview</div>
+              <div className="flex gap-2">
+                <Segment value={exportFormat} options={["16:9", "9:16", "1:1"]} onChange={setExportFormat} />
+                <Segment value={layout} options={["Grid", "Speaker", "Split"]} onChange={setLayout} />
+              </div>
+            </div>
+            <div className="overflow-hidden rounded-lg border border-border bg-background">
+              {videoPreviewUrl ? <video src={videoPreviewUrl} controls className="mx-auto aspect-video max-h-[360px] w-full object-contain" /> : <button onClick={loadVideoPreview} className="flex aspect-video w-full flex-col items-center justify-center gap-3 text-sm text-muted-foreground"><Monitor className="h-12 w-12 text-primary" /> Load saved video/audio</button>}
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-border bg-card p-4">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
-                <div className="flex items-center gap-2 font-semibold"><Waves className="w-4 h-4 text-primary" /> Recording timeline</div>
-                <div className="text-xs text-muted-foreground">{formatTime(keptSeconds)} kept from {formatTime(duration)} · {mime}</div>
+                <div className="flex items-center gap-2 font-semibold"><Waves className="w-4 h-4 text-primary" /> Video + audio timeline</div>
+                <div className="text-xs text-muted-foreground">{formatTime(keptSeconds)} kept from {formatTime(duration)} · cuts apply to the episode export</div>
               </div>
               <button className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted" onClick={() => { setManualCuts([]); setDeletedWords(new Set()); invalidatePreview(); }}>
                 <RotateCcw className="w-3 h-3" /> Reset edits
@@ -320,6 +333,15 @@ const PodcastTextEditorPage = () => {
         </section>
 
         <aside className="space-y-4 min-w-0">
+          <div className="rounded-lg border border-border bg-card p-4">
+            <div className="mb-3 flex items-center gap-2 font-semibold"><LayoutTemplate className="w-4 h-4 text-primary" /> Layout tools</div>
+            <div className="space-y-3 text-sm">
+              <div className="rounded-md border border-border p-3"><div className="font-medium">Canvas</div><div className="text-muted-foreground">{exportFormat} · {layout}</div></div>
+              <div className="grid grid-cols-2 gap-2"><Button variant="secondary"><Type className="mr-2 h-4 w-4" /> Text</Button><Button variant="secondary"><MessageSquareText className="mr-2 h-4 w-4" /> Captions</Button></div>
+              <Button className="w-full" variant="outline"><Settings className="mr-2 h-4 w-4" /> Export settings</Button>
+            </div>
+          </div>
+
           <div className="rounded-lg border border-border bg-card p-4">
             <div className="mb-3 flex items-center gap-2 font-semibold"><Scissors className="w-4 h-4 text-primary" /> Cut list</div>
             {cutRanges.length === 0 ? <div className="text-sm text-muted-foreground">No cuts added.</div> : (
