@@ -92,8 +92,8 @@ export interface DawState {
   splitClipAt: (id: string, time: number) => string | null;
   copyClip: (id: string) => void;
   cutClip: (id: string) => void;
-  pasteClipAt: (trackId: string, time: number) => void;
-  duplicateClip: (id: string) => void;
+  pasteClipAt: (trackId: string, time: number) => string | null;
+  duplicateClip: (id: string) => string | null;
   addEffect: (trackId: string, type: EffectId) => string | null;
   removeEffect: (trackId: string, effectId: string) => void;
   updateEffect: (trackId: string, effectId: string, patch: Partial<EffectInstance>) => void;
@@ -271,18 +271,20 @@ export const useDawStore = create<DawState>((set, get) => ({
 
   pasteClipAt: (trackId, time) => {
     const cb = get().clipboard;
-    if (!cb) return;
+    if (!cb) return null;
     snap(get, set);
     const clip: Clip = { ...cb, id: newId("clip"), trackId, startTime: Math.max(0, time) };
     set({ clips: [...get().clips, clip] });
+    return clip.id;
   },
 
   duplicateClip: (id) => {
     const c = get().clips.find(x => x.id === id);
-    if (!c) return;
+    if (!c) return null;
     snap(get, set);
     const clip: Clip = { ...c, id: newId("clip"), startTime: c.startTime + c.duration };
     set({ clips: [...get().clips, clip] });
+    return clip.id;
   },
 
   addClip: (clip) => {
