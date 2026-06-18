@@ -204,8 +204,12 @@ const LivePodcastLobbyPage = () => {
           </header>
 
           <section className="mx-auto max-w-6xl space-y-6 px-4 py-5">
-            <div className="mx-auto flex max-w-md items-center rounded-lg border border-border bg-card px-3 py-2">
-              <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Episode title" className="border-0 bg-transparent focus-visible:ring-0" />
+            <div className="rounded-lg border border-border bg-card p-4">
+              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">New episode</div>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Episode title" className="bg-background" />
+                <Button onClick={createEpisode} disabled={creating}>{creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Video className="mr-2 h-4 w-4" />} Record</Button>
+              </div>
             </div>
 
             <nav className="flex flex-wrap gap-2 border-b border-border pb-3">
