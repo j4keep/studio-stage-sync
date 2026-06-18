@@ -112,7 +112,7 @@ export default function PodcastStudioPage() {
     try {
       const dims = resolution === "1080p" ? { width: 1920, height: 1080 } : resolution === "480p" ? { width: 854, height: 480 } : { width: 1280, height: 720 };
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { ...dims, frameRate: { ideal: frameRate, max: frameRate }, facingMode: "user" },
+        video: { ...dims, frameRate: { ideal: frameRate }, facingMode: "user" },
         audio: false,
       });
       camStreamRef.current = stream;
