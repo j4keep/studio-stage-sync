@@ -9,8 +9,14 @@
 import { audioBufferToWav, type DawEngine } from "../engine/DawEngine";
 import { computePeaks } from "../engine/Peaks";
 import type { Clip, Track, TransportState } from "../engine/types";
+import {
+  serializePodcastVideos,
+  hydratePodcastVideos,
+  usePodcastVideoStore,
+  type SerializedPodcastVideo,
+} from "@/pages/podcast/podcastVideoStore";
 
-const PROJECT_VERSION = 1;
+const PROJECT_VERSION = 2;
 
 interface SerializedClip extends Omit<Clip, "buffer" | "peaks"> {
   audioBase64?: string;
@@ -24,6 +30,7 @@ interface ProjectFile {
   transport?: Partial<TransportState>;
   tracks: Track[];
   clips: SerializedClip[];
+  podcastVideos?: Record<string, SerializedPodcastVideo>;
 }
 
 function blobToBase64(blob: Blob): Promise<string> {
@@ -81,6 +88,7 @@ export async function serializeProject(opts: {
     },
     tracks: opts.tracks,
     clips: sClips,
+    podcastVideos: await serializePodcastVideos(usePodcastVideoStore.getState().videos),
   };
   return JSON.stringify(file);
 }
@@ -113,6 +121,7 @@ export async function parseProject(json: string, engine: DawEngine): Promise<{
     }
     clips.push(out);
   }
+  hydratePodcastVideos(file.podcastVideos);
   return {
     name: file.name || "Untitled Project",
     tracks: file.tracks,

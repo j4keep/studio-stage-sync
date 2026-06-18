@@ -13,41 +13,53 @@ type Props = {
 
 /**
  * Right-side panel for the Live Podcast studio.
- * Shows live camera tiles linked to DAW tracks. Recording produces:
- *  - an audio clip on the selected track (decoded via the DAW engine)
- *  - a video blob in usePodcastVideoStore, keyed to that clip
- * Also supports drag/drop video upload → extracts audio to its own track.
+ * Recording flow:
+ *  - Audio is captured by the DAW engine (so the live waveform draws on
+ *    the track as you speak — like a real studio session).
+ *  - Video is captured separately via MediaRecorder on the camera-only
+ *    stream and stashed as "pending" for the track. When the engine
+ *    emits the recorded clip, PodcastStudioPage calls attachPending()
+ *    to link the video blob to that clip id.
+ *  - Drag/dropped or uploaded videos extract audio into a new track and
+ *    pair the video blob with the resulting clip.
  */
 export function PodcastVideoSidebar({ engine, onClose }: Props) {
   const tracks = useDawStore(s => s.tracks);
   const selectedTrackId = useDawStore(s => s.selectedTrackId);
   const addTrack = useDawStore(s => s.addTrack);
   const addClip = useDawStore(s => s.addClip);
+  const updateTrack = useDawStore(s => s.updateTrack);
   const selectTrack = useDawStore(s => s.selectTrack);
+  const setTransport = useDawStore(s => s.setTransport);
   const videos = usePodcastVideoStore(s => s.videos);
   const setVideo = usePodcastVideoStore(s => s.setVideo);
   const removeVideo = usePodcastVideoStore(s => s.removeVideo);
+  const setPending = usePodcastVideoStore(s => s.setPending);
+  const clearPending = usePodcastVideoStore(s => s.clearPending);
 
   const previewRef = useRef<HTMLVideoElement | null>(null);
   const camStreamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recChunksRef = useRef<Blob[]>([]);
-  const recStartTimeRef = useRef<number>(0);
+  const recTrackIdRef = useRef<string | null>(null);
+  const recMimeRef = useRef<string>("video/webm");
+  const recStartRef = useRef<number>(0);
 
   const [camOn, setCamOn] = useState(false);
   const [recording, setRecording] = useState(false);
   const [busy, setBusy] = useState(false);
   const uploadRef = useRef<HTMLInputElement | null>(null);
 
-  // Stop everything on unmount.
   useEffect(() => () => stopCamera(), []);
 
   const startCamera = useCallback(async () => {
     try {
       setBusy(true);
+      // Camera ONLY — mic is captured by the DAW engine when we record so
+      // the live waveform overlay draws while you speak.
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" },
-        audio: { echoCancellation: true, noiseSuppression: true },
+        audio: false,
       });
       camStreamRef.current = stream;
       if (previewRef.current) {
@@ -56,7 +68,7 @@ export function PodcastVideoSidebar({ engine, onClose }: Props) {
       }
       setCamOn(true);
     } catch (err: any) {
-      toast.error(err?.message || "Camera/mic access denied");
+      toast.error(err?.message || "Camera access denied");
     } finally {
       setBusy(false);
     }
@@ -67,10 +79,7 @@ export function PodcastVideoSidebar({ engine, onClose }: Props) {
     recorderRef.current = null;
     setRecording(false);
     const s = camStreamRef.current;
-    if (s) {
-      s.getTracks().forEach(t => t.stop());
-      camStreamRef.current = null;
-    }
+    if (s) { s.getTracks().forEach(t => t.stop()); camStreamRef.current = null; }
     if (previewRef.current) previewRef.current.srcObject = null;
     setCamOn(false);
   }
@@ -86,50 +95,68 @@ export function PodcastVideoSidebar({ engine, onClose }: Props) {
   }, [tracks, selectedTrackId, addTrack, selectTrack]);
 
   const startRecord = useCallback(async () => {
-    const stream = camStreamRef.current;
-    if (!stream || !engine) { toast.error("Turn the camera on first"); return; }
-    const mime = ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"]
-      .find(m => MediaRecorder.isTypeSupported(m)) || "video/webm";
-    const rec = new MediaRecorder(stream, { mimeType: mime });
-    recChunksRef.current = [];
-    rec.ondataavailable = (ev) => { if (ev.data && ev.data.size > 0) recChunksRef.current.push(ev.data); };
-    rec.onstop = async () => {
-      try {
+    const cam = camStreamRef.current;
+    if (!cam || !engine) { toast.error("Turn the camera on first"); return; }
+    const trackId = ensureRecordTrack();
+
+    // Arm exclusively
+    useDawStore.getState().tracks.forEach(t => updateTrack(t.id, { armed: t.id === trackId }));
+    selectTrack(trackId);
+
+    try {
+      await engine.resume();
+      const startPos = useDawStore.getState().transport.position;
+      await engine.startRecording(trackId, startPos);
+      setTransport({ isRecording: true, isPlaying: true });
+      const st = useDawStore.getState();
+      engine.play({ ...st.transport, isRecording: true, isPlaying: true, position: startPos }, st.tracks, st.clips);
+
+      // Video-only stream from the camera
+      const videoOnly = new MediaStream(cam.getVideoTracks());
+      const mime = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"]
+        .find(m => MediaRecorder.isTypeSupported(m)) || "video/webm";
+      const rec = new MediaRecorder(videoOnly, { mimeType: mime });
+      recChunksRef.current = [];
+      recTrackIdRef.current = trackId;
+      recMimeRef.current = mime;
+      recStartRef.current = startPos;
+      rec.ondataavailable = (ev) => { if (ev.data?.size) recChunksRef.current.push(ev.data); };
+      rec.onstop = () => {
         const blob = new Blob(recChunksRef.current, { type: mime });
         recChunksRef.current = [];
-        // Decode audio out of the recorded webm and place a DAW clip
-        const buffer = await engine.decodeFile(new File([blob], "podcast-take.webm", { type: mime }));
-        const trackId = ensureRecordTrack();
-        const peaks = computePeaks(buffer);
-        const clipId = newId("clip");
-        addClip({
-          id: clipId,
-          trackId,
-          startTime: recStartTimeRef.current,
-          duration: buffer.duration,
-          offset: 0,
-          buffer,
-          peaks,
-          name: "Podcast Take",
-        } as any);
-        const trackLabel = tracks.find(t => t.id === trackId)?.name ?? "Host";
-        setVideo(clipId, { blob, mime, durationSec: buffer.duration, participantLabel: trackLabel });
-        toast.success(`Recorded ${buffer.duration.toFixed(1)}s — video + audio linked`);
-      } catch (err: any) {
-        toast.error(err?.message || "Failed to process recording");
-      }
-    };
-    recStartTimeRef.current = useDawStore.getState().transport.position;
-    rec.start(250);
-    recorderRef.current = rec;
-    setRecording(true);
-  }, [engine, ensureRecordTrack, addClip, setVideo, tracks]);
+        const dur = useDawStore.getState().transport.position - recStartRef.current;
+        const trackLabel = useDawStore.getState().tracks.find(t => t.id === recTrackIdRef.current!)?.name ?? "Host";
+        setPending(recTrackIdRef.current!, {
+          trackId: recTrackIdRef.current!,
+          startTime: recStartRef.current,
+          blob,
+          mime,
+          durationSec: Math.max(0.1, dur),
+          participantLabel: trackLabel,
+        });
+        // The engine's onRecordedClip handler in PodcastStudioPage will call
+        // attachPending() so the new clip id receives this video blob.
+      };
+      rec.start(250);
+      recorderRef.current = rec;
+      setRecording(true);
+    } catch (err: any) {
+      toast.error(err?.message || "Could not start recording");
+      try { engine.stopRecording(); } catch {}
+      setTransport({ isRecording: false, isPlaying: false });
+    }
+  }, [engine, ensureRecordTrack, updateTrack, selectTrack, setTransport, setPending]);
 
   const stopRecord = useCallback(() => {
     try { recorderRef.current?.stop(); } catch {}
     recorderRef.current = null;
     setRecording(false);
-  }, []);
+    if (engine) {
+      engine.stopRecording();
+      engine.stop();
+    }
+    setTransport({ isRecording: false, isPlaying: false });
+  }, [engine, setTransport]);
 
   const handleUploadVideo = useCallback(async (file: File) => {
     if (!engine) return;
@@ -142,14 +169,10 @@ export function PodcastVideoSidebar({ engine, onClose }: Props) {
       const peaks = computePeaks(buffer);
       const clipId = newId("clip");
       addClip({
-        id: clipId,
-        trackId,
+        id: clipId, trackId,
         startTime: useDawStore.getState().transport.position,
-        duration: buffer.duration,
-        offset: 0,
-        buffer,
-        peaks,
-        name: baseName,
+        duration: buffer.duration, offset: 0,
+        buffer, peaks, name: baseName,
       } as any);
       setVideo(clipId, { blob: file, mime: file.type || "video/mp4", durationSec: buffer.duration, participantLabel: baseName });
       toast.success(`Imported "${file.name}" — audio extracted to its own track`);
@@ -161,10 +184,8 @@ export function PodcastVideoSidebar({ engine, onClose }: Props) {
   }, [engine, addTrack, addClip, setVideo]);
 
   const inviteGuest = useCallback(() => {
-    // Magic-link guest flow stub — guests will land on /podcast/join/:code,
-    // forced through WHEUAT sign-up before they reach the room.
     const code = Math.random().toString(36).slice(2, 8).toUpperCase();
-    const url = `${window.location.origin}/#/podcast/join/${code}`;
+    const url = `${window.location.origin}/#/tv/podcast/join/${code}`;
     navigator.clipboard.writeText(url).catch(() => {});
     toast.success("Guest invite link copied", { description: url });
   }, []);
@@ -183,7 +204,6 @@ export function PodcastVideoSidebar({ engine, onClose }: Props) {
         </button>
       </div>
 
-      {/* Local camera */}
       <div className="p-3 space-y-2 border-b border-neutral-800">
         <div className="relative aspect-video bg-black rounded overflow-hidden border border-neutral-800">
           <video ref={previewRef} muted playsInline className="w-full h-full object-cover" />
@@ -236,11 +256,10 @@ export function PodcastVideoSidebar({ engine, onClose }: Props) {
           )}
         </div>
         <p className="text-[10px] text-neutral-500 leading-snug">
-          Records to the selected track. Video stays linked to the audio clip.
+          Waveform appears live on the track while you record. Video clips lock to the track and can be cut/trimmed together.
         </p>
       </div>
 
-      {/* Upload + Invite */}
       <div className="p-3 space-y-1.5 border-b border-neutral-800">
         <button
           onClick={() => uploadRef.current?.click()}
@@ -260,7 +279,6 @@ export function PodcastVideoSidebar({ engine, onClose }: Props) {
         </button>
       </div>
 
-      {/* Track-linked video tiles */}
       <div className="flex-1 overflow-y-auto p-3 space-y-2 min-h-0">
         <div className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1">
           Linked Clips ({videoEntries.length})
