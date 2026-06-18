@@ -473,7 +473,8 @@ export function ArrangeView({ onArmToggle, onSeek, engine, onOpenInstrumentEdito
                     e.preventDefault();
                     const rect = e.currentTarget.getBoundingClientRect();
                     const time = Math.max(0, (e.clientX - rect.left) / pxPerSec);
-                    pasteClipAt(t.id, time);
+                    const pastedId = pasteClipAt(t.id, time);
+                    if (pastedId) usePodcastVideoStore.getState().pasteVideoFromClipboard(pastedId);
                   }}
                 >
                   {/* Bar grid lines on lane */}
