@@ -409,8 +409,11 @@ const PodcastTextEditorPage = () => {
   );
 };
 
-const Timeline = ({ duration, cuts }: { duration: number; cuts: Range[] }) => (
-  <div className="relative h-24 overflow-hidden rounded-lg border border-border bg-background">
+const Timeline = ({ duration, cuts, currentTime, draftStart, draftEnd, onSeek }: { duration: number; cuts: Range[]; currentTime: number; draftStart: number; draftEnd: number; onSeek: (seconds: number) => void }) => (
+  <button type="button" onClick={(event) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    onSeek(((event.clientX - rect.left) / rect.width) * duration);
+  }} className="relative h-28 w-full overflow-hidden rounded-lg border border-border bg-background text-left">
     <div className="absolute inset-x-0 top-1/2 h-px bg-border" />
     <div className="absolute inset-x-3 top-5 flex items-end gap-1">
       {Array.from({ length: 64 }).map((_, i) => <div key={i} className="w-full rounded-sm bg-primary/35" style={{ height: `${18 + ((i * 17) % 42)}px` }} />)}
@@ -418,9 +421,11 @@ const Timeline = ({ duration, cuts }: { duration: number; cuts: Range[] }) => (
     {cuts.map((cut, i) => (
       <div key={`${cut.start}-${cut.end}-${i}`} className="absolute top-0 h-full bg-destructive/35 border-x border-destructive" style={{ left: `${(cut.start / duration) * 100}%`, width: `${Math.max(1, ((cut.end - cut.start) / duration) * 100)}%` }} />
     ))}
+    <div className="absolute top-0 h-full border-l-2 border-primary" style={{ left: `${Math.min(100, Math.max(0, (currentTime / duration) * 100))}%` }} />
+    <div className="absolute top-2 h-[calc(100%-2.5rem)] rounded-sm border border-primary bg-primary/20" style={{ left: `${Math.min(100, Math.max(0, (draftStart / duration) * 100))}%`, width: `${Math.max(1, ((Math.max(draftStart, draftEnd) - Math.min(draftStart, draftEnd)) / duration) * 100)}%` }} />
     <div className="absolute bottom-2 left-3 text-xs text-muted-foreground">0:00</div>
     <div className="absolute bottom-2 right-3 text-xs text-muted-foreground">{formatTime(duration)}</div>
-  </div>
+  </button>
 );
 
 const Segment = ({ value, options, onChange }: { value: string; options: string[]; onChange: (value: string) => void }) => (
