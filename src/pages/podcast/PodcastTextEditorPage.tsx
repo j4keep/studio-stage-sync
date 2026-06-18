@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, Download, Loader2, Pause, Play, Plus, RotateCcw, Scissors, Trash2, Type, Wand2, Waves } from "lucide-react";
+import { ArrowLeft, Download, Film, LayoutTemplate, Loader2, MessageSquareText, Monitor, Pause, Play, Plus, RotateCcw, Scissors, Settings, Trash2, Type, Wand2, Waves } from "lucide-react";
 
 type Word = { word: string; start: number; end: number };
 type Range = { start: number; end: number; label?: string };
@@ -34,11 +34,15 @@ const PodcastTextEditorPage = () => {
   const [duration, setDuration] = useState(0);
   const [magicAudio, setMagicAudio] = useState(true);
   const [playing, setPlaying] = useState(false);
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
+  const [exportFormat, setExportFormat] = useState("16:9");
+  const [layout, setLayout] = useState("Grid");
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const sourceRef = useRef<AudioBufferSourceNode | null>(null);
   const originalBufferRef = useRef<AudioBuffer | null>(null);
   const previewBufferRef = useRef<AudioBuffer | null>(null);
+  const mediaBufferRef = useRef<ArrayBuffer | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -102,20 +106,36 @@ const PodcastTextEditorPage = () => {
   };
 
   const fetchMergedMedia = async (): Promise<ArrayBuffer> => {
+    if (mediaBufferRef.current) return mediaBufferRef.current.slice(0);
     const buffers: ArrayBuffer[] = [];
     for (let i = 0; i < chunkCount; i++) {
-      setProgress(`Downloading chunk ${i + 1} / ${chunkCount}…`);
+      setProgress(`Loading saved video ${i + 1} / ${chunkCount}…`);
       const key = `${recPrefix}${i.toString().padStart(6, "0")}.webm`;
       const r = await fetch(`${SUPABASE_URL}/functions/v1/r2-download?key=${encodeURIComponent(key)}`);
-      if (!r.ok) throw new Error(`Failed to download chunk ${i + 1}`);
+      if (!r.ok) throw new Error(`Failed to load saved video part ${i + 1}`);
       buffers.push(await r.arrayBuffer());
     }
-    if (buffers.length === 0) throw new Error("No saved recording chunks were found. Record again and wait for the saved take to appear before editing.");
+    if (buffers.length === 0) throw new Error("No saved video was found. Record again and wait for the saved episode to appear before editing.");
     const total = buffers.reduce((n, b) => n + b.byteLength, 0);
     const merged = new Uint8Array(total);
     let off = 0;
     for (const b of buffers) { merged.set(new Uint8Array(b), off); off += b.byteLength; }
-    return merged.buffer;
+    mediaBufferRef.current = merged.buffer;
+    return merged.buffer.slice(0);
+  };
+
+  const loadVideoPreview = async () => {
+    if (videoPreviewUrl) return;
+    try {
+      setProgress("Loading video preview…");
+      const merged = await fetchMergedMedia();
+      const blob = new Blob([merged], { type: mime || "video/webm" });
+      setVideoPreviewUrl(URL.createObjectURL(blob));
+      setProgress("");
+    } catch (e) {
+      setProgress("");
+      toast({ title: "Video preview failed", description: e instanceof Error ? e.message : "Unknown", variant: "destructive" });
+    }
   };
 
   const getDecodedAudio = async () => {
@@ -265,10 +285,23 @@ const PodcastTextEditorPage = () => {
       <main className="mx-auto grid max-w-7xl gap-4 px-4 py-4 lg:grid-cols-[1.35fr_0.8fr]">
         <section className="space-y-4 min-w-0">
           <div className="rounded-lg border border-border bg-card p-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2 font-semibold"><Film className="w-4 h-4 text-primary" /> Video preview</div>
+              <div className="flex gap-2">
+                <Segment value={exportFormat} options={["16:9", "9:16", "1:1"]} onChange={setExportFormat} />
+                <Segment value={layout} options={["Grid", "Speaker", "Split"]} onChange={setLayout} />
+              </div>
+            </div>
+            <div className="overflow-hidden rounded-lg border border-border bg-background">
+              {videoPreviewUrl ? <video src={videoPreviewUrl} controls className="mx-auto aspect-video max-h-[360px] w-full object-contain" /> : <button onClick={loadVideoPreview} className="flex aspect-video w-full flex-col items-center justify-center gap-3 text-sm text-muted-foreground"><Monitor className="h-12 w-12 text-primary" /> Load saved video/audio</button>}
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-border bg-card p-4">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
-                <div className="flex items-center gap-2 font-semibold"><Waves className="w-4 h-4 text-primary" /> Recording timeline</div>
-                <div className="text-xs text-muted-foreground">{formatTime(keptSeconds)} kept from {formatTime(duration)} · {mime}</div>
+                <div className="flex items-center gap-2 font-semibold"><Waves className="w-4 h-4 text-primary" /> Video + audio timeline</div>
+                <div className="text-xs text-muted-foreground">{formatTime(keptSeconds)} kept from {formatTime(duration)} · cuts apply to the episode export</div>
               </div>
               <button className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted" onClick={() => { setManualCuts([]); setDeletedWords(new Set()); invalidatePreview(); }}>
                 <RotateCcw className="w-3 h-3" /> Reset edits
@@ -300,6 +333,15 @@ const PodcastTextEditorPage = () => {
         </section>
 
         <aside className="space-y-4 min-w-0">
+          <div className="rounded-lg border border-border bg-card p-4">
+            <div className="mb-3 flex items-center gap-2 font-semibold"><LayoutTemplate className="w-4 h-4 text-primary" /> Layout tools</div>
+            <div className="space-y-3 text-sm">
+              <div className="rounded-md border border-border p-3"><div className="font-medium">Canvas</div><div className="text-muted-foreground">{exportFormat} · {layout}</div></div>
+              <div className="grid grid-cols-2 gap-2"><Button variant="secondary"><Type className="mr-2 h-4 w-4" /> Text</Button><Button variant="secondary"><MessageSquareText className="mr-2 h-4 w-4" /> Captions</Button></div>
+              <Button className="w-full" variant="outline"><Settings className="mr-2 h-4 w-4" /> Export settings</Button>
+            </div>
+          </div>
+
           <div className="rounded-lg border border-border bg-card p-4">
             <div className="mb-3 flex items-center gap-2 font-semibold"><Scissors className="w-4 h-4 text-primary" /> Cut list</div>
             {cutRanges.length === 0 ? <div className="text-sm text-muted-foreground">No cuts added.</div> : (
@@ -340,6 +382,12 @@ const Timeline = ({ duration, cuts }: { duration: number; cuts: Range[] }) => (
     ))}
     <div className="absolute bottom-2 left-3 text-xs text-muted-foreground">0:00</div>
     <div className="absolute bottom-2 right-3 text-xs text-muted-foreground">{formatTime(duration)}</div>
+  </div>
+);
+
+const Segment = ({ value, options, onChange }: { value: string; options: string[]; onChange: (value: string) => void }) => (
+  <div className="grid h-9 grid-cols-3 rounded-md border border-border bg-background p-1">
+    {options.map((option) => <button key={option} onClick={() => onChange(option)} className={`rounded px-2 text-xs font-semibold ${value === option ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}>{option}</button>)}
   </div>
 );
 
