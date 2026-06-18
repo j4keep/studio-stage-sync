@@ -16,7 +16,7 @@ const makeLowLatencyMicConstraints = (inputDeviceId?: string): MediaStreamConstr
     // were causing buffer underruns and the "robotic" artefact during record.
     echoCancellation: true,
     noiseSuppression: true,
-    autoGainControl: true,
+    autoGainControl: false,
     channelCount: { ideal: 1 },
     sampleRate: { ideal: 48000 },
   } as MediaTrackConstraints,
@@ -86,6 +86,7 @@ export class DawEngine {
 
   // Recording
   private micStream: MediaStream | null = null;
+  private recMediaRecorder: MediaRecorder | null = null;
   private recProcessor: ScriptProcessorNode | null = null;
   private recSilentSink: GainNode | null = null;
   private recBuffers: Float32Array[] = [];
@@ -676,12 +677,52 @@ export class DawEngine {
       }
     }
 
-    // Capture clean mic samples for the clip + drive the live waveform overlay.
-    // 4096 buffer is more forgiving than 2048 — fewer underruns = no robot voice.
-    const proc = this.ctx.createScriptProcessor(4096, 1, 1);
+    // Capture the actual clip with MediaRecorder instead of ScriptProcessor.
+    // ScriptProcessor was dropping/warbling samples on busy video recordings,
+    // which made vocals sound robotic. Keep a silent analyser processor only for
+    // live waveform feedback; the saved take comes from the browser recorder.
+    const chunks: Blob[] = [];
+    const mime = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"]
+      .find(m => MediaRecorder.isTypeSupported(m)) || "audio/webm";
+    const mediaRecordTrackId = trackId;
+    const mediaRecordStart = transportPos;
+    const mediaRecorder = new MediaRecorder(liveStream, {
+      mimeType: mime,
+      audioBitsPerSecond: 160_000,
+    });
+    mediaRecorder.ondataavailable = (e) => { if (e.data?.size) chunks.push(e.data); };
+    mediaRecorder.onstop = async () => {
+      const stoppedTrackId = mediaRecordTrackId;
+      if (!stoppedTrackId || chunks.length === 0) return;
+      try {
+        const blob = new Blob(chunks, { type: mime });
+        const ab = await blob.arrayBuffer();
+        const decoded = await this.ctx.decodeAudioData(ab.slice(0));
+        const mono = this.ctx.createBuffer(1, decoded.length, decoded.sampleRate);
+        const out = mono.getChannelData(0);
+        for (let c = 0; c < decoded.numberOfChannels; c++) {
+          const input = decoded.getChannelData(c);
+          for (let i = 0; i < input.length; i++) out[i] += input[i] / decoded.numberOfChannels;
+        }
+        const clip: Clip = {
+          id: `clip_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          trackId: stoppedTrackId,
+          startTime: mediaRecordStart,
+          duration: mono.duration,
+          offset: 0,
+          buffer: mono,
+          name: "Recording",
+        };
+        this.onRecordedClip?.(stoppedTrackId, clip);
+      } catch {
+        // Fallback below will use recBuffers if decoding ever fails.
+      }
+    };
+    mediaRecorder.start(1000);
+    this.recMediaRecorder = mediaRecorder;
+
+    const proc = this.ctx.createScriptProcessor(8192, 1, 1);
     src.connect(proc);
-    // ScriptProcessor requires a destination connection to run. Use a silent
-    // sink so the mic NEVER reaches the speakers (no feedback, no distortion).
     const silentSink = this.ctx.createGain();
     silentSink.gain.value = 0;
     proc.connect(silentSink);
@@ -691,8 +732,6 @@ export class DawEngine {
     proc.onaudioprocess = (e) => {
       const ch = e.inputBuffer.getChannelData(0);
       this.recBuffers.push(new Float32Array(ch));
-      // Min/max pairs for live waveform overlay, matching computePeaks() so the
-      // region does not redraw into a different-looking shape after stop.
       const samplesPerPixel = 512;
       for (let start = 0; start < ch.length; start += samplesPerPixel) {
         const end = Math.min(start + samplesPerPixel, ch.length);
@@ -713,8 +752,12 @@ export class DawEngine {
 
   stopRecording() {
     if (!this.recordingTrackId) return;
+    const recorderWillEmitClip = !!this.recMediaRecorder && this.recMediaRecorder.state !== "inactive";
+    if (recorderWillEmitClip) {
+      try { this.recMediaRecorder!.stop(); } catch {}
+    }
     const total = this.recBuffers.reduce((s, b) => s + b.length, 0);
-    if (total > 0) {
+    if (!recorderWillEmitClip && total > 0) {
       const buf = this.ctx.createBuffer(1, total, this.ctx.sampleRate);
       const out = buf.getChannelData(0);
       let off = 0;
@@ -741,6 +784,7 @@ export class DawEngine {
     this.recordingLivePeaks = [];
     try { this.recProcessor?.disconnect(); } catch {}
     try { this.recSilentSink?.disconnect(); } catch {}
+    this.recMediaRecorder = null;
     this.recProcessor = null;
     this.recSilentSink = null;
     if (this.micStream && this.micStream !== chain?.inputMonitorStream) {

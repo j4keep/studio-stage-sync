@@ -16,6 +16,18 @@ import { PodcastExportSheet } from "./PodcastExportSheet";
 import { usePodcastVideoStore } from "./podcastVideoStore";
 import type { Clip, Track } from "@/wstudio/daw/engine/types";
 import { saveProjectTo, openProject } from "@/wstudio/daw/lib/projectIO";
+import studio1 from "@/assets/studio-1.jpg";
+import studio2 from "@/assets/studio-2.jpg";
+import studio3 from "@/assets/studio-3.jpg";
+import studio4 from "@/assets/studio-4.jpg";
+import podcast1 from "@/assets/podcast-1.jpg";
+import podcast2 from "@/assets/podcast-2.jpg";
+import cardPodcasts from "@/assets/card-podcasts.jpg";
+import cardRecordingStudio from "@/assets/card-recording-studio.jpg";
+import battleStageLights from "@/assets/battle-bg-stage-lights.jpg";
+import battleNeonCity from "@/assets/battle-bg-neon-city.jpg";
+import wstudioMic from "@/assets/wstudio-orbit-mic.jpg";
+import wstudioMixer from "@/assets/wstudio-orbit-mixer.jpg";
 
 const isInputAudioTrack = (track: Track, allClips: Clip[]) => (
   track.kind === "instrument" || (
@@ -28,18 +40,18 @@ const isInputAudioTrack = (track: Track, allClips: Clip[]) => (
 type RightPanel = null | "people" | "chat" | "effects" | "text" | "media" | "settings" | "help" | "projects";
 
 const BG_LIBRARY: { id: string; label: string; url: string }[] = [
-  { id: "studio-warm", label: "Warm Studio", url: "https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?w=1600&q=80" },
-  { id: "neon", label: "Neon Booth", url: "https://images.unsplash.com/photo-1535223289827-42f1e9919769?w=1600&q=80" },
-  { id: "books", label: "Library", url: "https://images.unsplash.com/photo-1507842217343-583bb7270b66?w=1600&q=80" },
-  { id: "brick", label: "Brick Wall", url: "https://images.unsplash.com/photo-1517411032315-54ef2cb783bb?w=1600&q=80" },
-  { id: "plants", label: "Plant Wall", url: "https://images.unsplash.com/photo-1545241047-6083a3684587?w=1600&q=80" },
-  { id: "city", label: "City Night", url: "https://images.unsplash.com/photo-1444723121867-7a241cacace9?w=1600&q=80" },
-  { id: "vinyl", label: "Vinyl Wall", url: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=1600&q=80" },
-  { id: "concrete", label: "Concrete", url: "https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?w=1600&q=80" },
-  { id: "moody", label: "Moody Blue", url: "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=1600&q=80" },
-  { id: "sunset", label: "Sunset", url: "https://images.unsplash.com/photo-1495616811223-4d98c6e9c869?w=1600&q=80" },
-  { id: "forest", label: "Forest", url: "https://images.unsplash.com/photo-1448375240586-882707db888b?w=1600&q=80" },
-  { id: "stage", label: "Stage Lights", url: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1600&q=80" },
+  { id: "studio-1", label: "Studio A", url: studio1 },
+  { id: "studio-2", label: "Studio B", url: studio2 },
+  { id: "studio-3", label: "Studio C", url: studio3 },
+  { id: "studio-4", label: "Studio D", url: studio4 },
+  { id: "podcast-1", label: "Podcast Set", url: podcast1 },
+  { id: "podcast-2", label: "Interview Room", url: podcast2 },
+  { id: "creator", label: "Creator Desk", url: cardPodcasts },
+  { id: "recording", label: "Recording Room", url: cardRecordingStudio },
+  { id: "stage-lights", label: "Stage Lights", url: battleStageLights },
+  { id: "neon-city", label: "Neon City", url: battleNeonCity },
+  { id: "mic", label: "Mic Booth", url: wstudioMic },
+  { id: "mixer", label: "Mixer Room", url: wstudioMixer },
 ];
 
 const LAYOUTS = [
@@ -96,6 +108,7 @@ export default function PodcastStudioPage() {
   const recChunksRef = useRef<Blob[]>([]);
   const recTrackIdRef = useRef<string | null>(null);
   const recStartRef = useRef<number>(0);
+  const videoCompositeRafRef = useRef<number | null>(null);
   const [camOn, setCamOn] = useState(false);
   const [micOn, setMicOn] = useState(true);
   const [videoRec, setVideoRec] = useState(false);
@@ -131,7 +144,12 @@ export default function PodcastStudioPage() {
     try {
       const dims = resolution === "1080p" ? { width: 1920, height: 1080 } : resolution === "480p" ? { width: 854, height: 480 } : { width: 1280, height: 720 };
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { ...dims, frameRate: { ideal: frameRate }, facingMode: "user" },
+        video: {
+          width: { ideal: dims.width },
+          height: { ideal: dims.height },
+          frameRate: { ideal: Math.min(frameRate, 30), max: 30 },
+          facingMode: "user",
+        },
         audio: false,
       });
       camStreamRef.current = stream;
@@ -145,12 +163,88 @@ export default function PodcastStudioPage() {
   const stopCamera = useCallback(() => {
     try { recorderRef.current?.stop(); } catch {}
     recorderRef.current = null;
+    if (videoCompositeRafRef.current) cancelAnimationFrame(videoCompositeRafRef.current);
+    videoCompositeRafRef.current = null;
     setVideoRec(false);
     const s = camStreamRef.current;
     if (s) { s.getTracks().forEach(t => t.stop()); camStreamRef.current = null; }
     if (previewRef.current) previewRef.current.srcObject = null;
     setCamOn(false);
   }, []);
+
+  const makeStageRecordingStream = useCallback((sourceStream: MediaStream) => {
+    const videoTrack = sourceStream.getVideoTracks()[0];
+    if (!videoTrack) return null;
+    const canvas = document.createElement("canvas");
+    canvas.width = resolution === "1080p" ? 1920 : resolution === "480p" ? 854 : 1280;
+    canvas.height = resolution === "1080p" ? 1080 : resolution === "480p" ? 480 : 720;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+
+    const video = document.createElement("video");
+    video.srcObject = new MediaStream([videoTrack]);
+    video.muted = true;
+    video.playsInline = true;
+    video.play().catch(() => {});
+
+    const bg = new Image();
+    bg.crossOrigin = "anonymous";
+    let bgReady = false;
+    if (bgUrl) {
+      bg.onload = () => { bgReady = true; };
+      bg.src = bgUrl;
+    }
+
+    const drawCover = (img: CanvasImageSource, x: number, y: number, w: number, h: number) => {
+      const sw = (img as HTMLVideoElement).videoWidth || (img as HTMLImageElement).naturalWidth || w;
+      const sh = (img as HTMLVideoElement).videoHeight || (img as HTMLImageElement).naturalHeight || h;
+      const scale = Math.max(w / sw, h / sh);
+      const dw = sw * scale;
+      const dh = sh * scale;
+      ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+    };
+
+    const paint = () => {
+      const W = canvas.width;
+      const H = canvas.height;
+      ctx.fillStyle = "#050505";
+      ctx.fillRect(0, 0, W, H);
+      if (bgReady) drawCover(bg, 0, 0, W, H);
+      if (video.readyState >= 2) {
+        if (bgUrl) {
+          const pad = Math.round(Math.min(W, H) * 0.07);
+          const x = pad;
+          const y = pad;
+          const w = W - pad * 2;
+          const h = H - pad * 2;
+          ctx.save();
+          ctx.shadowColor = "rgba(0,0,0,0.35)";
+          ctx.shadowBlur = 28;
+          if (mirrored) {
+            ctx.translate(W, 0);
+            ctx.scale(-1, 1);
+            drawCover(video, x, y, w, h);
+          } else {
+            drawCover(video, x, y, w, h);
+          }
+          ctx.restore();
+        } else {
+          if (mirrored) {
+            ctx.save();
+            ctx.translate(W, 0);
+            ctx.scale(-1, 1);
+            drawCover(video, 0, 0, W, H);
+            ctx.restore();
+          } else {
+            drawCover(video, 0, 0, W, H);
+          }
+        }
+      }
+      videoCompositeRafRef.current = requestAnimationFrame(paint);
+    };
+    paint();
+    return canvas.captureStream(Math.min(frameRate, 30));
+  }, [bgUrl, frameRate, mirrored, resolution]);
 
   useEffect(() => () => stopCamera(), [stopCamera]);
 
@@ -201,14 +295,17 @@ export default function PodcastStudioPage() {
 
       const cam = camStreamRef.current;
       if (cam) {
-        const videoOnly = new MediaStream(cam.getVideoTracks());
+        if (videoCompositeRafRef.current) cancelAnimationFrame(videoCompositeRafRef.current);
+        const videoOnly = makeStageRecordingStream(cam) ?? new MediaStream(cam.getVideoTracks());
         const mime = ["video/webm;codecs=vp8", "video/webm;codecs=vp9", "video/webm"].find(m => MediaRecorder.isTypeSupported(m)) || "video/webm";
-        const mr = new MediaRecorder(videoOnly, { mimeType: mime, videoBitsPerSecond: 2_500_000 });
+        const mr = new MediaRecorder(videoOnly, { mimeType: mime, videoBitsPerSecond: 4_500_000 });
         recChunksRef.current = [];
         recTrackIdRef.current = trackId;
         recStartRef.current = startPos;
         mr.ondataavailable = (ev) => { if (ev.data?.size) recChunksRef.current.push(ev.data); };
         mr.onstop = () => {
+          if (videoCompositeRafRef.current) cancelAnimationFrame(videoCompositeRafRef.current);
+          videoCompositeRafRef.current = null;
           const blob = new Blob(recChunksRef.current, { type: mime });
           recChunksRef.current = [];
           const dur = useDawStore.getState().transport.position - recStartRef.current;
@@ -225,7 +322,7 @@ export default function PodcastStudioPage() {
       toast.error(err?.message || "Could not start recording");
       setTransport({ isRecording: false, isPlaying: false });
     }
-  }, [ensureRecordTrack, setPending, setTransport, startCamera, updateTrack]);
+  }, [ensureRecordTrack, makeStageRecordingStream, setPending, setTransport, startCamera, updateTrack]);
 
   const importFiles = useCallback(async (files: FileList) => {
     const e = engineRef.current; if (!e) return;
@@ -324,10 +421,7 @@ export default function PodcastStudioPage() {
         {/* Stage (center) */}
         <div className="flex-1 flex flex-col min-w-0 relative">
           <div className="flex-1 relative grid place-items-center p-4 min-h-0">
-            <div
-              className={`relative w-full max-w-3xl rounded-2xl overflow-hidden border border-violet-500/40 shadow-[0_0_0_2px_rgba(139,92,246,0.15)] aspect-video bg-black`}
-              style={bgUrl ? { backgroundImage: `url(${bgUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
-            >
+            <div className="relative w-full max-w-3xl rounded-2xl overflow-hidden border border-violet-500/40 shadow-[0_0_0_2px_rgba(139,92,246,0.15)] aspect-video bg-black">
               <StageLayout
                 layoutId={layoutId}
                 hostVideoRef={previewRef}
@@ -728,12 +822,18 @@ function StageLayout({
   bgUrl: string | null;
 }) {
   const Host = (
-    <div className="relative w-full h-full bg-black" style={bgUrl ? { backgroundImage: `url(${bgUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}>
+    <div className="relative w-full h-full overflow-hidden bg-black">
+      {bgUrl && (
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url(${bgUrl})` }}
+        />
+      )}
       <video
         ref={hostVideoRef}
         muted
         playsInline
-        className={`w-full h-full object-cover ${mirrored ? "scale-x-[-1]" : ""} ${camOn ? "" : "hidden"}`}
+        className={`${bgUrl ? "absolute inset-[7%] w-[86%] h-[86%] rounded-xl shadow-2xl" : "relative w-full h-full"} object-cover ${mirrored ? "scale-x-[-1]" : ""} ${camOn ? "" : "hidden"}`}
       />
       {!camOn && (
         <div className="absolute inset-0 grid place-items-center text-neutral-500 text-sm gap-3">
