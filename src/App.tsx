@@ -212,7 +212,7 @@ const ProtectedRoutes = () => {
         <Route path="/helpdesk" element={<HelpDeskPage />} />
         <Route path="/ask-jhi" element={<AskJhiPage />} />
         <Route path="/tv" element={<TvHomePage />} />
-        <Route path="/tv/podcast" element={<LivePodcastLobbyPage />} />
+        <Route path="/tv/podcast" element={<PodcastStudioPage />} />
         <Route path="/tv/podcast/:episodeId" element={<PodcastStudioPage />} />
         <Route path="/tv/podcast/:episodeId/edit" element={<PodcastStudioPage />} />
         <Route path="/tv/podcast/:episodeId/recording/:recordingId/editor" element={<PodcastStudioPage />} />
