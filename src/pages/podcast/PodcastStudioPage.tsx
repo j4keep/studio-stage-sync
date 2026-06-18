@@ -449,29 +449,6 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
   }, [clips]);
   useEffect(() => { handleExportRef.current = handleExport; }, [handleExport]);
 
-  const runExport = useCallback(async (_filename: string) => {
-    setExportOpen(true);
-  }, []);
-
-  const runExport = useCallback(async (filename: string) => {
-    const e = engineRef.current;
-    if (!e) return;
-    setExportPrompt(null);
-    const len = Math.max(...clips.map(c => c.startTime + c.duration)) + 0.5;
-    toast.loading("Rendering...", { id: "exp" });
-    try {
-      const blob = await e.exportToWav(tracks, clips, len);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      const safe = (filename || "wstudio-mix").replace(/[\\/:*?"<>|]+/g, "_").trim() || "wstudio-mix";
-      a.href = url; a.download = `${safe}.wav`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success("Exported WAV", { id: "exp" });
-    } catch {
-      toast.error("Export failed", { id: "exp" });
-    }
-  }, [tracks, clips]);
 
   // ──────────────────────────────────────────────────────────────
   // Project Save / Open / Save As
