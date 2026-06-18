@@ -125,7 +125,7 @@ export class DawEngine {
     this.masterAnalyser.connect(this.ctx.destination);
 
     this.destStream = this.ctx.createMediaStreamDestination();
-    this.masterGain.connect(this.destStream);
+    this.masterAnalyser.connect(this.destStream);
 
     // Metronome click bus (independent level from master monitor)
     this.metroGain = this.ctx.createGain();
@@ -183,7 +183,7 @@ export class DawEngine {
       const reverbSend = this.ctx.createGain();
       const delaySend = this.ctx.createGain();
       const directMonitor = this.ctx.createGain();
-      directMonitor.gain.value = 0.35; // dry low-latency monitor with headroom to avoid clipping
+      directMonitor.gain.value = 0.18; // low headroom monitor; kept disconnected unless explicitly enabled
       directMonitor.connect(this.masterGain);
       chain = {
         input,
@@ -310,6 +310,10 @@ export class DawEngine {
   getTrackStereoAnalysers(trackId: string) {
     const c = this.trackChains.get(trackId);
     return c ? { L: c.analyserL, R: c.analyserR } : null;
+  }
+  currentPosition() {
+    if (!this.playing) return Math.max(0, this.startTransportTime);
+    return Math.max(0, this.startTransportTime + (this.ctx.currentTime - this.startCtxTime));
   }
 
   play(transport: TransportState, tracks: Track[], clips: Clip[]) {
@@ -540,7 +544,10 @@ export class DawEngine {
     });
     tracks.forEach((track) => {
       if (track.kind !== "audio" || track.inputEnabled === false) return;
-      void this.startInputMonitoring(track.id, track.inputDeviceId, !!track.armed);
+      // Keep meters/live waveform ready, but never route the live mic into the
+      // master mix just because a track is armed. That doubled the vocal with
+      // the recorded clip on playback/export and made it sound robotic.
+      void this.startInputMonitoring(track.id, track.inputDeviceId, false);
     });
   }
 
@@ -651,20 +658,23 @@ export class DawEngine {
     const src = chain?.inputMonitorSource ?? this.ctx.createMediaStreamSource(liveStream);
     if (chain) {
       chain.micSource = src;
-      this.setInputMonitorAudible(trackId, true);
+      // Podcast/local recording should capture a clean mic signal without
+      // routing the live mic back into the master bus. Monitoring the same
+      // microphone through speakers/headphones while recording was doubling
+      // the path and making exported vocals sound phasey/robotic.
+      this.setInputMonitorAudible(trackId, false);
       if (!chain.inputMonitorSource) {
         try { src.connect(chain.inputAnalyser); } catch {}
-        try { src.connect(chain.directMonitor); } catch {}
         chain.inputMonitorSource = src;
         chain.inputMonitorStream = liveStream;
         chain.inputMonitoring = true;
-        chain.inputMonitorAudible = true;
+        chain.inputMonitorAudible = false;
         chain.inputMonitorFailed = false;
       }
     }
 
     // Capture clean mic samples for the clip + drive the live waveform overlay
-    const proc = this.ctx.createScriptProcessor(256, 1, 1);
+    const proc = this.ctx.createScriptProcessor(2048, 1, 1);
     src.connect(proc);
     // ScriptProcessor requires a destination connection to run. Use a silent
     // sink so the mic NEVER reaches the speakers (no feedback, no distortion).
@@ -720,6 +730,7 @@ export class DawEngine {
     const chain = this.trackChains.get(this.recordingTrackId);
     if (chain) {
       try { if (this.recProcessor) chain.micSource?.disconnect(this.recProcessor); } catch {}
+      this.setInputMonitorAudible(this.recordingTrackId, false);
       chain.micSource = null;
     }
     this.recBuffers = [];

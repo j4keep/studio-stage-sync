@@ -334,6 +334,7 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
         const sel = useDawStore.getState().selectedClipId;
         if (sel) {
           ev.preventDefault();
+          usePodcastVideoStore.getState().removeVideo(sel);
           useDawStore.getState().removeClip(sel);
         }
         return;
@@ -353,11 +354,11 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
         case "export":         ev.preventDefault(); handleExportRef.current?.(); break;
         case "undo":           ev.preventDefault(); st.undo(); break;
         case "redo":           ev.preventDefault(); st.redo(); break;
-        case "copy":           { const sel = st.selectedClipId; if (sel) { st.copyClip(sel); toast.success("Copied"); } break; }
-        case "cut":            { const sel = st.selectedClipId; if (sel) { st.cutClip(sel); toast.success("Cut"); } break; }
-        case "paste":          { const sel = st.selectedClipId; const clip = st.clips.find(c => c.id === sel); const trackId = clip?.trackId ?? st.tracks[0]?.id; if (trackId) st.pasteClipAt(trackId, st.transport.position); break; }
-        case "duplicate":      { ev.preventDefault(); const sel = st.selectedClipId; if (sel) st.duplicateClip(sel); break; }
-        case "deleteClip":     { ev.preventDefault(); const sel = st.selectedClipId; if (sel) st.removeClip(sel); break; }
+        case "copy":           { const sel = st.selectedClipId; if (sel) { st.copyClip(sel); usePodcastVideoStore.getState().copyVideoToClipboard(sel); toast.success("Copied"); } break; }
+        case "cut":            { const sel = st.selectedClipId; if (sel) { usePodcastVideoStore.getState().copyVideoToClipboard(sel); usePodcastVideoStore.getState().removeVideo(sel); st.cutClip(sel); toast.success("Cut"); } break; }
+        case "paste":          { const sel = st.selectedClipId; const clip = st.clips.find(c => c.id === sel); const trackId = clip?.trackId ?? st.tracks[0]?.id; if (trackId) { const id = st.pasteClipAt(trackId, st.transport.position); if (id) usePodcastVideoStore.getState().pasteVideoFromClipboard(id); } break; }
+        case "duplicate":      { ev.preventDefault(); const sel = st.selectedClipId; if (sel) { const id = st.duplicateClip(sel); if (id) usePodcastVideoStore.getState().cloneVideo(sel, id); } break; }
+        case "deleteClip":     { ev.preventDefault(); const sel = st.selectedClipId; if (sel) { usePodcastVideoStore.getState().removeVideo(sel); st.removeClip(sel); } break; }
         case "toggleKeyboard": ev.preventDefault(); setKeyboardOpen(o => !o); break;
         case "toggleTheme":    ev.preventDefault(); setThemeMode(m => m === "dark" ? "light" : "dark"); break;
         case "toolPointer":    st.setTool("pointer"); break;

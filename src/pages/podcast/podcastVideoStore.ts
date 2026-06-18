@@ -23,7 +23,12 @@ type PodcastVideoState = {
   videos: Record<string, PodcastVideoEntry>;
   /** key: trackId -> pending video awaiting the engine's recorded clip id */
   pendingByTrack: Record<string, PendingVideo>;
+  /** Clipboard copy used when DAW copy/cut/paste creates a fresh clip id. */
+  clipVideoClipboard: Omit<PodcastVideoEntry, "url"> | null;
   setVideo: (clipId: string, entry: Omit<PodcastVideoEntry, "url"> & { url?: string }) => void;
+  cloneVideo: (sourceClipId: string, targetClipId: string) => void;
+  copyVideoToClipboard: (clipId: string) => void;
+  pasteVideoFromClipboard: (targetClipId: string) => void;
   removeVideo: (clipId: string) => void;
   setPending: (trackId: string, entry: PendingVideo) => void;
   attachPending: (trackId: string, clipId: string) => void;
@@ -34,11 +39,33 @@ type PodcastVideoState = {
 export const usePodcastVideoStore = create<PodcastVideoState>((set, get) => ({
   videos: {},
   pendingByTrack: {},
+  clipVideoClipboard: null,
   setVideo: (clipId, entry) => {
     const prev = get().videos[clipId];
     if (prev?.url) { try { URL.revokeObjectURL(prev.url); } catch {} }
     const url = entry.url ?? URL.createObjectURL(entry.blob);
     set(s => ({ videos: { ...s.videos, [clipId]: { ...entry, url } } }));
+  },
+  cloneVideo: (sourceClipId, targetClipId) => {
+    const src = get().videos[sourceClipId];
+    if (!src || sourceClipId === targetClipId) return;
+    const prev = get().videos[targetClipId];
+    if (prev?.url) { try { URL.revokeObjectURL(prev.url); } catch {} }
+    const { url: _oldUrl, ...copy } = src;
+    set(s => ({ videos: { ...s.videos, [targetClipId]: { ...copy, url: URL.createObjectURL(src.blob) } } }));
+  },
+  copyVideoToClipboard: (clipId) => {
+    const src = get().videos[clipId];
+    if (!src) { set({ clipVideoClipboard: null }); return; }
+    const { url: _oldUrl, ...copy } = src;
+    set({ clipVideoClipboard: copy });
+  },
+  pasteVideoFromClipboard: (targetClipId) => {
+    const src = get().clipVideoClipboard;
+    if (!src) return;
+    const prev = get().videos[targetClipId];
+    if (prev?.url) { try { URL.revokeObjectURL(prev.url); } catch {} }
+    set(s => ({ videos: { ...s.videos, [targetClipId]: { ...src, url: URL.createObjectURL(src.blob) } } }));
   },
   removeVideo: (clipId) => {
     const prev = get().videos[clipId];
@@ -85,7 +112,7 @@ export const usePodcastVideoStore = create<PodcastVideoState>((set, get) => ({
     for (const v of Object.values(get().videos)) {
       if (v.url) { try { URL.revokeObjectURL(v.url); } catch {} }
     }
-    set({ videos: {}, pendingByTrack: {} });
+    set({ videos: {}, pendingByTrack: {}, clipVideoClipboard: null });
   },
 }));
 

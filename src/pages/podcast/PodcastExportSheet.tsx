@@ -129,9 +129,8 @@ async function renderComposite(
   const drawFrame = () => {
     ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H);
     const visible = entries.filter(e => {
-      const t = engine["audioTime"] ?? 0;
       // entries are visible if playback time is inside the clip window
-      const pos = (engine as any).currentPosition?.() ?? 0;
+      const pos = engine.currentPosition?.() ?? 0;
       return pos >= e.clip.startTime - 0.05 && pos <= e.clip.startTime + e.clip.duration + 0.05;
     });
     const list = visible.length > 0 ? visible : entries;
@@ -166,14 +165,15 @@ async function renderComposite(
   let stopped = false;
   const tick = () => {
     if (stopped) return;
-    const pos = (engine as any).currentPosition?.() ?? 0;
+    const pos = engine.currentPosition?.() ?? 0;
     for (const e of entries) {
       const local = pos - e.clip.startTime + (e.clip.offset ?? 0);
-      if (local >= 0 && local <= (e.el.duration || e.clip.duration) + 0.5) {
-        if (e.el.paused) { e.el.play().catch(() => {}); }
-        if (Math.abs(e.el.currentTime - local) > 0.5) {
-          try { e.el.currentTime = Math.max(0, local); } catch {}
+      if (local >= 0 && local <= e.clip.duration + (e.clip.offset ?? 0) + 0.2) {
+        const target = Math.max(0, local);
+        if (e.el.paused || Math.abs(e.el.currentTime - target) > 0.12) {
+          try { e.el.currentTime = target; } catch {}
         }
+        if (e.el.paused) { e.el.play().catch(() => {}); }
       } else if (!e.el.paused) {
         e.el.pause();
       }
@@ -183,6 +183,7 @@ async function renderComposite(
   };
 
   await engine.resume();
+  engine.stop();
   // Start playback from 0
   const transport = { isPlaying: true, isRecording: false, position: 0, bpm: 120, timeSigNum: 4, timeSigDen: 4,
     loopEnabled: false, metronome: false, metronomeVolume: 0, metroAccent: false } as any;

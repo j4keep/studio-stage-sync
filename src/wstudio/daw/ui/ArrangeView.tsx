@@ -226,11 +226,14 @@ export function ArrangeView({ onArmToggle, onSeek, engine, onOpenInstrumentEdito
   const applyToolToClip = (clip: Clip, e: React.MouseEvent) => {
     switch (tool) {
       case "eraser":
+        usePodcastVideoStore.getState().removeVideo(clip.id);
         removeClip(clip.id); return true;
       case "scissors": {
         const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
         const t = clip.startTime + (e.clientX - rect.left) / pxPerSec;
-        splitClipAt(clip.id, t); return true;
+        const rightClipId = splitClipAt(clip.id, t);
+        if (rightClipId) usePodcastVideoStore.getState().cloneVideo(clip.id, rightClipId);
+        return true;
       }
       case "mute":
         updateClip(clip.id, { name: clip.name.startsWith("[M] ") ? clip.name.slice(4) : "[M] " + clip.name });
@@ -241,7 +244,11 @@ export function ArrangeView({ onArmToggle, onSeek, engine, onOpenInstrumentEdito
           .sort((a, b) => a.startTime - b.startTime);
         const next = sameTrack[0];
         if (next) {
+          if (!usePodcastVideoStore.getState().videos[clip.id] && usePodcastVideoStore.getState().videos[next.id]) {
+            usePodcastVideoStore.getState().cloneVideo(next.id, clip.id);
+          }
           updateClip(clip.id, { duration: Math.max(clip.duration, next.startTime + next.duration - clip.startTime) });
+          usePodcastVideoStore.getState().removeVideo(next.id);
           removeClip(next.id);
           toast.success("Glued clips");
         }
@@ -466,7 +473,8 @@ export function ArrangeView({ onArmToggle, onSeek, engine, onOpenInstrumentEdito
                     e.preventDefault();
                     const rect = e.currentTarget.getBoundingClientRect();
                     const time = Math.max(0, (e.clientX - rect.left) / pxPerSec);
-                    pasteClipAt(t.id, time);
+                    const pastedId = pasteClipAt(t.id, time);
+                    if (pastedId) usePodcastVideoStore.getState().pasteVideoFromClipboard(pastedId);
                   }}
                 >
                   {/* Bar grid lines on lane */}
@@ -523,11 +531,11 @@ export function ArrangeView({ onArmToggle, onSeek, engine, onOpenInstrumentEdito
           onClick={(e) => e.stopPropagation()}
         >
           {[
-            { label: "Cut", sc: "⌘X", action: () => cutClip(ctxMenu.clipId) },
-            { label: "Copy", sc: "⌘C", action: () => { copyClip(ctxMenu.clipId); toast.success("Copied"); } },
-            { label: "Duplicate", sc: "⌘D", action: () => duplicateClip(ctxMenu.clipId) },
-            { label: "Split at playhead", sc: "", action: () => splitClipAt(ctxMenu.clipId, useDawStore.getState().transport.position) },
-            { label: "Delete", sc: "Del", action: () => removeClip(ctxMenu.clipId) },
+            { label: "Cut", sc: "⌘X", action: () => { usePodcastVideoStore.getState().copyVideoToClipboard(ctxMenu.clipId); usePodcastVideoStore.getState().removeVideo(ctxMenu.clipId); cutClip(ctxMenu.clipId); } },
+            { label: "Copy", sc: "⌘C", action: () => { copyClip(ctxMenu.clipId); usePodcastVideoStore.getState().copyVideoToClipboard(ctxMenu.clipId); toast.success("Copied"); } },
+            { label: "Duplicate", sc: "⌘D", action: () => { const id = duplicateClip(ctxMenu.clipId); if (id) usePodcastVideoStore.getState().cloneVideo(ctxMenu.clipId, id); } },
+            { label: "Split at playhead", sc: "", action: () => { const id = splitClipAt(ctxMenu.clipId, useDawStore.getState().transport.position); if (id) usePodcastVideoStore.getState().cloneVideo(ctxMenu.clipId, id); } },
+            { label: "Delete", sc: "Del", action: () => { usePodcastVideoStore.getState().removeVideo(ctxMenu.clipId); removeClip(ctxMenu.clipId); } },
           ].map(item => (
             <button
               key={item.label}
