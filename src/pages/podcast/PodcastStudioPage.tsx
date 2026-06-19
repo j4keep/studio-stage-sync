@@ -136,7 +136,9 @@ export default function PodcastStudioPage() {
   // Captions, chat, screen share, fullscreen
   const [captionsOn, setCaptionsOn] = useState(false);
   const [captionText, setCaptionText] = useState("");
+  const [captionStyle, setCaptionStyle] = useState<CaptionStyle>("subtitle");
   const recognitionRef = useRef<any>(null);
+  const captionHideTimerRef = useRef<number | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const screenStreamRef = useRef<MediaStream | null>(null);
   const [screenSharing, setScreenSharing] = useState(false);
