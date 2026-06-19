@@ -136,6 +136,7 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
   const recChunksRef = useRef<Blob[]>([]);
   const recTrackIdRef = useRef<string | null>(null);
   const recStartRef = useRef<number>(0);
+  const recStopRef = useRef<number | null>(null);
   const lastRecordedClipByTrackRef = useRef<Record<string, { clipId: string; startTime: number; at: number }>>({});
   const videoCompositeRafRef = useRef<number | null>(null);
   const [camOn, setCamOn] = useState(false);
@@ -226,10 +227,6 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
   const makeStageRecordingStream = useCallback((sourceStream: MediaStream) => {
     const videoTrack = sourceStream.getVideoTracks()[0];
     if (!videoTrack) return null;
-    const stageCanvas = bgUrl ? stageContainerRef.current?.querySelector("canvas") : null;
-    if (stageCanvas instanceof HTMLCanvasElement && stageCanvas.width > 0 && stageCanvas.height > 0) {
-      try { return stageCanvas.captureStream(Math.min(frameRate, 30)); } catch {}
-    }
     if (!bgUrl && !mirrored) return new MediaStream([videoTrack]);
     const canvas = document.createElement("canvas");
     canvas.width = resolution === "1080p" ? 1920 : resolution === "480p" ? 854 : 1280;
@@ -270,12 +267,9 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
       let drewStage = false;
       if (stageCanvas instanceof HTMLCanvasElement && stageCanvas.width > 0 && stageCanvas.height > 0) {
         try {
-          const sample = stageCanvas.getContext("2d")?.getImageData(Math.floor(stageCanvas.width / 2), Math.floor(stageCanvas.height / 2), 1, 1).data;
-          const hasPixel = !sample || sample[0] + sample[1] + sample[2] > 12;
-          if (hasPixel) { drawCover(stageCanvas, 0, 0, W, H); drewStage = true; }
-        } catch {
-          try { drawCover(stageCanvas, 0, 0, W, H); drewStage = true; } catch {}
-        }
+          drawCover(stageCanvas, 0, 0, W, H);
+          drewStage = true;
+        } catch { drewStage = false; }
       }
       if (!drewStage && video.readyState >= 2) {
         if (mirrored) {
