@@ -417,7 +417,65 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
       toast.error(err?.message || "Could not start recording");
       setTransport({ isRecording: false, isPlaying: false });
     }
-  }, [ensureRecordTrack, makeStageRecordingStream, micOn, setPending, setTransport, startCamera, updateTrack]);
+  }, [addClip, ensureRecordTrack, makeStageRecordingStream, micOn, setPending, setTransport, setVideo, startCamera, updateTrack]);
+
+  const toggleEditorPlayback = useCallback(async () => {
+    const e = engineRef.current; if (!e) return;
+    const st = useDawStore.getState();
+    if (st.transport.isPlaying) {
+      e.stop();
+      setTransport({ isPlaying: false });
+      return;
+    }
+    await e.resume();
+    const fresh = useDawStore.getState();
+    setTransport({ isPlaying: true });
+    e.play({ ...fresh.transport, isPlaying: true }, fresh.tracks, fresh.clips);
+  }, [setTransport]);
+
+  const seekEditorTo = useCallback((position: number) => {
+    const pos = Math.max(0, position);
+    const e = engineRef.current;
+    const wasPlaying = useDawStore.getState().transport.isPlaying;
+    if (e) e.stop();
+    setTransport({ position: pos, isPlaying: wasPlaying });
+    if (wasPlaying && e) {
+      requestAnimationFrame(() => {
+        const fresh = useDawStore.getState();
+        e.play({ ...fresh.transport, position: pos, isPlaying: true }, fresh.tracks, fresh.clips);
+      });
+    }
+  }, [setTransport]);
+
+  const deleteClipFromEditor = useCallback((clipId: string | null) => {
+    if (!clipId) return false;
+    const exists = useDawStore.getState().clips.some(c => c.id === clipId);
+    if (!exists) return false;
+    removeVideo(clipId);
+    removeClip(clipId);
+    return true;
+  }, [removeClip, removeVideo]);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target?.isContentEditable) return;
+      if (!tracksOpen) return;
+      if (e.code === "Space") {
+        e.preventDefault();
+        void toggleEditorPlayback();
+      } else if (e.key === "Delete" || e.key === "Backspace") {
+        if (deleteClipFromEditor(useDawStore.getState().selectedClipId)) e.preventDefault();
+      } else if (e.key === "Enter") {
+        const selected = useDawStore.getState().clips.find(c => c.id === useDawStore.getState().selectedClipId);
+        e.preventDefault();
+        seekEditorTo(selected?.startTime ?? 0);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [deleteClipFromEditor, seekEditorTo, toggleEditorPlayback, tracksOpen]);
 
   const importFiles = useCallback(async (files: FileList) => {
     const e = engineRef.current; if (!e) return;
