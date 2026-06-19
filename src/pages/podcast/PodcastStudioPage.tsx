@@ -229,6 +229,11 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
   const makeStageRecordingStream = useCallback((sourceStream: MediaStream) => {
     const videoTrack = sourceStream.getVideoTracks()[0];
     if (!videoTrack) return null;
+    const stageCanvas = bgUrl ? stageContainerRef.current?.querySelector("canvas") : null;
+    if (stageCanvas instanceof HTMLCanvasElement && stageCanvas.width > 0 && stageCanvas.height > 0) {
+      try { return stageCanvas.captureStream(Math.min(frameRate, 30)); } catch {}
+    }
+    if (!bgUrl && !mirrored) return new MediaStream([videoTrack]);
     const canvas = document.createElement("canvas");
     canvas.width = resolution === "1080p" ? 1920 : resolution === "480p" ? 854 : 1280;
     canvas.height = resolution === "1080p" ? 1080 : resolution === "480p" ? 480 : 720;
@@ -276,33 +281,14 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
         }
       }
       if (!drewStage && video.readyState >= 2) {
-        if (bgUrl) {
-          const pad = Math.round(Math.min(W, H) * 0.07);
-          const x = pad;
-          const y = pad;
-          const w = W - pad * 2;
-          const h = H - pad * 2;
+        if (mirrored) {
           ctx.save();
-          ctx.shadowColor = "rgba(0,0,0,0.35)";
-          ctx.shadowBlur = 28;
-          if (mirrored) {
-            ctx.translate(W, 0);
-            ctx.scale(-1, 1);
-            drawCover(video, x, y, w, h);
-          } else {
-            drawCover(video, x, y, w, h);
-          }
+          ctx.translate(W, 0);
+          ctx.scale(-1, 1);
+          drawCover(video, 0, 0, W, H);
           ctx.restore();
         } else {
-          if (mirrored) {
-            ctx.save();
-            ctx.translate(W, 0);
-            ctx.scale(-1, 1);
-            drawCover(video, 0, 0, W, H);
-            ctx.restore();
-          } else {
-            drawCover(video, 0, 0, W, H);
-          }
+          drawCover(video, 0, 0, W, H);
         }
       }
       videoCompositeRafRef.current = requestAnimationFrame(paint);
