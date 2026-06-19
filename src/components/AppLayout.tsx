@@ -30,7 +30,12 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
 
   if (isFullScreenPage) {
     if (isPodcastWorkspace || isPodcastLobby) {
-      return <div className="min-h-screen bg-background text-foreground relative">{children}</div>;
+      return (
+        <div className="min-h-screen bg-background text-foreground relative">
+          {children}
+          <IncognitoFeedWindow />
+        </div>
+      );
     }
 
     return (
