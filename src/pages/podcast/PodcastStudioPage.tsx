@@ -127,6 +127,7 @@ export default function PodcastStudioPage() {
   const recStartRef = useRef<number>(0);
   const videoCompositeRafRef = useRef<number | null>(null);
   const [camOn, setCamOn] = useState(false);
+  const [camStream, setCamStream] = useState<MediaStream | null>(null);
   const [micOn, setMicOn] = useState(true);
   const [videoRec, setVideoRec] = useState(false);
   const [mirrored, setMirrored] = useState(true);
