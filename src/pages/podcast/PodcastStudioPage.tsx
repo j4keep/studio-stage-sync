@@ -538,23 +538,59 @@ export default function PodcastStudioPage() {
         {/* Stage (center) */}
         <div className="flex-1 flex flex-col min-w-0 relative">
           <div className="flex-1 relative grid place-items-center p-4 min-h-0">
-            <div className="relative w-full max-w-3xl rounded-2xl overflow-hidden border border-violet-500/40 shadow-[0_0_0_2px_rgba(139,92,246,0.15)] aspect-video bg-black">
-              <StageLayout
-                layoutId={layoutId}
-                hostVideoRef={previewRef}
-                hostName="jay"
-                camOn={camOn}
-                mirrored={mirrored}
-                onStartCamera={startCamera}
-                bgUrl={bgUrl}
-              />
-              {videoRec && (
-                <div className="absolute top-3 left-3 px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center gap-1 z-30">
-                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" /> REC
+            <div ref={stageContainerRef} className="relative w-full max-w-3xl flex flex-col gap-3">
+              <div className="relative w-full rounded-2xl overflow-hidden border border-violet-500/40 shadow-[0_0_0_2px_rgba(139,92,246,0.15)] aspect-video bg-black">
+                <StageLayout
+                  layoutId={layoutId}
+                  hostVideoRef={previewRef}
+                  hostName="jay"
+                  camOn={camOn || screenSharing}
+                  mirrored={mirrored && !screenSharing}
+                  onStartCamera={startCamera}
+                  bgUrl={screenSharing ? null : bgUrl}
+                />
+                {videoRec && (
+                  <div className="absolute top-3 left-3 px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center gap-1 z-30">
+                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" /> REC
+                  </div>
+                )}
+                {captionsOn && captionText && (
+                  <div className="absolute bottom-12 left-1/2 -translate-x-1/2 max-w-[85%] z-30 px-3 py-1.5 rounded-md bg-black/75 text-white text-sm text-center leading-tight">
+                    {captionText}
+                  </div>
+                )}
+                {/* Floating stage controls (top-right of stage) */}
+                <div className="absolute top-3 right-3 flex items-center gap-1.5 z-30">
+                  <StageBtn onClick={toggleScreenShare} title={screenSharing ? "Stop sharing" : "Share screen"} active={screenSharing}>
+                    {screenSharing ? <MonitorOff className="w-4 h-4" /> : <MonitorUp className="w-4 h-4" />}
+                  </StageBtn>
+                  <StageBtn onClick={toggleFullscreen} title={isFullscreen ? "Exit fullscreen" : "Expand"}>
+                    {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+                  </StageBtn>
                 </div>
-              )}
+              </div>
+              {/* Record bar — sits directly under the video preview */}
+              <div className="flex items-center justify-center gap-3">
+                <button
+                  onClick={handleRecord}
+                  className={`h-12 px-5 rounded-full flex items-center gap-2 text-sm font-semibold shadow-lg transition ${isRecording ? "bg-red-700 hover:bg-red-600 text-white" : "bg-red-600 hover:bg-red-500 text-white"}`}
+                >
+                  {isRecording ? <Square className="w-4 h-4 fill-current" /> : <Circle className="w-4 h-4 fill-current" />}
+                  {isRecording ? "Stop recording" : "Record"}
+                </button>
+                <button onClick={() => setMicOn(m => !m)} title={micOn ? "Mute mic" : "Unmute mic"} className={`w-11 h-11 rounded-full grid place-items-center ${micOn ? "bg-neutral-800 hover:bg-neutral-700 text-white" : "bg-neutral-900 text-neutral-500"}`}>
+                  <Mic className="w-4 h-4" />
+                </button>
+                <button onClick={() => camOn ? stopCamera() : startCamera()} title={camOn ? "Stop camera" : "Start camera"} className={`w-11 h-11 rounded-full grid place-items-center ${camOn ? "bg-neutral-800 hover:bg-neutral-700 text-white" : "bg-neutral-900 text-neutral-500"}`}>
+                  {camOn ? <VideoIcon className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
+                </button>
+                <button onClick={toggleCaptions} title="Live captions" className={`w-11 h-11 rounded-full grid place-items-center ${captionsOn ? "bg-cyan-600 text-white" : "bg-neutral-900 text-neutral-400 hover:bg-neutral-800 hover:text-white"}`}>
+                  <CaptionsIcon className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
+
 
           {/* Layout strip */}
           <div className="shrink-0 px-4 py-3 flex items-center justify-center gap-2 overflow-x-auto">
