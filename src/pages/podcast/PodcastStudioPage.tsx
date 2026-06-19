@@ -921,7 +921,6 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
               {rightPanel === "media" && <MediaPanel onImport={() => importInputRef.current?.click()} />}
               {rightPanel === "projects" && (
                 <ProjectsPanel
-                  onClose={() => setRightPanel(null)}
                   onDeleteRecording={handleDeleteRecording}
                   onOpenInEditor={() => { setRightPanel(null); setTracksOpen(true); setTracksFull(true); }}
                 />
@@ -1330,8 +1329,7 @@ function EffectsPanel({
   );
 }
 
-function ProjectsPanel({ onClose, onDeleteRecording, onOpenInEditor }: {
-  onClose: () => void;
+function ProjectsPanel({ onDeleteRecording, onOpenInEditor }: {
   onDeleteRecording: (clipId: string) => void;
   onOpenInEditor: () => void;
 }) {
