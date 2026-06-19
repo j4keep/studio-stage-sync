@@ -23,7 +23,6 @@ import { PodcastExportSheet } from "./PodcastExportSheet";
 import { usePodcastVideoStore } from "./podcastVideoStore";
 import { SegmentedStage } from "./SegmentedStage";
 import type { Clip, Track } from "@/wstudio/daw/engine/types";
-import { saveProjectTo, openProject } from "@/wstudio/daw/lib/projectIO";
 import studio1 from "@/assets/studio-1.jpg";
 import studio2 from "@/assets/studio-2.jpg";
 import studio3 from "@/assets/studio-3.jpg";
@@ -109,12 +108,9 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
   const updateClip = useDawStore(s => s.updateClip);
   const selectTrack = useDawStore(s => s.selectTrack);
   const view = useDawStore(s => s.view);
+  const isRecording = useDawStore(s => s.transport.isRecording);
   const projectName = useDawStore(s => s.projectName);
   const setProjectName = useDawStore(s => s.setProjectName);
-  const projectFileHandle = useDawStore(s => s.projectFileHandle);
-  const setProjectFileHandle = useDawStore(s => s.setProjectFileHandle);
-  const loadProject = useDawStore(s => s.loadProject);
-  const resetProject = useDawStore(s => s.resetProject);
   const tool = useDawStore(s => s.tool);
   const setTool = useDawStore(s => s.setTool);
   const pxPerSec = useDawStore(s => s.pxPerSec);
@@ -140,6 +136,7 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
   const recChunksRef = useRef<Blob[]>([]);
   const recTrackIdRef = useRef<string | null>(null);
   const recStartRef = useRef<number>(0);
+  const recStopRef = useRef<number | null>(null);
   const lastRecordedClipByTrackRef = useRef<Record<string, { clipId: string; startTime: number; at: number }>>({});
   const videoCompositeRafRef = useRef<number | null>(null);
   const [camOn, setCamOn] = useState(false);
@@ -230,10 +227,6 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
   const makeStageRecordingStream = useCallback((sourceStream: MediaStream) => {
     const videoTrack = sourceStream.getVideoTracks()[0];
     if (!videoTrack) return null;
-    const stageCanvas = bgUrl ? stageContainerRef.current?.querySelector("canvas") : null;
-    if (stageCanvas instanceof HTMLCanvasElement && stageCanvas.width > 0 && stageCanvas.height > 0) {
-      try { return stageCanvas.captureStream(Math.min(frameRate, 30)); } catch {}
-    }
     if (!bgUrl && !mirrored) return new MediaStream([videoTrack]);
     const canvas = document.createElement("canvas");
     canvas.width = resolution === "1080p" ? 1920 : resolution === "480p" ? 854 : 1280;
@@ -274,12 +267,9 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
       let drewStage = false;
       if (stageCanvas instanceof HTMLCanvasElement && stageCanvas.width > 0 && stageCanvas.height > 0) {
         try {
-          const sample = stageCanvas.getContext("2d")?.getImageData(Math.floor(stageCanvas.width / 2), Math.floor(stageCanvas.height / 2), 1, 1).data;
-          const hasPixel = !sample || sample[0] + sample[1] + sample[2] > 12;
-          if (hasPixel) { drawCover(stageCanvas, 0, 0, W, H); drewStage = true; }
-        } catch {
-          try { drawCover(stageCanvas, 0, 0, W, H); drewStage = true; } catch {}
-        }
+          drawCover(stageCanvas, 0, 0, W, H);
+          drewStage = true;
+        } catch { drewStage = false; }
       }
       if (!drewStage && video.readyState >= 2) {
         if (mirrored) {
@@ -325,6 +315,8 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
     if (useDawStore.getState().transport.isRecording) {
       // STOP everything
       const rec = recorderRef.current; recorderRef.current = null;
+      const stopPosition = e.currentPosition();
+      recStopRef.current = stopPosition;
       if (rec && rec.state !== "inactive") {
         await new Promise<void>((res) => {
           const prev = rec.onstop; rec.onstop = (ev) => { try { prev?.call(rec, ev); } finally { res(); } };
@@ -333,16 +325,25 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
       }
       setVideoRec(false);
       e.stopRecording(); e.stop();
-      setTransport({ isRecording: false, isPlaying: false });
+      setTransport({ isRecording: false, isPlaying: false, position: stopPosition });
       return;
     }
     if (!camStreamRef.current) { await startCamera(); }
+    if (!camStreamRef.current) {
+      toast.error("Turn on the camera before recording video");
+      return;
+    }
     const trackId = ensureRecordTrack();
     useDawStore.getState().tracks.forEach(t => updateTrack(t.id, { armed: t.id === trackId }));
     try {
       await e.resume();
       const startPos = useDawStore.getState().transport.position;
       const recordedClipId = await e.startRecording(trackId, startPos);
+      const sampleRate = e.ctx.sampleRate || 48000;
+      const placeholder = e.ctx.createBuffer(1, sampleRate, sampleRate);
+      if (!useDawStore.getState().clips.some(c => c.id === recordedClipId)) {
+        addClip({ id: recordedClipId, trackId, startTime: startPos, duration: 1, offset: 0, buffer: placeholder, peaks: new Float32Array(0), name: "Recording" });
+      }
       setTransport({ isRecording: true, isPlaying: true });
       const st = useDawStore.getState();
       e.play({ ...st.transport, isRecording: true, isPlaying: true, position: startPos }, st.tracks, st.clips);
@@ -368,19 +369,22 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
         recChunksRef.current = [];
         recTrackIdRef.current = trackId;
         recStartRef.current = startPos;
+        recStopRef.current = null;
         mr.ondataavailable = (ev) => { if (ev.data?.size) recChunksRef.current.push(ev.data); };
         mr.onstop = () => {
           if (videoCompositeRafRef.current) cancelAnimationFrame(videoCompositeRafRef.current);
           videoCompositeRafRef.current = null;
           const blob = new Blob(recChunksRef.current, { type: mime });
           recChunksRef.current = [];
-          const dur = useDawStore.getState().transport.position - recStartRef.current;
+          const dur = (recStopRef.current ?? useDawStore.getState().transport.position) - recStartRef.current;
           const pendingTrackId = recTrackIdRef.current!;
           const pendingStart = recStartRef.current;
           const pendingDuration = Math.max(0.1, dur);
-          if (recordedClipId) {
+          if (blob.size > 0) {
             setVideo(recordedClipId, { blob, mime, durationSec: pendingDuration, participantLabel: "Host" });
-          } else {
+          }
+          updateClip(recordedClipId, { duration: pendingDuration });
+          if (!recordedClipId) {
             setPending(pendingTrackId, {
               trackId: pendingTrackId, startTime: pendingStart,
               blob, mime, durationSec: pendingDuration, participantLabel: "Host",
@@ -418,7 +422,7 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
       toast.error(err?.message || "Could not start recording");
       setTransport({ isRecording: false, isPlaying: false });
     }
-  }, [addClip, ensureRecordTrack, makeStageRecordingStream, micOn, setPending, setTransport, setVideo, startCamera, updateTrack]);
+  }, [addClip, ensureRecordTrack, makeStageRecordingStream, micOn, setPending, setTransport, setVideo, startCamera, updateClip, updateTrack]);
 
   const toggleEditorPlayback = useCallback(async () => {
     const e = engineRef.current; if (!e) return;
@@ -506,44 +510,6 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
     navigator.clipboard.writeText(url).catch(() => {});
     toast.success("Magic link copied", { description: url });
   }, [sessionCode]);
-
-  const handleSave = useCallback(async () => {
-    try {
-      toast.loading("Saving…", { id: "save" });
-      const handle = await saveProjectTo(projectFileHandle, {
-        name: projectName, tracks, clips,
-        transport: useDawStore.getState().transport,
-        pxPerSec, verticalZoom: useDawStore.getState().verticalZoom,
-      });
-      if (handle) setProjectFileHandle(handle);
-      toast.success("Project saved to your device", { id: "save" });
-    } catch { toast.error("Couldn't save", { id: "save" }); }
-  }, [projectFileHandle, projectName, tracks, clips, pxPerSec, setProjectFileHandle]);
-
-  const handleOpen = useCallback(async () => {
-    const e = engineRef.current; if (!e) return;
-    try {
-      const r = await openProject(e);
-      if (!r) return;
-      loadProject(r.parsed); setProjectFileHandle(r.handle);
-      toast.success(`Opened "${r.parsed.name}"`);
-    } catch { toast.error("Couldn't open project"); }
-  }, [loadProject, setProjectFileHandle]);
-
-  const handleDeleteProject = useCallback(async () => {
-    if (!window.confirm("Delete this saved project and clear the current studio timeline?")) return;
-    try {
-      if (projectFileHandle && typeof (projectFileHandle as any).remove === "function") {
-        await (projectFileHandle as any).remove();
-      }
-      usePodcastVideoStore.getState().clear();
-      resetProject("Untitled Project");
-      setProjectFileHandle(null);
-      toast.success("Project deleted");
-    } catch {
-      toast.error("Couldn't delete the saved file, but you can remove it from your device folder.");
-    }
-  }, [projectFileHandle, resetProject, setProjectFileHandle]);
 
   const handleDeleteRecording = useCallback((clipId: string) => {
     const clipExists = useDawStore.getState().clips.some(c => c.id === clipId);
@@ -732,8 +698,6 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
   if (!engineReady || !engineRef.current) {
     return <div className="min-h-screen bg-black grid place-items-center text-neutral-400">Loading studio…</div>;
   }
-
-  const isRecording = useDawStore.getState().transport.isRecording;
 
   return (
     <div className="fixed inset-0 z-[60] flex flex-col bg-neutral-950 text-neutral-100 overflow-hidden">
@@ -958,9 +922,6 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
               {rightPanel === "media" && <MediaPanel onImport={() => importInputRef.current?.click()} />}
               {rightPanel === "projects" && (
                 <ProjectsPanel
-                  onClose={() => setRightPanel(null)}
-                  onSaveProject={handleSave}
-                  onDeleteProject={handleDeleteProject}
                   onDeleteRecording={handleDeleteRecording}
                   onOpenInEditor={() => { setRightPanel(null); setTracksOpen(true); setTracksFull(true); }}
                 />
@@ -971,7 +932,6 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
                   frameRate={frameRate} setFrameRate={setFrameRate}
                   micOn={micOn} setMicOn={setMicOn}
                   mirrored={mirrored} setMirrored={setMirrored}
-                  onOpenProject={handleOpen}
                 />
               )}
               {rightPanel === "help" && <div className="text-neutral-500 text-xs">Drop video/audio onto the stage to import. Tap Record to start. Tap Tracks to inspect waveforms.</div>}
@@ -1370,10 +1330,7 @@ function EffectsPanel({
   );
 }
 
-function ProjectsPanel({ onClose, onSaveProject, onDeleteProject, onDeleteRecording, onOpenInEditor }: {
-  onClose: () => void;
-  onSaveProject: () => void;
-  onDeleteProject: () => void;
+function ProjectsPanel({ onDeleteRecording, onOpenInEditor }: {
   onDeleteRecording: (clipId: string) => void;
   onOpenInEditor: () => void;
 }) {
@@ -1381,12 +1338,6 @@ function ProjectsPanel({ onClose, onSaveProject, onDeleteProject, onDeleteRecord
   const entries = Object.entries(videos);
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-2">
-        <button onClick={onSaveProject} className="h-9 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-medium">Save project</button>
-        <button onClick={onDeleteProject} className="h-9 rounded bg-red-600/15 hover:bg-red-600 text-red-300 hover:text-white text-xs font-medium flex items-center justify-center gap-1">
-          <Trash2 className="w-3.5 h-3.5" /> Delete project
-        </button>
-      </div>
       <div className="text-[11px] uppercase tracking-wider text-neutral-500">Recorded videos · {entries.length}</div>
       {entries.length === 0 && (
         <div className="text-xs text-neutral-500 border border-dashed border-neutral-800 rounded-lg p-6 text-center">
@@ -1403,9 +1354,6 @@ function ProjectsPanel({ onClose, onSaveProject, onDeleteProject, onDeleteRecord
                 <div className="text-[10px] text-neutral-500">{v.durationSec ? `${v.durationSec.toFixed(1)}s` : ""} · {v.mime.split(";")[0]}</div>
               </div>
               <div className="flex items-center gap-1">
-                <a href={v.url} download={`take-${clipId}.${v.mime.includes("mp4") ? "mp4" : "webm"}`} className="p-1.5 rounded text-neutral-300 hover:text-white hover:bg-neutral-800" title="Download">
-                  <Download className="w-3.5 h-3.5" />
-                </a>
                 <button onClick={() => onDeleteRecording(clipId)} className="p-1.5 rounded text-neutral-400 hover:text-red-300 hover:bg-red-600/10" title="Delete recording">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -1433,13 +1381,12 @@ function MediaPanel({ onImport }: { onImport: () => void }) {
 }
 
 function SettingsPanel({
-  resolution, setResolution, frameRate, setFrameRate, micOn, setMicOn, mirrored, setMirrored, onOpenProject,
+  resolution, setResolution, frameRate, setFrameRate, micOn, setMicOn, mirrored, setMirrored,
 }: {
   resolution: "480p" | "720p" | "1080p"; setResolution: (v: any) => void;
   frameRate: 24 | 30 | 60; setFrameRate: (v: any) => void;
   micOn: boolean; setMicOn: (b: boolean) => void;
   mirrored: boolean; setMirrored: (b: boolean) => void;
-  onOpenProject: () => void;
 }) {
   return (
     <div className="space-y-4">
@@ -1455,10 +1402,6 @@ function SettingsPanel({
       </Row>
       <Row label="Microphone"><Toggle on={micOn} onChange={setMicOn} /></Row>
       <Row label="Mirror my video"><Toggle on={mirrored} onChange={setMirrored} /></Row>
-      <div className="pt-3 border-t border-neutral-900 space-y-2">
-        <button onClick={onOpenProject} className="w-full h-9 rounded bg-neutral-900 border border-neutral-800 hover:bg-neutral-800 text-xs">Open project from device</button>
-        <p className="text-[10px] text-neutral-500">Projects save to your device — not the cloud.</p>
-      </div>
     </div>
   );
 }
