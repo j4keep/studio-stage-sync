@@ -2,11 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
-  Mic, Video as VideoIcon, VideoOff, Share2, Smile, FileText, FolderOpen, LogOut,
-  Users, MessageCircle, Sparkles, Type, Music, Settings as SettingsIcon, HelpCircle,
+  Mic, Video as VideoIcon, VideoOff, FolderOpen, LogOut,
+  Users, MessageCircle, Sparkles, Captions as CaptionsIcon, Music, Settings as SettingsIcon, HelpCircle,
   Home, ChevronUp, ChevronDown, Circle, Square, Link as LinkIcon, Upload, X,
-  Scissors, MousePointer2, ZoomIn, ZoomOut, Download, Pencil, Eraser, Save,
+  Scissors, MousePointer2, ZoomIn, ZoomOut, Download, Pencil, Eraser, Bot,
   Play, Pause, SkipBack, SkipForward, Maximize2, Minimize2, ArrowLeftToLine,
+  MessageSquare, Smartphone, QrCode, Share2, Send, Image as ImageIcon, Paperclip,
+  Maximize, MonitorUp, MonitorOff,
 } from "lucide-react";
 import { DawEngine } from "@/wstudio/daw/engine/DawEngine";
 import { computePeaks } from "@/wstudio/daw/engine/Peaks";
