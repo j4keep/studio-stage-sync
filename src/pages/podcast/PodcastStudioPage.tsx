@@ -107,7 +107,6 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
   const addTrack = useDawStore(s => s.addTrack);
   const updateTrack = useDawStore(s => s.updateTrack);
   const selectTrack = useDawStore(s => s.selectTrack);
-  const selectedClipId = useDawStore(s => s.selectedClipId);
   const view = useDawStore(s => s.view);
   const projectName = useDawStore(s => s.projectName);
   const setProjectName = useDawStore(s => s.setProjectName);
@@ -448,11 +447,16 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
   }, [setTransport]);
 
   const deleteClipFromEditor = useCallback((clipId: string | null) => {
-    if (!clipId) return false;
-    const exists = useDawStore.getState().clips.some(c => c.id === clipId);
+    const st = useDawStore.getState();
+    const fallback = st.selectedTrackId
+      ? st.clips.find(c => c.trackId === st.selectedTrackId && st.transport.position >= c.startTime && st.transport.position <= c.startTime + c.duration)?.id
+      : null;
+    const targetId = clipId || fallback;
+    if (!targetId) return false;
+    const exists = st.clips.some(c => c.id === targetId);
     if (!exists) return false;
-    removeVideo(clipId);
-    removeClip(clipId);
+    removeVideo(targetId);
+    removeClip(targetId);
     return true;
   }, [removeClip, removeVideo]);
 
