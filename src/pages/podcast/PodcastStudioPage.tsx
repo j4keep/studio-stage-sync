@@ -328,6 +328,10 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
       return;
     }
     if (!camStreamRef.current) { await startCamera(); }
+    if (!camStreamRef.current) {
+      toast.error("Turn on the camera before recording video");
+      return;
+    }
     const trackId = ensureRecordTrack();
     useDawStore.getState().tracks.forEach(t => updateTrack(t.id, { armed: t.id === trackId }));
     try {
