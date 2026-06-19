@@ -311,7 +311,15 @@ export default function PodcastStudioPage() {
       if (cam) {
         if (videoCompositeRafRef.current) cancelAnimationFrame(videoCompositeRafRef.current);
         const videoOnly = makeStageRecordingStream(cam) ?? new MediaStream(cam.getVideoTracks());
-        const mime = ["video/webm;codecs=vp8", "video/webm;codecs=vp9", "video/webm"].find(m => MediaRecorder.isTypeSupported(m)) || "video/webm";
+        // Prefer MP4 (Safari + recent Chrome) so user gets a portable file. Fall back to WebM.
+        const mime = [
+          "video/mp4;codecs=avc1.42E01F,mp4a.40.2",
+          "video/mp4;codecs=avc1,mp4a",
+          "video/mp4",
+          "video/webm;codecs=vp9,opus",
+          "video/webm;codecs=vp8,opus",
+          "video/webm",
+        ].find(m => MediaRecorder.isTypeSupported(m)) || "video/webm";
         const mr = new MediaRecorder(videoOnly, { mimeType: mime, videoBitsPerSecond: 4_500_000 });
         recChunksRef.current = [];
         recTrackIdRef.current = trackId;
