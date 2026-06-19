@@ -78,7 +78,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
       <PlaylistPlayerSheet />
       <BottomNav />
       <ProGateModal open={showProModal} onClose={closeProModal} featureName={gatedFeature} onSubscribe={activatePro} />
-      {location.pathname !== "/auth" && <IncognitoFeedWindow />}
+      {location.pathname !== "/auth" && location.pathname !== "/tv" && <IncognitoFeedWindow />}
     </div>
   );
 };
