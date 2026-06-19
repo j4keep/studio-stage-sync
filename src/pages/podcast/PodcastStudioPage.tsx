@@ -421,7 +421,7 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
       toast.error(err?.message || "Could not start recording");
       setTransport({ isRecording: false, isPlaying: false });
     }
-  }, [addClip, ensureRecordTrack, makeStageRecordingStream, micOn, setPending, setTransport, setVideo, startCamera, updateTrack]);
+  }, [addClip, ensureRecordTrack, makeStageRecordingStream, micOn, setPending, setTransport, setVideo, startCamera, updateClip, updateTrack]);
 
   const toggleEditorPlayback = useCallback(async () => {
     const e = engineRef.current; if (!e) return;
