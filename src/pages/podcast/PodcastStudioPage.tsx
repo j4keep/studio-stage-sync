@@ -2,11 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
-  Mic, Video as VideoIcon, VideoOff, Share2, Smile, FileText, FolderOpen, LogOut,
-  Users, MessageCircle, Sparkles, Type, Music, Settings as SettingsIcon, HelpCircle,
+  Mic, Video as VideoIcon, VideoOff, FolderOpen, LogOut,
+  Users, MessageCircle, Sparkles, Captions as CaptionsIcon, Music, Settings as SettingsIcon, HelpCircle,
   Home, ChevronUp, ChevronDown, Circle, Square, Link as LinkIcon, Upload, X,
-  Scissors, MousePointer2, ZoomIn, ZoomOut, Download, Pencil, Eraser, Save,
+  Scissors, MousePointer2, ZoomIn, ZoomOut, Download, Pencil, Eraser, Bot,
   Play, Pause, SkipBack, SkipForward, Maximize2, Minimize2, ArrowLeftToLine,
+  MessageSquare, Smartphone, QrCode, Share2, Send, Image as ImageIcon, Paperclip,
+  Maximize, MonitorUp, MonitorOff,
 } from "lucide-react";
 import { DawEngine } from "@/wstudio/daw/engine/DawEngine";
 import { computePeaks } from "@/wstudio/daw/engine/Peaks";
@@ -37,7 +39,9 @@ const isInputAudioTrack = (track: Track, allClips: Clip[]) => (
   )
 );
 
-type RightPanel = null | "people" | "chat" | "effects" | "text" | "media" | "settings" | "help" | "projects";
+type RightPanel = null | "people" | "chat" | "effects" | "captions" | "media" | "settings" | "help" | "projects" | "jhi";
+
+type ChatMessage = { id: string; author: string; text?: string; mediaUrl?: string; mediaType?: "image" | "video"; ts: number };
 
 const BG_LIBRARY: { id: string; label: string; url: string }[] = [
   { id: "studio-1", label: "Studio A", url: studio1 },
@@ -115,6 +119,16 @@ export default function PodcastStudioPage() {
   const [mirrored, setMirrored] = useState(true);
   const [resolution, setResolution] = useState<"720p" | "1080p" | "480p">("720p");
   const [frameRate, setFrameRate] = useState<24 | 30 | 60>(30);
+
+  // Captions, chat, screen share, fullscreen
+  const [captionsOn, setCaptionsOn] = useState(false);
+  const [captionText, setCaptionText] = useState("");
+  const recognitionRef = useRef<any>(null);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const screenStreamRef = useRef<MediaStream | null>(null);
+  const [screenSharing, setScreenSharing] = useState(false);
+  const stageContainerRef = useRef<HTMLDivElement | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const setPending = usePodcastVideoStore(s => s.setPending);
   const setVideo = usePodcastVideoStore(s => s.setVideo);
 
@@ -297,7 +311,15 @@ export default function PodcastStudioPage() {
       if (cam) {
         if (videoCompositeRafRef.current) cancelAnimationFrame(videoCompositeRafRef.current);
         const videoOnly = makeStageRecordingStream(cam) ?? new MediaStream(cam.getVideoTracks());
-        const mime = ["video/webm;codecs=vp8", "video/webm;codecs=vp9", "video/webm"].find(m => MediaRecorder.isTypeSupported(m)) || "video/webm";
+        // Prefer MP4 (Safari + recent Chrome) so user gets a portable file. Fall back to WebM.
+        const mime = [
+          "video/mp4;codecs=avc1.42E01F,mp4a.40.2",
+          "video/mp4;codecs=avc1,mp4a",
+          "video/mp4",
+          "video/webm;codecs=vp9,opus",
+          "video/webm;codecs=vp8,opus",
+          "video/webm",
+        ].find(m => MediaRecorder.isTypeSupported(m)) || "video/webm";
         const mr = new MediaRecorder(videoOnly, { mimeType: mime, videoBitsPerSecond: 4_500_000 });
         recChunksRef.current = [];
         recTrackIdRef.current = trackId;
@@ -371,6 +393,101 @@ export default function PodcastStudioPage() {
     } catch { toast.error("Couldn't open project"); }
   }, [loadProject, setProjectFileHandle]);
 
+  // Live captions via Web Speech API
+  const toggleCaptions = useCallback(() => {
+    if (captionsOn) {
+      try { recognitionRef.current?.stop(); } catch {}
+      recognitionRef.current = null;
+      setCaptionsOn(false);
+      setCaptionText("");
+      return;
+    }
+    const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) { toast.error("Live captions need Chrome or Edge"); return; }
+    const r = new SR();
+    r.continuous = true;
+    r.interimResults = true;
+    r.lang = "en-US";
+    r.onresult = (ev: any) => {
+      let txt = "";
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        txt += ev.results[i][0].transcript;
+      }
+      setCaptionText(txt.trim().slice(-180));
+    };
+    r.onerror = () => {};
+    r.onend = () => { if (captionsOn) try { r.start(); } catch {} };
+    try { r.start(); recognitionRef.current = r; setCaptionsOn(true); }
+    catch { toast.error("Could not start captions"); }
+  }, [captionsOn]);
+
+  useEffect(() => () => { try { recognitionRef.current?.stop(); } catch {} }, []);
+
+  // Screen sharing
+  const toggleScreenShare = useCallback(async () => {
+    if (screenSharing) {
+      screenStreamRef.current?.getTracks().forEach(t => t.stop());
+      screenStreamRef.current = null;
+      setScreenSharing(false);
+      if (previewRef.current && camStreamRef.current) {
+        previewRef.current.srcObject = camStreamRef.current;
+        previewRef.current.play().catch(() => {});
+      }
+      return;
+    }
+    try {
+      const s = await (navigator.mediaDevices as any).getDisplayMedia({ video: true, audio: true });
+      screenStreamRef.current = s;
+      if (previewRef.current) { previewRef.current.srcObject = s; previewRef.current.play().catch(() => {}); }
+      setScreenSharing(true);
+      s.getVideoTracks()[0].addEventListener("ended", () => {
+        setScreenSharing(false);
+        screenStreamRef.current = null;
+        if (previewRef.current && camStreamRef.current) {
+          previewRef.current.srcObject = camStreamRef.current;
+          previewRef.current.play().catch(() => {});
+        }
+      });
+    } catch (err: any) { toast.error(err?.message || "Screen share denied"); }
+  }, [screenSharing]);
+
+  // Fullscreen
+  const toggleFullscreen = useCallback(() => {
+    const el = stageContainerRef.current;
+    if (!document.fullscreenElement && el?.requestFullscreen) {
+      el.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
+    } else if (document.fullscreenElement) {
+      document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
+    }
+  }, []);
+  useEffect(() => {
+    const h = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", h);
+    return () => document.removeEventListener("fullscreenchange", h);
+  }, []);
+
+  // Chat
+  const sendChat = useCallback((text?: string, file?: File) => {
+    const msg: ChatMessage = { id: Math.random().toString(36).slice(2), author: "You", ts: Date.now() };
+    if (text) msg.text = text;
+    if (file) {
+      msg.mediaUrl = URL.createObjectURL(file);
+      msg.mediaType = file.type.startsWith("video/") ? "video" : "image";
+    }
+    if (!msg.text && !msg.mediaUrl) return;
+    setChatMessages(p => [...p, msg]);
+  }, []);
+
+  // Share Web Share API for invite link
+  const shareSheet = useCallback((url: string) => {
+    if ((navigator as any).share) {
+      (navigator as any).share({ title: "Join my podcast", text: "Hop into the studio", url }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(url);
+      toast.success("Link copied");
+    }
+  }, []);
+
   // Body scroll lock
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -421,23 +538,59 @@ export default function PodcastStudioPage() {
         {/* Stage (center) */}
         <div className="flex-1 flex flex-col min-w-0 relative">
           <div className="flex-1 relative grid place-items-center p-4 min-h-0">
-            <div className="relative w-full max-w-3xl rounded-2xl overflow-hidden border border-violet-500/40 shadow-[0_0_0_2px_rgba(139,92,246,0.15)] aspect-video bg-black">
-              <StageLayout
-                layoutId={layoutId}
-                hostVideoRef={previewRef}
-                hostName="jay"
-                camOn={camOn}
-                mirrored={mirrored}
-                onStartCamera={startCamera}
-                bgUrl={bgUrl}
-              />
-              {videoRec && (
-                <div className="absolute top-3 left-3 px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center gap-1 z-30">
-                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" /> REC
+            <div ref={stageContainerRef} className="relative w-full max-w-3xl flex flex-col gap-3">
+              <div className="relative w-full rounded-2xl overflow-hidden border border-violet-500/40 shadow-[0_0_0_2px_rgba(139,92,246,0.15)] aspect-video bg-black">
+                <StageLayout
+                  layoutId={layoutId}
+                  hostVideoRef={previewRef}
+                  hostName="jay"
+                  camOn={camOn || screenSharing}
+                  mirrored={mirrored && !screenSharing}
+                  onStartCamera={startCamera}
+                  bgUrl={screenSharing ? null : bgUrl}
+                />
+                {videoRec && (
+                  <div className="absolute top-3 left-3 px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center gap-1 z-30">
+                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" /> REC
+                  </div>
+                )}
+                {captionsOn && captionText && (
+                  <div className="absolute bottom-12 left-1/2 -translate-x-1/2 max-w-[85%] z-30 px-3 py-1.5 rounded-md bg-black/75 text-white text-sm text-center leading-tight">
+                    {captionText}
+                  </div>
+                )}
+                {/* Floating stage controls (top-right of stage) */}
+                <div className="absolute top-3 right-3 flex items-center gap-1.5 z-30">
+                  <StageBtn onClick={toggleScreenShare} title={screenSharing ? "Stop sharing" : "Share screen"} active={screenSharing}>
+                    {screenSharing ? <MonitorOff className="w-4 h-4" /> : <MonitorUp className="w-4 h-4" />}
+                  </StageBtn>
+                  <StageBtn onClick={toggleFullscreen} title={isFullscreen ? "Exit fullscreen" : "Expand"}>
+                    {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+                  </StageBtn>
                 </div>
-              )}
+              </div>
+              {/* Record bar — sits directly under the video preview */}
+              <div className="flex items-center justify-center gap-3">
+                <button
+                  onClick={handleRecord}
+                  className={`h-12 px-5 rounded-full flex items-center gap-2 text-sm font-semibold shadow-lg transition ${isRecording ? "bg-red-700 hover:bg-red-600 text-white" : "bg-red-600 hover:bg-red-500 text-white"}`}
+                >
+                  {isRecording ? <Square className="w-4 h-4 fill-current" /> : <Circle className="w-4 h-4 fill-current" />}
+                  {isRecording ? "Stop recording" : "Record"}
+                </button>
+                <button onClick={() => setMicOn(m => !m)} title={micOn ? "Mute mic" : "Unmute mic"} className={`w-11 h-11 rounded-full grid place-items-center ${micOn ? "bg-neutral-800 hover:bg-neutral-700 text-white" : "bg-neutral-900 text-neutral-500"}`}>
+                  <Mic className="w-4 h-4" />
+                </button>
+                <button onClick={() => camOn ? stopCamera() : startCamera()} title={camOn ? "Stop camera" : "Start camera"} className={`w-11 h-11 rounded-full grid place-items-center ${camOn ? "bg-neutral-800 hover:bg-neutral-700 text-white" : "bg-neutral-900 text-neutral-500"}`}>
+                  {camOn ? <VideoIcon className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
+                </button>
+                <button onClick={toggleCaptions} title="Live captions" className={`w-11 h-11 rounded-full grid place-items-center ${captionsOn ? "bg-cyan-600 text-white" : "bg-neutral-900 text-neutral-400 hover:bg-neutral-800 hover:text-white"}`}>
+                  <CaptionsIcon className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
+
 
           {/* Layout strip */}
           <div className="shrink-0 px-4 py-3 flex items-center justify-center gap-2 overflow-x-auto">
@@ -466,7 +619,7 @@ export default function PodcastStudioPage() {
             { id: "people" as const, icon: Users, label: "People" },
             { id: "chat" as const, icon: MessageCircle, label: "Chat" },
             { id: "effects" as const, icon: Sparkles, label: "Effects" },
-            { id: "text" as const, icon: Type, label: "Text" },
+            { id: "captions" as const, icon: CaptionsIcon, label: "Captions" },
             { id: "media" as const, icon: Music, label: "Media" },
           ].map(({ id, icon: Icon, label }) => (
             <button
@@ -490,7 +643,7 @@ export default function PodcastStudioPage() {
             <button onClick={() => setTool("eraser")} className={`w-10 h-10 rounded grid place-items-center ${tool === "eraser" ? "bg-neutral-800 text-white" : "text-neutral-400 hover:text-neutral-100"}`} title="Erase"><Eraser className="w-4 h-4" /></button>
             <button onClick={() => setPxPerSec(Math.min(800, pxPerSec * 1.25))} className="w-10 h-10 rounded grid place-items-center text-neutral-400 hover:text-neutral-100" title="Zoom in"><ZoomIn className="w-4 h-4" /></button>
             <button onClick={() => setPxPerSec(Math.max(20, pxPerSec / 1.25))} className="w-10 h-10 rounded grid place-items-center text-neutral-400 hover:text-neutral-100" title="Zoom out"><ZoomOut className="w-4 h-4" /></button>
-            <button onClick={handleSave} className="w-10 h-10 rounded grid place-items-center text-neutral-400 hover:text-neutral-100" title="Save to device"><Save className="w-4 h-4" /></button>
+            <button onClick={() => setRightPanel(p => p === "jhi" ? null : "jhi")} className={`w-10 h-10 rounded grid place-items-center ${rightPanel === "jhi" ? "bg-cyan-600 text-white" : "text-cyan-400 hover:text-cyan-300"}`} title="Ask J-Hi"><Bot className="w-4 h-4" /></button>
             <button onClick={() => clips.length ? setExportOpen(true) : toast.error("Nothing to export")} className="w-10 h-10 rounded grid place-items-center text-neutral-400 hover:text-neutral-100" title="Export"><Download className="w-4 h-4" /></button>
           </div>
 
@@ -522,8 +675,8 @@ export default function PodcastStudioPage() {
               <button onClick={() => setRightPanel(null)} className="p-1 text-neutral-500 hover:text-neutral-100"><X className="w-4 h-4" /></button>
             </header>
             <div className="flex-1 overflow-y-auto p-4 text-sm">
-              {rightPanel === "people" && <PeoplePanel onInvite={inviteGuest} />}
-              {rightPanel === "chat" && <div className="text-neutral-500 text-xs">Chat coming soon.</div>}
+              {rightPanel === "people" && <PeoplePanel onInvite={inviteGuest} onShare={shareSheet} sessionCode={sessionCode} />}
+              {rightPanel === "chat" && <ChatPanel messages={chatMessages} onSend={sendChat} />}
               {rightPanel === "effects" && (
                 <EffectsPanel
                   mirrored={mirrored} setMirrored={setMirrored}
@@ -532,7 +685,8 @@ export default function PodcastStudioPage() {
                   onAddCustomBg={() => bgUploadRef.current?.click()}
                 />
               )}
-              {rightPanel === "text" && <div className="text-neutral-500 text-xs">Lower-thirds & captions.</div>}
+              {rightPanel === "captions" && <CaptionsPanel on={captionsOn} onToggle={toggleCaptions} text={captionText} />}
+              {rightPanel === "jhi" && <JhiPanel />}
               {rightPanel === "media" && <MediaPanel onImport={() => importInputRef.current?.click()} />}
               {rightPanel === "projects" && (
                 <ProjectsPanel
@@ -592,21 +746,12 @@ export default function PodcastStudioPage() {
         )}
       </div>
 
-      {/* Bottom bar — Riverside-style */}
-      <footer className="shrink-0 h-20 border-t border-neutral-900 flex items-center justify-center gap-2 px-3 bg-neutral-950">
-        <BottomAction
-          big
-          active={isRecording}
-          onClick={handleRecord}
-          icon={isRecording ? <Square className="w-5 h-5 fill-white" /> : <Circle className="w-5 h-5 fill-white text-white" />}
-          label={isRecording ? "Stop" : "Record"}
-        />
-        <BottomAction onClick={() => setMicOn(m => !m)} icon={<Mic className={`w-5 h-5 ${micOn ? "" : "opacity-40"}`} />} label="Audio" />
-        <BottomAction onClick={() => camOn ? stopCamera() : startCamera()} icon={camOn ? <VideoIcon className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />} label="Video" />
-        <BottomAction onClick={inviteGuest} icon={<Share2 className="w-5 h-5" />} label="Share" />
-        <BottomAction onClick={() => toast.message("Reactions coming soon")} icon={<Smile className="w-5 h-5" />} label="React" />
-        <BottomAction onClick={() => toast.message("Script coming soon")} icon={<FileText className="w-5 h-5" />} label="Script" />
+      {/* Bottom bar — minimal: focus stays on the stage controls above */}
+      <footer className="shrink-0 h-16 border-t border-neutral-900 flex items-center justify-center gap-2 px-3 bg-neutral-950">
+        <BottomAction onClick={() => setRightPanel(p => p === "people" ? null : "people")} icon={<Users className="w-5 h-5" />} label="Invite" />
+        <BottomAction onClick={() => setRightPanel(p => p === "chat" ? null : "chat")} icon={<MessageCircle className="w-5 h-5" />} label="Chat" />
         <BottomAction onClick={() => setRightPanel("projects")} icon={<FolderOpen className="w-5 h-5" />} label="Projects" />
+        <BottomAction onClick={() => setRightPanel(p => p === "jhi" ? null : "jhi")} icon={<Bot className="w-5 h-5 text-cyan-400" />} label="J-Hi" />
         <BottomAction onClick={() => navigate("/tv/podcast")} icon={<LogOut className="w-5 h-5 text-red-400" />} label="Leave" />
       </footer>
 
@@ -654,12 +799,43 @@ function BottomAction({ icon, label, onClick, active, big }: { icon: React.React
   );
 }
 
-function PeoplePanel({ onInvite }: { onInvite: () => void }) {
+function StageBtn({ children, onClick, title, active }: { children: React.ReactNode; onClick: () => void; title: string; active?: boolean }) {
+  return (
+    <button onClick={onClick} title={title} className={`w-9 h-9 rounded-full grid place-items-center backdrop-blur ${active ? "bg-cyan-600 text-white" : "bg-black/55 text-white hover:bg-black/75"}`}>
+      {children}
+    </button>
+  );
+}
+
+function PeoplePanel({ onInvite, onShare, sessionCode }: { onInvite: () => void; onShare: (url: string) => void; sessionCode: string | null }) {
+  const code = sessionCode || "SESSION";
+  const url = `${window.location.origin}/#/tv/podcast/join/${code}`;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(url)}`;
+  const smsHref = `sms:?&body=${encodeURIComponent(`Join my podcast studio: ${url}`)}`;
+  const mailHref = `mailto:?subject=${encodeURIComponent("Join my podcast")}&body=${encodeURIComponent(url)}`;
   return (
     <div className="space-y-3">
       <button onClick={onInvite} className="w-full h-10 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-medium flex items-center justify-center gap-2">
-        <LinkIcon className="w-4 h-4" /> Invite via magic link
+        <LinkIcon className="w-4 h-4" /> Copy magic link
       </button>
+      <div className="grid grid-cols-3 gap-2">
+        <a href={smsHref} className="h-10 rounded-lg bg-neutral-900 border border-neutral-800 hover:border-neutral-700 text-[11px] text-neutral-200 flex items-center justify-center gap-1.5">
+          <Smartphone className="w-3.5 h-3.5" /> Text
+        </a>
+        <button onClick={() => onShare(url)} className="h-10 rounded-lg bg-neutral-900 border border-neutral-800 hover:border-neutral-700 text-[11px] text-neutral-200 flex items-center justify-center gap-1.5">
+          <Share2 className="w-3.5 h-3.5" /> Share
+        </button>
+        <a href={mailHref} className="h-10 rounded-lg bg-neutral-900 border border-neutral-800 hover:border-neutral-700 text-[11px] text-neutral-200 flex items-center justify-center gap-1.5">
+          <Send className="w-3.5 h-3.5" /> Email
+        </a>
+      </div>
+      <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-3 flex items-center gap-3">
+        <img src={qrUrl} alt="Join QR code" className="w-20 h-20 rounded bg-white p-1" />
+        <div className="min-w-0 text-[11px] text-neutral-400 leading-relaxed">
+          <div className="flex items-center gap-1 text-neutral-200 mb-1"><QrCode className="w-3 h-3" /> Scan to join</div>
+          <div className="break-all text-[10px] text-neutral-500">{url}</div>
+        </div>
+      </div>
       <div className="text-[11px] uppercase tracking-wider text-neutral-500">In the studio · 1</div>
       <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-3 flex items-center gap-3">
         <div className="w-9 h-9 rounded-full bg-neutral-700 grid place-items-center text-xs font-semibold">J</div>
@@ -671,6 +847,73 @@ function PeoplePanel({ onInvite }: { onInvite: () => void }) {
     </div>
   );
 }
+
+function CaptionsPanel({ on, onToggle, text }: { on: boolean; onToggle: () => void; text: string }) {
+  return (
+    <div className="space-y-4">
+      <Row label="Live captions"><Toggle on={on} onChange={onToggle} /></Row>
+      <p className="text-[11px] text-neutral-500">Uses your browser's built-in speech recognition. Captions appear on the stage in real time, just like in the reference apps.</p>
+      <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-3 min-h-[80px] text-sm text-neutral-200">
+        {on ? (text || <span className="text-neutral-500 italic">Listening… start speaking</span>) : <span className="text-neutral-500 italic">Off</span>}
+      </div>
+    </div>
+  );
+}
+
+function ChatPanel({ messages, onSend }: { messages: ChatMessage[]; onSend: (text?: string, file?: File) => void }) {
+  const [text, setText] = useState("");
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  return (
+    <div className="flex flex-col h-full -m-4">
+      <div className="flex-1 overflow-y-auto p-3 space-y-2">
+        {messages.length === 0 && <div className="text-[11px] text-neutral-500 text-center py-8">Say hi 👋 — chat appears here for everyone in the room.</div>}
+        {messages.map(m => (
+          <div key={m.id} className="rounded-lg bg-neutral-900 border border-neutral-800 p-2">
+            <div className="text-[10px] text-neutral-500 mb-1">{m.author}</div>
+            {m.text && <div className="text-xs text-neutral-100 break-words whitespace-pre-wrap">{m.text}</div>}
+            {m.mediaUrl && m.mediaType === "image" && <img src={m.mediaUrl} alt="" className="mt-1 rounded max-h-48" />}
+            {m.mediaUrl && m.mediaType === "video" && <video src={m.mediaUrl} controls className="mt-1 rounded max-h-48 w-full" />}
+          </div>
+        ))}
+      </div>
+      <div className="border-t border-neutral-900 p-2 flex items-center gap-2">
+        <input ref={fileRef} type="file" accept="image/*,video/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onSend(undefined, f); e.target.value = ""; }} />
+        <button onClick={() => fileRef.current?.click()} className="p-2 rounded text-neutral-400 hover:text-cyan-300 hover:bg-neutral-900" title="Attach photo or video">
+          <Paperclip className="w-4 h-4" />
+        </button>
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") { onSend(text); setText(""); } }}
+          placeholder="Message"
+          className="flex-1 h-8 bg-neutral-900 border border-neutral-800 rounded px-2 text-xs text-neutral-100 outline-none focus:border-cyan-500/60"
+        />
+        <button onClick={() => { onSend(text); setText(""); }} className="h-8 px-3 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-xs flex items-center gap-1">
+          <Send className="w-3 h-3" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function JhiPanel() {
+  const navigate = useNavigate();
+  return (
+    <div className="space-y-3">
+      <div className="rounded-lg border border-cyan-700/40 bg-cyan-950/30 p-3">
+        <div className="flex items-center gap-2 mb-1">
+          <Bot className="w-4 h-4 text-cyan-300" />
+          <div className="text-sm font-medium text-cyan-100">J-Hi assistant</div>
+        </div>
+        <p className="text-[11px] text-cyan-200/80 leading-relaxed">Ask J-Hi for ideas, scripts, episode names, or studio help. Opens the full assistant in a new tab.</p>
+      </div>
+      <button onClick={() => navigate("/ask-jhi")} className="w-full h-9 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-medium flex items-center justify-center gap-2">
+        <MessageSquare className="w-4 h-4" /> Open J-Hi chat
+      </button>
+    </div>
+  );
+}
+
 
 function EffectsPanel({
   mirrored, setMirrored, bgUrl, setBgUrl, customBgs, onAddCustomBg,
@@ -734,7 +977,7 @@ function ProjectsPanel({ onClose, onOpenInEditor }: { onClose: () => void; onOpe
                 <div className="text-[10px] text-neutral-500">{v.durationSec ? `${v.durationSec.toFixed(1)}s` : ""} · {v.mime.split(";")[0]}</div>
               </div>
               <div className="flex items-center gap-1">
-                <a href={v.url} download={`take-${clipId}.webm`} className="p-1.5 rounded text-neutral-300 hover:text-white hover:bg-neutral-800" title="Download">
+                <a href={v.url} download={`take-${clipId}.${v.mime.includes("mp4") ? "mp4" : "webm"}`} className="p-1.5 rounded text-neutral-300 hover:text-white hover:bg-neutral-800" title="Download">
                   <Download className="w-3.5 h-3.5" />
                 </a>
                 <button onClick={onOpenInEditor} className="h-7 px-2 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-[11px] flex items-center gap-1" title="Open in editor">
