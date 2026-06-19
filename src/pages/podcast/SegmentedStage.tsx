@@ -1,10 +1,26 @@
 import { useEffect, useRef } from "react";
 
-// Loads MediaPipe Selfie Segmentation on demand from the CDN so we don't
-// bloat the bundle. Singleton promise — we only inject the <script> once.
+type SegmentationResults = {
+  image: CanvasImageSource & { width?: number; height?: number };
+  segmentationMask: CanvasImageSource;
+};
+
+type SelfieSegmentationInstance = {
+  setOptions: (options: { modelSelection: number; selfieMode: boolean }) => void;
+  onResults: (callback: (results: SegmentationResults) => void) => void;
+  send: (input: { image: HTMLVideoElement }) => Promise<void>;
+  close?: () => void;
+};
+
+declare global {
+  interface Window {
+    SelfieSegmentation?: new (config: { locateFile: (file: string) => string }) => SelfieSegmentationInstance;
+  }
+}
+
 let scriptPromise: Promise<void> | null = null;
 function loadMediaPipe(): Promise<void> {
-  if ((window as any).SelfieSegmentation) return Promise.resolve();
+  if (window.SelfieSegmentation) return Promise.resolve();
   if (scriptPromise) return scriptPromise;
   scriptPromise = new Promise((resolve, reject) => {
     const s = document.createElement("script");
@@ -17,11 +33,20 @@ function loadMediaPipe(): Promise<void> {
   return scriptPromise;
 }
 
-/**
- * Renders the camera stream onto a canvas with the person's background
- * replaced by `bgUrl` (true selfie-segmentation). Falls back to a plain
- * mirrored video if MediaPipe fails to load.
- */
+const smoothstep = (edge0: number, edge1: number, x: number) => {
+  const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)));
+  return t * t * (3 - 2 * t);
+};
+
+function drawCover(ctx: CanvasRenderingContext2D, img: CanvasImageSource, w: number, h: number) {
+  const sw = (img as HTMLImageElement).naturalWidth || (img as HTMLVideoElement).videoWidth || w;
+  const sh = (img as HTMLImageElement).naturalHeight || (img as HTMLVideoElement).videoHeight || h;
+  const scale = Math.max(w / sw, h / sh);
+  const dw = sw * scale;
+  const dh = sh * scale;
+  ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
+}
+
 export function SegmentedStage({
   stream, bgUrl, mirrored, className,
 }: {
@@ -51,92 +76,110 @@ export function SegmentedStage({
     if (!stream) return;
     let cancelled = false;
     let raf = 0;
-    let seg: any = null;
+    let seg: SelfieSegmentationInstance | null = null;
 
     const video = document.createElement("video");
     video.muted = true;
     video.playsInline = true;
     video.srcObject = stream;
-    const playPromise = video.play().catch(() => {});
+    const playPromise = video.play().catch((error) => { void error; });
 
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const drawCover = (img: CanvasImageSource, w: number, h: number) => {
-      const sw = (img as HTMLImageElement).naturalWidth || (img as HTMLVideoElement).videoWidth || w;
-      const sh = (img as HTMLImageElement).naturalHeight || (img as HTMLVideoElement).videoHeight || h;
-      const scale = Math.max(w / sw, h / sh);
-      const dw = sw * scale, dh = sh * scale;
-      ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
-    };
-
-
-    // Reusable subject compositor — single allocation, slight feather for clean edges.
     const subjectCanvas = document.createElement("canvas");
     const subjectCtx = subjectCanvas.getContext("2d");
+    const maskCanvas = document.createElement("canvas");
+    const maskCtx = maskCanvas.getContext("2d", { willReadFrequently: true });
+
+    const drawMirrored = (target: CanvasRenderingContext2D, img: CanvasImageSource, w: number, h: number) => {
+      if (mirroredRef.current) {
+        target.save();
+        target.translate(w, 0);
+        target.scale(-1, 1);
+        target.drawImage(img, 0, 0, w, h);
+        target.restore();
+      } else {
+        target.drawImage(img, 0, 0, w, h);
+      }
+    };
+
+    const buildMask = (mask: CanvasImageSource, w: number, h: number) => {
+      if (!maskCtx) return mask;
+      if (maskCanvas.width !== w) maskCanvas.width = w;
+      if (maskCanvas.height !== h) maskCanvas.height = h;
+      maskCtx.clearRect(0, 0, w, h);
+      maskCtx.drawImage(mask, 0, 0, w, h);
+      const data = maskCtx.getImageData(0, 0, w, h);
+      const px = data.data;
+      for (let i = 0; i < px.length; i += 4) {
+        const confidence = Math.max(px[i], px[i + 1], px[i + 2], px[i + 3]) / 255;
+        let alpha = smoothstep(0.34, 0.58, confidence);
+        if (alpha > 0.72) alpha = 1;
+        if (alpha < 0.08) alpha = 0;
+        px[i] = 255;
+        px[i + 1] = 255;
+        px[i + 2] = 255;
+        px[i + 3] = Math.round(alpha * 255);
+      }
+      maskCtx.putImageData(data, 0, 0);
+      return maskCanvas;
+    };
 
     (async () => {
       await playPromise;
       if (cancelled) return;
-      try { await loadMediaPipe(); } catch { /* fall back to plain video below */ }
+      try { await loadMediaPipe(); } catch (error) { void error; }
       if (cancelled) return;
 
-      const SS = (window as any).SelfieSegmentation;
+      const SS = window.SelfieSegmentation;
       if (SS) {
         try {
           seg = new SS({
             locateFile: (f: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${f}`,
           });
-          // modelSelection 0 = "general" higher-quality model (256x256). Cleaner around hair/edges.
           seg.setOptions({ modelSelection: 0, selfieMode: false });
-          seg.onResults((results: any) => {
+          seg.onResults((results) => {
             if (cancelled) return;
             const w = results.image.width || video.videoWidth || 640;
             const h = results.image.height || video.videoHeight || 480;
             if (canvas.width !== w) canvas.width = w;
             if (canvas.height !== h) canvas.height = h;
 
-            ctx.save();
             ctx.clearRect(0, 0, w, h);
-            (ctx as any).imageSmoothingEnabled = true;
-            (ctx as any).imageSmoothingQuality = "high";
-            if (mirroredRef.current) { ctx.translate(w, 0); ctx.scale(-1, 1); }
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = "high";
 
             if (bgUrlRef.current && bgImgRef.current && subjectCtx) {
-              // 1. Background fills the frame
-              drawCover(bgImgRef.current, w, h);
+              drawCover(ctx, bgImgRef.current, w, h);
 
-              // 2. Build subject on offscreen canvas: video clipped by the
-              //    raw soft mask. Letting MediaPipe's natural feather through
-              //    keeps hair edges smooth — no threshold pixelation.
               if (subjectCanvas.width !== w) subjectCanvas.width = w;
               if (subjectCanvas.height !== h) subjectCanvas.height = h;
-              subjectCtx.save();
               subjectCtx.clearRect(0, 0, w, h);
-              (subjectCtx as any).imageSmoothingEnabled = true;
-              (subjectCtx as any).imageSmoothingQuality = "high";
-              subjectCtx.drawImage(results.segmentationMask, 0, 0, w, h);
-              subjectCtx.globalCompositeOperation = "source-in";
-              subjectCtx.drawImage(results.image, 0, 0, w, h);
-              subjectCtx.restore();
+              subjectCtx.imageSmoothingEnabled = true;
+              subjectCtx.imageSmoothingQuality = "high";
+              subjectCtx.filter = "contrast(1.04) saturate(1.03)";
+              drawMirrored(subjectCtx, results.image, w, h);
+              subjectCtx.filter = "none";
+              subjectCtx.globalCompositeOperation = "destination-in";
+              drawMirrored(subjectCtx, buildMask(results.segmentationMask, w, h), w, h);
+              subjectCtx.globalCompositeOperation = "source-over";
 
-              // 3. Light shadow under the subject for depth, then draw subject opaque.
               ctx.drawImage(subjectCanvas, 0, 0, w, h);
             } else {
-              ctx.drawImage(results.image, 0, 0, w, h);
+              drawMirrored(ctx, results.image, w, h);
             }
-            ctx.restore();
           });
-        } catch { seg = null; }
+        } catch (error) { void error; seg = null; }
       }
 
       const pump = async () => {
         if (cancelled) return;
         if (video.readyState >= 2 && video.videoWidth > 0) {
           if (seg) {
-            try { await seg.send({ image: video }); } catch {}
+            try { await seg.send({ image: video }); } catch (error) { void error; }
           } else {
             // Fallback: plain mirrored video, no segmentation.
             const w = video.videoWidth, h = video.videoHeight;
@@ -157,8 +200,8 @@ export function SegmentedStage({
     return () => {
       cancelled = true;
       if (raf) cancelAnimationFrame(raf);
-      try { seg?.close?.(); } catch {}
-      try { video.pause(); video.srcObject = null; } catch {}
+      try { seg?.close?.(); } catch (error) { void error; }
+      try { video.pause(); video.srcObject = null; } catch (error) { void error; }
     };
   }, [stream]);
 

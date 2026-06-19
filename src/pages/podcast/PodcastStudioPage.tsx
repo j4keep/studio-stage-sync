@@ -12,6 +12,7 @@ import {
   Maximize, MonitorUp, MonitorOff, ArrowUp, Rss, Tv, User as UserIcon, ChevronDown as ChevronDownIcon,
 } from "lucide-react";
 import JhiIcon from "@/components/JhiIcon";
+import { supabase } from "@/integrations/supabase/client";
 import { usePodcastSession } from "./podcastSessionStore";
 import { DawEngine } from "@/wstudio/daw/engine/DawEngine";
 import { computePeaks } from "@/wstudio/daw/engine/Peaks";
@@ -145,6 +146,9 @@ export default function PodcastStudioPage() {
   const recognitionRef = useRef<any>(null);
   const captionHideTimerRef = useRef<number | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const chatChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const chatSubscribedRef = useRef(false);
+  const chatClientIdRef = useRef(Math.random().toString(36).slice(2));
   const screenStreamRef = useRef<MediaStream | null>(null);
   const [screenSharing, setScreenSharing] = useState(false);
   const stageContainerRef = useRef<HTMLDivElement | null>(null);
@@ -211,6 +215,12 @@ export default function PodcastStudioPage() {
   const makeStageRecordingStream = useCallback((sourceStream: MediaStream) => {
     const videoTrack = sourceStream.getVideoTracks()[0];
     if (!videoTrack) return null;
+    if (bgUrl) {
+      const stageCanvas = stageContainerRef.current?.querySelector("canvas");
+      if (stageCanvas instanceof HTMLCanvasElement && stageCanvas.width > 0 && stageCanvas.height > 0) {
+        return stageCanvas.captureStream(Math.min(frameRate, 30));
+      }
+    }
     const canvas = document.createElement("canvas");
     canvas.width = resolution === "1080p" ? 1920 : resolution === "480p" ? 854 : 1280;
     canvas.height = resolution === "1080p" ? 1080 : resolution === "480p" ? 480 : 720;
@@ -501,17 +511,61 @@ export default function PodcastStudioPage() {
     return () => document.removeEventListener("fullscreenchange", h);
   }, []);
 
-  // Chat
-  const sendChat = useCallback((text?: string, file?: File) => {
+  // Realtime room chat keyed to the podcast session code. If the host hasn't
+  // created/shared a session code yet, it still works locally on this device.
+  useEffect(() => {
+    if (!sessionCode) return;
+    const channel = supabase.channel(`podcast-chat-${sessionCode.trim()}`, {
+      config: { broadcast: { ack: false, self: false } },
+    });
+    chatChannelRef.current = channel;
+    channel
+      .on("broadcast", { event: "message" }, ({ payload }) => {
+        const data = payload as ChatMessage & { clientId?: string };
+        if (!data?.id || data.clientId === chatClientIdRef.current) return;
+        setChatMessages(p => p.some(m => m.id === data.id) ? p : [...p, data]);
+      })
+      .subscribe((status) => { chatSubscribedRef.current = status === "SUBSCRIBED"; });
+    return () => {
+      chatSubscribedRef.current = false;
+      chatChannelRef.current = null;
+      void supabase.removeChannel(channel);
+    };
+  }, [sessionCode]);
+
+  const sendChat = useCallback(async (text?: string, file?: File) => {
     const msg: ChatMessage = { id: Math.random().toString(36).slice(2), author: "You", ts: Date.now() };
-    if (text) msg.text = text;
+    if (text?.trim()) msg.text = text.trim();
     if (file) {
-      msg.mediaUrl = URL.createObjectURL(file);
+      if (file.size > 2_000_000) {
+        toast.error("Attach a smaller image or short video for live chat");
+        return;
+      }
       msg.mediaType = file.type.startsWith("video/") ? "video" : "image";
+      try {
+        msg.mediaUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || ""));
+          reader.onerror = () => reject(new Error("Couldn't attach file"));
+          reader.readAsDataURL(file);
+        });
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Couldn't attach file");
+        return;
+      }
     }
     if (!msg.text && !msg.mediaUrl) return;
     setChatMessages(p => [...p, msg]);
-  }, []);
+    if (sessionCode) {
+      const send = () => chatChannelRef.current?.send({
+        type: "broadcast",
+        event: "message",
+        payload: { ...msg, clientId: chatClientIdRef.current },
+      });
+      if (chatSubscribedRef.current) void send();
+      else window.setTimeout(() => { void send(); }, 200);
+    }
+  }, [sessionCode]);
 
   // Share Web Share API for invite link
   const shareSheet = useCallback((url: string) => {
@@ -1158,7 +1212,7 @@ function EffectsPanel({
           <Cell key={bg.id} url={bg.url} label={bg.label} selected={bgUrl === bg.url} onClick={() => setBgUrl(bg.url)} />
         ))}
       </div>
-      <p className="text-[10px] text-neutral-500">Tip: backgrounds show through when your camera is off. Full chroma-key removal coming soon.</p>
+      <p className="text-[10px] text-neutral-500">Person-only background replacement is active when your camera is on.</p>
     </div>
   );
 }

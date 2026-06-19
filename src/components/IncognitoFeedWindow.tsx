@@ -185,12 +185,12 @@ const IncognitoFeedWindow = () => {
 
   if (!user) return null;
 
-  // Floating bubble (closed) — move to the LEFT on the podcast workspace so it
-  // doesn't cover the right-side rail (Settings / Download / Effects icons).
-  const isPodcastWorkspace = location.pathname.startsWith("/tv/podcast/") && location.pathname !== "/tv/podcast";
+  // Floating bubble (closed) — keep it off the podcast right rail so it never
+  // covers Settings / Download / Effects icons.
+  const isPodcastWorkspace = location.pathname.startsWith("/tv/podcast");
   if (!open) {
     const bubbleStyle = isPodcastWorkspace
-      ? { left: 16, bottom: 16 }
+      ? { left: 16, bottom: 72 }
       : { right: 16, bottom: 96 };
     return createPortal(
       <button
