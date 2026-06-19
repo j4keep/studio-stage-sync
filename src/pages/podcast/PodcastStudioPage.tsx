@@ -581,8 +581,10 @@ export default function PodcastStudioPage() {
                   </div>
                 )}
                 {captionsOn && captionText && (
-                  <div className="absolute bottom-12 left-1/2 -translate-x-1/2 max-w-[85%] z-30 px-3 py-1.5 rounded-md bg-black/75 text-white text-sm text-center leading-tight">
-                    {captionText}
+                  <div className="absolute bottom-10 left-1/2 -translate-x-1/2 max-w-[88%] z-30 text-center leading-tight pointer-events-none">
+                    <span className={CAPTION_STYLES.find(s => s.id === captionStyle)?.className}>
+                      {captionText}
+                    </span>
                   </div>
                 )}
                 {/* Floating stage controls (top-right of stage) */}
@@ -599,10 +601,13 @@ export default function PodcastStudioPage() {
               <div className="flex items-center justify-center gap-3">
                 <button
                   onClick={handleRecord}
-                  className={`h-12 px-5 rounded-full flex items-center gap-2 text-sm font-semibold shadow-lg transition ${isRecording ? "bg-red-700 hover:bg-red-600 text-white" : "bg-red-600 hover:bg-red-500 text-white"}`}
+                  title={isRecording ? "Stop recording" : "Start recording"}
+                  className={`relative w-16 h-16 rounded-full grid place-items-center shadow-lg shadow-red-900/40 transition ${isRecording ? "bg-red-700 hover:bg-red-600" : "bg-red-600 hover:bg-red-500"}`}
                 >
-                  {isRecording ? <Square className="w-4 h-4 fill-current" /> : <Circle className="w-4 h-4 fill-current" />}
-                  {isRecording ? "Stop recording" : "Record"}
+                  <span className="absolute inset-1.5 rounded-full border-2 border-white/70" />
+                  {isRecording
+                    ? <Square className="w-5 h-5 fill-white text-white" />
+                    : <span className="w-5 h-5 rounded-full bg-white" />}
                 </button>
                 <button onClick={() => setMicOn(m => !m)} title={micOn ? "Mute mic" : "Unmute mic"} className={`w-11 h-11 rounded-full grid place-items-center ${micOn ? "bg-neutral-800 hover:bg-neutral-700 text-white" : "bg-neutral-900 text-neutral-500"}`}>
                   <Mic className="w-4 h-4" />
