@@ -183,6 +183,7 @@ export default function PodcastStudioPage() {
         audio: false,
       });
       camStreamRef.current = stream;
+      setCamStream(stream);
       if (previewRef.current) { previewRef.current.srcObject = stream; await previewRef.current.play().catch(() => {}); }
       setCamOn(true);
     } catch (err: any) {
@@ -198,6 +199,7 @@ export default function PodcastStudioPage() {
     setVideoRec(false);
     const s = camStreamRef.current;
     if (s) { s.getTracks().forEach(t => t.stop()); camStreamRef.current = null; }
+    setCamStream(null);
     if (previewRef.current) previewRef.current.srcObject = null;
     setCamOn(false);
   }, []);
