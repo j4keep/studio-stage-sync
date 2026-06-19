@@ -1227,7 +1227,7 @@ function Toggle({ on, onChange }: { on: boolean; onChange: (b: boolean) => void 
 /* ----------------------------- Stage Layout ----------------------------- */
 
 function StageLayout({
-  layoutId, hostVideoRef, hostName, camOn, mirrored, onStartCamera, bgUrl,
+  layoutId, hostVideoRef, hostName, camOn, mirrored, onStartCamera, bgUrl, camStream,
 }: {
   layoutId: string;
   hostVideoRef: React.RefObject<HTMLVideoElement>;
@@ -1236,21 +1236,30 @@ function StageLayout({
   mirrored: boolean;
   onStartCamera: () => void;
   bgUrl: string | null;
+  camStream: MediaStream | null;
 }) {
+  // When a background is selected, render via the SegmentedStage canvas which
+  // uses MediaPipe selfie-segmentation to keep ONLY the person and replace
+  // everything else with the chosen background.
+  const useSegmenter = !!(bgUrl && camStream && camOn);
+
   const Host = (
     <div className="relative w-full h-full overflow-hidden bg-black">
-      {bgUrl && (
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${bgUrl})` }}
+      {useSegmenter ? (
+        <SegmentedStage
+          stream={camStream}
+          bgUrl={bgUrl}
+          mirrored={mirrored}
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+      ) : (
+        <video
+          ref={hostVideoRef}
+          muted
+          playsInline
+          className={`relative w-full h-full object-cover ${mirrored ? "scale-x-[-1]" : ""} ${camOn ? "" : "hidden"}`}
         />
       )}
-      <video
-        ref={hostVideoRef}
-        muted
-        playsInline
-        className={`${bgUrl ? "absolute inset-[7%] w-[86%] h-[86%] rounded-xl shadow-2xl" : "relative w-full h-full"} object-cover ${mirrored ? "scale-x-[-1]" : ""} ${camOn ? "" : "hidden"}`}
-      />
       {!camOn && (
         <div className="absolute inset-0 grid place-items-center text-neutral-500 text-sm gap-3">
           <VideoOff className="w-8 h-8 opacity-40" />
