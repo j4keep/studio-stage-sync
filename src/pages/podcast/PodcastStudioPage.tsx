@@ -1199,7 +1199,7 @@ function EffectsPanel({
           <Cell key={bg.id} url={bg.url} label={bg.label} selected={bgUrl === bg.url} onClick={() => setBgUrl(bg.url)} />
         ))}
       </div>
-      <p className="text-[10px] text-neutral-500">Tip: backgrounds show through when your camera is off. Full chroma-key removal coming soon.</p>
+      <p className="text-[10px] text-neutral-500">Person-only background replacement is active when your camera is on.</p>
     </div>
   );
 }
