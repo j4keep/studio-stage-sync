@@ -393,6 +393,101 @@ export default function PodcastStudioPage() {
     } catch { toast.error("Couldn't open project"); }
   }, [loadProject, setProjectFileHandle]);
 
+  // Live captions via Web Speech API
+  const toggleCaptions = useCallback(() => {
+    if (captionsOn) {
+      try { recognitionRef.current?.stop(); } catch {}
+      recognitionRef.current = null;
+      setCaptionsOn(false);
+      setCaptionText("");
+      return;
+    }
+    const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) { toast.error("Live captions need Chrome or Edge"); return; }
+    const r = new SR();
+    r.continuous = true;
+    r.interimResults = true;
+    r.lang = "en-US";
+    r.onresult = (ev: any) => {
+      let txt = "";
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        txt += ev.results[i][0].transcript;
+      }
+      setCaptionText(txt.trim().slice(-180));
+    };
+    r.onerror = () => {};
+    r.onend = () => { if (captionsOn) try { r.start(); } catch {} };
+    try { r.start(); recognitionRef.current = r; setCaptionsOn(true); }
+    catch { toast.error("Could not start captions"); }
+  }, [captionsOn]);
+
+  useEffect(() => () => { try { recognitionRef.current?.stop(); } catch {} }, []);
+
+  // Screen sharing
+  const toggleScreenShare = useCallback(async () => {
+    if (screenSharing) {
+      screenStreamRef.current?.getTracks().forEach(t => t.stop());
+      screenStreamRef.current = null;
+      setScreenSharing(false);
+      if (previewRef.current && camStreamRef.current) {
+        previewRef.current.srcObject = camStreamRef.current;
+        previewRef.current.play().catch(() => {});
+      }
+      return;
+    }
+    try {
+      const s = await (navigator.mediaDevices as any).getDisplayMedia({ video: true, audio: true });
+      screenStreamRef.current = s;
+      if (previewRef.current) { previewRef.current.srcObject = s; previewRef.current.play().catch(() => {}); }
+      setScreenSharing(true);
+      s.getVideoTracks()[0].addEventListener("ended", () => {
+        setScreenSharing(false);
+        screenStreamRef.current = null;
+        if (previewRef.current && camStreamRef.current) {
+          previewRef.current.srcObject = camStreamRef.current;
+          previewRef.current.play().catch(() => {});
+        }
+      });
+    } catch (err: any) { toast.error(err?.message || "Screen share denied"); }
+  }, [screenSharing]);
+
+  // Fullscreen
+  const toggleFullscreen = useCallback(() => {
+    const el = stageContainerRef.current;
+    if (!document.fullscreenElement && el?.requestFullscreen) {
+      el.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
+    } else if (document.fullscreenElement) {
+      document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
+    }
+  }, []);
+  useEffect(() => {
+    const h = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", h);
+    return () => document.removeEventListener("fullscreenchange", h);
+  }, []);
+
+  // Chat
+  const sendChat = useCallback((text?: string, file?: File) => {
+    const msg: ChatMessage = { id: Math.random().toString(36).slice(2), author: "You", ts: Date.now() };
+    if (text) msg.text = text;
+    if (file) {
+      msg.mediaUrl = URL.createObjectURL(file);
+      msg.mediaType = file.type.startsWith("video/") ? "video" : "image";
+    }
+    if (!msg.text && !msg.mediaUrl) return;
+    setChatMessages(p => [...p, msg]);
+  }, []);
+
+  // Share Web Share API for invite link
+  const shareSheet = useCallback((url: string) => {
+    if ((navigator as any).share) {
+      (navigator as any).share({ title: "Join my podcast", text: "Hop into the studio", url }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(url);
+      toast.success("Link copied");
+    }
+  }, []);
+
   // Body scroll lock
   useEffect(() => {
     const prev = document.body.style.overflow;
