@@ -122,7 +122,7 @@ export function SegmentedStage({
           seg = new SS({
             locateFile: (f: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${f}`,
           });
-          seg.setOptions({ modelSelection: 1, selfieMode: false });
+          seg.setOptions({ modelSelection: 0, selfieMode: false });
           seg.onResults((results: any) => {
             if (cancelled) return;
             const w = results.image.width || video.videoWidth || 640;
