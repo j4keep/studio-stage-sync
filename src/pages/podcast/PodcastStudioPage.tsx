@@ -146,6 +146,8 @@ export default function PodcastStudioPage() {
   const recognitionRef = useRef<any>(null);
   const captionHideTimerRef = useRef<number | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const chatChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const chatClientIdRef = useRef(Math.random().toString(36).slice(2));
   const screenStreamRef = useRef<MediaStream | null>(null);
   const [screenSharing, setScreenSharing] = useState(false);
   const stageContainerRef = useRef<HTMLDivElement | null>(null);
@@ -508,17 +510,49 @@ export default function PodcastStudioPage() {
     return () => document.removeEventListener("fullscreenchange", h);
   }, []);
 
-  // Chat
-  const sendChat = useCallback((text?: string, file?: File) => {
+  // Realtime room chat keyed to the podcast session code. If the host hasn't
+  // created/shared a session code yet, it still works locally on this device.
+  useEffect(() => {
+    if (!sessionCode) return;
+    const channel = supabase.channel(`podcast-chat-${sessionCode.trim()}`, {
+      config: { broadcast: { ack: false, self: false } },
+    });
+    chatChannelRef.current = channel;
+    channel
+      .on("broadcast", { event: "message" }, ({ payload }) => {
+        const data = payload as ChatMessage & { clientId?: string };
+        if (!data?.id || data.clientId === chatClientIdRef.current) return;
+        setChatMessages(p => p.some(m => m.id === data.id) ? p : [...p, data]);
+      })
+      .subscribe();
+    return () => {
+      chatChannelRef.current = null;
+      void supabase.removeChannel(channel);
+    };
+  }, [sessionCode]);
+
+  const sendChat = useCallback(async (text?: string, file?: File) => {
     const msg: ChatMessage = { id: Math.random().toString(36).slice(2), author: "You", ts: Date.now() };
-    if (text) msg.text = text;
+    if (text?.trim()) msg.text = text.trim();
     if (file) {
-      msg.mediaUrl = URL.createObjectURL(file);
       msg.mediaType = file.type.startsWith("video/") ? "video" : "image";
+      msg.mediaUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = () => reject(new Error("Couldn't attach file"));
+        reader.readAsDataURL(file);
+      });
     }
     if (!msg.text && !msg.mediaUrl) return;
     setChatMessages(p => [...p, msg]);
-  }, []);
+    if (sessionCode) {
+      void chatChannelRef.current?.send({
+        type: "broadcast",
+        event: "message",
+        payload: { ...msg, clientId: chatClientIdRef.current },
+      });
+    }
+  }, [sessionCode]);
 
   // Share Web Share API for invite link
   const shareSheet = useCallback((url: string) => {
