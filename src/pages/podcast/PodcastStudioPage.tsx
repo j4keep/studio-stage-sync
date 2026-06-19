@@ -524,6 +524,28 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
     } catch { toast.error("Couldn't open project"); }
   }, [loadProject, setProjectFileHandle]);
 
+  const handleDeleteProject = useCallback(async () => {
+    if (!window.confirm("Delete this saved project and clear the current studio timeline?")) return;
+    try {
+      if (projectFileHandle && typeof (projectFileHandle as any).remove === "function") {
+        await (projectFileHandle as any).remove();
+      }
+      usePodcastVideoStore.getState().clear();
+      resetProject("Untitled Project");
+      setProjectFileHandle(null);
+      toast.success("Project deleted");
+    } catch {
+      toast.error("Couldn't delete the saved file, but you can remove it from your device folder.");
+    }
+  }, [projectFileHandle, resetProject, setProjectFileHandle]);
+
+  const handleDeleteRecording = useCallback((clipId: string) => {
+    const clipExists = useDawStore.getState().clips.some(c => c.id === clipId);
+    removeVideo(clipId);
+    if (clipExists) removeClip(clipId);
+    toast.success("Recording removed");
+  }, [removeClip, removeVideo]);
+
   // Live captions via Web Speech API — auto-hides after ~2s of silence so
   // captions don't linger on screen when the host stops talking.
   const toggleCaptions = useCallback(() => {
