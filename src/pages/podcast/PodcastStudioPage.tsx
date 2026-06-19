@@ -10,6 +10,7 @@ import {
   Play, Pause, SkipBack, SkipForward, Maximize2, Minimize2, ArrowLeftToLine,
   MessageSquare, Smartphone, QrCode, Share2, Send, Image as ImageIcon, Paperclip,
   Maximize, MonitorUp, MonitorOff, ArrowUp, Rss, Tv, User as UserIcon, ChevronDown as ChevronDownIcon,
+  Trash2,
 } from "lucide-react";
 import JhiIcon from "@/components/JhiIcon";
 import { supabase } from "@/integrations/supabase/client";
@@ -163,6 +164,7 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
   const [isFullscreen, setIsFullscreen] = useState(false);
   const setPending = usePodcastVideoStore(s => s.setPending);
   const setVideo = usePodcastVideoStore(s => s.setVideo);
+  const removeVideo = usePodcastVideoStore(s => s.removeVideo);
 
   // Init engine
   useEffect(() => {
