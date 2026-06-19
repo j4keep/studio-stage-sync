@@ -553,8 +553,8 @@ export default function PodcastStudioPage() {
       {/* Top minimal header */}
       <header className="h-12 shrink-0 flex items-center justify-between px-3 border-b border-neutral-900">
         <div className="flex items-center gap-2 min-w-0">
-          <button onClick={() => navigate("/tv/podcast")} className="p-1.5 rounded hover:bg-neutral-900" title="Lobby">
-            <Home className="w-4 h-4 text-neutral-300" />
+          <button onClick={minimizeSession} className="p-1.5 rounded hover:bg-neutral-900" title="Minimize — session keeps recording">
+            <ChevronDownIcon className="w-4 h-4 text-neutral-300" />
           </button>
           <input
             value={projectName}
@@ -611,27 +611,48 @@ export default function PodcastStudioPage() {
                   </StageBtn>
                 </div>
               </div>
-              {/* Record bar — sits directly under the video preview */}
-              <div className="flex items-center justify-center gap-3">
-                <button
-                  onClick={handleRecord}
-                  title={isRecording ? "Stop recording" : "Start recording"}
-                  className={`relative w-16 h-16 rounded-full grid place-items-center shadow-lg shadow-red-900/40 transition ${isRecording ? "bg-red-700 hover:bg-red-600" : "bg-red-600 hover:bg-red-500"}`}
-                >
-                  <span className="absolute inset-1.5 rounded-full border-2 border-white/70" />
-                  {isRecording
-                    ? <Square className="w-5 h-5 fill-white text-white" />
-                    : <span className="w-5 h-5 rounded-full bg-white" />}
-                </button>
-                <button onClick={() => setMicOn(m => !m)} title={micOn ? "Mute mic" : "Unmute mic"} className={`w-11 h-11 rounded-full grid place-items-center ${micOn ? "bg-neutral-800 hover:bg-neutral-700 text-white" : "bg-neutral-900 text-neutral-500"}`}>
-                  <Mic className="w-4 h-4" />
-                </button>
-                <button onClick={() => camOn ? stopCamera() : startCamera()} title={camOn ? "Stop camera" : "Start camera"} className={`w-11 h-11 rounded-full grid place-items-center ${camOn ? "bg-neutral-800 hover:bg-neutral-700 text-white" : "bg-neutral-900 text-neutral-500"}`}>
-                  {camOn ? <VideoIcon className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
-                </button>
-                <button onClick={toggleCaptions} title="Live captions" className={`w-11 h-11 rounded-full grid place-items-center ${captionsOn ? "bg-cyan-600 text-white" : "bg-neutral-900 text-neutral-400 hover:bg-neutral-800 hover:text-white"}`}>
-                  <CaptionsIcon className="w-4 h-4" />
-                </button>
+              {/* Record bar — sits directly under the video preview. Combines
+                  media controls + Projects / J-Hi / Leave + page nav so the user
+                  can jump anywhere in the app WITHOUT killing the session. */}
+              <div className="flex flex-col items-center gap-2">
+                <div className="flex items-center justify-center gap-3 flex-wrap">
+                  <button
+                    onClick={handleRecord}
+                    title={isRecording ? "Stop recording" : "Start recording"}
+                    className={`relative w-14 h-14 rounded-full grid place-items-center shadow-lg shadow-red-900/40 transition ${isRecording ? "bg-red-700 hover:bg-red-600" : "bg-red-600 hover:bg-red-500"}`}
+                  >
+                    <span className="absolute inset-1.5 rounded-full border-2 border-white/70" />
+                    {isRecording
+                      ? <Square className="w-4 h-4 fill-white text-white" />
+                      : <span className="w-4 h-4 rounded-full bg-white" />}
+                  </button>
+                  <button onClick={() => setMicOn(m => !m)} title={micOn ? "Mute mic" : "Unmute mic"} className={`w-10 h-10 rounded-full grid place-items-center ${micOn ? "bg-neutral-800 hover:bg-neutral-700 text-white" : "bg-neutral-900 text-neutral-500"}`}>
+                    <Mic className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => camOn ? stopCamera() : startCamera()} title={camOn ? "Stop camera" : "Start camera"} className={`w-10 h-10 rounded-full grid place-items-center ${camOn ? "bg-neutral-800 hover:bg-neutral-700 text-white" : "bg-neutral-900 text-neutral-500"}`}>
+                    {camOn ? <VideoIcon className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
+                  </button>
+                  <button onClick={toggleCaptions} title="Live captions" className={`w-10 h-10 rounded-full grid place-items-center ${captionsOn ? "bg-cyan-600 text-white" : "bg-neutral-900 text-neutral-400 hover:bg-neutral-800 hover:text-white"}`}>
+                    <CaptionsIcon className="w-4 h-4" />
+                  </button>
+                  <div className="w-px h-8 bg-neutral-800 mx-1" />
+                  <button onClick={() => setRightPanel(p => p === "projects" ? null : "projects")} title="Recorded projects" className={`w-10 h-10 rounded-full grid place-items-center ${rightPanel === "projects" ? "bg-neutral-700 text-white" : "bg-neutral-900 text-neutral-300 hover:bg-neutral-800 hover:text-white"}`}>
+                    <FolderOpen className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => setRightPanel(p => p === "jhi" ? null : "jhi")} title="Ask J-Hi" className={`w-10 h-10 rounded-full grid place-items-center ${rightPanel === "jhi" ? "bg-cyan-600 text-white" : "bg-neutral-900 hover:bg-neutral-800"}`}>
+                    <JhiIcon className="w-5 h-5" active />
+                  </button>
+                  <button onClick={leaveSession} title="Leave — ends the session" className="w-10 h-10 rounded-full grid place-items-center bg-red-600/15 text-red-400 hover:bg-red-600 hover:text-white">
+                    <LogOut className="w-4 h-4" />
+                  </button>
+                </div>
+                {/* Page nav — minimize the studio (keeps recording!) and jump to another app section */}
+                <div className="flex items-center justify-center gap-1 text-[10px] text-neutral-500">
+                  <NavPill icon={<Home className="w-3.5 h-3.5" />} label="Home" onClick={() => goTo("/")} />
+                  <NavPill icon={<Rss className="w-3.5 h-3.5" />} label="Feed" onClick={() => goTo("/feed")} />
+                  <NavPill icon={<Tv className="w-3.5 h-3.5" />} label="TV" onClick={() => goTo("/tv")} />
+                  <NavPill icon={<UserIcon className="w-3.5 h-3.5" />} label="Profile" onClick={() => goTo("/profile")} />
+                </div>
               </div>
             </div>
           </div>
