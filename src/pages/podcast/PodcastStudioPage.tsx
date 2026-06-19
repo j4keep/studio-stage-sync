@@ -12,6 +12,7 @@ import {
   Maximize, MonitorUp, MonitorOff, ArrowUp, Rss, Tv, User as UserIcon, ChevronDown as ChevronDownIcon,
 } from "lucide-react";
 import JhiIcon from "@/components/JhiIcon";
+import { supabase } from "@/integrations/supabase/client";
 import { usePodcastSession } from "./podcastSessionStore";
 import { DawEngine } from "@/wstudio/daw/engine/DawEngine";
 import { computePeaks } from "@/wstudio/daw/engine/Peaks";
@@ -211,6 +212,12 @@ export default function PodcastStudioPage() {
   const makeStageRecordingStream = useCallback((sourceStream: MediaStream) => {
     const videoTrack = sourceStream.getVideoTracks()[0];
     if (!videoTrack) return null;
+    if (bgUrl) {
+      const stageCanvas = stageContainerRef.current?.querySelector("canvas");
+      if (stageCanvas instanceof HTMLCanvasElement && stageCanvas.width > 0 && stageCanvas.height > 0) {
+        return stageCanvas.captureStream(Math.min(frameRate, 30));
+      }
+    }
     const canvas = document.createElement("canvas");
     canvas.width = resolution === "1080p" ? 1920 : resolution === "480p" ? 854 : 1280;
     canvas.height = resolution === "1080p" ? 1080 : resolution === "480p" ? 480 : 720;
