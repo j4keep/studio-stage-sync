@@ -141,7 +141,7 @@ export function SegmentedStage({
             locateFile: (f: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${f}`,
           });
           seg.setOptions({ modelSelection: 0, selfieMode: false });
-          seg.onResults((results: any) => {
+          seg.onResults((results) => {
             if (cancelled) return;
             const w = results.image.width || video.videoWidth || 640;
             const h = results.image.height || video.videoHeight || 480;
@@ -149,8 +149,8 @@ export function SegmentedStage({
             if (canvas.height !== h) canvas.height = h;
 
             ctx.clearRect(0, 0, w, h);
-            (ctx as any).imageSmoothingEnabled = true;
-            (ctx as any).imageSmoothingQuality = "high";
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = "high";
 
             if (bgUrlRef.current && bgImgRef.current && subjectCtx) {
               drawCover(ctx, bgImgRef.current, w, h);
@@ -158,11 +158,11 @@ export function SegmentedStage({
               if (subjectCanvas.width !== w) subjectCanvas.width = w;
               if (subjectCanvas.height !== h) subjectCanvas.height = h;
               subjectCtx.clearRect(0, 0, w, h);
-              (subjectCtx as any).imageSmoothingEnabled = true;
-              (subjectCtx as any).imageSmoothingQuality = "high";
-              (subjectCtx as any).filter = "contrast(1.04) saturate(1.03)";
+              subjectCtx.imageSmoothingEnabled = true;
+              subjectCtx.imageSmoothingQuality = "high";
+              subjectCtx.filter = "contrast(1.04) saturate(1.03)";
               drawMirrored(subjectCtx, results.image, w, h);
-              (subjectCtx as any).filter = "none";
+              subjectCtx.filter = "none";
               subjectCtx.globalCompositeOperation = "destination-in";
               drawMirrored(subjectCtx, buildMask(results.segmentationMask, w, h), w, h);
               subjectCtx.globalCompositeOperation = "source-over";
@@ -172,7 +172,7 @@ export function SegmentedStage({
               drawMirrored(ctx, results.image, w, h);
             }
           });
-        } catch { seg = null; }
+        } catch (error) { void error; seg = null; }
       }
 
       const pump = async () => {
