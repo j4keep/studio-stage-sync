@@ -716,7 +716,7 @@ export default function PodcastStudioPage() {
                   onAddCustomBg={() => bgUploadRef.current?.click()}
                 />
               )}
-              {rightPanel === "captions" && <CaptionsPanel on={captionsOn} onToggle={toggleCaptions} text={captionText} />}
+              {rightPanel === "captions" && <CaptionsPanel on={captionsOn} onToggle={toggleCaptions} text={captionText} style={captionStyle} setStyle={setCaptionStyle} />}
               {rightPanel === "jhi" && <JhiPanel />}
               {rightPanel === "media" && <MediaPanel onImport={() => importInputRef.current?.click()} />}
               {rightPanel === "projects" && (
