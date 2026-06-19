@@ -33,6 +33,7 @@ export function ClipVideoStrip({ clipId, width, height, offsetSec, durationSec }
       await new Promise<void>(res => {
         if (video.readyState >= 1) return res();
         video.onloadedmetadata = () => res();
+        window.setTimeout(res, 1200);
       });
       if (cancelled) return;
       const canvas = canvasRef.current;
@@ -50,16 +51,19 @@ export function ClipVideoStrip({ clipId, width, height, offsetSec, durationSec }
       const thumbW = Math.max(24, Math.floor(h * aspect));
       const count = Math.max(1, Math.ceil(w / thumbW));
       const stepX = w / count;
-      const totalDur = video.duration || (entry.durationSec ?? durationSec);
+      const totalDur = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : (entry.durationSec ?? durationSec);
 
       for (let i = 0; i < count; i++) {
         if (cancelled) return;
         const t = offsetSec + ((i + 0.5) / count) * durationSec;
         const clamped = Math.max(0, Math.min(Math.max(0.001, totalDur - 0.05), t));
         await new Promise<void>((res) => {
-          const onSeek = () => { video.removeEventListener("seeked", onSeek); res(); };
+          let done = false;
+          const finish = () => { if (done) return; done = true; video.removeEventListener("seeked", onSeek); res(); };
+          const onSeek = () => finish();
           video.addEventListener("seeked", onSeek);
-          try { video.currentTime = clamped; } catch { res(); }
+          window.setTimeout(finish, 350);
+          try { video.currentTime = clamped; } catch { finish(); }
         });
         if (cancelled) return;
         try {

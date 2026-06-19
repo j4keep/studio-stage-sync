@@ -11,6 +11,7 @@ import { Mic, Maximize2, X } from "lucide-react";
 export default function GlobalPodcastSession() {
   const active = usePodcastSession((s) => s.active);
   const minimized = usePodcastSession((s) => s.minimized);
+  const sessionCode = usePodcastSession((s) => s.sessionCode);
   const restore = usePodcastSession((s) => s.restore);
   const close = usePodcastSession((s) => s.close);
   const navigate = useNavigate();
@@ -22,7 +23,7 @@ export default function GlobalPodcastSession() {
       {/* The studio stays mounted (engine, streams, recording continue).
           When minimized we just visually hide it. */}
       <div className={minimized ? "hidden" : "contents"}>
-        <PodcastStudioPage />
+        <PodcastStudioPage activeSessionCode={sessionCode} />
       </div>
 
       {minimized && (

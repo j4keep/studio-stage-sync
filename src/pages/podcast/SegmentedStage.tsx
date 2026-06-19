@@ -111,14 +111,16 @@ export function SegmentedStage({
       if (maskCanvas.width !== w) maskCanvas.width = w;
       if (maskCanvas.height !== h) maskCanvas.height = h;
       maskCtx.clearRect(0, 0, w, h);
+      maskCtx.filter = "blur(1.25px)";
       maskCtx.drawImage(mask, 0, 0, w, h);
+      maskCtx.filter = "none";
       const data = maskCtx.getImageData(0, 0, w, h);
       const px = data.data;
       for (let i = 0; i < px.length; i += 4) {
         const confidence = Math.max(px[i], px[i + 1], px[i + 2], px[i + 3]) / 255;
-        let alpha = smoothstep(0.34, 0.58, confidence);
-        if (alpha > 0.72) alpha = 1;
-        if (alpha < 0.08) alpha = 0;
+        let alpha = smoothstep(0.18, 0.42, confidence);
+        if (alpha > 0.88) alpha = 1;
+        if (alpha < 0.03) alpha = 0;
         px[i] = 255;
         px[i + 1] = 255;
         px[i + 2] = 255;
@@ -160,7 +162,7 @@ export function SegmentedStage({
               subjectCtx.clearRect(0, 0, w, h);
               subjectCtx.imageSmoothingEnabled = true;
               subjectCtx.imageSmoothingQuality = "high";
-              subjectCtx.filter = "contrast(1.04) saturate(1.03)";
+              subjectCtx.filter = "contrast(1.02) saturate(1.02)";
               drawMirrored(subjectCtx, results.image, w, h);
               subjectCtx.filter = "none";
               subjectCtx.globalCompositeOperation = "destination-in";
