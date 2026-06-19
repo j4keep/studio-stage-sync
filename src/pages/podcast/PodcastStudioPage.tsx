@@ -86,6 +86,9 @@ export default function PodcastStudioPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const sessionCode = params.get("session");
+  const minimizeSession = usePodcastSession((s) => s.minimize);
+  const closeSession = usePodcastSession((s) => s.close);
+  const isMinimized = usePodcastSession((s) => s.minimized);
 
   const engineRef = useRef<DawEngine | null>(null);
   const [engineReady, setEngineReady] = useState(false);
@@ -520,12 +523,16 @@ export default function PodcastStudioPage() {
     }
   }, []);
 
-  // Body scroll lock
+  // Body scroll lock — only when studio is visible (not when minimized).
   useEffect(() => {
+    if (isMinimized) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = prev; };
-  }, []);
+  }, [isMinimized]);
+
+  const goTo = useCallback((path: string) => { minimizeSession(); navigate(path); }, [minimizeSession, navigate]);
+  const leaveSession = useCallback(() => { closeSession(); navigate("/tv"); }, [closeSession, navigate]);
 
   // Drag-drop
   useEffect(() => {
