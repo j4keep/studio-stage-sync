@@ -315,7 +315,10 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
     if (useDawStore.getState().transport.isRecording) {
       // STOP everything
       const rec = recorderRef.current; recorderRef.current = null;
-      recStopRef.current = e.currentPosition();
+      const stopPosition = e.currentPosition();
+      recStopRef.current = stopPosition;
+      e.stopRecording();
+      e.stop();
       if (rec && rec.state !== "inactive") {
         await new Promise<void>((res) => {
           const prev = rec.onstop; rec.onstop = (ev) => { try { prev?.call(rec, ev); } finally { res(); } };
@@ -323,8 +326,7 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
         });
       }
       setVideoRec(false);
-      e.stopRecording(); e.stop();
-      setTransport({ isRecording: false, isPlaying: false });
+      setTransport({ isRecording: false, isPlaying: false, position: stopPosition });
       return;
     }
     if (!camStreamRef.current) { await startCamera(); }
