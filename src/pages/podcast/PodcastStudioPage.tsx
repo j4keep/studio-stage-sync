@@ -9,9 +9,10 @@ import {
   Scissors, MousePointer2, ZoomIn, ZoomOut, Download, Pencil, Eraser,
   Play, Pause, SkipBack, SkipForward, Maximize2, Minimize2, ArrowLeftToLine,
   MessageSquare, Smartphone, QrCode, Share2, Send, Image as ImageIcon, Paperclip,
-  Maximize, MonitorUp, MonitorOff, ArrowUp,
+  Maximize, MonitorUp, MonitorOff, ArrowUp, Rss, Tv, User as UserIcon, ChevronDown as ChevronDownIcon,
 } from "lucide-react";
 import JhiIcon from "@/components/JhiIcon";
+import { usePodcastSession } from "./podcastSessionStore";
 import { DawEngine } from "@/wstudio/daw/engine/DawEngine";
 import { computePeaks } from "@/wstudio/daw/engine/Peaks";
 import { useDawStore, newId } from "@/wstudio/daw/state/DawStore";
