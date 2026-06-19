@@ -675,8 +675,8 @@ export default function PodcastStudioPage() {
               <button onClick={() => setRightPanel(null)} className="p-1 text-neutral-500 hover:text-neutral-100"><X className="w-4 h-4" /></button>
             </header>
             <div className="flex-1 overflow-y-auto p-4 text-sm">
-              {rightPanel === "people" && <PeoplePanel onInvite={inviteGuest} />}
-              {rightPanel === "chat" && <div className="text-neutral-500 text-xs">Chat coming soon.</div>}
+              {rightPanel === "people" && <PeoplePanel onInvite={inviteGuest} onShare={shareSheet} sessionCode={sessionCode} />}
+              {rightPanel === "chat" && <ChatPanel messages={chatMessages} onSend={sendChat} />}
               {rightPanel === "effects" && (
                 <EffectsPanel
                   mirrored={mirrored} setMirrored={setMirrored}
@@ -685,7 +685,8 @@ export default function PodcastStudioPage() {
                   onAddCustomBg={() => bgUploadRef.current?.click()}
                 />
               )}
-              {rightPanel === "text" && <div className="text-neutral-500 text-xs">Lower-thirds & captions.</div>}
+              {rightPanel === "captions" && <CaptionsPanel on={captionsOn} onToggle={toggleCaptions} text={captionText} />}
+              {rightPanel === "jhi" && <JhiPanel />}
               {rightPanel === "media" && <MediaPanel onImport={() => importInputRef.current?.click()} />}
               {rightPanel === "projects" && (
                 <ProjectsPanel
