@@ -33,11 +33,6 @@ function loadMediaPipe(): Promise<void> {
   return scriptPromise;
 }
 
-const smoothstep = (edge0: number, edge1: number, x: number) => {
-  const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)));
-  return t * t * (3 - 2 * t);
-};
-
 function drawCover(ctx: CanvasRenderingContext2D, img: CanvasImageSource, w: number, h: number) {
   const sw = (img as HTMLImageElement).naturalWidth || (img as HTMLVideoElement).videoWidth || w;
   const sh = (img as HTMLImageElement).naturalHeight || (img as HTMLVideoElement).videoHeight || h;
@@ -92,7 +87,7 @@ export function SegmentedStage({
     const subjectCanvas = document.createElement("canvas");
     const subjectCtx = subjectCanvas.getContext("2d");
     const maskCanvas = document.createElement("canvas");
-    const maskCtx = maskCanvas.getContext("2d", { willReadFrequently: true });
+    const maskCtx = maskCanvas.getContext("2d");
 
     const drawMirrored = (target: CanvasRenderingContext2D, img: CanvasImageSource, w: number, h: number) => {
       if (mirroredRef.current) {
@@ -106,28 +101,20 @@ export function SegmentedStage({
       }
     };
 
-    const buildMask = (mask: CanvasImageSource, w: number, h: number) => {
-      if (!maskCtx) return mask;
+    const drawSoftMask = (target: CanvasRenderingContext2D, mask: CanvasImageSource, w: number, h: number) => {
+      if (!maskCtx) {
+        drawMirrored(target, mask, w, h);
+        return;
+      }
       if (maskCanvas.width !== w) maskCanvas.width = w;
       if (maskCanvas.height !== h) maskCanvas.height = h;
       maskCtx.clearRect(0, 0, w, h);
-      maskCtx.filter = "blur(1.25px)";
+      maskCtx.imageSmoothingEnabled = true;
+      maskCtx.imageSmoothingQuality = "high";
+      maskCtx.filter = "blur(0.6px)";
       maskCtx.drawImage(mask, 0, 0, w, h);
       maskCtx.filter = "none";
-      const data = maskCtx.getImageData(0, 0, w, h);
-      const px = data.data;
-      for (let i = 0; i < px.length; i += 4) {
-        const confidence = Math.max(px[i], px[i + 1], px[i + 2], px[i + 3]) / 255;
-        let alpha = smoothstep(0.18, 0.42, confidence);
-        if (alpha > 0.88) alpha = 1;
-        if (alpha < 0.03) alpha = 0;
-        px[i] = 255;
-        px[i + 1] = 255;
-        px[i + 2] = 255;
-        px[i + 3] = Math.round(alpha * 255);
-      }
-      maskCtx.putImageData(data, 0, 0);
-      return maskCanvas;
+      drawMirrored(target, maskCanvas, w, h);
     };
 
     (async () => {
@@ -162,11 +149,10 @@ export function SegmentedStage({
               subjectCtx.clearRect(0, 0, w, h);
               subjectCtx.imageSmoothingEnabled = true;
               subjectCtx.imageSmoothingQuality = "high";
-              subjectCtx.filter = "contrast(1.02) saturate(1.02)";
-              drawMirrored(subjectCtx, results.image, w, h);
               subjectCtx.filter = "none";
+              drawMirrored(subjectCtx, results.image, w, h);
               subjectCtx.globalCompositeOperation = "destination-in";
-              drawMirrored(subjectCtx, buildMask(results.segmentationMask, w, h), w, h);
+              drawSoftMask(subjectCtx, results.segmentationMask, w, h);
               subjectCtx.globalCompositeOperation = "source-over";
 
               ctx.drawImage(subjectCanvas, 0, 0, w, h);
@@ -183,7 +169,7 @@ export function SegmentedStage({
           if (seg) {
             try { await seg.send({ image: video }); } catch (error) { void error; }
           } else {
-            // Fallback: plain mirrored video, no segmentation.
+            // Fallback immediately paints the real camera while the model loads.
             const w = video.videoWidth, h = video.videoHeight;
             if (canvas.width !== w) canvas.width = w;
             if (canvas.height !== h) canvas.height = h;
