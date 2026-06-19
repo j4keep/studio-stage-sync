@@ -694,8 +694,6 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
     return <div className="min-h-screen bg-black grid place-items-center text-neutral-400">Loading studio…</div>;
   }
 
-  const isRecording = useDawStore.getState().transport.isRecording;
-
   return (
     <div className="fixed inset-0 z-[60] flex flex-col bg-neutral-950 text-neutral-100 overflow-hidden">
       {/* Top minimal header */}
