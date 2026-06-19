@@ -103,15 +103,18 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
   const clips = useDawStore(s => s.clips);
   const setTransport = useDawStore(s => s.setTransport);
   const addClip = useDawStore(s => s.addClip);
+  const removeClip = useDawStore(s => s.removeClip);
   const addTrack = useDawStore(s => s.addTrack);
   const updateTrack = useDawStore(s => s.updateTrack);
   const selectTrack = useDawStore(s => s.selectTrack);
+  const selectedClipId = useDawStore(s => s.selectedClipId);
   const view = useDawStore(s => s.view);
   const projectName = useDawStore(s => s.projectName);
   const setProjectName = useDawStore(s => s.setProjectName);
   const projectFileHandle = useDawStore(s => s.projectFileHandle);
   const setProjectFileHandle = useDawStore(s => s.setProjectFileHandle);
   const loadProject = useDawStore(s => s.loadProject);
+  const resetProject = useDawStore(s => s.resetProject);
   const tool = useDawStore(s => s.tool);
   const setTool = useDawStore(s => s.setTool);
   const pxPerSec = useDawStore(s => s.pxPerSec);
