@@ -1378,13 +1378,12 @@ function MediaPanel({ onImport }: { onImport: () => void }) {
 }
 
 function SettingsPanel({
-  resolution, setResolution, frameRate, setFrameRate, micOn, setMicOn, mirrored, setMirrored, onOpenProject,
+  resolution, setResolution, frameRate, setFrameRate, micOn, setMicOn, mirrored, setMirrored,
 }: {
   resolution: "480p" | "720p" | "1080p"; setResolution: (v: any) => void;
   frameRate: 24 | 30 | 60; setFrameRate: (v: any) => void;
   micOn: boolean; setMicOn: (b: boolean) => void;
   mirrored: boolean; setMirrored: (b: boolean) => void;
-  onOpenProject: () => void;
 }) {
   return (
     <div className="space-y-4">
@@ -1400,10 +1399,6 @@ function SettingsPanel({
       </Row>
       <Row label="Microphone"><Toggle on={micOn} onChange={setMicOn} /></Row>
       <Row label="Mirror my video"><Toggle on={mirrored} onChange={setMirrored} /></Row>
-      <div className="pt-3 border-t border-neutral-900 space-y-2">
-        <button onClick={onOpenProject} className="w-full h-9 rounded bg-neutral-900 border border-neutral-800 hover:bg-neutral-800 text-xs">Open project from device</button>
-        <p className="text-[10px] text-neutral-500">Projects save to your device — not the cloud.</p>
-      </div>
     </div>
   );
 }
