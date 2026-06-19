@@ -315,6 +315,7 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
     if (useDawStore.getState().transport.isRecording) {
       // STOP everything
       const rec = recorderRef.current; recorderRef.current = null;
+      recStopRef.current = e.currentPosition();
       if (rec && rec.state !== "inactive") {
         await new Promise<void>((res) => {
           const prev = rec.onstop; rec.onstop = (ev) => { try { prev?.call(rec, ev); } finally { res(); } };
