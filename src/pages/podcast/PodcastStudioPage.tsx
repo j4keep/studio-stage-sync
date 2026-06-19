@@ -619,7 +619,7 @@ export default function PodcastStudioPage() {
             { id: "people" as const, icon: Users, label: "People" },
             { id: "chat" as const, icon: MessageCircle, label: "Chat" },
             { id: "effects" as const, icon: Sparkles, label: "Effects" },
-            { id: "text" as const, icon: Type, label: "Text" },
+            { id: "captions" as const, icon: CaptionsIcon, label: "Captions" },
             { id: "media" as const, icon: Music, label: "Media" },
           ].map(({ id, icon: Icon, label }) => (
             <button
