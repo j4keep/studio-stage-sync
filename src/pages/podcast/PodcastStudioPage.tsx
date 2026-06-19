@@ -1429,15 +1429,15 @@ function StageLayout({
     return <div className="grid grid-cols-2 gap-1 w-full h-full">{Host}<Guest label={getGuest(0)} /></div>;
   }
   if (layoutId === "grid3") {
-    return <div className="grid grid-cols-3 gap-1 w-full h-full">{Host}<Guest label="Guest 1" /><Guest label="Guest 2" /></div>;
+    return <div className="grid grid-cols-3 gap-1 w-full h-full">{Host}<Guest label={getGuest(0)} /><Guest label={getGuest(1)} /></div>;
   }
   if (layoutId === "grid4") {
-    return <div className="grid grid-cols-2 grid-rows-2 gap-1 w-full h-full">{Host}<Guest label="Guest 1" /><Guest label="Guest 2" /><Guest label="Guest 3" /></div>;
+    return <div className="grid grid-cols-2 grid-rows-2 gap-1 w-full h-full">{Host}<Guest label={getGuest(0)} /><Guest label={getGuest(1)} /><Guest label={getGuest(2)} /></div>;
   }
   if (layoutId === "pip") {
     return (
       <div className="relative w-full h-full">
-        <Guest label="Guest 1" />
+        <Guest label={getGuest(0)} />
         <div className="absolute bottom-3 right-3 w-1/4 aspect-video rounded-lg overflow-hidden border-2 border-white/30 shadow-xl">
           {Host}
         </div>
@@ -1448,7 +1448,7 @@ function StageLayout({
     return (
       <div className="grid w-full h-full" style={{ gridTemplateColumns: "1fr 25%", gap: 4 }}>
         {Host}
-        <div className="grid grid-rows-3 gap-1"><Guest label="G1" /><Guest label="G2" /><Guest label="G3" /></div>
+        <div className="grid grid-rows-3 gap-1"><Guest label={getGuest(0)} /><Guest label={getGuest(1)} /><Guest label={getGuest(2)} /></div>
       </div>
     );
   }
@@ -1456,7 +1456,7 @@ function StageLayout({
     return (
       <div className="grid w-full h-full" style={{ gridTemplateRows: "1fr 25%", gap: 4 }}>
         {Host}
-        <div className="grid grid-cols-3 gap-1"><Guest label="G1" /><Guest label="G2" /><Guest label="G3" /></div>
+        <div className="grid grid-cols-3 gap-1"><Guest label={getGuest(0)} /><Guest label={getGuest(1)} /><Guest label={getGuest(2)} /></div>
       </div>
     );
   }
