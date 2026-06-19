@@ -123,7 +123,7 @@ export function SegmentedStage({
         const frame = maskCtx.getImageData(0, 0, w, h);
         const data = frame.data;
         for (let i = 0; i < data.length; i += 4) {
-          const confidence = Math.max(data[i], data[i + 1], data[i + 2], data[i + 3]) / 255;
+          const confidence = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114) / 255;
           const alpha = Math.round(smoothstep(0.24, 0.54, confidence) * 255);
           data[i] = 255;
           data[i + 1] = 255;
