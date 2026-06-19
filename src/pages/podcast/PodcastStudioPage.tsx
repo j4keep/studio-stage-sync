@@ -549,8 +549,8 @@ export default function PodcastStudioPage() {
           reader.onerror = () => reject(new Error("Couldn't attach file"));
           reader.readAsDataURL(file);
         });
-      } catch (error: any) {
-        toast.error(error?.message || "Couldn't attach file");
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Couldn't attach file");
         return;
       }
     }
