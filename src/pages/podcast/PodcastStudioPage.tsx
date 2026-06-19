@@ -341,7 +341,7 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
     try {
       await e.resume();
       const startPos = useDawStore.getState().transport.position;
-      await e.startRecording(trackId, startPos);
+      const recordedClipId = await e.startRecording(trackId, startPos);
       setTransport({ isRecording: true, isPlaying: true });
       const st = useDawStore.getState();
       e.play({ ...st.transport, isRecording: true, isPlaying: true, position: startPos }, st.tracks, st.clips);
@@ -355,14 +355,13 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
           ...videoOnly.getVideoTracks(),
           ...(micOn ? (recordInput?.getAudioTracks() ?? []) : []),
         ]);
-        // Prefer MP4 (Safari + recent Chrome) so user gets a portable file. Fall back to WebM.
         const mime = [
-          "video/mp4;codecs=avc1.42E01F,mp4a.40.2",
-          "video/mp4;codecs=avc1,mp4a",
-          "video/mp4",
           "video/webm;codecs=vp9,opus",
           "video/webm;codecs=vp8,opus",
           "video/webm",
+          "video/mp4;codecs=avc1.42E01F,mp4a.40.2",
+          "video/mp4;codecs=avc1,mp4a",
+          "video/mp4",
         ].find(m => MediaRecorder.isTypeSupported(m)) || "video/webm";
         const mr = new MediaRecorder(mixedStream, { mimeType: mime, videoBitsPerSecond: 4_500_000, audioBitsPerSecond: 160_000 });
         recChunksRef.current = [];
@@ -375,14 +374,27 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
           const blob = new Blob(recChunksRef.current, { type: mime });
           recChunksRef.current = [];
           const dur = useDawStore.getState().transport.position - recStartRef.current;
-          setPending(recTrackIdRef.current!, {
-            trackId: recTrackIdRef.current!, startTime: recStartRef.current,
-            blob, mime, durationSec: Math.max(0.1, dur), participantLabel: "Host",
-          });
           const pendingTrackId = recTrackIdRef.current!;
           const pendingStart = recStartRef.current;
           const pendingDuration = Math.max(0.1, dur);
+          if (recordedClipId) {
+            setVideo(recordedClipId, { blob, mime, durationSec: pendingDuration, participantLabel: "Host" });
+          } else {
+            setPending(pendingTrackId, {
+              trackId: pendingTrackId, startTime: pendingStart,
+              blob, mime, durationSec: pendingDuration, participantLabel: "Host",
+            });
+          }
           window.setTimeout(() => {
+            if (recordedClipId) {
+              const hasClip = useDawStore.getState().clips.some(c => c.id === recordedClipId);
+              if (hasClip) return;
+              const ctx = engineRef.current?.ctx;
+              if (!ctx) return;
+              const silent = ctx.createBuffer(1, Math.max(1, Math.ceil(pendingDuration * ctx.sampleRate)), ctx.sampleRate);
+              addClip({ id: recordedClipId, trackId: pendingTrackId, startTime: pendingStart, duration: pendingDuration, offset: 0, buffer: silent, peaks: new Float32Array(0), name: "Recording" });
+              return;
+            }
             if (!usePodcastVideoStore.getState().pendingByTrack[pendingTrackId]) return;
             const latest = lastRecordedClipByTrackRef.current[pendingTrackId];
             if (latest && Math.abs(latest.startTime - pendingStart) < 0.25 && Date.now() - latest.at < 8000) {
