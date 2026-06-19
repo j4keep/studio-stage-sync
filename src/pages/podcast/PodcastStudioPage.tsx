@@ -674,7 +674,7 @@ export default function PodcastStudioPage() {
             <button onClick={() => setTool("eraser")} className={`w-10 h-10 rounded grid place-items-center ${tool === "eraser" ? "bg-neutral-800 text-white" : "text-neutral-400 hover:text-neutral-100"}`} title="Erase"><Eraser className="w-4 h-4" /></button>
             <button onClick={() => setPxPerSec(Math.min(800, pxPerSec * 1.25))} className="w-10 h-10 rounded grid place-items-center text-neutral-400 hover:text-neutral-100" title="Zoom in"><ZoomIn className="w-4 h-4" /></button>
             <button onClick={() => setPxPerSec(Math.max(20, pxPerSec / 1.25))} className="w-10 h-10 rounded grid place-items-center text-neutral-400 hover:text-neutral-100" title="Zoom out"><ZoomOut className="w-4 h-4" /></button>
-            <button onClick={() => setRightPanel(p => p === "jhi" ? null : "jhi")} className={`w-10 h-10 rounded grid place-items-center ${rightPanel === "jhi" ? "bg-cyan-600 text-white" : "text-cyan-400 hover:text-cyan-300"}`} title="Ask J-Hi"><Bot className="w-4 h-4" /></button>
+            <button onClick={() => setRightPanel(p => p === "jhi" ? null : "jhi")} className={`w-10 h-10 rounded grid place-items-center ${rightPanel === "jhi" ? "bg-cyan-600 text-white" : "text-cyan-400 hover:text-cyan-300"}`} title="Ask J-Hi"><JhiIcon className="w-5 h-5" active={rightPanel === "jhi"} /></button>
             <button onClick={() => clips.length ? setExportOpen(true) : toast.error("Nothing to export")} className="w-10 h-10 rounded grid place-items-center text-neutral-400 hover:text-neutral-100" title="Export"><Download className="w-4 h-4" /></button>
           </div>
 
