@@ -408,11 +408,13 @@ export default function PodcastStudioPage() {
     } catch { toast.error("Couldn't open project"); }
   }, [loadProject, setProjectFileHandle]);
 
-  // Live captions via Web Speech API
+  // Live captions via Web Speech API — auto-hides after ~2s of silence so
+  // captions don't linger on screen when the host stops talking.
   const toggleCaptions = useCallback(() => {
     if (captionsOn) {
       try { recognitionRef.current?.stop(); } catch {}
       recognitionRef.current = null;
+      if (captionHideTimerRef.current) { window.clearTimeout(captionHideTimerRef.current); captionHideTimerRef.current = null; }
       setCaptionsOn(false);
       setCaptionText("");
       return;
@@ -424,19 +426,28 @@ export default function PodcastStudioPage() {
     r.interimResults = true;
     r.lang = "en-US";
     r.onresult = (ev: any) => {
-      let txt = "";
-      for (let i = ev.resultIndex; i < ev.results.length; i++) {
-        txt += ev.results[i][0].transcript;
-      }
-      setCaptionText(txt.trim().slice(-180));
+      // Use ONLY the latest result so captions don't grow forever or freeze.
+      const last = ev.results[ev.results.length - 1];
+      const txt = (last?.[0]?.transcript || "").trim();
+      setCaptionText(txt.slice(-160));
+      if (captionHideTimerRef.current) window.clearTimeout(captionHideTimerRef.current);
+      captionHideTimerRef.current = window.setTimeout(() => setCaptionText(""), 2200);
     };
     r.onerror = () => {};
-    r.onend = () => { if (captionsOn) try { r.start(); } catch {} };
+    // Auto-restart if the browser stops the recognizer (it does so often on Chrome).
+    r.onend = () => {
+      if (!recognitionRef.current) return;
+      try { r.start(); } catch {}
+    };
     try { r.start(); recognitionRef.current = r; setCaptionsOn(true); }
     catch { toast.error("Could not start captions"); }
   }, [captionsOn]);
 
-  useEffect(() => () => { try { recognitionRef.current?.stop(); } catch {} }, []);
+  useEffect(() => () => {
+    try { recognitionRef.current?.stop(); } catch {}
+    recognitionRef.current = null;
+    if (captionHideTimerRef.current) window.clearTimeout(captionHideTimerRef.current);
+  }, []);
 
   // Screen sharing
   const toggleScreenShare = useCallback(async () => {
