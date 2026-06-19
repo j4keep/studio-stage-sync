@@ -878,11 +878,30 @@ function PeoplePanel({ onInvite, onShare, sessionCode }: { onInvite: () => void;
   );
 }
 
-function CaptionsPanel({ on, onToggle, text }: { on: boolean; onToggle: () => void; text: string }) {
+function CaptionsPanel({ on, onToggle, text, style, setStyle }: {
+  on: boolean; onToggle: () => void; text: string;
+  style: CaptionStyle; setStyle: (s: CaptionStyle) => void;
+}) {
   return (
     <div className="space-y-4">
       <Row label="Live captions"><Toggle on={on} onChange={onToggle} /></Row>
-      <p className="text-[11px] text-neutral-500">Uses your browser's built-in speech recognition. Captions appear on the stage in real time, just like in the reference apps.</p>
+      <p className="text-[11px] text-neutral-500">Captions auto-hide when you stop speaking and reappear the moment you talk again.</p>
+      <div>
+        <div className="text-[11px] uppercase tracking-wider text-neutral-500 mb-2">Caption style</div>
+        <div className="grid grid-cols-2 gap-2">
+          {CAPTION_STYLES.map(s => (
+            <button
+              key={s.id}
+              onClick={() => setStyle(s.id)}
+              className={`relative h-14 rounded-lg border overflow-hidden grid place-items-center bg-neutral-900 ${
+                style === s.id ? "border-cyan-400 ring-2 ring-cyan-500/30" : "border-neutral-800 hover:border-neutral-700"
+              }`}
+            >
+              <span className={s.className} style={{ fontSize: 11 }}>{s.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-3 min-h-[80px] text-sm text-neutral-200">
         {on ? (text || <span className="text-neutral-500 italic">Listening… start speaking</span>) : <span className="text-neutral-500 italic">Off</span>}
       </div>
@@ -926,20 +945,140 @@ function ChatPanel({ messages, onSend }: { messages: ChatMessage[]; onSend: (tex
   );
 }
 
+/* ----------------------- Inline J-Hi chat panel ----------------------- */
+
+type JhiMsg = { role: "user" | "assistant"; content: string };
+const JHI_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ask-jhi`;
+
 function JhiPanel() {
-  const navigate = useNavigate();
+  const [messages, setMessages] = useState<JhiMsg[]>([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages, loading]);
+
+  const send = useCallback(async (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || loading) return;
+    const next: JhiMsg[] = [...messages, { role: "user", content: trimmed }];
+    setMessages(next);
+    setInput("");
+    setLoading(true);
+    let soFar = "";
+    const upsert = (chunk: string) => {
+      soFar += chunk;
+      setMessages(prev => {
+        const last = prev[prev.length - 1];
+        if (last?.role === "assistant") return prev.map((m, i) => i === prev.length - 1 ? { ...m, content: soFar } : m);
+        return [...prev, { role: "assistant", content: soFar }];
+      });
+    };
+    try {
+      const resp = await fetch(JHI_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ messages: next }),
+      });
+      if (!resp.ok || !resp.body) throw new Error("Couldn't reach J-Hi");
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        let nl: number;
+        while ((nl = buf.indexOf("\n")) !== -1) {
+          let line = buf.slice(0, nl);
+          buf = buf.slice(nl + 1);
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (!line.startsWith("data: ")) continue;
+          const json = line.slice(6).trim();
+          if (json === "[DONE]") { buf = ""; break; }
+          try {
+            const parsed = JSON.parse(json);
+            const c = parsed.choices?.[0]?.delta?.content;
+            if (c) upsert(c);
+          } catch { /* partial chunk */ }
+        }
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "J-Hi error");
+      if (!soFar) setMessages(p => p.slice(0, -1));
+    } finally {
+      setLoading(false);
+    }
+  }, [messages, loading]);
+
+  const prompts = [
+    "Give me 3 episode title ideas for a podcast about hustle culture",
+    "Write a 30-second intro script for me",
+    "What questions should I ask my guest?",
+  ];
+
   return (
-    <div className="space-y-3">
-      <div className="rounded-lg border border-cyan-700/40 bg-cyan-950/30 p-3">
-        <div className="flex items-center gap-2 mb-1">
-          <Bot className="w-4 h-4 text-cyan-300" />
-          <div className="text-sm font-medium text-cyan-100">J-Hi assistant</div>
+    <div className="flex flex-col h-full -m-4">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-neutral-900">
+        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-500/20 to-blue-600/20 grid place-items-center">
+          <JhiIcon className="w-5 h-5" active />
         </div>
-        <p className="text-[11px] text-cyan-200/80 leading-relaxed">Ask J-Hi for ideas, scripts, episode names, or studio help. Opens the full assistant in a new tab.</p>
+        <div className="min-w-0">
+          <div className="text-sm font-semibold text-neutral-100">J-Hi</div>
+          <div className="text-[10px] text-neutral-500">In-studio assistant</div>
+        </div>
       </div>
-      <button onClick={() => navigate("/ask-jhi")} className="w-full h-9 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-medium flex items-center justify-center gap-2">
-        <MessageSquare className="w-4 h-4" /> Open J-Hi chat
-      </button>
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
+        {messages.length === 0 ? (
+          <div className="space-y-2">
+            <p className="text-[11px] text-neutral-500 px-1">Ask J-Hi for script help, episode names, guest questions, or studio tips.</p>
+            {prompts.map(p => (
+              <button key={p} onClick={() => send(p)} className="w-full text-left p-2.5 rounded-lg bg-neutral-900 border border-neutral-800 hover:border-cyan-500/40 text-[11px] text-neutral-200 leading-snug">
+                {p}
+              </button>
+            ))}
+          </div>
+        ) : messages.map((m, i) => (
+          <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+            <div className={`max-w-[88%] rounded-2xl px-3 py-2 text-xs leading-relaxed ${
+              m.role === "user"
+                ? "bg-gradient-to-br from-cyan-600 to-blue-600 text-white rounded-br-md"
+                : "bg-neutral-900 border border-neutral-800 text-neutral-100 rounded-bl-md"
+            }`}>
+              {m.role === "assistant"
+                ? <div className="prose prose-sm prose-invert max-w-none [&>p]:my-1 [&>ul]:my-1 [&>ol]:my-1"><ReactMarkdown>{m.content}</ReactMarkdown></div>
+                : m.content}
+            </div>
+          </div>
+        ))}
+        {loading && messages[messages.length - 1]?.role === "user" && (
+          <div className="flex justify-start">
+            <div className="bg-neutral-900 border border-neutral-800 rounded-2xl rounded-bl-md px-3 py-2 flex gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-500/60 animate-bounce" />
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-500/60 animate-bounce" style={{ animationDelay: "120ms" }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-500/60 animate-bounce" style={{ animationDelay: "240ms" }} />
+            </div>
+          </div>
+        )}
+      </div>
+      <div className="border-t border-neutral-900 p-2 flex items-end gap-2">
+        <textarea
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); } }}
+          rows={1}
+          placeholder="Ask J-Hi…"
+          className="flex-1 bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-100 outline-none focus:border-cyan-500/60 resize-none max-h-24"
+        />
+        <button onClick={() => send(input)} disabled={!input.trim() || loading} className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 text-white grid place-items-center disabled:opacity-40">
+          <ArrowUp className="w-4 h-4" />
+        </button>
+      </div>
     </div>
   );
 }
