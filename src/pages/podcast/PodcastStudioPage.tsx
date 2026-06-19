@@ -918,8 +918,6 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
               {rightPanel === "projects" && (
                 <ProjectsPanel
                   onClose={() => setRightPanel(null)}
-                  onSaveProject={handleSave}
-                  onDeleteProject={handleDeleteProject}
                   onDeleteRecording={handleDeleteRecording}
                   onOpenInEditor={() => { setRightPanel(null); setTracksOpen(true); setTracksFull(true); }}
                 />
@@ -930,7 +928,6 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
                   frameRate={frameRate} setFrameRate={setFrameRate}
                   micOn={micOn} setMicOn={setMicOn}
                   mirrored={mirrored} setMirrored={setMirrored}
-                  onOpenProject={handleOpen}
                 />
               )}
               {rightPanel === "help" && <div className="text-neutral-500 text-xs">Drop video/audio onto the stage to import. Tap Record to start. Tap Tracks to inspect waveforms.</div>}
