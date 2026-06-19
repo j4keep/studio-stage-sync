@@ -106,6 +106,7 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
   const removeClip = useDawStore(s => s.removeClip);
   const addTrack = useDawStore(s => s.addTrack);
   const updateTrack = useDawStore(s => s.updateTrack);
+  const updateClip = useDawStore(s => s.updateClip);
   const selectTrack = useDawStore(s => s.selectTrack);
   const view = useDawStore(s => s.view);
   const projectName = useDawStore(s => s.projectName);
@@ -175,14 +176,15 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
     e.onPositionChange = (pos) => setTransport({ position: pos });
     e.onRecordedClip = async (trackId, clip) => {
       clip.peaks = computePeaks(clip.buffer!);
-      addClip(clip);
+      if (useDawStore.getState().clips.some(c => c.id === clip.id)) updateClip(clip.id, clip);
+      else addClip(clip);
       lastRecordedClipByTrackRef.current[trackId] = { clipId: clip.id, startTime: clip.startTime, at: Date.now() };
       usePodcastVideoStore.getState().attachPending(trackId, clip.id);
       setTransport({ isRecording: false, isPlaying: false });
     };
     setEngineReady(true);
     return () => { e.dispose(); engineRef.current = null; };
-  }, [addClip, setTransport]);
+  }, [addClip, setTransport, updateClip]);
 
   useEffect(() => {
     const e = engineRef.current; if (!e) return;
