@@ -6,6 +6,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchFeedItems, type FeedItem } from "@/lib/feed-items";
 import FeedPostCard from "@/components/feed/FeedPostCard";
+import { usePodcastSession } from "@/pages/podcast/podcastSessionStore";
 
 const STORAGE_KEY = "incognito-feed-window-pos";
 const SIZE_KEY = "incognito-feed-window-size";
@@ -38,6 +39,7 @@ const IncognitoFeedWindow = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const podcastActive = usePodcastSession((s) => s.active);
   const [open, setOpen] = useState(() => {
     try {
       return sessionStorage.getItem(OPEN_KEY) === "true";
@@ -187,10 +189,10 @@ const IncognitoFeedWindow = () => {
 
   // Floating bubble (closed) — keep it off the podcast right rail so it never
   // covers Settings / Download / Effects icons.
-  const isPodcastWorkspace = location.pathname.startsWith("/tv/podcast");
+  const isPodcastWorkspace = podcastActive || location.pathname.startsWith("/tv/podcast");
   if (!open) {
     const bubbleStyle = isPodcastWorkspace
-      ? { left: 16, bottom: 72 }
+      ? { left: 16, bottom: 120 }
       : { right: 16, bottom: 96 };
     return createPortal(
       <button

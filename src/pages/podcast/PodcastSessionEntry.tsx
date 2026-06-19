@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { usePodcastSession } from "./podcastSessionStore";
 
 /**
@@ -8,6 +9,8 @@ import { usePodcastSession } from "./podcastSessionStore";
  */
 export default function PodcastSessionEntry() {
   const open = usePodcastSession((s) => s.open);
-  useEffect(() => { open(); }, [open]);
+  const [params] = useSearchParams();
+  const code = params.get("session");
+  useEffect(() => { open(code); }, [open, code]);
   return null;
 }

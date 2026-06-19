@@ -83,10 +83,14 @@ const LAYOUTS = [
   { id: "stage", label: "Stage", svg: <><rect x="2" y="3" width="20" height="10" rx="1" /><rect x="2" y="14" width="6" height="3" rx="0.5" /><rect x="9" y="14" width="6" height="3" rx="0.5" /><rect x="16" y="14" width="6" height="3" rx="0.5" /></> },
 ];
 
-export default function PodcastStudioPage() {
+export default function PodcastStudioPage({ activeSessionCode }: { activeSessionCode?: string | null } = {}) {
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const sessionCode = params.get("session");
+  const urlSessionCode = params.get("session");
+  const storedSessionCode = usePodcastSession((s) => s.sessionCode);
+  const setStoredSessionCode = usePodcastSession((s) => s.setSessionCode);
+  const generatedSessionCodeRef = useRef(Math.random().toString(36).slice(2, 8).toUpperCase());
+  const sessionCode = (activeSessionCode || urlSessionCode || storedSessionCode || generatedSessionCodeRef.current).trim().toUpperCase();
   const minimizeSession = usePodcastSession((s) => s.minimize);
   const closeSession = usePodcastSession((s) => s.close);
   const isMinimized = usePodcastSession((s) => s.minimized);
@@ -123,6 +127,8 @@ export default function PodcastStudioPage() {
   const importInputRef = useRef<HTMLInputElement>(null);
   const bgUploadRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => { setStoredSessionCode(sessionCode); }, [sessionCode, setStoredSessionCode]);
+
   // Camera state (inline; replaces sidebar)
   const previewRef = useRef<HTMLVideoElement | null>(null);
   const camStreamRef = useRef<MediaStream | null>(null);
@@ -130,6 +136,7 @@ export default function PodcastStudioPage() {
   const recChunksRef = useRef<Blob[]>([]);
   const recTrackIdRef = useRef<string | null>(null);
   const recStartRef = useRef<number>(0);
+  const lastRecordedClipByTrackRef = useRef<Record<string, { clipId: string; startTime: number; at: number }>>({});
   const videoCompositeRafRef = useRef<number | null>(null);
   const [camOn, setCamOn] = useState(false);
   const [camStream, setCamStream] = useState<MediaStream | null>(null);
@@ -149,6 +156,7 @@ export default function PodcastStudioPage() {
   const chatChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const chatSubscribedRef = useRef(false);
   const chatClientIdRef = useRef(Math.random().toString(36).slice(2));
+  const [participants, setParticipants] = useState<string[]>(["You"]);
   const screenStreamRef = useRef<MediaStream | null>(null);
   const [screenSharing, setScreenSharing] = useState(false);
   const stageContainerRef = useRef<HTMLDivElement | null>(null);
@@ -164,6 +172,7 @@ export default function PodcastStudioPage() {
     e.onRecordedClip = async (trackId, clip) => {
       clip.peaks = computePeaks(clip.buffer!);
       addClip(clip);
+      lastRecordedClipByTrackRef.current[trackId] = { clipId: clip.id, startTime: clip.startTime, at: Date.now() };
       usePodcastVideoStore.getState().attachPending(trackId, clip.id);
       setTransport({ isRecording: false, isPlaying: false });
     };
@@ -215,12 +224,6 @@ export default function PodcastStudioPage() {
   const makeStageRecordingStream = useCallback((sourceStream: MediaStream) => {
     const videoTrack = sourceStream.getVideoTracks()[0];
     if (!videoTrack) return null;
-    if (bgUrl) {
-      const stageCanvas = stageContainerRef.current?.querySelector("canvas");
-      if (stageCanvas instanceof HTMLCanvasElement && stageCanvas.width > 0 && stageCanvas.height > 0) {
-        return stageCanvas.captureStream(Math.min(frameRate, 30));
-      }
-    }
     const canvas = document.createElement("canvas");
     canvas.width = resolution === "1080p" ? 1920 : resolution === "480p" ? 854 : 1280;
     canvas.height = resolution === "1080p" ? 1080 : resolution === "480p" ? 480 : 720;
@@ -256,7 +259,18 @@ export default function PodcastStudioPage() {
       ctx.fillStyle = "#050505";
       ctx.fillRect(0, 0, W, H);
       if (bgReady) drawCover(bg, 0, 0, W, H);
-      if (video.readyState >= 2) {
+      const stageCanvas = bgUrl ? stageContainerRef.current?.querySelector("canvas") : null;
+      let drewStage = false;
+      if (stageCanvas instanceof HTMLCanvasElement && stageCanvas.width > 0 && stageCanvas.height > 0) {
+        try {
+          const sample = stageCanvas.getContext("2d")?.getImageData(Math.floor(stageCanvas.width / 2), Math.floor(stageCanvas.height / 2), 1, 1).data;
+          const hasPixel = !sample || sample[0] + sample[1] + sample[2] > 12;
+          if (hasPixel) { drawCover(stageCanvas, 0, 0, W, H); drewStage = true; }
+        } catch {
+          try { drawCover(stageCanvas, 0, 0, W, H); drewStage = true; } catch {}
+        }
+      }
+      if (!drewStage && video.readyState >= 2) {
         if (bgUrl) {
           const pad = Math.round(Math.min(W, H) * 0.07);
           const x = pad;
@@ -345,6 +359,11 @@ export default function PodcastStudioPage() {
       if (cam) {
         if (videoCompositeRafRef.current) cancelAnimationFrame(videoCompositeRafRef.current);
         const videoOnly = makeStageRecordingStream(cam) ?? new MediaStream(cam.getVideoTracks());
+        const recordInput = e.getRecordingInputStream?.();
+        const mixedStream = new MediaStream([
+          ...videoOnly.getVideoTracks(),
+          ...(micOn ? (recordInput?.getAudioTracks() ?? []) : []),
+        ]);
         // Prefer MP4 (Safari + recent Chrome) so user gets a portable file. Fall back to WebM.
         const mime = [
           "video/mp4;codecs=avc1.42E01F,mp4a.40.2",
@@ -354,7 +373,7 @@ export default function PodcastStudioPage() {
           "video/webm;codecs=vp8,opus",
           "video/webm",
         ].find(m => MediaRecorder.isTypeSupported(m)) || "video/webm";
-        const mr = new MediaRecorder(videoOnly, { mimeType: mime, videoBitsPerSecond: 4_500_000 });
+        const mr = new MediaRecorder(mixedStream, { mimeType: mime, videoBitsPerSecond: 4_500_000, audioBitsPerSecond: 160_000 });
         recChunksRef.current = [];
         recTrackIdRef.current = trackId;
         recStartRef.current = startPos;
@@ -369,6 +388,23 @@ export default function PodcastStudioPage() {
             trackId: recTrackIdRef.current!, startTime: recStartRef.current,
             blob, mime, durationSec: Math.max(0.1, dur), participantLabel: "Host",
           });
+          const pendingTrackId = recTrackIdRef.current!;
+          const pendingStart = recStartRef.current;
+          const pendingDuration = Math.max(0.1, dur);
+          window.setTimeout(() => {
+            if (!usePodcastVideoStore.getState().pendingByTrack[pendingTrackId]) return;
+            const latest = lastRecordedClipByTrackRef.current[pendingTrackId];
+            if (latest && Math.abs(latest.startTime - pendingStart) < 0.25 && Date.now() - latest.at < 8000) {
+              usePodcastVideoStore.getState().attachPending(pendingTrackId, latest.clipId);
+              return;
+            }
+            const ctx = engineRef.current?.ctx;
+            if (!ctx) return;
+            const silent = ctx.createBuffer(1, Math.max(1, Math.ceil(pendingDuration * ctx.sampleRate)), ctx.sampleRate);
+            const clipId = newId("clip");
+            addClip({ id: clipId, trackId: pendingTrackId, startTime: pendingStart, duration: pendingDuration, offset: 0, buffer: silent, peaks: new Float32Array(0), name: "Recording" });
+            usePodcastVideoStore.getState().attachPending(pendingTrackId, clipId);
+          }, 3000);
         };
         mr.start(250);
         recorderRef.current = mr;
@@ -378,7 +414,7 @@ export default function PodcastStudioPage() {
       toast.error(err?.message || "Could not start recording");
       setTransport({ isRecording: false, isPlaying: false });
     }
-  }, [ensureRecordTrack, makeStageRecordingStream, setPending, setTransport, startCamera, updateTrack]);
+  }, [ensureRecordTrack, makeStageRecordingStream, micOn, setPending, setTransport, startCamera, updateTrack]);
 
   const importFiles = useCallback(async (files: FileList) => {
     const e = engineRef.current; if (!e) return;
@@ -398,7 +434,7 @@ export default function PodcastStudioPage() {
   }, [addTrack, addClip, setVideo]);
 
   const inviteGuest = useCallback(() => {
-    const code = sessionCode || Math.random().toString(36).slice(2, 8).toUpperCase();
+    const code = sessionCode;
     const url = `${window.location.origin}/#/tv/podcast/join/${code}`;
     navigator.clipboard.writeText(url).catch(() => {});
     toast.success("Magic link copied", { description: url });
@@ -525,7 +561,15 @@ export default function PodcastStudioPage() {
         if (!data?.id || data.clientId === chatClientIdRef.current) return;
         setChatMessages(p => p.some(m => m.id === data.id) ? p : [...p, data]);
       })
-      .subscribe((status) => { chatSubscribedRef.current = status === "SUBSCRIBED"; });
+      .on("presence", { event: "sync" }, () => {
+        const state = channel.presenceState<{ name?: string }>();
+        const names = Object.values(state).flat().map((p) => p.name || "Guest");
+        setParticipants(["You", ...Array.from(new Set(names)).filter((n) => n !== "You")]);
+      })
+      .subscribe((status) => {
+        chatSubscribedRef.current = status === "SUBSCRIBED";
+        if (status === "SUBSCRIBED") void channel.track({ name: "You" });
+      });
     return () => {
       chatSubscribedRef.current = false;
       chatChannelRef.current = null;
@@ -630,8 +674,8 @@ export default function PodcastStudioPage() {
       <div className="flex-1 flex min-h-0 relative">
         {/* Stage (center) */}
         <div className="flex-1 flex flex-col min-w-0 relative">
-          <div className="flex-1 relative grid place-items-center p-4 min-h-0">
-            <div ref={stageContainerRef} className="relative w-full max-w-3xl flex flex-col gap-3">
+          <div className="flex-1 relative grid place-items-center p-2 md:p-4 min-h-0">
+            <div ref={stageContainerRef} className="relative w-full max-w-3xl flex flex-col gap-2 md:gap-3">
               <div className="relative w-full rounded-2xl overflow-hidden border border-violet-500/40 shadow-[0_0_0_2px_rgba(139,92,246,0.15)] aspect-video bg-black">
                 <StageLayout
                   layoutId={layoutId}
@@ -642,6 +686,7 @@ export default function PodcastStudioPage() {
                   onStartCamera={startCamera}
                   bgUrl={screenSharing ? null : bgUrl}
                   camStream={screenSharing ? null : camStream}
+                  guestLabels={participants.slice(1)}
                 />
                 {videoRec && (
                   <div className="absolute top-3 left-3 px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center gap-1 z-30">
@@ -669,16 +714,16 @@ export default function PodcastStudioPage() {
                   media controls + Projects / J-Hi / Leave + page nav so the user
                   can jump anywhere in the app WITHOUT killing the session. */}
               <div className="flex flex-col items-center gap-2">
-                <div className="flex items-center justify-center gap-3 flex-wrap">
+                <div className="flex items-center justify-center gap-2 md:gap-3 flex-wrap">
                   <button
                     onClick={handleRecord}
                     title={isRecording ? "Stop recording" : "Start recording"}
-                    className={`relative w-14 h-14 rounded-full grid place-items-center shadow-lg shadow-red-900/40 transition ${isRecording ? "bg-red-700 hover:bg-red-600" : "bg-red-600 hover:bg-red-500"}`}
+                    className={`relative w-12 h-12 rounded-full grid place-items-center shadow-lg shadow-red-900/40 transition ${isRecording ? "bg-red-700 hover:bg-red-600 animate-pulse" : "bg-red-600 hover:bg-red-500"}`}
                   >
                     <span className="absolute inset-1.5 rounded-full border-2 border-white/70" />
                     {isRecording
                       ? <Square className="w-4 h-4 fill-white text-white" />
-                      : <span className="w-4 h-4 rounded-full bg-white" />}
+                      : <span className="w-3.5 h-3.5 rounded-full bg-white" />}
                   </button>
                   <button onClick={() => setMicOn(m => !m)} title={micOn ? "Mute mic" : "Unmute mic"} className={`w-10 h-10 rounded-full grid place-items-center ${micOn ? "bg-neutral-800 hover:bg-neutral-700 text-white" : "bg-neutral-900 text-neutral-500"}`}>
                     <Mic className="w-4 h-4" />
@@ -700,6 +745,20 @@ export default function PodcastStudioPage() {
                     <LogOut className="w-4 h-4" />
                   </button>
                 </div>
+                <div className="md:hidden flex items-center justify-center gap-1 overflow-x-auto max-w-full px-1">
+                  {[
+                    { id: "people" as const, icon: Users, label: "People" },
+                    { id: "chat" as const, icon: MessageCircle, label: "Chat" },
+                    { id: "effects" as const, icon: Sparkles, label: "Effects" },
+                    { id: "captions" as const, icon: CaptionsIcon, label: "Captions" },
+                    { id: "settings" as const, icon: SettingsIcon, label: "Settings" },
+                    { id: "help" as const, icon: HelpCircle, label: "Help" },
+                  ].map(({ id, icon: Icon, label }) => (
+                    <button key={id} onClick={() => setRightPanel(p => p === id ? null : id)} className={`shrink-0 w-12 h-11 rounded-lg flex flex-col items-center justify-center gap-0.5 text-[9px] ${rightPanel === id ? "bg-neutral-800 text-white" : "bg-neutral-900 text-neutral-400"}`}>
+                      <Icon className="w-4 h-4" />{label}
+                    </button>
+                  ))}
+                </div>
                 {/* Page nav — minimize the studio (keeps recording!) and jump to another app section */}
                 <div className="flex items-center justify-center gap-1 text-[10px] text-neutral-500">
                   <NavPill icon={<Home className="w-3.5 h-3.5" />} label="Home" onClick={() => goTo("/")} />
@@ -713,7 +772,7 @@ export default function PodcastStudioPage() {
 
 
           {/* Layout strip */}
-          <div className="shrink-0 px-4 py-3 flex items-center justify-center gap-2 overflow-x-auto">
+          <div className="shrink-0 px-2 md:px-4 py-2 md:py-3 flex items-center justify-center gap-2 overflow-x-auto">
             {LAYOUTS.map(l => (
               <button
                 key={l.id}
@@ -734,7 +793,7 @@ export default function PodcastStudioPage() {
         </div>
 
         {/* Right rail icons */}
-        <nav className="shrink-0 w-16 border-l border-neutral-900 flex flex-col items-center py-3 gap-1">
+        <nav className="hidden md:flex shrink-0 w-16 border-l border-neutral-900 flex-col items-center py-3 gap-1">
           {[
             { id: "people" as const, icon: Users, label: "People" },
             { id: "chat" as const, icon: MessageCircle, label: "Chat" },
@@ -789,13 +848,13 @@ export default function PodcastStudioPage() {
 
         {/* Side panel */}
         {rightPanel && (
-          <aside className="absolute top-0 right-16 h-full w-[320px] bg-neutral-950 border-l border-neutral-900 z-30 flex flex-col">
+          <aside className="absolute top-0 right-0 md:right-16 h-full w-full max-w-[320px] bg-neutral-950 border-l border-neutral-900 z-30 flex flex-col">
             <header className="h-12 shrink-0 flex items-center justify-between px-4 border-b border-neutral-900">
               <div className="text-sm font-medium capitalize">{rightPanel === "effects" ? "Visual effects" : rightPanel}</div>
               <button onClick={() => setRightPanel(null)} className="p-1 text-neutral-500 hover:text-neutral-100"><X className="w-4 h-4" /></button>
             </header>
             <div className="flex-1 overflow-y-auto p-4 text-sm">
-              {rightPanel === "people" && <PeoplePanel onInvite={inviteGuest} onShare={shareSheet} sessionCode={sessionCode} />}
+              {rightPanel === "people" && <PeoplePanel onInvite={inviteGuest} onShare={shareSheet} sessionCode={sessionCode} participants={participants} />}
               {rightPanel === "chat" && <ChatPanel messages={chatMessages} onSend={sendChat} />}
               {rightPanel === "effects" && (
                 <EffectsPanel
@@ -830,7 +889,7 @@ export default function PodcastStudioPage() {
 
         {/* Tracks drawer (slides up from above bottom bar) */}
         <div
-          className={`absolute left-0 right-16 bottom-0 bg-neutral-950 border-t border-neutral-900 transition-all duration-300 z-20 ${tracksOpen ? "translate-y-0" : "translate-y-full"}`}
+          className={`hidden md:block absolute left-0 right-16 bottom-0 bg-neutral-950 border-t border-neutral-900 transition-all duration-300 z-20 ${tracksOpen ? "translate-y-0" : "translate-y-full"}`}
           style={{ height: tracksFull ? "calc(100% - 8px)" : "55%" }}
         >
           <div className="h-10 flex items-center gap-2 px-3 border-b border-neutral-900">
@@ -859,7 +918,7 @@ export default function PodcastStudioPage() {
         {!tracksOpen && (
           <button
             onClick={() => setTracksOpen(true)}
-            className="absolute left-3 bottom-3 z-10 h-8 px-3 rounded-full bg-neutral-900/90 border border-neutral-800 text-[11px] text-neutral-300 hover:text-white flex items-center gap-1.5"
+            className="hidden md:flex absolute left-3 bottom-3 z-10 h-8 px-3 rounded-full bg-neutral-900/90 border border-neutral-800 text-[11px] text-neutral-300 hover:text-white items-center gap-1.5"
           >
             <ChevronUp className="w-3.5 h-3.5" /> Edit
           </button>
@@ -929,7 +988,7 @@ function StageBtn({ children, onClick, title, active }: { children: React.ReactN
   );
 }
 
-function PeoplePanel({ onInvite, onShare, sessionCode }: { onInvite: () => void; onShare: (url: string) => void; sessionCode: string | null }) {
+function PeoplePanel({ onInvite, onShare, sessionCode, participants }: { onInvite: () => void; onShare: (url: string) => void; sessionCode: string; participants: string[] }) {
   const code = sessionCode || "SESSION";
   const url = `${window.location.origin}/#/tv/podcast/join/${code}`;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(url)}`;
@@ -958,14 +1017,16 @@ function PeoplePanel({ onInvite, onShare, sessionCode }: { onInvite: () => void;
           <div className="break-all text-[10px] text-neutral-500">{url}</div>
         </div>
       </div>
-      <div className="text-[11px] uppercase tracking-wider text-neutral-500">In the studio · 1</div>
-      <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-3 flex items-center gap-3">
-        <div className="w-9 h-9 rounded-full bg-neutral-700 grid place-items-center text-xs font-semibold">J</div>
-        <div className="min-w-0">
-          <div className="text-sm text-neutral-100 truncate">jay (You)</div>
-          <div className="text-[11px] text-neutral-500">Host</div>
+      <div className="text-[11px] uppercase tracking-wider text-neutral-500">In the studio · {Math.max(1, participants.length)}</div>
+      {participants.map((name, index) => (
+        <div key={`${name}-${index}`} className="rounded-lg border border-neutral-800 bg-neutral-900 p-3 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-neutral-700 grid place-items-center text-xs font-semibold">{name[0] || "G"}</div>
+          <div className="min-w-0">
+            <div className="text-sm text-neutral-100 truncate">{index === 0 ? "jay (You)" : name}</div>
+            <div className="text-[11px] text-neutral-500">{index === 0 ? "Host" : "Guest"}</div>
+          </div>
         </div>
-      </div>
+      ))}
     </div>
   );
 }
@@ -1315,7 +1376,7 @@ function Toggle({ on, onChange }: { on: boolean; onChange: (b: boolean) => void 
 /* ----------------------------- Stage Layout ----------------------------- */
 
 function StageLayout({
-  layoutId, hostVideoRef, hostName, camOn, mirrored, onStartCamera, bgUrl, camStream,
+  layoutId, hostVideoRef, hostName, camOn, mirrored, onStartCamera, bgUrl, camStream, guestLabels,
 }: {
   layoutId: string;
   hostVideoRef: React.RefObject<HTMLVideoElement>;
@@ -1325,6 +1386,7 @@ function StageLayout({
   onStartCamera: () => void;
   bgUrl: string | null;
   camStream: MediaStream | null;
+  guestLabels: string[];
 }) {
   // When a background is selected, render via the SegmentedStage canvas which
   // uses MediaPipe selfie-segmentation to keep ONLY the person and replace
@@ -1360,6 +1422,7 @@ function StageLayout({
     </div>
   );
 
+  const getGuest = (index: number) => guestLabels[index] || `Guest ${index + 1}`;
   const Guest = ({ label }: { label: string }) => (
     <div className="relative w-full h-full bg-neutral-900 grid place-items-center">
       <div className="w-12 h-12 rounded-full bg-neutral-700 grid place-items-center text-sm text-neutral-300 font-semibold">
@@ -1370,18 +1433,18 @@ function StageLayout({
   );
 
   if (layoutId === "grid2") {
-    return <div className="grid grid-cols-2 gap-1 w-full h-full">{Host}<Guest label="Guest 1" /></div>;
+    return <div className="grid grid-cols-2 gap-1 w-full h-full">{Host}<Guest label={getGuest(0)} /></div>;
   }
   if (layoutId === "grid3") {
-    return <div className="grid grid-cols-3 gap-1 w-full h-full">{Host}<Guest label="Guest 1" /><Guest label="Guest 2" /></div>;
+    return <div className="grid grid-cols-3 gap-1 w-full h-full">{Host}<Guest label={getGuest(0)} /><Guest label={getGuest(1)} /></div>;
   }
   if (layoutId === "grid4") {
-    return <div className="grid grid-cols-2 grid-rows-2 gap-1 w-full h-full">{Host}<Guest label="Guest 1" /><Guest label="Guest 2" /><Guest label="Guest 3" /></div>;
+    return <div className="grid grid-cols-2 grid-rows-2 gap-1 w-full h-full">{Host}<Guest label={getGuest(0)} /><Guest label={getGuest(1)} /><Guest label={getGuest(2)} /></div>;
   }
   if (layoutId === "pip") {
     return (
       <div className="relative w-full h-full">
-        <Guest label="Guest 1" />
+        <Guest label={getGuest(0)} />
         <div className="absolute bottom-3 right-3 w-1/4 aspect-video rounded-lg overflow-hidden border-2 border-white/30 shadow-xl">
           {Host}
         </div>
@@ -1392,7 +1455,7 @@ function StageLayout({
     return (
       <div className="grid w-full h-full" style={{ gridTemplateColumns: "1fr 25%", gap: 4 }}>
         {Host}
-        <div className="grid grid-rows-3 gap-1"><Guest label="G1" /><Guest label="G2" /><Guest label="G3" /></div>
+        <div className="grid grid-rows-3 gap-1"><Guest label={getGuest(0)} /><Guest label={getGuest(1)} /><Guest label={getGuest(2)} /></div>
       </div>
     );
   }
@@ -1400,7 +1463,7 @@ function StageLayout({
     return (
       <div className="grid w-full h-full" style={{ gridTemplateRows: "1fr 25%", gap: 4 }}>
         {Host}
-        <div className="grid grid-cols-3 gap-1"><Guest label="G1" /><Guest label="G2" /><Guest label="G3" /></div>
+        <div className="grid grid-cols-3 gap-1"><Guest label={getGuest(0)} /><Guest label={getGuest(1)} /><Guest label={getGuest(2)} /></div>
       </div>
     );
   }
