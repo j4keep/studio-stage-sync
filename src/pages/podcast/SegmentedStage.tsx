@@ -1,8 +1,26 @@
 import { useEffect, useRef } from "react";
 
+type SegmentationResults = {
+  image: CanvasImageSource & { width?: number; height?: number };
+  segmentationMask: CanvasImageSource;
+};
+
+type SelfieSegmentationInstance = {
+  setOptions: (options: { modelSelection: number; selfieMode: boolean }) => void;
+  onResults: (callback: (results: SegmentationResults) => void) => void;
+  send: (input: { image: HTMLVideoElement }) => Promise<void>;
+  close?: () => void;
+};
+
+declare global {
+  interface Window {
+    SelfieSegmentation?: new (config: { locateFile: (file: string) => string }) => SelfieSegmentationInstance;
+  }
+}
+
 let scriptPromise: Promise<void> | null = null;
 function loadMediaPipe(): Promise<void> {
-  if ((window as any).SelfieSegmentation) return Promise.resolve();
+  if (window.SelfieSegmentation) return Promise.resolve();
   if (scriptPromise) return scriptPromise;
   scriptPromise = new Promise((resolve, reject) => {
     const s = document.createElement("script");
