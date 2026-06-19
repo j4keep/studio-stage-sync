@@ -119,6 +119,16 @@ export default function PodcastStudioPage() {
   const [mirrored, setMirrored] = useState(true);
   const [resolution, setResolution] = useState<"720p" | "1080p" | "480p">("720p");
   const [frameRate, setFrameRate] = useState<24 | 30 | 60>(30);
+
+  // Captions, chat, screen share, fullscreen
+  const [captionsOn, setCaptionsOn] = useState(false);
+  const [captionText, setCaptionText] = useState("");
+  const recognitionRef = useRef<any>(null);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const screenStreamRef = useRef<MediaStream | null>(null);
+  const [screenSharing, setScreenSharing] = useState(false);
+  const stageContainerRef = useRef<HTMLDivElement | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const setPending = usePodcastVideoStore(s => s.setPending);
   const setVideo = usePodcastVideoStore(s => s.setVideo);
 
