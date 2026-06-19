@@ -799,12 +799,43 @@ function BottomAction({ icon, label, onClick, active, big }: { icon: React.React
   );
 }
 
-function PeoplePanel({ onInvite }: { onInvite: () => void }) {
+function StageBtn({ children, onClick, title, active }: { children: React.ReactNode; onClick: () => void; title: string; active?: boolean }) {
+  return (
+    <button onClick={onClick} title={title} className={`w-9 h-9 rounded-full grid place-items-center backdrop-blur ${active ? "bg-cyan-600 text-white" : "bg-black/55 text-white hover:bg-black/75"}`}>
+      {children}
+    </button>
+  );
+}
+
+function PeoplePanel({ onInvite, onShare, sessionCode }: { onInvite: () => void; onShare: (url: string) => void; sessionCode: string | null }) {
+  const code = sessionCode || "SESSION";
+  const url = `${window.location.origin}/#/tv/podcast/join/${code}`;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(url)}`;
+  const smsHref = `sms:?&body=${encodeURIComponent(`Join my podcast studio: ${url}`)}`;
+  const mailHref = `mailto:?subject=${encodeURIComponent("Join my podcast")}&body=${encodeURIComponent(url)}`;
   return (
     <div className="space-y-3">
       <button onClick={onInvite} className="w-full h-10 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-medium flex items-center justify-center gap-2">
-        <LinkIcon className="w-4 h-4" /> Invite via magic link
+        <LinkIcon className="w-4 h-4" /> Copy magic link
       </button>
+      <div className="grid grid-cols-3 gap-2">
+        <a href={smsHref} className="h-10 rounded-lg bg-neutral-900 border border-neutral-800 hover:border-neutral-700 text-[11px] text-neutral-200 flex items-center justify-center gap-1.5">
+          <Smartphone className="w-3.5 h-3.5" /> Text
+        </a>
+        <button onClick={() => onShare(url)} className="h-10 rounded-lg bg-neutral-900 border border-neutral-800 hover:border-neutral-700 text-[11px] text-neutral-200 flex items-center justify-center gap-1.5">
+          <Share2 className="w-3.5 h-3.5" /> Share
+        </button>
+        <a href={mailHref} className="h-10 rounded-lg bg-neutral-900 border border-neutral-800 hover:border-neutral-700 text-[11px] text-neutral-200 flex items-center justify-center gap-1.5">
+          <Send className="w-3.5 h-3.5" /> Email
+        </a>
+      </div>
+      <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-3 flex items-center gap-3">
+        <img src={qrUrl} alt="Join QR code" className="w-20 h-20 rounded bg-white p-1" />
+        <div className="min-w-0 text-[11px] text-neutral-400 leading-relaxed">
+          <div className="flex items-center gap-1 text-neutral-200 mb-1"><QrCode className="w-3 h-3" /> Scan to join</div>
+          <div className="break-all text-[10px] text-neutral-500">{url}</div>
+        </div>
+      </div>
       <div className="text-[11px] uppercase tracking-wider text-neutral-500">In the studio · 1</div>
       <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-3 flex items-center gap-3">
         <div className="w-9 h-9 rounded-full bg-neutral-700 grid place-items-center text-xs font-semibold">J</div>
@@ -816,6 +847,73 @@ function PeoplePanel({ onInvite }: { onInvite: () => void }) {
     </div>
   );
 }
+
+function CaptionsPanel({ on, onToggle, text }: { on: boolean; onToggle: () => void; text: string }) {
+  return (
+    <div className="space-y-4">
+      <Row label="Live captions"><Toggle on={on} onChange={onToggle} /></Row>
+      <p className="text-[11px] text-neutral-500">Uses your browser's built-in speech recognition. Captions appear on the stage in real time, just like in the reference apps.</p>
+      <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-3 min-h-[80px] text-sm text-neutral-200">
+        {on ? (text || <span className="text-neutral-500 italic">Listening… start speaking</span>) : <span className="text-neutral-500 italic">Off</span>}
+      </div>
+    </div>
+  );
+}
+
+function ChatPanel({ messages, onSend }: { messages: ChatMessage[]; onSend: (text?: string, file?: File) => void }) {
+  const [text, setText] = useState("");
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  return (
+    <div className="flex flex-col h-full -m-4">
+      <div className="flex-1 overflow-y-auto p-3 space-y-2">
+        {messages.length === 0 && <div className="text-[11px] text-neutral-500 text-center py-8">Say hi 👋 — chat appears here for everyone in the room.</div>}
+        {messages.map(m => (
+          <div key={m.id} className="rounded-lg bg-neutral-900 border border-neutral-800 p-2">
+            <div className="text-[10px] text-neutral-500 mb-1">{m.author}</div>
+            {m.text && <div className="text-xs text-neutral-100 break-words whitespace-pre-wrap">{m.text}</div>}
+            {m.mediaUrl && m.mediaType === "image" && <img src={m.mediaUrl} alt="" className="mt-1 rounded max-h-48" />}
+            {m.mediaUrl && m.mediaType === "video" && <video src={m.mediaUrl} controls className="mt-1 rounded max-h-48 w-full" />}
+          </div>
+        ))}
+      </div>
+      <div className="border-t border-neutral-900 p-2 flex items-center gap-2">
+        <input ref={fileRef} type="file" accept="image/*,video/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onSend(undefined, f); e.target.value = ""; }} />
+        <button onClick={() => fileRef.current?.click()} className="p-2 rounded text-neutral-400 hover:text-cyan-300 hover:bg-neutral-900" title="Attach photo or video">
+          <Paperclip className="w-4 h-4" />
+        </button>
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") { onSend(text); setText(""); } }}
+          placeholder="Message"
+          className="flex-1 h-8 bg-neutral-900 border border-neutral-800 rounded px-2 text-xs text-neutral-100 outline-none focus:border-cyan-500/60"
+        />
+        <button onClick={() => { onSend(text); setText(""); }} className="h-8 px-3 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-xs flex items-center gap-1">
+          <Send className="w-3 h-3" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function JhiPanel() {
+  const navigate = useNavigate();
+  return (
+    <div className="space-y-3">
+      <div className="rounded-lg border border-cyan-700/40 bg-cyan-950/30 p-3">
+        <div className="flex items-center gap-2 mb-1">
+          <Bot className="w-4 h-4 text-cyan-300" />
+          <div className="text-sm font-medium text-cyan-100">J-Hi assistant</div>
+        </div>
+        <p className="text-[11px] text-cyan-200/80 leading-relaxed">Ask J-Hi for ideas, scripts, episode names, or studio help. Opens the full assistant in a new tab.</p>
+      </div>
+      <button onClick={() => navigate("/ask-jhi")} className="w-full h-9 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-medium flex items-center justify-center gap-2">
+        <MessageSquare className="w-4 h-4" /> Open J-Hi chat
+      </button>
+    </div>
+  );
+}
+
 
 function EffectsPanel({
   mirrored, setMirrored, bgUrl, setBgUrl, customBgs, onAddCustomBg,
