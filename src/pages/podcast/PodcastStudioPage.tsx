@@ -777,12 +777,11 @@ export default function PodcastStudioPage() {
         )}
       </div>
 
-      {/* Bottom bar — minimal: focus stays on the stage controls above */}
-      <footer className="shrink-0 h-16 border-t border-neutral-900 flex items-center justify-center gap-2 px-3 bg-neutral-950">
-        <BottomAction onClick={() => setRightPanel(p => p === "people" ? null : "people")} icon={<Users className="w-5 h-5" />} label="Invite" />
-        <BottomAction onClick={() => setRightPanel(p => p === "chat" ? null : "chat")} icon={<MessageCircle className="w-5 h-5" />} label="Chat" />
+      {/* Bottom bar — Invite & Chat already live on the right rail, so footer
+          stays focused on Projects, the J-Hi assistant, and Leave. */}
+      <footer className="shrink-0 h-16 border-t border-neutral-900 flex items-center justify-center gap-4 px-3 bg-neutral-950">
         <BottomAction onClick={() => setRightPanel("projects")} icon={<FolderOpen className="w-5 h-5" />} label="Projects" />
-        <BottomAction onClick={() => setRightPanel(p => p === "jhi" ? null : "jhi")} icon={<Bot className="w-5 h-5 text-cyan-400" />} label="J-Hi" />
+        <BottomAction onClick={() => setRightPanel(p => p === "jhi" ? null : "jhi")} icon={<JhiIcon className="w-5 h-5" active />} label="J-Hi" />
         <BottomAction onClick={() => navigate("/tv/podcast")} icon={<LogOut className="w-5 h-5 text-red-400" />} label="Leave" />
       </footer>
 
