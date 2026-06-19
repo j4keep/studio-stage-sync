@@ -393,13 +393,18 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
           const pendingDuration = Math.max(0.1, dur);
           window.setTimeout(() => {
             if (!usePodcastVideoStore.getState().pendingByTrack[pendingTrackId]) return;
+            const latest = lastRecordedClipByTrackRef.current[pendingTrackId];
+            if (latest && Math.abs(latest.startTime - pendingStart) < 0.25 && Date.now() - latest.at < 8000) {
+              usePodcastVideoStore.getState().attachPending(pendingTrackId, latest.clipId);
+              return;
+            }
             const ctx = engineRef.current?.ctx;
             if (!ctx) return;
             const silent = ctx.createBuffer(1, Math.max(1, Math.ceil(pendingDuration * ctx.sampleRate)), ctx.sampleRate);
             const clipId = newId("clip");
             addClip({ id: clipId, trackId: pendingTrackId, startTime: pendingStart, duration: pendingDuration, offset: 0, buffer: silent, peaks: new Float32Array(0), name: "Recording" });
             usePodcastVideoStore.getState().attachPending(pendingTrackId, clipId);
-          }, 2500);
+          }, 3000);
         };
         mr.start(250);
         recorderRef.current = mr;
