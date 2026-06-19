@@ -953,6 +953,9 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
               {rightPanel === "projects" && (
                 <ProjectsPanel
                   onClose={() => setRightPanel(null)}
+                  onSaveProject={handleSave}
+                  onDeleteProject={handleDeleteProject}
+                  onDeleteRecording={handleDeleteRecording}
                   onOpenInEditor={() => { setRightPanel(null); setTracksOpen(true); setTracksFull(true); }}
                 />
               )}
