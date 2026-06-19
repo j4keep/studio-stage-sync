@@ -76,13 +76,13 @@ export function SegmentedStage({
     if (!stream) return;
     let cancelled = false;
     let raf = 0;
-    let seg: any = null;
+    let seg: SelfieSegmentationInstance | null = null;
 
     const video = document.createElement("video");
     video.muted = true;
     video.playsInline = true;
     video.srcObject = stream;
-    const playPromise = video.play().catch(() => {});
+    const playPromise = video.play().catch((error) => { void error; });
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -131,10 +131,10 @@ export function SegmentedStage({
     (async () => {
       await playPromise;
       if (cancelled) return;
-      try { await loadMediaPipe(); } catch { /* fall back to plain video below */ }
+      try { await loadMediaPipe(); } catch (error) { void error; }
       if (cancelled) return;
 
-      const SS = (window as any).SelfieSegmentation;
+      const SS = window.SelfieSegmentation;
       if (SS) {
         try {
           seg = new SS({
