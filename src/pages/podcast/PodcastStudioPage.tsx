@@ -879,7 +879,7 @@ function ProjectsPanel({ onClose, onOpenInEditor }: { onClose: () => void; onOpe
                 <div className="text-[10px] text-neutral-500">{v.durationSec ? `${v.durationSec.toFixed(1)}s` : ""} · {v.mime.split(";")[0]}</div>
               </div>
               <div className="flex items-center gap-1">
-                <a href={v.url} download={`take-${clipId}.webm`} className="p-1.5 rounded text-neutral-300 hover:text-white hover:bg-neutral-800" title="Download">
+                <a href={v.url} download={`take-${clipId}.${v.mime.includes("mp4") ? "mp4" : "webm"}`} className="p-1.5 rounded text-neutral-300 hover:text-white hover:bg-neutral-800" title="Download">
                   <Download className="w-3.5 h-3.5" />
                 </a>
                 <button onClick={onOpenInEditor} className="h-7 px-2 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-[11px] flex items-center gap-1" title="Open in editor">
