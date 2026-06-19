@@ -64,14 +64,6 @@ export function SegmentedStage({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Offscreen canvas used to sharpen the segmentation mask before compositing.
-    // MediaPipe returns a soft grayscale mask which makes the subject look
-    // translucent over the background. We push mid-grays toward fully opaque
-    // and very low values toward fully transparent for a crisper cutout while
-    // keeping a 1px feather so hair doesn't look like cardboard.
-    const maskCanvas = document.createElement("canvas");
-    const maskCtx = maskCanvas.getContext("2d", { willReadFrequently: true });
-
     const drawCover = (img: CanvasImageSource, w: number, h: number) => {
       const sw = (img as HTMLImageElement).naturalWidth || (img as HTMLVideoElement).videoWidth || w;
       const sh = (img as HTMLImageElement).naturalHeight || (img as HTMLVideoElement).videoHeight || h;
@@ -79,6 +71,7 @@ export function SegmentedStage({
       const dw = sw * scale, dh = sh * scale;
       ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
     };
+
 
     // Reusable subject compositor — single allocation, slight feather for clean edges.
     const subjectCanvas = document.createElement("canvas");
