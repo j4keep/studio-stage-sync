@@ -84,7 +84,8 @@ export function SegmentedStage({
           seg = new SS({
             locateFile: (f: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${f}`,
           });
-          seg.setOptions({ modelSelection: 1, selfieMode: false });
+          // modelSelection 0 = "general" higher-quality model. 1 = landscape (faster, blurrier).
+          seg.setOptions({ modelSelection: 0, selfieMode: false });
           seg.onResults((results: any) => {
             if (cancelled) return;
             const w = results.image.width || video.videoWidth || 640;
@@ -97,11 +98,13 @@ export function SegmentedStage({
             if (mirroredRef.current) { ctx.translate(w, 0); ctx.scale(-1, 1); }
 
             if (bgUrlRef.current && bgImgRef.current) {
-              // Person silhouette only.
+              // 1) Draw the person crisply on top of a tight mask. We avoid
+              //    soft alpha blending so the subject doesn't fade into the bg.
               ctx.drawImage(results.segmentationMask, 0, 0, w, h);
               ctx.globalCompositeOperation = "source-in";
+              (ctx as any).imageSmoothingQuality = "high";
               ctx.drawImage(results.image, 0, 0, w, h);
-              // Background fills everything not yet painted.
+              // 2) Background paints anything still transparent.
               ctx.globalCompositeOperation = "destination-over";
               drawCover(bgImgRef.current, w, h);
             } else {
