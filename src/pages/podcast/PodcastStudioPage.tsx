@@ -1,21 +1,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
+import ReactMarkdown from "react-markdown";
 import {
   Mic, Video as VideoIcon, VideoOff, FolderOpen, LogOut,
   Users, MessageCircle, Sparkles, Captions as CaptionsIcon, Music, Settings as SettingsIcon, HelpCircle,
   Home, ChevronUp, ChevronDown, Circle, Square, Link as LinkIcon, Upload, X,
-  Scissors, MousePointer2, ZoomIn, ZoomOut, Download, Pencil, Eraser, Bot,
+  Scissors, MousePointer2, ZoomIn, ZoomOut, Download, Pencil, Eraser,
   Play, Pause, SkipBack, SkipForward, Maximize2, Minimize2, ArrowLeftToLine,
   MessageSquare, Smartphone, QrCode, Share2, Send, Image as ImageIcon, Paperclip,
-  Maximize, MonitorUp, MonitorOff,
+  Maximize, MonitorUp, MonitorOff, ArrowUp,
 } from "lucide-react";
+import JhiIcon from "@/components/JhiIcon";
 import { DawEngine } from "@/wstudio/daw/engine/DawEngine";
 import { computePeaks } from "@/wstudio/daw/engine/Peaks";
 import { useDawStore, newId } from "@/wstudio/daw/state/DawStore";
 import { ArrangeView } from "@/wstudio/daw/ui/ArrangeView";
 import { PodcastExportSheet } from "./PodcastExportSheet";
 import { usePodcastVideoStore } from "./podcastVideoStore";
+import { SegmentedStage } from "./SegmentedStage";
 import type { Clip, Track } from "@/wstudio/daw/engine/types";
 import { saveProjectTo, openProject } from "@/wstudio/daw/lib/projectIO";
 import studio1 from "@/assets/studio-1.jpg";
@@ -30,6 +33,16 @@ import battleStageLights from "@/assets/battle-bg-stage-lights.jpg";
 import battleNeonCity from "@/assets/battle-bg-neon-city.jpg";
 import wstudioMic from "@/assets/wstudio-orbit-mic.jpg";
 import wstudioMixer from "@/assets/wstudio-orbit-mixer.jpg";
+
+type CaptionStyle = "subtitle" | "bold" | "neon" | "bubble" | "minimal" | "karaoke";
+const CAPTION_STYLES: { id: CaptionStyle; label: string; className: string }[] = [
+  { id: "subtitle", label: "Subtitle", className: "px-3 py-1.5 rounded-md bg-black/75 text-white text-base font-medium" },
+  { id: "bold",     label: "Bold",     className: "px-4 py-2 rounded-lg bg-white text-black text-lg font-extrabold tracking-tight uppercase" },
+  { id: "neon",     label: "Neon",     className: "px-3 py-1.5 rounded-md bg-black/60 text-cyan-300 text-lg font-bold tracking-wide [text-shadow:_0_0_8px_rgb(34_211_238_/_90%),_0_0_18px_rgb(34_211_238_/_60%)]" },
+  { id: "bubble",   label: "Bubble",   className: "px-4 py-2 rounded-full bg-violet-600 text-white text-base font-semibold shadow-lg shadow-violet-900/40" },
+  { id: "minimal",  label: "Minimal",  className: "px-2 py-1 text-white text-base font-medium [text-shadow:_0_1px_3px_rgba(0,0,0,0.9)]" },
+  { id: "karaoke",  label: "Karaoke",  className: "px-3 py-1.5 rounded-md bg-gradient-to-r from-yellow-300 via-pink-400 to-fuchsia-500 bg-clip-text text-transparent text-xl font-extrabold" },
+];
 
 const isInputAudioTrack = (track: Track, allClips: Clip[]) => (
   track.kind === "instrument" || (
@@ -114,6 +127,7 @@ export default function PodcastStudioPage() {
   const recStartRef = useRef<number>(0);
   const videoCompositeRafRef = useRef<number | null>(null);
   const [camOn, setCamOn] = useState(false);
+  const [camStream, setCamStream] = useState<MediaStream | null>(null);
   const [micOn, setMicOn] = useState(true);
   const [videoRec, setVideoRec] = useState(false);
   const [mirrored, setMirrored] = useState(true);
@@ -123,7 +137,9 @@ export default function PodcastStudioPage() {
   // Captions, chat, screen share, fullscreen
   const [captionsOn, setCaptionsOn] = useState(false);
   const [captionText, setCaptionText] = useState("");
+  const [captionStyle, setCaptionStyle] = useState<CaptionStyle>("subtitle");
   const recognitionRef = useRef<any>(null);
+  const captionHideTimerRef = useRef<number | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const screenStreamRef = useRef<MediaStream | null>(null);
   const [screenSharing, setScreenSharing] = useState(false);
@@ -167,6 +183,7 @@ export default function PodcastStudioPage() {
         audio: false,
       });
       camStreamRef.current = stream;
+      setCamStream(stream);
       if (previewRef.current) { previewRef.current.srcObject = stream; await previewRef.current.play().catch(() => {}); }
       setCamOn(true);
     } catch (err: any) {
@@ -182,6 +199,7 @@ export default function PodcastStudioPage() {
     setVideoRec(false);
     const s = camStreamRef.current;
     if (s) { s.getTracks().forEach(t => t.stop()); camStreamRef.current = null; }
+    setCamStream(null);
     if (previewRef.current) previewRef.current.srcObject = null;
     setCamOn(false);
   }, []);
@@ -393,11 +411,13 @@ export default function PodcastStudioPage() {
     } catch { toast.error("Couldn't open project"); }
   }, [loadProject, setProjectFileHandle]);
 
-  // Live captions via Web Speech API
+  // Live captions via Web Speech API — auto-hides after ~2s of silence so
+  // captions don't linger on screen when the host stops talking.
   const toggleCaptions = useCallback(() => {
     if (captionsOn) {
       try { recognitionRef.current?.stop(); } catch {}
       recognitionRef.current = null;
+      if (captionHideTimerRef.current) { window.clearTimeout(captionHideTimerRef.current); captionHideTimerRef.current = null; }
       setCaptionsOn(false);
       setCaptionText("");
       return;
@@ -409,19 +429,28 @@ export default function PodcastStudioPage() {
     r.interimResults = true;
     r.lang = "en-US";
     r.onresult = (ev: any) => {
-      let txt = "";
-      for (let i = ev.resultIndex; i < ev.results.length; i++) {
-        txt += ev.results[i][0].transcript;
-      }
-      setCaptionText(txt.trim().slice(-180));
+      // Use ONLY the latest result so captions don't grow forever or freeze.
+      const last = ev.results[ev.results.length - 1];
+      const txt = (last?.[0]?.transcript || "").trim();
+      setCaptionText(txt.slice(-160));
+      if (captionHideTimerRef.current) window.clearTimeout(captionHideTimerRef.current);
+      captionHideTimerRef.current = window.setTimeout(() => setCaptionText(""), 2200);
     };
     r.onerror = () => {};
-    r.onend = () => { if (captionsOn) try { r.start(); } catch {} };
+    // Auto-restart if the browser stops the recognizer (it does so often on Chrome).
+    r.onend = () => {
+      if (!recognitionRef.current) return;
+      try { r.start(); } catch {}
+    };
     try { r.start(); recognitionRef.current = r; setCaptionsOn(true); }
     catch { toast.error("Could not start captions"); }
   }, [captionsOn]);
 
-  useEffect(() => () => { try { recognitionRef.current?.stop(); } catch {} }, []);
+  useEffect(() => () => {
+    try { recognitionRef.current?.stop(); } catch {}
+    recognitionRef.current = null;
+    if (captionHideTimerRef.current) window.clearTimeout(captionHideTimerRef.current);
+  }, []);
 
   // Screen sharing
   const toggleScreenShare = useCallback(async () => {
@@ -548,6 +577,7 @@ export default function PodcastStudioPage() {
                   mirrored={mirrored && !screenSharing}
                   onStartCamera={startCamera}
                   bgUrl={screenSharing ? null : bgUrl}
+                  camStream={screenSharing ? null : camStream}
                 />
                 {videoRec && (
                   <div className="absolute top-3 left-3 px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center gap-1 z-30">
@@ -555,8 +585,10 @@ export default function PodcastStudioPage() {
                   </div>
                 )}
                 {captionsOn && captionText && (
-                  <div className="absolute bottom-12 left-1/2 -translate-x-1/2 max-w-[85%] z-30 px-3 py-1.5 rounded-md bg-black/75 text-white text-sm text-center leading-tight">
-                    {captionText}
+                  <div className="absolute bottom-10 left-1/2 -translate-x-1/2 max-w-[88%] z-30 text-center leading-tight pointer-events-none">
+                    <span className={CAPTION_STYLES.find(s => s.id === captionStyle)?.className}>
+                      {captionText}
+                    </span>
                   </div>
                 )}
                 {/* Floating stage controls (top-right of stage) */}
@@ -573,10 +605,13 @@ export default function PodcastStudioPage() {
               <div className="flex items-center justify-center gap-3">
                 <button
                   onClick={handleRecord}
-                  className={`h-12 px-5 rounded-full flex items-center gap-2 text-sm font-semibold shadow-lg transition ${isRecording ? "bg-red-700 hover:bg-red-600 text-white" : "bg-red-600 hover:bg-red-500 text-white"}`}
+                  title={isRecording ? "Stop recording" : "Start recording"}
+                  className={`relative w-16 h-16 rounded-full grid place-items-center shadow-lg shadow-red-900/40 transition ${isRecording ? "bg-red-700 hover:bg-red-600" : "bg-red-600 hover:bg-red-500"}`}
                 >
-                  {isRecording ? <Square className="w-4 h-4 fill-current" /> : <Circle className="w-4 h-4 fill-current" />}
-                  {isRecording ? "Stop recording" : "Record"}
+                  <span className="absolute inset-1.5 rounded-full border-2 border-white/70" />
+                  {isRecording
+                    ? <Square className="w-5 h-5 fill-white text-white" />
+                    : <span className="w-5 h-5 rounded-full bg-white" />}
                 </button>
                 <button onClick={() => setMicOn(m => !m)} title={micOn ? "Mute mic" : "Unmute mic"} className={`w-11 h-11 rounded-full grid place-items-center ${micOn ? "bg-neutral-800 hover:bg-neutral-700 text-white" : "bg-neutral-900 text-neutral-500"}`}>
                   <Mic className="w-4 h-4" />
@@ -643,7 +678,7 @@ export default function PodcastStudioPage() {
             <button onClick={() => setTool("eraser")} className={`w-10 h-10 rounded grid place-items-center ${tool === "eraser" ? "bg-neutral-800 text-white" : "text-neutral-400 hover:text-neutral-100"}`} title="Erase"><Eraser className="w-4 h-4" /></button>
             <button onClick={() => setPxPerSec(Math.min(800, pxPerSec * 1.25))} className="w-10 h-10 rounded grid place-items-center text-neutral-400 hover:text-neutral-100" title="Zoom in"><ZoomIn className="w-4 h-4" /></button>
             <button onClick={() => setPxPerSec(Math.max(20, pxPerSec / 1.25))} className="w-10 h-10 rounded grid place-items-center text-neutral-400 hover:text-neutral-100" title="Zoom out"><ZoomOut className="w-4 h-4" /></button>
-            <button onClick={() => setRightPanel(p => p === "jhi" ? null : "jhi")} className={`w-10 h-10 rounded grid place-items-center ${rightPanel === "jhi" ? "bg-cyan-600 text-white" : "text-cyan-400 hover:text-cyan-300"}`} title="Ask J-Hi"><Bot className="w-4 h-4" /></button>
+            <button onClick={() => setRightPanel(p => p === "jhi" ? null : "jhi")} className={`w-10 h-10 rounded grid place-items-center ${rightPanel === "jhi" ? "bg-cyan-600 text-white" : "text-cyan-400 hover:text-cyan-300"}`} title="Ask J-Hi"><JhiIcon className="w-5 h-5" active={rightPanel === "jhi"} /></button>
             <button onClick={() => clips.length ? setExportOpen(true) : toast.error("Nothing to export")} className="w-10 h-10 rounded grid place-items-center text-neutral-400 hover:text-neutral-100" title="Export"><Download className="w-4 h-4" /></button>
           </div>
 
@@ -685,7 +720,7 @@ export default function PodcastStudioPage() {
                   onAddCustomBg={() => bgUploadRef.current?.click()}
                 />
               )}
-              {rightPanel === "captions" && <CaptionsPanel on={captionsOn} onToggle={toggleCaptions} text={captionText} />}
+              {rightPanel === "captions" && <CaptionsPanel on={captionsOn} onToggle={toggleCaptions} text={captionText} style={captionStyle} setStyle={setCaptionStyle} />}
               {rightPanel === "jhi" && <JhiPanel />}
               {rightPanel === "media" && <MediaPanel onImport={() => importInputRef.current?.click()} />}
               {rightPanel === "projects" && (
@@ -746,12 +781,11 @@ export default function PodcastStudioPage() {
         )}
       </div>
 
-      {/* Bottom bar — minimal: focus stays on the stage controls above */}
-      <footer className="shrink-0 h-16 border-t border-neutral-900 flex items-center justify-center gap-2 px-3 bg-neutral-950">
-        <BottomAction onClick={() => setRightPanel(p => p === "people" ? null : "people")} icon={<Users className="w-5 h-5" />} label="Invite" />
-        <BottomAction onClick={() => setRightPanel(p => p === "chat" ? null : "chat")} icon={<MessageCircle className="w-5 h-5" />} label="Chat" />
+      {/* Bottom bar — Invite & Chat already live on the right rail, so footer
+          stays focused on Projects, the J-Hi assistant, and Leave. */}
+      <footer className="shrink-0 h-16 border-t border-neutral-900 flex items-center justify-center gap-4 px-3 bg-neutral-950">
         <BottomAction onClick={() => setRightPanel("projects")} icon={<FolderOpen className="w-5 h-5" />} label="Projects" />
-        <BottomAction onClick={() => setRightPanel(p => p === "jhi" ? null : "jhi")} icon={<Bot className="w-5 h-5 text-cyan-400" />} label="J-Hi" />
+        <BottomAction onClick={() => setRightPanel(p => p === "jhi" ? null : "jhi")} icon={<JhiIcon className="w-5 h-5" active />} label="J-Hi" />
         <BottomAction onClick={() => navigate("/tv/podcast")} icon={<LogOut className="w-5 h-5 text-red-400" />} label="Leave" />
       </footer>
 
@@ -848,11 +882,30 @@ function PeoplePanel({ onInvite, onShare, sessionCode }: { onInvite: () => void;
   );
 }
 
-function CaptionsPanel({ on, onToggle, text }: { on: boolean; onToggle: () => void; text: string }) {
+function CaptionsPanel({ on, onToggle, text, style, setStyle }: {
+  on: boolean; onToggle: () => void; text: string;
+  style: CaptionStyle; setStyle: (s: CaptionStyle) => void;
+}) {
   return (
     <div className="space-y-4">
       <Row label="Live captions"><Toggle on={on} onChange={onToggle} /></Row>
-      <p className="text-[11px] text-neutral-500">Uses your browser's built-in speech recognition. Captions appear on the stage in real time, just like in the reference apps.</p>
+      <p className="text-[11px] text-neutral-500">Captions auto-hide when you stop speaking and reappear the moment you talk again.</p>
+      <div>
+        <div className="text-[11px] uppercase tracking-wider text-neutral-500 mb-2">Caption style</div>
+        <div className="grid grid-cols-2 gap-2">
+          {CAPTION_STYLES.map(s => (
+            <button
+              key={s.id}
+              onClick={() => setStyle(s.id)}
+              className={`relative h-14 rounded-lg border overflow-hidden grid place-items-center bg-neutral-900 ${
+                style === s.id ? "border-cyan-400 ring-2 ring-cyan-500/30" : "border-neutral-800 hover:border-neutral-700"
+              }`}
+            >
+              <span className={s.className} style={{ fontSize: 11 }}>{s.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-3 min-h-[80px] text-sm text-neutral-200">
         {on ? (text || <span className="text-neutral-500 italic">Listening… start speaking</span>) : <span className="text-neutral-500 italic">Off</span>}
       </div>
@@ -896,20 +949,140 @@ function ChatPanel({ messages, onSend }: { messages: ChatMessage[]; onSend: (tex
   );
 }
 
+/* ----------------------- Inline J-Hi chat panel ----------------------- */
+
+type JhiMsg = { role: "user" | "assistant"; content: string };
+const JHI_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ask-jhi`;
+
 function JhiPanel() {
-  const navigate = useNavigate();
+  const [messages, setMessages] = useState<JhiMsg[]>([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages, loading]);
+
+  const send = useCallback(async (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || loading) return;
+    const next: JhiMsg[] = [...messages, { role: "user", content: trimmed }];
+    setMessages(next);
+    setInput("");
+    setLoading(true);
+    let soFar = "";
+    const upsert = (chunk: string) => {
+      soFar += chunk;
+      setMessages(prev => {
+        const last = prev[prev.length - 1];
+        if (last?.role === "assistant") return prev.map((m, i) => i === prev.length - 1 ? { ...m, content: soFar } : m);
+        return [...prev, { role: "assistant", content: soFar }];
+      });
+    };
+    try {
+      const resp = await fetch(JHI_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ messages: next }),
+      });
+      if (!resp.ok || !resp.body) throw new Error("Couldn't reach J-Hi");
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        let nl: number;
+        while ((nl = buf.indexOf("\n")) !== -1) {
+          let line = buf.slice(0, nl);
+          buf = buf.slice(nl + 1);
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (!line.startsWith("data: ")) continue;
+          const json = line.slice(6).trim();
+          if (json === "[DONE]") { buf = ""; break; }
+          try {
+            const parsed = JSON.parse(json);
+            const c = parsed.choices?.[0]?.delta?.content;
+            if (c) upsert(c);
+          } catch { /* partial chunk */ }
+        }
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "J-Hi error");
+      if (!soFar) setMessages(p => p.slice(0, -1));
+    } finally {
+      setLoading(false);
+    }
+  }, [messages, loading]);
+
+  const prompts = [
+    "Give me 3 episode title ideas for a podcast about hustle culture",
+    "Write a 30-second intro script for me",
+    "What questions should I ask my guest?",
+  ];
+
   return (
-    <div className="space-y-3">
-      <div className="rounded-lg border border-cyan-700/40 bg-cyan-950/30 p-3">
-        <div className="flex items-center gap-2 mb-1">
-          <Bot className="w-4 h-4 text-cyan-300" />
-          <div className="text-sm font-medium text-cyan-100">J-Hi assistant</div>
+    <div className="flex flex-col h-full -m-4">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-neutral-900">
+        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-500/20 to-blue-600/20 grid place-items-center">
+          <JhiIcon className="w-5 h-5" active />
         </div>
-        <p className="text-[11px] text-cyan-200/80 leading-relaxed">Ask J-Hi for ideas, scripts, episode names, or studio help. Opens the full assistant in a new tab.</p>
+        <div className="min-w-0">
+          <div className="text-sm font-semibold text-neutral-100">J-Hi</div>
+          <div className="text-[10px] text-neutral-500">In-studio assistant</div>
+        </div>
       </div>
-      <button onClick={() => navigate("/ask-jhi")} className="w-full h-9 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-medium flex items-center justify-center gap-2">
-        <MessageSquare className="w-4 h-4" /> Open J-Hi chat
-      </button>
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
+        {messages.length === 0 ? (
+          <div className="space-y-2">
+            <p className="text-[11px] text-neutral-500 px-1">Ask J-Hi for script help, episode names, guest questions, or studio tips.</p>
+            {prompts.map(p => (
+              <button key={p} onClick={() => send(p)} className="w-full text-left p-2.5 rounded-lg bg-neutral-900 border border-neutral-800 hover:border-cyan-500/40 text-[11px] text-neutral-200 leading-snug">
+                {p}
+              </button>
+            ))}
+          </div>
+        ) : messages.map((m, i) => (
+          <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+            <div className={`max-w-[88%] rounded-2xl px-3 py-2 text-xs leading-relaxed ${
+              m.role === "user"
+                ? "bg-gradient-to-br from-cyan-600 to-blue-600 text-white rounded-br-md"
+                : "bg-neutral-900 border border-neutral-800 text-neutral-100 rounded-bl-md"
+            }`}>
+              {m.role === "assistant"
+                ? <div className="prose prose-sm prose-invert max-w-none [&>p]:my-1 [&>ul]:my-1 [&>ol]:my-1"><ReactMarkdown>{m.content}</ReactMarkdown></div>
+                : m.content}
+            </div>
+          </div>
+        ))}
+        {loading && messages[messages.length - 1]?.role === "user" && (
+          <div className="flex justify-start">
+            <div className="bg-neutral-900 border border-neutral-800 rounded-2xl rounded-bl-md px-3 py-2 flex gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-500/60 animate-bounce" />
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-500/60 animate-bounce" style={{ animationDelay: "120ms" }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-500/60 animate-bounce" style={{ animationDelay: "240ms" }} />
+            </div>
+          </div>
+        )}
+      </div>
+      <div className="border-t border-neutral-900 p-2 flex items-end gap-2">
+        <textarea
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); } }}
+          rows={1}
+          placeholder="Ask J-Hi…"
+          className="flex-1 bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-100 outline-none focus:border-cyan-500/60 resize-none max-h-24"
+        />
+        <button onClick={() => send(input)} disabled={!input.trim() || loading} className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 text-white grid place-items-center disabled:opacity-40">
+          <ArrowUp className="w-4 h-4" />
+        </button>
+      </div>
     </div>
   );
 }
@@ -1054,7 +1227,7 @@ function Toggle({ on, onChange }: { on: boolean; onChange: (b: boolean) => void 
 /* ----------------------------- Stage Layout ----------------------------- */
 
 function StageLayout({
-  layoutId, hostVideoRef, hostName, camOn, mirrored, onStartCamera, bgUrl,
+  layoutId, hostVideoRef, hostName, camOn, mirrored, onStartCamera, bgUrl, camStream,
 }: {
   layoutId: string;
   hostVideoRef: React.RefObject<HTMLVideoElement>;
@@ -1063,21 +1236,30 @@ function StageLayout({
   mirrored: boolean;
   onStartCamera: () => void;
   bgUrl: string | null;
+  camStream: MediaStream | null;
 }) {
+  // When a background is selected, render via the SegmentedStage canvas which
+  // uses MediaPipe selfie-segmentation to keep ONLY the person and replace
+  // everything else with the chosen background.
+  const useSegmenter = !!(bgUrl && camStream && camOn);
+
   const Host = (
     <div className="relative w-full h-full overflow-hidden bg-black">
-      {bgUrl && (
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${bgUrl})` }}
+      {useSegmenter ? (
+        <SegmentedStage
+          stream={camStream}
+          bgUrl={bgUrl}
+          mirrored={mirrored}
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+      ) : (
+        <video
+          ref={hostVideoRef}
+          muted
+          playsInline
+          className={`relative w-full h-full object-cover ${mirrored ? "scale-x-[-1]" : ""} ${camOn ? "" : "hidden"}`}
         />
       )}
-      <video
-        ref={hostVideoRef}
-        muted
-        playsInline
-        className={`${bgUrl ? "absolute inset-[7%] w-[86%] h-[86%] rounded-xl shadow-2xl" : "relative w-full h-full"} object-cover ${mirrored ? "scale-x-[-1]" : ""} ${camOn ? "" : "hidden"}`}
-      />
       {!camOn && (
         <div className="absolute inset-0 grid place-items-center text-neutral-500 text-sm gap-3">
           <VideoOff className="w-8 h-8 opacity-40" />
