@@ -10,6 +10,7 @@ import {
   Play, Pause, SkipBack, SkipForward, Maximize2, Minimize2, ArrowLeftToLine,
   MessageSquare, Smartphone, QrCode, Share2, Send, Image as ImageIcon, Paperclip,
   Maximize, MonitorUp, MonitorOff, ArrowUp, Rss, Tv, User as UserIcon, ChevronDown as ChevronDownIcon,
+  Trash2,
 } from "lucide-react";
 import JhiIcon from "@/components/JhiIcon";
 import { supabase } from "@/integrations/supabase/client";
@@ -102,8 +103,10 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
   const clips = useDawStore(s => s.clips);
   const setTransport = useDawStore(s => s.setTransport);
   const addClip = useDawStore(s => s.addClip);
+  const removeClip = useDawStore(s => s.removeClip);
   const addTrack = useDawStore(s => s.addTrack);
   const updateTrack = useDawStore(s => s.updateTrack);
+  const updateClip = useDawStore(s => s.updateClip);
   const selectTrack = useDawStore(s => s.selectTrack);
   const view = useDawStore(s => s.view);
   const projectName = useDawStore(s => s.projectName);
@@ -111,6 +114,7 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
   const projectFileHandle = useDawStore(s => s.projectFileHandle);
   const setProjectFileHandle = useDawStore(s => s.setProjectFileHandle);
   const loadProject = useDawStore(s => s.loadProject);
+  const resetProject = useDawStore(s => s.resetProject);
   const tool = useDawStore(s => s.tool);
   const setTool = useDawStore(s => s.setTool);
   const pxPerSec = useDawStore(s => s.pxPerSec);
@@ -163,6 +167,7 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
   const [isFullscreen, setIsFullscreen] = useState(false);
   const setPending = usePodcastVideoStore(s => s.setPending);
   const setVideo = usePodcastVideoStore(s => s.setVideo);
+  const removeVideo = usePodcastVideoStore(s => s.removeVideo);
 
   // Init engine
   useEffect(() => {
@@ -171,14 +176,15 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
     e.onPositionChange = (pos) => setTransport({ position: pos });
     e.onRecordedClip = async (trackId, clip) => {
       clip.peaks = computePeaks(clip.buffer!);
-      addClip(clip);
+      if (useDawStore.getState().clips.some(c => c.id === clip.id)) updateClip(clip.id, clip);
+      else addClip(clip);
       lastRecordedClipByTrackRef.current[trackId] = { clipId: clip.id, startTime: clip.startTime, at: Date.now() };
       usePodcastVideoStore.getState().attachPending(trackId, clip.id);
       setTransport({ isRecording: false, isPlaying: false });
     };
     setEngineReady(true);
     return () => { e.dispose(); engineRef.current = null; };
-  }, [addClip, setTransport]);
+  }, [addClip, setTransport, updateClip]);
 
   useEffect(() => {
     const e = engineRef.current; if (!e) return;
@@ -224,6 +230,11 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
   const makeStageRecordingStream = useCallback((sourceStream: MediaStream) => {
     const videoTrack = sourceStream.getVideoTracks()[0];
     if (!videoTrack) return null;
+    const stageCanvas = bgUrl ? stageContainerRef.current?.querySelector("canvas") : null;
+    if (stageCanvas instanceof HTMLCanvasElement && stageCanvas.width > 0 && stageCanvas.height > 0) {
+      try { return stageCanvas.captureStream(Math.min(frameRate, 30)); } catch {}
+    }
+    if (!bgUrl && !mirrored) return new MediaStream([videoTrack]);
     const canvas = document.createElement("canvas");
     canvas.width = resolution === "1080p" ? 1920 : resolution === "480p" ? 854 : 1280;
     canvas.height = resolution === "1080p" ? 1080 : resolution === "480p" ? 480 : 720;
@@ -271,33 +282,14 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
         }
       }
       if (!drewStage && video.readyState >= 2) {
-        if (bgUrl) {
-          const pad = Math.round(Math.min(W, H) * 0.07);
-          const x = pad;
-          const y = pad;
-          const w = W - pad * 2;
-          const h = H - pad * 2;
+        if (mirrored) {
           ctx.save();
-          ctx.shadowColor = "rgba(0,0,0,0.35)";
-          ctx.shadowBlur = 28;
-          if (mirrored) {
-            ctx.translate(W, 0);
-            ctx.scale(-1, 1);
-            drawCover(video, x, y, w, h);
-          } else {
-            drawCover(video, x, y, w, h);
-          }
+          ctx.translate(W, 0);
+          ctx.scale(-1, 1);
+          drawCover(video, 0, 0, W, H);
           ctx.restore();
         } else {
-          if (mirrored) {
-            ctx.save();
-            ctx.translate(W, 0);
-            ctx.scale(-1, 1);
-            drawCover(video, 0, 0, W, H);
-            ctx.restore();
-          } else {
-            drawCover(video, 0, 0, W, H);
-          }
+          drawCover(video, 0, 0, W, H);
         }
       }
       videoCompositeRafRef.current = requestAnimationFrame(paint);
@@ -350,7 +342,7 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
     try {
       await e.resume();
       const startPos = useDawStore.getState().transport.position;
-      await e.startRecording(trackId, startPos);
+      const recordedClipId = await e.startRecording(trackId, startPos);
       setTransport({ isRecording: true, isPlaying: true });
       const st = useDawStore.getState();
       e.play({ ...st.transport, isRecording: true, isPlaying: true, position: startPos }, st.tracks, st.clips);
@@ -364,14 +356,13 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
           ...videoOnly.getVideoTracks(),
           ...(micOn ? (recordInput?.getAudioTracks() ?? []) : []),
         ]);
-        // Prefer MP4 (Safari + recent Chrome) so user gets a portable file. Fall back to WebM.
         const mime = [
-          "video/mp4;codecs=avc1.42E01F,mp4a.40.2",
-          "video/mp4;codecs=avc1,mp4a",
-          "video/mp4",
           "video/webm;codecs=vp9,opus",
           "video/webm;codecs=vp8,opus",
           "video/webm",
+          "video/mp4;codecs=avc1.42E01F,mp4a.40.2",
+          "video/mp4;codecs=avc1,mp4a",
+          "video/mp4",
         ].find(m => MediaRecorder.isTypeSupported(m)) || "video/webm";
         const mr = new MediaRecorder(mixedStream, { mimeType: mime, videoBitsPerSecond: 4_500_000, audioBitsPerSecond: 160_000 });
         recChunksRef.current = [];
@@ -384,14 +375,27 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
           const blob = new Blob(recChunksRef.current, { type: mime });
           recChunksRef.current = [];
           const dur = useDawStore.getState().transport.position - recStartRef.current;
-          setPending(recTrackIdRef.current!, {
-            trackId: recTrackIdRef.current!, startTime: recStartRef.current,
-            blob, mime, durationSec: Math.max(0.1, dur), participantLabel: "Host",
-          });
           const pendingTrackId = recTrackIdRef.current!;
           const pendingStart = recStartRef.current;
           const pendingDuration = Math.max(0.1, dur);
+          if (recordedClipId) {
+            setVideo(recordedClipId, { blob, mime, durationSec: pendingDuration, participantLabel: "Host" });
+          } else {
+            setPending(pendingTrackId, {
+              trackId: pendingTrackId, startTime: pendingStart,
+              blob, mime, durationSec: pendingDuration, participantLabel: "Host",
+            });
+          }
           window.setTimeout(() => {
+            if (recordedClipId) {
+              const hasClip = useDawStore.getState().clips.some(c => c.id === recordedClipId);
+              if (hasClip) return;
+              const ctx = engineRef.current?.ctx;
+              if (!ctx) return;
+              const silent = ctx.createBuffer(1, Math.max(1, Math.ceil(pendingDuration * ctx.sampleRate)), ctx.sampleRate);
+              addClip({ id: recordedClipId, trackId: pendingTrackId, startTime: pendingStart, duration: pendingDuration, offset: 0, buffer: silent, peaks: new Float32Array(0), name: "Recording" });
+              return;
+            }
             if (!usePodcastVideoStore.getState().pendingByTrack[pendingTrackId]) return;
             const latest = lastRecordedClipByTrackRef.current[pendingTrackId];
             if (latest && Math.abs(latest.startTime - pendingStart) < 0.25 && Date.now() - latest.at < 8000) {
@@ -414,7 +418,70 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
       toast.error(err?.message || "Could not start recording");
       setTransport({ isRecording: false, isPlaying: false });
     }
-  }, [ensureRecordTrack, makeStageRecordingStream, micOn, setPending, setTransport, startCamera, updateTrack]);
+  }, [addClip, ensureRecordTrack, makeStageRecordingStream, micOn, setPending, setTransport, setVideo, startCamera, updateTrack]);
+
+  const toggleEditorPlayback = useCallback(async () => {
+    const e = engineRef.current; if (!e) return;
+    const st = useDawStore.getState();
+    if (st.transport.isPlaying) {
+      e.stop();
+      setTransport({ isPlaying: false });
+      return;
+    }
+    await e.resume();
+    const fresh = useDawStore.getState();
+    setTransport({ isPlaying: true });
+    e.play({ ...fresh.transport, isPlaying: true }, fresh.tracks, fresh.clips);
+  }, [setTransport]);
+
+  const seekEditorTo = useCallback((position: number) => {
+    const pos = Math.max(0, position);
+    const e = engineRef.current;
+    const wasPlaying = useDawStore.getState().transport.isPlaying;
+    if (e) e.stop();
+    setTransport({ position: pos, isPlaying: wasPlaying });
+    if (wasPlaying && e) {
+      requestAnimationFrame(() => {
+        const fresh = useDawStore.getState();
+        e.play({ ...fresh.transport, position: pos, isPlaying: true }, fresh.tracks, fresh.clips);
+      });
+    }
+  }, [setTransport]);
+
+  const deleteClipFromEditor = useCallback((clipId: string | null) => {
+    const st = useDawStore.getState();
+    const fallback = st.selectedTrackId
+      ? st.clips.find(c => c.trackId === st.selectedTrackId && st.transport.position >= c.startTime && st.transport.position <= c.startTime + c.duration)?.id
+      : null;
+    const targetId = clipId || fallback;
+    if (!targetId) return false;
+    const exists = st.clips.some(c => c.id === targetId);
+    if (!exists) return false;
+    removeVideo(targetId);
+    removeClip(targetId);
+    return true;
+  }, [removeClip, removeVideo]);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target?.isContentEditable) return;
+      if (!tracksOpen) return;
+      if (e.code === "Space") {
+        e.preventDefault();
+        void toggleEditorPlayback();
+      } else if (e.key === "Delete" || e.key === "Backspace") {
+        if (deleteClipFromEditor(useDawStore.getState().selectedClipId)) e.preventDefault();
+      } else if (e.key === "Enter") {
+        const selected = useDawStore.getState().clips.find(c => c.id === useDawStore.getState().selectedClipId);
+        e.preventDefault();
+        seekEditorTo(selected?.startTime ?? 0);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [deleteClipFromEditor, seekEditorTo, toggleEditorPlayback, tracksOpen]);
 
   const importFiles = useCallback(async (files: FileList) => {
     const e = engineRef.current; if (!e) return;
@@ -462,6 +529,28 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
       toast.success(`Opened "${r.parsed.name}"`);
     } catch { toast.error("Couldn't open project"); }
   }, [loadProject, setProjectFileHandle]);
+
+  const handleDeleteProject = useCallback(async () => {
+    if (!window.confirm("Delete this saved project and clear the current studio timeline?")) return;
+    try {
+      if (projectFileHandle && typeof (projectFileHandle as any).remove === "function") {
+        await (projectFileHandle as any).remove();
+      }
+      usePodcastVideoStore.getState().clear();
+      resetProject("Untitled Project");
+      setProjectFileHandle(null);
+      toast.success("Project deleted");
+    } catch {
+      toast.error("Couldn't delete the saved file, but you can remove it from your device folder.");
+    }
+  }, [projectFileHandle, resetProject, setProjectFileHandle]);
+
+  const handleDeleteRecording = useCallback((clipId: string) => {
+    const clipExists = useDawStore.getState().clips.some(c => c.id === clipId);
+    removeVideo(clipId);
+    if (clipExists) removeClip(clipId);
+    toast.success("Recording removed");
+  }, [removeClip, removeVideo]);
 
   // Live captions via Web Speech API — auto-hides after ~2s of silence so
   // captions don't linger on screen when the host stops talking.
@@ -870,6 +959,9 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
               {rightPanel === "projects" && (
                 <ProjectsPanel
                   onClose={() => setRightPanel(null)}
+                  onSaveProject={handleSave}
+                  onDeleteProject={handleDeleteProject}
+                  onDeleteRecording={handleDeleteRecording}
                   onOpenInEditor={() => { setRightPanel(null); setTracksOpen(true); setTracksFull(true); }}
                 />
               )}
@@ -1278,11 +1370,23 @@ function EffectsPanel({
   );
 }
 
-function ProjectsPanel({ onClose, onOpenInEditor }: { onClose: () => void; onOpenInEditor: () => void }) {
+function ProjectsPanel({ onClose, onSaveProject, onDeleteProject, onDeleteRecording, onOpenInEditor }: {
+  onClose: () => void;
+  onSaveProject: () => void;
+  onDeleteProject: () => void;
+  onDeleteRecording: (clipId: string) => void;
+  onOpenInEditor: () => void;
+}) {
   const videos = usePodcastVideoStore(s => s.videos);
   const entries = Object.entries(videos);
   return (
     <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-2">
+        <button onClick={onSaveProject} className="h-9 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-medium">Save project</button>
+        <button onClick={onDeleteProject} className="h-9 rounded bg-red-600/15 hover:bg-red-600 text-red-300 hover:text-white text-xs font-medium flex items-center justify-center gap-1">
+          <Trash2 className="w-3.5 h-3.5" /> Delete project
+        </button>
+      </div>
       <div className="text-[11px] uppercase tracking-wider text-neutral-500">Recorded videos · {entries.length}</div>
       {entries.length === 0 && (
         <div className="text-xs text-neutral-500 border border-dashed border-neutral-800 rounded-lg p-6 text-center">
@@ -1302,6 +1406,9 @@ function ProjectsPanel({ onClose, onOpenInEditor }: { onClose: () => void; onOpe
                 <a href={v.url} download={`take-${clipId}.${v.mime.includes("mp4") ? "mp4" : "webm"}`} className="p-1.5 rounded text-neutral-300 hover:text-white hover:bg-neutral-800" title="Download">
                   <Download className="w-3.5 h-3.5" />
                 </a>
+                <button onClick={() => onDeleteRecording(clipId)} className="p-1.5 rounded text-neutral-400 hover:text-red-300 hover:bg-red-600/10" title="Delete recording">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
                 <button onClick={onOpenInEditor} className="h-7 px-2 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-[11px] flex items-center gap-1" title="Open in editor">
                   <ArrowLeftToLine className="w-3 h-3" /> Edit
                 </button>

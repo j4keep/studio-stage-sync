@@ -653,6 +653,7 @@ export class DawEngine {
     if (this.recordingTrackId) this.stopRecording();
     this.recordingTrackId = trackId;
     this.recordStartTransport = transportPos;
+    const recordingClipId = `clip_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     this.recBuffers = [];
     this.recordingLivePeaks = [];
     const chain = this.trackChains.get(trackId);
@@ -706,7 +707,7 @@ export class DawEngine {
           for (let i = 0; i < input.length; i++) out[i] += input[i] / decoded.numberOfChannels;
         }
         const clip: Clip = {
-          id: `clip_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          id: recordingClipId,
           trackId: stoppedTrackId,
           startTime: mediaRecordStart,
           duration: mono.duration,
@@ -749,6 +750,7 @@ export class DawEngine {
       this.onRecordingProgress?.(this.recordingLivePeaks, dur);
     };
     this.recProcessor = proc;
+    return recordingClipId;
   }
 
   stopRecording() {
