@@ -179,7 +179,7 @@ export function SegmentedStage({
         if (cancelled) return;
         if (video.readyState >= 2 && video.videoWidth > 0) {
           if (seg) {
-            try { await seg.send({ image: video }); } catch {}
+            try { await seg.send({ image: video }); } catch (error) { void error; }
           } else {
             // Fallback: plain mirrored video, no segmentation.
             const w = video.videoWidth, h = video.videoHeight;
@@ -200,8 +200,8 @@ export function SegmentedStage({
     return () => {
       cancelled = true;
       if (raf) cancelAnimationFrame(raf);
-      try { seg?.close?.(); } catch {}
-      try { video.pause(); video.srcObject = null; } catch {}
+      try { seg?.close?.(); } catch (error) { void error; }
+      try { video.pause(); video.srcObject = null; } catch (error) { void error; }
     };
   }, [stream]);
 
