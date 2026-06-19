@@ -1364,11 +1364,23 @@ function EffectsPanel({
   );
 }
 
-function ProjectsPanel({ onClose, onOpenInEditor }: { onClose: () => void; onOpenInEditor: () => void }) {
+function ProjectsPanel({ onClose, onSaveProject, onDeleteProject, onDeleteRecording, onOpenInEditor }: {
+  onClose: () => void;
+  onSaveProject: () => void;
+  onDeleteProject: () => void;
+  onDeleteRecording: (clipId: string) => void;
+  onOpenInEditor: () => void;
+}) {
   const videos = usePodcastVideoStore(s => s.videos);
   const entries = Object.entries(videos);
   return (
     <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-2">
+        <button onClick={onSaveProject} className="h-9 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-medium">Save project</button>
+        <button onClick={onDeleteProject} className="h-9 rounded bg-red-600/15 hover:bg-red-600 text-red-300 hover:text-white text-xs font-medium flex items-center justify-center gap-1">
+          <Trash2 className="w-3.5 h-3.5" /> Delete project
+        </button>
+      </div>
       <div className="text-[11px] uppercase tracking-wider text-neutral-500">Recorded videos · {entries.length}</div>
       {entries.length === 0 && (
         <div className="text-xs text-neutral-500 border border-dashed border-neutral-800 rounded-lg p-6 text-center">
@@ -1388,6 +1400,9 @@ function ProjectsPanel({ onClose, onOpenInEditor }: { onClose: () => void; onOpe
                 <a href={v.url} download={`take-${clipId}.${v.mime.includes("mp4") ? "mp4" : "webm"}`} className="p-1.5 rounded text-neutral-300 hover:text-white hover:bg-neutral-800" title="Download">
                   <Download className="w-3.5 h-3.5" />
                 </a>
+                <button onClick={() => onDeleteRecording(clipId)} className="p-1.5 rounded text-neutral-400 hover:text-red-300 hover:bg-red-600/10" title="Delete recording">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
                 <button onClick={onOpenInEditor} className="h-7 px-2 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-[11px] flex items-center gap-1" title="Open in editor">
                   <ArrowLeftToLine className="w-3 h-3" /> Edit
                 </button>
