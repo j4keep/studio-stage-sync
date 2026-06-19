@@ -281,7 +281,9 @@ export default function PodcastStudioPage() {
 
   useEffect(() => () => stopCamera(), [stopCamera]);
 
-  // Re-attach camera stream when layout changes remount the <video> element
+  // Re-attach camera stream when layout / bg changes remount the <video> element.
+  // Critical for "None" background: switching FROM segmented stage back to raw
+  // <video> would otherwise show black until the user toggled cam off/on.
   useEffect(() => {
     const v = previewRef.current;
     const s = camStreamRef.current;
@@ -289,7 +291,7 @@ export default function PodcastStudioPage() {
       v.srcObject = s;
       v.play().catch(() => {});
     }
-  }, [layoutId, camOn, tracksFull]);
+  }, [layoutId, camOn, tracksFull, bgUrl]);
 
   const ensureRecordTrack = useCallback(() => {
     const audioTrack = tracks.find(t => t.kind === "audio");
