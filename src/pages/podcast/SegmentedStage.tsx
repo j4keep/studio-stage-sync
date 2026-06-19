@@ -42,6 +42,11 @@ function drawCover(ctx: CanvasRenderingContext2D, img: CanvasImageSource, w: num
   ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
 }
 
+function smoothstep(edge0: number, edge1: number, x: number) {
+  const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+  return t * t * (3 - 2 * t);
+}
+
 export function SegmentedStage({
   stream, bgUrl, mirrored, className,
 }: {
@@ -111,9 +116,22 @@ export function SegmentedStage({
       maskCtx.clearRect(0, 0, w, h);
       maskCtx.imageSmoothingEnabled = true;
       maskCtx.imageSmoothingQuality = "high";
-      maskCtx.filter = "blur(0.6px)";
+      maskCtx.filter = "blur(0.35px)";
       maskCtx.drawImage(mask, 0, 0, w, h);
       maskCtx.filter = "none";
+      try {
+        const frame = maskCtx.getImageData(0, 0, w, h);
+        const data = frame.data;
+        for (let i = 0; i < data.length; i += 4) {
+          const confidence = Math.max(data[i], data[i + 1], data[i + 2], data[i + 3]) / 255;
+          const alpha = Math.round(smoothstep(0.24, 0.54, confidence) * 255);
+          data[i] = 255;
+          data[i + 1] = 255;
+          data[i + 2] = 255;
+          data[i + 3] = alpha;
+        }
+        maskCtx.putImageData(frame, 0, 0);
+      } catch { /* keep raw mask if canvas readback is blocked */ }
       drawMirrored(target, maskCanvas, w, h);
     };
 
@@ -129,7 +147,7 @@ export function SegmentedStage({
           seg = new SS({
             locateFile: (f: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${f}`,
           });
-          seg.setOptions({ modelSelection: 0, selfieMode: false });
+          seg.setOptions({ modelSelection: 1, selfieMode: false });
           seg.onResults((results) => {
             if (cancelled) return;
             const w = results.image.width || video.videoWidth || 640;
