@@ -577,6 +577,7 @@ export default function PodcastStudioPage() {
                   mirrored={mirrored && !screenSharing}
                   onStartCamera={startCamera}
                   bgUrl={screenSharing ? null : bgUrl}
+                  camStream={screenSharing ? null : camStream}
                 />
                 {videoRec && (
                   <div className="absolute top-3 left-3 px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center gap-1 z-30">
