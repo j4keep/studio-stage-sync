@@ -147,6 +147,7 @@ export default function PodcastStudioPage() {
   const captionHideTimerRef = useRef<number | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const chatChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const chatSubscribedRef = useRef(false);
   const chatClientIdRef = useRef(Math.random().toString(36).slice(2));
   const screenStreamRef = useRef<MediaStream | null>(null);
   const [screenSharing, setScreenSharing] = useState(false);
@@ -524,8 +525,9 @@ export default function PodcastStudioPage() {
         if (!data?.id || data.clientId === chatClientIdRef.current) return;
         setChatMessages(p => p.some(m => m.id === data.id) ? p : [...p, data]);
       })
-      .subscribe();
+      .subscribe((status) => { chatSubscribedRef.current = status === "SUBSCRIBED"; });
     return () => {
+      chatSubscribedRef.current = false;
       chatChannelRef.current = null;
       void supabase.removeChannel(channel);
     };
@@ -535,22 +537,33 @@ export default function PodcastStudioPage() {
     const msg: ChatMessage = { id: Math.random().toString(36).slice(2), author: "You", ts: Date.now() };
     if (text?.trim()) msg.text = text.trim();
     if (file) {
+      if (file.size > 2_000_000) {
+        toast.error("Attach a smaller image or short video for live chat");
+        return;
+      }
       msg.mediaType = file.type.startsWith("video/") ? "video" : "image";
-      msg.mediaUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result || ""));
-        reader.onerror = () => reject(new Error("Couldn't attach file"));
-        reader.readAsDataURL(file);
-      });
+      try {
+        msg.mediaUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || ""));
+          reader.onerror = () => reject(new Error("Couldn't attach file"));
+          reader.readAsDataURL(file);
+        });
+      } catch (error: any) {
+        toast.error(error?.message || "Couldn't attach file");
+        return;
+      }
     }
     if (!msg.text && !msg.mediaUrl) return;
     setChatMessages(p => [...p, msg]);
     if (sessionCode) {
-      void chatChannelRef.current?.send({
+      const send = () => chatChannelRef.current?.send({
         type: "broadcast",
         event: "message",
         payload: { ...msg, clientId: chatClientIdRef.current },
       });
+      if (chatSubscribedRef.current) void send();
+      else window.setTimeout(() => { void send(); }, 200);
     }
   }, [sessionCode]);
 
