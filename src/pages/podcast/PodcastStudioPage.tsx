@@ -553,7 +553,7 @@ export default function PodcastStudioPage() {
       {/* Top minimal header */}
       <header className="h-12 shrink-0 flex items-center justify-between px-3 border-b border-neutral-900">
         <div className="flex items-center gap-2 min-w-0">
-          <button onClick={minimizeSession} className="p-1.5 rounded hover:bg-neutral-900" title="Minimize — session keeps recording">
+          <button onClick={() => { minimizeSession(); navigate("/"); }} className="p-1.5 rounded hover:bg-neutral-900" title="Minimize — session keeps recording">
             <ChevronDownIcon className="w-4 h-4 text-neutral-300" />
           </button>
           <input
