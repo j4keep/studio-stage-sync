@@ -333,6 +333,11 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
       await e.resume();
       const startPos = useDawStore.getState().transport.position;
       const recordedClipId = await e.startRecording(trackId, startPos);
+      const sampleRate = e.ctx.sampleRate || 48000;
+      const placeholder = e.ctx.createBuffer(1, sampleRate, sampleRate);
+      if (!useDawStore.getState().clips.some(c => c.id === recordedClipId)) {
+        addClip({ id: recordedClipId, trackId, startTime: startPos, duration: 1, offset: 0, buffer: placeholder, peaks: new Float32Array(0), name: "Recording" });
+      }
       setTransport({ isRecording: true, isPlaying: true });
       const st = useDawStore.getState();
       e.play({ ...st.transport, isRecording: true, isPlaying: true, position: startPos }, st.tracks, st.clips);
@@ -358,19 +363,22 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
         recChunksRef.current = [];
         recTrackIdRef.current = trackId;
         recStartRef.current = startPos;
+        recStopRef.current = null;
         mr.ondataavailable = (ev) => { if (ev.data?.size) recChunksRef.current.push(ev.data); };
         mr.onstop = () => {
           if (videoCompositeRafRef.current) cancelAnimationFrame(videoCompositeRafRef.current);
           videoCompositeRafRef.current = null;
           const blob = new Blob(recChunksRef.current, { type: mime });
           recChunksRef.current = [];
-          const dur = useDawStore.getState().transport.position - recStartRef.current;
+          const dur = (recStopRef.current ?? useDawStore.getState().transport.position) - recStartRef.current;
           const pendingTrackId = recTrackIdRef.current!;
           const pendingStart = recStartRef.current;
           const pendingDuration = Math.max(0.1, dur);
-          if (recordedClipId) {
+          if (blob.size > 0) {
             setVideo(recordedClipId, { blob, mime, durationSec: pendingDuration, participantLabel: "Host" });
-          } else {
+          }
+          updateClip(recordedClipId, { duration: pendingDuration });
+          if (!recordedClipId) {
             setPending(pendingTrackId, {
               trackId: pendingTrackId, startTime: pendingStart,
               blob, mime, durationSec: pendingDuration, participantLabel: "Host",
