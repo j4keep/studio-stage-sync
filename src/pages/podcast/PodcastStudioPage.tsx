@@ -506,44 +506,6 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
     toast.success("Magic link copied", { description: url });
   }, [sessionCode]);
 
-  const handleSave = useCallback(async () => {
-    try {
-      toast.loading("Saving…", { id: "save" });
-      const handle = await saveProjectTo(projectFileHandle, {
-        name: projectName, tracks, clips,
-        transport: useDawStore.getState().transport,
-        pxPerSec, verticalZoom: useDawStore.getState().verticalZoom,
-      });
-      if (handle) setProjectFileHandle(handle);
-      toast.success("Project saved to your device", { id: "save" });
-    } catch { toast.error("Couldn't save", { id: "save" }); }
-  }, [projectFileHandle, projectName, tracks, clips, pxPerSec, setProjectFileHandle]);
-
-  const handleOpen = useCallback(async () => {
-    const e = engineRef.current; if (!e) return;
-    try {
-      const r = await openProject(e);
-      if (!r) return;
-      loadProject(r.parsed); setProjectFileHandle(r.handle);
-      toast.success(`Opened "${r.parsed.name}"`);
-    } catch { toast.error("Couldn't open project"); }
-  }, [loadProject, setProjectFileHandle]);
-
-  const handleDeleteProject = useCallback(async () => {
-    if (!window.confirm("Delete this saved project and clear the current studio timeline?")) return;
-    try {
-      if (projectFileHandle && typeof (projectFileHandle as any).remove === "function") {
-        await (projectFileHandle as any).remove();
-      }
-      usePodcastVideoStore.getState().clear();
-      resetProject("Untitled Project");
-      setProjectFileHandle(null);
-      toast.success("Project deleted");
-    } catch {
-      toast.error("Couldn't delete the saved file, but you can remove it from your device folder.");
-    }
-  }, [projectFileHandle, resetProject, setProjectFileHandle]);
-
   const handleDeleteRecording = useCallback((clipId: string) => {
     const clipExists = useDawStore.getState().clips.some(c => c.id === clipId);
     removeVideo(clipId);
