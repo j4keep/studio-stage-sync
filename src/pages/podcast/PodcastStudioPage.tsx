@@ -39,7 +39,9 @@ const isInputAudioTrack = (track: Track, allClips: Clip[]) => (
   )
 );
 
-type RightPanel = null | "people" | "chat" | "effects" | "text" | "media" | "settings" | "help" | "projects";
+type RightPanel = null | "people" | "chat" | "effects" | "captions" | "media" | "settings" | "help" | "projects" | "jhi";
+
+type ChatMessage = { id: string; author: string; text?: string; mediaUrl?: string; mediaType?: "image" | "video"; ts: number };
 
 const BG_LIBRARY: { id: string; label: string; url: string }[] = [
   { id: "studio-1", label: "Studio A", url: studio1 },
