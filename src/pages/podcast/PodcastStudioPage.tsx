@@ -1,21 +1,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
+import ReactMarkdown from "react-markdown";
 import {
   Mic, Video as VideoIcon, VideoOff, FolderOpen, LogOut,
   Users, MessageCircle, Sparkles, Captions as CaptionsIcon, Music, Settings as SettingsIcon, HelpCircle,
   Home, ChevronUp, ChevronDown, Circle, Square, Link as LinkIcon, Upload, X,
-  Scissors, MousePointer2, ZoomIn, ZoomOut, Download, Pencil, Eraser, Bot,
+  Scissors, MousePointer2, ZoomIn, ZoomOut, Download, Pencil, Eraser,
   Play, Pause, SkipBack, SkipForward, Maximize2, Minimize2, ArrowLeftToLine,
   MessageSquare, Smartphone, QrCode, Share2, Send, Image as ImageIcon, Paperclip,
-  Maximize, MonitorUp, MonitorOff,
+  Maximize, MonitorUp, MonitorOff, ArrowUp,
 } from "lucide-react";
+import JhiIcon from "@/components/JhiIcon";
 import { DawEngine } from "@/wstudio/daw/engine/DawEngine";
 import { computePeaks } from "@/wstudio/daw/engine/Peaks";
 import { useDawStore, newId } from "@/wstudio/daw/state/DawStore";
 import { ArrangeView } from "@/wstudio/daw/ui/ArrangeView";
 import { PodcastExportSheet } from "./PodcastExportSheet";
 import { usePodcastVideoStore } from "./podcastVideoStore";
+import { SegmentedStage } from "./SegmentedStage";
 import type { Clip, Track } from "@/wstudio/daw/engine/types";
 import { saveProjectTo, openProject } from "@/wstudio/daw/lib/projectIO";
 import studio1 from "@/assets/studio-1.jpg";
@@ -30,6 +33,16 @@ import battleStageLights from "@/assets/battle-bg-stage-lights.jpg";
 import battleNeonCity from "@/assets/battle-bg-neon-city.jpg";
 import wstudioMic from "@/assets/wstudio-orbit-mic.jpg";
 import wstudioMixer from "@/assets/wstudio-orbit-mixer.jpg";
+
+type CaptionStyle = "subtitle" | "bold" | "neon" | "bubble" | "minimal" | "karaoke";
+const CAPTION_STYLES: { id: CaptionStyle; label: string; className: string }[] = [
+  { id: "subtitle", label: "Subtitle", className: "px-3 py-1.5 rounded-md bg-black/75 text-white text-base font-medium" },
+  { id: "bold",     label: "Bold",     className: "px-4 py-2 rounded-lg bg-white text-black text-lg font-extrabold tracking-tight uppercase" },
+  { id: "neon",     label: "Neon",     className: "px-3 py-1.5 rounded-md bg-black/60 text-cyan-300 text-lg font-bold tracking-wide [text-shadow:_0_0_8px_rgb(34_211_238_/_90%),_0_0_18px_rgb(34_211_238_/_60%)]" },
+  { id: "bubble",   label: "Bubble",   className: "px-4 py-2 rounded-full bg-violet-600 text-white text-base font-semibold shadow-lg shadow-violet-900/40" },
+  { id: "minimal",  label: "Minimal",  className: "px-2 py-1 text-white text-base font-medium [text-shadow:_0_1px_3px_rgba(0,0,0,0.9)]" },
+  { id: "karaoke",  label: "Karaoke",  className: "px-3 py-1.5 rounded-md bg-gradient-to-r from-yellow-300 via-pink-400 to-fuchsia-500 bg-clip-text text-transparent text-xl font-extrabold" },
+];
 
 const isInputAudioTrack = (track: Track, allClips: Clip[]) => (
   track.kind === "instrument" || (
