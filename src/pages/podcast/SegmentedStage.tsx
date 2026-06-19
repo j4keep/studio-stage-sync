@@ -80,26 +80,9 @@ export function SegmentedStage({
       ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
     };
 
-    const sharpenMask = (maskSrc: CanvasImageSource, w: number, h: number) => {
-      if (!maskCtx) return null;
-      if (maskCanvas.width !== w) maskCanvas.width = w;
-      if (maskCanvas.height !== h) maskCanvas.height = h;
-      maskCtx.clearRect(0, 0, w, h);
-      maskCtx.drawImage(maskSrc, 0, 0, w, h);
-      const img = maskCtx.getImageData(0, 0, w, h);
-      const d = img.data;
-      // Sigmoid-ish threshold: hard cut around 0.55, narrow feather band.
-      for (let i = 0; i < d.length; i += 4) {
-        const v = d[i]; // grayscale — r==g==b
-        let a: number;
-        if (v < 110) a = 0;
-        else if (v > 165) a = 255;
-        else a = Math.round(((v - 110) / 55) * 255);
-        d[i] = 255; d[i + 1] = 255; d[i + 2] = 255; d[i + 3] = a;
-      }
-      maskCtx.putImageData(img, 0, 0);
-      return maskCanvas;
-    };
+    // Reusable subject compositor — single allocation, slight feather for clean edges.
+    const subjectCanvas = document.createElement("canvas");
+    const subjectCtx = subjectCanvas.getContext("2d");
 
     (async () => {
       await playPromise;
@@ -113,8 +96,8 @@ export function SegmentedStage({
           seg = new SS({
             locateFile: (f: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${f}`,
           });
-          // modelSelection 0 = "general" higher-quality model. 1 = landscape (faster, blurrier).
-          seg.setOptions({ modelSelection: 1, selfieMode: false });
+          // modelSelection 0 = "general" higher-quality model (256x256). Cleaner around hair/edges.
+          seg.setOptions({ modelSelection: 0, selfieMode: false });
           seg.onResults((results: any) => {
             if (cancelled) return;
             const w = results.image.width || video.videoWidth || 640;
@@ -124,26 +107,30 @@ export function SegmentedStage({
 
             ctx.save();
             ctx.clearRect(0, 0, w, h);
+            (ctx as any).imageSmoothingEnabled = true;
+            (ctx as any).imageSmoothingQuality = "high";
             if (mirroredRef.current) { ctx.translate(w, 0); ctx.scale(-1, 1); }
 
-            if (bgUrlRef.current && bgImgRef.current) {
-              // Background first
+            if (bgUrlRef.current && bgImgRef.current && subjectCtx) {
+              // 1. Background fills the frame
               drawCover(bgImgRef.current, w, h);
-              // Subject on top, masked with a sharpened alpha so the person
-              // looks fully opaque rather than faded into the background.
-              const sharp = sharpenMask(results.segmentationMask, w, h);
-              if (sharp) {
-                const tmp = document.createElement("canvas");
-                tmp.width = w; tmp.height = h;
-                const tctx = tmp.getContext("2d")!;
-                (tctx as any).imageSmoothingQuality = "high";
-                tctx.drawImage(results.image, 0, 0, w, h);
-                tctx.globalCompositeOperation = "destination-in";
-                tctx.drawImage(sharp, 0, 0, w, h);
-                ctx.drawImage(tmp, 0, 0, w, h);
-              } else {
-                ctx.drawImage(results.image, 0, 0, w, h);
-              }
+
+              // 2. Build subject on offscreen canvas: video clipped by the
+              //    raw soft mask. Letting MediaPipe's natural feather through
+              //    keeps hair edges smooth — no threshold pixelation.
+              if (subjectCanvas.width !== w) subjectCanvas.width = w;
+              if (subjectCanvas.height !== h) subjectCanvas.height = h;
+              subjectCtx.save();
+              subjectCtx.clearRect(0, 0, w, h);
+              (subjectCtx as any).imageSmoothingEnabled = true;
+              (subjectCtx as any).imageSmoothingQuality = "high";
+              subjectCtx.drawImage(results.segmentationMask, 0, 0, w, h);
+              subjectCtx.globalCompositeOperation = "source-in";
+              subjectCtx.drawImage(results.image, 0, 0, w, h);
+              subjectCtx.restore();
+
+              // 3. Light shadow under the subject for depth, then draw subject opaque.
+              ctx.drawImage(subjectCanvas, 0, 0, w, h);
             } else {
               ctx.drawImage(results.image, 0, 0, w, h);
             }

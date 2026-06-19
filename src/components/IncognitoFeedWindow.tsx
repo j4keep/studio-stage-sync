@@ -185,8 +185,13 @@ const IncognitoFeedWindow = () => {
 
   if (!user) return null;
 
-  // Floating bubble (closed)
+  // Floating bubble (closed) — move to the LEFT on the podcast workspace so it
+  // doesn't cover the right-side rail (Settings / Download / Effects icons).
+  const isPodcastWorkspace = location.pathname.startsWith("/tv/podcast/") && location.pathname !== "/tv/podcast";
   if (!open) {
+    const bubbleStyle = isPodcastWorkspace
+      ? { left: 16, bottom: 16 }
+      : { right: 16, bottom: 96 };
     return createPortal(
       <button
         onClick={() => {
@@ -194,7 +199,7 @@ const IncognitoFeedWindow = () => {
           setMinimized(false);
         }}
         className="fixed z-[9999] w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-2xl flex items-center justify-center active:scale-95 transition-transform"
-        style={{ right: 16, bottom: 96 }}
+        style={bubbleStyle}
         aria-label="Open incognito feed"
       >
         <Eye className="w-5 h-5" />
