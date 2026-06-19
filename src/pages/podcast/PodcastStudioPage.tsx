@@ -746,21 +746,12 @@ export default function PodcastStudioPage() {
         )}
       </div>
 
-      {/* Bottom bar — Riverside-style */}
-      <footer className="shrink-0 h-20 border-t border-neutral-900 flex items-center justify-center gap-2 px-3 bg-neutral-950">
-        <BottomAction
-          big
-          active={isRecording}
-          onClick={handleRecord}
-          icon={isRecording ? <Square className="w-5 h-5 fill-white" /> : <Circle className="w-5 h-5 fill-white text-white" />}
-          label={isRecording ? "Stop" : "Record"}
-        />
-        <BottomAction onClick={() => setMicOn(m => !m)} icon={<Mic className={`w-5 h-5 ${micOn ? "" : "opacity-40"}`} />} label="Audio" />
-        <BottomAction onClick={() => camOn ? stopCamera() : startCamera()} icon={camOn ? <VideoIcon className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />} label="Video" />
-        <BottomAction onClick={inviteGuest} icon={<Share2 className="w-5 h-5" />} label="Share" />
-        <BottomAction onClick={() => toast.message("Reactions coming soon")} icon={<Smile className="w-5 h-5" />} label="React" />
-        <BottomAction onClick={() => toast.message("Script coming soon")} icon={<FileText className="w-5 h-5" />} label="Script" />
+      {/* Bottom bar — minimal: focus stays on the stage controls above */}
+      <footer className="shrink-0 h-16 border-t border-neutral-900 flex items-center justify-center gap-2 px-3 bg-neutral-950">
+        <BottomAction onClick={() => setRightPanel(p => p === "people" ? null : "people")} icon={<Users className="w-5 h-5" />} label="Invite" />
+        <BottomAction onClick={() => setRightPanel(p => p === "chat" ? null : "chat")} icon={<MessageCircle className="w-5 h-5" />} label="Chat" />
         <BottomAction onClick={() => setRightPanel("projects")} icon={<FolderOpen className="w-5 h-5" />} label="Projects" />
+        <BottomAction onClick={() => setRightPanel(p => p === "jhi" ? null : "jhi")} icon={<Bot className="w-5 h-5 text-cyan-400" />} label="J-Hi" />
         <BottomAction onClick={() => navigate("/tv/podcast")} icon={<LogOut className="w-5 h-5 text-red-400" />} label="Leave" />
       </footer>
 
