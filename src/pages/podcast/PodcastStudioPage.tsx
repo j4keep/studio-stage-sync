@@ -136,6 +136,7 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
   const recChunksRef = useRef<Blob[]>([]);
   const recTrackIdRef = useRef<string | null>(null);
   const recStartRef = useRef<number>(0);
+  const lastRecordedClipByTrackRef = useRef<Record<string, { clipId: string; startTime: number; at: number }>>({});
   const videoCompositeRafRef = useRef<number | null>(null);
   const [camOn, setCamOn] = useState(false);
   const [camStream, setCamStream] = useState<MediaStream | null>(null);
@@ -171,6 +172,7 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
     e.onRecordedClip = async (trackId, clip) => {
       clip.peaks = computePeaks(clip.buffer!);
       addClip(clip);
+      lastRecordedClipByTrackRef.current[trackId] = { clipId: clip.id, startTime: clip.startTime, at: Date.now() };
       usePodcastVideoStore.getState().attachPending(trackId, clip.id);
       setTransport({ isRecording: false, isPlaying: false });
     };
