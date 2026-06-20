@@ -619,7 +619,8 @@ export default function PodcastEditorPro({
         tool={tool}
         playheadPct={playheadPct}
         onClipClick={handleClipClick}
-        onTrimEdge={trimEdge}
+        onTrimEdge={trimEdgeLive}
+        onTrimBegin={beginTrim}
         fmt={fmt}
       />
       <div className="flex justify-between text-[9px] text-zinc-600 font-mono">
