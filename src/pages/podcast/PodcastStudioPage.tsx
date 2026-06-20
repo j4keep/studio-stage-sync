@@ -227,7 +227,19 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
   const makeStageRecordingStream = useCallback((sourceStream: MediaStream) => {
     const videoTrack = sourceStream.getVideoTracks()[0];
     if (!videoTrack) return null;
-    if (!bgUrl && !mirrored) return new MediaStream([videoTrack]);
+    // Keep the base camera capture simple and reliable. Mirroring is only a
+    // preview preference; recording the raw camera track avoids Chrome canvas
+    // capture failures that were leaving audio-only takes on the timeline.
+    if (!bgUrl) return new MediaStream([videoTrack]);
+
+    const stageCanvas = stageContainerRef.current?.querySelector("canvas");
+    if (stageCanvas instanceof HTMLCanvasElement && stageCanvas.width > 0 && stageCanvas.height > 0) {
+      try {
+        const stageStream = stageCanvas.captureStream(Math.min(frameRate, 30));
+        if (stageStream.getVideoTracks().length > 0) return stageStream;
+      } catch { /* fall back to manual canvas below */ }
+    }
+
     const canvas = document.createElement("canvas");
     canvas.width = resolution === "1080p" ? 1920 : resolution === "480p" ? 854 : 1280;
     canvas.height = resolution === "1080p" ? 1080 : resolution === "480p" ? 480 : 720;
@@ -263,7 +275,6 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
       ctx.fillStyle = "#050505";
       ctx.fillRect(0, 0, W, H);
       if (bgReady) drawCover(bg, 0, 0, W, H);
-      const stageCanvas = bgUrl ? stageContainerRef.current?.querySelector("canvas") : null;
       let drewStage = false;
       if (stageCanvas instanceof HTMLCanvasElement && stageCanvas.width > 0 && stageCanvas.height > 0) {
         try {
@@ -352,11 +363,12 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
       if (cam) {
         if (videoCompositeRafRef.current) cancelAnimationFrame(videoCompositeRafRef.current);
         const videoOnly = makeStageRecordingStream(cam) ?? new MediaStream(cam.getVideoTracks());
-        const recordInput = e.getRecordingInputStream?.();
-        const mixedStream = new MediaStream([
-          ...videoOnly.getVideoTracks(),
-          ...(micOn ? (recordInput?.getAudioTracks() ?? []) : []),
-        ]);
+        const videoTracks = videoOnly.getVideoTracks().filter(track => track.readyState === "live");
+        if (videoTracks.length === 0) throw new Error("Camera video track was not ready");
+        // Store the recorded picture only; the DAW timeline stores audio
+        // separately and export recombines them. This prevents audio-only WebM
+        // blobs when the browser struggles with a mixed canvas+mic recorder.
+        const mixedStream = new MediaStream(videoTracks);
         const mime = [
           "video/webm;codecs=vp9,opus",
           "video/webm;codecs=vp8,opus",
@@ -382,6 +394,8 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
           const pendingDuration = Math.max(0.1, dur);
           if (blob.size > 0) {
             setVideo(recordedClipId, { blob, mime, durationSec: pendingDuration, participantLabel: "Host" });
+          } else {
+            toast.error("Video recording did not save. Please try again with camera on.");
           }
           updateClip(recordedClipId, { duration: pendingDuration });
           if (!recordedClipId) {
