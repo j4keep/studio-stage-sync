@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import {
   Mic, MicOff, Video, VideoOff, MonitorUp, PhoneOff, Copy, Circle, Square,
   Pause, Play, Users, MessageSquare, FolderDown, Settings as SettingsIcon,
-  Download, Trash2, Edit3, X, Check, Volume2, VolumeX,
+  Download, Trash2, Edit3, X, Check, Volume2, VolumeX, ArrowLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
