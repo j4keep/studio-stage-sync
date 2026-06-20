@@ -631,6 +631,7 @@ export default function PodcastEditorPro({
         sources={sources}
         waveforms={waveforms}
         totalDur={totalDur}
+        totalLayout={totalLayout}
         selectedId={selectedId}
         tool={tool}
         playheadPct={playheadPct}
