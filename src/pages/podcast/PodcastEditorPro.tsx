@@ -270,8 +270,18 @@ export default function PodcastEditorPro({
   }, [togglePlay, toStart, deleteSelected, selectedId, undo, redo]);
 
   /* ---------- trim edge drag handler ---------- */
-  const trimEdge = useCallback((segId: string, edge: "in" | "out", deltaSec: number) => {
-    setClips((cs) => {
+  // Live drag = bypass history; commit once at pointerup.
+  const beginTrim = useCallback(() => {
+    setClipsRaw((prev) => {
+      historyRef.current.past.push(prev);
+      if (historyRef.current.past.length > 100) historyRef.current.past.shift();
+      historyRef.current.future = [];
+      forceHist((n) => n + 1);
+      return prev;
+    });
+  }, []);
+  const trimEdgeLive = useCallback((segId: string, edge: "in" | "out", deltaSec: number) => {
+    setClipsRaw((cs) => {
       const i = cs.findIndex((c) => c.id === segId);
       if (i < 0) return cs;
       const c = cs[i];
@@ -287,7 +297,8 @@ export default function PodcastEditorPro({
       }
       return next;
     });
-  }, [setClips, sources]);
+  }, [sources]);
+
 
 
   /* ---------- timeline interactions ---------- */
