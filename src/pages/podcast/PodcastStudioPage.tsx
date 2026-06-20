@@ -227,6 +227,8 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
   const makeStageRecordingStream = useCallback((sourceStream: MediaStream) => {
     const videoTrack = sourceStream.getVideoTracks()[0];
     if (!videoTrack) return null;
+    if (!bgUrl) return new MediaStream([videoTrack]);
+
     const canvas = document.createElement("canvas");
     canvas.width = resolution === "1080p" ? 1920 : resolution === "480p" ? 854 : 1280;
     canvas.height = resolution === "1080p" ? 1080 : resolution === "480p" ? 480 : 720;
