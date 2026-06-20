@@ -350,22 +350,17 @@ export default function PodcastEditorPro({
 
   /* ---------- tool-driven clip click ---------- */
   const splitClipAtSourceTime = useCallback((segId: string, sourceTime: number) => {
-    let didSplit = false;
-    setClips((cs) => {
-      const i = cs.findIndex((c) => c.id === segId);
-      if (i < 0) return cs;
-      const orig = cs[i];
-      const within = sourceTime;
-      if (within <= orig.in + 0.05 || within >= orig.out - 0.05) return cs;
-      const a: Clip = { ...orig, id: uid(), out: within };
-      const b: Clip = { ...orig, id: uid(), in: within };
-      const next = [...cs];
-      next.splice(i, 1, a, b);
-      didSplit = true;
-      return next;
-    });
-    return didSplit;
-  }, [setClips]);
+    const i = clips.findIndex((c) => c.id === segId);
+    if (i < 0) return false;
+    const orig = clips[i];
+    if (sourceTime <= orig.in + 0.05 || sourceTime >= orig.out - 0.05) return false;
+    const a: Clip = { ...orig, id: uid(), out: sourceTime };
+    const b: Clip = { ...orig, id: uid(), in: sourceTime };
+    const next = [...clips];
+    next.splice(i, 1, a, b);
+    setClips(next);
+    return true;
+  }, [clips, setClips]);
 
   const handleClipClick = (segId: string, e: React.MouseEvent<HTMLDivElement>) => {
     e.stopPropagation();
