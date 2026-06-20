@@ -645,10 +645,10 @@ export default function PodcastEditorPro({
 
 /* ---------------- TimelineView ---------------- */
 
-type Segment = Clip & { dur: number; startT: number; endT: number; layoutStart: number; layoutSpan: number };
+type Segment = Clip & { dur: number; startT: number; endT: number };
 
 function TimelineView({
-  timelineRef, onSeek, segments, sources, waveforms, totalDur, totalLayout,
+  timelineRef, onSeek, segments, sources, waveforms, totalDur,
   selectedId, tool, playheadPct, onClipClick, onTrimEdge, onTrimBegin, fmt,
 }: {
   timelineRef: React.RefObject<HTMLDivElement>;
@@ -657,7 +657,6 @@ function TimelineView({
   sources: EditorSource[];
   waveforms: Record<number, Float32Array>;
   totalDur: number;
-  totalLayout: number;
   selectedId: string | null;
   tool: EditorTool;
   playheadPct: number;
@@ -683,7 +682,7 @@ function TimelineView({
     tool === "trim" ? "cursor-ew-resize" :
     "cursor-pointer";
 
-  const pxPerSec = totalLayout > 0 ? width / totalLayout : 0;
+  const pxPerSec = totalDur > 0 ? width / totalDur : 0;
 
   const startEdgeDrag = (
     e: React.PointerEvent,
@@ -727,13 +726,8 @@ function TimelineView({
           const peaks = waveforms[s.srcIdx];
           const src = sources[s.srcIdx];
           const srcDur = (src?.durationMs || 1) / 1000;
-          // Full-source ghost box (faded), spans the entire source duration in layout px
-          const ghostLeftPct = totalLayout ? (s.layoutStart / totalLayout) * 100 : 0;
-          const ghostWPct = totalLayout ? (srcDur / totalLayout) * 100 : 0;
-          // Active trimmed window inside the ghost
-          const activeLeftPct = totalLayout ? ((s.layoutStart + s.in) / totalLayout) * 100 : 0;
-          const activeWPct = totalLayout ? (s.dur / totalLayout) * 100 : 0;
-          const ghostPx = Math.max(8, Math.floor((ghostWPct / 100) * width));
+          const activeLeftPct = totalDur ? (s.startT / totalDur) * 100 : 0;
+          const activeWPct = totalDur ? (s.dur / totalDur) * 100 : 0;
           const activePx = Math.max(4, Math.floor((activeWPct / 100) * width) - 4);
           const handleActive = tool === "trim" || isSel;
           return (
