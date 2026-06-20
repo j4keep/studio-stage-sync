@@ -269,7 +269,7 @@ const PodcastRoomPage = () => {
   const leave = () => {
     if (isRecording) stopRecording();
     localStream?.getTracks().forEach((t) => t.stop());
-    navigate("/tv/podcast");
+    navigate("/");
   };
 
   const copyInvite = async () => {
