@@ -266,6 +266,14 @@ const LivePodcastLobbyPage = () => {
         <main className="min-w-0 lg:h-screen lg:overflow-y-auto">
           <header className="sticky top-0 z-20 border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
             <div className="mx-auto flex max-w-7xl flex-col gap-3 lg:flex-row lg:items-center">
+              <button
+                onClick={() => navigate("/")}
+                className="flex h-9 w-9 items-center justify-center rounded-md border border-border bg-card text-muted-foreground hover:text-foreground"
+                title="Back to home"
+                aria-label="Back to home"
+              >
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5" /><path d="m12 19-7-7 7-7" /></svg>
+              </button>
               <div className="min-w-0 flex-1">
                 <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">WHEUAT Studio</div>
                 <h1 className="truncate text-2xl font-bold">Podcast Home</h1>

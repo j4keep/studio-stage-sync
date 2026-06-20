@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   X, Play, Pause, Scissors, Trash2, Type, Film, Download, SkipBack,
   Volume2, VolumeX, Loader2, Upload, MousePointer2, Pencil, Eraser, MoveHorizontal,
+  Undo2, Redo2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,9 +61,45 @@ export default function PodcastEditorPro({
 }) {
   // Sources: index 0 = main recording. Intro/outro injected as additional sources.
   const [sources, setSources] = useState<EditorSource[]>([initial]);
-  const [clips, setClips] = useState<Clip[]>([
+  const [clips, setClipsRaw] = useState<Clip[]>([
     { id: uid(), srcIdx: 0, in: 0, out: initial.durationMs / 1000 },
   ]);
+  // ---------- undo / redo history ----------
+  const historyRef = useRef<{ past: Clip[][]; future: Clip[][] }>({ past: [], future: [] });
+  const [, forceHist] = useState(0);
+  const setClips = useCallback((updater: Clip[] | ((prev: Clip[]) => Clip[])) => {
+    setClipsRaw((prev) => {
+      const next = typeof updater === "function" ? (updater as (p: Clip[]) => Clip[])(prev) : updater;
+      if (next === prev) return prev;
+      historyRef.current.past.push(prev);
+      if (historyRef.current.past.length > 100) historyRef.current.past.shift();
+      historyRef.current.future = [];
+      forceHist((n) => n + 1);
+      return next;
+    });
+  }, []);
+  const undo = useCallback(() => {
+    const h = historyRef.current;
+    if (!h.past.length) return;
+    setClipsRaw((curr) => {
+      const prev = h.past.pop()!;
+      h.future.push(curr);
+      forceHist((n) => n + 1);
+      return prev;
+    });
+  }, []);
+  const redo = useCallback(() => {
+    const h = historyRef.current;
+    if (!h.future.length) return;
+    setClipsRaw((curr) => {
+      const next = h.future.pop()!;
+      h.past.push(curr);
+      forceHist((n) => n + 1);
+      return next;
+    });
+  }, []);
+  const canUndo = historyRef.current.past.length > 0;
+  const canRedo = historyRef.current.future.length > 0;
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [playhead, setPlayhead] = useState(0); // seconds in timeline
   const [playing, setPlaying] = useState(false);
@@ -215,6 +252,13 @@ export default function PodcastEditorPro({
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        if (e.shiftKey) redo(); else undo();
+        return;
+      }
+      if (mod && e.key.toLowerCase() === "y") { e.preventDefault(); redo(); return; }
       if (e.code === "Space") { e.preventDefault(); togglePlay(); }
       else if (e.code === "Enter" || e.code === "Tab") { e.preventDefault(); toStart(); }
       else if (e.code === "Delete" || e.code === "Backspace") {
@@ -223,7 +267,39 @@ export default function PodcastEditorPro({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [togglePlay, toStart, deleteSelected, selectedId]);
+  }, [togglePlay, toStart, deleteSelected, selectedId, undo, redo]);
+
+  /* ---------- trim edge drag handler ---------- */
+  // Live drag = bypass history; commit once at pointerup.
+  const beginTrim = useCallback(() => {
+    setClipsRaw((prev) => {
+      historyRef.current.past.push(prev);
+      if (historyRef.current.past.length > 100) historyRef.current.past.shift();
+      historyRef.current.future = [];
+      forceHist((n) => n + 1);
+      return prev;
+    });
+  }, []);
+  const trimEdgeLive = useCallback((segId: string, edge: "in" | "out", deltaSec: number) => {
+    setClipsRaw((cs) => {
+      const i = cs.findIndex((c) => c.id === segId);
+      if (i < 0) return cs;
+      const c = cs[i];
+      const src = sources[c.srcIdx];
+      const srcDur = (src?.durationMs || 0) / 1000;
+      const next = [...cs];
+      if (edge === "in") {
+        const v = Math.max(0, Math.min(c.out - 0.05, c.in + deltaSec));
+        next[i] = { ...c, in: v };
+      } else {
+        const v = Math.max(c.in + 0.05, Math.min(srcDur, c.out + deltaSec));
+        next[i] = { ...c, out: v };
+      }
+      return next;
+    });
+  }, [sources]);
+
+
 
   /* ---------- timeline interactions ---------- */
   const onTimelineSeek = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -489,6 +565,9 @@ export default function PodcastEditorPro({
           </button>
         ))}
         <div className="mx-1 h-6 w-px bg-zinc-800" />
+        <Button size="sm" variant="secondary" onClick={undo} disabled={!canUndo} className="gap-1.5 h-8" title="Undo (⌘Z)"><Undo2 className="w-3.5 h-3.5" />Undo</Button>
+        <Button size="sm" variant="secondary" onClick={redo} disabled={!canRedo} className="gap-1.5 h-8" title="Redo (⌘⇧Z)"><Redo2 className="w-3.5 h-3.5" />Redo</Button>
+        <div className="mx-1 h-6 w-px bg-zinc-800" />
         <Button size="sm" variant="secondary" onClick={splitAtPlayhead} className="gap-1.5 h-8"><Scissors className="w-3.5 h-3.5" />Split @ playhead</Button>
         <Button size="sm" variant="secondary" onClick={deleteSelected} className="gap-1.5 h-8" disabled={!selectedId}><Trash2 className="w-3.5 h-3.5" />Delete</Button>
         <label className="cursor-pointer">
@@ -540,6 +619,8 @@ export default function PodcastEditorPro({
         tool={tool}
         playheadPct={playheadPct}
         onClipClick={handleClipClick}
+        onTrimEdge={trimEdgeLive}
+        onTrimBegin={beginTrim}
         fmt={fmt}
       />
       <div className="flex justify-between text-[9px] text-zinc-600 font-mono">
@@ -561,7 +642,7 @@ type Segment = Clip & { dur: number; startT: number; endT: number };
 
 function TimelineView({
   timelineRef, onSeek, segments, sources, waveforms, totalDur,
-  selectedId, tool, playheadPct, onClipClick, fmt,
+  selectedId, tool, playheadPct, onClipClick, onTrimEdge, onTrimBegin, fmt,
 }: {
   timelineRef: React.RefObject<HTMLDivElement>;
   onSeek: (e: React.MouseEvent<HTMLDivElement>) => void;
@@ -573,6 +654,8 @@ function TimelineView({
   tool: EditorTool;
   playheadPct: number;
   onClipClick: (segId: string, e: React.MouseEvent<HTMLDivElement>) => void;
+  onTrimEdge: (segId: string, edge: "in" | "out", deltaSec: number) => void;
+  onTrimBegin: () => void;
   fmt: (s: number) => string;
 }) {
   const [width, setWidth] = useState(800);
@@ -592,11 +675,38 @@ function TimelineView({
     tool === "trim" ? "cursor-ew-resize" :
     "cursor-pointer";
 
+  const startEdgeDrag = (
+    e: React.PointerEvent,
+    segId: string,
+    edge: "in" | "out",
+  ) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const startX = e.clientX;
+    const pxPerSec = totalDur > 0 ? width / totalDur : 0;
+    if (pxPerSec <= 0) return;
+    onTrimBegin();
+    let lastDelta = 0;
+    const move = (ev: PointerEvent) => {
+      const dx = ev.clientX - startX;
+      const deltaSec = dx / pxPerSec;
+      const step = deltaSec - lastDelta;
+      lastDelta = deltaSec;
+      if (Math.abs(step) > 0.0005) onTrimEdge(segId, edge, step);
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
+
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between text-[10px] text-zinc-500">
         <span>Timeline · click to seek · tool: <span className="text-purple-300 uppercase">{tool}</span></span>
-        <span>Space: play · Enter/Tab: start · Delete: remove</span>
+        <span>Space: play · Enter/Tab: start · Delete: remove · ⌘Z undo</span>
       </div>
       <div
         ref={timelineRef}
@@ -613,6 +723,7 @@ function TimelineView({
           const offsetRatio = s.in / srcDur;
           const spanRatio = Math.max(0.0001, (s.out - s.in) / srcDur);
           const segPx = Math.max(8, Math.floor((w / 100) * width) - 4);
+          const handleActive = tool === "trim" || isSel;
           return (
             <div
               key={s.id}
@@ -642,12 +753,27 @@ function TimelineView({
               <div className="absolute top-0.5 left-1 text-[9px] font-mono text-white/80 bg-black/40 px-1 rounded-sm pointer-events-none">
                 {fmt(s.dur)}
               </div>
-              {tool === "trim" && (
-                <>
-                  <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-amber-400/70 cursor-ew-resize" />
-                  <div className="absolute right-0 top-0 bottom-0 w-1.5 bg-amber-400/70 cursor-ew-resize" />
-                </>
-              )}
+              {/* Trim drag handles — always present; brighter when trim tool or selected */}
+              <div
+                onPointerDown={(e) => startEdgeDrag(e, s.id, "in")}
+                onClick={(e) => e.stopPropagation()}
+                title="Drag to trim left edge ["
+                className={`absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize flex items-center justify-center ${
+                  handleActive ? "bg-amber-400/80" : "bg-amber-400/30 hover:bg-amber-400/70"
+                }`}
+              >
+                <span className="text-[10px] font-bold text-black/80 select-none">[</span>
+              </div>
+              <div
+                onPointerDown={(e) => startEdgeDrag(e, s.id, "out")}
+                onClick={(e) => e.stopPropagation()}
+                title="Drag to trim right edge ]"
+                className={`absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize flex items-center justify-center ${
+                  handleActive ? "bg-amber-400/80" : "bg-amber-400/30 hover:bg-amber-400/70"
+                }`}
+              >
+                <span className="text-[10px] font-bold text-black/80 select-none">]</span>
+              </div>
             </div>
           );
         })}
