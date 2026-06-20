@@ -57,6 +57,10 @@ const stampStr = () => new Date().toISOString().replace(/[:.]/g, "-").slice(0, 1
 const PodcastRoomPage = () => {
   const { sessionId = "session" } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isGuest = searchParams.get("guest") === "1";
+  const isHost = !isGuest;
+  const linkPassword = searchParams.get("k") || "";
 
   // Resolve display name from auth (fallback to "Guest")
   const [displayName, setDisplayName] = useState<string>("Guest");
@@ -76,12 +80,52 @@ const PodcastRoomPage = () => {
 
   const [tab, setTab] = useState<Tab>("people");
   const [permError, setPermError] = useState<string | null>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
 
-  // LiveKit room
+  // Host-controlled session security (persisted per session, host's device)
+  const SEC_KEY = `wstudio-podcast-security:${sessionId}`;
+  const [security, setSecurity] = useState<PodcastSecurity>(() => {
+    if (!isHost) return { visibility: "public", password: "" };
+    try {
+      const raw = localStorage.getItem(SEC_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return { visibility: "public", password: "" };
+  });
+  useEffect(() => {
+    if (isHost) {
+      try { localStorage.setItem(SEC_KEY, JSON.stringify(security)); } catch {}
+    }
+  }, [isHost, SEC_KEY, security]);
+
+  // Doorman: realtime waiting-room gate (does not touch LiveKit/recording).
+  const doorman = usePodcastDoorman({
+    sessionId,
+    isHost,
+    displayName,
+    security: isHost ? security : undefined,
+  });
+
+  // Guest auto-request when policy known
+  const [pwdPrompt, setPwdPrompt] = useState("");
+  useEffect(() => {
+    if (isHost) return;
+    if (doorman.status !== "idle") return;
+    if (doorman.policy.requiresPassword) {
+      if (linkPassword) {
+        doorman.requestJoin(linkPassword);
+      }
+      // else: waiting room UI will collect password
+    } else {
+      doorman.requestJoin();
+    }
+  }, [isHost, doorman, linkPassword]);
+
+  // LiveKit room — only enabled after doorman accepts.
   const room = usePodcastLiveRoom({
     roomName: sessionId,
     displayName,
-    enabled: displayName !== "Guest" || true, // connect once we have any name; "Guest" is acceptable
+    enabled: doorman.status === "accepted",
   });
 
   useEffect(() => {
