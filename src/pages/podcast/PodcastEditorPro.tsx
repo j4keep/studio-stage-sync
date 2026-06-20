@@ -655,10 +655,10 @@ export default function PodcastEditorPro({
 
 /* ---------------- TimelineView ---------------- */
 
-type Segment = Clip & { dur: number; startT: number; endT: number };
+type Segment = Clip & { dur: number; startT: number; endT: number; layoutStart: number; layoutSpan: number };
 
 function TimelineView({
-  timelineRef, onSeek, segments, sources, waveforms, totalDur,
+  timelineRef, onSeek, segments, sources, waveforms, totalDur, totalLayout,
   selectedId, tool, playheadPct, onClipClick, onTrimEdge, onTrimBegin, fmt,
 }: {
   timelineRef: React.RefObject<HTMLDivElement>;
@@ -667,6 +667,7 @@ function TimelineView({
   sources: EditorSource[];
   waveforms: Record<number, Float32Array>;
   totalDur: number;
+  totalLayout: number;
   selectedId: string | null;
   tool: EditorTool;
   playheadPct: number;
@@ -692,6 +693,8 @@ function TimelineView({
     tool === "trim" ? "cursor-ew-resize" :
     "cursor-pointer";
 
+  const pxPerSec = totalLayout > 0 ? width / totalLayout : 0;
+
   const startEdgeDrag = (
     e: React.PointerEvent,
     segId: string,
@@ -700,7 +703,6 @@ function TimelineView({
     e.stopPropagation();
     e.preventDefault();
     const startX = e.clientX;
-    const pxPerSec = totalDur > 0 ? width / totalDur : 0;
     if (pxPerSec <= 0) return;
     onTrimBegin();
     let lastDelta = 0;
