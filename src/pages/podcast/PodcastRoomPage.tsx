@@ -326,6 +326,9 @@ const PodcastRoomPage = () => {
       {/* Top bar */}
       <header className="flex items-center justify-between gap-3 px-3 md:px-5 h-14 border-b border-zinc-800 bg-zinc-950/95 backdrop-blur sticky top-0 z-30">
         <div className="flex items-center gap-3 min-w-0">
+          <button onClick={leave} className="p-1.5 rounded hover:bg-zinc-800" title="Back to Podcast">
+            <ArrowLeft className="w-4 h-4 text-zinc-300" />
+          </button>
           <div className="text-sm font-semibold tracking-wider text-purple-300">W.STUDIO <span className="text-teal-300">PODCAST</span></div>
           <span className="hidden md:inline text-xs text-zinc-500">Session</span>
           <code className="hidden md:inline text-xs px-2 py-1 rounded bg-zinc-900 border border-zinc-800">{sessionId}</code>
