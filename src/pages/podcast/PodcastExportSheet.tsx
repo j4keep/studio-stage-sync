@@ -77,13 +77,9 @@ async function renderComposite(
 
   await Promise.all(entries.map(e => new Promise<void>(res => {
     if (e.el.readyState >= 2) return res();
-    const done = () => res();
-    e.el.onloadedmetadata = done;
-    e.el.onloadeddata = done;
+    e.el.onloadeddata = () => res();
     e.el.onerror = () => res();
-    window.setTimeout(res, 1200);
   })));
-  if (entries.length === 0) throw new Error("No video clips are linked on the timeline.");
 
   // Speaker analysers per track (for active-speaker layout)
   const analysers = new Map<string, AnalyserNode>();
@@ -121,14 +117,7 @@ async function renderComposite(
 
   const drawTile = (e: typeof entries[0], x: number, y: number, w: number, h: number, label?: string) => {
     ctx.fillStyle = "#111"; ctx.fillRect(x, y, w, h);
-    try {
-      const sw = e.el.videoWidth || 16;
-      const sh = e.el.videoHeight || 9;
-      const scale = Math.max(w / sw, h / sh);
-      const dw = sw * scale;
-      const dh = sh * scale;
-      ctx.drawImage(e.el, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
-    } catch {}
+    try { ctx.drawImage(e.el, x, y, w, h); } catch {}
     if (label) {
       ctx.fillStyle = "rgba(0,0,0,0.55)";
       ctx.fillRect(x + 6, y + h - 26, ctx.measureText(label).width + 16, 20);
@@ -199,9 +188,8 @@ async function renderComposite(
   const transport = { isPlaying: true, isRecording: false, position: 0, bpm: 120, timeSigNum: 4, timeSigDen: 4,
     loopEnabled: false, metronome: false, metronomeVolume: 0, metroAccent: false } as any;
   engine.play(transport, tracks, clips);
-  tick();
-  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
   rec.start(250);
+  tick();
 
   await new Promise(r => setTimeout(r, durationSec * 1000 + 400));
   stopped = true;

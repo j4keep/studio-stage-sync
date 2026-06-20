@@ -311,7 +311,6 @@ export class DawEngine {
   getMasterAnalyser() { return this.masterAnalyser; }
   getTrackAnalyser(trackId: string) { return this.trackChains.get(trackId)?.analyser ?? null; }
   getTrackInputAnalyser(trackId: string) { return this.trackChains.get(trackId)?.inputAnalyser ?? null; }
-  getRecordingInputStream() { return this.micStream; }
   getTrackStereoAnalysers(trackId: string) {
     const c = this.trackChains.get(trackId);
     return c ? { L: c.analyserL, R: c.analyserR } : null;
@@ -653,7 +652,6 @@ export class DawEngine {
     if (this.recordingTrackId) this.stopRecording();
     this.recordingTrackId = trackId;
     this.recordStartTransport = transportPos;
-    const recordingClipId = `clip_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     this.recBuffers = [];
     this.recordingLivePeaks = [];
     const chain = this.trackChains.get(trackId);
@@ -707,7 +705,7 @@ export class DawEngine {
           for (let i = 0; i < input.length; i++) out[i] += input[i] / decoded.numberOfChannels;
         }
         const clip: Clip = {
-          id: recordingClipId,
+          id: `clip_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
           trackId: stoppedTrackId,
           startTime: mediaRecordStart,
           duration: mono.duration,
@@ -750,7 +748,6 @@ export class DawEngine {
       this.onRecordingProgress?.(this.recordingLivePeaks, dur);
     };
     this.recProcessor = proc;
-    return recordingClipId;
   }
 
   stopRecording() {

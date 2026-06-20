@@ -6,7 +6,6 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchFeedItems, type FeedItem } from "@/lib/feed-items";
 import FeedPostCard from "@/components/feed/FeedPostCard";
-import { usePodcastSession } from "@/pages/podcast/podcastSessionStore";
 
 const STORAGE_KEY = "incognito-feed-window-pos";
 const SIZE_KEY = "incognito-feed-window-size";
@@ -39,7 +38,6 @@ const IncognitoFeedWindow = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const podcastActive = usePodcastSession((s) => s.active);
   const [open, setOpen] = useState(() => {
     try {
       return sessionStorage.getItem(OPEN_KEY) === "true";
@@ -187,13 +185,8 @@ const IncognitoFeedWindow = () => {
 
   if (!user) return null;
 
-  // Floating bubble (closed) — keep it off the podcast right rail so it never
-  // covers Settings / Download / Effects icons.
-  const isPodcastWorkspace = podcastActive || location.pathname.startsWith("/tv/podcast");
+  // Floating bubble (closed)
   if (!open) {
-    const bubbleStyle = isPodcastWorkspace
-      ? { left: 16, bottom: 120 }
-      : { right: 16, bottom: 96 };
     return createPortal(
       <button
         onClick={() => {
@@ -201,7 +194,7 @@ const IncognitoFeedWindow = () => {
           setMinimized(false);
         }}
         className="fixed z-[9999] w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-2xl flex items-center justify-center active:scale-95 transition-transform"
-        style={bubbleStyle}
+        style={{ right: 16, bottom: 96 }}
         aria-label="Open incognito feed"
       >
         <Eye className="w-5 h-5" />

@@ -57,9 +57,8 @@ import AdminSoundLibraryPage from "./pages/AdminSoundLibraryPage";
 import AskJhiPage from "./pages/AskJhiPage";
 import FeedPage from "./pages/FeedPage";
 import LivePodcastLobbyPage from "./pages/podcast/LivePodcastLobbyPage";
-import PodcastSessionEntry from "./pages/podcast/PodcastSessionEntry";
+import PodcastStudioPage from "./pages/podcast/PodcastStudioPage";
 import PodcastJoinPage from "./pages/podcast/PodcastJoinPage";
-import GlobalPodcastSession from "./components/GlobalPodcastSession";
 
 import TermsAgreementGate from "./components/TermsAgreementGate";
 import ThemePickerSheet from "./components/ThemePickerSheet";
@@ -214,11 +213,11 @@ const ProtectedRoutes = () => {
         <Route path="/helpdesk" element={<HelpDeskPage />} />
         <Route path="/ask-jhi" element={<AskJhiPage />} />
         <Route path="/tv" element={<TvHomePage />} />
-        <Route path="/tv/podcast" element={<PodcastSessionEntry />} />
+        <Route path="/tv/podcast" element={<PodcastStudioPage />} />
         <Route path="/tv/podcast/join/:code" element={<PodcastJoinPage />} />
-        <Route path="/tv/podcast/:episodeId" element={<PodcastSessionEntry />} />
-        <Route path="/tv/podcast/:episodeId/edit" element={<PodcastSessionEntry />} />
-        <Route path="/tv/podcast/:episodeId/recording/:recordingId/editor" element={<PodcastSessionEntry />} />
+        <Route path="/tv/podcast/:episodeId" element={<PodcastStudioPage />} />
+        <Route path="/tv/podcast/:episodeId/edit" element={<PodcastStudioPage />} />
+        <Route path="/tv/podcast/:episodeId/recording/:recordingId/editor" element={<PodcastStudioPage />} />
         <Route path="/circle" element={<Navigate to="/" replace />} />
         <Route path="/circle/*" element={<Navigate to="/" replace />} />
         <Route path="/m/*" element={<Navigate to="/" replace />} />
@@ -271,7 +270,6 @@ const App = () => {
                         <Route path="/index" element={<Navigate to="/" replace />} />
                         <Route path="/*" element={<ProtectedRoutes />} />
                       </Routes>
-                      <GlobalPodcastSession />
                     </div>
                   </RadioProvider>
                 </PlaylistProvider>
