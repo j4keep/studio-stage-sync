@@ -303,11 +303,7 @@ const PodcastRoomPage = () => {
     navigate("/tv/podcast");
   };
 
-  const copyInvite = async () => {
-    const link = `${window.location.origin}/#/podcast/room/${sessionId}`;
-    try { await navigator.clipboard.writeText(link); toast({ title: "Invite link copied" }); }
-    catch { toast({ title: "Copy failed", description: link }); }
-  };
+  const openInvite = () => setInviteOpen(true);
 
   /* ---------------- Files actions ---------------- */
   const downloadRec = (r: LocalRecording) => {
