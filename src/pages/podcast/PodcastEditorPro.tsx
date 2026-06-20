@@ -120,32 +120,21 @@ export default function PodcastEditorPro({
   const timelineRef = useRef<HTMLDivElement>(null);
 
   /* ---------- derived ---------- */
-  // Layout uses each source's FULL duration so trim handles visibly move the
-  // clip edge inward (not rescale the whole waveform). Playback still uses
-  // trimmed `dur` for timing.
   const segments = useMemo(() => {
-    let t = 0;           // playback time (trimmed)
-    let layoutT = 0;     // layout time (full source widths)
+    let t = 0;
     return clips.map((c) => {
       const dur = Math.max(0, c.out - c.in);
-      const srcDur = Math.max(0.01, (sources[c.srcIdx]?.durationMs || 0) / 1000);
       const seg = {
         ...c,
         dur,
         startT: t,
         endT: t + dur,
-        layoutStart: layoutT,
-        layoutSpan: srcDur,
       };
       t += dur;
-      layoutT += srcDur;
       return seg;
     });
-  }, [clips, sources]);
+  }, [clips]);
   const totalDur = segments.length ? segments[segments.length - 1].endT : 0;
-  const totalLayout = segments.length
-    ? segments[segments.length - 1].layoutStart + segments[segments.length - 1].layoutSpan
-    : 0;
 
   const activeSeg = useMemo(
     () => segments.find((s) => playhead >= s.startT && playhead < s.endT) || segments[segments.length - 1],
@@ -360,40 +349,37 @@ export default function PodcastEditorPro({
   }, [sources, waveforms]);
 
   /* ---------- tool-driven clip click ---------- */
-  const splitClipAt = useCallback((segId: string, withinTimelineT: number) => {
-    setClips((cs) => {
-      const i = cs.findIndex((c) => c.id === segId);
-      if (i < 0) return cs;
-      // need segment startT/in to map timeline t -> source t
-      let acc = 0;
-      for (let k = 0; k < i; k++) acc += Math.max(0, cs[k].out - cs[k].in);
-      const orig = cs[i];
-      const within = orig.in + (withinTimelineT - acc);
-      if (within <= orig.in + 0.05 || within >= orig.out - 0.05) return cs;
-      const a: Clip = { ...orig, id: uid(), out: within };
-      const b: Clip = { ...orig, id: uid(), in: within };
-      const next = [...cs];
-      next.splice(i, 1, a, b);
-      return next;
-    });
-  }, []);
+  const splitClipAtSourceTime = useCallback((segId: string, sourceTime: number) => {
+    const i = clips.findIndex((c) => c.id === segId);
+    if (i < 0) return false;
+    const orig = clips[i];
+    if (sourceTime <= orig.in + 0.05 || sourceTime >= orig.out - 0.05) return false;
+    const a: Clip = { ...orig, id: uid(), out: sourceTime };
+    const b: Clip = { ...orig, id: uid(), in: sourceTime };
+    const next = [...clips];
+    next.splice(i, 1, a, b);
+    setClips(next);
+    return true;
+  }, [clips, setClips]);
 
   const handleClipClick = (segId: string, e: React.MouseEvent<HTMLDivElement>) => {
     e.stopPropagation();
-    const el = timelineRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const ratio = (e.clientX - rect.left) / rect.width;
-    const t = ratio * totalDur;
+    const seg = segments.find((s) => s.id === segId);
+    if (!seg) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / Math.max(1, rect.width)));
+    const sourceTime = seg.in + ratio * seg.dur;
+    const timelineTime = seg.startT + ratio * seg.dur;
     if (tool === "eraser") {
       setClips((cs) => cs.filter((c) => c.id !== segId));
       setSelectedId(null);
       toast({ title: "Clip erased" });
     } else if (tool === "scissors") {
-      splitClipAt(segId, t);
-      toast({ title: "Clip split" });
+      const didSplit = splitClipAtSourceTime(segId, sourceTime);
+      toast({ title: didSplit ? "Clip split" : "Click inside the clip, away from the edge" });
     } else {
       setSelectedId(segId);
+      seekTo(timelineTime);
     }
   };
 
@@ -631,7 +617,6 @@ export default function PodcastEditorPro({
         sources={sources}
         waveforms={waveforms}
         totalDur={totalDur}
-        totalLayout={totalLayout}
         selectedId={selectedId}
         tool={tool}
         playheadPct={playheadPct}
@@ -655,10 +640,10 @@ export default function PodcastEditorPro({
 
 /* ---------------- TimelineView ---------------- */
 
-type Segment = Clip & { dur: number; startT: number; endT: number; layoutStart: number; layoutSpan: number };
+type Segment = Clip & { dur: number; startT: number; endT: number };
 
 function TimelineView({
-  timelineRef, onSeek, segments, sources, waveforms, totalDur, totalLayout,
+  timelineRef, onSeek, segments, sources, waveforms, totalDur,
   selectedId, tool, playheadPct, onClipClick, onTrimEdge, onTrimBegin, fmt,
 }: {
   timelineRef: React.RefObject<HTMLDivElement>;
@@ -667,7 +652,6 @@ function TimelineView({
   sources: EditorSource[];
   waveforms: Record<number, Float32Array>;
   totalDur: number;
-  totalLayout: number;
   selectedId: string | null;
   tool: EditorTool;
   playheadPct: number;
@@ -693,7 +677,7 @@ function TimelineView({
     tool === "trim" ? "cursor-ew-resize" :
     "cursor-pointer";
 
-  const pxPerSec = totalLayout > 0 ? width / totalLayout : 0;
+  const pxPerSec = totalDur > 0 ? width / totalDur : 0;
 
   const startEdgeDrag = (
     e: React.PointerEvent,
@@ -737,35 +721,12 @@ function TimelineView({
           const peaks = waveforms[s.srcIdx];
           const src = sources[s.srcIdx];
           const srcDur = (src?.durationMs || 1) / 1000;
-          // Full-source ghost box (faded), spans the entire source duration in layout px
-          const ghostLeftPct = totalLayout ? (s.layoutStart / totalLayout) * 100 : 0;
-          const ghostWPct = totalLayout ? (srcDur / totalLayout) * 100 : 0;
-          // Active trimmed window inside the ghost
-          const activeLeftPct = totalLayout ? ((s.layoutStart + s.in) / totalLayout) * 100 : 0;
-          const activeWPct = totalLayout ? (s.dur / totalLayout) * 100 : 0;
-          const ghostPx = Math.max(8, Math.floor((ghostWPct / 100) * width));
+          const activeLeftPct = totalDur ? (s.startT / totalDur) * 100 : 0;
+          const activeWPct = totalDur ? (s.dur / totalDur) * 100 : 0;
           const activePx = Math.max(4, Math.floor((activeWPct / 100) * width) - 4);
           const handleActive = tool === "trim" || isSel;
           return (
             <div key={s.id}>
-              {/* Faded full-source ghost — shows the trimmed-off areas */}
-              <div
-                style={{ left: `${ghostLeftPct}%`, width: `${ghostWPct}%` }}
-                className="absolute top-1 bottom-1 rounded border border-dashed border-zinc-700/60 bg-zinc-900/30 overflow-hidden pointer-events-none"
-              >
-                {peaks && (
-                  <div className="absolute inset-0 opacity-25">
-                    <WaveformView
-                      peaks={peaks}
-                      width={ghostPx}
-                      height={96}
-                      color="rgba(168,85,247,0.5)"
-                      offsetRatio={0}
-                      spanRatio={1}
-                    />
-                  </div>
-                )}
-              </div>
               {/* Active trimmed clip window on top */}
               <div
                 onClick={(e) => onClipClick(s.id, e)}
