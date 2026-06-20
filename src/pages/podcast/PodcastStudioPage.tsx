@@ -362,10 +362,34 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
         if (videoCompositeRafRef.current) cancelAnimationFrame(videoCompositeRafRef.current);
         const videoOnly = makeStageRecordingStream(cam) ?? new MediaStream(cam.getVideoTracks());
         const videoTracks = videoOnly.getVideoTracks().filter(track => track.readyState === "live");
-        if (videoTracks.length === 0) throw new Error("Camera video track was not ready");
-        // Store the recorded picture only; the DAW timeline stores audio
-        // separately and export recombines them. This prevents audio-only WebM
-        // blobs when the browser struggles with a mixed canvas+mic recorder.
+
+        // --- PREFLIGHT: verify the camera video track is actually usable ---
+        const rawVideo = cam.getVideoTracks()[0];
+        const preflight = {
+          rawTrackExists: !!rawVideo,
+          rawTrackLive: rawVideo?.readyState === "live",
+          rawTrackEnabled: !!rawVideo?.enabled,
+          rawTrackMuted: rawVideo?.muted ?? null,
+          stageTrackCount: videoTracks.length,
+          stageTrackState: videoTracks[0]?.readyState ?? "none",
+          settings: rawVideo?.getSettings?.() ?? null,
+        };
+        console.log("[Recording preflight]", preflight);
+        if (!rawVideo || rawVideo.readyState !== "live" || !rawVideo.enabled) {
+          console.error("[Recording preflight] Camera track is not live/enabled — recording will fall back to audio-only.", preflight);
+          toast.error("Camera video track is not active. Recording would be audio-only — turn the camera on and try again.");
+          throw new Error("Camera video track is not active");
+        }
+        if (videoTracks.length === 0) {
+          console.error("[Recording preflight] No live video tracks on stage stream. Falling back path would produce audio-only blob.", preflight);
+          toast.error("No video signal detected from the stage. Recording aborted to avoid audio-only output.");
+          throw new Error("Camera video track was not ready");
+        }
+        if (rawVideo.muted) {
+          console.warn("[Recording preflight] Camera track is currently muted by the browser; first frames may be black.", preflight);
+          toast.warning("Camera is muted by the browser — first second of video may be black.");
+        }
+
         const mixedStream = new MediaStream(videoTracks);
         const mime = [
           "video/webm;codecs=vp9",
@@ -375,7 +399,13 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
           "video/mp4;codecs=avc1",
           "video/mp4",
         ].find(m => MediaRecorder.isTypeSupported(m)) || "video/webm";
+        if (!mixedStream.getVideoTracks().length) {
+          console.error("[Recording preflight] mixedStream has no video tracks after assembly", mixedStream.getTracks());
+          toast.error("Browser dropped the video track before recording started. Recording aborted.");
+          throw new Error("mixedStream has no video tracks");
+        }
         const mr = new MediaRecorder(mixedStream, { mimeType: mime, videoBitsPerSecond: 4_500_000 });
+
         recChunksRef.current = [];
         recTrackIdRef.current = trackId;
         recStartRef.current = startPos;
