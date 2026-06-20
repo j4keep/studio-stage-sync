@@ -234,8 +234,8 @@ export default function PodcastEditorPro({
     seekTo(ratio * totalDur);
   };
 
-  /* ---------- waveform (real, sampled once per source) ---------- */
-  const [waveforms, setWaveforms] = useState<Record<number, number[]>>({});
+  /* ---------- waveform (real, sampled to Float32 min/max pairs like DAW) ---------- */
+  const [waveforms, setWaveforms] = useState<Record<number, Float32Array>>({});
   useEffect(() => {
     sources.forEach((s, idx) => {
       if (waveforms[idx]) return;
@@ -245,25 +245,65 @@ export default function PodcastEditorPro({
           const ac = new (window.AudioContext || (window as any).webkitAudioContext)();
           const decoded = await ac.decodeAudioData(buf.slice(0));
           const ch = decoded.getChannelData(0);
-          const N = 600;
+          const N = 2000;
           const block = Math.max(1, Math.floor(ch.length / N));
-          const out = new Array(N);
+          const peaks = new Float32Array(N * 2);
           for (let i = 0; i < N; i++) {
-            let max = 0;
+            let mn = 1, mx = -1;
             const start = i * block;
             const end = Math.min(ch.length, start + block);
             for (let j = start; j < end; j++) {
-              const v = Math.abs(ch[j]);
-              if (v > max) max = v;
+              const v = ch[j];
+              if (v < mn) mn = v;
+              if (v > mx) mx = v;
             }
-            out[i] = max;
+            peaks[i * 2] = mn;
+            peaks[i * 2 + 1] = mx;
           }
-          setWaveforms((w) => ({ ...w, [idx]: out }));
+          setWaveforms((w) => ({ ...w, [idx]: peaks }));
           ac.close();
         } catch {/* not decodable, skip */}
       })();
     });
   }, [sources, waveforms]);
+
+  /* ---------- tool-driven clip click ---------- */
+  const splitClipAt = useCallback((segId: string, withinTimelineT: number) => {
+    setClips((cs) => {
+      const i = cs.findIndex((c) => c.id === segId);
+      if (i < 0) return cs;
+      // need segment startT/in to map timeline t -> source t
+      let acc = 0;
+      for (let k = 0; k < i; k++) acc += Math.max(0, cs[k].out - cs[k].in);
+      const orig = cs[i];
+      const within = orig.in + (withinTimelineT - acc);
+      if (within <= orig.in + 0.05 || within >= orig.out - 0.05) return cs;
+      const a: Clip = { ...orig, id: uid(), out: within };
+      const b: Clip = { ...orig, id: uid(), in: within };
+      const next = [...cs];
+      next.splice(i, 1, a, b);
+      return next;
+    });
+  }, []);
+
+  const handleClipClick = (segId: string, e: React.MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    const el = timelineRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const ratio = (e.clientX - rect.left) / rect.width;
+    const t = ratio * totalDur;
+    if (tool === "eraser") {
+      setClips((cs) => cs.filter((c) => c.id !== segId));
+      setSelectedId(null);
+      toast({ title: "Clip erased" });
+    } else if (tool === "scissors") {
+      splitClipAt(segId, t);
+      toast({ title: "Clip split" });
+    } else {
+      setSelectedId(segId);
+    }
+  };
 
   /* ---------- export with ffmpeg.wasm ---------- */
   const exportFinal = async () => {
