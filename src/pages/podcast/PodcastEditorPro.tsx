@@ -685,6 +685,7 @@ function TimelineView({
     const startX = e.clientX;
     const pxPerSec = totalDur > 0 ? width / totalDur : 0;
     if (pxPerSec <= 0) return;
+    onTrimBegin();
     let lastDelta = 0;
     const move = (ev: PointerEvent) => {
       const dx = ev.clientX - startX;
