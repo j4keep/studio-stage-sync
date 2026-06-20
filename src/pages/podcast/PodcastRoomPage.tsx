@@ -638,75 +638,16 @@ const PodcastReadyChecklist = ({ value, onChange }: { value: any; onChange: (v: 
   );
 };
 
-const PodcastEditorPanel = ({ rec, onClose, onUpdate, onExport }: {
+import PodcastEditorPro from "./PodcastEditorPro";
+
+const PodcastEditorPanel = ({ rec, onClose }: {
   rec: LocalRecording; onClose: () => void; onUpdate: (r: LocalRecording) => void; onExport: () => void;
 }) => {
-  const vidRef = useRef<HTMLVideoElement>(null);
-  const [vol, setVol] = useState(1);
-  const [muted, setMuted] = useState(false);
-
-  const startSec = rec.trimStart / 1000;
-  const endSec = rec.trimEnd / 1000;
-  const durSec = rec.durationMs / 1000;
-
-  useEffect(() => {
-    const v = vidRef.current;
-    if (!v) return;
-    const onTime = () => {
-      if (v.currentTime > endSec) { v.currentTime = startSec; v.pause(); }
-      if (v.currentTime < startSec) v.currentTime = startSec;
-    };
-    v.addEventListener("timeupdate", onTime);
-    return () => v.removeEventListener("timeupdate", onTime);
-  }, [startSec, endSec]);
-
   return (
-    <div className="rounded-xl border border-purple-500/30 bg-zinc-900/60 p-4">
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <p className="text-xs text-purple-300 uppercase tracking-wider">Editor</p>
-          <p className="text-sm font-medium">{rec.name}</p>
-        </div>
-        <Button size="sm" variant="ghost" onClick={onClose}><X className="w-4 h-4" /></Button>
-      </div>
-      <video ref={vidRef} src={rec.url} controls className="w-full rounded-lg bg-black mb-3" />
-
-      {/* Waveform placeholder */}
-      <div className="h-12 rounded-md bg-zinc-950 border border-zinc-800 flex items-end gap-0.5 px-1 mb-3 overflow-hidden">
-        {Array.from({ length: 80 }).map((_, i) => (
-          <div key={i} className="flex-1 bg-purple-500/60 rounded-t" style={{ height: `${20 + Math.abs(Math.sin(i * 0.6)) * 70}%` }} />
-        ))}
-      </div>
-
-      <div className="space-y-3 text-xs">
-        <div>
-          <label className="text-zinc-400">Trim start: {startSec.toFixed(2)}s</label>
-          <input type="range" min={0} max={durSec} step={0.05} value={startSec}
-            onChange={(e) => onUpdate({ ...rec, trimStart: Math.min(parseFloat(e.target.value) * 1000, rec.trimEnd - 100) })}
-            className="w-full accent-purple-500" />
-        </div>
-        <div>
-          <label className="text-zinc-400">Trim end: {endSec.toFixed(2)}s</label>
-          <input type="range" min={0} max={durSec} step={0.05} value={endSec}
-            onChange={(e) => onUpdate({ ...rec, trimEnd: Math.max(parseFloat(e.target.value) * 1000, rec.trimStart + 100) })}
-            className="w-full accent-purple-500" />
-        </div>
-        <div className="flex items-center gap-3">
-          <button onClick={() => { setMuted(!muted); if (vidRef.current) vidRef.current.muted = !muted; }} className="p-2 rounded bg-zinc-800">
-            {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-          </button>
-          <input type="range" min={0} max={1} step={0.01} value={vol} onChange={(e) => { const v = parseFloat(e.target.value); setVol(v); if (vidRef.current) vidRef.current.volume = v; }} className="flex-1 accent-purple-500" />
-        </div>
-        <div className="flex flex-wrap gap-2 pt-2 border-t border-zinc-800">
-          <Button size="sm" variant="secondary" disabled>Split</Button>
-          <Button size="sm" variant="secondary" disabled>Delete clip</Button>
-          <Button size="sm" variant="secondary" disabled>Title overlay</Button>
-          <Button size="sm" variant="secondary" disabled>Intro/Outro</Button>
-          <Button size="sm" onClick={onExport} className="ml-auto bg-purple-600 hover:bg-purple-500">Export</Button>
-        </div>
-        <p className="text-[10px] text-zinc-500">Advanced export rendering coming soon. Trim values are preview-only; exports the original recording.</p>
-      </div>
-    </div>
+    <PodcastEditorPro
+      initial={{ id: rec.id, name: rec.name, url: rec.url, blob: rec.blob, durationMs: rec.durationMs }}
+      onClose={onClose}
+    />
   );
 };
 
