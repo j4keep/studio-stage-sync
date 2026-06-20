@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
-  Mic, MicOff, Video, VideoOff, MonitorUp, PhoneOff, Copy, Circle, Square,
+  Mic, MicOff, Video, VideoOff, MonitorUp, PhoneOff, Share2, Circle, Square,
   Pause, Play, Users, MessageSquare, FolderDown, Settings as SettingsIcon,
   Download, Trash2, Edit3, Check, ArrowLeft, Wifi, AlertTriangle, RotateCcw,
+  Shield, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +13,8 @@ import PodcastEditorPro from "./PodcastEditorPro";
 import { usePodcastLiveRoom, type RoomParticipant } from "./usePodcastLiveRoom";
 import { PodcastRecovery, type RecoverySessionRow } from "./podcastRecoveryStore";
 import { supabase } from "@/integrations/supabase/client";
+import PodcastInviteSheet, { type PodcastSecurity } from "./PodcastInviteSheet";
+import { usePodcastDoorman } from "./usePodcastDoorman";
 
 type LocalRecording = {
   id: string;
@@ -54,6 +57,10 @@ const stampStr = () => new Date().toISOString().replace(/[:.]/g, "-").slice(0, 1
 const PodcastRoomPage = () => {
   const { sessionId = "session" } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isGuest = searchParams.get("guest") === "1";
+  const isHost = !isGuest;
+  const linkPassword = searchParams.get("k") || "";
 
   // Resolve display name from auth (fallback to "Guest")
   const [displayName, setDisplayName] = useState<string>("Guest");
@@ -73,12 +80,52 @@ const PodcastRoomPage = () => {
 
   const [tab, setTab] = useState<Tab>("people");
   const [permError, setPermError] = useState<string | null>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
 
-  // LiveKit room
+  // Host-controlled session security (persisted per session, host's device)
+  const SEC_KEY = `wstudio-podcast-security:${sessionId}`;
+  const [security, setSecurity] = useState<PodcastSecurity>(() => {
+    if (!isHost) return { visibility: "public", password: "" };
+    try {
+      const raw = localStorage.getItem(SEC_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return { visibility: "public", password: "" };
+  });
+  useEffect(() => {
+    if (isHost) {
+      try { localStorage.setItem(SEC_KEY, JSON.stringify(security)); } catch {}
+    }
+  }, [isHost, SEC_KEY, security]);
+
+  // Doorman: realtime waiting-room gate (does not touch LiveKit/recording).
+  const doorman = usePodcastDoorman({
+    sessionId,
+    isHost,
+    displayName,
+    security: isHost ? security : undefined,
+  });
+
+  // Guest auto-request when policy known
+  const [pwdPrompt, setPwdPrompt] = useState("");
+  useEffect(() => {
+    if (isHost) return;
+    if (doorman.status !== "idle") return;
+    if (doorman.policy.requiresPassword) {
+      if (linkPassword) {
+        doorman.requestJoin(linkPassword);
+      }
+      // else: waiting room UI will collect password
+    } else {
+      doorman.requestJoin();
+    }
+  }, [isHost, doorman, linkPassword]);
+
+  // LiveKit room — only enabled after doorman accepts.
   const room = usePodcastLiveRoom({
     roomName: sessionId,
     displayName,
-    enabled: displayName !== "Guest" || true, // connect once we have any name; "Guest" is acceptable
+    enabled: doorman.status === "accepted",
   });
 
   useEffect(() => {
@@ -256,11 +303,7 @@ const PodcastRoomPage = () => {
     navigate("/tv/podcast");
   };
 
-  const copyInvite = async () => {
-    const link = `${window.location.origin}/#/podcast/room/${sessionId}`;
-    try { await navigator.clipboard.writeText(link); toast({ title: "Invite link copied" }); }
-    catch { toast({ title: "Copy failed", description: link }); }
-  };
+  const openInvite = () => setInviteOpen(true);
 
   /* ---------------- Files actions ---------------- */
   const downloadRec = (r: LocalRecording) => {
@@ -306,8 +349,8 @@ const PodcastRoomPage = () => {
               REC {fmtTime(elapsed)}
             </span>
           )}
-          <Button size="sm" variant="secondary" onClick={copyInvite} className="gap-1.5">
-            <Copy className="w-3.5 h-3.5" /> Invite
+          <Button size="sm" variant="secondary" onClick={openInvite} className="gap-1.5">
+            <Share2 className="w-3.5 h-3.5" /> Invite
           </Button>
         </div>
       </header>
@@ -376,9 +419,123 @@ const PodcastRoomPage = () => {
         onScreen={toggleScreen}
         onLeave={leave}
       />
+
+      <PodcastInviteSheet
+        open={inviteOpen}
+        onClose={() => setInviteOpen(false)}
+        sessionId={sessionId}
+        isHost={isHost}
+        security={security}
+        onSecurityChange={setSecurity}
+      />
+
+      {/* Host: pending join requests */}
+      {isHost && doorman.pending.length > 0 && (
+        <div className="fixed top-16 right-3 z-50 w-80 max-w-[calc(100vw-1.5rem)] space-y-2">
+          {doorman.pending.map((req) => (
+            <div key={req.reqId} className="rounded-xl bg-zinc-900 border border-purple-500/50 shadow-xl shadow-purple-900/30 p-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="text-xs uppercase tracking-wider text-purple-300 mb-0.5 flex items-center gap-1"><Shield className="w-3 h-3" /> Waiting room</div>
+                  <div className="text-sm font-medium truncate">{req.name} wants to join</div>
+                  {security.visibility === "password" && (
+                    <div className={`text-[11px] mt-0.5 ${doorman.validatePassword(req.password) ? "text-emerald-400" : "text-red-400"}`}>
+                      {doorman.validatePassword(req.password) ? "Password OK" : "Wrong password"}
+                    </div>
+                  )}
+                </div>
+                <button onClick={() => doorman.reject(req.reqId)} className="p-1 rounded hover:bg-zinc-800" aria-label="Dismiss">
+                  <X className="w-3.5 h-3.5 text-zinc-400" />
+                </button>
+              </div>
+              <div className="flex gap-2 mt-2">
+                <Button
+                  size="sm"
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-500"
+                  disabled={security.visibility === "password" && !doorman.validatePassword(req.password)}
+                  onClick={() => doorman.accept(req.reqId)}
+                >Accept</Button>
+                <Button size="sm" variant="destructive" className="flex-1" onClick={() => doorman.reject(req.reqId, "Declined by host")}>Reject</Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Guest: waiting room overlay */}
+      {!isHost && doorman.status !== "accepted" && (
+        <GuestWaitingOverlay
+          status={doorman.status}
+          policy={doorman.policy}
+          rejectReason={doorman.rejectReason}
+          name={displayName}
+          pwdValue={pwdPrompt}
+          onPwdChange={setPwdPrompt}
+          onSubmitPwd={() => doorman.requestJoin(pwdPrompt)}
+          onLeave={() => navigate("/tv/podcast")}
+        />
+      )}
     </div>
   );
 };
+
+const GuestWaitingOverlay = ({
+  status, policy, rejectReason, name, pwdValue, onPwdChange, onSubmitPwd, onLeave,
+}: {
+  status: string;
+  policy: { visibility: string; requiresPassword: boolean };
+  rejectReason: string | null;
+  name: string;
+  pwdValue: string;
+  onPwdChange: (v: string) => void;
+  onSubmitPwd: () => void;
+  onLeave: () => void;
+}) => (
+  <div className="fixed inset-0 z-[80] bg-zinc-950/95 backdrop-blur grid place-items-center p-4">
+    <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-center">
+      <div className="w-14 h-14 rounded-full bg-purple-500/15 border border-purple-500/30 grid place-items-center mx-auto mb-3">
+        <Shield className="w-6 h-6 text-purple-300" />
+      </div>
+      {status === "rejected" ? (
+        <>
+          <h2 className="text-lg font-semibold mb-1">Entry declined</h2>
+          <p className="text-sm text-zinc-400 mb-4">{rejectReason || "The host did not accept your request."}</p>
+          <Button variant="secondary" onClick={onLeave} className="w-full">Back to Podcast Home</Button>
+        </>
+      ) : policy.requiresPassword && status === "idle" ? (
+        <>
+          <h2 className="text-lg font-semibold mb-1">Password required</h2>
+          <p className="text-sm text-zinc-400 mb-4">This room is password protected.</p>
+          <Input
+            type="password"
+            value={pwdValue}
+            onChange={(e) => onPwdChange(e.target.value)}
+            placeholder="Enter room password"
+            className="bg-zinc-950 border-zinc-700 mb-3"
+            onKeyDown={(e) => { if (e.key === "Enter") onSubmitPwd(); }}
+          />
+          <div className="flex gap-2">
+            <Button variant="ghost" onClick={onLeave} className="flex-1">Cancel</Button>
+            <Button onClick={onSubmitPwd} disabled={!pwdValue} className="flex-1">Request to join</Button>
+          </div>
+        </>
+      ) : (
+        <>
+          <h2 className="text-lg font-semibold mb-1">Waiting for host…</h2>
+          <p className="text-sm text-zinc-400 mb-4">
+            Hi {name}, your request was sent. The host will let you in shortly.
+          </p>
+          <div className="flex items-center justify-center gap-2 text-xs text-purple-300 mb-4">
+            <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
+            <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse [animation-delay:150ms]" />
+            <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse [animation-delay:300ms]" />
+          </div>
+          <Button variant="secondary" onClick={onLeave} className="w-full">Cancel</Button>
+        </>
+      )}
+    </div>
+  </div>
+);
 
 /* ===================== Subcomponents ===================== */
 
