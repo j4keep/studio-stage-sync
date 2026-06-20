@@ -375,7 +375,7 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
           "video/mp4;codecs=avc1",
           "video/mp4",
         ].find(m => MediaRecorder.isTypeSupported(m)) || "video/webm";
-        const mr = new MediaRecorder(mixedStream, { mimeType: mime, videoBitsPerSecond: 4_500_000, audioBitsPerSecond: 160_000 });
+        const mr = new MediaRecorder(mixedStream, { mimeType: mime, videoBitsPerSecond: 4_500_000 });
         recChunksRef.current = [];
         recTrackIdRef.current = trackId;
         recStartRef.current = startPos;
