@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   X, Play, Pause, Scissors, Trash2, Type, Film, Download, SkipBack,
-  Volume2, VolumeX, Loader2, Upload,
+  Volume2, VolumeX, Loader2, Upload, MousePointer2, Pencil, Eraser, MoveHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
+import { WaveformView } from "@/wstudio/daw/ui/WaveformView";
+
+type EditorTool = "pointer" | "pencil" | "eraser" | "scissors" | "trim";
 
 /**
  * Podcast Editor Pro — fully functional local-first editor.
@@ -74,6 +77,7 @@ export default function PodcastEditorPro({
   });
   const [exporting, setExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
+  const [tool, setTool] = useState<EditorTool>("pointer");
 
   const vidRef = useRef<HTMLVideoElement>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
@@ -230,8 +234,8 @@ export default function PodcastEditorPro({
     seekTo(ratio * totalDur);
   };
 
-  /* ---------- waveform (real, sampled once per source) ---------- */
-  const [waveforms, setWaveforms] = useState<Record<number, number[]>>({});
+  /* ---------- waveform (real, sampled to Float32 min/max pairs like DAW) ---------- */
+  const [waveforms, setWaveforms] = useState<Record<number, Float32Array>>({});
   useEffect(() => {
     sources.forEach((s, idx) => {
       if (waveforms[idx]) return;
@@ -241,25 +245,65 @@ export default function PodcastEditorPro({
           const ac = new (window.AudioContext || (window as any).webkitAudioContext)();
           const decoded = await ac.decodeAudioData(buf.slice(0));
           const ch = decoded.getChannelData(0);
-          const N = 600;
+          const N = 2000;
           const block = Math.max(1, Math.floor(ch.length / N));
-          const out = new Array(N);
+          const peaks = new Float32Array(N * 2);
           for (let i = 0; i < N; i++) {
-            let max = 0;
+            let mn = 1, mx = -1;
             const start = i * block;
             const end = Math.min(ch.length, start + block);
             for (let j = start; j < end; j++) {
-              const v = Math.abs(ch[j]);
-              if (v > max) max = v;
+              const v = ch[j];
+              if (v < mn) mn = v;
+              if (v > mx) mx = v;
             }
-            out[i] = max;
+            peaks[i * 2] = mn;
+            peaks[i * 2 + 1] = mx;
           }
-          setWaveforms((w) => ({ ...w, [idx]: out }));
+          setWaveforms((w) => ({ ...w, [idx]: peaks }));
           ac.close();
         } catch {/* not decodable, skip */}
       })();
     });
   }, [sources, waveforms]);
+
+  /* ---------- tool-driven clip click ---------- */
+  const splitClipAt = useCallback((segId: string, withinTimelineT: number) => {
+    setClips((cs) => {
+      const i = cs.findIndex((c) => c.id === segId);
+      if (i < 0) return cs;
+      // need segment startT/in to map timeline t -> source t
+      let acc = 0;
+      for (let k = 0; k < i; k++) acc += Math.max(0, cs[k].out - cs[k].in);
+      const orig = cs[i];
+      const within = orig.in + (withinTimelineT - acc);
+      if (within <= orig.in + 0.05 || within >= orig.out - 0.05) return cs;
+      const a: Clip = { ...orig, id: uid(), out: within };
+      const b: Clip = { ...orig, id: uid(), in: within };
+      const next = [...cs];
+      next.splice(i, 1, a, b);
+      return next;
+    });
+  }, []);
+
+  const handleClipClick = (segId: string, e: React.MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    const el = timelineRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const ratio = (e.clientX - rect.left) / rect.width;
+    const t = ratio * totalDur;
+    if (tool === "eraser") {
+      setClips((cs) => cs.filter((c) => c.id !== segId));
+      setSelectedId(null);
+      toast({ title: "Clip erased" });
+    } else if (tool === "scissors") {
+      splitClipAt(segId, t);
+      toast({ title: "Clip split" });
+    } else {
+      setSelectedId(segId);
+    }
+  };
 
   /* ---------- export with ffmpeg.wasm ---------- */
   const exportFinal = async () => {
@@ -421,10 +465,32 @@ export default function PodcastEditorPro({
         </div>
       </div>
 
-      {/* Tools */}
-      <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" variant="secondary" onClick={splitAtPlayhead} className="gap-1.5"><Scissors className="w-3.5 h-3.5" />Split</Button>
-        <Button size="sm" variant="secondary" onClick={deleteSelected} className="gap-1.5" disabled={!selectedId}><Trash2 className="w-3.5 h-3.5" />Delete clip</Button>
+      {/* Tool palette (W.Studio DAW style) */}
+      <div className="flex flex-wrap items-center gap-1 p-1.5 rounded-lg bg-zinc-950 border border-zinc-800">
+        {([
+          { id: "pointer", label: "Pointer", Icon: MousePointer2, hint: "Select clips" },
+          { id: "pencil", label: "Pencil", Icon: Pencil, hint: "Draw on waveform" },
+          { id: "eraser", label: "Eraser", Icon: Eraser, hint: "Click clip to delete" },
+          { id: "scissors", label: "Scissors", Icon: Scissors, hint: "Click to split at point" },
+          { id: "trim", label: "Trim", Icon: MoveHorizontal, hint: "Drag clip edges" },
+        ] as const).map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTool(t.id)}
+            title={t.hint}
+            className={`h-8 px-2.5 inline-flex items-center gap-1.5 rounded-md border text-xs transition ${
+              tool === t.id
+                ? "bg-purple-600 border-purple-400 text-white"
+                : "bg-zinc-900 border-zinc-800 text-zinc-300 hover:bg-zinc-800"
+            }`}
+          >
+            <t.Icon className="w-3.5 h-3.5" />
+            {t.label}
+          </button>
+        ))}
+        <div className="mx-1 h-6 w-px bg-zinc-800" />
+        <Button size="sm" variant="secondary" onClick={splitAtPlayhead} className="gap-1.5 h-8"><Scissors className="w-3.5 h-3.5" />Split @ playhead</Button>
+        <Button size="sm" variant="secondary" onClick={deleteSelected} className="gap-1.5 h-8" disabled={!selectedId}><Trash2 className="w-3.5 h-3.5" />Delete</Button>
         <label className="cursor-pointer">
           <input type="file" accept="video/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) addMediaFile(f, "intro"); e.currentTarget.value = ""; }} />
           <span className="inline-flex items-center gap-1.5 h-8 px-3 text-xs rounded-md bg-zinc-800 hover:bg-zinc-700"><Upload className="w-3.5 h-3.5" />Intro</span>
@@ -433,7 +499,7 @@ export default function PodcastEditorPro({
           <input type="file" accept="video/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) addMediaFile(f, "outro"); e.currentTarget.value = ""; }} />
           <span className="inline-flex items-center gap-1.5 h-8 px-3 text-xs rounded-md bg-zinc-800 hover:bg-zinc-700"><Film className="w-3.5 h-3.5" />Outro</span>
         </label>
-        <Button size="sm" onClick={exportFinal} disabled={exporting} className="ml-auto bg-purple-600 hover:bg-purple-500 gap-1.5">
+        <Button size="sm" onClick={exportFinal} disabled={exporting} className="ml-auto bg-purple-600 hover:bg-purple-500 gap-1.5 h-8">
           {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
           {exporting ? `Exporting… ${exportProgress}%` : "Export"}
         </Button>
@@ -462,59 +528,22 @@ export default function PodcastEditorPro({
         </div>
       </div>
 
-      {/* Timeline */}
-      <div className="space-y-1">
-        <div className="flex items-center justify-between text-[10px] text-zinc-500">
-          <span>Timeline · click to seek · click clip to select</span>
-          <span>Space: play · Enter/Tab: start · Delete: remove</span>
-        </div>
-        <div
-          ref={timelineRef}
-          onClick={onTimelineSeek}
-          className="relative h-24 bg-zinc-950 border border-zinc-800 rounded-md overflow-hidden cursor-pointer select-none"
-        >
-          {/* segments */}
-          {segments.map((s) => {
-            const left = totalDur ? (s.startT / totalDur) * 100 : 0;
-            const width = totalDur ? (s.dur / totalDur) * 100 : 0;
-            const isSel = selectedId === s.id;
-            const wav = waveforms[s.srcIdx];
-            const src = sources[s.srcIdx];
-            const srcDur = (src?.durationMs || 1) / 1000;
-            const startSample = wav ? Math.floor((s.in / srcDur) * wav.length) : 0;
-            const endSample = wav ? Math.floor((s.out / srcDur) * wav.length) : 0;
-            const slice = wav ? wav.slice(startSample, endSample) : [];
-            return (
-              <div
-                key={s.id}
-                onClick={(e) => { e.stopPropagation(); setSelectedId(s.id); }}
-                style={{ left: `${left}%`, width: `${width}%` }}
-                className={`absolute top-1 bottom-1 rounded border ${isSel ? "border-purple-400 bg-purple-500/25 ring-2 ring-purple-400" : "border-zinc-700 bg-zinc-800/60 hover:bg-zinc-800"}`}
-                title={`Clip ${fmt(s.startT)} – ${fmt(s.endT)}`}
-              >
-                <div className="absolute inset-0 flex items-center px-0.5 gap-[1px] overflow-hidden">
-                  {slice.length > 0 ? (
-                    slice.filter((_, i) => i % Math.max(1, Math.floor(slice.length / 80)) === 0).map((v, i) => (
-                      <div key={i} className="flex-1 bg-purple-400/70 rounded-sm" style={{ height: `${Math.max(4, v * 90)}%` }} />
-                    ))
-                  ) : (
-                    <div className="text-[9px] text-zinc-500 px-1">decoding…</div>
-                  )}
-                </div>
-                <div className="absolute top-0.5 left-1 text-[9px] font-mono text-white/80 bg-black/40 px-1 rounded-sm">
-                  {fmt(s.dur)}
-                </div>
-              </div>
-            );
-          })}
-          {/* playhead */}
-          <div className="absolute top-0 bottom-0 w-px bg-red-500 pointer-events-none" style={{ left: `${playheadPct}%` }}>
-            <div className="absolute -top-1 -left-1.5 w-3 h-3 rotate-45 bg-red-500" />
-          </div>
-        </div>
-        <div className="flex justify-between text-[9px] text-zinc-600 font-mono">
-          <span>0:00</span><span>{fmt(totalDur)}</span>
-        </div>
+      {/* Timeline — uses real DAW WaveformView */}
+      <TimelineView
+        timelineRef={timelineRef}
+        onSeek={onTimelineSeek}
+        segments={segments}
+        sources={sources}
+        waveforms={waveforms}
+        totalDur={totalDur}
+        selectedId={selectedId}
+        tool={tool}
+        playheadPct={playheadPct}
+        onClipClick={handleClipClick}
+        fmt={fmt}
+      />
+      <div className="flex justify-between text-[9px] text-zinc-600 font-mono">
+        <span>0:00</span><span>{fmt(totalDur)}</span>
       </div>
 
       {exporting && (
@@ -522,6 +551,110 @@ export default function PodcastEditorPro({
           <div className="h-full bg-purple-500 transition-all" style={{ width: `${exportProgress}%` }} />
         </div>
       )}
+    </div>
+  );
+}
+
+/* ---------------- TimelineView ---------------- */
+
+type Segment = Clip & { dur: number; startT: number; endT: number };
+
+function TimelineView({
+  timelineRef, onSeek, segments, sources, waveforms, totalDur,
+  selectedId, tool, playheadPct, onClipClick, fmt,
+}: {
+  timelineRef: React.RefObject<HTMLDivElement>;
+  onSeek: (e: React.MouseEvent<HTMLDivElement>) => void;
+  segments: Segment[];
+  sources: EditorSource[];
+  waveforms: Record<number, Float32Array>;
+  totalDur: number;
+  selectedId: string | null;
+  tool: EditorTool;
+  playheadPct: number;
+  onClipClick: (segId: string, e: React.MouseEvent<HTMLDivElement>) => void;
+  fmt: (s: number) => string;
+}) {
+  const [width, setWidth] = useState(800);
+  useEffect(() => {
+    const el = timelineRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setWidth(el.clientWidth));
+    ro.observe(el);
+    setWidth(el.clientWidth);
+    return () => ro.disconnect();
+  }, [timelineRef]);
+
+  const cursor =
+    tool === "scissors" ? "cursor-crosshair" :
+    tool === "eraser" ? "cursor-not-allowed" :
+    tool === "pencil" ? "cursor-cell" :
+    tool === "trim" ? "cursor-ew-resize" :
+    "cursor-pointer";
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between text-[10px] text-zinc-500">
+        <span>Timeline · click to seek · tool: <span className="text-purple-300 uppercase">{tool}</span></span>
+        <span>Space: play · Enter/Tab: start · Delete: remove</span>
+      </div>
+      <div
+        ref={timelineRef}
+        onClick={onSeek}
+        className={`relative h-28 bg-zinc-950 border border-zinc-800 rounded-md overflow-hidden select-none ${cursor}`}
+      >
+        {segments.map((s) => {
+          const left = totalDur ? (s.startT / totalDur) * 100 : 0;
+          const w = totalDur ? (s.dur / totalDur) * 100 : 0;
+          const isSel = selectedId === s.id;
+          const peaks = waveforms[s.srcIdx];
+          const src = sources[s.srcIdx];
+          const srcDur = (src?.durationMs || 1) / 1000;
+          const offsetRatio = s.in / srcDur;
+          const spanRatio = Math.max(0.0001, (s.out - s.in) / srcDur);
+          const segPx = Math.max(8, Math.floor((w / 100) * width) - 4);
+          return (
+            <div
+              key={s.id}
+              onClick={(e) => onClipClick(s.id, e)}
+              style={{ left: `${left}%`, width: `${w}%` }}
+              className={`absolute top-1 bottom-1 rounded border overflow-hidden ${
+                isSel
+                  ? "border-purple-400 bg-purple-500/15 ring-2 ring-purple-400"
+                  : "border-zinc-700 bg-zinc-900 hover:bg-zinc-800/80"
+              }`}
+              title={`Clip ${fmt(s.startT)} – ${fmt(s.endT)}`}
+            >
+              <div className="absolute inset-0 flex items-center justify-center">
+                {peaks ? (
+                  <WaveformView
+                    peaks={peaks}
+                    width={segPx}
+                    height={96}
+                    color={isSel ? "rgba(192,132,252,0.95)" : "rgba(168,85,247,0.85)"}
+                    offsetRatio={offsetRatio}
+                    spanRatio={spanRatio}
+                  />
+                ) : (
+                  <div className="text-[9px] text-zinc-500">decoding…</div>
+                )}
+              </div>
+              <div className="absolute top-0.5 left-1 text-[9px] font-mono text-white/80 bg-black/40 px-1 rounded-sm pointer-events-none">
+                {fmt(s.dur)}
+              </div>
+              {tool === "trim" && (
+                <>
+                  <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-amber-400/70 cursor-ew-resize" />
+                  <div className="absolute right-0 top-0 bottom-0 w-1.5 bg-amber-400/70 cursor-ew-resize" />
+                </>
+              )}
+            </div>
+          );
+        })}
+        <div className="absolute top-0 bottom-0 w-px bg-red-500 pointer-events-none" style={{ left: `${playheadPct}%` }}>
+          <div className="absolute -top-1 -left-1.5 w-3 h-3 rotate-45 bg-red-500" />
+        </div>
+      </div>
     </div>
   );
 }
