@@ -625,7 +625,7 @@ const PodcastReadyChecklist = ({ value, onChange }: { value: any; onChange: (v: 
       <p className="text-xs uppercase tracking-wider text-zinc-500 mb-2">Pre-flight</p>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         {items.map((it) => (
-          <button key={it.key} onClick={() => onChange({ ...value, [it.key]: !value[it.key] })} className={`flex items-center gap-2 p-2 rounded-lg border text-sm text-left ${value[it.key] ? "bg-teal-500/15 border-teal-500/40 text-teal-200" : "bg-zinc-900 border-zinc-800"}`}>
+          <button key={String(it.key)} onClick={() => onChange({ ...value, [it.key]: !value[it.key] })} className={`flex items-center gap-2 p-2 rounded-lg border text-sm text-left ${value[it.key] ? "bg-teal-500/15 border-teal-500/40 text-teal-200" : "bg-zinc-900 border-zinc-800"}`}>
             {value[it.key] ? <Check className="w-4 h-4" /> : <span className="w-4 h-4 rounded border border-zinc-600" />}
             {it.label}
           </button>
