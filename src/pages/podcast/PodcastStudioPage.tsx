@@ -227,19 +227,6 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
   const makeStageRecordingStream = useCallback((sourceStream: MediaStream) => {
     const videoTrack = sourceStream.getVideoTracks()[0];
     if (!videoTrack) return null;
-    // Keep the base camera capture simple and reliable. Mirroring is only a
-    // preview preference; recording the raw camera track avoids Chrome canvas
-    // capture failures that were leaving audio-only takes on the timeline.
-    if (!bgUrl) return new MediaStream([videoTrack]);
-
-    const stageCanvas = stageContainerRef.current?.querySelector("canvas");
-    if (stageCanvas instanceof HTMLCanvasElement && stageCanvas.width > 0 && stageCanvas.height > 0) {
-      try {
-        const stageStream = stageCanvas.captureStream(Math.min(frameRate, 30));
-        if (stageStream.getVideoTracks().length > 0) return stageStream;
-      } catch { /* fall back to manual canvas below */ }
-    }
-
     const canvas = document.createElement("canvas");
     canvas.width = resolution === "1080p" ? 1920 : resolution === "480p" ? 854 : 1280;
     canvas.height = resolution === "1080p" ? 1080 : resolution === "480p" ? 480 : 720;
@@ -275,6 +262,7 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
       ctx.fillStyle = "#050505";
       ctx.fillRect(0, 0, W, H);
       if (bgReady) drawCover(bg, 0, 0, W, H);
+      const stageCanvas = bgUrl ? stageContainerRef.current?.querySelector("canvas") : null;
       let drewStage = false;
       if (stageCanvas instanceof HTMLCanvasElement && stageCanvas.width > 0 && stageCanvas.height > 0) {
         try {
@@ -295,7 +283,9 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
       }
       videoCompositeRafRef.current = requestAnimationFrame(paint);
     };
-    paint();
+    video.onloadedmetadata = () => paint();
+    if (video.readyState >= 1) paint();
+    else paint();
     return canvas.captureStream(Math.min(frameRate, 30));
   }, [bgUrl, frameRate, mirrored, resolution]);
 
