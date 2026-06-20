@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   X, Play, Pause, Scissors, Trash2, Type, Film, Download, SkipBack,
   Volume2, VolumeX, Loader2, Upload, MousePointer2, Pencil, Eraser, MoveHorizontal,
+  Undo2, Redo2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
