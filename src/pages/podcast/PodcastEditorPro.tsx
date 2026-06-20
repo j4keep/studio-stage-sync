@@ -77,6 +77,7 @@ export default function PodcastEditorPro({
   });
   const [exporting, setExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
+  const [tool, setTool] = useState<EditorTool>("pointer");
 
   const vidRef = useRef<HTMLVideoElement>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
