@@ -465,10 +465,32 @@ export default function PodcastEditorPro({
         </div>
       </div>
 
-      {/* Tools */}
-      <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" variant="secondary" onClick={splitAtPlayhead} className="gap-1.5"><Scissors className="w-3.5 h-3.5" />Split</Button>
-        <Button size="sm" variant="secondary" onClick={deleteSelected} className="gap-1.5" disabled={!selectedId}><Trash2 className="w-3.5 h-3.5" />Delete clip</Button>
+      {/* Tool palette (W.Studio DAW style) */}
+      <div className="flex flex-wrap items-center gap-1 p-1.5 rounded-lg bg-zinc-950 border border-zinc-800">
+        {([
+          { id: "pointer", label: "Pointer", Icon: MousePointer2, hint: "Select clips" },
+          { id: "pencil", label: "Pencil", Icon: Pencil, hint: "Draw on waveform" },
+          { id: "eraser", label: "Eraser", Icon: Eraser, hint: "Click clip to delete" },
+          { id: "scissors", label: "Scissors", Icon: Scissors, hint: "Click to split at point" },
+          { id: "trim", label: "Trim", Icon: MoveHorizontal, hint: "Drag clip edges" },
+        ] as const).map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTool(t.id)}
+            title={t.hint}
+            className={`h-8 px-2.5 inline-flex items-center gap-1.5 rounded-md border text-xs transition ${
+              tool === t.id
+                ? "bg-purple-600 border-purple-400 text-white"
+                : "bg-zinc-900 border-zinc-800 text-zinc-300 hover:bg-zinc-800"
+            }`}
+          >
+            <t.Icon className="w-3.5 h-3.5" />
+            {t.label}
+          </button>
+        ))}
+        <div className="mx-1 h-6 w-px bg-zinc-800" />
+        <Button size="sm" variant="secondary" onClick={splitAtPlayhead} className="gap-1.5 h-8"><Scissors className="w-3.5 h-3.5" />Split @ playhead</Button>
+        <Button size="sm" variant="secondary" onClick={deleteSelected} className="gap-1.5 h-8" disabled={!selectedId}><Trash2 className="w-3.5 h-3.5" />Delete</Button>
         <label className="cursor-pointer">
           <input type="file" accept="video/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) addMediaFile(f, "intro"); e.currentTarget.value = ""; }} />
           <span className="inline-flex items-center gap-1.5 h-8 px-3 text-xs rounded-md bg-zinc-800 hover:bg-zinc-700"><Upload className="w-3.5 h-3.5" />Intro</span>
@@ -477,7 +499,7 @@ export default function PodcastEditorPro({
           <input type="file" accept="video/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) addMediaFile(f, "outro"); e.currentTarget.value = ""; }} />
           <span className="inline-flex items-center gap-1.5 h-8 px-3 text-xs rounded-md bg-zinc-800 hover:bg-zinc-700"><Film className="w-3.5 h-3.5" />Outro</span>
         </label>
-        <Button size="sm" onClick={exportFinal} disabled={exporting} className="ml-auto bg-purple-600 hover:bg-purple-500 gap-1.5">
+        <Button size="sm" onClick={exportFinal} disabled={exporting} className="ml-auto bg-purple-600 hover:bg-purple-500 gap-1.5 h-8">
           {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
           {exporting ? `Exporting… ${exportProgress}%` : "Export"}
         </Button>
