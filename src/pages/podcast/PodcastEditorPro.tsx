@@ -568,7 +568,7 @@ export default function PodcastEditorPro({
         <Button size="sm" variant="secondary" onClick={undo} disabled={!canUndo} className="gap-1.5 h-8" title="Undo (⌘Z)"><Undo2 className="w-3.5 h-3.5" />Undo</Button>
         <Button size="sm" variant="secondary" onClick={redo} disabled={!canRedo} className="gap-1.5 h-8" title="Redo (⌘⇧Z)"><Redo2 className="w-3.5 h-3.5" />Redo</Button>
         <div className="mx-1 h-6 w-px bg-zinc-800" />
-        <Button size="sm" variant="secondary" onClick={splitAtPlayhead} className="gap-1.5 h-8"><Scissors className="w-3.5 h-3.5" />Split @ playhead</Button>
+        <Button size="sm" variant="secondary" onClick={splitAtPlayhead} className="gap-1.5 h-8"><Scissors className="w-3.5 h-3.5" />Split</Button>
         <Button size="sm" variant="secondary" onClick={deleteSelected} className="gap-1.5 h-8" disabled={!selectedId}><Trash2 className="w-3.5 h-3.5" />Delete</Button>
         <label className="cursor-pointer">
           <input type="file" accept="video/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) addMediaFile(f, "intro"); e.currentTarget.value = ""; }} />
