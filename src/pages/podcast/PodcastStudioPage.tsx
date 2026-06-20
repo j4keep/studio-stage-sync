@@ -6,7 +6,7 @@ import {
   Users, MessageCircle, Sparkles, Type, Music, Settings as SettingsIcon, HelpCircle,
   Home, ChevronUp, ChevronDown, Circle, Square, Link as LinkIcon, Upload, X,
   Scissors, MousePointer2, ZoomIn, ZoomOut, Download, Pencil, Eraser, Save,
-  Play, Pause, SkipBack, SkipForward,
+  Play, Pause, SkipBack, SkipForward, ArrowLeft,
 } from "lucide-react";
 import { DawEngine } from "@/wstudio/daw/engine/DawEngine";
 import { computePeaks } from "@/wstudio/daw/engine/Peaks";
