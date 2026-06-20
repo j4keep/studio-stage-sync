@@ -252,6 +252,13 @@ export default function PodcastEditorPro({
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        if (e.shiftKey) redo(); else undo();
+        return;
+      }
+      if (mod && e.key.toLowerCase() === "y") { e.preventDefault(); redo(); return; }
       if (e.code === "Space") { e.preventDefault(); togglePlay(); }
       else if (e.code === "Enter" || e.code === "Tab") { e.preventDefault(); toStart(); }
       else if (e.code === "Delete" || e.code === "Backspace") {
@@ -260,7 +267,28 @@ export default function PodcastEditorPro({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [togglePlay, toStart, deleteSelected, selectedId]);
+  }, [togglePlay, toStart, deleteSelected, selectedId, undo, redo]);
+
+  /* ---------- trim edge drag handler ---------- */
+  const trimEdge = useCallback((segId: string, edge: "in" | "out", deltaSec: number) => {
+    setClips((cs) => {
+      const i = cs.findIndex((c) => c.id === segId);
+      if (i < 0) return cs;
+      const c = cs[i];
+      const src = sources[c.srcIdx];
+      const srcDur = (src?.durationMs || 0) / 1000;
+      const next = [...cs];
+      if (edge === "in") {
+        const v = Math.max(0, Math.min(c.out - 0.05, c.in + deltaSec));
+        next[i] = { ...c, in: v };
+      } else {
+        const v = Math.max(c.in + 0.05, Math.min(srcDur, c.out + deltaSec));
+        next[i] = { ...c, out: v };
+      }
+      return next;
+    });
+  }, [setClips, sources]);
+
 
   /* ---------- timeline interactions ---------- */
   const onTimelineSeek = (e: React.MouseEvent<HTMLDivElement>) => {
