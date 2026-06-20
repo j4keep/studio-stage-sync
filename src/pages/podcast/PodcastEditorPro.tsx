@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   X, Play, Pause, Scissors, Trash2, Type, Film, Download, SkipBack,
-  Volume2, VolumeX, Loader2, Upload,
+  Volume2, VolumeX, Loader2, Upload, MousePointer2, Pencil, Eraser, MoveHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
+import { WaveformView } from "@/wstudio/daw/ui/WaveformView";
+
+type EditorTool = "pointer" | "pencil" | "eraser" | "scissors" | "trim";
 
 /**
  * Podcast Editor Pro — fully functional local-first editor.
