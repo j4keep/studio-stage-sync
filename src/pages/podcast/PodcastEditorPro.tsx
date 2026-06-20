@@ -554,3 +554,107 @@ export default function PodcastEditorPro({
     </div>
   );
 }
+
+/* ---------------- TimelineView ---------------- */
+
+type Segment = Clip & { dur: number; startT: number; endT: number };
+
+function TimelineView({
+  timelineRef, onSeek, segments, sources, waveforms, totalDur,
+  selectedId, tool, playheadPct, onClipClick, fmt,
+}: {
+  timelineRef: React.RefObject<HTMLDivElement>;
+  onSeek: (e: React.MouseEvent<HTMLDivElement>) => void;
+  segments: Segment[];
+  sources: EditorSource[];
+  waveforms: Record<number, Float32Array>;
+  totalDur: number;
+  selectedId: string | null;
+  tool: EditorTool;
+  playheadPct: number;
+  onClipClick: (segId: string, e: React.MouseEvent<HTMLDivElement>) => void;
+  fmt: (s: number) => string;
+}) {
+  const [width, setWidth] = useState(800);
+  useEffect(() => {
+    const el = timelineRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setWidth(el.clientWidth));
+    ro.observe(el);
+    setWidth(el.clientWidth);
+    return () => ro.disconnect();
+  }, [timelineRef]);
+
+  const cursor =
+    tool === "scissors" ? "cursor-crosshair" :
+    tool === "eraser" ? "cursor-not-allowed" :
+    tool === "pencil" ? "cursor-cell" :
+    tool === "trim" ? "cursor-ew-resize" :
+    "cursor-pointer";
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between text-[10px] text-zinc-500">
+        <span>Timeline · click to seek · tool: <span className="text-purple-300 uppercase">{tool}</span></span>
+        <span>Space: play · Enter/Tab: start · Delete: remove</span>
+      </div>
+      <div
+        ref={timelineRef}
+        onClick={onSeek}
+        className={`relative h-28 bg-zinc-950 border border-zinc-800 rounded-md overflow-hidden select-none ${cursor}`}
+      >
+        {segments.map((s) => {
+          const left = totalDur ? (s.startT / totalDur) * 100 : 0;
+          const w = totalDur ? (s.dur / totalDur) * 100 : 0;
+          const isSel = selectedId === s.id;
+          const peaks = waveforms[s.srcIdx];
+          const src = sources[s.srcIdx];
+          const srcDur = (src?.durationMs || 1) / 1000;
+          const offsetRatio = s.in / srcDur;
+          const spanRatio = Math.max(0.0001, (s.out - s.in) / srcDur);
+          const segPx = Math.max(8, Math.floor((w / 100) * width) - 4);
+          return (
+            <div
+              key={s.id}
+              onClick={(e) => onClipClick(s.id, e)}
+              style={{ left: `${left}%`, width: `${w}%` }}
+              className={`absolute top-1 bottom-1 rounded border overflow-hidden ${
+                isSel
+                  ? "border-purple-400 bg-purple-500/15 ring-2 ring-purple-400"
+                  : "border-zinc-700 bg-zinc-900 hover:bg-zinc-800/80"
+              }`}
+              title={`Clip ${fmt(s.startT)} – ${fmt(s.endT)}`}
+            >
+              <div className="absolute inset-0 flex items-center justify-center">
+                {peaks ? (
+                  <WaveformView
+                    peaks={peaks}
+                    width={segPx}
+                    height={96}
+                    color={isSel ? "rgba(192,132,252,0.95)" : "rgba(168,85,247,0.85)"}
+                    offsetRatio={offsetRatio}
+                    spanRatio={spanRatio}
+                  />
+                ) : (
+                  <div className="text-[9px] text-zinc-500">decoding…</div>
+                )}
+              </div>
+              <div className="absolute top-0.5 left-1 text-[9px] font-mono text-white/80 bg-black/40 px-1 rounded-sm pointer-events-none">
+                {fmt(s.dur)}
+              </div>
+              {tool === "trim" && (
+                <>
+                  <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-amber-400/70 cursor-ew-resize" />
+                  <div className="absolute right-0 top-0 bottom-0 w-1.5 bg-amber-400/70 cursor-ew-resize" />
+                </>
+              )}
+            </div>
+          );
+        })}
+        <div className="absolute top-0 bottom-0 w-px bg-red-500 pointer-events-none" style={{ left: `${playheadPct}%` }}>
+          <div className="absolute -top-1 -left-1.5 w-3 h-3 rotate-45 bg-red-500" />
+        </div>
+      </div>
+    </div>
+  );
+}
