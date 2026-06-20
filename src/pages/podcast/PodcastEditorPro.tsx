@@ -120,16 +120,32 @@ export default function PodcastEditorPro({
   const timelineRef = useRef<HTMLDivElement>(null);
 
   /* ---------- derived ---------- */
+  // Layout uses each source's FULL duration so trim handles visibly move the
+  // clip edge inward (not rescale the whole waveform). Playback still uses
+  // trimmed `dur` for timing.
   const segments = useMemo(() => {
-    let t = 0;
+    let t = 0;           // playback time (trimmed)
+    let layoutT = 0;     // layout time (full source widths)
     return clips.map((c) => {
       const dur = Math.max(0, c.out - c.in);
-      const seg = { ...c, dur, startT: t, endT: t + dur };
+      const srcDur = Math.max(0.01, (sources[c.srcIdx]?.durationMs || 0) / 1000);
+      const seg = {
+        ...c,
+        dur,
+        startT: t,
+        endT: t + dur,
+        layoutStart: layoutT,
+        layoutSpan: srcDur,
+      };
       t += dur;
+      layoutT += srcDur;
       return seg;
     });
-  }, [clips]);
+  }, [clips, sources]);
   const totalDur = segments.length ? segments[segments.length - 1].endT : 0;
+  const totalLayout = segments.length
+    ? segments[segments.length - 1].layoutStart + segments[segments.length - 1].layoutSpan
+    : 0;
 
   const activeSeg = useMemo(
     () => segments.find((s) => playhead >= s.startT && playhead < s.endT) || segments[segments.length - 1],
