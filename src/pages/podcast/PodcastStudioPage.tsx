@@ -227,7 +227,8 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
   const makeStageRecordingStream = useCallback((sourceStream: MediaStream) => {
     const videoTrack = sourceStream.getVideoTracks()[0];
     if (!videoTrack) return null;
-    if (!bgUrl && !mirrored) return new MediaStream([videoTrack]);
+    if (!bgUrl) return new MediaStream([videoTrack]);
+
     const canvas = document.createElement("canvas");
     canvas.width = resolution === "1080p" ? 1920 : resolution === "480p" ? 854 : 1280;
     canvas.height = resolution === "1080p" ? 1080 : resolution === "480p" ? 480 : 720;
@@ -284,7 +285,14 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
       }
       videoCompositeRafRef.current = requestAnimationFrame(paint);
     };
-    paint();
+    let paintStarted = false;
+    const startPaint = () => {
+      if (paintStarted) return;
+      paintStarted = true;
+      paint();
+    };
+    video.onloadedmetadata = startPaint;
+    startPaint();
     return canvas.captureStream(Math.min(frameRate, 30));
   }, [bgUrl, frameRate, mirrored, resolution]);
 
@@ -320,6 +328,7 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
       if (rec && rec.state !== "inactive") {
         await new Promise<void>((res) => {
           const prev = rec.onstop; rec.onstop = (ev) => { try { prev?.call(rec, ev); } finally { res(); } };
+          try { rec.requestData(); } catch {}
           try { rec.stop(); } catch { res(); }
         });
       }
@@ -352,25 +361,27 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
       if (cam) {
         if (videoCompositeRafRef.current) cancelAnimationFrame(videoCompositeRafRef.current);
         const videoOnly = makeStageRecordingStream(cam) ?? new MediaStream(cam.getVideoTracks());
-        const recordInput = e.getRecordingInputStream?.();
-        const mixedStream = new MediaStream([
-          ...videoOnly.getVideoTracks(),
-          ...(micOn ? (recordInput?.getAudioTracks() ?? []) : []),
-        ]);
+        const videoTracks = videoOnly.getVideoTracks().filter(track => track.readyState === "live");
+        if (videoTracks.length === 0) throw new Error("Camera video track was not ready");
+        // Store the recorded picture only; the DAW timeline stores audio
+        // separately and export recombines them. This prevents audio-only WebM
+        // blobs when the browser struggles with a mixed canvas+mic recorder.
+        const mixedStream = new MediaStream(videoTracks);
         const mime = [
-          "video/webm;codecs=vp9,opus",
-          "video/webm;codecs=vp8,opus",
+          "video/webm;codecs=vp9",
+          "video/webm;codecs=vp8",
           "video/webm",
-          "video/mp4;codecs=avc1.42E01F,mp4a.40.2",
-          "video/mp4;codecs=avc1,mp4a",
+          "video/mp4;codecs=avc1.42E01F",
+          "video/mp4;codecs=avc1",
           "video/mp4",
         ].find(m => MediaRecorder.isTypeSupported(m)) || "video/webm";
-        const mr = new MediaRecorder(mixedStream, { mimeType: mime, videoBitsPerSecond: 4_500_000, audioBitsPerSecond: 160_000 });
+        const mr = new MediaRecorder(mixedStream, { mimeType: mime, videoBitsPerSecond: 4_500_000 });
         recChunksRef.current = [];
         recTrackIdRef.current = trackId;
         recStartRef.current = startPos;
         recStopRef.current = null;
         mr.ondataavailable = (ev) => { if (ev.data?.size) recChunksRef.current.push(ev.data); };
+        mr.onerror = () => toast.error("Video recorder stopped unexpectedly");
         mr.onstop = () => {
           if (videoCompositeRafRef.current) cancelAnimationFrame(videoCompositeRafRef.current);
           videoCompositeRafRef.current = null;
@@ -382,6 +393,8 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
           const pendingDuration = Math.max(0.1, dur);
           if (blob.size > 0) {
             setVideo(recordedClipId, { blob, mime, durationSec: pendingDuration, participantLabel: "Host" });
+          } else {
+            toast.error("Video recording did not save. Please try again with camera on.");
           }
           updateClip(recordedClipId, { duration: pendingDuration });
           if (!recordedClipId) {
