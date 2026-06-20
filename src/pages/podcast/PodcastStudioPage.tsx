@@ -370,11 +370,11 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
         // blobs when the browser struggles with a mixed canvas+mic recorder.
         const mixedStream = new MediaStream(videoTracks);
         const mime = [
-          "video/webm;codecs=vp9,opus",
-          "video/webm;codecs=vp8,opus",
+          "video/webm;codecs=vp9",
+          "video/webm;codecs=vp8",
           "video/webm",
-          "video/mp4;codecs=avc1.42E01F,mp4a.40.2",
-          "video/mp4;codecs=avc1,mp4a",
+          "video/mp4;codecs=avc1.42E01F",
+          "video/mp4;codecs=avc1",
           "video/mp4",
         ].find(m => MediaRecorder.isTypeSupported(m)) || "video/webm";
         const mr = new MediaRecorder(mixedStream, { mimeType: mime, videoBitsPerSecond: 4_500_000, audioBitsPerSecond: 160_000 });
