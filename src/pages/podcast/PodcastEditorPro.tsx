@@ -61,9 +61,45 @@ export default function PodcastEditorPro({
 }) {
   // Sources: index 0 = main recording. Intro/outro injected as additional sources.
   const [sources, setSources] = useState<EditorSource[]>([initial]);
-  const [clips, setClips] = useState<Clip[]>([
+  const [clips, setClipsRaw] = useState<Clip[]>([
     { id: uid(), srcIdx: 0, in: 0, out: initial.durationMs / 1000 },
   ]);
+  // ---------- undo / redo history ----------
+  const historyRef = useRef<{ past: Clip[][]; future: Clip[][] }>({ past: [], future: [] });
+  const [, forceHist] = useState(0);
+  const setClips = useCallback((updater: Clip[] | ((prev: Clip[]) => Clip[])) => {
+    setClipsRaw((prev) => {
+      const next = typeof updater === "function" ? (updater as (p: Clip[]) => Clip[])(prev) : updater;
+      if (next === prev) return prev;
+      historyRef.current.past.push(prev);
+      if (historyRef.current.past.length > 100) historyRef.current.past.shift();
+      historyRef.current.future = [];
+      forceHist((n) => n + 1);
+      return next;
+    });
+  }, []);
+  const undo = useCallback(() => {
+    const h = historyRef.current;
+    if (!h.past.length) return;
+    setClipsRaw((curr) => {
+      const prev = h.past.pop()!;
+      h.future.push(curr);
+      forceHist((n) => n + 1);
+      return prev;
+    });
+  }, []);
+  const redo = useCallback(() => {
+    const h = historyRef.current;
+    if (!h.future.length) return;
+    setClipsRaw((curr) => {
+      const next = h.future.pop()!;
+      h.past.push(curr);
+      forceHist((n) => n + 1);
+      return next;
+    });
+  }, []);
+  const canUndo = historyRef.current.past.length > 0;
+  const canRedo = historyRef.current.future.length > 0;
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [playhead, setPlayhead] = useState(0); // seconds in timeline
   const [playing, setPlaying] = useState(false);
