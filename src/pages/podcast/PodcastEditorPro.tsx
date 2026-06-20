@@ -120,16 +120,32 @@ export default function PodcastEditorPro({
   const timelineRef = useRef<HTMLDivElement>(null);
 
   /* ---------- derived ---------- */
+  // Layout uses each source's FULL duration so trim handles visibly move the
+  // clip edge inward (not rescale the whole waveform). Playback still uses
+  // trimmed `dur` for timing.
   const segments = useMemo(() => {
-    let t = 0;
+    let t = 0;           // playback time (trimmed)
+    let layoutT = 0;     // layout time (full source widths)
     return clips.map((c) => {
       const dur = Math.max(0, c.out - c.in);
-      const seg = { ...c, dur, startT: t, endT: t + dur };
+      const srcDur = Math.max(0.01, (sources[c.srcIdx]?.durationMs || 0) / 1000);
+      const seg = {
+        ...c,
+        dur,
+        startT: t,
+        endT: t + dur,
+        layoutStart: layoutT,
+        layoutSpan: srcDur,
+      };
       t += dur;
+      layoutT += srcDur;
       return seg;
     });
-  }, [clips]);
+  }, [clips, sources]);
   const totalDur = segments.length ? segments[segments.length - 1].endT : 0;
+  const totalLayout = segments.length
+    ? segments[segments.length - 1].layoutStart + segments[segments.length - 1].layoutSpan
+    : 0;
 
   const activeSeg = useMemo(
     () => segments.find((s) => playhead >= s.startT && playhead < s.endT) || segments[segments.length - 1],
@@ -568,7 +584,7 @@ export default function PodcastEditorPro({
         <Button size="sm" variant="secondary" onClick={undo} disabled={!canUndo} className="gap-1.5 h-8" title="Undo (⌘Z)"><Undo2 className="w-3.5 h-3.5" />Undo</Button>
         <Button size="sm" variant="secondary" onClick={redo} disabled={!canRedo} className="gap-1.5 h-8" title="Redo (⌘⇧Z)"><Redo2 className="w-3.5 h-3.5" />Redo</Button>
         <div className="mx-1 h-6 w-px bg-zinc-800" />
-        <Button size="sm" variant="secondary" onClick={splitAtPlayhead} className="gap-1.5 h-8"><Scissors className="w-3.5 h-3.5" />Split @ playhead</Button>
+        <Button size="sm" variant="secondary" onClick={splitAtPlayhead} className="gap-1.5 h-8"><Scissors className="w-3.5 h-3.5" />Split</Button>
         <Button size="sm" variant="secondary" onClick={deleteSelected} className="gap-1.5 h-8" disabled={!selectedId}><Trash2 className="w-3.5 h-3.5" />Delete</Button>
         <label className="cursor-pointer">
           <input type="file" accept="video/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) addMediaFile(f, "intro"); e.currentTarget.value = ""; }} />
@@ -615,6 +631,7 @@ export default function PodcastEditorPro({
         sources={sources}
         waveforms={waveforms}
         totalDur={totalDur}
+        totalLayout={totalLayout}
         selectedId={selectedId}
         tool={tool}
         playheadPct={playheadPct}
@@ -638,10 +655,10 @@ export default function PodcastEditorPro({
 
 /* ---------------- TimelineView ---------------- */
 
-type Segment = Clip & { dur: number; startT: number; endT: number };
+type Segment = Clip & { dur: number; startT: number; endT: number; layoutStart: number; layoutSpan: number };
 
 function TimelineView({
-  timelineRef, onSeek, segments, sources, waveforms, totalDur,
+  timelineRef, onSeek, segments, sources, waveforms, totalDur, totalLayout,
   selectedId, tool, playheadPct, onClipClick, onTrimEdge, onTrimBegin, fmt,
 }: {
   timelineRef: React.RefObject<HTMLDivElement>;
@@ -650,6 +667,7 @@ function TimelineView({
   sources: EditorSource[];
   waveforms: Record<number, Float32Array>;
   totalDur: number;
+  totalLayout: number;
   selectedId: string | null;
   tool: EditorTool;
   playheadPct: number;
@@ -675,6 +693,8 @@ function TimelineView({
     tool === "trim" ? "cursor-ew-resize" :
     "cursor-pointer";
 
+  const pxPerSec = totalLayout > 0 ? width / totalLayout : 0;
+
   const startEdgeDrag = (
     e: React.PointerEvent,
     segId: string,
@@ -683,7 +703,6 @@ function TimelineView({
     e.stopPropagation();
     e.preventDefault();
     const startX = e.clientX;
-    const pxPerSec = totalDur > 0 ? width / totalDur : 0;
     if (pxPerSec <= 0) return;
     onTrimBegin();
     let lastDelta = 0;
@@ -714,65 +733,88 @@ function TimelineView({
         className={`relative h-28 bg-zinc-950 border border-zinc-800 rounded-md overflow-hidden select-none ${cursor}`}
       >
         {segments.map((s) => {
-          const left = totalDur ? (s.startT / totalDur) * 100 : 0;
-          const w = totalDur ? (s.dur / totalDur) * 100 : 0;
           const isSel = selectedId === s.id;
           const peaks = waveforms[s.srcIdx];
           const src = sources[s.srcIdx];
           const srcDur = (src?.durationMs || 1) / 1000;
-          const offsetRatio = s.in / srcDur;
-          const spanRatio = Math.max(0.0001, (s.out - s.in) / srcDur);
-          const segPx = Math.max(8, Math.floor((w / 100) * width) - 4);
+          // Full-source ghost box (faded), spans the entire source duration in layout px
+          const ghostLeftPct = totalLayout ? (s.layoutStart / totalLayout) * 100 : 0;
+          const ghostWPct = totalLayout ? (srcDur / totalLayout) * 100 : 0;
+          // Active trimmed window inside the ghost
+          const activeLeftPct = totalLayout ? ((s.layoutStart + s.in) / totalLayout) * 100 : 0;
+          const activeWPct = totalLayout ? (s.dur / totalLayout) * 100 : 0;
+          const ghostPx = Math.max(8, Math.floor((ghostWPct / 100) * width));
+          const activePx = Math.max(4, Math.floor((activeWPct / 100) * width) - 4);
           const handleActive = tool === "trim" || isSel;
           return (
-            <div
-              key={s.id}
-              onClick={(e) => onClipClick(s.id, e)}
-              style={{ left: `${left}%`, width: `${w}%` }}
-              className={`absolute top-1 bottom-1 rounded border overflow-hidden ${
-                isSel
-                  ? "border-purple-400 bg-purple-500/15 ring-2 ring-purple-400"
-                  : "border-zinc-700 bg-zinc-900 hover:bg-zinc-800/80"
-              }`}
-              title={`Clip ${fmt(s.startT)} – ${fmt(s.endT)}`}
-            >
-              <div className="absolute inset-0 flex items-center justify-center">
-                {peaks ? (
-                  <WaveformView
-                    peaks={peaks}
-                    width={segPx}
-                    height={96}
-                    color={isSel ? "rgba(192,132,252,0.95)" : "rgba(168,85,247,0.85)"}
-                    offsetRatio={offsetRatio}
-                    spanRatio={spanRatio}
-                  />
-                ) : (
-                  <div className="text-[9px] text-zinc-500">decoding…</div>
+            <div key={s.id}>
+              {/* Faded full-source ghost — shows the trimmed-off areas */}
+              <div
+                style={{ left: `${ghostLeftPct}%`, width: `${ghostWPct}%` }}
+                className="absolute top-1 bottom-1 rounded border border-dashed border-zinc-700/60 bg-zinc-900/30 overflow-hidden pointer-events-none"
+              >
+                {peaks && (
+                  <div className="absolute inset-0 opacity-25">
+                    <WaveformView
+                      peaks={peaks}
+                      width={ghostPx}
+                      height={96}
+                      color="rgba(168,85,247,0.5)"
+                      offsetRatio={0}
+                      spanRatio={1}
+                    />
+                  </div>
                 )}
               </div>
-              <div className="absolute top-0.5 left-1 text-[9px] font-mono text-white/80 bg-black/40 px-1 rounded-sm pointer-events-none">
-                {fmt(s.dur)}
-              </div>
-              {/* Trim drag handles — always present; brighter when trim tool or selected */}
+              {/* Active trimmed clip window on top */}
               <div
-                onPointerDown={(e) => startEdgeDrag(e, s.id, "in")}
-                onClick={(e) => e.stopPropagation()}
-                title="Drag to trim left edge ["
-                className={`absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize flex items-center justify-center ${
-                  handleActive ? "bg-amber-400/80" : "bg-amber-400/30 hover:bg-amber-400/70"
+                onClick={(e) => onClipClick(s.id, e)}
+                style={{ left: `${activeLeftPct}%`, width: `${activeWPct}%` }}
+                className={`absolute top-1 bottom-1 rounded border overflow-hidden ${
+                  isSel
+                    ? "border-purple-400 bg-purple-500/15 ring-2 ring-purple-400"
+                    : "border-zinc-700 bg-zinc-900 hover:bg-zinc-800/80"
                 }`}
+                title={`Clip ${fmt(s.startT)} – ${fmt(s.endT)} (source ${fmt(s.in)}–${fmt(s.out)})`}
               >
-                <span className="text-[10px] font-bold text-black/80 select-none">[</span>
-              </div>
-              <div
-                onPointerDown={(e) => startEdgeDrag(e, s.id, "out")}
-                onClick={(e) => e.stopPropagation()}
-                title="Drag to trim right edge ]"
-                className={`absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize flex items-center justify-center ${
-                  handleActive ? "bg-amber-400/80" : "bg-amber-400/30 hover:bg-amber-400/70"
-                }`}
-              >
-                <span className="text-[10px] font-bold text-black/80 select-none">]</span>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  {peaks ? (
+                    <WaveformView
+                      peaks={peaks}
+                      width={activePx}
+                      height={96}
+                      color={isSel ? "rgba(192,132,252,0.95)" : "rgba(168,85,247,0.85)"}
+                      offsetRatio={s.in / srcDur}
+                      spanRatio={Math.max(0.0001, (s.out - s.in) / srcDur)}
+                    />
+                  ) : (
+                    <div className="text-[9px] text-zinc-500">decoding…</div>
+                  )}
+                </div>
+                <div className="absolute top-0.5 left-1 text-[9px] font-mono text-white/80 bg-black/40 px-1 rounded-sm pointer-events-none">
+                  {fmt(s.dur)}
+                </div>
+                {/* Trim drag handles — drag inward to hide source, outward to reveal */}
+                <div
+                  onPointerDown={(e) => startEdgeDrag(e, s.id, "in")}
+                  onClick={(e) => e.stopPropagation()}
+                  title="Drag to move clip START point"
+                  className={`absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize flex items-center justify-center z-10 ${
+                    handleActive ? "bg-amber-400/90" : "bg-amber-400/40 hover:bg-amber-400/80"
+                  }`}
+                >
+                  <span className="text-[10px] font-bold text-black/80 select-none">[</span>
+                </div>
+                <div
+                  onPointerDown={(e) => startEdgeDrag(e, s.id, "out")}
+                  onClick={(e) => e.stopPropagation()}
+                  title="Drag to move clip END point"
+                  className={`absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize flex items-center justify-center z-10 ${
+                    handleActive ? "bg-amber-400/90" : "bg-amber-400/40 hover:bg-amber-400/80"
+                  }`}
+                >
+                  <span className="text-[10px] font-bold text-black/80 select-none">]</span>
+                </div>
               </div>
             </div>
           );
