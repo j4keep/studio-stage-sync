@@ -59,6 +59,7 @@ import FeedPage from "./pages/FeedPage";
 import LivePodcastLobbyPage from "./pages/podcast/LivePodcastLobbyPage";
 import PodcastStudioPage from "./pages/podcast/PodcastStudioPage";
 import PodcastJoinPage from "./pages/podcast/PodcastJoinPage";
+import PodcastRoomPage from "./pages/podcast/PodcastRoomPage";
 
 import TermsAgreementGate from "./components/TermsAgreementGate";
 import ThemePickerSheet from "./components/ThemePickerSheet";
