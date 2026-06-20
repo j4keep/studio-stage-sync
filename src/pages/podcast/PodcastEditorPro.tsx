@@ -642,7 +642,7 @@ type Segment = Clip & { dur: number; startT: number; endT: number };
 
 function TimelineView({
   timelineRef, onSeek, segments, sources, waveforms, totalDur,
-  selectedId, tool, playheadPct, onClipClick, onTrimEdge, fmt,
+  selectedId, tool, playheadPct, onClipClick, onTrimEdge, onTrimBegin, fmt,
 }: {
   timelineRef: React.RefObject<HTMLDivElement>;
   onSeek: (e: React.MouseEvent<HTMLDivElement>) => void;
@@ -655,6 +655,7 @@ function TimelineView({
   playheadPct: number;
   onClipClick: (segId: string, e: React.MouseEvent<HTMLDivElement>) => void;
   onTrimEdge: (segId: string, edge: "in" | "out", deltaSec: number) => void;
+  onTrimBegin: () => void;
   fmt: (s: number) => string;
 }) {
   const [width, setWidth] = useState(800);
