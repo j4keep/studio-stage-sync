@@ -630,7 +630,7 @@ type Segment = Clip & { dur: number; startT: number; endT: number };
 
 function TimelineView({
   timelineRef, onSeek, segments, sources, waveforms, totalDur,
-  selectedId, tool, playheadPct, onClipClick, fmt,
+  selectedId, tool, playheadPct, onClipClick, onTrimEdge, fmt,
 }: {
   timelineRef: React.RefObject<HTMLDivElement>;
   onSeek: (e: React.MouseEvent<HTMLDivElement>) => void;
@@ -642,6 +642,7 @@ function TimelineView({
   tool: EditorTool;
   playheadPct: number;
   onClipClick: (segId: string, e: React.MouseEvent<HTMLDivElement>) => void;
+  onTrimEdge: (segId: string, edge: "in" | "out", deltaSec: number) => void;
   fmt: (s: number) => string;
 }) {
   const [width, setWidth] = useState(800);
@@ -661,11 +662,37 @@ function TimelineView({
     tool === "trim" ? "cursor-ew-resize" :
     "cursor-pointer";
 
+  const startEdgeDrag = (
+    e: React.PointerEvent,
+    segId: string,
+    edge: "in" | "out",
+  ) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const startX = e.clientX;
+    const pxPerSec = totalDur > 0 ? width / totalDur : 0;
+    if (pxPerSec <= 0) return;
+    let lastDelta = 0;
+    const move = (ev: PointerEvent) => {
+      const dx = ev.clientX - startX;
+      const deltaSec = dx / pxPerSec;
+      const step = deltaSec - lastDelta;
+      lastDelta = deltaSec;
+      if (Math.abs(step) > 0.0005) onTrimEdge(segId, edge, step);
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
+
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between text-[10px] text-zinc-500">
         <span>Timeline · click to seek · tool: <span className="text-purple-300 uppercase">{tool}</span></span>
-        <span>Space: play · Enter/Tab: start · Delete: remove</span>
+        <span>Space: play · Enter/Tab: start · Delete: remove · ⌘Z undo</span>
       </div>
       <div
         ref={timelineRef}
@@ -682,6 +709,7 @@ function TimelineView({
           const offsetRatio = s.in / srcDur;
           const spanRatio = Math.max(0.0001, (s.out - s.in) / srcDur);
           const segPx = Math.max(8, Math.floor((w / 100) * width) - 4);
+          const handleActive = tool === "trim" || isSel;
           return (
             <div
               key={s.id}
@@ -711,12 +739,27 @@ function TimelineView({
               <div className="absolute top-0.5 left-1 text-[9px] font-mono text-white/80 bg-black/40 px-1 rounded-sm pointer-events-none">
                 {fmt(s.dur)}
               </div>
-              {tool === "trim" && (
-                <>
-                  <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-amber-400/70 cursor-ew-resize" />
-                  <div className="absolute right-0 top-0 bottom-0 w-1.5 bg-amber-400/70 cursor-ew-resize" />
-                </>
-              )}
+              {/* Trim drag handles — always present; brighter when trim tool or selected */}
+              <div
+                onPointerDown={(e) => startEdgeDrag(e, s.id, "in")}
+                onClick={(e) => e.stopPropagation()}
+                title="Drag to trim left edge ["
+                className={`absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize flex items-center justify-center ${
+                  handleActive ? "bg-amber-400/80" : "bg-amber-400/30 hover:bg-amber-400/70"
+                }`}
+              >
+                <span className="text-[10px] font-bold text-black/80 select-none">[</span>
+              </div>
+              <div
+                onPointerDown={(e) => startEdgeDrag(e, s.id, "out")}
+                onClick={(e) => e.stopPropagation()}
+                title="Drag to trim right edge ]"
+                className={`absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize flex items-center justify-center ${
+                  handleActive ? "bg-amber-400/80" : "bg-amber-400/30 hover:bg-amber-400/70"
+                }`}
+              >
+                <span className="text-[10px] font-bold text-black/80 select-none">]</span>
+              </div>
             </div>
           );
         })}
