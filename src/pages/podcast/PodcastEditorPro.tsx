@@ -120,32 +120,21 @@ export default function PodcastEditorPro({
   const timelineRef = useRef<HTMLDivElement>(null);
 
   /* ---------- derived ---------- */
-  // Layout uses each source's FULL duration so trim handles visibly move the
-  // clip edge inward (not rescale the whole waveform). Playback still uses
-  // trimmed `dur` for timing.
   const segments = useMemo(() => {
-    let t = 0;           // playback time (trimmed)
-    let layoutT = 0;     // layout time (full source widths)
+    let t = 0;
     return clips.map((c) => {
       const dur = Math.max(0, c.out - c.in);
-      const srcDur = Math.max(0.01, (sources[c.srcIdx]?.durationMs || 0) / 1000);
       const seg = {
         ...c,
         dur,
         startT: t,
         endT: t + dur,
-        layoutStart: layoutT,
-        layoutSpan: srcDur,
       };
       t += dur;
-      layoutT += srcDur;
       return seg;
     });
-  }, [clips, sources]);
+  }, [clips]);
   const totalDur = segments.length ? segments[segments.length - 1].endT : 0;
-  const totalLayout = segments.length
-    ? segments[segments.length - 1].layoutStart + segments[segments.length - 1].layoutSpan
-    : 0;
 
   const activeSeg = useMemo(
     () => segments.find((s) => playhead >= s.startT && playhead < s.endT) || segments[segments.length - 1],
@@ -360,40 +349,42 @@ export default function PodcastEditorPro({
   }, [sources, waveforms]);
 
   /* ---------- tool-driven clip click ---------- */
-  const splitClipAt = useCallback((segId: string, withinTimelineT: number) => {
+  const splitClipAtSourceTime = useCallback((segId: string, sourceTime: number) => {
+    let didSplit = false;
     setClips((cs) => {
       const i = cs.findIndex((c) => c.id === segId);
       if (i < 0) return cs;
-      // need segment startT/in to map timeline t -> source t
-      let acc = 0;
-      for (let k = 0; k < i; k++) acc += Math.max(0, cs[k].out - cs[k].in);
       const orig = cs[i];
-      const within = orig.in + (withinTimelineT - acc);
+      const within = sourceTime;
       if (within <= orig.in + 0.05 || within >= orig.out - 0.05) return cs;
       const a: Clip = { ...orig, id: uid(), out: within };
       const b: Clip = { ...orig, id: uid(), in: within };
       const next = [...cs];
       next.splice(i, 1, a, b);
+      didSplit = true;
       return next;
     });
-  }, []);
+    return didSplit;
+  }, [setClips]);
 
   const handleClipClick = (segId: string, e: React.MouseEvent<HTMLDivElement>) => {
     e.stopPropagation();
-    const el = timelineRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const ratio = (e.clientX - rect.left) / rect.width;
-    const t = ratio * totalDur;
+    const seg = segments.find((s) => s.id === segId);
+    if (!seg) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / Math.max(1, rect.width)));
+    const sourceTime = seg.in + ratio * seg.dur;
+    const timelineTime = seg.startT + ratio * seg.dur;
     if (tool === "eraser") {
       setClips((cs) => cs.filter((c) => c.id !== segId));
       setSelectedId(null);
       toast({ title: "Clip erased" });
     } else if (tool === "scissors") {
-      splitClipAt(segId, t);
-      toast({ title: "Clip split" });
+      const didSplit = splitClipAtSourceTime(segId, sourceTime);
+      toast({ title: didSplit ? "Clip split" : "Click inside the clip, away from the edge" });
     } else {
       setSelectedId(segId);
+      seekTo(timelineTime);
     }
   };
 
@@ -631,7 +622,6 @@ export default function PodcastEditorPro({
         sources={sources}
         waveforms={waveforms}
         totalDur={totalDur}
-        totalLayout={totalLayout}
         selectedId={selectedId}
         tool={tool}
         playheadPct={playheadPct}
