@@ -214,11 +214,12 @@ const ProtectedRoutes = () => {
         <Route path="/helpdesk" element={<HelpDeskPage />} />
         <Route path="/ask-jhi" element={<AskJhiPage />} />
         <Route path="/tv" element={<TvHomePage />} />
-        <Route path="/tv/podcast" element={<PodcastStudioPage />} />
+        <Route path="/tv/podcast" element={<LivePodcastLobbyPage />} />
         <Route path="/tv/podcast/join/:code" element={<PodcastJoinPage />} />
-        <Route path="/tv/podcast/:episodeId" element={<PodcastStudioPage />} />
-        <Route path="/tv/podcast/:episodeId/edit" element={<PodcastStudioPage />} />
+        <Route path="/tv/podcast/:episodeId" element={<PodcastRoomPage />} />
+        <Route path="/tv/podcast/:episodeId/edit" element={<PodcastRoomPage />} />
         <Route path="/tv/podcast/:episodeId/recording/:recordingId/editor" element={<PodcastStudioPage />} />
+        <Route path="/podcast/room/:sessionId" element={<PodcastRoomPage />} />
         <Route path="/circle" element={<Navigate to="/" replace />} />
         <Route path="/circle/*" element={<Navigate to="/" replace />} />
         <Route path="/m/*" element={<Navigate to="/" replace />} />
