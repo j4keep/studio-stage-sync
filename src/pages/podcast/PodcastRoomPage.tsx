@@ -349,8 +349,8 @@ const PodcastRoomPage = () => {
               REC {fmtTime(elapsed)}
             </span>
           )}
-          <Button size="sm" variant="secondary" onClick={copyInvite} className="gap-1.5">
-            <Copy className="w-3.5 h-3.5" /> Invite
+          <Button size="sm" variant="secondary" onClick={openInvite} className="gap-1.5">
+            <Share2 className="w-3.5 h-3.5" /> Invite
           </Button>
         </div>
       </header>
