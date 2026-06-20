@@ -321,6 +321,7 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
       if (rec && rec.state !== "inactive") {
         await new Promise<void>((res) => {
           const prev = rec.onstop; rec.onstop = (ev) => { try { prev?.call(rec, ev); } finally { res(); } };
+          try { rec.requestData(); } catch {}
           try { rec.stop(); } catch { res(); }
         });
       }
@@ -373,6 +374,7 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
         recStartRef.current = startPos;
         recStopRef.current = null;
         mr.ondataavailable = (ev) => { if (ev.data?.size) recChunksRef.current.push(ev.data); };
+        mr.onerror = () => toast.error("Video recorder stopped unexpectedly");
         mr.onstop = () => {
           if (videoCompositeRafRef.current) cancelAnimationFrame(videoCompositeRafRef.current);
           videoCompositeRafRef.current = null;
