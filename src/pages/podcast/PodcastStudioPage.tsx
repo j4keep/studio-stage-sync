@@ -283,9 +283,14 @@ export default function PodcastStudioPage({ activeSessionCode }: { activeSession
       }
       videoCompositeRafRef.current = requestAnimationFrame(paint);
     };
-    video.onloadedmetadata = () => paint();
-    if (video.readyState >= 1) paint();
-    else paint();
+    let paintStarted = false;
+    const startPaint = () => {
+      if (paintStarted) return;
+      paintStarted = true;
+      paint();
+    };
+    video.onloadedmetadata = startPaint;
+    startPaint();
     return canvas.captureStream(Math.min(frameRate, 30));
   }, [bgUrl, frameRate, mirrored, resolution]);
 
