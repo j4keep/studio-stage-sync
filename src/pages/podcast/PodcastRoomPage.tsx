@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
-  Mic, MicOff, Video, VideoOff, MonitorUp, PhoneOff, Copy, Circle, Square,
+  Mic, MicOff, Video, VideoOff, MonitorUp, PhoneOff, Share2, Circle, Square,
   Pause, Play, Users, MessageSquare, FolderDown, Settings as SettingsIcon,
   Download, Trash2, Edit3, Check, ArrowLeft, Wifi, AlertTriangle, RotateCcw,
+  Shield, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +13,8 @@ import PodcastEditorPro from "./PodcastEditorPro";
 import { usePodcastLiveRoom, type RoomParticipant } from "./usePodcastLiveRoom";
 import { PodcastRecovery, type RecoverySessionRow } from "./podcastRecoveryStore";
 import { supabase } from "@/integrations/supabase/client";
+import PodcastInviteSheet, { type PodcastSecurity } from "./PodcastInviteSheet";
+import { usePodcastDoorman } from "./usePodcastDoorman";
 
 type LocalRecording = {
   id: string;
