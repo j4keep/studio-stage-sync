@@ -732,24 +732,6 @@ function TimelineView({
           const handleActive = tool === "trim" || isSel;
           return (
             <div key={s.id}>
-              {/* Faded full-source ghost — shows the trimmed-off areas */}
-              <div
-                style={{ left: `${ghostLeftPct}%`, width: `${ghostWPct}%` }}
-                className="absolute top-1 bottom-1 rounded border border-dashed border-zinc-700/60 bg-zinc-900/30 overflow-hidden pointer-events-none"
-              >
-                {peaks && (
-                  <div className="absolute inset-0 opacity-25">
-                    <WaveformView
-                      peaks={peaks}
-                      width={ghostPx}
-                      height={96}
-                      color="rgba(168,85,247,0.5)"
-                      offsetRatio={0}
-                      spanRatio={1}
-                    />
-                  </div>
-                )}
-              </div>
               {/* Active trimmed clip window on top */}
               <div
                 onClick={(e) => onClipClick(s.id, e)}
