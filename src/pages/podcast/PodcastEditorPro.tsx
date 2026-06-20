@@ -343,7 +343,9 @@ export default function PodcastEditorPro({
       }
 
       const data = await ffmpeg.readFile(outName);
-      const blob = new Blob([data as Uint8Array], { type: mime });
+      const u8 = data as Uint8Array;
+      const ab = u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength) as ArrayBuffer;
+      const blob = new Blob([ab], { type: mime });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
