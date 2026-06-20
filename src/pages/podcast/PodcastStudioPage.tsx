@@ -6,7 +6,7 @@ import {
   Users, MessageCircle, Sparkles, Type, Music, Settings as SettingsIcon, HelpCircle,
   Home, ChevronUp, ChevronDown, Circle, Square, Link as LinkIcon, Upload, X,
   Scissors, MousePointer2, ZoomIn, ZoomOut, Download, Pencil, Eraser, Save,
-  Play, Pause, SkipBack, SkipForward,
+  Play, Pause, SkipBack, SkipForward, ArrowLeft,
 } from "lucide-react";
 import { DawEngine } from "@/wstudio/daw/engine/DawEngine";
 import { computePeaks } from "@/wstudio/daw/engine/Peaks";
@@ -271,8 +271,8 @@ export default function PodcastStudioPage() {
       {/* Top minimal header */}
       <header className="h-12 shrink-0 flex items-center justify-between px-3 border-b border-neutral-900">
         <div className="flex items-center gap-2 min-w-0">
-          <button onClick={() => navigate("/tv/podcast")} className="p-1.5 rounded hover:bg-neutral-900" title="Lobby">
-            <Home className="w-4 h-4 text-neutral-300" />
+          <button onClick={() => navigate("/tv/podcast")} className="p-1.5 rounded hover:bg-neutral-900" title="Back to Podcast">
+            <ArrowLeft className="w-4 h-4 text-neutral-300" />
           </button>
           <input
             value={projectName}
