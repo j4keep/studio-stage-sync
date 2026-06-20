@@ -528,59 +528,22 @@ export default function PodcastEditorPro({
         </div>
       </div>
 
-      {/* Timeline */}
-      <div className="space-y-1">
-        <div className="flex items-center justify-between text-[10px] text-zinc-500">
-          <span>Timeline · click to seek · click clip to select</span>
-          <span>Space: play · Enter/Tab: start · Delete: remove</span>
-        </div>
-        <div
-          ref={timelineRef}
-          onClick={onTimelineSeek}
-          className="relative h-24 bg-zinc-950 border border-zinc-800 rounded-md overflow-hidden cursor-pointer select-none"
-        >
-          {/* segments */}
-          {segments.map((s) => {
-            const left = totalDur ? (s.startT / totalDur) * 100 : 0;
-            const width = totalDur ? (s.dur / totalDur) * 100 : 0;
-            const isSel = selectedId === s.id;
-            const wav = waveforms[s.srcIdx];
-            const src = sources[s.srcIdx];
-            const srcDur = (src?.durationMs || 1) / 1000;
-            const startSample = wav ? Math.floor((s.in / srcDur) * wav.length) : 0;
-            const endSample = wav ? Math.floor((s.out / srcDur) * wav.length) : 0;
-            const slice = wav ? wav.slice(startSample, endSample) : [];
-            return (
-              <div
-                key={s.id}
-                onClick={(e) => { e.stopPropagation(); setSelectedId(s.id); }}
-                style={{ left: `${left}%`, width: `${width}%` }}
-                className={`absolute top-1 bottom-1 rounded border ${isSel ? "border-purple-400 bg-purple-500/25 ring-2 ring-purple-400" : "border-zinc-700 bg-zinc-800/60 hover:bg-zinc-800"}`}
-                title={`Clip ${fmt(s.startT)} – ${fmt(s.endT)}`}
-              >
-                <div className="absolute inset-0 flex items-center px-0.5 gap-[1px] overflow-hidden">
-                  {slice.length > 0 ? (
-                    slice.filter((_, i) => i % Math.max(1, Math.floor(slice.length / 80)) === 0).map((v, i) => (
-                      <div key={i} className="flex-1 bg-purple-400/70 rounded-sm" style={{ height: `${Math.max(4, v * 90)}%` }} />
-                    ))
-                  ) : (
-                    <div className="text-[9px] text-zinc-500 px-1">decoding…</div>
-                  )}
-                </div>
-                <div className="absolute top-0.5 left-1 text-[9px] font-mono text-white/80 bg-black/40 px-1 rounded-sm">
-                  {fmt(s.dur)}
-                </div>
-              </div>
-            );
-          })}
-          {/* playhead */}
-          <div className="absolute top-0 bottom-0 w-px bg-red-500 pointer-events-none" style={{ left: `${playheadPct}%` }}>
-            <div className="absolute -top-1 -left-1.5 w-3 h-3 rotate-45 bg-red-500" />
-          </div>
-        </div>
-        <div className="flex justify-between text-[9px] text-zinc-600 font-mono">
-          <span>0:00</span><span>{fmt(totalDur)}</span>
-        </div>
+      {/* Timeline — uses real DAW WaveformView */}
+      <TimelineView
+        timelineRef={timelineRef}
+        onSeek={onTimelineSeek}
+        segments={segments}
+        sources={sources}
+        waveforms={waveforms}
+        totalDur={totalDur}
+        selectedId={selectedId}
+        tool={tool}
+        playheadPct={playheadPct}
+        onClipClick={handleClipClick}
+        fmt={fmt}
+      />
+      <div className="flex justify-between text-[9px] text-zinc-600 font-mono">
+        <span>0:00</span><span>{fmt(totalDur)}</span>
       </div>
 
       {exporting && (
