@@ -464,7 +464,15 @@ const PodcastRoomPage = () => {
           onDelete={deleteRec}
           onRename={renameRec}
           onEdit={(r: LocalRecording) => setEditing(r)}
+          isHost={isHost}
+          onMuteParticipant={(name: string) => { doorman.forceMute(name); toast({ title: `Muted ${name}` }); }}
+          onKickParticipant={(name: string) => {
+            if (!confirm(`Remove ${name} from the podcast?`)) return;
+            doorman.kick(name, "Removed by host");
+            toast({ title: `Removed ${name}` });
+          }}
         />
+
       </div>
 
       <PodcastControlBar
