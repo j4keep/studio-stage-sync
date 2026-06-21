@@ -78,7 +78,7 @@ function buildCompositeStream(getParticipants: () => RoomParticipant[]): {
   stream: MediaStream;
   stop: () => void;
 } {
-  const W = 1280, H = 720;
+  const W = 1920, H = 1080;
   const canvas = document.createElement("canvas");
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext("2d")!;
