@@ -776,10 +776,10 @@ const PodcastRoomPage = () => {
       {isHost && doorman.pending.length > 0 && (
         <div className="fixed top-16 right-3 z-50 w-80 max-w-[calc(100vw-1.5rem)] space-y-2">
           {doorman.pending.map((req) => (
-            <div key={req.reqId} className="rounded-xl bg-zinc-900 border border-purple-500/50 shadow-xl shadow-purple-900/30 p-3">
+            <div key={req.reqId} className="rounded-xl bg-zinc-900 border border-primary/50 shadow-xl shadow-primary/30 p-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="text-xs uppercase tracking-wider text-purple-300 mb-0.5 flex items-center gap-1"><Shield className="w-3 h-3" /> Waiting room</div>
+                  <div className="text-xs uppercase tracking-wider text-primary mb-0.5 flex items-center gap-1"><Shield className="w-3 h-3" /> Waiting room</div>
                   <div className="text-sm font-medium truncate">{req.name} wants to join</div>
                   {security.visibility === "password" && (
                     <div className={`text-[11px] mt-0.5 ${doorman.validatePassword(req.password) ? "text-emerald-400" : "text-red-400"}`}>
@@ -845,8 +845,8 @@ const GuestWaitingOverlay = ({
 }) => (
   <div className="fixed inset-0 z-[80] bg-zinc-950/95 backdrop-blur grid place-items-center p-4">
     <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-center">
-      <div className="w-14 h-14 rounded-full bg-purple-500/15 border border-purple-500/30 grid place-items-center mx-auto mb-3">
-        <Shield className="w-6 h-6 text-purple-300" />
+      <div className="w-14 h-14 rounded-full bg-primary/15 border border-primary/30 grid place-items-center mx-auto mb-3">
+        <Shield className="w-6 h-6 text-primary" />
       </div>
       {status === "ended" ? (
         <>
@@ -883,10 +883,10 @@ const GuestWaitingOverlay = ({
           <p className="text-sm text-zinc-400 mb-4">
             Hi {name}, your request was sent. The host will let you in shortly.
           </p>
-          <div className="flex items-center justify-center gap-2 text-xs text-purple-300 mb-4">
-            <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
-            <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse [animation-delay:150ms]" />
-            <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse [animation-delay:300ms]" />
+          <div className="flex items-center justify-center gap-2 text-xs text-primary mb-4">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse [animation-delay:150ms]" />
+            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse [animation-delay:300ms]" />
           </div>
           <Button variant="secondary" onClick={onLeave} className="w-full">Cancel</Button>
         </>
@@ -967,7 +967,7 @@ const PodcastVideoGrid = ({
 
 const QUALITY_STYLE: Record<RoomParticipant["quality"], { color: string; label: string }> = {
   excellent: { color: "text-emerald-400", label: "Excellent" },
-  good: { color: "text-teal-300", label: "Good" },
+  good: { color: "text-primary", label: "Good" },
   weak: { color: "text-amber-400", label: "Weak" },
   poor: { color: "text-red-400", label: "Poor" },
   unknown: { color: "text-zinc-400", label: "—" },
@@ -1020,7 +1020,7 @@ const ParticipantTile = ({ p, isRecording, bg }: { p: RoomParticipant; isRecordi
 
       <div className="absolute top-2 left-2 flex items-center gap-1.5">
         <span className="text-xs px-1.5 py-0.5 rounded bg-black/60 border border-white/10">{p.name}{p.isLocal ? " (you)" : ""}</span>
-        {p.isHost && <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/80">host</span>}
+        {p.isHost && <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/80">host</span>}
       </div>
 
       <div className="absolute top-2 right-2 flex items-center gap-1">
@@ -1034,7 +1034,7 @@ const ParticipantTile = ({ p, isRecording, bg }: { p: RoomParticipant; isRecordi
 
       {p.micOn && (
         <div className="absolute bottom-2 left-2 right-2 h-1.5 rounded-full bg-black/40 overflow-hidden">
-          <div className="h-full bg-gradient-to-r from-teal-400 to-purple-500 transition-[width] duration-75"
+          <div className="h-full bg-gradient-to-r from-primary/60 to-primary transition-[width] duration-75"
                style={{ width: `${Math.min(100, Math.round(p.level * 140))}%` }} />
         </div>
       )}
@@ -1107,7 +1107,7 @@ const PodcastControlBar = ({
 );
 
 const CtrlBtn = ({ children, onClick, active, label, className = "" }: any) => (
-  <button onClick={onClick} title={label} aria-label={label} className={`w-12 h-12 rounded-full grid place-items-center border ${active ? "bg-purple-500/20 border-purple-500 text-purple-200" : "bg-zinc-900 border-zinc-800 hover:bg-zinc-800"} ${className}`}>
+  <button onClick={onClick} title={label} aria-label={label} className={`w-12 h-12 rounded-full grid place-items-center border ${active ? "bg-primary/20 border-primary text-primary" : "bg-zinc-900 border-zinc-800 hover:bg-zinc-800"} ${className}`}>
     {children}
   </button>
 );
@@ -1129,15 +1129,15 @@ const PodcastSidebar = ({
           {participants.map((p: RoomParticipant) => (
             <li key={p.id} className="flex items-center justify-between p-2 rounded-lg bg-zinc-900 border border-zinc-800">
               <div className="flex items-center gap-2 min-w-0">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-teal-400 grid place-items-center text-xs font-bold shrink-0">{p.name[0]?.toUpperCase()}</div>
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary/60 grid place-items-center text-xs font-bold shrink-0">{p.name[0]?.toUpperCase()}</div>
                 <div className="min-w-0">
                   <div className="text-sm truncate">{p.name}{p.isLocal ? " (you)" : ""}</div>
                   <div className="text-[10px] uppercase tracking-wide text-zinc-500">{p.isHost ? "host" : "guest"} · <span className={QUALITY_STYLE[p.quality].color}>{QUALITY_STYLE[p.quality].label}</span></div>
                 </div>
               </div>
               <div className="flex items-center gap-1 text-xs shrink-0">
-                {p.micOn ? <Mic className="w-3.5 h-3.5 text-teal-300" /> : <MicOff className="w-3.5 h-3.5 text-red-400" />}
-                {p.camOn ? <Video className="w-3.5 h-3.5 text-teal-300" /> : <VideoOff className="w-3.5 h-3.5 text-red-400" />}
+                {p.micOn ? <Mic className="w-3.5 h-3.5 text-primary" /> : <MicOff className="w-3.5 h-3.5 text-red-400" />}
+                {p.camOn ? <Video className="w-3.5 h-3.5 text-primary" /> : <VideoOff className="w-3.5 h-3.5 text-red-400" />}
                 {isHost && !p.isLocal && (
                   <>
                     <button
@@ -1169,7 +1169,7 @@ const PodcastSidebar = ({
           <div className="flex-1 space-y-2 overflow-y-auto">
             {chat.length === 0 && <p className="text-xs text-zinc-500">No messages yet.</p>}
             {chat.map((m: any) => (
-              <div key={m.id} className="text-sm"><span className="text-purple-300 font-medium">{m.from}: </span>{m.text}</div>
+              <div key={m.id} className="text-sm"><span className="text-primary font-medium">{m.from}: </span>{m.text}</div>
             ))}
           </div>
           <form onSubmit={(e) => { e.preventDefault(); sendChat(); }} className="mt-2 flex gap-2">
@@ -1186,7 +1186,7 @@ const PodcastSidebar = ({
 );
 
 const TabBtn = ({ children, active, onClick }: any) => (
-  <button onClick={onClick} className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs border-b-2 ${active ? "border-purple-500 text-white" : "border-transparent text-zinc-500 hover:text-zinc-300"}`}>
+  <button onClick={onClick} className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs border-b-2 ${active ? "border-primary text-white" : "border-transparent text-zinc-500 hover:text-zinc-300"}`}>
     {children}
   </button>
 );
@@ -1232,12 +1232,12 @@ const ScheduledGateOverlay = ({
   return (
     <div className="fixed inset-0 z-[85] bg-zinc-950/95 backdrop-blur grid place-items-center p-4">
       <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-center">
-        <div className="w-14 h-14 rounded-full bg-purple-500/15 border border-purple-500/30 grid place-items-center mx-auto mb-3">
-          <Shield className="w-6 h-6 text-purple-300" />
+        <div className="w-14 h-14 rounded-full bg-primary/15 border border-primary/30 grid place-items-center mx-auto mb-3">
+          <Shield className="w-6 h-6 text-primary" />
         </div>
         <h2 className="text-lg font-semibold mb-1">{title}</h2>
         <p className="text-sm text-zinc-400 mb-4">{body}</p>
-        <div className="text-xs uppercase tracking-wider text-purple-300 mb-1">{session.title}</div>
+        <div className="text-xs uppercase tracking-wider text-primary mb-1">{session.title}</div>
         {gate.kind === "too-early" && (
           <div className="text-xs text-zinc-400 mb-4">Starts in ~{gate.minutesUntil} min</div>
         )}
@@ -1330,10 +1330,10 @@ const WToolsPanel = ({ recordings, onDownload, onDelete, onRename, onEdit }: any
       <section className="rounded-lg bg-zinc-900 border border-zinc-800 p-3">
         <p className="text-[10px] uppercase tracking-wider text-zinc-500 mb-2 flex items-center gap-1.5"><Wand2 className="w-3 h-3" /> Audio effects</p>
         <label className="flex items-center justify-between py-1.5 text-xs"><span>Noise reduction</span>
-          <input type="checkbox" checked={nr} onChange={(e) => setNr(e.target.checked)} className="accent-purple-500" />
+          <input type="checkbox" checked={nr} onChange={(e) => setNr(e.target.checked)} className="accent-primary" />
         </label>
         <label className="flex items-center justify-between py-1.5 text-xs"><span>Echo cancellation</span>
-          <input type="checkbox" checked={aec} onChange={(e) => setAec(e.target.checked)} className="accent-purple-500" />
+          <input type="checkbox" checked={aec} onChange={(e) => setAec(e.target.checked)} className="accent-primary" />
         </label>
         <div className="mt-2">
           <label className="text-[10px] uppercase tracking-wider text-zinc-500 block mb-1">AI voice preset</label>
