@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import PodcastEditorPro from "./PodcastEditorPro";
 import { usePodcastLiveRoom, type RoomParticipant } from "./usePodcastLiveRoom";
-import { PodcastRecovery, PodcastFinals, type RecoverySessionRow, type FinalRecording } from "./podcastRecoveryStore";
+import { PodcastRecovery, PodcastFinals, type RecoverySessionRow } from "./podcastRecoveryStore";
 import { supabase } from "@/integrations/supabase/client";
 import PodcastInviteSheet, { type PodcastSecurity } from "./PodcastInviteSheet";
 import { usePodcastDoorman } from "./usePodcastDoorman";
