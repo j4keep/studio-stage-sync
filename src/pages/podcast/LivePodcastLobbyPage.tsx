@@ -79,6 +79,9 @@ const LivePodcastLobbyPage = () => {
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
   const [busyRecording, setBusyRecording] = useState<string | null>(null);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [scheduleStartNow, setScheduleStartNow] = useState(false);
+  const [editingSession, setEditingSession] = useState<ScheduledPodcastSession | null>(null);
 
   const load = async () => {
     if (!user) return;
