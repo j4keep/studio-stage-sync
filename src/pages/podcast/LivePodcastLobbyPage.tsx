@@ -412,6 +412,7 @@ const LivePodcastLobbyPage = () => {
         hostId={user?.id ?? null}
         hostName={user?.user_metadata?.display_name || user?.email?.split("@")[0] || "Host"}
         editing={editingSession}
+        initialStartNow={scheduleStartNow}
         onSaved={handleScheduleSaved}
       />
     </div>
