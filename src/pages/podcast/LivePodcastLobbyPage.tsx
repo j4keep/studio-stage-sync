@@ -39,6 +39,7 @@ import {
 } from "./podcastSessionStore";
 import { PodcastFinals, type FinalRecording } from "./podcastRecoveryStore";
 import PodcastEditorPro from "./PodcastEditorPro";
+import { WheuatTv } from "@/pages/wheuat-tv/wheuatTvStore";
 
 type Episode = {
   id: string;
@@ -489,6 +490,16 @@ const LivePodcastLobbyPage = () => {
                   hostName: editingLocal.hostName,
                 });
                 await loadLocalFinals();
+              }}
+              onPublishToTv={async (blob, mime, ext) => {
+                await WheuatTv.add({
+                  kind: "podcast",
+                  title: editingLocal.title,
+                  uploaderId: user?.id ?? "anon",
+                  uploaderName: user?.user_metadata?.display_name || user?.email?.split("@")[0] || editingLocal.hostName || "Host",
+                  blob, mime, ext,
+                  durationMs: editingLocal.durationMs,
+                });
               }}
             />
           </div>

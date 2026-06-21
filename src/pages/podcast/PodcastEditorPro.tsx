@@ -56,10 +56,12 @@ export default function PodcastEditorPro({
   initial,
   onClose,
   onSaveToProject,
+  onPublishToTv,
 }: {
   initial: EditorSource;
   onClose: () => void;
   onSaveToProject?: (blob: Blob, mime: string, ext: string) => Promise<void> | void;
+  onPublishToTv?: (blob: Blob, mime: string, ext: string) => Promise<void> | void;
 }) {
   // Sources: index 0 = main recording. Intro/outro injected as additional sources.
   const [sources, setSources] = useState<EditorSource[]>([initial]);
@@ -386,9 +388,10 @@ export default function PodcastEditorPro({
   };
 
   /* ---------- export with ffmpeg.wasm ---------- */
-  const exportFinal = async (mode: "download" | "save" = "download") => {
+  const exportFinal = async (mode: "download" | "save" | "publish" = "download") => {
     if (!clips.length) { toast({ title: "Nothing to export" }); return; }
     if (mode === "save" && !onSaveToProject) { toast({ title: "Save not available here" }); return; }
+    if (mode === "publish" && !onPublishToTv) { toast({ title: "Publish not available here" }); return; }
     setExporting(true);
     setExportProgress(0);
 
@@ -406,6 +409,9 @@ export default function PodcastEditorPro({
         if (mode === "save" && onSaveToProject) {
           await onSaveToProject(src0.blob, mime, ext);
           toast({ title: "Saved to Project" });
+        } else if (mode === "publish" && onPublishToTv) {
+          await onPublishToTv(src0.blob, mime, ext);
+          toast({ title: "Published to WHEUAT.TV" });
         } else {
           const url = URL.createObjectURL(src0.blob);
           const a = document.createElement("a"); a.href = url; a.download = `wstudio-podcast.${ext}`;
@@ -513,6 +519,9 @@ export default function PodcastEditorPro({
       if (mode === "save" && onSaveToProject) {
         await onSaveToProject(blob, mime, ext);
         toast({ title: "Saved to Project", description: "Edited episode is in your Project library." });
+      } else if (mode === "publish" && onPublishToTv) {
+        await onPublishToTv(blob, mime, ext);
+        toast({ title: "Published to WHEUAT.TV", description: "Live on the TV feed now." });
       } else {
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
@@ -634,7 +643,13 @@ export default function PodcastEditorPro({
             {exporting ? `Saving… ${exportProgress}%` : "Save to Project"}
           </Button>
         )}
-        <Button size="sm" onClick={() => exportFinal("download")} disabled={exporting} className={`${onSaveToProject ? "" : "ml-auto"} bg-purple-600 hover:bg-purple-500 gap-1.5 h-8`}>
+        {onPublishToTv && (
+          <Button size="sm" onClick={() => exportFinal("publish")} disabled={exporting} className={`${onSaveToProject ? "" : "ml-auto"} bg-sky-600 hover:bg-sky-500 gap-1.5 h-8`}>
+            {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Film className="w-3.5 h-3.5" />}
+            {exporting ? `Publishing… ${exportProgress}%` : "Publish to WHEUAT.TV"}
+          </Button>
+        )}
+        <Button size="sm" onClick={() => exportFinal("download")} disabled={exporting} className={`${(onSaveToProject || onPublishToTv) ? "" : "ml-auto"} bg-purple-600 hover:bg-purple-500 gap-1.5 h-8`}>
           {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
           {exporting ? `Exporting… ${exportProgress}%` : "Export"}
         </Button>
