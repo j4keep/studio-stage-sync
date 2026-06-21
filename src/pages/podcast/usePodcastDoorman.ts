@@ -44,6 +44,7 @@ export function usePodcastDoorman({ sessionId, isHost, displayName, security }: 
     requiresPassword: false,
   });
   const [rejectReason, setRejectReason] = useState<string | null>(null);
+  const [forceMuteTick, setForceMuteTick] = useState(0);
 
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const subscribedRef = useRef(false);
@@ -52,6 +53,8 @@ export function usePodcastDoorman({ sessionId, isHost, displayName, security }: 
 
   const secRef = useRef(security);
   useEffect(() => { secRef.current = security; }, [security]);
+  const nameRef = useRef(displayName);
+  useEffect(() => { nameRef.current = displayName; }, [displayName]);
 
   const send = useCallback((payload: OutMsg) => {
     const ch = channelRef.current;
@@ -118,6 +121,13 @@ export function usePodcastDoorman({ sessionId, isHost, displayName, security }: 
           setStatus("ended");
           setRejectReason(data.reason || "Host ended the session");
         }
+        if (data.type === "kicked" && data.target === nameRef.current) {
+          setStatus("ended");
+          setRejectReason(data.reason || "Removed by host");
+        }
+        if (data.type === "force-mute" && data.target === nameRef.current) {
+          setForceMuteTick((t) => t + 1);
+        }
       }
     });
 
@@ -182,13 +192,15 @@ export function usePodcastDoorman({ sessionId, isHost, displayName, security }: 
     send({ type: "ended", reason: reason || "Host ended the session" });
   }, [isHost, send]);
 
-  // host-side auto-accept for public rooms
-  useEffect(() => {
+  const forceMute = useCallback((targetName: string) => {
     if (!isHost) return;
-    if (secRef.current?.visibility !== "public") return;
-    if (pending.length === 0) return;
-    pending.forEach((p) => decide(p.reqId, true));
-  }, [pending, isHost, decide]);
+    send({ type: "force-mute", target: targetName });
+  }, [isHost, send]);
+
+  const kick = useCallback((targetName: string, reason?: string) => {
+    if (!isHost) return;
+    send({ type: "kicked", target: targetName, reason: reason || "Removed by host" });
+  }, [isHost, send]);
 
   const validatePassword = useCallback((submitted?: string) => {
     const sec = secRef.current;
@@ -196,15 +208,34 @@ export function usePodcastDoorman({ sessionId, isHost, displayName, security }: 
     return (submitted || "") === sec.password;
   }, []);
 
+  // host-side auto-accept based on admission mode
+  useEffect(() => {
+    if (!isHost) return;
+    const sec = secRef.current;
+    const admission = sec?.admission ?? (sec?.visibility === "public" ? "auto" : "approval");
+    if (admission !== "auto") return;
+    if (pending.length === 0) return;
+    pending.forEach((p) => {
+      if (sec?.visibility === "password" && !validatePassword(p.password)) {
+        decide(p.reqId, false, "Wrong password");
+      } else {
+        decide(p.reqId, true);
+      }
+    });
+  }, [pending, isHost, decide, validatePassword]);
+
   return useMemo(() => ({
     status,
     pending,
     policy,
     rejectReason,
+    forceMuteTick,
     requestJoin,
     accept,
     reject,
     endSession,
+    forceMute,
+    kick,
     validatePassword,
-  }), [status, pending, policy, rejectReason, requestJoin, accept, reject, endSession, validatePassword]);
+  }), [status, pending, policy, rejectReason, forceMuteTick, requestJoin, accept, reject, endSession, forceMute, kick, validatePassword]);
 }

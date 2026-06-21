@@ -351,11 +351,20 @@ const PodcastRoomPage = () => {
     try { room.setCam(false); } catch {}
     try { room.setMic(false); } catch {}
     room.disconnect();
-    toast({ title: "Session ended", description: "The host ended the podcast." });
+    toast({ title: "Session ended", description: doorman.rejectReason || "The host ended the podcast." });
     const t = window.setTimeout(() => navigate("/tv/podcast"), 1800);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isHost, doorman.status]);
+
+  // Guest: host force-mute
+  useEffect(() => {
+    if (isHost) return;
+    if (!doorman.forceMuteTick) return;
+    try { room.setMic(false); } catch {}
+    toast({ title: "You were muted by the host" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [doorman.forceMuteTick]);
 
   const openInvite = () => setInviteOpen(true);
 
@@ -455,7 +464,15 @@ const PodcastRoomPage = () => {
           onDelete={deleteRec}
           onRename={renameRec}
           onEdit={(r: LocalRecording) => setEditing(r)}
+          isHost={isHost}
+          onMuteParticipant={(name: string) => { doorman.forceMute(name); toast({ title: `Muted ${name}` }); }}
+          onKickParticipant={(name: string) => {
+            if (!confirm(`Remove ${name} from the podcast?`)) return;
+            doorman.kick(name, "Removed by host");
+            toast({ title: `Removed ${name}` });
+          }}
         />
+
       </div>
 
       <PodcastControlBar
@@ -724,30 +741,40 @@ const PodcastControlBar = ({
       </CtrlBtn>
 
       {!isRecording ? (
-        <button onClick={onStart} disabled={!canRecord} className="h-14 px-6 rounded-full bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold flex items-center gap-2 shadow-lg shadow-red-600/30">
-          <Circle className="w-4 h-4 fill-white" /> Record (local)
+        <button
+          onClick={onStart}
+          disabled={!canRecord}
+          title="Start recording"
+          aria-label="Start recording"
+          className="w-12 h-12 rounded-full bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed grid place-items-center shadow-lg shadow-red-600/30"
+        >
+          <Circle className="w-4 h-4 fill-white text-white" />
         </button>
       ) : (
-        <div className="flex items-center gap-2">
-          <button onClick={onPause} className="h-12 px-4 rounded-full bg-zinc-800 hover:bg-zinc-700 flex items-center gap-2">
+        <>
+          <button onClick={onPause} title={isPaused ? "Resume" : "Pause"} aria-label="Pause recording" className="w-12 h-12 rounded-full bg-zinc-800 hover:bg-zinc-700 grid place-items-center">
             {isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
-            {isPaused ? "Resume" : "Pause"}
           </button>
-          <button onClick={onStop} className="h-12 px-4 rounded-full bg-red-600 hover:bg-red-500 flex items-center gap-2">
-            <Square className="w-4 h-4 fill-white" /> Stop
+          <button onClick={onStop} title="Stop recording" aria-label="Stop recording" className="w-12 h-12 rounded-full bg-red-600 hover:bg-red-500 grid place-items-center shadow-lg shadow-red-600/30">
+            <Square className="w-4 h-4 fill-white text-white" />
           </button>
-        </div>
+        </>
       )}
 
-      <CtrlBtn onClick={onLeave} active label="Leave" className="bg-red-600 hover:bg-red-500 border-red-500">
-        <PhoneOff className="w-5 h-5" />
-      </CtrlBtn>
+      <button
+        onClick={onLeave}
+        title="Leave podcast"
+        aria-label="Leave podcast"
+        className="h-12 px-4 rounded-full bg-red-600 hover:bg-red-500 flex items-center gap-2 text-sm font-semibold text-white shadow-lg shadow-red-600/30"
+      >
+        <PhoneOff className="w-4 h-4" /> Leave
+      </button>
     </div>
   </footer>
 );
 
 const CtrlBtn = ({ children, onClick, active, label, className = "" }: any) => (
-  <button onClick={onClick} title={label} className={`w-12 h-12 rounded-full grid place-items-center border ${active ? "bg-purple-500/20 border-purple-500 text-purple-200" : "bg-zinc-900 border-zinc-800 hover:bg-zinc-800"} ${className}`}>
+  <button onClick={onClick} title={label} aria-label={label} className={`w-12 h-12 rounded-full grid place-items-center border ${active ? "bg-purple-500/20 border-purple-500 text-purple-200" : "bg-zinc-900 border-zinc-800 hover:bg-zinc-800"} ${className}`}>
     {children}
   </button>
 );
@@ -755,6 +782,7 @@ const CtrlBtn = ({ children, onClick, active, label, className = "" }: any) => (
 const PodcastSidebar = ({
   tab, setTab, participants, chat, chatInput, setChatInput, sendChat,
   recordings, onDownload, onDelete, onRename, onEdit,
+  isHost, onMuteParticipant, onKickParticipant,
 }: any) => (
   <aside className="w-full lg:w-80 border-t lg:border-t-0 lg:border-l border-zinc-800 bg-zinc-950 flex flex-col max-h-[40vh] lg:max-h-none">
     <nav className="flex border-b border-zinc-800">
@@ -778,6 +806,27 @@ const PodcastSidebar = ({
               <div className="flex items-center gap-1 text-xs shrink-0">
                 {p.micOn ? <Mic className="w-3.5 h-3.5 text-teal-300" /> : <MicOff className="w-3.5 h-3.5 text-red-400" />}
                 {p.camOn ? <Video className="w-3.5 h-3.5 text-teal-300" /> : <VideoOff className="w-3.5 h-3.5 text-red-400" />}
+                {isHost && !p.isLocal && (
+                  <>
+                    <button
+                      onClick={() => onMuteParticipant?.(p.name)}
+                      disabled={!p.micOn}
+                      title="Mute this participant"
+                      aria-label={`Mute ${p.name}`}
+                      className="ml-1 p-1 rounded hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed text-amber-300"
+                    >
+                      <MicOff className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => onKickParticipant?.(p.name)}
+                      title="Remove from podcast"
+                      aria-label={`Remove ${p.name}`}
+                      className="p-1 rounded hover:bg-red-500/20 text-red-400"
+                    >
+                      <PhoneOff className="w-3.5 h-3.5" />
+                    </button>
+                  </>
+                )}
               </div>
             </li>
           ))}
