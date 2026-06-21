@@ -323,6 +323,11 @@ const PodcastRoomPage = () => {
 
   const leave = () => {
     if (isRecording) stopRecording();
+    if (isHost && scheduled && scheduled.status !== "cancelled") {
+      if (confirm("End the podcast session for everyone?")) {
+        PodcastSessionStore.markEnded(scheduled.id);
+      }
+    }
     room.disconnect();
     navigate("/tv/podcast");
   };
