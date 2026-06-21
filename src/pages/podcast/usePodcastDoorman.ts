@@ -24,7 +24,8 @@ export type DoormanStatus =
   | "requesting"
   | "rejected"
   | "accepted"
-  | "needs-password";
+  | "needs-password"
+  | "ended";
 
 type Args = {
   sessionId: string;
