@@ -1339,15 +1339,15 @@ const LayoutSheet = ({
 
       <section className="mb-5">
         <h3 className="text-xs uppercase tracking-wider text-zinc-500 mb-2">Layout</h3>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {LAYOUTS.map((l) => (
             <button
               key={l.id}
               onClick={() => setActiveLayout(l.id)}
-              className={`p-3 rounded-lg border text-left text-xs transition ${activeLayout === l.id ? "border-primary bg-primary/15 text-foreground" : "border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-zinc-700"}`}
+              className={`p-2 rounded-lg border text-left text-xs transition ${activeLayout === l.id ? "border-primary bg-primary/15 text-foreground ring-1 ring-primary" : "border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-zinc-700"}`}
             >
-              <div className="h-10 mb-2 rounded bg-zinc-800 grid place-items-center">
-                <LayoutGrid className="w-4 h-4 text-zinc-500" />
+              <div className="aspect-[16/9] mb-2 rounded overflow-hidden bg-zinc-950">
+                {l.thumb}
               </div>
               {l.label}
             </button>
