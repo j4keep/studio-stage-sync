@@ -24,7 +24,8 @@ export type DoormanStatus =
   | "requesting"
   | "rejected"
   | "accepted"
-  | "needs-password";
+  | "needs-password"
+  | "ended";
 
 type Args = {
   sessionId: string;
@@ -113,6 +114,10 @@ export function usePodcastDoorman({ sessionId, isHost, displayName, security }: 
             setRejectReason(data.reason || "Host declined your request");
           }
         }
+        if (data.type === "ended") {
+          setStatus("ended");
+          setRejectReason(data.reason || "Host ended the session");
+        }
       }
     });
 
@@ -172,6 +177,11 @@ export function usePodcastDoorman({ sessionId, isHost, displayName, security }: 
   const accept = useCallback((reqId: string) => decide(reqId, true), [decide]);
   const reject = useCallback((reqId: string, reason?: string) => decide(reqId, false, reason), [decide]);
 
+  const endSession = useCallback((reason?: string) => {
+    if (!isHost) return;
+    send({ type: "ended", reason: reason || "Host ended the session" });
+  }, [isHost, send]);
+
   // host-side auto-accept for public rooms
   useEffect(() => {
     if (!isHost) return;
@@ -194,6 +204,7 @@ export function usePodcastDoorman({ sessionId, isHost, displayName, security }: 
     requestJoin,
     accept,
     reject,
+    endSession,
     validatePassword,
-  }), [status, pending, policy, rejectReason, requestJoin, accept, reject, validatePassword]);
+  }), [status, pending, policy, rejectReason, requestJoin, accept, reject, endSession, validatePassword]);
 }

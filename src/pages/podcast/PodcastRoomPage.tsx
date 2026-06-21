@@ -323,14 +323,39 @@ const PodcastRoomPage = () => {
 
   const leave = () => {
     if (isRecording) stopRecording();
-    if (isHost && scheduled && scheduled.status !== "cancelled") {
-      if (confirm("End the podcast session for everyone?")) {
-        PodcastSessionStore.markEnded(scheduled.id);
+    if (isHost) {
+      const isScheduled = scheduled && scheduled.status !== "cancelled";
+      const msg = isScheduled
+        ? "End the podcast session for everyone? This will disconnect all guests."
+        : "End the podcast for everyone? This will disconnect all guests.";
+      if (confirm(msg)) {
+        if (isScheduled) PodcastSessionStore.markEnded(scheduled!.id);
+        // Tell all guests to disconnect — kills their cam/mic on next render.
+        try { doorman.endSession("Host ended the session"); } catch {}
+      } else {
+        return; // host cancelled
       }
     }
+    // Stop local cam/mic immediately for everyone leaving.
+    try { room.setCam(false); } catch {}
+    try { room.setMic(false); } catch {}
     room.disconnect();
     navigate("/tv/podcast");
   };
+
+  // Guest: if host ended, force-disconnect cam/mic and bounce back.
+  useEffect(() => {
+    if (isHost) return;
+    if (doorman.status !== "ended") return;
+    if (isRecording) stopRecording();
+    try { room.setCam(false); } catch {}
+    try { room.setMic(false); } catch {}
+    room.disconnect();
+    toast({ title: "Session ended", description: "The host ended the podcast." });
+    const t = window.setTimeout(() => navigate("/tv/podcast"), 1800);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isHost, doorman.status]);
 
   const openInvite = () => setInviteOpen(true);
 
@@ -534,7 +559,13 @@ const GuestWaitingOverlay = ({
       <div className="w-14 h-14 rounded-full bg-purple-500/15 border border-purple-500/30 grid place-items-center mx-auto mb-3">
         <Shield className="w-6 h-6 text-purple-300" />
       </div>
-      {status === "rejected" ? (
+      {status === "ended" ? (
+        <>
+          <h2 className="text-lg font-semibold mb-1">Session ended</h2>
+          <p className="text-sm text-zinc-400 mb-4">{rejectReason || "The host ended the podcast."}</p>
+          <Button variant="secondary" onClick={onLeave} className="w-full">Back to Podcast Home</Button>
+        </>
+      ) : status === "rejected" ? (
         <>
           <h2 className="text-lg font-semibold mb-1">Entry declined</h2>
           <p className="text-sm text-zinc-400 mb-4">{rejectReason || "The host did not accept your request."}</p>
