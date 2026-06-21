@@ -733,30 +733,40 @@ const PodcastControlBar = ({
       </CtrlBtn>
 
       {!isRecording ? (
-        <button onClick={onStart} disabled={!canRecord} className="h-14 px-6 rounded-full bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold flex items-center gap-2 shadow-lg shadow-red-600/30">
-          <Circle className="w-4 h-4 fill-white" /> Record (local)
+        <button
+          onClick={onStart}
+          disabled={!canRecord}
+          title="Start recording"
+          aria-label="Start recording"
+          className="w-12 h-12 rounded-full bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed grid place-items-center shadow-lg shadow-red-600/30"
+        >
+          <Circle className="w-4 h-4 fill-white text-white" />
         </button>
       ) : (
-        <div className="flex items-center gap-2">
-          <button onClick={onPause} className="h-12 px-4 rounded-full bg-zinc-800 hover:bg-zinc-700 flex items-center gap-2">
+        <>
+          <button onClick={onPause} title={isPaused ? "Resume" : "Pause"} aria-label="Pause recording" className="w-12 h-12 rounded-full bg-zinc-800 hover:bg-zinc-700 grid place-items-center">
             {isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
-            {isPaused ? "Resume" : "Pause"}
           </button>
-          <button onClick={onStop} className="h-12 px-4 rounded-full bg-red-600 hover:bg-red-500 flex items-center gap-2">
-            <Square className="w-4 h-4 fill-white" /> Stop
+          <button onClick={onStop} title="Stop recording" aria-label="Stop recording" className="w-12 h-12 rounded-full bg-red-600 hover:bg-red-500 grid place-items-center shadow-lg shadow-red-600/30">
+            <Square className="w-4 h-4 fill-white text-white" />
           </button>
-        </div>
+        </>
       )}
 
-      <CtrlBtn onClick={onLeave} active label="Leave" className="bg-red-600 hover:bg-red-500 border-red-500">
-        <PhoneOff className="w-5 h-5" />
-      </CtrlBtn>
+      <button
+        onClick={onLeave}
+        title="Leave podcast"
+        aria-label="Leave podcast"
+        className="h-12 px-4 rounded-full bg-red-600 hover:bg-red-500 flex items-center gap-2 text-sm font-semibold text-white shadow-lg shadow-red-600/30"
+      >
+        <PhoneOff className="w-4 h-4" /> Leave
+      </button>
     </div>
   </footer>
 );
 
 const CtrlBtn = ({ children, onClick, active, label, className = "" }: any) => (
-  <button onClick={onClick} title={label} className={`w-12 h-12 rounded-full grid place-items-center border ${active ? "bg-purple-500/20 border-purple-500 text-purple-200" : "bg-zinc-900 border-zinc-800 hover:bg-zinc-800"} ${className}`}>
+  <button onClick={onClick} title={label} aria-label={label} className={`w-12 h-12 rounded-full grid place-items-center border ${active ? "bg-purple-500/20 border-purple-500 text-purple-200" : "bg-zinc-900 border-zinc-800 hover:bg-zinc-800"} ${className}`}>
     {children}
   </button>
 );
