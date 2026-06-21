@@ -12,10 +12,12 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 
 export type RoomVisibility = "public" | "private" | "password";
+export type AdmissionMode = "auto" | "approval";
 
 export type PodcastSecurity = {
   visibility: RoomVisibility;
   password: string;
+  admission?: AdmissionMode;
 };
 
 type Props = {
