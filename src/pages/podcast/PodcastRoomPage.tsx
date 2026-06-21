@@ -999,11 +999,24 @@ const ParticipantTile = ({ p, isRecording, bg }: { p: RoomParticipant; isRecordi
   return (
     <div className="relative rounded-xl overflow-hidden bg-zinc-900 border border-zinc-800 aspect-video">
       {p.videoTrack && p.camOn ? (
-        seg.active ? (
-          <canvas ref={seg.canvasRef} className="w-full h-full object-cover" />
-        ) : (
-          <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
-        )
+        <>
+          {/* Video is always mounted so srcObject stays valid; hidden when segmentation canvas is active */}
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
+            playsInline
+            className={`w-full h-full object-cover ${seg.active ? "invisible" : "visible"}`}
+          />
+          {/* Canvas is always mounted whenever BG replacement is enabled so the hook
+              can grab the ref BEFORE it flips active=true (otherwise it gets stuck loading) */}
+          {segEnabled && (
+            <canvas
+              ref={seg.canvasRef}
+              className={`absolute inset-0 w-full h-full object-cover ${seg.active ? "visible" : "invisible"}`}
+            />
+          )}
+        </>
       ) : (
         <div className="absolute inset-0 grid place-items-center">
           <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-primary/40 grid place-items-center text-xl font-bold">
@@ -1011,9 +1024,14 @@ const ParticipantTile = ({ p, isRecording, bg }: { p: RoomParticipant; isRecordi
           </div>
         </div>
       )}
-      {seg.loading && (
+      {seg.loading && !seg.active && (
         <div className="absolute top-2 left-1/2 -translate-x-1/2 text-[10px] px-2 py-0.5 rounded-full bg-black/60 border border-white/10 text-zinc-200">
           Loading background…
+        </div>
+      )}
+      {seg.error && !seg.active && (
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 text-[10px] px-2 py-0.5 rounded-full bg-red-500/70 border border-white/10 text-white">
+          BG off: {seg.error}
         </div>
       )}
       <audio ref={audioRef} autoPlay />
