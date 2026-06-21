@@ -296,8 +296,11 @@ const MessagesPage = () => {
   // Conversation list
   return (
     <div className="px-4 pt-4 pb-24">
-      <div className="flex items-center justify-between mb-5">
-        <h1 className="text-xl font-display font-bold text-foreground">Messages</h1>
+      <div className="flex items-center gap-3 mb-5">
+        <button onClick={() => navigate(-1)} className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center" aria-label="Back">
+          <ArrowLeft className="w-4 h-4 text-foreground" />
+        </button>
+        <h1 className="flex-1 text-xl font-display font-bold text-foreground">Messages</h1>
         <button onClick={() => setShowNewChat(true)} className="w-8 h-8 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center">
           <Plus className="w-4 h-4 text-primary" />
         </button>
