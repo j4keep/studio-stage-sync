@@ -30,7 +30,33 @@ type LocalRecording = {
   recovered?: boolean;
 };
 
-type Tab = "people" | "chat" | "files" | "host";
+type Tab = "people" | "chat" | "files" | "tools";
+
+const LAYOUTS: { id: string; label: string }[] = [
+  { id: "auto", label: "Auto grid" },
+  { id: "speaker", label: "Speaker focus" },
+  { id: "split", label: "Side-by-side" },
+  { id: "3up", label: "3-up row" },
+  { id: "pip", label: "Picture-in-picture" },
+  { id: "screen", label: "Screen-share priority" },
+];
+
+const BACKGROUNDS: { id: string; label: string; preview: string }[] = [
+  { id: "none", label: "None", preview: "transparent" },
+  { id: "blur", label: "Blur", preview: "linear-gradient(135deg,#1f2937,#374151)" },
+  { id: "studio-purple", label: "Studio Purple", preview: "linear-gradient(135deg,#3b0764,#9333ea)" },
+  { id: "midnight", label: "Midnight", preview: "linear-gradient(135deg,#020617,#1e293b)" },
+  { id: "sunset", label: "Sunset", preview: "linear-gradient(135deg,#7c2d12,#f59e0b)" },
+  { id: "ocean", label: "Ocean", preview: "linear-gradient(135deg,#0c4a6e,#06b6d4)" },
+  { id: "forest", label: "Forest", preview: "linear-gradient(135deg,#14532d,#22c55e)" },
+  { id: "neon", label: "Neon", preview: "linear-gradient(135deg,#831843,#ec4899)" },
+  { id: "rose", label: "Rose Gold", preview: "linear-gradient(135deg,#9f1239,#fda4af)" },
+  { id: "graphite", label: "Graphite", preview: "linear-gradient(135deg,#111827,#4b5563)" },
+  { id: "amber", label: "Amber Stage", preview: "linear-gradient(135deg,#78350f,#fbbf24)" },
+  { id: "ice", label: "Ice", preview: "linear-gradient(135deg,#1e3a8a,#bfdbfe)" },
+];
+
+type CaptionStyle = "clean" | "bold" | "subtitle" | "karaoke";
 
 const pickMime = () => {
   const opts = [
