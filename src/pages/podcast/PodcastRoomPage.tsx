@@ -617,7 +617,7 @@ const PodcastRoomPage = () => {
           >
             <ArrowLeft className="w-4 h-4 text-zinc-300" />
           </button>
-          <div className="text-sm font-semibold tracking-wider text-purple-300">W.STUDIO <span className="text-teal-300">PODCAST</span></div>
+          <div className="text-sm font-semibold tracking-wider text-primary">W.STUDIO <span className="text-foreground/80">PODCAST</span></div>
           <span className="hidden md:inline text-xs text-zinc-500">Room</span>
           <code className="hidden md:inline text-xs px-2 py-1 rounded bg-zinc-900 border border-zinc-800">{sessionId}</code>
           <ConnBadge state={room.connState} count={room.participants.length} />
