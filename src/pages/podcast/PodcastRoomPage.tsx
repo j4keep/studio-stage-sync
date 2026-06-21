@@ -771,8 +771,8 @@ const PodcastRoomPage = () => {
           setCaptionsOn={setCaptionsOn}
           captionStyle={captionStyle}
           setCaptionStyle={setCaptionStyle}
-          bgEffect={bgEffect}
-          setBgEffect={setBgEffect}
+          bg={bg}
+          setBg={setBg}
         />
       )}
 
