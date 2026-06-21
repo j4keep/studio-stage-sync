@@ -684,7 +684,7 @@ const PodcastRoomPage = () => {
             </div>
           )}
 
-          <PodcastVideoGrid participants={visible} isRecording={isRecording} localId={me?.id} layout={activeLayout} />
+          <PodcastVideoGrid participants={visible} isRecording={isRecording} localId={me?.id} layout={activeLayout} bg={bg} />
 
           {captionsOn && liveCaption && (
             <div className={`pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-4 max-w-[80%] text-center ${
