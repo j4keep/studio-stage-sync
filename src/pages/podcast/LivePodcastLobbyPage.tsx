@@ -405,6 +405,15 @@ const LivePodcastLobbyPage = () => {
           </section>
         </main>
       </div>
+
+      <PodcastScheduleSheet
+        open={scheduleOpen}
+        onClose={() => { setScheduleOpen(false); setEditingSession(null); }}
+        hostId={user?.id ?? null}
+        hostName={user?.user_metadata?.display_name || user?.email?.split("@")[0] || "Host"}
+        editing={editingSession}
+        onSaved={handleScheduleSaved}
+      />
     </div>
   );
 };
