@@ -881,7 +881,7 @@ const ParticipantTile = ({ p, isRecording }: { p: RoomParticipant; isRecording: 
 };
 
 const PodcastControlBar = ({
-  isRecording, isPaused, micOn, camOn, screenOn, canRecord,
+  isRecording, isPaused, micOn, camOn, screenOn, canRecord, isHost,
   onStart, onStop, onPause, onMic, onCam, onScreen, onLeave,
 }: any) => (
   <footer className="sticky bottom-0 z-30 border-t border-zinc-800 bg-zinc-950/95 backdrop-blur px-3 py-3">
@@ -896,25 +896,36 @@ const PodcastControlBar = ({
         <MonitorUp className="w-5 h-5" />
       </CtrlBtn>
 
-      {!isRecording ? (
-        <button
-          onClick={onStart}
-          disabled={!canRecord}
-          title="Start recording"
-          aria-label="Start recording"
-          className="w-12 h-12 rounded-full bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed grid place-items-center shadow-lg shadow-red-600/30"
-        >
-          <Circle className="w-4 h-4 fill-white text-white" />
-        </button>
+      {isHost ? (
+        !isRecording ? (
+          <button
+            onClick={onStart}
+            disabled={!canRecord}
+            title="Start recording (host)"
+            aria-label="Start recording"
+            className="w-12 h-12 rounded-full bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed grid place-items-center shadow-lg shadow-red-600/30"
+          >
+            <Circle className="w-4 h-4 fill-white text-white" />
+          </button>
+        ) : (
+          <>
+            <button onClick={onPause} title={isPaused ? "Resume" : "Pause"} aria-label="Pause recording" className="w-12 h-12 rounded-full bg-zinc-800 hover:bg-zinc-700 grid place-items-center">
+              {isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
+            </button>
+            <button onClick={onStop} title="Stop recording" aria-label="Stop recording" className="w-12 h-12 rounded-full bg-red-600 hover:bg-red-500 grid place-items-center shadow-lg shadow-red-600/30">
+              <Square className="w-4 h-4 fill-white text-white" />
+            </button>
+          </>
+        )
       ) : (
-        <>
-          <button onClick={onPause} title={isPaused ? "Resume" : "Pause"} aria-label="Pause recording" className="w-12 h-12 rounded-full bg-zinc-800 hover:bg-zinc-700 grid place-items-center">
-            {isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
-          </button>
-          <button onClick={onStop} title="Stop recording" aria-label="Stop recording" className="w-12 h-12 rounded-full bg-red-600 hover:bg-red-500 grid place-items-center shadow-lg shadow-red-600/30">
-            <Square className="w-4 h-4 fill-white text-white" />
-          </button>
-        </>
+        <button
+          disabled
+          title="Only the host can record"
+          aria-label="Recording is host-only"
+          className="w-12 h-12 rounded-full bg-zinc-800/60 border border-zinc-700 grid place-items-center opacity-50 cursor-not-allowed"
+        >
+          <Circle className="w-4 h-4 text-zinc-500" />
+        </button>
       )}
 
       <button
