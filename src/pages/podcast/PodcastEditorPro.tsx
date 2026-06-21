@@ -386,8 +386,9 @@ export default function PodcastEditorPro({
   };
 
   /* ---------- export with ffmpeg.wasm ---------- */
-  const exportFinal = async () => {
+  const exportFinal = async (mode: "download" | "save" = "download") => {
     if (!clips.length) { toast({ title: "Nothing to export" }); return; }
+    if (mode === "save" && !onSaveToProject) { toast({ title: "Save not available here" }); return; }
     setExporting(true);
     setExportProgress(0);
     try {
