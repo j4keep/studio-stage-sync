@@ -569,14 +569,6 @@ const MenuItem = ({ icon, label, onClick, disabled, danger }: { icon: ReactNode;
   </button>
 );
 
-const Panel = ({ title, children }: { title: string; children: ReactNode }) => <section className="rounded-lg border border-border bg-card p-4"><h3 className="mb-3 font-bold">{title}</h3>{children}</section>;
-
-const ToolRow = ({ icon, title, body, onClick }: { icon: ReactNode; title: string; body: string; onClick: () => void }) => (
-  <button onClick={onClick} className="flex w-full items-center gap-3 rounded-lg border border-border bg-background p-3 text-left hover:border-primary/50">
-    <span className="text-primary">{icon}</span><span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{title}</span><span className="block text-xs text-muted-foreground">{body}</span></span><ExternalLink className="h-4 w-4 text-muted-foreground" />
-  </button>
-);
-
 const Stat = ({ label, value }: { label: string; value: string }) => <div className="rounded-md border border-border bg-background p-3"><div className="text-xs text-muted-foreground">{label}</div><div className="text-xl font-bold">{value}</div></div>;
 
 const EmptyState = ({ onRecord, onUpload }: { onRecord: () => void; onUpload: () => void }) => (
