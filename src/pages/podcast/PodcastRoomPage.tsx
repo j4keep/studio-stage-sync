@@ -1179,16 +1179,7 @@ const PodcastSidebar = ({
         </div>
       )}
       {tab === "files" && (
-        <RecordingFilesPanel recordings={recordings} onDownload={onDownload} onDelete={onDelete} onRename={onRename} onEdit={onEdit} />
-      )}
-      {tab === "host" && (
-        <div className="space-y-2 text-sm text-zinc-300">
-          <p className="text-xs text-zinc-500">Host tools</p>
-          <div className="p-3 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-zinc-400 space-y-2">
-            <p>Each participant records locally on their own device. After the session ends, ask guests to download their .webm file and send it to you.</p>
-            <p className="text-zinc-500">Cloud guest-file upload, producer mode, and screen-share recording are Phase 2B.</p>
-          </div>
-        </div>
+        <WToolsPanel recordings={recordings} onDownload={onDownload} onDelete={onDelete} onRename={onRename} onEdit={onEdit} />
       )}
     </div>
   </aside>
