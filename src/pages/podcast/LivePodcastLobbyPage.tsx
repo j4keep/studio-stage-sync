@@ -353,7 +353,7 @@ const LivePodcastLobbyPage = () => {
                 </div>
 
                 {viewMode === "planner" ? (
-                  <Planner episodes={nextScheduled} onOpen={(id) => navigate(`/tv/podcast/${id}`)} />
+                  <PodcastScheduleDashboard onEdit={(s) => { setEditingSession(s); setScheduleStartNow(false); setScheduleOpen(true); }} />
                 ) : loading ? (
                   <div className="rounded-lg border border-border bg-card p-8 text-sm text-muted-foreground">Loading episodes…</div>
                 ) : activeRows.length === 0 ? (
