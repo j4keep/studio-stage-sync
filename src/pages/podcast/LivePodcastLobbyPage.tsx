@@ -333,6 +333,7 @@ const LivePodcastLobbyPage = () => {
         <aside className="hidden border-r border-border bg-card/70 lg:flex lg:flex-col lg:items-center lg:gap-2 lg:px-3 lg:py-4">
           <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-md bg-primary text-primary-foreground"><Radio className="h-6 w-6" /></div>
           <SideButton icon={<Home />} label="Home" active={viewMode === "home"} onClick={() => setViewMode("home")} />
+          <SideButton icon={<Users />} label="People" onClick={() => navigate("/podcast/contacts")} />
           <SideButton icon={<FolderOpen />} label="Projects" active={viewMode === "projects"} onClick={() => setViewMode("projects")} />
           <SideButton icon={<CalendarDays />} label="Planner" active={viewMode === "planner"} onClick={() => setViewMode("planner")} />
           <SideButton icon={<MessageSquareText />} label="Messages" onClick={() => navigate("/messages")} />
