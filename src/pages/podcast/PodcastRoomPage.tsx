@@ -1264,7 +1264,7 @@ export default PodcastRoomPage;
 
 const LayoutSheet = ({
   onClose, activeLayout, setActiveLayout, captionsOn, setCaptionsOn,
-  captionStyle, setCaptionStyle, bgEffect, setBgEffect,
+  captionStyle, setCaptionStyle, bg, setBg,
 }: {
   onClose: () => void;
   activeLayout: string;
@@ -1273,13 +1273,13 @@ const LayoutSheet = ({
   setCaptionsOn: (v: boolean) => void;
   captionStyle: CaptionStyle;
   setCaptionStyle: (v: CaptionStyle) => void;
-  bgEffect: string;
-  setBgEffect: (v: string) => void;
+  bg: PodcastBg;
+  setBg: (v: PodcastBg) => void;
 }) => (
   <div className="fixed inset-0 z-[70] bg-zinc-950/80 backdrop-blur grid place-items-end md:place-items-center p-3" onClick={onClose}>
     <div onClick={(e) => e.stopPropagation()} className="w-full max-w-2xl rounded-2xl border border-zinc-800 bg-zinc-950 p-4 md:p-5 max-h-[85vh] overflow-y-auto">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-base font-semibold flex items-center gap-2"><LayoutGrid className="w-4 h-4 text-purple-300" /> Layout, captions & background</h2>
+        <h2 className="text-base font-semibold flex items-center gap-2"><LayoutGrid className="w-4 h-4 text-primary" /> Layout, captions & background</h2>
         <button onClick={onClose} className="p-1 rounded hover:bg-zinc-800" aria-label="Close"><X className="w-4 h-4 text-zinc-400" /></button>
       </div>
 
@@ -1290,7 +1290,7 @@ const LayoutSheet = ({
             <button
               key={l.id}
               onClick={() => setActiveLayout(l.id)}
-              className={`p-3 rounded-lg border text-left text-xs transition ${activeLayout === l.id ? "border-purple-400 bg-purple-500/15 text-white" : "border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-zinc-700"}`}
+              className={`p-3 rounded-lg border text-left text-xs transition ${activeLayout === l.id ? "border-primary bg-primary/15 text-foreground" : "border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-zinc-700"}`}
             >
               <div className="h-10 mb-2 rounded bg-zinc-800 grid place-items-center">
                 <LayoutGrid className="w-4 h-4 text-zinc-500" />
@@ -1305,7 +1305,7 @@ const LayoutSheet = ({
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-xs uppercase tracking-wider text-zinc-500 flex items-center gap-1.5"><Captions className="w-3.5 h-3.5" /> Live captions</h3>
           <label className="inline-flex items-center gap-2 text-xs">
-            <input type="checkbox" checked={captionsOn} onChange={(e) => setCaptionsOn(e.target.checked)} className="accent-purple-500" />
+            <input type="checkbox" checked={captionsOn} onChange={(e) => setCaptionsOn(e.target.checked)} className="accent-primary" />
             {captionsOn ? "On" : "Off"}
           </label>
         </div>
@@ -1315,7 +1315,7 @@ const LayoutSheet = ({
               key={s}
               disabled={!captionsOn}
               onClick={() => setCaptionStyle(s)}
-              className={`p-2 rounded-md border text-[11px] capitalize ${captionStyle === s ? "border-purple-400 bg-purple-500/15 text-white" : "border-zinc-800 bg-zinc-900 text-zinc-400 hover:border-zinc-700"} disabled:opacity-40`}
+              className={`p-2 rounded-md border text-[11px] capitalize ${captionStyle === s ? "border-primary bg-primary/15 text-foreground" : "border-zinc-800 bg-zinc-900 text-zinc-400 hover:border-zinc-700"} disabled:opacity-40`}
             >
               {s}
             </button>
@@ -1325,23 +1325,14 @@ const LayoutSheet = ({
       </section>
 
       <section>
-        <h3 className="text-xs uppercase tracking-wider text-zinc-500 mb-2 flex items-center gap-1.5"><ImageIcon className="w-3.5 h-3.5" /> Background effect</h3>
-        <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
-          {BACKGROUNDS.map((b) => (
-            <button
-              key={b.id}
-              onClick={() => setBgEffect(b.id)}
-              className={`group rounded-lg overflow-hidden border text-left ${bgEffect === b.id ? "border-purple-400 ring-2 ring-purple-400/50" : "border-zinc-800 hover:border-zinc-700"}`}
-            >
-              <div className="h-16" style={{ background: b.preview === "transparent" ? "repeating-conic-gradient(#27272a 0% 25%, #18181b 0% 50%) 50%/12px 12px" : b.preview }} />
-              <div className="px-2 py-1.5 bg-zinc-900 text-[11px] text-zinc-300">{b.label}</div>
-            </button>
-          ))}
-        </div>
+        <h3 className="text-xs uppercase tracking-wider text-zinc-500 mb-2 flex items-center gap-1.5"><ImageIcon className="w-3.5 h-3.5" /> Virtual background</h3>
+        <p className="text-[10px] text-zinc-500 mb-3">Replaces what's behind YOU on camera using on-device AI (only applies to your own video).</p>
+        <PodcastBackgroundPicker value={bg} onChange={setBg} />
       </section>
     </div>
   </div>
 );
+
 
 const WToolsPanel = ({ recordings, onDownload, onDelete, onRename, onEdit }: any) => {
   const [nr, setNr] = useState(false);
