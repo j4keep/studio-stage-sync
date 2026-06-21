@@ -55,15 +55,16 @@ export default function PodcastScheduleSheet({ open, onClose, hostId, hostName, 
       setVisibility(editing.visibility);
       setPassword(editing.password || "");
     } else {
+      const offset = initialStartNow ? 0 : 30 * 60_000;
       setTitle("");
       setDescription("");
-      setDate(todayDateStr());
-      setTime(nowTimeStr());
+      setDate(todayDateStr(offset));
+      setTime(nowTimeStr(offset));
       setDuration(60);
       setVisibility("public");
       setPassword("");
     }
-  }, [open, editing]);
+  }, [open, editing, initialStartNow]);
 
   const scheduledAt = useMemo(() => {
     const [y, mo, d] = date.split("-").map((n) => parseInt(n, 10));
