@@ -230,10 +230,28 @@ export default function PodcastInviteSheet({
                   <Button onClick={savePwd} variant="secondary" className="shrink-0">Save</Button>
                 </div>
               )}
+              <div className="mt-3 pt-3 border-t border-zinc-800">
+                <div className="text-[11px] uppercase tracking-wider text-zinc-400 mb-2">Guest admission</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <SecBtn
+                    active={(security.admission ?? (security.visibility === "public" ? "auto" : "approval")) === "auto"}
+                    onClick={() => onSecurityChange({ ...security, admission: "auto" })}
+                    icon={<Check className="w-3.5 h-3.5" />} label="Auto-join"
+                  />
+                  <SecBtn
+                    active={(security.admission ?? (security.visibility === "public" ? "auto" : "approval")) === "approval"}
+                    onClick={() => onSecurityChange({ ...security, admission: "approval" })}
+                    icon={<Lock className="w-3.5 h-3.5" />} label="Accept / Decline"
+                  />
+                </div>
+                <p className="text-[11px] text-zinc-500 mt-2">
+                  Auto-join lets guests in immediately. Accept/Decline shows a popup so you approve each guest.
+                </p>
+              </div>
               <p className="text-[11px] text-zinc-500 mt-2">
-                {security.visibility === "public" && "Anyone with the link joins instantly."}
-                {security.visibility === "private" && "Guests appear in your waiting room. You approve each one."}
-                {security.visibility === "password" && "Guests must enter the password AND be accepted."}
+                {security.visibility === "public" && "Anyone with the link can request to join."}
+                {security.visibility === "private" && "Only people you invite can request to join."}
+                {security.visibility === "password" && "Guests must enter the password to request to join."}
               </p>
             </section>
           )}
