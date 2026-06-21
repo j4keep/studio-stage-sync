@@ -589,7 +589,13 @@ export default function PodcastEditorPro({
           <input type="file" accept="video/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) addMediaFile(f, "outro"); e.currentTarget.value = ""; }} />
           <span className="inline-flex items-center gap-1.5 h-8 px-3 text-xs rounded-md bg-zinc-800 hover:bg-zinc-700"><Film className="w-3.5 h-3.5" />Outro</span>
         </label>
-        <Button size="sm" onClick={exportFinal} disabled={exporting} className="ml-auto bg-purple-600 hover:bg-purple-500 gap-1.5 h-8">
+        {onSaveToProject && (
+          <Button size="sm" onClick={() => exportFinal("save")} disabled={exporting} className="ml-auto bg-emerald-600 hover:bg-emerald-500 gap-1.5 h-8">
+            {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Film className="w-3.5 h-3.5" />}
+            {exporting ? `Saving… ${exportProgress}%` : "Save to Project"}
+          </Button>
+        )}
+        <Button size="sm" onClick={() => exportFinal("download")} disabled={exporting} className={`${onSaveToProject ? "" : "ml-auto"} bg-purple-600 hover:bg-purple-500 gap-1.5 h-8`}>
           {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
           {exporting ? `Exporting… ${exportProgress}%` : "Export"}
         </Button>
