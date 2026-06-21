@@ -657,10 +657,8 @@ const PodcastRoomPage = () => {
       </header>
 
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
-        <main
-          className="flex-1 min-w-0 p-3 md:p-5 flex flex-col gap-4 relative"
-          style={bgEffect !== "none" ? { background: BACKGROUNDS.find((b) => b.id === bgEffect)?.preview } : undefined}
-        >
+        <main className="flex-1 min-w-0 p-3 md:p-5 flex flex-col gap-4 relative">
+
           {permError && (
             <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-200">
               <div className="flex items-center gap-2"><AlertTriangle className="w-4 h-4" />{permError}</div>
