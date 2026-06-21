@@ -62,11 +62,11 @@ export default function PodcastScheduleDashboard({ onEdit }: Props) {
 
   const enterRoom = (s: ScheduledPodcastSession) => {
     PodcastSessionStore.markLive(s.id);
-    navigate(`/tv/podcast/room/${s.id}`);
+    navigate(`/podcast/room/${s.id}`);
   };
 
   const copyInvite = async (s: ScheduledPodcastSession) => {
-    const base = `${window.location.origin}/#/tv/podcast/room/${s.id}?guest=1`;
+    const base = `${window.location.origin}/#/podcast/room/${s.id}?guest=1`;
     const url = s.visibility === "password" && s.password ? `${base}&k=${encodeURIComponent(s.password)}` : base;
     try { await navigator.clipboard.writeText(url); toast({ title: "Invite link copied" }); }
     catch { toast({ title: "Copy failed", description: url }); }

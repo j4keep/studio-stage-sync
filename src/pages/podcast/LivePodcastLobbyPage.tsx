@@ -134,7 +134,7 @@ const LivePodcastLobbyPage = () => {
     const gate = evaluateJoinGate(s);
     if (gate.kind === "open" || gate.kind === "live") {
       PodcastSessionStore.markLive(s.id);
-      navigate(`/tv/podcast/room/${s.id}`);
+      navigate(`/podcast/room/${s.id}`);
     } else {
       setViewMode("planner");
       toast({ title: "Session scheduled", description: new Date(s.scheduledAt).toLocaleString() });
