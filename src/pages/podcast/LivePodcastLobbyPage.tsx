@@ -474,6 +474,36 @@ const LivePodcastLobbyPage = () => {
         initialStartNow={scheduleStartNow}
         onSaved={handleScheduleSaved}
       />
+
+      {editingLocal && (
+        <div className="fixed inset-0 z-[90] bg-zinc-950/95 backdrop-blur overflow-y-auto p-3 md:p-6">
+          <div className="mx-auto max-w-6xl">
+            <PodcastEditorPro
+              initial={{
+                id: editingLocal.id,
+                name: editingLocal.title,
+                url: editingLocalUrl,
+                blob: editingLocal.blob,
+                durationMs: editingLocal.durationMs,
+              }}
+              onClose={closeLocalEditor}
+              onSaveToProject={async (blob, mime, ext) => {
+                const id = `${editingLocal.id}-edit-${Date.now()}`;
+                const title = editingLocal.title;
+                const name = `${title.replace(/[^a-z0-9_-]+/gi, "-").slice(0, 40)}-edited.${ext}`;
+                await PodcastFinals.save({
+                  id, sessionId: editingLocal.sessionId, title, name, mime, ext, blob,
+                  createdAt: Date.now(),
+                  durationMs: editingLocal.durationMs,
+                  edited: true,
+                  hostName: editingLocal.hostName,
+                });
+                await loadLocalFinals();
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
