@@ -389,7 +389,7 @@ const LivePodcastLobbyPage = () => {
               <MobileTab label="Messages" onClick={() => navigate("/messages")} />
             </div>
 
-            <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+            <div className="mt-6">
               <section className="min-w-0">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <div>
@@ -403,11 +403,11 @@ const LivePodcastLobbyPage = () => {
                   <PodcastScheduleDashboard onEdit={(s) => { setEditingSession(s); setScheduleStartNow(false); setScheduleOpen(true); }} />
                 ) : loading ? (
                   <div className="rounded-lg border border-border bg-card p-8 text-sm text-muted-foreground">Loading episodes…</div>
-                ) : activeRows.length === 0 ? (
+                ) : (activeRows.filter(({ takes }) => takes.length > 0).length === 0 && localFinals.length === 0) ? (
                   <EmptyState onRecord={() => openScheduleModal(true)} onUpload={() => fileInputRef.current?.click()} />
                 ) : (
                   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    {activeRows.map(({ episode, takes }) => {
+                    {activeRows.filter(({ takes }) => takes.length > 0).map(({ episode, takes }) => {
                       const take = takes[0];
                       return (
                         <EpisodeCard
@@ -442,23 +442,6 @@ const LivePodcastLobbyPage = () => {
                   />
                 )}
               </section>
-
-              <aside className="space-y-4">
-                <Panel title="Project tools">
-                  <ToolRow icon={<Users />} title="People" body="Invite guests from the studio." onClick={() => episodes[0] ? navigate(`/tv/podcast/${episodes[0].id}`) : createEpisode("record")} />
-                  <ToolRow icon={<MessageSquareText />} title="Chat" body="Open messages." onClick={() => navigate("/messages")} />
-                  <ToolRow icon={<Clapperboard />} title="Brand" body="Backgrounds, lower thirds, and layouts live in Studio." onClick={() => episodes[0] ? navigate(`/tv/podcast/${episodes[0].id}`) : createEpisode("record")} />
-                  <ToolRow icon={<Edit3 />} title="Text" body="Transcript editing appears after transcription." onClick={openLatestEditor} />
-                  <ToolRow icon={<FolderOpen />} title="Media" body="Recordings, uploads, clips, and exports." onClick={() => setViewMode("projects")} />
-                </Panel>
-                <Panel title="Quick stats">
-                  <div className="grid grid-cols-3 gap-2">
-                    <Stat label="Projects" value={String(episodes.length)} />
-                    <Stat label="Videos" value={String(recordings.length)} />
-                    <Stat label="Hours" value={(recordings.reduce((sum, rec) => sum + (rec.duration_seconds ?? rec.chunk_count * 5), 0) / 3600).toFixed(1)} />
-                  </div>
-                </Panel>
-              </aside>
             </div>
           </section>
         </main>
