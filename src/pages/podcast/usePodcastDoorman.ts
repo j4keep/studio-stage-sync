@@ -121,11 +121,11 @@ export function usePodcastDoorman({ sessionId, isHost, displayName, security }: 
           setStatus("ended");
           setRejectReason(data.reason || "Host ended the session");
         }
-        if (data.type === "kicked" && data.target === displayName) {
+        if (data.type === "kicked" && data.target === nameRef.current) {
           setStatus("ended");
           setRejectReason(data.reason || "Removed by host");
         }
-        if (data.type === "force-mute" && data.target === displayName) {
+        if (data.type === "force-mute" && data.target === nameRef.current) {
           setForceMuteTick((t) => t + 1);
         }
       }
