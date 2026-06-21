@@ -32,6 +32,7 @@ interface Message {
 }
 
 const MessagesPage = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
