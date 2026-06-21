@@ -35,14 +35,55 @@ type LocalRecording = {
 
 type Tab = "people" | "chat" | "files" | "tools";
 
-const LAYOUTS: { id: string; label: string }[] = [
-  { id: "auto", label: "Auto grid" },
-  { id: "speaker", label: "Speaker focus" },
-  { id: "split", label: "Side-by-side" },
-  { id: "3up", label: "3-up row" },
-  { id: "pip", label: "Picture-in-picture" },
-  { id: "screen", label: "Screen-share priority" },
+const LAYOUTS: { id: string; label: string; thumb: JSX.Element }[] = [
+  { id: "auto",    label: "Auto grid",          thumb: <LayoutThumb kind="auto" /> },
+  { id: "speaker", label: "Speaker focus",      thumb: <LayoutThumb kind="speaker" /> },
+  { id: "split",   label: "Side-by-side",       thumb: <LayoutThumb kind="split" /> },
+  { id: "3up",     label: "3-up row",           thumb: <LayoutThumb kind="3up" /> },
+  { id: "pip",     label: "Picture-in-picture", thumb: <LayoutThumb kind="pip" /> },
+  { id: "screen",  label: "Screen-share",       thumb: <LayoutThumb kind="screen" /> },
 ];
+
+function LayoutThumb({ kind }: { kind: "auto" | "speaker" | "split" | "3up" | "pip" | "screen" }) {
+  const box = "fill-zinc-700 stroke-zinc-500";
+  return (
+    <svg viewBox="0 0 64 36" className="w-full h-full">
+      <rect x="0" y="0" width="64" height="36" rx="3" className="fill-zinc-900 stroke-zinc-700" />
+      {kind === "auto" && <>
+        <rect x="3"  y="3"  width="28" height="14" rx="1.5" className={box} />
+        <rect x="33" y="3"  width="28" height="14" rx="1.5" className={box} />
+        <rect x="3"  y="19" width="28" height="14" rx="1.5" className={box} />
+        <rect x="33" y="19" width="28" height="14" rx="1.5" className={box} />
+      </>}
+      {kind === "speaker" && <>
+        <rect x="3" y="3" width="58" height="22" rx="1.5" className={box} />
+        <rect x="3"  y="27" width="13" height="6" rx="1" className={box} />
+        <rect x="18" y="27" width="13" height="6" rx="1" className={box} />
+        <rect x="33" y="27" width="13" height="6" rx="1" className={box} />
+        <rect x="48" y="27" width="13" height="6" rx="1" className={box} />
+      </>}
+      {kind === "split" && <>
+        <rect x="3"  y="3" width="28" height="30" rx="1.5" className={box} />
+        <rect x="33" y="3" width="28" height="30" rx="1.5" className={box} />
+      </>}
+      {kind === "3up" && <>
+        <rect x="3"  y="10" width="18" height="16" rx="1.5" className={box} />
+        <rect x="23" y="10" width="18" height="16" rx="1.5" className={box} />
+        <rect x="43" y="10" width="18" height="16" rx="1.5" className={box} />
+      </>}
+      {kind === "pip" && <>
+        <rect x="3" y="3" width="58" height="30" rx="1.5" className={box} />
+        <rect x="44" y="22" width="15" height="9" rx="1" className="fill-primary/60 stroke-primary" />
+      </>}
+      {kind === "screen" && <>
+        <rect x="3" y="3" width="44" height="30" rx="1.5" className={box} />
+        <rect x="49" y="3"  width="12" height="9"  rx="1" className={box} />
+        <rect x="49" y="14" width="12" height="9"  rx="1" className={box} />
+        <rect x="49" y="25" width="12" height="8"  rx="1" className={box} />
+      </>}
+    </svg>
+  );
+}
 
 // Legacy gradient list removed — real virtual backgrounds live in podcastBackgrounds.ts.
 
