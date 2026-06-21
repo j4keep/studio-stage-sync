@@ -55,6 +55,131 @@ const fmtTime = (ms: number) => {
 const safeName = (s: string) => s.replace(/[^a-z0-9_-]+/gi, "-").slice(0, 32) || "guest";
 const stampStr = () => new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
 
+/** Build a composite MediaStream that mixes every participant's video into a tiled
+ *  canvas and every audio track into a single WebAudio mixdown. The returned
+ *  object includes a stop() to release rAF/AudioContext/video elements. */
+function buildCompositeStream(getParticipants: () => RoomParticipant[]): {
+  stream: MediaStream;
+  stop: () => void;
+} {
+  const W = 1280, H = 720;
+  const canvas = document.createElement("canvas");
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d")!;
+  const videoEls = new Map<string, HTMLVideoElement>();
+  const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+  const dest = audioCtx.createMediaStreamDestination();
+  const audioNodes = new Map<string, MediaStreamAudioSourceNode>();
+
+  const ensureVideoEl = (id: string, track: MediaStreamTrack) => {
+    let v = videoEls.get(id);
+    if (!v) {
+      v = document.createElement("video");
+      v.muted = true;
+      v.autoplay = true;
+      (v as any).playsInline = true;
+      videoEls.set(id, v);
+    }
+    const cur = v.srcObject as MediaStream | null;
+    const curId = cur?.getVideoTracks()[0]?.id;
+    if (curId !== track.id) {
+      v.srcObject = new MediaStream([track]);
+      v.play().catch(() => {});
+    }
+    return v;
+  };
+
+  const ensureAudio = (id: string, track: MediaStreamTrack) => {
+    if (audioNodes.has(id)) return;
+    try {
+      const src = audioCtx.createMediaStreamSource(new MediaStream([track]));
+      src.connect(dest);
+      audioNodes.set(id, src);
+    } catch {}
+  };
+
+  let raf = 0;
+  const draw = () => {
+    const ps = getParticipants();
+    ctx.fillStyle = "#09090b";
+    ctx.fillRect(0, 0, W, H);
+
+    // hook up audio for any new participants
+    ps.forEach((p) => { if (p.audioTrack) ensureAudio(p.id, p.audioTrack); });
+
+    const n = Math.max(1, ps.length);
+    const cols = n <= 1 ? 1 : n <= 4 ? 2 : 3;
+    const rows = Math.ceil(n / cols);
+    const cellW = Math.floor(W / cols);
+    const cellH = Math.floor(H / rows);
+
+    ps.forEach((p, i) => {
+      const cx = (i % cols) * cellW;
+      const cy = Math.floor(i / cols) * cellH;
+      ctx.save();
+      ctx.fillStyle = "#18181b";
+      ctx.fillRect(cx + 4, cy + 4, cellW - 8, cellH - 8);
+
+      if (p.videoTrack && p.camOn) {
+        const v = ensureVideoEl(p.id, p.videoTrack);
+        if (v.readyState >= 2 && v.videoWidth) {
+          // contain
+          const vr = v.videoWidth / v.videoHeight;
+          const cr = (cellW - 8) / (cellH - 8);
+          let dw = cellW - 8, dh = cellH - 8;
+          if (vr > cr) dh = dw / vr; else dw = dh * vr;
+          const dx = cx + 4 + (cellW - 8 - dw) / 2;
+          const dy = cy + 4 + (cellH - 8 - dh) / 2;
+          ctx.drawImage(v, dx, dy, dw, dh);
+        }
+      } else {
+        // avatar bubble
+        ctx.fillStyle = "#a855f7";
+        const r = Math.min(cellW, cellH) * 0.18;
+        ctx.beginPath();
+        ctx.arc(cx + cellW / 2, cy + cellH / 2, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#fff";
+        ctx.font = `${Math.round(r)}px sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText((p.name[0] || "?").toUpperCase(), cx + cellW / 2, cy + cellH / 2);
+      }
+
+      // name strip
+      ctx.fillStyle = "rgba(0,0,0,0.55)";
+      ctx.fillRect(cx + 4, cy + cellH - 28, cellW - 8, 22);
+      ctx.fillStyle = "#fff";
+      ctx.font = "14px sans-serif";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText(`${p.name}${p.isHost ? " · host" : ""}`, cx + 12, cy + cellH - 17);
+      ctx.restore();
+    });
+
+    raf = requestAnimationFrame(draw);
+  };
+  draw();
+
+  const videoStream = (canvas as any).captureStream?.(30) as MediaStream;
+  const videoTrack = videoStream.getVideoTracks()[0];
+  const audioTrack = dest.stream.getAudioTracks()[0];
+  const stream = new MediaStream(audioTrack ? [videoTrack, audioTrack] : [videoTrack]);
+
+  return {
+    stream,
+    stop: () => {
+      cancelAnimationFrame(raf);
+      videoEls.forEach((v) => { try { (v.srcObject as MediaStream)?.getTracks().forEach(() => {}); v.srcObject = null; } catch {} });
+      videoEls.clear();
+      audioNodes.forEach((n) => { try { n.disconnect(); } catch {} });
+      audioNodes.clear();
+      try { audioCtx.close(); } catch {}
+      try { stream.getTracks().forEach((t) => t.stop()); } catch {}
+    },
+  };
+}
+
 const PodcastRoomPage = () => {
   const { sessionId = "session" } = useParams();
   const navigate = useNavigate();
