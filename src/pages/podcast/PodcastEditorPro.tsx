@@ -55,9 +55,11 @@ const fmt = (s: number) => {
 export default function PodcastEditorPro({
   initial,
   onClose,
+  onSaveToProject,
 }: {
   initial: EditorSource;
   onClose: () => void;
+  onSaveToProject?: (blob: Blob, mime: string, ext: string) => Promise<void> | void;
 }) {
   // Sources: index 0 = main recording. Intro/outro injected as additional sources.
   const [sources, setSources] = useState<EditorSource[]>([initial]);
