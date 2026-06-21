@@ -133,6 +133,8 @@ const PodcastRoomPage = () => {
   useEffect(() => {
     if (isHost) return;
     if (doorman.status !== "idle") return;
+    // Don't request join until the scheduled window is open
+    if (joinGate.kind !== "open" && joinGate.kind !== "live" && joinGate.kind !== "unscheduled") return;
     if (doorman.policy.requiresPassword) {
       if (linkPassword) {
         doorman.requestJoin(linkPassword);
@@ -141,7 +143,7 @@ const PodcastRoomPage = () => {
     } else {
       doorman.requestJoin();
     }
-  }, [isHost, doorman, linkPassword]);
+  }, [isHost, doorman, linkPassword, joinGate.kind]);
 
   // LiveKit room — only enabled after doorman accepts.
   const room = usePodcastLiveRoom({
