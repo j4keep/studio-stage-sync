@@ -35,14 +35,55 @@ type LocalRecording = {
 
 type Tab = "people" | "chat" | "files" | "tools";
 
-const LAYOUTS: { id: string; label: string }[] = [
-  { id: "auto", label: "Auto grid" },
-  { id: "speaker", label: "Speaker focus" },
-  { id: "split", label: "Side-by-side" },
-  { id: "3up", label: "3-up row" },
-  { id: "pip", label: "Picture-in-picture" },
-  { id: "screen", label: "Screen-share priority" },
+const LAYOUTS: { id: string; label: string; thumb: JSX.Element }[] = [
+  { id: "auto",    label: "Auto grid",          thumb: <LayoutThumb kind="auto" /> },
+  { id: "speaker", label: "Speaker focus",      thumb: <LayoutThumb kind="speaker" /> },
+  { id: "split",   label: "Side-by-side",       thumb: <LayoutThumb kind="split" /> },
+  { id: "3up",     label: "3-up row",           thumb: <LayoutThumb kind="3up" /> },
+  { id: "pip",     label: "Picture-in-picture", thumb: <LayoutThumb kind="pip" /> },
+  { id: "screen",  label: "Screen-share",       thumb: <LayoutThumb kind="screen" /> },
 ];
+
+function LayoutThumb({ kind }: { kind: "auto" | "speaker" | "split" | "3up" | "pip" | "screen" }) {
+  const box = "fill-zinc-700 stroke-zinc-500";
+  return (
+    <svg viewBox="0 0 64 36" className="w-full h-full">
+      <rect x="0" y="0" width="64" height="36" rx="3" className="fill-zinc-900 stroke-zinc-700" />
+      {kind === "auto" && <>
+        <rect x="3"  y="3"  width="28" height="14" rx="1.5" className={box} />
+        <rect x="33" y="3"  width="28" height="14" rx="1.5" className={box} />
+        <rect x="3"  y="19" width="28" height="14" rx="1.5" className={box} />
+        <rect x="33" y="19" width="28" height="14" rx="1.5" className={box} />
+      </>}
+      {kind === "speaker" && <>
+        <rect x="3" y="3" width="58" height="22" rx="1.5" className={box} />
+        <rect x="3"  y="27" width="13" height="6" rx="1" className={box} />
+        <rect x="18" y="27" width="13" height="6" rx="1" className={box} />
+        <rect x="33" y="27" width="13" height="6" rx="1" className={box} />
+        <rect x="48" y="27" width="13" height="6" rx="1" className={box} />
+      </>}
+      {kind === "split" && <>
+        <rect x="3"  y="3" width="28" height="30" rx="1.5" className={box} />
+        <rect x="33" y="3" width="28" height="30" rx="1.5" className={box} />
+      </>}
+      {kind === "3up" && <>
+        <rect x="3"  y="10" width="18" height="16" rx="1.5" className={box} />
+        <rect x="23" y="10" width="18" height="16" rx="1.5" className={box} />
+        <rect x="43" y="10" width="18" height="16" rx="1.5" className={box} />
+      </>}
+      {kind === "pip" && <>
+        <rect x="3" y="3" width="58" height="30" rx="1.5" className={box} />
+        <rect x="44" y="22" width="15" height="9" rx="1" className="fill-primary/60 stroke-primary" />
+      </>}
+      {kind === "screen" && <>
+        <rect x="3" y="3" width="44" height="30" rx="1.5" className={box} />
+        <rect x="49" y="3"  width="12" height="9"  rx="1" className={box} />
+        <rect x="49" y="14" width="12" height="9"  rx="1" className={box} />
+        <rect x="49" y="25" width="12" height="8"  rx="1" className={box} />
+      </>}
+    </svg>
+  );
+}
 
 // Legacy gradient list removed — real virtual backgrounds live in podcastBackgrounds.ts.
 
@@ -78,7 +119,7 @@ function buildCompositeStream(getParticipants: () => RoomParticipant[]): {
   stream: MediaStream;
   stop: () => void;
 } {
-  const W = 1280, H = 720;
+  const W = 1920, H = 1080;
   const canvas = document.createElement("canvas");
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext("2d")!;
@@ -139,14 +180,22 @@ function buildCompositeStream(getParticipants: () => RoomParticipant[]): {
       if (p.videoTrack && p.camOn) {
         const v = ensureVideoEl(p.id, p.videoTrack);
         if (v.readyState >= 2 && v.videoWidth) {
-          // contain
+          // COVER fit — fills the tile exactly like the host sees on-screen
+          // (matches CSS `object-cover` in <ParticipantTile/>). Crops the
+          // shorter axis so guests fill the cell consistently across devices.
+          const tileW = cellW - 8, tileH = cellH - 8;
           const vr = v.videoWidth / v.videoHeight;
-          const cr = (cellW - 8) / (cellH - 8);
-          let dw = cellW - 8, dh = cellH - 8;
-          if (vr > cr) dh = dw / vr; else dw = dh * vr;
-          const dx = cx + 4 + (cellW - 8 - dw) / 2;
-          const dy = cy + 4 + (cellH - 8 - dh) / 2;
-          ctx.drawImage(v, dx, dy, dw, dh);
+          const cr = tileW / tileH;
+          let sx = 0, sy = 0, sw = v.videoWidth, sh = v.videoHeight;
+          if (vr > cr) {
+            // video wider than tile -> crop horizontal
+            sw = v.videoHeight * cr;
+            sx = (v.videoWidth - sw) / 2;
+          } else {
+            sh = v.videoWidth / cr;
+            sy = (v.videoHeight - sh) / 2;
+          }
+          ctx.drawImage(v, sx, sy, sw, sh, cx + 4, cy + 4, tileW, tileH);
         }
       } else {
         // avatar bubble
@@ -999,11 +1048,24 @@ const ParticipantTile = ({ p, isRecording, bg }: { p: RoomParticipant; isRecordi
   return (
     <div className="relative rounded-xl overflow-hidden bg-zinc-900 border border-zinc-800 aspect-video">
       {p.videoTrack && p.camOn ? (
-        seg.active ? (
-          <canvas ref={seg.canvasRef} className="w-full h-full object-cover" />
-        ) : (
-          <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
-        )
+        <>
+          {/* Video is always mounted so srcObject stays valid; hidden when segmentation canvas is active */}
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
+            playsInline
+            className={`w-full h-full object-cover ${seg.active ? "invisible" : "visible"}`}
+          />
+          {/* Canvas is always mounted whenever BG replacement is enabled so the hook
+              can grab the ref BEFORE it flips active=true (otherwise it gets stuck loading) */}
+          {segEnabled && (
+            <canvas
+              ref={seg.canvasRef}
+              className={`absolute inset-0 w-full h-full object-cover ${seg.active ? "visible" : "invisible"}`}
+            />
+          )}
+        </>
       ) : (
         <div className="absolute inset-0 grid place-items-center">
           <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-primary/40 grid place-items-center text-xl font-bold">
@@ -1011,9 +1073,14 @@ const ParticipantTile = ({ p, isRecording, bg }: { p: RoomParticipant; isRecordi
           </div>
         </div>
       )}
-      {seg.loading && (
+      {seg.loading && !seg.active && (
         <div className="absolute top-2 left-1/2 -translate-x-1/2 text-[10px] px-2 py-0.5 rounded-full bg-black/60 border border-white/10 text-zinc-200">
           Loading background…
+        </div>
+      )}
+      {seg.error && !seg.active && (
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 text-[10px] px-2 py-0.5 rounded-full bg-red-500/70 border border-white/10 text-white">
+          BG off: {seg.error}
         </div>
       )}
       <audio ref={audioRef} autoPlay />
@@ -1272,15 +1339,15 @@ const LayoutSheet = ({
 
       <section className="mb-5">
         <h3 className="text-xs uppercase tracking-wider text-zinc-500 mb-2">Layout</h3>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {LAYOUTS.map((l) => (
             <button
               key={l.id}
               onClick={() => setActiveLayout(l.id)}
-              className={`p-3 rounded-lg border text-left text-xs transition ${activeLayout === l.id ? "border-primary bg-primary/15 text-foreground" : "border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-zinc-700"}`}
+              className={`p-2 rounded-lg border text-left text-xs transition ${activeLayout === l.id ? "border-primary bg-primary/15 text-foreground ring-1 ring-primary" : "border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-zinc-700"}`}
             >
-              <div className="h-10 mb-2 rounded bg-zinc-800 grid place-items-center">
-                <LayoutGrid className="w-4 h-4 text-zinc-500" />
+              <div className="aspect-[16/9] mb-2 rounded overflow-hidden bg-zinc-950">
+                {l.thumb}
               </div>
               {l.label}
             </button>

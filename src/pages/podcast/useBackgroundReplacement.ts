@@ -85,8 +85,14 @@ export function useBackgroundReplacement(
 
         await video.play().catch(() => {});
 
-        const canvas = canvasRef.current;
-        if (!canvas) return;
+        // Wait briefly for the canvas to mount if it isn't yet (parent renders it
+        // conditionally on segEnabled, so it usually IS there — this is just a safety net).
+        let canvas = canvasRef.current;
+        for (let i = 0; i < 20 && !canvas && !cancelled; i++) {
+          await new Promise((r) => setTimeout(r, 50));
+          canvas = canvasRef.current;
+        }
+        if (!canvas || cancelled) return;
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
 
