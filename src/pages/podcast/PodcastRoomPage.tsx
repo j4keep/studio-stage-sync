@@ -559,7 +559,13 @@ const GuestWaitingOverlay = ({
       <div className="w-14 h-14 rounded-full bg-purple-500/15 border border-purple-500/30 grid place-items-center mx-auto mb-3">
         <Shield className="w-6 h-6 text-purple-300" />
       </div>
-      {status === "rejected" ? (
+      {status === "ended" ? (
+        <>
+          <h2 className="text-lg font-semibold mb-1">Session ended</h2>
+          <p className="text-sm text-zinc-400 mb-4">{rejectReason || "The host ended the podcast."}</p>
+          <Button variant="secondary" onClick={onLeave} className="w-full">Back to Podcast Home</Button>
+        </>
+      ) : status === "rejected" ? (
         <>
           <h2 className="text-lg font-semibold mb-1">Entry declined</h2>
           <p className="text-sm text-zinc-400 mb-4">{rejectReason || "The host did not accept your request."}</p>
