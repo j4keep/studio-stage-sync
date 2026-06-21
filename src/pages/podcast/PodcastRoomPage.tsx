@@ -913,15 +913,47 @@ const ConnBadge = ({ state, count }: { state: string; count: number }) => {
 };
 
 const PodcastVideoGrid = ({
-  participants, isRecording, localId,
-}: { participants: RoomParticipant[]; isRecording: boolean; localId?: string }) => {
+  participants, isRecording, localId, layout = "auto",
+}: { participants: RoomParticipant[]; isRecording: boolean; localId?: string; layout?: string }) => {
   const count = participants.length || 1;
-  const cols = count <= 1 ? "grid-cols-1"
-    : count <= 2 ? "grid-cols-1 md:grid-cols-2"
-    : count <= 4 ? "grid-cols-2"
-    : "grid-cols-2 md:grid-cols-3";
+  let cols = "grid-cols-1";
+  if (layout === "split") cols = "grid-cols-1 md:grid-cols-2";
+  else if (layout === "3up") cols = "grid-cols-1 md:grid-cols-3";
+  else if (layout === "speaker" || layout === "pip" || layout === "screen") cols = "grid-cols-1";
+  else {
+    cols = count <= 1 ? "grid-cols-1"
+      : count <= 2 ? "grid-cols-1 md:grid-cols-2"
+      : count <= 4 ? "grid-cols-2"
+      : "grid-cols-2 md:grid-cols-3";
+  }
   if (participants.length === 0) {
     return <div className="rounded-xl bg-zinc-900 border border-zinc-800 aspect-video grid place-items-center text-sm text-zinc-500">Connecting to room…</div>;
+  }
+  if (layout === "speaker" || layout === "screen") {
+    const [main, ...rest] = participants;
+    return (
+      <div className="flex flex-col gap-3 flex-1 min-h-[300px]">
+        <div className="flex-1"><ParticipantTile p={main} isRecording={isRecording && main.id === localId} /></div>
+        {rest.length > 0 && (
+          <div className="grid grid-cols-3 md:grid-cols-6 gap-2 h-24">
+            {rest.map((p) => <ParticipantTile key={p.id} p={p} isRecording={isRecording && p.id === localId} />)}
+          </div>
+        )}
+      </div>
+    );
+  }
+  if (layout === "pip") {
+    const [main, ...rest] = participants;
+    return (
+      <div className="relative flex-1 min-h-[300px]">
+        <ParticipantTile p={main} isRecording={isRecording && main.id === localId} />
+        {rest[0] && (
+          <div className="absolute right-3 bottom-3 w-40 md:w-56 aspect-video rounded-lg overflow-hidden border-2 border-zinc-700 shadow-xl">
+            <ParticipantTile p={rest[0]} isRecording={isRecording && rest[0].id === localId} />
+          </div>
+        )}
+      </div>
+    );
   }
   return (
     <div className={`grid ${cols} gap-3 flex-1 min-h-[300px]`}>
