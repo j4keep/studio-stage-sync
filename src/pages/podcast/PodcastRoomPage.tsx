@@ -1121,8 +1121,7 @@ const PodcastSidebar = ({
     <nav className="flex border-b border-zinc-800">
       <TabBtn active={tab === "people"} onClick={() => setTab("people")}><Users className="w-4 h-4" /> People</TabBtn>
       <TabBtn active={tab === "chat"} onClick={() => setTab("chat")}><MessageSquare className="w-4 h-4" /> Chat</TabBtn>
-      <TabBtn active={tab === "files"} onClick={() => setTab("files")}><FolderDown className="w-4 h-4" /> Files</TabBtn>
-      <TabBtn active={tab === "host"} onClick={() => setTab("host")}><SettingsIcon className="w-4 h-4" /></TabBtn>
+      <TabBtn active={tab === "files"} onClick={() => setTab("files")}><FolderDown className="w-4 h-4" /> W.Tools</TabBtn>
     </nav>
     <div className="flex-1 overflow-y-auto p-3">
       {tab === "people" && (
