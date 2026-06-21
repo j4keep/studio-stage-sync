@@ -177,6 +177,11 @@ export function usePodcastDoorman({ sessionId, isHost, displayName, security }: 
   const accept = useCallback((reqId: string) => decide(reqId, true), [decide]);
   const reject = useCallback((reqId: string, reason?: string) => decide(reqId, false, reason), [decide]);
 
+  const endSession = useCallback((reason?: string) => {
+    if (!isHost) return;
+    send({ type: "ended", reason: reason || "Host ended the session" });
+  }, [isHost, send]);
+
   // host-side auto-accept for public rooms
   useEffect(() => {
     if (!isHost) return;
@@ -199,6 +204,7 @@ export function usePodcastDoorman({ sessionId, isHost, displayName, security }: 
     requestJoin,
     accept,
     reject,
+    endSession,
     validatePassword,
-  }), [status, pending, policy, rejectReason, requestJoin, accept, reject, validatePassword]);
+  }), [status, pending, policy, rejectReason, requestJoin, accept, reject, endSession, validatePassword]);
 }
