@@ -220,6 +220,7 @@ const ProtectedRoutes = () => {
         <Route path="/tv/podcast/:episodeId/edit" element={<PodcastRoomPage />} />
         <Route path="/tv/podcast/:episodeId/recording/:recordingId/editor" element={<PodcastStudioPage />} />
         <Route path="/podcast/room/:sessionId" element={<PodcastRoomPage />} />
+        <Route path="/podcast/contacts" element={<PodcastContactsPage />} />
         <Route path="/circle" element={<Navigate to="/" replace />} />
         <Route path="/circle/*" element={<Navigate to="/" replace />} />
         <Route path="/m/*" element={<Navigate to="/" replace />} />
