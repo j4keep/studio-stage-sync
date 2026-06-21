@@ -84,6 +84,52 @@ const LivePodcastLobbyPage = () => {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [scheduleStartNow, setScheduleStartNow] = useState(false);
   const [editingSession, setEditingSession] = useState<ScheduledPodcastSession | null>(null);
+  const [localFinals, setLocalFinals] = useState<FinalRecording[]>([]);
+  const [editingLocal, setEditingLocal] = useState<FinalRecording | null>(null);
+  const [editingLocalUrl, setEditingLocalUrl] = useState<string>("");
+
+  const loadLocalFinals = async () => {
+    try { setLocalFinals(await PodcastFinals.list()); } catch {}
+  };
+  useEffect(() => {
+    loadLocalFinals();
+    const onVis = () => { if (document.visibilityState === "visible") loadLocalFinals(); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
+
+  const deleteLocal = async (rec: FinalRecording) => {
+    if (!confirm(`Delete "${rec.title}"? This cannot be undone.`)) return;
+    await PodcastFinals.delete(rec.id);
+    setLocalFinals((rs) => rs.filter((r) => r.id !== rec.id));
+    toast({ title: "Recording deleted" });
+  };
+
+  const downloadLocal = (rec: FinalRecording) => {
+    const url = URL.createObjectURL(rec.blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = rec.name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  };
+
+  const openLocalEditor = (rec: FinalRecording) => {
+    const url = URL.createObjectURL(rec.blob);
+    setEditingLocalUrl(url);
+    setEditingLocal(rec);
+  };
+  const closeLocalEditor = () => {
+    if (editingLocalUrl) URL.revokeObjectURL(editingLocalUrl);
+    setEditingLocalUrl("");
+    setEditingLocal(null);
+  };
+
+  const renameLocal = async (rec: FinalRecording) => {
+    const next = prompt("Rename recording", rec.title);
+    if (!next || next.trim() === rec.title) return;
+    await PodcastFinals.update(rec.id, { title: next.trim() });
+    setLocalFinals((rs) => rs.map((r) => r.id === rec.id ? { ...r, title: next.trim() } : r));
+  };
 
   const load = async () => {
     if (!user) return;
