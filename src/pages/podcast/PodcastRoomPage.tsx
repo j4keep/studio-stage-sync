@@ -323,14 +323,39 @@ const PodcastRoomPage = () => {
 
   const leave = () => {
     if (isRecording) stopRecording();
-    if (isHost && scheduled && scheduled.status !== "cancelled") {
-      if (confirm("End the podcast session for everyone?")) {
-        PodcastSessionStore.markEnded(scheduled.id);
+    if (isHost) {
+      const isScheduled = scheduled && scheduled.status !== "cancelled";
+      const msg = isScheduled
+        ? "End the podcast session for everyone? This will disconnect all guests."
+        : "End the podcast for everyone? This will disconnect all guests.";
+      if (confirm(msg)) {
+        if (isScheduled) PodcastSessionStore.markEnded(scheduled!.id);
+        // Tell all guests to disconnect — kills their cam/mic on next render.
+        try { doorman.endSession("Host ended the session"); } catch {}
+      } else {
+        return; // host cancelled
       }
     }
+    // Stop local cam/mic immediately for everyone leaving.
+    try { room.setCam(false); } catch {}
+    try { room.setMic(false); } catch {}
     room.disconnect();
     navigate("/tv/podcast");
   };
+
+  // Guest: if host ended, force-disconnect cam/mic and bounce back.
+  useEffect(() => {
+    if (isHost) return;
+    if (doorman.status !== "ended") return;
+    if (isRecording) stopRecording();
+    try { room.setCam(false); } catch {}
+    try { room.setMic(false); } catch {}
+    room.disconnect();
+    toast({ title: "Session ended", description: "The host ended the podcast." });
+    const t = window.setTimeout(() => navigate("/tv/podcast"), 1800);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isHost, doorman.status]);
 
   const openInvite = () => setInviteOpen(true);
 
