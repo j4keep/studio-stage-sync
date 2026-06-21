@@ -53,6 +53,8 @@ export function usePodcastDoorman({ sessionId, isHost, displayName, security }: 
 
   const secRef = useRef(security);
   useEffect(() => { secRef.current = security; }, [security]);
+  const nameRef = useRef(displayName);
+  useEffect(() => { nameRef.current = displayName; }, [displayName]);
 
   const send = useCallback((payload: OutMsg) => {
     const ch = channelRef.current;
