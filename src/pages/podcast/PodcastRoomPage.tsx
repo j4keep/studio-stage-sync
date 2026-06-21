@@ -760,7 +760,22 @@ const PodcastRoomPage = () => {
         onCam={toggleCam}
         onScreen={toggleScreen}
         onLeave={leave}
+        onLayout={() => setLayoutSheetOpen(true)}
       />
+
+      {layoutSheetOpen && (
+        <LayoutSheet
+          onClose={() => setLayoutSheetOpen(false)}
+          activeLayout={activeLayout}
+          setActiveLayout={setActiveLayout}
+          captionsOn={captionsOn}
+          setCaptionsOn={setCaptionsOn}
+          captionStyle={captionStyle}
+          setCaptionStyle={setCaptionStyle}
+          bgEffect={bgEffect}
+          setBgEffect={setBgEffect}
+        />
+      )}
 
       <PodcastInviteSheet
         open={inviteOpen}
