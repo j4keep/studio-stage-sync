@@ -12,9 +12,10 @@
 //   await PodcastRecovery.discard(dbId);
 
 const DB_NAME = "wstudio-podcast-recovery";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_SESSIONS = "sessions";
 const STORE_CHUNKS = "chunks";
+const STORE_FINALS = "finals";
 
 export type RecoverySessionRow = {
   id: number;
