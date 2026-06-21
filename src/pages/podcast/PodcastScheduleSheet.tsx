@@ -34,15 +34,7 @@ const timeStr = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 const todayDateStr = (offsetMs = 30 * 60_000) => dateStr(new Date(Date.now() + offsetMs));
 const nowTimeStr = (offsetMs = 30 * 60_000) => timeStr(new Date(Date.now() + offsetMs));
 
-const pad = (n: number) => n.toString().padStart(2, "0");
-
-const todayDateStr = (d = new Date(Date.now() + 30 * 60_000)) =>
-  `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-
-const nowTimeStr = (d = new Date(Date.now() + 30 * 60_000)) =>
-  `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-
-export default function PodcastScheduleSheet({ open, onClose, hostId, hostName, editing, onSaved }: Props) {
+export default function PodcastScheduleSheet({ open, onClose, hostId, hostName, editing, initialStartNow, onSaved }: Props) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [date, setDate] = useState(todayDateStr());
