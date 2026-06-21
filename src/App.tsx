@@ -57,6 +57,7 @@ import AdminSoundLibraryPage from "./pages/AdminSoundLibraryPage";
 import AskJhiPage from "./pages/AskJhiPage";
 import FeedPage from "./pages/FeedPage";
 import LivePodcastLobbyPage from "./pages/podcast/LivePodcastLobbyPage";
+import PodcastContactsPage from "./pages/podcast/PodcastContactsPage";
 import PodcastStudioPage from "./pages/podcast/PodcastStudioPage";
 import PodcastJoinPage from "./pages/podcast/PodcastJoinPage";
 import PodcastRoomPage from "./pages/podcast/PodcastRoomPage";
@@ -220,6 +221,7 @@ const ProtectedRoutes = () => {
         <Route path="/tv/podcast/:episodeId/edit" element={<PodcastRoomPage />} />
         <Route path="/tv/podcast/:episodeId/recording/:recordingId/editor" element={<PodcastStudioPage />} />
         <Route path="/podcast/room/:sessionId" element={<PodcastRoomPage />} />
+        <Route path="/podcast/contacts" element={<PodcastContactsPage />} />
         <Route path="/circle" element={<Navigate to="/" replace />} />
         <Route path="/circle/*" element={<Navigate to="/" replace />} />
         <Route path="/m/*" element={<Navigate to="/" replace />} />

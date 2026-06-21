@@ -7,7 +7,6 @@ import {
   Copy,
   Download,
   Edit3,
-  ExternalLink,
   Film,
   FolderOpen,
   Gauge,
@@ -16,7 +15,6 @@ import {
   Loader2,
   MessageSquareText,
   MoreHorizontal,
-  Plus,
   Radio,
   Scissors,
   Search,
@@ -335,6 +333,7 @@ const LivePodcastLobbyPage = () => {
         <aside className="hidden border-r border-border bg-card/70 lg:flex lg:flex-col lg:items-center lg:gap-2 lg:px-3 lg:py-4">
           <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-md bg-primary text-primary-foreground"><Radio className="h-6 w-6" /></div>
           <SideButton icon={<Home />} label="Home" active={viewMode === "home"} onClick={() => setViewMode("home")} />
+          <SideButton icon={<Users />} label="People" onClick={() => navigate("/podcast/contacts")} />
           <SideButton icon={<FolderOpen />} label="Projects" active={viewMode === "projects"} onClick={() => setViewMode("projects")} />
           <SideButton icon={<CalendarDays />} label="Planner" active={viewMode === "planner"} onClick={() => setViewMode("planner")} />
           <SideButton icon={<MessageSquareText />} label="Messages" onClick={() => navigate("/messages")} />
@@ -390,7 +389,7 @@ const LivePodcastLobbyPage = () => {
               <MobileTab label="Messages" onClick={() => navigate("/messages")} />
             </div>
 
-            <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+            <div className="mt-6">
               <section className="min-w-0">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <div>
@@ -404,11 +403,11 @@ const LivePodcastLobbyPage = () => {
                   <PodcastScheduleDashboard onEdit={(s) => { setEditingSession(s); setScheduleStartNow(false); setScheduleOpen(true); }} />
                 ) : loading ? (
                   <div className="rounded-lg border border-border bg-card p-8 text-sm text-muted-foreground">Loading episodes…</div>
-                ) : activeRows.length === 0 ? (
+                ) : (activeRows.filter(({ takes }) => takes.length > 0).length === 0 && localFinals.length === 0) ? (
                   <EmptyState onRecord={() => openScheduleModal(true)} onUpload={() => fileInputRef.current?.click()} />
                 ) : (
                   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    {activeRows.map(({ episode, takes }) => {
+                    {activeRows.filter(({ takes }) => takes.length > 0).map(({ episode, takes }) => {
                       const take = takes[0];
                       return (
                         <EpisodeCard
@@ -443,23 +442,6 @@ const LivePodcastLobbyPage = () => {
                   />
                 )}
               </section>
-
-              <aside className="space-y-4">
-                <Panel title="Project tools">
-                  <ToolRow icon={<Users />} title="People" body="Invite guests from the studio." onClick={() => episodes[0] ? navigate(`/tv/podcast/${episodes[0].id}`) : createEpisode("record")} />
-                  <ToolRow icon={<MessageSquareText />} title="Chat" body="Open messages." onClick={() => navigate("/messages")} />
-                  <ToolRow icon={<Clapperboard />} title="Brand" body="Backgrounds, lower thirds, and layouts live in Studio." onClick={() => episodes[0] ? navigate(`/tv/podcast/${episodes[0].id}`) : createEpisode("record")} />
-                  <ToolRow icon={<Edit3 />} title="Text" body="Transcript editing appears after transcription." onClick={openLatestEditor} />
-                  <ToolRow icon={<FolderOpen />} title="Media" body="Recordings, uploads, clips, and exports." onClick={() => setViewMode("projects")} />
-                </Panel>
-                <Panel title="Quick stats">
-                  <div className="grid grid-cols-3 gap-2">
-                    <Stat label="Projects" value={String(episodes.length)} />
-                    <Stat label="Videos" value={String(recordings.length)} />
-                    <Stat label="Hours" value={(recordings.reduce((sum, rec) => sum + (rec.duration_seconds ?? rec.chunk_count * 5), 0) / 3600).toFixed(1)} />
-                  </div>
-                </Panel>
-              </aside>
             </div>
           </section>
         </main>
@@ -584,14 +566,6 @@ const EpisodeCard = ({ episode, take, previewUrl, loadingPreview, menuOpen, onTo
 const MenuItem = ({ icon, label, onClick, disabled, danger }: { icon: ReactNode; label: string; onClick: () => void; disabled?: boolean; danger?: boolean }) => (
   <button disabled={disabled} onClick={onClick} className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm disabled:opacity-40 ${danger ? "text-destructive hover:bg-destructive/10" : "hover:bg-muted"}`}>
     {icon}<span>{label}</span>
-  </button>
-);
-
-const Panel = ({ title, children }: { title: string; children: ReactNode }) => <section className="rounded-lg border border-border bg-card p-4"><h3 className="mb-3 font-bold">{title}</h3>{children}</section>;
-
-const ToolRow = ({ icon, title, body, onClick }: { icon: ReactNode; title: string; body: string; onClick: () => void }) => (
-  <button onClick={onClick} className="flex w-full items-center gap-3 rounded-lg border border-border bg-background p-3 text-left hover:border-primary/50">
-    <span className="text-primary">{icon}</span><span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{title}</span><span className="block text-xs text-muted-foreground">{body}</span></span><ExternalLink className="h-4 w-4 text-muted-foreground" />
   </button>
 );
 

@@ -4,7 +4,7 @@ import {
   Mic, MicOff, Video, VideoOff, MonitorUp, PhoneOff, Share2, Circle, Square,
   Pause, Play, Users, MessageSquare, FolderDown, Settings as SettingsIcon,
   Download, Trash2, Edit3, Check, ArrowLeft, Wifi, AlertTriangle, RotateCcw,
-  Shield, X,
+  Shield, X, LayoutGrid, Captions, Image as ImageIcon, Wand2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,7 +30,33 @@ type LocalRecording = {
   recovered?: boolean;
 };
 
-type Tab = "people" | "chat" | "files" | "host";
+type Tab = "people" | "chat" | "files" | "tools";
+
+const LAYOUTS: { id: string; label: string }[] = [
+  { id: "auto", label: "Auto grid" },
+  { id: "speaker", label: "Speaker focus" },
+  { id: "split", label: "Side-by-side" },
+  { id: "3up", label: "3-up row" },
+  { id: "pip", label: "Picture-in-picture" },
+  { id: "screen", label: "Screen-share priority" },
+];
+
+const BACKGROUNDS: { id: string; label: string; preview: string }[] = [
+  { id: "none", label: "None", preview: "transparent" },
+  { id: "blur", label: "Blur", preview: "linear-gradient(135deg,#1f2937,#374151)" },
+  { id: "studio-purple", label: "Studio Purple", preview: "linear-gradient(135deg,#3b0764,#9333ea)" },
+  { id: "midnight", label: "Midnight", preview: "linear-gradient(135deg,#020617,#1e293b)" },
+  { id: "sunset", label: "Sunset", preview: "linear-gradient(135deg,#7c2d12,#f59e0b)" },
+  { id: "ocean", label: "Ocean", preview: "linear-gradient(135deg,#0c4a6e,#06b6d4)" },
+  { id: "forest", label: "Forest", preview: "linear-gradient(135deg,#14532d,#22c55e)" },
+  { id: "neon", label: "Neon", preview: "linear-gradient(135deg,#831843,#ec4899)" },
+  { id: "rose", label: "Rose Gold", preview: "linear-gradient(135deg,#9f1239,#fda4af)" },
+  { id: "graphite", label: "Graphite", preview: "linear-gradient(135deg,#111827,#4b5563)" },
+  { id: "amber", label: "Amber Stage", preview: "linear-gradient(135deg,#78350f,#fbbf24)" },
+  { id: "ice", label: "Ice", preview: "linear-gradient(135deg,#1e3a8a,#bfdbfe)" },
+];
+
+type CaptionStyle = "clean" | "bold" | "subtitle" | "karaoke";
 
 const pickMime = () => {
   const opts = [
@@ -228,6 +254,49 @@ const PodcastRoomPage = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isHost, scheduled?.id]);
+
+  // Layout / captions / background sheet state (local to this device, per session)
+  const [layoutSheetOpen, setLayoutSheetOpen] = useState(false);
+  const [activeLayout, setActiveLayout] = useState<string>(() => {
+    try { return localStorage.getItem(`pod-layout:${sessionId}`) || "auto"; } catch { return "auto"; }
+  });
+  const [captionsOn, setCaptionsOn] = useState<boolean>(() => {
+    try { return localStorage.getItem(`pod-cc:${sessionId}`) === "1"; } catch { return false; }
+  });
+  const [captionStyle, setCaptionStyle] = useState<CaptionStyle>(() => {
+    try { return (localStorage.getItem(`pod-cc-style:${sessionId}`) as CaptionStyle) || "clean"; } catch { return "clean"; }
+  });
+  const [bgEffect, setBgEffect] = useState<string>(() => {
+    try { return localStorage.getItem(`pod-bg:${sessionId}`) || "none"; } catch { return "none"; }
+  });
+  useEffect(() => { try { localStorage.setItem(`pod-layout:${sessionId}`, activeLayout); } catch {} }, [sessionId, activeLayout]);
+  useEffect(() => { try { localStorage.setItem(`pod-cc:${sessionId}`, captionsOn ? "1" : "0"); } catch {} }, [sessionId, captionsOn]);
+  useEffect(() => { try { localStorage.setItem(`pod-cc-style:${sessionId}`, captionStyle); } catch {} }, [sessionId, captionStyle]);
+  useEffect(() => { try { localStorage.setItem(`pod-bg:${sessionId}`, bgEffect); } catch {} }, [sessionId, bgEffect]);
+
+  // Live captions via Web Speech API (best-effort, where supported)
+  const [liveCaption, setLiveCaption] = useState<string>("");
+  useEffect(() => {
+    if (!captionsOn) { setLiveCaption(""); return; }
+    const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) { setLiveCaption("(Live captions not supported in this browser)"); return; }
+    let rec: any;
+    try {
+      rec = new SR();
+      rec.continuous = true;
+      rec.interimResults = true;
+      rec.lang = navigator.language || "en-US";
+      rec.onresult = (e: any) => {
+        let s = "";
+        for (let i = e.resultIndex; i < e.results.length; i++) s += e.results[i][0].transcript;
+        setLiveCaption(s.slice(-200));
+      };
+      rec.onerror = () => {};
+      rec.onend = () => { try { if (captionsOn) rec.start(); } catch {} };
+      rec.start();
+    } catch {}
+    return () => { try { rec?.stop(); } catch {} };
+  }, [captionsOn]);
 
   // Host-controlled session security (persisted per session, host's device)
   const SEC_KEY = `wstudio-podcast-security:${sessionId}`;
@@ -552,7 +621,12 @@ const PodcastRoomPage = () => {
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col">
       <header className="flex items-center justify-between gap-3 px-3 md:px-5 h-14 border-b border-zinc-800 bg-zinc-950/95 backdrop-blur sticky top-0 z-30">
         <div className="flex items-center gap-3 min-w-0">
-          <button onClick={leave} className="p-1.5 rounded hover:bg-zinc-800" title="Back to Podcast">
+          <button
+            onClick={() => navigate("/tv/podcast")}
+            className="p-1.5 rounded hover:bg-zinc-800"
+            title="Back to Podcast Home (session keeps running until you press Leave)"
+            aria-label="Back to Podcast Home"
+          >
             <ArrowLeft className="w-4 h-4 text-zinc-300" />
           </button>
           <div className="text-sm font-semibold tracking-wider text-purple-300">W.STUDIO <span className="text-teal-300">PODCAST</span></div>
@@ -570,11 +644,22 @@ const PodcastRoomPage = () => {
           <Button size="sm" variant="secondary" onClick={openInvite} className="gap-1.5">
             <Share2 className="w-3.5 h-3.5" /> Invite
           </Button>
+          <button
+            onClick={() => navigate("/settings")}
+            className="p-1.5 rounded hover:bg-zinc-800"
+            title="App settings"
+            aria-label="App settings"
+          >
+            <SettingsIcon className="w-4 h-4 text-zinc-300" />
+          </button>
         </div>
       </header>
 
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
-        <main className="flex-1 min-w-0 p-3 md:p-5 flex flex-col gap-4">
+        <main
+          className="flex-1 min-w-0 p-3 md:p-5 flex flex-col gap-4 relative"
+          style={bgEffect !== "none" ? { background: BACKGROUNDS.find((b) => b.id === bgEffect)?.preview } : undefined}
+        >
           {permError && (
             <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-200">
               <div className="flex items-center gap-2"><AlertTriangle className="w-4 h-4" />{permError}</div>
@@ -600,7 +685,18 @@ const PodcastRoomPage = () => {
             </div>
           )}
 
-          <PodcastVideoGrid participants={visible} isRecording={isRecording} localId={me?.id} />
+          <PodcastVideoGrid participants={visible} isRecording={isRecording} localId={me?.id} layout={activeLayout} />
+
+          {captionsOn && liveCaption && (
+            <div className={`pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-4 max-w-[80%] text-center ${
+              captionStyle === "bold" ? "text-2xl md:text-3xl font-bold text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]"
+              : captionStyle === "subtitle" ? "text-base md:text-lg text-white bg-black/70 px-3 py-1 rounded"
+              : captionStyle === "karaoke" ? "text-xl md:text-2xl font-semibold text-yellow-300 drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]"
+              : "text-base md:text-lg text-white bg-black/50 px-3 py-1 rounded"
+            }`}>
+              {liveCaption}
+            </div>
+          )}
 
           {editing && (
             <PodcastEditorPro
@@ -664,7 +760,22 @@ const PodcastRoomPage = () => {
         onCam={toggleCam}
         onScreen={toggleScreen}
         onLeave={leave}
+        onLayout={() => setLayoutSheetOpen(true)}
       />
+
+      {layoutSheetOpen && (
+        <LayoutSheet
+          onClose={() => setLayoutSheetOpen(false)}
+          activeLayout={activeLayout}
+          setActiveLayout={setActiveLayout}
+          captionsOn={captionsOn}
+          setCaptionsOn={setCaptionsOn}
+          captionStyle={captionStyle}
+          setCaptionStyle={setCaptionStyle}
+          bgEffect={bgEffect}
+          setBgEffect={setBgEffect}
+        />
+      )}
 
       <PodcastInviteSheet
         open={inviteOpen}
@@ -817,15 +928,47 @@ const ConnBadge = ({ state, count }: { state: string; count: number }) => {
 };
 
 const PodcastVideoGrid = ({
-  participants, isRecording, localId,
-}: { participants: RoomParticipant[]; isRecording: boolean; localId?: string }) => {
+  participants, isRecording, localId, layout = "auto",
+}: { participants: RoomParticipant[]; isRecording: boolean; localId?: string; layout?: string }) => {
   const count = participants.length || 1;
-  const cols = count <= 1 ? "grid-cols-1"
-    : count <= 2 ? "grid-cols-1 md:grid-cols-2"
-    : count <= 4 ? "grid-cols-2"
-    : "grid-cols-2 md:grid-cols-3";
+  let cols = "grid-cols-1";
+  if (layout === "split") cols = "grid-cols-1 md:grid-cols-2";
+  else if (layout === "3up") cols = "grid-cols-1 md:grid-cols-3";
+  else if (layout === "speaker" || layout === "pip" || layout === "screen") cols = "grid-cols-1";
+  else {
+    cols = count <= 1 ? "grid-cols-1"
+      : count <= 2 ? "grid-cols-1 md:grid-cols-2"
+      : count <= 4 ? "grid-cols-2"
+      : "grid-cols-2 md:grid-cols-3";
+  }
   if (participants.length === 0) {
     return <div className="rounded-xl bg-zinc-900 border border-zinc-800 aspect-video grid place-items-center text-sm text-zinc-500">Connecting to room…</div>;
+  }
+  if (layout === "speaker" || layout === "screen") {
+    const [main, ...rest] = participants;
+    return (
+      <div className="flex flex-col gap-3 flex-1 min-h-[300px]">
+        <div className="flex-1"><ParticipantTile p={main} isRecording={isRecording && main.id === localId} /></div>
+        {rest.length > 0 && (
+          <div className="grid grid-cols-3 md:grid-cols-6 gap-2 h-24">
+            {rest.map((p) => <ParticipantTile key={p.id} p={p} isRecording={isRecording && p.id === localId} />)}
+          </div>
+        )}
+      </div>
+    );
+  }
+  if (layout === "pip") {
+    const [main, ...rest] = participants;
+    return (
+      <div className="relative flex-1 min-h-[300px]">
+        <ParticipantTile p={main} isRecording={isRecording && main.id === localId} />
+        {rest[0] && (
+          <div className="absolute right-3 bottom-3 w-40 md:w-56 aspect-video rounded-lg overflow-hidden border-2 border-zinc-700 shadow-xl">
+            <ParticipantTile p={rest[0]} isRecording={isRecording && rest[0].id === localId} />
+          </div>
+        )}
+      </div>
+    );
   }
   return (
     <div className={`grid ${cols} gap-3 flex-1 min-h-[300px]`}>
@@ -901,7 +1044,7 @@ const ParticipantTile = ({ p, isRecording }: { p: RoomParticipant; isRecording: 
 
 const PodcastControlBar = ({
   isRecording, isPaused, micOn, camOn, screenOn, canRecord, isHost,
-  onStart, onStop, onPause, onMic, onCam, onScreen, onLeave,
+  onStart, onStop, onPause, onMic, onCam, onScreen, onLeave, onLayout,
 }: any) => (
   <footer className="sticky bottom-0 z-30 border-t border-zinc-800 bg-zinc-950/95 backdrop-blur px-3 py-3">
     <div className="flex items-center justify-center gap-2 md:gap-3 flex-wrap">
@@ -922,17 +1065,17 @@ const PodcastControlBar = ({
             disabled={!canRecord}
             title="Start recording (host)"
             aria-label="Start recording"
-            className="w-12 h-12 rounded-full bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed grid place-items-center shadow-lg shadow-red-600/30"
+            className="w-10 h-10 rounded-full bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed grid place-items-center shadow-lg shadow-red-600/30"
           >
-            <Circle className="w-4 h-4 fill-white text-white" />
+            <Circle className="w-3.5 h-3.5 fill-white text-white" />
           </button>
         ) : (
           <>
-            <button onClick={onPause} title={isPaused ? "Resume" : "Pause"} aria-label="Pause recording" className="w-12 h-12 rounded-full bg-zinc-800 hover:bg-zinc-700 grid place-items-center">
-              {isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
+            <button onClick={onPause} title={isPaused ? "Resume" : "Pause"} aria-label="Pause recording" className="w-10 h-10 rounded-full bg-zinc-800 hover:bg-zinc-700 grid place-items-center">
+              {isPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
             </button>
-            <button onClick={onStop} title="Stop recording" aria-label="Stop recording" className="w-12 h-12 rounded-full bg-red-600 hover:bg-red-500 grid place-items-center shadow-lg shadow-red-600/30">
-              <Square className="w-4 h-4 fill-white text-white" />
+            <button onClick={onStop} title="Stop recording" aria-label="Stop recording" className="w-10 h-10 rounded-full bg-red-600 hover:bg-red-500 grid place-items-center shadow-lg shadow-red-600/30">
+              <Square className="w-3.5 h-3.5 fill-white text-white" />
             </button>
           </>
         )
@@ -941,19 +1084,23 @@ const PodcastControlBar = ({
           disabled
           title="Only the host can record"
           aria-label="Recording is host-only"
-          className="w-12 h-12 rounded-full bg-zinc-800/60 border border-zinc-700 grid place-items-center opacity-50 cursor-not-allowed"
+          className="w-10 h-10 rounded-full bg-zinc-800/60 border border-zinc-700 grid place-items-center opacity-50 cursor-not-allowed"
         >
-          <Circle className="w-4 h-4 text-zinc-500" />
+          <Circle className="w-3.5 h-3.5 text-zinc-500" />
         </button>
       )}
+
+      <CtrlBtn onClick={onLayout} label="Layout, captions & background">
+        <LayoutGrid className="w-5 h-5" />
+      </CtrlBtn>
 
       <button
         onClick={onLeave}
         title="Leave podcast"
         aria-label="Leave podcast"
-        className="h-12 px-4 rounded-full bg-red-600 hover:bg-red-500 flex items-center gap-2 text-sm font-semibold text-white shadow-lg shadow-red-600/30"
+        className="w-10 h-10 rounded-full bg-red-600 hover:bg-red-500 grid place-items-center text-white shadow-lg shadow-red-600/30"
       >
-        <PhoneOff className="w-4 h-4" /> Leave
+        <PhoneOff className="w-4 h-4" />
       </button>
     </div>
   </footer>
@@ -974,8 +1121,7 @@ const PodcastSidebar = ({
     <nav className="flex border-b border-zinc-800">
       <TabBtn active={tab === "people"} onClick={() => setTab("people")}><Users className="w-4 h-4" /> People</TabBtn>
       <TabBtn active={tab === "chat"} onClick={() => setTab("chat")}><MessageSquare className="w-4 h-4" /> Chat</TabBtn>
-      <TabBtn active={tab === "files"} onClick={() => setTab("files")}><FolderDown className="w-4 h-4" /> Files</TabBtn>
-      <TabBtn active={tab === "host"} onClick={() => setTab("host")}><SettingsIcon className="w-4 h-4" /></TabBtn>
+      <TabBtn active={tab === "files"} onClick={() => setTab("files")}><FolderDown className="w-4 h-4" /> W.Tools</TabBtn>
     </nav>
     <div className="flex-1 overflow-y-auto p-3">
       {tab === "people" && (
@@ -1033,16 +1179,7 @@ const PodcastSidebar = ({
         </div>
       )}
       {tab === "files" && (
-        <RecordingFilesPanel recordings={recordings} onDownload={onDownload} onDelete={onDelete} onRename={onRename} onEdit={onEdit} />
-      )}
-      {tab === "host" && (
-        <div className="space-y-2 text-sm text-zinc-300">
-          <p className="text-xs text-zinc-500">Host tools</p>
-          <div className="p-3 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-zinc-400 space-y-2">
-            <p>Each participant records locally on their own device. After the session ends, ask guests to download their .webm file and send it to you.</p>
-            <p className="text-zinc-500">Cloud guest-file upload, producer mode, and screen-share recording are Phase 2B.</p>
-          </div>
-        </div>
+        <WToolsPanel recordings={recordings} onDownload={onDownload} onDelete={onDelete} onRename={onRename} onEdit={onEdit} />
       )}
     </div>
   </aside>
@@ -1111,3 +1248,119 @@ const ScheduledGateOverlay = ({
 };
 
 export default PodcastRoomPage;
+
+const LayoutSheet = ({
+  onClose, activeLayout, setActiveLayout, captionsOn, setCaptionsOn,
+  captionStyle, setCaptionStyle, bgEffect, setBgEffect,
+}: {
+  onClose: () => void;
+  activeLayout: string;
+  setActiveLayout: (v: string) => void;
+  captionsOn: boolean;
+  setCaptionsOn: (v: boolean) => void;
+  captionStyle: CaptionStyle;
+  setCaptionStyle: (v: CaptionStyle) => void;
+  bgEffect: string;
+  setBgEffect: (v: string) => void;
+}) => (
+  <div className="fixed inset-0 z-[70] bg-zinc-950/80 backdrop-blur grid place-items-end md:place-items-center p-3" onClick={onClose}>
+    <div onClick={(e) => e.stopPropagation()} className="w-full max-w-2xl rounded-2xl border border-zinc-800 bg-zinc-950 p-4 md:p-5 max-h-[85vh] overflow-y-auto">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-base font-semibold flex items-center gap-2"><LayoutGrid className="w-4 h-4 text-purple-300" /> Layout, captions & background</h2>
+        <button onClick={onClose} className="p-1 rounded hover:bg-zinc-800" aria-label="Close"><X className="w-4 h-4 text-zinc-400" /></button>
+      </div>
+
+      <section className="mb-5">
+        <h3 className="text-xs uppercase tracking-wider text-zinc-500 mb-2">Layout</h3>
+        <div className="grid grid-cols-3 gap-2">
+          {LAYOUTS.map((l) => (
+            <button
+              key={l.id}
+              onClick={() => setActiveLayout(l.id)}
+              className={`p-3 rounded-lg border text-left text-xs transition ${activeLayout === l.id ? "border-purple-400 bg-purple-500/15 text-white" : "border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-zinc-700"}`}
+            >
+              <div className="h-10 mb-2 rounded bg-zinc-800 grid place-items-center">
+                <LayoutGrid className="w-4 h-4 text-zinc-500" />
+              </div>
+              {l.label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="mb-5">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-xs uppercase tracking-wider text-zinc-500 flex items-center gap-1.5"><Captions className="w-3.5 h-3.5" /> Live captions</h3>
+          <label className="inline-flex items-center gap-2 text-xs">
+            <input type="checkbox" checked={captionsOn} onChange={(e) => setCaptionsOn(e.target.checked)} className="accent-purple-500" />
+            {captionsOn ? "On" : "Off"}
+          </label>
+        </div>
+        <div className="grid grid-cols-4 gap-2">
+          {(["clean", "bold", "subtitle", "karaoke"] as CaptionStyle[]).map((s) => (
+            <button
+              key={s}
+              disabled={!captionsOn}
+              onClick={() => setCaptionStyle(s)}
+              className={`p-2 rounded-md border text-[11px] capitalize ${captionStyle === s ? "border-purple-400 bg-purple-500/15 text-white" : "border-zinc-800 bg-zinc-900 text-zinc-400 hover:border-zinc-700"} disabled:opacity-40`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+        <p className="mt-2 text-[10px] text-zinc-500">Captions are generated locally on your device (Web Speech API). Each participant can turn them on/off independently.</p>
+      </section>
+
+      <section>
+        <h3 className="text-xs uppercase tracking-wider text-zinc-500 mb-2 flex items-center gap-1.5"><ImageIcon className="w-3.5 h-3.5" /> Background effect</h3>
+        <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
+          {BACKGROUNDS.map((b) => (
+            <button
+              key={b.id}
+              onClick={() => setBgEffect(b.id)}
+              className={`group rounded-lg overflow-hidden border text-left ${bgEffect === b.id ? "border-purple-400 ring-2 ring-purple-400/50" : "border-zinc-800 hover:border-zinc-700"}`}
+            >
+              <div className="h-16" style={{ background: b.preview === "transparent" ? "repeating-conic-gradient(#27272a 0% 25%, #18181b 0% 50%) 50%/12px 12px" : b.preview }} />
+              <div className="px-2 py-1.5 bg-zinc-900 text-[11px] text-zinc-300">{b.label}</div>
+            </button>
+          ))}
+        </div>
+      </section>
+    </div>
+  </div>
+);
+
+const WToolsPanel = ({ recordings, onDownload, onDelete, onRename, onEdit }: any) => {
+  const [nr, setNr] = useState(false);
+  const [aec, setAec] = useState(true);
+  const [voice, setVoice] = useState("none");
+  return (
+    <div className="space-y-3">
+      <section className="rounded-lg bg-zinc-900 border border-zinc-800 p-3">
+        <p className="text-[10px] uppercase tracking-wider text-zinc-500 mb-2 flex items-center gap-1.5"><Wand2 className="w-3 h-3" /> Audio effects</p>
+        <label className="flex items-center justify-between py-1.5 text-xs"><span>Noise reduction</span>
+          <input type="checkbox" checked={nr} onChange={(e) => setNr(e.target.checked)} className="accent-purple-500" />
+        </label>
+        <label className="flex items-center justify-between py-1.5 text-xs"><span>Echo cancellation</span>
+          <input type="checkbox" checked={aec} onChange={(e) => setAec(e.target.checked)} className="accent-purple-500" />
+        </label>
+        <div className="mt-2">
+          <label className="text-[10px] uppercase tracking-wider text-zinc-500 block mb-1">AI voice preset</label>
+          <select value={voice} onChange={(e) => setVoice(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs">
+            <option value="none">None (natural)</option>
+            <option value="broadcast">Broadcast warmth</option>
+            <option value="podcast">Podcast clarity</option>
+            <option value="bass">Bass boost</option>
+            <option value="bright">Bright presence</option>
+          </select>
+        </div>
+        <p className="text-[10px] text-zinc-500 mt-2">Settings apply on your next recording.</p>
+      </section>
+
+      <section>
+        <p className="text-[10px] uppercase tracking-wider text-zinc-500 mb-2">This session's recordings</p>
+        <RecordingFilesPanel recordings={recordings} onDownload={onDownload} onDelete={onDelete} onRename={onRename} onEdit={onEdit} />
+      </section>
+    </div>
+  );
+};

@@ -391,18 +391,49 @@ export default function PodcastEditorPro({
     if (mode === "save" && !onSaveToProject) { toast({ title: "Save not available here" }); return; }
     setExporting(true);
     setExportProgress(0);
+
+    // FAST PATH: single untouched clip, no overlay, no extra sources → reuse source blob.
+    const onlyOne = clips.length === 1;
+    const c0 = clips[0];
+    const src0 = sources[c0?.srcIdx ?? 0];
+    const srcDur = (src0?.durationMs || 0) / 1000;
+    const untrimmed = onlyOne && c0 && c0.in <= 0.05 && c0.out >= srcDur - 0.1;
+    const noOverlay = !overlay.text.trim();
+    if (onlyOne && untrimmed && noOverlay && src0?.blob) {
+      try {
+        const ext = (src0.blob.type.includes("mp4") ? "mp4" : "webm");
+        const mime = src0.blob.type || (ext === "mp4" ? "video/mp4" : "video/webm");
+        if (mode === "save" && onSaveToProject) {
+          await onSaveToProject(src0.blob, mime, ext);
+          toast({ title: "Saved to Project" });
+        } else {
+          const url = URL.createObjectURL(src0.blob);
+          const a = document.createElement("a"); a.href = url; a.download = `wstudio-podcast.${ext}`;
+          document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 4000);
+          toast({ title: "Export complete" });
+        }
+      } finally {
+        setExporting(false); setExportProgress(0);
+      }
+      return;
+    }
+
+    const logLines: string[] = [];
     try {
       const { FFmpeg } = await import("@ffmpeg/ffmpeg");
       const { fetchFile, toBlobURL } = await import("@ffmpeg/util");
       const ffmpeg = new FFmpeg();
       ffmpeg.on("progress", ({ progress }) => setExportProgress(Math.round((progress || 0) * 100)));
+      ffmpeg.on("log", ({ message }) => { logLines.push(message); if (logLines.length > 80) logLines.shift(); });
       const base = "https://unpkg.com/@ffmpeg/core@0.12.10/dist/umd";
       await ffmpeg.load({
         coreURL: await toBlobURL(`${base}/ffmpeg-core.js`, "text/javascript"),
         wasmURL: await toBlobURL(`${base}/ffmpeg-core.wasm`, "application/wasm"),
       });
 
-      // Write each source once
+      // Probe audio presence per source by writing & ffprobing-lite via -i.
+      // Cheaper: just attempt audio path; on failure rebuild without audio.
       const writtenSources: string[] = [];
       for (let i = 0; i < sources.length; i++) {
         const name = `src${i}.bin`;
@@ -410,61 +441,68 @@ export default function PodcastEditorPro({
         writtenSources.push(name);
       }
 
-      // Build inputs and filter graph: trim each clip then concat
-      const args: string[] = [];
-      clips.forEach((c) => {
-        args.push("-i", writtenSources[c.srcIdx]);
-      });
+      const buildArgs = (withAudio: boolean) => {
+        const args: string[] = [];
+        clips.forEach((c) => { args.push("-i", writtenSources[c.srcIdx]); });
+        const parts: string[] = [];
+        const concatStreams: string[] = [];
+        clips.forEach((c, i) => {
+          const dur = Math.max(0.05, c.out - c.in);
+          parts.push(`[${i}:v]trim=start=${c.in.toFixed(3)}:duration=${dur.toFixed(3)},setpts=PTS-STARTPTS,scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1[v${i}]`);
+          if (withAudio) {
+            parts.push(`[${i}:a]atrim=start=${c.in.toFixed(3)}:duration=${dur.toFixed(3)},asetpts=PTS-STARTPTS,aresample=44100[a${i}]`);
+            concatStreams.push(`[v${i}][a${i}]`);
+          } else {
+            concatStreams.push(`[v${i}]`);
+          }
+        });
+        parts.push(`${concatStreams.join("")}concat=n=${clips.length}:v=1:a=${withAudio ? 1 : 0}${withAudio ? "[cv][ca]" : "[cv]"}`);
 
-      const parts: string[] = [];
-      const concatStreams: string[] = [];
-      clips.forEach((c, i) => {
-        const dur = Math.max(0.05, c.out - c.in);
-        parts.push(
-          `[${i}:v]trim=start=${c.in.toFixed(3)}:duration=${dur.toFixed(3)},setpts=PTS-STARTPTS,scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1[v${i}]`,
-        );
-        parts.push(
-          `[${i}:a]atrim=start=${c.in.toFixed(3)}:duration=${dur.toFixed(3)},asetpts=PTS-STARTPTS,aresample=44100[a${i}]`,
-        );
-        concatStreams.push(`[v${i}][a${i}]`);
-      });
-      parts.push(`${concatStreams.join("")}concat=n=${clips.length}:v=1:a=1[cv][ca]`);
+        let vOut = "[cv]";
+        if (overlay.text.trim()) {
+          const txt = overlay.text.replace(/\\/g, "\\\\").replace(/:/g, "\\:").replace(/'/g, "\\'").replace(/[\r\n]+/g, " ");
+          const xPx = `(w-text_w)*${overlay.x.toFixed(3)}`;
+          const yPx = `(h-text_h)*${overlay.y.toFixed(3)}`;
+          const color = overlay.color.replace("#", "0x");
+          parts.push(`[cv]drawtext=text='${txt}':fontcolor=${color}:fontsize=${Math.round(overlay.size)}:x=${xPx}:y=${yPx}:box=1:boxcolor=0x00000088:boxborderw=10[vo]`);
+          vOut = "[vo]";
+        }
 
-      let vOut = "[cv]";
-      if (overlay.text.trim()) {
-        const txt = overlay.text.replace(/\\/g, "\\\\").replace(/:/g, "\\:").replace(/'/g, "\\'");
-        const xPx = `(w-text_w)*${overlay.x.toFixed(3)}`;
-        const yPx = `(h-text_h)*${overlay.y.toFixed(3)}`;
-        const color = overlay.color.replace("#", "0x");
-        parts.push(`[cv]drawtext=text='${txt}':fontcolor=${color}:fontsize=${Math.round(overlay.size)}:x=${xPx}:y=${yPx}:box=1:boxcolor=0x00000088:boxborderw=10[vo]`);
-        vOut = "[vo]";
-      }
+        const filter = parts.join(";");
+        args.push("-filter_complex", filter, "-map", vOut);
+        if (withAudio) args.push("-map", "[ca]");
+        return args;
+      };
 
-      const filter = parts.join(";");
-      args.push(
-        "-filter_complex", filter,
-        "-map", vOut, "-map", "[ca]",
-      );
+      const runEncode = async (extraArgs: string[]) => {
+        try {
+          await ffmpeg.exec(extraArgs);
+          return true;
+        } catch {
+          return false;
+        }
+      };
 
-      // Try mp4 first; fall back to webm on failure
+      // Try mp4 with audio → mp4 video-only → webm with audio → webm video-only.
       let outName = "out.mp4";
       let mime = "video/mp4";
-      try {
-        await ffmpeg.exec([
-          ...args,
-          "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", "-movflags", "+faststart",
-          "-c:a", "aac", "-b:a", "128k",
-          outName,
-        ]);
-      } catch {
-        outName = "out.webm";
-        mime = "video/webm";
-        await ffmpeg.exec([
-          ...args,
-          "-c:v", "libvpx", "-b:v", "1M",
-          "-c:a", "libvorbis",
-          outName,
-        ]);
+      const mp4VideoCodec = ["-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", "-movflags", "+faststart"];
+      const webmVideoCodec = ["-c:v", "libvpx", "-b:v", "1M"];
+
+      let ok = false;
+      ok = await runEncode([...buildArgs(true), ...mp4VideoCodec, "-c:a", "aac", "-b:a", "128k", outName]);
+      if (!ok) ok = await runEncode([...buildArgs(false), ...mp4VideoCodec, outName]);
+      if (!ok) {
+        outName = "out.webm"; mime = "video/webm";
+        ok = await runEncode([...buildArgs(true), ...webmVideoCodec, "-c:a", "libvorbis", outName]);
+      }
+      if (!ok) {
+        outName = "out.webm"; mime = "video/webm";
+        ok = await runEncode([...buildArgs(false), ...webmVideoCodec, outName]);
+      }
+      if (!ok) {
+        const tail = logLines.slice(-6).join(" | ").slice(0, 240);
+        throw new Error(tail || "ffmpeg failed for all codecs");
       }
 
       const data = await ffmpeg.readFile(outName);
@@ -485,8 +523,9 @@ export default function PodcastEditorPro({
         toast({ title: "Export complete" });
       }
     } catch (e: any) {
-      console.error(e);
-      toast({ title: "Export failed", description: e?.message?.slice(0, 200) || "Unknown error" });
+      console.error("Podcast export failed", e, logLines);
+      const detail = e?.message?.slice(0, 240) || logLines.slice(-3).join(" · ").slice(0, 240) || "Unknown error";
+      toast({ title: "Export failed", description: detail, variant: "destructive" });
     } finally {
       setExporting(false);
       setExportProgress(0);
