@@ -804,4 +804,39 @@ const RecordingFilesPanel = ({ recordings, onDownload, onDelete, onRename, onEdi
   );
 };
 
+const ScheduledGateOverlay = ({
+  gate, session, onLeave,
+}: {
+  gate: ReturnType<typeof evaluateJoinGate>;
+  session: ScheduledPodcastSession;
+  onLeave: () => void;
+}) => {
+  const title =
+    gate.kind === "too-early" ? "This podcast has not started yet"
+    : gate.kind === "ended" ? "This podcast has ended"
+    : gate.kind === "cancelled" ? "This podcast was cancelled"
+    : "Not available";
+  const body =
+    gate.kind === "too-early" ? `Doors open 15 minutes before the start time. Starts ${new Date(session.scheduledAt).toLocaleString()}.`
+    : gate.kind === "ended" ? "The host has ended the session."
+    : gate.kind === "cancelled" ? "The host cancelled this session."
+    : "";
+  return (
+    <div className="fixed inset-0 z-[85] bg-zinc-950/95 backdrop-blur grid place-items-center p-4">
+      <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-center">
+        <div className="w-14 h-14 rounded-full bg-purple-500/15 border border-purple-500/30 grid place-items-center mx-auto mb-3">
+          <Shield className="w-6 h-6 text-purple-300" />
+        </div>
+        <h2 className="text-lg font-semibold mb-1">{title}</h2>
+        <p className="text-sm text-zinc-400 mb-4">{body}</p>
+        <div className="text-xs uppercase tracking-wider text-purple-300 mb-1">{session.title}</div>
+        {gate.kind === "too-early" && (
+          <div className="text-xs text-zinc-400 mb-4">Starts in ~{gate.minutesUntil} min</div>
+        )}
+        <Button variant="secondary" onClick={onLeave} className="w-full">Back to Podcast Home</Button>
+      </div>
+    </div>
+  );
+};
+
 export default PodcastRoomPage;
