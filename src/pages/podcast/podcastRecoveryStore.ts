@@ -40,6 +40,9 @@ function openDb(): Promise<IDBDatabase> {
         const s = db.createObjectStore(STORE_CHUNKS, { keyPath: "id", autoIncrement: true });
         s.createIndex("by_session", "sessionDbId");
       }
+      if (!db.objectStoreNames.contains(STORE_FINALS)) {
+        db.createObjectStore(STORE_FINALS, { keyPath: "id" });
+      }
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
