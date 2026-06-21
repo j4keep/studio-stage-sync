@@ -255,6 +255,49 @@ const PodcastRoomPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isHost, scheduled?.id]);
 
+  // Layout / captions / background sheet state (local to this device, per session)
+  const [layoutSheetOpen, setLayoutSheetOpen] = useState(false);
+  const [activeLayout, setActiveLayout] = useState<string>(() => {
+    try { return localStorage.getItem(`pod-layout:${sessionId}`) || "auto"; } catch { return "auto"; }
+  });
+  const [captionsOn, setCaptionsOn] = useState<boolean>(() => {
+    try { return localStorage.getItem(`pod-cc:${sessionId}`) === "1"; } catch { return false; }
+  });
+  const [captionStyle, setCaptionStyle] = useState<CaptionStyle>(() => {
+    try { return (localStorage.getItem(`pod-cc-style:${sessionId}`) as CaptionStyle) || "clean"; } catch { return "clean"; }
+  });
+  const [bgEffect, setBgEffect] = useState<string>(() => {
+    try { return localStorage.getItem(`pod-bg:${sessionId}`) || "none"; } catch { return "none"; }
+  });
+  useEffect(() => { try { localStorage.setItem(`pod-layout:${sessionId}`, activeLayout); } catch {} }, [sessionId, activeLayout]);
+  useEffect(() => { try { localStorage.setItem(`pod-cc:${sessionId}`, captionsOn ? "1" : "0"); } catch {} }, [sessionId, captionsOn]);
+  useEffect(() => { try { localStorage.setItem(`pod-cc-style:${sessionId}`, captionStyle); } catch {} }, [sessionId, captionStyle]);
+  useEffect(() => { try { localStorage.setItem(`pod-bg:${sessionId}`, bgEffect); } catch {} }, [sessionId, bgEffect]);
+
+  // Live captions via Web Speech API (best-effort, where supported)
+  const [liveCaption, setLiveCaption] = useState<string>("");
+  useEffect(() => {
+    if (!captionsOn) { setLiveCaption(""); return; }
+    const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) { setLiveCaption("(Live captions not supported in this browser)"); return; }
+    let rec: any;
+    try {
+      rec = new SR();
+      rec.continuous = true;
+      rec.interimResults = true;
+      rec.lang = navigator.language || "en-US";
+      rec.onresult = (e: any) => {
+        let s = "";
+        for (let i = e.resultIndex; i < e.results.length; i++) s += e.results[i][0].transcript;
+        setLiveCaption(s.slice(-200));
+      };
+      rec.onerror = () => {};
+      rec.onend = () => { try { if (captionsOn) rec.start(); } catch {} };
+      rec.start();
+    } catch {}
+    return () => { try { rec?.stop(); } catch {} };
+  }, [captionsOn]);
+
   // Host-controlled session security (persisted per session, host's device)
   const SEC_KEY = `wstudio-podcast-security:${sessionId}`;
   const [security, setSecurity] = useState<PodcastSecurity>(() => {
