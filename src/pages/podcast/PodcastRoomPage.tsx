@@ -621,7 +621,12 @@ const PodcastRoomPage = () => {
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col">
       <header className="flex items-center justify-between gap-3 px-3 md:px-5 h-14 border-b border-zinc-800 bg-zinc-950/95 backdrop-blur sticky top-0 z-30">
         <div className="flex items-center gap-3 min-w-0">
-          <button onClick={leave} className="p-1.5 rounded hover:bg-zinc-800" title="Back to Podcast">
+          <button
+            onClick={() => navigate("/tv/podcast")}
+            className="p-1.5 rounded hover:bg-zinc-800"
+            title="Back to Podcast Home (session keeps running until you press Leave)"
+            aria-label="Back to Podcast Home"
+          >
             <ArrowLeft className="w-4 h-4 text-zinc-300" />
           </button>
           <div className="text-sm font-semibold tracking-wider text-purple-300">W.STUDIO <span className="text-teal-300">PODCAST</span></div>
@@ -639,6 +644,14 @@ const PodcastRoomPage = () => {
           <Button size="sm" variant="secondary" onClick={openInvite} className="gap-1.5">
             <Share2 className="w-3.5 h-3.5" /> Invite
           </Button>
+          <button
+            onClick={() => navigate("/settings")}
+            className="p-1.5 rounded hover:bg-zinc-800"
+            title="App settings"
+            aria-label="App settings"
+          >
+            <SettingsIcon className="w-4 h-4 text-zinc-300" />
+          </button>
         </div>
       </header>
 
