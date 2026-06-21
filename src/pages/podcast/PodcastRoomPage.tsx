@@ -1248,3 +1248,119 @@ const ScheduledGateOverlay = ({
 };
 
 export default PodcastRoomPage;
+
+const LayoutSheet = ({
+  onClose, activeLayout, setActiveLayout, captionsOn, setCaptionsOn,
+  captionStyle, setCaptionStyle, bgEffect, setBgEffect,
+}: {
+  onClose: () => void;
+  activeLayout: string;
+  setActiveLayout: (v: string) => void;
+  captionsOn: boolean;
+  setCaptionsOn: (v: boolean) => void;
+  captionStyle: CaptionStyle;
+  setCaptionStyle: (v: CaptionStyle) => void;
+  bgEffect: string;
+  setBgEffect: (v: string) => void;
+}) => (
+  <div className="fixed inset-0 z-[70] bg-zinc-950/80 backdrop-blur grid place-items-end md:place-items-center p-3" onClick={onClose}>
+    <div onClick={(e) => e.stopPropagation()} className="w-full max-w-2xl rounded-2xl border border-zinc-800 bg-zinc-950 p-4 md:p-5 max-h-[85vh] overflow-y-auto">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-base font-semibold flex items-center gap-2"><LayoutGrid className="w-4 h-4 text-purple-300" /> Layout, captions & background</h2>
+        <button onClick={onClose} className="p-1 rounded hover:bg-zinc-800" aria-label="Close"><X className="w-4 h-4 text-zinc-400" /></button>
+      </div>
+
+      <section className="mb-5">
+        <h3 className="text-xs uppercase tracking-wider text-zinc-500 mb-2">Layout</h3>
+        <div className="grid grid-cols-3 gap-2">
+          {LAYOUTS.map((l) => (
+            <button
+              key={l.id}
+              onClick={() => setActiveLayout(l.id)}
+              className={`p-3 rounded-lg border text-left text-xs transition ${activeLayout === l.id ? "border-purple-400 bg-purple-500/15 text-white" : "border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-zinc-700"}`}
+            >
+              <div className="h-10 mb-2 rounded bg-zinc-800 grid place-items-center">
+                <LayoutGrid className="w-4 h-4 text-zinc-500" />
+              </div>
+              {l.label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="mb-5">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-xs uppercase tracking-wider text-zinc-500 flex items-center gap-1.5"><Captions className="w-3.5 h-3.5" /> Live captions</h3>
+          <label className="inline-flex items-center gap-2 text-xs">
+            <input type="checkbox" checked={captionsOn} onChange={(e) => setCaptionsOn(e.target.checked)} className="accent-purple-500" />
+            {captionsOn ? "On" : "Off"}
+          </label>
+        </div>
+        <div className="grid grid-cols-4 gap-2">
+          {(["clean", "bold", "subtitle", "karaoke"] as CaptionStyle[]).map((s) => (
+            <button
+              key={s}
+              disabled={!captionsOn}
+              onClick={() => setCaptionStyle(s)}
+              className={`p-2 rounded-md border text-[11px] capitalize ${captionStyle === s ? "border-purple-400 bg-purple-500/15 text-white" : "border-zinc-800 bg-zinc-900 text-zinc-400 hover:border-zinc-700"} disabled:opacity-40`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+        <p className="mt-2 text-[10px] text-zinc-500">Captions are generated locally on your device (Web Speech API). Each participant can turn them on/off independently.</p>
+      </section>
+
+      <section>
+        <h3 className="text-xs uppercase tracking-wider text-zinc-500 mb-2 flex items-center gap-1.5"><ImageIcon className="w-3.5 h-3.5" /> Background effect</h3>
+        <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
+          {BACKGROUNDS.map((b) => (
+            <button
+              key={b.id}
+              onClick={() => setBgEffect(b.id)}
+              className={`group rounded-lg overflow-hidden border text-left ${bgEffect === b.id ? "border-purple-400 ring-2 ring-purple-400/50" : "border-zinc-800 hover:border-zinc-700"}`}
+            >
+              <div className="h-16" style={{ background: b.preview === "transparent" ? "repeating-conic-gradient(#27272a 0% 25%, #18181b 0% 50%) 50%/12px 12px" : b.preview }} />
+              <div className="px-2 py-1.5 bg-zinc-900 text-[11px] text-zinc-300">{b.label}</div>
+            </button>
+          ))}
+        </div>
+      </section>
+    </div>
+  </div>
+);
+
+const WToolsPanel = ({ recordings, onDownload, onDelete, onRename, onEdit }: any) => {
+  const [nr, setNr] = useState(false);
+  const [aec, setAec] = useState(true);
+  const [voice, setVoice] = useState("none");
+  return (
+    <div className="space-y-3">
+      <section className="rounded-lg bg-zinc-900 border border-zinc-800 p-3">
+        <p className="text-[10px] uppercase tracking-wider text-zinc-500 mb-2 flex items-center gap-1.5"><Wand2 className="w-3 h-3" /> Audio effects</p>
+        <label className="flex items-center justify-between py-1.5 text-xs"><span>Noise reduction</span>
+          <input type="checkbox" checked={nr} onChange={(e) => setNr(e.target.checked)} className="accent-purple-500" />
+        </label>
+        <label className="flex items-center justify-between py-1.5 text-xs"><span>Echo cancellation</span>
+          <input type="checkbox" checked={aec} onChange={(e) => setAec(e.target.checked)} className="accent-purple-500" />
+        </label>
+        <div className="mt-2">
+          <label className="text-[10px] uppercase tracking-wider text-zinc-500 block mb-1">AI voice preset</label>
+          <select value={voice} onChange={(e) => setVoice(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs">
+            <option value="none">None (natural)</option>
+            <option value="broadcast">Broadcast warmth</option>
+            <option value="podcast">Podcast clarity</option>
+            <option value="bass">Bass boost</option>
+            <option value="bright">Bright presence</option>
+          </select>
+        </div>
+        <p className="text-[10px] text-zinc-500 mt-2">Settings apply on your next recording.</p>
+      </section>
+
+      <section>
+        <p className="text-[10px] uppercase tracking-wider text-zinc-500 mb-2">This session's recordings</p>
+        <RecordingFilesPanel recordings={recordings} onDownload={onDownload} onDelete={onDelete} onRename={onRename} onEdit={onEdit} />
+      </section>
+    </div>
+  );
+};
