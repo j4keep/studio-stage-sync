@@ -325,10 +325,10 @@ const LivePodcastLobbyPage = () => {
                   <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Episode title" className="h-11 bg-background" />
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-5 md:flex">
-                  <ActionButton icon={<Video />} label="Record" active onClick={() => createEpisode("record")} disabled={creating} />
+                  <ActionButton icon={<Video />} label="Start podcast" active onClick={() => openScheduleModal(true)} />
                   <ActionButton icon={<Scissors />} label="Edit" onClick={openLatestEditor} />
-                  <ActionButton icon={<Radio />} label="Go live" onClick={() => createEpisode("live")} disabled={creating} />
-                  <ActionButton icon={<CalendarDays />} label="Schedule" onClick={() => createEpisode("schedule")} disabled={creating} />
+                  <ActionButton icon={<Radio />} label="Go live" onClick={() => openScheduleModal(true)} />
+                  <ActionButton icon={<CalendarDays />} label="Schedule" onClick={() => openScheduleModal(false)} />
                   <ActionButton icon={<Upload />} label={uploading ? "Uploading" : "Upload"} onClick={() => fileInputRef.current?.click()} disabled={uploading} />
                 </div>
               </div>
