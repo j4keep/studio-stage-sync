@@ -636,7 +636,8 @@ const PodcastRoomPage = () => {
         micOn={me?.micOn ?? false}
         camOn={me?.camOn ?? false}
         screenOn={screenOn}
-        canRecord={!!room.localStream}
+        canRecord={isHost && room.connState === "connected"}
+        isHost={isHost}
         onStart={startRecording}
         onStop={stopRecording}
         onPause={togglePause}
