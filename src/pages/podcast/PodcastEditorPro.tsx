@@ -471,13 +471,19 @@ export default function PodcastEditorPro({
       const u8 = data as Uint8Array;
       const ab = u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength) as ArrayBuffer;
       const blob = new Blob([ab], { type: mime });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `wstudio-podcast-edited.${outName.endsWith("mp4") ? "mp4" : "webm"}`;
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 4000);
-      toast({ title: "Export complete" });
+      const ext = outName.endsWith("mp4") ? "mp4" : "webm";
+      if (mode === "save" && onSaveToProject) {
+        await onSaveToProject(blob, mime, ext);
+        toast({ title: "Saved to Project", description: "Edited episode is in your Project library." });
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `wstudio-podcast-edited.${ext}`;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 4000);
+        toast({ title: "Export complete" });
+      }
     } catch (e: any) {
       console.error(e);
       toast({ title: "Export failed", description: e?.message?.slice(0, 200) || "Unknown error" });
