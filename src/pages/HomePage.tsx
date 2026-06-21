@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Play, Pause, TrendingUp, Music, Mic2, DollarSign, Headphones, Radio, Building2, ShoppingBag, Swords } from "lucide-react";
+import { Play, Pause, TrendingUp, Music, DollarSign, Headphones, Radio, Building2, ShoppingBag, Swords } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,7 +19,7 @@ import cardRadio from "@/assets/card-radio.jpg";
 import cardStore from "@/assets/card-store.jpg";
 import cardStudios from "@/assets/card-studios.jpg";
 import cardSongs from "@/assets/card-songs.jpg";
-import cardVideos from "@/assets/card-recording-studio.jpg";
+
 import cardProjects from "@/assets/card-projects.jpg";
 import cardBattles from "@/assets/card-battles.jpg";
 import NewsFeed from "@/components/NewsFeed";
