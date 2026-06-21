@@ -15,6 +15,7 @@ import { PodcastRecovery, type RecoverySessionRow } from "./podcastRecoveryStore
 import { supabase } from "@/integrations/supabase/client";
 import PodcastInviteSheet, { type PodcastSecurity } from "./PodcastInviteSheet";
 import { usePodcastDoorman } from "./usePodcastDoorman";
+import { PodcastSessionStore, evaluateJoinGate, type ScheduledPodcastSession } from "./podcastSessionStore";
 
 type LocalRecording = {
   id: string;
