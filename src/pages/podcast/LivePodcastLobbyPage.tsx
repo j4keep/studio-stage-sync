@@ -618,4 +618,50 @@ const Planner = ({ episodes, onOpen }: { episodes: Episode[]; onOpen: (id: strin
 
 const formatTime = (seconds: number) => `${Math.floor(Math.max(0, seconds) / 60)}:${String(Math.floor(Math.max(0, seconds)) % 60).padStart(2, "0")}`;
 
+const LocalRecordingsPanel = ({
+  items, onEdit, onDownload, onDelete, onRename, onRefresh,
+}: {
+  items: FinalRecording[];
+  onEdit: (r: FinalRecording) => void;
+  onDownload: (r: FinalRecording) => void;
+  onDelete: (r: FinalRecording) => void;
+  onRename: (r: FinalRecording) => void;
+  onRefresh: () => void;
+}) => {
+  if (!items.length) return null;
+  return (
+    <section className="mt-6">
+      <div className="mb-3 flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-bold">Local recordings</h3>
+          <p className="text-xs text-muted-foreground">Auto-saved on this device when you ended a podcast. Publish to share.</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={onRefresh}><Gauge className="mr-2 h-4 w-4" />Refresh</Button>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {items.map((r) => (
+          <article key={r.id} className="rounded-lg border border-border bg-card p-3">
+            <div className="flex items-start gap-2">
+              <div className="min-w-0 flex-1">
+                <h4 className="truncate font-semibold">{r.title}{r.edited && <span className="ml-1 text-[10px] font-normal text-primary">· edited</span>}</h4>
+                <p className="text-xs text-muted-foreground">
+                  {new Date(r.createdAt).toLocaleDateString()} · {new Date(r.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  {" · "}{formatTime(Math.floor(r.durationMs / 1000))}
+                  {" · "}{(r.blob.size / 1024 / 1024).toFixed(1)} MB
+                </p>
+              </div>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <Button size="sm" onClick={() => onEdit(r)}><Scissors className="mr-1 h-4 w-4" />Edit</Button>
+              <Button size="sm" variant="secondary" onClick={() => onDownload(r)}><Download className="mr-1 h-4 w-4" />Download</Button>
+              <Button size="sm" variant="outline" onClick={() => onRename(r)}><Edit3 className="mr-1 h-4 w-4" />Rename</Button>
+              <Button size="sm" variant="destructive" onClick={() => onDelete(r)}><Trash2 className="mr-1 h-4 w-4" />Delete</Button>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+};
+
 export default LivePodcastLobbyPage;
