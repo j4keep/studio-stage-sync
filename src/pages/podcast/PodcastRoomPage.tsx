@@ -139,14 +139,22 @@ function buildCompositeStream(getParticipants: () => RoomParticipant[]): {
       if (p.videoTrack && p.camOn) {
         const v = ensureVideoEl(p.id, p.videoTrack);
         if (v.readyState >= 2 && v.videoWidth) {
-          // contain
+          // COVER fit — fills the tile exactly like the host sees on-screen
+          // (matches CSS `object-cover` in <ParticipantTile/>). Crops the
+          // shorter axis so guests fill the cell consistently across devices.
+          const tileW = cellW - 8, tileH = cellH - 8;
           const vr = v.videoWidth / v.videoHeight;
-          const cr = (cellW - 8) / (cellH - 8);
-          let dw = cellW - 8, dh = cellH - 8;
-          if (vr > cr) dh = dw / vr; else dw = dh * vr;
-          const dx = cx + 4 + (cellW - 8 - dw) / 2;
-          const dy = cy + 4 + (cellH - 8 - dh) / 2;
-          ctx.drawImage(v, dx, dy, dw, dh);
+          const cr = tileW / tileH;
+          let sx = 0, sy = 0, sw = v.videoWidth, sh = v.videoHeight;
+          if (vr > cr) {
+            // video wider than tile -> crop horizontal
+            sw = v.videoHeight * cr;
+            sx = (v.videoWidth - sw) / 2;
+          } else {
+            sh = v.videoWidth / cr;
+            sy = (v.videoHeight - sh) / 2;
+          }
+          ctx.drawImage(v, sx, sy, sw, sh, cx + 4, cy + 4, tileW, tileH);
         }
       } else {
         // avatar bubble
