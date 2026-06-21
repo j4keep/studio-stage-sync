@@ -606,6 +606,25 @@ const PodcastRoomPage = () => {
             <PodcastEditorPro
               initial={{ id: editing.id, name: editing.name, url: editing.url, blob: editing.blob, durationMs: editing.durationMs }}
               onClose={() => setEditing(null)}
+              onSaveToProject={async (blob, mime, ext) => {
+                const title = scheduled?.title?.trim() || "Podcast";
+                const id = `pf-edit-${Date.now()}`;
+                const name = `${safeName(title)}-edited-${stampStr()}.${ext}`;
+                await PodcastFinals.save({
+                  id, sessionId, title, name, mime, ext, blob,
+                  createdAt: Date.now(),
+                  durationMs: editing.durationMs,
+                  edited: true,
+                  hostName: displayName,
+                });
+                const url = URL.createObjectURL(blob);
+                setRecordings((rs) => [{
+                  id, name, blob, url, mime,
+                  createdAt: Date.now(),
+                  durationMs: editing.durationMs,
+                  trimStart: 0, trimEnd: editing.durationMs,
+                }, ...rs]);
+              }}
             />
           )}
         </main>
