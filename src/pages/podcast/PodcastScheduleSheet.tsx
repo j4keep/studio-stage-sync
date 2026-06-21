@@ -19,9 +19,20 @@ type Props = {
   hostName: string;
   /** Optional existing session to edit. */
   editing?: ScheduledPodcastSession | null;
+  /** When true, defaults date/time to "now" (instant start). */
+  initialStartNow?: boolean;
   /** Called with the newly created/updated session. */
   onSaved?: (s: ScheduledPodcastSession) => void;
 };
+
+const pad = (n: number) => n.toString().padStart(2, "0");
+
+const dateStr = (d: Date) =>
+  `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const timeStr = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
+const todayDateStr = (offsetMs = 30 * 60_000) => dateStr(new Date(Date.now() + offsetMs));
+const nowTimeStr = (offsetMs = 30 * 60_000) => timeStr(new Date(Date.now() + offsetMs));
 
 const pad = (n: number) => n.toString().padStart(2, "0");
 
