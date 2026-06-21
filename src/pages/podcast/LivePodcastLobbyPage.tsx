@@ -357,7 +357,7 @@ const LivePodcastLobbyPage = () => {
                 ) : loading ? (
                   <div className="rounded-lg border border-border bg-card p-8 text-sm text-muted-foreground">Loading episodes…</div>
                 ) : activeRows.length === 0 ? (
-                  <EmptyState onRecord={() => createEpisode("record")} onUpload={() => fileInputRef.current?.click()} />
+                  <EmptyState onRecord={() => openScheduleModal(true)} onUpload={() => fileInputRef.current?.click()} />
                 ) : (
                   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     {activeRows.map(({ episode, takes }) => {
