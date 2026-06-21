@@ -431,6 +431,17 @@ const LivePodcastLobbyPage = () => {
                     })}
                   </div>
                 )}
+
+                {viewMode !== "planner" && (
+                  <LocalRecordingsPanel
+                    items={localFinals}
+                    onEdit={openLocalEditor}
+                    onDownload={downloadLocal}
+                    onDelete={deleteLocal}
+                    onRename={renameLocal}
+                    onRefresh={loadLocalFinals}
+                  />
+                )}
               </section>
 
               <aside className="space-y-4">
