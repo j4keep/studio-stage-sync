@@ -1,4 +1,4 @@
-import { Tv, Radio, Film, Video, Heart } from "lucide-react";
+import { Tv, Radio, Film, Mic2, Heart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const TvHomePage = () => {
@@ -11,8 +11,8 @@ const TvHomePage = () => {
           <Tv className="w-6 h-6 text-primary" />
         </div>
         <div>
-          <h1 className="text-2xl font-display font-bold text-foreground">WHEUAT TV</h1>
-          <p className="text-xs text-muted-foreground">Live podcasts, films, videos</p>
+          <h1 className="text-2xl font-display font-bold text-foreground">W.Studio</h1>
+          <p className="text-xs text-muted-foreground">Create, record, and publish</p>
         </div>
       </div>
 
@@ -28,20 +28,28 @@ const TvHomePage = () => {
             <div className="text-[11px] text-muted-foreground">Record & download</div>
           </div>
         </button>
-        <div className="aspect-square rounded-2xl bg-card border border-border p-4 flex flex-col justify-between">
+        <button
+          type="button"
+          onClick={() => navigate("/tv/wheuat")}
+          className="aspect-square rounded-2xl bg-card border border-border p-4 flex flex-col justify-between text-left hover:border-primary/50 hover:bg-card/80 transition-colors"
+        >
           <Film className="w-6 h-6 text-primary" />
           <div>
-            <div className="font-semibold text-foreground">Short Films</div>
-            <div className="text-[11px] text-muted-foreground">Upload & share</div>
+            <div className="font-semibold text-foreground">WHEUAT.TV</div>
+            <div className="text-[11px] text-muted-foreground">Watch & upload</div>
           </div>
-        </div>
-        <div className="aspect-square rounded-2xl bg-card border border-border p-4 flex flex-col justify-between">
-          <Video className="w-6 h-6 text-primary" />
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate("/wstudio/session/join")}
+          className="aspect-square rounded-2xl bg-card border border-border p-4 flex flex-col justify-between text-left hover:border-primary/50 hover:bg-card/80 transition-colors"
+        >
+          <Mic2 className="w-6 h-6 text-primary" />
           <div>
-            <div className="font-semibold text-foreground">Music Videos</div>
-            <div className="text-[11px] text-muted-foreground">Premiere on TV</div>
+            <div className="font-semibold text-foreground">Recording Studio</div>
+            <div className="text-[11px] text-muted-foreground">Remote sessions</div>
           </div>
-        </div>
+        </button>
         <div className="aspect-square rounded-2xl bg-card border border-border p-4 flex flex-col justify-between">
           <Heart className="w-6 h-6 text-primary" />
           <div>
