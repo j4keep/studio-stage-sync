@@ -266,13 +266,11 @@ const PodcastRoomPage = () => {
   const [captionStyle, setCaptionStyle] = useState<CaptionStyle>(() => {
     try { return (localStorage.getItem(`pod-cc-style:${sessionId}`) as CaptionStyle) || "clean"; } catch { return "clean"; }
   });
-  const [bgEffect, setBgEffect] = useState<string>(() => {
-    try { return localStorage.getItem(`pod-bg:${sessionId}`) || "none"; } catch { return "none"; }
-  });
+  const [bg, setBg] = useState<PodcastBg>(() => PodcastBackgrounds.getSelection(sessionId));
   useEffect(() => { try { localStorage.setItem(`pod-layout:${sessionId}`, activeLayout); } catch {} }, [sessionId, activeLayout]);
   useEffect(() => { try { localStorage.setItem(`pod-cc:${sessionId}`, captionsOn ? "1" : "0"); } catch {} }, [sessionId, captionsOn]);
   useEffect(() => { try { localStorage.setItem(`pod-cc-style:${sessionId}`, captionStyle); } catch {} }, [sessionId, captionStyle]);
-  useEffect(() => { try { localStorage.setItem(`pod-bg:${sessionId}`, bgEffect); } catch {} }, [sessionId, bgEffect]);
+  useEffect(() => { PodcastBackgrounds.setSelection(sessionId, bg); }, [sessionId, bg]);
 
   // Live captions via Web Speech API (best-effort, where supported)
   const [liveCaption, setLiveCaption] = useState<string>("");
