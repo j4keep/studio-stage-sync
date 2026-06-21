@@ -116,9 +116,30 @@ const LivePodcastLobbyPage = () => {
 
   useEffect(() => {
     load();
-    return () => Object.values(previewUrls).forEach((url) => URL.revokeObjectURL(url));
+    const stop = schedulePodcastReminders();
+    return () => {
+      Object.values(previewUrls).forEach((url) => URL.revokeObjectURL(url));
+      if (stop) stop();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
+
+  const openScheduleModal = (startNow: boolean) => {
+    setEditingSession(null);
+    setScheduleStartNow(startNow);
+    setScheduleOpen(true);
+  };
+
+  const handleScheduleSaved = (s: ScheduledPodcastSession) => {
+    const gate = evaluateJoinGate(s);
+    if (gate.kind === "open" || gate.kind === "live") {
+      PodcastSessionStore.markLive(s.id);
+      navigate(`/tv/podcast/room/${s.id}`);
+    } else {
+      setViewMode("planner");
+      toast({ title: "Session scheduled", description: new Date(s.scheduledAt).toLocaleString() });
+    }
+  };
 
   const episodeRows = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
