@@ -83,6 +83,27 @@ const PodcastRoomPage = () => {
   const [permError, setPermError] = useState<string | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
 
+  // Scheduled session metadata (if any)
+  const [scheduled, setScheduled] = useState<ScheduledPodcastSession | undefined>(() => PodcastSessionStore.get(sessionId));
+  const [gateTick, setGateTick] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setScheduled(PodcastSessionStore.get(sessionId));
+      setGateTick((x) => x + 1);
+    }, 15_000);
+    return () => window.clearInterval(id);
+  }, [sessionId]);
+  const joinGate = useMemo(() => evaluateJoinGate(scheduled), [scheduled, gateTick]);
+
+  // Host: mark this session live when they enter (unless ended/cancelled).
+  useEffect(() => {
+    if (!isHost || !scheduled) return;
+    if (scheduled.status === "upcoming" || scheduled.status === "live") {
+      PodcastSessionStore.markLive(scheduled.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isHost, scheduled?.id]);
+
   // Host-controlled session security (persisted per session, host's device)
   const SEC_KEY = `wstudio-podcast-security:${sessionId}`;
   const [security, setSecurity] = useState<PodcastSecurity>(() => {
