@@ -484,8 +484,17 @@ const PodcastRoomPage = () => {
         </div>
       )}
 
-      {/* Guest: waiting room overlay */}
-      {!isHost && doorman.status !== "accepted" && (
+      {/* Guest: scheduled-time gate */}
+      {!isHost && (joinGate.kind === "too-early" || joinGate.kind === "ended" || joinGate.kind === "cancelled") && (
+        <ScheduledGateOverlay
+          gate={joinGate}
+          session={scheduled!}
+          onLeave={() => navigate("/tv/podcast")}
+        />
+      )}
+
+      {/* Guest: waiting room overlay (only once join window is open) */}
+      {!isHost && (joinGate.kind === "open" || joinGate.kind === "live" || joinGate.kind === "unscheduled") && doorman.status !== "accepted" && (
         <GuestWaitingOverlay
           status={doorman.status}
           policy={doorman.policy}
