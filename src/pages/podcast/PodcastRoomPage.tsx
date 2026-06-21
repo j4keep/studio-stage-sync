@@ -16,6 +16,9 @@ import { supabase } from "@/integrations/supabase/client";
 import PodcastInviteSheet, { type PodcastSecurity } from "./PodcastInviteSheet";
 import { usePodcastDoorman } from "./usePodcastDoorman";
 import { PodcastSessionStore, evaluateJoinGate, type ScheduledPodcastSession } from "./podcastSessionStore";
+import { PodcastBackgrounds, type PodcastBg } from "./podcastBackgrounds";
+import { useBackgroundReplacement } from "./useBackgroundReplacement";
+import PodcastBackgroundPicker from "./PodcastBackgroundPicker";
 
 type LocalRecording = {
   id: string;
