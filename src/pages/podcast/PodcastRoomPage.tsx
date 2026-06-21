@@ -351,11 +351,20 @@ const PodcastRoomPage = () => {
     try { room.setCam(false); } catch {}
     try { room.setMic(false); } catch {}
     room.disconnect();
-    toast({ title: "Session ended", description: "The host ended the podcast." });
+    toast({ title: "Session ended", description: doorman.rejectReason || "The host ended the podcast." });
     const t = window.setTimeout(() => navigate("/tv/podcast"), 1800);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isHost, doorman.status]);
+
+  // Guest: host force-mute
+  useEffect(() => {
+    if (isHost) return;
+    if (!doorman.forceMuteTick) return;
+    try { room.setMic(false); } catch {}
+    toast({ title: "You were muted by the host" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [doorman.forceMuteTick]);
 
   const openInvite = () => setInviteOpen(true);
 
