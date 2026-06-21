@@ -197,7 +197,15 @@ const LivePodcastLobbyPage = () => {
       }));
   }, [episodes, recordings, search]);
 
-  const recentRows = useMemo(() => episodeRows.filter(({ takes }) => takes.length > 0).slice(0, 8), [episodeRows]);
+  // Hide a few stale test episodes from old podcast UI iterations.
+  const STALE_TITLES = new Set(["untitled episode", "yu", "ee"]);
+  const recentRows = useMemo(
+    () => episodeRows
+      .filter(({ takes }) => takes.length > 0)
+      .filter(({ episode }) => !STALE_TITLES.has(episode.title.trim().toLowerCase()))
+      .slice(0, 8),
+    [episodeRows],
+  );
   const nextScheduled = useMemo(() => episodes.filter((ep) => ep.scheduled_at).slice(0, 4), [episodes]);
 
   const createEpisode = async (mode: "record" | "edit" | "live" | "schedule" = "record") => {
