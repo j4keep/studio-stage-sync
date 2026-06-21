@@ -282,9 +282,10 @@ const PodcastRoomPage = () => {
     else setPermError(null);
   }, [room.connState, room.error]);
 
-  // recording (own browser, own tracks)
+  // recording (host only, composite stream of every participant)
   const recorderRef = useRef<MediaRecorder | null>(null);
   const handleRef = useRef<Awaited<ReturnType<typeof PodcastRecovery.create>> | null>(null);
+  const compositeRef = useRef<ReturnType<typeof buildCompositeStream> | null>(null);
   const chunkIndexRef = useRef(0);
   const startedAtRef = useRef<number>(0);
   const pausedAccumRef = useRef<number>(0);
@@ -294,6 +295,10 @@ const PodcastRoomPage = () => {
   const [elapsed, setElapsed] = useState(0);
   const [recordings, setRecordings] = useState<LocalRecording[]>([]);
   const [editing, setEditing] = useState<LocalRecording | null>(null);
+
+  // Live ref to participants so the rAF draw loop always has the current set.
+  const participantsRef = useRef<RoomParticipant[]>([]);
+  useEffect(() => { participantsRef.current = room.participants; }, [room.participants]);
 
   // chat (in-memory; realtime sync is Phase 2B)
   const [chat, setChat] = useState<{ id: string; from: string; text: string; ts: number }[]>([]);
@@ -315,26 +320,51 @@ const PodcastRoomPage = () => {
     return () => clearInterval(id);
   }, [isRecording, isPaused]);
 
-  /* ---------------- Recording ---------------- */
+  /* ---------------- Save final to project (IDB) ---------------- */
+  const saveFinalToProject = useCallback(async (item: LocalRecording) => {
+    const title = scheduled?.title || `Podcast Session ${new Date(item.createdAt).toLocaleDateString()}`;
+    try {
+      await PodcastFinals.save({
+        id: item.id,
+        sessionId,
+        title,
+        name: item.name,
+        mime: item.mime,
+        ext: item.name.split(".").pop() || "webm",
+        blob: item.blob,
+        createdAt: item.createdAt,
+        durationMs: item.durationMs,
+        hostName: displayName,
+      });
+    } catch (e) {
+      console.error("Failed to save final podcast recording", e);
+    }
+  }, [scheduled, sessionId, displayName]);
+
+  /* ---------------- Recording (HOST ONLY) ---------------- */
   const startRecording = async () => {
-    const stream = room.localStream;
-    if (!stream || stream.getTracks().length === 0) {
-      toast({ title: "No local media", description: "Allow camera/mic and wait until you're connected." });
+    if (!isHost) {
+      toast({ title: "Only the host can record", description: "The host records the full session for everyone." });
+      return;
+    }
+    if (room.connState !== "connected") {
+      toast({ title: "Not connected yet", description: "Wait until you're connected to the room." });
       return;
     }
     try {
       const mime = pickMime();
       const ext = mime.includes("mp4") ? "mp4" : "webm";
       const handle = await PodcastRecovery.create({
-        sessionId,
-        participantName: displayName,
-        mime,
-        ext,
+        sessionId, participantName: displayName, mime, ext,
       });
       handleRef.current = handle;
       chunkIndexRef.current = 0;
 
-      const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 2_500_000 });
+      // Build composite (tiled video + mixed audio of every participant).
+      const composite = buildCompositeStream(() => participantsRef.current);
+      compositeRef.current = composite;
+
+      const rec = new MediaRecorder(composite.stream, { mimeType: mime, videoBitsPerSecond: 3_500_000 });
       rec.ondataavailable = async (e) => {
         if (!e.data?.size) return;
         try { await handle.appendChunk(e.data, chunkIndexRef.current++); }
@@ -344,6 +374,8 @@ const PodcastRoomPage = () => {
       rec.onstop = async () => {
         try {
           const assembled = await PodcastRecovery.assembleBlob(handle.dbId);
+          compositeRef.current?.stop();
+          compositeRef.current = null;
           if (!assembled || !assembled.blob.size) {
             toast({ title: "No recording captured" });
             await handle.discard();
@@ -351,28 +383,24 @@ const PodcastRoomPage = () => {
           }
           const dur = Date.now() - startedAtRef.current - pausedAccumRef.current;
           const url = URL.createObjectURL(assembled.blob);
-          const name = `wstudio-${safeName(sessionId)}-${safeName(displayName)}-${stampStr()}.${ext}`;
+          const showTitle = scheduled?.title?.trim() || "Podcast";
+          const name = `${safeName(showTitle)}-${stampStr()}.${ext}`;
           const item: LocalRecording = {
-            id: `${handle.dbId}`,
-            name,
-            blob: assembled.blob,
-            url,
-            mime,
-            createdAt: Date.now(),
-            durationMs: dur,
-            trimStart: 0,
-            trimEnd: dur,
+            id: `pf-${handle.dbId}-${Date.now()}`,
+            name, blob: assembled.blob, url, mime,
+            createdAt: Date.now(), durationMs: dur,
+            trimStart: 0, trimEnd: dur,
           };
           setRecordings((rs) => [item, ...rs]);
           setTab("files");
           await handle.finalize();
-          toast({ title: "Recording saved", description: name });
+          await saveFinalToProject(item);
+          toast({ title: "Saved to Project", description: name });
         } catch (err: any) {
           toast({ title: "Save failed", description: err?.message });
         }
       };
 
-      // 10s chunk cadence -> crash-safe IndexedDB writes every 10 seconds.
       startedAtRef.current = Date.now();
       pausedAccumRef.current = 0;
       rec.start(10_000);
@@ -380,8 +408,10 @@ const PodcastRoomPage = () => {
       setIsRecording(true);
       setIsPaused(false);
       setElapsed(0);
-      toast({ title: "Recording started", description: "Saving locally every 10s." });
+      toast({ title: "Recording started", description: "Capturing host + all guests. Auto-saving every 10s." });
     } catch (e: any) {
+      compositeRef.current?.stop();
+      compositeRef.current = null;
       toast({ title: "Could not start recording", description: e?.message });
     }
   };
