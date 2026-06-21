@@ -31,6 +31,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
+import PodcastScheduleSheet from "./PodcastScheduleSheet";
+import PodcastScheduleDashboard from "./PodcastScheduleDashboard";
+import {
+  PodcastSessionStore,
+  schedulePodcastReminders,
+  evaluateJoinGate,
+  type ScheduledPodcastSession,
+} from "./podcastSessionStore";
 
 type Episode = {
   id: string;
@@ -71,6 +79,9 @@ const LivePodcastLobbyPage = () => {
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
   const [busyRecording, setBusyRecording] = useState<string | null>(null);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [scheduleStartNow, setScheduleStartNow] = useState(false);
+  const [editingSession, setEditingSession] = useState<ScheduledPodcastSession | null>(null);
 
   const load = async () => {
     if (!user) return;
@@ -105,9 +116,30 @@ const LivePodcastLobbyPage = () => {
 
   useEffect(() => {
     load();
-    return () => Object.values(previewUrls).forEach((url) => URL.revokeObjectURL(url));
+    const stop = schedulePodcastReminders();
+    return () => {
+      Object.values(previewUrls).forEach((url) => URL.revokeObjectURL(url));
+      if (stop) stop();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
+
+  const openScheduleModal = (startNow: boolean) => {
+    setEditingSession(null);
+    setScheduleStartNow(startNow);
+    setScheduleOpen(true);
+  };
+
+  const handleScheduleSaved = (s: ScheduledPodcastSession) => {
+    const gate = evaluateJoinGate(s);
+    if (gate.kind === "open" || gate.kind === "live") {
+      PodcastSessionStore.markLive(s.id);
+      navigate(`/podcast/room/${s.id}`);
+    } else {
+      setViewMode("planner");
+      toast({ title: "Session scheduled", description: new Date(s.scheduledAt).toLocaleString() });
+    }
+  };
 
   const episodeRows = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -293,10 +325,10 @@ const LivePodcastLobbyPage = () => {
                   <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Episode title" className="h-11 bg-background" />
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-5 md:flex">
-                  <ActionButton icon={<Video />} label="Record" active onClick={() => createEpisode("record")} disabled={creating} />
+                  <ActionButton icon={<Video />} label="Start podcast" active onClick={() => openScheduleModal(true)} />
                   <ActionButton icon={<Scissors />} label="Edit" onClick={openLatestEditor} />
-                  <ActionButton icon={<Radio />} label="Go live" onClick={() => createEpisode("live")} disabled={creating} />
-                  <ActionButton icon={<CalendarDays />} label="Schedule" onClick={() => createEpisode("schedule")} disabled={creating} />
+                  <ActionButton icon={<Radio />} label="Go live" onClick={() => openScheduleModal(true)} />
+                  <ActionButton icon={<CalendarDays />} label="Schedule" onClick={() => openScheduleModal(false)} />
                   <ActionButton icon={<Upload />} label={uploading ? "Uploading" : "Upload"} onClick={() => fileInputRef.current?.click()} disabled={uploading} />
                 </div>
               </div>
@@ -321,11 +353,11 @@ const LivePodcastLobbyPage = () => {
                 </div>
 
                 {viewMode === "planner" ? (
-                  <Planner episodes={nextScheduled} onOpen={(id) => navigate(`/tv/podcast/${id}`)} />
+                  <PodcastScheduleDashboard onEdit={(s) => { setEditingSession(s); setScheduleStartNow(false); setScheduleOpen(true); }} />
                 ) : loading ? (
                   <div className="rounded-lg border border-border bg-card p-8 text-sm text-muted-foreground">Loading episodes…</div>
                 ) : activeRows.length === 0 ? (
-                  <EmptyState onRecord={() => createEpisode("record")} onUpload={() => fileInputRef.current?.click()} />
+                  <EmptyState onRecord={() => openScheduleModal(true)} onUpload={() => fileInputRef.current?.click()} />
                 ) : (
                   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     {activeRows.map(({ episode, takes }) => {
@@ -373,6 +405,16 @@ const LivePodcastLobbyPage = () => {
           </section>
         </main>
       </div>
+
+      <PodcastScheduleSheet
+        open={scheduleOpen}
+        onClose={() => { setScheduleOpen(false); setEditingSession(null); }}
+        hostId={user?.id ?? null}
+        hostName={user?.user_metadata?.display_name || user?.email?.split("@")[0] || "Host"}
+        editing={editingSession}
+        initialStartNow={scheduleStartNow}
+        onSaved={handleScheduleSaved}
+      />
     </div>
   );
 };

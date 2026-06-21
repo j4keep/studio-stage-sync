@@ -15,6 +15,7 @@ import { PodcastRecovery, type RecoverySessionRow } from "./podcastRecoveryStore
 import { supabase } from "@/integrations/supabase/client";
 import PodcastInviteSheet, { type PodcastSecurity } from "./PodcastInviteSheet";
 import { usePodcastDoorman } from "./usePodcastDoorman";
+import { PodcastSessionStore, evaluateJoinGate, type ScheduledPodcastSession } from "./podcastSessionStore";
 
 type LocalRecording = {
   id: string;
@@ -82,6 +83,27 @@ const PodcastRoomPage = () => {
   const [permError, setPermError] = useState<string | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
 
+  // Scheduled session metadata (if any)
+  const [scheduled, setScheduled] = useState<ScheduledPodcastSession | undefined>(() => PodcastSessionStore.get(sessionId));
+  const [gateTick, setGateTick] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setScheduled(PodcastSessionStore.get(sessionId));
+      setGateTick((x) => x + 1);
+    }, 15_000);
+    return () => window.clearInterval(id);
+  }, [sessionId]);
+  const joinGate = useMemo(() => evaluateJoinGate(scheduled), [scheduled, gateTick]);
+
+  // Host: mark this session live when they enter (unless ended/cancelled).
+  useEffect(() => {
+    if (!isHost || !scheduled) return;
+    if (scheduled.status === "upcoming" || scheduled.status === "live") {
+      PodcastSessionStore.markLive(scheduled.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isHost, scheduled?.id]);
+
   // Host-controlled session security (persisted per session, host's device)
   const SEC_KEY = `wstudio-podcast-security:${sessionId}`;
   const [security, setSecurity] = useState<PodcastSecurity>(() => {
@@ -111,6 +133,8 @@ const PodcastRoomPage = () => {
   useEffect(() => {
     if (isHost) return;
     if (doorman.status !== "idle") return;
+    // Don't request join until the scheduled window is open
+    if (joinGate.kind !== "open" && joinGate.kind !== "live" && joinGate.kind !== "unscheduled") return;
     if (doorman.policy.requiresPassword) {
       if (linkPassword) {
         doorman.requestJoin(linkPassword);
@@ -119,7 +143,7 @@ const PodcastRoomPage = () => {
     } else {
       doorman.requestJoin();
     }
-  }, [isHost, doorman, linkPassword]);
+  }, [isHost, doorman, linkPassword, joinGate.kind]);
 
   // LiveKit room — only enabled after doorman accepts.
   const room = usePodcastLiveRoom({
@@ -299,6 +323,11 @@ const PodcastRoomPage = () => {
 
   const leave = () => {
     if (isRecording) stopRecording();
+    if (isHost && scheduled && scheduled.status !== "cancelled") {
+      if (confirm("End the podcast session for everyone?")) {
+        PodcastSessionStore.markEnded(scheduled.id);
+      }
+    }
     room.disconnect();
     navigate("/tv/podcast");
   };
@@ -462,8 +491,17 @@ const PodcastRoomPage = () => {
         </div>
       )}
 
-      {/* Guest: waiting room overlay */}
-      {!isHost && doorman.status !== "accepted" && (
+      {/* Guest: scheduled-time gate */}
+      {!isHost && (joinGate.kind === "too-early" || joinGate.kind === "ended" || joinGate.kind === "cancelled") && (
+        <ScheduledGateOverlay
+          gate={joinGate}
+          session={scheduled!}
+          onLeave={() => navigate("/tv/podcast")}
+        />
+      )}
+
+      {/* Guest: waiting room overlay (only once join window is open) */}
+      {!isHost && (joinGate.kind === "open" || joinGate.kind === "live" || joinGate.kind === "unscheduled") && doorman.status !== "accepted" && (
         <GuestWaitingOverlay
           status={doorman.status}
           policy={doorman.policy}
@@ -768,6 +806,41 @@ const RecordingFilesPanel = ({ recordings, onDownload, onDelete, onRename, onEdi
         </li>
       ))}
     </ul>
+  );
+};
+
+const ScheduledGateOverlay = ({
+  gate, session, onLeave,
+}: {
+  gate: ReturnType<typeof evaluateJoinGate>;
+  session: ScheduledPodcastSession;
+  onLeave: () => void;
+}) => {
+  const title =
+    gate.kind === "too-early" ? "This podcast has not started yet"
+    : gate.kind === "ended" ? "This podcast has ended"
+    : gate.kind === "cancelled" ? "This podcast was cancelled"
+    : "Not available";
+  const body =
+    gate.kind === "too-early" ? `Doors open 15 minutes before the start time. Starts ${new Date(session.scheduledAt).toLocaleString()}.`
+    : gate.kind === "ended" ? "The host has ended the session."
+    : gate.kind === "cancelled" ? "The host cancelled this session."
+    : "";
+  return (
+    <div className="fixed inset-0 z-[85] bg-zinc-950/95 backdrop-blur grid place-items-center p-4">
+      <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-center">
+        <div className="w-14 h-14 rounded-full bg-purple-500/15 border border-purple-500/30 grid place-items-center mx-auto mb-3">
+          <Shield className="w-6 h-6 text-purple-300" />
+        </div>
+        <h2 className="text-lg font-semibold mb-1">{title}</h2>
+        <p className="text-sm text-zinc-400 mb-4">{body}</p>
+        <div className="text-xs uppercase tracking-wider text-purple-300 mb-1">{session.title}</div>
+        {gate.kind === "too-early" && (
+          <div className="text-xs text-zinc-400 mb-4">Starts in ~{gate.minutesUntil} min</div>
+        )}
+        <Button variant="secondary" onClick={onLeave} className="w-full">Back to Podcast Home</Button>
+      </div>
+    </div>
   );
 };
 

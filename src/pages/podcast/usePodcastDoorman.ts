@@ -1,11 +1,6 @@
 // W.STUDIO Podcast — Waiting-room "doorman".
 // Lightweight Supabase realtime channel that gates LiveKit room entry.
-// Does NOT touch LiveKit, recording, editor, or export. Only decides
-// whether the parent should set `enabled: true` on the LiveKit hook.
-//
-// Roles:
-//  - host: auto-accepted; receives `pending` join requests and approves/rejects
-//  - guest: emits a `request` and waits for the host's `decision`
+// Does NOT touch LiveKit, recording, editor, or export.
 //
 // Channel:  `podcast-door:${sessionId}`
 // Events:
@@ -26,18 +21,19 @@ export type PendingRequest = {
 
 export type DoormanStatus =
   | "idle"
-  | "requesting"     // guest: waiting for host
-  | "rejected"       // guest: host said no
-  | "accepted"       // guest or host: cleared to join LiveKit
-  | "needs-password"; // guest: room requires a password and we haven't sent one yet
+  | "requesting"
+  | "rejected"
+  | "accepted"
+  | "needs-password";
 
 type Args = {
   sessionId: string;
   isHost: boolean;
   displayName: string;
-  // host-controlled security; guests get a snapshot via `policy` broadcasts
   security?: PodcastSecurity;
 };
+
+type OutMsg = { type: string; [k: string]: any };
 
 export function usePodcastDoorman({ sessionId, isHost, displayName, security }: Args) {
   const [status, setStatus] = useState<DoormanStatus>(isHost ? "accepted" : "idle");
@@ -49,15 +45,40 @@ export function usePodcastDoorman({ sessionId, isHost, displayName, security }: 
   const [rejectReason, setRejectReason] = useState<string | null>(null);
 
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const subscribedRef = useRef(false);
+  const queueRef = useRef<OutMsg[]>([]);
   const reqIdRef = useRef<string>(crypto.randomUUID());
 
-  // host: keep latest security in a ref so handlers see fresh values
   const secRef = useRef(security);
   useEffect(() => { secRef.current = security; }, [security]);
 
+  const send = useCallback((payload: OutMsg) => {
+    const ch = channelRef.current;
+    if (!ch || !subscribedRef.current) {
+      queueRef.current.push(payload);
+      return;
+    }
+    try {
+      ch.send({ type: "broadcast", event: "msg", payload });
+    } catch {
+      // re-queue and retry shortly
+      queueRef.current.push(payload);
+    }
+  }, []);
+
+  const flushQueue = useCallback(() => {
+    const ch = channelRef.current;
+    if (!ch || !subscribedRef.current) return;
+    const q = queueRef.current.splice(0);
+    q.forEach((p) => {
+      try { ch.send({ type: "broadcast", event: "msg", payload: p }); } catch {}
+    });
+  }, []);
+
   useEffect(() => {
+    subscribedRef.current = false;
     const ch = supabase.channel(`podcast-door:${sessionId}`, {
-      config: { broadcast: { self: false } },
+      config: { broadcast: { self: false, ack: true } },
     });
     channelRef.current = ch;
 
@@ -71,14 +92,17 @@ export function usePodcastDoorman({ sessionId, isHost, displayName, security }: 
             if (p.some((x) => x.reqId === data.reqId)) return p;
             return [...p, { reqId: data.reqId, name: data.name || "Guest", password: data.password, ts: Date.now() }];
           });
+          // Acknowledge with current policy so guests in a stale state can recover.
+          const sec = secRef.current;
+          send({
+            type: "policy",
+            visibility: sec?.visibility || "public",
+            requiresPassword: sec?.visibility === "password",
+          });
         }
       } else {
         if (data.type === "policy") {
           setPolicy({ visibility: data.visibility, requiresPassword: !!data.requiresPassword });
-          if (data.visibility === "public" && status === "idle") {
-            // auto-request as a formality so host sees the join
-            // (the request itself is harmless; host auto-accepts public rooms below)
-          }
         }
         if (data.type === "decision" && data.reqId === reqIdRef.current) {
           if (data.accepted) {
@@ -93,60 +117,57 @@ export function usePodcastDoorman({ sessionId, isHost, displayName, security }: 
     });
 
     ch.subscribe((s) => {
-      if (s === "SUBSCRIBED" && isHost) {
-        // announce policy on join
-        const sec = secRef.current;
-        ch.send({
-          type: "broadcast",
-          event: "msg",
-          payload: {
+      if (s === "SUBSCRIBED") {
+        subscribedRef.current = true;
+        if (isHost) {
+          const sec = secRef.current;
+          send({
             type: "policy",
             visibility: sec?.visibility || "public",
             requiresPassword: sec?.visibility === "password",
-          },
-        });
+          });
+        }
+        flushQueue();
+      } else if (s === "CLOSED" || s === "CHANNEL_ERROR" || s === "TIMED_OUT") {
+        subscribedRef.current = false;
       }
     });
 
-    return () => { supabase.removeChannel(ch); channelRef.current = null; };
+    // Periodic flush in case network hiccups stranded messages.
+    const flushTimer = window.setInterval(flushQueue, 1500);
+
+    return () => {
+      window.clearInterval(flushTimer);
+      subscribedRef.current = false;
+      supabase.removeChannel(ch);
+      channelRef.current = null;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, isHost]);
 
   // host: re-broadcast policy when it changes
   useEffect(() => {
-    if (!isHost || !channelRef.current || !security) return;
-    channelRef.current.send({
-      type: "broadcast",
-      event: "msg",
-      payload: {
-        type: "policy",
-        visibility: security.visibility,
-        requiresPassword: security.visibility === "password",
-      },
+    if (!isHost || !security) return;
+    send({
+      type: "policy",
+      visibility: security.visibility,
+      requiresPassword: security.visibility === "password",
     });
-  }, [isHost, security?.visibility, security?.password]);
+  }, [isHost, security?.visibility, security?.password, send]);
 
   /* ---------- guest actions ---------- */
   const requestJoin = useCallback((password?: string) => {
     if (isHost) return;
     setStatus("requesting");
     setRejectReason(null);
-    channelRef.current?.send({
-      type: "broadcast",
-      event: "msg",
-      payload: { type: "request", reqId: reqIdRef.current, name: displayName, password },
-    });
-  }, [isHost, displayName]);
+    send({ type: "request", reqId: reqIdRef.current, name: displayName, password });
+  }, [isHost, displayName, send]);
 
   /* ---------- host actions ---------- */
   const decide = useCallback((reqId: string, accepted: boolean, reason?: string) => {
-    channelRef.current?.send({
-      type: "broadcast",
-      event: "msg",
-      payload: { type: "decision", reqId, accepted, reason },
-    });
+    send({ type: "decision", reqId, accepted, reason });
     setPending((p) => p.filter((x) => x.reqId !== reqId));
-  }, []);
+  }, [send]);
 
   const accept = useCallback((reqId: string) => decide(reqId, true), [decide]);
   const reject = useCallback((reqId: string, reason?: string) => decide(reqId, false, reason), [decide]);
@@ -159,7 +180,6 @@ export function usePodcastDoorman({ sessionId, isHost, displayName, security }: 
     pending.forEach((p) => decide(p.reqId, true));
   }, [pending, isHost, decide]);
 
-  // host-side password validation suggestion: provide a helper for UI
   const validatePassword = useCallback((submitted?: string) => {
     const sec = secRef.current;
     if (!sec || sec.visibility !== "password") return true;
