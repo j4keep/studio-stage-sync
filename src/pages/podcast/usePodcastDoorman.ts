@@ -44,6 +44,7 @@ export function usePodcastDoorman({ sessionId, isHost, displayName, security }: 
     requiresPassword: false,
   });
   const [rejectReason, setRejectReason] = useState<string | null>(null);
+  const [forceMuteTick, setForceMuteTick] = useState(0);
 
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const subscribedRef = useRef(false);
