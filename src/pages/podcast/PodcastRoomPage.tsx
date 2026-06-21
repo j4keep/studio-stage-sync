@@ -986,9 +986,14 @@ const QUALITY_STYLE: Record<RoomParticipant["quality"], { color: string; label: 
   unknown: { color: "text-zinc-400", label: "—" },
 };
 
-const ParticipantTile = ({ p, isRecording }: { p: RoomParticipant; isRecording: boolean }) => {
+const ParticipantTile = ({ p, isRecording, bg }: { p: RoomParticipant; isRecording: boolean; bg: PodcastBg }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
+
+  // Only enable BG replacement for the LOCAL participant — remote tracks already
+  // arrive composited from each sender's own device.
+  const segEnabled = !!p.isLocal && !!p.camOn && bg.kind !== "none";
+  const seg = useBackgroundReplacement(p.videoTrack || null, bg, segEnabled);
 
   useEffect(() => {
     if (videoRef.current) {
@@ -1007,12 +1012,21 @@ const ParticipantTile = ({ p, isRecording }: { p: RoomParticipant; isRecording: 
   return (
     <div className="relative rounded-xl overflow-hidden bg-zinc-900 border border-zinc-800 aspect-video">
       {p.videoTrack && p.camOn ? (
-        <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
+        seg.active ? (
+          <canvas ref={seg.canvasRef} className="w-full h-full object-cover" />
+        ) : (
+          <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
+        )
       ) : (
         <div className="absolute inset-0 grid place-items-center">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-teal-400 grid place-items-center text-xl font-bold">
+          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-primary/40 grid place-items-center text-xl font-bold">
             {p.name[0]?.toUpperCase()}
           </div>
+        </div>
+      )}
+      {seg.loading && (
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 text-[10px] px-2 py-0.5 rounded-full bg-black/60 border border-white/10 text-zinc-200">
+          Loading background…
         </div>
       )}
       <audio ref={audioRef} autoPlay />
