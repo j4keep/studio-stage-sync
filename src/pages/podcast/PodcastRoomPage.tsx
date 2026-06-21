@@ -16,6 +16,9 @@ import { supabase } from "@/integrations/supabase/client";
 import PodcastInviteSheet, { type PodcastSecurity } from "./PodcastInviteSheet";
 import { usePodcastDoorman } from "./usePodcastDoorman";
 import { PodcastSessionStore, evaluateJoinGate, type ScheduledPodcastSession } from "./podcastSessionStore";
+import { PodcastBackgrounds, type PodcastBg } from "./podcastBackgrounds";
+import { useBackgroundReplacement } from "./useBackgroundReplacement";
+import PodcastBackgroundPicker from "./PodcastBackgroundPicker";
 
 type LocalRecording = {
   id: string;
@@ -41,20 +44,7 @@ const LAYOUTS: { id: string; label: string }[] = [
   { id: "screen", label: "Screen-share priority" },
 ];
 
-const BACKGROUNDS: { id: string; label: string; preview: string }[] = [
-  { id: "none", label: "None", preview: "transparent" },
-  { id: "blur", label: "Blur", preview: "linear-gradient(135deg,#1f2937,#374151)" },
-  { id: "studio-purple", label: "Studio Purple", preview: "linear-gradient(135deg,#3b0764,#9333ea)" },
-  { id: "midnight", label: "Midnight", preview: "linear-gradient(135deg,#020617,#1e293b)" },
-  { id: "sunset", label: "Sunset", preview: "linear-gradient(135deg,#7c2d12,#f59e0b)" },
-  { id: "ocean", label: "Ocean", preview: "linear-gradient(135deg,#0c4a6e,#06b6d4)" },
-  { id: "forest", label: "Forest", preview: "linear-gradient(135deg,#14532d,#22c55e)" },
-  { id: "neon", label: "Neon", preview: "linear-gradient(135deg,#831843,#ec4899)" },
-  { id: "rose", label: "Rose Gold", preview: "linear-gradient(135deg,#9f1239,#fda4af)" },
-  { id: "graphite", label: "Graphite", preview: "linear-gradient(135deg,#111827,#4b5563)" },
-  { id: "amber", label: "Amber Stage", preview: "linear-gradient(135deg,#78350f,#fbbf24)" },
-  { id: "ice", label: "Ice", preview: "linear-gradient(135deg,#1e3a8a,#bfdbfe)" },
-];
+// Legacy gradient list removed — real virtual backgrounds live in podcastBackgrounds.ts.
 
 type CaptionStyle = "clean" | "bold" | "subtitle" | "karaoke";
 
@@ -266,13 +256,11 @@ const PodcastRoomPage = () => {
   const [captionStyle, setCaptionStyle] = useState<CaptionStyle>(() => {
     try { return (localStorage.getItem(`pod-cc-style:${sessionId}`) as CaptionStyle) || "clean"; } catch { return "clean"; }
   });
-  const [bgEffect, setBgEffect] = useState<string>(() => {
-    try { return localStorage.getItem(`pod-bg:${sessionId}`) || "none"; } catch { return "none"; }
-  });
+  const [bg, setBg] = useState<PodcastBg>(() => PodcastBackgrounds.getSelection(sessionId));
   useEffect(() => { try { localStorage.setItem(`pod-layout:${sessionId}`, activeLayout); } catch {} }, [sessionId, activeLayout]);
   useEffect(() => { try { localStorage.setItem(`pod-cc:${sessionId}`, captionsOn ? "1" : "0"); } catch {} }, [sessionId, captionsOn]);
   useEffect(() => { try { localStorage.setItem(`pod-cc-style:${sessionId}`, captionStyle); } catch {} }, [sessionId, captionStyle]);
-  useEffect(() => { try { localStorage.setItem(`pod-bg:${sessionId}`, bgEffect); } catch {} }, [sessionId, bgEffect]);
+  useEffect(() => { PodcastBackgrounds.setSelection(sessionId, bg); }, [sessionId, bg]);
 
   // Live captions via Web Speech API (best-effort, where supported)
   const [liveCaption, setLiveCaption] = useState<string>("");
@@ -629,7 +617,7 @@ const PodcastRoomPage = () => {
           >
             <ArrowLeft className="w-4 h-4 text-zinc-300" />
           </button>
-          <div className="text-sm font-semibold tracking-wider text-purple-300">W.STUDIO <span className="text-teal-300">PODCAST</span></div>
+          <div className="text-sm font-semibold tracking-wider text-primary">W.STUDIO <span className="text-foreground/80">PODCAST</span></div>
           <span className="hidden md:inline text-xs text-zinc-500">Room</span>
           <code className="hidden md:inline text-xs px-2 py-1 rounded bg-zinc-900 border border-zinc-800">{sessionId}</code>
           <ConnBadge state={room.connState} count={room.participants.length} />
@@ -656,10 +644,8 @@ const PodcastRoomPage = () => {
       </header>
 
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
-        <main
-          className="flex-1 min-w-0 p-3 md:p-5 flex flex-col gap-4 relative"
-          style={bgEffect !== "none" ? { background: BACKGROUNDS.find((b) => b.id === bgEffect)?.preview } : undefined}
-        >
+        <main className="flex-1 min-w-0 p-3 md:p-5 flex flex-col gap-4 relative">
+
           {permError && (
             <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-200">
               <div className="flex items-center gap-2"><AlertTriangle className="w-4 h-4" />{permError}</div>
@@ -685,7 +671,7 @@ const PodcastRoomPage = () => {
             </div>
           )}
 
-          <PodcastVideoGrid participants={visible} isRecording={isRecording} localId={me?.id} layout={activeLayout} />
+          <PodcastVideoGrid participants={visible} isRecording={isRecording} localId={me?.id} layout={activeLayout} bg={bg} />
 
           {captionsOn && liveCaption && (
             <div className={`pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-4 max-w-[80%] text-center ${
@@ -772,8 +758,8 @@ const PodcastRoomPage = () => {
           setCaptionsOn={setCaptionsOn}
           captionStyle={captionStyle}
           setCaptionStyle={setCaptionStyle}
-          bgEffect={bgEffect}
-          setBgEffect={setBgEffect}
+          bg={bg}
+          setBg={setBg}
         />
       )}
 
@@ -790,10 +776,10 @@ const PodcastRoomPage = () => {
       {isHost && doorman.pending.length > 0 && (
         <div className="fixed top-16 right-3 z-50 w-80 max-w-[calc(100vw-1.5rem)] space-y-2">
           {doorman.pending.map((req) => (
-            <div key={req.reqId} className="rounded-xl bg-zinc-900 border border-purple-500/50 shadow-xl shadow-purple-900/30 p-3">
+            <div key={req.reqId} className="rounded-xl bg-zinc-900 border border-primary/50 shadow-xl shadow-primary/30 p-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="text-xs uppercase tracking-wider text-purple-300 mb-0.5 flex items-center gap-1"><Shield className="w-3 h-3" /> Waiting room</div>
+                  <div className="text-xs uppercase tracking-wider text-primary mb-0.5 flex items-center gap-1"><Shield className="w-3 h-3" /> Waiting room</div>
                   <div className="text-sm font-medium truncate">{req.name} wants to join</div>
                   {security.visibility === "password" && (
                     <div className={`text-[11px] mt-0.5 ${doorman.validatePassword(req.password) ? "text-emerald-400" : "text-red-400"}`}>
@@ -859,8 +845,8 @@ const GuestWaitingOverlay = ({
 }) => (
   <div className="fixed inset-0 z-[80] bg-zinc-950/95 backdrop-blur grid place-items-center p-4">
     <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-center">
-      <div className="w-14 h-14 rounded-full bg-purple-500/15 border border-purple-500/30 grid place-items-center mx-auto mb-3">
-        <Shield className="w-6 h-6 text-purple-300" />
+      <div className="w-14 h-14 rounded-full bg-primary/15 border border-primary/30 grid place-items-center mx-auto mb-3">
+        <Shield className="w-6 h-6 text-primary" />
       </div>
       {status === "ended" ? (
         <>
@@ -897,10 +883,10 @@ const GuestWaitingOverlay = ({
           <p className="text-sm text-zinc-400 mb-4">
             Hi {name}, your request was sent. The host will let you in shortly.
           </p>
-          <div className="flex items-center justify-center gap-2 text-xs text-purple-300 mb-4">
-            <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
-            <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse [animation-delay:150ms]" />
-            <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse [animation-delay:300ms]" />
+          <div className="flex items-center justify-center gap-2 text-xs text-primary mb-4">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse [animation-delay:150ms]" />
+            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse [animation-delay:300ms]" />
           </div>
           <Button variant="secondary" onClick={onLeave} className="w-full">Cancel</Button>
         </>
@@ -928,8 +914,8 @@ const ConnBadge = ({ state, count }: { state: string; count: number }) => {
 };
 
 const PodcastVideoGrid = ({
-  participants, isRecording, localId, layout = "auto",
-}: { participants: RoomParticipant[]; isRecording: boolean; localId?: string; layout?: string }) => {
+  participants, isRecording, localId, layout = "auto", bg,
+}: { participants: RoomParticipant[]; isRecording: boolean; localId?: string; layout?: string; bg: PodcastBg }) => {
   const count = participants.length || 1;
   let cols = "grid-cols-1";
   if (layout === "split") cols = "grid-cols-1 md:grid-cols-2";
@@ -948,10 +934,10 @@ const PodcastVideoGrid = ({
     const [main, ...rest] = participants;
     return (
       <div className="flex flex-col gap-3 flex-1 min-h-[300px]">
-        <div className="flex-1"><ParticipantTile p={main} isRecording={isRecording && main.id === localId} /></div>
+        <div className="flex-1"><ParticipantTile p={main} isRecording={isRecording && main.id === localId} bg={bg} /></div>
         {rest.length > 0 && (
           <div className="grid grid-cols-3 md:grid-cols-6 gap-2 h-24">
-            {rest.map((p) => <ParticipantTile key={p.id} p={p} isRecording={isRecording && p.id === localId} />)}
+            {rest.map((p) => <ParticipantTile key={p.id} p={p} isRecording={isRecording && p.id === localId} bg={bg} />)}
           </div>
         )}
       </div>
@@ -961,10 +947,10 @@ const PodcastVideoGrid = ({
     const [main, ...rest] = participants;
     return (
       <div className="relative flex-1 min-h-[300px]">
-        <ParticipantTile p={main} isRecording={isRecording && main.id === localId} />
+        <ParticipantTile p={main} isRecording={isRecording && main.id === localId} bg={bg} />
         {rest[0] && (
           <div className="absolute right-3 bottom-3 w-40 md:w-56 aspect-video rounded-lg overflow-hidden border-2 border-zinc-700 shadow-xl">
-            <ParticipantTile p={rest[0]} isRecording={isRecording && rest[0].id === localId} />
+            <ParticipantTile p={rest[0]} isRecording={isRecording && rest[0].id === localId} bg={bg} />
           </div>
         )}
       </div>
@@ -973,7 +959,7 @@ const PodcastVideoGrid = ({
   return (
     <div className={`grid ${cols} gap-3 flex-1 min-h-[300px]`}>
       {participants.map((p) => (
-        <ParticipantTile key={p.id} p={p} isRecording={isRecording && p.id === localId} />
+        <ParticipantTile key={p.id} p={p} isRecording={isRecording && p.id === localId} bg={bg} />
       ))}
     </div>
   );
@@ -981,15 +967,20 @@ const PodcastVideoGrid = ({
 
 const QUALITY_STYLE: Record<RoomParticipant["quality"], { color: string; label: string }> = {
   excellent: { color: "text-emerald-400", label: "Excellent" },
-  good: { color: "text-teal-300", label: "Good" },
+  good: { color: "text-primary", label: "Good" },
   weak: { color: "text-amber-400", label: "Weak" },
   poor: { color: "text-red-400", label: "Poor" },
   unknown: { color: "text-zinc-400", label: "—" },
 };
 
-const ParticipantTile = ({ p, isRecording }: { p: RoomParticipant; isRecording: boolean }) => {
+const ParticipantTile = ({ p, isRecording, bg }: { p: RoomParticipant; isRecording: boolean; bg: PodcastBg }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
+
+  // Only enable BG replacement for the LOCAL participant — remote tracks already
+  // arrive composited from each sender's own device.
+  const segEnabled = !!p.isLocal && !!p.camOn && bg.kind !== "none";
+  const seg = useBackgroundReplacement(p.videoTrack || null, bg, segEnabled);
 
   useEffect(() => {
     if (videoRef.current) {
@@ -1008,19 +999,28 @@ const ParticipantTile = ({ p, isRecording }: { p: RoomParticipant; isRecording: 
   return (
     <div className="relative rounded-xl overflow-hidden bg-zinc-900 border border-zinc-800 aspect-video">
       {p.videoTrack && p.camOn ? (
-        <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
+        seg.active ? (
+          <canvas ref={seg.canvasRef} className="w-full h-full object-cover" />
+        ) : (
+          <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
+        )
       ) : (
         <div className="absolute inset-0 grid place-items-center">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-teal-400 grid place-items-center text-xl font-bold">
+          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-primary/40 grid place-items-center text-xl font-bold">
             {p.name[0]?.toUpperCase()}
           </div>
+        </div>
+      )}
+      {seg.loading && (
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 text-[10px] px-2 py-0.5 rounded-full bg-black/60 border border-white/10 text-zinc-200">
+          Loading background…
         </div>
       )}
       <audio ref={audioRef} autoPlay />
 
       <div className="absolute top-2 left-2 flex items-center gap-1.5">
         <span className="text-xs px-1.5 py-0.5 rounded bg-black/60 border border-white/10">{p.name}{p.isLocal ? " (you)" : ""}</span>
-        {p.isHost && <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/80">host</span>}
+        {p.isHost && <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/80">host</span>}
       </div>
 
       <div className="absolute top-2 right-2 flex items-center gap-1">
@@ -1034,7 +1034,7 @@ const ParticipantTile = ({ p, isRecording }: { p: RoomParticipant; isRecording: 
 
       {p.micOn && (
         <div className="absolute bottom-2 left-2 right-2 h-1.5 rounded-full bg-black/40 overflow-hidden">
-          <div className="h-full bg-gradient-to-r from-teal-400 to-purple-500 transition-[width] duration-75"
+          <div className="h-full bg-gradient-to-r from-primary/60 to-primary transition-[width] duration-75"
                style={{ width: `${Math.min(100, Math.round(p.level * 140))}%` }} />
         </div>
       )}
@@ -1107,7 +1107,7 @@ const PodcastControlBar = ({
 );
 
 const CtrlBtn = ({ children, onClick, active, label, className = "" }: any) => (
-  <button onClick={onClick} title={label} aria-label={label} className={`w-12 h-12 rounded-full grid place-items-center border ${active ? "bg-purple-500/20 border-purple-500 text-purple-200" : "bg-zinc-900 border-zinc-800 hover:bg-zinc-800"} ${className}`}>
+  <button onClick={onClick} title={label} aria-label={label} className={`w-12 h-12 rounded-full grid place-items-center border ${active ? "bg-primary/20 border-primary text-primary" : "bg-zinc-900 border-zinc-800 hover:bg-zinc-800"} ${className}`}>
     {children}
   </button>
 );
@@ -1129,15 +1129,15 @@ const PodcastSidebar = ({
           {participants.map((p: RoomParticipant) => (
             <li key={p.id} className="flex items-center justify-between p-2 rounded-lg bg-zinc-900 border border-zinc-800">
               <div className="flex items-center gap-2 min-w-0">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-teal-400 grid place-items-center text-xs font-bold shrink-0">{p.name[0]?.toUpperCase()}</div>
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary/60 grid place-items-center text-xs font-bold shrink-0">{p.name[0]?.toUpperCase()}</div>
                 <div className="min-w-0">
                   <div className="text-sm truncate">{p.name}{p.isLocal ? " (you)" : ""}</div>
                   <div className="text-[10px] uppercase tracking-wide text-zinc-500">{p.isHost ? "host" : "guest"} · <span className={QUALITY_STYLE[p.quality].color}>{QUALITY_STYLE[p.quality].label}</span></div>
                 </div>
               </div>
               <div className="flex items-center gap-1 text-xs shrink-0">
-                {p.micOn ? <Mic className="w-3.5 h-3.5 text-teal-300" /> : <MicOff className="w-3.5 h-3.5 text-red-400" />}
-                {p.camOn ? <Video className="w-3.5 h-3.5 text-teal-300" /> : <VideoOff className="w-3.5 h-3.5 text-red-400" />}
+                {p.micOn ? <Mic className="w-3.5 h-3.5 text-primary" /> : <MicOff className="w-3.5 h-3.5 text-red-400" />}
+                {p.camOn ? <Video className="w-3.5 h-3.5 text-primary" /> : <VideoOff className="w-3.5 h-3.5 text-red-400" />}
                 {isHost && !p.isLocal && (
                   <>
                     <button
@@ -1169,7 +1169,7 @@ const PodcastSidebar = ({
           <div className="flex-1 space-y-2 overflow-y-auto">
             {chat.length === 0 && <p className="text-xs text-zinc-500">No messages yet.</p>}
             {chat.map((m: any) => (
-              <div key={m.id} className="text-sm"><span className="text-purple-300 font-medium">{m.from}: </span>{m.text}</div>
+              <div key={m.id} className="text-sm"><span className="text-primary font-medium">{m.from}: </span>{m.text}</div>
             ))}
           </div>
           <form onSubmit={(e) => { e.preventDefault(); sendChat(); }} className="mt-2 flex gap-2">
@@ -1186,7 +1186,7 @@ const PodcastSidebar = ({
 );
 
 const TabBtn = ({ children, active, onClick }: any) => (
-  <button onClick={onClick} className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs border-b-2 ${active ? "border-purple-500 text-white" : "border-transparent text-zinc-500 hover:text-zinc-300"}`}>
+  <button onClick={onClick} className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs border-b-2 ${active ? "border-primary text-white" : "border-transparent text-zinc-500 hover:text-zinc-300"}`}>
     {children}
   </button>
 );
@@ -1232,12 +1232,12 @@ const ScheduledGateOverlay = ({
   return (
     <div className="fixed inset-0 z-[85] bg-zinc-950/95 backdrop-blur grid place-items-center p-4">
       <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-center">
-        <div className="w-14 h-14 rounded-full bg-purple-500/15 border border-purple-500/30 grid place-items-center mx-auto mb-3">
-          <Shield className="w-6 h-6 text-purple-300" />
+        <div className="w-14 h-14 rounded-full bg-primary/15 border border-primary/30 grid place-items-center mx-auto mb-3">
+          <Shield className="w-6 h-6 text-primary" />
         </div>
         <h2 className="text-lg font-semibold mb-1">{title}</h2>
         <p className="text-sm text-zinc-400 mb-4">{body}</p>
-        <div className="text-xs uppercase tracking-wider text-purple-300 mb-1">{session.title}</div>
+        <div className="text-xs uppercase tracking-wider text-primary mb-1">{session.title}</div>
         {gate.kind === "too-early" && (
           <div className="text-xs text-zinc-400 mb-4">Starts in ~{gate.minutesUntil} min</div>
         )}
@@ -1251,7 +1251,7 @@ export default PodcastRoomPage;
 
 const LayoutSheet = ({
   onClose, activeLayout, setActiveLayout, captionsOn, setCaptionsOn,
-  captionStyle, setCaptionStyle, bgEffect, setBgEffect,
+  captionStyle, setCaptionStyle, bg, setBg,
 }: {
   onClose: () => void;
   activeLayout: string;
@@ -1260,13 +1260,13 @@ const LayoutSheet = ({
   setCaptionsOn: (v: boolean) => void;
   captionStyle: CaptionStyle;
   setCaptionStyle: (v: CaptionStyle) => void;
-  bgEffect: string;
-  setBgEffect: (v: string) => void;
+  bg: PodcastBg;
+  setBg: (v: PodcastBg) => void;
 }) => (
   <div className="fixed inset-0 z-[70] bg-zinc-950/80 backdrop-blur grid place-items-end md:place-items-center p-3" onClick={onClose}>
     <div onClick={(e) => e.stopPropagation()} className="w-full max-w-2xl rounded-2xl border border-zinc-800 bg-zinc-950 p-4 md:p-5 max-h-[85vh] overflow-y-auto">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-base font-semibold flex items-center gap-2"><LayoutGrid className="w-4 h-4 text-purple-300" /> Layout, captions & background</h2>
+        <h2 className="text-base font-semibold flex items-center gap-2"><LayoutGrid className="w-4 h-4 text-primary" /> Layout, captions & background</h2>
         <button onClick={onClose} className="p-1 rounded hover:bg-zinc-800" aria-label="Close"><X className="w-4 h-4 text-zinc-400" /></button>
       </div>
 
@@ -1277,7 +1277,7 @@ const LayoutSheet = ({
             <button
               key={l.id}
               onClick={() => setActiveLayout(l.id)}
-              className={`p-3 rounded-lg border text-left text-xs transition ${activeLayout === l.id ? "border-purple-400 bg-purple-500/15 text-white" : "border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-zinc-700"}`}
+              className={`p-3 rounded-lg border text-left text-xs transition ${activeLayout === l.id ? "border-primary bg-primary/15 text-foreground" : "border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-zinc-700"}`}
             >
               <div className="h-10 mb-2 rounded bg-zinc-800 grid place-items-center">
                 <LayoutGrid className="w-4 h-4 text-zinc-500" />
@@ -1292,7 +1292,7 @@ const LayoutSheet = ({
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-xs uppercase tracking-wider text-zinc-500 flex items-center gap-1.5"><Captions className="w-3.5 h-3.5" /> Live captions</h3>
           <label className="inline-flex items-center gap-2 text-xs">
-            <input type="checkbox" checked={captionsOn} onChange={(e) => setCaptionsOn(e.target.checked)} className="accent-purple-500" />
+            <input type="checkbox" checked={captionsOn} onChange={(e) => setCaptionsOn(e.target.checked)} className="accent-primary" />
             {captionsOn ? "On" : "Off"}
           </label>
         </div>
@@ -1302,7 +1302,7 @@ const LayoutSheet = ({
               key={s}
               disabled={!captionsOn}
               onClick={() => setCaptionStyle(s)}
-              className={`p-2 rounded-md border text-[11px] capitalize ${captionStyle === s ? "border-purple-400 bg-purple-500/15 text-white" : "border-zinc-800 bg-zinc-900 text-zinc-400 hover:border-zinc-700"} disabled:opacity-40`}
+              className={`p-2 rounded-md border text-[11px] capitalize ${captionStyle === s ? "border-primary bg-primary/15 text-foreground" : "border-zinc-800 bg-zinc-900 text-zinc-400 hover:border-zinc-700"} disabled:opacity-40`}
             >
               {s}
             </button>
@@ -1312,23 +1312,14 @@ const LayoutSheet = ({
       </section>
 
       <section>
-        <h3 className="text-xs uppercase tracking-wider text-zinc-500 mb-2 flex items-center gap-1.5"><ImageIcon className="w-3.5 h-3.5" /> Background effect</h3>
-        <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
-          {BACKGROUNDS.map((b) => (
-            <button
-              key={b.id}
-              onClick={() => setBgEffect(b.id)}
-              className={`group rounded-lg overflow-hidden border text-left ${bgEffect === b.id ? "border-purple-400 ring-2 ring-purple-400/50" : "border-zinc-800 hover:border-zinc-700"}`}
-            >
-              <div className="h-16" style={{ background: b.preview === "transparent" ? "repeating-conic-gradient(#27272a 0% 25%, #18181b 0% 50%) 50%/12px 12px" : b.preview }} />
-              <div className="px-2 py-1.5 bg-zinc-900 text-[11px] text-zinc-300">{b.label}</div>
-            </button>
-          ))}
-        </div>
+        <h3 className="text-xs uppercase tracking-wider text-zinc-500 mb-2 flex items-center gap-1.5"><ImageIcon className="w-3.5 h-3.5" /> Virtual background</h3>
+        <p className="text-[10px] text-zinc-500 mb-3">Replaces what's behind YOU on camera using on-device AI (only applies to your own video).</p>
+        <PodcastBackgroundPicker value={bg} onChange={setBg} />
       </section>
     </div>
   </div>
 );
+
 
 const WToolsPanel = ({ recordings, onDownload, onDelete, onRename, onEdit }: any) => {
   const [nr, setNr] = useState(false);
@@ -1339,10 +1330,10 @@ const WToolsPanel = ({ recordings, onDownload, onDelete, onRename, onEdit }: any
       <section className="rounded-lg bg-zinc-900 border border-zinc-800 p-3">
         <p className="text-[10px] uppercase tracking-wider text-zinc-500 mb-2 flex items-center gap-1.5"><Wand2 className="w-3 h-3" /> Audio effects</p>
         <label className="flex items-center justify-between py-1.5 text-xs"><span>Noise reduction</span>
-          <input type="checkbox" checked={nr} onChange={(e) => setNr(e.target.checked)} className="accent-purple-500" />
+          <input type="checkbox" checked={nr} onChange={(e) => setNr(e.target.checked)} className="accent-primary" />
         </label>
         <label className="flex items-center justify-between py-1.5 text-xs"><span>Echo cancellation</span>
-          <input type="checkbox" checked={aec} onChange={(e) => setAec(e.target.checked)} className="accent-purple-500" />
+          <input type="checkbox" checked={aec} onChange={(e) => setAec(e.target.checked)} className="accent-primary" />
         </label>
         <div className="mt-2">
           <label className="text-[10px] uppercase tracking-wider text-zinc-500 block mb-1">AI voice preset</label>
