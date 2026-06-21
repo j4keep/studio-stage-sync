@@ -55,9 +55,11 @@ const fmt = (s: number) => {
 export default function PodcastEditorPro({
   initial,
   onClose,
+  onSaveToProject,
 }: {
   initial: EditorSource;
   onClose: () => void;
+  onSaveToProject?: (blob: Blob, mime: string, ext: string) => Promise<void> | void;
 }) {
   // Sources: index 0 = main recording. Intro/outro injected as additional sources.
   const [sources, setSources] = useState<EditorSource[]>([initial]);
@@ -384,8 +386,9 @@ export default function PodcastEditorPro({
   };
 
   /* ---------- export with ffmpeg.wasm ---------- */
-  const exportFinal = async () => {
+  const exportFinal = async (mode: "download" | "save" = "download") => {
     if (!clips.length) { toast({ title: "Nothing to export" }); return; }
+    if (mode === "save" && !onSaveToProject) { toast({ title: "Save not available here" }); return; }
     setExporting(true);
     setExportProgress(0);
     try {
@@ -468,13 +471,19 @@ export default function PodcastEditorPro({
       const u8 = data as Uint8Array;
       const ab = u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength) as ArrayBuffer;
       const blob = new Blob([ab], { type: mime });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `wstudio-podcast-edited.${outName.endsWith("mp4") ? "mp4" : "webm"}`;
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 4000);
-      toast({ title: "Export complete" });
+      const ext = outName.endsWith("mp4") ? "mp4" : "webm";
+      if (mode === "save" && onSaveToProject) {
+        await onSaveToProject(blob, mime, ext);
+        toast({ title: "Saved to Project", description: "Edited episode is in your Project library." });
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `wstudio-podcast-edited.${ext}`;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 4000);
+        toast({ title: "Export complete" });
+      }
     } catch (e: any) {
       console.error(e);
       toast({ title: "Export failed", description: e?.message?.slice(0, 200) || "Unknown error" });
@@ -580,7 +589,13 @@ export default function PodcastEditorPro({
           <input type="file" accept="video/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) addMediaFile(f, "outro"); e.currentTarget.value = ""; }} />
           <span className="inline-flex items-center gap-1.5 h-8 px-3 text-xs rounded-md bg-zinc-800 hover:bg-zinc-700"><Film className="w-3.5 h-3.5" />Outro</span>
         </label>
-        <Button size="sm" onClick={exportFinal} disabled={exporting} className="ml-auto bg-purple-600 hover:bg-purple-500 gap-1.5 h-8">
+        {onSaveToProject && (
+          <Button size="sm" onClick={() => exportFinal("save")} disabled={exporting} className="ml-auto bg-emerald-600 hover:bg-emerald-500 gap-1.5 h-8">
+            {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Film className="w-3.5 h-3.5" />}
+            {exporting ? `Saving… ${exportProgress}%` : "Save to Project"}
+          </Button>
+        )}
+        <Button size="sm" onClick={() => exportFinal("download")} disabled={exporting} className={`${onSaveToProject ? "" : "ml-auto"} bg-purple-600 hover:bg-purple-500 gap-1.5 h-8`}>
           {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
           {exporting ? `Exporting… ${exportProgress}%` : "Export"}
         </Button>

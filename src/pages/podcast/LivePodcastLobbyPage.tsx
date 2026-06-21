@@ -39,6 +39,8 @@ import {
   evaluateJoinGate,
   type ScheduledPodcastSession,
 } from "./podcastSessionStore";
+import { PodcastFinals, type FinalRecording } from "./podcastRecoveryStore";
+import PodcastEditorPro from "./PodcastEditorPro";
 
 type Episode = {
   id: string;
@@ -82,6 +84,52 @@ const LivePodcastLobbyPage = () => {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [scheduleStartNow, setScheduleStartNow] = useState(false);
   const [editingSession, setEditingSession] = useState<ScheduledPodcastSession | null>(null);
+  const [localFinals, setLocalFinals] = useState<FinalRecording[]>([]);
+  const [editingLocal, setEditingLocal] = useState<FinalRecording | null>(null);
+  const [editingLocalUrl, setEditingLocalUrl] = useState<string>("");
+
+  const loadLocalFinals = async () => {
+    try { setLocalFinals(await PodcastFinals.list()); } catch {}
+  };
+  useEffect(() => {
+    loadLocalFinals();
+    const onVis = () => { if (document.visibilityState === "visible") loadLocalFinals(); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
+
+  const deleteLocal = async (rec: FinalRecording) => {
+    if (!confirm(`Delete "${rec.title}"? This cannot be undone.`)) return;
+    await PodcastFinals.delete(rec.id);
+    setLocalFinals((rs) => rs.filter((r) => r.id !== rec.id));
+    toast({ title: "Recording deleted" });
+  };
+
+  const downloadLocal = (rec: FinalRecording) => {
+    const url = URL.createObjectURL(rec.blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = rec.name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  };
+
+  const openLocalEditor = (rec: FinalRecording) => {
+    const url = URL.createObjectURL(rec.blob);
+    setEditingLocalUrl(url);
+    setEditingLocal(rec);
+  };
+  const closeLocalEditor = () => {
+    if (editingLocalUrl) URL.revokeObjectURL(editingLocalUrl);
+    setEditingLocalUrl("");
+    setEditingLocal(null);
+  };
+
+  const renameLocal = async (rec: FinalRecording) => {
+    const next = prompt("Rename recording", rec.title);
+    if (!next || next.trim() === rec.title) return;
+    await PodcastFinals.update(rec.id, { title: next.trim() });
+    setLocalFinals((rs) => rs.map((r) => r.id === rec.id ? { ...r, title: next.trim() } : r));
+  };
 
   const load = async () => {
     if (!user) return;
@@ -383,6 +431,17 @@ const LivePodcastLobbyPage = () => {
                     })}
                   </div>
                 )}
+
+                {viewMode !== "planner" && (
+                  <LocalRecordingsPanel
+                    items={localFinals}
+                    onEdit={openLocalEditor}
+                    onDownload={downloadLocal}
+                    onDelete={deleteLocal}
+                    onRename={renameLocal}
+                    onRefresh={loadLocalFinals}
+                  />
+                )}
               </section>
 
               <aside className="space-y-4">
@@ -415,6 +474,36 @@ const LivePodcastLobbyPage = () => {
         initialStartNow={scheduleStartNow}
         onSaved={handleScheduleSaved}
       />
+
+      {editingLocal && (
+        <div className="fixed inset-0 z-[90] bg-zinc-950/95 backdrop-blur overflow-y-auto p-3 md:p-6">
+          <div className="mx-auto max-w-6xl">
+            <PodcastEditorPro
+              initial={{
+                id: editingLocal.id,
+                name: editingLocal.title,
+                url: editingLocalUrl,
+                blob: editingLocal.blob,
+                durationMs: editingLocal.durationMs,
+              }}
+              onClose={closeLocalEditor}
+              onSaveToProject={async (blob, mime, ext) => {
+                const id = `${editingLocal.id}-edit-${Date.now()}`;
+                const title = editingLocal.title;
+                const name = `${title.replace(/[^a-z0-9_-]+/gi, "-").slice(0, 40)}-edited.${ext}`;
+                await PodcastFinals.save({
+                  id, sessionId: editingLocal.sessionId, title, name, mime, ext, blob,
+                  createdAt: Date.now(),
+                  durationMs: editingLocal.durationMs,
+                  edited: true,
+                  hostName: editingLocal.hostName,
+                });
+                await loadLocalFinals();
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -528,5 +617,51 @@ const Planner = ({ episodes, onOpen }: { episodes: Episode[]; onOpen: (id: strin
 );
 
 const formatTime = (seconds: number) => `${Math.floor(Math.max(0, seconds) / 60)}:${String(Math.floor(Math.max(0, seconds)) % 60).padStart(2, "0")}`;
+
+const LocalRecordingsPanel = ({
+  items, onEdit, onDownload, onDelete, onRename, onRefresh,
+}: {
+  items: FinalRecording[];
+  onEdit: (r: FinalRecording) => void;
+  onDownload: (r: FinalRecording) => void;
+  onDelete: (r: FinalRecording) => void;
+  onRename: (r: FinalRecording) => void;
+  onRefresh: () => void;
+}) => {
+  if (!items.length) return null;
+  return (
+    <section className="mt-6">
+      <div className="mb-3 flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-bold">Local recordings</h3>
+          <p className="text-xs text-muted-foreground">Auto-saved on this device when you ended a podcast. Publish to share.</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={onRefresh}><Gauge className="mr-2 h-4 w-4" />Refresh</Button>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {items.map((r) => (
+          <article key={r.id} className="rounded-lg border border-border bg-card p-3">
+            <div className="flex items-start gap-2">
+              <div className="min-w-0 flex-1">
+                <h4 className="truncate font-semibold">{r.title}{r.edited && <span className="ml-1 text-[10px] font-normal text-primary">· edited</span>}</h4>
+                <p className="text-xs text-muted-foreground">
+                  {new Date(r.createdAt).toLocaleDateString()} · {new Date(r.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  {" · "}{formatTime(Math.floor(r.durationMs / 1000))}
+                  {" · "}{(r.blob.size / 1024 / 1024).toFixed(1)} MB
+                </p>
+              </div>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <Button size="sm" onClick={() => onEdit(r)}><Scissors className="mr-1 h-4 w-4" />Edit</Button>
+              <Button size="sm" variant="secondary" onClick={() => onDownload(r)}><Download className="mr-1 h-4 w-4" />Download</Button>
+              <Button size="sm" variant="outline" onClick={() => onRename(r)}><Edit3 className="mr-1 h-4 w-4" />Rename</Button>
+              <Button size="sm" variant="destructive" onClick={() => onDelete(r)}><Trash2 className="mr-1 h-4 w-4" />Delete</Button>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+};
 
 export default LivePodcastLobbyPage;

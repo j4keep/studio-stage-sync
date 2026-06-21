@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import PodcastEditorPro from "./PodcastEditorPro";
 import { usePodcastLiveRoom, type RoomParticipant } from "./usePodcastLiveRoom";
-import { PodcastRecovery, type RecoverySessionRow } from "./podcastRecoveryStore";
+import { PodcastRecovery, PodcastFinals, type RecoverySessionRow } from "./podcastRecoveryStore";
 import { supabase } from "@/integrations/supabase/client";
 import PodcastInviteSheet, { type PodcastSecurity } from "./PodcastInviteSheet";
 import { usePodcastDoorman } from "./usePodcastDoorman";
@@ -54,6 +54,131 @@ const fmtTime = (ms: number) => {
 
 const safeName = (s: string) => s.replace(/[^a-z0-9_-]+/gi, "-").slice(0, 32) || "guest";
 const stampStr = () => new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+
+/** Build a composite MediaStream that mixes every participant's video into a tiled
+ *  canvas and every audio track into a single WebAudio mixdown. The returned
+ *  object includes a stop() to release rAF/AudioContext/video elements. */
+function buildCompositeStream(getParticipants: () => RoomParticipant[]): {
+  stream: MediaStream;
+  stop: () => void;
+} {
+  const W = 1280, H = 720;
+  const canvas = document.createElement("canvas");
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d")!;
+  const videoEls = new Map<string, HTMLVideoElement>();
+  const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+  const dest = audioCtx.createMediaStreamDestination();
+  const audioNodes = new Map<string, MediaStreamAudioSourceNode>();
+
+  const ensureVideoEl = (id: string, track: MediaStreamTrack) => {
+    let v = videoEls.get(id);
+    if (!v) {
+      v = document.createElement("video");
+      v.muted = true;
+      v.autoplay = true;
+      (v as any).playsInline = true;
+      videoEls.set(id, v);
+    }
+    const cur = v.srcObject as MediaStream | null;
+    const curId = cur?.getVideoTracks()[0]?.id;
+    if (curId !== track.id) {
+      v.srcObject = new MediaStream([track]);
+      v.play().catch(() => {});
+    }
+    return v;
+  };
+
+  const ensureAudio = (id: string, track: MediaStreamTrack) => {
+    if (audioNodes.has(id)) return;
+    try {
+      const src = audioCtx.createMediaStreamSource(new MediaStream([track]));
+      src.connect(dest);
+      audioNodes.set(id, src);
+    } catch {}
+  };
+
+  let raf = 0;
+  const draw = () => {
+    const ps = getParticipants();
+    ctx.fillStyle = "#09090b";
+    ctx.fillRect(0, 0, W, H);
+
+    // hook up audio for any new participants
+    ps.forEach((p) => { if (p.audioTrack) ensureAudio(p.id, p.audioTrack); });
+
+    const n = Math.max(1, ps.length);
+    const cols = n <= 1 ? 1 : n <= 4 ? 2 : 3;
+    const rows = Math.ceil(n / cols);
+    const cellW = Math.floor(W / cols);
+    const cellH = Math.floor(H / rows);
+
+    ps.forEach((p, i) => {
+      const cx = (i % cols) * cellW;
+      const cy = Math.floor(i / cols) * cellH;
+      ctx.save();
+      ctx.fillStyle = "#18181b";
+      ctx.fillRect(cx + 4, cy + 4, cellW - 8, cellH - 8);
+
+      if (p.videoTrack && p.camOn) {
+        const v = ensureVideoEl(p.id, p.videoTrack);
+        if (v.readyState >= 2 && v.videoWidth) {
+          // contain
+          const vr = v.videoWidth / v.videoHeight;
+          const cr = (cellW - 8) / (cellH - 8);
+          let dw = cellW - 8, dh = cellH - 8;
+          if (vr > cr) dh = dw / vr; else dw = dh * vr;
+          const dx = cx + 4 + (cellW - 8 - dw) / 2;
+          const dy = cy + 4 + (cellH - 8 - dh) / 2;
+          ctx.drawImage(v, dx, dy, dw, dh);
+        }
+      } else {
+        // avatar bubble
+        ctx.fillStyle = "#a855f7";
+        const r = Math.min(cellW, cellH) * 0.18;
+        ctx.beginPath();
+        ctx.arc(cx + cellW / 2, cy + cellH / 2, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#fff";
+        ctx.font = `${Math.round(r)}px sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText((p.name[0] || "?").toUpperCase(), cx + cellW / 2, cy + cellH / 2);
+      }
+
+      // name strip
+      ctx.fillStyle = "rgba(0,0,0,0.55)";
+      ctx.fillRect(cx + 4, cy + cellH - 28, cellW - 8, 22);
+      ctx.fillStyle = "#fff";
+      ctx.font = "14px sans-serif";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText(`${p.name}${p.isHost ? " · host" : ""}`, cx + 12, cy + cellH - 17);
+      ctx.restore();
+    });
+
+    raf = requestAnimationFrame(draw);
+  };
+  draw();
+
+  const videoStream = (canvas as any).captureStream?.(30) as MediaStream;
+  const videoTrack = videoStream.getVideoTracks()[0];
+  const audioTrack = dest.stream.getAudioTracks()[0];
+  const stream = new MediaStream(audioTrack ? [videoTrack, audioTrack] : [videoTrack]);
+
+  return {
+    stream,
+    stop: () => {
+      cancelAnimationFrame(raf);
+      videoEls.forEach((v) => { try { (v.srcObject as MediaStream)?.getTracks().forEach(() => {}); v.srcObject = null; } catch {} });
+      videoEls.clear();
+      audioNodes.forEach((n) => { try { n.disconnect(); } catch {} });
+      audioNodes.clear();
+      try { audioCtx.close(); } catch {}
+      try { stream.getTracks().forEach((t) => t.stop()); } catch {}
+    },
+  };
+}
 
 const PodcastRoomPage = () => {
   const { sessionId = "session" } = useParams();
@@ -157,9 +282,10 @@ const PodcastRoomPage = () => {
     else setPermError(null);
   }, [room.connState, room.error]);
 
-  // recording (own browser, own tracks)
+  // recording (host only, composite stream of every participant)
   const recorderRef = useRef<MediaRecorder | null>(null);
   const handleRef = useRef<Awaited<ReturnType<typeof PodcastRecovery.create>> | null>(null);
+  const compositeRef = useRef<ReturnType<typeof buildCompositeStream> | null>(null);
   const chunkIndexRef = useRef(0);
   const startedAtRef = useRef<number>(0);
   const pausedAccumRef = useRef<number>(0);
@@ -169,6 +295,10 @@ const PodcastRoomPage = () => {
   const [elapsed, setElapsed] = useState(0);
   const [recordings, setRecordings] = useState<LocalRecording[]>([]);
   const [editing, setEditing] = useState<LocalRecording | null>(null);
+
+  // Live ref to participants so the rAF draw loop always has the current set.
+  const participantsRef = useRef<RoomParticipant[]>([]);
+  useEffect(() => { participantsRef.current = room.participants; }, [room.participants]);
 
   // chat (in-memory; realtime sync is Phase 2B)
   const [chat, setChat] = useState<{ id: string; from: string; text: string; ts: number }[]>([]);
@@ -190,26 +320,51 @@ const PodcastRoomPage = () => {
     return () => clearInterval(id);
   }, [isRecording, isPaused]);
 
-  /* ---------------- Recording ---------------- */
+  /* ---------------- Save final to project (IDB) ---------------- */
+  const saveFinalToProject = useCallback(async (item: LocalRecording) => {
+    const title = scheduled?.title || `Podcast Session ${new Date(item.createdAt).toLocaleDateString()}`;
+    try {
+      await PodcastFinals.save({
+        id: item.id,
+        sessionId,
+        title,
+        name: item.name,
+        mime: item.mime,
+        ext: item.name.split(".").pop() || "webm",
+        blob: item.blob,
+        createdAt: item.createdAt,
+        durationMs: item.durationMs,
+        hostName: displayName,
+      });
+    } catch (e) {
+      console.error("Failed to save final podcast recording", e);
+    }
+  }, [scheduled, sessionId, displayName]);
+
+  /* ---------------- Recording (HOST ONLY) ---------------- */
   const startRecording = async () => {
-    const stream = room.localStream;
-    if (!stream || stream.getTracks().length === 0) {
-      toast({ title: "No local media", description: "Allow camera/mic and wait until you're connected." });
+    if (!isHost) {
+      toast({ title: "Only the host can record", description: "The host records the full session for everyone." });
+      return;
+    }
+    if (room.connState !== "connected") {
+      toast({ title: "Not connected yet", description: "Wait until you're connected to the room." });
       return;
     }
     try {
       const mime = pickMime();
       const ext = mime.includes("mp4") ? "mp4" : "webm";
       const handle = await PodcastRecovery.create({
-        sessionId,
-        participantName: displayName,
-        mime,
-        ext,
+        sessionId, participantName: displayName, mime, ext,
       });
       handleRef.current = handle;
       chunkIndexRef.current = 0;
 
-      const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 2_500_000 });
+      // Build composite (tiled video + mixed audio of every participant).
+      const composite = buildCompositeStream(() => participantsRef.current);
+      compositeRef.current = composite;
+
+      const rec = new MediaRecorder(composite.stream, { mimeType: mime, videoBitsPerSecond: 3_500_000 });
       rec.ondataavailable = async (e) => {
         if (!e.data?.size) return;
         try { await handle.appendChunk(e.data, chunkIndexRef.current++); }
@@ -219,6 +374,8 @@ const PodcastRoomPage = () => {
       rec.onstop = async () => {
         try {
           const assembled = await PodcastRecovery.assembleBlob(handle.dbId);
+          compositeRef.current?.stop();
+          compositeRef.current = null;
           if (!assembled || !assembled.blob.size) {
             toast({ title: "No recording captured" });
             await handle.discard();
@@ -226,28 +383,24 @@ const PodcastRoomPage = () => {
           }
           const dur = Date.now() - startedAtRef.current - pausedAccumRef.current;
           const url = URL.createObjectURL(assembled.blob);
-          const name = `wstudio-${safeName(sessionId)}-${safeName(displayName)}-${stampStr()}.${ext}`;
+          const showTitle = scheduled?.title?.trim() || "Podcast";
+          const name = `${safeName(showTitle)}-${stampStr()}.${ext}`;
           const item: LocalRecording = {
-            id: `${handle.dbId}`,
-            name,
-            blob: assembled.blob,
-            url,
-            mime,
-            createdAt: Date.now(),
-            durationMs: dur,
-            trimStart: 0,
-            trimEnd: dur,
+            id: `pf-${handle.dbId}-${Date.now()}`,
+            name, blob: assembled.blob, url, mime,
+            createdAt: Date.now(), durationMs: dur,
+            trimStart: 0, trimEnd: dur,
           };
           setRecordings((rs) => [item, ...rs]);
           setTab("files");
           await handle.finalize();
-          toast({ title: "Recording saved", description: name });
+          await saveFinalToProject(item);
+          toast({ title: "Saved to Project", description: name });
         } catch (err: any) {
           toast({ title: "Save failed", description: err?.message });
         }
       };
 
-      // 10s chunk cadence -> crash-safe IndexedDB writes every 10 seconds.
       startedAtRef.current = Date.now();
       pausedAccumRef.current = 0;
       rec.start(10_000);
@@ -255,8 +408,10 @@ const PodcastRoomPage = () => {
       setIsRecording(true);
       setIsPaused(false);
       setElapsed(0);
-      toast({ title: "Recording started", description: "Saving locally every 10s." });
+      toast({ title: "Recording started", description: "Capturing host + all guests. Auto-saving every 10s." });
     } catch (e: any) {
+      compositeRef.current?.stop();
+      compositeRef.current = null;
       toast({ title: "Could not start recording", description: e?.message });
     }
   };
@@ -451,6 +606,25 @@ const PodcastRoomPage = () => {
             <PodcastEditorPro
               initial={{ id: editing.id, name: editing.name, url: editing.url, blob: editing.blob, durationMs: editing.durationMs }}
               onClose={() => setEditing(null)}
+              onSaveToProject={async (blob, mime, ext) => {
+                const title = scheduled?.title?.trim() || "Podcast";
+                const id = `pf-edit-${Date.now()}`;
+                const name = `${safeName(title)}-edited-${stampStr()}.${ext}`;
+                await PodcastFinals.save({
+                  id, sessionId, title, name, mime, ext, blob,
+                  createdAt: Date.now(),
+                  durationMs: editing.durationMs,
+                  edited: true,
+                  hostName: displayName,
+                });
+                const url = URL.createObjectURL(blob);
+                setRecordings((rs) => [{
+                  id, name, blob, url, mime,
+                  createdAt: Date.now(),
+                  durationMs: editing.durationMs,
+                  trimStart: 0, trimEnd: editing.durationMs,
+                }, ...rs]);
+              }}
             />
           )}
         </main>
@@ -481,7 +655,8 @@ const PodcastRoomPage = () => {
         micOn={me?.micOn ?? false}
         camOn={me?.camOn ?? false}
         screenOn={screenOn}
-        canRecord={!!room.localStream}
+        canRecord={isHost && room.connState === "connected"}
+        isHost={isHost}
         onStart={startRecording}
         onStop={stopRecording}
         onPause={togglePause}
@@ -725,7 +900,7 @@ const ParticipantTile = ({ p, isRecording }: { p: RoomParticipant; isRecording: 
 };
 
 const PodcastControlBar = ({
-  isRecording, isPaused, micOn, camOn, screenOn, canRecord,
+  isRecording, isPaused, micOn, camOn, screenOn, canRecord, isHost,
   onStart, onStop, onPause, onMic, onCam, onScreen, onLeave,
 }: any) => (
   <footer className="sticky bottom-0 z-30 border-t border-zinc-800 bg-zinc-950/95 backdrop-blur px-3 py-3">
@@ -740,25 +915,36 @@ const PodcastControlBar = ({
         <MonitorUp className="w-5 h-5" />
       </CtrlBtn>
 
-      {!isRecording ? (
-        <button
-          onClick={onStart}
-          disabled={!canRecord}
-          title="Start recording"
-          aria-label="Start recording"
-          className="w-12 h-12 rounded-full bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed grid place-items-center shadow-lg shadow-red-600/30"
-        >
-          <Circle className="w-4 h-4 fill-white text-white" />
-        </button>
+      {isHost ? (
+        !isRecording ? (
+          <button
+            onClick={onStart}
+            disabled={!canRecord}
+            title="Start recording (host)"
+            aria-label="Start recording"
+            className="w-12 h-12 rounded-full bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed grid place-items-center shadow-lg shadow-red-600/30"
+          >
+            <Circle className="w-4 h-4 fill-white text-white" />
+          </button>
+        ) : (
+          <>
+            <button onClick={onPause} title={isPaused ? "Resume" : "Pause"} aria-label="Pause recording" className="w-12 h-12 rounded-full bg-zinc-800 hover:bg-zinc-700 grid place-items-center">
+              {isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
+            </button>
+            <button onClick={onStop} title="Stop recording" aria-label="Stop recording" className="w-12 h-12 rounded-full bg-red-600 hover:bg-red-500 grid place-items-center shadow-lg shadow-red-600/30">
+              <Square className="w-4 h-4 fill-white text-white" />
+            </button>
+          </>
+        )
       ) : (
-        <>
-          <button onClick={onPause} title={isPaused ? "Resume" : "Pause"} aria-label="Pause recording" className="w-12 h-12 rounded-full bg-zinc-800 hover:bg-zinc-700 grid place-items-center">
-            {isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
-          </button>
-          <button onClick={onStop} title="Stop recording" aria-label="Stop recording" className="w-12 h-12 rounded-full bg-red-600 hover:bg-red-500 grid place-items-center shadow-lg shadow-red-600/30">
-            <Square className="w-4 h-4 fill-white text-white" />
-          </button>
-        </>
+        <button
+          disabled
+          title="Only the host can record"
+          aria-label="Recording is host-only"
+          className="w-12 h-12 rounded-full bg-zinc-800/60 border border-zinc-700 grid place-items-center opacity-50 cursor-not-allowed"
+        >
+          <Circle className="w-4 h-4 text-zinc-500" />
+        </button>
       )}
 
       <button

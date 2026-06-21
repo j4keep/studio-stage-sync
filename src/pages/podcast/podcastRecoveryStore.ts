@@ -12,9 +12,10 @@
 //   await PodcastRecovery.discard(dbId);
 
 const DB_NAME = "wstudio-podcast-recovery";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_SESSIONS = "sessions";
 const STORE_CHUNKS = "chunks";
+const STORE_FINALS = "finals";
 
 export type RecoverySessionRow = {
   id: number;
@@ -38,6 +39,9 @@ function openDb(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(STORE_CHUNKS)) {
         const s = db.createObjectStore(STORE_CHUNKS, { keyPath: "id", autoIncrement: true });
         s.createIndex("by_session", "sessionDbId");
+      }
+      if (!db.objectStoreNames.contains(STORE_FINALS)) {
+        db.createObjectStore(STORE_FINALS, { keyPath: "id" });
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -160,3 +164,72 @@ async function create(opts: { sessionId: string; participantName: string; mime: 
 }
 
 export const PodcastRecovery = { create, listUnfinished, listAll, assembleBlob, discard };
+
+/* ===================== Final recordings store =====================
+   Completed podcast recordings auto-saved on leave. Lives locally in
+   IndexedDB until the user clicks Publish (uploads to R2). */
+
+export type FinalRecording = {
+  id: string;
+  sessionId: string;
+  title: string;        // show / episode title
+  name: string;         // file name suggestion
+  mime: string;
+  ext: string;
+  blob: Blob;
+  createdAt: number;
+  durationMs: number;
+  edited?: boolean;
+  hostName?: string;
+};
+
+async function finalsList(): Promise<FinalRecording[]> {
+  const db = await openDb();
+  return tx(db, [STORE_FINALS], "readonly", (t) => new Promise<FinalRecording[]>((res) => {
+    const req = t.objectStore(STORE_FINALS).getAll();
+    req.onsuccess = () => {
+      const rows = (req.result as FinalRecording[]) || [];
+      rows.sort((a, b) => b.createdAt - a.createdAt);
+      res(rows);
+    };
+  }));
+}
+
+async function finalsSave(rec: FinalRecording): Promise<void> {
+  const db = await openDb();
+  await tx(db, [STORE_FINALS], "readwrite", (t) => new Promise<void>((res, rej) => {
+    const r = t.objectStore(STORE_FINALS).put(rec);
+    r.onsuccess = () => res();
+    r.onerror = () => rej(r.error);
+  }));
+}
+
+async function finalsGet(id: string): Promise<FinalRecording | null> {
+  const db = await openDb();
+  return tx(db, [STORE_FINALS], "readonly", (t) => new Promise<FinalRecording | null>((res) => {
+    const r = t.objectStore(STORE_FINALS).get(id);
+    r.onsuccess = () => res((r.result as FinalRecording) || null);
+  }));
+}
+
+async function finalsDelete(id: string): Promise<void> {
+  const db = await openDb();
+  await tx(db, [STORE_FINALS], "readwrite", (t) => new Promise<void>((res) => {
+    t.objectStore(STORE_FINALS).delete(id);
+    res();
+  }));
+}
+
+async function finalsUpdate(id: string, patch: Partial<FinalRecording>): Promise<void> {
+  const existing = await finalsGet(id);
+  if (!existing) return;
+  await finalsSave({ ...existing, ...patch, id });
+}
+
+export const PodcastFinals = {
+  list: finalsList,
+  save: finalsSave,
+  get: finalsGet,
+  delete: finalsDelete,
+  update: finalsUpdate,
+};
