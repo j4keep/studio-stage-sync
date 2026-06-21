@@ -782,6 +782,7 @@ const CtrlBtn = ({ children, onClick, active, label, className = "" }: any) => (
 const PodcastSidebar = ({
   tab, setTab, participants, chat, chatInput, setChatInput, sendChat,
   recordings, onDownload, onDelete, onRename, onEdit,
+  isHost, onMuteParticipant, onKickParticipant,
 }: any) => (
   <aside className="w-full lg:w-80 border-t lg:border-t-0 lg:border-l border-zinc-800 bg-zinc-950 flex flex-col max-h-[40vh] lg:max-h-none">
     <nav className="flex border-b border-zinc-800">
@@ -805,6 +806,27 @@ const PodcastSidebar = ({
               <div className="flex items-center gap-1 text-xs shrink-0">
                 {p.micOn ? <Mic className="w-3.5 h-3.5 text-teal-300" /> : <MicOff className="w-3.5 h-3.5 text-red-400" />}
                 {p.camOn ? <Video className="w-3.5 h-3.5 text-teal-300" /> : <VideoOff className="w-3.5 h-3.5 text-red-400" />}
+                {isHost && !p.isLocal && (
+                  <>
+                    <button
+                      onClick={() => onMuteParticipant?.(p.name)}
+                      disabled={!p.micOn}
+                      title="Mute this participant"
+                      aria-label={`Mute ${p.name}`}
+                      className="ml-1 p-1 rounded hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed text-amber-300"
+                    >
+                      <MicOff className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => onKickParticipant?.(p.name)}
+                      title="Remove from podcast"
+                      aria-label={`Remove ${p.name}`}
+                      className="p-1 rounded hover:bg-red-500/20 text-red-400"
+                    >
+                      <PhoneOff className="w-3.5 h-3.5" />
+                    </button>
+                  </>
+                )}
               </div>
             </li>
           ))}
