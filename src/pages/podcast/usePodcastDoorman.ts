@@ -114,6 +114,10 @@ export function usePodcastDoorman({ sessionId, isHost, displayName, security }: 
             setRejectReason(data.reason || "Host declined your request");
           }
         }
+        if (data.type === "ended") {
+          setStatus("ended");
+          setRejectReason(data.reason || "Host ended the session");
+        }
       }
     });
 
