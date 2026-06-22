@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { TrendingUp, Heart, Search } from "lucide-react";
+import { TrendingUp, Heart, Search, Radio as RadioIcon, Swords, Tv, Music2, ShoppingBag } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,6 +15,14 @@ import ProfilePostCard from "@/components/ProfilePostCard";
 import { fetchFeedItems } from "@/lib/feed-items";
 
 const fadeUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
+
+const FEED_TABS = [
+  { id: "radio", label: "Radio", icon: RadioIcon, route: "/radio" },
+  { id: "battle", label: "Battle", icon: Swords, route: "/battles" },
+  { id: "wheuat-tv", label: "WHEUAT.TV", icon: Tv, route: "/feed" },
+  { id: "songs", label: "Songs", icon: Music2, route: "/browse-songs" },
+  { id: "shop", label: "Shop", icon: ShoppingBag, route: "/store" },
+];
 
 interface TrendingCreator {
   id: string;
