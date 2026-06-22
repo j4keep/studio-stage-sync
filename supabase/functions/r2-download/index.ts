@@ -38,21 +38,34 @@ Deno.serve(async (req) => {
     }
 
     const requestUrl = `${r2Url}/${BUCKET}/${key}`;
-    const r2Response = await client.fetch(requestUrl, { method: 'GET' });
+    const range = req.headers.get('range') || req.headers.get('Range');
+    const forwardHeaders: Record<string, string> = {};
+    if (range) forwardHeaders['range'] = range;
+    const r2Response = await client.fetch(requestUrl, { method: 'GET', headers: forwardHeaders });
 
-    if (!r2Response.ok) {
+    if (!r2Response.ok && r2Response.status !== 206) {
       const errorText = await r2Response.text();
       console.error('R2 download error:', r2Response.status, errorText);
       return new Response(JSON.stringify({ success: false, error: `Download failed: ${r2Response.status}` }), { status: r2Response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const ct = r2Response.headers.get('content-type') || 'application/octet-stream';
-    const fileData = await r2Response.arrayBuffer();
-    console.log('Download successful:', key, `(${fileData.byteLength} bytes)`);
+    const cl = r2Response.headers.get('content-length');
+    const cr = r2Response.headers.get('content-range');
+    const ar = r2Response.headers.get('accept-ranges') || 'bytes';
 
-    return new Response(fileData, {
-      headers: { ...corsHeaders, 'Content-Type': ct, 'Content-Length': fileData.byteLength.toString(), 'Content-Disposition': `inline; filename="${key.split('/').pop()}"`, 'Cache-Control': 'public, max-age=3600' },
-    });
+    const respHeaders: Record<string, string> = {
+      ...corsHeaders,
+      'Content-Type': ct,
+      'Content-Disposition': `inline; filename="${key.split('/').pop()}"`,
+      'Cache-Control': 'public, max-age=3600',
+      'Accept-Ranges': ar,
+    };
+    if (cl) respHeaders['Content-Length'] = cl;
+    if (cr) respHeaders['Content-Range'] = cr;
+
+    return new Response(r2Response.body, { status: r2Response.status, headers: respHeaders });
+
   } catch (error) {
     console.error('Download error:', error);
     return new Response(JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Download failed' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
