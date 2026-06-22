@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, MoreVertical, Volume2, Radio as RadioIcon, Swords, Tv, Music2, Heart } from "lucide-react";
+import { Search, MoreVertical, Radio as RadioIcon, Swords, Tv, Music2, Heart } from "lucide-react";
 import FeedPostCard from "@/components/feed/FeedPostCard";
 import CreatePostSheet from "@/components/feed/CreatePostSheet";
 import { fetchFeedItems } from "@/lib/feed-items";
@@ -14,7 +14,7 @@ const TABS: { id: TabId; label: string; route: string; icon: typeof RadioIcon }[
   { id: "battle", label: "Battle", route: "/battles", icon: Swords },
   { id: "songs", label: "Songs", route: "/browse-songs", icon: Music2 },
   { id: "wheuat-tv", label: "TV", route: "/tv/watch", icon: Tv },
-  { id: "support", label: "Support", route: "/dollar-club", icon: Heart },
+  { id: "support", label: "Support", route: "/my-projects", icon: Heart },
 ];
 
 interface TrendingCreator {
@@ -28,6 +28,7 @@ const FeedPage = () => {
   const { user } = useAuth();
   const [showCreate, setShowCreate] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [chromeHidden, setChromeHidden] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const { data: items = [], isLoading } = useQuery({
@@ -73,16 +74,23 @@ const FeedPage = () => {
     if (currentIndex >= feedPosts.length) setCurrentIndex(0);
   }, [currentIndex, feedPosts.length]);
 
+  useEffect(() => {
+    const resetToTop = () => {
+      scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+      setCurrentIndex(0);
+      setChromeHidden(false);
+    };
+    window.addEventListener("feed-scroll-top", resetToTop);
+    return () => window.removeEventListener("feed-scroll-top", resetToTop);
+  }, []);
+
   return (
     <div className="h-[100dvh] w-full bg-black flex flex-col overflow-hidden relative">
       {/* Header overlay */}
-      <div className="absolute top-0 left-0 right-0 z-50 px-3 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-2 bg-gradient-to-b from-black/75 via-black/40 to-transparent pointer-events-none">
+      <div className={`absolute top-0 left-0 right-0 z-50 px-3 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-2 bg-gradient-to-b from-black/75 via-black/40 to-transparent pointer-events-none transition-all duration-300 ${chromeHidden ? "-translate-y-full opacity-0" : "translate-y-0 opacity-100"}`}>
         <div className="flex items-center justify-between text-white pointer-events-auto">
           <h1 className="text-[18px] font-extrabold tracking-tight">WHEUAT</h1>
           <div className="flex items-center gap-0.5">
-            <button className="w-8 h-8 flex items-center justify-center" aria-label="Volume">
-              <Volume2 className="w-5 h-5" />
-            </button>
             <button onClick={() => navigate("/browse-songs")} className="w-8 h-8 flex items-center justify-center" aria-label="Search">
               <Search className="w-5 h-5" />
             </button>
@@ -148,6 +156,7 @@ const FeedPage = () => {
         ref={scrollRef}
         className="h-full overflow-y-scroll snap-y snap-mandatory scrollbar-hide"
         style={{ scrollSnapType: "y mandatory" }}
+        onScroll={() => { if (!chromeHidden) setChromeHidden(true); }}
       >
         {isLoading ? (
           <div className="h-[100dvh] flex items-center justify-center snap-start">
@@ -171,7 +180,7 @@ const FeedPage = () => {
               className="h-[100dvh] w-full snap-start snap-always relative"
               style={{ scrollSnapAlign: "start" }}
             >
-              <FeedPostCard post={item} currentUserId={user?.id} isActive={index === currentIndex} />
+              <FeedPostCard post={item} currentUserId={user?.id} isActive={index === currentIndex} chromeHidden={chromeHidden} onChromeHiddenChange={setChromeHidden} />
             </div>
           ))
         )}
