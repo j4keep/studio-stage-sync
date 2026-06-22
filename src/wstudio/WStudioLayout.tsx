@@ -1,6 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Outlet, useLocation } from "react-router-dom";
-import { SessionProvider } from "./session/SessionContext";
 import { BookingTimerProvider } from "./booking/BookingTimerContext";
 import { StudioMediaProvider } from "./media/StudioMediaContext";
 
@@ -55,10 +54,8 @@ export function WStudioLayout() {
   );
 
   return (
-    <SessionProvider>
-      <BookingTimerProvider>
-        {mediaEnabled ? <StudioMediaProvider>{shell}</StudioMediaProvider> : shell}
-      </BookingTimerProvider>
-    </SessionProvider>
+    <BookingTimerProvider>
+      {mediaEnabled ? <StudioMediaProvider>{shell}</StudioMediaProvider> : shell}
+    </BookingTimerProvider>
   );
 }
