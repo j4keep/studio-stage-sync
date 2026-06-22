@@ -7,7 +7,7 @@ import FeedPostCard from "@/components/feed/FeedPostCard";
 import CreatePostSheet from "@/components/feed/CreatePostSheet";
 import { fetchFeedItems } from "@/lib/feed-items";
 
-const TABS = ["For You", "Following", "Trending", "New"];
+const TABS = ["For You", "Following", "Trending", "New"]; // legacy — Feed page kept for direct link, Home is primary
 
 const FeedPage = () => {
   const navigate = useNavigate();
