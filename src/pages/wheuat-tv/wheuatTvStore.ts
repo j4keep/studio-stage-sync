@@ -184,7 +184,9 @@ export const WheuatTv = {
     if (!upload.success || !upload.data) {
       throw new Error(upload.error || "Upload to storage failed");
     }
-    const thumbUrl = thumbDataUrl ? await uploadThumbDataUrl(user.id, thumbDataUrl, input.title) : null;
+    const thumbUrl = thumbDataUrl
+      ? await uploadThumbDataUrl(user.id, thumbDataUrl, input.title).catch(() => null)
+      : null;
 
     const { data, error } = await supabase
       .from("tv_posts")
