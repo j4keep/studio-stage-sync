@@ -30,9 +30,11 @@ interface Props {
   post: any;
   currentUserId?: string;
   isActive?: boolean;
+  chromeHidden?: boolean;
+  onChromeHiddenChange?: (hidden: boolean) => void;
 }
 
-const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
+const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = false, onChromeHiddenChange }: Props) => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -268,12 +270,10 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
     },
   });
 
-  const [navHidden, setNavHidden] = useState(false);
-
   const toggleNav = useCallback((hidden: boolean) => {
-    setNavHidden(hidden);
+    onChromeHiddenChange?.(hidden);
     window.dispatchEvent(new CustomEvent("feed-nav-toggle", { detail: { hidden } }));
-  }, []);
+  }, [onChromeHiddenChange]);
 
   const handleContentTap = useCallback(() => {
     const now = Date.now();
@@ -301,10 +301,10 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
           toggleNav(false);
         }
       } else if (post.media_type === "image" || post.media_url) {
-        toggleNav(!navHidden);
+        toggleNav(!chromeHidden);
       }
     }, doubleTapDelay);
-  }, [liked, likeMutation, post.media_type, post.media_url, navHidden, toggleNav]);
+  }, [liked, likeMutation, post.media_type, post.media_url, chromeHidden, toggleNav]);
 
   const handleShare = async () => {
     const shareUrl = `${window.location.origin}/feed`;
@@ -358,13 +358,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
         
 
         {post.media_type === "video" && (
-          <button
-            onClick={() => setIsMuted((value) => !value)}
-            className="absolute top-16 left-3 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-black/35 backdrop-blur-sm"
-            aria-label={isMuted ? "Unmute video" : "Mute video"}
-          >
-            {isMuted ? <VolumeX className="w-5 h-5 text-white" /> : <Volume2 className="w-5 h-5 text-white" />}
-          </button>
+          null
         )}
 
         <button
@@ -409,6 +403,12 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
         )}
 
         <div className="absolute right-3 bottom-8 z-40 flex flex-col items-center gap-5">
+          {post.media_type === "video" && (
+            <button onClick={() => setIsMuted((value) => !value)} className="flex flex-col items-center gap-0.5 z-50" aria-label={isMuted ? "Unmute video" : "Mute video"}>
+              {isMuted ? <VolumeX className="w-7 h-7 text-white drop-shadow-lg" /> : <Volume2 className="w-7 h-7 text-white drop-shadow-lg" />}
+            </button>
+          )}
+
           <button onClick={() => likeMutation.mutate()} className="flex flex-col items-center gap-0.5 z-50">
             <Heart className={`w-7 h-7 drop-shadow-lg ${liked ? "fill-red-500 text-red-500" : "text-white"}`} />
             <span className="text-[11px] font-semibold text-white drop-shadow">{formatCount(likesCount)}</span>
