@@ -39,10 +39,7 @@ const BottomNav = () => {
     { path: "/profile", label: "Profile", icon: User },
   ] as const;
 
-  const isActive = (tab: typeof tabs[number]) =>
-    "matchPrefix" in tab && tab.matchPrefix
-      ? location.pathname.startsWith(tab.matchPrefix)
-      : location.pathname === tab.path;
+  const isActive = (tab: typeof tabs[number]) => location.pathname === tab.path;
 
   // Render order: Home, W.STUDIO, [CENTER @], JiHi, Profile
   const left = tabs.slice(0, 2);
