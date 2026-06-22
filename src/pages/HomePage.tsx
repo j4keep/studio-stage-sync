@@ -15,13 +15,6 @@ import artistDjOnyx from "@/assets/artist-dj-onyx.jpg";
 import artistLyricSoul from "@/assets/artist-lyric-soul.jpg";
 import artistNovaWave from "@/assets/artist-nova-wave.jpg";
 
-import cardRadio from "@/assets/card-radio.jpg";
-import cardStore from "@/assets/card-store.jpg";
-import cardStudios from "@/assets/card-studios.jpg";
-import cardSongs from "@/assets/card-songs.jpg";
-
-import cardProjects from "@/assets/card-projects.jpg";
-import cardBattles from "@/assets/card-battles.jpg";
 import NewsFeed from "@/components/NewsFeed";
 
 const fadeUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
@@ -83,15 +76,13 @@ const fetchTrendingArtists = async (userId?: string): Promise<TrendingArtist[]> 
   return [...realArtists, ...PLACEHOLDER_ARTISTS.slice(0, needed)];
 };
 
-// All cards now navigate to dedicated pages.
-// "Recording Studio" lives inside W.Studio (/tv) now.
-const CATEGORY_CARDS = [
-  { label: "Radio", img: cardRadio, path: "/radio", wide: true, icon: Radio },
-  { label: "Battles", img: cardBattles, path: "/battles", wide: true, icon: Swords },
-  { label: "Store", img: cardStore, path: "/store", wide: false, icon: ShoppingBag },
-  { label: "Studios", img: cardStudios, path: "/studios", wide: false, icon: Building2 },
-  { label: "Songs", img: cardSongs, path: "/browse-songs", wide: false, icon: Music },
-  { label: "Projects", img: cardProjects, path: "/my-projects", wide: false, icon: DollarSign },
+// Top pill nav categories (replaces old For You/Following/Trending/New tabs)
+const TOP_TABS = [
+  { label: "Radio", path: "/radio" },
+  { label: "Battle", path: "/battles" },
+  { label: "WHEUAT.TV", path: "/tv/wheuat" },
+  { label: "Songs", path: "/browse-songs" },
+  { label: "Shop", path: "/store" },
 ];
 
 const HomePage = () => {
