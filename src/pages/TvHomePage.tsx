@@ -1,4 +1,4 @@
-import { Tv, Radio, Mic2, ShoppingBag, Building2, Heart, FolderOpen } from "lucide-react";
+import { Tv, Radio, Mic2, ShoppingBag, Building2, Heart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const TILES = [
@@ -7,8 +7,7 @@ const TILES = [
   { label: "Recording Studio", desc: "Remote sessions", icon: Mic2, path: "/wstudio/session/join" },
   { label: "Store", desc: "Sell your merch", icon: ShoppingBag, path: "/my-store" },
   { label: "Studios", desc: "List your room", icon: Building2, path: "/my-studios" },
-  { label: "Projects", desc: "Your saved work", icon: FolderOpen, path: "/my-projects" },
-  { label: "Support Creators", desc: "Tips & donations", icon: Heart, path: "/dollar-club" },
+  { label: "Support Creators", desc: "Tips & contributions", icon: Heart, path: "/dollar-club" },
 ];
 
 const TvHomePage = () => {
