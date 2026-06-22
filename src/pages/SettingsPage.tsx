@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, Moon, Sun, Bell, BellOff, Globe, Lock, Eye, Trash2, LogOut, Info, ChevronRight, Smartphone, Palette, Crown, XCircle } from "lucide-react";
+import { ArrowLeft, Moon, Sun, Bell, BellOff, Globe, Lock, Eye, Trash2, LogOut, Info, ChevronRight, Smartphone, Palette, Crown, XCircle, Coffee } from "lucide-react";
+import { useTakeABreak } from "@/hooks/use-take-a-break";
 import { useNavigate } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import ThemePickerSheet from "@/components/ThemePickerSheet";
@@ -22,6 +23,7 @@ const SettingsPage = () => {
   const { user, signOut } = useAuth();
   const [showThemePicker, setShowThemePicker] = useState(false);
   const { isPro, showProModal, gatedFeature, requirePro, closeProModal, deactivatePro } = useProGate();
+  const { onBreak, setOnBreak } = useTakeABreak();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
@@ -119,6 +121,17 @@ const SettingsPage = () => {
         </SettingRow>
         <SettingRow icon={<Eye className="w-4 h-4" />} label="Show Activity Status" description="Let others see when you're online">
           <Switch checked={showActivity} onCheckedChange={setShowActivity} />
+        </SettingRow>
+      </Section>
+
+      {/* Wellbeing */}
+      <Section title="Wellbeing">
+        <SettingRow
+          icon={<Coffee className="w-4 h-4" />}
+          label="Take a Break"
+          description="Pause Feed & Battles. You can still use Radio, Podcasts and W.Studio. Account stays active."
+        >
+          <Switch checked={onBreak} onCheckedChange={setOnBreak} />
         </SettingRow>
       </Section>
 
