@@ -64,6 +64,7 @@ import PodcastJoinPage from "./pages/podcast/PodcastJoinPage";
 import PodcastRoomPage from "./pages/podcast/PodcastRoomPage";
 import WheuatTvPage from "./pages/wheuat-tv/WheuatTvPage";
 import WheuatTvWatchPage from "./pages/wheuat-tv/WheuatTvWatchPage";
+import { SessionProvider } from "./wstudio/session/SessionContext";
 
 import TermsAgreementGate from "./components/TermsAgreementGate";
 import ThemePickerSheet from "./components/ThemePickerSheet";
@@ -216,6 +217,7 @@ const ProtectedRoutes = () => {
   }
 
   return (
+    <SessionProvider>
     <AppLayout>
       <Routes>
         <Route path="/" element={<HomePage />} />
@@ -287,6 +289,7 @@ const ProtectedRoutes = () => {
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AppLayout>
+    </SessionProvider>
   );
 };
 

@@ -130,6 +130,20 @@ const LivePodcastLobbyPage = () => {
     setLocalFinals((rs) => rs.map((r) => r.id === rec.id ? { ...r, title: next.trim() } : r));
   };
 
+  const publishLocalToTv = async (rec: FinalRecording) => {
+    await WheuatTv.add({
+      kind: "podcast",
+      title: rec.title,
+      uploaderId: user?.id ?? "anon",
+      uploaderName: user?.user_metadata?.display_name || user?.email?.split("@")[0] || rec.hostName || "Host",
+      blob: rec.blob,
+      mime: rec.mime,
+      ext: rec.ext,
+      durationMs: rec.durationMs,
+    });
+    toast({ title: "Published to WHEUAT.TV", description: rec.title });
+  };
+
   const load = async () => {
     if (!user) return;
     setLoading(true);
@@ -248,6 +262,13 @@ const LivePodcastLobbyPage = () => {
     if (!confirm("Delete this episode and its saved recording?")) return;
     await supabase.from("podcast_episodes").delete().eq("id", id);
     setOpenMenu(null);
+    load();
+  };
+
+  const renameEpisode = async (episode: Episode) => {
+    const next = prompt("Rename project", episode.title);
+    if (!next || next.trim() === episode.title) return;
+    await supabase.from("podcast_episodes").update({ title: next.trim() }).eq("id", episode.id);
     load();
   };
 
@@ -432,6 +453,22 @@ const LivePodcastLobbyPage = () => {
                           onProject={() => navigate(`/tv/podcast/${episode.id}/edit`)}
                           onEdit={() => take ? navigate(`/tv/podcast/${episode.id}/recording/${take.id}/editor`) : navigate(`/tv/podcast/${episode.id}/edit`)}
                           onDownload={() => take && downloadRecording(take)}
+                          onRename={() => renameEpisode(episode)}
+                          onPublish={async () => {
+                            if (!take) return;
+                            const blob = await fetchRecordingBlob(take);
+                            await WheuatTv.add({
+                              kind: "podcast",
+                              title: episode.title,
+                              uploaderId: user?.id ?? "anon",
+                              uploaderName: user?.user_metadata?.display_name || user?.email?.split("@")[0] || "Host",
+                              blob,
+                              mime: take.mime_type || "video/webm",
+                              ext: "webm",
+                              durationMs: (take.duration_seconds || 0) * 1000,
+                            });
+                            toast({ title: "Published to WHEUAT.TV", description: episode.title });
+                          }}
                           onCopy={() => copyPreviewLink(episode.id)}
                           onDelete={() => removeEpisode(episode.id)}
                         />
@@ -447,6 +484,7 @@ const LivePodcastLobbyPage = () => {
                     onDownload={downloadLocal}
                     onDelete={deleteLocal}
                     onRename={renameLocal}
+                    onPublish={publishLocalToTv}
                     onRefresh={loadLocalFinals}
                   />
                 )}
@@ -491,16 +529,6 @@ const LivePodcastLobbyPage = () => {
                 });
                 await loadLocalFinals();
               }}
-              onPublishToTv={async (blob, mime, ext) => {
-                await WheuatTv.add({
-                  kind: "podcast",
-                  title: editingLocal.title,
-                  uploaderId: user?.id ?? "anon",
-                  uploaderName: user?.user_metadata?.display_name || user?.email?.split("@")[0] || editingLocal.hostName || "Host",
-                  blob, mime, ext,
-                  durationMs: editingLocal.durationMs,
-                });
-              }}
             />
           </div>
         </div>
@@ -525,7 +553,7 @@ const ActionButton = ({ icon, label, active, disabled, onClick }: { icon: ReactN
   </button>
 );
 
-const EpisodeCard = ({ episode, take, previewUrl, loadingPreview, menuOpen, onToggleMenu, onPlay, onRecord, onProject, onEdit, onDownload, onCopy, onDelete }: {
+const EpisodeCard = ({ episode, take, previewUrl, loadingPreview, menuOpen, onToggleMenu, onPlay, onRecord, onProject, onEdit, onDownload, onRename, onPublish, onCopy, onDelete }: {
   episode: Episode;
   take?: Recording;
   previewUrl?: string;
@@ -537,6 +565,8 @@ const EpisodeCard = ({ episode, take, previewUrl, loadingPreview, menuOpen, onTo
   onProject: () => void;
   onEdit: () => void;
   onDownload: () => void;
+  onRename: () => void;
+  onPublish: () => void;
   onCopy: () => void;
   onDelete: () => void;
 }) => (
@@ -564,19 +594,19 @@ const EpisodeCard = ({ episode, take, previewUrl, loadingPreview, menuOpen, onTo
         </div>
         <button onClick={onToggleMenu} className="rounded-md p-2 text-muted-foreground hover:bg-muted" aria-label="Episode actions"><MoreHorizontal className="h-4 w-4" /></button>
       </div>
-      <div className="flex flex-wrap gap-2">
+      <div className="grid grid-cols-2 gap-2">
         <Button size="sm" onClick={onEdit}><Scissors className="mr-1 h-4 w-4" /> Edit</Button>
-        <Button size="sm" variant="secondary" onClick={onProject}><FolderOpen className="mr-1 h-4 w-4" /> Project</Button>
-        <Button size="sm" variant="outline" onClick={onRecord}><Video className="mr-1 h-4 w-4" /> Studio</Button>
+        <Button size="sm" variant="secondary" onClick={onDownload} disabled={!take}><Download className="mr-1 h-4 w-4" /> Download</Button>
+        <Button size="sm" variant="outline" onClick={onRename}><Edit3 className="mr-1 h-4 w-4" /> Rename</Button>
+        <Button size="sm" variant="outline" onClick={onPublish} disabled={!take}><Upload className="mr-1 h-4 w-4" /> Publish</Button>
       </div>
     </div>
     {menuOpen && (
       <div className="absolute right-3 top-[52%] z-10 w-56 rounded-lg border border-border bg-popover p-2 shadow-xl">
-        <MenuItem icon={<FolderOpen />} label="Go to project" onClick={onProject} />
+        <MenuItem icon={<FolderOpen />} label="Open project" onClick={onProject} />
+        <MenuItem icon={<Video />} label="Open studio" onClick={onRecord} />
         <MenuItem icon={<Copy />} label="Copy project link" onClick={onCopy} />
-        <MenuItem icon={<Scissors />} label="Edit video/audio" onClick={onEdit} />
-        <MenuItem icon={<Download />} label="Export download" onClick={onDownload} disabled={!take} />
-        <MenuItem icon={<Trash2 />} label="Remove" onClick={onDelete} danger />
+        <MenuItem icon={<Trash2 />} label="Delete" onClick={onDelete} danger />
       </div>
     )}
   </article>
@@ -612,13 +642,14 @@ const Planner = ({ episodes, onOpen }: { episodes: Episode[]; onOpen: (id: strin
 const formatTime = (seconds: number) => `${Math.floor(Math.max(0, seconds) / 60)}:${String(Math.floor(Math.max(0, seconds)) % 60).padStart(2, "0")}`;
 
 const LocalRecordingsPanel = ({
-  items, onEdit, onDownload, onDelete, onRename, onRefresh,
+  items, onEdit, onDownload, onDelete, onRename, onPublish, onRefresh,
 }: {
   items: FinalRecording[];
   onEdit: (r: FinalRecording) => void;
   onDownload: (r: FinalRecording) => void;
   onDelete: (r: FinalRecording) => void;
   onRename: (r: FinalRecording) => void;
+  onPublish: (r: FinalRecording) => void;
   onRefresh: () => void;
 }) => {
   if (!items.length) return null;
@@ -648,6 +679,7 @@ const LocalRecordingsPanel = ({
               <Button size="sm" onClick={() => onEdit(r)}><Scissors className="mr-1 h-4 w-4" />Edit</Button>
               <Button size="sm" variant="secondary" onClick={() => onDownload(r)}><Download className="mr-1 h-4 w-4" />Download</Button>
               <Button size="sm" variant="outline" onClick={() => onRename(r)}><Edit3 className="mr-1 h-4 w-4" />Rename</Button>
+              <Button size="sm" variant="outline" onClick={() => onPublish(r)}><Upload className="mr-1 h-4 w-4" />Publish</Button>
               <Button size="sm" variant="destructive" onClick={() => onDelete(r)}><Trash2 className="mr-1 h-4 w-4" />Delete</Button>
             </div>
           </article>

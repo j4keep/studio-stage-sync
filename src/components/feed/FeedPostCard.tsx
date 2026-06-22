@@ -30,9 +30,11 @@ interface Props {
   post: any;
   currentUserId?: string;
   isActive?: boolean;
+  chromeHidden?: boolean;
+  onChromeHiddenChange?: (hidden: boolean) => void;
 }
 
-const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
+const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = false, onChromeHiddenChange }: Props) => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -82,13 +84,14 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
       try {
         await video.play();
         setIsPlaying(true);
+        onChromeHiddenChange?.(true);
       } catch {
         setIsPlaying(false);
       }
     };
 
     playVideo();
-  }, [isActive, post.media_type]);
+  }, [isActive, post.media_type, onChromeHiddenChange]);
 
   useEffect(() => {
     if (!viewCounted && isActive && post.id) {
@@ -268,12 +271,9 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
     },
   });
 
-  const [navHidden, setNavHidden] = useState(false);
-
   const toggleNav = useCallback((hidden: boolean) => {
-    setNavHidden(hidden);
-    window.dispatchEvent(new CustomEvent("feed-nav-toggle", { detail: { hidden } }));
-  }, []);
+    onChromeHiddenChange?.(hidden);
+  }, [onChromeHiddenChange]);
 
   const handleContentTap = useCallback(() => {
     const now = Date.now();
@@ -284,6 +284,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
       if (!liked) likeMutation.mutate();
       setShowHeart(true);
       setTimeout(() => setShowHeart(false), 800);
+      toggleNav(true);
       lastTapRef.current = 0;
       return;
     }
@@ -296,15 +297,13 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
           setIsPlaying(true);
           toggleNav(true);
         } else {
-          videoRef.current.pause();
-          setIsPlaying(false);
-          toggleNav(false);
+          toggleNav(!chromeHidden);
         }
       } else if (post.media_type === "image" || post.media_url) {
-        toggleNav(!navHidden);
+        toggleNav(!chromeHidden);
       }
     }, doubleTapDelay);
-  }, [liked, likeMutation, post.media_type, post.media_url, navHidden, toggleNav]);
+  }, [liked, likeMutation, post.media_type, post.media_url, chromeHidden, toggleNav]);
 
   const handleShare = async () => {
     const shareUrl = `${window.location.origin}/feed`;
@@ -321,6 +320,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
   };
 
   const handleEmojiReaction = (emojiId: string) => {
+    toggleNav(true);
     spawnEmoji(emojiId);
   };
 
@@ -356,16 +356,6 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
 
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none" />
         
-
-        {post.media_type === "video" && (
-          <button
-            onClick={() => setIsMuted((value) => !value)}
-            className="absolute top-16 left-3 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-black/35 backdrop-blur-sm"
-            aria-label={isMuted ? "Unmute video" : "Mute video"}
-          >
-            {isMuted ? <VolumeX className="w-5 h-5 text-white" /> : <Volume2 className="w-5 h-5 text-white" />}
-          </button>
-        )}
 
         <button
           onClick={handleContentTap}
@@ -409,6 +399,12 @@ const FeedPostCard = ({ post, currentUserId, isActive = false }: Props) => {
         )}
 
         <div className="absolute right-3 bottom-8 z-40 flex flex-col items-center gap-5">
+          {post.media_type === "video" && (
+            <button onClick={() => setIsMuted((value) => !value)} className="flex flex-col items-center gap-0.5 z-50" aria-label={isMuted ? "Unmute video" : "Mute video"}>
+              {isMuted ? <VolumeX className="w-7 h-7 text-white drop-shadow-lg" /> : <Volume2 className="w-7 h-7 text-white drop-shadow-lg" />}
+            </button>
+          )}
+
           <button onClick={() => likeMutation.mutate()} className="flex flex-col items-center gap-0.5 z-50">
             <Heart className={`w-7 h-7 drop-shadow-lg ${liked ? "fill-red-500 text-red-500" : "text-white"}`} />
             <span className="text-[11px] font-semibold text-white drop-shadow">{formatCount(likesCount)}</span>

@@ -47,10 +47,18 @@ const BottomNav = () => {
   const renderTab = (tab: typeof tabs[number]) => {
     const active = isActive(tab);
     const Icon = tab.icon;
+    const handleClick = () => {
+      if (tab.path === "/" && isFeed) {
+        window.dispatchEvent(new Event("feed-scroll-top"));
+        window.dispatchEvent(new CustomEvent("feed-nav-toggle", { detail: { hidden: false } }));
+        return;
+      }
+      navigate(tab.path);
+    };
     return (
       <button
         key={tab.path}
-        onClick={() => navigate(tab.path)}
+        onClick={handleClick}
         className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-lg transition-all duration-200 ${
           active ? "text-primary" : "text-muted-foreground hover:text-foreground"
         }`}

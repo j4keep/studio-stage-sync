@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
+import { ArrowLeft } from "lucide-react";
 import { DawEngine } from "@/wstudio/daw/engine/DawEngine";
 import { computePeaks } from "@/wstudio/daw/engine/Peaks";
 import { useDawStore, newId } from "@/wstudio/daw/state/DawStore";
@@ -46,6 +47,7 @@ const isInputAudioTrack = (track: Track, allClips: Clip[]) => (
 
 
 export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessionCode?: string } = {}) {
+  const navigate = useNavigate();
   const [params] = useSearchParams();
   const sessionCode = sessionCodeProp ?? params.get("session");
 
@@ -551,8 +553,14 @@ export default function WStudioDawPage({ sessionCode: sessionCodeProp }: { sessi
       className={`fixed inset-0 z-[60] flex h-dvh w-full max-w-full flex-col overflow-hidden overscroll-none ${themeMode === "dark" ? "bg-black text-neutral-200 dark" : "daw-light"}`}
       style={{ width: "100%", maxWidth: "100%" }}
     >
-
-
+      <button
+        onClick={() => navigate("/")}
+        className="absolute left-2 top-1 z-[90] flex h-6 w-6 items-center justify-center rounded bg-neutral-900/90 text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100"
+        title="Back to Home — session stays open"
+        aria-label="Back to Home"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" />
+      </button>
       <MenuBar
         onImport={() => importInputRef.current?.click()}
         onExport={handleExport}
