@@ -245,6 +245,37 @@ export const WheuatTv = {
     emitUpdate();
   },
 
+  /** Update title/subtitle (description) and optionally upload a new cover image. */
+  async updateMeta(
+    id: string,
+    input: { title?: string; description?: string | null; coverFile?: File | null },
+  ): Promise<void> {
+    const patch: Record<string, any> = {};
+    if (typeof input.title === "string") patch.title = input.title;
+    if (input.description !== undefined) patch.description = input.description;
+
+    if (input.coverFile) {
+      const { data: auth } = await supabase.auth.getUser();
+      const user = auth.user;
+      if (!user) throw new Error("Sign in to update cover");
+      const ext = (input.coverFile.name.split(".").pop() || "jpg").toLowerCase();
+      const fileName = `${Date.now()}-cover.${ext}`;
+      const key = generateR2Key(user.id, "tv-thumb", fileName);
+      const up = await uploadToR2(input.coverFile, {
+        folder: undefined,
+        fileName: key,
+        mimeType: input.coverFile.type || "image/jpeg",
+      });
+      if (!up.success || !up.data) throw new Error(up.error || "Cover upload failed");
+      patch.thumb_url = getR2DownloadUrl(up.data.key);
+    }
+
+    if (Object.keys(patch).length === 0) return;
+    const { error } = await supabase.from("tv_posts").update(patch).eq("id", id);
+    if (error) throw error;
+    emitUpdate();
+  },
+
   async toggleLike(id: string) {
     const { data: auth } = await supabase.auth.getUser();
     const me = auth.user?.id;
