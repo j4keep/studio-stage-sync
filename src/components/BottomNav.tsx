@@ -28,20 +28,17 @@ const BottomNav = () => {
   }, []);
 
   useEffect(() => {
-    if (location.pathname !== "/feed" && location.pathname !== "/") setHidden(false);
+    if (location.pathname !== "/feed") setHidden(false);
   }, [location.pathname]);
 
   const tabs = [
     { path: "/", label: "Home", icon: Home },
-    { path: "/tv", label: "W.STUDIO", icon: Tv, matchPrefix: "/tv" },
+    { path: "/feed", label: "Feed", icon: Tv },
     { path: "/ask-jhi", label: "JiHi", icon: MessageCircle },
     { path: "/profile", label: "Profile", icon: User },
   ] as const;
 
-  const isActive = (tab: typeof tabs[number]) =>
-    "matchPrefix" in tab && tab.matchPrefix
-      ? location.pathname.startsWith(tab.matchPrefix)
-      : location.pathname === tab.path;
+  const isActive = (tab: typeof tabs[number]) => location.pathname === tab.path;
 
   // Render order: Home, W.STUDIO, [CENTER @], JiHi, Profile
   const left = tabs.slice(0, 2);
