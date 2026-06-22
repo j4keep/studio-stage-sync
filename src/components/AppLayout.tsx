@@ -57,7 +57,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   const containerWidthClass = "max-w-lg";
 
   return (
-    <div className={`min-h-screen bg-background text-foreground ${containerWidthClass} mx-auto relative`}>
+    <div className={`min-h-screen bg-background text-foreground ${containerWidthClass} mx-auto relative overflow-x-hidden`}>
 
       {showTopBar && (
         <div className="sticky top-0 z-40 bg-background/90 backdrop-blur-xl border-b border-border px-4 py-2 flex items-center justify-end gap-2">
