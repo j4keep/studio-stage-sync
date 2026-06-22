@@ -55,7 +55,7 @@ import HelpDeskPage from "./pages/HelpDeskPage";
 import AdminTicketsPage from "./pages/AdminTicketsPage";
 import AdminSoundLibraryPage from "./pages/AdminSoundLibraryPage";
 import AskJhiPage from "./pages/AskJhiPage";
-import FeedPage from "./pages/FeedPage";
+
 import LivePodcastLobbyPage from "./pages/podcast/LivePodcastLobbyPage";
 import PodcastContactsPage from "./pages/podcast/PodcastContactsPage";
 import PodcastStudioPage from "./pages/podcast/PodcastStudioPage";
@@ -69,6 +69,35 @@ import ThemePickerSheet from "./components/ThemePickerSheet";
 
 const queryClient = new QueryClient();
 const STARTUP_TIMEOUT_MS = 2500;
+
+// Take A Break guard: blocks Feed / Battles / social discovery while toggle is ON.
+const BreakGuard = ({ children }: { children: JSX.Element }) => {
+  const [onBreak, setOnBreak] = useState(() => localStorage.getItem("wheuat_take_a_break") === "true");
+  useEffect(() => {
+    const h = () => setOnBreak(localStorage.getItem("wheuat_take_a_break") === "true");
+    window.addEventListener("wheuat-take-a-break-changed", h);
+    window.addEventListener("storage", h);
+    return () => {
+      window.removeEventListener("wheuat-take-a-break-changed", h);
+      window.removeEventListener("storage", h);
+    };
+  }, []);
+  if (onBreak) {
+    return (
+      <div className="px-6 pt-16 pb-24 max-w-md mx-auto text-center">
+        <div className="w-14 h-14 rounded-2xl bg-primary/10 mx-auto mb-4 flex items-center justify-center text-2xl">☕</div>
+        <h2 className="text-lg font-display font-bold text-foreground mb-2">You're on a break</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Feed, Battles and social discovery are paused. Podcast, Radio, Studio and Profile are still available.
+        </p>
+        <a href="#/settings" className="inline-block px-4 py-2 rounded-full bg-primary text-primary-foreground text-sm font-semibold">
+          Manage in Settings
+        </a>
+      </div>
+    );
+  }
+  return children;
+};
 
 const ProtectedRoutes = () => {
   const { user, loading } = useAuth();
@@ -246,10 +275,11 @@ const ProtectedRoutes = () => {
         <Route path="/ai-studio" element={<Navigate to="/wstudio/session/join" replace />} />
         <Route path="/admin/tickets" element={<AdminTicketsPage />} />
         <Route path="/admin/sounds" element={<AdminSoundLibraryPage />} />
-        <Route path="/battles" element={<BattlesPage />} />
-        <Route path="/battle/:battleId" element={<MusicBattlePlayerPage />} />
-        <Route path="/feed" element={<FeedPage />} />
-        <Route path="/artist/:userId" element={<ArtistProfilePage />} />
+        <Route path="/battles" element={<BreakGuard><BattlesPage /></BreakGuard>} />
+        <Route path="/battle/:battleId" element={<BreakGuard><MusicBattlePlayerPage /></BreakGuard>} />
+        <Route path="/feed" element={<Navigate to="/" replace />} />
+        <Route path="/jhi" element={<Navigate to="/ask-jhi" replace />} />
+        <Route path="/artist/:userId" element={<BreakGuard><ArtistProfilePage /></BreakGuard>} />
         <Route path="/dollar-club" element={<div className="px-4 pt-4 pb-4 text-center"><h1 className="text-lg font-display font-bold text-foreground mb-2">Dollar Club</h1><p className="text-sm text-muted-foreground">Sell your products for $1 and build your fanbase. Coming soon!</p></div>} />
         <Route path="*" element={<NotFound />} />
       </Routes>

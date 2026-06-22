@@ -1,5 +1,15 @@
-import { Tv, Radio, Film, Mic2, Heart } from "lucide-react";
+import { Tv, Radio, Mic2, ShoppingBag, Building2, Heart, FolderOpen } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+
+const TILES = [
+  { label: "Live Podcasts", desc: "Record, edit & publish", icon: Radio, path: "/tv/podcast" },
+  { label: "WHEUAT.TV", desc: "Manage your videos", icon: Tv, path: "/tv/wheuat" },
+  { label: "Recording Studio", desc: "Remote sessions", icon: Mic2, path: "/wstudio/session/join" },
+  { label: "Store", desc: "Sell your merch", icon: ShoppingBag, path: "/my-store" },
+  { label: "Studios", desc: "List your room", icon: Building2, path: "/my-studios" },
+  { label: "Projects", desc: "Your saved work", icon: FolderOpen, path: "/my-projects" },
+  { label: "Support Creators", desc: "Tips & donations", icon: Heart, path: "/dollar-club" },
+];
 
 const TvHomePage = () => {
   const navigate = useNavigate();
@@ -11,52 +21,29 @@ const TvHomePage = () => {
           <Tv className="w-6 h-6 text-primary" />
         </div>
         <div>
-          <h1 className="text-2xl font-display font-bold text-foreground">W.Studio</h1>
-          <p className="text-xs text-muted-foreground">Create, record, and publish</p>
+          <h1 className="text-2xl font-display font-bold text-foreground">W.STUDIO</h1>
+          <p className="text-xs text-muted-foreground">Creator workspace</p>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <button
-          type="button"
-          onClick={() => navigate("/tv/podcast")}
-          className="aspect-square rounded-2xl bg-card border border-border p-4 flex flex-col justify-between text-left hover:border-primary/50 hover:bg-card/80 transition-colors"
-        >
-          <Radio className="w-6 h-6 text-primary" />
-          <div>
-            <div className="font-semibold text-foreground">Live Podcasts</div>
-            <div className="text-[11px] text-muted-foreground">Record & download</div>
-          </div>
-        </button>
-        <button
-          type="button"
-          onClick={() => navigate("/tv/wheuat")}
-          className="aspect-square rounded-2xl bg-card border border-border p-4 flex flex-col justify-between text-left hover:border-primary/50 hover:bg-card/80 transition-colors"
-        >
-          <Film className="w-6 h-6 text-primary" />
-          <div>
-            <div className="font-semibold text-foreground">WHEUAT.TV</div>
-            <div className="text-[11px] text-muted-foreground">Watch & upload</div>
-          </div>
-        </button>
-        <button
-          type="button"
-          onClick={() => navigate("/wstudio/session/join")}
-          className="aspect-square rounded-2xl bg-card border border-border p-4 flex flex-col justify-between text-left hover:border-primary/50 hover:bg-card/80 transition-colors"
-        >
-          <Mic2 className="w-6 h-6 text-primary" />
-          <div>
-            <div className="font-semibold text-foreground">Recording Studio</div>
-            <div className="text-[11px] text-muted-foreground">Remote sessions</div>
-          </div>
-        </button>
-        <div className="aspect-square rounded-2xl bg-card border border-border p-4 flex flex-col justify-between">
-          <Heart className="w-6 h-6 text-primary" />
-          <div>
-            <div className="font-semibold text-foreground">Support Creators</div>
-            <div className="text-[11px] text-muted-foreground">Tips & donations</div>
-          </div>
-        </div>
+        {TILES.map((t) => {
+          const Icon = t.icon;
+          return (
+            <button
+              key={t.label}
+              type="button"
+              onClick={() => navigate(t.path)}
+              className="aspect-square rounded-2xl bg-card border border-border p-4 flex flex-col justify-between text-left hover:border-primary/50 hover:bg-card/80 transition-colors"
+            >
+              <Icon className="w-6 h-6 text-primary" />
+              <div>
+                <div className="font-semibold text-foreground text-sm">{t.label}</div>
+                <div className="text-[11px] text-muted-foreground">{t.desc}</div>
+              </div>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
