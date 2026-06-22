@@ -2,12 +2,19 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
-import { Search, Plus } from "lucide-react";
+import { Search, Plus, Heart } from "lucide-react";
 import FeedPostCard from "@/components/feed/FeedPostCard";
 import CreatePostSheet from "@/components/feed/CreatePostSheet";
 import { fetchFeedItems } from "@/lib/feed-items";
 
-const TABS = ["For You", "Following", "Trending", "New"];
+type TabId = "radio" | "battle" | "wheuat-tv" | "songs" | "shop";
+const TABS: { id: TabId; label: string; route?: string }[] = [
+  { id: "radio", label: "Radio", route: "/radio" },
+  { id: "battle", label: "Battle", route: "/battles" },
+  { id: "wheuat-tv", label: "WHEUAT.TV" },
+  { id: "songs", label: "Songs", route: "/browse-songs" },
+  { id: "shop", label: "Shop", route: "/store" },
+];
 
 const FeedPage = () => {
   const navigate = useNavigate();
