@@ -277,7 +277,7 @@ const ProtectedRoutes = () => {
         <Route path="/admin/sounds" element={<AdminSoundLibraryPage />} />
         <Route path="/battles" element={<BreakGuard><BattlesPage /></BreakGuard>} />
         <Route path="/battle/:battleId" element={<BreakGuard><MusicBattlePlayerPage /></BreakGuard>} />
-        <Route path="/feed" element={<Navigate to="/" replace />} />
+        <Route path="/feed" element={<BreakGuard><FeedPage /></BreakGuard>} />
         <Route path="/jhi" element={<Navigate to="/ask-jhi" replace />} />
         <Route path="/artist/:userId" element={<BreakGuard><ArtistProfilePage /></BreakGuard>} />
         <Route path="/dollar-club" element={<div className="px-4 pt-4 pb-4 text-center"><h1 className="text-lg font-display font-bold text-foreground mb-2">Dollar Club</h1><p className="text-sm text-muted-foreground">Sell your products for $1 and build your fanbase. Coming soon!</p></div>} />
