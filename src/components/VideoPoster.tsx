@@ -40,7 +40,7 @@ export function VideoPoster({ src, poster, alt = "Video preview", className = ""
   );
 }
 
-type VideoWithPosterProps = VideoHTMLAttributes<HTMLVideoElement> & {
+type VideoWithPosterProps = Omit<VideoHTMLAttributes<HTMLVideoElement>, "poster" | "src"> & {
   src: string;
   poster?: string | null;
 };
