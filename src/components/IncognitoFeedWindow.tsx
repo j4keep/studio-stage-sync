@@ -38,6 +38,7 @@ const IncognitoFeedWindow = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const isFullFeed = location.pathname === "/feed";
   const [open, setOpen] = useState(() => {
     try {
       return sessionStorage.getItem(OPEN_KEY) === "true";
@@ -184,6 +185,8 @@ const IncognitoFeedWindow = () => {
   }, []);
 
   if (!user) return null;
+
+  if (isFullFeed) return null;
 
   // Floating bubble (closed)
   if (!open) {
