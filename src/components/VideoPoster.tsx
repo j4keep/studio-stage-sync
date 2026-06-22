@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { forwardRef, useEffect, useState } from "react";
 import type { VideoHTMLAttributes } from "react";
 import { Film, Loader2 } from "lucide-react";
 import { captureVideoPoster } from "@/lib/video-preview";
@@ -45,7 +45,10 @@ type VideoWithPosterProps = VideoHTMLAttributes<HTMLVideoElement> & {
   poster?: string | null;
 };
 
-export function VideoWithPoster({ src, poster, preload, ...props }: VideoWithPosterProps) {
+export const VideoWithPoster = forwardRef<HTMLVideoElement, VideoWithPosterProps>(function VideoWithPoster(
+  { src, poster, preload, ...props },
+  ref,
+) {
   const [generatedPoster, setGeneratedPoster] = useState<string | null>(null);
 
   useEffect(() => {
@@ -64,9 +67,10 @@ export function VideoWithPoster({ src, poster, preload, ...props }: VideoWithPos
   return (
     <video
       {...props}
+      ref={ref}
       src={src}
       poster={poster || generatedPoster || undefined}
       preload={preload || "metadata"}
     />
   );
-}
+});
