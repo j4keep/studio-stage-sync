@@ -117,30 +117,22 @@ const WheuatTvPage = () => {
 
       {/* Upload */}
       <div className="rounded-2xl border border-border bg-card p-3 mb-4">
-        <div className="flex gap-2 mb-2 overflow-x-auto scrollbar-hide">
-          {(Object.keys(KIND_META) as WheuatTvKind[]).map((k) => {
-            const M = KIND_META[k];
-            const active = uploadKind === k;
-            return (
-              <button
-                key={k}
-                onClick={() => setUploadKind(k)}
-                className={`shrink-0 inline-flex items-center gap-1.5 px-3 h-8 rounded-full text-xs border transition-colors ${
-                  active ? "bg-primary text-primary-foreground border-primary" : "bg-background border-border text-foreground hover:border-primary/50"
-                }`}
-              >
-                <M.Icon className="w-3.5 h-3.5" />
-                {M.label}
-              </button>
-            );
-          })}
-        </div>
+        <label className="block text-[11px] font-semibold text-muted-foreground mb-1.5">Category</label>
+        <select
+          value={uploadKind}
+          onChange={(e) => setUploadKind(e.target.value as WheuatTvKind)}
+          className="w-full h-10 px-3 mb-2 rounded-xl bg-background border border-border text-sm text-foreground"
+        >
+          {(Object.keys(KIND_META) as WheuatTvKind[]).map((k) => (
+            <option key={k} value={k}>{KIND_META[k].label}</option>
+          ))}
+        </select>
         <button
           onClick={() => fileRef.current?.click()}
-          className="w-full h-11 rounded-xl bg-primary text-primary-foreground flex items-center justify-center gap-2 text-sm font-medium hover:opacity-90"
+          className="w-full h-11 rounded-xl bg-primary text-primary-foreground flex items-center justify-center gap-2 text-sm font-semibold hover:opacity-90"
         >
           <Upload className="w-4 h-4" />
-          Upload {KIND_META[uploadKind].label}
+          Upload Project
         </button>
         <input
           ref={fileRef}

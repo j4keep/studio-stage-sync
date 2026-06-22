@@ -63,6 +63,7 @@ import PodcastStudioPage from "./pages/podcast/PodcastStudioPage";
 import PodcastJoinPage from "./pages/podcast/PodcastJoinPage";
 import PodcastRoomPage from "./pages/podcast/PodcastRoomPage";
 import WheuatTvPage from "./pages/wheuat-tv/WheuatTvPage";
+import WheuatTvWatchPage from "./pages/wheuat-tv/WheuatTvWatchPage";
 
 import TermsAgreementGate from "./components/TermsAgreementGate";
 import ThemePickerSheet from "./components/ThemePickerSheet";
@@ -247,6 +248,7 @@ const ProtectedRoutes = () => {
         <Route path="/ask-jhi" element={<AskJhiPage />} />
         <Route path="/tv" element={<TvHomePage />} />
         <Route path="/tv/wheuat" element={<WheuatTvPage />} />
+        <Route path="/tv/watch" element={<WheuatTvWatchPage />} />
         <Route path="/tv/podcast" element={<LivePodcastLobbyPage />} />
         <Route path="/tv/podcast/join/:code" element={<PodcastJoinPage />} />
         <Route path="/tv/podcast/:episodeId" element={<PodcastRoomPage />} />
