@@ -980,7 +980,8 @@ const PodcastVideoGrid = ({
     return <div className="rounded-xl bg-zinc-900 border border-zinc-800 aspect-video grid place-items-center text-sm text-zinc-500">Connecting to room…</div>;
   }
   if (layout === "speaker" || layout === "screen") {
-    const [main, ...rest] = participants;
+    const main = participants.find((p) => !p.isHost) ?? participants[0];
+    const rest = participants.filter((p) => p.id !== main.id);
     return (
       <div className="flex flex-col gap-3 flex-1 min-h-[300px]">
         <div className="flex-1"><ParticipantTile p={main} isRecording={isRecording && main.id === localId} bg={bg} /></div>
@@ -993,7 +994,8 @@ const PodcastVideoGrid = ({
     );
   }
   if (layout === "pip") {
-    const [main, ...rest] = participants;
+    const main = participants.find((p) => !p.isHost) ?? participants[0];
+    const rest = participants.filter((p) => p.id !== main.id);
     return (
       <div className="relative flex-1 min-h-[300px]">
         <ParticipantTile p={main} isRecording={isRecording && main.id === localId} bg={bg} />
@@ -1339,14 +1341,14 @@ const LayoutSheet = ({
 
       <section className="mb-5">
         <h3 className="text-xs uppercase tracking-wider text-zinc-500 mb-2">Layout</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
           {LAYOUTS.map((l) => (
             <button
               key={l.id}
               onClick={() => setActiveLayout(l.id)}
-              className={`p-2 rounded-lg border text-left text-xs transition ${activeLayout === l.id ? "border-primary bg-primary/15 text-foreground ring-1 ring-primary" : "border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-zinc-700"}`}
+              className={`p-1.5 rounded-md border text-left text-[10px] transition ${activeLayout === l.id ? "border-primary bg-primary/15 text-foreground ring-1 ring-primary" : "border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-zinc-700"}`}
             >
-              <div className="aspect-[16/9] mb-2 rounded overflow-hidden bg-zinc-950">
+              <div className="aspect-[16/9] mb-1 rounded overflow-hidden bg-zinc-950">
                 {l.thumb}
               </div>
               {l.label}
