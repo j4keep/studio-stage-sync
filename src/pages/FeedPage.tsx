@@ -82,10 +82,9 @@ const FeedPage = () => {
           </button>
         </div>
 
-        <div className="mt-4 flex items-center justify-between gap-1.5 overflow-x-auto scrollbar-hide">
+        <div className="mt-4 flex items-center justify-between gap-1 overflow-x-auto scrollbar-hide">
             {TABS.map((tab) => {
               const active = activeTab === tab.id;
-              const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
@@ -93,11 +92,10 @@ const FeedPage = () => {
                     if (tab.route) navigate(tab.route);
                     else setActiveTab(tab.id);
                   }}
-                  className={`shrink-0 inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[11px] font-bold backdrop-blur-md transition-all ${
+                  className={`shrink-0 inline-flex items-center rounded-full px-3 py-1.5 text-[12px] font-bold backdrop-blur-md transition-all ${
                     active ? "bg-white/30 text-white shadow-lg" : "bg-white/18 text-white/90"
                   }`}
                 >
-                  <Icon className="w-3.5 h-3.5" />
                   {tab.label}
                 </button>
               );
