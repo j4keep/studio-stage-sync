@@ -61,7 +61,7 @@ const FeedPage = () => {
 
   return (
     <div className="h-[100dvh] w-full bg-black flex flex-col overflow-hidden">
-      <div className="absolute top-0 left-0 right-0 z-50 px-4 pt-[calc(env(safe-area-inset-top)+0.75rem)] pb-6 bg-gradient-to-b from-black/70 via-black/30 to-transparent">
+      <div className="absolute top-0 left-0 right-0 z-50 px-2 pt-[calc(env(safe-area-inset-top)+0.75rem)] pb-6 bg-gradient-to-b from-black/70 via-black/30 to-transparent">
         <div className="flex items-center gap-3 text-white">
           <button onClick={() => navigate("/")} className="w-9 h-9 shrink-0 flex items-center justify-center" aria-label="Back home">
             <ChevronLeft className="w-8 h-8" />
@@ -82,10 +82,9 @@ const FeedPage = () => {
           </button>
         </div>
 
-        <div className="mt-4 flex items-center gap-3 overflow-x-auto scrollbar-hide">
+        <div className="mt-4 flex items-center justify-between gap-1 overflow-x-auto scrollbar-hide">
             {TABS.map((tab) => {
               const active = activeTab === tab.id;
-              const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
@@ -93,11 +92,10 @@ const FeedPage = () => {
                     if (tab.route) navigate(tab.route);
                     else setActiveTab(tab.id);
                   }}
-                  className={`shrink-0 inline-flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-bold backdrop-blur-md transition-all ${
+                  className={`shrink-0 inline-flex items-center rounded-full px-3 py-1.5 text-[12px] font-bold backdrop-blur-md transition-all ${
                     active ? "bg-white/30 text-white shadow-lg" : "bg-white/18 text-white/90"
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
                   {tab.label}
                 </button>
               );
