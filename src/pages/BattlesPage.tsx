@@ -9,6 +9,7 @@ import { useProGate } from "@/hooks/use-pro-gate";
 import ProGateModal from "@/components/ProGateModal";
 import CreateBattleSheet from "@/components/CreateBattleSheet";
 import BattleCard from "@/components/BattleCard";
+import TakeABreakGate from "@/components/TakeABreakGate";
 
 const BattlesPage = () => {
   const navigate = useNavigate();
@@ -33,6 +34,7 @@ const BattlesPage = () => {
   };
 
   return (
+    <TakeABreakGate area="Battles">
     <div className="px-4 pt-4 pb-4">
       <div className="flex items-center gap-3 mb-6">
         <button onClick={() => navigate(-1)} className="w-8 h-8 flex items-center justify-center rounded-full bg-muted">
