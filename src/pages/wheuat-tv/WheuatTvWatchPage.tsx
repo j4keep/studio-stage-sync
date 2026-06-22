@@ -176,12 +176,18 @@ const WheuatTvWatchPage = () => {
               <article key={item.id} className="rounded-2xl border border-border bg-card overflow-hidden">
                 <button
                   onClick={() => setPlayUrl(item.videoUrl)}
-                  className="relative w-full aspect-video bg-muted flex items-center justify-center group"
+                  className="relative w-full aspect-video bg-muted flex items-center justify-center group overflow-hidden"
                 >
                   {item.thumbUrl ? (
                     <img src={item.thumbUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
                   ) : (
-                    <M.Icon className="w-8 h-8 text-muted-foreground" />
+                    <video
+                      src={`${item.videoUrl}#t=0.1`}
+                      preload="metadata"
+                      muted
+                      playsInline
+                      className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+                    />
                   )}
                   <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors flex items-center justify-center">
                     <div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
@@ -208,6 +214,9 @@ const WheuatTvWatchPage = () => {
                     </button>
                     <div className="min-w-0 flex-1">
                       <h3 className="text-sm font-semibold text-foreground truncate">{item.title}</h3>
+                      {item.description && (
+                        <p className="text-[12px] text-foreground/80 line-clamp-2">{item.description}</p>
+                      )}
                       <button
                         onClick={() => navigate(`/artist/${item.creator.id}`)}
                         className="text-[11px] text-muted-foreground hover:text-foreground"
