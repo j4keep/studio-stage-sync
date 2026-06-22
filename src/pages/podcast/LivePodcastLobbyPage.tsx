@@ -456,18 +456,26 @@ const LivePodcastLobbyPage = () => {
                           onRename={() => renameEpisode(episode)}
                           onPublish={async () => {
                             if (!take) return;
-                            const blob = await fetchRecordingBlob(take);
-                            await WheuatTv.add({
-                              kind: "podcast",
-                              title: episode.title,
-                              uploaderId: user?.id ?? "anon",
-                              uploaderName: user?.user_metadata?.display_name || user?.email?.split("@")[0] || "Host",
-                              blob,
-                              mime: take.mime_type || "video/webm",
-                              ext: "webm",
-                              durationMs: (take.duration_seconds || 0) * 1000,
-                            });
-                            toast({ title: "Published to WHEUAT.TV", description: episode.title });
+                            try {
+                              const blob = await fetchRecordingBlob(take);
+                              await WheuatTv.add({
+                                kind: "podcast",
+                                title: episode.title,
+                                uploaderId: user?.id ?? "anon",
+                                uploaderName: user?.user_metadata?.display_name || user?.email?.split("@")[0] || "Host",
+                                blob,
+                                mime: take.mime_type || "video/webm",
+                                ext: "webm",
+                                durationMs: (take.duration_seconds || 0) * 1000,
+                              });
+                              toast({ title: "Published to WHEUAT.TV", description: episode.title });
+                            } catch (error) {
+                              toast({
+                                title: "Publish failed",
+                                description: error instanceof Error ? error.message : "Recording is unavailable.",
+                                variant: "destructive",
+                              });
+                            }
                           }}
                           onCopy={() => copyPreviewLink(episode.id)}
                           onDelete={() => removeEpisode(episode.id)}
