@@ -1,4 +1,3 @@
-import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { TrendingUp, Heart, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -12,7 +11,7 @@ import artistZaraBeats from "@/assets/artist-zara-beats.jpg";
 import artistDjOnyx from "@/assets/artist-dj-onyx.jpg";
 import artistLyricSoul from "@/assets/artist-lyric-soul.jpg";
 import artistNovaWave from "@/assets/artist-nova-wave.jpg";
-import FeedPostCard from "@/components/feed/FeedPostCard";
+import ProfilePostCard from "@/components/ProfilePostCard";
 import { fetchFeedItems } from "@/lib/feed-items";
 
 const fadeUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
@@ -33,7 +32,6 @@ const PLACEHOLDER_CREATORS: TrendingCreator[] = [
   { id: "placeholder-6", name: "Nova Wave", img: artistNovaWave, score: 0 },
 ];
 
-// Trending Score = Likes + Views, computed across the user's recent posts.
 const fetchTrendingCreators = async (userId?: string): Promise<TrendingCreator[]> => {
   const real: TrendingCreator[] = [];
   try {
@@ -65,7 +63,7 @@ const fetchTrendingCreators = async (userId?: string): Promise<TrendingCreator[]
       }
     }
   } catch {
-    /* fall through to placeholders */
+    /* ignore */
   }
 
   if (userId && !real.find((c) => c.id === userId)) {
@@ -88,15 +86,6 @@ const fetchTrendingCreators = async (userId?: string): Promise<TrendingCreator[]
   return [...real, ...PLACEHOLDER_CREATORS.slice(0, needed)].slice(0, 12);
 };
 
-type TabId = "radio" | "battle" | "wheuat-tv" | "songs" | "shop";
-const TABS: { id: TabId; label: string; route?: string }[] = [
-  { id: "radio", label: "Radio", route: "/radio" },
-  { id: "battle", label: "Battle", route: "/battles" },
-  { id: "wheuat-tv", label: "WHEUAT.TV" }, // inline vertical feed
-  { id: "songs", label: "Songs", route: "/browse-songs" },
-  { id: "shop", label: "Shop", route: "/store" },
-];
-
 const HomePage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -108,41 +97,11 @@ const HomePage = () => {
     gcTime: 5 * 60_000,
   });
 
-  const [activeTab, setActiveTab] = useState<TabId>("wheuat-tv");
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const scrollRef = useRef<HTMLDivElement>(null);
-
   const { data: items = [], isLoading } = useQuery({
     queryKey: ["home-feed-posts"],
     queryFn: () => fetchFeedItems({ currentUserId: user?.id }),
   });
   const feedPosts = (items as any[]).filter((item: any) => item.itemType === "post");
-
-  useEffect(() => {
-    const container = scrollRef.current;
-    if (!container) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const idx = Number(entry.target.getAttribute("data-index"));
-            if (!Number.isNaN(idx)) setCurrentIndex(idx);
-          }
-        });
-      },
-      { root: container, threshold: 0.6 }
-    );
-    container.querySelectorAll("[data-index]").forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
-  }, [feedPosts.length, activeTab]);
-
-  const handleTab = (tab: typeof TABS[number]) => {
-    if (tab.route) {
-      navigate(tab.route);
-      return;
-    }
-    setActiveTab(tab.id);
-  };
 
   return (
     <div className="pb-4">
@@ -151,7 +110,7 @@ const HomePage = () => {
         <img src={whetuatLogo} alt="WHEUAT" className="h-8 mix-blend-multiply dark:mix-blend-screen" />
       </div>
 
-      {/* Trending Creators row (UNCHANGED behavior — name only) */}
+      {/* Trending Creators row */}
       <motion.section {...fadeUp} className="mb-4 px-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -187,77 +146,26 @@ const HomePage = () => {
         </div>
       </motion.section>
 
-      {/* Top tabs (mirrors Feed top-tab UI; swipe area unchanged) */}
-      <div className="sticky top-0 z-30 bg-background/85 backdrop-blur-md border-b border-border px-3 py-2">
-        <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
-          {TABS.map((tab) => {
-            const active = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => handleTab(tab)}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-[12px] font-semibold transition-all ${
-                  active ? "text-foreground border-b-2 border-primary" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
-          <div className="ml-auto flex items-center gap-1">
+      {/* Normal long social-media feed */}
+      <div className="px-3 space-y-4">
+        {isLoading ? (
+          <div className="py-8 flex items-center justify-center">
+            <div className="w-7 h-7 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : feedPosts.length === 0 ? (
+          <div className="py-10 flex flex-col items-center justify-center gap-3 text-center">
+            <p className="text-muted-foreground text-sm">No posts yet</p>
             <button
-              onClick={() => navigate("/dollar-club")}
-              title="Support Creators"
-              className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center text-primary hover:border-primary/50"
+              onClick={() => window.dispatchEvent(new Event("open-create-post"))}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-full text-sm font-semibold"
             >
-              <Heart className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => navigate("/browse-songs")}
-              title="Search"
-              className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-foreground"
-            >
-              <Search className="w-4 h-4" />
+              Create first post
             </button>
           </div>
-        </div>
+        ) : (
+          feedPosts.map((item: any) => <ProfilePostCard key={item.id} post={item} />)
+        )}
       </div>
-
-      {/* WHEUAT.TV inline vertical feed — TikTok-style swipe */}
-      {activeTab === "wheuat-tv" && (
-        <div
-          ref={scrollRef}
-          className="h-[calc(100vh-260px)] overflow-y-scroll snap-y snap-mandatory scrollbar-hide bg-black"
-          style={{ scrollSnapType: "y mandatory" }}
-        >
-          {isLoading ? (
-            <div className="h-full flex items-center justify-center snap-start">
-              <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : feedPosts.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center snap-start gap-3">
-              <p className="text-white/60 text-sm">No videos yet</p>
-              <button
-                onClick={() => window.dispatchEvent(new Event("open-create-post"))}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-full text-sm font-semibold"
-              >
-                Create first post
-              </button>
-            </div>
-          ) : (
-            feedPosts.map((item: any, index: number) => (
-              <div
-                key={item.id}
-                data-index={index}
-                className="h-full w-full snap-start snap-always relative"
-                style={{ scrollSnapAlign: "start" }}
-              >
-                <FeedPostCard post={item} currentUserId={user?.id} isActive={index === currentIndex} />
-              </div>
-            ))
-          )}
-        </div>
-      )}
     </div>
   );
 };
