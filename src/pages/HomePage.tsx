@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { TrendingUp, Heart, Search, Radio as RadioIcon, Swords, Tv, Music2, ShoppingBag } from "lucide-react";
+import { TrendingUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,14 +15,6 @@ import ProfilePostCard from "@/components/ProfilePostCard";
 import { fetchFeedItems } from "@/lib/feed-items";
 
 const fadeUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
-
-const FEED_TABS = [
-  { id: "radio", label: "Radio", icon: RadioIcon, route: "/radio" },
-  { id: "battle", label: "Battle", icon: Swords, route: "/battles" },
-  { id: "wheuat-tv", label: "WHEUAT.TV", icon: Tv, route: "/feed" },
-  { id: "songs", label: "Songs", icon: Music2, route: "/browse-songs" },
-  { id: "shop", label: "Shop", icon: ShoppingBag, route: "/store" },
-];
 
 interface TrendingCreator {
   id: string;
@@ -156,40 +148,6 @@ const HomePage = () => {
 
       {/* Normal long social-media feed */}
       <div className="px-3 space-y-4">
-        {/* Feed tabs — inside the feed content, not pinned to the page top */}
-        <div className="flex items-center gap-2 py-1">
-          <div className="flex-1 flex items-center gap-2 overflow-x-auto scrollbar-hide">
-            {FEED_TABS.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => navigate(tab.route)}
-                  className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card/80 border border-border text-foreground text-[12px] font-semibold hover:border-primary/50 hover:text-primary transition-colors"
-                >
-                  <Icon className="w-3.5 h-3.5" />
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
-          <button
-            onClick={() => navigate("/dollar-club")}
-            title="Support Creators"
-            aria-label="Support Creators"
-            className="w-8 h-8 shrink-0 rounded-full bg-card border border-border flex items-center justify-center text-primary hover:border-primary/50"
-          >
-            <Heart className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => navigate("/browse-songs")}
-            title="Search"
-            aria-label="Search"
-            className="w-8 h-8 shrink-0 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-foreground"
-          >
-            <Search className="w-4 h-4" />
-          </button>
-        </div>
         {isLoading ? (
           <div className="py-8 flex items-center justify-center">
             <div className="w-7 h-7 border-2 border-primary border-t-transparent rounded-full animate-spin" />

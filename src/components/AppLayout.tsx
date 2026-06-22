@@ -19,6 +19,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
     (location.pathname.startsWith("/tv/podcast/") && location.pathname !== "/tv/podcast") ||
     location.pathname.startsWith("/podcast/room/");
   const isPodcastLobby = location.pathname === "/tv/podcast";
+  const isFeed = location.pathname === "/feed";
   const isFullScreenPage = ["/feed"].includes(location.pathname) || isPodcastWorkspace || isPodcastLobby;
   const showTopBar = !["/auth", "/feed"].includes(location.pathname) && !isPodcastWorkspace && !isPodcastLobby;
 
@@ -41,8 +42,10 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
     }
 
     return (
-      <div className="min-h-screen bg-black text-foreground max-w-lg mx-auto relative">
-        {children}
+      <div className="fixed inset-0 bg-black text-foreground overflow-hidden">
+        <div className="relative h-[100dvh] w-full max-w-lg mx-auto overflow-hidden bg-black">
+          {children}
+        </div>
         <GlobalRadioPlayer />
         <GlobalPlaylistPlayer />
         <PlaylistPlayerSheet />
