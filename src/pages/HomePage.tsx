@@ -97,13 +97,47 @@ const HomePage = () => {
     gcTime: 5 * 60_000,
   });
 
-  const currentRadioTrack = radio.currentTrack;
+  const [activeTab, setActiveTab] = useState<string>("");
+
+  const handleTabClick = (tab: { label: string; path: string }) => {
+    setActiveTab(tab.label);
+    navigate(tab.path);
+  };
 
   return (
     <div className="px-4 pt-4 pb-4">
       {/* Header */}
-      <div className="flex items-center justify-center mb-6">
+      <div className="flex items-center justify-center mb-4">
         <img src={whetuatLogo} alt="WHEUAT" className="h-8 mix-blend-multiply dark:mix-blend-screen" />
+      </div>
+
+      {/* Top pill nav (Radio | Battle | WHEUAT.TV | Songs | Shop | Support Creators) */}
+      <div className="sticky top-0 z-30 -mx-4 px-4 py-2 mb-4 bg-background/80 backdrop-blur-md">
+        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
+          {TOP_TABS.map((tab) => {
+            const isActive = activeTab === tab.label;
+            return (
+              <button
+                key={tab.label}
+                onClick={() => handleTabClick(tab)}
+                className={`shrink-0 px-3 py-1.5 rounded-full text-[12px] font-semibold transition-all ${
+                  isActive
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted/60 text-foreground hover:bg-muted"
+                }`}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+          <button
+            onClick={() => navigate("/my-projects")}
+            aria-label="Support Creators"
+            className="shrink-0 w-8 h-8 rounded-full bg-muted/60 hover:bg-muted flex items-center justify-center text-primary"
+          >
+            <Heart className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* WHEUAT Radio Mini Player */}
@@ -134,12 +168,12 @@ const HomePage = () => {
         </button>
       </motion.section>
 
-      {/* Trending Artists */}
+      {/* Trending Creators */}
       <motion.section {...fadeUp} transition={{ delay: 0.05 }} className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-primary" />
-            <h2 className="text-sm font-display font-bold text-foreground uppercase tracking-wide">Trending Artists</h2>
+            <h2 className="text-sm font-display font-bold text-foreground uppercase tracking-wide">Trending Creators</h2>
           </div>
         </div>
         <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
@@ -151,34 +185,13 @@ const HomePage = () => {
               <span className="text-[11px] font-medium text-foreground truncate w-full text-center">{a.name}</span>
             </button>
           )) : (
-            <p className="text-xs text-muted-foreground">No artists yet</p>
+            <p className="text-xs text-muted-foreground">No creators yet</p>
           )}
         </div>
       </motion.section>
 
       {/* WHEUAT News Feed */}
       <NewsFeed />
-
-      {/* Category Cards Grid */}
-      <motion.section {...fadeUp} transition={{ delay: 0.1 }} className="mb-8">
-        <div className="grid grid-cols-2 gap-3">
-          {CATEGORY_CARDS.map((card, i) => (
-            <motion.div key={card.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }} className={card.wide ? "col-span-2" : ""}>
-              <button
-                onClick={() => navigate(card.path)}
-                className={`relative overflow-hidden rounded-xl w-full ${card.wide ? "aspect-[2.5/1]" : "aspect-square"} group`}
-              >
-                <img src={card.img} alt={card.label} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                <div className="absolute inset-0 bg-black/20" />
-                <span className="absolute bottom-3 left-3 flex items-center gap-2 text-white font-display font-bold text-sm tracking-wide drop-shadow-lg">
-                  <card.icon className="w-5 h-5" />
-                  {card.label}
-                </span>
-              </button>
-            </motion.div>
-          ))}
-        </div>
-      </motion.section>
     </div>
   );
 };
