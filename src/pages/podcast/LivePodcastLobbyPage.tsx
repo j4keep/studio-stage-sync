@@ -642,13 +642,14 @@ const Planner = ({ episodes, onOpen }: { episodes: Episode[]; onOpen: (id: strin
 const formatTime = (seconds: number) => `${Math.floor(Math.max(0, seconds) / 60)}:${String(Math.floor(Math.max(0, seconds)) % 60).padStart(2, "0")}`;
 
 const LocalRecordingsPanel = ({
-  items, onEdit, onDownload, onDelete, onRename, onRefresh,
+  items, onEdit, onDownload, onDelete, onRename, onPublish, onRefresh,
 }: {
   items: FinalRecording[];
   onEdit: (r: FinalRecording) => void;
   onDownload: (r: FinalRecording) => void;
   onDelete: (r: FinalRecording) => void;
   onRename: (r: FinalRecording) => void;
+  onPublish: (r: FinalRecording) => void;
   onRefresh: () => void;
 }) => {
   if (!items.length) return null;
@@ -678,6 +679,7 @@ const LocalRecordingsPanel = ({
               <Button size="sm" onClick={() => onEdit(r)}><Scissors className="mr-1 h-4 w-4" />Edit</Button>
               <Button size="sm" variant="secondary" onClick={() => onDownload(r)}><Download className="mr-1 h-4 w-4" />Download</Button>
               <Button size="sm" variant="outline" onClick={() => onRename(r)}><Edit3 className="mr-1 h-4 w-4" />Rename</Button>
+              <Button size="sm" variant="outline" onClick={() => onPublish(r)}><Upload className="mr-1 h-4 w-4" />Publish</Button>
               <Button size="sm" variant="destructive" onClick={() => onDelete(r)}><Trash2 className="mr-1 h-4 w-4" />Delete</Button>
             </div>
           </article>
