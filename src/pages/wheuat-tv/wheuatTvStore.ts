@@ -10,7 +10,14 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
-import { uploadToR2, deleteFromR2, generateR2Key } from "@/lib/r2-storage";
+import { uploadToR2, deleteFromR2, generateR2Key, getR2DownloadUrl } from "@/lib/r2-storage";
+
+/** Always stream through the r2-download proxy so playback works even when
+ *  the R2 bucket isn't publicly readable. Falls back to whatever URL was
+ *  stored on the row (legacy rows). */
+function playbackUrl(videoKey: string | null, fallback: string): string {
+  return videoKey ? getR2DownloadUrl(videoKey) : fallback;
+}
 
 export type WheuatTvKind = "podcast" | "short-film" | "music-video";
 
@@ -120,7 +127,7 @@ export const WheuatTv = {
       kind: p.kind,
       title: p.title,
       description: p.description,
-      videoUrl: p.video_url,
+      videoUrl: playbackUrl(p.video_key, p.video_url),
       videoKey: p.video_key,
       thumbUrl: p.thumb_url,
       mime: p.mime,
@@ -192,7 +199,7 @@ export const WheuatTv = {
       kind: data.kind as WheuatTvKind,
       title: data.title,
       description: data.description,
-      videoUrl: data.video_url,
+      videoUrl: playbackUrl(data.video_key, data.video_url),
       videoKey: data.video_key,
       thumbUrl: data.thumb_url,
       mime: data.mime,
