@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
-import { ChevronLeft, Search, Heart, MoreVertical, Radio as RadioIcon, Swords, Tv, Music2, ShoppingBag } from "lucide-react";
+import { ChevronLeft, Search, Heart, Radio as RadioIcon, Swords, Tv, Music2, ShoppingBag } from "lucide-react";
 import FeedPostCard from "@/components/feed/FeedPostCard";
 import CreatePostSheet from "@/components/feed/CreatePostSheet";
 import { fetchFeedItems } from "@/lib/feed-items";
@@ -76,9 +76,6 @@ const FeedPage = () => {
           </button>
           <button onClick={() => navigate("/browse-songs")} className="w-9 h-9 shrink-0 flex items-center justify-center" aria-label="Search">
             <Search className="w-7 h-7" />
-          </button>
-          <button className="w-8 h-9 shrink-0 flex items-center justify-center" aria-label="More">
-            <MoreVertical className="w-6 h-6" />
           </button>
         </div>
 
