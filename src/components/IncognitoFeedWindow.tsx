@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
-import { X, Minus, Eye, GripHorizontal, Home, ImagePlus, Music, User, Maximize2, Minimize2, ExternalLink } from "lucide-react";
+import { X, Minus, Eye, GripHorizontal, Home, ImagePlus, Music, User, Maximize2, Minimize2 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchFeedItems, type FeedItem } from "@/lib/feed-items";
@@ -38,7 +38,7 @@ const IncognitoFeedWindow = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const isFullFeed = location.pathname === "/feed";
+  const isFullFeed = location.pathname === "/feed" || location.pathname === "/";
   const [open, setOpen] = useState(() => {
     try {
       return sessionStorage.getItem(OPEN_KEY) === "true";
@@ -230,9 +230,14 @@ const IncognitoFeedWindow = () => {
   return createPortal(
     <div
       ref={windowRef}
-      className="fixed z-[9999] rounded-2xl bg-card border border-border shadow-2xl overflow-hidden flex flex-col"
+      className={`fixed z-[9999] rounded-2xl bg-card border border-border shadow-2xl overflow-hidden flex flex-col ${
+        sizeMode === "small" ? "incognito-compact" : ""
+      }`}
       style={{ left: pos.x, top: pos.y, width, height }}
     >
+      <style>{`
+        .incognito-compact .absolute.left-3.right-20.bottom-8 { display: none !important; }
+      `}</style>
       <div
         className="flex items-center gap-1 px-2 py-1.5 bg-muted/80 backdrop-blur cursor-grab active:cursor-grabbing select-none touch-none"
         style={{ touchAction: "none" }}
@@ -280,14 +285,6 @@ const IncognitoFeedWindow = () => {
           })}
         </div>
         <div className="flex items-center gap-0.5" data-no-drag>
-          <button
-            onClick={openStandaloneWindow}
-            className="w-6 h-6 rounded-full hover:bg-background/60 flex items-center justify-center"
-            aria-label="Open standalone"
-            title="Open standalone"
-          >
-            <ExternalLink className="w-3 h-3" />
-          </button>
           <button
             onClick={() => setSizeMode((m) => (m === "small" ? "large" : "small"))}
             className="w-6 h-6 rounded-full hover:bg-background/60 flex items-center justify-center"
