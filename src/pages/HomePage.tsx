@@ -1,5 +1,6 @@
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { TrendingUp } from "lucide-react";
+import { Heart, MoreVertical, Radio as RadioIcon, Search, ShoppingBag, Swords, TrendingUp, Tv, Music2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,7 +12,7 @@ import artistZaraBeats from "@/assets/artist-zara-beats.jpg";
 import artistDjOnyx from "@/assets/artist-dj-onyx.jpg";
 import artistLyricSoul from "@/assets/artist-lyric-soul.jpg";
 import artistNovaWave from "@/assets/artist-nova-wave.jpg";
-import ProfilePostCard from "@/components/ProfilePostCard";
+import FeedPostCard from "@/components/feed/FeedPostCard";
 import { fetchFeedItems } from "@/lib/feed-items";
 
 const fadeUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
@@ -30,6 +31,16 @@ const PLACEHOLDER_CREATORS: TrendingCreator[] = [
   { id: "placeholder-4", name: "DJ Onyx", img: artistDjOnyx, score: 0 },
   { id: "placeholder-5", name: "Lyric Soul", img: artistLyricSoul, score: 0 },
   { id: "placeholder-6", name: "Nova Wave", img: artistNovaWave, score: 0 },
+];
+
+type FeedTabId = "radio" | "battle" | "wheuat-tv" | "songs" | "shop";
+
+const FEED_TABS: { id: FeedTabId; label: string; route?: string; icon: typeof RadioIcon }[] = [
+  { id: "radio", label: "Radio", route: "/radio", icon: RadioIcon },
+  { id: "battle", label: "Battle", route: "/battles", icon: Swords },
+  { id: "wheuat-tv", label: "WHEUAT.TV", route: "/tv/wheuat", icon: Tv },
+  { id: "songs", label: "Songs", route: "/browse-songs", icon: Music2 },
+  { id: "shop", label: "Shop", route: "/store", icon: ShoppingBag },
 ];
 
 const fetchTrendingCreators = async (userId?: string): Promise<TrendingCreator[]> => {
@@ -89,6 +100,9 @@ const fetchTrendingCreators = async (userId?: string): Promise<TrendingCreator[]
 const HomePage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<FeedTabId>("wheuat-tv");
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const feedScrollRef = useRef<HTMLDivElement>(null);
 
   const { data: trendingCreators = [] } = useQuery({
     queryKey: ["homepage-trending-creators", user?.id],
@@ -102,6 +116,26 @@ const HomePage = () => {
     queryFn: () => fetchFeedItems({ currentUserId: user?.id }),
   });
   const feedPosts = (items as any[]).filter((item: any) => item.itemType === "post");
+
+  useEffect(() => {
+    const container = feedScrollRef.current;
+    if (!container) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const index = Number(entry.target.getAttribute("data-index"));
+            if (!Number.isNaN(index)) setCurrentIndex(index);
+          }
+        });
+      },
+      { root: container, threshold: 0.6 }
+    );
+
+    container.querySelectorAll("[data-index]").forEach((element) => observer.observe(element));
+    return () => observer.disconnect();
+  }, [feedPosts.length]);
 
   return (
     <div className="pb-4">
@@ -146,15 +180,52 @@ const HomePage = () => {
         </div>
       </motion.section>
 
-      {/* Normal long social-media feed */}
-      <div className="px-3 space-y-4">
+      {/* Full-screen swipe feed */}
+      <section className="relative h-[calc(100dvh-5rem)] min-h-[620px] w-full overflow-hidden bg-black">
+        <div className="pointer-events-none absolute left-0 right-0 top-0 z-40 h-32 bg-gradient-to-b from-black/75 via-black/35 to-transparent" />
+        <div className="absolute left-0 right-0 top-0 z-50 px-3 pt-3">
+          <div className="mb-3 flex items-center justify-end gap-3 text-white">
+            <button onClick={() => navigate("/dollar-club")} className="flex h-9 w-9 items-center justify-center" aria-label="Support Creators">
+              <Heart className="h-6 w-6" />
+            </button>
+            <button onClick={() => navigate("/browse-songs")} className="flex h-9 w-9 items-center justify-center" aria-label="Search">
+              <Search className="h-7 w-7" />
+            </button>
+            <button className="flex h-9 w-8 items-center justify-center" aria-label="More">
+              <MoreVertical className="h-6 w-6" />
+            </button>
+          </div>
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            {FEED_TABS.map((tab) => {
+              const active = activeTab === tab.id;
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    if (tab.route) navigate(tab.route);
+                  }}
+                  className={`shrink-0 inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[12px] font-bold text-white backdrop-blur-md transition-all ${
+                    active ? "bg-white/30 shadow-lg" : "bg-white/18"
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div ref={feedScrollRef} className="h-full overflow-y-scroll snap-y snap-mandatory scrollbar-hide" style={{ scrollSnapType: "y mandatory" }}>
         {isLoading ? (
-          <div className="py-8 flex items-center justify-center">
+          <div className="flex h-full items-center justify-center snap-start">
             <div className="w-7 h-7 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
         ) : feedPosts.length === 0 ? (
-          <div className="py-10 flex flex-col items-center justify-center gap-3 text-center">
-            <p className="text-muted-foreground text-sm">No posts yet</p>
+          <div className="flex h-full flex-col items-center justify-center gap-3 text-center snap-start">
+            <p className="text-white/70 text-sm">No posts yet</p>
             <button
               onClick={() => window.dispatchEvent(new Event("open-create-post"))}
               className="px-4 py-2 bg-primary text-primary-foreground rounded-full text-sm font-semibold"
@@ -163,9 +234,14 @@ const HomePage = () => {
             </button>
           </div>
         ) : (
-          feedPosts.map((item: any) => <ProfilePostCard key={item.id} post={item} />)
+          feedPosts.map((item: any, index: number) => (
+            <div key={item.id} data-index={index} className="relative h-full w-full snap-start snap-always" style={{ scrollSnapAlign: "start" }}>
+              <FeedPostCard post={item} currentUserId={user?.id} isActive={index === currentIndex} />
+            </div>
+          ))
         )}
-      </div>
+        </div>
+      </section>
     </div>
   );
 };
