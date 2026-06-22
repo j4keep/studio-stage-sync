@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
-import { ChevronLeft, Search, Heart, MoreVertical, Radio as RadioIcon, Swords, Tv, Music2, ShoppingBag } from "lucide-react";
+import { ChevronLeft, Search, Heart, Radio as RadioIcon, Swords, Tv, Music2, ShoppingBag } from "lucide-react";
 import FeedPostCard from "@/components/feed/FeedPostCard";
 import CreatePostSheet from "@/components/feed/CreatePostSheet";
 import { fetchFeedItems } from "@/lib/feed-items";
@@ -77,12 +77,9 @@ const FeedPage = () => {
           <button onClick={() => navigate("/browse-songs")} className="w-9 h-9 shrink-0 flex items-center justify-center" aria-label="Search">
             <Search className="w-7 h-7" />
           </button>
-          <button className="w-8 h-9 shrink-0 flex items-center justify-center" aria-label="More">
-            <MoreVertical className="w-6 h-6" />
-          </button>
         </div>
 
-        <div className="mt-4 flex items-center justify-between gap-1 overflow-x-auto scrollbar-hide">
+        <div className="mt-4 grid w-full grid-cols-5 gap-1">
             {TABS.map((tab) => {
               const active = activeTab === tab.id;
               return (
@@ -92,7 +89,7 @@ const FeedPage = () => {
                     if (tab.route) navigate(tab.route);
                     else setActiveTab(tab.id);
                   }}
-                  className={`shrink-0 inline-flex items-center rounded-full px-3 py-1.5 text-[12px] font-bold backdrop-blur-md transition-all ${
+                  className={`min-w-0 inline-flex items-center justify-center rounded-full px-1.5 py-1.5 text-[11px] font-bold backdrop-blur-md transition-all ${
                     active ? "bg-white/30 text-white shadow-lg" : "bg-white/18 text-white/90"
                   }`}
                 >
