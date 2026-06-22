@@ -38,7 +38,44 @@ const WheuatTvPage = () => {
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["id"]>("all");
   const [uploadKind, setUploadKind] = useState<WheuatTvKind>("short-film");
   const [playUrl, setPlayUrl] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editSubtitle, setEditSubtitle] = useState("");
+  const [editCover, setEditCover] = useState<File | null>(null);
+  const [editCoverPreview, setEditCoverPreview] = useState<string | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const coverRef = useRef<HTMLInputElement>(null);
+
+  const beginEdit = (item: WheuatTvItem) => {
+    setEditingId(item.id);
+    setEditTitle(item.title);
+    setEditSubtitle(item.description || "");
+    setEditCover(null);
+    setEditCoverPreview(item.thumbUrl || null);
+  };
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditCover(null);
+    setEditCoverPreview(null);
+  };
+  const saveEdit = async (id: string) => {
+    setSavingEdit(true);
+    try {
+      await WheuatTv.updateMeta(id, {
+        title: editTitle.trim() || "Untitled",
+        description: editSubtitle.trim() || null,
+        coverFile: editCover,
+      });
+      toast({ title: "Project updated" });
+      cancelEdit();
+      await refresh();
+    } catch (e: any) {
+      toast({ title: "Update failed", description: e?.message || String(e), variant: "destructive" });
+    } finally {
+      setSavingEdit(false);
+    }
+  };
 
   const refresh = async () => setItems(await WheuatTv.list());
   useEffect(() => {
