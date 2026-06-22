@@ -11,6 +11,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { uploadToR2, deleteFromR2, generateR2Key, getR2DownloadUrl } from "@/lib/r2-storage";
+import { captureVideoPosterFromBlob, dataUrlToFile } from "@/lib/video-preview";
 
 /** Always stream through the r2-download proxy so playback works even when
  *  the R2 bucket isn't publicly readable. Falls back to whatever URL was
@@ -82,6 +83,15 @@ function creatorOf(userId: string, p: ProfileRow | undefined): WheuatTvCreator {
     displayName: p?.display_name?.trim() || "Creator",
     avatarUrl: p?.avatar_url || null,
   };
+}
+
+async function uploadThumbDataUrl(userId: string, dataUrl: string, title: string) {
+  const safeTitle = title.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 50) || "cover";
+  const file = dataUrlToFile(dataUrl, `${Date.now()}-${safeTitle}.jpg`);
+  const key = generateR2Key(userId, "tv-thumb", file.name);
+  const up = await uploadToR2(file, { folder: undefined, fileName: key, mimeType: file.type || "image/jpeg" });
+  if (!up.success || !up.data) throw new Error(up.error || "Cover upload failed");
+  return getR2DownloadUrl(up.data.key);
 }
 
 export const WheuatTv = {
@@ -169,10 +179,14 @@ export const WheuatTv = {
       ? input.blob
       : new File([input.blob], fileName, { type: mime });
 
+    const thumbDataUrl = input.thumbDataUrl || await captureVideoPosterFromBlob(input.blob).catch(() => null);
     const upload = await uploadToR2(file, { folder: undefined, fileName: key, mimeType: mime });
     if (!upload.success || !upload.data) {
       throw new Error(upload.error || "Upload to storage failed");
     }
+    const thumbUrl = thumbDataUrl
+      ? await uploadThumbDataUrl(user.id, thumbDataUrl, input.title).catch(() => null)
+      : null;
 
     const { data, error } = await supabase
       .from("tv_posts")
@@ -183,7 +197,7 @@ export const WheuatTv = {
         description: input.description ?? null,
         video_url: upload.data.url,
         video_key: upload.data.key,
-        thumb_url: input.thumbDataUrl ?? null,
+        thumb_url: thumbUrl,
         mime,
         ext,
         duration_ms: input.durationMs ?? null,

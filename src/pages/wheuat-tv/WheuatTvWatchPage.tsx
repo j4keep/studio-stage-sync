@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Search, Heart, MessageCircle, Share2, Play, Film, Mic2, Music, Copy, Send, MessageSquareText } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { VideoPoster } from "@/components/VideoPoster";
 import { WheuatTv, type WheuatTvItem, type WheuatTvKind, type WheuatTvComment } from "./wheuatTvStore";
 
 const KIND_META: Record<WheuatTvKind, { label: string; Icon: typeof Film }> = {
@@ -178,17 +179,12 @@ const WheuatTvWatchPage = () => {
                   onClick={() => setPlayUrl(item.videoUrl)}
                   className="relative w-full aspect-video bg-muted flex items-center justify-center group overflow-hidden"
                 >
-                  {item.thumbUrl ? (
-                    <img src={item.thumbUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
-                  ) : (
-                    <video
-                      src={`${item.videoUrl}#t=0.1`}
-                      preload="metadata"
-                      muted
-                      playsInline
-                      className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-                    />
-                  )}
+                  <VideoPoster
+                    src={item.videoUrl}
+                    poster={item.thumbUrl}
+                    alt={item.title}
+                    className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+                  />
                   <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors flex items-center justify-center">
                     <div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
                       <Play className="w-5 h-5 ml-0.5" />

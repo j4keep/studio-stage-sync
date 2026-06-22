@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { Video, VideoOff, Mic, Upload, X, Users, Link as LinkIcon, Circle, Square } from "lucide-react";
 import { useDawStore, newId } from "@/wstudio/daw/state/DawStore";
 import { computePeaks } from "@/wstudio/daw/engine/Peaks";
+import { VideoPoster } from "@/components/VideoPoster";
 import { usePodcastVideoStore } from "./podcastVideoStore";
 import type { DawEngine } from "@/wstudio/daw/engine/DawEngine";
 
@@ -306,7 +307,7 @@ export function PodcastVideoSidebar({ engine, onClose }: Props) {
         {videoEntries.map(([clipId, v]) => (
           <div key={clipId} className="rounded overflow-hidden border border-neutral-800 bg-neutral-900">
             <div className="relative aspect-video bg-black">
-              <video src={v.url} className="w-full h-full object-cover" muted playsInline preload="metadata" />
+              <VideoPoster src={v.url} alt={v.participantLabel || "Linked video"} className="w-full h-full object-cover" />
             </div>
             <div className="px-2 py-1.5 flex items-center justify-between gap-1">
               <div className="min-w-0">

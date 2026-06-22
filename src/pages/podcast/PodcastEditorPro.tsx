@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { VideoWithPoster } from "@/components/VideoPoster";
 import { toast } from "@/hooks/use-toast";
 import { WaveformView } from "@/wstudio/daw/ui/WaveformView";
 
@@ -543,6 +544,7 @@ export default function PodcastEditorPro({
 
   /* ---------- render ---------- */
   const playheadPct = totalDur ? (playhead / totalDur) * 100 : 0;
+  const activeSrc = activeSeg ? sources[activeSeg.srcIdx]?.url : initial.url;
 
   return (
     <div className="rounded-xl border border-purple-500/30 bg-zinc-900/60 p-4 space-y-3">
@@ -556,8 +558,9 @@ export default function PodcastEditorPro({
 
       {/* Preview with overlay */}
       <div className="relative bg-black rounded-lg overflow-hidden">
-        <video
+        <VideoWithPoster
           ref={vidRef}
+          src={activeSrc || initial.url}
           className="w-full max-h-[55vh] object-contain bg-black"
           onPlay={() => setPlaying(true)}
           onPause={() => setPlaying(false)}
