@@ -2,8 +2,10 @@ import { AwsClient } from "https://esm.sh/aws4fetch@1.0.20";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, range, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+  'Access-Control-Expose-Headers': 'content-length, content-range, accept-ranges',
 };
+
 
 const BUCKET = 'wheuat-media';
 
