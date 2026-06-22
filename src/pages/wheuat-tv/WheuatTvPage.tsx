@@ -192,16 +192,23 @@ const WheuatTvPage = () => {
           {filtered.map((item) => {
             const M = KIND_META[item.kind];
             const isOwner = userId && item.creator.id === userId;
+            const isEditing = editingId === item.id;
             return (
               <article key={item.id} className="rounded-2xl border border-border bg-card overflow-hidden">
                 <button
                   onClick={() => setPlayUrl(item.videoUrl)}
-                  className="relative w-full aspect-video bg-muted flex items-center justify-center group"
+                  className="relative w-full aspect-video bg-muted flex items-center justify-center group overflow-hidden"
                 >
                   {item.thumbUrl ? (
                     <img src={item.thumbUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
                   ) : (
-                    <M.Icon className="w-8 h-8 text-muted-foreground" />
+                    <video
+                      src={`${item.videoUrl}#t=0.1`}
+                      preload="metadata"
+                      muted
+                      playsInline
+                      className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+                    />
                   )}
                   <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors flex items-center justify-center">
                     <div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
@@ -222,25 +229,99 @@ const WheuatTvPage = () => {
                         item.creator.displayName[0]?.toUpperCase() || "A"
                       )}
                     </div>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <h3 className="text-sm font-semibold text-foreground truncate">{item.title}</h3>
+                      {item.description && (
+                        <p className="text-[11px] text-muted-foreground line-clamp-2">{item.description}</p>
+                      )}
                       <p className="text-[11px] text-muted-foreground">{item.creator.displayName} · {fmtAgo(item.createdAt)}</p>
                     </div>
                   </div>
 
+                  {isEditing && (
+                    <div className="mt-3 space-y-2 rounded-xl border border-border bg-background p-3">
+                      <input
+                        value={editTitle}
+                        onChange={(e) => setEditTitle(e.target.value)}
+                        placeholder="Project title"
+                        className="w-full h-9 px-3 rounded-lg bg-card border border-border text-sm"
+                      />
+                      <input
+                        value={editSubtitle}
+                        onChange={(e) => setEditSubtitle(e.target.value)}
+                        placeholder="Subtitle (optional)"
+                        className="w-full h-9 px-3 rounded-lg bg-card border border-border text-sm"
+                      />
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => coverRef.current?.click()}
+                          className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-card border border-border text-xs font-medium"
+                        >
+                          <ImagePlus className="w-3.5 h-3.5" />
+                          {editCover ? "Change cover" : editCoverPreview ? "Replace cover" : "Add cover"}
+                        </button>
+                        {editCoverPreview && (
+                          <img src={editCoverPreview} alt="" className="h-9 w-14 rounded-md object-cover border border-border" />
+                        )}
+                        <input
+                          ref={coverRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) {
+                              setEditCover(f);
+                              setEditCoverPreview(URL.createObjectURL(f));
+                            }
+                            e.currentTarget.value = "";
+                          }}
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 pt-1">
+                        <button
+                          onClick={() => saveEdit(item.id)}
+                          disabled={savingEdit}
+                          className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-semibold disabled:opacity-60"
+                        >
+                          {savingEdit ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                          Save
+                        </button>
+                        <button
+                          onClick={cancelEdit}
+                          className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-card border border-border text-xs font-medium"
+                        >
+                          <X className="w-3.5 h-3.5" /> Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex items-center gap-2 mt-3">
                     {isOwner ? (
-                      <button
-                        onClick={async () => {
-                          if (!confirm(`Delete "${item.title}"?`)) return;
-                          await WheuatTv.remove(item.id, item.videoKey);
-                          await refresh();
-                        }}
-                        className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-destructive/10 text-destructive text-xs font-medium hover:bg-destructive/20"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        Delete
-                      </button>
+                      <>
+                        {!isEditing && (
+                          <button
+                            onClick={() => beginEdit(item)}
+                            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-background border border-border text-xs font-medium hover:border-primary/50"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                            Edit
+                          </button>
+                        )}
+                        <button
+                          onClick={async () => {
+                            if (!confirm(`Delete "${item.title}"?`)) return;
+                            await WheuatTv.remove(item.id, item.videoKey);
+                            await refresh();
+                          }}
+                          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-destructive/10 text-destructive text-xs font-medium hover:bg-destructive/20"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          Delete
+                        </button>
+                      </>
                     ) : (
                       <span className="text-[11px] text-muted-foreground">Posted by another creator</span>
                     )}
