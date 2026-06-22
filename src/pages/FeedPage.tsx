@@ -61,7 +61,7 @@ const FeedPage = () => {
 
   return (
     <div className="h-[100dvh] w-full bg-black flex flex-col overflow-hidden">
-      <div className="absolute top-0 left-0 right-0 z-50 px-4 pt-[calc(env(safe-area-inset-top)+0.75rem)] pb-6 bg-gradient-to-b from-black/70 via-black/30 to-transparent">
+      <div className="absolute top-0 left-0 right-0 z-50 px-2 pt-[calc(env(safe-area-inset-top)+0.75rem)] pb-6 bg-gradient-to-b from-black/70 via-black/30 to-transparent">
         <div className="flex items-center gap-3 text-white">
           <button onClick={() => navigate("/")} className="w-9 h-9 shrink-0 flex items-center justify-center" aria-label="Back home">
             <ChevronLeft className="w-8 h-8" />
