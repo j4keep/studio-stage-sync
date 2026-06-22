@@ -20,7 +20,7 @@ const FeedPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [showCreate, setShowCreate] = useState(false);
-  const [activeTab, setActiveTab] = useState("For You");
+  const [activeTab, setActiveTab] = useState<TabId>("wheuat-tv");
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
