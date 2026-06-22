@@ -28,6 +28,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { VideoPoster, VideoWithPoster } from "@/components/VideoPoster";
 import { toast } from "@/hooks/use-toast";
 import PodcastScheduleSheet from "./PodcastScheduleSheet";
 import PodcastScheduleDashboard from "./PodcastScheduleDashboard";
@@ -581,7 +582,7 @@ const EpisodeCard = ({ episode, take, previewUrl, loadingPreview, menuOpen, onTo
   <article className="group relative overflow-hidden rounded-lg border border-border bg-card">
     <div className="relative bg-background">
       {take && previewUrl ? (
-        <video src={previewUrl} controls className="aspect-video w-full object-cover" />
+        <VideoWithPoster src={previewUrl} controls playsInline className="aspect-video w-full object-cover" />
       ) : take ? (
         <button onClick={onPlay} className="flex aspect-video w-full flex-col items-center justify-center gap-3 bg-muted/35 text-sm text-muted-foreground">
           {loadingPreview ? <Loader2 className="h-8 w-8 animate-spin text-primary" /> : <Film className="h-10 w-10 text-primary" />}
@@ -673,6 +674,7 @@ const LocalRecordingsPanel = ({
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {items.map((r) => (
           <article key={r.id} className="rounded-lg border border-border bg-card p-3">
+            <VideoPoster src={URL.createObjectURL(r.blob)} alt={r.title} className="mb-3 aspect-video w-full rounded-md object-cover" />
             <div className="flex items-start gap-2">
               <div className="min-w-0 flex-1">
                 <h4 className="truncate font-semibold">{r.title}{r.edited && <span className="ml-1 text-[10px] font-normal text-primary">· edited</span>}</h4>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { VideoHTMLAttributes } from "react";
 import { Film, Loader2 } from "lucide-react";
 import { captureVideoPoster } from "@/lib/video-preview";
 
@@ -36,5 +37,36 @@ export function VideoPoster({ src, poster, alt = "Video preview", className = ""
     <div className={`grid place-items-center bg-muted text-muted-foreground ${className}`}>
       {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : <Film className="h-7 w-7" />}
     </div>
+  );
+}
+
+type VideoWithPosterProps = VideoHTMLAttributes<HTMLVideoElement> & {
+  src: string;
+  poster?: string | null;
+};
+
+export function VideoWithPoster({ src, poster, preload, ...props }: VideoWithPosterProps) {
+  const [generatedPoster, setGeneratedPoster] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (poster || !src) {
+      setGeneratedPoster(null);
+      return;
+    }
+    let active = true;
+    setGeneratedPoster(null);
+    captureVideoPoster(src).then((frame) => {
+      if (active) setGeneratedPoster(frame);
+    });
+    return () => { active = false; };
+  }, [poster, src]);
+
+  return (
+    <video
+      {...props}
+      src={src}
+      poster={poster || generatedPoster || undefined}
+      preload={preload || "metadata"}
+    />
   );
 }
