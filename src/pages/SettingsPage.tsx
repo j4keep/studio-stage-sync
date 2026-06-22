@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, Moon, Sun, Bell, BellOff, Globe, Lock, Eye, Trash2, LogOut, Info, ChevronRight, Smartphone, Palette, Crown, XCircle } from "lucide-react";
+import { ArrowLeft, Moon, Sun, Bell, BellOff, Globe, Lock, Eye, Trash2, LogOut, Info, ChevronRight, Smartphone, Palette, Crown, XCircle, Coffee } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import ThemePickerSheet from "@/components/ThemePickerSheet";
@@ -33,6 +33,7 @@ const SettingsPage = () => {
   const [streamingQuality, setStreamingQuality] = useState(() => localStorage.getItem("wheuat_quality") || "high");
   const [privateProfile, setPrivateProfile] = useState(() => localStorage.getItem("wheuat_private") === "true");
   const [showActivity, setShowActivity] = useState(() => localStorage.getItem("wheuat_show_activity") !== "false");
+  const [takeABreak, setTakeABreak] = useState(() => localStorage.getItem("wheuat_take_a_break") === "true");
 
   useEffect(() => {
     const root = document.documentElement;
@@ -46,6 +47,10 @@ const SettingsPage = () => {
   useEffect(() => { localStorage.setItem("wheuat_quality", streamingQuality); }, [streamingQuality]);
   useEffect(() => { localStorage.setItem("wheuat_private", String(privateProfile)); }, [privateProfile]);
   useEffect(() => { localStorage.setItem("wheuat_show_activity", String(showActivity)); }, [showActivity]);
+  useEffect(() => {
+    localStorage.setItem("wheuat_take_a_break", String(takeABreak));
+    window.dispatchEvent(new Event("wheuat-take-a-break-changed"));
+  }, [takeABreak]);
 
   return (
     <div className="px-4 pt-6 pb-24">
@@ -119,6 +124,17 @@ const SettingsPage = () => {
         </SettingRow>
         <SettingRow icon={<Eye className="w-4 h-4" />} label="Show Activity Status" description="Let others see when you're online">
           <Switch checked={showActivity} onCheckedChange={setShowActivity} />
+        </SettingRow>
+      </Section>
+
+      {/* Take A Break */}
+      <Section title="Wellness">
+        <SettingRow
+          icon={<Coffee className="w-4 h-4" />}
+          label="Take A Break"
+          description="Pause Feed, Battles & social discovery. Podcast, Radio, Studio & Profile stay on."
+        >
+          <Switch checked={takeABreak} onCheckedChange={setTakeABreak} />
         </SettingRow>
       </Section>
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Upload, Heart, MessageCircle, Trash2, Film, Mic2, Music, Eye, Play } from "lucide-react";
+import { ArrowLeft, Upload, Trash2, Film, Mic2, Music, Eye, Play } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -104,7 +104,7 @@ const WheuatTvPage = () => {
         </button>
         <div className="flex-1">
           <h1 className="text-xl font-display font-bold text-foreground leading-none">WHEUAT.TV</h1>
-          <p className="text-[11px] text-muted-foreground">Podcasts, short films & music videos</p>
+          <p className="text-[11px] text-muted-foreground">Creator manager — post or delete your videos</p>
         </div>
         <button
           onClick={openIncognito}
@@ -182,7 +182,6 @@ const WheuatTvPage = () => {
         <div className="space-y-4">
           {filtered.map((item) => {
             const M = KIND_META[item.kind];
-            const liked = item.likes.includes(userId);
             const isOwner = item.uploaderId === userId;
             return (
               <article key={item.id} className="rounded-2xl border border-border bg-card overflow-hidden">
@@ -211,63 +210,21 @@ const WheuatTvPage = () => {
                       <h3 className="text-sm font-semibold text-foreground truncate">{item.title}</h3>
                       <p className="text-[11px] text-muted-foreground">{item.uploaderName} · {fmtAgo(item.createdAt)}</p>
                     </div>
-                    {isOwner && (
+                  </div>
+
+                  <div className="flex items-center gap-2 mt-3">
+                    {isOwner ? (
                       <button
                         onClick={async () => { await WheuatTv.remove(item.id); refresh(); }}
-                        className="text-muted-foreground hover:text-destructive"
-                        title="Delete"
+                        className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-destructive/10 text-destructive text-xs font-medium hover:bg-destructive/20"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Delete
                       </button>
+                    ) : (
+                      <span className="text-[11px] text-muted-foreground">Posted by another creator</span>
                     )}
                   </div>
-
-                  <div className="flex items-center gap-4 mt-2">
-                    <button
-                      onClick={() => { WheuatTv.toggleLike(item.id, userId); refresh(); }}
-                      className={`inline-flex items-center gap-1 text-xs ${liked ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
-                    >
-                      <Heart className={`w-4 h-4 ${liked ? "fill-current" : ""}`} />
-                      {item.likes.length}
-                    </button>
-                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                      <MessageCircle className="w-4 h-4" />
-                      {item.comments.length}
-                    </span>
-                  </div>
-
-                  {/* Comments */}
-                  {item.comments.length > 0 && (
-                    <ul className="mt-2 space-y-1 max-h-32 overflow-y-auto pr-1">
-                      {item.comments.map((c) => (
-                        <li key={c.id} className="text-[12px]">
-                          <span className="font-medium text-foreground">{c.userName}</span>{" "}
-                          <span className="text-muted-foreground">{c.text}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  <form
-                    className="mt-2 flex gap-2"
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      const text = (commentDraft[item.id] || "").trim();
-                      if (!text) return;
-                      WheuatTv.addComment(item.id, { userId, userName, text });
-                      setCommentDraft((d) => ({ ...d, [item.id]: "" }));
-                      refresh();
-                    }}
-                  >
-                    <input
-                      value={commentDraft[item.id] || ""}
-                      onChange={(e) => setCommentDraft((d) => ({ ...d, [item.id]: e.target.value }))}
-                      placeholder="Add a comment…"
-                      className="flex-1 h-8 px-3 rounded-full bg-background border border-border text-xs"
-                    />
-                    <button type="submit" className="h-8 px-3 rounded-full bg-primary text-primary-foreground text-xs font-medium">
-                      Post
-                    </button>
-                  </form>
                 </div>
               </article>
             );
