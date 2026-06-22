@@ -217,15 +217,8 @@ const IncognitoFeedWindow = () => {
     { path: "/profile", icon: User, label: "Profile" },
   ];
 
-  const openStandaloneWindow = () => {
-    try {
-      sessionStorage.setItem(OPEN_KEY, "true");
-      sessionStorage.setItem(MINIMIZED_KEY, "false");
-    } catch (error) {
-      void error;
-    }
-    window.open(window.location.href, "wheuat-incognito-window", "popup=yes,width=360,height=640,left=80,top=80");
-  };
+
+
 
   return createPortal(
     <div
