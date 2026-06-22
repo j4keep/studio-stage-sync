@@ -98,6 +98,7 @@ const HomePage = () => {
   });
 
   const [activeTab, setActiveTab] = useState<string>("");
+  const currentRadioTrack = radio.currentTrack;
 
   const handleTabClick = (tab: { label: string; path: string }) => {
     setActiveTab(tab.label);
