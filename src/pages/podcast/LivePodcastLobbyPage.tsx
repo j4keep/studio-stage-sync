@@ -650,6 +650,17 @@ const Planner = ({ episodes, onOpen }: { episodes: Episode[]; onOpen: (id: strin
 
 const formatTime = (seconds: number) => `${Math.floor(Math.max(0, seconds) / 60)}:${String(Math.floor(Math.max(0, seconds)) % 60).padStart(2, "0")}`;
 
+const LocalRecordingPoster = ({ rec }: { rec: FinalRecording }) => {
+  const [url, setUrl] = useState("");
+  useEffect(() => {
+    const next = URL.createObjectURL(rec.blob);
+    setUrl(next);
+    return () => URL.revokeObjectURL(next);
+  }, [rec.blob]);
+  if (!url) return <div className="mb-3 aspect-video w-full rounded-md bg-muted" />;
+  return <VideoPoster src={url} alt={rec.title} className="mb-3 aspect-video w-full rounded-md object-cover" />;
+};
+
 const LocalRecordingsPanel = ({
   items, onEdit, onDownload, onDelete, onRename, onPublish, onRefresh,
 }: {
@@ -674,7 +685,7 @@ const LocalRecordingsPanel = ({
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {items.map((r) => (
           <article key={r.id} className="rounded-lg border border-border bg-card p-3">
-            <VideoPoster src={URL.createObjectURL(r.blob)} alt={r.title} className="mb-3 aspect-video w-full rounded-md object-cover" />
+            <LocalRecordingPoster rec={r} />
             <div className="flex items-start gap-2">
               <div className="min-w-0 flex-1">
                 <h4 className="truncate font-semibold">{r.title}{r.edited && <span className="ml-1 text-[10px] font-normal text-primary">· edited</span>}</h4>

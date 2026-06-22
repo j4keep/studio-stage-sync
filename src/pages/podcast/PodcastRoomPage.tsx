@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { VideoWithPoster } from "@/components/VideoPoster";
 import { toast } from "@/hooks/use-toast";
 import PodcastEditorPro from "./PodcastEditorPro";
 import { usePodcastLiveRoom, type RoomParticipant } from "./usePodcastLiveRoom";
@@ -1268,7 +1269,7 @@ const RecordingFilesPanel = ({ recordings, onDownload, onDelete, onRename, onEdi
         <li key={r.id} className="p-2 rounded-lg bg-zinc-900 border border-zinc-800">
           <div className="text-xs font-medium truncate">{r.name}{r.recovered && <span className="ml-1 text-amber-300">· recovered</span>}</div>
           <div className="text-[10px] text-zinc-500 mb-2">{fmtTime(r.durationMs)} · {(r.blob.size / 1024 / 1024).toFixed(1)} MB</div>
-          <video src={r.url} controls className="w-full rounded bg-black mb-2" />
+          <VideoWithPoster src={r.url} controls playsInline className="w-full rounded bg-black mb-2" />
           <div className="grid grid-cols-2 gap-1">
             <Button size="sm" variant="secondary" onClick={() => onDownload(r)} className="gap-1"><Download className="w-3 h-3" />Download</Button>
             <Button size="sm" variant="secondary" onClick={() => onEdit(r)} className="gap-1"><Edit3 className="w-3 h-3" />Edit</Button>
