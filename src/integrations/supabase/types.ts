@@ -2395,6 +2395,112 @@ export type Database = {
           },
         ]
       }
+      tv_post_comments: {
+        Row: {
+          created_at: string
+          id: string
+          post_id: string
+          text: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_id: string
+          text: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_id?: string
+          text?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tv_post_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "tv_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tv_post_likes: {
+        Row: {
+          created_at: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tv_post_likes_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "tv_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tv_posts: {
+        Row: {
+          created_at: string
+          description: string | null
+          duration_ms: number | null
+          ext: string | null
+          id: string
+          kind: string
+          mime: string | null
+          thumb_url: string | null
+          title: string
+          updated_at: string
+          user_id: string
+          video_key: string | null
+          video_url: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          duration_ms?: number | null
+          ext?: string | null
+          id?: string
+          kind: string
+          mime?: string | null
+          thumb_url?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+          video_key?: string | null
+          video_url: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          duration_ms?: number | null
+          ext?: string | null
+          id?: string
+          kind?: string
+          mime?: string | null
+          thumb_url?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+          video_key?: string | null
+          video_url?: string
+        }
+        Relationships: []
+      }
       user_ratings: {
         Row: {
           comment: string | null
