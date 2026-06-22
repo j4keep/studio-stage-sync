@@ -553,7 +553,7 @@ const ActionButton = ({ icon, label, active, disabled, onClick }: { icon: ReactN
   </button>
 );
 
-const EpisodeCard = ({ episode, take, previewUrl, loadingPreview, menuOpen, onToggleMenu, onPlay, onRecord, onProject, onEdit, onDownload, onCopy, onDelete }: {
+const EpisodeCard = ({ episode, take, previewUrl, loadingPreview, menuOpen, onToggleMenu, onPlay, onRecord, onProject, onEdit, onDownload, onRename, onPublish, onCopy, onDelete }: {
   episode: Episode;
   take?: Recording;
   previewUrl?: string;
@@ -565,6 +565,8 @@ const EpisodeCard = ({ episode, take, previewUrl, loadingPreview, menuOpen, onTo
   onProject: () => void;
   onEdit: () => void;
   onDownload: () => void;
+  onRename: () => void;
+  onPublish: () => void;
   onCopy: () => void;
   onDelete: () => void;
 }) => (
@@ -592,19 +594,19 @@ const EpisodeCard = ({ episode, take, previewUrl, loadingPreview, menuOpen, onTo
         </div>
         <button onClick={onToggleMenu} className="rounded-md p-2 text-muted-foreground hover:bg-muted" aria-label="Episode actions"><MoreHorizontal className="h-4 w-4" /></button>
       </div>
-      <div className="flex flex-wrap gap-2">
+      <div className="grid grid-cols-2 gap-2">
         <Button size="sm" onClick={onEdit}><Scissors className="mr-1 h-4 w-4" /> Edit</Button>
-        <Button size="sm" variant="secondary" onClick={onProject}><FolderOpen className="mr-1 h-4 w-4" /> Project</Button>
-        <Button size="sm" variant="outline" onClick={onRecord}><Video className="mr-1 h-4 w-4" /> Studio</Button>
+        <Button size="sm" variant="secondary" onClick={onDownload} disabled={!take}><Download className="mr-1 h-4 w-4" /> Download</Button>
+        <Button size="sm" variant="outline" onClick={onRename}><Edit3 className="mr-1 h-4 w-4" /> Rename</Button>
+        <Button size="sm" variant="outline" onClick={onPublish} disabled={!take}><Upload className="mr-1 h-4 w-4" /> Publish</Button>
       </div>
     </div>
     {menuOpen && (
       <div className="absolute right-3 top-[52%] z-10 w-56 rounded-lg border border-border bg-popover p-2 shadow-xl">
-        <MenuItem icon={<FolderOpen />} label="Go to project" onClick={onProject} />
+        <MenuItem icon={<FolderOpen />} label="Open project" onClick={onProject} />
+        <MenuItem icon={<Video />} label="Open studio" onClick={onRecord} />
         <MenuItem icon={<Copy />} label="Copy project link" onClick={onCopy} />
-        <MenuItem icon={<Scissors />} label="Edit video/audio" onClick={onEdit} />
-        <MenuItem icon={<Download />} label="Export download" onClick={onDownload} disabled={!take} />
-        <MenuItem icon={<Trash2 />} label="Remove" onClick={onDelete} danger />
+        <MenuItem icon={<Trash2 />} label="Delete" onClick={onDelete} danger />
       </div>
     )}
   </article>
