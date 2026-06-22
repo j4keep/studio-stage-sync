@@ -637,7 +637,7 @@ function StageLayout({
   );
 
   if (layoutId === "grid2") {
-    return <div className="grid grid-cols-2 gap-1 w-full h-full">{Host}<Guest label="Guest 1" /></div>;
+    return <div className="grid grid-cols-2 gap-1 w-full h-full"><Guest label="Guest 1" />{Host}</div>;
   }
   if (layoutId === "grid3") {
     return <div className="grid grid-cols-3 gap-1 w-full h-full">{Host}<Guest label="Guest 1" /><Guest label="Guest 2" /></div>;
@@ -658,7 +658,7 @@ function StageLayout({
   if (layoutId === "side") {
     return (
       <div className="grid w-full h-full" style={{ gridTemplateColumns: "1fr 25%", gap: 4 }}>
-        {Host}
+        <Guest label="Guest 1" />
         <div className="grid grid-rows-3 gap-1"><Guest label="G1" /><Guest label="G2" /><Guest label="G3" /></div>
       </div>
     );
@@ -666,12 +666,19 @@ function StageLayout({
   if (layoutId === "stage") {
     return (
       <div className="grid w-full h-full" style={{ gridTemplateRows: "1fr 25%", gap: 4 }}>
-        {Host}
-        <div className="grid grid-cols-3 gap-1"><Guest label="G1" /><Guest label="G2" /><Guest label="G3" /></div>
+        <Guest label="Guest 1" />
+        <div className="grid grid-cols-3 gap-1">{Host}<Guest label="G2" /><Guest label="G3" /></div>
       </div>
     );
   }
-  return Host;
+  return (
+    <div className="relative w-full h-full">
+      <Guest label="Guest 1" />
+      <div className="absolute bottom-3 right-3 w-1/4 aspect-video rounded-lg overflow-hidden border-2 border-white/30 shadow-xl">
+        {Host}
+      </div>
+    </div>
+  );
 }
 
 /* --------------------------- Transport Controls ------------------------- */
