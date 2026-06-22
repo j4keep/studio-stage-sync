@@ -53,12 +53,12 @@ const BottomNav = () => {
       <button
         key={tab.path}
         onClick={() => navigate(tab.path)}
-        className={`relative flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg transition-all duration-200 ${
+        className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-lg transition-all duration-200 ${
           active ? "text-primary" : "text-muted-foreground hover:text-foreground"
         }`}
       >
         <Icon className={`w-5 h-5 transition-all ${active ? "drop-shadow-[0_0_8px_hsl(var(--primary)/0.55)]" : ""}`} />
-        <span className={`text-[10px] font-medium ${active ? "text-glow" : ""}`}>{tab.label}</span>
+        <span className={`text-[10px] font-medium leading-tight ${active ? "text-glow" : ""}`}>{tab.label}</span>
       </button>
     );
   };
@@ -70,18 +70,20 @@ const BottomNav = () => {
           hidden ? "translate-y-full" : "translate-y-0"
         }`}
       >
-        <div className="flex items-center justify-around py-2 px-1 max-w-lg mx-auto gap-0">
+        <div className="flex items-stretch py-2 px-2 max-w-lg mx-auto gap-1">
           {left.map(renderTab)}
 
-          {/* Center neon @ create button */}
-          <button
-            onClick={() => setShowCreate(true)}
-            aria-label="Create"
-            className="relative -mt-5 flex items-center justify-center w-12 h-12 rounded-full bg-background border border-primary/60 text-primary shadow-[0_0_18px_hsl(var(--primary)/0.65)] hover:shadow-[0_0_26px_hsl(var(--primary)/0.85)] transition-shadow"
-          >
-            <AtSign className="w-5 h-5 drop-shadow-[0_0_6px_hsl(var(--primary))]" />
-            <span className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-primary/40 animate-pulse" />
-          </button>
+          {/* Center neon @ create button — sized to match a tab slot so others stay aligned */}
+          <div className="flex-1 flex items-center justify-center">
+            <button
+              onClick={() => setShowCreate(true)}
+              aria-label="Create"
+              className="relative flex items-center justify-center w-12 h-12 rounded-full bg-background border border-primary/60 text-primary shadow-[0_0_18px_hsl(var(--primary)/0.65)] hover:shadow-[0_0_26px_hsl(var(--primary)/0.85)] transition-shadow"
+            >
+              <AtSign className="w-5 h-5 drop-shadow-[0_0_6px_hsl(var(--primary))]" />
+              <span className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-primary/40 animate-pulse" />
+            </button>
+          </div>
 
           {right.map(renderTab)}
         </div>
