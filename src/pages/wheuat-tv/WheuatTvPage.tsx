@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Upload, Trash2, Film, Mic2, Music, Eye, Play, Loader2 } from "lucide-react";
+import { ArrowLeft, Upload, Trash2, Film, Mic2, Music, Eye, Play, Loader2, Pencil, ImagePlus, Save, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
