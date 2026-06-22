@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { Play, Pause, TrendingUp, Music, DollarSign, Headphones, Radio, Building2, ShoppingBag, Swords } from "lucide-react";
+import { Play, Pause, TrendingUp, Headphones, Heart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
