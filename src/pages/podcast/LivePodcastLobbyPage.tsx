@@ -130,6 +130,20 @@ const LivePodcastLobbyPage = () => {
     setLocalFinals((rs) => rs.map((r) => r.id === rec.id ? { ...r, title: next.trim() } : r));
   };
 
+  const publishLocalToTv = async (rec: FinalRecording) => {
+    await WheuatTv.add({
+      kind: "podcast",
+      title: rec.title,
+      uploaderId: user?.id ?? "anon",
+      uploaderName: user?.user_metadata?.display_name || user?.email?.split("@")[0] || rec.hostName || "Host",
+      blob: rec.blob,
+      mime: rec.mime,
+      ext: rec.ext,
+      durationMs: rec.durationMs,
+    });
+    toast({ title: "Published to WHEUAT.TV", description: rec.title });
+  };
+
   const load = async () => {
     if (!user) return;
     setLoading(true);
@@ -248,6 +262,13 @@ const LivePodcastLobbyPage = () => {
     if (!confirm("Delete this episode and its saved recording?")) return;
     await supabase.from("podcast_episodes").delete().eq("id", id);
     setOpenMenu(null);
+    load();
+  };
+
+  const renameEpisode = async (episode: Episode) => {
+    const next = prompt("Rename project", episode.title);
+    if (!next || next.trim() === episode.title) return;
+    await supabase.from("podcast_episodes").update({ title: next.trim() }).eq("id", episode.id);
     load();
   };
 
