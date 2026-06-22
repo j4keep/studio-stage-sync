@@ -82,7 +82,7 @@ const FeedPage = () => {
           </button>
         </div>
 
-        <div className="mt-4 flex items-center justify-between gap-1 overflow-x-auto scrollbar-hide">
+        <div className="mt-4 grid w-full grid-cols-5 gap-1">
             {TABS.map((tab) => {
               const active = activeTab === tab.id;
               return (
@@ -92,7 +92,7 @@ const FeedPage = () => {
                     if (tab.route) navigate(tab.route);
                     else setActiveTab(tab.id);
                   }}
-                  className={`shrink-0 inline-flex items-center rounded-full px-3 py-1.5 text-[12px] font-bold backdrop-blur-md transition-all ${
+                  className={`min-w-0 inline-flex items-center justify-center rounded-full px-1.5 py-1.5 text-[11px] font-bold backdrop-blur-md transition-all ${
                     active ? "bg-white/30 text-white shadow-lg" : "bg-white/18 text-white/90"
                   }`}
                 >
