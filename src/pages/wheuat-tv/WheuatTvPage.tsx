@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Upload, Trash2, Film, Mic2, Music, Eye, Play } from "lucide-react";
+import { ArrowLeft, Upload, Trash2, Film, Mic2, Music, Eye, Play, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -30,22 +30,23 @@ const WheuatTvPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
-  const userId = user?.id ?? "anon";
-  const userName = user?.user_metadata?.display_name || user?.email?.split("@")[0] || "You";
+  const userId = user?.id ?? null;
 
-  const [items, setItems] = useState<WheuatTvItem[]>(() => WheuatTv.list());
+  const [items, setItems] = useState<WheuatTvItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["id"]>("all");
   const [uploadKind, setUploadKind] = useState<WheuatTvKind>("short-film");
-  const [playingId, setPlayingId] = useState<string | null>(null);
   const [playUrl, setPlayUrl] = useState<string | null>(null);
-  const [commentDraft, setCommentDraft] = useState<Record<string, string>>({});
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const refresh = () => setItems(WheuatTv.list());
+  const refresh = async () => setItems(await WheuatTv.list());
   useEffect(() => {
-    const h = () => refresh();
+    let active = true;
+    (async () => { await refresh(); if (active) setLoading(false); })();
+    const h = () => { refresh(); };
     window.addEventListener("wheuat-tv-updated", h);
-    return () => window.removeEventListener("wheuat-tv-updated", h);
+    return () => { active = false; window.removeEventListener("wheuat-tv-updated", h); };
   }, []);
 
   const filtered = useMemo(
@@ -53,47 +54,26 @@ const WheuatTvPage = () => {
     [items, filter],
   );
 
-  const openPlayer = async (id: string) => {
-    if (playUrl) URL.revokeObjectURL(playUrl);
-    const url = await WheuatTv.getUrl(id);
-    if (!url) { toast({ title: "File missing on this device" }); return; }
-    setPlayingId(id);
-    setPlayUrl(url);
-  };
-  const closePlayer = () => {
-    if (playUrl) URL.revokeObjectURL(playUrl);
-    setPlayUrl(null);
-    setPlayingId(null);
-  };
-
   const handleUpload = async (file: File) => {
+    if (!userId) { toast({ title: "Sign in to publish" }); return; }
     const ext = (file.name.split(".").pop() || "mp4").toLowerCase();
     const title = file.name.replace(/\.[^.]+$/, "").slice(0, 80) || "Untitled";
+    setUploading(true);
     try {
-      await WheuatTv.add({
+      await WheuatTv.publish({
         kind: uploadKind,
         title,
-        uploaderId: userId,
-        uploaderName: userName,
         blob: file,
         mime: file.type || "video/mp4",
         ext,
       });
       toast({ title: "Published to WHEUAT.TV", description: title });
-      refresh();
+      await refresh();
     } catch (e: any) {
       toast({ title: "Upload failed", description: e?.message || String(e), variant: "destructive" });
+    } finally {
+      setUploading(false);
     }
-  };
-
-  const openIncognito = () => {
-    try {
-      sessionStorage.setItem("incognito-feed-window-open", "true");
-      sessionStorage.setItem("incognito-feed-window-minimized", "false");
-      window.dispatchEvent(new Event("storage"));
-      // Reload so the window reads the new sessionStorage on mount
-      window.location.reload();
-    } catch {}
   };
 
   return (
@@ -104,18 +84,17 @@ const WheuatTvPage = () => {
         </button>
         <div className="flex-1">
           <h1 className="text-xl font-display font-bold text-foreground leading-none">WHEUAT.TV</h1>
-          <p className="text-[11px] text-muted-foreground">Creator manager — post or delete your videos</p>
+          <p className="text-[11px] text-muted-foreground">Publish to the public TV feed</p>
         </div>
         <button
-          onClick={openIncognito}
-          title="Pop out incognito feed"
+          onClick={() => navigate("/tv/watch")}
+          title="Browse public feed"
           className="w-9 h-9 rounded-full bg-card border border-border flex items-center justify-center hover:border-primary/50"
         >
           <Eye className="w-4 h-4 text-foreground" />
         </button>
       </div>
 
-      {/* Upload */}
       <div className="rounded-2xl border border-border bg-card p-3 mb-4">
         <label className="block text-[11px] font-semibold text-muted-foreground mb-1.5">Category</label>
         <select
@@ -129,10 +108,11 @@ const WheuatTvPage = () => {
         </select>
         <button
           onClick={() => fileRef.current?.click()}
-          className="w-full h-11 rounded-xl bg-primary text-primary-foreground flex items-center justify-center gap-2 text-sm font-semibold hover:opacity-90"
+          disabled={uploading}
+          className="w-full h-11 rounded-xl bg-primary text-primary-foreground flex items-center justify-center gap-2 text-sm font-semibold hover:opacity-90 disabled:opacity-60"
         >
-          <Upload className="w-4 h-4" />
-          Upload Project
+          {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+          {uploading ? "Uploading…" : "Upload Project"}
         </button>
         <input
           ref={fileRef}
@@ -147,7 +127,6 @@ const WheuatTvPage = () => {
         />
       </div>
 
-      {/* Filters */}
       <div className="flex gap-2 mb-3 overflow-x-auto scrollbar-hide">
         {FILTERS.map((f) => {
           const active = filter === f.id;
@@ -165,8 +144,9 @@ const WheuatTvPage = () => {
         })}
       </div>
 
-      {/* Feed */}
-      {filtered.length === 0 ? (
+      {loading ? (
+        <div className="text-center py-10 text-sm text-muted-foreground">Loading…</div>
+      ) : filtered.length === 0 ? (
         <div className="text-center py-10 text-sm text-muted-foreground">
           Nothing here yet. Upload a video or publish an edited podcast.
         </div>
@@ -174,15 +154,15 @@ const WheuatTvPage = () => {
         <div className="space-y-4">
           {filtered.map((item) => {
             const M = KIND_META[item.kind];
-            const isOwner = item.uploaderId === userId;
+            const isOwner = userId && item.creator.id === userId;
             return (
               <article key={item.id} className="rounded-2xl border border-border bg-card overflow-hidden">
                 <button
-                  onClick={() => openPlayer(item.id)}
+                  onClick={() => setPlayUrl(item.videoUrl)}
                   className="relative w-full aspect-video bg-muted flex items-center justify-center group"
                 >
-                  {item.thumbDataUrl ? (
-                    <img src={item.thumbDataUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                  {item.thumbUrl ? (
+                    <img src={item.thumbUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
                   ) : (
                     <M.Icon className="w-8 h-8 text-muted-foreground" />
                   )}
@@ -197,17 +177,28 @@ const WheuatTvPage = () => {
                   </span>
                 </button>
                 <div className="p-3">
-                  <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start gap-2">
+                    <div className="w-9 h-9 rounded-full bg-primary/15 overflow-hidden flex items-center justify-center text-xs font-bold text-primary shrink-0">
+                      {item.creator.avatarUrl ? (
+                        <img src={item.creator.avatarUrl} alt={item.creator.displayName} className="w-full h-full object-cover" />
+                      ) : (
+                        item.creator.displayName[0]?.toUpperCase() || "A"
+                      )}
+                    </div>
                     <div className="min-w-0">
                       <h3 className="text-sm font-semibold text-foreground truncate">{item.title}</h3>
-                      <p className="text-[11px] text-muted-foreground">{item.uploaderName} · {fmtAgo(item.createdAt)}</p>
+                      <p className="text-[11px] text-muted-foreground">{item.creator.displayName} · {fmtAgo(item.createdAt)}</p>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2 mt-3">
                     {isOwner ? (
                       <button
-                        onClick={async () => { await WheuatTv.remove(item.id); refresh(); }}
+                        onClick={async () => {
+                          if (!confirm(`Delete "${item.title}"?`)) return;
+                          await WheuatTv.remove(item.id, item.videoKey);
+                          await refresh();
+                        }}
                         className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-destructive/10 text-destructive text-xs font-medium hover:bg-destructive/20"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -224,9 +215,8 @@ const WheuatTvPage = () => {
         </div>
       )}
 
-      {/* Player */}
       {playUrl && (
-        <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4" onClick={closePlayer}>
+        <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4" onClick={() => setPlayUrl(null)}>
           <video
             src={playUrl}
             controls
@@ -235,6 +225,13 @@ const WheuatTvPage = () => {
             className="max-w-full max-h-full rounded-xl"
             onClick={(e) => e.stopPropagation()}
           />
+          <button
+            onClick={() => setPlayUrl(null)}
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/15 text-white flex items-center justify-center text-xl"
+            aria-label="Close"
+          >
+            ×
+          </button>
         </div>
       )}
     </div>

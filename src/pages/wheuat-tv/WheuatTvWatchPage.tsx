@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Search, Heart, MessageCircle, Share2, Play, Film, Mic2, Music, Copy, Send, MessageSquareText } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { WheuatTv, type WheuatTvItem, type WheuatTvKind } from "./wheuatTvStore";
+import { WheuatTv, type WheuatTvItem, type WheuatTvKind, type WheuatTvComment } from "./wheuatTvStore";
 
 const KIND_META: Record<WheuatTvKind, { label: string; Icon: typeof Film }> = {
   podcast: { label: "Podcast", Icon: Mic2 },
@@ -30,23 +30,30 @@ const WheuatTvWatchPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
-  const userId = user?.id ?? "anon";
-  const userName = user?.user_metadata?.display_name || user?.email?.split("@")[0] || "Viewer";
 
-  const [items, setItems] = useState<WheuatTvItem[]>(() => WheuatTv.list());
+  const [items, setItems] = useState<WheuatTvItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["id"]>("all");
   const [query, setQuery] = useState("");
-  const [playingId, setPlayingId] = useState<string | null>(null);
   const [playUrl, setPlayUrl] = useState<string | null>(null);
   const [openComments, setOpenComments] = useState<string | null>(null);
   const [openShare, setOpenShare] = useState<string | null>(null);
   const [commentDraft, setCommentDraft] = useState<Record<string, string>>({});
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const [commentsByPost, setCommentsByPost] = useState<Record<string, WheuatTvComment[]>>({});
+
+  const refresh = async () => {
+    setItems(await WheuatTv.list());
+  };
 
   useEffect(() => {
-    const h = () => setItems(WheuatTv.list());
+    let active = true;
+    (async () => {
+      await refresh();
+      if (active) setLoading(false);
+    })();
+    const h = () => { refresh(); };
     window.addEventListener("wheuat-tv-updated", h);
-    return () => window.removeEventListener("wheuat-tv-updated", h);
+    return () => { active = false; window.removeEventListener("wheuat-tv-updated", h); };
   }, []);
 
   const filtered = useMemo(() => {
@@ -56,43 +63,49 @@ const WheuatTvWatchPage = () => {
       if (!q) return true;
       return (
         i.title.toLowerCase().includes(q) ||
-        i.uploaderName.toLowerCase().includes(q) ||
+        i.creator.displayName.toLowerCase().includes(q) ||
         KIND_META[i.kind].label.toLowerCase().includes(q)
       );
     });
   }, [items, filter, query]);
 
-  const openPlayer = async (id: string) => {
-    if (playUrl) URL.revokeObjectURL(playUrl);
-    const url = await WheuatTv.getUrl(id);
-    if (!url) {
-      toast({ title: "Video unavailable", description: "This file isn't cached on this device." });
-      return;
+  const toggleLike = async (id: string) => {
+    if (!user) { toast({ title: "Sign in to like" }); return; }
+    // optimistic
+    setItems((rs) => rs.map((r) => r.id === id ? {
+      ...r,
+      likedByMe: !r.likedByMe,
+      likes: r.likes + (r.likedByMe ? -1 : 1),
+    } : r));
+    await WheuatTv.toggleLike(id);
+  };
+
+  const openCommentsFor = async (id: string) => {
+    if (openComments === id) { setOpenComments(null); return; }
+    setOpenComments(id);
+    if (!commentsByPost[id]) {
+      const list = await WheuatTv.listComments(id);
+      setCommentsByPost((m) => ({ ...m, [id]: list }));
     }
-    setPlayingId(id);
-    setPlayUrl(url);
-  };
-  const closePlayer = () => {
-    if (playUrl) URL.revokeObjectURL(playUrl);
-    setPlayUrl(null);
-    setPlayingId(null);
   };
 
-  const toggleLike = (id: string) => {
-    WheuatTv.toggleLike(id, userId);
-    setItems(WheuatTv.list());
-  };
-
-  const submitComment = (id: string) => {
+  const submitComment = async (id: string) => {
     const text = (commentDraft[id] || "").trim();
     if (!text) return;
-    WheuatTv.addComment(id, { userId, userName, text });
-    setCommentDraft((d) => ({ ...d, [id]: "" }));
-    setItems(WheuatTv.list());
+    if (!user) { toast({ title: "Sign in to comment" }); return; }
+    try {
+      await WheuatTv.addComment(id, text);
+      setCommentDraft((d) => ({ ...d, [id]: "" }));
+      const list = await WheuatTv.listComments(id);
+      setCommentsByPost((m) => ({ ...m, [id]: list }));
+      setItems((rs) => rs.map((r) => r.id === id ? { ...r, commentCount: list.length } : r));
+    } catch (e: any) {
+      toast({ title: "Could not post", description: e?.message || String(e), variant: "destructive" });
+    }
   };
 
   const shareUrl = (item: WheuatTvItem) =>
-    `${window.location.origin}${window.location.pathname}#/tv/watch?v=${item.id}`;
+    `${window.location.origin}/tv/watch?v=${item.id}`;
 
   const doShare = async (item: WheuatTvItem, channel: "copy" | "whatsapp" | "sms" | "native") => {
     const url = shareUrl(item);
@@ -105,9 +118,7 @@ const WheuatTvWatchPage = () => {
     } else if (channel === "sms") {
       window.location.href = `sms:?&body=${encodeURIComponent(`${text} ${url}`)}`;
     } else if (channel === "native" && (navigator as any).share) {
-      try {
-        await (navigator as any).share({ title: item.title, text, url });
-      } catch {}
+      try { await (navigator as any).share({ title: item.title, text, url }); } catch {}
     }
     setOpenShare(null);
   };
@@ -124,7 +135,6 @@ const WheuatTvWatchPage = () => {
         </div>
       </div>
 
-      {/* Search */}
       <div className="relative mb-3">
         <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
         <input
@@ -135,7 +145,6 @@ const WheuatTvWatchPage = () => {
         />
       </div>
 
-      {/* Filters */}
       <div className="flex gap-2 mb-4 overflow-x-auto scrollbar-hide">
         {FILTERS.map((f) => {
           const active = filter === f.id;
@@ -153,7 +162,9 @@ const WheuatTvWatchPage = () => {
         })}
       </div>
 
-      {filtered.length === 0 ? (
+      {loading ? (
+        <div className="text-center py-12 text-sm text-muted-foreground">Loading…</div>
+      ) : filtered.length === 0 ? (
         <div className="text-center py-12 text-sm text-muted-foreground">
           {query ? "No matches." : "Nothing posted yet."}
         </div>
@@ -161,15 +172,14 @@ const WheuatTvWatchPage = () => {
         <div className="space-y-4">
           {filtered.map((item) => {
             const M = KIND_META[item.kind];
-            const liked = item.likes.includes(userId);
             return (
               <article key={item.id} className="rounded-2xl border border-border bg-card overflow-hidden">
                 <button
-                  onClick={() => openPlayer(item.id)}
+                  onClick={() => setPlayUrl(item.videoUrl)}
                   className="relative w-full aspect-video bg-muted flex items-center justify-center group"
                 >
-                  {item.thumbDataUrl ? (
-                    <img src={item.thumbDataUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                  {item.thumbUrl ? (
+                    <img src={item.thumbUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
                   ) : (
                     <M.Icon className="w-8 h-8 text-muted-foreground" />
                   )}
@@ -186,19 +196,23 @@ const WheuatTvWatchPage = () => {
                 <div className="p-3">
                   <div className="flex items-start gap-2">
                     <button
-                      onClick={() => navigate(`/artist/${item.uploaderId}`)}
-                      className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary shrink-0"
-                      aria-label={`Open ${item.uploaderName} profile`}
+                      onClick={() => navigate(`/artist/${item.creator.id}`)}
+                      className="w-9 h-9 rounded-full bg-primary/15 overflow-hidden flex items-center justify-center text-xs font-bold text-primary shrink-0"
+                      aria-label={`Open ${item.creator.displayName} profile`}
                     >
-                      {item.uploaderName[0]?.toUpperCase() || "A"}
+                      {item.creator.avatarUrl ? (
+                        <img src={item.creator.avatarUrl} alt={item.creator.displayName} className="w-full h-full object-cover" />
+                      ) : (
+                        item.creator.displayName[0]?.toUpperCase() || "A"
+                      )}
                     </button>
                     <div className="min-w-0 flex-1">
                       <h3 className="text-sm font-semibold text-foreground truncate">{item.title}</h3>
                       <button
-                        onClick={() => navigate(`/artist/${item.uploaderId}`)}
+                        onClick={() => navigate(`/artist/${item.creator.id}`)}
                         className="text-[11px] text-muted-foreground hover:text-foreground"
                       >
-                        {item.uploaderName} · {fmtAgo(item.createdAt)}
+                        {item.creator.displayName} · {fmtAgo(item.createdAt)}
                       </button>
                     </div>
                   </div>
@@ -207,18 +221,18 @@ const WheuatTvWatchPage = () => {
                     <button
                       onClick={() => toggleLike(item.id)}
                       className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-medium border ${
-                        liked ? "bg-primary text-primary-foreground border-primary" : "bg-background border-border text-foreground"
+                        item.likedByMe ? "bg-primary text-primary-foreground border-primary" : "bg-background border-border text-foreground"
                       }`}
                     >
-                      <Heart className={`w-3.5 h-3.5 ${liked ? "fill-current" : ""}`} />
-                      {item.likes.length}
+                      <Heart className={`w-3.5 h-3.5 ${item.likedByMe ? "fill-current" : ""}`} />
+                      {item.likes}
                     </button>
                     <button
-                      onClick={() => setOpenComments(openComments === item.id ? null : item.id)}
+                      onClick={() => openCommentsFor(item.id)}
                       className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-medium bg-background border border-border text-foreground"
                     >
                       <MessageCircle className="w-3.5 h-3.5" />
-                      {item.comments.length}
+                      {item.commentCount}
                     </button>
                     <button
                       onClick={() => setOpenShare(openShare === item.id ? null : item.id)}
@@ -245,12 +259,12 @@ const WheuatTvWatchPage = () => {
 
                   {openComments === item.id && (
                     <div className="mt-3 space-y-2">
-                      {item.comments.length === 0 && (
+                      {(commentsByPost[item.id] || []).length === 0 && (
                         <p className="text-[11px] text-muted-foreground">Be the first to comment.</p>
                       )}
-                      {item.comments.map((c) => (
+                      {(commentsByPost[item.id] || []).map((c) => (
                         <div key={c.id} className="text-[12px] text-foreground">
-                          <span className="font-semibold">{c.userName}</span>{" "}
+                          <span className="font-semibold">{c.author.displayName}</span>{" "}
                           <span className="text-muted-foreground">{c.text}</span>
                         </div>
                       ))}
@@ -279,9 +293,8 @@ const WheuatTvWatchPage = () => {
       )}
 
       {playUrl && (
-        <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4" onClick={closePlayer}>
+        <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4" onClick={() => setPlayUrl(null)}>
           <video
-            ref={videoRef}
             src={playUrl}
             controls
             autoPlay
@@ -289,6 +302,13 @@ const WheuatTvWatchPage = () => {
             className="max-w-full max-h-full rounded-xl"
             onClick={(e) => e.stopPropagation()}
           />
+          <button
+            onClick={() => setPlayUrl(null)}
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/15 text-white flex items-center justify-center text-xl"
+            aria-label="Close"
+          >
+            ×
+          </button>
         </div>
       )}
     </div>
