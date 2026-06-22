@@ -84,13 +84,14 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
       try {
         await video.play();
         setIsPlaying(true);
+        onChromeHiddenChange?.(true);
       } catch {
         setIsPlaying(false);
       }
     };
 
     playVideo();
-  }, [isActive, post.media_type]);
+  }, [isActive, post.media_type, onChromeHiddenChange]);
 
   useEffect(() => {
     if (!viewCounted && isActive && post.id) {
@@ -272,7 +273,6 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
 
   const toggleNav = useCallback((hidden: boolean) => {
     onChromeHiddenChange?.(hidden);
-    window.dispatchEvent(new CustomEvent("feed-nav-toggle", { detail: { hidden } }));
   }, [onChromeHiddenChange]);
 
   const handleContentTap = useCallback(() => {
@@ -284,6 +284,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
       if (!liked) likeMutation.mutate();
       setShowHeart(true);
       setTimeout(() => setShowHeart(false), 800);
+      toggleNav(true);
       lastTapRef.current = 0;
       return;
     }
@@ -296,9 +297,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
           setIsPlaying(true);
           toggleNav(true);
         } else {
-          videoRef.current.pause();
-          setIsPlaying(false);
-          toggleNav(false);
+          toggleNav(!chromeHidden);
         }
       } else if (post.media_type === "image" || post.media_url) {
         toggleNav(!chromeHidden);
