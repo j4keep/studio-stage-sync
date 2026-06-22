@@ -2,31 +2,49 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Search, MoreVertical, Volume2, Radio as RadioIcon, Swords, Tv, Music2, Heart } from "lucide-react";
 import FeedPostCard from "@/components/feed/FeedPostCard";
 import CreatePostSheet from "@/components/feed/CreatePostSheet";
 import { fetchFeedItems } from "@/lib/feed-items";
 
 type TabId = "radio" | "battle" | "songs" | "wheuat-tv" | "support";
-const TABS: { id: TabId; label: string; route?: string; icon: typeof RadioIcon }[] = [
+const TABS: { id: TabId; label: string; route: string; icon: typeof RadioIcon }[] = [
   { id: "radio", label: "Radio", route: "/radio", icon: RadioIcon },
   { id: "battle", label: "Battle", route: "/battles", icon: Swords },
   { id: "songs", label: "Songs", route: "/browse-songs", icon: Music2 },
-  { id: "wheuat-tv", label: "WHEUAT.TV", icon: Tv },
-  { id: "support", label: "Creator Support", route: "/dollar-club", icon: Heart },
+  { id: "wheuat-tv", label: "TV", route: "/tv/watch", icon: Tv },
+  { id: "support", label: "Support", route: "/dollar-club", icon: Heart },
 ];
+
+interface TrendingCreator {
+  user_id: string;
+  display_name: string | null;
+  avatar_url: string | null;
+}
 
 const FeedPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [showCreate, setShowCreate] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabId>("wheuat-tv");
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ["feed-posts"],
     queryFn: () => fetchFeedItems({ currentUserId: user?.id }),
+  });
+
+  const { data: trending = [] } = useQuery<TrendingCreator[]>({
+    queryKey: ["trending-creators"],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("profiles")
+        .select("user_id, display_name, avatar_url")
+        .order("created_at", { ascending: false })
+        .limit(12);
+      return (data as TrendingCreator[]) || [];
+    },
   });
 
   const feedPosts = items.filter((item: any) => item.itemType === "post");
@@ -40,9 +58,7 @@ const FeedPage = () => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             const index = Number(entry.target.getAttribute("data-index"));
-            if (!Number.isNaN(index)) {
-              setCurrentIndex(index);
-            }
+            if (!Number.isNaN(index)) setCurrentIndex(index);
           }
         });
       },
@@ -54,46 +70,74 @@ const FeedPage = () => {
   }, [feedPosts.length]);
 
   useEffect(() => {
-    if (currentIndex >= feedPosts.length) {
-      setCurrentIndex(0);
-    }
+    if (currentIndex >= feedPosts.length) setCurrentIndex(0);
   }, [currentIndex, feedPosts.length]);
 
   return (
-    <div className="h-[100dvh] w-full bg-black flex flex-col overflow-hidden">
-      <div className="absolute top-0 left-0 right-0 z-50 px-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] pb-4 bg-gradient-to-b from-black/70 via-black/30 to-transparent pointer-events-none">
+    <div className="h-[100dvh] w-full bg-black flex flex-col overflow-hidden relative">
+      {/* Header overlay */}
+      <div className="absolute top-0 left-0 right-0 z-50 px-3 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-2 bg-gradient-to-b from-black/75 via-black/40 to-transparent pointer-events-none">
         <div className="flex items-center justify-between text-white pointer-events-auto">
-          <h1 className="text-[20px] font-extrabold tracking-tight">WHEUAT</h1>
-          <div className="flex items-center gap-1">
-            <button className="w-9 h-9 flex items-center justify-center" aria-label="Volume">
-              <Volume2 className="w-6 h-6" />
+          <h1 className="text-[18px] font-extrabold tracking-tight">WHEUAT</h1>
+          <div className="flex items-center gap-0.5">
+            <button className="w-8 h-8 flex items-center justify-center" aria-label="Volume">
+              <Volume2 className="w-5 h-5" />
             </button>
-            <button onClick={() => navigate("/browse-songs")} className="w-9 h-9 flex items-center justify-center" aria-label="Search">
-              <Search className="w-6 h-6" />
+            <button onClick={() => navigate("/browse-songs")} className="w-8 h-8 flex items-center justify-center" aria-label="Search">
+              <Search className="w-5 h-5" />
             </button>
-            <button className="w-9 h-9 flex items-center justify-center" aria-label="More">
-              <MoreVertical className="w-6 h-6" />
+            <button className="w-8 h-8 flex items-center justify-center" aria-label="More">
+              <MoreVertical className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        <div className="mt-3 flex items-center gap-2 overflow-x-auto scrollbar-hide pointer-events-auto -mx-1 px-1">
+        {/* Trending creators strip */}
+        {trending.length > 0 && (
+          <div className="mt-1.5 flex items-center gap-2 overflow-x-auto scrollbar-hide pointer-events-auto -mx-1 px-1">
+            <button
+              onClick={() => navigate("/profile")}
+              className="shrink-0 flex flex-col items-center gap-0.5"
+              aria-label="Pitch your profile"
+            >
+              <div className="w-10 h-10 rounded-full ring-2 ring-primary flex items-center justify-center bg-black/60 text-white text-lg">+</div>
+              <span className="text-[9px] text-white/80 leading-none">Pitch</span>
+            </button>
+            {trending.map((c) => (
+              <button
+                key={c.user_id}
+                onClick={() => navigate(`/artist/${c.user_id}`)}
+                className="shrink-0 flex flex-col items-center gap-0.5 w-12"
+              >
+                <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-white/30 bg-white/10">
+                  {c.avatar_url ? (
+                    <img src={c.avatar_url} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-white text-xs font-bold">
+                      {(c.display_name || "?")[0]?.toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                <span className="text-[9px] text-white/80 leading-none truncate w-full text-center">
+                  {c.display_name || "Artist"}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Compact pill row — fits without horizontal scroll */}
+        <div className="mt-2 grid grid-cols-5 gap-1 pointer-events-auto">
           {TABS.map((tab) => {
-            const active = activeTab === tab.id;
             const Icon = tab.icon;
             return (
               <button
                 key={tab.id}
-                onClick={() => {
-                  if (tab.route) navigate(tab.route);
-                  else setActiveTab(tab.id);
-                }}
-                className={`shrink-0 inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold backdrop-blur-md border border-white/15 transition-all ${
-                  active ? "bg-white/30 text-white" : "bg-white/15 text-white/95"
-                }`}
+                onClick={() => navigate(tab.route)}
+                className="inline-flex flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1 bg-white/15 backdrop-blur-md border border-white/15 text-white/95 active:bg-white/25"
               >
-                <Icon className="w-3.5 h-3.5" />
-                <span className="whitespace-nowrap">{tab.label}</span>
+                <Icon className="w-4 h-4" />
+                <span className="text-[9px] font-semibold leading-none">{tab.label}</span>
               </button>
             );
           })}
@@ -132,7 +176,6 @@ const FeedPage = () => {
           ))
         )}
       </div>
-
 
       <CreatePostSheet open={showCreate} onClose={() => setShowCreate(false)} />
     </div>

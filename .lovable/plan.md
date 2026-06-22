@@ -1,100 +1,72 @@
+## Scope
 
-# Live Podcast Studio (Riverside-style)
+This is a large multi-area pass. I'll do it in one go, but breaking it into clear sections so you can confirm I understood before I touch code. Nothing here changes Podcast/DAW/LiveKit/backend logic except the specific UI fixes you called out.
 
-A full podcast recording, editing, AI repurposing, and live-streaming product, added as a "Live Podcast" card on the TV page. Everything else in the app stays untouched.
+---
 
-## What the user gets
+### 1. Homepage (Feed) — top pills + header
 
-**Lobby (host)**
-- Create a new episode (title, cover, description)
-- Pick mic, camera, speaker; live preview tile
-- One-click "Start recording"
-- Copy guest invite link (no install, opens in any browser)
-- Library of past episodes with status (Recording / Processing / Ready)
+- Replace long text pills (Radio, Battle, Songs, WHEUAT.TV, Creator Support) with **compact icons + short labels** so they fit on one row without horizontal scroll and no longer overlap the Search / Mute buttons.
+- Make **WHEUAT.TV pill clickable** → opens a new viewer route `/tv/watch` (see #2).
+- Make **Creator Support pill** → routes to `/wstudio` → Support Creators card (see #3), not the Dollar Club page.
+- Restore the **Trending Creators / Pitch Your Profile** header strip above the feed (it lives on HomePage as a header band; FeedPage stays untouched as the scrollable shorts area below it).
+- **Desktop**: constrain feed to a centered phone-sized frame (max ~440px wide) instead of stretching full-screen — same mobile layout, centered on desktop.
 
-**Live room (host + guests)**
-- HD video + audio for every participant via LiveKit Cloud
-- Up to 10 participants
-- Per-participant local recording in their browser (MediaRecorder, 1080p), uploaded in 5-second chunks to R2 — survives Wi-Fi drops, like Riverside
-- Screen share (separate uploaded track)
-- Live chat
-- Producer panel: mute guest, remove guest, end session
+### 2. New WHEUAT.TV Viewer (`/tv/watch`)
 
-**Live streaming (simulcast)**
-- Schedule a stream, attach destinations (YouTube, Twitch, custom RTMP — Facebook/LinkedIn via custom RTMP URL)
-- Go live with one click → LiveKit Egress fans out to all destinations
-- Pull-in chat from YouTube + Twitch (Omnichat), reply once → posts to all
-- Clickable lower-thirds during the stream
+Public viewer for content creators uploaded from the W.Studio → WHEUAT.TV card.
 
-**After recording → Episode page**
-- Auto-uploaded high-quality tracks per participant (video + audio, separately downloadable)
-- Auto-transcript (Lovable AI speech-to-text), word-level timestamps
-- AI: summary, takeaways, suggested titles, soundbites, YouTube-ready chapter markers
-- Magic Audio (noise/reverb reduction) toggle per track
-- Text-based editor: delete words/sentences in the transcript → cuts the video
-- Format switcher: 16:9 / 9:16 / 1:1 with layout presets (stacked, split, picture-in-picture)
-- Animated captions (style presets + custom)
-- Magic Clips: auto-generate 30–60s vertical shorts; topic search ("clips mentioning X")
-- Brand kit: upload intro/outro, default background image, default caption style — applied per format
-- Export to MP4 (per-format) + downloadable per-participant raw tracks
+- Read-only — viewers cannot edit/delete/access the creator card.
+- Search bar at top: searches by artist name, video name, podcast name, category.
+- Category filter chips: **Podcasts / Short Films / Music Videos**.
+- Each video: like, comment, share (WhatsApp, copy link, SMS).
+- Creator avatar → tapping opens that creator's profile (follow button there).
+- The existing W.Studio WHEUAT.TV card remains creator-only (manage/upload/delete).
 
-## Where it lives
+### 3. W.Studio cards cleanup
 
-- New card "Live Podcast" on **TV page** with a studio mic visual
-- Routes: `/podcast` (library), `/podcast/new`, `/podcast/live/:episodeId`, `/podcast/episode/:episodeId` (editor), `/podcast/join/:inviteCode` (guest)
+Final 6 cards: **Live Podcast · WHEUAT.TV · Recording Studio · Store · Studios · Support Creators**
 
-## Tech details
+- Rename **Projects → Support Creators**, point it at the existing Dollar Club page.
+- Delete the standalone **Support Creators** card (now merged into renamed Projects card).
+- **WHEUAT.TV card**: single **Upload Project** button. Remove the separate Podcast / Short Film / Music Videos tabs above — instead, the upload form has a **Category** dropdown (Podcast / Short Film / Music Video).
 
-**WebRTC**: LiveKit Cloud. Server token minting in an edge function (`livekit-token`). Client uses `@livekit/components-react`. Requires secrets `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, `LIVEKIT_URL`.
+### 4. Live Podcast / Project page
 
-**Local-first recording**: each participant's browser runs `MediaRecorder` on its own mic + camera at 1080p VP9/Opus, slices to 5s chunks, multipart-uploads to R2 under `podcast/{episodeId}/{participantId}/{chunkIndex}.webm`. A finalize edge function concatenates chunks (server-side `ffmpeg` via Deno binary or a follow-up Cloudflare Worker — for v1 we keep chunks and stream them as MSE for playback, and use LiveKit Egress for the merged master).
+- Delete the 3 fake/seed episodes on the Projects tab.
+- Project cards get the same buttons as Recent recordings: **Edit · Download · Rename · Delete · Publish to WHEUAT.TV**.
+- Remove the "Publish to WHEUAT.TV" button from the editor — it lives only on the project card.
+- Normalize button sizes — consistent, professional.
+- Live podcast layout: match the post-record editor layout. **Host = small tile, Guest/background = main tile** (currently reversed).
+- Make layout-picker blocks small, polished.
+- Investigate the playback stutter on saved/downloaded recordings (likely encoder/keyframe issue).
 
-**Live streaming**: LiveKit Egress (RoomCompositeEgress) → RTMP outputs. Edge function `livekit-stream-start` / `-stop`.
+### 5. Recording Studio / DAW
 
-**Transcription**: edge function `transcribe-episode` calls `https://ai.gateway.lovable.dev/v1/audio/transcriptions` with `openai/gpt-4o-mini-transcribe`, stores word-level timestamps.
+- Add a **Back arrow** on the Recording Studio page AND inside the DAW that returns to Home.
+- Back button must **not end the session** — only the engineer or the user explicitly ending stops it. Re-entering returns to the live session in progress.
 
-**AI summary/chapters/clips**: edge function `generate-podcast-ai` calls `google/gemini-2.5-pro` via Lovable AI Gateway, returns JSON (summary, takeaways, titles, soundbites with timestamps, chapter list, suggested vertical-clip ranges).
+### 6. Profile page
 
-**Magic Audio**: client-side `AudioWorklet` noise-suppression chain (RNNoise WASM) applied at export time.
+- Delete **Legal Vault** section.
+- Delete **News Feed** section.
 
-**Editor**: text-based timeline. Deleting transcript tokens removes the matching time ranges; export pipeline (client `ffmpeg.wasm` for short clips, edge function with `ffmpeg` for full episodes) re-encodes.
+### 7. Incognito feed window
 
-## Database (new tables)
+- Remove the Incognito launcher from the homepage entirely.
+- Delete the **Open Standalone** button + icon from the incognito window.
+- When the window is in **shrunk** state: hide avatar, name, title text, and the 3-dot menu. Keep Like / Share visible.
 
-- `podcast_episodes` — host_id, title, description, cover_url, status (`scheduled|live|processing|ready`), livekit_room, scheduled_for, started_at, ended_at, duration_seconds, master_video_url, transcript_json, ai_json, brand_kit_id
-- `podcast_participants` — episode_id, user_id (nullable for guests), display_name, role (`host|guest`), invite_code, joined_at, left_at, video_url, audio_url, screen_url
-- `podcast_recordings` — episode_id, participant_id, chunk_index, kind (`camera|mic|screen`), r2_key, started_at, duration_ms, bytes
-- `podcast_clips` — episode_id, kind (`magic_clip|full_episode|short`), format (`16x9|9x16|1x1`), title, start_ms, end_ms, captions_json, export_url, status
-- `podcast_brand_kits` — user_id, intro_url, outro_url, background_url, captions_style_json, default_format
-- `podcast_stream_destinations` — episode_id, platform, rtmp_url, stream_key (encrypted), label
-- `podcast_chat_messages` — episode_id, author, source (`local|youtube|twitch`), text, sent_at
+### 8. Logo concepts (separate, no code)
 
-All tables get GRANTs + RLS scoped to host/participant access.
+I'll generate 3–4 logo concept images for you to pick from. No code changes for this part yet.
 
-## Edge functions (new)
+---
 
-- `livekit-token` — mints room tokens for host/guest
-- `livekit-egress-start` / `livekit-egress-stop` — composite recording + RTMP simulcast
-- `podcast-finalize` — called when episode ends; assembles chunk manifest, kicks off transcribe + AI
-- `transcribe-episode` — Lovable AI speech-to-text
-- `generate-podcast-ai` — summary/chapters/titles/soundbites/clip suggestions
-- `podcast-export-clip` — server-side ffmpeg job for full-episode + 9:16 exports
-- `r2-multipart-init` / `-complete` — chunked upload signing (extending existing `r2-presign`)
+## What I will NOT touch
 
-## Out of scope for v1 (call out)
+- Podcast recording engine, LiveKit signaling, scheduling backend, DAW audio engine, R2 upload pipeline, auth, RLS — only the UI/routing changes listed above.
 
-- Native iOS/Android apps (browser-only; mobile web still works)
-- Real-time on-the-fly noise reduction in the live call (we apply Magic Audio at export instead)
-- 4K capture (browser MediaRecorder maxes at 1080p reliably)
+## Confirm before I build
 
-## What I need from you to start
-
-1. Confirm I should add the LiveKit secrets (I'll prompt you with the secret form).
-2. Confirm you want me to default brand colors / fonts to your existing theme (I will).
-
-After approval, I'll ship in this order:
-1. Secrets + DB migration
-2. Token + invite flow + live room (recording works end-to-end, raw files visible in library)
-3. Transcription + AI summary/chapters
-4. Editor + magic clips + exports
-5. Live streaming (Egress + RTMP destinations + Omnichat)
+Reply **"go"** and I'll execute all 8 sections in one pass. If any item is wrong, tell me which number to change.
