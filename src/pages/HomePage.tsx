@@ -114,9 +114,47 @@ const HomePage = () => {
   return (
     <div className="pb-4">
       {/* Header */}
-      <div className="px-4 pt-4 flex items-center justify-center mb-4">
+      <div className="px-4 pt-4 flex items-center justify-center mb-3">
         <img src={whetuatLogo} alt="WHEUAT" className="h-8 mix-blend-multiply dark:mix-blend-screen" />
       </div>
+
+      {/* Top pill-chip tabs (YouTube Shorts-style) — lives at top of the feed */}
+      <div className="sticky top-0 z-30 bg-background/85 backdrop-blur-md px-3 py-2 border-b border-border/60">
+        <div className="flex items-center gap-2">
+          <div className="flex-1 flex items-center gap-2 overflow-x-auto scrollbar-hide">
+            {FEED_TABS.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => navigate(tab.route)}
+                  className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card/80 border border-border text-foreground text-[12px] font-semibold hover:border-primary/50 hover:text-primary transition-colors"
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+          <button
+            onClick={() => navigate("/dollar-club")}
+            title="Support Creators"
+            aria-label="Support Creators"
+            className="w-8 h-8 shrink-0 rounded-full bg-card border border-border flex items-center justify-center text-primary hover:border-primary/50"
+          >
+            <Heart className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => navigate("/browse-songs")}
+            title="Search"
+            aria-label="Search"
+            className="w-8 h-8 shrink-0 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-foreground"
+          >
+            <Search className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
 
       {/* Trending Creators row */}
       <motion.section {...fadeUp} className="mb-4 px-4">
