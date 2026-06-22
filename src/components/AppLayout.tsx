@@ -19,8 +19,8 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
     (location.pathname.startsWith("/tv/podcast/") && location.pathname !== "/tv/podcast") ||
     location.pathname.startsWith("/podcast/room/");
   const isPodcastLobby = location.pathname === "/tv/podcast";
-  const isFullScreenPage = ["/feed"].includes(location.pathname) || isPodcastWorkspace || isPodcastLobby;
-  const showTopBar = !["/auth", "/feed"].includes(location.pathname) && !isPodcastWorkspace && !isPodcastLobby;
+  const isFullScreenPage = ["/", "/feed"].includes(location.pathname) || isPodcastWorkspace || isPodcastLobby;
+  const showTopBar = !["/auth", "/", "/feed"].includes(location.pathname) && !isPodcastWorkspace && !isPodcastLobby;
 
   const handleAskJhi = () => {
     if (!isPro) {
