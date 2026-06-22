@@ -189,7 +189,7 @@ export const WheuatTv = {
     const profileMap = await fetchProfileMap([user.id]);
     return {
       id: data.id,
-      kind: data.kind,
+      kind: data.kind as WheuatTvKind,
       title: data.title,
       description: data.description,
       videoUrl: data.video_url,
