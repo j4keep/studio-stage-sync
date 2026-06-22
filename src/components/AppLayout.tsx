@@ -41,8 +41,10 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
     }
 
     return (
-      <div className="min-h-screen bg-black text-foreground max-w-lg mx-auto relative">
-        {children}
+      <div className="fixed inset-0 bg-black text-foreground overflow-hidden">
+        <div className="relative h-[100dvh] w-full overflow-hidden bg-black">
+          {children}
+        </div>
         <GlobalRadioPlayer />
         <GlobalPlaylistPlayer />
         <PlaylistPlayerSheet />

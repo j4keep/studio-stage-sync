@@ -2,18 +2,18 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
-import { Search, Plus, Heart } from "lucide-react";
+import { ChevronLeft, Search, Heart, MoreVertical, Radio as RadioIcon, Swords, Tv, Music2, ShoppingBag } from "lucide-react";
 import FeedPostCard from "@/components/feed/FeedPostCard";
 import CreatePostSheet from "@/components/feed/CreatePostSheet";
 import { fetchFeedItems } from "@/lib/feed-items";
 
 type TabId = "radio" | "battle" | "wheuat-tv" | "songs" | "shop";
-const TABS: { id: TabId; label: string; route?: string }[] = [
-  { id: "radio", label: "Radio", route: "/radio" },
-  { id: "battle", label: "Battle", route: "/battles" },
-  { id: "wheuat-tv", label: "WHEUAT.TV" },
-  { id: "songs", label: "Songs", route: "/browse-songs" },
-  { id: "shop", label: "Shop", route: "/store" },
+const TABS: { id: TabId; label: string; route?: string; icon: typeof RadioIcon }[] = [
+  { id: "radio", label: "Radio", route: "/radio", icon: RadioIcon },
+  { id: "battle", label: "Battle", route: "/battles", icon: Swords },
+  { id: "wheuat-tv", label: "WHEUAT.TV", icon: Tv },
+  { id: "songs", label: "Songs", route: "/browse-songs", icon: Music2 },
+  { id: "shop", label: "Shop", route: "/store", icon: ShoppingBag },
 ];
 
 const FeedPage = () => {
@@ -60,19 +60,32 @@ const FeedPage = () => {
   }, [currentIndex, feedPosts.length]);
 
   return (
-    <div className="h-screen bg-black flex flex-col overflow-hidden">
-      <div className="absolute top-0 left-0 right-0 z-50 pt-10 pb-2 px-3 bg-gradient-to-b from-black/70 to-transparent">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowCreate(true)}
-            className="w-9 h-9 shrink-0 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center"
-          >
-            <Plus className="w-5 h-5 text-white" />
+    <div className="h-[100dvh] w-full bg-black flex flex-col overflow-hidden">
+      <div className="absolute top-0 left-0 right-0 z-50 px-4 pt-[calc(env(safe-area-inset-top)+0.75rem)] pb-6 bg-gradient-to-b from-black/70 via-black/30 to-transparent">
+        <div className="flex items-center gap-3 text-white">
+          <button onClick={() => navigate("/")} className="w-9 h-9 shrink-0 flex items-center justify-center" aria-label="Back home">
+            <ChevronLeft className="w-8 h-8" />
           </button>
+          <h1 className="flex-1 text-[22px] font-bold tracking-normal">WHEUAT.TV</h1>
+          <button
+            onClick={() => navigate("/dollar-club")}
+            title="Support Creators"
+            className="w-9 h-9 shrink-0 flex items-center justify-center"
+          >
+            <Heart className="w-6 h-6" />
+          </button>
+          <button onClick={() => navigate("/browse-songs")} className="w-9 h-9 shrink-0 flex items-center justify-center" aria-label="Search">
+            <Search className="w-7 h-7" />
+          </button>
+          <button className="w-8 h-9 shrink-0 flex items-center justify-center" aria-label="More">
+            <MoreVertical className="w-6 h-6" />
+          </button>
+        </div>
 
-          <div className="flex-1 flex items-center gap-1 overflow-x-auto scrollbar-hide">
+        <div className="mt-4 flex items-center gap-3 overflow-x-auto scrollbar-hide">
             {TABS.map((tab) => {
               const active = activeTab === tab.id;
+              const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
@@ -80,43 +93,29 @@ const FeedPage = () => {
                     if (tab.route) navigate(tab.route);
                     else setActiveTab(tab.id);
                   }}
-                  className={`shrink-0 px-3 py-1.5 rounded-full text-[12px] font-semibold transition-all ${
-                    active ? "text-white border-b-2 border-white" : "text-white/60"
+                  className={`shrink-0 inline-flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-bold backdrop-blur-md transition-all ${
+                    active ? "bg-white/30 text-white shadow-lg" : "bg-white/18 text-white/90"
                   }`}
                 >
+                  <Icon className="w-4 h-4" />
                   {tab.label}
                 </button>
               );
             })}
-          </div>
-
-          <button
-            onClick={() => navigate("/dollar-club")}
-            title="Support Creators"
-            className="w-9 h-9 shrink-0 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-primary"
-          >
-            <Heart className="w-5 h-5" />
-          </button>
-          <button
-            onClick={() => navigate("/browse-songs")}
-            className="w-9 h-9 shrink-0 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center"
-          >
-            <Search className="w-5 h-5 text-white" />
-          </button>
         </div>
       </div>
 
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-scroll snap-y snap-mandatory scrollbar-hide"
+        className="h-full overflow-y-scroll snap-y snap-mandatory scrollbar-hide"
         style={{ scrollSnapType: "y mandatory" }}
       >
         {isLoading ? (
-          <div className="h-screen flex items-center justify-center snap-start">
+          <div className="h-[100dvh] flex items-center justify-center snap-start">
             <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
         ) : feedPosts.length === 0 ? (
-          <div className="h-screen flex flex-col items-center justify-center snap-start gap-3">
+          <div className="h-[100dvh] flex flex-col items-center justify-center snap-start gap-3">
             <p className="text-white/60 text-sm">No posts yet</p>
             <button
               onClick={() => setShowCreate(true)}
@@ -130,7 +129,7 @@ const FeedPage = () => {
             <div
               key={item.id}
               data-index={index}
-              className="h-screen w-full snap-start snap-always relative"
+              className="h-[100dvh] w-full snap-start snap-always relative"
               style={{ scrollSnapAlign: "start" }}
             >
               <FeedPostCard post={item} currentUserId={user?.id} isActive={index === currentIndex} />
