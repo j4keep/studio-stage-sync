@@ -91,8 +91,8 @@ type CaptionStyle = "clean" | "bold" | "subtitle" | "karaoke";
 
 const pickMime = () => {
   const opts = [
-    "video/webm;codecs=vp9,opus",
     "video/webm;codecs=vp8,opus",
+    "video/webm;codecs=vp9,opus",
     "video/webm",
     "video/mp4",
   ];
@@ -470,7 +470,7 @@ const PodcastRoomPage = () => {
       const composite = buildCompositeStream(() => participantsRef.current);
       compositeRef.current = composite;
 
-      const rec = new MediaRecorder(composite.stream, { mimeType: mime, videoBitsPerSecond: 3_500_000 });
+      const rec = new MediaRecorder(composite.stream, { mimeType: mime, videoBitsPerSecond: 2_500_000, audioBitsPerSecond: 128_000 });
       rec.ondataavailable = async (e) => {
         if (!e.data?.size) return;
         try { await handle.appendChunk(e.data, chunkIndexRef.current++); }
@@ -509,7 +509,7 @@ const PodcastRoomPage = () => {
 
       startedAtRef.current = Date.now();
       pausedAccumRef.current = 0;
-      rec.start(10_000);
+      rec.start(1_000);
       recorderRef.current = rec;
       setIsRecording(true);
       setIsPaused(false);
