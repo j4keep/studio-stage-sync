@@ -12,6 +12,7 @@ const BottomNav = () => {
   const [hidden, setHidden] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const isFeed = location.pathname === "/feed";
+  const isImmersiveFeed = isFeed || location.pathname === "/";
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -68,7 +69,7 @@ const BottomNav = () => {
     <>
       <nav
         className={`fixed bottom-0 left-0 right-0 z-50 border-t backdrop-blur-xl safe-area-bottom transition-transform duration-300 ${
-          isFeed ? "border-white/10 bg-black/90" : "border-border bg-background/90"
+          isImmersiveFeed ? "border-white/10 bg-black/90" : "border-border bg-background/90"
         } ${
           hidden ? "translate-y-full" : "translate-y-0"
         }`}

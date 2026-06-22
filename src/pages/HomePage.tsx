@@ -181,7 +181,7 @@ const HomePage = () => {
       </motion.section>
 
       {/* Full-screen swipe feed */}
-      <section className="relative h-[calc(100dvh-5rem)] min-h-[620px] w-full overflow-hidden bg-black">
+      <section className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] h-[100dvh] w-screen overflow-hidden bg-black">
         <div className="pointer-events-none absolute left-0 right-0 top-0 z-40 h-32 bg-gradient-to-b from-black/75 via-black/35 to-transparent" />
         <div className="absolute left-0 right-0 top-0 z-50 px-3 pt-3">
           <div className="mb-3 flex items-center justify-end gap-3 text-white">
@@ -235,7 +235,7 @@ const HomePage = () => {
           </div>
         ) : (
           feedPosts.map((item: any, index: number) => (
-            <div key={item.id} data-index={index} className="relative h-full w-full snap-start snap-always" style={{ scrollSnapAlign: "start" }}>
+            <div key={item.id} data-index={index} className="relative h-[100dvh] w-full snap-start snap-always" style={{ scrollSnapAlign: "start" }}>
               <FeedPostCard post={item} currentUserId={user?.id} isActive={index === currentIndex} />
             </div>
           ))
