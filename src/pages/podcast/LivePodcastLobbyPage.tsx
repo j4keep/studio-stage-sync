@@ -453,6 +453,22 @@ const LivePodcastLobbyPage = () => {
                           onProject={() => navigate(`/tv/podcast/${episode.id}/edit`)}
                           onEdit={() => take ? navigate(`/tv/podcast/${episode.id}/recording/${take.id}/editor`) : navigate(`/tv/podcast/${episode.id}/edit`)}
                           onDownload={() => take && downloadRecording(take)}
+                          onRename={() => renameEpisode(episode)}
+                          onPublish={async () => {
+                            if (!take) return;
+                            const blob = await fetchRecordingBlob(take);
+                            await WheuatTv.add({
+                              kind: "podcast",
+                              title: episode.title,
+                              uploaderId: user?.id ?? "anon",
+                              uploaderName: user?.user_metadata?.display_name || user?.email?.split("@")[0] || "Host",
+                              blob,
+                              mime: take.mime_type || "video/webm",
+                              ext: "webm",
+                              durationMs: (take.duration_seconds || 0) * 1000,
+                            });
+                            toast({ title: "Published to WHEUAT.TV", description: episode.title });
+                          }}
                           onCopy={() => copyPreviewLink(episode.id)}
                           onDelete={() => removeEpisode(episode.id)}
                         />
@@ -468,6 +484,7 @@ const LivePodcastLobbyPage = () => {
                     onDownload={downloadLocal}
                     onDelete={deleteLocal}
                     onRename={renameLocal}
+                    onPublish={publishLocalToTv}
                     onRefresh={loadLocalFinals}
                   />
                 )}
@@ -511,16 +528,6 @@ const LivePodcastLobbyPage = () => {
                   hostName: editingLocal.hostName,
                 });
                 await loadLocalFinals();
-              }}
-              onPublishToTv={async (blob, mime, ext) => {
-                await WheuatTv.add({
-                  kind: "podcast",
-                  title: editingLocal.title,
-                  uploaderId: user?.id ?? "anon",
-                  uploaderName: user?.user_metadata?.display_name || user?.email?.split("@")[0] || editingLocal.hostName || "Host",
-                  blob, mime, ext,
-                  durationMs: editingLocal.durationMs,
-                });
               }}
             />
           </div>
