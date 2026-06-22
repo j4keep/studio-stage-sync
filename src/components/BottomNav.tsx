@@ -34,7 +34,7 @@ const BottomNav = () => {
 
   const tabs = [
     { path: "/", label: "Home", icon: Home },
-    { path: "/tv", label: "W.STUDIO", icon: Tv, matchPrefix: "/tv" },
+    { path: "/feed", label: "Feed", icon: Tv },
     { path: "/ask-jhi", label: "JiHi", icon: MessageCircle },
     { path: "/profile", label: "Profile", icon: User },
   ] as const;
