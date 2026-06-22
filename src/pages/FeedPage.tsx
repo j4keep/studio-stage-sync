@@ -62,31 +62,44 @@ const FeedPage = () => {
   return (
     <div className="h-screen bg-black flex flex-col overflow-hidden">
       <div className="absolute top-0 left-0 right-0 z-50 pt-10 pb-2 px-3 bg-gradient-to-b from-black/70 to-transparent">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
           <button
             onClick={() => setShowCreate(true)}
-            className="w-9 h-9 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center"
+            className="w-9 h-9 shrink-0 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center"
           >
             <Plus className="w-5 h-5 text-white" />
           </button>
 
-          <div className="flex items-center gap-1">
-            {TABS.map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-3 py-1.5 rounded-full text-[12px] font-semibold transition-all ${
-                  activeTab === tab ? "text-white border-b-2 border-white" : "text-white/60"
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
+          <div className="flex-1 flex items-center gap-1 overflow-x-auto scrollbar-hide">
+            {TABS.map((tab) => {
+              const active = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    if (tab.route) navigate(tab.route);
+                    else setActiveTab(tab.id);
+                  }}
+                  className={`shrink-0 px-3 py-1.5 rounded-full text-[12px] font-semibold transition-all ${
+                    active ? "text-white border-b-2 border-white" : "text-white/60"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
           </div>
 
           <button
+            onClick={() => navigate("/dollar-club")}
+            title="Support Creators"
+            className="w-9 h-9 shrink-0 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-primary"
+          >
+            <Heart className="w-5 h-5" />
+          </button>
+          <button
             onClick={() => navigate("/browse-songs")}
-            className="w-9 h-9 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center"
+            className="w-9 h-9 shrink-0 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center"
           >
             <Search className="w-5 h-5 text-white" />
           </button>
