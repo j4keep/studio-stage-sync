@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Heart, MoreVertical, Radio as RadioIcon, Search, ShoppingBag, Swords, TrendingUp, Tv, Music2 } from "lucide-react";
+import { TrendingUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,7 +11,7 @@ import artistZaraBeats from "@/assets/artist-zara-beats.jpg";
 import artistDjOnyx from "@/assets/artist-dj-onyx.jpg";
 import artistLyricSoul from "@/assets/artist-lyric-soul.jpg";
 import artistNovaWave from "@/assets/artist-nova-wave.jpg";
-import FeedPostCard from "@/components/feed/FeedPostCard";
+import ProfilePostCard from "@/components/ProfilePostCard";
 import { fetchFeedItems } from "@/lib/feed-items";
 
 const fadeUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
@@ -31,16 +30,6 @@ const PLACEHOLDER_CREATORS: TrendingCreator[] = [
   { id: "placeholder-4", name: "DJ Onyx", img: artistDjOnyx, score: 0 },
   { id: "placeholder-5", name: "Lyric Soul", img: artistLyricSoul, score: 0 },
   { id: "placeholder-6", name: "Nova Wave", img: artistNovaWave, score: 0 },
-];
-
-type FeedTabId = "radio" | "battle" | "wheuat-tv" | "songs" | "shop";
-
-const FEED_TABS: { id: FeedTabId; label: string; route?: string; icon: typeof RadioIcon }[] = [
-  { id: "radio", label: "Radio", route: "/radio", icon: RadioIcon },
-  { id: "battle", label: "Battle", route: "/battles", icon: Swords },
-  { id: "wheuat-tv", label: "WHEUAT.TV", route: "/tv/wheuat", icon: Tv },
-  { id: "songs", label: "Songs", route: "/browse-songs", icon: Music2 },
-  { id: "shop", label: "Shop", route: "/store", icon: ShoppingBag },
 ];
 
 const fetchTrendingCreators = async (userId?: string): Promise<TrendingCreator[]> => {
