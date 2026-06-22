@@ -214,6 +214,9 @@ const WheuatTvWatchPage = () => {
                     </button>
                     <div className="min-w-0 flex-1">
                       <h3 className="text-sm font-semibold text-foreground truncate">{item.title}</h3>
+                      {item.description && (
+                        <p className="text-[12px] text-foreground/80 line-clamp-2">{item.description}</p>
+                      )}
                       <button
                         onClick={() => navigate(`/artist/${item.creator.id}`)}
                         className="text-[11px] text-muted-foreground hover:text-foreground"
