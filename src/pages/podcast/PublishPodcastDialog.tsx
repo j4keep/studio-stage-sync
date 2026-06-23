@@ -13,6 +13,7 @@ export type PublishChoice = { kind: "audio" | "video"; coverUrl?: string | null 
 export function usePublishPodcastChoice() {
   const [open, setOpen] = useState(false);
   const [kind, setKind] = useState<"audio" | "video">("video");
+  const [forcedKind, setForcedKind] = useState<"audio" | "video" | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string>("");
   const [uploading, setUploading] = useState(false);
@@ -21,14 +22,19 @@ export function usePublishPodcastChoice() {
 
   const reset = () => {
     setKind("video");
+    setForcedKind(null);
     setCoverFile(null);
     if (coverPreview) URL.revokeObjectURL(coverPreview);
     setCoverPreview("");
     setUploading(false);
   };
 
-  const request = useCallback(() => {
+  const request = useCallback((opts?: { forceKind?: "audio" | "video" }) => {
     reset();
+    if (opts?.forceKind) {
+      setForcedKind(opts.forceKind);
+      setKind(opts.forceKind);
+    }
     setOpen(true);
     return new Promise<PublishChoice | null>((resolve) => {
       resolverRef.current = resolve;
