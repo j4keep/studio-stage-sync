@@ -474,16 +474,17 @@ const LivePodcastLobbyPage = () => {
                           onPublish={async () => {
                             if (!take) return;
                             try {
-                              const target = choosePublishTarget();
-                              if (!target) return;
+                              const choice = await requestPublishChoice();
+                              if (!choice) return;
                               const blob = await fetchRecordingBlob(take);
-                              if (target === "audio") {
+                              if (choice.kind === "audio") {
                                 await publishPodcastAudio({
                                   title: episode.title,
                                   blob,
                                   mime: take.mime_type || "audio/wav",
                                   ext: take.mime_type?.includes("webm") ? "webm" : "wav",
                                   durationMs: (take.duration_seconds || 0) * 1000,
+                                  coverUrl: choice.coverUrl ?? null,
                                 });
                                 toast({ title: "Published to Radio Podcasts", description: episode.title });
                                 return;
