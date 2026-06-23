@@ -310,7 +310,10 @@ export function PodcastExportSheet({ open, onClose, engine, tracks, clips, proje
           </div>
           <div className="flex gap-2">
             <button onClick={onClose} disabled={busy} className="h-8 px-3 rounded text-xs text-neutral-300 hover:text-neutral-100">Cancel</button>
-            <button onClick={run} disabled={busy} className="h-8 px-4 rounded bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white text-xs font-medium">
+            <button onClick={() => run("publish")} disabled={busy} className="h-8 px-4 rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-medium">
+              {busy ? "Publishing…" : mode === "audio" ? "Publish to Radio" : "Publish to TV"}
+            </button>
+            <button onClick={() => run("download")} disabled={busy} className="h-8 px-4 rounded bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white text-xs font-medium">
               {busy ? "Exporting…" : "Export"}
             </button>
           </div>
