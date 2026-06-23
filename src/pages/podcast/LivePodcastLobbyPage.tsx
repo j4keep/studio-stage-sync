@@ -570,6 +570,7 @@ const LivePodcastLobbyPage = () => {
           </div>
         </div>
       )}
+      {publishChoiceDialog}
     </div>
   );
 };
