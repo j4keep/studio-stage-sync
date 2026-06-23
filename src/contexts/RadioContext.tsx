@@ -208,10 +208,12 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
       const songsData = !error && data ? data : [];
       const podcastsData = !podcastsRes.error && podcastsRes.data ? podcastsRes.data : [];
       const userIds = [...new Set([...songsData, ...podcastsData].map((s: any) => s.user_id).filter(Boolean))];
-      const { data: profiles } = await (supabase as any)
-        .from("profiles")
-        .select("user_id, display_name")
-        .in("user_id", userIds);
+      const { data: profiles } = userIds.length
+        ? await (supabase as any)
+          .from("profiles")
+          .select("user_id, display_name")
+          .in("user_id", userIds)
+        : { data: [] };
 
       const profileMap: Record<string, string> = {};
       (profiles || []).forEach((p: any) => { profileMap[p.user_id] = p.display_name || "Artist"; });
