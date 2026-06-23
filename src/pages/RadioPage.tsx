@@ -12,7 +12,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import BoostAdOverlay from "@/components/BoostAdOverlay";
 
 
-const RADIO_GENRE_FILTERS = ["All", ...GENRES.filter(g => g !== "Beats")];
+const RADIO_GENRE_FILTERS = ["All", "Podcasts", ...GENRES.filter(g => g !== "Beats")];
 
 const SEEK_WAVE_BARS = Array.from({ length: 88 }, (_, index) => {
   const seed = (index * 17 + 23) % 100;
@@ -45,8 +45,10 @@ const RadioPage = () => {
     songPlayCount, resetSongPlayCount,
   } = useRadio();
 
-  const songIds = allTracks.map(s => s.id);
-  const { toggleLike, isLiked, getLikeCount } = useLikes("song", songIds);
+  const songIds = allTracks.filter(s => s.source !== "podcast").map(s => s.id);
+  const podcastIds = allTracks.filter(s => s.source === "podcast").map(s => s.id);
+  const songLikes = useLikes("song", songIds);
+  const podcastLikes = useLikes("podcast", podcastIds);
 
   const [shareOpen, setShareOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -158,8 +160,9 @@ const RadioPage = () => {
   }
 
   const track = currentTrack;
-  const likeCount = getLikeCount(track.id);
-  const liked = isLiked(track.id);
+  const activeLikes = track.source === "podcast" ? podcastLikes : songLikes;
+  const likeCount = activeLikes.getLikeCount(track.id);
+  const liked = activeLikes.isLiked(track.id);
 
   return (
     <div className="flex flex-col min-h-screen bg-background relative">
@@ -366,7 +369,7 @@ const RadioPage = () => {
 
       {/* Bottom action bar */}
       <div className="flex items-center justify-around py-3 px-4 bg-background border-t border-border">
-        <button onClick={() => toggleLike(track.id)} className="flex items-center gap-1.5">
+        <button onClick={() => activeLikes.toggleLike(track.id)} className="flex items-center gap-1.5">
           <Heart className={`w-6 h-6 transition-colors ${liked ? "text-primary fill-primary" : "text-foreground"}`} />
           <span className="text-xs text-foreground font-medium">{likeCount}</span>
         </button>
@@ -397,7 +400,7 @@ const RadioPage = () => {
         onOpenChange={setMoreOpen}
         track={track}
         isLiked={liked}
-        onToggleLike={() => toggleLike(track.id)}
+        onToggleLike={() => activeLikes.toggleLike(track.id)}
         onViewComments={() => setCommentsOpen(true)}
       />
 
