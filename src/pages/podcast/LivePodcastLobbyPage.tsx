@@ -478,7 +478,7 @@ const LivePodcastLobbyPage = () => {
                                   title: episode.title,
                                   blob,
                                   mime: take.mime_type || "audio/wav",
-                                  ext: "wav",
+                                  ext: take.mime_type?.includes("webm") ? "webm" : "wav",
                                   durationMs: (take.duration_seconds || 0) * 1000,
                                 });
                                 toast({ title: "Published to Radio Podcasts", description: episode.title });
