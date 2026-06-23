@@ -470,12 +470,23 @@ const LivePodcastLobbyPage = () => {
                           onPublish={async () => {
                             if (!take) return;
                             try {
+                              const target = choosePublishTarget();
+                              if (!target) return;
                               const blob = await fetchRecordingBlob(take);
+                              if (target === "audio") {
+                                await publishPodcastAudio({
+                                  title: episode.title,
+                                  blob,
+                                  mime: take.mime_type || "audio/wav",
+                                  ext: "wav",
+                                  durationMs: (take.duration_seconds || 0) * 1000,
+                                });
+                                toast({ title: "Published to Radio Podcasts", description: episode.title });
+                                return;
+                              }
                               await WheuatTv.add({
                                 kind: "podcast",
                                 title: episode.title,
-                                uploaderId: user?.id ?? "anon",
-                                uploaderName: user?.user_metadata?.display_name || user?.email?.split("@")[0] || "Host",
                                 blob,
                                 mime: take.mime_type || "video/webm",
                                 ext: "webm",
