@@ -206,6 +206,7 @@ export function PodcastExportSheet({ open, onClose, engine, tracks, clips, proje
   const videos = usePodcastVideoStore(s => s.videos);
   const [mode, setMode] = useState<Mode>("grid");
   const [busy, setBusy] = useState(false);
+  const { request: requestPublishChoice, dialog: publishChoiceDialog } = usePublishPodcastChoice();
 
   if (!open) return null;
 
