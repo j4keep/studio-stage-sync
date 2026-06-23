@@ -306,6 +306,38 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .feed-bottom-offset {
+    bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .feed-pb-nav {
+    padding-bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .feed-action-btn {
+    @apply flex flex-col items-center gap-1 min-w-[2.5rem];
+  }
+
+  .feed-action-icon {
+    @apply w-6 h-6 text-white;
+    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 6px rgba(0, 0, 0, 0.45));
+  }
+
+  .feed-action-count {
+    @apply text-[10px] font-semibold text-white leading-none tabular-nums;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  }
+
+  .feed-glass-pill {
+    @apply inline-flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-1.5;
+    @apply bg-white/10 backdrop-blur-md border border-white/20 text-white;
+    @apply active:bg-white/20 transition-colors;
+  }
 }
 
 /* W.Studio web shell — same palette family as the JUCE plugin (cyan / charcoal) */

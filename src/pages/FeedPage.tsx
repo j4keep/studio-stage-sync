@@ -13,7 +13,7 @@ const TABS: { id: TabId; label: string; route: string; icon: typeof RadioIcon }[
   { id: "radio", label: "Radio", route: "/radio", icon: RadioIcon },
   { id: "battle", label: "Battle", route: "/battles", icon: Swords },
   { id: "songs", label: "Songs", route: "/browse-songs", icon: Music2 },
-  { id: "wheuat-tv", label: "TV", route: "/tv/watch", icon: Tv },
+  { id: "wheuat-tv", label: "WHEUAT.TV", route: "/tv/watch", icon: Tv },
   { id: "support", label: "Support", route: "/my-projects", icon: Heart },
 ];
 
@@ -85,39 +85,39 @@ const FeedPage = () => {
   }, []);
 
   return (
-    <div className="h-[100dvh] w-full bg-black flex flex-col overflow-hidden relative">
+    <div className="h-[100dvh] w-full bg-black flex flex-col overflow-hidden relative overscroll-none">
       {/* Header overlay */}
-      <div className={`absolute top-0 left-0 right-0 z-50 px-3 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-2 bg-gradient-to-b from-black/75 via-black/40 to-transparent pointer-events-none transition-all duration-300 ${chromeHidden ? "-translate-y-full opacity-0" : "translate-y-0 opacity-100"}`}>
+      <div className={`absolute top-0 left-0 right-0 z-50 px-4 pt-[calc(env(safe-area-inset-top)+0.625rem)] pb-3 bg-gradient-to-b from-black/85 via-black/50 to-transparent pointer-events-none transition-all duration-300 ${chromeHidden ? "-translate-y-full opacity-0" : "translate-y-0 opacity-100"}`}>
         <div className="flex items-center justify-between text-white pointer-events-auto">
-          <h1 className="text-[18px] font-extrabold tracking-tight">WHEUAT</h1>
-          <div className="flex items-center gap-0.5">
-            <button onClick={() => navigate("/browse-songs")} className="w-8 h-8 flex items-center justify-center" aria-label="Search">
-              <Search className="w-5 h-5" />
+          <h1 className="text-xl font-black tracking-tight leading-none">WHEUAT</h1>
+          <div className="flex items-center gap-1">
+            <button onClick={() => navigate("/browse-songs")} className="w-9 h-9 flex items-center justify-center rounded-full active:bg-white/10" aria-label="Search">
+              <Search className="w-[1.35rem] h-[1.35rem]" strokeWidth={2.25} />
             </button>
-            <button className="w-8 h-8 flex items-center justify-center" aria-label="More">
-              <MoreVertical className="w-5 h-5" />
+            <button className="w-9 h-9 flex items-center justify-center rounded-full active:bg-white/10" aria-label="More">
+              <MoreVertical className="w-[1.35rem] h-[1.35rem]" strokeWidth={2.25} />
             </button>
           </div>
         </div>
 
         {/* Trending creators strip */}
         {trending.length > 0 && (
-          <div className="mt-1.5 flex items-center gap-2 overflow-x-auto scrollbar-hide pointer-events-auto -mx-1 px-1">
+          <div className="mt-2.5 flex items-center gap-2.5 overflow-x-auto scrollbar-hide pointer-events-auto -mx-1 px-1 pb-0.5">
             <button
               onClick={() => navigate("/profile")}
-              className="shrink-0 flex flex-col items-center gap-0.5"
+              className="shrink-0 flex flex-col items-center gap-1"
               aria-label="Pitch your profile"
             >
-              <div className="w-10 h-10 rounded-full ring-2 ring-primary flex items-center justify-center bg-black/60 text-white text-lg">+</div>
-              <span className="text-[9px] text-white/80 leading-none">Pitch</span>
+              <div className="w-11 h-11 rounded-full ring-2 ring-primary flex items-center justify-center bg-black/50 text-white text-lg font-light">+</div>
+              <span className="text-[10px] text-white/85 leading-none font-medium">Pitch</span>
             </button>
             {trending.map((c) => (
               <button
                 key={c.user_id}
                 onClick={() => navigate(`/artist/${c.user_id}`)}
-                className="shrink-0 flex flex-col items-center gap-0.5 w-12"
+                className="shrink-0 flex flex-col items-center gap-1 w-[3.25rem]"
               >
-                <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-white/30 bg-white/10">
+                <div className="w-11 h-11 rounded-full overflow-hidden ring-2 ring-white/35 bg-white/10">
                   {c.avatar_url ? (
                     <img src={c.avatar_url} alt="" className="w-full h-full object-cover" />
                   ) : (
@@ -126,7 +126,7 @@ const FeedPage = () => {
                     </div>
                   )}
                 </div>
-                <span className="text-[9px] text-white/80 leading-none truncate w-full text-center">
+                <span className="text-[10px] text-white/85 leading-none truncate w-full text-center font-medium">
                   {c.display_name || "Artist"}
                 </span>
               </button>
@@ -134,18 +134,18 @@ const FeedPage = () => {
           </div>
         )}
 
-        {/* Compact pill row — fits without horizontal scroll */}
-        <div className="mt-2 grid grid-cols-5 gap-1 pointer-events-auto">
+        {/* Category pills */}
+        <div className="mt-2.5 flex items-center gap-2 overflow-x-auto scrollbar-hide pointer-events-auto pb-0.5">
           {TABS.map((tab) => {
             const Icon = tab.icon;
             return (
               <button
                 key={tab.id}
                 onClick={() => navigate(tab.route)}
-                className="inline-flex flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1 bg-white/15 backdrop-blur-md border border-white/15 text-white/95 active:bg-white/25"
+                className="feed-glass-pill shrink-0 min-w-[4.25rem]"
               >
-                <Icon className="w-4 h-4" />
-                <span className="text-[9px] font-semibold leading-none">{tab.label}</span>
+                <Icon className="w-4 h-4 shrink-0" strokeWidth={2.25} />
+                <span className="text-[10px] font-semibold leading-none whitespace-nowrap">{tab.label}</span>
               </button>
             );
           })}
@@ -154,8 +154,8 @@ const FeedPage = () => {
 
       <div
         ref={scrollRef}
-        className="h-full overflow-y-scroll snap-y snap-mandatory scrollbar-hide"
-        style={{ scrollSnapType: "y mandatory" }}
+        className="h-full overflow-y-scroll snap-y snap-mandatory scrollbar-hide overscroll-y-contain"
+        style={{ scrollSnapType: "y mandatory", WebkitOverflowScrolling: "touch" }}
         onScroll={() => { if (!chromeHidden) setChromeHidden(true); }}
       >
         {isLoading ? (

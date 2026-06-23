@@ -6,7 +6,6 @@ import {
   Trash2,
   MoreHorizontal,
   Bookmark,
-  Eye,
   Edit3,
   Volume2,
   VolumeX,
@@ -23,7 +22,9 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import PostCommentsSheet from "./PostCommentsSheet";
 import CreatePostSheet from "./CreatePostSheet";
-import useFloatingEmojis, { EmojiBar, FloatingEmojiLayer } from "./FloatingEmojis";
+import useFloatingEmojis, { FloatingEmojiLayer, EmojiReactionTray, EmojiReactionButton } from "./FloatingEmojis";
+import { parsePostCaption } from "@/lib/post-editor";
+import { playFeedMusicLoop, getFeedMusicName } from "@/lib/feed-music";
 
 
 interface Props {
@@ -54,10 +55,15 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
   const [videoDuration, setVideoDuration] = useState(0);
   const [isScrubbing, setIsScrubbing] = useState(false);
   const [scrubTime, setScrubTime] = useState(0);
+  const [showReactionTray, setShowReactionTray] = useState(false);
+  const [reactionCount, setReactionCount] = useState(0);
   const progressRef = useRef<HTMLDivElement>(null);
+  const musicStopRef = useRef<(() => void) | null>(null);
   const lastTapRef = useRef(0);
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { emojis, spawnEmoji } = useFloatingEmojis();
+
+  const { caption: displayCaption, meta: postMeta } = parsePostCaption(post.caption);
 
   useEffect(() => {
     setLiked(!!post.isLiked);
@@ -66,8 +72,23 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
 
   useEffect(() => {
     if (!videoRef.current) return;
-    videoRef.current.muted = isMuted;
-  }, [isMuted]);
+    const vol = postMeta?.originalVolume ?? 1;
+    videoRef.current.muted = isMuted || postMeta?.muteOriginal === true;
+    videoRef.current.volume = isMuted ? 0 : vol;
+  }, [isMuted, postMeta?.muteOriginal, postMeta?.originalVolume]);
+
+  // Background music from editor meta
+  useEffect(() => {
+    musicStopRef.current?.();
+    musicStopRef.current = null;
+    if (!isActive || !postMeta?.music?.loopId) return;
+    const player = playFeedMusicLoop(postMeta.music.loopId, postMeta.music.volume ?? 0.5);
+    if (player) musicStopRef.current = player.stop;
+    return () => {
+      musicStopRef.current?.();
+      musicStopRef.current = null;
+    };
+  }, [isActive, postMeta?.music?.loopId, postMeta?.music?.volume]);
 
   useEffect(() => {
     if (post.media_type !== "video" || !videoRef.current) return;
@@ -109,6 +130,10 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
       if (!isScrubbing && video.duration && isFinite(video.duration)) {
         setVideoProgress((video.currentTime / video.duration) * 100);
       }
+      const trim = postMeta?.trim;
+      if (trim && video.currentTime >= trim.end) {
+        video.currentTime = trim.start;
+      }
     };
     const onLoadedMetadata = () => {
       if (video.duration && isFinite(video.duration)) {
@@ -129,7 +154,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
       video.removeEventListener("loadedmetadata", onLoadedMetadata);
       video.removeEventListener("durationchange", onDurationChange);
     };
-  }, [post.media_type, isScrubbing]);
+  }, [post.media_type, isScrubbing, postMeta?.trim]);
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -333,29 +358,40 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
 
   return (
     <>
-      <div className="absolute inset-0 bg-black overflow-visible">
+      <div className="absolute inset-0 bg-black overflow-hidden">
         {post.media_url &&
           (post.media_type === "video" ? (
             <video
               ref={videoRef}
               src={post.media_url}
               className="absolute inset-0 h-full w-full object-cover"
+              style={{
+                transform: postMeta?.crop ? `scale(${postMeta.crop.scale})` : undefined,
+                objectPosition: postMeta?.crop ? `${postMeta.crop.x}% ${postMeta.crop.y}%` : undefined,
+              }}
               loop
               playsInline
               preload="metadata"
             />
           ) : (
-            <img src={post.media_url} alt={post.caption || "Feed post"} className="absolute inset-0 h-full w-full object-cover" />
+            <img
+              src={post.media_url}
+              alt={displayCaption || "Feed post"}
+              className="absolute inset-0 h-full w-full object-cover"
+              style={{
+                transform: postMeta?.crop ? `scale(${postMeta.crop.scale})` : undefined,
+                objectPosition: postMeta?.crop ? `${postMeta.crop.x}% ${postMeta.crop.y}%` : undefined,
+              }}
+            />
           ))}
 
         {!post.media_url && (
           <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-card to-background">
-            <p className="px-8 text-center text-lg font-semibold leading-relaxed text-foreground">{post.caption}</p>
+            <p className="px-8 text-center text-lg font-semibold leading-relaxed text-foreground">{displayCaption}</p>
           </div>
         )}
 
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none" />
-        
+        <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-black via-black/75 to-transparent pointer-events-none" />
 
         <button
           onClick={handleContentTap}
@@ -398,49 +434,55 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
           </button>
         )}
 
-        <div className="absolute right-3 bottom-8 z-40 flex flex-col items-center gap-5">
+        <div className="absolute right-3 feed-bottom-offset z-40 flex flex-col items-center gap-4 pb-1">
           {post.media_type === "video" && (
-            <button onClick={() => setIsMuted((value) => !value)} className="flex flex-col items-center gap-0.5 z-50" aria-label={isMuted ? "Unmute video" : "Mute video"}>
-              {isMuted ? <VolumeX className="w-7 h-7 text-white drop-shadow-lg" /> : <Volume2 className="w-7 h-7 text-white drop-shadow-lg" />}
+            <button onClick={() => setIsMuted((value) => !value)} className="feed-action-btn" aria-label={isMuted ? "Unmute video" : "Mute video"}>
+              {isMuted ? <VolumeX className="feed-action-icon" /> : <Volume2 className="feed-action-icon" />}
             </button>
           )}
 
-          <button onClick={() => likeMutation.mutate()} className="flex flex-col items-center gap-0.5 z-50">
-            <Heart className={`w-7 h-7 drop-shadow-lg ${liked ? "fill-red-500 text-red-500" : "text-white"}`} />
-            <span className="text-[11px] font-semibold text-white drop-shadow">{formatCount(likesCount)}</span>
+          <button onClick={() => likeMutation.mutate()} className="feed-action-btn">
+            <Heart className={`feed-action-icon ${liked ? "fill-red-500 text-red-500" : ""}`} />
+            <span className="feed-action-count">{formatCount(likesCount)}</span>
           </button>
 
-          <button onClick={() => setShowComments(true)} className="flex flex-col items-center gap-0.5 z-50">
-            <MessageCircle className="w-7 h-7 text-white drop-shadow-lg" />
-            <span className="text-[11px] font-semibold text-white drop-shadow">{post.comments_count || 0}</span>
+          <button onClick={() => setShowComments(true)} className="feed-action-btn">
+            <MessageCircle className="feed-action-icon" />
+            <span className="feed-action-count">{post.comments_count || 0}</span>
           </button>
 
-          <button className="flex flex-col items-center gap-0.5 z-50">
-            <Bookmark className="w-6 h-6 text-white drop-shadow-lg" />
+          <div className="relative">
+            <EmojiReactionButton onClick={() => setShowReactionTray((v) => !v)} count={reactionCount} />
+            <EmojiReactionTray
+              open={showReactionTray}
+              onClose={() => setShowReactionTray(false)}
+              onEmoji={handleEmojiReaction}
+              postId={post.id}
+              currentUserId={currentUserId}
+              reactionCount={reactionCount}
+              onReactionCountChange={setReactionCount}
+            />
+          </div>
+
+          <button className="feed-action-btn" aria-label="Save">
+            <Bookmark className="feed-action-icon" />
           </button>
 
-          <button onClick={handleShare} className="flex flex-col items-center gap-0.5 z-50">
-            <Forward className="w-7 h-7 text-white drop-shadow-lg" />
+          <button onClick={handleShare} className="feed-action-btn">
+            <Forward className="feed-action-icon" />
           </button>
 
           <button
             onClick={(e) => { e.stopPropagation(); navigate("/circle"); }}
-            className="flex flex-col items-center gap-0.5 z-50"
+            className="feed-action-btn"
             aria-label="Open Catch Up Circle"
           >
-            <Users className="w-7 h-7 text-white drop-shadow-lg" />
-            <span className="text-[10px] font-semibold text-white drop-shadow">Circle</span>
+            <Users className="feed-action-icon" />
+            <span className="feed-action-count text-[9px]">Circle</span>
           </button>
-
-          {post.media_type === "video" && (
-            <div className="flex flex-col items-center gap-0.5 z-50">
-              <Eye className="w-6 h-6 text-white drop-shadow-lg" />
-              <span className="text-[11px] font-semibold text-white drop-shadow">{formatCount(post.views || 0)}</span>
-            </div>
-          )}
         </div>
 
-        <div className="absolute left-3 right-20 bottom-8 z-40">
+        <div className="absolute left-3 right-[4.5rem] feed-bottom-offset z-40 pb-1 max-w-[calc(100%-5.5rem)]">
           <div className="relative z-50 mb-1.5">
             <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-white/40">
               {profile.avatar_url ? (
@@ -466,15 +508,15 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
           <div className="mb-2 flex items-center gap-2">
             <button
               onClick={() => navigate(`/artist/${post.user_id}`)}
-              className="z-50 text-[14px] font-bold text-white drop-shadow-lg hover:underline"
+              className="z-50 text-[15px] font-extrabold text-white drop-shadow-lg hover:underline"
             >
               @{profile.display_name || "Artist"}
             </button>
             {user?.id !== post.user_id && (
               <button
                 onClick={toggleFollow}
-                className={`z-50 rounded-md px-2.5 py-0.5 text-[10px] font-bold transition-all ${
-                  isFollowing ? "border border-white/30 bg-white/20 text-white" : "bg-red-500 text-white"
+                className={`z-50 rounded-full px-2.5 py-0.5 text-[10px] font-bold transition-all ${
+                  isFollowing ? "border border-white/35 bg-white/15 text-white" : "bg-red-500 text-white"
                 }`}
               >
                 {isFollowing ? "Following" : "Follow"}
@@ -482,15 +524,22 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
             )}
           </div>
 
-          {post.caption && <p className="text-[13px] leading-snug text-white/90 drop-shadow line-clamp-2">{post.caption}</p>}
-          <span className="mt-1 block text-[10px] text-white/50">{timeAgo} ago</span>
-
-          <div className="z-50 mt-1.5">
-            <EmojiBar onEmoji={handleEmojiReaction} postId={post.id} currentUserId={currentUserId} />
-          </div>
+          {displayCaption && (
+            <p className="text-[12px] leading-snug text-white/90 drop-shadow-md line-clamp-2 pr-1">{displayCaption}</p>
+          )}
+          {postMeta?.location && (
+            <span className="mt-0.5 block text-[10px] text-white/55">{postMeta.location}</span>
+          )}
+          {postMeta?.music?.loopId && (
+            <span className="mt-1 flex items-center gap-1 text-[10px] text-white/70">
+              <Volume2 className="w-3 h-3" />
+              {getFeedMusicName(postMeta.music.loopId)}
+            </span>
+          )}
+          <span className="mt-1 block text-[10px] text-white/45">{timeAgo} ago</span>
 
           {post.media_type === "video" && (
-            <div className="z-50 mt-2 relative seek-area" role="slider" aria-valuenow={videoProgress} aria-valuemin={0} aria-valuemax={100}>
+            <div className="z-50 mt-2.5 relative seek-area pr-1" role="slider" aria-valuenow={videoProgress} aria-valuemin={0} aria-valuemax={100}>
               <div
                 ref={progressRef}
                 className="relative h-[6px] w-full rounded-full bg-white/20 cursor-pointer touch-none"
