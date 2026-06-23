@@ -1,11 +1,13 @@
 import { createContext, useContext, useState, useRef, useCallback, useEffect, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getR2DownloadUrl } from "@/lib/r2-storage";
-import { incrementSongPlays } from "@/hooks/use-likes";
+import { incrementPodcastPlays, incrementSongPlays } from "@/hooks/use-likes";
 import album1 from "@/assets/album-1.jpg";
+import podcast1 from "@/assets/podcast-1.jpg";
 
 interface RadioTrack {
   id: string;
+  source: "song" | "podcast";
   title: string;
   artist_name: string;
   album: string;
@@ -166,7 +168,8 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
       audio.play().catch(() => {});
       if (!playTracked.current.has(currentTrack.id)) {
         playTracked.current.add(currentTrack.id);
-        incrementSongPlays(currentTrack.id);
+        if (currentTrack.source === "podcast") incrementPodcastPlays(currentTrack.id);
+        else incrementSongPlays(currentTrack.id);
       }
     } else {
       audio.pause();
@@ -188,24 +191,37 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
 
   const fetchRadioSongs = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await (supabase as any)
+    const [{ data, error }, podcastsRes] = await Promise.all([
+      (supabase as any)
       .from("songs")
       .select("id, title, cover_url, audio_url, plays, genre, user_id, likes_count, album")
       .eq("on_radio", true)
-      .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false }),
+      (supabase as any)
+        .from("podcasts")
+        .select("id, title, cover_url, media_url, plays, user_id, likes_count, episode, duration, is_video")
+        .eq("is_video", false)
+        .order("created_at", { ascending: false }),
+    ]);
 
-    if (!error && data) {
-      const userIds = [...new Set(data.map((s: any) => s.user_id))];
-      const { data: profiles } = await (supabase as any)
-        .from("profiles")
-        .select("id, display_name")
-        .in("id", userIds);
+    if (!error || !podcastsRes.error) {
+      const songsData = !error && data ? data : [];
+      const podcastsData = !podcastsRes.error && podcastsRes.data ? podcastsRes.data : [];
+      const userIds = [...new Set([...songsData, ...podcastsData].map((s: any) => s.user_id).filter(Boolean))];
+      const { data: profiles } = userIds.length
+        ? await (supabase as any)
+          .from("profiles")
+          .select("user_id, display_name")
+          .in("user_id", userIds)
+        : { data: [] };
 
       const profileMap: Record<string, string> = {};
-      (profiles || []).forEach((p: any) => { profileMap[p.id] = p.display_name || "Artist"; });
+      (profiles || []).forEach((p: any) => { profileMap[p.user_id] = p.display_name || "Artist"; });
 
-      setSongs(data.map((s: any) => ({
+      setSongs([
+        ...songsData.map((s: any) => ({
         id: s.id,
+        source: "song" as const,
         title: s.title,
         artist_name: profileMap[s.user_id] || "Artist",
         album: s.album || "Unknown Album",
@@ -215,12 +231,31 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
         plays: s.plays || "0",
         likes_count: s.likes_count || 0,
         user_id: s.user_id,
-      })));
+        })),
+        ...podcastsData.map((p: any) => ({
+          id: p.id,
+          source: "podcast" as const,
+          title: p.title,
+          artist_name: profileMap[p.user_id] || "Creator",
+          album: p.episode || "Podcast",
+          genre: "Podcasts",
+          cover_url: p.cover_url || podcast1,
+          audio_url: p.media_url ? getR2DownloadUrl(p.media_url) : undefined,
+          plays: p.plays || "0",
+          likes_count: p.likes_count || 0,
+          user_id: p.user_id,
+        })),
+      ]);
     }
     setLoading(false);
   }, []);
 
   useEffect(() => { fetchRadioSongs(); }, [fetchRadioSongs]);
+  useEffect(() => {
+    const handler = () => fetchRadioSongs();
+    window.addEventListener("wheuat-radio-updated", handler);
+    return () => window.removeEventListener("wheuat-radio-updated", handler);
+  }, [fetchRadioSongs]);
 
   const play = useCallback(() => setIsPlaying(true), []);
   const pause = useCallback(() => setIsPlaying(false), []);
