@@ -22,6 +22,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import PostCommentsSheet from "./PostCommentsSheet";
 import CreatePostSheet from "./CreatePostSheet";
+import PostOverlayRenderer from "./create/PostOverlayRenderer";
 import useFloatingEmojis, { FloatingEmojiLayer, EmojiReactionTray, EmojiReactionButton } from "./FloatingEmojis";
 import { parsePostCaption } from "@/lib/post-editor";
 import { playFeedMusicLoop, playUploadedAudio, getMusicDisplayName } from "@/lib/feed-music";
@@ -401,6 +402,10 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
           <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-card to-background">
             <p className="px-8 text-center text-lg font-semibold leading-relaxed text-foreground">{displayCaption}</p>
           </div>
+        )}
+
+        {postMeta && (
+          <PostOverlayRenderer meta={postMeta} />
         )}
 
         <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-black via-black/75 to-transparent pointer-events-none" />
