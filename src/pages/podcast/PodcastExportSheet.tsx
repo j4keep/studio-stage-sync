@@ -8,6 +8,7 @@ import { useDawStore } from "@/wstudio/daw/state/DawStore";
 import { usePodcastVideoStore } from "./podcastVideoStore";
 import { WheuatTv } from "@/pages/wheuat-tv/wheuatTvStore";
 import { publishPodcastAudio } from "./podcastPublishStore";
+import { usePublishPodcastChoice } from "./PublishPodcastDialog";
 
 type Mode = "grid" | "rows" | "speaker" | "pip" | "audio" | "pertrack" | "stems";
 
@@ -205,6 +206,7 @@ export function PodcastExportSheet({ open, onClose, engine, tracks, clips, proje
   const videos = usePodcastVideoStore(s => s.videos);
   const [mode, setMode] = useState<Mode>("grid");
   const [busy, setBusy] = useState(false);
+  const { request: requestPublishChoice, dialog: publishChoiceDialog } = usePublishPodcastChoice();
 
   if (!open) return null;
 
@@ -215,11 +217,17 @@ export function PodcastExportSheet({ open, onClose, engine, tracks, clips, proje
     const base = safeName(projectName);
     try {
       if (mode === "audio") {
+        let coverUrl: string | null = null;
+        if (wantsPublish) {
+          const choice = await requestPublishChoice({ forceKind: "audio" });
+          if (!choice) { setBusy(false); return; }
+          coverUrl = choice.coverUrl ?? null;
+        }
         toast.loading(wantsPublish ? "Publishing audio podcast…" : "Rendering mix…", { id: "exp" });
         const len = Math.max(...clips.map(c => c.startTime + c.duration)) + 0.5;
         const blob = await engine.exportToWav(tracks, clips, len);
         if (wantsPublish) {
-          await publishPodcastAudio({ title: projectName || base, blob, mime: "audio/wav", ext: "wav", durationMs: len * 1000 });
+          await publishPodcastAudio({ title: projectName || base, blob, mime: "audio/wav", ext: "wav", durationMs: len * 1000, coverUrl });
           toast.success("Published to Radio Podcasts", { id: "exp" });
         } else {
           downloadBlob(blob, `${base}.wav`);
@@ -319,6 +327,7 @@ export function PodcastExportSheet({ open, onClose, engine, tracks, clips, proje
           </div>
         </div>
       </div>
+      {publishChoiceDialog}
     </div>
   );
 }
