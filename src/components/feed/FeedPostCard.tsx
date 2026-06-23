@@ -24,7 +24,7 @@ import PostCommentsSheet from "./PostCommentsSheet";
 import CreatePostSheet from "./CreatePostSheet";
 import useFloatingEmojis, { FloatingEmojiLayer, EmojiReactionTray, EmojiReactionButton } from "./FloatingEmojis";
 import { parsePostCaption } from "@/lib/post-editor";
-import { playFeedMusicLoop, getFeedMusicName } from "@/lib/feed-music";
+import { playFeedMusicLoop, playUploadedAudio, getMusicDisplayName } from "@/lib/feed-music";
 
 
 interface Props {
@@ -81,14 +81,26 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
   useEffect(() => {
     musicStopRef.current?.();
     musicStopRef.current = null;
-    if (!isActive || !postMeta?.music?.loopId) return;
-    const player = playFeedMusicLoop(postMeta.music.loopId, postMeta.music.volume ?? 0.5);
-    if (player) musicStopRef.current = player.stop;
-    return () => {
-      musicStopRef.current?.();
-      musicStopRef.current = null;
-    };
-  }, [isActive, postMeta?.music?.loopId, postMeta?.music?.volume]);
+    if (!isActive || !postMeta?.music) return;
+
+    if (postMeta.music.audioUrl) {
+      const player = playUploadedAudio(postMeta.music.audioUrl, postMeta.music.volume ?? 0.5);
+      musicStopRef.current = player.stop;
+      return () => {
+        musicStopRef.current?.();
+        musicStopRef.current = null;
+      };
+    }
+
+    if (postMeta.music.loopId) {
+      const player = playFeedMusicLoop(postMeta.music.loopId, postMeta.music.volume ?? 0.5);
+      if (player) musicStopRef.current = player.stop;
+      return () => {
+        musicStopRef.current?.();
+        musicStopRef.current = null;
+      };
+    }
+  }, [isActive, postMeta?.music?.loopId, postMeta?.music?.audioUrl, postMeta?.music?.volume]);
 
   useEffect(() => {
     if (post.media_type !== "video" || !videoRef.current) return;
@@ -530,10 +542,10 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
           {postMeta?.location && (
             <span className="mt-0.5 block text-[10px] text-white/55">{postMeta.location}</span>
           )}
-          {postMeta?.music?.loopId && (
+          {(postMeta?.music?.loopId || postMeta?.music?.audioUrl) && (
             <span className="mt-1 flex items-center gap-1 text-[10px] text-white/70">
               <Volume2 className="w-3 h-3" />
-              {getFeedMusicName(postMeta.music.loopId)}
+              {getMusicDisplayName(postMeta.music)}
             </span>
           )}
           <span className="mt-1 block text-[10px] text-white/45">{timeAgo} ago</span>

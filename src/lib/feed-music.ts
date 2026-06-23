@@ -39,3 +39,33 @@ export function playFeedMusicLoop(loopId: string, volume = 0.6): { stop: () => v
 export function getFeedMusicName(loopId: string): string {
   return FEED_MUSIC_LOOPS.find((l) => l.id === loopId)?.name ?? "Original sound";
 }
+
+/** iOS Safari needs explicit extensions — audio/* alone opens the photo library. */
+export const AUDIO_FILE_ACCEPT =
+  ".mp3,.m4a,.wav,.aac,.ogg,.flac,audio/mpeg,audio/mp4,audio/x-m4a,audio/wav,audio/aac,audio/ogg,audio/*";
+
+export function playUploadedAudio(
+  url: string,
+  volume = 0.6,
+  loop = true,
+): { stop: () => void; audio: HTMLAudioElement } {
+  const audio = new Audio(url);
+  audio.volume = volume;
+  audio.loop = loop;
+  void audio.play();
+  return {
+    audio,
+    stop: () => {
+      audio.pause();
+      audio.src = "";
+    },
+  };
+}
+
+export function getMusicDisplayName(music?: { loopId?: string; fileName?: string; audioUrl?: string }): string {
+  if (!music) return "Original sound";
+  if (music.fileName) return music.fileName.replace(/\.[^.]+$/, "");
+  if (music.audioUrl) return "Uploaded sound";
+  if (music.loopId) return getFeedMusicName(music.loopId);
+  return "Original sound";
+}

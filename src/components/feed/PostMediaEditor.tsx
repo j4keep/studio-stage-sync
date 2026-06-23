@@ -24,7 +24,6 @@ import {
   TEXT_STYLE_CLASSES,
 } from "@/lib/post-editor";
 import { EMOJI_CHARACTERS } from "@/lib/emoji-characters";
-import { FEED_MUSIC_PRESETS, playFeedMusicLoop } from "@/lib/feed-music";
 
 interface Props {
   file: File | null;
@@ -36,6 +35,10 @@ interface Props {
   onHashtagsChange: (v: string) => void;
   location: string;
   onLocationChange: (v: string) => void;
+  immersive?: boolean;
+  activeTool?: string | null;
+  onActiveToolChange?: (tool: string | null) => void;
+  musicPreviewUrl?: string | null;
 }
 
 const newId = () => Math.random().toString(36).slice(2, 9);
@@ -50,13 +53,19 @@ const PostMediaEditor = ({
   onHashtagsChange,
   location,
   onLocationChange,
+  immersive = false,
+  activeTool: activeToolProp,
+  onActiveToolChange,
+  musicPreviewUrl,
 }: Props) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const musicStopRef = useRef<(() => void) | null>(null);
-  const [activeTool, setActiveTool] = useState<string | null>(null);
+  const uploadedAudioRef = useRef<HTMLAudioElement | null>(null);
+  const [activeToolLocal, setActiveToolLocal] = useState<string | null>(null);
+  const activeTool = activeToolProp !== undefined ? activeToolProp : activeToolLocal;
+  const setActiveTool = onActiveToolChange ?? setActiveToolLocal;
   const [selectedOverlay, setSelectedOverlay] = useState<string | null>(null);
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
-  const [musicPreviewing, setMusicPreviewing] = useState(false);
   const dragRef = useRef<{ id: string; kind: "text" | "sticker"; startX: number; startY: number; origX: number; origY: number } | null>(null);
   const previewAreaRef = useRef<HTMLDivElement>(null);
 
@@ -67,25 +76,31 @@ const PostMediaEditor = ({
   useEffect(() => {
     return () => {
       musicStopRef.current?.();
+      uploadedAudioRef.current?.pause();
     };
   }, []);
 
-  const updateMeta = (patch: Partial<PostEditorMeta>) => onMetaChange({ ...meta, ...patch });
-
-  const stopMusicPreview = () => {
+  // Preview uploaded music with photo/video
+  useEffect(() => {
     musicStopRef.current?.();
     musicStopRef.current = null;
-    setMusicPreviewing(false);
-  };
+    uploadedAudioRef.current?.pause();
+    uploadedAudioRef.current = null;
 
-  const previewMusic = (loopId: string) => {
-    stopMusicPreview();
-    const player = playFeedMusicLoop(loopId, meta.music?.volume ?? 0.6);
-    if (!player) return;
-    musicStopRef.current = player.stop;
-    setMusicPreviewing(true);
-    updateMeta({ music: { loopId, volume: meta.music?.volume ?? 0.6 } });
-  };
+    if (!musicPreviewUrl) return;
+
+    const audio = new Audio(musicPreviewUrl);
+    audio.volume = meta.music?.volume ?? 0.6;
+    audio.loop = true;
+    void audio.play();
+    uploadedAudioRef.current = audio;
+    return () => {
+      audio.pause();
+      audio.src = "";
+    };
+  }, [musicPreviewUrl, meta.music?.volume]);
+
+  const updateMeta = (patch: Partial<PostEditorMeta>) => onMetaChange({ ...meta, ...patch });
 
   const handlePointerDown = (e: React.PointerEvent, id: string, kind: "text" | "sticker", x: number, y: number) => {
     e.stopPropagation();
@@ -148,7 +163,6 @@ const PostMediaEditor = ({
   const tools = [
     { id: "text", icon: Type, label: "Text" },
     { id: "sticker", icon: Sticker, label: "Stickers" },
-    { id: "music", icon: Music, label: "Music" },
     { id: "trim", icon: Scissors, label: "Trim" },
     { id: "crop", icon: Crop, label: "Crop" },
     { id: "cover", icon: ImageIcon, label: "Cover" },
@@ -166,11 +180,14 @@ const PostMediaEditor = ({
   };
 
   return (
-    <div className="space-y-3">
-      {/* Preview */}
+    <div className={immersive ? "h-full flex flex-col relative" : "space-y-3"}>
       <div
         ref={previewAreaRef}
-        className="relative aspect-[9/16] max-h-[50vh] w-full mx-auto rounded-xl overflow-hidden bg-black"
+        className={
+          immersive
+            ? "relative flex-1 w-full overflow-hidden bg-black"
+            : "relative aspect-[9/16] max-h-[50vh] w-full mx-auto rounded-xl overflow-hidden bg-black"
+        }
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerUp}
@@ -262,7 +279,8 @@ const PostMediaEditor = ({
         </div>
       </div>
 
-      {/* Tool strip */}
+      {/* Tool strip — hidden in immersive mode (tools on right rail) */}
+      {!immersive && (
       <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-1">
         {tools.map((t) => {
           const Icon = t.icon;
@@ -281,8 +299,11 @@ const PostMediaEditor = ({
           );
         })}
       </div>
+      )}
 
-      {/* Tool panels */}
+      {/* Tool panels — bottom sheet in immersive, inline otherwise */}
+      {activeTool && (
+      <div className={immersive ? "absolute bottom-0 left-0 right-16 z-30 max-h-[40%] overflow-y-auto rounded-t-2xl bg-black/90 backdrop-blur-xl border-t border-white/10 p-3 scrollbar-hide" : ""}>
       {activeTool === "text" && (
         <div className="rounded-xl border border-border bg-card p-3 space-y-2">
           <button type="button" onClick={addTextOverlay} className="flex items-center gap-1.5 text-xs font-medium text-primary">
@@ -329,10 +350,10 @@ const PostMediaEditor = ({
       )}
 
       {activeTool === "sticker" && (
-        <div className="rounded-xl border border-border bg-card p-3 max-h-36 overflow-y-auto scrollbar-hide">
+        <div className={`rounded-xl p-3 max-h-36 overflow-y-auto scrollbar-hide ${immersive ? "bg-transparent" : "border border-border bg-card"}`}>
           <div className="grid grid-cols-6 gap-2">
             {EMOJI_CHARACTERS.map((e) => (
-              <button key={e.id} type="button" onClick={() => addSticker(e.id)} className="p-1 rounded-lg hover:bg-secondary">
+              <button key={e.id} type="button" onClick={() => addSticker(e.id)} className="p-1 rounded-lg hover:bg-white/10">
                 <img src={e.src} alt={e.label} className="w-8 h-8 object-contain mx-auto" />
               </button>
             ))}
@@ -340,68 +361,9 @@ const PostMediaEditor = ({
         </div>
       )}
 
-      {activeTool === "music" && (
-        <div className="rounded-xl border border-border bg-card p-3 space-y-2">
-          <p className="text-xs font-semibold text-foreground">Sound library</p>
-          <div className="flex flex-wrap gap-1.5">
-            {FEED_MUSIC_PRESETS.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => previewMusic(p.id)}
-                className={`text-[10px] px-2.5 py-1 rounded-full border ${meta.music?.loopId === p.id ? "border-primary bg-primary/15" : "border-border"}`}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-          <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
-            <input
-              type="file"
-              accept="audio/*"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) updateMeta({ music: { fileName: f.name, volume: meta.music?.volume ?? 0.6 } });
-              }}
-            />
-            <span className="px-2.5 py-1 rounded-full border border-border hover:bg-secondary">Upload audio</span>
-          </label>
-          <div className="space-y-1">
-            <label className="text-[10px] text-muted-foreground">Music volume</label>
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.05}
-              value={meta.music?.volume ?? 0.6}
-              onChange={(e) => updateMeta({ music: { ...meta.music, volume: parseFloat(e.target.value) } })}
-              className="w-full"
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-[10px] text-muted-foreground">Original audio</label>
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.05}
-              value={meta.originalVolume ?? 1}
-              onChange={(e) => updateMeta({ originalVolume: parseFloat(e.target.value) })}
-              className="w-full"
-            />
-          </div>
-          {musicPreviewing && (
-            <button type="button" onClick={stopMusicPreview} className="text-[10px] text-primary">
-              Stop preview
-            </button>
-          )}
-        </div>
-      )}
-
       {activeTool === "trim" && mediaType === "video" && (
-        <div className="rounded-xl border border-border bg-card p-3 space-y-2">
-          <p className="text-xs text-muted-foreground">Trim start / end (seconds)</p>
+        <div className={`rounded-xl p-3 space-y-2 ${immersive ? "" : "border border-border bg-card"}`}>
+          <p className={`text-xs ${immersive ? "text-white/60" : "text-muted-foreground"}`}>Trim start / end (seconds)</p>
           <div className="flex gap-2 items-center text-xs">
             <input
               type="number"
@@ -409,66 +371,36 @@ const PostMediaEditor = ({
               step={0.1}
               value={trimStart}
               onChange={(e) => updateMeta({ trim: { start: parseFloat(e.target.value) || 0, end: trimEnd } })}
-              className="w-20 bg-secondary rounded px-2 py-1 border border-border"
+              className="w-20 bg-white/10 rounded px-2 py-1 border border-white/15 text-white"
             />
-            <span>to</span>
+            <span className={immersive ? "text-white" : ""}>to</span>
             <input
               type="number"
               min={0}
               step={0.1}
               value={trimEnd}
               onChange={(e) => updateMeta({ trim: { start: trimStart, end: parseFloat(e.target.value) || trimEnd } })}
-              className="w-20 bg-secondary rounded px-2 py-1 border border-border"
+              className="w-20 bg-white/10 rounded px-2 py-1 border border-white/15 text-white"
             />
           </div>
         </div>
       )}
 
       {activeTool === "crop" && (
-        <div className="rounded-xl border border-border bg-card p-3 space-y-2">
-          <label className="text-[10px] text-muted-foreground">Zoom</label>
-          <input
-            type="range"
-            min={1}
-            max={2}
-            step={0.05}
-            value={cropScale}
-            onChange={(e) => updateMeta({ crop: { scale: parseFloat(e.target.value), x: cropX, y: cropY } })}
-            className="w-full"
-          />
-          <label className="text-[10px] text-muted-foreground">Position X</label>
-          <input
-            type="range"
-            min={0}
-            max={100}
-            value={cropX}
-            onChange={(e) => updateMeta({ crop: { scale: cropScale, x: parseInt(e.target.value, 10), y: cropY } })}
-            className="w-full"
-          />
-          <label className="text-[10px] text-muted-foreground">Position Y</label>
-          <input
-            type="range"
-            min={0}
-            max={100}
-            value={cropY}
-            onChange={(e) => updateMeta({ crop: { scale: cropScale, x: cropX, y: parseInt(e.target.value, 10) } })}
-            className="w-full"
-          />
+        <div className={`rounded-xl p-3 space-y-2 ${immersive ? "" : "border border-border bg-card"}`}>
+          <label className={`text-[10px] ${immersive ? "text-white/60" : "text-muted-foreground"}`}>Zoom</label>
+          <input type="range" min={1} max={2} step={0.05} value={cropScale} onChange={(e) => updateMeta({ crop: { scale: parseFloat(e.target.value), x: cropX, y: cropY } })} className="w-full" />
+          <label className={`text-[10px] ${immersive ? "text-white/60" : "text-muted-foreground"}`}>Position X</label>
+          <input type="range" min={0} max={100} value={cropX} onChange={(e) => updateMeta({ crop: { scale: cropScale, x: parseInt(e.target.value, 10), y: cropY } })} className="w-full" />
+          <label className={`text-[10px] ${immersive ? "text-white/60" : "text-muted-foreground"}`}>Position Y</label>
+          <input type="range" min={0} max={100} value={cropY} onChange={(e) => updateMeta({ crop: { scale: cropScale, x: cropX, y: parseInt(e.target.value, 10) } })} className="w-full" />
         </div>
       )}
 
       {activeTool === "cover" && mediaType === "video" && (
-        <div className="rounded-xl border border-border bg-card p-3 space-y-2">
-          <p className="text-xs text-muted-foreground">Cover frame (seconds)</p>
-          <input
-            type="range"
-            min={0}
-            max={duration || 30}
-            step={0.1}
-            value={meta.coverTime ?? 0}
-            onChange={(e) => updateMeta({ coverTime: parseFloat(e.target.value) })}
-            className="w-full"
-          />
+        <div className={`rounded-xl p-3 space-y-2 ${immersive ? "" : "border border-border bg-card"}`}>
+          <p className={`text-xs ${immersive ? "text-white/60" : "text-muted-foreground"}`}>Cover frame (seconds)</p>
+          <input type="range" min={0} max={duration || 30} step={0.1} value={meta.coverTime ?? 0} onChange={(e) => updateMeta({ coverTime: parseFloat(e.target.value) })} className="w-full" />
         </div>
       )}
 
@@ -480,7 +412,7 @@ const PostMediaEditor = ({
             updateMeta({ location: e.target.value || undefined });
           }}
           placeholder="Add location (optional)"
-          className="w-full text-sm bg-card border border-border rounded-xl px-3 py-2"
+          className={`w-full text-sm rounded-xl px-3 py-2 ${immersive ? "bg-white/10 border border-white/15 text-white placeholder:text-white/40" : "bg-card border border-border"}`}
         />
       )}
 
@@ -489,8 +421,10 @@ const PostMediaEditor = ({
           value={hashtags}
           onChange={(e) => onHashtagsChange(e.target.value)}
           placeholder="#music #wheuat"
-          className="w-full text-sm bg-card border border-border rounded-xl px-3 py-2"
+          className={`w-full text-sm rounded-xl px-3 py-2 ${immersive ? "bg-white/10 border border-white/15 text-white placeholder:text-white/40" : "bg-card border border-border"}`}
         />
+      )}
+      </div>
       )}
     </div>
   );
