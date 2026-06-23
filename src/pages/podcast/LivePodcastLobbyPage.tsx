@@ -41,6 +41,7 @@ import {
 import { PodcastFinals, type FinalRecording } from "./podcastRecoveryStore";
 import PodcastEditorPro from "./PodcastEditorPro";
 import { WheuatTv } from "@/pages/wheuat-tv/wheuatTvStore";
+import { publishPodcastAudio } from "./podcastPublishStore";
 
 type Episode = {
   id: string;
@@ -131,12 +132,23 @@ const LivePodcastLobbyPage = () => {
     setLocalFinals((rs) => rs.map((r) => r.id === rec.id ? { ...r, title: next.trim() } : r));
   };
 
-  const publishLocalToTv = async (rec: FinalRecording) => {
+  const choosePublishTarget = () => {
+    const answer = window.prompt("Publish this podcast as Audio or Video? Type audio for Radio Podcasts, or video for WHEUAT.TV.", "video")?.trim().toLowerCase();
+    if (!answer) return null;
+    return answer.startsWith("a") ? "audio" : "video";
+  };
+
+  const publishLocalPodcast = async (rec: FinalRecording) => {
+    const target = choosePublishTarget();
+    if (!target) return;
+    if (target === "audio") {
+      await publishPodcastAudio({ title: rec.title, blob: rec.blob, mime: rec.mime, ext: rec.ext, durationMs: rec.durationMs });
+      toast({ title: "Published to Radio Podcasts", description: rec.title });
+      return;
+    }
     await WheuatTv.add({
       kind: "podcast",
       title: rec.title,
-      uploaderId: user?.id ?? "anon",
-      uploaderName: user?.user_metadata?.display_name || user?.email?.split("@")[0] || rec.hostName || "Host",
       blob: rec.blob,
       mime: rec.mime,
       ext: rec.ext,
