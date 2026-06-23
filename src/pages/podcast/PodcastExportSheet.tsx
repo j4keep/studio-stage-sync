@@ -6,6 +6,8 @@ import type { DawEngine } from "@/wstudio/daw/engine/DawEngine";
 import type { Track, Clip } from "@/wstudio/daw/engine/types";
 import { useDawStore } from "@/wstudio/daw/state/DawStore";
 import { usePodcastVideoStore } from "./podcastVideoStore";
+import { WheuatTv } from "@/pages/wheuat-tv/wheuatTvStore";
+import { publishPodcastAudio } from "./podcastPublishStore";
 
 type Mode = "grid" | "rows" | "speaker" | "pip" | "audio" | "pertrack" | "stems";
 
@@ -206,18 +208,25 @@ export function PodcastExportSheet({ open, onClose, engine, tracks, clips, proje
 
   if (!open) return null;
 
-  const run = async () => {
+  const run = async (action: "download" | "publish" = "download") => {
     if (clips.length === 0) { toast.error("Nothing to export"); return; }
+    const wantsPublish = action === "publish";
     setBusy(true);
     const base = safeName(projectName);
     try {
       if (mode === "audio") {
-        toast.loading("Rendering mix…", { id: "exp" });
+        toast.loading(wantsPublish ? "Publishing audio podcast…" : "Rendering mix…", { id: "exp" });
         const len = Math.max(...clips.map(c => c.startTime + c.duration)) + 0.5;
         const blob = await engine.exportToWav(tracks, clips, len);
-        downloadBlob(blob, `${base}.wav`);
-        toast.success("Exported WAV", { id: "exp" });
+        if (wantsPublish) {
+          await publishPodcastAudio({ title: projectName || base, blob, mime: "audio/wav", ext: "wav", durationMs: len * 1000 });
+          toast.success("Published to Radio Podcasts", { id: "exp" });
+        } else {
+          downloadBlob(blob, `${base}.wav`);
+          toast.success("Exported WAV", { id: "exp" });
+        }
       } else if (mode === "stems") {
+        if (wantsPublish) { toast.error("Choose Audio only or a video layout to publish", { id: "exp" }); setBusy(false); return; }
         toast.loading("Rendering stems…", { id: "exp" });
         const zip = new JSZip();
         for (const t of tracks) {
@@ -228,6 +237,7 @@ export function PodcastExportSheet({ open, onClose, engine, tracks, clips, proje
         downloadBlob(out, `${base}-stems.zip`);
         toast.success("Exported stems", { id: "exp" });
       } else if (mode === "pertrack") {
+        if (wantsPublish) { toast.error("Choose Audio only or a video layout to publish", { id: "exp" }); setBusy(false); return; }
         toast.loading("Packaging per-track…", { id: "exp" });
         const zip = new JSZip();
         for (const t of tracks) {
@@ -249,11 +259,16 @@ export function PodcastExportSheet({ open, onClose, engine, tracks, clips, proje
       } else {
         const linked = Object.keys(videos).length;
         if (linked === 0) { toast.error("No linked videos to composite"); setBusy(false); return; }
-        toast.loading("Compositing video — playing back in real time…", { id: "exp" });
+        toast.loading(wantsPublish ? "Publishing video podcast…" : "Compositing video — playing back in real time…", { id: "exp" });
         const len = Math.max(...clips.map(c => c.startTime + c.duration)) + 0.5;
         const blob = await renderComposite(mode, engine, tracks, clips, videos as any, len);
-        downloadBlob(blob, `${base}-${mode}.webm`);
-        toast.success("Video exported", { id: "exp" });
+        if (wantsPublish) {
+          await WheuatTv.add({ kind: "podcast", title: projectName || base, blob, mime: blob.type || "video/webm", ext: "webm", durationMs: len * 1000 });
+          toast.success("Published to WHEUAT.TV", { id: "exp" });
+        } else {
+          downloadBlob(blob, `${base}-${mode}.webm`);
+          toast.success("Video exported", { id: "exp" });
+        }
       }
       onClose();
     } catch (err: any) {
