@@ -505,7 +505,7 @@ const LivePodcastLobbyPage = () => {
                     onDownload={downloadLocal}
                     onDelete={deleteLocal}
                     onRename={renameLocal}
-                    onPublish={publishLocalToTv}
+                    onPublish={publishLocalPodcast}
                     onRefresh={loadLocalFinals}
                   />
                 )}
