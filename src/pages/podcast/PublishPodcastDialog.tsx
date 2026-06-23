@@ -93,26 +93,30 @@ export function usePublishPodcastChoice() {
         <DialogHeader>
           <DialogTitle>Publish podcast</DialogTitle>
           <DialogDescription>
-            Choose where this podcast should go.
+            {forcedKind === "audio"
+              ? "Publish this audio podcast to the Radio station."
+              : "Choose where this podcast should go."}
           </DialogDescription>
         </DialogHeader>
 
-        <RadioGroup value={kind} onValueChange={(v) => setKind(v as "audio" | "video")} className="gap-3">
-          <label className="flex items-start gap-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/40">
-            <RadioGroupItem value="video" id="pk-video" className="mt-1" />
-            <div>
-              <div className="font-medium">Video — WHEUAT.TV</div>
-              <div className="text-xs text-muted-foreground">Publish to the WHEUAT.TV Free tab.</div>
-            </div>
-          </label>
-          <label className="flex items-start gap-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/40">
-            <RadioGroupItem value="audio" id="pk-audio" className="mt-1" />
-            <div>
-              <div className="font-medium">Audio — Radio Podcasts</div>
-              <div className="text-xs text-muted-foreground">Publish audio only to the Radio station's Podcasts tab.</div>
-            </div>
-          </label>
-        </RadioGroup>
+        {!forcedKind && (
+          <RadioGroup value={kind} onValueChange={(v) => setKind(v as "audio" | "video")} className="gap-3">
+            <label className="flex items-start gap-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/40">
+              <RadioGroupItem value="video" id="pk-video" className="mt-1" />
+              <div>
+                <div className="font-medium">Video — WHEUAT.TV</div>
+                <div className="text-xs text-muted-foreground">Publish to the WHEUAT.TV Free tab.</div>
+              </div>
+            </label>
+            <label className="flex items-start gap-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/40">
+              <RadioGroupItem value="audio" id="pk-audio" className="mt-1" />
+              <div>
+                <div className="font-medium">Audio — Radio Podcasts</div>
+                <div className="text-xs text-muted-foreground">Publish audio only to the Radio station's Podcasts tab.</div>
+              </div>
+            </label>
+          </RadioGroup>
+        )}
 
         {kind === "audio" && (
           <div className="space-y-2">
