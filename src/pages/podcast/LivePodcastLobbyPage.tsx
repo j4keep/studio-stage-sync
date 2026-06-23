@@ -133,17 +133,20 @@ const LivePodcastLobbyPage = () => {
     setLocalFinals((rs) => rs.map((r) => r.id === rec.id ? { ...r, title: next.trim() } : r));
   };
 
-  const choosePublishTarget = () => {
-    const answer = window.prompt("Publish this podcast as Audio or Video? Type audio for Radio Podcasts, or video for WHEUAT.TV.", "video")?.trim().toLowerCase();
-    if (!answer) return null;
-    return answer.startsWith("a") ? "audio" : "video";
-  };
+  const { request: requestPublishChoice, dialog: publishChoiceDialog } = usePublishPodcastChoice();
 
   const publishLocalPodcast = async (rec: FinalRecording) => {
-    const target = choosePublishTarget();
-    if (!target) return;
-    if (target === "audio") {
-      await publishPodcastAudio({ title: rec.title, blob: rec.blob, mime: rec.mime, ext: rec.ext, durationMs: rec.durationMs });
+    const choice = await requestPublishChoice();
+    if (!choice) return;
+    if (choice.kind === "audio") {
+      await publishPodcastAudio({
+        title: rec.title,
+        blob: rec.blob,
+        mime: rec.mime,
+        ext: rec.ext,
+        durationMs: rec.durationMs,
+        coverUrl: choice.coverUrl ?? null,
+      });
       toast({ title: "Published to Radio Podcasts", description: rec.title });
       return;
     }
