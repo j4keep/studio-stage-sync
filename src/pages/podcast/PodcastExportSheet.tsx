@@ -327,6 +327,7 @@ export function PodcastExportSheet({ open, onClose, engine, tracks, clips, proje
           </div>
         </div>
       </div>
+      {publishChoiceDialog}
     </div>
   );
 }
