@@ -10,11 +10,13 @@ import {
   Check,
   Undo2,
   Trash2,
+  Eraser,
 } from "lucide-react";
 import PostOverlayRenderer from "./PostOverlayRenderer";
 import StickerDrawer from "./StickerDrawer";
 import type { PostEditorMeta, TextOverlay, StickerOverlay, DrawStroke, TextOverlayStyle } from "@/lib/post-editor";
-import { DRAW_COLORS } from "@/lib/post-editor";
+import { DRAW_COLORS, BRUSH_PRESETS, eraseStrokesNear } from "@/lib/post-editor";
+import { TEXT_STYLE_PRESETS, TEXT_COLORS } from "@/lib/text-styles";
 
 const newId = () => Math.random().toString(36).slice(2, 9);
 
@@ -30,8 +32,6 @@ interface Props {
   musicPreviewUrl?: string | null;
 }
 
-const TEXT_STYLES: TextOverlayStyle[] = ["white", "outline", "yellow", "neon", "rounded"];
-
 export default function MediaEditView({
   mediaType,
   previewUrl,
@@ -45,10 +45,14 @@ export default function MediaEditView({
   const [showStickers, setShowStickers] = useState(false);
   const [selected, setSelected] = useState<{ id: string; type: "text" | "sticker" } | null>(null);
   const [textDraft, setTextDraft] = useState("");
-  const [textStyle, setTextStyle] = useState<TextOverlayStyle>("white");
+  const [textStyle, setTextStyle] = useState<TextOverlayStyle>("bubble");
   const [textColor, setTextColor] = useState("#ffffff");
+  const [textPos, setTextPos] = useState({ x: 50, y: 38, scale: 1 });
   const [drawColor, setDrawColor] = useState("#ffffff");
-  const [drawWidth, setDrawWidth] = useState(4);
+  const [drawWidth, setDrawWidth] = useState(6);
+  const [drawHighlighter, setDrawHighlighter] = useState(false);
+  const [eraserMode, setEraserMode] = useState(false);
+  const [brushPreset, setBrushPreset] = useState("medium");
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const textInputRef = useRef<HTMLInputElement>(null);
 
@@ -63,6 +67,12 @@ export default function MediaEditView({
       audio.src = "";
     };
   }, [musicPreviewUrl, meta.music?.volume]);
+
+  useEffect(() => {
+    if (activeTool === "text") {
+      setTimeout(() => textInputRef.current?.focus(), 80);
+    }
+  }, [activeTool, editingTextId]);
 
   const patch = (p: Partial<PostEditorMeta>) => onMetaChange({ ...meta, ...p });
 
@@ -85,7 +95,7 @@ export default function MediaEditView({
       stickerId,
       x: 50,
       y: 45,
-      scale: 1,
+      scale: 1.1,
       rotation: 0,
     };
     patch({ stickers: [...meta.stickers, sticker] });
@@ -96,7 +106,9 @@ export default function MediaEditView({
     setActiveTool("text");
     setEditingTextId(null);
     setTextDraft("");
-    setTimeout(() => textInputRef.current?.focus(), 100);
+    setTextPos({ x: 50, y: 38, scale: 1 });
+    setTextStyle("bubble");
+    setTextColor("#ffffff");
   };
 
   const saveText = () => {
@@ -106,14 +118,15 @@ export default function MediaEditView({
       return;
     }
     if (editingTextId) {
-      updateText(editingTextId, { text: t, style: textStyle, color: textColor });
+      updateText(editingTextId, { text: t, style: textStyle, color: textColor, ...textPos });
+      setSelected({ id: editingTextId, type: "text" });
     } else {
       const overlay: TextOverlay = {
         id: newId(),
         text: t,
-        x: 50,
-        y: 40,
-        scale: 1,
+        x: textPos.x,
+        y: textPos.y,
+        scale: textPos.scale,
         rotation: 0,
         style: textStyle,
         color: textColor,
@@ -134,16 +147,29 @@ export default function MediaEditView({
     setTextDraft(o.text);
     setTextStyle(o.style);
     setTextColor(o.color || "#ffffff");
+    setTextPos({ x: o.x, y: o.y, scale: o.scale });
     setActiveTool("text");
-    setTimeout(() => textInputRef.current?.focus(), 100);
   };
 
   const addStroke = (stroke: DrawStroke) => {
     patch({ drawings: [...(meta.drawings || []), stroke] });
   };
 
+  const eraseAt = (x: number, y: number) => {
+    patch({ drawings: eraseStrokesNear(meta.drawings || [], x, y, 8) });
+  };
+
   const undoDraw = () => patch({ drawings: (meta.drawings || []).slice(0, -1) });
   const clearDraw = () => patch({ drawings: [] });
+
+  const applyBrushPreset = (id: string) => {
+    const preset = BRUSH_PRESETS.find((p) => p.id === id);
+    if (!preset) return;
+    setBrushPreset(id);
+    setDrawWidth(preset.width);
+    setDrawHighlighter(!!preset.highlighter);
+    setEraserMode(false);
+  };
 
   const tools: { id: Tool; icon: typeof Type; label: string; show?: boolean }[] = [
     { id: "text", icon: Type, label: "Text" },
@@ -153,15 +179,19 @@ export default function MediaEditView({
     { id: "trim", icon: Scissors, label: "Trim", show: mediaType === "video" },
   ];
 
+  const liveTextDraft =
+    activeTool === "text"
+      ? { text: textDraft, style: textStyle, color: textColor, ...textPos }
+      : null;
+
   return (
     <div className="relative h-full w-full bg-black">
-      {previewUrl && (
-        mediaType === "video" ? (
+      {previewUrl &&
+        (mediaType === "video" ? (
           <video src={previewUrl} className="absolute inset-0 w-full h-full object-cover" playsInline loop muted={meta.muteOriginal} autoPlay />
         ) : (
           <img src={previewUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
-        )
-      )}
+        ))}
 
       <PostOverlayRenderer
         meta={meta}
@@ -172,157 +202,236 @@ export default function MediaEditView({
         onUpdateSticker={updateSticker}
         onDeleteSelected={deleteSelected}
         drawing={activeTool === "draw"}
+        eraserMode={eraserMode}
         drawColor={drawColor}
         drawWidth={drawWidth}
+        drawHighlighter={drawHighlighter}
         onAddStroke={addStroke}
+        onEraseAt={eraseAt}
+        liveTextDraft={liveTextDraft}
+        onLiveTextMove={(p) => setTextPos((prev) => ({ ...prev, ...p }))}
       />
 
-      {/* Draw color rail */}
+      {/* Draw controls */}
       {activeTool === "draw" && (
-        <div className="absolute right-2 top-1/3 z-30 flex flex-col gap-2">
-          {DRAW_COLORS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => setDrawColor(c)}
-              className={`w-7 h-7 rounded-full border-2 ${drawColor === c ? "border-white scale-110" : "border-white/30"}`}
-              style={{ backgroundColor: c }}
+        <div className="absolute inset-x-0 top-16 z-40 px-3 space-y-2">
+          <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
+            {BRUSH_PRESETS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => applyBrushPreset(p.id)}
+                className={`shrink-0 px-3 py-1.5 rounded-full text-[10px] font-bold ${
+                  brushPreset === p.id ? "bg-violet-500 text-white" : "bg-black/60 text-white/80 border border-white/20"
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2 rounded-2xl bg-black/70 backdrop-blur-md border border-white/15 px-3 py-2">
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide flex-1">
+              {DRAW_COLORS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setDrawColor(c)}
+                  className={`shrink-0 w-8 h-8 rounded-full border-2 ${drawColor === c ? "border-violet-400 scale-110" : "border-white/30"}`}
+                  style={{ backgroundColor: c }}
+                />
+              ))}
+            </div>
+            <input
+              type="range"
+              min={2}
+              max={28}
+              value={drawWidth}
+              onChange={(e) => setDrawWidth(parseInt(e.target.value, 10))}
+              className="w-20 accent-violet-500"
             />
-          ))}
-          <input
-            type="range"
-            min={2}
-            max={12}
-            value={drawWidth}
-            onChange={(e) => setDrawWidth(parseInt(e.target.value, 10))}
-            className="w-7 accent-white"
-            orient="vertical"
-          />
-          <button type="button" onClick={undoDraw} className="w-8 h-8 rounded-full bg-black/50 flex items-center justify-center">
-            <Undo2 className="w-4 h-4 text-white" />
-          </button>
-          <button type="button" onClick={clearDraw} className="w-8 h-8 rounded-full bg-black/50 flex items-center justify-center">
-            <Trash2 className="w-4 h-4 text-white" />
-          </button>
-          <button type="button" onClick={() => setActiveTool(null)} className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-            <Check className="w-4 h-4 text-black" />
-          </button>
+            <button type="button" onClick={() => setEraserMode((v) => !v)} className={`p-2 rounded-full ${eraserMode ? "bg-violet-500" : "bg-white/10"}`}>
+              <Eraser className="w-4 h-4 text-white" />
+            </button>
+            <button type="button" onClick={undoDraw} className="p-2 rounded-full bg-white/10">
+              <Undo2 className="w-4 h-4 text-white" />
+            </button>
+            <button type="button" onClick={clearDraw} className="p-2 rounded-full bg-white/10">
+              <Trash2 className="w-4 h-4 text-white" />
+            </button>
+            <button type="button" onClick={() => setActiveTool(null)} className="p-2 rounded-full bg-violet-500">
+              <Check className="w-4 h-4 text-white" />
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Text editor panel */}
+      {/* TikTok-style text: live on media + style bar at bottom */}
       {activeTool === "text" && (
-        <div className="absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] z-30 px-3">
-          <div className="rounded-2xl bg-zinc-900/95 border border-white/10 p-3 space-y-2 backdrop-blur-xl">
-            <input
-              ref={textInputRef}
-              value={textDraft}
-              onChange={(e) => setTextDraft(e.target.value)}
-              placeholder="Type your text…"
-              className="w-full bg-white/10 rounded-xl px-3 py-2.5 text-white text-base focus:outline-none placeholder:text-white/40"
-            />
-            <div className="flex flex-wrap gap-1">
-              {TEXT_STYLES.map((s) => (
+        <>
+          <div className="absolute top-14 inset-x-0 z-40 flex justify-end px-3 gap-2">
+            <button type="button" onClick={() => setActiveTool(null)} className="px-4 py-2 rounded-full bg-black/50 text-white text-sm font-semibold">
+              Cancel
+            </button>
+            <button type="button" onClick={saveText} className="px-4 py-2 rounded-full bg-violet-500 text-white text-sm font-bold flex items-center gap-1 shadow-[0_0_16px_rgba(168,85,247,0.6)]">
+              <Check className="w-4 h-4" /> Done
+            </button>
+          </div>
+          <div className="absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+5.75rem)] z-40 px-2">
+            {/* Tap bar — keeps keyboard open without blocking media drag */}
+            <button
+              type="button"
+              onClick={() => textInputRef.current?.focus()}
+              className="w-full mb-2 py-2 rounded-xl bg-black/40 border border-white/10 text-white/50 text-xs font-medium"
+            >
+              {textDraft ? "Tap to edit text" : "Tap to type on video"}
+            </button>
+            <div className="overflow-x-auto scrollbar-hide flex gap-2 pb-2">
+              {TEXT_STYLE_PRESETS.map((p) => (
                 <button
-                  key={s}
+                  key={p.id}
                   type="button"
-                  onClick={() => setTextStyle(s)}
-                  className={`text-[10px] px-2 py-0.5 rounded-full border capitalize ${textStyle === s ? "border-primary bg-primary/20 text-white" : "border-white/20 text-white/70"}`}
+                  onClick={() => {
+                    setTextStyle(p.id);
+                    setTextColor(p.defaultColor);
+                  }}
+                  className={`shrink-0 px-3 py-2 rounded-xl text-[11px] font-bold border ${
+                    textStyle === p.id
+                      ? "border-violet-400 bg-violet-500/25 text-white shadow-[0_0_10px_rgba(168,85,247,0.4)]"
+                      : "border-white/15 bg-black/60 text-white/80"
+                  }`}
+                  style={{ fontFamily: p.fontFamily }}
                 >
-                  {s}
+                  {p.label}
                 </button>
               ))}
             </div>
-            <div className="flex gap-1">
-              {DRAW_COLORS.slice(0, 6).map((c) => (
-                <button key={c} type="button" onClick={() => setTextColor(c)} className="w-6 h-6 rounded-full border border-white/30" style={{ backgroundColor: c }} />
+            <div className="flex gap-2 justify-center items-center mt-2">
+              {TEXT_COLORS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setTextColor(c)}
+                  className={`w-7 h-7 rounded-full border-2 ${textColor === c ? "border-violet-400 scale-110" : "border-white/25"}`}
+                  style={{ backgroundColor: c }}
+                />
               ))}
-            </div>
-            <div className="flex gap-2">
-              <button type="button" onClick={() => setActiveTool(null)} className="flex-1 py-2 rounded-xl bg-white/10 text-white text-sm">Cancel</button>
-              <button type="button" onClick={saveText} className="flex-1 py-2 rounded-xl bg-primary text-black font-semibold text-sm flex items-center justify-center gap-1">
-                <Check className="w-4 h-4" /> Done
-              </button>
+              <input
+                type="range"
+                min={0.6}
+                max={2.5}
+                step={0.05}
+                value={textPos.scale}
+                onChange={(e) => setTextPos((p) => ({ ...p, scale: parseFloat(e.target.value) }))}
+                className="w-24 ml-2 accent-violet-500"
+                aria-label="Text size"
+              />
             </div>
           </div>
-          {textDraft && (
-            <p className="text-center mt-3 text-lg font-bold text-white drop-shadow-lg pointer-events-none">{textDraft}</p>
-          )}
-        </div>
+          <input
+            ref={textInputRef}
+            value={textDraft}
+            onChange={(e) => setTextDraft(e.target.value)}
+            className="sr-only"
+            aria-label="Type text on video"
+            autoComplete="off"
+            autoCorrect="off"
+            enterKeyHint="done"
+          />
+        </>
       )}
 
-      {/* Crop panel */}
       {activeTool === "crop" && (
-        <div className="absolute inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] z-30 rounded-2xl bg-zinc-900/95 border border-white/10 p-3 space-y-2">
+        <div className="absolute inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] z-40 rounded-2xl bg-zinc-900/95 border border-white/10 p-3 space-y-2">
           <label className="text-[10px] text-white/50">Zoom</label>
-          <input type="range" min={1} max={2} step={0.05} value={meta.crop?.scale ?? 1} onChange={(e) => patch({ crop: { scale: parseFloat(e.target.value), x: meta.crop?.x ?? 50, y: meta.crop?.y ?? 50 } })} className="w-full" />
-          <button type="button" onClick={() => setActiveTool(null)} className="w-full py-2 rounded-xl bg-primary text-black font-semibold text-sm">Done</button>
+          <input type="range" min={1} max={2} step={0.05} value={meta.crop?.scale ?? 1} onChange={(e) => patch({ crop: { scale: parseFloat(e.target.value), x: meta.crop?.x ?? 50, y: meta.crop?.y ?? 50 } })} className="w-full accent-violet-500" />
+          <button type="button" onClick={() => setActiveTool(null)} className="w-full py-2.5 rounded-xl bg-violet-500 text-white font-bold text-sm">Done</button>
         </div>
       )}
 
-      {/* Trim panel */}
       {activeTool === "trim" && mediaType === "video" && (
-        <div className="absolute inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] z-30 rounded-2xl bg-zinc-900/95 border border-white/10 p-3 space-y-2">
+        <div className="absolute inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] z-40 rounded-2xl bg-zinc-900/95 border border-white/10 p-3 space-y-2">
           <p className="text-xs text-white/60">Trim start / end (seconds)</p>
           <div className="flex gap-2 items-center text-xs text-white">
-            <input type="number" min={0} step={0.1} value={meta.trim?.start ?? 0} onChange={(e) => patch({ trim: { start: parseFloat(e.target.value) || 0, end: meta.trim?.end ?? 30 } })} className="w-20 bg-white/10 rounded px-2 py-1" />
+            <input type="number" min={0} step={0.1} value={meta.trim?.start ?? 0} onChange={(e) => patch({ trim: { start: parseFloat(e.target.value) || 0, end: meta.trim?.end ?? 30 } })} className="w-20 bg-white/10 rounded-lg px-2 py-1.5" />
             <span>to</span>
-            <input type="number" min={0} step={0.1} value={meta.trim?.end ?? 30} onChange={(e) => patch({ trim: { start: meta.trim?.start ?? 0, end: parseFloat(e.target.value) || 30 } })} className="w-20 bg-white/10 rounded px-2 py-1" />
+            <input type="number" min={0} step={0.1} value={meta.trim?.end ?? 30} onChange={(e) => patch({ trim: { start: meta.trim?.start ?? 0, end: parseFloat(e.target.value) || 30 } })} className="w-20 bg-white/10 rounded-lg px-2 py-1.5" />
           </div>
-          <button type="button" onClick={() => setActiveTool(null)} className="w-full py-2 rounded-xl bg-primary text-black font-semibold text-sm">Done</button>
+          <button type="button" onClick={() => setActiveTool(null)} className="w-full py-2.5 rounded-xl bg-violet-500 text-white font-bold text-sm">Done</button>
         </div>
       )}
 
-      {/* Bottom tool row */}
-      <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+0.25rem)] inset-x-0 z-30 px-2">
-        <div className="flex justify-around mb-2">
+      {/* Bottom toolbar — premium visibility */}
+      <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+0.25rem)] inset-x-0 z-40 px-2">
+        <div className="flex justify-around mb-2 px-1">
           {tools.filter((t) => t.show !== false).map((t) => {
             const Icon = t.icon;
-            const active = activeTool === t.id;
+            const active = activeTool === t.id || (t.id === "sticker" && showStickers);
             return (
               <button
                 key={t.id!}
                 type="button"
                 onClick={() => {
-                  if (t.id === "sticker") setShowStickers(true);
-                  else if (t.id === "text") startTextMode();
+                  if (t.id === "sticker") {
+                    setShowStickers(true);
+                    setActiveTool(null);
+                  } else if (t.id === "text") startTextMode();
                   else setActiveTool(active === t.id ? null : t.id);
                 }}
-                className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-xl ${active ? "bg-white/20" : ""}`}
+                className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-2xl min-w-[3.5rem] transition-all ${
+                  active ? "bg-violet-500/25 shadow-[0_0_14px_rgba(168,85,247,0.45)]" : ""
+                }`}
               >
-                <Icon className="w-5 h-5 text-white" />
-                <span className="text-[9px] text-white/80 font-medium">{t.label}</span>
+                <Icon
+                  className={`w-6 h-6 transition-all ${
+                    active ? "text-violet-300 drop-shadow-[0_0_8px_rgba(196,181,253,0.9)]" : "text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
+                  }`}
+                  strokeWidth={active ? 2.5 : 2}
+                />
+                <span className={`text-[10px] font-bold ${active ? "text-violet-200" : "text-white/90"}`}>{t.label}</span>
               </button>
             );
           })}
           <button
             type="button"
             onClick={() => patch({ muteOriginal: !meta.muteOriginal })}
-            className="flex flex-col items-center gap-0.5 px-2 py-1"
+            className="flex flex-col items-center gap-1 px-3 py-1.5 min-w-[3.5rem]"
           >
-            {meta.muteOriginal ? <VolumeX className="w-5 h-5 text-white" /> : <Volume2 className="w-5 h-5 text-white" />}
-            <span className="text-[9px] text-white/80 font-medium">Mute</span>
+            {meta.muteOriginal ? (
+              <VolumeX className="w-6 h-6 text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" strokeWidth={2} />
+            ) : (
+              <Volume2 className="w-6 h-6 text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" strokeWidth={2} />
+            )}
+            <span className="text-[10px] font-bold text-white/90">Mute</span>
           </button>
         </div>
-        <input
-          value={caption}
-          onChange={(e) => onCaptionChange(e.target.value)}
-          placeholder="Write a caption…"
-          className="w-full bg-white/10 backdrop-blur-md border border-white/15 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none"
-        />
+        {activeTool !== "text" && (
+          <input
+            value={caption}
+            onChange={(e) => onCaptionChange(e.target.value)}
+            placeholder="Write a caption…"
+            className="w-full bg-black/50 backdrop-blur-md border border-white/20 rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-violet-400/50"
+          />
+        )}
       </div>
 
       {selected?.type === "text" && activeTool !== "text" && (
         <button
           type="button"
           onClick={editSelectedText}
-          className="absolute top-20 right-3 z-30 px-3 py-1.5 rounded-full bg-white/20 text-white text-xs font-semibold"
+          className="absolute top-20 right-3 z-40 px-3 py-1.5 rounded-full bg-violet-500/80 text-white text-xs font-bold shadow-lg"
         >
           Edit text
         </button>
       )}
 
-      <StickerDrawer open={showStickers} onClose={() => setShowStickers(false)} onPick={addSticker} />
+      <StickerDrawer
+        open={showStickers}
+        onClose={() => setShowStickers(false)}
+        onPick={addSticker}
+        mediaType={mediaType}
+        hasMusic={!!meta.music?.loopId || !!meta.music?.audioUrl || !!musicPreviewUrl}
+        caption={caption}
+      />
     </div>
   );
 }

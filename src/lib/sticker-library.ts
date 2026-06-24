@@ -1,54 +1,52 @@
-import { EMOJI_CHARACTERS } from "@/lib/emoji-characters";
+import {
+  STICKER_ASSETS,
+  getStickerAssetSrc,
+  type StickerPackId,
+} from "./sticker-assets";
 
 export type StickerCategory =
   | "recent"
+  | "trending"
   | "reactions"
   | "funny"
-  | "sports"
   | "music"
-  | "creator"
+  | "sports"
+  | "love"
+  | "celebration"
   | "wheuat";
 
 export interface StickerDef {
   id: string;
   label: string;
   src: string;
-  category: Exclude<StickerCategory, "recent">;
+  pack: StickerPackId;
+  tags?: string[];
 }
-
-const CATEGORY_MAP: Record<string, StickerCategory> = {
-  fire: "reactions", heart: "reactions", thumbsup: "reactions", laughcry: "reactions",
-  shocked: "reactions", angry: "reactions", cool: "reactions", clap: "reactions",
-  crown: "wheuat", trophy: "wheuat", star: "wheuat", mic: "wheuat", dj: "wheuat",
-  music: "music", guitar: "music", vibing: "music", dance: "music",
-  punch: "sports", flexed: "sports", lion: "sports", hundred: "sports",
-  dragon: "funny", ghost: "funny", poop: "funny", alien: "funny", robot: "funny",
-  skull: "funny", bomb: "funny", boom: "funny", mindblown: "funny",
-  rocket: "creator", diamond: "creator", money: "creator", sparkles: "creator",
-  lightning: "creator", tornado: "creator", eyes: "creator", queen: "creator",
-};
 
 export const STICKER_CATEGORIES: { id: StickerCategory; label: string }[] = [
   { id: "recent", label: "Recent" },
+  { id: "trending", label: "Trending" },
   { id: "reactions", label: "Reactions" },
   { id: "funny", label: "Funny" },
-  { id: "sports", label: "Sports" },
   { id: "music", label: "Music" },
-  { id: "creator", label: "Creator" },
+  { id: "sports", label: "Sports" },
+  { id: "love", label: "Love" },
+  { id: "celebration", label: "Celebrate" },
   { id: "wheuat", label: "WHEUAT" },
 ];
 
-export const STICKER_LIBRARY: StickerDef[] = EMOJI_CHARACTERS.map((e) => ({
-  id: e.id,
-  label: e.label,
-  src: e.src,
-  category: (CATEGORY_MAP[e.id] ?? "reactions") as StickerDef["category"],
+export const STICKER_LIBRARY: StickerDef[] = STICKER_ASSETS.map((a) => ({
+  id: a.id,
+  label: a.label,
+  src: a.src,
+  pack: a.pack,
+  tags: a.tags,
 }));
 
 const STICKER_MAP = new Map(STICKER_LIBRARY.map((s) => [s.id, s]));
 
 export function getStickerSrc(id: string): string | undefined {
-  return STICKER_MAP.get(id)?.src ?? STICKER_MAP.get(id.replace(/^emoji-/, ""))?.src;
+  return getStickerAssetSrc(id) ?? STICKER_MAP.get(id)?.src;
 }
 
 export function getStickersByCategory(
@@ -58,13 +56,60 @@ export function getStickersByCategory(
 ): StickerDef[] {
   const q = query.trim().toLowerCase();
   let list: StickerDef[];
+
   if (category === "recent") {
     list = recentIds.map((id) => STICKER_MAP.get(id)).filter(Boolean) as StickerDef[];
+  } else if (category === "trending") {
+    list = STICKER_LIBRARY.filter((s) => s.pack === "trending" || s.pack === "celebration");
+  } else if (category === "celebration") {
+    list = STICKER_LIBRARY.filter((s) => s.pack === "celebration");
   } else {
-    list = STICKER_LIBRARY.filter((s) => s.category === category);
+    list = STICKER_LIBRARY.filter((s) => s.pack === category);
   }
-  if (q) list = list.filter((s) => s.label.toLowerCase().includes(q) || s.id.includes(q));
+
+  if (q) {
+    list = list.filter(
+      (s) =>
+        s.label.toLowerCase().includes(q) ||
+        s.id.includes(q) ||
+        s.tags?.some((t) => t.includes(q)),
+    );
+  }
   return list;
+}
+
+/** Local smart suggestions — no AI API */
+export function getSuggestedStickers(ctx: {
+  mediaType: "image" | "video";
+  hasMusic: boolean;
+  caption?: string;
+  /** Fake face detection — video uploads assumed to often include faces */
+  likelyHasFace?: boolean;
+}): StickerDef[] {
+  const ids: string[] = [];
+
+  if (ctx.hasMusic) {
+    ids.push("st-music-note", "st-dj", "st-mic", "st-headphones", "st-wheuat-wave");
+  }
+  if (ctx.mediaType === "video" || ctx.likelyHasFace) {
+    ids.push("st-wheuat-crown", "st-heart", "st-cool", "st-star-burst");
+  }
+  if (ctx.mediaType === "video") {
+    ids.push("st-fire", "st-clap", "st-laugh", "st-trophy", "st-party");
+  } else {
+    ids.push("st-heart", "st-star-burst", "st-cool", "st-love-eyes");
+  }
+  if (ctx.caption?.match(/love|heart|bae/i)) {
+    ids.unshift("st-heart", "st-kiss", "st-ring", "st-love-eyes");
+  }
+  if (ctx.caption?.match(/win|champ|goal/i)) {
+    ids.unshift("st-trophy", "st-medal", "st-flex");
+  }
+
+  const unique = [...new Set(ids)];
+  return unique
+    .map((id) => STICKER_MAP.get(id))
+    .filter(Boolean) as StickerDef[];
 }
 
 const RECENT_KEY = "wheuat_sticker_recent";
