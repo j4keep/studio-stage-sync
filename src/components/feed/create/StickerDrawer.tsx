@@ -65,7 +65,7 @@ export default function StickerDrawer({
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
         transition={{ type: "spring", damping: 28, stiffness: 320 }}
-        className="fixed bottom-0 left-0 right-0 z-[93] mx-auto max-w-lg rounded-t-2xl bg-zinc-950 border-t border-white/10 flex flex-col max-h-[min(62dvh,520px)] safe-area-bottom"
+        className="fixed bottom-0 left-0 right-0 z-[93] mx-auto max-w-lg rounded-t-2xl bg-zinc-950 border-t border-white/10 flex flex-col max-h-[min(58dvh,480px)] pb-[env(safe-area-inset-bottom)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2 px-3 py-2.5 border-b border-white/10">
@@ -118,17 +118,17 @@ export default function StickerDrawer({
           ))}
         </div>
 
-        <div className="flex-1 overflow-y-auto p-3 scrollbar-hide overscroll-contain">
+        <div className="flex-1 overflow-y-auto p-3 scrollbar-hide overscroll-contain touch-pan-y -webkit-overflow-scrolling-touch">
           {stickers.length === 0 ? (
             <p className="text-center text-white/40 text-sm py-10">No stickers in this pack</p>
           ) : (
-            <div className="grid grid-cols-4 gap-2.5">
+            <div className="grid grid-cols-4 gap-3">
               {stickers.map((s) => (
                 <button
                   key={s.id}
                   type="button"
                   onClick={() => handlePick(s.id)}
-                  className="aspect-square rounded-2xl bg-gradient-to-b from-white/10 to-white/5 border border-white/10 p-2.5 hover:border-violet-400/40 active:scale-95 transition-all shadow-inner"
+                  className="aspect-square min-h-[4.5rem] rounded-2xl bg-white/5 border border-white/10 p-2 active:scale-95 active:bg-white/10 transition-all editor-touch-none"
                 >
                   <img src={s.src} alt={s.label} className="w-full h-full object-contain drop-shadow-lg" draggable={false} />
                 </button>

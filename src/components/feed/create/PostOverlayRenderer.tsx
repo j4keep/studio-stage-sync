@@ -1,7 +1,7 @@
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { Trash2 } from "lucide-react";
 import type { PostEditorMeta, TextOverlay, StickerOverlay, DrawStroke } from "@/lib/post-editor";
-import { strokeToSmoothPath, eraseStrokesNear, normalizeTextStyle } from "@/lib/post-editor";
+import { strokeToSmoothPath, normalizeTextStyle } from "@/lib/post-editor";
 import { getStickerSrc } from "@/lib/sticker-library";
 import { getTextStyleInline, TEXT_STYLE_PRESETS } from "@/lib/text-styles";
 
@@ -23,7 +23,6 @@ interface Props {
   drawHighlighter?: boolean;
   onAddStroke?: (stroke: DrawStroke) => void;
   onEraseAt?: (x: number, y: number) => void;
-  /** Live text draft shown on media while typing (TikTok style) */
   liveTextDraft?: { text: string; style: TextOverlay["style"]; color: string; x: number; y: number; scale: number } | null;
   onLiveTextMove?: (patch: { x?: number; y?: number; scale?: number }) => void;
   onLiveTextFocus?: () => void;
@@ -78,6 +77,16 @@ export default function PostOverlayRenderer({
   const [isDragging, setIsDragging] = useState(false);
   const activePointers = useRef<Map<number, { x: number; y: number }>>(new Map());
 
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || (!editable && !drawing)) return;
+    const block = (e: TouchEvent) => {
+      if (e.touches.length > 1) e.preventDefault();
+    };
+    el.addEventListener("touchmove", block, { passive: false });
+    return () => el.removeEventListener("touchmove", block);
+  }, [editable, drawing]);
+
   const pctFromEvent = (clientX: number, clientY: number) => {
     const rect = containerRef.current!.getBoundingClientRect();
     return {
@@ -101,18 +110,48 @@ export default function PostOverlayRenderer({
 
     return (
       <span
-        className={`inline-block text-center whitespace-pre-wrap break-words max-w-[90vw] ${preset?.className ?? ""} ${extraClass} ${isSel ? "ring-2 ring-violet-400 rounded px-1" : ""}`}
+        className={`inline-block text-center whitespace-pre-wrap break-words max-w-[85vw] ${preset?.className ?? ""} ${extraClass} ${isSel ? "ring-2 ring-white rounded px-1" : ""}`}
         style={{
           ...inline,
-          fontSize: `${Math.round(22 * scale)}px`,
+          fontSize: `${Math.round(24 * scale)}px`,
           ...(isRounded
-            ? { backgroundColor: "rgba(0,0,0,0.55)", padding: "6px 14px", borderRadius: "12px" }
+            ? { backgroundColor: "rgba(0,0,0,0.55)", padding: "8px 16px", borderRadius: "12px" }
             : {}),
         }}
       >
         {text || "Text"}
       </span>
     );
+  };
+
+  const tryStartPinch = (selId: string, selType: "text" | "sticker" | "live") => {
+    if (activePointers.current.size < 2) return false;
+    const pts = [...activePointers.current.values()];
+    const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+    let item: { x: number; y: number; scale: number; rotation?: number } | undefined;
+    if (selType === "live" && liveTextDraft) {
+      item = liveTextDraft;
+    } else if (selType === "text") {
+      item = meta.overlays.find((o) => o.id === selId);
+    } else {
+      item = meta.stickers.find((s) => s.id === selId);
+    }
+    if (!item) return false;
+    dragRef.current = {
+      id: selId,
+      type: selType,
+      mode: "pinch",
+      startX: pts[0].x,
+      startY: pts[0].y,
+      origX: item.x,
+      origY: item.y,
+      origScale: item.scale,
+      origRot: item.rotation ?? 0,
+      pinchStartDist: dist,
+      moved: true,
+    };
+    setIsDragging(true);
+    return true;
   };
 
   const startDrag = (
@@ -125,6 +164,11 @@ export default function PostOverlayRenderer({
     if (!editable) return;
     e.stopPropagation();
     onSelect?.({ id, type });
+    activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (tryStartPinch(id, type)) {
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      return;
+    }
     dragRef.current = {
       id,
       type,
@@ -147,39 +191,19 @@ export default function PostOverlayRenderer({
       const p = pctFromEvent(e.clientX, e.clientY);
       if (eraserMode) {
         onEraseAt?.(p.x, p.y);
-        return;
+      } else {
+        drawRef.current = newStroke(drawColor, drawWidth, drawHighlighter);
+        drawRef.current.points.push(p);
       }
-      drawRef.current = newStroke(drawColor, drawWidth, drawHighlighter);
-      drawRef.current.points.push(p);
-      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       return;
     }
 
     activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (activePointers.current.size === 2 && selected) {
-      const pts = [...activePointers.current.values()];
-      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
-      const item =
-        selected.type === "text"
-          ? meta.overlays.find((o) => o.id === selected.id)
-          : meta.stickers.find((s) => s.id === selected.id);
-      if (item) {
-        dragRef.current = {
-          id: selected.id,
-          type: selected.type,
-          mode: "pinch",
-          startX: e.clientX,
-          startY: e.clientY,
-          origX: item.x,
-          origY: item.y,
-          origScale: item.scale,
-          origRot: item.rotation ?? 0,
-          pinchStartDist: dist,
-        };
-      }
-    } else if (!dragRef.current) {
-      editable && onSelect?.(null);
+      if (tryStartPinch(selected.id, selected.type)) return;
     }
+    if (!dragRef.current) editable && onSelect?.(null);
   };
 
   const onPointerMove = useCallback(
@@ -187,7 +211,7 @@ export default function PostOverlayRenderer({
       if (drawing && drawRef.current && !eraserMode) {
         const p = pctFromEvent(e.clientX, e.clientY);
         const pts = drawRef.current.points;
-        if (pts.length === 0 || Math.hypot(p.x - pts[pts.length - 1].x, p.y - pts[pts.length - 1].y) > 0.3) {
+        if (pts.length === 0 || Math.hypot(p.x - pts[pts.length - 1].x, p.y - pts[pts.length - 1].y) > 0.25) {
           drawRef.current.points.push(p);
           setLiveStroke({ ...drawRef.current, points: [...drawRef.current.points] });
         }
@@ -209,7 +233,8 @@ export default function PostOverlayRenderer({
         const pts = [...activePointers.current.values()];
         const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
         const scale = Math.max(0.3, Math.min(4, d.origScale * (dist / d.pinchStartDist)));
-        if (d.type === "text") onUpdateText?.(d.id, { scale });
+        if (d.type === "live") onLiveTextMove?.({ scale });
+        else if (d.type === "text") onUpdateText?.(d.id, { scale });
         else onUpdateSticker?.(d.id, { scale });
         return;
       }
@@ -220,13 +245,13 @@ export default function PostOverlayRenderer({
       if (d.mode === "move") {
         const nx = Math.max(2, Math.min(98, d.origX + dx));
         const ny = Math.max(2, Math.min(98, d.origY + dy));
-        if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) d.moved = true;
+        if (Math.abs(dx) > 0.4 || Math.abs(dy) > 0.4) d.moved = true;
         if (d.type === "live") onLiveTextMove?.({ x: nx, y: ny });
         else if (d.type === "text") onUpdateText?.(d.id, { x: nx, y: ny });
         else onUpdateSticker?.(d.id, { x: nx, y: ny });
-        setTrashHover(d.type !== "live" && ny > 88);
+        setTrashHover(d.type !== "live" && ny > 85);
       } else if (d.mode === "scale") {
-        const delta = (e.clientX - d.startX) / 100;
+        const delta = (e.clientX - d.startX) / 80;
         const scale = Math.max(0.3, Math.min(4, d.origScale + delta));
         if (d.type === "text") onUpdateText?.(d.id, { scale });
         else onUpdateSticker?.(d.id, { scale });
@@ -240,7 +265,7 @@ export default function PostOverlayRenderer({
         else onUpdateSticker?.(d.id, { rotation: deg });
       }
     },
-    [drawing, eraserMode, drawHighlighter, onEraseAt, onUpdateText, onUpdateSticker, onLiveTextMove],
+    [drawing, eraserMode, onEraseAt, onUpdateText, onUpdateSticker, onLiveTextMove],
   );
 
   const onPointerUp = useCallback(
@@ -278,35 +303,20 @@ export default function PostOverlayRenderer({
       <>
         <button
           type="button"
-          className="absolute -top-10 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-white border-2 border-violet-500 z-30 touch-none shadow-lg flex items-center justify-center"
+          className="absolute -top-12 left-1/2 -translate-x-1/2 w-11 h-11 rounded-full bg-white border-2 border-violet-500 z-30 editor-touch-none shadow-lg flex items-center justify-center"
           onPointerDown={(e) => startDrag(e, id, type!, "rotate", item)}
           aria-label="Rotate"
         >
-          <span className="text-[10px] font-bold text-violet-600">↻</span>
+          <span className="text-sm font-bold text-violet-600">↻</span>
         </button>
         <button
           type="button"
-          className="absolute -bottom-4 -right-4 w-8 h-8 rounded-full bg-white border-2 border-violet-500 z-30 touch-none shadow-lg flex items-center justify-center"
+          className="absolute -bottom-5 -right-5 w-11 h-11 rounded-full bg-white border-2 border-violet-500 z-30 editor-touch-none shadow-lg flex items-center justify-center"
           onPointerDown={(e) => startDrag(e, id, type!, "scale", item)}
           aria-label="Resize"
         >
-          <span className="text-[10px] font-bold text-violet-600">⤢</span>
+          <span className="text-sm font-bold text-violet-600">⤢</span>
         </button>
-        {onDeleteSelected && (
-          <button
-            type="button"
-            className="absolute -top-10 -right-2 w-8 h-8 rounded-full bg-red-500 z-30 touch-none shadow-lg flex items-center justify-center"
-            onClick={(e) => {
-              e.stopPropagation();
-              onSelect?.({ id, type: type! });
-              onDeleteSelected();
-              onSelect?.(null);
-            }}
-            aria-label="Delete"
-          >
-            <Trash2 className="w-4 h-4 text-white" />
-          </button>
-        )}
       </>
     );
   };
@@ -316,12 +326,11 @@ export default function PostOverlayRenderer({
   return (
     <div
       ref={containerRef}
-      className={`absolute inset-0 z-10 overflow-hidden ${drawing ? "touch-none" : ""} ${className}`}
+      className={`absolute inset-0 z-10 overflow-hidden editor-touch-none ${drawing || editable ? "touch-none" : ""} ${className}`}
       style={{ cursor: drawing ? (eraserMode ? "cell" : "crosshair") : undefined }}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
-      onPointerLeave={onPointerUp}
       onPointerDown={onPointerDown}
     >
       <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -332,7 +341,7 @@ export default function PostOverlayRenderer({
               d={strokeToSmoothPath(stroke.points)}
               fill="none"
               stroke={stroke.color}
-              strokeWidth={stroke.width / 18}
+              strokeWidth={stroke.width / 16}
               strokeLinecap="round"
               strokeLinejoin="round"
               opacity={stroke.highlighter ? 0.45 : 1}
@@ -348,12 +357,13 @@ export default function PostOverlayRenderer({
         return (
           <div
             key={s.id}
-            className={`absolute touch-none ${editable ? "cursor-grab active:cursor-grabbing" : "pointer-events-none"}`}
+            className={`absolute editor-touch-none ${editable ? "cursor-grab active:cursor-grabbing" : "pointer-events-none"}`}
             style={{
               left: `${s.x}%`,
               top: `${s.y}%`,
               transform: `translate(-50%, -50%) scale(${s.scale}) rotate(${s.rotation ?? 0}deg)`,
               zIndex: isSel ? 30 : 20,
+              padding: isSel ? "12px" : "8px",
             }}
             onPointerDown={(e) => {
               e.stopPropagation();
@@ -363,7 +373,7 @@ export default function PostOverlayRenderer({
             <img
               src={src}
               alt=""
-              className={`w-[4.5rem] h-[4.5rem] object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)] ${isSel ? "ring-2 ring-violet-400 rounded-xl" : ""}`}
+              className={`w-16 h-16 sm:w-[4.5rem] sm:h-[4.5rem] object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)] pointer-events-none ${isSel ? "ring-2 ring-white rounded-xl" : ""}`}
               draggable={false}
             />
             {renderHandles(s.id, "sticker", s)}
@@ -376,12 +386,13 @@ export default function PostOverlayRenderer({
         return (
           <div
             key={o.id}
-            className={`absolute touch-none select-none max-w-[88%] ${editable ? "cursor-grab active:cursor-grabbing" : "pointer-events-none"}`}
+            className={`absolute editor-touch-none select-none max-w-[90%] ${editable ? "cursor-grab active:cursor-grabbing" : "pointer-events-none"}`}
             style={{
               left: `${o.x}%`,
               top: `${o.y}%`,
               transform: `translate(-50%, -50%) scale(${o.scale}) rotate(${o.rotation ?? 0}deg)`,
               zIndex: isSel ? 35 : 25,
+              padding: "8px",
             }}
             onPointerDown={(e) => {
               e.stopPropagation();
@@ -396,20 +407,22 @@ export default function PostOverlayRenderer({
 
       {liveTextDraft && (
         <div
-          className="absolute touch-none select-none max-w-[88%] cursor-grab active:cursor-grabbing"
+          className="absolute editor-touch-none select-none max-w-[90%] cursor-grab active:cursor-grabbing"
           style={{
             left: `${liveTextDraft.x}%`,
             top: `${liveTextDraft.y}%`,
             transform: `translate(-50%, -50%) scale(${liveTextDraft.scale})`,
             zIndex: 40,
-          }}
-          onClick={(e) => {
-            e.stopPropagation();
-            onLiveTextFocus?.();
+            padding: "8px",
           }}
           onPointerDown={(e) => {
             if (!editable || !onLiveTextMove) return;
             e.stopPropagation();
+            activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            if (tryStartPinch("live", "live")) {
+              (e.target as HTMLElement).setPointerCapture(e.pointerId);
+              return;
+            }
             dragRef.current = {
               id: "live",
               type: "live",
@@ -439,11 +452,13 @@ export default function PostOverlayRenderer({
 
       {editable && isDragging && selected && (
         <div
-          className={`absolute bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] left-1/2 -translate-x-1/2 z-50 w-16 h-16 rounded-full flex items-center justify-center transition-all ${
-            trashHover ? "bg-red-500 scale-110" : "bg-red-500/40 border-2 border-dashed border-red-400"
+          className={`absolute left-1/2 -translate-x-1/2 z-50 w-[4.5rem] h-[4.5rem] rounded-full flex flex-col items-center justify-center transition-all ${
+            trashHover ? "bg-red-500 scale-110" : "bg-red-500/30 border-2 border-dashed border-red-400"
           }`}
+          style={{ bottom: "max(env(safe-area-inset-bottom), 1rem)" }}
         >
-          <Trash2 className={`w-7 h-7 ${trashHover ? "text-white" : "text-red-300"}`} />
+          <Trash2 className={`w-7 h-7 ${trashHover ? "text-white" : "text-red-200"}`} />
+          <span className="text-[9px] font-bold text-white/80 mt-0.5">Delete</span>
         </div>
       )}
     </div>
