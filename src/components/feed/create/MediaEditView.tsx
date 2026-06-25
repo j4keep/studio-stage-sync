@@ -37,50 +37,21 @@ function GreenDoneBtn({ onClick, className = "" }: { onClick: () => void; classN
   );
 }
 
-function hslFromT(t: number): string {
-  if (t <= 0.04) return "#ffffff";
-  if (t >= 0.96) return "#000000";
-  const hue = (1 - (t - 0.04) / 0.92) * 360;
-  return `hsl(${hue}, 100%, 50%)`;
-}
-
-function nearestTextColor(hex: string): string {
-  if (hex === "#ffffff" || hex === "#000000") return hex;
-  let best = TEXT_COLORS[0];
-  let bestDist = Infinity;
-  for (const c of TEXT_COLORS) {
-    const d = colorDist(hex, c);
-    if (d < bestDist) {
-      bestDist = d;
-      best = c;
-    }
-  }
-  return best;
-}
-
-function colorDist(a: string, b: string): number {
-  const pa = parseHex(a);
-  const pb = parseHex(b);
-  if (!pa || !pb) return Infinity;
-  return (pa[0] - pb[0]) ** 2 + (pa[1] - pb[1]) ** 2 + (pa[2] - pb[2]) ** 2;
-}
-
-function parseHex(hex: string): [number, number, number] | null {
-  const h = hex.replace("#", "");
-  if (h.length !== 6) return null;
-  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
-}
-
 /** Slim vertical color slider for text editing */
 function SlimTextColorPicker({ value, onChange }: { value: string; onChange: (c: string) => void }) {
   const trackRef = useRef<HTMLDivElement>(null);
-  const [thumbT, setThumbT] = useState(0.12);
+  const draggingRef = useRef(false);
+
+  const colorToT = (color: string) => {
+    const idx = TEXT_COLORS.indexOf(color);
+    return idx >= 0 ? idx / Math.max(1, TEXT_COLORS.length - 1) : 0;
+  };
+
+  const [thumbT, setThumbT] = useState(() => colorToT(value));
 
   useEffect(() => {
-    const idx = TEXT_COLORS.indexOf(value);
-    if (idx >= 0) setThumbT(idx / Math.max(1, TEXT_COLORS.length - 1));
-    else if (value === "#ffffff") setThumbT(0);
-    else if (value === "#000000") setThumbT(1);
+    if (draggingRef.current) return;
+    setThumbT(colorToT(value));
   }, [value]);
 
   const pickFromY = useCallback(
@@ -89,33 +60,41 @@ function SlimTextColorPicker({ value, onChange }: { value: string; onChange: (c:
       if (!track) return;
       const rect = track.getBoundingClientRect();
       const t = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+      const idx = Math.round(t * (TEXT_COLORS.length - 1));
       setThumbT(t);
-      onChange(nearestTextColor(hslFromT(t)));
+      onChange(TEXT_COLORS[idx]);
     },
     [onChange],
   );
 
+  const endDrag = useCallback(() => {
+    draggingRef.current = false;
+  }, []);
+
   return (
     <div
-      className="relative flex items-center justify-center editor-touch-none"
-      style={{ width: 28, height: "min(34vh, 220px)" }}
+      ref={trackRef}
+      className="relative flex items-center justify-center editor-touch-none touch-none cursor-pointer"
+      style={{ width: 32, height: "min(34vh, 220px)" }}
+      onPointerDown={(e) => {
+        e.preventDefault();
+        draggingRef.current = true;
+        pickFromY(e.clientY);
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      }}
+      onPointerMove={(e) => {
+        if ((e.currentTarget as HTMLElement).hasPointerCapture(e.pointerId)) pickFromY(e.clientY);
+      }}
+      onPointerUp={endDrag}
+      onPointerCancel={endDrag}
     >
       <div
-        ref={trackRef}
-        className="absolute rounded-full"
+        className="absolute rounded-full pointer-events-none"
         style={{
           width: 6,
           height: "100%",
-          background:
-            "linear-gradient(to bottom, #ffffff 0%, #ff3b30 12%, #ffcc00 28%, #34c759 44%, #00c7ff 58%, #5856d6 72%, #ff2d55 86%, #000000 100%)",
+          background: `linear-gradient(to bottom, ${TEXT_COLORS.join(", ")})`,
           boxShadow: "0 0 0 1px rgba(255,255,255,0.15)",
-        }}
-        onPointerDown={(e) => {
-          pickFromY(e.clientY);
-          (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-        }}
-        onPointerMove={(e) => {
-          if ((e.currentTarget as HTMLElement).hasPointerCapture(e.pointerId)) pickFromY(e.clientY);
         }}
       />
       <div
