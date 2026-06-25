@@ -14,6 +14,7 @@ interface Props {
   onSelectFile: (file: File, previewUrl: string) => void;
   onClear: () => void;
   onVolumeChange: (volume: number) => void;
+  onDurationChange: (durationSec: number) => void;
 }
 
 const SoundPickerSheet = ({
@@ -26,6 +27,7 @@ const SoundPickerSheet = ({
   onSelectFile,
   onClear,
   onVolumeChange,
+  onDurationChange,
 }: Props) => {
   const audioInputRef = useRef<HTMLInputElement>(null);
   const previewStopRef = useRef<(() => void) | null>(null);
@@ -77,6 +79,14 @@ const SoundPickerSheet = ({
     (meta.music?.loopId
       ? FEED_MUSIC_PRESETS.find((p) => p.id === meta.music?.loopId)?.label
       : null);
+
+  const durationOptions = [
+    { label: "15s", value: 15 },
+    { label: "30s", value: 30 },
+    { label: "60s", value: 60 },
+    { label: "Full", value: 0 },
+  ];
+  const activeDuration = meta.music?.durationSec ?? 0;
 
   if (!open) return null;
 
@@ -171,17 +181,40 @@ const SoundPickerSheet = ({
           </div>
         </div>
 
-        <div className="px-4 py-3 border-t border-white/10 space-y-2">
-          <label className="text-[10px] text-white/50">Music volume</label>
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.05}
-            value={meta.music?.volume ?? 0.6}
-            onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
-            className="w-full"
-          />
+        <div className="px-4 py-3 border-t border-white/10 space-y-3">
+          {selectedLabel && (
+            <div>
+              <label className="text-[10px] text-white/50">Clip length</label>
+              <div className="flex gap-2 mt-2">
+                {durationOptions.map((d) => (
+                  <button
+                    key={d.label}
+                    type="button"
+                    onClick={() => onDurationChange(d.value)}
+                    className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-colors ${
+                      activeDuration === d.value
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-white/10 text-white/80"
+                    }`}
+                  >
+                    {d.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          <div>
+            <label className="text-[10px] text-white/50">Music volume</label>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={meta.music?.volume ?? 0.6}
+              onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
+              className="w-full mt-1"
+            />
+          </div>
         </div>
       </motion.div>
     </AnimatePresence>

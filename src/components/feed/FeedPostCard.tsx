@@ -85,7 +85,8 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
     if (!isActive || !postMeta?.music) return;
 
     if (postMeta.music.audioUrl) {
-      const player = playUploadedAudio(postMeta.music.audioUrl, postMeta.music.volume ?? 0.5);
+      const dur = postMeta.music.durationSec && postMeta.music.durationSec > 0 ? postMeta.music.durationSec : undefined;
+      const player = playUploadedAudio(postMeta.music.audioUrl, postMeta.music.volume ?? 0.5, !dur, dur);
       musicStopRef.current = player.stop;
       return () => {
         musicStopRef.current?.();
@@ -94,14 +95,15 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
     }
 
     if (postMeta.music.loopId) {
-      const player = playFeedMusicLoop(postMeta.music.loopId, postMeta.music.volume ?? 0.5);
+      const dur = postMeta.music.durationSec && postMeta.music.durationSec > 0 ? postMeta.music.durationSec : undefined;
+      const player = playFeedMusicLoop(postMeta.music.loopId, postMeta.music.volume ?? 0.5, dur);
       if (player) musicStopRef.current = player.stop;
       return () => {
         musicStopRef.current?.();
         musicStopRef.current = null;
       };
     }
-  }, [isActive, postMeta?.music?.loopId, postMeta?.music?.audioUrl, postMeta?.music?.volume]);
+  }, [isActive, postMeta?.music?.loopId, postMeta?.music?.audioUrl, postMeta?.music?.volume, postMeta?.music?.durationSec]);
 
   useEffect(() => {
     if (post.media_type !== "video" || !videoRef.current) return;

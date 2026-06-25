@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Type, Sticker, Pencil, Crop, Volume2, VolumeX, Undo2, Check, X, Trash2, Minus, Plus } from "lucide-react";
-import { toast } from "sonner";
+import { Type, Sticker, Pencil, Crop, Volume2, VolumeX, Undo2, Check, X, Trash2, Minus, Plus, ChevronLeft, Music } from "lucide-react";
 import PostOverlayRenderer from "./PostOverlayRenderer";
 import StickerDrawer from "./StickerDrawer";
 import type { PostEditorMeta, TextOverlay, StickerOverlay, DrawStroke, TextOverlayStyle } from "@/lib/post-editor";
@@ -9,7 +8,7 @@ import { TEXT_COLORS, CREATE_TEXT_STYLES, getTextStyleInline } from "@/lib/text-
 
 const newId = () => Math.random().toString(36).slice(2, 9);
 
-type Tool = "text" | "draw" | null;
+type Tool = "text" | "draw" | "crop" | null;
 
 interface Props {
   mediaType: "image" | "video";
@@ -21,6 +20,8 @@ interface Props {
   musicPreviewUrl?: string | null;
   onBack: () => void;
   onDone: () => void;
+  onAddSound?: () => void;
+  soundLabel?: string;
 }
 
 /** Done button using app theme primary color */
@@ -36,6 +37,22 @@ function ThemeDoneBtn({ onClick, className = "" }: { onClick: () => void; classN
     </button>
   );
 }
+
+/** Back out of active tool without leaving the edit screen */
+function ToolBackBtn({ onClick, className = "" }: { onClick: () => void; className?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-11 h-11 rounded-full bg-black/45 backdrop-blur-sm flex items-center justify-center text-white editor-touch-none ${className}`}
+      aria-label="Back to editor"
+    >
+      <ChevronLeft className="w-6 h-6" strokeWidth={2.5} />
+    </button>
+  );
+}
+
+const toolBarTop = { top: "max(env(safe-area-inset-top), 0.5rem)", left: "max(env(safe-area-inset-left), 0.75rem)" } as const;
 
 /** Slim vertical color slider (text + draw) */
 function SlimColorPicker({
@@ -129,6 +146,8 @@ export default function MediaEditView({
   musicPreviewUrl,
   onBack,
   onDone,
+  onAddSound,
+  soundLabel,
 }: Props) {
   const [activeTool, setActiveTool] = useState<Tool>(null);
   const [showStickers, setShowStickers] = useState(false);
@@ -154,6 +173,19 @@ export default function MediaEditView({
     }
   };
 
+  const cancelText = () => {
+    setActiveTool(null);
+    setTextDraft("");
+    setEditingTextId(null);
+    textInputRef.current?.blur();
+  };
+
+  const exitActiveTool = () => {
+    if (activeTool === "text") cancelText();
+    else if (activeTool === "draw" || activeTool === "crop") setActiveTool(null);
+    else if (showStickers) setShowStickers(false);
+  };
+
   const isToolActive = activeTool !== null || showStickers;
 
   useEffect(() => {
@@ -171,18 +203,6 @@ export default function MediaEditView({
       vv.removeEventListener("scroll", onResize);
     };
   }, []);
-
-  useEffect(() => {
-    if (!musicPreviewUrl) return;
-    const audio = new Audio(musicPreviewUrl);
-    audio.volume = meta.music?.volume ?? 0.6;
-    audio.loop = true;
-    void audio.play();
-    return () => {
-      audio.pause();
-      audio.src = "";
-    };
-  }, [musicPreviewUrl, meta.music?.volume]);
 
   useEffect(() => {
     if (activeTool !== "text") return;
@@ -239,13 +259,6 @@ export default function MediaEditView({
     setTextStyle("bubble");
     setTextColor("#ffffff");
     setSelected(null);
-  };
-
-  const cancelText = () => {
-    setActiveTool(null);
-    setTextDraft("");
-    setEditingTextId(null);
-    textInputRef.current?.blur();
   };
 
   const saveText = () => {
@@ -319,7 +332,7 @@ export default function MediaEditView({
     { id: "text" as const, icon: Type, label: "Text", action: startTextMode },
     { id: "sticker" as const, icon: Sticker, label: "Stickers", action: () => setShowStickers(true) },
     { id: "draw" as const, icon: Pencil, label: "Draw", action: () => setActiveTool("draw") },
-    { id: "crop" as const, icon: Crop, label: "Crop", action: () => toast.info("Crop editor coming soon") },
+    { id: "crop" as const, icon: Crop, label: "Crop", action: () => setActiveTool("crop") },
     { id: "mute" as const, icon: meta.muteOriginal ? VolumeX : Volume2, label: "Mute", action: () => patch({ muteOriginal: !meta.muteOriginal }) },
   ];
 
@@ -359,7 +372,7 @@ export default function MediaEditView({
         liveTextPlaceholder="Add text"
       />
 
-      {/* ── Main chrome: back + done (hidden during text/draw/stickers) ── */}
+      {/* ── Main chrome: back + sound + done (hidden during tools) ── */}
       {!isToolActive && (
         <>
           <button
@@ -371,6 +384,17 @@ export default function MediaEditView({
           >
             <X className="w-7 h-7" strokeWidth={2.5} />
           </button>
+          {onAddSound && (
+            <button
+              type="button"
+              onClick={onAddSound}
+              className="absolute z-50 left-1/2 -translate-x-1/2 flex items-center gap-1.5 max-w-[52%] rounded-full bg-black/50 backdrop-blur-md border border-white/25 px-4 py-2 text-white shadow-lg editor-touch-none"
+              style={{ top: "max(env(safe-area-inset-top), 0.5rem)" }}
+            >
+              <Music className="w-4 h-4 shrink-0 text-primary" />
+              <span className="text-xs font-bold truncate">{soundLabel || "Add sound"}</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={onDone}
@@ -409,10 +433,8 @@ export default function MediaEditView({
       {/* ── TEXT MODE — controls only while actively editing ── */}
       {activeTool === "text" && (
         <>
-          <div
-            className="absolute z-[110] flex items-center gap-2"
-            style={{ top: "max(env(safe-area-inset-top), 0.5rem)", left: "max(env(safe-area-inset-left), 0.75rem)" }}
-          >
+          <div className="absolute z-[110] flex items-center gap-2" style={toolBarTop}>
+            <ToolBackBtn onClick={exitActiveTool} />
             <ThemeDoneBtn onClick={saveText} />
           </div>
 
@@ -514,11 +536,8 @@ export default function MediaEditView({
       {/* ── DRAW MODE (WhatsApp style) ── */}
       {activeTool === "draw" && (
         <>
-          <div
-            className="absolute z-[110]"
-            style={{ top: "max(env(safe-area-inset-top), 0.5rem)", left: "max(env(safe-area-inset-left), 0.75rem)" }}
-          >
-            <ThemeDoneBtn onClick={() => setActiveTool(null)} />
+          <div className="absolute z-[110]" style={toolBarTop}>
+            <ToolBackBtn onClick={exitActiveTool} />
           </div>
           <button
             type="button"
@@ -570,6 +589,25 @@ export default function MediaEditView({
             ))}
           </div>
         </>
+      )}
+
+      {activeTool === "crop" && (
+        <>
+          <div className="absolute z-[110]" style={toolBarTop}>
+            <ToolBackBtn onClick={exitActiveTool} />
+          </div>
+          <div className="absolute inset-0 z-[100] flex items-center justify-center px-8">
+            <p className="text-white/80 text-sm text-center bg-black/50 rounded-xl px-4 py-3">
+              Crop editor coming soon
+            </p>
+          </div>
+        </>
+      )}
+
+      {showStickers && (
+        <div className="absolute z-[115]" style={toolBarTop}>
+          <ToolBackBtn onClick={exitActiveTool} />
+        </div>
       )}
 
       <StickerDrawer

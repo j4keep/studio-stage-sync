@@ -103,7 +103,12 @@ export default function CreateCameraView({
   }, [facing, startCamera]);
 
   const flipCamera = () => {
+    if (streamRef.current) {
+      releaseCameraStream(streamRef.current);
+      streamRef.current = null;
+    }
     ownsStreamRef.current = true;
+    setReady(false);
     setFacing((f) => (f === "user" ? "environment" : "user"));
   };
 

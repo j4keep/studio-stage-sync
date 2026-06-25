@@ -11,21 +11,37 @@ export const FEED_MUSIC_LOOPS: LoopDef[] = [
 
 export const FEED_MUSIC_PRESETS = FEED_MUSIC_LOOPS.map((l) => ({ id: l.id, label: l.name }));
 
-export function playFeedMusicLoop(loopId: string, volume = 0.6): { stop: () => void } | null {
+export function playFeedMusicLoop(
+  loopId: string,
+  volume = 0.6,
+  maxDurationSec?: number,
+): { stop: () => void } | null {
   const def = FEED_MUSIC_LOOPS.find((l) => l.id === loopId);
   if (!def) return null;
   const ctx = new AudioContext();
   const buf = generateLoop(def);
   const src = ctx.createBufferSource();
   src.buffer = buf;
-  src.loop = true;
+  src.loop = !maxDurationSec;
   const gain = ctx.createGain();
   gain.gain.value = volume;
   src.connect(gain);
   gain.connect(ctx.destination);
   src.start();
+  let durationTimer: ReturnType<typeof setTimeout> | null = null;
+  if (maxDurationSec && maxDurationSec > 0) {
+    durationTimer = setTimeout(() => {
+      try {
+        src.stop();
+      } catch {
+        /* already stopped */
+      }
+      void ctx.close();
+    }, maxDurationSec * 1000);
+  }
   return {
     stop: () => {
+      if (durationTimer) clearTimeout(durationTimer);
       try {
         src.stop();
       } catch {
@@ -48,18 +64,47 @@ export function playUploadedAudio(
   url: string,
   volume = 0.6,
   loop = true,
+  maxDurationSec?: number,
 ): { stop: () => void; audio: HTMLAudioElement } {
   const audio = new Audio(url);
   audio.volume = volume;
-  audio.loop = loop;
-  void audio.play();
-  return {
-    audio,
-    stop: () => {
-      audio.pause();
-      audio.src = "";
-    },
+  audio.loop = loop && !(maxDurationSec && maxDurationSec > 0);
+  let durationTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const stop = () => {
+    if (durationTimer) clearTimeout(durationTimer);
+    audio.pause();
+    audio.src = "";
   };
+
+  void audio.play().catch(() => {});
+
+  if (maxDurationSec && maxDurationSec > 0) {
+    durationTimer = setTimeout(stop, maxDurationSec * 1000);
+  }
+
+  return { audio, stop };
+}
+
+/** Start post background music from editor meta + optional local upload preview URL. */
+export function playPostMusic(
+  music: { loopId?: string; audioUrl?: string; volume?: number; durationSec?: number } | undefined,
+  filePreviewUrl?: string | null,
+): { stop: () => void } | null {
+  if (!music && !filePreviewUrl) return null;
+  const vol = music?.volume ?? 0.6;
+  const dur = music?.durationSec && music.durationSec > 0 ? music.durationSec : undefined;
+
+  if (filePreviewUrl) {
+    return playUploadedAudio(filePreviewUrl, vol, !dur, dur);
+  }
+  if (music?.audioUrl) {
+    return playUploadedAudio(music.audioUrl, vol, !dur, dur);
+  }
+  if (music?.loopId) {
+    return playFeedMusicLoop(music.loopId, vol, dur);
+  }
+  return null;
 }
 
 export function getMusicDisplayName(music?: { loopId?: string; fileName?: string; audioUrl?: string }): string {

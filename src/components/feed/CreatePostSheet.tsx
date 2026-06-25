@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { ChevronLeft, Music, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -11,7 +11,7 @@ import PostOverlayRenderer from "./create/PostOverlayRenderer";
 import SoundPickerSheet from "./SoundPickerSheet";
 import { exportEditedImage } from "./create/exportMedia";
 import { encodeCaptionWithMeta, parsePostCaption, defaultEditorMeta, type PostEditorMeta } from "@/lib/post-editor";
-import { getMusicDisplayName } from "@/lib/feed-music";
+import { getMusicDisplayName, playPostMusic } from "@/lib/feed-music";
 
 interface Props {
   open: boolean;
@@ -42,6 +42,29 @@ const CreatePostSheet = ({ open, onClose, postToEdit = null, cameraStream = null
   const videoInputRef = useRef<HTMLInputElement>(null);
   const previewBlobRef = useRef<string | null>(null);
   const musicBlobRef = useRef<string | null>(null);
+  const musicStopRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const shouldPlay = step === "camera" || step === "edit" || step === "preview";
+    musicStopRef.current?.();
+    musicStopRef.current = null;
+    if (!shouldPlay) return;
+    const player = playPostMusic(editorMeta.music, musicPreviewUrl);
+    if (player) musicStopRef.current = player.stop;
+    return () => {
+      musicStopRef.current?.();
+      musicStopRef.current = null;
+    };
+  }, [
+    open,
+    step,
+    musicPreviewUrl,
+    editorMeta.music?.loopId,
+    editorMeta.music?.audioUrl,
+    editorMeta.music?.volume,
+    editorMeta.music?.durationSec,
+  ]);
 
   useEffect(() => {
     if (!open) return;
@@ -191,12 +214,21 @@ const CreatePostSheet = ({ open, onClose, postToEdit = null, cameraStream = null
   const hasMedia = !!(file || currentMediaUrl);
   const soundLabel = getMusicDisplayName(editorMeta.music);
 
+  const handleSoundButton = () => {
+    if (editorMeta.music || musicPreviewUrl) {
+      musicStopRef.current?.();
+      const player = playPostMusic(editorMeta.music, musicPreviewUrl);
+      if (player) musicStopRef.current = player.stop;
+    }
+    setShowSoundPicker(true);
+  };
+
   const handleMusicPreset = (loopId: string) => {
     if (musicBlobRef.current) URL.revokeObjectURL(musicBlobRef.current);
     musicBlobRef.current = null;
     setMusicFile(null);
     setMusicPreviewUrl(null);
-    setEditorMeta((m) => ({ ...m, music: { loopId, volume: m.music?.volume ?? 0.6 } }));
+    setEditorMeta((m) => ({ ...m, music: { loopId, volume: m.music?.volume ?? 0.6, durationSec: m.music?.durationSec } }));
   };
 
   const handleMusicFile = (f: File, url: string) => {
@@ -204,7 +236,7 @@ const CreatePostSheet = ({ open, onClose, postToEdit = null, cameraStream = null
     musicBlobRef.current = url;
     setMusicFile(f);
     setMusicPreviewUrl(url);
-    setEditorMeta((m) => ({ ...m, music: { fileName: f.name, volume: m.music?.volume ?? 0.6 } }));
+    setEditorMeta((m) => ({ ...m, music: { fileName: f.name, volume: m.music?.volume ?? 0.6, durationSec: m.music?.durationSec } }));
   };
 
   const clearMusic = () => {
@@ -228,7 +260,7 @@ const CreatePostSheet = ({ open, onClose, postToEdit = null, cameraStream = null
             onClose={reset}
             onCapture={handleMediaFile}
             onOpenGallery={openGallery}
-            onAddSound={() => setShowSoundPicker(true)}
+            onAddSound={handleSoundButton}
             soundLabel={editorMeta.music ? soundLabel : undefined}
             initialStream={cameraStream}
           />
@@ -247,6 +279,8 @@ const CreatePostSheet = ({ open, onClose, postToEdit = null, cameraStream = null
             musicPreviewUrl={musicPreviewUrl}
             onBack={() => (postToEdit ? reset() : setStep("camera"))}
             onDone={() => setStep("preview")}
+            onAddSound={handleSoundButton}
+            soundLabel={editorMeta.music ? soundLabel : undefined}
             />
           </div>
         )}
@@ -301,7 +335,13 @@ const CreatePostSheet = ({ open, onClose, postToEdit = null, cameraStream = null
         onSelectPreset={handleMusicPreset}
         onSelectFile={handleMusicFile}
         onClear={clearMusic}
-        onVolumeChange={(volume) => setEditorMeta((m) => ({ ...m, music: { ...m.music, volume } }))}
+        onVolumeChange={(volume) => setEditorMeta((m) => ({ ...m, music: { ...m.music!, volume } }))}
+        onDurationChange={(durationSec) =>
+          setEditorMeta((m) => ({
+            ...m,
+            music: m.music ? { ...m.music, durationSec: durationSec || undefined } : { volume: 0.6, durationSec: durationSec || undefined },
+          }))
+        }
       />
     </AnimatePresence>
   );

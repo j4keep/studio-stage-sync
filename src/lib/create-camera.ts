@@ -6,7 +6,7 @@ export async function warmCameraStream(
   try {
     return await navigator.mediaDevices.getUserMedia({
       video: {
-        facingMode: { ideal: facing },
+        facingMode: facing,
         width: { ideal: 1280 },
         height: { ideal: 720 },
       },

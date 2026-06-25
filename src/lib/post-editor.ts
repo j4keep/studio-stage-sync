@@ -57,7 +57,7 @@ export interface PostEditorMeta {
   crop?: { scale: number; x: number; y: number };
   muteOriginal?: boolean;
   originalVolume?: number;
-  music?: { loopId?: string; fileName?: string; audioUrl?: string; volume: number };
+  music?: { loopId?: string; fileName?: string; audioUrl?: string; volume: number; durationSec?: number };
   coverTime?: number;
   location?: string;
 }
