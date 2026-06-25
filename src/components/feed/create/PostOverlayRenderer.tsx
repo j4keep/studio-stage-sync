@@ -57,7 +57,7 @@ export default function PostOverlayRenderer({
   className = "",
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const   const dragRef = useRef<{
+  const dragRef = useRef<{
     id: string;
     type: "text" | "sticker" | "live";
     mode: "move" | "scale" | "rotate" | "pinch";

@@ -185,7 +185,7 @@ export default function MediaEditView({
     if (!preset) return;
     setBrushPreset(id);
     setDrawWidth(preset.width);
-    setDrawHighlighter(!!preset.highlighter);
+    setDrawHighlighter(!!(preset as { highlighter?: boolean }).highlighter);
     setEraserMode(false);
   };
 
@@ -402,7 +402,7 @@ export default function MediaEditView({
                     setShowStickers(true);
                     setActiveTool(null);
                   } else if (t.id === "text") startTextMode();
-                  else setActiveTool(active === t.id ? null : t.id);
+                  else setActiveTool(active ? null : t.id);
                 }}
                 className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-2xl min-w-[3.5rem] transition-all ${
                   active ? "bg-violet-500/25 shadow-[0_0_14px_rgba(168,85,247,0.45)]" : ""

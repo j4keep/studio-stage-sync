@@ -21,7 +21,7 @@ import {
   type StickerOverlay,
   type TextOverlayStyle,
   defaultEditorMeta,
-  TEXT_STYLE_CLASSES,
+  
 } from "@/lib/post-editor";
 import { EMOJI_CHARACTERS } from "@/lib/emoji-characters";
 
@@ -139,6 +139,7 @@ const PostMediaEditor = ({
       x: 50,
       y: 40,
       scale: 1,
+      rotation: 0,
       style: "white",
     };
     updateMeta({ overlays: [...meta.overlays, overlay] });
@@ -151,10 +152,12 @@ const PostMediaEditor = ({
     if (!src) return;
     const sticker: StickerOverlay = {
       id: newId(),
+      stickerId: emojiId,
       emojiId,
       x: 50,
       y: 50,
       scale: 1,
+      rotation: 0,
     };
     updateMeta({ stickers: [...meta.stickers, sticker] });
     setActiveTool(null);
@@ -215,7 +218,7 @@ const PostMediaEditor = ({
         {meta.overlays.map((o) => (
           <div
             key={o.id}
-            className={`absolute cursor-grab active:cursor-grabbing select-none px-2 ${TEXT_STYLE_CLASSES[o.style]} ${selectedOverlay === o.id ? "ring-2 ring-primary rounded" : ""}`}
+            className={`absolute cursor-grab active:cursor-grabbing select-none px-2 text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${selectedOverlay === o.id ? "ring-2 ring-primary rounded" : ""}`}
             style={{
               left: `${o.x}%`,
               top: `${o.y}%`,
