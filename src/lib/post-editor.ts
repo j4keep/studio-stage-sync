@@ -60,6 +60,8 @@ export interface PostEditorMeta {
   music?: { loopId?: string; fileName?: string; audioUrl?: string; volume: number; durationSec?: number };
   coverTime?: number;
   location?: string;
+  /** Visual layers were flattened into the image file — do not render HTML overlays */
+  bakedEdits?: boolean;
 }
 
 const META_MARKER = "\u200B<!--wheuat:";
@@ -80,6 +82,27 @@ export const defaultEditorMeta = (): PostEditorMeta => ({
   muteOriginal: false,
   originalVolume: 1,
 });
+
+export function hasVisualOverlayLayers(meta: PostEditorMeta | null | undefined): boolean {
+  if (!meta) return false;
+  return (
+    meta.overlays.length > 0 ||
+    meta.stickers.length > 0 ||
+    (meta.drawings?.length ?? 0) > 0
+  );
+}
+
+/** Remove layers baked into a flat image; keep music, mute, trim, etc. */
+export function stripBakedVisualMeta(meta: PostEditorMeta): PostEditorMeta {
+  return {
+    ...meta,
+    overlays: [],
+    stickers: [],
+    drawings: [],
+    crop: undefined,
+    bakedEdits: true,
+  };
+}
 
 export function encodeCaptionWithMeta(caption: string, meta: PostEditorMeta): string {
   const trimmed = caption.trim();

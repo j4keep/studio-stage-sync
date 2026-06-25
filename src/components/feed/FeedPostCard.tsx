@@ -24,7 +24,7 @@ import PostCommentsSheet from "./PostCommentsSheet";
 import CreatePostSheet from "./CreatePostSheet";
 import PostOverlayRenderer from "./create/PostOverlayRenderer";
 import useFloatingEmojis, { FloatingEmojiLayer, EmojiReactionTray, EmojiReactionButton } from "./FloatingEmojis";
-import { parsePostCaption } from "@/lib/post-editor";
+import { parsePostCaption, hasVisualOverlayLayers } from "@/lib/post-editor";
 import { playFeedMusicLoop, playUploadedAudio, getMusicDisplayName } from "@/lib/feed-music";
 
 
@@ -65,6 +65,21 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
   const { emojis, spawnEmoji } = useFloatingEmojis();
 
   const { caption: displayCaption, meta: postMeta } = parsePostCaption(post.caption);
+
+  // Image posts bake text/stickers/draw into the file — overlay renderer would double them
+  const showVisualOverlays =
+    postMeta &&
+    hasVisualOverlayLayers(postMeta) &&
+    !postMeta.bakedEdits &&
+    post.media_type === "video";
+
+  const cropStyle =
+    postMeta?.crop && post.media_type === "video"
+      ? {
+          transform: `scale(${postMeta.crop.scale})`,
+          objectPosition: `${postMeta.crop.x}% ${postMeta.crop.y}%`,
+        }
+      : undefined;
 
   useEffect(() => {
     setLiked(!!post.isLiked);
@@ -380,10 +395,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
               ref={videoRef}
               src={post.media_url}
               className="absolute inset-0 h-full w-full object-cover"
-              style={{
-                transform: postMeta?.crop ? `scale(${postMeta.crop.scale})` : undefined,
-                objectPosition: postMeta?.crop ? `${postMeta.crop.x}% ${postMeta.crop.y}%` : undefined,
-              }}
+              style={cropStyle}
               loop
               playsInline
               preload="metadata"
@@ -393,10 +405,6 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
               src={post.media_url}
               alt={displayCaption || "Feed post"}
               className="absolute inset-0 h-full w-full object-cover"
-              style={{
-                transform: postMeta?.crop ? `scale(${postMeta.crop.scale})` : undefined,
-                objectPosition: postMeta?.crop ? `${postMeta.crop.x}% ${postMeta.crop.y}%` : undefined,
-              }}
             />
           ))}
 
@@ -406,7 +414,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
           </div>
         )}
 
-        {postMeta && (
+        {showVisualOverlays && (
           <PostOverlayRenderer meta={postMeta} />
         )}
 
