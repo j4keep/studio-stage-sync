@@ -17,16 +17,17 @@ interface Props {
   open: boolean;
   onClose: () => void;
   postToEdit?: any | null;
+  cameraStream?: MediaStream | null;
 }
 
 type Step = "camera" | "edit" | "preview";
 type CaptureMode = "photo" | "video";
 
-const CreatePostSheet = ({ open, onClose, postToEdit = null }: Props) => {
+const CreatePostSheet = ({ open, onClose, postToEdit = null, cameraStream = null }: Props) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [step, setStep] = useState<Step>("camera");
-  const [mode, setMode] = useState<CaptureMode>("photo");
+  const [mode, setMode] = useState<CaptureMode>("video");
   const [caption, setCaption] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -79,7 +80,7 @@ const CreatePostSheet = ({ open, onClose, postToEdit = null }: Props) => {
     setCurrentMediaUrl(null);
     setEditorMeta(defaultEditorMeta());
     setStep("camera");
-    setMode("photo");
+    setMode("video");
     onClose();
   };
 
@@ -229,6 +230,7 @@ const CreatePostSheet = ({ open, onClose, postToEdit = null }: Props) => {
             onOpenGallery={openGallery}
             onAddSound={() => setShowSoundPicker(true)}
             soundLabel={editorMeta.music ? soundLabel : undefined}
+            initialStream={cameraStream}
           />
         )}
 
@@ -284,14 +286,22 @@ const CreatePostSheet = ({ open, onClose, postToEdit = null }: Props) => {
                 {uploading ? "..." : "Post"}
               </button>
             </div>
-            <div className="absolute inset-0 pt-14 pb-8">
-              <div className="relative h-full w-full">
+            <div className="absolute inset-0 pt-14 pb-[max(env(safe-area-inset-bottom),0.5rem)] flex flex-col">
+              <div className="relative flex-1 min-h-0">
                 {mediaType === "video" && previewMediaUrl ? (
                   <video src={previewMediaUrl} className="absolute inset-0 w-full h-full object-cover" playsInline autoPlay loop muted={editorMeta.muteOriginal} />
                 ) : previewMediaUrl ? (
                   <img src={previewMediaUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
                 ) : null}
                 <PostOverlayRenderer meta={editorMeta} />
+              </div>
+              <div className="shrink-0 px-3 pt-2 pb-2">
+                <input
+                  value={caption}
+                  onChange={(e) => setCaption(e.target.value)}
+                  placeholder="Write a caption…"
+                  className="w-full bg-zinc-900/90 border border-white/15 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-violet-400/50"
+                />
               </div>
             </div>
           </>

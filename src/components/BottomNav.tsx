@@ -3,6 +3,7 @@ import { Home, User, MessageCircle, AtSign, Mic2 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import ProGateModal from "@/components/ProGateModal";
 import { useProGate } from "@/hooks/use-pro-gate";
+import { useCreatePostSheet } from "@/hooks/use-create-post-sheet";
 import CreatePostSheet from "@/components/feed/CreatePostSheet";
 
 const BottomNav = () => {
@@ -10,7 +11,7 @@ const BottomNav = () => {
   const navigate = useNavigate();
   const { showProModal, gatedFeature, closeProModal, activatePro } = useProGate();
   const [hidden, setHidden] = useState(false);
-  const [showCreate, setShowCreate] = useState(false);
+  const { open: showCreate, cameraStream, openCreate, closeCreate } = useCreatePostSheet();
   const isFeed = location.pathname === "/feed" || location.pathname === "/";
 
   useEffect(() => {
@@ -18,14 +19,14 @@ const BottomNav = () => {
       const detail = (e as CustomEvent).detail;
       setHidden(detail?.hidden ?? false);
     };
-    const openCreate = () => setShowCreate(true);
+    const openCreateHandler = () => void openCreate();
     window.addEventListener("feed-nav-toggle", handler);
-    window.addEventListener("open-create-post", openCreate);
+    window.addEventListener("open-create-post", openCreateHandler);
     return () => {
       window.removeEventListener("feed-nav-toggle", handler);
-      window.removeEventListener("open-create-post", openCreate);
+      window.removeEventListener("open-create-post", openCreateHandler);
     };
-  }, []);
+  }, [openCreate]);
 
   useEffect(() => {
     if (location.pathname !== "/feed" && location.pathname !== "/") setHidden(false);
@@ -89,7 +90,7 @@ const BottomNav = () => {
 
           <div className="flex-1 flex items-center justify-center pb-0.5">
             <button
-              onClick={() => setShowCreate(true)}
+              onClick={() => void openCreate()}
               aria-label="Create"
               className="relative flex items-center justify-center w-12 h-12 rounded-full bg-black/80 border-2 border-violet-400 text-violet-300 shadow-[0_0_20px_rgba(168,85,247,0.75),0_0_40px_rgba(139,92,246,0.35)] hover:shadow-[0_0_28px_rgba(168,85,247,0.95)] transition-shadow active:scale-95"
             >
@@ -102,7 +103,7 @@ const BottomNav = () => {
         </div>
       </nav>
       <ProGateModal open={showProModal} onClose={closeProModal} featureName={gatedFeature} onSubscribe={activatePro} />
-      <CreatePostSheet open={showCreate} onClose={() => setShowCreate(false)} />
+      <CreatePostSheet open={showCreate} onClose={closeCreate} cameraStream={cameraStream} />
     </>
   );
 };

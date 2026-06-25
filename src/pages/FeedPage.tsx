@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Search, MoreVertical, Radio as RadioIcon, Swords, Tv, Music2, Heart } from "lucide-react";
 import FeedPostCard from "@/components/feed/FeedPostCard";
+import { useCreatePostSheet } from "@/hooks/use-create-post-sheet";
 import CreatePostSheet from "@/components/feed/CreatePostSheet";
 import { fetchFeedItems } from "@/lib/feed-items";
 
@@ -26,7 +27,7 @@ interface TrendingCreator {
 const FeedPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [showCreate, setShowCreate] = useState(false);
+  const { open: showCreate, cameraStream, openCreate, closeCreate } = useCreatePostSheet();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [chromeHidden, setChromeHidden] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -166,7 +167,7 @@ const FeedPage = () => {
           <div className="h-[100dvh] flex flex-col items-center justify-center snap-start gap-3">
             <p className="text-white/60 text-sm">No posts yet</p>
             <button
-              onClick={() => setShowCreate(true)}
+              onClick={() => void openCreate()}
               className="px-4 py-2 bg-primary text-primary-foreground rounded-full text-sm font-semibold"
             >
               Create first post
@@ -186,7 +187,7 @@ const FeedPage = () => {
         )}
       </div>
 
-      <CreatePostSheet open={showCreate} onClose={() => setShowCreate(false)} />
+      <CreatePostSheet open={showCreate} onClose={closeCreate} cameraStream={cameraStream} />
     </div>
   );
 };

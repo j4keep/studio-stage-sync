@@ -1,9 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { X, SwitchCamera, ImagePlus, Music } from "lucide-react";
-
-const isIOS =
-  typeof navigator !== "undefined" &&
-  /iPhone|iPad|iPod/.test(navigator.userAgent);
+import { warmCameraStream, releaseCameraStream } from "@/lib/create-camera";
 
 interface Props {
   mode: "photo" | "video";
@@ -13,6 +10,8 @@ interface Props {
   onOpenGallery: () => void;
   onAddSound: () => void;
   soundLabel?: string;
+  /** Pre-warmed from + button tap — opens camera instantly on iOS */
+  initialStream?: MediaStream | null;
 }
 
 export default function CreateCameraView({
@@ -23,62 +22,90 @@ export default function CreateCameraView({
   onOpenGallery,
   onAddSound,
   soundLabel,
+  initialStream,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const ownsStreamRef = useRef(!initialStream);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const [facing, setFacing] = useState<"user" | "environment">("user");
   const [denied, setDenied] = useState(false);
   const [recording, setRecording] = useState(false);
   const [ready, setReady] = useState(false);
-  const [needsTap, setNeedsTap] = useState(isIOS);
   const [starting, setStarting] = useState(false);
 
+  const attachStream = useCallback(async (stream: MediaStream) => {
+    streamRef.current = stream;
+    const video = videoRef.current;
+    if (video) {
+      video.setAttribute("playsinline", "true");
+      video.setAttribute("webkit-playsinline", "true");
+      video.srcObject = stream;
+      await video.play();
+    }
+    setReady(true);
+    setDenied(false);
+  }, []);
+
   const stopStream = useCallback(() => {
-    streamRef.current?.getTracks().forEach((t) => t.stop());
+    if (ownsStreamRef.current) {
+      releaseCameraStream(streamRef.current);
+    }
     streamRef.current = null;
     setReady(false);
   }, []);
 
   const startCamera = useCallback(async () => {
-    stopStream();
+    if (ownsStreamRef.current) releaseCameraStream(streamRef.current);
     setStarting(true);
     setDenied(false);
+    setReady(false);
     try {
-      const constraints: MediaStreamConstraints = {
-        video: {
-          facingMode: { ideal: facing },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-        audio: true,
-      };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      streamRef.current = stream;
-      const video = videoRef.current;
-      if (video) {
-        video.setAttribute("playsinline", "true");
-        video.setAttribute("webkit-playsinline", "true");
-        video.srcObject = stream;
-        await video.play();
-      }
-      setReady(true);
-      setNeedsTap(false);
+      const stream = await warmCameraStream(facing);
+      if (!stream) throw new Error("denied");
+      ownsStreamRef.current = true;
+      await attachStream(stream);
     } catch {
       setDenied(true);
-      setNeedsTap(false);
     } finally {
       setStarting(false);
     }
-  }, [facing, stopStream]);
+  }, [facing, attachStream]);
 
   useEffect(() => {
-    if (!needsTap) void startCamera();
-    return () => stopStream();
-  }, [startCamera, stopStream, needsTap]);
+    let cancelled = false;
+    (async () => {
+      if (initialStream && !cancelled) {
+        ownsStreamRef.current = false;
+        await attachStream(initialStream);
+        return;
+      }
+      if (!initialStream && !cancelled) {
+        ownsStreamRef.current = true;
+        await startCamera();
+      }
+    })();
+    return () => {
+      cancelled = true;
+      stopStream();
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const flipCamera = () => setFacing((f) => (f === "user" ? "environment" : "user"));
+  const facingReady = useRef(false);
+  useEffect(() => {
+    if (!facingReady.current) {
+      facingReady.current = true;
+      return;
+    }
+    ownsStreamRef.current = true;
+    void startCamera();
+  }, [facing, startCamera]);
+
+  const flipCamera = () => {
+    ownsStreamRef.current = true;
+    setFacing((f) => (f === "user" ? "environment" : "user"));
+  };
 
   const takePhoto = async () => {
     const video = videoRef.current;
@@ -88,7 +115,12 @@ export default function CreateCameraView({
     const canvas = document.createElement("canvas");
     canvas.width = w;
     canvas.height = h;
-    canvas.getContext("2d")!.drawImage(video, 0, 0, w, h);
+    const ctx = canvas.getContext("2d")!;
+    if (facing === "user") {
+      ctx.translate(w, 0);
+      ctx.scale(-1, 1);
+    }
+    ctx.drawImage(video, 0, 0, w, h);
     canvas.toBlob(
       (blob) => {
         if (!blob) return;
@@ -143,7 +175,7 @@ export default function CreateCameraView({
       {!denied && (
         <video
           ref={videoRef}
-          className="absolute inset-0 w-full h-full object-cover mirror-front"
+          className="absolute inset-0 w-full h-full object-cover"
           playsInline
           muted
           autoPlay
@@ -155,37 +187,18 @@ export default function CreateCameraView({
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 px-8 text-center z-10">
           <p className="text-white text-base font-semibold">Camera access needed</p>
           <p className="text-white/60 text-sm">Allow camera in Settings, or upload from your library.</p>
-          <button
-            type="button"
-            onClick={onOpenGallery}
-            className="px-6 py-3 rounded-full bg-white text-black font-bold text-sm"
-          >
+          <button type="button" onClick={onOpenGallery} className="px-6 py-3 rounded-full bg-white text-black font-bold text-sm">
             Open gallery
           </button>
         </div>
       )}
 
-      {needsTap && !denied && (
-        <button
-          type="button"
-          onClick={() => void startCamera()}
-          className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-black/80"
-        >
-          <div className="w-20 h-20 rounded-full border-4 border-white/80 flex items-center justify-center">
-            <div className="w-14 h-14 rounded-full bg-white/20" />
-          </div>
-          <p className="text-white font-bold text-lg">Tap to open camera</p>
-          <p className="text-white/50 text-xs">Front camera · Photo &amp; video</p>
-        </button>
-      )}
-
-      {starting && !needsTap && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/40">
+      {starting && !ready && !denied && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/50">
           <div className="w-10 h-10 border-2 border-white/30 border-t-white rounded-full animate-spin" />
         </div>
       )}
 
-      {/* Top bar */}
       <div className="relative z-20 flex items-center justify-between px-3 pt-[max(env(safe-area-inset-top),0.5rem)] pb-2">
         <button type="button" onClick={onClose} className="w-11 h-11 flex items-center justify-center text-white drop-shadow-lg" aria-label="Close">
           <X className="w-7 h-7" strokeWidth={2.5} />
@@ -209,9 +222,7 @@ export default function CreateCameraView({
         </button>
       </div>
 
-      {/* Bottom controls */}
       <div className="relative z-20 mt-auto pb-[max(env(safe-area-inset-bottom),1rem)]">
-        {/* Photo / Video mode toggle */}
         <div className="flex justify-center gap-6 mb-5">
           {(["video", "photo"] as const).map((m) => (
             <button
@@ -240,7 +251,7 @@ export default function CreateCameraView({
           <button
             type="button"
             onClick={handleShutter}
-            disabled={denied || !ready || needsTap}
+            disabled={denied || !ready}
             className={`w-[5.25rem] h-[5.25rem] rounded-full border-[5px] flex items-center justify-center transition-all disabled:opacity-40 shadow-[0_0_24px_rgba(255,255,255,0.25)] ${
               recording ? "border-red-500 bg-red-500/20" : "border-white bg-white/10"
             }`}
@@ -257,8 +268,8 @@ export default function CreateCameraView({
         </div>
 
         {recording && (
-          <p className="text-center text-red-400 text-sm font-bold mt-4 animate-pulse flex items-center justify-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-red-500" /> Recording…
+          <p className="text-center text-red-400 text-sm font-bold mt-4 flex items-center justify-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" /> Recording…
           </p>
         )}
       </div>
