@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Type, Sticker, Pencil, Crop, Volume2, VolumeX, Undo2, Check, X } from "lucide-react";
+import { Type, Sticker, Pencil, Crop, Volume2, VolumeX, Undo2, Check, X, Trash2, Minus, Plus } from "lucide-react";
 import { toast } from "sonner";
 import PostOverlayRenderer from "./PostOverlayRenderer";
 import StickerDrawer from "./StickerDrawer";
@@ -37,35 +37,122 @@ function GreenDoneBtn({ onClick, className = "" }: { onClick: () => void; classN
   );
 }
 
-/** Vertical color picker like WhatsApp Status */
-function VerticalColorPicker({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (c: string) => void;
-}) {
+function hslFromT(t: number): string {
+  if (t <= 0.04) return "#ffffff";
+  if (t >= 0.96) return "#000000";
+  const hue = (1 - (t - 0.04) / 0.92) * 360;
+  return `hsl(${hue}, 100%, 50%)`;
+}
+
+function nearestTextColor(hex: string): string {
+  if (hex === "#ffffff" || hex === "#000000") return hex;
+  let best = TEXT_COLORS[0];
+  let bestDist = Infinity;
+  for (const c of TEXT_COLORS) {
+    const d = colorDist(hex, c);
+    if (d < bestDist) {
+      bestDist = d;
+      best = c;
+    }
+  }
+  return best;
+}
+
+function colorDist(a: string, b: string): number {
+  const pa = parseHex(a);
+  const pb = parseHex(b);
+  if (!pa || !pb) return Infinity;
+  return (pa[0] - pb[0]) ** 2 + (pa[1] - pb[1]) ** 2 + (pa[2] - pb[2]) ** 2;
+}
+
+function parseHex(hex: string): [number, number, number] | null {
+  const h = hex.replace("#", "");
+  if (h.length !== 6) return null;
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+}
+
+/** Slim vertical color slider for text editing */
+function SlimTextColorPicker({ value, onChange }: { value: string; onChange: (c: string) => void }) {
   const trackRef = useRef<HTMLDivElement>(null);
+  const [thumbT, setThumbT] = useState(0.12);
 
-  const pickFromY = useCallback((clientY: number) => {
-    const track = trackRef.current;
-    if (!track) return;
-    const rect = track.getBoundingClientRect();
-    const t = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
-    const idx = Math.round(t * (TEXT_COLORS.length - 1));
-    onChange(TEXT_COLORS[idx]);
-  }, [onChange]);
+  useEffect(() => {
+    const idx = TEXT_COLORS.indexOf(value);
+    if (idx >= 0) setThumbT(idx / Math.max(1, TEXT_COLORS.length - 1));
+    else if (value === "#ffffff") setThumbT(0);
+    else if (value === "#000000") setThumbT(1);
+  }, [value]);
 
+  const pickFromY = useCallback(
+    (clientY: number) => {
+      const track = trackRef.current;
+      if (!track) return;
+      const rect = track.getBoundingClientRect();
+      const t = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+      setThumbT(t);
+      onChange(nearestTextColor(hslFromT(t)));
+    },
+    [onChange],
+  );
+
+  return (
+    <div
+      className="relative flex items-center justify-center editor-touch-none"
+      style={{ width: 28, height: "min(34vh, 220px)" }}
+    >
+      <div
+        ref={trackRef}
+        className="absolute rounded-full"
+        style={{
+          width: 6,
+          height: "100%",
+          background:
+            "linear-gradient(to bottom, #ffffff 0%, #ff3b30 12%, #ffcc00 28%, #34c759 44%, #00c7ff 58%, #5856d6 72%, #ff2d55 86%, #000000 100%)",
+          boxShadow: "0 0 0 1px rgba(255,255,255,0.15)",
+        }}
+        onPointerDown={(e) => {
+          pickFromY(e.clientY);
+          (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+        }}
+        onPointerMove={(e) => {
+          if ((e.currentTarget as HTMLElement).hasPointerCapture(e.pointerId)) pickFromY(e.clientY);
+        }}
+      />
+      <div
+        className="absolute left-1/2 pointer-events-none rounded-full border-2 border-white"
+        style={{
+          width: 20,
+          height: 20,
+          top: `${thumbT * 100}%`,
+          transform: "translate(-50%, -50%)",
+          backgroundColor: value,
+          boxShadow: "0 1px 6px rgba(0,0,0,0.45)",
+        }}
+      />
+    </div>
+  );
+}
+
+/** Draw-mode color picker (unchanged footprint) */
+function VerticalColorPicker({ value, onChange }: { value: string; onChange: (c: string) => void }) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const pickFromY = useCallback(
+    (clientY: number) => {
+      const track = trackRef.current;
+      if (!track) return;
+      const rect = track.getBoundingClientRect();
+      const t = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+      const idx = Math.round(t * (TEXT_COLORS.length - 1));
+      onChange(TEXT_COLORS[idx]);
+    },
+    [onChange],
+  );
   const activeIdx = Math.max(0, TEXT_COLORS.indexOf(value));
-
   return (
     <div
       ref={trackRef}
       className="relative w-9 rounded-full overflow-hidden editor-touch-none cursor-pointer"
-      style={{
-        height: "min(42vh, 280px)",
-        background: `linear-gradient(to bottom, ${TEXT_COLORS.join(", ")})`,
-      }}
+      style={{ height: "min(42vh, 280px)", background: `linear-gradient(to bottom, ${TEXT_COLORS.join(", ")})` }}
       onPointerDown={(e) => {
         pickFromY(e.clientY);
         (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -171,6 +258,17 @@ export default function MediaEditView({
     setSelected(null);
   };
 
+  const deleteEditingText = () => {
+    if (editingTextId) {
+      patch({ overlays: meta.overlays.filter((o) => o.id !== editingTextId) });
+    }
+    cancelText();
+  };
+
+  const adjustTextScale = (delta: number) => {
+    setTextPos((prev) => ({ ...prev, scale: Math.max(0.35, Math.min(4, +(prev.scale + delta).toFixed(2))) }));
+  };
+
   const addSticker = (stickerId: string) => {
     const sticker: StickerOverlay = {
       id: newId(),
@@ -189,7 +287,8 @@ export default function MediaEditView({
     setActiveTool("text");
     setEditingTextId(null);
     setTextDraft("");
-    setTextPos({ x: 50, y: 42, scale: 1 });
+    const layerOffset = (meta.overlays.length % 5) * 7;
+    setTextPos({ x: 50, y: 38 + layerOffset, scale: 1 });
     setTextStyle("bubble");
     setTextColor("#ffffff");
     setSelected(null);
@@ -211,7 +310,6 @@ export default function MediaEditView({
     }
     if (editingTextId) {
       updateText(editingTextId, { text: t, style: textStyle, color: textColor, ...textPos });
-      setSelected({ id: editingTextId, type: "text" });
     } else {
       const overlay: TextOverlay = {
         id: newId(),
@@ -224,10 +322,10 @@ export default function MediaEditView({
         color: textColor,
       };
       patch({ overlays: [...meta.overlays, overlay] });
-      setSelected({ id: overlay.id, type: "text" });
     }
     setTextDraft("");
     setEditingTextId(null);
+    setSelected(null);
     setActiveTool(null);
   };
 
@@ -303,8 +401,13 @@ export default function MediaEditView({
         onAddStroke={addStroke}
         onEraseAt={eraseAt}
         liveTextDraft={liveTextDraft}
+        hiddenOverlayId={editingTextId}
+        textEditing={activeTool === "text"}
         onLiveTextMove={(p) => setTextPos((prev) => ({ ...prev, ...p }))}
-        onTextTap={(id) => editSelectedText(id)}
+        onTextTap={(id) => {
+          if (activeTool === "text") return;
+          editSelectedText(id);
+        }}
         onLiveTextFocus={() => textInputRef.current?.focus({ preventScroll: true })}
         liveTextPlaceholder="Add text"
       />
@@ -356,29 +459,64 @@ export default function MediaEditView({
         </div>
       )}
 
-      {/* ── TEXT MODE (WhatsApp style) ── */}
+      {/* ── TEXT MODE — controls only while actively editing ── */}
       {activeTool === "text" && (
         <>
           <div
-            className="absolute z-[110]"
+            className="absolute z-[110] flex items-center gap-2"
             style={{ top: "max(env(safe-area-inset-top), 0.5rem)", left: "max(env(safe-area-inset-left), 0.75rem)" }}
           >
             <GreenDoneBtn onClick={saveText} />
           </div>
 
-          {/* Color picker — right side */}
+          <button
+            type="button"
+            onClick={deleteEditingText}
+            className="absolute z-[110] w-10 h-10 rounded-full bg-black/45 backdrop-blur-sm flex items-center justify-center editor-touch-none"
+            style={{ top: "max(env(safe-area-inset-top), 0.5rem)", right: "max(env(safe-area-inset-right), 0.75rem)" }}
+            aria-label="Delete text"
+          >
+            <Trash2 className="w-[18px] h-[18px] text-white" />
+          </button>
+
+          {/* Slim color picker */}
           <div
-            className="absolute z-[105] flex items-center"
+            className="absolute z-[105]"
             style={{
-              right: "max(env(safe-area-inset-right), 0.75rem)",
+              right: "max(env(safe-area-inset-right), 0.5rem)",
               top: "50%",
               transform: "translateY(-50%)",
             }}
           >
-            <VerticalColorPicker value={textColor} onChange={setTextColor} />
+            <SlimTextColorPicker value={textColor} onChange={setTextColor} />
           </div>
 
-          {/* Hidden input — drives keyboard, no visible textbox */}
+          {/* Size +/- */}
+          <div
+            className="absolute z-[105] flex flex-col gap-2 editor-touch-none"
+            style={{
+              left: "max(env(safe-area-inset-left), 0.75rem)",
+              top: "calc(max(env(safe-area-inset-top), 0.5rem) + 3.5rem)",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => adjustTextScale(0.12)}
+              className="w-9 h-9 rounded-full bg-black/45 backdrop-blur-sm flex items-center justify-center text-white border border-white/20"
+              aria-label="Increase text size"
+            >
+              <Plus className="w-4 h-4" strokeWidth={2.5} />
+            </button>
+            <button
+              type="button"
+              onClick={() => adjustTextScale(-0.12)}
+              className="w-9 h-9 rounded-full bg-black/45 backdrop-blur-sm flex items-center justify-center text-white border border-white/20"
+              aria-label="Decrease text size"
+            >
+              <Minus className="w-4 h-4" strokeWidth={2.5} />
+            </button>
+          </div>
+
           <input
             ref={bindTextInput}
             type="text"
@@ -394,35 +532,35 @@ export default function MediaEditView({
             aria-label="Add text"
           />
 
-          {/* Font style row — above keyboard */}
-          <div
-            className="absolute inset-x-0 z-[108] px-3 editor-touch-none"
-            style={{
-              bottom: keyboardOffset > 0 ? keyboardOffset + 8 : "max(env(safe-area-inset-bottom), 5rem)",
-            }}
-          >
-            <div className="flex gap-3 overflow-x-auto scrollbar-hide touch-pan-x py-2 justify-center">
-              {CREATE_TEXT_STYLES.map((p) => {
-                const active = textStyle === p.id;
-                const previewStyle = getTextStyleInline(p.id, p.defaultColor);
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => {
-                      setTextStyle(p.id);
-                      setTextColor(p.defaultColor);
-                    }}
-                    className={`shrink-0 w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
-                      active ? "bg-white text-black scale-110" : "bg-black/50 text-white border border-white/20"
-                    }`}
-                  >
-                    <span style={{ fontFamily: previewStyle.fontFamily, fontSize: "14px" }}>Aa</span>
-                  </button>
-                );
-              })}
+          {/* Aa styles — only while keyboard is open */}
+          {keyboardOffset > 0 && (
+            <div
+              className="absolute inset-x-0 z-[108] px-3 editor-touch-none"
+              style={{ bottom: keyboardOffset + 6 }}
+            >
+              <div className="flex gap-2.5 overflow-x-auto scrollbar-hide touch-pan-x py-1.5 justify-center">
+                {CREATE_TEXT_STYLES.map((p) => {
+                  const active = textStyle === p.id;
+                  const previewStyle = getTextStyleInline(p.id, p.defaultColor);
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => {
+                        setTextStyle(p.id);
+                        setTextColor(p.defaultColor);
+                      }}
+                      className={`shrink-0 w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
+                        active ? "bg-white text-black" : "bg-black/40 text-white border border-white/15"
+                      }`}
+                    >
+                      <span style={{ fontFamily: previewStyle.fontFamily, fontSize: "13px" }}>Aa</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
         </>
       )}
 

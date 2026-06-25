@@ -24,6 +24,8 @@ interface Props {
   onAddStroke?: (stroke: DrawStroke) => void;
   onEraseAt?: (x: number, y: number) => void;
   liveTextDraft?: { text: string; style: TextOverlay["style"]; color: string; x: number; y: number; scale: number } | null;
+  hiddenOverlayId?: string | null;
+  textEditing?: boolean;
   onLiveTextMove?: (patch: { x?: number; y?: number; scale?: number }) => void;
   onLiveTextFocus?: () => void;
   liveTextPlaceholder?: string;
@@ -54,6 +56,8 @@ export default function PostOverlayRenderer({
   onAddStroke,
   onEraseAt,
   liveTextDraft,
+  hiddenOverlayId = null,
+  textEditing = false,
   onLiveTextMove,
   onLiveTextFocus,
   liveTextPlaceholder = "Add text",
@@ -202,10 +206,13 @@ export default function PostOverlayRenderer({
     }
 
     activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (textEditing && liveTextDraft && activePointers.current.size >= 2) {
+      if (tryStartPinch("live", "live")) return;
+    }
     if (activePointers.current.size === 2 && selected) {
       if (tryStartPinch(selected.id, selected.type)) return;
     }
-    if (!dragRef.current) editable && onSelect?.(null);
+    if (!dragRef.current && editable && !textEditing) onSelect?.(null);
   };
 
   const onPointerMove = useCallback(
@@ -251,7 +258,7 @@ export default function PostOverlayRenderer({
         if (d.type === "live") onLiveTextMove?.({ x: nx, y: ny });
         else if (d.type === "text") onUpdateText?.(d.id, { x: nx, y: ny });
         else onUpdateSticker?.(d.id, { x: nx, y: ny });
-        setTrashHover(d.type !== "live" && ny > 85);
+        setTrashHover(!textEditing && d.type !== "live" && ny > 85);
       } else if (d.mode === "scale") {
         const delta = (e.clientX - d.startX) / 80;
         const scale = Math.max(0.3, Math.min(4, d.origScale + delta));
@@ -384,19 +391,23 @@ export default function PostOverlayRenderer({
       })}
 
       {meta.overlays.map((o) => {
+        if (hiddenOverlayId === o.id) return null;
         const isSel = selected?.id === o.id;
         return (
           <div
             key={o.id}
-            className={`absolute editor-touch-none select-none max-w-[90%] ${editable ? "cursor-grab active:cursor-grabbing" : "pointer-events-none"}`}
+            className={`absolute editor-touch-none select-none max-w-[90%] ${
+              editable && !textEditing ? "cursor-grab active:cursor-grabbing" : "pointer-events-none"
+            }`}
             style={{
               left: `${o.x}%`,
               top: `${o.y}%`,
-              transform: `translate(-50%, -50%) scale(${o.scale}) rotate(${o.rotation ?? 0}deg)`,
+              transform: `translate(-50%, -50%) rotate(${o.rotation ?? 0}deg)`,
               zIndex: isSel ? 35 : 25,
               padding: "8px",
             }}
             onPointerDown={(e) => {
+              if (textEditing) return;
               e.stopPropagation();
               startDrag(e, o.id, "text", "move", o);
             }}
@@ -413,7 +424,7 @@ export default function PostOverlayRenderer({
           style={{
             left: `${liveTextDraft.x}%`,
             top: `${liveTextDraft.y}%`,
-            transform: `translate(-50%, -50%) scale(${liveTextDraft.scale})`,
+            transform: `translate(-50%, -50%)`,
             zIndex: 40,
             padding: "8px",
           }}
@@ -457,15 +468,14 @@ export default function PostOverlayRenderer({
         </div>
       )}
 
-      {editable && isDragging && selected && (
+      {editable && isDragging && selected && !textEditing && (
         <div
-          className={`absolute left-1/2 -translate-x-1/2 z-50 w-[4.5rem] h-[4.5rem] rounded-full flex flex-col items-center justify-center transition-all ${
-            trashHover ? "bg-red-500 scale-110" : "bg-red-500/30 border-2 border-dashed border-red-400"
+          className={`absolute left-1/2 -translate-x-1/2 z-50 w-14 h-14 rounded-full flex items-center justify-center transition-all ${
+            trashHover ? "bg-red-500 scale-110" : "bg-black/40 border border-red-400/60"
           }`}
-          style={{ bottom: "max(env(safe-area-inset-bottom), 1rem)" }}
+          style={{ bottom: "max(env(safe-area-inset-bottom), 5.5rem)" }}
         >
-          <Trash2 className={`w-7 h-7 ${trashHover ? "text-white" : "text-red-200"}`} />
-          <span className="text-[9px] font-bold text-white/80 mt-0.5">Delete</span>
+          <Trash2 className={`w-5 h-5 ${trashHover ? "text-white" : "text-red-300"}`} />
         </div>
       )}
     </div>
