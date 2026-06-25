@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { X, SwitchCamera, ImagePlus, Music } from "lucide-react";
-import { warmCameraStream, releaseCameraStream } from "@/lib/create-camera";
+import { warmCameraStream, releaseCameraStream, capturePhotoFromStream, createVideoRecorder } from "@/lib/create-camera";
 
 interface Props {
   mode: "photo" | "video";
@@ -43,6 +43,11 @@ export default function CreateCameraView({
       video.setAttribute("webkit-playsinline", "true");
       video.srcObject = stream;
       await video.play();
+      if (!video.videoWidth) {
+        await new Promise<void>((resolve) => {
+          video.addEventListener("loadedmetadata", () => resolve(), { once: true });
+        });
+      }
     }
     setReady(true);
     setDenied(false);
@@ -114,27 +119,12 @@ export default function CreateCameraView({
 
   const takePhoto = async () => {
     const video = videoRef.current;
-    if (!video || !ready) return;
-    const w = video.videoWidth || 720;
-    const h = video.videoHeight || 1280;
-    const canvas = document.createElement("canvas");
-    canvas.width = w;
-    canvas.height = h;
-    const ctx = canvas.getContext("2d")!;
-    if (facing === "user") {
-      ctx.translate(w, 0);
-      ctx.scale(-1, 1);
-    }
-    ctx.drawImage(video, 0, 0, w, h);
-    canvas.toBlob(
-      (blob) => {
-        if (!blob) return;
-        stopStream();
-        onCapture(new File([blob], `photo-${Date.now()}.jpg`, { type: "image/jpeg" }), "image");
-      },
-      "image/jpeg",
-      0.92,
-    );
+    const stream = streamRef.current;
+    if (!video || !stream || !ready) return;
+    const blob = await capturePhotoFromStream(stream, video, { mirror: facing === "user" });
+    if (!blob) return;
+    stopStream();
+    onCapture(new File([blob], `photo-${Date.now()}.jpg`, { type: "image/jpeg" }), "image");
   };
 
   const pickRecorderMime = () => {
@@ -148,7 +138,7 @@ export default function CreateCameraView({
     chunksRef.current = [];
     try {
       const mime = pickRecorderMime();
-      const rec = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+      const rec = createVideoRecorder(stream, mime);
       recorderRef.current = rec;
       rec.ondataavailable = (e) => {
         if (e.data.size) chunksRef.current.push(e.data);
