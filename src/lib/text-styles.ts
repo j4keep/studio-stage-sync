@@ -10,11 +10,11 @@ export interface TextStylePreset {
   defaultColor: string;
 }
 
-/** Primary text styles shown in create editor (TikTok / WhatsApp) */
+/** WhatsApp / TikTok text presets shown in create editor */
 export const CREATE_TEXT_STYLES: TextStylePreset[] = [
   {
     id: "bubble",
-    label: "White",
+    label: "Plain",
     fontFamily: "'Inter', sans-serif",
     className: "font-bold",
     defaultColor: "#ffffff",
@@ -25,6 +25,20 @@ export const CREATE_TEXT_STYLES: TextStylePreset[] = [
     fontFamily: "'Inter', sans-serif",
     className: "font-black",
     defaultColor: "#ffffff",
+  },
+  {
+    id: "rounded",
+    label: "Bubble",
+    fontFamily: "'Inter', sans-serif",
+    className: "font-semibold",
+    defaultColor: "#1a1a1a",
+  },
+  {
+    id: "neon",
+    label: "Neon",
+    fontFamily: "'Inter', sans-serif",
+    className: "font-bold",
+    defaultColor: "#39ff14",
   },
   {
     id: "marker",
@@ -34,44 +48,17 @@ export const CREATE_TEXT_STYLES: TextStylePreset[] = [
     defaultColor: "#fef08a",
   },
   {
-    id: "neon",
-    label: "Neon",
-    fontFamily: "'Inter', sans-serif",
-    className: "font-bold",
-    defaultColor: "#00e5ff",
-  },
-  {
-    id: "rounded",
-    label: "Rounded",
-    fontFamily: "'Inter', sans-serif",
-    className: "font-semibold",
-    defaultColor: "#ffffff",
-  },
-];
-
-/** TikTok / Stories-style text presets */
-export const TEXT_STYLE_PRESETS: TextStylePreset[] = [
-  {
-    id: "bubble",
-    label: "Bubble",
-    fontFamily: "'Fredoka', 'Arial Rounded MT Bold', sans-serif",
-    className: "font-bold tracking-wide",
-    defaultColor: "#ffffff",
-  },
-  {
-    id: "neon",
-    label: "Neon",
-    fontFamily: "'Inter', sans-serif",
-    className: "font-bold",
-    defaultColor: "#00e5ff",
-  },
-  {
-    id: "outline",
-    label: "Outline",
+    id: "shadow3d",
+    label: "Shadow",
     fontFamily: "'Inter', sans-serif",
     className: "font-black",
     defaultColor: "#ffffff",
   },
+];
+
+/** Full preset library for rendering saved overlays */
+export const TEXT_STYLE_PRESETS: TextStylePreset[] = [
+  ...CREATE_TEXT_STYLES,
   {
     id: "comic",
     label: "Comic",
@@ -87,20 +74,6 @@ export const TEXT_STYLE_PRESETS: TextStylePreset[] = [
     defaultColor: "#f8fafc",
   },
   {
-    id: "marker",
-    label: "Marker",
-    fontFamily: "'Permanent Marker', 'Marker Felt', cursive",
-    className: "font-normal",
-    defaultColor: "#fef08a",
-  },
-  {
-    id: "rounded",
-    label: "Rounded",
-    fontFamily: "'Inter', sans-serif",
-    className: "font-semibold",
-    defaultColor: "#ffffff",
-  },
-  {
     id: "graffiti",
     label: "Graffiti",
     fontFamily: "'Rubik Wet Paint', 'Impact', sans-serif",
@@ -114,31 +87,25 @@ export const TEXT_STYLE_PRESETS: TextStylePreset[] = [
     className: "font-bold",
     defaultColor: "#ffffff",
   },
-  {
-    id: "shadow3d",
-    label: "3D",
-    fontFamily: "'Inter', sans-serif",
-    className: "font-black uppercase",
-    defaultColor: "#ffffff",
-  },
 ];
 
 export const TEXT_COLORS = [
   "#ffffff",
   "#000000",
-  "#ef4444",
-  "#3b82f6",
-  "#a855f7",
+  "#fef08a",
   "#39ff14",
-  "#eab308",
+  "#00e5ff",
+  "#ef4444",
+  "#a855f7",
   "#ec4899",
   "#f97316",
+  "#3b82f6",
 ];
 
 export function getTextStyleInline(style: TextOverlayStyle, color: string): CSSProperties {
   const normalized = normalizeTextStyle(style);
   const preset = TEXT_STYLE_PRESETS.find((p) => p.id === normalized);
-  const base: React.CSSProperties = {
+  const base: CSSProperties = {
     fontFamily: preset?.fontFamily,
     color,
   };
@@ -156,14 +123,14 @@ export function getTextStyleInline(style: TextOverlayStyle, color: string): CSSP
         color,
         WebkitTextStroke: "2px #000",
         paintOrder: "stroke fill",
-        textShadow: "2px 2px 0 #000, -1px -1px 0 #000",
+        textShadow: "2px 2px 0 #000",
       };
     case "bubble":
       return {
         ...base,
         color,
         fontWeight: 700,
-        textShadow: "0 2px 10px rgba(0,0,0,0.75), 0 0 2px rgba(0,0,0,0.9)",
+        textShadow: "0 2px 12px rgba(0,0,0,0.85)",
       };
     case "rounded":
       return { ...base, color };
@@ -171,20 +138,13 @@ export function getTextStyleInline(style: TextOverlayStyle, color: string): CSSP
       return {
         ...base,
         color,
-        textShadow: "3px 3px 0 #a855f7, 6px 6px 0 #000",
+        textShadow: "2px 2px 0 rgba(0,0,0,0.9), 4px 4px 0 rgba(0,0,0,0.5)",
       };
     case "marker":
       return {
         ...base,
         color,
-        transform: "rotate(-2deg)",
-      };
-    case "graffiti":
-      return {
-        ...base,
-        color,
-        WebkitTextStroke: "1.5px #1a1a1a",
-        textShadow: "3px 3px 0 #000",
+        transform: "rotate(-1deg)",
       };
     default:
       return base;

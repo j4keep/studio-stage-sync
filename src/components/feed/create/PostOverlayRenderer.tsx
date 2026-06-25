@@ -26,6 +26,7 @@ interface Props {
   liveTextDraft?: { text: string; style: TextOverlay["style"]; color: string; x: number; y: number; scale: number } | null;
   onLiveTextMove?: (patch: { x?: number; y?: number; scale?: number }) => void;
   onLiveTextFocus?: () => void;
+  liveTextPlaceholder?: string;
   className?: string;
 }
 
@@ -55,6 +56,7 @@ export default function PostOverlayRenderer({
   liveTextDraft,
   onLiveTextMove,
   onLiveTextFocus,
+  liveTextPlaceholder = "Add text",
   className = "",
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -110,12 +112,12 @@ export default function PostOverlayRenderer({
 
     return (
       <span
-        className={`inline-block text-center whitespace-pre-wrap break-words max-w-[85vw] ${preset?.className ?? ""} ${extraClass} ${isSel ? "ring-2 ring-white rounded px-1" : ""}`}
+        className={`inline-block text-center whitespace-pre-wrap break-words max-w-[85vw] ${preset?.className ?? ""} ${extraClass} ${isSel ? "ring-1 ring-white/60 rounded" : ""}`}
         style={{
           ...inline,
           fontSize: `${Math.round(24 * scale)}px`,
           ...(isRounded
-            ? { backgroundColor: "rgba(0,0,0,0.55)", padding: "8px 16px", borderRadius: "12px" }
+            ? { backgroundColor: "rgba(255,255,255,0.92)", padding: "8px 16px", borderRadius: "12px", color: color === "#ffffff" ? "#1a1a1a" : color }
             : {}),
         }}
       >
@@ -298,7 +300,7 @@ export default function PostOverlayRenderer({
   );
 
   const renderHandles = (id: string, type: SelType, item: TextOverlay | StickerOverlay) => {
-    if (!editable || selected?.id !== id) return null;
+    if (!editable || selected?.id !== id || type === "text") return null;
     return (
       <>
         <button
@@ -399,7 +401,7 @@ export default function PostOverlayRenderer({
               startDrag(e, o.id, "text", "move", o);
             }}
           >
-            {renderTextBlock(o.text, o.style, o.color || "#ffffff", 1, isSel)}
+            {renderTextBlock(o.text, o.style, o.color || "#ffffff", o.scale, false)}
             {renderHandles(o.id, "text", o)}
           </div>
         );
@@ -438,14 +440,19 @@ export default function PostOverlayRenderer({
             setIsDragging(true);
             (e.target as HTMLElement).setPointerCapture(e.pointerId);
           }}
+          onPointerUp={(e) => {
+            if (dragRef.current?.type === "live" && !dragRef.current.moved) {
+              onLiveTextFocus?.();
+            }
+          }}
         >
           {renderTextBlock(
-            liveTextDraft.text || "Tap to type",
+            liveTextDraft.text || liveTextPlaceholder,
             liveTextDraft.style,
             liveTextDraft.color,
-            1,
-            true,
-            liveTextDraft.text ? "" : "opacity-60",
+            liveTextDraft.scale,
+            false,
+            liveTextDraft.text ? "" : "opacity-70",
           )}
         </div>
       )}

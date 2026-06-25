@@ -236,38 +236,19 @@ const CreatePostSheet = ({ open, onClose, postToEdit = null, cameraStream = null
 
         {/* Edit step */}
         {step === "edit" && hasMedia && (
-          <>
-            <div className="absolute top-0 left-0 right-0 z-40 flex items-center justify-between px-3 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-2">
-              <button onClick={() => (postToEdit ? reset() : setStep("camera"))} className="w-10 h-10 flex items-center justify-center text-white">
-                <ChevronLeft className="w-6 h-6" />
-              </button>
-              <button
-                onClick={() => setShowSoundPicker(true)}
-                className="flex items-center gap-1.5 max-w-[50%] rounded-full bg-black/50 backdrop-blur-md border border-white/20 px-3 py-1.5 text-white"
-              >
-                <Music className="w-3.5 h-3.5 shrink-0" />
-                <span className="text-xs font-semibold truncate">{editorMeta.music ? soundLabel : "Add sound"}</span>
-              </button>
-              <button
-                onClick={() => setStep("preview")}
-                className="w-10 h-10 flex items-center justify-center text-primary"
-                aria-label="Preview"
-              >
-                <Check className="w-6 h-6" />
-              </button>
-            </div>
-            <div className="absolute inset-0 pt-[calc(env(safe-area-inset-top)+3rem)] pb-[env(safe-area-inset-bottom)]">
-              <MediaEditView
-                mediaType={mediaType}
-                previewUrl={previewMediaUrl}
-                meta={editorMeta}
-                onMetaChange={setEditorMeta}
-                caption={caption}
-                onCaptionChange={setCaption}
-                musicPreviewUrl={musicPreviewUrl}
-              />
-            </div>
-          </>
+          <div className="absolute inset-0">
+            <MediaEditView
+            mediaType={mediaType}
+            previewUrl={previewMediaUrl}
+            meta={editorMeta}
+            onMetaChange={setEditorMeta}
+            caption={caption}
+            onCaptionChange={setCaption}
+            musicPreviewUrl={musicPreviewUrl}
+            onBack={() => (postToEdit ? reset() : setStep("camera"))}
+            onDone={() => setStep("preview")}
+            />
+          </div>
         )}
 
         {/* Preview step */}
