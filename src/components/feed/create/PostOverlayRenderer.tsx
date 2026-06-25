@@ -313,30 +313,6 @@ export default function PostOverlayRenderer({
     [drawing, eraserMode, trashHover, onDeleteSelected, onSelect, onAddStroke, onTextTap],
   );
 
-  const renderHandles = (id: string, type: SelType, item: TextOverlay | StickerOverlay) => {
-    if (!editable || selected?.id !== id || type === "text") return null;
-    return (
-      <>
-        <button
-          type="button"
-          className="absolute -top-12 left-1/2 -translate-x-1/2 w-11 h-11 rounded-full bg-white border-2 border-violet-500 z-30 editor-touch-none shadow-lg flex items-center justify-center"
-          onPointerDown={(e) => startDrag(e, id, type!, "rotate", item)}
-          aria-label="Rotate"
-        >
-          <span className="text-sm font-bold text-violet-600">↻</span>
-        </button>
-        <button
-          type="button"
-          className="absolute -bottom-5 -right-5 w-11 h-11 rounded-full bg-white border-2 border-violet-500 z-30 editor-touch-none shadow-lg flex items-center justify-center"
-          onPointerDown={(e) => startDrag(e, id, type!, "scale", item)}
-          aria-label="Resize"
-        >
-          <span className="text-sm font-bold text-violet-600">⤢</span>
-        </button>
-      </>
-    );
-  };
-
   const allDrawings = (meta.drawings || []).concat(liveStroke ? [liveStroke] : []);
 
   return (
@@ -393,7 +369,6 @@ export default function PostOverlayRenderer({
               style={{ width: EDITOR_STICKER_BASE_PX, height: EDITOR_STICKER_BASE_PX }}
               draggable={false}
             />
-            {renderHandles(s.id, "sticker", s)}
           </div>
         );
       })}
@@ -421,7 +396,6 @@ export default function PostOverlayRenderer({
             }}
           >
             {renderTextBlock(o.text, o.style, o.color || "#ffffff", 1, false)}
-            {renderHandles(o.id, "text", o)}
           </div>
         );
       })}
