@@ -56,6 +56,15 @@ export default function MediaEditView({
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const textInputRef = useRef<HTMLInputElement>(null);
+  const pendingTextFocus = useRef(false);
+
+  const bindTextInput = (el: HTMLInputElement | null) => {
+    textInputRef.current = el;
+    if (el && pendingTextFocus.current) {
+      pendingTextFocus.current = false;
+      el.focus({ preventScroll: true });
+    }
+  };
 
   useEffect(() => {
     const vv = window.visualViewport;
@@ -85,9 +94,11 @@ export default function MediaEditView({
   }, [musicPreviewUrl, meta.music?.volume]);
 
   useEffect(() => {
-    if (activeTool === "text") {
-      setTimeout(() => textInputRef.current?.focus(), 80);
-    }
+    if (activeTool !== "text") return;
+    const id = requestAnimationFrame(() => {
+      textInputRef.current?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(id);
   }, [activeTool, editingTextId]);
 
   const patch = (p: Partial<PostEditorMeta>) => onMetaChange({ ...meta, ...p });
@@ -119,12 +130,14 @@ export default function MediaEditView({
   };
 
   const startTextMode = () => {
+    pendingTextFocus.current = true;
     setActiveTool("text");
     setEditingTextId(null);
     setTextDraft("");
     setTextPos({ x: 50, y: 38, scale: 1 });
     setTextStyle("bubble");
     setTextColor("#ffffff");
+    setSelected(null);
   };
 
   const saveText = () => {
@@ -160,6 +173,7 @@ export default function MediaEditView({
     if (!targetId) return;
     const o = meta.overlays.find((x) => x.id === targetId);
     if (!o) return;
+    pendingTextFocus.current = true;
     setEditingTextId(o.id);
     setTextDraft(o.text);
     setTextStyle(o.style);
@@ -229,6 +243,7 @@ export default function MediaEditView({
         liveTextDraft={liveTextDraft}
         onLiveTextMove={(p) => setTextPos((prev) => ({ ...prev, ...p }))}
         onTextTap={(id) => editSelectedText(id)}
+        onLiveTextFocus={() => textInputRef.current?.focus({ preventScroll: true })}
       />
 
       {/* Draw mode — colors on right, controls top */}
@@ -299,16 +314,24 @@ export default function MediaEditView({
             </button>
           </div>
           <div
-            className="absolute inset-x-0 z-40 px-2 transition-[bottom] duration-150"
-            style={{ bottom: `calc(env(safe-area-inset-bottom) + 5.75rem + ${keyboardOffset}px)` }}
+            className="absolute inset-x-0 z-[100] px-3 transition-[bottom] duration-150"
+            style={{ bottom: `calc(env(safe-area-inset-bottom) + 0.5rem + ${keyboardOffset}px)` }}
           >
-            <button
-              type="button"
-              onClick={() => textInputRef.current?.focus()}
-              className="w-full mb-2 py-2.5 rounded-xl bg-black/50 border border-white/15 text-white/60 text-xs font-semibold"
-            >
-              {textDraft ? "Tap to keep typing" : "Tap to type on video"}
-            </button>
+            {/* Visible input — iOS Safari requires a real tappable field to open keyboard */}
+            <input
+              ref={bindTextInput}
+              type="text"
+              value={textDraft}
+              onChange={(e) => setTextDraft(e.target.value)}
+              placeholder="Type your text…"
+              className="w-full mb-3 py-3.5 px-4 rounded-2xl bg-zinc-900/95 border-2 border-violet-400/60 text-white text-base placeholder:text-white/40 focus:outline-none focus:border-violet-400 shadow-[0_0_20px_rgba(168,85,247,0.25)]"
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+              enterKeyHint="done"
+              inputMode="text"
+              onKeyDown={(e) => e.key === "Enter" && saveText()}
+            />
             <div className="overflow-x-auto scrollbar-hide flex gap-2 pb-2">
               {CREATE_TEXT_STYLES.map((p) => (
                 <button
@@ -351,18 +374,6 @@ export default function MediaEditView({
               />
             </div>
           </div>
-          <input
-            ref={textInputRef}
-            value={textDraft}
-            onChange={(e) => setTextDraft(e.target.value)}
-            className="fixed left-0 right-0 h-12 z-[95] bg-transparent text-transparent caret-violet-400 border-0 outline-none px-4 text-base"
-            style={{ bottom: keyboardOffset }}
-            aria-label="Type text on video"
-            autoComplete="off"
-            autoCorrect="off"
-            spellCheck={false}
-            enterKeyHint="done"
-          />
         </>
       )}
 
@@ -386,8 +397,8 @@ export default function MediaEditView({
         </div>
       )}
 
-      {/* Bottom toolbar */}
-      {!showStickers && (
+      {/* Bottom toolbar — hidden during text mode so keyboard has room */}
+      {!showStickers && activeTool !== "text" && (
       <div className="absolute bottom-[max(env(safe-area-inset-bottom),0.25rem)] inset-x-0 z-40 px-2">
         <div className="flex justify-around mb-2 px-1">
           {tools.filter((t) => t.show !== false).map((t) => {

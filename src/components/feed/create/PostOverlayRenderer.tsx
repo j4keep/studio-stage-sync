@@ -26,6 +26,7 @@ interface Props {
   /** Live text draft shown on media while typing (TikTok style) */
   liveTextDraft?: { text: string; style: TextOverlay["style"]; color: string; x: number; y: number; scale: number } | null;
   onLiveTextMove?: (patch: { x?: number; y?: number; scale?: number }) => void;
+  onLiveTextFocus?: () => void;
   className?: string;
 }
 
@@ -54,6 +55,7 @@ export default function PostOverlayRenderer({
   onEraseAt,
   liveTextDraft,
   onLiveTextMove,
+  onLiveTextFocus,
   className = "",
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -400,6 +402,10 @@ export default function PostOverlayRenderer({
             top: `${liveTextDraft.y}%`,
             transform: `translate(-50%, -50%) scale(${liveTextDraft.scale})`,
             zIndex: 40,
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onLiveTextFocus?.();
           }}
           onPointerDown={(e) => {
             if (!editable || !onLiveTextMove) return;
