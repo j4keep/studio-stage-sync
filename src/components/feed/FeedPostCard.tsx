@@ -65,6 +65,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
   const { emojis, spawnEmoji } = useFloatingEmojis();
 
   const { caption: displayCaption, meta: postMeta } = parsePostCaption(post.caption);
+  const postTitle = postMeta?.title?.trim();
 
   // Image posts bake text/stickers/draw into the file — overlay renderer would double them
   const showVisualOverlays =
@@ -551,8 +552,17 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
             )}
           </div>
 
-          {displayCaption && (
-            <p className="text-[12px] leading-snug text-white/90 drop-shadow-md line-clamp-2 pr-1">{displayCaption}</p>
+          {(postTitle || displayCaption) && (
+            <div className="pr-1">
+              {postTitle && (
+                <p className="text-[13px] font-bold leading-snug text-white drop-shadow-md line-clamp-2">{postTitle}</p>
+              )}
+              {displayCaption && (
+                <p className={`text-[12px] leading-snug text-white/90 drop-shadow-md line-clamp-2 ${postTitle ? "mt-0.5" : ""}`}>
+                  {displayCaption}
+                </p>
+              )}
+            </div>
           )}
           {postMeta?.location && (
             <span className="mt-0.5 block text-[10px] text-white/55">{postMeta.location}</span>

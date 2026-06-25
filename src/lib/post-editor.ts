@@ -60,6 +60,8 @@ export interface PostEditorMeta {
   music?: { loopId?: string; fileName?: string; audioUrl?: string; volume: number; durationSec?: number };
   coverTime?: number;
   location?: string;
+  /** Post title shown in feed (required before posting) */
+  title?: string;
   /** Visual layers were flattened into the image file — do not render HTML overlays */
   bakedEdits?: boolean;
 }
@@ -116,7 +118,8 @@ export function encodeCaptionWithMeta(caption: string, meta: PostEditorMeta): st
     (meta.originalVolume !== undefined && meta.originalVolume !== 1) ||
     meta.music ||
     meta.coverTime !== undefined ||
-    meta.location;
+    meta.location ||
+    meta.title;
 
   if (!hasMeta) return trimmed || "";
   return `${trimmed}${META_MARKER}${JSON.stringify(meta)}-->`;

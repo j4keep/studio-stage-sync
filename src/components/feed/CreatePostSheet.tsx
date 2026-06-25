@@ -7,7 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import CreateCameraView from "./create/CreateCameraView";
 import MediaEditView from "./create/MediaEditView";
-import PostOverlayRenderer from "./create/PostOverlayRenderer";
+import PostPreviewView from "./create/PostPreviewView";
 import SoundPickerSheet from "./SoundPickerSheet";
 import { exportEditedImage } from "./create/exportMedia";
 import { encodeCaptionWithMeta, parsePostCaption, defaultEditorMeta, stripBakedVisualMeta, type PostEditorMeta } from "@/lib/post-editor";
@@ -30,6 +30,7 @@ const CreatePostSheet = ({ open, onClose, postToEdit = null, cameraStream = null
   const [step, setStep] = useState<Step>("camera");
   const [mode, setMode] = useState<CaptureMode>("video");
   const [caption, setCaption] = useState("");
+  const [title, setTitle] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<"image" | "video">("image");
@@ -72,6 +73,7 @@ const CreatePostSheet = ({ open, onClose, postToEdit = null, cameraStream = null
     document.body.style.overflow = "hidden";
     const parsed = parsePostCaption(postToEdit?.caption);
     setCaption(parsed.caption);
+    setTitle(parsed.meta?.title ?? "");
     setEditorMeta(parsed.meta ?? defaultEditorMeta());
     setFile(null);
     setMusicFile(null);
@@ -96,6 +98,7 @@ const CreatePostSheet = ({ open, onClose, postToEdit = null, cameraStream = null
   const reset = () => {
     revokeBlobs();
     setCaption("");
+    setTitle("");
     setFile(null);
     setPreview(null);
     setMusicFile(null);
@@ -114,7 +117,7 @@ const CreatePostSheet = ({ open, onClose, postToEdit = null, cameraStream = null
       let mediaUrl: string | null = currentMediaUrl;
       let nextMediaType: "image" | "video" = mediaType;
       let uploadFile: File | Blob | null = file;
-      let meta = { ...editorMeta };
+      let meta = { ...editorMeta, title: title.trim() || undefined };
 
       if (musicFile) {
         setUploading(true);
@@ -298,39 +301,17 @@ const CreatePostSheet = ({ open, onClose, postToEdit = null, cameraStream = null
 
         {/* Preview step */}
         {step === "preview" && (
-          <>
-            <div className="absolute top-0 left-0 right-0 z-40 flex items-center justify-between px-3 pt-[calc(env(safe-area-inset-top)+0.5rem)]">
-              <button onClick={() => setStep("edit")} className="w-10 h-10 flex items-center justify-center text-white">
-                <ChevronLeft className="w-6 h-6" />
-              </button>
-              <span className="text-sm font-bold text-white">Preview</span>
-              <button
-                onClick={() => postMutation.mutate()}
-                disabled={postMutation.isPending || uploading}
-                className="px-4 py-1.5 rounded-full bg-primary text-black text-sm font-bold disabled:opacity-40"
-              >
-                {uploading ? "..." : "Post"}
-              </button>
-            </div>
-            <div className="absolute inset-0 pt-14 pb-[max(env(safe-area-inset-bottom),0.5rem)] flex flex-col">
-              <div className="relative flex-1 min-h-0">
-                {mediaType === "video" && previewMediaUrl ? (
-                  <video src={previewMediaUrl} className="absolute inset-0 w-full h-full object-cover" playsInline autoPlay loop muted={editorMeta.muteOriginal} />
-                ) : previewMediaUrl ? (
-                  <img src={previewMediaUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
-                ) : null}
-                <PostOverlayRenderer meta={editorMeta} />
-              </div>
-              <div className="shrink-0 px-3 pt-2 pb-2">
-                <input
-                  value={caption}
-                  onChange={(e) => setCaption(e.target.value)}
-                  placeholder="Write a caption…"
-                  className="w-full bg-zinc-900/90 border border-white/15 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-violet-400/50"
-                />
-              </div>
-            </div>
-          </>
+          <PostPreviewView
+            mediaType={mediaType}
+            previewUrl={previewMediaUrl}
+            title={title}
+            description={caption}
+            onTitleChange={setTitle}
+            onDescriptionChange={setCaption}
+            onBack={() => setStep("edit")}
+            onPost={() => postMutation.mutate()}
+            posting={postMutation.isPending || uploading}
+          />
         )}
 
         <input ref={photoInputRef} type="file" accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleMediaFile(f, "image"); e.target.value = ""; }} />
