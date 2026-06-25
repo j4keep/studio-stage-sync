@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import PostOverlayRenderer from "./PostOverlayRenderer";
 import StickerDrawer from "./StickerDrawer";
 import type { PostEditorMeta, TextOverlay, StickerOverlay, DrawStroke, TextOverlayStyle } from "@/lib/post-editor";
-import { BRUSH_PRESETS, eraseStrokesNear } from "@/lib/post-editor";
+import { BRUSH_PRESETS, DRAW_COLORS, eraseStrokesNear } from "@/lib/post-editor";
 import { TEXT_COLORS, CREATE_TEXT_STYLES, getTextStyleInline } from "@/lib/text-styles";
 
 const newId = () => Math.random().toString(36).slice(2, 9);
@@ -23,28 +23,36 @@ interface Props {
   onDone: () => void;
 }
 
-/** WhatsApp-style green action button */
-function GreenDoneBtn({ onClick, className = "" }: { onClick: () => void; className?: string }) {
+/** Done button using app theme primary color */
+function ThemeDoneBtn({ onClick, className = "" }: { onClick: () => void; className?: string }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`w-11 h-11 rounded-full bg-[#25D366] flex items-center justify-center shadow-lg editor-touch-none ${className}`}
+      className={`w-11 h-11 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg glow-primary editor-touch-none ${className}`}
       aria-label="Done"
     >
-      <Check className="w-5 h-5 text-white" strokeWidth={3} />
+      <Check className="w-5 h-5" strokeWidth={3} />
     </button>
   );
 }
 
-/** Slim vertical color slider for text editing */
-function SlimTextColorPicker({ value, onChange }: { value: string; onChange: (c: string) => void }) {
+/** Slim vertical color slider (text + draw) */
+function SlimColorPicker({
+  value,
+  onChange,
+  colors,
+}: {
+  value: string;
+  onChange: (c: string) => void;
+  colors: readonly string[];
+}) {
   const trackRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
 
   const colorToT = (color: string) => {
-    const idx = TEXT_COLORS.indexOf(color);
-    return idx >= 0 ? idx / Math.max(1, TEXT_COLORS.length - 1) : 0;
+    const idx = colors.indexOf(color);
+    return idx >= 0 ? idx / Math.max(1, colors.length - 1) : 0;
   };
 
   const [thumbT, setThumbT] = useState(() => colorToT(value));
@@ -52,7 +60,7 @@ function SlimTextColorPicker({ value, onChange }: { value: string; onChange: (c:
   useEffect(() => {
     if (draggingRef.current) return;
     setThumbT(colorToT(value));
-  }, [value]);
+  }, [value, colors]);
 
   const pickFromY = useCallback(
     (clientY: number) => {
@@ -60,11 +68,11 @@ function SlimTextColorPicker({ value, onChange }: { value: string; onChange: (c:
       if (!track) return;
       const rect = track.getBoundingClientRect();
       const t = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
-      const idx = Math.round(t * (TEXT_COLORS.length - 1));
+      const idx = Math.round(t * (colors.length - 1));
       setThumbT(t);
-      onChange(TEXT_COLORS[idx]);
+      onChange(colors[idx]);
     },
-    [onChange],
+    [onChange, colors],
   );
 
   const endDrag = useCallback(() => {
@@ -93,7 +101,7 @@ function SlimTextColorPicker({ value, onChange }: { value: string; onChange: (c:
         style={{
           width: 6,
           height: "100%",
-          background: `linear-gradient(to bottom, ${TEXT_COLORS.join(", ")})`,
+          background: `linear-gradient(to bottom, ${colors.join(", ")})`,
           boxShadow: "0 0 0 1px rgba(255,255,255,0.15)",
         }}
       />
@@ -106,46 +114,6 @@ function SlimTextColorPicker({ value, onChange }: { value: string; onChange: (c:
           transform: "translate(-50%, -50%)",
           backgroundColor: value,
           boxShadow: "0 1px 6px rgba(0,0,0,0.45)",
-        }}
-      />
-    </div>
-  );
-}
-
-/** Draw-mode color picker (unchanged footprint) */
-function VerticalColorPicker({ value, onChange }: { value: string; onChange: (c: string) => void }) {
-  const trackRef = useRef<HTMLDivElement>(null);
-  const pickFromY = useCallback(
-    (clientY: number) => {
-      const track = trackRef.current;
-      if (!track) return;
-      const rect = track.getBoundingClientRect();
-      const t = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
-      const idx = Math.round(t * (TEXT_COLORS.length - 1));
-      onChange(TEXT_COLORS[idx]);
-    },
-    [onChange],
-  );
-  const activeIdx = Math.max(0, TEXT_COLORS.indexOf(value));
-  return (
-    <div
-      ref={trackRef}
-      className="relative w-9 rounded-full overflow-hidden editor-touch-none cursor-pointer"
-      style={{ height: "min(42vh, 280px)", background: `linear-gradient(to bottom, ${TEXT_COLORS.join(", ")})` }}
-      onPointerDown={(e) => {
-        pickFromY(e.clientY);
-        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-      }}
-      onPointerMove={(e) => {
-        if ((e.currentTarget as HTMLElement).hasPointerCapture(e.pointerId)) pickFromY(e.clientY);
-      }}
-    >
-      <div
-        className="absolute left-1/2 -translate-x-1/2 w-7 h-7 rounded-full border-2 border-white shadow-md pointer-events-none"
-        style={{
-          top: `${(activeIdx / Math.max(1, TEXT_COLORS.length - 1)) * 100}%`,
-          transform: "translate(-50%, -50%)",
-          backgroundColor: value,
         }}
       />
     </div>
@@ -406,11 +374,11 @@ export default function MediaEditView({
           <button
             type="button"
             onClick={onDone}
-            className="absolute z-50 w-11 h-11 rounded-full bg-[#25D366] flex items-center justify-center shadow-lg editor-touch-none"
+            className="absolute z-50 w-11 h-11 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg glow-primary editor-touch-none"
             style={{ top: "max(env(safe-area-inset-top), 0.5rem)", right: "max(env(safe-area-inset-right), 0.75rem)" }}
             aria-label="Done"
           >
-            <Check className="w-5 h-5 text-white" strokeWidth={3} />
+            <Check className="w-5 h-5" strokeWidth={3} />
           </button>
         </>
       )}
@@ -445,7 +413,7 @@ export default function MediaEditView({
             className="absolute z-[110] flex items-center gap-2"
             style={{ top: "max(env(safe-area-inset-top), 0.5rem)", left: "max(env(safe-area-inset-left), 0.75rem)" }}
           >
-            <GreenDoneBtn onClick={saveText} />
+            <ThemeDoneBtn onClick={saveText} />
           </div>
 
           <button
@@ -467,7 +435,7 @@ export default function MediaEditView({
               transform: "translateY(-50%)",
             }}
           >
-            <SlimTextColorPicker value={textColor} onChange={setTextColor} />
+            <SlimColorPicker value={textColor} onChange={setTextColor} colors={TEXT_COLORS} />
           </div>
 
           {/* Size +/- */}
@@ -550,7 +518,7 @@ export default function MediaEditView({
             className="absolute z-[110]"
             style={{ top: "max(env(safe-area-inset-top), 0.5rem)", left: "max(env(safe-area-inset-left), 0.75rem)" }}
           >
-            <GreenDoneBtn onClick={() => setActiveTool(null)} />
+            <ThemeDoneBtn onClick={() => setActiveTool(null)} />
           </div>
           <button
             type="button"
@@ -565,17 +533,17 @@ export default function MediaEditView({
           <div
             className="absolute z-[105]"
             style={{
-              right: "max(env(safe-area-inset-right), 0.75rem)",
+              right: "max(env(safe-area-inset-right), 0.5rem)",
               top: "50%",
               transform: "translateY(-50%)",
             }}
           >
-            <VerticalColorPicker value={drawColor} onChange={setDrawColor} />
+            <SlimColorPicker value={drawColor} onChange={setDrawColor} colors={DRAW_COLORS} />
           </div>
 
           {/* Brush styles — bottom row */}
           <div
-            className="absolute inset-x-0 z-[108] flex justify-center gap-4 px-4 py-4 bg-gradient-to-t from-black/80 to-transparent editor-touch-none"
+            className="absolute inset-x-0 z-[108] flex justify-center gap-2.5 px-4 py-3 bg-gradient-to-t from-black/80 to-transparent editor-touch-none"
             style={{ bottom: 0, paddingBottom: "max(env(safe-area-inset-bottom), 0.75rem)" }}
           >
             {BRUSH_PRESETS.slice(0, 4).map((p) => (
@@ -583,17 +551,17 @@ export default function MediaEditView({
                 key={p.id}
                 type="button"
                 onClick={() => applyBrushPreset(p.id)}
-                className={`w-14 h-14 rounded-full flex items-center justify-center border-2 transition-all ${
-                  brushPreset === p.id ? "border-white bg-white/20 scale-110" : "border-white/30 bg-black/40"
+                className={`w-11 h-11 rounded-full flex items-center justify-center border transition-all ${
+                  brushPreset === p.id ? "border-white bg-white/20 scale-105" : "border-white/30 bg-black/40"
                 }`}
                 aria-label={p.label}
               >
-                <svg viewBox="0 0 40 20" className="w-8 h-4">
+                <svg viewBox="0 0 40 20" className="w-6 h-3">
                   <path
                     d="M2 12 Q10 4 20 10 T38 8"
                     fill="none"
                     stroke="white"
-                    strokeWidth={p.width / 2}
+                    strokeWidth={Math.max(1.5, p.width / 4)}
                     strokeLinecap="round"
                     opacity={p.highlighter ? 0.5 : 1}
                   />
