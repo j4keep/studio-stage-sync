@@ -218,7 +218,7 @@ const PostMediaEditor = ({
         {meta.overlays.map((o) => (
           <div
             key={o.id}
-            className={`absolute cursor-grab active:cursor-grabbing select-none px-2 ${TEXT_STYLE_CLASSES[o.style]} ${selectedOverlay === o.id ? "ring-2 ring-primary rounded" : ""}`}
+            className={`absolute cursor-grab active:cursor-grabbing select-none px-2 text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${selectedOverlay === o.id ? "ring-2 ring-primary rounded" : ""}`}
             style={{
               left: `${o.x}%`,
               top: `${o.y}%`,
