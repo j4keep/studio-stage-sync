@@ -155,7 +155,7 @@ export default function MediaEditView({
   const [textDraft, setTextDraft] = useState("");
   const [textStyle, setTextStyle] = useState<TextOverlayStyle>("bubble");
   const [textColor, setTextColor] = useState("#ffffff");
-  const [textPos, setTextPos] = useState({ x: 50, y: 42, scale: 1 });
+  const [textPos, setTextPos] = useState({ x: 50, y: 42, scale: 1, rotation: 0 });
   const [drawColor, setDrawColor] = useState("#39ff14");
   const [drawWidth, setDrawWidth] = useState(8);
   const [drawHighlighter, setDrawHighlighter] = useState(false);
@@ -251,7 +251,7 @@ export default function MediaEditView({
     setEditingTextId(null);
     setTextDraft("");
     const layerOffset = (meta.overlays.length % 5) * 7;
-    setTextPos({ x: 50, y: 38 + layerOffset, scale: 1 });
+    setTextPos({ x: 50, y: 38 + layerOffset, scale: 1, rotation: 0 });
     setTextStyle("bubble");
     setTextColor("#ffffff");
     setSelected(null);
@@ -273,7 +273,7 @@ export default function MediaEditView({
         x: textPos.x,
         y: textPos.y,
         scale: textPos.scale,
-        rotation: 0,
+        rotation: textPos.rotation,
         style: textStyle,
         color: textColor,
       };
@@ -295,7 +295,7 @@ export default function MediaEditView({
     setTextDraft(o.text);
     setTextStyle(o.style);
     setTextColor(o.color || "#ffffff");
-    setTextPos({ x: o.x, y: o.y, scale: o.scale });
+    setTextPos({ x: o.x, y: o.y, scale: o.scale, rotation: o.rotation ?? 0 });
     setActiveTool("text");
     setSelected({ id: o.id, type: "text" });
   };

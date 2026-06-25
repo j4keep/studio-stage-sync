@@ -24,10 +24,10 @@ interface Props {
   drawHighlighter?: boolean;
   onAddStroke?: (stroke: DrawStroke) => void;
   onEraseAt?: (x: number, y: number) => void;
-  liveTextDraft?: { text: string; style: TextOverlay["style"]; color: string; x: number; y: number; scale: number } | null;
+  liveTextDraft?: { text: string; style: TextOverlay["style"]; color: string; x: number; y: number; scale: number; rotation: number } | null;
   hiddenOverlayId?: string | null;
   textEditing?: boolean;
-  onLiveTextMove?: (patch: { x?: number; y?: number; scale?: number }) => void;
+  onLiveTextMove?: (patch: { x?: number; y?: number; scale?: number; rotation?: number }) => void;
   onLiveTextFocus?: () => void;
   liveTextPlaceholder?: string;
   className?: string;
@@ -76,6 +76,7 @@ export default function PostOverlayRenderer({
     origScale: number;
     origRot: number;
     pinchStartDist?: number;
+    pinchStartAngle?: number;
     moved?: boolean;
   } | null>(null);
   const drawRef = useRef<DrawStroke | null>(null);
@@ -144,6 +145,7 @@ export default function PostOverlayRenderer({
       item = meta.stickers.find((s) => s.id === selId);
     }
     if (!item) return false;
+    const angle = Math.atan2(pts[1].y - pts[0].y, pts[1].x - pts[0].x);
     dragRef.current = {
       id: selId,
       type: selType,
@@ -155,6 +157,7 @@ export default function PostOverlayRenderer({
       origScale: item.scale,
       origRot: item.rotation ?? 0,
       pinchStartDist: dist,
+      pinchStartAngle: angle,
       moved: true,
     };
     setIsDragging(true);
@@ -242,10 +245,13 @@ export default function PostOverlayRenderer({
       if (d.mode === "pinch" && activePointers.current.size >= 2 && d.pinchStartDist) {
         const pts = [...activePointers.current.values()];
         const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+        const angle = Math.atan2(pts[1].y - pts[0].y, pts[1].x - pts[0].x);
         const scale = Math.max(0.3, Math.min(4, d.origScale * (dist / d.pinchStartDist)));
-        if (d.type === "live") onLiveTextMove?.({ scale });
-        else if (d.type === "text") onUpdateText?.(d.id, { scale });
-        else onUpdateSticker?.(d.id, { scale });
+        const deltaDeg = ((angle - (d.pinchStartAngle ?? angle)) * 180) / Math.PI;
+        const rotation = d.origRot + deltaDeg;
+        if (d.type === "live") onLiveTextMove?.({ scale, rotation });
+        else if (d.type === "text") onUpdateText?.(d.id, { scale, rotation });
+        else onUpdateSticker?.(d.id, { scale, rotation });
         return;
       }
 
@@ -426,7 +432,7 @@ export default function PostOverlayRenderer({
           style={{
             left: `${liveTextDraft.x}%`,
             top: `${liveTextDraft.y}%`,
-            transform: `translate(-50%, -50%) scale(${liveTextDraft.scale})`,
+            transform: `translate(-50%, -50%) scale(${liveTextDraft.scale}) rotate(${liveTextDraft.rotation ?? 0}deg)`,
             zIndex: 40,
             padding: "8px",
           }}
@@ -447,7 +453,7 @@ export default function PostOverlayRenderer({
               origX: liveTextDraft.x,
               origY: liveTextDraft.y,
               origScale: liveTextDraft.scale,
-              origRot: 0,
+              origRot: liveTextDraft.rotation ?? 0,
               moved: false,
             };
             setIsDragging(true);
