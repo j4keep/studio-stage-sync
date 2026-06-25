@@ -21,7 +21,7 @@ import {
   type StickerOverlay,
   type TextOverlayStyle,
   defaultEditorMeta,
-  TEXT_STYLE_CLASSES,
+  
 } from "@/lib/post-editor";
 import { EMOJI_CHARACTERS } from "@/lib/emoji-characters";
 
@@ -139,6 +139,7 @@ const PostMediaEditor = ({
       x: 50,
       y: 40,
       scale: 1,
+      rotation: 0,
       style: "white",
     };
     updateMeta({ overlays: [...meta.overlays, overlay] });
@@ -151,10 +152,12 @@ const PostMediaEditor = ({
     if (!src) return;
     const sticker: StickerOverlay = {
       id: newId(),
+      stickerId: emojiId,
       emojiId,
       x: 50,
       y: 50,
       scale: 1,
+      rotation: 0,
     };
     updateMeta({ stickers: [...meta.stickers, sticker] });
     setActiveTool(null);
