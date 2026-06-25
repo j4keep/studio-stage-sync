@@ -24,6 +24,7 @@ interface Props {
   onAddSound?: () => void;
   soundLabel?: string;
   onMediaReplace?: (file: File, previewUrl: string) => void;
+  isEditing?: boolean;
 }
 
 /** Done button using app theme primary color */
@@ -151,6 +152,7 @@ export default function MediaEditView({
   onAddSound,
   soundLabel,
   onMediaReplace,
+  isEditing = false,
 }: Props) {
   const [activeTool, setActiveTool] = useState<Tool>(null);
   const [showStickers, setShowStickers] = useState(false);
@@ -336,7 +338,7 @@ export default function MediaEditView({
   ];
 
   return (
-    <div className="relative h-full w-full bg-black overscroll-none">
+    <div className="fixed inset-0 bg-black overflow-hidden overscroll-none touch-none">
       {/* Full-screen media (hidden during crop — crop view shows its own preview) */}
       {previewUrl && activeTool !== "crop" &&
         (mediaType === "video" ? (
@@ -401,7 +403,7 @@ export default function MediaEditView({
             onClick={onDone}
             className="absolute z-50 w-11 h-11 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg glow-primary editor-touch-none"
             style={{ top: "max(env(safe-area-inset-top), 0.5rem)", right: "max(env(safe-area-inset-right), 0.75rem)" }}
-            aria-label="Done"
+            aria-label={isEditing ? "Continue to update" : "Done"}
           >
             <Check className="w-5 h-5" strokeWidth={3} />
           </button>

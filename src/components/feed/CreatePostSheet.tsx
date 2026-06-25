@@ -70,14 +70,21 @@ const CreatePostSheet = ({ open, onClose, postToEdit = null, cameraStream = null
 
   useEffect(() => {
     if (!open) return;
+    const scrollY = window.scrollY;
     document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.width = "100%";
+    document.body.style.top = `-${scrollY}px`;
     const parsed = parsePostCaption(postToEdit?.caption);
     setCaption(parsed.caption);
-    setTitle(parsed.meta?.title ?? "");
+    setTitle(
+      parsed.meta?.title ??
+        (postToEdit && parsed.caption ? parsed.caption.split("\n")[0].slice(0, 120) : ""),
+    );
     setEditorMeta(parsed.meta ?? defaultEditorMeta());
     setFile(null);
     setMusicFile(null);
-    setMusicPreviewUrl(null);
+    setMusicPreviewUrl(parsed.meta?.music?.audioUrl ?? null);
     setMediaType(postToEdit?.media_type === "video" ? "video" : "image");
     setMode(postToEdit?.media_type === "video" ? "video" : "photo");
     setCurrentMediaUrl(postToEdit?.media_url || null);
@@ -85,6 +92,10 @@ const CreatePostSheet = ({ open, onClose, postToEdit = null, cameraStream = null
     setStep(postToEdit ? "edit" : "camera");
     return () => {
       document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.width = "";
+      document.body.style.top = "";
+      window.scrollTo(0, scrollY);
     };
   }, [open, postToEdit]);
 
@@ -145,8 +156,9 @@ const CreatePostSheet = ({ open, onClose, postToEdit = null, cameraStream = null
         (meta.drawings?.length ?? 0) > 0 ||
         meta.crop;
 
-      if (file && mediaType === "image" && preview && hasVisualEdits) {
-        uploadFile = await exportEditedImage(preview, meta, defaultExportViewport());
+      const imageSource = preview || currentMediaUrl;
+      if (mediaType === "image" && imageSource && hasVisualEdits) {
+        uploadFile = await exportEditedImage(imageSource, meta, defaultExportViewport());
         meta = stripBakedVisualMeta(meta);
       }
 
@@ -264,7 +276,13 @@ const CreatePostSheet = ({ open, onClose, postToEdit = null, cameraStream = null
 
   return (
     <AnimatePresence>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[80] bg-black h-[100dvh] overscroll-none touch-manipulation">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[80] bg-black overflow-hidden touch-none overscroll-none"
+        style={{ height: "100dvh", maxHeight: "100dvh" }}
+      >
         {/* Camera step */}
         {step === "camera" && (
           <CreateCameraView
@@ -281,7 +299,7 @@ const CreatePostSheet = ({ open, onClose, postToEdit = null, cameraStream = null
 
         {/* Edit step */}
         {step === "edit" && hasMedia && (
-          <div className="absolute inset-0">
+          <div className="absolute inset-0 overflow-hidden">
             <MediaEditView
             mediaType={mediaType}
             previewUrl={previewMediaUrl}
@@ -295,6 +313,7 @@ const CreatePostSheet = ({ open, onClose, postToEdit = null, cameraStream = null
             onAddSound={handleSoundButton}
             soundLabel={editorMeta.music ? soundLabel : undefined}
             onMediaReplace={handleMediaReplace}
+            isEditing={!!postToEdit}
             />
           </div>
         )}
@@ -311,6 +330,7 @@ const CreatePostSheet = ({ open, onClose, postToEdit = null, cameraStream = null
             onBack={() => setStep("edit")}
             onPost={() => postMutation.mutate()}
             posting={postMutation.isPending || uploading}
+            isEditing={!!postToEdit}
           />
         )}
 

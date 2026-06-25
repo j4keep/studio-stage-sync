@@ -14,6 +14,7 @@ interface Props {
   onBack: () => void;
   onPost: () => void;
   posting?: boolean;
+  isEditing?: boolean;
 }
 
 export default function PostPreviewView({
@@ -26,6 +27,7 @@ export default function PostPreviewView({
   onBack,
   onPost,
   posting = false,
+  isEditing = false,
 }: Props) {
   const [rewriting, setRewriting] = useState<"title" | "description" | null>(null);
 
@@ -60,7 +62,7 @@ export default function PostPreviewView({
   const canPost = title.trim().length > 0 && !posting && !rewriting;
 
   return (
-    <div className="absolute inset-0 z-10 flex flex-col bg-zinc-950 text-white overflow-hidden">
+    <div className="fixed inset-0 z-10 flex flex-col bg-zinc-950 text-white overflow-hidden touch-none overscroll-none">
       <div
         className="shrink-0 flex items-center justify-between px-3 pb-2"
         style={{ paddingTop: "max(env(safe-area-inset-top), 0.5rem)" }}
@@ -73,7 +75,7 @@ export default function PostPreviewView({
         >
           <ChevronLeft className="w-6 h-6" />
         </button>
-        <span className="text-sm font-bold text-white/90">New post</span>
+        <span className="text-sm font-bold text-white/90">{isEditing ? "Edit post" : "New post"}</span>
         <div className="w-10" />
       </div>
 
@@ -160,10 +162,10 @@ export default function PostPreviewView({
           disabled={!canPost}
           className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-bold text-base disabled:opacity-40 editor-touch-none"
         >
-          {posting ? "Posting…" : "Post"}
+          {posting ? (isEditing ? "Updating…" : "Posting…") : isEditing ? "Update post" : "Post"}
         </button>
         {!title.trim() && (
-          <p className="text-center text-[11px] text-white/40 mt-2">Add a title to post</p>
+          <p className="text-center text-[11px] text-white/40 mt-2">Add a title to {isEditing ? "update" : "post"}</p>
         )}
       </div>
     </div>
