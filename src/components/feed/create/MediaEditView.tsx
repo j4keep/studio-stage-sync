@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Type, Sticker, Pencil, Crop, Volume2, VolumeX, Undo2, Check, X, Trash2, ChevronLeft, Music } from "lucide-react";
 import PostOverlayRenderer from "./PostOverlayRenderer";
 import StickerDrawer from "./StickerDrawer";
+import CropEditorView from "./CropEditorView";
 import type { PostEditorMeta, TextOverlay, StickerOverlay, DrawStroke, TextOverlayStyle } from "@/lib/post-editor";
 import { BRUSH_PRESETS, DRAW_COLORS, eraseStrokesNear } from "@/lib/post-editor";
 import { TEXT_COLORS, CREATE_TEXT_STYLES, getTextStyleInline } from "@/lib/text-styles";
@@ -22,6 +23,7 @@ interface Props {
   onDone: () => void;
   onAddSound?: () => void;
   soundLabel?: string;
+  onMediaReplace?: (file: File, previewUrl: string) => void;
 }
 
 /** Done button using app theme primary color */
@@ -148,6 +150,7 @@ export default function MediaEditView({
   onDone,
   onAddSound,
   soundLabel,
+  onMediaReplace,
 }: Props) {
   const [activeTool, setActiveTool] = useState<Tool>(null);
   const [showStickers, setShowStickers] = useState(false);
@@ -334,14 +337,15 @@ export default function MediaEditView({
 
   return (
     <div className="relative h-full w-full bg-black overscroll-none">
-      {/* Full-screen media */}
-      {previewUrl &&
+      {/* Full-screen media (hidden during crop — crop view shows its own preview) */}
+      {previewUrl && activeTool !== "crop" &&
         (mediaType === "video" ? (
           <video src={previewUrl} className="absolute inset-0 w-full h-full object-cover" playsInline loop muted={meta.muteOriginal} autoPlay />
         ) : (
           <img src={previewUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
         ))}
 
+      {activeTool !== "crop" && (
       <PostOverlayRenderer
         meta={meta}
         editable={activeTool !== "draw"}
@@ -367,6 +371,7 @@ export default function MediaEditView({
         onLiveTextFocus={() => textInputRef.current?.focus({ preventScroll: true })}
         liveTextPlaceholder="Add text"
       />
+      )}
 
       {/* ── Main chrome: back + sound + done (hidden during tools) ── */}
       {!isToolActive && (
@@ -561,14 +566,103 @@ export default function MediaEditView({
         </>
       )}
 
-      {activeTool === "crop" && (
+      {activeTool === "crop" && previewUrl && mediaType === "image" && onMediaReplace && (
+        <CropEditorView
+          imageUrl={previewUrl}
+          onCancel={exitActiveTool}
+          onSave={(file, url) => {
+            onMediaReplace(file, url);
+            setActiveTool(null);
+          }}
+        />
+      )}
+
+      {activeTool === "crop" && mediaType === "video" && previewUrl && (
+        <>
+          <div className="absolute z-[110]" style={toolBarTop}>
+            <ToolBackBtn onClick={exitActiveTool} />
+          </div>
+          <video
+            src={previewUrl}
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{
+              transform: `scale(${meta.crop?.scale ?? 1})`,
+              objectPosition: `${meta.crop?.x ?? 50}% ${meta.crop?.y ?? 50}%`,
+            }}
+            playsInline
+            loop
+            muted={meta.muteOriginal}
+            autoPlay
+          />
+          <div
+            className="absolute inset-x-0 z-[105] px-6 py-4 bg-gradient-to-t from-black/90 to-transparent editor-touch-none"
+            style={{ bottom: 0, paddingBottom: "max(env(safe-area-inset-bottom), 1rem)" }}
+          >
+            <p className="text-white/70 text-xs text-center mb-4">Drag sliders to reframe your video</p>
+            <label className="text-white/80 text-xs block mb-1">Zoom</label>
+            <input
+              type="range"
+              min={1}
+              max={2}
+              step={0.02}
+              value={meta.crop?.scale ?? 1}
+              onChange={(e) =>
+                patch({
+                  crop: {
+                    scale: parseFloat(e.target.value),
+                    x: meta.crop?.x ?? 50,
+                    y: meta.crop?.y ?? 50,
+                  },
+                })
+              }
+              className="w-full mb-4 accent-primary"
+            />
+            <label className="text-white/80 text-xs block mb-1">Horizontal</label>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={meta.crop?.x ?? 50}
+              onChange={(e) =>
+                patch({
+                  crop: {
+                    scale: meta.crop?.scale ?? 1,
+                    x: parseInt(e.target.value, 10),
+                    y: meta.crop?.y ?? 50,
+                  },
+                })
+              }
+              className="w-full mb-4 accent-primary"
+            />
+            <label className="text-white/80 text-xs block mb-1">Vertical</label>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={meta.crop?.y ?? 50}
+              onChange={(e) =>
+                patch({
+                  crop: {
+                    scale: meta.crop?.scale ?? 1,
+                    x: meta.crop?.x ?? 50,
+                    y: parseInt(e.target.value, 10),
+                  },
+                })
+              }
+              className="w-full accent-primary"
+            />
+          </div>
+        </>
+      )}
+
+      {activeTool === "crop" && mediaType === "image" && !onMediaReplace && (
         <>
           <div className="absolute z-[110]" style={toolBarTop}>
             <ToolBackBtn onClick={exitActiveTool} />
           </div>
           <div className="absolute inset-0 z-[100] flex items-center justify-center px-8">
             <p className="text-white/80 text-sm text-center bg-black/50 rounded-xl px-4 py-3">
-              Crop editor coming soon
+              Crop unavailable for this image
             </p>
           </div>
         </>

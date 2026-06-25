@@ -193,6 +193,14 @@ const CreatePostSheet = ({ open, onClose, postToEdit = null, cameraStream = null
     },
   });
 
+  const handleMediaReplace = useCallback((f: File, url: string) => {
+    if (previewBlobRef.current) URL.revokeObjectURL(previewBlobRef.current);
+    previewBlobRef.current = url;
+    setFile(f);
+    setPreview(url);
+    setEditorMeta((m) => ({ ...m, crop: undefined }));
+  }, []);
+
   const handleMediaFile = (f: File, type?: "image" | "video") => {
     setFile(f);
     const isVideo = type === "video" || f.type.startsWith("video/");
@@ -283,6 +291,7 @@ const CreatePostSheet = ({ open, onClose, postToEdit = null, cameraStream = null
             onDone={() => setStep("preview")}
             onAddSound={handleSoundButton}
             soundLabel={editorMeta.music ? soundLabel : undefined}
+            onMediaReplace={handleMediaReplace}
             />
           </div>
         )}
