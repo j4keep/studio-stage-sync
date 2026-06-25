@@ -32,7 +32,7 @@ export default function StickerDrawer({
   hasMusic = false,
   caption = "",
 }: Props) {
-  const [category, setCategory] = useState<StickerCategory>("trending");
+  const [category, setCategory] = useState<StickerCategory>("reactions");
   const [query, setQuery] = useState("");
   const [recent, setRecent] = useState<string[]>(() => loadRecentStickers());
 
@@ -47,7 +47,6 @@ export default function StickerDrawer({
   const handlePick = (id: string) => {
     setRecent(pushRecentSticker(id));
     onPick(id);
-    onClose();
   };
 
   if (!open) return null;

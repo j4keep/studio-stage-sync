@@ -1,8 +1,13 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { X, SwitchCamera, ImagePlus, Music } from "lucide-react";
 
+const isIOS =
+  typeof navigator !== "undefined" &&
+  /iPhone|iPad|iPod/.test(navigator.userAgent);
+
 interface Props {
   mode: "photo" | "video";
+  onModeChange: (mode: "photo" | "video") => void;
   onClose: () => void;
   onCapture: (file: File, mediaType: "image" | "video") => void;
   onOpenGallery: () => void;
@@ -12,6 +17,7 @@ interface Props {
 
 export default function CreateCameraView({
   mode,
+  onModeChange,
   onClose,
   onCapture,
   onOpenGallery,
@@ -26,50 +32,77 @@ export default function CreateCameraView({
   const [denied, setDenied] = useState(false);
   const [recording, setRecording] = useState(false);
   const [ready, setReady] = useState(false);
+  const [needsTap, setNeedsTap] = useState(isIOS);
+  const [starting, setStarting] = useState(false);
 
   const stopStream = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
+    setReady(false);
   }, []);
 
   const startCamera = useCallback(async () => {
     stopStream();
-    setReady(false);
+    setStarting(true);
     setDenied(false);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: facing },
-        audio: mode === "video",
-      });
+      const constraints: MediaStreamConstraints = {
+        video: {
+          facingMode: { ideal: facing },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+        audio: true,
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+      const video = videoRef.current;
+      if (video) {
+        video.setAttribute("playsinline", "true");
+        video.setAttribute("webkit-playsinline", "true");
+        video.srcObject = stream;
+        await video.play();
       }
       setReady(true);
+      setNeedsTap(false);
     } catch {
       setDenied(true);
+      setNeedsTap(false);
+    } finally {
+      setStarting(false);
     }
-  }, [facing, mode, stopStream]);
+  }, [facing, stopStream]);
 
   useEffect(() => {
-    void startCamera();
+    if (!needsTap) void startCamera();
     return () => stopStream();
-  }, [startCamera, stopStream]);
+  }, [startCamera, stopStream, needsTap]);
 
   const flipCamera = () => setFacing((f) => (f === "user" ? "environment" : "user"));
 
   const takePhoto = async () => {
     const video = videoRef.current;
     if (!video || !ready) return;
+    const w = video.videoWidth || 720;
+    const h = video.videoHeight || 1280;
     const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth || 720;
-    canvas.height = video.videoHeight || 1280;
-    canvas.getContext("2d")!.drawImage(video, 0, 0);
-    canvas.toBlob((blob) => {
-      if (!blob) return;
-      onCapture(new File([blob], `photo-${Date.now()}.jpg`, { type: "image/jpeg" }), "image");
-    }, "image/jpeg", 0.92);
+    canvas.width = w;
+    canvas.height = h;
+    canvas.getContext("2d")!.drawImage(video, 0, 0, w, h);
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) return;
+        stopStream();
+        onCapture(new File([blob], `photo-${Date.now()}.jpg`, { type: "image/jpeg" }), "image");
+      },
+      "image/jpeg",
+      0.92,
+    );
+  };
+
+  const pickRecorderMime = () => {
+    const types = ["video/mp4", "video/webm;codecs=vp9", "video/webm", "video/quicktime"];
+    return types.find((t) => MediaRecorder.isTypeSupported(t)) ?? "";
   };
 
   const startRecording = () => {
@@ -77,29 +110,27 @@ export default function CreateCameraView({
     if (!stream || recording) return;
     chunksRef.current = [];
     try {
-      const rec = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported("video/mp4") ? "video/mp4" : "video/webm" });
+      const mime = pickRecorderMime();
+      const rec = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
       recorderRef.current = rec;
       rec.ondataavailable = (e) => {
         if (e.data.size) chunksRef.current.push(e.data);
       };
       rec.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: rec.mimeType });
-        const ext = rec.mimeType.includes("mp4") ? "mp4" : "webm";
-        onCapture(new File([blob], `video-${Date.now()}.${ext}`, { type: blob.type }), "video");
+        const blob = new Blob(chunksRef.current, { type: rec.mimeType || "video/mp4" });
+        const ext = rec.mimeType.includes("mp4") || rec.mimeType.includes("quicktime") ? "mp4" : "webm";
+        stopStream();
+        onCapture(new File([blob], `video-${Date.now()}.${ext}`, { type: blob.type || "video/mp4" }), "video");
         setRecording(false);
       };
-      rec.start();
+      rec.start(250);
       setRecording(true);
     } catch {
-      toastFallback();
+      setRecording(false);
     }
   };
 
-  const stopRecording = () => recorderRef.current?.stop();
-
-  const toastFallback = () => {
-    /* parent handles via onOpenGallery */
-  };
+  const stopRecording = () => recorderRef.current?.state === "recording" && recorderRef.current.stop();
 
   const handleShutter = () => {
     if (mode === "photo") void takePhoto();
@@ -108,74 +139,128 @@ export default function CreateCameraView({
   };
 
   return (
-    <div className="absolute inset-0 bg-black flex flex-col">
-      {!denied ? (
+    <div className="absolute inset-0 bg-black flex flex-col touch-none">
+      {!denied && (
         <video
           ref={videoRef}
-          className="absolute inset-0 w-full h-full object-cover"
+          className="absolute inset-0 w-full h-full object-cover mirror-front"
           playsInline
           muted
           autoPlay
+          style={{ transform: facing === "user" ? "scaleX(-1)" : undefined }}
         />
-      ) : (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-8 text-center">
-          <p className="text-white/80 text-sm">Camera access denied. Upload from your library instead.</p>
+      )}
+
+      {denied && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 px-8 text-center z-10">
+          <p className="text-white text-base font-semibold">Camera access needed</p>
+          <p className="text-white/60 text-sm">Allow camera in Settings, or upload from your library.</p>
           <button
+            type="button"
             onClick={onOpenGallery}
-            className="px-5 py-2.5 rounded-full bg-white text-black font-semibold text-sm"
+            className="px-6 py-3 rounded-full bg-white text-black font-bold text-sm"
           >
             Open gallery
           </button>
         </div>
       )}
 
-      {/* Top bar */}
-      <div className="relative z-20 flex items-center justify-between px-3 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-2">
-        <button onClick={onClose} className="w-10 h-10 flex items-center justify-center text-white" aria-label="Close">
-          <X className="w-7 h-7" />
-        </button>
+      {needsTap && !denied && (
         <button
-          onClick={onAddSound}
-          className="flex items-center gap-1.5 max-w-[50%] rounded-full bg-black/45 backdrop-blur-md border border-white/20 px-3 py-1.5 text-white"
+          type="button"
+          onClick={() => void startCamera()}
+          className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-black/80"
         >
-          <Music className="w-3.5 h-3.5 shrink-0" />
-          <span className="text-xs font-semibold truncate">{soundLabel || "Add sound"}</span>
+          <div className="w-20 h-20 rounded-full border-4 border-white/80 flex items-center justify-center">
+            <div className="w-14 h-14 rounded-full bg-white/20" />
+          </div>
+          <p className="text-white font-bold text-lg">Tap to open camera</p>
+          <p className="text-white/50 text-xs">Front camera · Photo &amp; video</p>
+        </button>
+      )}
+
+      {starting && !needsTap && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/40">
+          <div className="w-10 h-10 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+        </div>
+      )}
+
+      {/* Top bar */}
+      <div className="relative z-20 flex items-center justify-between px-3 pt-[max(env(safe-area-inset-top),0.5rem)] pb-2">
+        <button type="button" onClick={onClose} className="w-11 h-11 flex items-center justify-center text-white drop-shadow-lg" aria-label="Close">
+          <X className="w-7 h-7" strokeWidth={2.5} />
         </button>
         <button
+          type="button"
+          onClick={onAddSound}
+          className="flex items-center gap-1.5 max-w-[52%] rounded-full bg-black/50 backdrop-blur-md border border-white/25 px-4 py-2 text-white shadow-lg"
+        >
+          <Music className="w-4 h-4 shrink-0" />
+          <span className="text-xs font-bold truncate">{soundLabel || "Add sound"}</span>
+        </button>
+        <button
+          type="button"
           onClick={flipCamera}
-          disabled={denied}
-          className="w-10 h-10 flex items-center justify-center text-white disabled:opacity-30"
+          disabled={denied || !ready}
+          className="w-11 h-11 flex items-center justify-center text-white drop-shadow-lg disabled:opacity-30"
           aria-label="Flip camera"
         >
-          <SwitchCamera className="w-6 h-6" />
+          <SwitchCamera className="w-7 h-7" strokeWidth={2.5} />
         </button>
       </div>
 
       {/* Bottom controls */}
-      <div className="relative z-20 mt-auto pb-[calc(env(safe-area-inset-bottom)+1rem)] px-6">
-        <div className="flex items-center justify-center gap-10">
+      <div className="relative z-20 mt-auto pb-[max(env(safe-area-inset-bottom),1rem)]">
+        {/* Photo / Video mode toggle */}
+        <div className="flex justify-center gap-6 mb-5">
+          {(["video", "photo"] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => onModeChange(m)}
+              className={`text-xs font-black tracking-widest px-4 py-1.5 rounded-full transition-all ${
+                mode === m ? "bg-white text-black scale-105" : "text-white/60"
+              }`}
+            >
+              {m === "video" ? "VIDEO" : "PHOTO"}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center justify-center gap-12 px-8">
           <button
+            type="button"
             onClick={onOpenGallery}
-            className="w-11 h-11 rounded-lg border-2 border-white/80 bg-zinc-800/80 flex items-center justify-center"
+            className="w-12 h-12 rounded-xl border-2 border-white bg-zinc-900/60 flex items-center justify-center shadow-lg active:scale-95"
             aria-label="Gallery"
           >
-            <ImagePlus className="w-5 h-5 text-white" />
+            <ImagePlus className="w-6 h-6 text-white" />
           </button>
 
           <button
+            type="button"
             onClick={handleShutter}
-            disabled={denied || !ready}
-            className={`w-[4.5rem] h-[4.5rem] rounded-full border-[5px] flex items-center justify-center transition-all disabled:opacity-40 ${
-              recording ? "border-red-500 bg-red-500/30" : "border-white bg-white/20"
+            disabled={denied || !ready || needsTap}
+            className={`w-[5.25rem] h-[5.25rem] rounded-full border-[5px] flex items-center justify-center transition-all disabled:opacity-40 shadow-[0_0_24px_rgba(255,255,255,0.25)] ${
+              recording ? "border-red-500 bg-red-500/20" : "border-white bg-white/10"
             }`}
             aria-label={mode === "photo" ? "Take photo" : recording ? "Stop recording" : "Record video"}
           >
-            <div className={`rounded-full bg-white ${recording ? "w-6 h-6" : "w-14 h-14"}`} />
+            {recording ? (
+              <div className="w-7 h-7 rounded-md bg-red-500" />
+            ) : (
+              <div className="w-[4.25rem] h-[4.25rem] rounded-full bg-white" />
+            )}
           </button>
 
-          <div className="w-11 h-11" />
+          <div className="w-12 h-12" aria-hidden />
         </div>
-        {recording && <p className="text-center text-red-400 text-xs font-semibold mt-3 animate-pulse">Recording…</p>}
+
+        {recording && (
+          <p className="text-center text-red-400 text-sm font-bold mt-4 animate-pulse flex items-center justify-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-red-500" /> Recording…
+          </p>
+        )}
       </div>
     </div>
   );

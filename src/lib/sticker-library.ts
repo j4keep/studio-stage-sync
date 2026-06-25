@@ -6,13 +6,11 @@ import {
 
 export type StickerCategory =
   | "recent"
-  | "trending"
   | "reactions"
   | "funny"
-  | "music"
   | "sports"
-  | "love"
-  | "celebration"
+  | "music"
+  | "creator"
   | "wheuat";
 
 export interface StickerDef {
@@ -25,13 +23,11 @@ export interface StickerDef {
 
 export const STICKER_CATEGORIES: { id: StickerCategory; label: string }[] = [
   { id: "recent", label: "Recent" },
-  { id: "trending", label: "Trending" },
   { id: "reactions", label: "Reactions" },
   { id: "funny", label: "Funny" },
-  { id: "music", label: "Music" },
   { id: "sports", label: "Sports" },
-  { id: "love", label: "Love" },
-  { id: "celebration", label: "Celebrate" },
+  { id: "music", label: "Music" },
+  { id: "creator", label: "Creator" },
   { id: "wheuat", label: "WHEUAT" },
 ];
 
@@ -59,10 +55,12 @@ export function getStickersByCategory(
 
   if (category === "recent") {
     list = recentIds.map((id) => STICKER_MAP.get(id)).filter(Boolean) as StickerDef[];
-  } else if (category === "trending") {
-    list = STICKER_LIBRARY.filter((s) => s.pack === "trending" || s.pack === "celebration");
-  } else if (category === "celebration") {
-    list = STICKER_LIBRARY.filter((s) => s.pack === "celebration");
+  } else if (category === "creator") {
+    list = STICKER_LIBRARY.filter(
+      (s) => s.pack === "trending" || s.pack === "celebration" || s.pack === "love",
+    );
+  } else if (category === "wheuat") {
+    list = STICKER_LIBRARY.filter((s) => s.pack === "wheuat");
   } else {
     list = STICKER_LIBRARY.filter((s) => s.pack === category);
   }

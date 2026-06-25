@@ -1,4 +1,5 @@
 import { useRef, useState, useCallback } from "react";
+import { Trash2 } from "lucide-react";
 import type { PostEditorMeta, TextOverlay, StickerOverlay, DrawStroke } from "@/lib/post-editor";
 import { strokeToSmoothPath, eraseStrokesNear, normalizeTextStyle } from "@/lib/post-editor";
 import { getStickerSrc } from "@/lib/sticker-library";
@@ -14,6 +15,7 @@ interface Props {
   onUpdateText?: (id: string, patch: Partial<TextOverlay>) => void;
   onUpdateSticker?: (id: string, patch: Partial<StickerOverlay>) => void;
   onDeleteSelected?: () => void;
+  onTextTap?: (id: string) => void;
   drawing?: boolean;
   eraserMode?: boolean;
   drawColor?: string;
@@ -42,6 +44,7 @@ export default function PostOverlayRenderer({
   onUpdateText,
   onUpdateSticker,
   onDeleteSelected,
+  onTextTap,
   drawing = false,
   eraserMode = false,
   drawColor = "#ffffff",
@@ -54,7 +57,7 @@ export default function PostOverlayRenderer({
   className = "",
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const dragRef = useRef<{
+  const   const dragRef = useRef<{
     id: string;
     type: "text" | "sticker" | "live";
     mode: "move" | "scale" | "rotate" | "pinch";
@@ -65,10 +68,12 @@ export default function PostOverlayRenderer({
     origScale: number;
     origRot: number;
     pinchStartDist?: number;
+    moved?: boolean;
   } | null>(null);
   const drawRef = useRef<DrawStroke | null>(null);
   const [liveStroke, setLiveStroke] = useState<DrawStroke | null>(null);
   const [trashHover, setTrashHover] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const activePointers = useRef<Map<number, { x: number; y: number }>>(new Map());
 
   const pctFromEvent = (clientX: number, clientY: number) => {
@@ -128,8 +133,10 @@ export default function PostOverlayRenderer({
       origY: item.y,
       origScale: item.scale,
       origRot: item.rotation ?? 0,
+      moved: false,
     };
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    setIsDragging(true);
   };
 
   const onPointerDown = (e: React.PointerEvent) => {
@@ -211,6 +218,7 @@ export default function PostOverlayRenderer({
       if (d.mode === "move") {
         const nx = Math.max(2, Math.min(98, d.origX + dx));
         const ny = Math.max(2, Math.min(98, d.origY + dy));
+        if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) d.moved = true;
         if (d.type === "live") onLiveTextMove?.({ x: nx, y: ny });
         else if (d.type === "text") onUpdateText?.(d.id, { x: nx, y: ny });
         else onUpdateSticker?.(d.id, { x: nx, y: ny });
@@ -247,11 +255,19 @@ export default function PostOverlayRenderer({
       if (trashHover && dragRef.current && onDeleteSelected) {
         onDeleteSelected();
         onSelect?.(null);
+      } else if (
+        dragRef.current?.mode === "move" &&
+        dragRef.current.type === "text" &&
+        !dragRef.current.moved &&
+        onTextTap
+      ) {
+        onTextTap(dragRef.current.id);
       }
       dragRef.current = null;
       setTrashHover(false);
+      setIsDragging(false);
     },
-    [drawing, eraserMode, trashHover, onDeleteSelected, onSelect, onAddStroke],
+    [drawing, eraserMode, trashHover, onDeleteSelected, onSelect, onAddStroke, onTextTap],
   );
 
   const renderHandles = (id: string, type: SelType, item: TextOverlay | StickerOverlay) => {
@@ -260,16 +276,35 @@ export default function PostOverlayRenderer({
       <>
         <button
           type="button"
-          className="absolute -top-8 left-1/2 -translate-x-1/2 w-7 h-7 rounded-full bg-white border-2 border-violet-500 z-30 touch-none shadow-lg"
+          className="absolute -top-10 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-white border-2 border-violet-500 z-30 touch-none shadow-lg flex items-center justify-center"
           onPointerDown={(e) => startDrag(e, id, type!, "rotate", item)}
           aria-label="Rotate"
-        />
+        >
+          <span className="text-[10px] font-bold text-violet-600">↻</span>
+        </button>
         <button
           type="button"
-          className="absolute -bottom-3 -right-3 w-7 h-7 rounded-full bg-white border-2 border-violet-500 z-30 touch-none shadow-lg"
+          className="absolute -bottom-4 -right-4 w-8 h-8 rounded-full bg-white border-2 border-violet-500 z-30 touch-none shadow-lg flex items-center justify-center"
           onPointerDown={(e) => startDrag(e, id, type!, "scale", item)}
           aria-label="Resize"
-        />
+        >
+          <span className="text-[10px] font-bold text-violet-600">⤢</span>
+        </button>
+        {onDeleteSelected && (
+          <button
+            type="button"
+            className="absolute -top-10 -right-2 w-8 h-8 rounded-full bg-red-500 z-30 touch-none shadow-lg flex items-center justify-center"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelect?.({ id, type: type! });
+              onDeleteSelected();
+              onSelect?.(null);
+            }}
+            aria-label="Delete"
+          >
+            <Trash2 className="w-4 h-4 text-white" />
+          </button>
+        )}
       </>
     );
   };
@@ -379,7 +414,9 @@ export default function PostOverlayRenderer({
               origY: liveTextDraft.y,
               origScale: liveTextDraft.scale,
               origRot: 0,
+              moved: false,
             };
+            setIsDragging(true);
             (e.target as HTMLElement).setPointerCapture(e.pointerId);
           }}
         >
@@ -394,9 +431,13 @@ export default function PostOverlayRenderer({
         </div>
       )}
 
-      {editable && trashHover && (
-        <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-50 px-5 py-2.5 rounded-full bg-red-500 text-white text-xs font-bold shadow-lg">
-          Release to delete
+      {editable && isDragging && selected && (
+        <div
+          className={`absolute bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] left-1/2 -translate-x-1/2 z-50 w-16 h-16 rounded-full flex items-center justify-center transition-all ${
+            trashHover ? "bg-red-500 scale-110" : "bg-red-500/40 border-2 border-dashed border-red-400"
+          }`}
+        >
+          <Trash2 className={`w-7 h-7 ${trashHover ? "text-white" : "text-red-300"}`} />
         </div>
       )}
     </div>

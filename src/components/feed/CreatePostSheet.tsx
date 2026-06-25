@@ -22,11 +22,6 @@ interface Props {
 type Step = "camera" | "edit" | "preview";
 type CaptureMode = "photo" | "video";
 
-const MODES: { id: CaptureMode; label: string }[] = [
-  { id: "video", label: "VIDEO" },
-  { id: "photo", label: "PHOTO" },
-];
-
 const CreatePostSheet = ({ open, onClose, postToEdit = null }: Props) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -49,6 +44,7 @@ const CreatePostSheet = ({ open, onClose, postToEdit = null }: Props) => {
 
   useEffect(() => {
     if (!open) return;
+    document.body.style.overflow = "hidden";
     const parsed = parsePostCaption(postToEdit?.caption);
     setCaption(parsed.caption);
     setEditorMeta(parsed.meta ?? defaultEditorMeta());
@@ -60,6 +56,9 @@ const CreatePostSheet = ({ open, onClose, postToEdit = null }: Props) => {
     setCurrentMediaUrl(postToEdit?.media_url || null);
     setPreview(postToEdit?.media_url || null);
     setStep(postToEdit ? "edit" : "camera");
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [open, postToEdit]);
 
   const revokeBlobs = () => {
@@ -222,27 +221,15 @@ const CreatePostSheet = ({ open, onClose, postToEdit = null }: Props) => {
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[80] bg-black">
         {/* Camera step */}
         {step === "camera" && (
-          <>
-            <CreateCameraView
-              mode={mode}
-              onClose={reset}
-              onCapture={handleMediaFile}
-              onOpenGallery={openGallery}
-              onAddSound={() => setShowSoundPicker(true)}
-              soundLabel={editorMeta.music ? soundLabel : undefined}
-            />
-            <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+6.5rem)] inset-x-0 z-30 flex justify-center gap-5">
-              {MODES.map((m) => (
-                <button
-                  key={m.id}
-                  onClick={() => setMode(m.id)}
-                  className={`text-xs font-bold tracking-wide px-3 py-1 rounded-full ${mode === m.id ? "bg-white text-black" : "text-white/70"}`}
-                >
-                  {m.label}
-                </button>
-              ))}
-            </div>
-          </>
+          <CreateCameraView
+            mode={mode}
+            onModeChange={setMode}
+            onClose={reset}
+            onCapture={handleMediaFile}
+            onOpenGallery={openGallery}
+            onAddSound={() => setShowSoundPicker(true)}
+            soundLabel={editorMeta.music ? soundLabel : undefined}
+          />
         )}
 
         {/* Edit step */}
@@ -267,7 +254,7 @@ const CreatePostSheet = ({ open, onClose, postToEdit = null }: Props) => {
                 <Check className="w-6 h-6" />
               </button>
             </div>
-            <div className="absolute inset-0 pt-[calc(env(safe-area-inset-top)+2.5rem)]">
+            <div className="absolute inset-0 pt-[calc(env(safe-area-inset-top)+3rem)] pb-[env(safe-area-inset-bottom)]">
               <MediaEditView
                 mediaType={mediaType}
                 previewUrl={previewMediaUrl}

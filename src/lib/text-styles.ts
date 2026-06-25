@@ -10,6 +10,45 @@ export interface TextStylePreset {
   defaultColor: string;
 }
 
+/** Primary text styles shown in create editor (TikTok / WhatsApp) */
+export const CREATE_TEXT_STYLES: TextStylePreset[] = [
+  {
+    id: "bubble",
+    label: "White",
+    fontFamily: "'Inter', sans-serif",
+    className: "font-bold",
+    defaultColor: "#ffffff",
+  },
+  {
+    id: "outline",
+    label: "Outline",
+    fontFamily: "'Inter', sans-serif",
+    className: "font-black",
+    defaultColor: "#ffffff",
+  },
+  {
+    id: "marker",
+    label: "Yellow",
+    fontFamily: "'Permanent Marker', cursive",
+    className: "font-normal",
+    defaultColor: "#fef08a",
+  },
+  {
+    id: "neon",
+    label: "Neon",
+    fontFamily: "'Inter', sans-serif",
+    className: "font-bold",
+    defaultColor: "#00e5ff",
+  },
+  {
+    id: "rounded",
+    label: "Rounded",
+    fontFamily: "'Inter', sans-serif",
+    className: "font-semibold",
+    defaultColor: "#ffffff",
+  },
+];
+
 /** TikTok / Stories-style text presets */
 export const TEXT_STYLE_PRESETS: TextStylePreset[] = [
   {
@@ -123,9 +162,8 @@ export function getTextStyleInline(style: TextOverlayStyle, color: string): CSSP
       return {
         ...base,
         color,
-        WebkitTextStroke: "3px #1a1a1a",
-        paintOrder: "stroke fill",
-        filter: "drop-shadow(0 3px 0 rgba(0,0,0,0.35))",
+        fontWeight: 700,
+        textShadow: "0 2px 10px rgba(0,0,0,0.75), 0 0 2px rgba(0,0,0,0.9)",
       };
     case "rounded":
       return { ...base, color };
