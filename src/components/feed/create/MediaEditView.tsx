@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Type, Sticker, Pencil, Crop, Volume2, VolumeX, Undo2, Check, X, Trash2, Minus, Plus, ChevronLeft, Music } from "lucide-react";
+import { Type, Sticker, Pencil, Crop, Volume2, VolumeX, Undo2, Check, X, Trash2, ChevronLeft, Music } from "lucide-react";
 import PostOverlayRenderer from "./PostOverlayRenderer";
 import StickerDrawer from "./StickerDrawer";
 import type { PostEditorMeta, TextOverlay, StickerOverlay, DrawStroke, TextOverlayStyle } from "@/lib/post-editor";
@@ -232,10 +232,6 @@ export default function MediaEditView({
     cancelText();
   };
 
-  const adjustTextScale = (delta: number) => {
-    setTextPos((prev) => ({ ...prev, scale: Math.max(0.35, Math.min(4, +(prev.scale + delta).toFixed(2))) }));
-  };
-
   const addSticker = (stickerId: string) => {
     const sticker: StickerOverlay = {
       id: newId(),
@@ -458,32 +454,6 @@ export default function MediaEditView({
             }}
           >
             <SlimColorPicker value={textColor} onChange={setTextColor} colors={TEXT_COLORS} />
-          </div>
-
-          {/* Size +/- */}
-          <div
-            className="absolute z-[105] flex flex-col gap-2 editor-touch-none"
-            style={{
-              left: "max(env(safe-area-inset-left), 0.75rem)",
-              top: "calc(max(env(safe-area-inset-top), 0.5rem) + 3.5rem)",
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => adjustTextScale(0.12)}
-              className="w-9 h-9 rounded-full bg-black/45 backdrop-blur-sm flex items-center justify-center text-white border border-white/20"
-              aria-label="Increase text size"
-            >
-              <Plus className="w-4 h-4" strokeWidth={2.5} />
-            </button>
-            <button
-              type="button"
-              onClick={() => adjustTextScale(-0.12)}
-              className="w-9 h-9 rounded-full bg-black/45 backdrop-blur-sm flex items-center justify-center text-white border border-white/20"
-              aria-label="Decrease text size"
-            >
-              <Minus className="w-4 h-4" strokeWidth={2.5} />
-            </button>
           </div>
 
           <input

@@ -11,6 +11,7 @@ import PostOverlayRenderer from "./create/PostOverlayRenderer";
 import SoundPickerSheet from "./SoundPickerSheet";
 import { exportEditedImage } from "./create/exportMedia";
 import { encodeCaptionWithMeta, parsePostCaption, defaultEditorMeta, stripBakedVisualMeta, type PostEditorMeta } from "@/lib/post-editor";
+import { defaultExportViewport } from "@/lib/overlay-coords";
 import { getMusicDisplayName, playPostMusic } from "@/lib/feed-music";
 
 interface Props {
@@ -142,7 +143,7 @@ const CreatePostSheet = ({ open, onClose, postToEdit = null, cameraStream = null
         meta.crop;
 
       if (file && mediaType === "image" && preview && hasVisualEdits) {
-        uploadFile = await exportEditedImage(preview, meta);
+        uploadFile = await exportEditedImage(preview, meta, defaultExportViewport());
         meta = stripBakedVisualMeta(meta);
       }
 

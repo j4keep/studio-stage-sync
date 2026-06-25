@@ -4,6 +4,7 @@ import type { PostEditorMeta, TextOverlay, StickerOverlay, DrawStroke } from "@/
 import { strokeToSmoothPath, normalizeTextStyle } from "@/lib/post-editor";
 import { getStickerSrc } from "@/lib/sticker-library";
 import { getTextStyleInline, TEXT_STYLE_PRESETS } from "@/lib/text-styles";
+import { EDITOR_STICKER_BASE_PX, EDITOR_TEXT_BASE_PX } from "@/lib/overlay-coords";
 
 type SelType = "text" | "sticker" | null;
 
@@ -119,7 +120,7 @@ export default function PostOverlayRenderer({
         className={`inline-block text-center whitespace-pre-wrap break-words max-w-[85vw] ${preset?.className ?? ""} ${extraClass} ${isSel ? "ring-1 ring-white/60 rounded" : ""}`}
         style={{
           ...inline,
-          fontSize: `${Math.round(24 * scale)}px`,
+          fontSize: `${EDITOR_TEXT_BASE_PX}px`,
           ...(isRounded
             ? { backgroundColor: "rgba(255,255,255,0.92)", padding: "8px 16px", borderRadius: "12px", color: color === "#ffffff" ? "#1a1a1a" : color }
             : {}),
@@ -382,7 +383,8 @@ export default function PostOverlayRenderer({
             <img
               src={src}
               alt=""
-              className={`w-16 h-16 sm:w-[4.5rem] sm:h-[4.5rem] object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)] pointer-events-none ${isSel ? "ring-2 ring-white rounded-xl" : ""}`}
+              className="object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)] pointer-events-none"
+              style={{ width: EDITOR_STICKER_BASE_PX, height: EDITOR_STICKER_BASE_PX }}
               draggable={false}
             />
             {renderHandles(s.id, "sticker", s)}
@@ -402,7 +404,7 @@ export default function PostOverlayRenderer({
             style={{
               left: `${o.x}%`,
               top: `${o.y}%`,
-              transform: `translate(-50%, -50%) rotate(${o.rotation ?? 0}deg)`,
+              transform: `translate(-50%, -50%) scale(${o.scale}) rotate(${o.rotation ?? 0}deg)`,
               zIndex: isSel ? 35 : 25,
               padding: "8px",
             }}
@@ -412,7 +414,7 @@ export default function PostOverlayRenderer({
               startDrag(e, o.id, "text", "move", o);
             }}
           >
-            {renderTextBlock(o.text, o.style, o.color || "#ffffff", o.scale, false)}
+            {renderTextBlock(o.text, o.style, o.color || "#ffffff", 1, false)}
             {renderHandles(o.id, "text", o)}
           </div>
         );
@@ -424,7 +426,7 @@ export default function PostOverlayRenderer({
           style={{
             left: `${liveTextDraft.x}%`,
             top: `${liveTextDraft.y}%`,
-            transform: `translate(-50%, -50%)`,
+            transform: `translate(-50%, -50%) scale(${liveTextDraft.scale})`,
             zIndex: 40,
             padding: "8px",
           }}
@@ -461,7 +463,7 @@ export default function PostOverlayRenderer({
             liveTextDraft.text || liveTextPlaceholder,
             liveTextDraft.style,
             liveTextDraft.color,
-            liveTextDraft.scale,
+            1,
             false,
             liveTextDraft.text ? "" : "opacity-70",
           )}
