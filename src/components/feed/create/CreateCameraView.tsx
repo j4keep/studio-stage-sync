@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { X, SwitchCamera, ImagePlus, Music } from "lucide-react";
-import { warmCameraStream, releaseCameraStream, capturePhotoFromStream, createVideoRecorder } from "@/lib/create-camera";
+import { warmCameraStream, releaseCameraStream, capturePhotoFromStream, createVideoRecorder, startMicLevelMonitor } from "@/lib/create-camera";
 
 interface Props {
   mode: "photo" | "video";
@@ -34,8 +34,12 @@ export default function CreateCameraView({
   const [recording, setRecording] = useState(false);
   const [ready, setReady] = useState(false);
   const [starting, setStarting] = useState(false);
+  const [micTooLoud, setMicTooLoud] = useState(false);
+  const micStopRef = useRef<(() => void) | null>(null);
 
   const attachStream = useCallback(async (stream: MediaStream) => {
+    micStopRef.current?.();
+    micStopRef.current = startMicLevelMonitor(stream, () => {}, setMicTooLoud);
     streamRef.current = stream;
     const video = videoRef.current;
     if (video) {
@@ -54,6 +58,9 @@ export default function CreateCameraView({
   }, []);
 
   const stopStream = useCallback(() => {
+    micStopRef.current?.();
+    micStopRef.current = null;
+    setMicTooLoud(false);
     if (ownsStreamRef.current) {
       releaseCameraStream(streamRef.current);
     }
@@ -191,6 +198,12 @@ export default function CreateCameraView({
       {starting && !ready && !denied && (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/50">
           <div className="w-10 h-10 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+        </div>
+      )}
+
+      {micTooLoud && ready && (
+        <div className="absolute top-[calc(env(safe-area-inset-top)+3.5rem)] left-1/2 -translate-x-1/2 z-30 px-4 py-2 rounded-full bg-red-500/90 text-white text-xs font-bold shadow-lg">
+          Mic too loud
         </div>
       )}
 

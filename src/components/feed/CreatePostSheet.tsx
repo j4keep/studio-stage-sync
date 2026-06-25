@@ -70,6 +70,7 @@ const CreatePostSheet = ({ open, onClose, postToEdit = null, cameraStream = null
 
   useEffect(() => {
     if (!open) return;
+    window.dispatchEvent(new CustomEvent("feed-nav-toggle", { detail: { hidden: true } }));
     const scrollY = window.scrollY;
     document.body.style.overflow = "hidden";
     document.body.style.position = "fixed";
@@ -89,8 +90,9 @@ const CreatePostSheet = ({ open, onClose, postToEdit = null, cameraStream = null
     setMode(postToEdit?.media_type === "video" ? "video" : "photo");
     setCurrentMediaUrl(postToEdit?.media_url || null);
     setPreview(postToEdit?.media_url || null);
-    setStep(postToEdit ? "edit" : "camera");
+    setStep(postToEdit ? "preview" : "camera");
     return () => {
+      window.dispatchEvent(new CustomEvent("feed-nav-toggle", { detail: { hidden: false } }));
       document.body.style.overflow = "";
       document.body.style.position = "";
       document.body.style.width = "";
@@ -121,6 +123,27 @@ const CreatePostSheet = ({ open, onClose, postToEdit = null, cameraStream = null
     setMode("video");
     onClose();
   };
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      if (!user || !postToEdit) throw new Error("Not authenticated");
+      const { error } = await (supabase as any)
+        .from("posts")
+        .delete()
+        .eq("id", postToEdit.id)
+        .eq("user_id", user.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
+      queryClient.invalidateQueries({ queryKey: ["profile-posts"] });
+      toast.success("Post deleted");
+      reset();
+    },
+    onError: (e: any) => {
+      toast.error(e?.message || "Failed to delete post");
+    },
+  });
 
   const postMutation = useMutation({
     mutationFn: async () => {
@@ -280,7 +303,7 @@ const CreatePostSheet = ({ open, onClose, postToEdit = null, cameraStream = null
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[80] bg-black overflow-hidden touch-none overscroll-none"
+        className="fixed inset-0 z-[100] bg-black overflow-hidden touch-none overscroll-none"
         style={{ height: "100dvh", maxHeight: "100dvh" }}
       >
         {/* Camera step */}
@@ -308,7 +331,7 @@ const CreatePostSheet = ({ open, onClose, postToEdit = null, cameraStream = null
             caption={caption}
             onCaptionChange={setCaption}
             musicPreviewUrl={musicPreviewUrl}
-            onBack={() => (postToEdit ? reset() : setStep("camera"))}
+            onBack={() => (postToEdit ? setStep("preview") : reset())}
             onDone={() => setStep("preview")}
             onAddSound={handleSoundButton}
             soundLabel={editorMeta.music ? soundLabel : undefined}
@@ -327,9 +350,12 @@ const CreatePostSheet = ({ open, onClose, postToEdit = null, cameraStream = null
             description={caption}
             onTitleChange={setTitle}
             onDescriptionChange={setCaption}
-            onBack={() => setStep("edit")}
+            onBack={() => (postToEdit ? reset() : setStep("edit"))}
             onPost={() => postMutation.mutate()}
+            onEditMedia={() => setStep("edit")}
+            onDelete={postToEdit ? () => deleteMutation.mutate() : undefined}
             posting={postMutation.isPending || uploading}
+            deleting={deleteMutation.isPending}
             isEditing={!!postToEdit}
           />
         )}

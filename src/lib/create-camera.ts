@@ -4,11 +4,18 @@ export type CameraFacing = "user" | "environment";
 
 const PHOTO_JPEG_QUALITY = 0.94;
 
+/** Clean mono mic capture — AGC off to avoid pumped/distorted vocals on mobile. */
+const PREFERRED_AUDIO: MediaTrackConstraints = {
+  echoCancellation: true,
+  noiseSuppression: true,
+  autoGainControl: false,
+  channelCount: 1,
+  sampleRate: { ideal: 48000 },
+};
+
 async function openCameraStream(facing: CameraFacing): Promise<MediaStream | null> {
   if (!navigator.mediaDevices?.getUserMedia) return null;
 
-  // Prefer 720p — bright, reliable preview on mobile front cameras. Avoid `min`/`max`
-  // resolution bumps; those often switch the sensor into a darker capture mode.
   const attempts: MediaStreamConstraints[] = [
     {
       video: {
@@ -17,7 +24,16 @@ async function openCameraStream(facing: CameraFacing): Promise<MediaStream | nul
         height: { ideal: 720 },
         frameRate: { ideal: 30 },
       },
-      audio: true,
+      audio: PREFERRED_AUDIO,
+    },
+    {
+      video: { facingMode: facing },
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: false,
+        channelCount: 1,
+      },
     },
     {
       video: { facingMode: facing },
@@ -41,6 +57,51 @@ export async function warmCameraStream(facing: CameraFacing = "user"): Promise<M
 
 export function releaseCameraStream(stream: MediaStream | null | undefined) {
   stream?.getTracks().forEach((t) => t.stop());
+}
+
+/** Monitor mic input level; calls onClip when signal is peaking/clipping. */
+export function startMicLevelMonitor(
+  stream: MediaStream,
+  onLevel: (peak: number) => void,
+  onClip: (clipping: boolean) => void,
+): () => void {
+  const track = stream.getAudioTracks()[0];
+  if (!track) return () => {};
+
+  let ctx: AudioContext | null = null;
+  let raf = 0;
+  let hotFrames = 0;
+
+  try {
+    ctx = new AudioContext();
+    const source = ctx.createMediaStreamSource(stream);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 256;
+    source.connect(analyser);
+
+    const data = new Uint8Array(analyser.fftSize);
+    const tick = () => {
+      analyser.getByteTimeDomainData(data);
+      let peak = 0;
+      for (let i = 0; i < data.length; i++) {
+        const v = Math.abs(data[i] - 128) / 128;
+        if (v > peak) peak = v;
+      }
+      onLevel(peak);
+      if (peak > 0.9) hotFrames = Math.min(hotFrames + 1, 8);
+      else hotFrames = Math.max(0, hotFrames - 1);
+      onClip(hotFrames >= 4);
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+  } catch {
+    return () => {};
+  }
+
+  return () => {
+    cancelAnimationFrame(raf);
+    void ctx?.close();
+  };
 }
 
 async function captureWithCanvas(video: HTMLVideoElement, mirror: boolean): Promise<Blob | null> {
