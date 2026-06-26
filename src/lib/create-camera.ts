@@ -4,13 +4,26 @@ export type CameraFacing = "user" | "environment";
 
 const PHOTO_JPEG_QUALITY = 0.94;
 
-/** Clean mono mic capture — AGC off to avoid pumped/distorted vocals on mobile. */
-const PREFERRED_AUDIO: MediaTrackConstraints = {
-  echoCancellation: true,
-  noiseSuppression: true,
+/**
+ * Creator/social recording mic capture.
+ * Important:
+ * echoCancellation/noiseSuppression are OFF because this is not a phone call.
+ * Those settings crush music and make vocals sound robotic/funnel-like.
+ */
+const CREATOR_AUDIO: MediaTrackConstraints = {
+  echoCancellation: false,
+  noiseSuppression: false,
+  autoGainControl: false,
+  channelCount: { ideal: 1 },
+  sampleRate: { ideal: 48000 },
+  sampleSize: { ideal: 16 },
+};
+
+const FALLBACK_AUDIO: MediaTrackConstraints = {
+  echoCancellation: false,
+  noiseSuppression: false,
   autoGainControl: false,
   channelCount: 1,
-  sampleRate: { ideal: 48000 },
 };
 
 async function openCameraStream(facing: CameraFacing): Promise<MediaStream | null> {
@@ -19,21 +32,25 @@ async function openCameraStream(facing: CameraFacing): Promise<MediaStream | nul
   const attempts: MediaStreamConstraints[] = [
     {
       video: {
-        facingMode: facing,
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-        frameRate: { ideal: 30 },
+        facingMode: { ideal: facing },
+        width: { ideal: 1080 },
+        height: { ideal: 1920 },
+        frameRate: { ideal: 30, max: 30 },
       },
-      audio: PREFERRED_AUDIO,
+      audio: CREATOR_AUDIO,
     },
     {
-      video: { facingMode: facing },
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: false,
-        channelCount: 1,
+      video: {
+        facingMode: { ideal: facing },
+        width: { ideal: 720 },
+        height: { ideal: 1280 },
+        frameRate: { ideal: 30, max: 30 },
       },
+      audio: CREATOR_AUDIO,
+    },
+    {
+      video: { facingMode: { ideal: facing } },
+      audio: FALLBACK_AUDIO,
     },
     {
       video: { facingMode: facing },
@@ -140,10 +157,44 @@ export async function capturePhotoFromStream(
   return captureWithCanvas(video, options.mirror ?? false);
 }
 
-export function createVideoRecorder(stream: MediaStream, mimeType: string): MediaRecorder {
+function pickSupportedRecorderMimeType(preferred?: string): string | undefined {
+  const candidates = [
+    preferred,
+    "video/webm;codecs=vp9,opus",
+    "video/webm;codecs=vp8,opus",
+    "video/webm",
+  ].filter(Boolean) as string[];
+
+  for (const type of candidates) {
+    if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(type)) {
+      return type;
+    }
+  }
+
+  return undefined;
+}
+
+export function createVideoRecorder(stream: MediaStream, mimeType = ""): MediaRecorder {
+  const supportedMimeType = pickSupportedRecorderMimeType(mimeType);
+
+  const options: MediaRecorderOptions = {
+    audioBitsPerSecond: 256_000,
+    videoBitsPerSecond: 8_000_000,
+  };
+
+  if (supportedMimeType) {
+    options.mimeType = supportedMimeType;
+  }
+
   try {
-    return mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+    return new MediaRecorder(stream, options);
   } catch {
-    return new MediaRecorder(stream);
+    try {
+      return supportedMimeType
+        ? new MediaRecorder(stream, { mimeType: supportedMimeType })
+        : new MediaRecorder(stream);
+    } catch {
+      return new MediaRecorder(stream);
+    }
   }
 }
