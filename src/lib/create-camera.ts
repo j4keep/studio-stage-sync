@@ -4,6 +4,7 @@ export type CameraFacing = "user" | "environment";
 
 const PHOTO_JPEG_QUALITY = 0.94;
 
+
 /** Clean mono mic capture — AGC off to avoid pumped/distorted vocals on mobile. */
 const PREFERRED_AUDIO: MediaTrackConstraints = {
   echoCancellation: true,
