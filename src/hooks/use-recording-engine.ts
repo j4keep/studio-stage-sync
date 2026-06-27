@@ -261,8 +261,16 @@ export const useRecordingEngine = () => {
   ): Promise<{ blob: Blob; duration: number; waveform: number[] } | null> => {
     try {
       stopPlaybackGraph();
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
+      const stream = await navigator.mediaDevices.getUserMedia({
+  audio: {
+    echoCancellation: false,
+    noiseSuppression: false,
+    autoGainControl: false,
+    channelCount: { ideal: 1 },
+    sampleRate: { ideal: 48000 },
+    sampleSize: { ideal: 16 },
+  },
+});
 
       const ctx = new AudioContext();
       audioCtxRef.current = ctx;
@@ -289,7 +297,10 @@ export const useRecordingEngine = () => {
 
       const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
         ? "audio/webm;codecs=opus" : "audio/webm";
-      const recorder = new MediaRecorder(stream, { mimeType });
+      const recorder = new MediaRecorder(stream, {
+  mimeType,
+  audioBitsPerSecond: 256000,
+});
       mediaRecorderRef.current = recorder;
 
       return new Promise((resolve) => {
