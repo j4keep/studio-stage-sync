@@ -559,7 +559,7 @@ export default function MediaEditView({
                     stroke="white"
                     strokeWidth={Math.max(1.5, p.width / 4)}
                     strokeLinecap="round"
-                    opacity={p.highlighter ? 0.5 : 1}
+                    opacity={"highlighter" in p && p.highlighter ? 0.5 : 1}
                   />
                 </svg>
               </button>

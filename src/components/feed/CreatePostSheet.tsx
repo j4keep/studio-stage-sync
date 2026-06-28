@@ -20,7 +20,6 @@ import { defaultExportViewport } from "@/lib/overlay-coords";
 import {
 getMusicDisplayName,
 playPostMusic,
-type FeedMusicMeta,
 } from "@/lib/feed-music";
 
 interface Props {
@@ -214,7 +213,7 @@ if (!user) throw new Error("Not authenticated");
   let mediaUrl: string | null = currentMediaUrl;
   let nextMediaType: "image" | "video" = mediaType;
   let uploadFile: File | Blob | null = file;
-  let meta = { ...editorMeta, title: title.trim() || undefined };
+  let meta: PostEditorMeta = { ...editorMeta, title: title.trim() || undefined };
 
   if (musicFile) {
     setUploading(true);
@@ -444,8 +443,6 @@ onCapture={handleMediaFile}
 onOpenGallery={openGallery}
 onAddSound={handleSoundButton}
 soundLabel={editorMeta.music ? soundLabel : undefined}
-selectedMusic={editorMeta.music as FeedMusicMeta}
-musicPreviewUrl={musicPreviewUrl}
 initialStream={cameraStream}
 />
 )}

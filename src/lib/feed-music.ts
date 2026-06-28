@@ -175,7 +175,6 @@ music?.durationSec && music.durationSec > 0 ? music.durationSec : undefined;
 const stop = () => {
 if (durationTimer) clearTimeout(durationTimer);
 
-```
 try {
   if (sourceNode && "stop" in sourceNode) {
     (sourceNode as AudioBufferSourceNode).stop();
@@ -189,7 +188,6 @@ if (audioEl) {
 
 destination.stream.getTracks().forEach((t) => t.stop());
 void ctx.close();
-```
 
 };
 
@@ -200,7 +198,6 @@ stop();
 return null;
 }
 
-```
 audioEl = new Audio(url);
 audioEl.crossOrigin = "anonymous";
 audioEl.loop = !dur;
@@ -214,7 +211,6 @@ try {
   stop();
   return null;
 }
-```
 
 } else if (music?.loopId) {
 const def = FEED_MUSIC_LOOPS.find((l) => l.id === music.loopId);
@@ -223,7 +219,6 @@ stop();
 return null;
 }
 
-```
 const buffer = generateLoop(def);
 const src = ctx.createBufferSource();
 src.buffer = buffer;
@@ -231,7 +226,6 @@ src.loop = !dur;
 sourceNode = src;
 src.connect(gain);
 src.start();
-```
 
 }
 
