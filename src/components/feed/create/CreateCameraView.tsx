@@ -55,7 +55,6 @@ const attachStream = useCallback(async (stream: MediaStream) => {
 micStopRef.current?.();
 micStopRef.current = startMicLevelMonitor(stream, () => {}, setMicTooLoud);
 
-```
 streamRef.current = stream;
 
 const video = videoRef.current;
@@ -77,7 +76,6 @@ if (video) {
 
 setReady(true);
 setDenied(false);
-```
 
 }, []);
 
@@ -85,7 +83,6 @@ const stopStream = useCallback(() => {
 recordingCleanupRef.current?.();
 recordingCleanupRef.current = null;
 
-```
 micStopRef.current?.();
 micStopRef.current = null;
 
@@ -97,7 +94,6 @@ if (ownsStreamRef.current) {
 
 streamRef.current = null;
 setReady(false);
-```
 
 }, []);
 
@@ -106,7 +102,6 @@ if (ownsStreamRef.current) {
 releaseCameraStream(streamRef.current);
 }
 
-```
 setStarting(true);
 setDenied(false);
 setReady(false);
@@ -122,14 +117,12 @@ try {
 } finally {
   setStarting(false);
 }
-```
 
 }, [facing, attachStream]);
 
 useEffect(() => {
 let cancelled = false;
 
-```
 (async () => {
   if (initialStream && !cancelled) {
     ownsStreamRef.current = false;
@@ -147,7 +140,6 @@ return () => {
   cancelled = true;
   stopStream();
 };
-```
 
 }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -159,10 +151,8 @@ facingReady.current = true;
 return;
 }
 
-```
 ownsStreamRef.current = true;
 void startCamera();
-```
 
 }, [facing, startCamera]);
 
@@ -172,11 +162,9 @@ releaseCameraStream(streamRef.current);
 streamRef.current = null;
 }
 
-```
 ownsStreamRef.current = true;
 setReady(false);
 setFacing((f) => (f === "user" ? "environment" : "user"));
-```
 
 };
 
@@ -184,7 +172,6 @@ const takePhoto = async () => {
 const video = videoRef.current;
 const stream = streamRef.current;
 
-```
 if (!video || !stream || !ready) return;
 
 const blob = await capturePhotoFromStream(stream, video, {
@@ -201,7 +188,6 @@ onCapture(
   }),
   "image",
 );
-```
 
 };
 
@@ -214,9 +200,7 @@ const types = [
 "video/quicktime",
 ];
 
-```
 return types.find((t) => MediaRecorder.isTypeSupported(t)) ?? "";
-```
 
 };
 
@@ -229,7 +213,6 @@ cleanup: () => void;
 const videoTracks = cameraStream.getVideoTracks();
 const micTracks = cameraStream.getAudioTracks();
 
-```
 const hasMusic =
   Boolean(selectedMusic?.loopId) ||
   Boolean(selectedMusic?.audioUrl) ||
@@ -295,14 +278,12 @@ return {
     void audioCtx.close();
   },
 };
-```
 
 };
 
 const startRecording = async () => {
 const stream = streamRef.current;
 
-```
 if (!stream || recording) return;
 
 chunksRef.current = [];
@@ -352,7 +333,6 @@ try {
   recordingCleanupRef.current = null;
   setRecording(false);
 }
-```
 
 };
 
@@ -384,7 +364,6 @@ style={{ transform: facing === "user" ? "scaleX(-1)" : undefined }}
 />
 )}
 
-```
   {denied && (
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 px-8 text-center z-10">
       <p className="text-white text-base font-semibold">
@@ -510,7 +489,6 @@ style={{ transform: facing === "user" ? "scaleX(-1)" : undefined }}
     )}
   </div>
 </div>
-```
 
 );
 }
