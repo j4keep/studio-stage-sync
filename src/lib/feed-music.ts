@@ -113,4 +113,3 @@ export function getMusicDisplayName(music?: { loopId?: string; fileName?: string
   if (music.audioUrl) return "Uploaded sound";
   if (music.loopId) return getFeedMusicName(music.loopId);
   return "Original sound";
-}
