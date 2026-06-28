@@ -20,7 +20,6 @@ import { defaultExportViewport } from "@/lib/overlay-coords";
 import {
 getMusicDisplayName,
 playPostMusic,
-type FeedMusicMeta,
 } from "@/lib/feed-music";
 
 interface Props {
@@ -66,7 +65,6 @@ const musicStopRef = useRef<(() => void) | null>(null);
 useEffect(() => {
 if (!open) return;
 
-```
 /*
   Do NOT auto-play music during the camera step.
 
@@ -94,8 +92,6 @@ return () => {
   musicStopRef.current?.();
   musicStopRef.current = null;
 };
-```
-
 }, [
 open,
 step,
@@ -109,7 +105,6 @@ editorMeta.music?.durationSec,
 useEffect(() => {
 if (!open) return;
 
-```
 window.dispatchEvent(
   new CustomEvent("feed-nav-toggle", { detail: { hidden: true } }),
 );
@@ -154,25 +149,20 @@ return () => {
   document.body.style.top = "";
   window.scrollTo(0, scrollY);
 };
-```
-
 }, [open, postToEdit]);
 
 const revokeBlobs = () => {
 if (previewBlobRef.current) URL.revokeObjectURL(previewBlobRef.current);
 if (musicBlobRef.current) URL.revokeObjectURL(musicBlobRef.current);
 
-```
 previewBlobRef.current = null;
 musicBlobRef.current = null;
-```
 
 };
 
 const reset = () => {
 revokeBlobs();
 
-```
 musicStopRef.current?.();
 musicStopRef.current = null;
 
@@ -189,7 +179,6 @@ setStep("camera");
 setMode("video");
 
 onClose();
-```
 
 };
 
@@ -197,7 +186,6 @@ const deleteMutation = useMutation({
 mutationFn: async () => {
 if (!user || !postToEdit) throw new Error("Not authenticated");
 
-```
   const { error } = await (supabase as any)
     .from("posts")
     .delete()
@@ -215,7 +203,6 @@ onSuccess: () => {
 onError: (e: any) => {
   toast.error(e?.message || "Failed to delete post");
 },
-```
 
 });
 
@@ -223,11 +210,10 @@ const postMutation = useMutation({
 mutationFn: async () => {
 if (!user) throw new Error("Not authenticated");
 
-```
   let mediaUrl: string | null = currentMediaUrl;
   let nextMediaType: "image" | "video" = mediaType;
   let uploadFile: File | Blob | null = file;
-  let meta = { ...editorMeta, title: title.trim() || undefined };
+  let meta: PostEditorMeta = { ...editorMeta, title: title.trim() || undefined };
 
   if (musicFile) {
     setUploading(true);
@@ -339,27 +325,23 @@ onError: (e: any) => {
   setUploading(false);
   toast.error(e?.message || "Failed to post");
 },
-```
 
 });
 
 const handleMediaReplace = useCallback((f: File, url: string) => {
 if (previewBlobRef.current) URL.revokeObjectURL(previewBlobRef.current);
 
-```
 previewBlobRef.current = url;
 
 setFile(f);
 setPreview(url);
 setEditorMeta((m) => ({ ...m, crop: undefined }));
-```
 
 }, []);
 
 const handleMediaFile = (f: File, type?: "image" | "video") => {
 setFile(f);
 
-```
 const isVideo = type === "video" || f.type.startsWith("video/");
 
 setMediaType(isVideo ? "video" : "image");
@@ -376,7 +358,6 @@ previewBlobRef.current = url;
 if (!postToEdit) setEditorMeta(defaultEditorMeta());
 
 setStep("edit");
-```
 
 };
 
@@ -396,7 +377,6 @@ setShowSoundPicker(true);
 const handleMusicPreset = (loopId: string) => {
 if (musicBlobRef.current) URL.revokeObjectURL(musicBlobRef.current);
 
-```
 musicBlobRef.current = null;
 
 setMusicFile(null);
@@ -410,14 +390,12 @@ setEditorMeta((m) => ({
     durationSec: m.music?.durationSec,
   },
 }));
-```
 
 };
 
 const handleMusicFile = (f: File, url: string) => {
 if (musicBlobRef.current) URL.revokeObjectURL(musicBlobRef.current);
 
-```
 musicBlobRef.current = url;
 
 setMusicFile(f);
@@ -431,21 +409,18 @@ setEditorMeta((m) => ({
     durationSec: m.music?.durationSec,
   },
 }));
-```
 
 };
 
 const clearMusic = () => {
 if (musicBlobRef.current) URL.revokeObjectURL(musicBlobRef.current);
 
-```
 musicBlobRef.current = null;
 
 setMusicFile(null);
 setMusicPreviewUrl(null);
 
 setEditorMeta((m) => ({ ...m, music: undefined }));
-```
 
 };
 
@@ -468,13 +443,10 @@ onCapture={handleMediaFile}
 onOpenGallery={openGallery}
 onAddSound={handleSoundButton}
 soundLabel={editorMeta.music ? soundLabel : undefined}
-selectedMusic={editorMeta.music as FeedMusicMeta}
-musicPreviewUrl={musicPreviewUrl}
 initialStream={cameraStream}
 />
 )}
 
-```
     {step === "edit" && hasMedia && (
       <div className="absolute inset-0 overflow-hidden">
         <MediaEditView
@@ -566,7 +538,6 @@ initialStream={cameraStream}
     }
   />
 </AnimatePresence>
-```
 
 );
 };
