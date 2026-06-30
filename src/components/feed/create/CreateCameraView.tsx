@@ -9,6 +9,7 @@ import {
   streamHasLiveAudio,
   fileExtensionForMime,
 } from "@/lib/create-camera";
+import { resetIosAudioSessionToPlayback } from "@/lib/feed-video-playback";
 
 interface Props {
   mode: "photo" | "video";
