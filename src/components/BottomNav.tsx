@@ -121,7 +121,7 @@ const BottomNav = () => {
                 <img
                   src={jhiHi}
                   alt="hi"
-                  className="h-7 w-auto max-w-[2.25rem] object-contain pointer-events-none select-none drop-shadow-[0_0_10px_rgba(168,85,247,0.55)] translate-x-[3px] translate-y-[2px]"
+                  className="h-[1.625rem] w-auto max-w-[2.1rem] object-contain pointer-events-none select-none drop-shadow-[0_0_10px_rgba(168,85,247,0.55)] translate-x-[3px] -translate-y-[3px]"
                   draggable={false}
                 />
               )}
