@@ -235,36 +235,19 @@ const ProtectedRoutes = () => {
         <Route path="/my-boosts" element={<MyBoostsPage />} />
         <Route path="/helpdesk" element={<HelpDeskPage />} />
         <Route path="/ask-jhi" element={<AskJhiPage />} />
-        <Route path="/tv" element={<TvHomePage />} />
-        <Route path="/tv/wheuat" element={<WheuatTvPage />} />
-        <Route path="/tv/watch" element={<WheuatTvWatchPage />} />
-        <Route path="/tv/podcast" element={<LivePodcastLobbyPage />} />
-        <Route path="/tv/podcast/join/:code" element={<PodcastJoinPage />} />
-        <Route path="/tv/podcast/:episodeId" element={<PodcastRoomPage />} />
-        <Route path="/tv/podcast/:episodeId/edit" element={<PodcastRoomPage />} />
-        <Route path="/tv/podcast/:episodeId/recording/:recordingId/editor" element={<PodcastStudioPage />} />
-        <Route path="/podcast/room/:sessionId" element={<PodcastRoomPage />} />
-        <Route path="/podcast/contacts" element={<PodcastContactsPage />} />
+        <Route path="/explore" element={<ComingSoonPage title="Explore" />} />
+        <Route path="/communities" element={<ComingSoonPage title="Communities" />} />
+        <Route path="/tv/*" element={<Navigate to="/" replace />} />
+        <Route path="/podcast/*" element={<Navigate to="/" replace />} />
+        <Route path="/wstudio/*" element={<Navigate to="/" replace />} />
+        <Route path="/ai-studio" element={<Navigate to="/" replace />} />
         <Route path="/circle" element={<Navigate to="/" replace />} />
         <Route path="/circle/*" element={<Navigate to="/" replace />} />
         <Route path="/m/*" element={<Navigate to="/" replace />} />
         <Route path="/studios" element={<StudiosPage />} />
         <Route path="/my-studios" element={<MyStudiosPage />} />
         <Route path="/my-bookings" element={<MyBookingsPage />} />
-        <Route path="/wstudio/daw" element={<WStudioDawPage />} />
-        <Route path="/wstudio" element={<WStudioLayout />}>
-          <Route index element={<Navigate to="session/join" replace />} />
-          <Route path="session/join" element={<SessionJoinScreen />} />
-          <Route path="session/live" element={<SessionDawScreen />} />
-          <Route path="session/artist" element={<SessionDawScreen />} />
-          <Route path="session/engineer" element={<SessionDawScreen />} />
-          <Route path="session/classic" element={<UnifiedSessionScreen />} />
-          <Route path="session/bridge" element={<StudioBridgeScreen />} />
-          <Route path="session" element={<Navigate to="/wstudio/session/join" replace />} />
-          <Route path="artist" element={<Navigate to="/wstudio/session/live" replace />} />
-          <Route path="engineer" element={<Navigate to="/wstudio/session/live" replace />} />
-        </Route>
-        <Route path="/ai-studio" element={<Navigate to="/wstudio/session/join" replace />} />
+
         <Route path="/admin/tickets" element={<AdminTicketsPage />} />
         <Route path="/admin/sounds" element={<AdminSoundLibraryPage />} />
         <Route path="/battles" element={<BreakGuard><BattlesPage /></BreakGuard>} />
