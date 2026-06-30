@@ -42,6 +42,18 @@ export default function CreateCameraView({
   const [starting, setStarting] = useState(false);
   const [micMissing, setMicMissing] = useState(false);
 
+  const stopStream = useCallback((forceRelease = false) => {
+    if (ownsStreamRef.current || forceRelease) {
+      releaseCameraStream(streamRef.current);
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+      try { videoRef.current.load(); } catch { /* ignore */ }
+    }
+    streamRef.current = null;
+    setReady(false);
+  }, []);
+
   const attachStream = useCallback(async (stream: MediaStream) => {
     streamRef.current = stream;
 
@@ -64,23 +76,8 @@ export default function CreateCameraView({
     setMicMissing(!streamHasLiveAudio(stream));
   }, []);
 
-  const stopStream = useCallback((forceReleaseTracks = false) => {
-    if (ownsStreamRef.current || forceReleaseTracks) {
-      releaseCameraStream(streamRef.current);
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-      try { videoRef.current.load(); } catch { /* ignore */ }
-    }
-    streamRef.current = null;
-    setReady(false);
-  }, []);
-
   const startCamera = useCallback(async () => {
-    if (ownsStreamRef.current) {
-      releaseCameraStream(streamRef.current);
-    }
-
+    stopStream(true);
     setStarting(true);
     setDenied(false);
     setReady(false);
@@ -95,16 +92,14 @@ export default function CreateCameraView({
     } finally {
       setStarting(false);
     }
-  }, [facing, attachStream]);
+  }, [facing, attachStream, stopStream]);
 
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
       if (initialStream && !cancelled) {
-        // Once the pre-warmed stream is handed to the camera view, this view
-        // must own and stop it. Leaving the parent-owned mic track alive keeps
-        // iOS Safari in its quiet recording audio route during replay.
+        // Inherit ownership of the pre-warmed stream so we can stop it on unmount/capture
         ownsStreamRef.current = true;
         await attachStream(initialStream);
         return;
@@ -129,31 +124,25 @@ export default function CreateCameraView({
       facingReady.current = true;
       return;
     }
-    ownsStreamRef.current = true;
     void startCamera();
   }, [facing, startCamera]);
 
   const flipCamera = () => {
-    if (streamRef.current) {
-      releaseCameraStream(streamRef.current);
-      streamRef.current = null;
-    }
-    ownsStreamRef.current = true;
-    setReady(false);
+    stopStream(true);
     setFacing((f) => (f === "user" ? "environment" : "user"));
   };
 
   const takePhoto = async () => {
     const video = videoRef.current;
     const stream = streamRef.current;
-    stopStream(true);
-    resetIosAudioSessionToPlayback();
+    if (!video || !stream || !ready) return;
+
     const blob = await capturePhotoFromStream(stream, video, {
       mirror: facing === "user",
     });
     if (!blob) return;
 
-    stopStream();
+    stopStream(true);
     resetIosAudioSessionToPlayback();
     onCapture(
       new File([blob], `photo-${Date.now()}.jpg`, { type: "image/jpeg" }),
@@ -168,9 +157,7 @@ export default function CreateCameraView({
     if (!streamHasLiveAudio(stream)) {
       const fresh = await warmCameraStream(facing);
       if (fresh && streamHasLiveAudio(fresh)) {
-        if (ownsStreamRef.current) {
-          releaseCameraStream(stream);
-        }
+        stopStream(true);
         ownsStreamRef.current = true;
         await attachStream(fresh);
         stream = fresh;
@@ -185,7 +172,6 @@ export default function CreateCameraView({
       track.enabled = true;
     });
 
-    // Record the live camera stream as-is — one organic mic track, no app mixing.
     chunksRef.current = [];
 
     try {
@@ -195,17 +181,15 @@ export default function CreateCameraView({
       rec.ondataavailable = (e) => {
         if (e.data.size) chunksRef.current.push(e.data);
       };
+
+      rec.onstop = () => {
+        const mime = rec.mimeType || pickVideoRecorderMimeType() || "video/webm";
+        const blob = new Blob(chunksRef.current, { type: mime });
         const ext = fileExtensionForMime(mime);
 
         setRecording(false);
         stopStream(true);
         recorderRef.current = null;
-
-        setRecording(false);
-        stopStream();
-        recorderRef.current = null;
-        // iOS: flip audio session from PlayAndRecord back to Playback so the
-        // post-capture preview plays out the loud speaker, not the earpiece.
         resetIosAudioSessionToPlayback();
 
         onCapture(
@@ -254,7 +238,6 @@ export default function CreateCameraView({
           playsInline
           muted
           autoPlay
-          // Preview muted to prevent speaker feedback — recording still captures all mic input.
           style={{ transform: facing === "user" ? "scaleX(-1)" : undefined }}
         />
       )}
