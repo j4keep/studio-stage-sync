@@ -107,11 +107,11 @@ const BottomNav = () => {
               onClick={() => void handleCreate()}
               disabled={waving}
               aria-label="Create"
-              className="relative flex items-center justify-center w-12 h-12 rounded-full bg-black/80 border-2 border-violet-400 shadow-[0_0_20px_rgba(168,85,247,0.75),0_0_40px_rgba(139,92,246,0.35)] hover:shadow-[0_0_28px_rgba(168,85,247,0.95)] transition-shadow active:scale-95 disabled:opacity-90"
+              className="relative flex items-center justify-center w-12 h-12 rounded-full bg-black/80 border-2 border-violet-400 shadow-[0_0_20px_rgba(168,85,247,0.75),0_0_40px_rgba(139,92,246,0.35)] hover:shadow-[0_0_28px_rgba(168,85,247,0.95)] transition-shadow active:scale-95 disabled:opacity-90 overflow-hidden"
             >
               {waving ? (
                 <span
-                  className="text-[1.65rem] leading-none select-none animate-create-wave origin-[70%_90%]"
+                  className="text-[1.85rem] leading-none select-none animate-create-wave origin-[70%_90%]"
                   role="img"
                   aria-hidden
                 >
@@ -121,7 +121,7 @@ const BottomNav = () => {
                 <img
                   src={jhiHi}
                   alt="hi"
-                  className="h-8 w-8 object-contain pointer-events-none select-none"
+                  className="h-[2.65rem] w-[2.65rem] object-contain object-center pointer-events-none select-none"
                   draggable={false}
                 />
               )}
