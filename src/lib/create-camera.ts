@@ -7,6 +7,17 @@ const PHOTO_JPEG_QUALITY = 0.94;
 async function openCameraStream(facing: CameraFacing): Promise<MediaStream | null> {
   if (!navigator.mediaDevices?.getUserMedia) return null;
 
+  // Raw "camcorder" mic: disable echo cancellation, noise suppression, and
+  // auto-gain so the mic captures the actual room — your voice AND any music
+  // playing from the speaker — at real loudness. Defaults (`audio: true`) turn
+  // those filters ON, which makes iOS subtract speaker audio as "echo" and is
+  // why background music sounded almost silent in playback.
+  const rawMicAudio: MediaTrackConstraints = {
+    echoCancellation: false,
+    noiseSuppression: false,
+    autoGainControl: false,
+  };
+
   const attempts: MediaStreamConstraints[] = [
     {
       video: {
@@ -15,8 +26,9 @@ async function openCameraStream(facing: CameraFacing): Promise<MediaStream | nul
         height: { ideal: 720 },
         frameRate: { ideal: 30 },
       },
-      audio: true,
+      audio: rawMicAudio,
     },
+    { video: { facingMode: facing }, audio: rawMicAudio },
     { video: { facingMode: facing }, audio: true },
   ];
 
