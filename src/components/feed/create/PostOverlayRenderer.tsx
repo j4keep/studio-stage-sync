@@ -365,14 +365,8 @@ export default function PostOverlayRenderer({
             <img
               src={src}
               alt=""
-              className={`object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)] pointer-events-none ${
-                !editable ? "animate-sticker-drift" : ""
-              }`}
-              style={{
-                width: EDITOR_STICKER_BASE_PX,
-                height: EDITOR_STICKER_BASE_PX,
-                animationDelay: `${(s.id.charCodeAt(0) % 10) * 0.15}s`,
-              }}
+              className="object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)] pointer-events-none"
+              style={{ width: EDITOR_STICKER_BASE_PX, height: EDITOR_STICKER_BASE_PX }}
               draggable={false}
             />
           </div>

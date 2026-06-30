@@ -7,10 +7,15 @@ export function useCreatePostSheet() {
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  const openCreate = useCallback(async () => {
+  const openCreate = useCallback(async (options?: { waveMs?: number }) => {
     releaseCameraStream(streamRef.current);
     streamRef.current = null;
-    const stream = await warmCameraStream("user");
+    const streamPromise = warmCameraStream("user");
+    const waveMs = options?.waveMs ?? 0;
+    const [, stream] = await Promise.all([
+      waveMs > 0 ? new Promise<void>((resolve) => window.setTimeout(resolve, waveMs)) : Promise.resolve(),
+      streamPromise,
+    ]);
     streamRef.current = stream;
     setCameraStream(stream);
     setOpen(true);

@@ -1,16 +1,20 @@
 import { useState, useEffect } from "react";
-import { Home, User, ShoppingCart, AtSign, Compass } from "lucide-react";
+import { Home, User, ShoppingCart, Compass } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import ProGateModal from "@/components/ProGateModal";
 import { useProGate } from "@/hooks/use-pro-gate";
 import { useCreatePostSheet } from "@/hooks/use-create-post-sheet";
 import CreatePostSheet from "@/components/feed/CreatePostSheet";
+import jhiLogo from "@/assets/jhi-logo.png";
+
+const CREATE_WAVE_MS = 650;
 
 const BottomNav = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { showProModal, gatedFeature, closeProModal, activatePro } = useProGate();
   const [hidden, setHidden] = useState(false);
+  const [waving, setWaving] = useState(false);
   const { open: showCreate, cameraStream, openCreate, closeCreate } = useCreatePostSheet();
   const isFeed = location.pathname === "/feed" || location.pathname === "/";
 
@@ -44,11 +48,14 @@ const BottomNav = () => {
   const left = tabs.slice(0, 2);
   const right = tabs.slice(2);
 
-  const iconAnimClass = (tab: typeof tabs[number], active: boolean) => {
-    if (!active) return "";
-    if (tab.path === "/explore") return "animate-nav-compass";
-    if (tab.path === "/store") return "animate-nav-cart";
-    return "animate-nav-pop";
+  const handleCreate = async () => {
+    if (waving || showCreate) return;
+    setWaving(true);
+    try {
+      await openCreate({ waveMs: CREATE_WAVE_MS });
+    } finally {
+      setWaving(false);
+    }
   };
 
   const renderTab = (tab: typeof tabs[number]) => {
@@ -73,7 +80,7 @@ const BottomNav = () => {
         }`}
       >
         <Icon
-          className={`w-[1.35rem] h-[1.35rem] transition-all ${iconAnimClass(tab, active)} ${
+          className={`w-[1.35rem] h-[1.35rem] transition-all ${
             active ? (isFeed ? "drop-shadow-[0_0_10px_rgba(255,255,255,0.45)]" : "drop-shadow-[0_0_8px_hsl(var(--primary)/0.55)]") : ""
           }`}
           strokeWidth={active ? 2.5 : 2}
@@ -97,11 +104,22 @@ const BottomNav = () => {
 
           <div className="flex-1 flex items-center justify-center pb-0.5">
             <button
-              onClick={() => void openCreate()}
+              onClick={() => void handleCreate()}
+              disabled={waving}
               aria-label="Create"
-              className="relative flex items-center justify-center w-12 h-12 rounded-full bg-black/80 border-2 border-violet-400 text-violet-300 shadow-[0_0_20px_rgba(168,85,247,0.75),0_0_40px_rgba(139,92,246,0.35)] hover:shadow-[0_0_28px_rgba(168,85,247,0.95)] transition-shadow active:scale-95"
+              className="relative flex items-center justify-center w-12 h-12 rounded-full bg-black/80 border-2 border-violet-400 text-violet-300 shadow-[0_0_20px_rgba(168,85,247,0.75),0_0_40px_rgba(139,92,246,0.35)] hover:shadow-[0_0_28px_rgba(168,85,247,0.95)] transition-shadow active:scale-95 disabled:opacity-90"
             >
-              <AtSign className="w-5 h-5 drop-shadow-[0_0_8px_rgba(196,181,253,0.9)] animate-nav-pop" strokeWidth={2.5} />
+              <div
+                className={`relative h-6 w-8 overflow-hidden origin-bottom-right ${waving ? "animate-create-wave" : ""}`}
+              >
+                <img
+                  src={jhiLogo}
+                  alt="hi"
+                  className="absolute top-0 h-[2.75rem] w-auto max-w-none pointer-events-none select-none"
+                  style={{ left: "-52%" }}
+                  draggable={false}
+                />
+              </div>
               <span className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-violet-400/50 animate-pulse" />
             </button>
           </div>
