@@ -31,7 +31,7 @@ export default function CreateCameraView({
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const ownsStreamRef = useRef(!initialStream);
+  const ownsStreamRef = useRef(true);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
@@ -41,6 +41,18 @@ export default function CreateCameraView({
   const [ready, setReady] = useState(false);
   const [starting, setStarting] = useState(false);
   const [micMissing, setMicMissing] = useState(false);
+
+  const stopStream = useCallback((forceRelease = false) => {
+    if (ownsStreamRef.current || forceRelease) {
+      releaseCameraStream(streamRef.current);
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+      try { videoRef.current.load(); } catch { /* ignore */ }
+    }
+    streamRef.current = null;
+    setReady(false);
+  }, []);
 
   const attachStream = useCallback(async (stream: MediaStream) => {
     streamRef.current = stream;
@@ -64,19 +76,8 @@ export default function CreateCameraView({
     setMicMissing(!streamHasLiveAudio(stream));
   }, []);
 
-  const stopStream = useCallback(() => {
-    if (ownsStreamRef.current) {
-      releaseCameraStream(streamRef.current);
-    }
-    streamRef.current = null;
-    setReady(false);
-  }, []);
-
   const startCamera = useCallback(async () => {
-    if (ownsStreamRef.current) {
-      releaseCameraStream(streamRef.current);
-    }
-
+    stopStream(true);
     setStarting(true);
     setDenied(false);
     setReady(false);
@@ -91,14 +92,15 @@ export default function CreateCameraView({
     } finally {
       setStarting(false);
     }
-  }, [facing, attachStream]);
+  }, [facing, attachStream, stopStream]);
 
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
       if (initialStream && !cancelled) {
-        ownsStreamRef.current = false;
+        // Inherit ownership of the pre-warmed stream so we can stop it on unmount/capture
+        ownsStreamRef.current = true;
         await attachStream(initialStream);
         return;
       }
@@ -122,17 +124,11 @@ export default function CreateCameraView({
       facingReady.current = true;
       return;
     }
-    ownsStreamRef.current = true;
     void startCamera();
   }, [facing, startCamera]);
 
   const flipCamera = () => {
-    if (streamRef.current) {
-      releaseCameraStream(streamRef.current);
-      streamRef.current = null;
-    }
-    ownsStreamRef.current = true;
-    setReady(false);
+    stopStream(true);
     setFacing((f) => (f === "user" ? "environment" : "user"));
   };
 
@@ -146,8 +142,8 @@ export default function CreateCameraView({
     });
     if (!blob) return;
 
-    stopStream();
-    resetIosAudioSessionToPlayback();
+    stopStream(true);
+    await resetIosAudioSessionToPlayback();
     onCapture(
       new File([blob], `photo-${Date.now()}.jpg`, { type: "image/jpeg" }),
       "image",
@@ -161,9 +157,7 @@ export default function CreateCameraView({
     if (!streamHasLiveAudio(stream)) {
       const fresh = await warmCameraStream(facing);
       if (fresh && streamHasLiveAudio(fresh)) {
-        if (ownsStreamRef.current) {
-          releaseCameraStream(stream);
-        }
+        stopStream(true);
         ownsStreamRef.current = true;
         await attachStream(fresh);
         stream = fresh;
@@ -178,7 +172,6 @@ export default function CreateCameraView({
       track.enabled = true;
     });
 
-    // Record the live camera stream as-is — one organic mic track, no app mixing.
     chunksRef.current = [];
 
     try {
@@ -195,18 +188,16 @@ export default function CreateCameraView({
         const ext = fileExtensionForMime(mime);
 
         setRecording(false);
-        stopStream();
+        stopStream(true);
         recorderRef.current = null;
-        // iOS: flip audio session from PlayAndRecord back to Playback so the
-        // post-capture preview plays out the loud speaker, not the earpiece.
-        resetIosAudioSessionToPlayback();
-
-        onCapture(
-          new File([blob], `video-${Date.now()}.${ext}`, {
-            type: blob.type,
-          }),
-          "video",
-        );
+        void resetIosAudioSessionToPlayback().finally(() => {
+          onCapture(
+            new File([blob], `video-${Date.now()}.${ext}`, {
+              type: blob.type,
+            }),
+            "video",
+          );
+        });
       };
 
       rec.start(250);
@@ -247,7 +238,6 @@ export default function CreateCameraView({
           playsInline
           muted
           autoPlay
-          // Preview muted to prevent speaker feedback — recording still captures all mic input.
           style={{ transform: facing === "user" ? "scaleX(-1)" : undefined }}
         />
       )}
