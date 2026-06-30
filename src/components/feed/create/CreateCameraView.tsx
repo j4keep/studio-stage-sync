@@ -9,7 +9,7 @@ import {
   streamHasLiveAudio,
   fileExtensionForMime,
 } from "@/lib/create-camera";
-import { resetIosAudioSessionToPlayback } from "@/lib/feed-video-playback";
+
 
 interface Props {
   mode: "photo" | "video";
@@ -143,7 +143,6 @@ export default function CreateCameraView({
     if (!blob) return;
 
     stopStream(true);
-    await resetIosAudioSessionToPlayback();
     onCapture(
       new File([blob], `photo-${Date.now()}.jpg`, { type: "image/jpeg" }),
       "image",
@@ -190,14 +189,12 @@ export default function CreateCameraView({
         setRecording(false);
         stopStream(true);
         recorderRef.current = null;
-        void resetIosAudioSessionToPlayback().finally(() => {
-          onCapture(
-            new File([blob], `video-${Date.now()}.${ext}`, {
-              type: blob.type,
-            }),
-            "video",
-          );
-        });
+        onCapture(
+          new File([blob], `video-${Date.now()}.${ext}`, {
+            type: blob.type,
+          }),
+          "video",
+        );
       };
 
       rec.start(250);
