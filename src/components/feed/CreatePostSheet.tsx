@@ -27,7 +27,6 @@ open: boolean;
 onClose: () => void;
 postToEdit?: any | null;
 cameraStream?: MediaStream | null;
-onReleaseCamera?: () => void;
 }
 
 type Step = "camera" | "edit" | "preview";
@@ -38,7 +37,6 @@ open,
 onClose,
 postToEdit = null,
 cameraStream = null,
-onReleaseCamera,
 }: Props) => {
 const { user } = useAuth();
 const queryClient = useQueryClient();
@@ -141,11 +139,6 @@ return () => {
   window.scrollTo(0, scrollY);
 };
 }, [open, postToEdit]);
-
-useEffect(() => {
-  if (!open || step === "camera") return;
-  onReleaseCamera?.();
-}, [open, step, onReleaseCamera]);
 
 const revokeBlobs = () => {
 if (previewBlobRef.current) URL.revokeObjectURL(previewBlobRef.current);
@@ -352,7 +345,6 @@ previewBlobRef.current = url;
 
 if (!postToEdit) setEditorMeta(defaultEditorMeta());
 
-onReleaseCamera?.();
 setStep("edit");
 
 };

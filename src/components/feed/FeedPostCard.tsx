@@ -31,7 +31,6 @@ import {
   applyFeedAudioElementVolume,
   bindFeedMediaSession,
   playFeedVideo,
-  resetAudioSessionAfterMic,
   type FeedPlaybackMeta,
 } from "@/lib/feed-video-playback";
 
@@ -90,8 +89,6 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
   }, [isMuted, postMeta?.music?.audioUrl, postMeta?.muteOriginal]);
 
   const activateFeedPlayback = useCallback(() => {
-    resetAudioSessionAfterMic();
-
     const video = videoRef.current;
     if (!video || post.media_type !== "video") return;
 
