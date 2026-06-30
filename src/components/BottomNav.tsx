@@ -5,7 +5,8 @@ import ProGateModal from "@/components/ProGateModal";
 import { useProGate } from "@/hooks/use-pro-gate";
 import { useCreatePostSheet } from "@/hooks/use-create-post-sheet";
 import CreatePostSheet from "@/components/feed/CreatePostSheet";
-import jhiHi from "@/assets/jhi-hi.png";
+
+const CREATE_HI_SRC = "/create-hi.png";
 
 const CREATE_WAVE_MS = 720;
 
@@ -102,16 +103,16 @@ const BottomNav = () => {
         <div className="flex items-end py-1.5 px-2 max-w-lg mx-auto gap-0.5">
           {left.map(renderTab)}
 
-          <div className="flex-1 flex items-center justify-center pb-0.5">
+          <div className="flex-1 flex items-center justify-center pb-1">
             <button
               onClick={() => void handleCreate()}
               disabled={waving}
               aria-label="Create"
-              className="relative flex items-center justify-center w-12 h-12 rounded-full bg-black/80 border-2 border-violet-400 shadow-[0_0_20px_rgba(168,85,247,0.75),0_0_40px_rgba(139,92,246,0.35)] hover:shadow-[0_0_28px_rgba(168,85,247,0.95)] transition-shadow active:scale-95 disabled:opacity-90 overflow-hidden"
+              className="relative flex items-center justify-center w-14 h-14 -mt-1 rounded-full bg-black/80 border-2 border-violet-400 shadow-[0_0_20px_rgba(168,85,247,0.75),0_0_40px_rgba(139,92,246,0.35)] hover:shadow-[0_0_28px_rgba(168,85,247,0.95)] transition-shadow active:scale-95 disabled:opacity-90 overflow-hidden"
             >
               {waving ? (
                 <span
-                  className="text-[1.85rem] leading-none select-none animate-create-wave origin-[70%_90%]"
+                  className="text-[2rem] leading-none select-none animate-create-wave origin-[70%_90%]"
                   role="img"
                   aria-hidden
                 >
@@ -119,9 +120,9 @@ const BottomNav = () => {
                 </span>
               ) : (
                 <img
-                  src={jhiHi}
-                  alt="hi"
-                  className="h-[2.65rem] w-[2.65rem] object-contain object-center pointer-events-none select-none"
+                  src={CREATE_HI_SRC}
+                  alt=""
+                  className="h-[3.25rem] w-[3.25rem] object-contain object-center pointer-events-none select-none"
                   draggable={false}
                 />
               )}
