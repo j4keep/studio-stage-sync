@@ -193,14 +193,19 @@ export default function CreateCameraView({
         const blob = new Blob(chunksRef.current, { type: mime });
         const ext = fileExtensionForMime(mime);
 
+        setRecording(false);
+        stopStream();
+        recorderRef.current = null;
+        // iOS: flip audio session from PlayAndRecord back to Playback so the
+        // post-capture preview plays out the loud speaker, not the earpiece.
+        resetIosAudioSessionToPlayback();
+
         onCapture(
           new File([blob], `video-${Date.now()}.${ext}`, {
             type: blob.type,
           }),
           "video",
         );
-        setRecording(false);
-        stopStream();
       };
 
       rec.start(250);
