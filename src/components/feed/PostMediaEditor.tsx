@@ -90,7 +90,7 @@ const PostMediaEditor = ({
     if (!musicPreviewUrl) return;
 
     const audio = new Audio(musicPreviewUrl);
-    audio.volume = meta.music?.volume ?? 0.6;
+    audio.volume = 1;
     audio.loop = true;
     void audio.play();
     uploadedAudioRef.current = audio;
@@ -98,7 +98,7 @@ const PostMediaEditor = ({
       audio.pause();
       audio.src = "";
     };
-  }, [musicPreviewUrl, meta.music?.volume]);
+  }, [musicPreviewUrl]);
 
   const updateMeta = (patch: Partial<PostEditorMeta>) => onMetaChange({ ...meta, ...patch });
 

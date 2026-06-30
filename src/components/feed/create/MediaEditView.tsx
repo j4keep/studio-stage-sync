@@ -681,7 +681,7 @@ export default function MediaEditView({
         onClose={() => setShowStickers(false)}
         onPick={addSticker}
         mediaType={mediaType}
-        hasMusic={!!meta.music?.loopId || !!meta.music?.audioUrl || !!musicPreviewUrl}
+        hasMusic={!!meta.music?.audioUrl || !!musicPreviewUrl}
         caption={caption}
       />
     </div>

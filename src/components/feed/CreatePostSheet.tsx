@@ -66,17 +66,8 @@ useEffect(() => {
 if (!open) return;
 
 /*
-  Do NOT auto-play music during the camera step.
-
-  The camera recorder now mixes selected music directly into the video
-  when the user presses record. If we also auto-play music here during
-  the camera step, the user hears duplicate music and the final recording
-  can sound doubled/phasey.
-
-  Music preview is still allowed in:
-  - SoundPickerSheet
-  - Edit step
-  - Preview step
+  Music preview during edit/preview only — camera records mic + video directly,
+  like a phone camera. Added sound plays over the video in the feed.
 */
 const shouldPlay = step === "edit" || step === "preview";
 
@@ -96,9 +87,7 @@ return () => {
 open,
 step,
 musicPreviewUrl,
-editorMeta.music?.loopId,
 editorMeta.music?.audioUrl,
-editorMeta.music?.volume,
 editorMeta.music?.durationSec,
 ]);
 
@@ -239,7 +228,7 @@ if (!user) throw new Error("Not authenticated");
         ...meta.music,
         audioUrl: audioUrlData.publicUrl,
         fileName: musicFile.name,
-        volume: meta.music?.volume ?? 0.6,
+        volume: 1,
       },
     };
   }
@@ -374,25 +363,6 @@ const handleSoundButton = () => {
 setShowSoundPicker(true);
 };
 
-const handleMusicPreset = (loopId: string) => {
-if (musicBlobRef.current) URL.revokeObjectURL(musicBlobRef.current);
-
-musicBlobRef.current = null;
-
-setMusicFile(null);
-setMusicPreviewUrl(null);
-
-setEditorMeta((m) => ({
-  ...m,
-  music: {
-    loopId,
-    volume: m.music?.volume ?? 0.6,
-    durationSec: m.music?.durationSec,
-  },
-}));
-
-};
-
 const handleMusicFile = (f: File, url: string) => {
 if (musicBlobRef.current) URL.revokeObjectURL(musicBlobRef.current);
 
@@ -405,7 +375,7 @@ setEditorMeta((m) => ({
   ...m,
   music: {
     fileName: f.name,
-    volume: m.music?.volume ?? 0.6,
+    volume: 1,
     durationSec: m.music?.durationSec,
   },
 }));
@@ -441,8 +411,6 @@ onModeChange={setMode}
 onClose={reset}
 onCapture={handleMediaFile}
 onOpenGallery={openGallery}
-onAddSound={handleSoundButton}
-soundLabel={editorMeta.music ? soundLabel : undefined}
 initialStream={cameraStream}
 />
 )}
@@ -515,27 +483,8 @@ initialStream={cameraStream}
     onClose={() => setShowSoundPicker(false)}
     meta={editorMeta}
     musicFile={musicFile}
-    musicPreviewUrl={musicPreviewUrl}
-    onSelectPreset={handleMusicPreset}
     onSelectFile={handleMusicFile}
     onClear={clearMusic}
-    onVolumeChange={(volume) =>
-      setEditorMeta((m) => ({
-        ...m,
-        music: { ...m.music!, volume },
-      }))
-    }
-    onDurationChange={(durationSec) =>
-      setEditorMeta((m) => ({
-        ...m,
-        music: m.music
-          ? { ...m.music, durationSec: durationSec || undefined }
-          : {
-              volume: 0.6,
-              durationSec: durationSec || undefined,
-            },
-      }))
-    }
   />
 </AnimatePresence>
 

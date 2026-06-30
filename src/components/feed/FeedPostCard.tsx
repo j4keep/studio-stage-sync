@@ -25,7 +25,7 @@ import CreatePostSheet from "./CreatePostSheet";
 import PostOverlayRenderer from "./create/PostOverlayRenderer";
 import useFloatingEmojis, { FloatingEmojiLayer, EmojiReactionTray, EmojiReactionButton } from "./FloatingEmojis";
 import { parsePostCaption, hasVisualOverlayLayers } from "@/lib/post-editor";
-import { playFeedMusicLoop, playUploadedAudio, getMusicDisplayName } from "@/lib/feed-music";
+import { playUploadedAudio, getMusicDisplayName } from "@/lib/feed-music";
 
 
 interface Props {
@@ -102,24 +102,14 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
 
     if (postMeta.music.audioUrl) {
       const dur = postMeta.music.durationSec && postMeta.music.durationSec > 0 ? postMeta.music.durationSec : undefined;
-      const player = playUploadedAudio(postMeta.music.audioUrl, postMeta.music.volume ?? 0.5, !dur, dur);
+      const player = playUploadedAudio(postMeta.music.audioUrl, postMeta.music.volume ?? 1, !dur, dur);
       musicStopRef.current = player.stop;
       return () => {
         musicStopRef.current?.();
         musicStopRef.current = null;
       };
     }
-
-    if (postMeta.music.loopId) {
-      const dur = postMeta.music.durationSec && postMeta.music.durationSec > 0 ? postMeta.music.durationSec : undefined;
-      const player = playFeedMusicLoop(postMeta.music.loopId, postMeta.music.volume ?? 0.5, dur);
-      if (player) musicStopRef.current = player.stop;
-      return () => {
-        musicStopRef.current?.();
-        musicStopRef.current = null;
-      };
-    }
-  }, [isActive, postMeta?.music?.loopId, postMeta?.music?.audioUrl, postMeta?.music?.volume, postMeta?.music?.durationSec]);
+  }, [isActive, postMeta?.music?.audioUrl, postMeta?.music?.volume, postMeta?.music?.durationSec]);
 
   useEffect(() => {
     if (post.media_type !== "video" || !videoRef.current) return;
