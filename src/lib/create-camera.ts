@@ -117,18 +117,13 @@ export function pickVideoRecorderMimeType(): string {
 
 export function createVideoRecorder(stream: MediaStream, mimeType = ""): MediaRecorder {
   const supportedMimeType = mimeType || pickVideoRecorderMimeType();
-  const hasAudio = stream.getAudioTracks().length > 0;
 
+  // No explicit bitrates — let the browser pick its native defaults, the same
+  // way a phone's stock camera app records. Forcing audio/video bitrates on
+  // iOS Safari produces distorted, crackling output.
   const attempts: MediaRecorderOptions[] = [];
 
   if (supportedMimeType) {
-    if (hasAudio) {
-      attempts.push({
-        mimeType: supportedMimeType,
-        audioBitsPerSecond: 256_000,
-        videoBitsPerSecond: 2_500_000,
-      });
-    }
     attempts.push({ mimeType: supportedMimeType });
   }
 
