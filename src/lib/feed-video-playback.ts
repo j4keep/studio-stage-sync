@@ -5,30 +5,10 @@ export type FeedPlaybackMeta = {
   artist?: string;
 };
 
-type BrowserAudioSessionType =
-  | "auto"
-  | "playback"
-  | "transient"
-  | "transient-solo"
-  | "ambient"
-  | "play-and-record";
-
-function forceBrowserAudioSession(type: BrowserAudioSessionType): void {
-  try {
-    const nav = navigator as Navigator & {
-      audioSession?: { type?: BrowserAudioSessionType };
-    };
-    if (nav.audioSession) nav.audioSession.type = type;
-  } catch {
-    /* unsupported */
-  }
-}
-
 export function applyFeedVideoAudio(
   video: HTMLVideoElement,
   options: { muted: boolean } = { muted: false },
 ) {
-  forceBrowserAudioSession("playback");
   video.volume = 1;
   video.muted = options.muted;
   video.setAttribute("playsinline", "true");
@@ -69,7 +49,6 @@ export function bindFeedMediaSession(
 
   try {
     navigator.mediaSession.setActionHandler("play", () => {
-      forceBrowserAudioSession("playback");
       void source.play().catch(() => {});
     });
     navigator.mediaSession.setActionHandler("pause", () => {
@@ -108,35 +87,9 @@ export async function playFeedVideo(
 }
 
 export function applyFeedAudioElementVolume(audio: HTMLAudioElement) {
-  forceBrowserAudioSession("playback");
   audio.volume = 1;
 }
 
-/**
- * iOS Safari pins the page into the "PlayAndRecord" audio session as soon as
- * getUserMedia({audio:true}) runs, which routes <video>/<audio> playback to
- * the quiet earpiece — even after the mic tracks are stopped. Playing a brief
- * non-zero volume silent <audio> element nudges Safari back to the loud 
- * "Playback" category so post-capture preview plays through the main speaker.
- */
-const SILENT_WAV =
-  "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
-
 export async function resetIosAudioSessionToPlayback(): Promise<void> {
-  try {
-    forceBrowserAudioSession("playback");
-    const a = new Audio(SILENT_WAV);
-    a.volume = 0.01; // Non-zero volume helps trigger the session switch on some iOS versions
-    await a.play().catch(() => {});
-    await new Promise<void>((resolve) => window.setTimeout(resolve, 100));
-    try {
-      a.pause();
-      a.src = "";
-      a.load();
-    } catch {
-      /* ignore */
-    }
-  } catch {
-    /* ignore */
-  }
+  /* no-op — previous workaround disabled */
 }
