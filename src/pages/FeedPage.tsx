@@ -3,19 +3,19 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, MoreVertical, Radio as RadioIcon, Swords, Tv, Music2, Heart } from "lucide-react";
+import { Search, MoreVertical, Radio as RadioIcon, Swords, Tv, Heart, Tag } from "lucide-react";
 import FeedPostCard from "@/components/feed/FeedPostCard";
 import { useCreatePostSheet } from "@/hooks/use-create-post-sheet";
 import CreatePostSheet from "@/components/feed/CreatePostSheet";
 import { fetchFeedItems } from "@/lib/feed-items";
 import jhiLogo from "@/assets/wheuat-logo.png";
 
-type TabId = "radio" | "battle" | "songs" | "wheuat-tv" | "support";
+type TabId = "radio" | "battle" | "marketplace" | "deals" | "support";
 const TABS: { id: TabId; label: string; route: string; icon: typeof RadioIcon }[] = [
   { id: "radio", label: "Radio", route: "/radio", icon: RadioIcon },
   { id: "battle", label: "Battle", route: "/battles", icon: Swords },
-  { id: "songs", label: "Songs", route: "/browse-songs", icon: Music2 },
-  { id: "wheuat-tv", label: "JHi.TV", route: "/tv/watch", icon: Tv },
+  { id: "marketplace", label: "Marketplace", route: "/tv/watch", icon: Tv },
+  { id: "deals", label: "Deals", route: "/store", icon: Tag },
   { id: "support", label: "Support", route: "/my-projects", icon: Heart },
 ];
 
