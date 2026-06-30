@@ -58,6 +58,14 @@ import ThemePickerSheet from "./components/ThemePickerSheet";
 
 
 const queryClient = new QueryClient();
+
+const ComingSoonPage = ({ title }: { title: string }) => (
+  <div className="px-6 pt-20 pb-24 max-w-md mx-auto text-center">
+    <div className="w-14 h-14 rounded-2xl bg-primary/10 mx-auto mb-4 flex items-center justify-center text-2xl">✨</div>
+    <h1 className="text-xl font-display font-bold text-foreground mb-2">{title}</h1>
+    <p className="text-sm text-muted-foreground">Coming soon.</p>
+  </div>
+);
 const STARTUP_TIMEOUT_MS = 2500;
 
 // Take A Break guard: blocks Feed / Battles / social discovery while toggle is ON.
