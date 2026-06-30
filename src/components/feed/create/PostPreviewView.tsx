@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { applyFeedVideoAudio, bindFeedMediaSession } from "@/lib/feed-video-playback";
 import { ChevronLeft, Hash, AtSign, Lightbulb, Wand2, ImageIcon, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import JhiIcon from "@/components/JhiIcon";
@@ -147,7 +148,11 @@ export default function PostPreviewView({
                   className="w-full h-full object-cover pointer-events-none"
                   playsInline
                   onLoadedMetadata={(e) => {
-                    e.currentTarget.volume = 1;
+                    applyFeedVideoAudio(e.currentTarget, { muted: false });
+                  }}
+                  onPlay={(e) => {
+                    applyFeedVideoAudio(e.currentTarget, { muted: false });
+                    bindFeedMediaSession(e.currentTarget, { title: title || "Preview" });
                   }}
                 />
               ) : (

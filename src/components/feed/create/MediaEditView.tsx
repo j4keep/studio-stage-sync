@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Type, Sticker, Pencil, Crop, Volume2, VolumeX, Undo2, Check, X, Trash2, ChevronLeft, Music } from "lucide-react";
+import { applyFeedVideoAudio, bindFeedMediaSession } from "@/lib/feed-video-playback";
 import PostOverlayRenderer from "./PostOverlayRenderer";
 import StickerDrawer from "./StickerDrawer";
 import CropEditorView from "./CropEditorView";
@@ -350,7 +351,13 @@ export default function MediaEditView({
             muted={meta.muteOriginal}
             autoPlay
             onLoadedMetadata={(e) => {
-              e.currentTarget.volume = 1;
+              applyFeedVideoAudio(e.currentTarget, { muted: meta.muteOriginal });
+            }}
+            onPlay={(e) => {
+              applyFeedVideoAudio(e.currentTarget, { muted: meta.muteOriginal });
+              if (!meta.muteOriginal) {
+                bindFeedMediaSession(e.currentTarget, { title: "Preview" });
+              }
             }}
           />
         ) : (
@@ -606,7 +613,13 @@ export default function MediaEditView({
             muted={meta.muteOriginal}
             autoPlay
             onLoadedMetadata={(e) => {
-              e.currentTarget.volume = 1;
+              applyFeedVideoAudio(e.currentTarget, { muted: meta.muteOriginal });
+            }}
+            onPlay={(e) => {
+              applyFeedVideoAudio(e.currentTarget, { muted: meta.muteOriginal });
+              if (!meta.muteOriginal) {
+                bindFeedMediaSession(e.currentTarget, { title: "Preview" });
+              }
             }}
           />
           <div

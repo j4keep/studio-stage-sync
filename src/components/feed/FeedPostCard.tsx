@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import {
   Heart,
   MessageCircle,
@@ -26,6 +26,13 @@ import PostOverlayRenderer from "./create/PostOverlayRenderer";
 import useFloatingEmojis, { FloatingEmojiLayer, EmojiReactionTray, EmojiReactionButton } from "./FloatingEmojis";
 import { parsePostCaption, hasVisualOverlayLayers } from "@/lib/post-editor";
 import { playUploadedAudio, getMusicDisplayName } from "@/lib/feed-music";
+import {
+  applyFeedVideoAudio,
+  applyFeedAudioElementVolume,
+  bindFeedMediaSession,
+  playFeedVideo,
+  type FeedPlaybackMeta,
+} from "@/lib/feed-video-playback";
 
 
 interface Props {
@@ -61,12 +68,44 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
   const progressRef = useRef<HTMLDivElement>(null);
   const musicStopRef = useRef<(() => void) | null>(null);
   const musicAudioRef = useRef<HTMLAudioElement | null>(null);
+  const mediaSessionCleanupRef = useRef<(() => void) | null>(null);
   const lastTapRef = useRef(0);
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { emojis, spawnEmoji } = useFloatingEmojis();
 
   const { caption: displayCaption, meta: postMeta } = parsePostCaption(post.caption);
   const postTitle = postMeta?.title?.trim();
+  const playbackMeta = useMemo<FeedPlaybackMeta>(
+    () => ({
+      title: postTitle || displayCaption.split("\n")[0] || "JHi",
+      artist: profile.display_name || "JHi",
+    }),
+    [postTitle, displayCaption, profile.display_name],
+  );
+
+  const getVideoMuted = useCallback(() => {
+    const hasAddedSound = Boolean(postMeta?.music?.audioUrl);
+    return isMuted || hasAddedSound || postMeta?.muteOriginal === true;
+  }, [isMuted, postMeta?.music?.audioUrl, postMeta?.muteOriginal]);
+
+  const activateFeedPlayback = useCallback(() => {
+    const video = videoRef.current;
+    if (!video || post.media_type !== "video") return;
+
+    const muted = getVideoMuted();
+    applyFeedVideoAudio(video, { muted });
+
+    mediaSessionCleanupRef.current?.();
+    mediaSessionCleanupRef.current = null;
+
+    const hasAddedSound = Boolean(postMeta?.music?.audioUrl);
+    if (hasAddedSound && musicAudioRef.current) {
+      applyFeedAudioElementVolume(musicAudioRef.current);
+      mediaSessionCleanupRef.current = bindFeedMediaSession(musicAudioRef.current, playbackMeta);
+    } else if (!muted) {
+      mediaSessionCleanupRef.current = bindFeedMediaSession(video, playbackMeta);
+    }
+  }, [post.media_type, getVideoMuted, postMeta?.music?.audioUrl, playbackMeta]);
 
   // Image posts bake text/stickers/draw into the file — overlay renderer would double them
   const showVisualOverlays =
@@ -90,10 +129,8 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
 
   useEffect(() => {
     if (!videoRef.current) return;
-    const hasAddedSound = Boolean(postMeta?.music?.audioUrl);
-    videoRef.current.muted = isMuted || hasAddedSound || postMeta?.muteOriginal === true;
-    videoRef.current.volume = isMuted ? 0 : (postMeta?.originalVolume ?? 1);
-  }, [isMuted, postMeta?.muteOriginal, postMeta?.originalVolume, postMeta?.music?.audioUrl]);
+    applyFeedVideoAudio(videoRef.current, { muted: getVideoMuted() });
+  }, [getVideoMuted]);
 
   // Added sound plays in sync with video — camera audio is muted when a sound is attached.
   useEffect(() => {
@@ -128,6 +165,8 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
 
     const onPlay = () => {
       audio.currentTime = video.currentTime;
+      applyFeedAudioElementVolume(audio);
+      activateFeedPlayback();
       void audio.play().catch(() => {});
     };
     const onPause = () => audio.pause();
@@ -146,7 +185,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
       video.removeEventListener("pause", onPause);
       video.removeEventListener("seeked", onSeeked);
     };
-  }, [isActive, postMeta?.music?.audioUrl, post.id]);
+  }, [isActive, postMeta?.music?.audioUrl, post.id, activateFeedPlayback]);
 
   useEffect(() => {
     if (post.media_type !== "video" || !videoRef.current) return;
@@ -154,23 +193,26 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
     const video = videoRef.current;
 
     if (!isActive) {
+      mediaSessionCleanupRef.current?.();
+      mediaSessionCleanupRef.current = null;
       video.pause();
       setIsPlaying(false);
       return;
     }
 
     const playVideo = async () => {
-      try {
-        await video.play();
+      const ok = await playFeedVideo(video, playbackMeta, { muted: getVideoMuted() });
+      if (ok) {
+        activateFeedPlayback();
         setIsPlaying(true);
         onChromeHiddenChange?.(true);
-      } catch {
+      } else {
         setIsPlaying(false);
       }
     };
 
-    playVideo();
-  }, [isActive, post.media_type, onChromeHiddenChange]);
+    void playVideo();
+  }, [isActive, post.media_type, onChromeHiddenChange, playbackMeta, getVideoMuted, activateFeedPlayback]);
 
   useEffect(() => {
     if (!viewCounted && isActive && post.id) {
@@ -376,9 +418,11 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
     tapTimerRef.current = setTimeout(() => {
       if (post.media_type === "video" && videoRef.current) {
         if (videoRef.current.paused) {
-          videoRef.current.play();
-          setIsPlaying(true);
-          toggleNav(true);
+          activateFeedPlayback();
+          void videoRef.current.play().then(() => {
+            setIsPlaying(true);
+            toggleNav(true);
+          });
         } else {
           toggleNav(!chromeHidden);
         }
@@ -386,7 +430,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
         toggleNav(!chromeHidden);
       }
     }, doubleTapDelay);
-  }, [liked, likeMutation, post.media_type, post.media_url, chromeHidden, toggleNav]);
+  }, [liked, likeMutation, post.media_type, post.media_url, chromeHidden, toggleNav, activateFeedPlayback]);
 
   const handleShare = async () => {
     const shareUrl = `${window.location.origin}/feed`;
@@ -466,9 +510,11 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
               e.stopPropagation();
               if (videoRef.current) {
                 if (videoRef.current.paused) {
-                  videoRef.current.play();
-                  setIsPlaying(true);
-                  toggleNav(true);
+                  activateFeedPlayback();
+                  void videoRef.current.play().then(() => {
+                    setIsPlaying(true);
+                    toggleNav(true);
+                  });
                 } else {
                   videoRef.current.pause();
                   setIsPlaying(false);
@@ -491,7 +537,19 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
 
         <div className="absolute right-3 feed-bottom-offset z-40 flex flex-col items-center gap-4 pb-1">
           {post.media_type === "video" && (
-            <button onClick={() => setIsMuted((value) => !value)} className="feed-action-btn" aria-label={isMuted ? "Unmute video" : "Mute video"}>
+            <button
+              onClick={() => {
+                setIsMuted((value) => {
+                  const next = !value;
+                  if (!next) {
+                    requestAnimationFrame(() => activateFeedPlayback());
+                  }
+                  return next;
+                });
+              }}
+              className="feed-action-btn"
+              aria-label={isMuted ? "Unmute video" : "Mute video"}
+            >
               {isMuted ? <VolumeX className="feed-action-icon" /> : <Volume2 className="feed-action-icon" />}
             </button>
           )}
