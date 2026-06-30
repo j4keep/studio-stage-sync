@@ -4,14 +4,11 @@ export type CameraFacing = "user" | "environment";
 
 const PHOTO_JPEG_QUALITY = 0.94;
 
-
-/** Clean mono mic capture — AGC off to avoid pumped/distorted vocals on mobile. */
-const PREFERRED_AUDIO: MediaTrackConstraints = {
-  echoCancellation: false,
-  noiseSuppression: false,
-  autoGainControl: false,
-  channelCount: 1,
-  sampleRate: { ideal: 48000 },
+/** Standard video mic — same defaults phones use for camera recording. */
+const VIDEO_MIC_AUDIO: MediaTrackConstraints = {
+  echoCancellation: true,
+  noiseSuppression: true,
+  autoGainControl: true,
 };
 
 async function openCameraStream(facing: CameraFacing): Promise<MediaStream | null> {
@@ -25,16 +22,11 @@ async function openCameraStream(facing: CameraFacing): Promise<MediaStream | nul
         height: { ideal: 720 },
         frameRate: { ideal: 30 },
       },
-      audio: PREFERRED_AUDIO,
+      audio: VIDEO_MIC_AUDIO,
     },
     {
       video: { facingMode: facing },
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: false,
-        channelCount: 1,
-      },
+      audio: VIDEO_MIC_AUDIO,
     },
     {
       video: { facingMode: facing },
@@ -58,51 +50,6 @@ export async function warmCameraStream(facing: CameraFacing = "user"): Promise<M
 
 export function releaseCameraStream(stream: MediaStream | null | undefined) {
   stream?.getTracks().forEach((t) => t.stop());
-}
-
-/** Monitor mic input level; calls onClip when signal is peaking/clipping. */
-export function startMicLevelMonitor(
-  stream: MediaStream,
-  onLevel: (peak: number) => void,
-  onClip: (clipping: boolean) => void,
-): () => void {
-  const track = stream.getAudioTracks()[0];
-  if (!track) return () => {};
-
-  let ctx: AudioContext | null = null;
-  let raf = 0;
-  let hotFrames = 0;
-
-  try {
-    ctx = new AudioContext();
-    const source = ctx.createMediaStreamSource(stream);
-    const analyser = ctx.createAnalyser();
-    analyser.fftSize = 256;
-    source.connect(analyser);
-
-    const data = new Uint8Array(analyser.fftSize);
-    const tick = () => {
-      analyser.getByteTimeDomainData(data);
-      let peak = 0;
-      for (let i = 0; i < data.length; i++) {
-        const v = Math.abs(data[i] - 128) / 128;
-        if (v > peak) peak = v;
-      }
-      onLevel(peak);
-      if (peak > 0.9) hotFrames = Math.min(hotFrames + 1, 8);
-      else hotFrames = Math.max(0, hotFrames - 1);
-      onClip(hotFrames >= 4);
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-  } catch {
-    return () => {};
-  }
-
-  return () => {
-    cancelAnimationFrame(raf);
-    void ctx?.close();
-  };
 }
 
 async function captureWithCanvas(video: HTMLVideoElement, mirror: boolean): Promise<Blob | null> {
@@ -141,10 +88,46 @@ export async function capturePhotoFromStream(
   return captureWithCanvas(video, options.mirror ?? false);
 }
 
-export function createVideoRecorder(stream: MediaStream, mimeType: string): MediaRecorder {
+function pickSupportedRecorderMimeType(preferred?: string): string | undefined {
+  const candidates = [
+    preferred,
+    "video/mp4",
+    "video/webm;codecs=vp9,opus",
+    "video/webm;codecs=vp8,opus",
+    "video/webm",
+    "video/quicktime",
+  ].filter(Boolean) as string[];
+
+  for (const type of candidates) {
+    if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(type)) {
+      return type;
+    }
+  }
+
+  return undefined;
+}
+
+export function createVideoRecorder(stream: MediaStream, mimeType = ""): MediaRecorder {
+  const supportedMimeType = pickSupportedRecorderMimeType(mimeType);
+
+  const options: MediaRecorderOptions = {
+    audioBitsPerSecond: 128_000,
+    videoBitsPerSecond: 2_500_000,
+  };
+
+  if (supportedMimeType) {
+    options.mimeType = supportedMimeType;
+  }
+
   try {
-    return mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+    return new MediaRecorder(stream, options);
   } catch {
-    return new MediaRecorder(stream);
+    try {
+      return supportedMimeType
+        ? new MediaRecorder(stream, { mimeType: supportedMimeType })
+        : new MediaRecorder(stream);
+    } catch {
+      return new MediaRecorder(stream);
+    }
   }
 }

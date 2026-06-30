@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { X, SwitchCamera, ImagePlus, Music } from "lucide-react";
 import {
-warmCameraStream,
-releaseCameraStream,
-capturePhotoFromStream,
-createVideoRecorder,
-startMicLevelMonitor,
+  warmCameraStream,
+  releaseCameraStream,
+  capturePhotoFromStream,
+  createVideoRecorder,
 } from "@/lib/create-camera";
 import { createFeedMusicStream, type FeedMusicMeta } from "@/lib/feed-music";
 
@@ -47,14 +46,8 @@ const [denied, setDenied] = useState(false);
 const [recording, setRecording] = useState(false);
 const [ready, setReady] = useState(false);
 const [starting, setStarting] = useState(false);
-const [micTooLoud, setMicTooLoud] = useState(false);
-
-const micStopRef = useRef<(() => void) | null>(null);
 
 const attachStream = useCallback(async (stream: MediaStream) => {
-micStopRef.current?.();
-micStopRef.current = startMicLevelMonitor(stream, () => {}, setMicTooLoud);
-
 streamRef.current = stream;
 
 const video = videoRef.current;
@@ -82,11 +75,6 @@ setDenied(false);
 const stopStream = useCallback(() => {
 recordingCleanupRef.current?.();
 recordingCleanupRef.current = null;
-
-micStopRef.current?.();
-micStopRef.current = null;
-
-setMicTooLoud(false);
 
 if (ownsStreamRef.current) {
   releaseCameraStream(streamRef.current);
@@ -240,22 +228,13 @@ if (!musicBundle) {
 const audioCtx = new AudioContext();
 const destination = audioCtx.createMediaStreamDestination();
 
-const micGain = audioCtx.createGain();
-micGain.gain.value = 1.35;
-
-const musicGain = audioCtx.createGain();
-musicGain.gain.value = 1.45;
-
 if (micTracks.length > 0) {
-  const micOnlyStream = new MediaStream(micTracks);
-  const micSource = audioCtx.createMediaStreamSource(micOnlyStream);
-  micSource.connect(micGain);
-  micGain.connect(destination);
+  const micSource = audioCtx.createMediaStreamSource(new MediaStream(micTracks));
+  micSource.connect(destination);
 }
 
 const musicSource = audioCtx.createMediaStreamSource(musicBundle.stream);
-musicSource.connect(musicGain);
-musicGain.connect(destination);
+musicSource.connect(destination);
 
 if (audioCtx.state === "suspended") {
   await audioCtx.resume().catch(() => {});
@@ -385,12 +364,6 @@ style={{ transform: facing === "user" ? "scaleX(-1)" : undefined }}
   {starting && !ready && !denied && (
     <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/50">
       <div className="w-10 h-10 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-    </div>
-  )}
-
-  {micTooLoud && ready && (
-    <div className="absolute top-[calc(env(safe-area-inset-top)+3.5rem)] left-1/2 -translate-x-1/2 z-30 px-4 py-2 rounded-full bg-red-500/90 text-white text-xs font-bold shadow-lg">
-      Mic too loud
     </div>
   )}
 

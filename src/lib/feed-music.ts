@@ -160,7 +160,7 @@ const ctx = new AudioContext();
 const destination = ctx.createMediaStreamDestination();
 
 const gain = ctx.createGain();
-gain.gain.value = music?.volume ?? 0.45;
+gain.gain.value = music?.volume ?? 0.6;
 
 gain.connect(destination);
 gain.connect(ctx.destination);
