@@ -8,6 +8,7 @@ import FeedPostCard from "@/components/feed/FeedPostCard";
 import { useCreatePostSheet } from "@/hooks/use-create-post-sheet";
 import CreatePostSheet from "@/components/feed/CreatePostSheet";
 import { fetchFeedItems } from "@/lib/feed-items";
+import jhiLogo from "@/assets/wheuat-logo.png";
 
 type TabId = "radio" | "battle" | "songs" | "wheuat-tv" | "support";
 const TABS: { id: TabId; label: string; route: string; icon: typeof RadioIcon }[] = [

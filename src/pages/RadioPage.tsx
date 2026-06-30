@@ -10,6 +10,7 @@ import RadioShareSheet from "@/components/RadioShareSheet";
 import RadioMoreSheet from "@/components/RadioMoreSheet";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import BoostAdOverlay from "@/components/BoostAdOverlay";
+import jhiLogo from "@/assets/wheuat-logo.png";
 
 
 const RADIO_GENRE_FILTERS = ["All", "Podcasts", ...GENRES.filter(g => g !== "Beats")];
