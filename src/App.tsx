@@ -50,13 +50,7 @@ import AdminTicketsPage from "./pages/AdminTicketsPage";
 import AdminSoundLibraryPage from "./pages/AdminSoundLibraryPage";
 import AskJhiPage from "./pages/AskJhiPage";
 
-import LivePodcastLobbyPage from "./pages/podcast/LivePodcastLobbyPage";
-import PodcastContactsPage from "./pages/podcast/PodcastContactsPage";
-import PodcastStudioPage from "./pages/podcast/PodcastStudioPage";
-import PodcastJoinPage from "./pages/podcast/PodcastJoinPage";
-import PodcastRoomPage from "./pages/podcast/PodcastRoomPage";
-import WheuatTvPage from "./pages/wheuat-tv/WheuatTvPage";
-import WheuatTvWatchPage from "./pages/wheuat-tv/WheuatTvWatchPage";
+
 import { SessionProvider } from "./wstudio/session/SessionContext";
 
 import TermsAgreementGate from "./components/TermsAgreementGate";
