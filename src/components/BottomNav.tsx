@@ -15,7 +15,7 @@ const BottomNav = () => {
   const { showProModal, gatedFeature, closeProModal, activatePro } = useProGate();
   const [hidden, setHidden] = useState(false);
   const [waving, setWaving] = useState(false);
-  const { open: showCreate, cameraStream, openCreate, closeCreate } = useCreatePostSheet();
+  const { open: showCreate, cameraStream, openCreate, closeCreate, releaseCamera } = useCreatePostSheet();
   const isFeed = location.pathname === "/feed" || location.pathname === "/";
 
   useEffect(() => {
@@ -127,7 +127,7 @@ const BottomNav = () => {
         </div>
       </nav>
       <ProGateModal open={showProModal} onClose={closeProModal} featureName={gatedFeature} onSubscribe={activatePro} />
-      <CreatePostSheet open={showCreate} onClose={closeCreate} cameraStream={cameraStream} />
+      <CreatePostSheet open={showCreate} onClose={closeCreate} cameraStream={cameraStream} onReleaseCamera={releaseCamera} />
     </>
   );
 };

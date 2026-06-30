@@ -1,9 +1,37 @@
-/** Feed video playback — use iOS media volume, not quiet inline/ambient routing. */
+/** Feed video playback — iOS media volume after camera/mic use. */
 
 export type FeedPlaybackMeta = {
   title?: string;
   artist?: string;
 };
+
+function isAppleMobile(): boolean {
+  return (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  );
+}
+
+/** Tell iOS to use full media volume (not quiet play-and-record routing). */
+export function setPlaybackAudioSession() {
+  try {
+    if ("audioSession" in navigator && navigator.audioSession) {
+      navigator.audioSession.type = "playback";
+    }
+  } catch {
+    /* unsupported */
+  }
+}
+
+/**
+ * After the camera mic stops, iOS can keep audio routed quietly until we
+ * explicitly switch back to playback — lock screen already does this for us.
+ */
+export function resetAudioSessionAfterMic() {
+  setPlaybackAudioSession();
+  window.setTimeout(setPlaybackAudioSession, 150);
+  window.setTimeout(setPlaybackAudioSession, 500);
+}
 
 export function applyFeedVideoAudio(
   video: HTMLVideoElement,
@@ -16,7 +44,7 @@ export function applyFeedVideoAudio(
   video.setAttribute("x-webkit-airplay", "allow");
 }
 
-/** Bind Now Playing / lock-screen controls so iOS uses full media volume. */
+/** Bind Now Playing / lock-screen controls. */
 export function bindFeedMediaSession(
   source: HTMLMediaElement,
   meta: FeedPlaybackMeta = {},
@@ -49,6 +77,7 @@ export function bindFeedMediaSession(
 
   try {
     navigator.mediaSession.setActionHandler("play", () => {
+      resetAudioSessionAfterMic();
       void source.play().catch(() => {});
     });
     navigator.mediaSession.setActionHandler("pause", () => {
@@ -74,10 +103,22 @@ export function bindFeedMediaSession(
 
 export async function playFeedVideo(
   video: HTMLVideoElement,
-  meta: FeedPlaybackMeta = {},
+  _meta: FeedPlaybackMeta = {},
   options: { muted: boolean } = { muted: false },
 ): Promise<boolean> {
+  resetAudioSessionAfterMic();
   applyFeedVideoAudio(video, options);
+
+  if (!options.muted && isAppleMobile()) {
+    video.muted = true;
+    try {
+      await video.play();
+    } catch {
+      /* continue */
+    }
+    applyFeedVideoAudio(video, options);
+  }
+
   try {
     await video.play();
     return true;
@@ -88,4 +129,16 @@ export async function playFeedVideo(
 
 export function applyFeedAudioElementVolume(audio: HTMLAudioElement) {
   audio.volume = 1;
+}
+
+export async function activateFeedVideoPlayback(
+  video: HTMLVideoElement,
+  meta: FeedPlaybackMeta = {},
+  options: { muted: boolean } = { muted: false },
+): Promise<void> {
+  resetAudioSessionAfterMic();
+  await playFeedVideo(video, meta, options);
+  if (!options.muted) {
+    bindFeedMediaSession(video, meta);
+  }
 }

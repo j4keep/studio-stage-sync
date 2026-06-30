@@ -28,7 +28,7 @@ interface TrendingCreator {
 const FeedPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { open: showCreate, cameraStream, openCreate, closeCreate } = useCreatePostSheet();
+  const { open: showCreate, cameraStream, openCreate, closeCreate, releaseCamera } = useCreatePostSheet();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [chromeHidden, setChromeHidden] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -191,7 +191,7 @@ const FeedPage = () => {
         )}
       </div>
 
-      <CreatePostSheet open={showCreate} onClose={closeCreate} cameraStream={cameraStream} />
+      <CreatePostSheet open={showCreate} onClose={closeCreate} cameraStream={cameraStream} onReleaseCamera={releaseCamera} />
     </div>
   );
 };

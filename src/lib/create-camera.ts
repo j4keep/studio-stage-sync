@@ -71,8 +71,11 @@ export async function warmCameraStream(facing: CameraFacing = "user"): Promise<M
   return openCameraStream(facing);
 }
 
+import { resetAudioSessionAfterMic } from "@/lib/feed-video-playback";
+
 export function releaseCameraStream(stream: MediaStream | null | undefined) {
   stream?.getTracks().forEach((t) => t.stop());
+  resetAudioSessionAfterMic();
 }
 
 export function streamHasLiveAudio(stream: MediaStream | null | undefined): boolean {

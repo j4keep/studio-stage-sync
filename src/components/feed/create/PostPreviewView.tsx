@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { applyFeedVideoAudio, bindFeedMediaSession } from "@/lib/feed-video-playback";
+import { applyFeedVideoAudio, bindFeedMediaSession, resetAudioSessionAfterMic } from "@/lib/feed-video-playback";
 import { ChevronLeft, Hash, AtSign, Lightbulb, Wand2, ImageIcon, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import JhiIcon from "@/components/JhiIcon";
@@ -151,6 +151,7 @@ export default function PostPreviewView({
                     applyFeedVideoAudio(e.currentTarget, { muted: false });
                   }}
                   onPlay={(e) => {
+                    resetAudioSessionAfterMic();
                     applyFeedVideoAudio(e.currentTarget, { muted: false });
                     bindFeedMediaSession(e.currentTarget, { title: title || "Preview" });
                   }}
