@@ -31,7 +31,7 @@ export default function CreateCameraView({
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const ownsStreamRef = useRef(!initialStream);
+  const ownsStreamRef = useRef(true);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
@@ -98,7 +98,10 @@ export default function CreateCameraView({
 
     (async () => {
       if (initialStream && !cancelled) {
-        ownsStreamRef.current = false;
+        // Once the pre-warmed stream is handed to the camera view, this view
+        // must own and stop it. Leaving the parent-owned mic track alive keeps
+        // iOS Safari in its quiet recording audio route during replay.
+        ownsStreamRef.current = true;
         await attachStream(initialStream);
         return;
       }
