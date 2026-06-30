@@ -147,6 +147,7 @@ export default function CreateCameraView({
     if (!blob) return;
 
     stopStream();
+    resetIosAudioSessionToPlayback();
     onCapture(
       new File([blob], `photo-${Date.now()}.jpg`, { type: "image/jpeg" }),
       "image",
