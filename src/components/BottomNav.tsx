@@ -44,6 +44,13 @@ const BottomNav = () => {
   const left = tabs.slice(0, 2);
   const right = tabs.slice(2);
 
+  const iconAnimClass = (tab: typeof tabs[number], active: boolean) => {
+    if (!active) return "";
+    if (tab.path === "/explore") return "animate-nav-compass";
+    if (tab.path === "/store") return "animate-nav-cart";
+    return "animate-nav-pop";
+  };
+
   const renderTab = (tab: typeof tabs[number]) => {
     const active = isActive(tab);
     const Icon = tab.icon;
@@ -66,7 +73,7 @@ const BottomNav = () => {
         }`}
       >
         <Icon
-          className={`w-[1.35rem] h-[1.35rem] transition-all ${
+          className={`w-[1.35rem] h-[1.35rem] transition-all ${iconAnimClass(tab, active)} ${
             active ? (isFeed ? "drop-shadow-[0_0_10px_rgba(255,255,255,0.45)]" : "drop-shadow-[0_0_8px_hsl(var(--primary)/0.55)]") : ""
           }`}
           strokeWidth={active ? 2.5 : 2}
@@ -94,7 +101,7 @@ const BottomNav = () => {
               aria-label="Create"
               className="relative flex items-center justify-center w-12 h-12 rounded-full bg-black/80 border-2 border-violet-400 text-violet-300 shadow-[0_0_20px_rgba(168,85,247,0.75),0_0_40px_rgba(139,92,246,0.35)] hover:shadow-[0_0_28px_rgba(168,85,247,0.95)] transition-shadow active:scale-95"
             >
-              <AtSign className="w-5 h-5 drop-shadow-[0_0_8px_rgba(196,181,253,0.9)]" strokeWidth={2.5} />
+              <AtSign className="w-5 h-5 drop-shadow-[0_0_8px_rgba(196,181,253,0.9)] animate-nav-pop" strokeWidth={2.5} />
               <span className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-violet-400/50 animate-pulse" />
             </button>
           </div>

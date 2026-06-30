@@ -91,6 +91,24 @@ export default {
           "50%": { transform: "rotate(8deg) scaleX(0.95) scaleY(1.05)" },
           "75%": { transform: "rotate(-6deg) scaleX(1) scaleY(1)" },
         },
+        "nav-pop": {
+          "0%, 100%": { transform: "scale(1)" },
+          "50%": { transform: "scale(1.12)" },
+        },
+        "nav-compass": {
+          "0%": { transform: "rotate(0deg)" },
+          "100%": { transform: "rotate(360deg)" },
+        },
+        "nav-cart": {
+          "0%, 100%": { transform: "translateX(0)" },
+          "25%": { transform: "translateX(-2px) rotate(-4deg)" },
+          "75%": { transform: "translateX(2px) rotate(4deg)" },
+        },
+        "sticker-drift": {
+          "0%, 100%": { transform: "translateY(0) rotate(0deg)" },
+          "33%": { transform: "translateY(-5px) rotate(-3deg)" },
+          "66%": { transform: "translateY(3px) rotate(3deg)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -98,6 +116,10 @@ export default {
         "pulse-glow": "pulse-glow 2s ease-in-out infinite",
         "emoji-float": "emoji-float 4.5s ease-out forwards",
         "emoji-wobble": "emoji-wobble 0.5s ease-in-out infinite",
+        "nav-pop": "nav-pop 2s ease-in-out infinite",
+        "nav-compass": "nav-compass 10s linear infinite",
+        "nav-cart": "nav-cart 1.8s ease-in-out infinite",
+        "sticker-drift": "sticker-drift 3.5s ease-in-out infinite",
       },
     },
   },
