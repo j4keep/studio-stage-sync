@@ -244,7 +244,7 @@ const ProtectedRoutes = () => {
         <Route path="/helpdesk" element={<HelpDeskPage />} />
         <Route path="/ask-jhi" element={<AskJhiPage />} />
         <Route path="/explore" element={<ComingSoonPage title="Explore" />} />
-        <Route path="/communities" element={<ComingSoonPage title="Communities" />} />
+        <Route path="/communities" element={<Navigate to="/store" replace />} />
         <Route path="/tv/*" element={<Navigate to="/" replace />} />
         <Route path="/podcast/*" element={<Navigate to="/" replace />} />
         <Route path="/wstudio/*" element={<Navigate to="/" replace />} />
