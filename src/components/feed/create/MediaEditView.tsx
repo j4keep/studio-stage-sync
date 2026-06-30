@@ -342,7 +342,17 @@ export default function MediaEditView({
       {/* Full-screen media (hidden during crop — crop view shows its own preview) */}
       {previewUrl && activeTool !== "crop" &&
         (mediaType === "video" ? (
-          <video src={previewUrl} className="absolute inset-0 w-full h-full object-cover" playsInline loop muted={meta.muteOriginal} autoPlay />
+          <video
+            src={previewUrl}
+            className="absolute inset-0 w-full h-full object-cover"
+            playsInline
+            loop
+            muted={meta.muteOriginal}
+            autoPlay
+            onLoadedMetadata={(e) => {
+              e.currentTarget.volume = 1;
+            }}
+          />
         ) : (
           <img src={previewUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
         ))}
@@ -595,6 +605,9 @@ export default function MediaEditView({
             loop
             muted={meta.muteOriginal}
             autoPlay
+            onLoadedMetadata={(e) => {
+              e.currentTarget.volume = 1;
+            }}
           />
           <div
             className="absolute inset-x-0 z-[105] px-6 py-4 bg-gradient-to-t from-black/90 to-transparent editor-touch-none"

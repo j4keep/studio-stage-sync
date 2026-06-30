@@ -5,14 +5,29 @@ export type CameraFacing = "user" | "environment";
 const PHOTO_JPEG_QUALITY = 0.94;
 
 /**
- * Raw mic — no voice isolation or echo removal.
- * Picks up speech, room sound, and nearby music (e.g. car radio) like the native phone camera.
+ * Natural mic — keeps room/radio audio, boosts overall level like a phone camera.
+ * Echo/noise processing OFF so car speakers and ambient music are not stripped.
+ * Auto-gain ON so vocals + background are not recorded whisper-quiet.
  */
 const NATURAL_MIC: MediaTrackConstraints = {
   echoCancellation: false,
   noiseSuppression: false,
-  autoGainControl: false,
+  autoGainControl: true,
 };
+
+async function tuneMicTrack(stream: MediaStream) {
+  await Promise.all(
+    stream.getAudioTracks().map((track) =>
+      track
+        .applyConstraints({
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: true,
+        })
+        .catch(() => {}),
+    ),
+  );
+}
 
 async function openCameraStream(facing: CameraFacing): Promise<MediaStream | null> {
   if (!navigator.mediaDevices?.getUserMedia) return null;
@@ -41,6 +56,7 @@ async function openCameraStream(facing: CameraFacing): Promise<MediaStream | nul
     try {
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       if (stream.getAudioTracks().length > 0) {
+        await tuneMicTrack(stream);
         return stream;
       }
       stream.getTracks().forEach((t) => t.stop());
@@ -141,15 +157,14 @@ export function createVideoRecorder(stream: MediaStream, mimeType = ""): MediaRe
   const attempts: MediaRecorderOptions[] = [];
 
   if (supportedMimeType) {
-    // Default options first — most reliable on mobile Safari/Chrome.
-    attempts.push({ mimeType: supportedMimeType });
     if (hasAudio) {
       attempts.push({
         mimeType: supportedMimeType,
-        audioBitsPerSecond: 128_000,
+        audioBitsPerSecond: 256_000,
         videoBitsPerSecond: 2_500_000,
       });
     }
+    attempts.push({ mimeType: supportedMimeType });
   }
 
   attempts.push({});
