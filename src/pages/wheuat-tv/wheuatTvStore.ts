@@ -1,5 +1,5 @@
 /**
- * Public WHEUAT.TV store backed by Supabase + Cloudflare R2.
+ * Public JHi.TV store backed by Supabase + Cloudflare R2.
  *
  * Anyone (signed-in or anon) can list/watch posts.
  * Authenticated users can publish/like/comment/delete their own.
@@ -152,7 +152,7 @@ export const WheuatTv = {
   },
 
   /**
-   * Publish a video to WHEUAT.TV. Uploads the blob to R2, then inserts a row
+   * Publish a video to JHi.TV. Uploads the blob to R2, then inserts a row
    * so it becomes visible to every user on every device.
    */
   async publish(input: {
@@ -167,7 +167,7 @@ export const WheuatTv = {
   }): Promise<WheuatTvItem | null> {
     const { data: auth } = await supabase.auth.getUser();
     const user = auth.user;
-    if (!user) throw new Error("Sign in to publish to WHEUAT.TV");
+    if (!user) throw new Error("Sign in to publish to JHi.TV");
 
     const ext = (input.ext || (input.blob.type.split("/")[1] || "mp4")).toLowerCase();
     const mime = input.mime || input.blob.type || "video/mp4";

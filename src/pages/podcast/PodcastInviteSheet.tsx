@@ -207,7 +207,7 @@ export default function PodcastInviteSheet({
               />
               <Button onClick={sendManual} disabled={!manual.trim()} className="shrink-0">Send</Button>
             </div>
-            <p className="text-[11px] text-zinc-500 mt-1.5">Sends an internal invitation to the WHEUAT user.</p>
+            <p className="text-[11px] text-zinc-500 mt-1.5">Sends an internal invitation to the JHi user.</p>
           </section>
 
           {/* Session Security (host only) */}

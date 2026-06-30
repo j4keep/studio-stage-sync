@@ -41,7 +41,7 @@ const ThemePickerSheet = ({ isOnboarding = false, onComplete }: ThemePickerSheet
             <Palette className="w-7 h-7 text-primary-foreground" />
           </div>
           <h2 className="text-2xl font-display font-bold text-foreground mb-1">Choose Your Vibe</h2>
-          <p className="text-sm text-muted-foreground text-center">Pick a theme color for your WHEUAT experience</p>
+          <p className="text-sm text-muted-foreground text-center">Pick a theme color for your JHi experience</p>
         </motion.div>
       )}
 
@@ -112,7 +112,7 @@ const ThemePickerSheet = ({ isOnboarding = false, onComplete }: ThemePickerSheet
         disabled={saving}
         className="w-full py-3 rounded-xl gradient-primary text-primary-foreground font-display font-bold text-sm glow-primary disabled:opacity-50"
       >
-        {saving ? "Saving..." : isOnboarding ? "Continue to WHEUAT" : "Save Theme"}
+        {saving ? "Saving..." : isOnboarding ? "Continue to JHi" : "Save Theme"}
       </button>
 
       {isOnboarding && (

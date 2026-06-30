@@ -105,7 +105,7 @@ const WheuatTvPage = () => {
         mime: file.type || "video/mp4",
         ext,
       });
-      toast({ title: "Published to WHEUAT.TV", description: title });
+      toast({ title: "Published to JHi.TV", description: title });
       await refresh();
     } catch (e: any) {
       toast({ title: "Upload failed", description: e?.message || String(e), variant: "destructive" });
@@ -121,7 +121,7 @@ const WheuatTvPage = () => {
           <ArrowLeft className="w-4 h-4 text-foreground" />
         </button>
         <div className="flex-1">
-          <h1 className="text-xl font-display font-bold text-foreground leading-none">WHEUAT.TV</h1>
+          <h1 className="text-xl font-display font-bold text-foreground leading-none">JHi.TV</h1>
           <p className="text-[11px] text-muted-foreground">Publish to the public TV feed</p>
         </div>
         <button

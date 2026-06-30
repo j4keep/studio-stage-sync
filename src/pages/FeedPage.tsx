@@ -14,7 +14,7 @@ const TABS: { id: TabId; label: string; route: string; icon: typeof RadioIcon }[
   { id: "radio", label: "Radio", route: "/radio", icon: RadioIcon },
   { id: "battle", label: "Battle", route: "/battles", icon: Swords },
   { id: "songs", label: "Songs", route: "/browse-songs", icon: Music2 },
-  { id: "wheuat-tv", label: "WHEUAT.TV", route: "/tv/watch", icon: Tv },
+  { id: "wheuat-tv", label: "JHi.TV", route: "/tv/watch", icon: Tv },
   { id: "support", label: "Support", route: "/my-projects", icon: Heart },
 ];
 
@@ -90,7 +90,7 @@ const FeedPage = () => {
       {/* Header overlay */}
       <div className={`absolute top-0 left-0 right-0 z-50 px-4 pt-[calc(env(safe-area-inset-top)+0.625rem)] pb-3 bg-gradient-to-b from-black/85 via-black/50 to-transparent pointer-events-none transition-all duration-300 ${chromeHidden ? "-translate-y-full opacity-0" : "translate-y-0 opacity-100"}`}>
         <div className="flex items-center justify-between text-white pointer-events-auto">
-          <h1 className="text-xl font-black tracking-tight leading-none">WHEUAT</h1>
+          <h1 className="text-xl font-black tracking-tight leading-none">JHi</h1>
           <div className="flex items-center gap-1">
             <button onClick={() => navigate("/browse-songs")} className="w-9 h-9 flex items-center justify-center rounded-full active:bg-white/10" aria-label="Search">
               <Search className="w-[1.35rem] h-[1.35rem]" strokeWidth={2.25} />

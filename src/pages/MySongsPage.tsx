@@ -156,14 +156,14 @@ const MySongsPage = () => {
     setSongs(prev => prev.map(s => s.id === songId ? { ...s, on_radio: true, genre: selectedGenre } : s));
     setPublishingSongId(null);
     setSelectedGenre("");
-    toast({ title: "Published to Radio! 📻", description: `Song is now live on WHEUAT Radio under ${selectedGenre}` });
+    toast({ title: "Published to Radio! 📻", description: `Song is now live on JHi Radio under ${selectedGenre}` });
   };
 
   const handleRemoveFromRadio = async (songId: string) => {
     const { error } = await (supabase as any).from("songs").update({ on_radio: false, genre: null }).eq("id", songId);
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
     setSongs(prev => prev.map(s => s.id === songId ? { ...s, on_radio: false, genre: undefined } : s));
-    toast({ title: "Removed from Radio", description: "Song is no longer on WHEUAT Radio" });
+    toast({ title: "Removed from Radio", description: "Song is no longer on JHi Radio" });
   };
 
   const openEditSong = (song: Song) => {
@@ -372,7 +372,7 @@ const MySongsPage = () => {
                   >
                     <div className="mt-1 p-3 rounded-xl bg-primary/5 border border-primary/20">
                       <p className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
-                        <Radio className="w-3.5 h-3.5 text-primary" /> Publish to WHEUAT Radio
+                        <Radio className="w-3.5 h-3.5 text-primary" /> Publish to JHi Radio
                       </p>
                       <p className="text-[10px] text-muted-foreground mb-3">Select a genre so listeners can find your song in the right station.</p>
                       <div className="relative mb-3">

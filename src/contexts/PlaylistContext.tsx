@@ -32,7 +32,7 @@ const sampleLibrary: PlaylistItem[] = [
   { id: "s4", title: "Echoes", artist: "Luna Wave", type: "song", image: album4, duration: "4:01" },
   { id: "v1", title: "Behind The Scenes", artist: "Vega Luxe", type: "video", image: musicvideo1, duration: "12:30" },
   { id: "v2", title: "Live Session", artist: "K. Nova", type: "video", image: musicvideo2, duration: "8:45" },
-  { id: "p1", title: "The Artist Journey Ep.5", artist: "WHEUAT Radio", type: "podcast", image: podcast1, duration: "32:00" },
+  { id: "p1", title: "The Artist Journey Ep.5", artist: "JHi Radio", type: "podcast", image: podcast1, duration: "32:00" },
 ];
 
 interface PlaylistContextType {
