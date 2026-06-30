@@ -17,16 +17,9 @@ import BattlesPage from "./pages/BattlesPage";
 import MusicBattlePlayerPage from "./pages/MusicBattlePlayerPage";
 import ArtistProfilePage from "./pages/ArtistProfilePage";
 import RadioPage from "./pages/RadioPage";
-import TvHomePage from "./pages/TvHomePage";
 import StudiosPage from "./pages/StudiosPage";
 import MyStudiosPage from "./pages/MyStudiosPage";
 import MyBookingsPage from "./pages/MyBookingsPage";
-import WStudioDawPage from "./pages/WStudioDawPage";
-import { WStudioLayout } from "./wstudio/WStudioLayout";
-import SessionJoinScreen from "./wstudio/session/SessionJoinScreen";
-import SessionDawScreen from "./wstudio/session/SessionDawScreen";
-import UnifiedSessionScreen from "./wstudio/session/UnifiedSessionScreen";
-import StudioBridgeScreen from "./wstudio/bridge/StudioBridgeScreen";
 
 import ProfilePage from "./pages/ProfilePage";
 import TermsPage from "./pages/TermsPage";
@@ -57,13 +50,7 @@ import AdminTicketsPage from "./pages/AdminTicketsPage";
 import AdminSoundLibraryPage from "./pages/AdminSoundLibraryPage";
 import AskJhiPage from "./pages/AskJhiPage";
 
-import LivePodcastLobbyPage from "./pages/podcast/LivePodcastLobbyPage";
-import PodcastContactsPage from "./pages/podcast/PodcastContactsPage";
-import PodcastStudioPage from "./pages/podcast/PodcastStudioPage";
-import PodcastJoinPage from "./pages/podcast/PodcastJoinPage";
-import PodcastRoomPage from "./pages/podcast/PodcastRoomPage";
-import WheuatTvPage from "./pages/wheuat-tv/WheuatTvPage";
-import WheuatTvWatchPage from "./pages/wheuat-tv/WheuatTvWatchPage";
+
 import { SessionProvider } from "./wstudio/session/SessionContext";
 
 import TermsAgreementGate from "./components/TermsAgreementGate";
@@ -71,6 +58,14 @@ import ThemePickerSheet from "./components/ThemePickerSheet";
 
 
 const queryClient = new QueryClient();
+
+const ComingSoonPage = ({ title }: { title: string }) => (
+  <div className="px-6 pt-20 pb-24 max-w-md mx-auto text-center">
+    <div className="w-14 h-14 rounded-2xl bg-primary/10 mx-auto mb-4 flex items-center justify-center text-2xl">✨</div>
+    <h1 className="text-xl font-display font-bold text-foreground mb-2">{title}</h1>
+    <p className="text-sm text-muted-foreground">Coming soon.</p>
+  </div>
+);
 const STARTUP_TIMEOUT_MS = 2500;
 
 // Take A Break guard: blocks Feed / Battles / social discovery while toggle is ON.
@@ -248,36 +243,19 @@ const ProtectedRoutes = () => {
         <Route path="/my-boosts" element={<MyBoostsPage />} />
         <Route path="/helpdesk" element={<HelpDeskPage />} />
         <Route path="/ask-jhi" element={<AskJhiPage />} />
-        <Route path="/tv" element={<TvHomePage />} />
-        <Route path="/tv/wheuat" element={<WheuatTvPage />} />
-        <Route path="/tv/watch" element={<WheuatTvWatchPage />} />
-        <Route path="/tv/podcast" element={<LivePodcastLobbyPage />} />
-        <Route path="/tv/podcast/join/:code" element={<PodcastJoinPage />} />
-        <Route path="/tv/podcast/:episodeId" element={<PodcastRoomPage />} />
-        <Route path="/tv/podcast/:episodeId/edit" element={<PodcastRoomPage />} />
-        <Route path="/tv/podcast/:episodeId/recording/:recordingId/editor" element={<PodcastStudioPage />} />
-        <Route path="/podcast/room/:sessionId" element={<PodcastRoomPage />} />
-        <Route path="/podcast/contacts" element={<PodcastContactsPage />} />
+        <Route path="/explore" element={<ComingSoonPage title="Explore" />} />
+        <Route path="/communities" element={<ComingSoonPage title="Communities" />} />
+        <Route path="/tv/*" element={<Navigate to="/" replace />} />
+        <Route path="/podcast/*" element={<Navigate to="/" replace />} />
+        <Route path="/wstudio/*" element={<Navigate to="/" replace />} />
+        <Route path="/ai-studio" element={<Navigate to="/" replace />} />
         <Route path="/circle" element={<Navigate to="/" replace />} />
         <Route path="/circle/*" element={<Navigate to="/" replace />} />
         <Route path="/m/*" element={<Navigate to="/" replace />} />
         <Route path="/studios" element={<StudiosPage />} />
         <Route path="/my-studios" element={<MyStudiosPage />} />
         <Route path="/my-bookings" element={<MyBookingsPage />} />
-        <Route path="/wstudio/daw" element={<WStudioDawPage />} />
-        <Route path="/wstudio" element={<WStudioLayout />}>
-          <Route index element={<Navigate to="session/join" replace />} />
-          <Route path="session/join" element={<SessionJoinScreen />} />
-          <Route path="session/live" element={<SessionDawScreen />} />
-          <Route path="session/artist" element={<SessionDawScreen />} />
-          <Route path="session/engineer" element={<SessionDawScreen />} />
-          <Route path="session/classic" element={<UnifiedSessionScreen />} />
-          <Route path="session/bridge" element={<StudioBridgeScreen />} />
-          <Route path="session" element={<Navigate to="/wstudio/session/join" replace />} />
-          <Route path="artist" element={<Navigate to="/wstudio/session/live" replace />} />
-          <Route path="engineer" element={<Navigate to="/wstudio/session/live" replace />} />
-        </Route>
-        <Route path="/ai-studio" element={<Navigate to="/wstudio/session/join" replace />} />
+
         <Route path="/admin/tickets" element={<AdminTicketsPage />} />
         <Route path="/admin/sounds" element={<AdminSoundLibraryPage />} />
         <Route path="/battles" element={<BreakGuard><BattlesPage /></BreakGuard>} />
