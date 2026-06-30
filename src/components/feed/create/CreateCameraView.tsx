@@ -5,6 +5,10 @@ import {
   releaseCameraStream,
   capturePhotoFromStream,
   createVideoRecorder,
+  pickVideoRecorderMimeType,
+  streamHasLiveAudio,
+  cloneStreamForRecording,
+  fileExtensionForMime,
 } from "@/lib/create-camera";
 
 interface Props {
@@ -36,6 +40,7 @@ export default function CreateCameraView({
   const [recording, setRecording] = useState(false);
   const [ready, setReady] = useState(false);
   const [starting, setStarting] = useState(false);
+  const [micMissing, setMicMissing] = useState(false);
 
   const attachStream = useCallback(async (stream: MediaStream) => {
     streamRef.current = stream;
@@ -56,6 +61,7 @@ export default function CreateCameraView({
 
     setReady(true);
     setDenied(false);
+    setMicMissing(!streamHasLiveAudio(stream));
   }, []);
 
   const stopStream = useCallback(() => {
@@ -147,25 +153,35 @@ export default function CreateCameraView({
     );
   };
 
-  const pickRecorderMime = () => {
-    const types = [
-      "video/mp4",
-      "video/webm;codecs=vp9,opus",
-      "video/webm;codecs=vp8,opus",
-      "video/webm",
-      "video/quicktime",
-    ];
-    return types.find((t) => MediaRecorder.isTypeSupported(t)) ?? "";
-  };
-
-  const startRecording = () => {
-    const stream = streamRef.current;
+  const startRecording = async () => {
+    let stream = streamRef.current;
     if (!stream || recording) return;
 
+    if (!streamHasLiveAudio(stream)) {
+      const fresh = await warmCameraStream(facing);
+      if (fresh && streamHasLiveAudio(fresh)) {
+        if (ownsStreamRef.current) {
+          releaseCameraStream(stream);
+        }
+        ownsStreamRef.current = true;
+        await attachStream(fresh);
+        stream = fresh;
+        setMicMissing(false);
+      } else {
+        setMicMissing(true);
+        return;
+      }
+    }
+
+    stream.getAudioTracks().forEach((track) => {
+      track.enabled = true;
+    });
+
+    const recordStream = cloneStreamForRecording(stream);
     chunksRef.current = [];
 
     try {
-      const rec = createVideoRecorder(stream, pickRecorderMime());
+      const rec = createVideoRecorder(recordStream, pickVideoRecorderMimeType());
       recorderRef.current = rec;
 
       rec.ondataavailable = (e) => {
@@ -173,22 +189,18 @@ export default function CreateCameraView({
       };
 
       rec.onstop = () => {
-        const blob = new Blob(chunksRef.current, {
-          type: rec.mimeType || "video/mp4",
-        });
-        const ext =
-          rec.mimeType.includes("mp4") || rec.mimeType.includes("quicktime")
-            ? "mp4"
-            : "webm";
+        const mime = rec.mimeType || pickVideoRecorderMimeType() || "video/webm";
+        const blob = new Blob(chunksRef.current, { type: mime });
+        const ext = fileExtensionForMime(mime);
 
-        stopStream();
         onCapture(
           new File([blob], `video-${Date.now()}.${ext}`, {
-            type: blob.type || "video/mp4",
+            type: blob.type,
           }),
           "video",
         );
         setRecording(false);
+        stopStream();
       };
 
       rec.start(250);
@@ -199,8 +211,14 @@ export default function CreateCameraView({
   };
 
   const stopRecording = () => {
-    if (recorderRef.current?.state === "recording") {
-      recorderRef.current.stop();
+    const rec = recorderRef.current;
+    if (rec?.state === "recording") {
+      try {
+        rec.requestData();
+      } catch {
+        /* ignore */
+      }
+      rec.stop();
     }
   };
 
@@ -210,7 +228,7 @@ export default function CreateCameraView({
     } else if (recording) {
       stopRecording();
     } else {
-      startRecording();
+      void startRecording();
     }
   };
 
@@ -246,6 +264,12 @@ export default function CreateCameraView({
       {starting && !ready && !denied && (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/50">
           <div className="w-10 h-10 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+        </div>
+      )}
+
+      {micMissing && ready && !recording && (
+        <div className="absolute top-[calc(env(safe-area-inset-top)+3.5rem)] left-4 right-4 z-30 px-4 py-2 rounded-xl bg-amber-500/90 text-black text-xs font-semibold text-center">
+          Microphone not detected — check browser permissions and try flipping the camera.
         </div>
       )}
 

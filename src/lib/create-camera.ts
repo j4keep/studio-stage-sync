@@ -11,6 +11,13 @@ const VIDEO_MIC_AUDIO: MediaTrackConstraints = {
   autoGainControl: true,
 };
 
+function isAppleMobile(): boolean {
+  return (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  );
+}
+
 async function openCameraStream(facing: CameraFacing): Promise<MediaStream | null> {
   if (!navigator.mediaDevices?.getUserMedia) return null;
 
@@ -36,7 +43,11 @@ async function openCameraStream(facing: CameraFacing): Promise<MediaStream | nul
 
   for (const constraints of attempts) {
     try {
-      return await navigator.mediaDevices.getUserMedia(constraints);
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      if (stream.getAudioTracks().length > 0) {
+        return stream;
+      }
+      stream.getTracks().forEach((t) => t.stop());
     } catch {
       /* try simpler fallback */
     }
@@ -50,6 +61,19 @@ export async function warmCameraStream(facing: CameraFacing = "user"): Promise<M
 
 export function releaseCameraStream(stream: MediaStream | null | undefined) {
   stream?.getTracks().forEach((t) => t.stop());
+}
+
+export function streamHasLiveAudio(stream: MediaStream | null | undefined): boolean {
+  return (
+    !!stream &&
+    stream.getAudioTracks().some((t) => t.readyState === "live" && t.enabled)
+  );
+}
+
+/** Clone active tracks into a fresh stream for MediaRecorder. */
+export function cloneStreamForRecording(stream: MediaStream): MediaStream {
+  const tracks = [...stream.getVideoTracks(), ...stream.getAudioTracks()];
+  return new MediaStream(tracks);
 }
 
 async function captureWithCanvas(video: HTMLVideoElement, mirror: boolean): Promise<Blob | null> {
@@ -88,15 +112,16 @@ export async function capturePhotoFromStream(
   return captureWithCanvas(video, options.mirror ?? false);
 }
 
-function pickSupportedRecorderMimeType(preferred?: string): string | undefined {
-  const candidates = [
-    preferred,
-    "video/mp4",
-    "video/webm;codecs=vp9,opus",
-    "video/webm;codecs=vp8,opus",
-    "video/webm",
-    "video/quicktime",
-  ].filter(Boolean) as string[];
+/** Prefer codecs that reliably mux microphone audio with video. */
+export function pickVideoRecorderMimeType(): string {
+  const candidates = isAppleMobile()
+    ? ["video/mp4", "video/webm;codecs=vp8,opus", "video/webm"]
+    : [
+        "video/webm;codecs=vp9,opus",
+        "video/webm;codecs=vp8,opus",
+        "video/webm",
+        "video/mp4",
+      ];
 
   for (const type of candidates) {
     if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(type)) {
@@ -104,30 +129,41 @@ function pickSupportedRecorderMimeType(preferred?: string): string | undefined {
     }
   }
 
-  return undefined;
+  return "";
 }
 
 export function createVideoRecorder(stream: MediaStream, mimeType = ""): MediaRecorder {
-  const supportedMimeType = pickSupportedRecorderMimeType(mimeType);
+  const supportedMimeType = mimeType || pickVideoRecorderMimeType();
+  const hasAudio = stream.getAudioTracks().length > 0;
 
-  const options: MediaRecorderOptions = {
-    audioBitsPerSecond: 128_000,
-    videoBitsPerSecond: 2_500_000,
-  };
+  const attempts: MediaRecorderOptions[] = [];
 
   if (supportedMimeType) {
-    options.mimeType = supportedMimeType;
-  }
-
-  try {
-    return new MediaRecorder(stream, options);
-  } catch {
-    try {
-      return supportedMimeType
-        ? new MediaRecorder(stream, { mimeType: supportedMimeType })
-        : new MediaRecorder(stream);
-    } catch {
-      return new MediaRecorder(stream);
+    // Default options first — most reliable on mobile Safari/Chrome.
+    attempts.push({ mimeType: supportedMimeType });
+    if (hasAudio) {
+      attempts.push({
+        mimeType: supportedMimeType,
+        audioBitsPerSecond: 128_000,
+        videoBitsPerSecond: 2_500_000,
+      });
     }
   }
+
+  attempts.push({});
+
+  for (const options of attempts) {
+    try {
+      return new MediaRecorder(stream, options);
+    } catch {
+      continue;
+    }
+  }
+
+  return new MediaRecorder(stream);
+}
+
+export function fileExtensionForMime(mimeType: string): string {
+  if (mimeType.includes("mp4") || mimeType.includes("quicktime")) return "mp4";
+  return "webm";
 }

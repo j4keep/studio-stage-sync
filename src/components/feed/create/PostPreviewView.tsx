@@ -142,7 +142,7 @@ export default function PostPreviewView({
           >
             {previewUrl &&
               (mediaType === "video" ? (
-                <video src={previewUrl} className="w-full h-full object-cover pointer-events-none" muted playsInline />
+                <video src={previewUrl} className="w-full h-full object-cover pointer-events-none" playsInline />
               ) : (
                 <img src={previewUrl} alt="" className="w-full h-full object-cover pointer-events-none" />
               ))}
