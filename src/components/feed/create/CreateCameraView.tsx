@@ -64,9 +64,13 @@ export default function CreateCameraView({
     setMicMissing(!streamHasLiveAudio(stream));
   }, []);
 
-  const stopStream = useCallback(() => {
-    if (ownsStreamRef.current) {
+  const stopStream = useCallback((forceReleaseTracks = false) => {
+    if (ownsStreamRef.current || forceReleaseTracks) {
       releaseCameraStream(streamRef.current);
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+      try { videoRef.current.load(); } catch { /* ignore */ }
     }
     streamRef.current = null;
     setReady(false);
@@ -142,8 +146,8 @@ export default function CreateCameraView({
   const takePhoto = async () => {
     const video = videoRef.current;
     const stream = streamRef.current;
-    if (!video || !stream || !ready) return;
-
+    stopStream(true);
+    resetIosAudioSessionToPlayback();
     const blob = await capturePhotoFromStream(stream, video, {
       mirror: facing === "user",
     });
@@ -191,11 +195,11 @@ export default function CreateCameraView({
       rec.ondataavailable = (e) => {
         if (e.data.size) chunksRef.current.push(e.data);
       };
-
-      rec.onstop = () => {
-        const mime = rec.mimeType || pickVideoRecorderMimeType() || "video/webm";
-        const blob = new Blob(chunksRef.current, { type: mime });
         const ext = fileExtensionForMime(mime);
+
+        setRecording(false);
+        stopStream(true);
+        recorderRef.current = null;
 
         setRecording(false);
         stopStream();

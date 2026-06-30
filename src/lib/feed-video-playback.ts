@@ -100,22 +100,29 @@ function forceBrowserAudioSession(type: BrowserAudioSessionType): void {
       audioSession?: { type?: BrowserAudioSessionType };
     };
     if (nav.audioSession) nav.audioSession.type = type;
+export function resetIosAudioSessionToPlayback(): void {
+  try {
+    // iOS Safari pins the page into the "PlayAndRecord" audio session as soon as
+    // getUserMedia({audio:true}) runs, routing audio to the quiet earpiece.
+    // Playing a brief non-zero volume silent sound nudges it back to Playback.
+    const a = new Audio(SILENT_WAV);
+    a.volume = 0.01;
+    const p = a.play();
+    if (p && typeof p.then === "function") {
+      p.then(() => {
+        window.setTimeout(() => {
+          try {
+            a.pause();
+            a.src = "";
+            a.load();
+          } catch { /* ignore */ }
+        }, 100);
+      }).catch(() => {});
+    }
   } catch {
-    /* unsupported */
+    /* ignore */
   }
 }
-
-/**
- * iOS Safari pins the page into the "PlayAndRecord" audio session as soon as
- * getUserMedia({audio:true}) runs, which routes <video>/<audio> playback to
- * the quiet earpiece — even after the mic tracks are stopped. Playing a brief
- * silent <audio> element nudges Safari back to the loud "Playback" category
- * so post-capture preview plays through the main speaker.
- */
-const SILENT_WAV =
-  "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
-
-export function resetIosAudioSessionToPlayback(): void {
   try {
     forceBrowserAudioSession("playback");
     const a = new Audio(SILENT_WAV);
