@@ -102,6 +102,25 @@ const FeedPage = () => {
           </div>
         </div>
 
+        {/* Category pills */}
+        <div className="mt-2 w-full flex justify-center pointer-events-auto pb-0.5">
+          <div className="inline-flex max-w-full items-center justify-center gap-1 overflow-x-auto scrollbar-hide px-0.5">
+            {TABS.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => navigate(tab.route)}
+                  className="feed-glass-pill shrink-0 min-w-[3.35rem] px-1.5"
+                >
+                  <Icon className="w-3.5 h-3.5 shrink-0" strokeWidth={2.25} />
+                  <span className="text-[9px] font-semibold leading-none whitespace-nowrap">{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Trending creators strip */}
         {trending.length > 0 && (
           <div className="mt-2.5 flex items-center gap-2.5 overflow-x-auto scrollbar-hide pointer-events-auto -mx-1 px-1 pb-0.5">
@@ -136,22 +155,6 @@ const FeedPage = () => {
           </div>
         )}
 
-        {/* Category pills */}
-        <div className="mt-2.5 flex items-center gap-2 overflow-x-auto scrollbar-hide pointer-events-auto pb-0.5">
-          {TABS.map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => navigate(tab.route)}
-                className="feed-glass-pill shrink-0 min-w-[4.25rem]"
-              >
-                <Icon className="w-4 h-4 shrink-0" strokeWidth={2.25} />
-                <span className="text-[10px] font-semibold leading-none whitespace-nowrap">{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
       </div>
 
       <div
