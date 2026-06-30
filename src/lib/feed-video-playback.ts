@@ -89,3 +89,30 @@ export async function playFeedVideo(
 export function applyFeedAudioElementVolume(audio: HTMLAudioElement) {
   audio.volume = 1;
 }
+
+/**
+ * iOS Safari pins the page into the "PlayAndRecord" audio session as soon as
+ * getUserMedia({audio:true}) runs, which routes <video>/<audio> playback to
+ * the quiet earpiece — even after the mic tracks are stopped. Playing a brief
+ * silent <audio> element nudges Safari back to the loud "Playback" category
+ * so post-capture preview plays through the main speaker.
+ */
+const SILENT_WAV =
+  "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
+
+export function resetIosAudioSessionToPlayback(): void {
+  try {
+    const a = new Audio(SILENT_WAV);
+    a.volume = 0;
+    const p = a.play();
+    if (p && typeof p.then === "function") {
+      p.then(() => {
+        window.setTimeout(() => {
+          try { a.pause(); a.src = ""; } catch { /* ignore */ }
+        }, 60);
+      }).catch(() => {});
+    }
+  } catch {
+    /* ignore */
+  }
+}

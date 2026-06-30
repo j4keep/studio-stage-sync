@@ -9,6 +9,7 @@ import {
   streamHasLiveAudio,
   fileExtensionForMime,
 } from "@/lib/create-camera";
+import { resetIosAudioSessionToPlayback } from "@/lib/feed-video-playback";
 
 interface Props {
   mode: "photo" | "video";
@@ -146,6 +147,7 @@ export default function CreateCameraView({
     if (!blob) return;
 
     stopStream();
+    resetIosAudioSessionToPlayback();
     onCapture(
       new File([blob], `photo-${Date.now()}.jpg`, { type: "image/jpeg" }),
       "image",
@@ -192,14 +194,19 @@ export default function CreateCameraView({
         const blob = new Blob(chunksRef.current, { type: mime });
         const ext = fileExtensionForMime(mime);
 
+        setRecording(false);
+        stopStream();
+        recorderRef.current = null;
+        // iOS: flip audio session from PlayAndRecord back to Playback so the
+        // post-capture preview plays out the loud speaker, not the earpiece.
+        resetIosAudioSessionToPlayback();
+
         onCapture(
           new File([blob], `video-${Date.now()}.${ext}`, {
             type: blob.type,
           }),
           "video",
         );
-        setRecording(false);
-        stopStream();
       };
 
       rec.start(250);

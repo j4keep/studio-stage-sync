@@ -4,31 +4,6 @@ export type CameraFacing = "user" | "environment";
 
 const PHOTO_JPEG_QUALITY = 0.94;
 
-/**
- * Natural mic — keeps room/radio audio, boosts overall level like a phone camera.
- * Echo/noise processing OFF so car speakers and ambient music are not stripped.
- * Auto-gain ON so vocals + background are not recorded whisper-quiet.
- */
-const NATURAL_MIC: MediaTrackConstraints = {
-  echoCancellation: false,
-  noiseSuppression: false,
-  autoGainControl: true,
-};
-
-async function tuneMicTrack(stream: MediaStream) {
-  await Promise.all(
-    stream.getAudioTracks().map((track) =>
-      track
-        .applyConstraints({
-          echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl: true,
-        })
-        .catch(() => {}),
-    ),
-  );
-}
-
 async function openCameraStream(facing: CameraFacing): Promise<MediaStream | null> {
   if (!navigator.mediaDevices?.getUserMedia) return null;
 
@@ -40,25 +15,15 @@ async function openCameraStream(facing: CameraFacing): Promise<MediaStream | nul
         height: { ideal: 720 },
         frameRate: { ideal: 30 },
       },
-      audio: NATURAL_MIC,
-    },
-    {
-      video: { facingMode: facing },
-      audio: NATURAL_MIC,
-    },
-    {
-      video: { facingMode: facing },
       audio: true,
     },
+    { video: { facingMode: facing }, audio: true },
   ];
 
   for (const constraints of attempts) {
     try {
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      if (stream.getAudioTracks().length > 0) {
-        await tuneMicTrack(stream);
-        return stream;
-      }
+      if (stream.getAudioTracks().length > 0) return stream;
       stream.getTracks().forEach((t) => t.stop());
     } catch {
       /* try simpler fallback */
