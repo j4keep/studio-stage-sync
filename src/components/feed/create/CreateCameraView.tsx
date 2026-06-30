@@ -233,8 +233,13 @@ if (micTracks.length > 0) {
   micSource.connect(destination);
 }
 
+const musicGain = audioCtx.createGain();
+const musicVolume = selectedMusic?.volume ?? 0.85;
+musicGain.gain.value = Math.min(2.5, musicVolume * 1.75);
+
 const musicSource = audioCtx.createMediaStreamSource(musicBundle.stream);
-musicSource.connect(destination);
+musicSource.connect(musicGain);
+musicGain.connect(destination);
 
 if (audioCtx.state === "suspended") {
   await audioCtx.resume().catch(() => {});

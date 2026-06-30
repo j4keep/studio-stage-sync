@@ -159,11 +159,14 @@ return "Original sound";
 const ctx = new AudioContext();
 const destination = ctx.createMediaStreamDestination();
 
-const gain = ctx.createGain();
-gain.gain.value = music?.volume ?? 0.6;
+const recordGain = ctx.createGain();
+recordGain.gain.value = 1;
 
-gain.connect(destination);
-gain.connect(ctx.destination);
+const monitorGain = ctx.createGain();
+monitorGain.gain.value = music?.volume ?? 0.85;
+
+recordGain.connect(destination);
+monitorGain.connect(ctx.destination);
 
 let sourceNode: AudioBufferSourceNode | MediaElementAudioSourceNode | null = null;
 let audioEl: HTMLAudioElement | null = null;
@@ -203,7 +206,8 @@ audioEl.crossOrigin = "anonymous";
 audioEl.loop = !dur;
 
 sourceNode = ctx.createMediaElementSource(audioEl);
-sourceNode.connect(gain);
+sourceNode.connect(recordGain);
+sourceNode.connect(monitorGain);
 
 try {
   await audioEl.play();
@@ -224,7 +228,8 @@ const src = ctx.createBufferSource();
 src.buffer = buffer;
 src.loop = !dur;
 sourceNode = src;
-src.connect(gain);
+src.connect(recordGain);
+src.connect(monitorGain);
 src.start();
 
 }
