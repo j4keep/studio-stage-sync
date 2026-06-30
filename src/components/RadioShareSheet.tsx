@@ -19,7 +19,7 @@ const RadioShareSheet = ({ open, onOpenChange, track }: RadioShareSheetProps) =>
   if (!track) return null;
 
   const handleShare = async (action: string) => {
-    const shareText = `🎵 ${track.title} by ${track.artist_name} on WHEUAT Radio`;
+    const shareText = `🎵 ${track.title} by ${track.artist_name} on JHi Radio`;
     const shareUrl = window.location.href;
 
     switch (action) {

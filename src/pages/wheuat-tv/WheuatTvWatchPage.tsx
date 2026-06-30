@@ -110,7 +110,7 @@ const WheuatTvWatchPage = () => {
 
   const doShare = async (item: WheuatTvItem, channel: "copy" | "whatsapp" | "sms" | "native") => {
     const url = shareUrl(item);
-    const text = `Watch "${item.title}" on WHEUAT.TV`;
+    const text = `Watch "${item.title}" on JHi.TV`;
     if (channel === "copy") {
       await navigator.clipboard.writeText(url);
       toast({ title: "Link copied" });
@@ -131,7 +131,7 @@ const WheuatTvWatchPage = () => {
           <ArrowLeft className="w-4 h-4 text-foreground" />
         </button>
         <div className="flex-1">
-          <h1 className="text-xl font-display font-bold text-foreground leading-none">WHEUAT.TV</h1>
+          <h1 className="text-xl font-display font-bold text-foreground leading-none">JHi.TV</h1>
           <p className="text-[11px] text-muted-foreground">Podcasts · Short films · Music videos</p>
         </div>
       </div>

@@ -45,7 +45,7 @@
     --sidebar-border: 0 0% 15%;
     --sidebar-ring: 204 100% 50%;
 
-    /* Custom WHEUAT tokens */
+    /* Custom JHi tokens */
     --glow-primary: 0 0 20px hsl(204 100% 50% / 0.4);
     --glow-primary-strong: 0 0 30px hsl(204 100% 50% / 0.6);
     --gradient-primary: linear-gradient(135deg, hsl(204 100% 50%), hsl(220 100% 60%));

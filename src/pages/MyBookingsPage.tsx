@@ -337,13 +337,13 @@ const MyBookingsPage = () => {
                       <span className="text-[11px] font-semibold text-foreground">Invite a featured artist</span>
                     </div>
                     <p className="text-[10px] text-muted-foreground mb-2">
-                      Share this link so another WHEUAT artist can join your session for a feature.
+                      Share this link so another JHi artist can join your session for a feature.
                     </p>
                     <div className="flex gap-2">
                       <button
                         onClick={async () => {
                           const url = `${window.location.origin}/wstudio/session/join?code=${booking.session_code}&role=artist`;
-                          const shareText = `🎙️ Join my W.STUDIO session on WHEUAT — code ${booking.session_code}\n${url}`;
+                          const shareText = `🎙️ Join my W.STUDIO session on JHi — code ${booking.session_code}\n${url}`;
                           if (navigator.share) {
                             try {
                               await navigator.share({ title: "Join my session", text: shareText, url });

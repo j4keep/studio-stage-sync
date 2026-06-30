@@ -28,7 +28,7 @@ export const STICKER_CATEGORIES: { id: StickerCategory; label: string }[] = [
   { id: "sports", label: "Sports" },
   { id: "music", label: "Music" },
   { id: "creator", label: "Creator" },
-  { id: "wheuat", label: "WHEUAT" },
+  { id: "wheuat", label: "JHi" },
 ];
 
 export const STICKER_LIBRARY: StickerDef[] = STICKER_ASSETS.map((a) => ({

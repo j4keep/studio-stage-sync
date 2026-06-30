@@ -237,7 +237,7 @@ const AskJhiPage = () => {
           </div>
           <div>
             <h1 className="text-sm font-display font-bold text-foreground">Ask Jhi</h1>
-            <p className="text-[10px] text-muted-foreground">Producer · Engineer · WHEUAT guide</p>
+            <p className="text-[10px] text-muted-foreground">Producer · Engineer · JHi guide</p>
           </div>
         </div>
         {messages.length > 0 && (

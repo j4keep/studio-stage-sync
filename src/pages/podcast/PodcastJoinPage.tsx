@@ -5,7 +5,7 @@ import { Mic } from "lucide-react";
 
 /**
  * Magic-link guest landing page. ProtectedRoutes already enforces auth,
- * so by the time the user lands here they are signed in to WHEUAT. We
+ * so by the time the user lands here they are signed in to JHi. We
  * confirm the join, then drop them into the live podcast studio with the
  * session code in the URL.
  */

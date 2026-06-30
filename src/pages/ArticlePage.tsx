@@ -48,7 +48,7 @@ const ArticlePage = () => {
       return {
         ...data,
         cover_url: resolveImageUrl(data.cover_url),
-        author_name: profile?.display_name || "WHEUAT",
+        author_name: profile?.display_name || "JHi",
       };
     },
     enabled: !!id,

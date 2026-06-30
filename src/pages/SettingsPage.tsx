@@ -166,7 +166,7 @@ const SettingsPage = () => {
         <ActionRow icon={<Info className="w-4 h-4" />} label="Help & Support" onClick={() => navigate("/help")} />
       </Section>
 
-      <p className="text-center text-[10px] text-muted-foreground mt-6">WHEUAT v1.0.0</p>
+      <p className="text-center text-[10px] text-muted-foreground mt-6">JHi v1.0.0</p>
 
       <ProGateModal open={showProModal} onClose={closeProModal} featureName={gatedFeature} />
 
