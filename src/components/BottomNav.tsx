@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Home, User, MessageCircle, AtSign, Mic2 } from "lucide-react";
+import { Home, User, Users, AtSign, Compass } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import ProGateModal from "@/components/ProGateModal";
 import { useProGate } from "@/hooks/use-pro-gate";
