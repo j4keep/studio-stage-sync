@@ -143,7 +143,7 @@ export default function CreateCameraView({
     if (!blob) return;
 
     stopStream(true);
-    resetIosAudioSessionToPlayback();
+    await resetIosAudioSessionToPlayback();
     onCapture(
       new File([blob], `photo-${Date.now()}.jpg`, { type: "image/jpeg" }),
       "image",
@@ -190,14 +190,14 @@ export default function CreateCameraView({
         setRecording(false);
         stopStream(true);
         recorderRef.current = null;
-        resetIosAudioSessionToPlayback();
-
-        onCapture(
-          new File([blob], `video-${Date.now()}.${ext}`, {
-            type: blob.type,
-          }),
-          "video",
-        );
+        void resetIosAudioSessionToPlayback().finally(() => {
+          onCapture(
+            new File([blob], `video-${Date.now()}.${ext}`, {
+              type: blob.type,
+            }),
+            "video",
+          );
+        });
       };
 
       rec.start(250);

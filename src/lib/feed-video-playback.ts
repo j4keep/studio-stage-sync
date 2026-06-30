@@ -122,22 +122,19 @@ export function applyFeedAudioElementVolume(audio: HTMLAudioElement) {
 const SILENT_WAV =
   "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
 
-export function resetIosAudioSessionToPlayback(): void {
+export async function resetIosAudioSessionToPlayback(): Promise<void> {
   try {
     forceBrowserAudioSession("playback");
     const a = new Audio(SILENT_WAV);
     a.volume = 0.01; // Non-zero volume helps trigger the session switch on some iOS versions
-    const p = a.play();
-    if (p && typeof p.then === "function") {
-      p.then(() => {
-        window.setTimeout(() => {
-          try { 
-            a.pause(); 
-            a.src = ""; 
-            a.load();
-          } catch { /* ignore */ }
-        }, 100);
-      }).catch(() => {});
+    await a.play().catch(() => {});
+    await new Promise<void>((resolve) => window.setTimeout(resolve, 100));
+    try {
+      a.pause();
+      a.src = "";
+      a.load();
+    } catch {
+      /* ignore */
     }
   } catch {
     /* ignore */
