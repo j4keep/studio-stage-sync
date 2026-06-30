@@ -107,18 +107,18 @@ const BottomNav = () => {
               onClick={() => void handleCreate()}
               disabled={waving}
               aria-label="Create"
-              className="relative flex items-center justify-center w-16 h-16 -mt-2 shrink-0 rounded-full bg-transparent p-0 border-0 shadow-[0_0_22px_rgba(168,85,247,0.7),0_0_44px_rgba(139,92,246,0.35)] hover:shadow-[0_0_30px_rgba(168,85,247,0.95)] transition-shadow active:scale-95 disabled:opacity-90"
+              className="relative flex items-center justify-center w-12 h-12 shrink-0 rounded-full bg-transparent p-0 border-0 shadow-[0_0_8px_rgba(168,85,247,0.35)] hover:shadow-[0_0_10px_rgba(168,85,247,0.5)] transition-shadow active:scale-95 disabled:opacity-90"
             >
               {waving ? (
                 <span
-                  className="text-[2.25rem] leading-none select-none animate-create-wave origin-[70%_90%]"
+                  className="text-[1.65rem] leading-none select-none animate-create-wave origin-[70%_90%]"
                   role="img"
                   aria-hidden
                 >
                   👋
                 </span>
               ) : (
-                <CreateNavIcon className="w-16 h-16 drop-shadow-[0_0_12px_rgba(168,85,247,0.45)]" />
+                <CreateNavIcon className="w-12 h-12" />
               )}
             </button>
           </div>
