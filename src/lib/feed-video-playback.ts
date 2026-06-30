@@ -5,10 +5,30 @@ export type FeedPlaybackMeta = {
   artist?: string;
 };
 
+type BrowserAudioSessionType =
+  | "auto"
+  | "playback"
+  | "transient"
+  | "transient-solo"
+  | "ambient"
+  | "play-and-record";
+
+function forceBrowserAudioSession(type: BrowserAudioSessionType): void {
+  try {
+    const nav = navigator as Navigator & {
+      audioSession?: { type?: BrowserAudioSessionType };
+    };
+    if (nav.audioSession) nav.audioSession.type = type;
+  } catch {
+    /* unsupported */
+  }
+}
+
 export function applyFeedVideoAudio(
   video: HTMLVideoElement,
   options: { muted: boolean } = { muted: false },
 ) {
+  forceBrowserAudioSession("playback");
   video.volume = 1;
   video.muted = options.muted;
   video.setAttribute("playsinline", "true");
@@ -49,6 +69,7 @@ export function bindFeedMediaSession(
 
   try {
     navigator.mediaSession.setActionHandler("play", () => {
+      forceBrowserAudioSession("playback");
       void source.play().catch(() => {});
     });
     navigator.mediaSession.setActionHandler("pause", () => {
@@ -87,6 +108,7 @@ export async function playFeedVideo(
 }
 
 export function applyFeedAudioElementVolume(audio: HTMLAudioElement) {
+  forceBrowserAudioSession("playback");
   audio.volume = 1;
 }
 
@@ -102,6 +124,7 @@ const SILENT_WAV =
 
 export function resetIosAudioSessionToPlayback(): void {
   try {
+    forceBrowserAudioSession("playback");
     const a = new Audio(SILENT_WAV);
     a.volume = 0.01; // Non-zero volume helps trigger the session switch on some iOS versions
     const p = a.play();
