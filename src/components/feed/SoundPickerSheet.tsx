@@ -146,7 +146,7 @@ const SoundPickerSheet = ({
             onChange={handleAudioFile}
           />
           <p className="text-[11px] text-white/40 mt-4 leading-relaxed">
-            Sound plays over your video in the feed. Your camera recording stays natural — no mixing while you film.
+            Sound replaces your video audio in the feed — like adding a track on TikTok. No studio mixing while you record.
           </p>
         </div>
       </motion.div>

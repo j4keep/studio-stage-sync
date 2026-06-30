@@ -60,6 +60,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
   const [reactionCount, setReactionCount] = useState(0);
   const progressRef = useRef<HTMLDivElement>(null);
   const musicStopRef = useRef<(() => void) | null>(null);
+  const musicAudioRef = useRef<HTMLAudioElement | null>(null);
   const lastTapRef = useRef(0);
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { emojis, spawnEmoji } = useFloatingEmojis();
@@ -89,27 +90,63 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
 
   useEffect(() => {
     if (!videoRef.current) return;
-    const vol = postMeta?.originalVolume ?? 1;
-    videoRef.current.muted = isMuted || postMeta?.muteOriginal === true;
-    videoRef.current.volume = isMuted ? 0 : vol;
-  }, [isMuted, postMeta?.muteOriginal, postMeta?.originalVolume]);
+    const hasAddedSound = Boolean(postMeta?.music?.audioUrl);
+    videoRef.current.muted = isMuted || hasAddedSound || postMeta?.muteOriginal === true;
+    videoRef.current.volume = isMuted ? 0 : (postMeta?.originalVolume ?? 1);
+  }, [isMuted, postMeta?.muteOriginal, postMeta?.originalVolume, postMeta?.music?.audioUrl]);
 
-  // Background music from editor meta
+  // Added sound plays in sync with video — camera audio is muted when a sound is attached.
   useEffect(() => {
     musicStopRef.current?.();
     musicStopRef.current = null;
-    if (!isActive || !postMeta?.music) return;
+    musicAudioRef.current = null;
+    if (!isActive || !postMeta?.music?.audioUrl) return;
 
-    if (postMeta.music.audioUrl) {
-      const dur = postMeta.music.durationSec && postMeta.music.durationSec > 0 ? postMeta.music.durationSec : undefined;
-      const player = playUploadedAudio(postMeta.music.audioUrl, postMeta.music.volume ?? 1, !dur, dur);
-      musicStopRef.current = player.stop;
-      return () => {
-        musicStopRef.current?.();
-        musicStopRef.current = null;
-      };
-    }
-  }, [isActive, postMeta?.music?.audioUrl, postMeta?.music?.volume, postMeta?.music?.durationSec]);
+    const dur =
+      postMeta.music.durationSec && postMeta.music.durationSec > 0
+        ? postMeta.music.durationSec
+        : undefined;
+    const player = playUploadedAudio(postMeta.music.audioUrl, {
+      loop: !dur,
+      maxDurationSec: dur,
+      autoplay: false,
+    });
+    musicAudioRef.current = player.audio;
+    musicStopRef.current = player.stop;
+
+    return () => {
+      musicStopRef.current?.();
+      musicStopRef.current = null;
+      musicAudioRef.current = null;
+    };
+  }, [isActive, postMeta?.music?.audioUrl, postMeta?.music?.durationSec]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    const audio = musicAudioRef.current;
+    if (!video || !audio || !postMeta?.music?.audioUrl || !isActive) return;
+
+    const onPlay = () => {
+      audio.currentTime = video.currentTime;
+      void audio.play().catch(() => {});
+    };
+    const onPause = () => audio.pause();
+    const onSeeked = () => {
+      audio.currentTime = video.currentTime;
+    };
+
+    video.addEventListener("play", onPlay);
+    video.addEventListener("pause", onPause);
+    video.addEventListener("seeked", onSeeked);
+
+    if (!video.paused) onPlay();
+
+    return () => {
+      video.removeEventListener("play", onPlay);
+      video.removeEventListener("pause", onPause);
+      video.removeEventListener("seeked", onSeeked);
+    };
+  }, [isActive, postMeta?.music?.audioUrl, post.id]);
 
   useEffect(() => {
     if (post.media_type !== "video" || !videoRef.current) return;
@@ -557,7 +594,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
           {postMeta?.location && (
             <span className="mt-0.5 block text-[10px] text-white/55">{postMeta.location}</span>
           )}
-          {(postMeta?.music?.loopId || postMeta?.music?.audioUrl) && (
+          {postMeta?.music?.audioUrl && (
             <span className="mt-1 flex items-center gap-1 text-[10px] text-white/70">
               <Volume2 className="w-3 h-3" />
               {getMusicDisplayName(postMeta.music)}

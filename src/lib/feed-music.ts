@@ -6,22 +6,22 @@ export type FeedMusicMeta =
   | {
       audioUrl?: string;
       fileName?: string;
-      /** @deprecated legacy posts only — no volume UI */
-      volume?: number;
       durationSec?: number;
-      /** @deprecated legacy DAW loop posts */
-      loopId?: string;
     }
   | undefined;
 
 export function playUploadedAudio(
   url: string,
-  volume = 1,
-  loop = true,
-  maxDurationSec?: number,
+  options: {
+    loop?: boolean;
+    maxDurationSec?: number;
+    autoplay?: boolean;
+  } = {},
 ): { stop: () => void; audio: HTMLAudioElement } {
+  const { loop = true, maxDurationSec, autoplay = true } = options;
+
   const audio = new Audio(url);
-  audio.volume = volume;
+  audio.volume = 1;
   audio.loop = loop && !(maxDurationSec && maxDurationSec > 0);
 
   let durationTimer: ReturnType<typeof setTimeout> | null = null;
@@ -32,7 +32,9 @@ export function playUploadedAudio(
     audio.src = "";
   };
 
-  void audio.play().catch(() => {});
+  if (autoplay) {
+    void audio.play().catch(() => {});
+  }
 
   if (maxDurationSec && maxDurationSec > 0) {
     durationTimer = setTimeout(stop, maxDurationSec * 1000);
@@ -41,7 +43,7 @@ export function playUploadedAudio(
   return { audio, stop };
 }
 
-/** Preview attached sound during edit/preview — not mixed into camera recording. */
+/** Preview attached sound during edit — plays instead of (muted) camera audio. */
 export function playPostMusic(
   music: FeedMusicMeta,
   filePreviewUrl?: string | null,
@@ -52,7 +54,11 @@ export function playPostMusic(
   const dur =
     music?.durationSec && music.durationSec > 0 ? music.durationSec : undefined;
 
-  return playUploadedAudio(url, 1, !dur, dur);
+  return playUploadedAudio(url, {
+    loop: !dur,
+    maxDurationSec: dur,
+    autoplay: true,
+  });
 }
 
 export function getMusicDisplayName(music?: {

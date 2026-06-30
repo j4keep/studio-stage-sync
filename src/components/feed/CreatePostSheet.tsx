@@ -228,7 +228,6 @@ if (!user) throw new Error("Not authenticated");
         ...meta.music,
         audioUrl: audioUrlData.publicUrl,
         fileName: musicFile.name,
-        volume: 1,
       },
     };
   }
@@ -373,9 +372,9 @@ setMusicPreviewUrl(url);
 
 setEditorMeta((m) => ({
   ...m,
+  muteOriginal: true,
   music: {
     fileName: f.name,
-    volume: 1,
     durationSec: m.music?.durationSec,
   },
 }));
@@ -390,7 +389,7 @@ musicBlobRef.current = null;
 setMusicFile(null);
 setMusicPreviewUrl(null);
 
-setEditorMeta((m) => ({ ...m, music: undefined }));
+setEditorMeta((m) => ({ ...m, music: undefined, muteOriginal: false }));
 
 };
 
