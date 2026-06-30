@@ -97,12 +97,15 @@ export default function CreateCameraView({
 
     (async () => {
       if (initialStream && !cancelled) {
-        ownsStreamRef.current = false;
-        await attachStream(initialStream);
-        return;
+        const live = initialStream.getVideoTracks().some((t) => t.readyState === "live");
+        if (live) {
+          ownsStreamRef.current = false;
+          await attachStream(initialStream);
+          return;
+        }
       }
 
-      if (!initialStream && !cancelled) {
+      if (!cancelled) {
         ownsStreamRef.current = true;
         await startCamera();
       }

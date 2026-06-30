@@ -142,10 +142,25 @@ return () => {
 };
 }, [open, postToEdit]);
 
+const prevStepRef = useRef<Step>("camera");
+
 useEffect(() => {
-  if (!open || step === "camera") return;
-  onReleaseCamera?.();
+  if (!open) {
+    prevStepRef.current = "camera";
+    return;
+  }
+  const prev = prevStepRef.current;
+  prevStepRef.current = step;
+  if (prev === "camera" && step !== "camera") {
+    onReleaseCamera?.();
+  }
 }, [open, step, onReleaseCamera]);
+
+useEffect(() => {
+  if (!open) {
+    setStep("camera");
+  }
+}, [open]);
 
 const revokeBlobs = () => {
 if (previewBlobRef.current) URL.revokeObjectURL(previewBlobRef.current);
@@ -352,7 +367,6 @@ previewBlobRef.current = url;
 
 if (!postToEdit) setEditorMeta(defaultEditorMeta());
 
-onReleaseCamera?.();
 setStep("edit");
 
 };
