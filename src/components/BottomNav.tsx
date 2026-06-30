@@ -5,9 +5,9 @@ import ProGateModal from "@/components/ProGateModal";
 import { useProGate } from "@/hooks/use-pro-gate";
 import { useCreatePostSheet } from "@/hooks/use-create-post-sheet";
 import CreatePostSheet from "@/components/feed/CreatePostSheet";
-import jhiLogo from "@/assets/jhi-logo.png";
+import jhiHi from "@/assets/jhi-hi.png";
 
-const CREATE_WAVE_MS = 650;
+const CREATE_WAVE_MS = 720;
 
 const BottomNav = () => {
   const location = useLocation();
@@ -107,19 +107,24 @@ const BottomNav = () => {
               onClick={() => void handleCreate()}
               disabled={waving}
               aria-label="Create"
-              className="relative flex items-center justify-center w-12 h-12 rounded-full bg-black/80 border-2 border-violet-400 text-violet-300 shadow-[0_0_20px_rgba(168,85,247,0.75),0_0_40px_rgba(139,92,246,0.35)] hover:shadow-[0_0_28px_rgba(168,85,247,0.95)] transition-shadow active:scale-95 disabled:opacity-90"
+              className="relative flex items-center justify-center w-12 h-12 rounded-full bg-black/80 border-2 border-violet-400 shadow-[0_0_20px_rgba(168,85,247,0.75),0_0_40px_rgba(139,92,246,0.35)] hover:shadow-[0_0_28px_rgba(168,85,247,0.95)] transition-shadow active:scale-95 disabled:opacity-90"
             >
-              <div
-                className={`relative h-6 w-8 overflow-hidden origin-bottom-right ${waving ? "animate-create-wave" : ""}`}
-              >
+              {waving ? (
+                <span
+                  className="text-[1.65rem] leading-none select-none animate-create-wave origin-[70%_90%]"
+                  role="img"
+                  aria-hidden
+                >
+                  👋
+                </span>
+              ) : (
                 <img
-                  src={jhiLogo}
+                  src={jhiHi}
                   alt="hi"
-                  className="absolute top-0 h-[2.75rem] w-auto max-w-none pointer-events-none select-none"
-                  style={{ left: "-52%" }}
+                  className="h-7 w-auto max-w-[2.25rem] object-contain pointer-events-none select-none drop-shadow-[0_0_10px_rgba(168,85,247,0.55)]"
                   draggable={false}
                 />
-              </div>
+              )}
               <span className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-violet-400/50 animate-pulse" />
             </button>
           </div>
