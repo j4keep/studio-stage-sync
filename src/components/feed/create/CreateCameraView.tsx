@@ -7,7 +7,6 @@ import {
   createVideoRecorder,
   pickVideoRecorderMimeType,
   streamHasLiveAudio,
-  cloneStreamForRecording,
   fileExtensionForMime,
 } from "@/lib/create-camera";
 
@@ -177,11 +176,11 @@ export default function CreateCameraView({
       track.enabled = true;
     });
 
-    const recordStream = cloneStreamForRecording(stream);
+    // Record the live camera stream as-is — one organic mic track, no app mixing.
     chunksRef.current = [];
 
     try {
-      const rec = createVideoRecorder(recordStream, pickVideoRecorderMimeType());
+      const rec = createVideoRecorder(stream, pickVideoRecorderMimeType());
       recorderRef.current = rec;
 
       rec.ondataavailable = (e) => {
@@ -241,6 +240,7 @@ export default function CreateCameraView({
           playsInline
           muted
           autoPlay
+          // Preview muted to prevent speaker feedback — recording still captures all mic input.
           style={{ transform: facing === "user" ? "scaleX(-1)" : undefined }}
         />
       )}

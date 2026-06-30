@@ -4,19 +4,15 @@ export type CameraFacing = "user" | "environment";
 
 const PHOTO_JPEG_QUALITY = 0.94;
 
-/** Standard video mic — same defaults phones use for camera recording. */
-const VIDEO_MIC_AUDIO: MediaTrackConstraints = {
-  echoCancellation: true,
-  noiseSuppression: true,
-  autoGainControl: true,
+/**
+ * Raw mic — no voice isolation or echo removal.
+ * Picks up speech, room sound, and nearby music (e.g. car radio) like the native phone camera.
+ */
+const NATURAL_MIC: MediaTrackConstraints = {
+  echoCancellation: false,
+  noiseSuppression: false,
+  autoGainControl: false,
 };
-
-function isAppleMobile(): boolean {
-  return (
-    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
-  );
-}
 
 async function openCameraStream(facing: CameraFacing): Promise<MediaStream | null> {
   if (!navigator.mediaDevices?.getUserMedia) return null;
@@ -29,11 +25,11 @@ async function openCameraStream(facing: CameraFacing): Promise<MediaStream | nul
         height: { ideal: 720 },
         frameRate: { ideal: 30 },
       },
-      audio: VIDEO_MIC_AUDIO,
+      audio: NATURAL_MIC,
     },
     {
       video: { facingMode: facing },
-      audio: VIDEO_MIC_AUDIO,
+      audio: NATURAL_MIC,
     },
     {
       video: { facingMode: facing },
@@ -72,8 +68,14 @@ export function streamHasLiveAudio(stream: MediaStream | null | undefined): bool
 
 /** Clone active tracks into a fresh stream for MediaRecorder. */
 export function cloneStreamForRecording(stream: MediaStream): MediaStream {
-  const tracks = [...stream.getVideoTracks(), ...stream.getAudioTracks()];
-  return new MediaStream(tracks);
+  return new MediaStream([...stream.getVideoTracks(), ...stream.getAudioTracks()]);
+}
+
+function isAppleMobile(): boolean {
+  return (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  );
 }
 
 async function captureWithCanvas(video: HTMLVideoElement, mirror: boolean): Promise<Blob | null> {
