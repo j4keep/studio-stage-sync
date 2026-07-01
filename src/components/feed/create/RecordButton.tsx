@@ -5,7 +5,6 @@ interface Props {
   label?: string;
   onPointerDown: (e: React.PointerEvent) => void;
   onPointerUp: (e: React.PointerEvent) => void;
-  onPointerLeave?: (e: React.PointerEvent) => void;
 }
 
 const SIZE = 84;
@@ -20,7 +19,6 @@ export default function RecordButton({
   label = "Hold to record",
   onPointerDown,
   onPointerUp,
-  onPointerLeave,
 }: Props) {
   const clamped = Math.max(0, Math.min(1, progress));
   const offset = C * (1 - clamped);
@@ -32,10 +30,10 @@ export default function RecordButton({
         disabled={disabled}
         onPointerDown={onPointerDown}
         onPointerUp={onPointerUp}
-        onPointerLeave={onPointerLeave}
         onPointerCancel={onPointerUp}
+        onContextMenu={(e) => e.preventDefault()}
         className="relative touch-none select-none disabled:opacity-40"
-        style={{ width: SIZE, height: SIZE }}
+        style={{ width: SIZE, height: SIZE, WebkitTouchCallout: "none" }}
         aria-label={recording ? "Recording" : label}
       >
         <svg

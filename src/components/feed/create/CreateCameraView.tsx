@@ -7,6 +7,9 @@ import {
   pickVideoRecorderMimeType,
   streamHasLiveAudio,
   fileExtensionForMime,
+  ensureStreamHasAudio,
+  createMirroredVideoRecordStream,
+  shouldMirrorRecordOutput,
 } from "@/lib/create-camera";
 import type { CreateMode, EnhanceTab, ShortDuration } from "@/lib/create-modes";
 import { SHORT_DURATIONS } from "@/lib/create-modes";
@@ -43,7 +46,9 @@ export default function CreateCameraView({
   const chunksRef = useRef<Blob[]>([]);
   const recordStartRef = useRef<number | null>(null);
   const progressTimerRef = useRef<number | null>(null);
-  const holdingRef = useRef(false);
+  const pointerDownRef = useRef(false);
+  const recordPendingRef = useRef(false);
+  const mirrorRecordStopRef = useRef<(() => void) | null>(null);
 
   const [facing, setFacing] = useState<"user" | "environment">("user");
   const [denied, setDenied] = useState(false);
@@ -150,6 +155,8 @@ export default function CreateCameraView({
   useEffect(() => {
     return () => {
       if (progressTimerRef.current) window.clearInterval(progressTimerRef.current);
+      mirrorRecordStopRef.current?.();
+      mirrorRecordStopRef.current = null;
     };
   }, []);
 
@@ -169,7 +176,8 @@ export default function CreateCameraView({
   const finishRecording = useCallback(() => {
     clearProgressTimer();
     recordStartRef.current = null;
-    holdingRef.current = false;
+    pointerDownRef.current = false;
+    recordPendingRef.current = false;
     setRecordProgress(0);
 
     const rec = recorderRef.current;
@@ -181,26 +189,30 @@ export default function CreateCameraView({
       }
       rec.stop();
     } else {
+      mirrorRecordStopRef.current?.();
+      mirrorRecordStopRef.current = null;
       setRecording(false);
     }
   }, []);
 
   const startRecording = async () => {
+    const video = videoRef.current;
     let stream = streamRef.current;
-    if (!stream || recording) return;
+    if (!video || !stream || recording) return;
 
-    if (!streamHasLiveAudio(stream)) {
-      const fresh = await warmCameraStream(facing);
-      if (fresh && streamHasLiveAudio(fresh)) {
-        stopStream(true);
-        ownsStreamRef.current = true;
-        await attachStream(fresh);
-        stream = fresh;
-        setMicMissing(false);
-      } else {
-        setMicMissing(true);
-        return;
-      }
+    recordPendingRef.current = true;
+
+    const hasAudio = await ensureStreamHasAudio(stream);
+    if (!hasAudio) {
+      recordPendingRef.current = false;
+      setMicMissing(true);
+      return;
+    }
+    setMicMissing(false);
+
+    if (!pointerDownRef.current) {
+      recordPendingRef.current = false;
+      return;
     }
 
     stream.getAudioTracks().forEach((track) => {
@@ -208,9 +220,18 @@ export default function CreateCameraView({
     });
 
     chunksRef.current = [];
+    mirrorRecordStopRef.current?.();
+    mirrorRecordStopRef.current = null;
+
+    const { stream: recordStream, stop: stopMirror } = createMirroredVideoRecordStream(
+      stream,
+      video,
+      shouldMirrorRecordOutput(facing),
+    );
+    mirrorRecordStopRef.current = stopMirror;
 
     try {
-      const rec = createVideoRecorder(stream, pickVideoRecorderMimeType());
+      const rec = createVideoRecorder(recordStream, pickVideoRecorderMimeType());
       recorderRef.current = rec;
 
       rec.ondataavailable = (e) => {
@@ -222,7 +243,10 @@ export default function CreateCameraView({
         const blob = new Blob(chunksRef.current, { type: mime });
         const ext = fileExtensionForMime(mime);
 
+        mirrorRecordStopRef.current?.();
+        mirrorRecordStopRef.current = null;
         setRecording(false);
+        recordPendingRef.current = false;
         stopStream(true);
         recorderRef.current = null;
         onCapture(
@@ -234,6 +258,7 @@ export default function CreateCameraView({
       };
 
       rec.start(250);
+      recordPendingRef.current = false;
       setRecording(true);
       recordStartRef.current = Date.now();
       setRecordProgress(0);
@@ -247,24 +272,36 @@ export default function CreateCameraView({
           finishRecording();
         }
       }, 50);
+
+      if (!pointerDownRef.current) {
+        finishRecording();
+      }
     } catch {
+      mirrorRecordStopRef.current?.();
+      mirrorRecordStopRef.current = null;
+      recordPendingRef.current = false;
       setRecording(false);
       clearProgressTimer();
     }
   };
 
   const handleRecordDown = (e: React.PointerEvent) => {
-    if (denied || !ready || recording) return;
+    if (denied || !ready || recording || recordPendingRef.current) return;
     e.preventDefault();
-    holdingRef.current = true;
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    pointerDownRef.current = true;
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
     void startRecording();
   };
 
   const handleRecordUp = (e: React.PointerEvent) => {
-    if (!holdingRef.current && !recording) return;
+    pointerDownRef.current = false;
+    if (recordPendingRef.current) return;
+
     e.preventDefault();
-    holdingRef.current = false;
     try {
       (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
     } catch {
@@ -402,7 +439,6 @@ export default function CreateCameraView({
             label={`Hold · ${durationSec}s max`}
             onPointerDown={handleRecordDown}
             onPointerUp={handleRecordUp}
-            onPointerLeave={handleRecordUp}
           />
 
           <div className="w-12 h-12 mb-4" aria-hidden />

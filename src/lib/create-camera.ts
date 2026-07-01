@@ -4,6 +4,12 @@ export type CameraFacing = "user" | "environment";
 
 const PHOTO_JPEG_QUALITY = 0.94;
 
+const RAW_MIC_AUDIO: MediaTrackConstraints = {
+  echoCancellation: false,
+  noiseSuppression: false,
+  autoGainControl: false,
+};
+
 async function openCameraStream(facing: CameraFacing): Promise<MediaStream | null> {
   if (!navigator.mediaDevices?.getUserMedia) return null;
 
@@ -12,12 +18,6 @@ async function openCameraStream(facing: CameraFacing): Promise<MediaStream | nul
   // playing from the speaker — at real loudness. Defaults (`audio: true`) turn
   // those filters ON, which makes iOS subtract speaker audio as "echo" and is
   // why background music sounded almost silent in playback.
-  const rawMicAudio: MediaTrackConstraints = {
-    echoCancellation: false,
-    noiseSuppression: false,
-    autoGainControl: false,
-  };
-
   const attempts: MediaStreamConstraints[] = [
     {
       video: {
@@ -26,9 +26,9 @@ async function openCameraStream(facing: CameraFacing): Promise<MediaStream | nul
         height: { ideal: 720 },
         frameRate: { ideal: 30 },
       },
-      audio: rawMicAudio,
+      audio: RAW_MIC_AUDIO,
     },
-    { video: { facingMode: facing }, audio: rawMicAudio },
+    { video: { facingMode: facing }, audio: RAW_MIC_AUDIO },
     { video: { facingMode: facing }, audio: true },
   ];
 
@@ -64,11 +64,109 @@ export function cloneStreamForRecording(stream: MediaStream): MediaStream {
   return new MediaStream([...stream.getVideoTracks(), ...stream.getAudioTracks()]);
 }
 
+/** Add a mic track without restarting the camera preview (avoids black screen on mobile). */
+export async function ensureStreamHasAudio(
+  stream: MediaStream,
+): Promise<boolean> {
+  if (streamHasLiveAudio(stream)) return true;
+
+  for (const audioConstraints of [RAW_MIC_AUDIO, true] as const) {
+    try {
+      const audioStream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
+      const track = audioStream.getAudioTracks()[0];
+      if (track) {
+        stream.addTrack(track);
+        return true;
+      }
+      audioStream.getTracks().forEach((t) => t.stop());
+    } catch {
+      /* try fallback */
+    }
+  }
+
+  return streamHasLiveAudio(stream);
+}
+
+export type MirroredRecordStream = {
+  stream: MediaStream;
+  stop: () => void;
+};
+
+/**
+ * Record through a canvas when the live preview is CSS-mirrored (front camera)
+ * so the saved file matches what the user saw.
+ */
+export function createMirroredVideoRecordStream(
+  sourceStream: MediaStream,
+  video: HTMLVideoElement,
+  mirror: boolean,
+): MirroredRecordStream {
+  if (!mirror) {
+    return { stream: cloneStreamForRecording(sourceStream), stop: () => {} };
+  }
+
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    return { stream: cloneStreamForRecording(sourceStream), stop: () => {} };
+  }
+
+  let rafId = 0;
+  let stopped = false;
+
+  const syncCanvasSize = () => {
+    const w = video.videoWidth || 720;
+    const h = video.videoHeight || 1280;
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+    }
+  };
+
+  const drawFrame = () => {
+    if (stopped) return;
+    syncCanvasSize();
+    if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && canvas.width && canvas.height) {
+      ctx.save();
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      ctx.restore();
+    }
+    rafId = requestAnimationFrame(drawFrame);
+  };
+
+  drawFrame();
+
+  const canvasStream = canvas.captureStream(30);
+  sourceStream.getAudioTracks().forEach((track) => {
+    canvasStream.addTrack(track);
+  });
+
+  return {
+    stream: canvasStream,
+    stop: () => {
+      stopped = true;
+      cancelAnimationFrame(rafId);
+      canvasStream.getVideoTracks().forEach((t) => t.stop());
+    },
+  };
+}
+
 function isAppleMobile(): boolean {
   return (
     /iPad|iPhone|iPod/.test(navigator.userAgent) ||
     (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
   );
+}
+
+function isMobileDevice(): boolean {
+  return isAppleMobile() || /Android/i.test(navigator.userAgent);
+}
+
+/** Front-camera preview is CSS-mirrored; desktop record output needs the same flip. */
+export function shouldMirrorRecordOutput(facing: CameraFacing): boolean {
+  return facing === "user" && !isMobileDevice();
 }
 
 async function captureWithCanvas(video: HTMLVideoElement, mirror: boolean): Promise<Blob | null> {
