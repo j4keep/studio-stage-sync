@@ -151,6 +151,24 @@ musicBlobRef.current = null;
 
 };
 
+const undoToCamera = useCallback(() => {
+revokeBlobs();
+
+musicStopRef.current?.();
+musicStopRef.current = null;
+
+setFile(null);
+setPreview(null);
+setCurrentMediaUrl(null);
+setCaption("");
+setTitle("");
+setMusicFile(null);
+setMusicPreviewUrl(null);
+setEditorMeta(defaultEditorMeta());
+setMediaType("image");
+setStep("camera");
+}, []);
+
 const reset = () => {
 revokeBlobs();
 
@@ -456,7 +474,7 @@ initialStream={cameraStream}
           caption={caption}
           onCaptionChange={setCaption}
           musicPreviewUrl={musicPreviewUrl}
-          onBack={() => (postToEdit ? setStep("preview") : reset())}
+          onBack={() => (postToEdit ? setStep("preview") : undoToCamera())}
           onDone={() => setStep("preview")}
           onAddSound={handleSoundButton}
           soundLabel={editorMeta.music ? soundLabel : undefined}
@@ -474,7 +492,7 @@ initialStream={cameraStream}
         description={caption}
         onTitleChange={setTitle}
         onDescriptionChange={setCaption}
-        onBack={reset}
+        onBack={() => (postToEdit ? reset() : hasMedia ? setStep("edit") : undoToCamera())}
         onPost={() => postMutation.mutate()}
         onEditMedia={() => setStep("edit")}
         onDelete={postToEdit ? () => deleteMutation.mutate() : undefined}

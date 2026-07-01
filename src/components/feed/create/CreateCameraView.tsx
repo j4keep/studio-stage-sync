@@ -20,6 +20,8 @@ import EnhancePanel from "./EnhancePanel";
 import EffectsPanel from "./EffectsPanel";
 import { toast } from "sonner";
 
+const MIN_RECORD_MS = 400;
+
 interface Props {
   onClose: () => void;
   onCapture: (file: File, mediaType: "image" | "video") => void;
@@ -46,9 +48,13 @@ export default function CreateCameraView({
   const chunksRef = useRef<Blob[]>([]);
   const recordStartRef = useRef<number | null>(null);
   const progressTimerRef = useRef<number | null>(null);
-  const pointerDownRef = useRef(false);
   const recordPendingRef = useRef(false);
   const mirrorRecordStopRef = useRef<(() => void) | null>(null);
+  const wantsRecordRef = useRef(false);
+  const discardClipRef = useRef(false);
+  const recordingRef = useRef(false);
+  const finishRecordingRef = useRef<() => void>(() => {});
+  const pointerCleanupRef = useRef<(() => void) | null>(null);
 
   const [facing, setFacing] = useState<"user" | "environment">("user");
   const [denied, setDenied] = useState(false);
@@ -154,12 +160,14 @@ export default function CreateCameraView({
   }, [facing, startCamera]);
 
   useEffect(() => {
-    return () => {
-      if (progressTimerRef.current) window.clearInterval(progressTimerRef.current);
-      mirrorRecordStopRef.current?.();
-      mirrorRecordStopRef.current = null;
-    };
-  }, []);
+    recordingRef.current = recording;
+  }, [recording]);
+
+  useEffect(() => {
+    const stream = streamRef.current;
+    if (!ready || !stream) return;
+    void ensureStreamHasAudio(stream).then((ok) => setMicMissing(!ok));
+  }, [ready]);
 
   const clearProgressTimer = () => {
     if (progressTimerRef.current) {
@@ -168,18 +176,56 @@ export default function CreateCameraView({
     }
   };
 
+  const detachPointerEndListeners = useCallback(() => {
+    pointerCleanupRef.current?.();
+    pointerCleanupRef.current = null;
+  }, []);
+
+  const attachPointerEndListeners = useCallback(() => {
+    detachPointerEndListeners();
+    const onEnd = () => {
+      wantsRecordRef.current = false;
+      detachPointerEndListeners();
+      if (recordingRef.current) {
+        finishRecordingRef.current();
+      } else {
+        recordPendingRef.current = false;
+      }
+    };
+    document.addEventListener("pointerup", onEnd);
+    document.addEventListener("pointercancel", onEnd);
+    pointerCleanupRef.current = () => {
+      document.removeEventListener("pointerup", onEnd);
+      document.removeEventListener("pointercancel", onEnd);
+    };
+  }, [detachPointerEndListeners]);
+
+  useEffect(() => {
+    return () => {
+      clearProgressTimer();
+      detachPointerEndListeners();
+      mirrorRecordStopRef.current?.();
+      mirrorRecordStopRef.current = null;
+    };
+  }, [detachPointerEndListeners]);
+
   const flipCamera = () => {
     if (recording || capturingPhoto) return;
     stopStream(true);
     setFacing((f) => (f === "user" ? "environment" : "user"));
   };
 
-  const finishRecording = useCallback(() => {
+  const resetRecordingUi = () => {
     clearProgressTimer();
     recordStartRef.current = null;
-    pointerDownRef.current = false;
     recordPendingRef.current = false;
     setRecordProgress(0);
+    setRecording(false);
+  };
+
+  const finishRecording = useCallback(() => {
+    wantsRecordRef.current = false;
+    detachPointerEndListeners();
 
     const rec = recorderRef.current;
     if (rec?.state === "recording") {
@@ -189,29 +235,30 @@ export default function CreateCameraView({
         /* ignore */
       }
       rec.stop();
-    } else {
-      mirrorRecordStopRef.current?.();
-      mirrorRecordStopRef.current = null;
-      setRecording(false);
+      return;
     }
-  }, []);
 
-  const startRecording = async () => {
+    mirrorRecordStopRef.current?.();
+    mirrorRecordStopRef.current = null;
+    resetRecordingUi();
+  }, [detachPointerEndListeners]);
+
+  useEffect(() => {
+    finishRecordingRef.current = finishRecording;
+  }, [finishRecording]);
+
+  const startRecording = () => {
     const video = videoRef.current;
     const stream = streamRef.current;
-    if (!video || !stream || recording) return;
+    if (!video || !stream || recordingRef.current || !wantsRecordRef.current) return;
 
     recordPendingRef.current = true;
 
-    const hasAudio = await ensureStreamHasAudio(stream);
-    if (!hasAudio) {
-      recordPendingRef.current = false;
-      setMicMissing(true);
-      return;
+    if (!streamHasLiveAudio(stream)) {
+      void ensureStreamHasAudio(stream).then((ok) => setMicMissing(!ok));
     }
-    setMicMissing(false);
 
-    if (!pointerDownRef.current) {
+    if (!wantsRecordRef.current) {
       recordPendingRef.current = false;
       return;
     }
@@ -243,23 +290,38 @@ export default function CreateCameraView({
         const mime = rec.mimeType || pickVideoRecorderMimeType() || "video/webm";
         const blob = new Blob(chunksRef.current, { type: mime });
         const ext = fileExtensionForMime(mime);
+        const elapsedMs = recordStartRef.current ? Date.now() - recordStartRef.current : 0;
+        const shouldDiscard = discardClipRef.current;
 
         mirrorRecordStopRef.current?.();
         mirrorRecordStopRef.current = null;
-        setRecording(false);
-        recordPendingRef.current = false;
+        discardClipRef.current = false;
         recorderRef.current = null;
+        resetRecordingUi();
+
+        if (shouldDiscard) return;
+
+        if (elapsedMs < MIN_RECORD_MS || blob.size < 800) {
+          toast.message("Hold the button to record a short");
+          return;
+        }
 
         onCapture(
           new File([blob], `short-${Date.now()}.${ext}`, {
-            type: blob.type,
+            type: blob.type || mime,
           }),
           "video",
         );
         stopStream(true);
       };
 
-      rec.start(250);
+      rec.onerror = () => {
+        toast.error("Recording failed — try again");
+        discardClipRef.current = true;
+        finishRecordingRef.current();
+      };
+
+      rec.start(100);
       recordPendingRef.current = false;
       setRecording(true);
       recordStartRef.current = Date.now();
@@ -271,20 +333,26 @@ export default function CreateCameraView({
         const progress = Math.min(1, elapsed / QUICK_MAX_RECORD_SEC);
         setRecordProgress(progress);
         if (progress >= 1) {
-          finishRecording();
+          finishRecordingRef.current();
         }
       }, 50);
-
-      if (!pointerDownRef.current) {
-        finishRecording();
-      }
     } catch {
       mirrorRecordStopRef.current?.();
       mirrorRecordStopRef.current = null;
       recordPendingRef.current = false;
       setRecording(false);
       clearProgressTimer();
+      toast.error("Couldn't start recording");
     }
+  };
+
+  const cancelRecording = () => {
+    if (!recording && !recordPendingRef.current) return;
+    discardClipRef.current = true;
+    wantsRecordRef.current = false;
+    recordPendingRef.current = false;
+    detachPointerEndListeners();
+    finishRecordingRef.current();
   };
 
   const takePhoto = async () => {
@@ -316,29 +384,35 @@ export default function CreateCameraView({
   const handleRecordDown = (e: React.PointerEvent) => {
     if (denied || !ready || recording || recordPendingRef.current || capturingPhoto) return;
     e.preventDefault();
-    pointerDownRef.current = true;
+    e.stopPropagation();
+    wantsRecordRef.current = true;
+    discardClipRef.current = false;
+    attachPointerEndListeners();
     try {
       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     } catch {
       /* ignore */
     }
-    void startRecording();
+    startRecording();
   };
 
   const handleRecordUp = (e: React.PointerEvent) => {
-    pointerDownRef.current = false;
-    if (recordPendingRef.current) return;
-
+    wantsRecordRef.current = false;
     e.preventDefault();
     try {
       (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
     } catch {
       /* ignore */
     }
-    if (recording) finishRecording();
+    if (recordingRef.current) {
+      finishRecordingRef.current();
+    } else {
+      recordPendingRef.current = false;
+    }
+    detachPointerEndListeners();
   };
 
-  const centerDisabled = denied || !ready || recording || capturingPhoto;
+  const recordDisabled = denied || !ready || capturingPhoto;
 
   return (
     <div className="absolute inset-0 bg-black flex flex-col touch-none">
@@ -381,7 +455,7 @@ export default function CreateCameraView({
 
       {micMissing && ready && !recording && (
         <div className="absolute top-[calc(env(safe-area-inset-top)+3.5rem)] left-4 right-4 z-30 px-4 py-2 rounded-xl bg-amber-500/90 text-black text-xs font-semibold text-center">
-          Microphone not detected — check browser permissions and try flipping the camera.
+          Microphone not detected — video will record without sound.
         </div>
       )}
 
@@ -439,7 +513,7 @@ export default function CreateCameraView({
       </div>
 
       {recording && (
-        <div className="absolute top-[calc(env(safe-area-inset-top)+3.25rem)] right-3 z-30 min-w-[3rem] px-2.5 py-1 rounded-lg bg-[#ff0069] text-white text-sm font-bold tabular-nums text-center shadow-lg">
+        <div className="absolute top-[calc(env(safe-area-inset-top)+3.25rem)] right-3 z-30 min-w-[3rem] px-2.5 py-1 rounded-lg bg-red-500 text-white text-sm font-bold tabular-nums text-center shadow-lg">
           {Math.floor((QUICK_MAX_RECORD_SEC * recordProgress) / 60)}:
           {String(Math.floor(QUICK_MAX_RECORD_SEC * recordProgress) % 60).padStart(2, "0")}
         </div>
@@ -447,10 +521,18 @@ export default function CreateCameraView({
 
       <div className="relative z-20 mt-auto pb-[calc(max(env(safe-area-inset-bottom),0.5rem)+2rem)]">
         <div className="relative z-10 flex items-end justify-center gap-7 px-5">
-          {!recording ? (
+          {recording ? (
             <button
               type="button"
-              disabled={centerDisabled}
+              onClick={cancelRecording}
+              className="mb-[2.35rem] px-4 py-2 rounded-full bg-black/45 border border-white/20 text-white text-sm font-semibold active:scale-95 transition-transform"
+            >
+              Undo
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled={recordDisabled}
               onClick={() => void takePhoto()}
               className="flex flex-col items-center gap-1.5 w-[3.25rem] mb-3 disabled:opacity-40 active:scale-95 transition-transform"
             >
@@ -459,20 +541,18 @@ export default function CreateCameraView({
               </span>
               <span className="text-[11px] font-semibold text-white/70">Photo</span>
             </button>
-          ) : (
-            <span className="w-[3.25rem] mb-3" aria-hidden />
           )}
 
           <div className="flex flex-col items-center">
             <RecordButton
               recording={recording}
               progress={recordProgress}
-              disabled={centerDisabled}
+              disabled={recordDisabled}
               onPointerDown={handleRecordDown}
               onPointerUp={handleRecordUp}
             />
             {!recording && (
-              <span className="mt-1.5 text-[10px] font-medium text-white/40">Hold</span>
+              <span className="mt-1.5 text-[10px] font-medium text-white/40">Hold · 60s max</span>
             )}
           </div>
 

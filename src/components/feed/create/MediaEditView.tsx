@@ -398,11 +398,11 @@ export default function MediaEditView({
           <button
             type="button"
             onClick={onBack}
-            className="absolute z-50 w-11 h-11 flex items-center justify-center text-white editor-touch-none"
+            className="absolute z-50 px-4 py-2 rounded-full bg-black/45 backdrop-blur-sm border border-white/20 text-white text-sm font-semibold editor-touch-none active:scale-95 transition-transform"
             style={{ top: "max(env(safe-area-inset-top), 0.5rem)", left: "max(env(safe-area-inset-left), 0.75rem)" }}
-            aria-label="Back"
+            aria-label="Undo"
           >
-            <X className="w-7 h-7" strokeWidth={2.5} />
+            Undo
           </button>
           {onAddSound && (
             <button

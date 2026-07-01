@@ -112,10 +112,10 @@ export default function PostPreviewView({
           type="button"
           onClick={onBack}
           disabled={busy}
-          className="w-10 h-10 flex items-center justify-center text-white shrink-0 disabled:opacity-40"
-          aria-label="Back"
+          className="px-3 py-2 rounded-full bg-white/10 border border-white/15 text-white text-sm font-semibold shrink-0 disabled:opacity-40 active:scale-95 transition-transform"
+          aria-label="Undo"
         >
-          <ChevronLeft className="w-6 h-6" />
+          Undo
         </button>
         <span className="text-sm font-bold text-white/90 truncate">{isEditing ? "Edit post" : "New post"}</span>
         <button

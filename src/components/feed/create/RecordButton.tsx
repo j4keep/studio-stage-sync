@@ -55,7 +55,7 @@ export default function RecordButton({
             cy={SIZE / 2}
             r={R}
             fill="none"
-            stroke="#ff0069"
+            stroke="#ef4444"
             strokeWidth={STROKE}
             strokeLinecap="round"
             strokeDasharray={C}
