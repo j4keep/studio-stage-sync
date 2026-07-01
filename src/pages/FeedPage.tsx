@@ -57,6 +57,8 @@ const FeedPage = () => {
     const container = scrollRef.current;
     if (!container || feedPosts.length === 0) return;
 
+    const slides = Array.from(container.querySelectorAll<HTMLElement>("[data-index]"));
+
     const syncActiveIndex = () => {
       const height = container.clientHeight;
       if (height <= 0) return;
@@ -67,12 +69,43 @@ const FeedPage = () => {
       setCurrentIndex((prev) => (prev === next ? prev : next));
     };
 
+    const observer = new IntersectionObserver(
+      (entries) => {
+        let bestIndex = -1;
+        let bestRatio = 0;
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          const idx = Number((entry.target as HTMLElement).dataset.index);
+          if (Number.isNaN(idx)) continue;
+          if (entry.intersectionRatio > bestRatio) {
+            bestRatio = entry.intersectionRatio;
+            bestIndex = idx;
+          }
+        }
+        if (bestIndex >= 0 && bestRatio >= 0.55) {
+          setCurrentIndex((prev) => (prev === bestIndex ? prev : bestIndex));
+        }
+      },
+      { root: container, threshold: [0.55, 0.75, 1] },
+    );
+
+    slides.forEach((slide) => observer.observe(slide));
     syncActiveIndex();
     requestAnimationFrame(syncActiveIndex);
 
     container.addEventListener("scroll", syncActiveIndex, { passive: true });
-    return () => container.removeEventListener("scroll", syncActiveIndex);
+    container.addEventListener("scrollend", syncActiveIndex, { passive: true });
+    return () => {
+      observer.disconnect();
+      container.removeEventListener("scroll", syncActiveIndex);
+      container.removeEventListener("scrollend", syncActiveIndex);
+    };
   }, [feedPosts.length]);
+
+  useEffect(() => {
+    if (feedPosts.length === 0) return;
+    window.dispatchEvent(new CustomEvent("feed-active-post", { detail: { index: currentIndex } }));
+  }, [currentIndex, feedPosts.length]);
 
   useEffect(() => {
     if (currentIndex >= feedPosts.length) setCurrentIndex(0);

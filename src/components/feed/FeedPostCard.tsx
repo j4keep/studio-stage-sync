@@ -10,7 +10,6 @@ import {
   Volume2,
   VolumeX,
   Play,
-  Pause,
   Users,
 } from "lucide-react";
 import { incrementPostViews } from "@/hooks/use-likes";
@@ -460,7 +459,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     video.addEventListener("canplaythrough", onReady);
 
     const rafId = requestAnimationFrame(tryPlay);
-    const retryDelays = isTouchFeedDevice() ? [150] : [0, 50, 150, 400];
+    const retryDelays = isTouchFeedDevice() ? [0, 50, 150, 400, 800] : [0, 50, 150, 400];
     const timerIds = retryDelays.map((ms) => window.setTimeout(tryPlay, ms));
 
     return () => {
@@ -780,7 +779,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
               playsInline
               muted={videoMutedForAutoplay}
               autoPlay={false}
-              preload={isActive ? "auto" : isNear && !isTouchFeedDevice() ? "auto" : "metadata"}
+              preload={isActive || isNear ? "auto" : "metadata"}
               onPlay={() => setIsPlaying(true)}
               onPause={() => setIsPlaying(false)}
             />
@@ -816,22 +815,16 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
           </div>
         )}
 
-        {post.media_type === "video" && (
+        {post.media_type === "video" && userPaused && (
           <button
             onClick={(e) => {
               e.stopPropagation();
               toggleVideoPlayback();
             }}
-            className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-30 flex h-16 w-16 items-center justify-center rounded-full bg-primary/80 backdrop-blur-md shadow-lg transition-all duration-300 active:scale-90 ${
-                isPlaying ? "opacity-0 pointer-events-none" : "opacity-100"
-            }`}
-            aria-label={isPlaying ? "Pause video" : "Play video"}
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-30 flex h-16 w-16 items-center justify-center rounded-full bg-primary/80 backdrop-blur-md shadow-lg transition-all duration-300 active:scale-90"
+            aria-label="Play video"
           >
-            {isPlaying ? (
-              <Pause className="w-7 h-7 text-primary-foreground fill-primary-foreground" />
-            ) : (
-              <Play className="w-7 h-7 text-primary-foreground fill-primary-foreground ml-1" />
-            )}
+            <Play className="w-7 h-7 text-primary-foreground fill-primary-foreground ml-1" />
           </button>
         )}
 
