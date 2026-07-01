@@ -186,7 +186,7 @@ const FeedPage = () => {
               className="h-[100dvh] w-full snap-start snap-always relative"
               style={{ scrollSnapAlign: "start" }}
             >
-              <FeedPostCard post={item} currentUserId={user?.id} isActive={index === currentIndex} chromeHidden={chromeHidden} onChromeHiddenChange={setChromeHidden} />
+              <FeedPostCard post={item} currentUserId={user?.id} isActive={index === currentIndex} isNear={Math.abs(index - currentIndex) <= 1} chromeHidden={chromeHidden} onChromeHiddenChange={setChromeHidden} />
             </div>
           ))
         )}
