@@ -142,9 +142,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     if (hasAddedSound) {
       const audio = musicAudioRef.current;
       applyFeedVideoAudio(video, { muted: true });
-      if (video.paused) {
-        await video.play().catch(() => undefined);
-      }
+      const videoPlay = video.paused ? video.play().catch(() => undefined) : Promise.resolve();
       if (!audio) {
         setAutoplayAudioLocked(true);
         return false;
@@ -155,6 +153,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       mediaSessionCleanupRef.current = bindFeedMediaSession(audio, playbackMeta);
       try {
         await audio.play();
+        await videoPlay;
         setAutoplayAudioLocked(false);
         setFeedAudioUnlocked(true);
         if (!isFeedAudioSessionUnlocked()) unlockFeedAudioSession();
