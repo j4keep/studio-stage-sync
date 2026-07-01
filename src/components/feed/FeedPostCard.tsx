@@ -37,19 +37,11 @@ interface Props {
   post: any;
   currentUserId?: string;
   isActive?: boolean;
-  loadTier?: "active" | "nearby" | "far";
   chromeHidden?: boolean;
   onChromeHiddenChange?: (hidden: boolean) => void;
 }
 
-const FeedPostCard = ({
-  post,
-  currentUserId,
-  isActive = false,
-  loadTier = "far",
-  chromeHidden = false,
-  onChromeHiddenChange,
-}: Props) => {
+const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = false, onChromeHiddenChange }: Props) => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -77,11 +69,7 @@ const FeedPostCard = ({
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const userPausedRef = useRef(false);
   const [userPaused, setUserPaused] = useState(false);
-  const [mediaReady, setMediaReady] = useState(false);
   const { emojis, spawnEmoji } = useFloatingEmojis();
-
-  const shouldLoadVideo = loadTier !== "far";
-  const videoPreload = loadTier === "active" ? "auto" : "metadata";
 
   const { caption: displayCaption, meta: postMeta } = parsePostCaption(post.caption);
   const postTitle = postMeta?.title?.trim();
@@ -180,9 +168,11 @@ const FeedPostCard = ({
   }, [post.id, post.isLiked, post.likes_count]);
 
   useEffect(() => {
-    setMediaReady(false);
-  }, [post.id]);
+    if (!videoRef.current) return;
+    applyFeedVideoAudio(videoRef.current, { muted: getVideoMuted() });
+  }, [getVideoMuted]);
 
+  // Added sound plays in sync with video — camera audio is muted when a sound is attached.
   useEffect(() => {
     musicStopRef.current?.();
     musicStopRef.current = null;
@@ -284,12 +274,6 @@ const FeedPostCard = ({
       video.removeEventListener("canplaythrough", onReady);
     };
   }, [isActive, showComments, post.media_type, playWhenActive]);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video || post.media_type !== "video") return;
-    applyFeedVideoAudio(video, { muted: getVideoMuted() });
-  }, [isMuted, post.media_type, getVideoMuted]);
 
   useEffect(() => {
     if (!viewCounted && isActive && post.id) {
@@ -536,38 +520,19 @@ const FeedPostCard = ({
       <div className="absolute inset-0 bg-black overflow-hidden">
         {post.media_url &&
           (post.media_type === "video" ? (
-            shouldLoadVideo ? (
-              <>
-                {!mediaReady && (
-                  <video
-                    key={`${post.id}-preview`}
-                    src={`${post.media_url}#t=0.1`}
-                    className="absolute inset-0 z-[1] h-full w-full object-cover"
-                    style={cropStyle}
-                    muted
-                    playsInline
-                    preload={videoPreload}
-                    aria-hidden
-                  />
-                )}
-                <video
-                  ref={videoRef}
-                  src={post.media_url}
-                  className="absolute inset-0 z-[2] h-full w-full object-cover transition-opacity duration-150"
-                  style={{ ...cropStyle, opacity: mediaReady ? 1 : 0 }}
-                  loop
-                  playsInline
-                  muted={videoMutedForAutoplay}
-                  autoPlay={isActive && !userPaused}
-                  preload={videoPreload}
-                  onLoadedData={() => setMediaReady(true)}
-                  onPlay={() => setIsPlaying(true)}
-                  onPause={() => setIsPlaying(false)}
-                />
-              </>
-            ) : (
-              <div className="absolute inset-0 bg-zinc-950" aria-hidden />
-            )
+            <video
+              ref={videoRef}
+              src={post.media_url}
+              className="absolute inset-0 h-full w-full object-cover"
+              style={cropStyle}
+              loop
+              playsInline
+              muted={videoMutedForAutoplay}
+              autoPlay={isActive && !userPaused}
+              preload="auto"
+              onPlay={() => setIsPlaying(true)}
+              onPause={() => setIsPlaying(false)}
+            />
           ) : (
             <img
               src={post.media_url}

@@ -179,28 +179,16 @@ const FeedPage = () => {
             </button>
           </div>
         ) : (
-          feedPosts.map((item: any, index: number) => {
-            const distance = Math.abs(index - currentIndex);
-            const loadTier = distance === 0 ? "active" : distance === 1 ? "nearby" : "far";
-
-            return (
+          feedPosts.map((item: any, index: number) => (
             <div
               key={item.id}
               data-index={index}
               className="h-[100dvh] w-full snap-start snap-always relative"
               style={{ scrollSnapAlign: "start" }}
             >
-              <FeedPostCard
-                post={item}
-                currentUserId={user?.id}
-                isActive={index === currentIndex}
-                loadTier={loadTier}
-                chromeHidden={chromeHidden}
-                onChromeHiddenChange={setChromeHidden}
-              />
+              <FeedPostCard post={item} currentUserId={user?.id} isActive={index === currentIndex} chromeHidden={chromeHidden} onChromeHiddenChange={setChromeHidden} />
             </div>
-            );
-          })
+          ))
         )}
       </div>
 
