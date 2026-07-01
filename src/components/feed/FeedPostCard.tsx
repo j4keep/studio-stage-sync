@@ -220,9 +220,37 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
   }, [getVideoMuted]);
 
   useEffect(() => {
-    const onUnlocked = () => setFeedAudioUnlocked(true);
+    const onUnlocked = () => {
+      setFeedAudioUnlocked(true);
+      // If this card was force-muted due to autoplay block, unmute it now.
+      const video = videoRef.current;
+      if (video && isActive && autoplayAudioLocked) {
+        const muted = getVideoMuted();
+        applyFeedVideoAudio(video, { muted });
+        setAutoplayAudioLocked(false);
+        activateFeedPlayback(muted);
+      }
+    };
     window.addEventListener("feed-audio-unlocked", onUnlocked);
     return () => window.removeEventListener("feed-audio-unlocked", onUnlocked);
+  }, [isActive, autoplayAudioLocked, getVideoMuted, activateFeedPlayback]);
+
+  // Cold-entry autoplay: unmute on the very first user interaction anywhere.
+  useEffect(() => {
+    if (feedAudibleAutoplayUnlocked) return;
+    const onFirstInteract = () => {
+      feedAudibleAutoplayUnlocked = true;
+      window.dispatchEvent(new Event("feed-audio-unlocked"));
+    };
+    const opts = { once: true, capture: true } as AddEventListenerOptions;
+    window.addEventListener("pointerdown", onFirstInteract, opts);
+    window.addEventListener("touchstart", onFirstInteract, opts);
+    window.addEventListener("keydown", onFirstInteract, opts);
+    return () => {
+      window.removeEventListener("pointerdown", onFirstInteract, opts);
+      window.removeEventListener("touchstart", onFirstInteract, opts);
+      window.removeEventListener("keydown", onFirstInteract, opts);
+    };
   }, []);
 
   // Added sound plays in sync with video — camera audio is muted when a sound is attached.
