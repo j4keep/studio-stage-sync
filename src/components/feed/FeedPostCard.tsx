@@ -423,6 +423,36 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     };
   }, [isActive, showComments, post.media_type, playWhenActive]);
 
+  // iOS/Android pause feed video in background — restore audio when app returns.
+  useEffect(() => {
+    if (!isActive || post.media_type !== "video") return;
+
+    const restoreAfterBackground = () => {
+      if (document.visibilityState !== "visible") return;
+      if (userPausedRef.current || showComments) return;
+
+      const video = videoRef.current;
+      if (!video) return;
+
+      if (isFeedAudioSessionUnlocked() && !getVideoMuted()) {
+        setAutoplayAudioLocked(false);
+        setFeedAudioUnlocked(true);
+        void startAudiblePlayback();
+      } else if (video.paused) {
+        void playWhenActive();
+      } else if (!getVideoMuted() && video.muted) {
+        void startAudiblePlayback();
+      }
+    };
+
+    document.addEventListener("visibilitychange", restoreAfterBackground);
+    window.addEventListener("pageshow", restoreAfterBackground);
+    return () => {
+      document.removeEventListener("visibilitychange", restoreAfterBackground);
+      window.removeEventListener("pageshow", restoreAfterBackground);
+    };
+  }, [isActive, post.media_type, showComments, getVideoMuted, playWhenActive, startAudiblePlayback]);
+
   useEffect(() => {
     if (!viewCounted && isActive && post.id) {
       setViewCounted(true);
