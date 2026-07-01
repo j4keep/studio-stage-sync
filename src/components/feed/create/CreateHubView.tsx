@@ -1,5 +1,4 @@
 import { X, Search, Plus, Sparkles, Film, Wand2, ImageIcon, Captions, Scissors } from "lucide-react";
-import jhiHiTrim from "@/assets/jhi-hi-trim.png";
 import { CREATE_TOOLS, TEMPLATE_CATEGORIES, TEMPLATE_ITEMS } from "@/lib/create-modes";
 import CreateModeTabs from "./CreateModeTabs";
 import type { CreateMode } from "@/lib/create-modes";
@@ -30,15 +29,11 @@ export default function CreateHubView({
 }: Props) {
   return (
     <div className="absolute inset-0 bg-black text-white flex flex-col overflow-hidden">
-      <div className="relative flex items-center justify-between px-4 pt-[max(env(safe-area-inset-top),0.5rem)] pb-2">
+      <div className="flex items-center justify-between px-4 pt-[max(env(safe-area-inset-top),0.5rem)] pb-2">
         <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center">
           <X className="w-6 h-6" />
         </button>
-        <img
-          src={jhiHiTrim}
-          alt="Create"
-          className="absolute left-1/2 -translate-x-1/2 h-7 w-auto object-contain"
-        />
+        <span className="text-sm font-black tracking-widest">CREATE</span>
         <div className="w-10" />
       </div>
 
