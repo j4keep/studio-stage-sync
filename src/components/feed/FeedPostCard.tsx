@@ -42,8 +42,6 @@ interface Props {
   onChromeHiddenChange?: (hidden: boolean) => void;
 }
 
-let feedAudibleAutoplayUnlocked = false;
-
 const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, chromeHidden = false, onChromeHiddenChange }: Props) => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -60,8 +58,6 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
   const [isPlaying, setIsPlaying] = useState(false);
   const [showHeart, setShowHeart] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [autoplayAudioLocked, setAutoplayAudioLocked] = useState(false);
-  const [feedAudioUnlocked, setFeedAudioUnlocked] = useState(feedAudibleAutoplayUnlocked);
   const [videoProgress, setVideoProgress] = useState(0);
   const [videoDuration, setVideoDuration] = useState(0);
   const [isScrubbing, setIsScrubbing] = useState(false);
@@ -91,24 +87,11 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     return isMuted || hasAddedSound || postMeta?.muteOriginal === true;
   }, [isMuted, postMeta?.music?.audioUrl, postMeta?.muteOriginal]);
 
-  const canStartWithSound = useCallback(() => {
-    if (feedAudioUnlocked) return true;
-    if (typeof navigator === "undefined" || !("userActivation" in navigator)) return true;
-    return Boolean(navigator.userActivation?.isActive);
-  }, [feedAudioUnlocked]);
-
-  const unlockFeedAudio = useCallback(() => {
-    feedAudibleAutoplayUnlocked = true;
-    setFeedAudioUnlocked(true);
-    setAutoplayAudioLocked(false);
-    window.dispatchEvent(new Event("feed-audio-unlocked"));
-  }, []);
-
-  const activateFeedPlayback = useCallback((forceMuted?: boolean) => {
+  const activateFeedPlayback = useCallback(() => {
     const video = videoRef.current;
     if (!video || post.media_type !== "video") return;
 
-    const muted = forceMuted ?? (getVideoMuted() || autoplayAudioLocked);
+    const muted = getVideoMuted();
     applyFeedVideoAudio(video, { muted });
 
     mediaSessionCleanupRef.current?.();
@@ -121,19 +104,17 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     } else if (!muted) {
       mediaSessionCleanupRef.current = bindFeedMediaSession(video, playbackMeta);
     }
-  }, [post.media_type, getVideoMuted, autoplayAudioLocked, postMeta?.music?.audioUrl, playbackMeta]);
+  }, [post.media_type, getVideoMuted, postMeta?.music?.audioUrl, playbackMeta]);
 
   const playWhenActive = useCallback(async () => {
     const video = videoRef.current;
     if (!video || post.media_type !== "video" || userPausedRef.current) return false;
 
     const targetMuted = getVideoMuted();
-    const playMuted = targetMuted || !canStartWithSound();
 
     const markPlaying = () => {
-      applyFeedVideoAudio(video, { muted: playMuted });
-      setAutoplayAudioLocked(!targetMuted && playMuted);
-      activateFeedPlayback(playMuted);
+      applyFeedVideoAudio(video, { muted: targetMuted });
+      activateFeedPlayback();
       setIsPlaying(true);
       onChromeHiddenChange?.(true);
     };
@@ -145,8 +126,8 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     }
 
     try {
-      // Mobile autoplay requires muted playback first — unmute after if allowed.
-      applyFeedVideoAudio(video, { muted: playMuted });
+      // Mobile autoplay requires muted playback first — unmute after play starts.
+      applyFeedVideoAudio(video, { muted: true });
       await video.play();
       markPlaying();
       return true;
@@ -154,7 +135,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       setIsPlaying(false);
       return false;
     }
-  }, [post.media_type, getVideoMuted, canStartWithSound, activateFeedPlayback, onChromeHiddenChange]);
+  }, [post.media_type, getVideoMuted, activateFeedPlayback, onChromeHiddenChange]);
 
   const toggleVideoPlayback = useCallback(() => {
     const video = videoRef.current;
@@ -163,12 +144,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     if (video.paused) {
       userPausedRef.current = false;
       setUserPaused(false);
-      unlockFeedAudio();
       void playWhenActive();
-    } else if (autoplayAudioLocked) {
-      unlockFeedAudio();
-      applyFeedVideoAudio(video, { muted: getVideoMuted() });
-      activateFeedPlayback(getVideoMuted());
     } else {
       userPausedRef.current = true;
       setUserPaused(true);
@@ -176,7 +152,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       setIsPlaying(false);
       onChromeHiddenChange?.(false);
     }
-  }, [post.media_type, playWhenActive, autoplayAudioLocked, getVideoMuted, activateFeedPlayback, unlockFeedAudio, onChromeHiddenChange]);
+  }, [post.media_type, playWhenActive, onChromeHiddenChange]);
 
   // Image posts bake text/stickers/draw into the file — overlay renderer would double them
   const showVisualOverlays =
@@ -200,15 +176,8 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
 
   useEffect(() => {
     if (!videoRef.current) return;
-    const muted = getVideoMuted() || autoplayAudioLocked || (isActive && !feedAudioUnlocked && !isPlaying);
-    applyFeedVideoAudio(videoRef.current, { muted });
-  }, [getVideoMuted, autoplayAudioLocked, isActive, feedAudioUnlocked, isPlaying]);
-
-  useEffect(() => {
-    const onUnlocked = () => setFeedAudioUnlocked(true);
-    window.addEventListener("feed-audio-unlocked", onUnlocked);
-    return () => window.removeEventListener("feed-audio-unlocked", onUnlocked);
-  }, []);
+    applyFeedVideoAudio(videoRef.current, { muted: getVideoMuted() });
+  }, [getVideoMuted]);
 
   // Added sound plays in sync with video — camera audio is muted when a sound is attached.
   useEffect(() => {
@@ -274,7 +243,6 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       mediaSessionCleanupRef.current = null;
       userPausedRef.current = false;
       setUserPaused(false);
-      setAutoplayAudioLocked(false);
       videoRef.current?.pause();
       setIsPlaying(false);
       return;
@@ -520,18 +488,12 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     lastTapRef.current = now;
     tapTimerRef.current = setTimeout(() => {
       if (post.media_type === "video" && videoRef.current) {
-        if (autoplayAudioLocked) {
-          unlockFeedAudio();
-          applyFeedVideoAudio(videoRef.current, { muted: getVideoMuted() });
-          activateFeedPlayback(getVideoMuted());
-          return;
-        }
         toggleVideoPlayback();
       } else if (post.media_type === "image" || post.media_url) {
         toggleNav(!chromeHidden);
       }
     }, doubleTapDelay);
-  }, [liked, likeMutation, post.media_type, post.media_url, chromeHidden, toggleNav, toggleVideoPlayback, autoplayAudioLocked, unlockFeedAudio, getVideoMuted, activateFeedPlayback]);
+  }, [liked, likeMutation, post.media_type, post.media_url, chromeHidden, toggleNav, toggleVideoPlayback]);
 
   const handleShare = async () => {
     const shareUrl = `${window.location.origin}/feed`;
@@ -558,7 +520,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
 
   const timeAgo = formatDistanceToNow(new Date(post.created_at), { addSuffix: false });
   const videoMutedForAutoplay =
-    getVideoMuted() || autoplayAudioLocked || (isActive && !userPaused && !getVideoMuted() && !isPlaying);
+    getVideoMuted() || (isActive && !userPaused && !getVideoMuted() && !isPlaying);
 
   return (
     <>
