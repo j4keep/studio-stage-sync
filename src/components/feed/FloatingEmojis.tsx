@@ -113,6 +113,7 @@ export const EmojiReactionTray = ({
   currentUserId,
   reactionCount,
   onReactionCountChange,
+  hasReacted = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -121,11 +122,28 @@ export const EmojiReactionTray = ({
   currentUserId?: string;
   reactionCount?: number;
   onReactionCountChange?: (n: number) => void;
+  hasReacted?: boolean;
 }) => {
   const handleEmoji = async (item: EmojiCharacter) => {
+    if (hasReacted) {
+      onClose();
+      return;
+    }
     onEmoji(item.id);
     onReactionCountChange?.((reactionCount ?? 0) + 1);
     if (postId && currentUserId) {
+      const { data: existing } = await (supabase as any)
+        .from("post_reactions")
+        .select("id")
+        .eq("post_id", postId)
+        .eq("user_id", currentUserId)
+        .maybeSingle();
+
+      if (existing) {
+        onClose();
+        return;
+      }
+
       await (supabase as any).from("post_reactions").insert({
         post_id: postId,
         user_id: currentUserId,

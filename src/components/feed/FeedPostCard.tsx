@@ -30,10 +30,8 @@ import {
   applyFeedVideoAudio,
   applyFeedAudioElementVolume,
   bindFeedMediaSession,
-  playFeedVideo,
   type FeedPlaybackMeta,
 } from "@/lib/feed-video-playback";
-
 
 interface Props {
   post: any;
@@ -72,6 +70,8 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
   const lastTapRef = useRef(0);
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const userPausedRef = useRef(false);
+  const [userPaused, setUserPaused] = useState(false);
+  const [myReactionId, setMyReactionId] = useState<string | null>(null);
   const { emojis, spawnEmoji } = useFloatingEmojis();
 
   const { caption: displayCaption, meta: postMeta } = parsePostCaption(post.caption);
@@ -108,20 +108,39 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
     }
   }, [post.media_type, getVideoMuted, postMeta?.music?.audioUrl, playbackMeta]);
 
-  const startVideo = useCallback(async () => {
+  const playWhenActive = useCallback(async () => {
     const video = videoRef.current;
-    if (!video || post.media_type !== "video") return false;
+    if (!video || post.media_type !== "video" || userPausedRef.current) return false;
 
-    const ok = await playFeedVideo(video, playbackMeta, { muted: getVideoMuted() });
-    if (ok) {
+    applyFeedVideoAudio(video, { muted: getVideoMuted() });
+
+    const markPlaying = () => {
       activateFeedPlayback();
       setIsPlaying(true);
       onChromeHiddenChange?.(true);
-    } else {
+    };
+
+    try {
+      await video.play();
+      markPlaying();
+      return true;
+    } catch {
+      if (!getVideoMuted()) {
+        video.muted = true;
+        try {
+          await video.play();
+          applyFeedVideoAudio(video, { muted: false });
+          markPlaying();
+          return true;
+        } catch {
+          setIsPlaying(false);
+          return false;
+        }
+      }
       setIsPlaying(false);
+      return false;
     }
-    return ok;
-  }, [post.media_type, playbackMeta, getVideoMuted, activateFeedPlayback, onChromeHiddenChange]);
+  }, [post.media_type, getVideoMuted, activateFeedPlayback, onChromeHiddenChange]);
 
   const toggleVideoPlayback = useCallback(() => {
     const video = videoRef.current;
@@ -129,18 +148,16 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
 
     if (video.paused) {
       userPausedRef.current = false;
-      activateFeedPlayback();
-      void video.play().then(() => {
-        setIsPlaying(true);
-        onChromeHiddenChange?.(true);
-      });
+      setUserPaused(false);
+      void playWhenActive();
     } else {
       userPausedRef.current = true;
+      setUserPaused(true);
       video.pause();
       setIsPlaying(false);
       onChromeHiddenChange?.(false);
     }
-  }, [post.media_type, activateFeedPlayback, onChromeHiddenChange]);
+  }, [post.media_type, playWhenActive, onChromeHiddenChange]);
 
   // Image posts bake text/stickers/draw into the file — overlay renderer would double them
   const showVisualOverlays =
@@ -223,23 +240,61 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
   }, [isActive, postMeta?.music?.audioUrl, post.id, activateFeedPlayback]);
 
   useEffect(() => {
-    if (post.media_type !== "video" || !videoRef.current) return;
+    if (!currentUserId || !post.id) return;
 
-    const video = videoRef.current;
+    void (async () => {
+      const { data: mine } = await (supabase as any)
+        .from("post_reactions")
+        .select("emoji_id")
+        .eq("post_id", post.id)
+        .eq("user_id", currentUserId)
+        .maybeSingle();
+
+      if (mine?.emoji_id) setMyReactionId(mine.emoji_id);
+
+      const { count } = await (supabase as any)
+        .from("post_reactions")
+        .select("id", { count: "exact", head: true })
+        .eq("post_id", post.id);
+
+      setReactionCount(count ?? 0);
+    })();
+  }, [post.id, currentUserId]);
+
+  useEffect(() => {
+    if (post.media_type !== "video") return;
 
     if (!isActive) {
       mediaSessionCleanupRef.current?.();
       mediaSessionCleanupRef.current = null;
       userPausedRef.current = false;
-      video.pause();
+      setUserPaused(false);
+      videoRef.current?.pause();
       setIsPlaying(false);
       return;
     }
 
     if (userPausedRef.current) return;
 
-    void startVideo();
-  }, [isActive, post.media_type, startVideo]);
+    void playWhenActive();
+
+    const video = videoRef.current;
+    if (!video) return;
+
+    const onReady = () => {
+      if (isActive && !userPausedRef.current && video.paused) {
+        void playWhenActive();
+      }
+    };
+
+    video.addEventListener("loadeddata", onReady);
+    video.addEventListener("canplay", onReady);
+
+    return () => {
+      video.removeEventListener("loadeddata", onReady);
+      video.removeEventListener("canplay", onReady);
+    };
+  }, [isActive, post.media_type, playWhenActive]);
 
   useEffect(() => {
     if (!viewCounted && isActive && post.id) {
@@ -469,8 +524,10 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
   };
 
   const handleEmojiReaction = (emojiId: string) => {
+    if (myReactionId) return;
     toggleNav(true);
     spawnEmoji(emojiId);
+    setMyReactionId(emojiId);
   };
 
   const formatCount = (value: number) => {
@@ -492,7 +549,10 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
               style={cropStyle}
               loop
               playsInline
+              autoPlay={isActive && !userPaused}
               preload="auto"
+              onPlay={() => setIsPlaying(true)}
+              onPause={() => setIsPlaying(false)}
             />
           ) : (
             <img
@@ -533,7 +593,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
               toggleVideoPlayback();
             }}
             className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-30 flex h-16 w-16 items-center justify-center rounded-full bg-primary/80 backdrop-blur-md shadow-lg transition-all duration-300 active:scale-90 ${
-              isPlaying ? "opacity-0 pointer-events-none" : "opacity-100"
+              isPlaying || (isActive && !userPaused) ? "opacity-0 pointer-events-none" : "opacity-100"
             }`}
             aria-label={isPlaying ? "Pause video" : "Play video"}
           >
@@ -575,7 +635,16 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
           </button>
 
           <div className="relative">
-            <EmojiReactionButton onClick={() => setShowReactionTray((v) => !v)} count={reactionCount} />
+            <EmojiReactionButton
+              onClick={() => {
+                if (myReactionId) {
+                  toast.info("You already reacted to this post");
+                  return;
+                }
+                setShowReactionTray((v) => !v);
+              }}
+              count={reactionCount}
+            />
             <EmojiReactionTray
               open={showReactionTray}
               onClose={() => setShowReactionTray(false)}
@@ -584,6 +653,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
               currentUserId={currentUserId}
               reactionCount={reactionCount}
               onReactionCountChange={setReactionCount}
+              hasReacted={Boolean(myReactionId)}
             />
           </div>
 
@@ -671,21 +741,25 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
           <span className="mt-1 block text-[10px] text-white/45">{timeAgo} ago</span>
 
           {post.media_type === "video" && (
-            <div className="z-50 mt-2.5 relative seek-area pr-1" role="slider" aria-valuenow={videoProgress} aria-valuemin={0} aria-valuemax={100}>
+            <div className="z-50 mt-2 relative seek-area px-0.5" role="slider" aria-valuenow={videoProgress} aria-valuemin={0} aria-valuemax={100}>
               <div
                 ref={progressRef}
-                className="relative h-[6px] w-full rounded-full bg-white/20 cursor-pointer touch-none"
+                className="relative h-[2px] w-full rounded-full bg-white/20 cursor-pointer touch-none"
                 onMouseDown={handleScrubStart}
                 onTouchStart={handleScrubStart}
               >
                 <div
-                  className="absolute left-0 top-0 h-full rounded-full bg-white/80 pointer-events-none"
+                  className="absolute left-0 top-0 h-full rounded-full bg-white pointer-events-none transition-[width] duration-75"
                   style={{ width: `${videoProgress}%` }}
                 />
-                <div
-                  className="absolute top-1/2 -translate-y-1/2 h-4 w-4 rounded-full bg-white shadow-lg pointer-events-none"
-                  style={{ left: `calc(${videoProgress}% - 8px)` }}
-                />
+                {(isScrubbing || videoProgress > 0) && (
+                  <div
+                    className={`absolute top-1/2 -translate-y-1/2 rounded-full bg-white pointer-events-none shadow-sm ${
+                      isScrubbing ? "h-2.5 w-2.5" : "h-1.5 w-1.5 opacity-80"
+                    }`}
+                    style={{ left: `calc(${videoProgress}% - ${isScrubbing ? 5 : 3}px)` }}
+                  />
+                )}
               </div>
               {isScrubbing && (
                 <div
