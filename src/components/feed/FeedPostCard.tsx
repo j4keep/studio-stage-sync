@@ -60,7 +60,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
   const [isPlaying, setIsPlaying] = useState(false);
   const [showHeart, setShowHeart] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [autoplayAudioLocked, setAutoplayAudioLocked] = useState(false);
+  const [autoplayAudioLocked, setAutoplayAudioLocked] = useState(() => !isFeedAudioSessionUnlocked());
   const [feedAudioUnlocked, setFeedAudioUnlocked] = useState(isFeedAudioSessionUnlocked);
   const [videoProgress, setVideoProgress] = useState(0);
   const [videoDuration, setVideoDuration] = useState(0);
@@ -177,6 +177,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     if (!video || post.media_type !== "video" || userPausedRef.current) return false;
 
     const targetMuted = getVideoMuted();
+    const canPlayAudibly = feedAudioUnlocked || isFeedAudioSessionUnlocked();
 
     if (video.readyState === 0 && video.preload !== "auto") {
       video.preload = "auto";
@@ -188,18 +189,32 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       applyFeedVideoAudio(video, { muted: true });
       await video.play();
 
-      setAutoplayAudioLocked(false);
       setIsPlaying(true);
       onChromeHiddenChange?.(true);
 
-      if (targetMuted) {
+      if (isMuted) {
+        setAutoplayAudioLocked(false);
+        applyFeedVideoAudio(video, { muted: true });
+        activateFeedPlayback(true);
+        return true;
+      }
+
+      if (!canPlayAudibly) {
+        setAutoplayAudioLocked(true);
+        applyFeedVideoAudio(video, { muted: true });
+        activateFeedPlayback(true);
+        return true;
+      }
+
+      if (targetMuted && !hasAddedSound) {
+        setAutoplayAudioLocked(false);
         applyFeedVideoAudio(video, { muted: true });
         activateFeedPlayback(true);
         return true;
       }
 
       applyFeedVideoAudio(video, { muted: false });
-      unlockFeedAudio();
+      setAutoplayAudioLocked(false);
       activateFeedPlayback(false);
 
       if (hasAddedSound) {
@@ -213,7 +228,16 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       setIsPlaying(false);
       return false;
     }
-  }, [post.media_type, getVideoMuted, unlockFeedAudio, activateFeedPlayback, onChromeHiddenChange, hasAddedSound, startAudiblePlayback, playbackMeta]);
+  }, [post.media_type, getVideoMuted, feedAudioUnlocked, activateFeedPlayback, onChromeHiddenChange, isMuted, hasAddedSound, startAudiblePlayback, playbackMeta]);
+
+  const handleFirstFeedInteraction = useCallback(() => {
+    const video = videoRef.current;
+    if (!video || post.media_type !== "video" || !isActiveRef.current || userPausedRef.current || isMuted) return;
+    if (autoplayAudioLockedRef.current || video.muted || !isFeedAudioSessionUnlocked()) {
+      suppressNextMediaToggleRef.current = true;
+      void startAudiblePlayback();
+    }
+  }, [post.media_type, isMuted, startAudiblePlayback]);
 
   const toggleVideoPlayback = useCallback(() => {
     const video = videoRef.current;
@@ -675,7 +699,12 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
 
   return (
     <>
-      <div className="absolute inset-0 bg-black overflow-hidden">
+      <div
+        className="absolute inset-0 bg-black overflow-hidden"
+        onPointerDownCapture={handleFirstFeedInteraction}
+        onTouchStartCapture={handleFirstFeedInteraction}
+        onMouseDownCapture={handleFirstFeedInteraction}
+      >
         {post.media_url &&
           (post.media_type === "video" ? (
             <video
