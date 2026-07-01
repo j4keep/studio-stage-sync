@@ -60,7 +60,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
   const [isPlaying, setIsPlaying] = useState(false);
   const [showHeart, setShowHeart] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [autoplayAudioLocked, setAutoplayAudioLocked] = useState(() => !isFeedAudioSessionUnlocked());
+  const [autoplayAudioLocked, setAutoplayAudioLocked] = useState(false);
   const [feedAudioUnlocked, setFeedAudioUnlocked] = useState(isFeedAudioSessionUnlocked);
   const [videoProgress, setVideoProgress] = useState(0);
   const [videoDuration, setVideoDuration] = useState(0);
@@ -177,58 +177,89 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     if (!video || post.media_type !== "video" || userPausedRef.current) return false;
 
     const targetMuted = getVideoMuted();
-    const canPlayAudibly = feedAudioUnlocked || isFeedAudioSessionUnlocked();
 
     if (video.readyState === 0 && video.preload !== "auto") {
       video.preload = "auto";
       try { video.load(); } catch { /* ignore */ }
     }
 
-    try {
-      // Mobile requires muted autoplay — unmute immediately once playback starts.
-      applyFeedVideoAudio(video, { muted: true });
-      await video.play();
-
+    const markPlaying = () => {
       setIsPlaying(true);
       onChromeHiddenChange?.(true);
+    };
 
-      if (isMuted) {
-        setAutoplayAudioLocked(false);
-        applyFeedVideoAudio(video, { muted: true });
+    const playSilently = async () => {
+      applyFeedVideoAudio(video, { muted: true });
+      try {
+        await video.play();
+        markPlaying();
         activateFeedPlayback(true);
         return true;
+      } catch {
+        setIsPlaying(false);
+        return false;
       }
+    };
 
-      if (!canPlayAudibly) {
-        setAutoplayAudioLocked(true);
-        applyFeedVideoAudio(video, { muted: true });
-        activateFeedPlayback(true);
-        return true;
-      }
-
-      if (targetMuted && !hasAddedSound) {
-        setAutoplayAudioLocked(false);
-        applyFeedVideoAudio(video, { muted: true });
-        activateFeedPlayback(true);
-        return true;
-      }
-
-      applyFeedVideoAudio(video, { muted: false });
+    if (isMuted || (targetMuted && !hasAddedSound)) {
       setAutoplayAudioLocked(false);
-      activateFeedPlayback(false);
+      return playSilently();
+    }
 
-      if (hasAddedSound) {
-        await startAudiblePlayback();
-      } else {
-        mediaSessionCleanupRef.current?.();
-        mediaSessionCleanupRef.current = bindFeedMediaSession(video, playbackMeta);
+    if (hasAddedSound) {
+      applyFeedVideoAudio(video, { muted: true });
+      try {
+        await video.play();
+        markPlaying();
+      } catch {
+        setIsPlaying(false);
+        return false;
       }
+
+      const audio = musicAudioRef.current;
+      if (!audio) {
+        setAutoplayAudioLocked(true);
+        activateFeedPlayback(true);
+        return true;
+      }
+
+      audio.currentTime = video.currentTime;
+      applyFeedAudioElementVolume(audio);
+      mediaSessionCleanupRef.current?.();
+      mediaSessionCleanupRef.current = bindFeedMediaSession(audio, playbackMeta);
+
+      try {
+        await audio.play();
+        setAutoplayAudioLocked(false);
+        setFeedAudioUnlocked(true);
+        if (!isFeedAudioSessionUnlocked()) unlockFeedAudioSession();
+        return true;
+      } catch {
+        audio.pause();
+        setAutoplayAudioLocked(true);
+        activateFeedPlayback(true);
+        return true;
+      }
+    }
+
+    setAutoplayAudioLocked(false);
+    applyFeedVideoAudio(video, { muted: false });
+    mediaSessionCleanupRef.current?.();
+    mediaSessionCleanupRef.current = bindFeedMediaSession(video, playbackMeta);
+
+    try {
+      await video.play();
+      markPlaying();
+      setFeedAudioUnlocked(true);
+      if (!isFeedAudioSessionUnlocked()) unlockFeedAudioSession();
       return true;
     } catch {
-      setIsPlaying(false);
-      return false;
+      setAutoplayAudioLocked(true);
+      mediaSessionCleanupRef.current?.();
+      mediaSessionCleanupRef.current = null;
+      return playSilently();
     }
-  }, [post.media_type, getVideoMuted, feedAudioUnlocked, activateFeedPlayback, onChromeHiddenChange, isMuted, hasAddedSound, startAudiblePlayback, playbackMeta]);
+  }, [post.media_type, getVideoMuted, activateFeedPlayback, onChromeHiddenChange, isMuted, hasAddedSound, playbackMeta]);
 
   const handleFirstFeedInteraction = useCallback(() => {
     const video = videoRef.current;
@@ -715,7 +746,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
               loop
               playsInline
               muted={videoMutedForAutoplay}
-              autoPlay={isActive && !userPaused}
+              autoPlay={false}
               preload={isActive || isNear ? "auto" : "metadata"}
               onPlay={() => setIsPlaying(true)}
               onPause={() => setIsPlaying(false)}
