@@ -94,7 +94,8 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
   const canStartWithSound = useCallback(() => {
     if (feedAudioUnlocked) return true;
     if (typeof navigator === "undefined" || !("userActivation" in navigator)) return true;
-    return Boolean(navigator.userActivation?.isActive);
+    const activation = navigator.userActivation;
+    return Boolean(activation?.hasBeenActive || activation?.isActive);
   }, [feedAudioUnlocked]);
 
   const unlockFeedAudio = useCallback(() => {
@@ -128,12 +129,13 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     if (!video || post.media_type !== "video" || userPausedRef.current) return false;
 
     const targetMuted = getVideoMuted();
-    const playMuted = targetMuted || !canStartWithSound();
+    const preferredMuted = targetMuted || !canStartWithSound();
 
-    const markPlaying = () => {
-      applyFeedVideoAudio(video, { muted: playMuted });
-      setAutoplayAudioLocked(!targetMuted && playMuted);
-      activateFeedPlayback(playMuted);
+    const markPlaying = (mutedForPlayback: boolean) => {
+      applyFeedVideoAudio(video, { muted: mutedForPlayback });
+      setAutoplayAudioLocked(!targetMuted && mutedForPlayback);
+      if (!targetMuted && !mutedForPlayback) unlockFeedAudio();
+      activateFeedPlayback(mutedForPlayback);
       setIsPlaying(true);
       onChromeHiddenChange?.(true);
     };
@@ -145,16 +147,25 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     }
 
     try {
-      // Mobile autoplay requires muted playback first — unmute after if allowed.
-      applyFeedVideoAudio(video, { muted: playMuted });
+      applyFeedVideoAudio(video, { muted: preferredMuted });
       await video.play();
-      markPlaying();
+      markPlaying(preferredMuted);
       return true;
     } catch {
+      if (!targetMuted && !preferredMuted) {
+        try {
+          applyFeedVideoAudio(video, { muted: true });
+          await video.play();
+          markPlaying(true);
+          return true;
+        } catch {
+          /* fall through */
+        }
+      }
       setIsPlaying(false);
       return false;
     }
-  }, [post.media_type, getVideoMuted, canStartWithSound, activateFeedPlayback, onChromeHiddenChange]);
+  }, [post.media_type, getVideoMuted, canStartWithSound, unlockFeedAudio, activateFeedPlayback, onChromeHiddenChange]);
 
   const toggleVideoPlayback = useCallback(() => {
     const video = videoRef.current;
@@ -200,9 +211,9 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
 
   useEffect(() => {
     if (!videoRef.current) return;
-    const muted = getVideoMuted() || autoplayAudioLocked || (isActive && !feedAudioUnlocked && !isPlaying);
+    const muted = getVideoMuted() || autoplayAudioLocked || (isActive && !canStartWithSound() && !isPlaying);
     applyFeedVideoAudio(videoRef.current, { muted });
-  }, [getVideoMuted, autoplayAudioLocked, isActive, feedAudioUnlocked, isPlaying]);
+  }, [getVideoMuted, autoplayAudioLocked, isActive, canStartWithSound, isPlaying]);
 
   useEffect(() => {
     const onUnlocked = () => setFeedAudioUnlocked(true);
@@ -558,7 +569,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
 
   const timeAgo = formatDistanceToNow(new Date(post.created_at), { addSuffix: false });
   const videoMutedForAutoplay =
-    getVideoMuted() || autoplayAudioLocked || (isActive && !userPaused && !getVideoMuted() && !isPlaying);
+    getVideoMuted() || autoplayAudioLocked || (isActive && !userPaused && !getVideoMuted() && !canStartWithSound() && !isPlaying);
 
   return (
     <>
@@ -636,7 +647,8 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
                 setIsMuted((value) => {
                   const next = !value;
                   if (!next) {
-                    requestAnimationFrame(() => activateFeedPlayback());
+                    unlockFeedAudio();
+                    requestAnimationFrame(() => activateFeedPlayback(false));
                   }
                   return next;
                 });
@@ -644,7 +656,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
               className="feed-action-btn"
               aria-label={isMuted ? "Unmute video" : "Mute video"}
             >
-              {isMuted ? <VolumeX className="feed-action-icon" /> : <Volume2 className="feed-action-icon" />}
+              {isMuted || autoplayAudioLocked ? <VolumeX className="feed-action-icon" /> : <Volume2 className="feed-action-icon" />}
             </button>
           )}
 
