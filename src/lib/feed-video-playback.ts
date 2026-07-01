@@ -10,6 +10,7 @@ export function applyFeedVideoAudio(
   options: { muted: boolean } = { muted: false },
 ) {
   video.volume = 1;
+  video.defaultMuted = options.muted;
   video.muted = options.muted;
   video.setAttribute("playsinline", "true");
   video.setAttribute("webkit-playsinline", "true");
