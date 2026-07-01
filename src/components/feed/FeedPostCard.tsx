@@ -530,7 +530,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
               playsInline
               muted={videoMutedForAutoplay}
               autoPlay={isActive && !userPaused}
-              preload="auto"
+              preload={isActive || isNear ? "auto" : "metadata"}
               onPlay={() => setIsPlaying(true)}
               onPause={() => setIsPlaying(false)}
             />
