@@ -37,11 +37,12 @@ interface Props {
   post: any;
   currentUserId?: string;
   isActive?: boolean;
+  isNear?: boolean;
   chromeHidden?: boolean;
   onChromeHiddenChange?: (hidden: boolean) => void;
 }
 
-const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = false, onChromeHiddenChange }: Props) => {
+const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, chromeHidden = false, onChromeHiddenChange }: Props) => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -117,6 +118,12 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
       setIsPlaying(true);
       onChromeHiddenChange?.(true);
     };
+
+    // Kick the network fetch immediately so playback isn't held up by lazy loading.
+    if (video.readyState === 0 && video.preload !== "auto") {
+      video.preload = "auto";
+      try { video.load(); } catch { /* ignore */ }
+    }
 
     try {
       // Mobile autoplay requires muted playback first — unmute after if allowed.
@@ -529,7 +536,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
               playsInline
               muted={videoMutedForAutoplay}
               autoPlay={isActive && !userPaused}
-              preload="auto"
+              preload={isActive || isNear ? "auto" : "metadata"}
               onPlay={() => setIsPlaying(true)}
               onPause={() => setIsPlaying(false)}
             />
