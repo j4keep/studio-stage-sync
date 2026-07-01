@@ -109,31 +109,22 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
     const video = videoRef.current;
     if (!video || post.media_type !== "video" || userPausedRef.current) return false;
 
-    applyFeedVideoAudio(video, { muted: getVideoMuted() });
+    const targetMuted = getVideoMuted();
 
     const markPlaying = () => {
+      applyFeedVideoAudio(video, { muted: targetMuted });
       activateFeedPlayback();
       setIsPlaying(true);
       onChromeHiddenChange?.(true);
     };
 
     try {
+      // Mobile autoplay requires muted playback first — unmute after if allowed.
+      applyFeedVideoAudio(video, { muted: true });
       await video.play();
       markPlaying();
       return true;
     } catch {
-      if (!getVideoMuted()) {
-        video.muted = true;
-        try {
-          await video.play();
-          applyFeedVideoAudio(video, { muted: false });
-          markPlaying();
-          return true;
-        } catch {
-          setIsPlaying(false);
-          return false;
-        }
-      }
       setIsPlaying(false);
       return false;
     }
@@ -266,17 +257,21 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
       }
     };
 
+    video.addEventListener("loadedmetadata", onReady);
     video.addEventListener("loadeddata", onReady);
     video.addEventListener("canplay", onReady);
+    video.addEventListener("canplaythrough", onReady);
 
     const rafId = requestAnimationFrame(tryPlay);
-    const timerId = window.setTimeout(tryPlay, 120);
+    const timerIds = [0, 50, 150, 400].map((ms) => window.setTimeout(tryPlay, ms));
 
     return () => {
       cancelAnimationFrame(rafId);
-      window.clearTimeout(timerId);
+      timerIds.forEach((id) => window.clearTimeout(id));
+      video.removeEventListener("loadedmetadata", onReady);
       video.removeEventListener("loadeddata", onReady);
       video.removeEventListener("canplay", onReady);
+      video.removeEventListener("canplaythrough", onReady);
     };
   }, [isActive, showComments, post.media_type, playWhenActive]);
 
@@ -517,6 +512,8 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
   };
 
   const timeAgo = formatDistanceToNow(new Date(post.created_at), { addSuffix: false });
+  const videoMutedForAutoplay =
+    getVideoMuted() || (isActive && !userPaused && !getVideoMuted() && !isPlaying);
 
   return (
     <>
@@ -530,6 +527,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
               style={cropStyle}
               loop
               playsInline
+              muted={videoMutedForAutoplay}
               autoPlay={isActive && !userPaused}
               preload="auto"
               onPlay={() => setIsPlaying(true)}

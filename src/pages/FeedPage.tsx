@@ -54,30 +54,23 @@ const FeedPage = () => {
 
   useEffect(() => {
     const container = scrollRef.current;
-    if (!container) return;
+    if (!container || feedPosts.length === 0) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        let bestIndex: number | null = null;
-        let bestRatio = 0;
+    const syncActiveIndex = () => {
+      const height = container.clientHeight;
+      if (height <= 0) return;
+      const next = Math.min(
+        feedPosts.length - 1,
+        Math.max(0, Math.round(container.scrollTop / height)),
+      );
+      setCurrentIndex((prev) => (prev === next ? prev : next));
+    };
 
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          const index = Number(entry.target.getAttribute("data-index"));
-          if (Number.isNaN(index)) continue;
-          if (entry.intersectionRatio >= bestRatio) {
-            bestRatio = entry.intersectionRatio;
-            bestIndex = index;
-          }
-        }
+    syncActiveIndex();
+    requestAnimationFrame(syncActiveIndex);
 
-        if (bestIndex !== null) setCurrentIndex(bestIndex);
-      },
-      { root: container, threshold: [0, 0.35, 0.6, 0.85, 1] },
-    );
-
-    container.querySelectorAll("[data-index]").forEach((element) => observer.observe(element));
-    return () => observer.disconnect();
+    container.addEventListener("scroll", syncActiveIndex, { passive: true });
+    return () => container.removeEventListener("scroll", syncActiveIndex);
   }, [feedPosts.length]);
 
   useEffect(() => {
