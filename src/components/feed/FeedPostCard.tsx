@@ -30,6 +30,8 @@ import {
   applyFeedVideoAudio,
   applyFeedAudioElementVolume,
   bindFeedMediaSession,
+  isFeedAudioSessionUnlocked,
+  unlockFeedAudioSession,
   type FeedPlaybackMeta,
 } from "@/lib/feed-video-playback";
 
@@ -41,8 +43,6 @@ interface Props {
   chromeHidden?: boolean;
   onChromeHiddenChange?: (hidden: boolean) => void;
 }
-
-let feedAudibleAutoplayUnlocked = false;
 
 const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, chromeHidden = false, onChromeHiddenChange }: Props) => {
   const queryClient = useQueryClient();
@@ -61,7 +61,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
   const [showHeart, setShowHeart] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [autoplayAudioLocked, setAutoplayAudioLocked] = useState(false);
-  const [feedAudioUnlocked, setFeedAudioUnlocked] = useState(feedAudibleAutoplayUnlocked);
+  const [feedAudioUnlocked, setFeedAudioUnlocked] = useState(isFeedAudioSessionUnlocked);
   const [videoProgress, setVideoProgress] = useState(0);
   const [videoDuration, setVideoDuration] = useState(0);
   const [isScrubbing, setIsScrubbing] = useState(false);
@@ -105,10 +105,9 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
   }, [feedAudioUnlocked]);
 
   const unlockFeedAudio = useCallback(() => {
-    feedAudibleAutoplayUnlocked = true;
     setFeedAudioUnlocked(true);
     setAutoplayAudioLocked(false);
-    window.dispatchEvent(new Event("feed-audio-unlocked"));
+    unlockFeedAudioSession();
   }, []);
 
   const activateFeedPlayback = useCallback((forceMuted?: boolean) => {
@@ -250,7 +249,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
 
   // Cold-entry autoplay: unmute on the very first user interaction anywhere.
   useEffect(() => {
-    if (feedAudibleAutoplayUnlocked) return;
+    if (isFeedAudioSessionUnlocked()) return;
     const onFirstInteract = () => {
       if (isActiveRef.current && autoplayAudioLockedRef.current) {
         suppressNextMediaToggleRef.current = true;
@@ -258,8 +257,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
           suppressNextMediaToggleRef.current = false;
         }, 600);
       }
-      feedAudibleAutoplayUnlocked = true;
-      window.dispatchEvent(new Event("feed-audio-unlocked"));
+      unlockFeedAudioSession();
     };
     const opts = { once: true, capture: true } as AddEventListenerOptions;
     window.addEventListener("pointerdown", onFirstInteract, opts);
