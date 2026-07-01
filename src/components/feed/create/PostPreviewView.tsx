@@ -1,5 +1,7 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { applyFeedVideoAudio, bindFeedMediaSession } from "@/lib/feed-video-playback";
+import { syncMusicWithVideo } from "@/lib/post-music-preview";
+import type { PostEditorMeta } from "@/lib/post-editor";
 import { ChevronLeft, Hash, AtSign, Lightbulb, Wand2, ImageIcon, Trash2, Type } from "lucide-react";
 import { toast } from "sonner";
 import JhiIcon from "@/components/JhiIcon";
@@ -19,6 +21,9 @@ interface Props {
   posting?: boolean;
   deleting?: boolean;
   isEditing?: boolean;
+  musicPreviewUrl?: string | null;
+  music?: PostEditorMeta["music"];
+  muteOriginal?: boolean;
 }
 
 export default function PostPreviewView({
@@ -35,9 +40,37 @@ export default function PostPreviewView({
   posting = false,
   deleting = false,
   isEditing = false,
+  musicPreviewUrl,
+  music,
+  muteOriginal = false,
 }: Props) {
   const [rewriting, setRewriting] = useState<"title" | "description" | null>(null);
   const descRef = useRef<HTMLTextAreaElement>(null);
+  const coverVideoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const video = coverVideoRef.current;
+    const musicUrl = musicPreviewUrl || music?.audioUrl;
+    if (!video || mediaType !== "video" || !musicUrl) return;
+
+    return syncMusicWithVideo(video, musicUrl, {
+      trimStart: music?.trimStart,
+      trimEnd: music?.trimEnd,
+      sourceDurationSec: music?.durationSec,
+      volume: music?.volume ?? 0.85,
+      muteOriginal,
+    });
+  }, [
+    mediaType,
+    musicPreviewUrl,
+    music?.audioUrl,
+    music?.trimStart,
+    music?.trimEnd,
+    music?.durationSec,
+    music?.volume,
+    muteOriginal,
+    previewUrl,
+  ]);
 
   const rewriteTitle = async () => {
     if (rewriting) return;
@@ -144,15 +177,20 @@ export default function PostPreviewView({
             {previewUrl ? (
               mediaType === "video" ? (
                 <video
+                  ref={coverVideoRef}
                   src={previewUrl}
                   className="w-full h-full object-cover pointer-events-none"
                   playsInline
+                  loop
+                  muted={muteOriginal}
                   onLoadedMetadata={(e) => {
-                    applyFeedVideoAudio(e.currentTarget, { muted: false });
+                    applyFeedVideoAudio(e.currentTarget, { muted: muteOriginal });
                   }}
                   onPlay={(e) => {
-                    applyFeedVideoAudio(e.currentTarget, { muted: false });
-                    bindFeedMediaSession(e.currentTarget, { title: title || "Preview" });
+                    applyFeedVideoAudio(e.currentTarget, { muted: muteOriginal });
+                    if (!muteOriginal) {
+                      bindFeedMediaSession(e.currentTarget, { title: title || "Preview" });
+                    }
                   }}
                 />
               ) : (

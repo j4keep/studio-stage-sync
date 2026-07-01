@@ -159,17 +159,35 @@ return () => {
 };
 }, [open, postToEdit]);
 
-const revokeBlobs = () => {
+const revokePreviewBlob = () => {
 if (previewBlobRef.current) URL.revokeObjectURL(previewBlobRef.current);
-if (musicBlobRef.current) URL.revokeObjectURL(musicBlobRef.current);
-
 previewBlobRef.current = null;
-musicBlobRef.current = null;
-
 };
 
+const revokeMusicBlob = () => {
+if (musicBlobRef.current) URL.revokeObjectURL(musicBlobRef.current);
+musicBlobRef.current = null;
+};
+
+const revokeBlobs = () => {
+revokePreviewBlob();
+revokeMusicBlob();
+};
+
+/** Keep a live blob URL for uploaded sound — must survive video/photo capture. */
+const ensureMusicPreviewUrl = useCallback((sourceFile: File | null) => {
+if (!sourceFile) return;
+if (musicBlobRef.current) {
+  setMusicPreviewUrl(musicBlobRef.current);
+  return;
+}
+const url = URL.createObjectURL(sourceFile);
+musicBlobRef.current = url;
+setMusicPreviewUrl(url);
+}, []);
+
 const undoToCamera = useCallback(() => {
-revokeBlobs();
+revokePreviewBlob();
 
 musicStopRef.current?.();
 musicStopRef.current = null;
@@ -182,7 +200,8 @@ setTitle("");
 setMediaType("image");
 setCameraSessionKey((k) => k + 1);
 setStep("camera");
-}, []);
+ensureMusicPreviewUrl(musicFile);
+}, [ensureMusicPreviewUrl, musicFile]);
 
 const reset = () => {
 revokeBlobs();
@@ -370,7 +389,7 @@ const isVideo = type === "video" || f.type.startsWith("video/");
 setMediaType(isVideo ? "video" : "image");
 setCurrentMediaUrl(null);
 
-revokeBlobs();
+revokePreviewBlob();
 
 const url = URL.createObjectURL(f);
 
@@ -385,6 +404,8 @@ if (!postToEdit) {
       : {}),
   }));
 }
+
+ensureMusicPreviewUrl(musicFile);
 
 setStep("edit");
 
@@ -460,9 +481,7 @@ setEditorMeta((m) => ({
 };
 
 const clearMusic = () => {
-if (musicBlobRef.current) URL.revokeObjectURL(musicBlobRef.current);
-
-musicBlobRef.current = null;
+revokeMusicBlob();
 
 setMusicFile(null);
 setMusicPreviewUrl(null);
@@ -559,6 +578,9 @@ initialStream={cameraStream}
         posting={postMutation.isPending || uploading}
         deleting={deleteMutation.isPending}
         isEditing={!!postToEdit}
+        musicPreviewUrl={musicPreviewUrl}
+        music={editorMeta.music}
+        muteOriginal={editorMeta.muteOriginal}
       />
     )}
 
