@@ -8,46 +8,45 @@ import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { EMOJI_MAP, EMOJI_CHARACTERS } from "@/lib/emoji-characters";
 
-// Build a label→src lookup for legacy comments that stored plain labels
 const EMOJI_LABEL_MAP: Record<string, string> = {};
-EMOJI_CHARACTERS.forEach((e) => { EMOJI_LABEL_MAP[e.label] = e.src; });
+EMOJI_CHARACTERS.forEach((e) => {
+  EMOJI_LABEL_MAP[e.label] = e.src;
+});
 
 interface Props {
   postId: string;
   open: boolean;
   onClose: () => void;
-  currentUserId?: string;
-  onEmojiReaction?: (emojiId: string) => void;
+  onEmojiComment?: (emojiId: string) => void;
 }
 
-const PostCommentsSheet = ({ postId, open, onClose, currentUserId, onEmojiReaction }: Props) => {
+const PostCommentsSheet = ({ postId, open, onClose, onEmojiComment }: Props) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [text, setText] = useState("");
 
   const renderContent = (content: string) => {
-    // Check if the entire content is a plain emoji label (legacy format)
     if (EMOJI_LABEL_MAP[content]) {
       return (
         <img
           src={EMOJI_LABEL_MAP[content]}
           alt={content}
-          className="inline-block w-6 h-6 object-contain align-middle"
+          className="inline-block w-8 h-8 object-contain align-middle"
         />
       );
     }
-    // Check if it's the :id: format
+
     const exactMatch = content.match(/^:([a-z0-9]+):$/);
     if (exactMatch && EMOJI_MAP[exactMatch[1]]) {
       return (
         <img
           src={EMOJI_MAP[exactMatch[1]]}
           alt={exactMatch[1]}
-          className="inline-block w-6 h-6 object-contain align-middle"
+          className="inline-block w-8 h-8 object-contain align-middle"
         />
       );
     }
-    // Mixed content with inline :emoji: codes
+
     const parts = content.split(/(:[a-z0-9]+:)/g);
     return parts.map((part, index) => {
       const match = part.match(/^:([a-z0-9]+):$/);
@@ -63,6 +62,12 @@ const PostCommentsSheet = ({ postId, open, onClose, currentUserId, onEmojiReacti
       }
       return <span key={`text-${index}`}>{part}</span>;
     });
+  };
+
+  const invalidateComments = () => {
+    queryClient.invalidateQueries({ queryKey: ["post-comments", postId] });
+    queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
+    queryClient.invalidateQueries({ queryKey: ["profile-posts"] });
   };
 
   const { data: comments = [] } = useQuery({
@@ -93,24 +98,40 @@ const PostCommentsSheet = ({ postId, open, onClose, currentUserId, onEmojiReacti
   });
 
   const commentMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (content: string) => {
       if (!user) throw new Error("Not authenticated");
-      const trimmedText = text.trim();
-      if (!trimmedText) throw new Error("Comment cannot be empty");
+      const trimmed = content.trim();
+      if (!trimmed) throw new Error("Comment cannot be empty");
 
       const { error } = await (supabase as any).from("post_comments").insert({
         post_id: postId,
         user_id: user.id,
-        content: trimmedText,
+        content: trimmed,
       });
 
       if (error) throw error;
     },
     onSuccess: () => {
       setText("");
-      queryClient.invalidateQueries({ queryKey: ["post-comments", postId] });
-      queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
-      queryClient.invalidateQueries({ queryKey: ["profile-posts"] });
+      invalidateComments();
+    },
+    onError: (error: any) => toast.error(error?.message || "Failed to comment"),
+  });
+
+  const emojiCommentMutation = useMutation({
+    mutationFn: async (emojiId: string) => {
+      if (!user) throw new Error("Sign in to comment");
+      const { error } = await (supabase as any).from("post_comments").insert({
+        post_id: postId,
+        user_id: user.id,
+        content: `:${emojiId}:`,
+      });
+      if (error) throw error;
+      return emojiId;
+    },
+    onSuccess: (emojiId) => {
+      invalidateComments();
+      onEmojiComment?.(emojiId);
     },
     onError: (error: any) => toast.error(error?.message || "Failed to comment"),
   });
@@ -133,17 +154,20 @@ const PostCommentsSheet = ({ postId, open, onClose, currentUserId, onEmojiReacti
         exit={{ y: "100%" }}
         transition={{ type: "spring", damping: 25, stiffness: 300 }}
         className="fixed bottom-0 left-0 right-0 z-[80] mx-auto flex max-w-lg flex-col rounded-t-2xl border-t border-border bg-background max-h-[70vh]"
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <h3 className="text-sm font-bold text-foreground">Comments ({comments.length})</h3>
-          <button onClick={onClose}>
+          <button type="button" onClick={onClose}>
             <X className="w-5 h-5 text-muted-foreground" />
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 py-2 space-y-3">
           {comments.length === 0 ? (
-            <p className="py-8 text-center text-xs text-muted-foreground">No comments yet</p>
+            <p className="py-8 text-center text-xs text-muted-foreground">
+              No comments yet — react with an emoji or write something
+            </p>
           ) : (
             comments.map((comment: any) => (
               <div key={comment.localKey} className="flex gap-2">
@@ -159,7 +183,9 @@ const PostCommentsSheet = ({ postId, open, onClose, currentUserId, onEmojiReacti
 
                 <div className="flex-1 min-w-0">
                   <p className="text-[12px] leading-relaxed text-muted-foreground">
-                    <span className="font-semibold text-foreground mr-1">{comment.profile.display_name || "User"}</span>
+                    <span className="font-semibold text-foreground mr-1">
+                      {comment.profile.display_name || "User"}
+                    </span>
                     {renderContent(comment.content)}
                   </p>
                   <p className="mt-0.5 text-[10px] text-muted-foreground">
@@ -171,25 +197,49 @@ const PostCommentsSheet = ({ postId, open, onClose, currentUserId, onEmojiReacti
           )}
         </div>
 
-        <div className="border-t border-border px-4 py-2 flex items-center gap-2 pb-safe">
-          <input
-            value={text}
-            onChange={(event) => setText(event.target.value)}
-            placeholder="Add a comment..."
-            className="flex-1 rounded-full bg-secondary px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground"
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && text.trim()) {
-                commentMutation.mutate();
-              }
-            }}
-          />
-          <button
-            onClick={() => text.trim() && commentMutation.mutate()}
-            disabled={!text.trim() || commentMutation.isPending}
-            className="text-primary disabled:opacity-40"
-          >
-            <Send className="w-5 h-5" />
-          </button>
+        <div className="border-t border-border">
+          <div className="px-3 pt-2 pb-1">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5 px-1">
+              React with emoji
+            </p>
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide pb-1">
+              {EMOJI_CHARACTERS.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  disabled={emojiCommentMutation.isPending}
+                  onClick={() => emojiCommentMutation.mutate(item.id)}
+                  className="flex-shrink-0 w-10 h-10 rounded-xl bg-secondary border border-border flex items-center justify-center hover:scale-110 active:scale-95 transition-transform disabled:opacity-40"
+                  aria-label={item.label}
+                >
+                  <img src={item.src} alt={item.label} className="w-7 h-7 object-contain" />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 px-4 py-2 pb-[max(env(safe-area-inset-bottom),0.5rem)]">
+            <input
+              value={text}
+              onChange={(event) => setText(event.target.value)}
+              placeholder="Write a comment..."
+              className="flex-1 rounded-full bg-secondary px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground"
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && text.trim()) {
+                  commentMutation.mutate(text.trim());
+                }
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => text.trim() && commentMutation.mutate(text.trim())}
+              disabled={!text.trim() || commentMutation.isPending}
+              className="text-primary disabled:opacity-40"
+              aria-label="Send comment"
+            >
+              <Send className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </motion.div>
     </AnimatePresence>

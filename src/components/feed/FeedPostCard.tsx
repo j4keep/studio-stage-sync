@@ -23,7 +23,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import PostCommentsSheet from "./PostCommentsSheet";
 import CreatePostSheet from "./CreatePostSheet";
 import PostOverlayRenderer from "./create/PostOverlayRenderer";
-import useFloatingEmojis, { FloatingEmojiLayer, EmojiReactionTray, EmojiReactionButton } from "./FloatingEmojis";
+import useFloatingEmojis, { FloatingEmojiLayer } from "./FloatingEmojis";
 import { parsePostCaption, hasVisualOverlayLayers } from "@/lib/post-editor";
 import { playUploadedAudio, getMusicDisplayName } from "@/lib/feed-music";
 import {
@@ -61,8 +61,6 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
   const [videoDuration, setVideoDuration] = useState(0);
   const [isScrubbing, setIsScrubbing] = useState(false);
   const [scrubTime, setScrubTime] = useState(0);
-  const [showReactionTray, setShowReactionTray] = useState(false);
-  const [reactionCount, setReactionCount] = useState(0);
   const progressRef = useRef<HTMLDivElement>(null);
   const musicStopRef = useRef<(() => void) | null>(null);
   const musicAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -71,7 +69,6 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const userPausedRef = useRef(false);
   const [userPaused, setUserPaused] = useState(false);
-  const [myReactionId, setMyReactionId] = useState<string | null>(null);
   const { emojis, spawnEmoji } = useFloatingEmojis();
 
   const { caption: displayCaption, meta: postMeta } = parsePostCaption(post.caption);
@@ -238,28 +235,6 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
       video.removeEventListener("seeked", onSeeked);
     };
   }, [isActive, postMeta?.music?.audioUrl, post.id, activateFeedPlayback]);
-
-  useEffect(() => {
-    if (!currentUserId || !post.id) return;
-
-    void (async () => {
-      const { data: mine } = await (supabase as any)
-        .from("post_reactions")
-        .select("emoji_id")
-        .eq("post_id", post.id)
-        .eq("user_id", currentUserId)
-        .maybeSingle();
-
-      if (mine?.emoji_id) setMyReactionId(mine.emoji_id);
-
-      const { count } = await (supabase as any)
-        .from("post_reactions")
-        .select("id", { count: "exact", head: true })
-        .eq("post_id", post.id);
-
-      setReactionCount(count ?? 0);
-    })();
-  }, [post.id, currentUserId]);
 
   useEffect(() => {
     if (post.media_type !== "video") return;
@@ -523,11 +498,8 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
     toast.success("Link copied!");
   };
 
-  const handleEmojiReaction = (emojiId: string) => {
-    if (myReactionId) return;
-    toggleNav(true);
+  const handleEmojiComment = (emojiId: string) => {
     spawnEmoji(emojiId);
-    setMyReactionId(emojiId);
   };
 
   const formatCount = (value: number) => {
@@ -633,29 +605,6 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
             <MessageCircle className="feed-action-icon" />
             <span className="feed-action-count">{post.comments_count || 0}</span>
           </button>
-
-          <div className="relative">
-            <EmojiReactionButton
-              onClick={() => {
-                if (myReactionId) {
-                  toast.info("You already reacted to this post");
-                  return;
-                }
-                setShowReactionTray((v) => !v);
-              }}
-              count={reactionCount}
-            />
-            <EmojiReactionTray
-              open={showReactionTray}
-              onClose={() => setShowReactionTray(false)}
-              onEmoji={handleEmojiReaction}
-              postId={post.id}
-              currentUserId={currentUserId}
-              reactionCount={reactionCount}
-              onReactionCountChange={setReactionCount}
-              hasReacted={Boolean(myReactionId)}
-            />
-          </div>
 
           <button className="feed-action-btn" aria-label="Save">
             <Bookmark className="feed-action-icon" />
@@ -817,8 +766,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
         postId={post.id}
         open={showComments}
         onClose={() => setShowComments(false)}
-        currentUserId={currentUserId}
-        onEmojiReaction={handleEmojiReaction}
+        onEmojiComment={handleEmojiComment}
       />
       <CreatePostSheet open={showEdit} onClose={() => setShowEdit(false)} postToEdit={post} />
     </>
