@@ -18,8 +18,35 @@ export function isTouchFeedDevice() {
 }
 
 export function getFeedMountRadius() {
-  // Phone Safari chokes with dozens of mounted <video> nodes — keep a tight window.
-  return isTouchFeedDevice() ? 1 : 3;
+  // Keep next/prev posts mounted so swipe doesn't cold-start a new <video>.
+  return isTouchFeedDevice() ? 2 : 3;
+}
+
+/** Wait until Safari has enough buffered to start playback. */
+export function waitForVideoCanPlay(video: HTMLVideoElement, timeoutMs = 5000): Promise<boolean> {
+  if (video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) return Promise.resolve(true);
+
+  return new Promise((resolve) => {
+    const finish = (ok: boolean) => {
+      video.removeEventListener("canplay", onReady);
+      video.removeEventListener("loadeddata", onReady);
+      window.clearTimeout(timer);
+      resolve(ok);
+    };
+    const onReady = () => finish(true);
+    video.addEventListener("canplay", onReady);
+    video.addEventListener("loadeddata", onReady);
+    video.preload = "auto";
+    try {
+      video.load();
+    } catch {
+      /* ignore */
+    }
+    const timer = window.setTimeout(
+      () => finish(video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA),
+      timeoutMs,
+    );
+  });
 }
 
 export function isFeedAudioSessionUnlocked() {

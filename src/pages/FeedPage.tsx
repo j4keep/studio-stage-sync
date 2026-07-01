@@ -55,8 +55,6 @@ const FeedPage = () => {
     const container = scrollRef.current;
     if (!container || feedPosts.length === 0) return;
 
-    let scrollDebounce: ReturnType<typeof setTimeout> | undefined;
-
     const syncActiveIndex = () => {
       const height = container.clientHeight;
       if (height <= 0) return;
@@ -67,22 +65,14 @@ const FeedPage = () => {
       setCurrentIndex((prev) => (prev === next ? prev : next));
     };
 
-    const onScroll = () => {
-      clearTimeout(scrollDebounce);
-      scrollDebounce = setTimeout(syncActiveIndex, 120);
-    };
-
     syncActiveIndex();
     requestAnimationFrame(syncActiveIndex);
 
-    container.addEventListener("scroll", onScroll, { passive: true });
+    container.addEventListener("scroll", syncActiveIndex, { passive: true });
     container.addEventListener("scrollend", syncActiveIndex, { passive: true });
-    container.addEventListener("touchend", syncActiveIndex, { passive: true });
     return () => {
-      clearTimeout(scrollDebounce);
-      container.removeEventListener("scroll", onScroll);
+      container.removeEventListener("scroll", syncActiveIndex);
       container.removeEventListener("scrollend", syncActiveIndex);
-      container.removeEventListener("touchend", syncActiveIndex);
     };
   }, [feedPosts.length]);
 

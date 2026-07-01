@@ -32,6 +32,7 @@ import {
   isFeedAudioSessionUnlocked,
   isTouchFeedDevice,
   unlockFeedAudioSession,
+  waitForVideoCanPlay,
   type FeedPlaybackMeta,
 } from "@/lib/feed-video-playback";
 
@@ -76,11 +77,13 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
   const autoplayAudioLockedRef = useRef(false);
   const isActiveRef = useRef(isActive);
   const suppressNextMediaToggleRef = useRef(false);
+  const isScrubbingRef = useRef(false);
   const [userPaused, setUserPaused] = useState(false);
   const { emojis, spawnEmoji } = useFloatingEmojis();
 
   autoplayAudioLockedRef.current = autoplayAudioLocked;
   isActiveRef.current = isActive;
+  isScrubbingRef.current = isScrubbing;
 
   const { caption: displayCaption, meta: postMeta } = parsePostCaption(post.caption);
   const postTitle = postMeta?.title?.trim();
@@ -181,12 +184,16 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     const video = videoRef.current;
     if (!video || post.media_type !== "video" || userPausedRef.current) return false;
 
+    if (!video.paused && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+      setIsPlaying(true);
+      return true;
+    }
+
     const targetMuted = getVideoMuted();
 
-    if (video.readyState === 0 && video.preload !== "auto") {
-      video.preload = "auto";
-      try { video.load(); } catch { /* ignore */ }
-    }
+    video.preload = "auto";
+    const ready = await waitForVideoCanPlay(video);
+    if (!ready || !isActiveRef.current || userPausedRef.current) return false;
 
     const touchDevice = isTouchFeedDevice();
     const needsGestureForAudio = touchDevice && !isFeedAudioSessionUnlocked();
@@ -433,38 +440,35 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       userPausedRef.current = false;
       setUserPaused(false);
       setAutoplayAudioLocked(false);
+      setVideoProgress(0);
+      setVideoDuration(0);
       videoRef.current?.pause();
       setIsPlaying(false);
       return;
     }
 
+    setVideoProgress(0);
+    setVideoDuration(0);
+
+    let cancelled = false;
     const video = videoRef.current;
-    const tryPlay = () => {
-      if (userPausedRef.current || showComments) return;
+
+    const attemptPlay = () => {
+      if (cancelled || userPausedRef.current || showComments) return;
       void playWhenActive();
     };
 
-    tryPlay();
+    attemptPlay();
 
-    if (!video) return;
+    if (!video) return () => { cancelled = true; };
 
-    const onReady = () => {
-      if (isActive && !userPausedRef.current && !showComments && video.paused) {
-        void playWhenActive();
-      }
-    };
-
-    video.addEventListener("loadeddata", onReady);
+    const onReady = () => attemptPlay();
     video.addEventListener("canplay", onReady);
-
-    const rafId = requestAnimationFrame(tryPlay);
-    const retryDelays = isTouchFeedDevice() ? [0, 80, 200, 500] : [0, 50, 150, 400];
-    const timerIds = retryDelays.map((ms) => window.setTimeout(tryPlay, ms));
+    const retryId = window.setTimeout(attemptPlay, 250);
 
     return () => {
-      cancelAnimationFrame(rafId);
-      timerIds.forEach((id) => window.clearTimeout(id));
-      video.removeEventListener("loadeddata", onReady);
+      cancelled = true;
+      window.clearTimeout(retryId);
       video.removeEventListener("canplay", onReady);
     };
   }, [isActive, showComments, post.media_type, playWhenActive]);
@@ -506,40 +510,41 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     }
   }, [isActive, post.id, viewCounted]);
 
-  // Video progress tracking
+  // Video progress — rAF while active so iOS timeupdate throttling doesn't freeze the bar.
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video || post.media_type !== "video") return;
+    if (!isActive || post.media_type !== "video") return;
 
-    const onTimeUpdate = () => {
-      if (!isScrubbing && video.duration && isFinite(video.duration)) {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const syncDuration = () => {
+      if (video.duration && isFinite(video.duration)) {
+        setVideoDuration(video.duration);
+      }
+    };
+    syncDuration();
+    video.addEventListener("loadedmetadata", syncDuration);
+    video.addEventListener("durationchange", syncDuration);
+
+    const trim = postMeta?.trim;
+    let rafId = 0;
+    const tick = () => {
+      if (!isScrubbingRef.current && video.duration && isFinite(video.duration) && !video.paused) {
         setVideoProgress((video.currentTime / video.duration) * 100);
       }
-      const trim = postMeta?.trim;
-      if (trim && video.currentTime >= trim.end) {
+      if (trim && !video.paused && video.currentTime >= trim.end) {
         video.currentTime = trim.start;
       }
+      rafId = requestAnimationFrame(tick);
     };
-    const onLoadedMetadata = () => {
-      if (video.duration && isFinite(video.duration)) {
-        setVideoDuration(video.duration);
-      }
-    };
-    const onDurationChange = () => {
-      if (video.duration && isFinite(video.duration)) {
-        setVideoDuration(video.duration);
-      }
-    };
+    rafId = requestAnimationFrame(tick);
 
-    video.addEventListener("timeupdate", onTimeUpdate);
-    video.addEventListener("loadedmetadata", onLoadedMetadata);
-    video.addEventListener("durationchange", onDurationChange);
     return () => {
-      video.removeEventListener("timeupdate", onTimeUpdate);
-      video.removeEventListener("loadedmetadata", onLoadedMetadata);
-      video.removeEventListener("durationchange", onDurationChange);
+      cancelAnimationFrame(rafId);
+      video.removeEventListener("loadedmetadata", syncDuration);
+      video.removeEventListener("durationchange", syncDuration);
     };
-  }, [post.media_type, isScrubbing, postMeta?.trim]);
+  }, [isActive, post.media_type, post.id, postMeta?.trim]);
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -983,10 +988,13 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
                 onTouchStart={handleScrubStart}
               >
                 <div
-                  className="absolute left-0 top-0 h-full rounded-full bg-white pointer-events-none transition-[width] duration-75"
-                  style={{ width: `${videoProgress}%` }}
+                  className="absolute left-0 top-0 h-full rounded-full bg-white pointer-events-none"
+                  style={{
+                    width: `${videoProgress}%`,
+                    transition: isScrubbing ? "none" : videoProgress > 0 ? "width 100ms linear" : "none",
+                  }}
                 />
-                {(isScrubbing || videoProgress > 0) && (
+                {(isScrubbing || (isPlaying && videoProgress > 0)) && (
                   <div
                     className={`absolute top-1/2 -translate-y-1/2 rounded-full bg-white pointer-events-none shadow-sm ${
                       isScrubbing ? "h-2.5 w-2.5" : "h-1.5 w-1.5 opacity-80"
