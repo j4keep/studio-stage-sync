@@ -73,8 +73,14 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
   const lastTapRef = useRef(0);
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const userPausedRef = useRef(false);
+  const autoplayAudioLockedRef = useRef(false);
+  const isActiveRef = useRef(isActive);
+  const suppressNextMediaToggleRef = useRef(false);
   const [userPaused, setUserPaused] = useState(false);
   const { emojis, spawnEmoji } = useFloatingEmojis();
+
+  autoplayAudioLockedRef.current = autoplayAudioLocked;
+  isActiveRef.current = isActive;
 
   const { caption: displayCaption, meta: postMeta } = parsePostCaption(post.caption);
   const postTitle = postMeta?.title?.trim();
@@ -215,9 +221,9 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
 
   useEffect(() => {
     if (!videoRef.current) return;
-    const muted = getVideoMuted();
+    const muted = getVideoMuted() || autoplayAudioLocked;
     applyFeedVideoAudio(videoRef.current, { muted });
-  }, [getVideoMuted]);
+  }, [getVideoMuted, autoplayAudioLocked]);
 
   useEffect(() => {
     const onUnlocked = () => {
@@ -229,6 +235,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
         applyFeedVideoAudio(video, { muted });
         setAutoplayAudioLocked(false);
         activateFeedPlayback(muted);
+        void video.play().catch(() => {});
       }
     };
     window.addEventListener("feed-audio-unlocked", onUnlocked);
@@ -239,6 +246,12 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
   useEffect(() => {
     if (feedAudibleAutoplayUnlocked) return;
     const onFirstInteract = () => {
+      if (isActiveRef.current && autoplayAudioLockedRef.current) {
+        suppressNextMediaToggleRef.current = true;
+        window.setTimeout(() => {
+          suppressNextMediaToggleRef.current = false;
+        }, 600);
+      }
       feedAudibleAutoplayUnlocked = true;
       window.dispatchEvent(new Event("feed-audio-unlocked"));
     };
@@ -563,10 +576,15 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     lastTapRef.current = now;
     tapTimerRef.current = setTimeout(() => {
       if (post.media_type === "video" && videoRef.current) {
+        if (suppressNextMediaToggleRef.current) {
+          suppressNextMediaToggleRef.current = false;
+          return;
+        }
         if (autoplayAudioLocked) {
           unlockFeedAudio();
           applyFeedVideoAudio(videoRef.current, { muted: getVideoMuted() });
           activateFeedPlayback(getVideoMuted());
+          void videoRef.current.play().catch(() => {});
           return;
         }
         toggleVideoPlayback();
@@ -601,7 +619,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
 
   const timeAgo = formatDistanceToNow(new Date(post.created_at), { addSuffix: false });
   const videoMutedForAutoplay =
-    getVideoMuted();
+    getVideoMuted() || autoplayAudioLocked;
 
   return (
     <>
@@ -675,7 +693,26 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
         <div className="absolute right-3 feed-bottom-offset z-40 flex flex-col items-center gap-4 pb-1">
           {post.media_type === "video" && (
             <button
-              onClick={() => {
+              onPointerDown={(e) => {
+                if (!autoplayAudioLockedRef.current) return;
+                e.stopPropagation();
+                suppressNextMediaToggleRef.current = true;
+                unlockFeedAudio();
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (suppressNextMediaToggleRef.current || autoplayAudioLockedRef.current) {
+                  suppressNextMediaToggleRef.current = false;
+                  unlockFeedAudio();
+                  setIsMuted(false);
+                  const video = videoRef.current;
+                  if (video) {
+                    applyFeedVideoAudio(video, { muted: false });
+                    activateFeedPlayback(false);
+                    void video.play().catch(() => {});
+                  }
+                  return;
+                }
                 setIsMuted((value) => {
                   const next = !value;
                   if (!next) {
