@@ -107,7 +107,7 @@ const BottomNav = () => {
               onClick={() => void handleCreate()}
               disabled={waving}
               aria-label="Create"
-              className="relative flex items-center justify-center w-12 h-12 shrink-0 rounded-full bg-transparent p-0 border-0 shadow-[0_0_8px_rgba(168,85,247,0.35)] hover:shadow-[0_0_10px_rgba(168,85,247,0.5)] transition-shadow active:scale-95 disabled:opacity-90"
+              className="relative flex items-center justify-center w-12 h-12 shrink-0 rounded-full bg-black p-1 border-0 shadow-[0_0_8px_rgba(168,85,247,0.35)] hover:shadow-[0_0_10px_rgba(168,85,247,0.5)] transition-shadow active:scale-95 disabled:opacity-90"
             >
               {waving ? (
                 <span
