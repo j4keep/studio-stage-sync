@@ -37,11 +37,12 @@ interface Props {
   post: any;
   currentUserId?: string;
   isActive?: boolean;
+  isNear?: boolean;
   chromeHidden?: boolean;
   onChromeHiddenChange?: (hidden: boolean) => void;
 }
 
-const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = false, onChromeHiddenChange }: Props) => {
+const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, chromeHidden = false, onChromeHiddenChange }: Props) => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { user } = useAuth();
