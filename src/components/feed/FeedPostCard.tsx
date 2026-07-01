@@ -31,6 +31,7 @@ import {
   applyFeedAudioElementVolume,
   bindFeedMediaSession,
   isFeedAudioSessionUnlocked,
+  isTouchFeedDevice,
   unlockFeedAudioSession,
   type FeedPlaybackMeta,
 } from "@/lib/feed-video-playback";
@@ -188,6 +189,9 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       try { video.load(); } catch { /* ignore */ }
     }
 
+    const touchDevice = isTouchFeedDevice();
+    const needsGestureForAudio = touchDevice && !isFeedAudioSessionUnlocked();
+
     const markPlaying = () => {
       setIsPlaying(true);
       onChromeHiddenChange?.(true);
@@ -228,6 +232,12 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
         return true;
       }
 
+      if (needsGestureForAudio) {
+        setAutoplayAudioLocked(true);
+        activateFeedPlayback(true);
+        return true;
+      }
+
       audio.currentTime = video.currentTime;
       applyFeedAudioElementVolume(audio);
       mediaSessionCleanupRef.current?.();
@@ -245,6 +255,11 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
         activateFeedPlayback(true);
         return true;
       }
+    }
+
+    if (needsGestureForAudio) {
+      setAutoplayAudioLocked(true);
+      return playSilently();
     }
 
     setAutoplayAudioLocked(false);
@@ -329,13 +344,13 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       setAutoplayAudioLocked(false);
       const video = videoRef.current;
       if (!video || !isActive || userPausedRef.current) return;
-      if (!getVideoMuted() && (video.muted || autoplayAudioLocked)) {
+      if (!getVideoMuted()) {
         void startAudiblePlayback();
       }
     };
     window.addEventListener("feed-audio-unlocked", onUnlocked);
     return () => window.removeEventListener("feed-audio-unlocked", onUnlocked);
-  }, [isActive, autoplayAudioLocked, getVideoMuted, startAudiblePlayback]);
+  }, [isActive, getVideoMuted, startAudiblePlayback]);
 
   useEffect(() => {
     const onFeedStartAudible = () => {
@@ -445,7 +460,8 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     video.addEventListener("canplaythrough", onReady);
 
     const rafId = requestAnimationFrame(tryPlay);
-    const timerIds = [0, 50, 150, 400].map((ms) => window.setTimeout(tryPlay, ms));
+    const retryDelays = isTouchFeedDevice() ? [150] : [0, 50, 150, 400];
+    const timerIds = retryDelays.map((ms) => window.setTimeout(tryPlay, ms));
 
     return () => {
       cancelAnimationFrame(rafId);
@@ -764,7 +780,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
               playsInline
               muted={videoMutedForAutoplay}
               autoPlay={false}
-              preload={isActive || isNear ? "auto" : "metadata"}
+              preload={isActive ? "auto" : isNear && !isTouchFeedDevice() ? "auto" : "metadata"}
               onPlay={() => setIsPlaying(true)}
               onPause={() => setIsPlaying(false)}
             />

@@ -7,6 +7,16 @@ export type FeedPlaybackMeta = {
 
 let feedAudioSessionUnlocked = false;
 
+/** Phones/tablets need a user gesture before unmuted playback (iOS Safari). */
+export function isTouchFeedDevice() {
+  if (typeof window === "undefined") return false;
+  return (
+    "ontouchstart" in window ||
+    window.matchMedia("(pointer: coarse)").matches ||
+    window.matchMedia("(hover: none)").matches
+  );
+}
+
 export function isFeedAudioSessionUnlocked() {
   return feedAudioSessionUnlocked;
 }
