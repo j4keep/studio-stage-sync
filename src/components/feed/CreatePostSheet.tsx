@@ -9,7 +9,7 @@ import CreateHubView from "./create/CreateHubView";
 import LiveCameraView from "./create/LiveCameraView";
 import MediaEditView from "./create/MediaEditView";
 import PostPreviewView from "./create/PostPreviewView";
-import type { CreateMode, ShortDuration } from "@/lib/create-modes";
+import type { CreateMode } from "@/lib/create-modes";
 import SoundPickerSheet from "./SoundPickerSheet";
 import { exportEditedImage } from "./create/exportMedia";
 import {
@@ -45,7 +45,6 @@ const queryClient = useQueryClient();
 
 const [step, setStep] = useState<Step>("camera");
 const [createMode, setCreateMode] = useState<CreateMode>("post");
-const [shortDuration, setShortDuration] = useState<ShortDuration>(60);
 const [caption, setCaption] = useState("");
 const [title, setTitle] = useState("");
 const [file, setFile] = useState<File | null>(null);
@@ -123,7 +122,6 @@ setMusicFile(null);
 setMusicPreviewUrl(parsed.meta?.music?.audioUrl ?? null);
 setMediaType(postToEdit?.media_type === "video" ? "video" : "image");
 setCreateMode("post");
-setShortDuration(60);
 setCurrentMediaUrl(postToEdit?.media_url || null);
 setPreview(postToEdit?.media_url || null);
 setStep(postToEdit ? "preview" : "camera");
@@ -170,7 +168,6 @@ setCurrentMediaUrl(null);
 setEditorMeta(defaultEditorMeta());
 setStep("camera");
 setCreateMode("post");
-setShortDuration(60);
 
 onClose();
 
@@ -422,8 +419,6 @@ style={{ height: "100dvh", maxHeight: "100dvh" }}
 <CreateCameraView
 createMode={createMode}
 onModeChange={setCreateMode}
-durationSec={shortDuration}
-onDurationChange={setShortDuration}
 onClose={reset}
 onCapture={handleMediaFile}
 onOpenGallery={openGallery}
@@ -479,7 +474,7 @@ initialStream={cameraStream}
         description={caption}
         onTitleChange={setTitle}
         onDescriptionChange={setCaption}
-        onBack={() => (postToEdit ? reset() : hasMedia ? setStep("edit") : setStep("camera"))}
+        onBack={reset}
         onPost={() => postMutation.mutate()}
         onEditMedia={() => setStep("edit")}
         onDelete={postToEdit ? () => deleteMutation.mutate() : undefined}

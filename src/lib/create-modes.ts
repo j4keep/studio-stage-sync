@@ -9,20 +9,13 @@ export const CREATE_MODES: { id: CreateMode; label: string }[] = [
 export const SHORT_DURATIONS = [15, 30, 60] as const;
 export type ShortDuration = (typeof SHORT_DURATIONS)[number];
 
-/** Quick tab capture modes — video durations plus photo and text-only. */
-export type QuickCaptureKind = ShortDuration | "photo" | "text";
+/** Quick tab: hold-to-record max length (seconds). */
+export const QUICK_MAX_RECORD_SEC = 60;
 
-export const QUICK_CAPTURE_OPTIONS: { id: QuickCaptureKind; label: string }[] = [
-  { id: 15, label: "15s" },
-  { id: 30, label: "30s" },
-  { id: 60, label: "60s" },
-  { id: "photo", label: "Photo" },
-  { id: "text", label: "Text" },
+export const QUICK_ALT_OPTIONS = [
+  { id: "photo" as const, label: "Photo" },
+  { id: "text" as const, label: "Text" },
 ];
-
-export function isVideoCaptureKind(kind: QuickCaptureKind): kind is ShortDuration {
-  return typeof kind === "number";
-}
 
 export const TEMPLATE_CATEGORIES = [
   "For You",

@@ -1,18 +1,13 @@
-import { Camera, Type } from "lucide-react";
-
 interface Props {
   recording: boolean;
   progress: number;
   disabled?: boolean;
-  label?: string;
-  mode?: "hold" | "tap-photo" | "tap-text";
   onPointerDown?: (e: React.PointerEvent) => void;
   onPointerUp?: (e: React.PointerEvent) => void;
-  onTap?: () => void;
 }
 
-const SIZE = 84;
-const STROKE = 5;
+const SIZE = 64;
+const STROKE = 3.5;
 const R = (SIZE - STROKE) / 2;
 const C = 2 * Math.PI * R;
 
@@ -20,86 +15,87 @@ export default function RecordButton({
   recording,
   progress,
   disabled,
-  label = "Hold to record",
-  mode = "hold",
   onPointerDown,
   onPointerUp,
-  onTap,
 }: Props) {
   const clamped = Math.max(0, Math.min(1, progress));
   const offset = C * (1 - clamped);
-  const isTap = mode !== "hold";
 
   return (
-    <div className="relative flex flex-col items-center gap-2">
+    <div className="relative flex flex-col items-center">
       <button
         type="button"
         disabled={disabled}
-        onPointerDown={isTap ? undefined : onPointerDown}
-        onPointerUp={isTap ? undefined : onPointerUp}
-        onPointerCancel={isTap ? undefined : onPointerUp}
-        onClick={isTap ? onTap : undefined}
+        onPointerDown={onPointerDown}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
         onContextMenu={(e) => e.preventDefault()}
-        className="relative touch-none select-none disabled:opacity-40 active:scale-[0.97] transition-transform"
+        className={`relative touch-none select-none disabled:opacity-40 transition-transform active:scale-95 ${
+          recording ? "" : "animate-[pulse_2.5s_ease-in-out_infinite]"
+        }`}
         style={{ width: SIZE, height: SIZE, WebkitTouchCallout: "none" }}
-        aria-label={recording ? "Recording" : label}
+        aria-label={recording ? "Recording" : "Hold to record up to 60 seconds"}
       >
+        {!recording && (
+          <span
+            className="absolute inset-[-6px] rounded-full opacity-70 blur-md pointer-events-none"
+            style={{
+              background:
+                "conic-gradient(from 180deg, #d946ef, #8b5cf6, #22d3ee, #d946ef)",
+            }}
+            aria-hidden
+          />
+        )}
+
         <svg
-          className="absolute inset-0 -rotate-90"
+          className="absolute inset-0 -rotate-90 drop-shadow-[0_0_8px_rgba(255,255,255,0.25)]"
           width={SIZE}
           height={SIZE}
           viewBox={`0 0 ${SIZE} ${SIZE}`}
         >
+          <defs>
+            <linearGradient id="jhiRecordRing" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#d946ef" />
+              <stop offset="50%" stopColor="#8b5cf6" />
+              <stop offset="100%" stopColor="#22d3ee" />
+            </linearGradient>
+          </defs>
           <circle
             cx={SIZE / 2}
             cy={SIZE / 2}
             r={R}
             fill="none"
-            stroke="rgba(255,255,255,0.25)"
+            stroke="rgba(255,255,255,0.2)"
             strokeWidth={STROKE}
           />
-          {mode === "hold" && (
-            <circle
-              cx={SIZE / 2}
-              cy={SIZE / 2}
-              r={R}
-              fill="none"
-              stroke={recording ? "#ef4444" : "#ffffff"}
-              strokeWidth={STROKE}
-              strokeLinecap="round"
-              strokeDasharray={C}
-              strokeDashoffset={recording ? offset : C}
-              className="transition-[stroke-dashoffset] duration-75"
-            />
-          )}
+          <circle
+            cx={SIZE / 2}
+            cy={SIZE / 2}
+            r={R}
+            fill="none"
+            stroke={recording ? "#ef4444" : "url(#jhiRecordRing)"}
+            strokeWidth={STROKE}
+            strokeLinecap="round"
+            strokeDasharray={C}
+            strokeDashoffset={recording ? offset : C * 0.08}
+            className="transition-[stroke-dashoffset] duration-75"
+          />
         </svg>
+
         <div
-          className={`absolute inset-[10px] rounded-full border-[4px] flex items-center justify-center transition-all ${
-            mode === "tap-text"
-              ? "border-violet-300 bg-violet-500/20"
-              : mode === "tap-photo"
-                ? "border-cyan-300 bg-cyan-500/15"
-                : recording
-                  ? "border-white bg-red-500/25 scale-95"
-                  : "border-white bg-white/10"
+          className={`absolute inset-[9px] rounded-full flex items-center justify-center transition-all ${
+            recording
+              ? "bg-red-500/30 border-2 border-white/90 scale-95"
+              : "bg-white/95 border-2 border-white shadow-[inset_0_0_12px_rgba(168,85,247,0.35)]"
           }`}
         >
           {recording ? (
-            <div className="w-6 h-6 rounded-md bg-red-500" />
-          ) : mode === "tap-photo" ? (
-            <Camera className="w-8 h-8 text-white" strokeWidth={2} />
-          ) : mode === "tap-text" ? (
-            <Type className="w-8 h-8 text-white" strokeWidth={2.25} />
+            <div className="w-4 h-4 rounded-[3px] bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]" />
           ) : (
-            <div className="w-[3.4rem] h-[3.4rem] rounded-full bg-white" />
+            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-fuchsia-400 via-violet-400 to-cyan-400 opacity-90" />
           )}
         </div>
       </button>
-      {!recording && label && (
-        <span className="text-[10px] font-semibold text-white/50 max-w-[7rem] text-center leading-tight">
-          {label}
-        </span>
-      )}
     </div>
   );
 }

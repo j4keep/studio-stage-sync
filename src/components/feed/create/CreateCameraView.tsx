@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { X, SwitchCamera, Sparkles, Wand2 } from "lucide-react";
+import { X, SwitchCamera, Sparkles, Wand2, Camera, Type } from "lucide-react";
 import {
   warmCameraStream,
   releaseCameraStream,
@@ -12,8 +12,8 @@ import {
   shouldMirrorRecordOutput,
   capturePhotoFromStream,
 } from "@/lib/create-camera";
-import type { CreateMode, EnhanceTab, QuickCaptureKind } from "@/lib/create-modes";
-import { QUICK_CAPTURE_OPTIONS, isVideoCaptureKind } from "@/lib/create-modes";
+import type { CreateMode, EnhanceTab } from "@/lib/create-modes";
+import { QUICK_MAX_RECORD_SEC } from "@/lib/create-modes";
 import CreateModeTabs from "./CreateModeTabs";
 import RecordButton from "./RecordButton";
 import EnhancePanel from "./EnhancePanel";
@@ -28,8 +28,6 @@ interface Props {
   initialStream?: MediaStream | null;
   createMode: CreateMode;
   onModeChange: (mode: CreateMode) => void;
-  durationSec: number;
-  onDurationChange: (d: 15 | 30 | 60) => void;
 }
 
 export default function CreateCameraView({
@@ -40,8 +38,6 @@ export default function CreateCameraView({
   initialStream,
   createMode,
   onModeChange,
-  durationSec,
-  onDurationChange,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -68,9 +64,6 @@ export default function CreateCameraView({
   const [effectCategory, setEffectCategory] = useState("Trending");
   const [selectedEffect, setSelectedEffect] = useState("none");
   const [filterIntensity, setFilterIntensity] = useState(80);
-  const [captureKind, setCaptureKind] = useState<QuickCaptureKind>(durationSec as QuickCaptureKind);
-
-  const activeDuration = isVideoCaptureKind(captureKind) ? captureKind : durationSec;
 
   const stopStream = useCallback((forceRelease = false) => {
     if (ownsStreamRef.current || forceRelease) {
@@ -168,12 +161,6 @@ export default function CreateCameraView({
     };
   }, []);
 
-  useEffect(() => {
-    if (isVideoCaptureKind(captureKind)) {
-      onDurationChange(captureKind);
-    }
-  }, [captureKind, onDurationChange]);
-
   const clearProgressTimer = () => {
     if (progressTimerRef.current) {
       window.clearInterval(progressTimerRef.current);
@@ -211,8 +198,8 @@ export default function CreateCameraView({
 
   const startRecording = async () => {
     const video = videoRef.current;
-    let stream = streamRef.current;
-    if (!video || !stream || recording || !isVideoCaptureKind(captureKind)) return;
+    const stream = streamRef.current;
+    if (!video || !stream || recording) return;
 
     recordPendingRef.current = true;
 
@@ -281,7 +268,7 @@ export default function CreateCameraView({
       progressTimerRef.current = window.setInterval(() => {
         if (!recordStartRef.current) return;
         const elapsed = (Date.now() - recordStartRef.current) / 1000;
-        const progress = Math.min(1, elapsed / activeDuration);
+        const progress = Math.min(1, elapsed / QUICK_MAX_RECORD_SEC);
         setRecordProgress(progress);
         if (progress >= 1) {
           finishRecording();
@@ -303,7 +290,7 @@ export default function CreateCameraView({
   const takePhoto = async () => {
     const video = videoRef.current;
     const stream = streamRef.current;
-    if (!video || !stream || !ready || capturingPhoto) return;
+    if (!video || !stream || !ready || capturingPhoto || recording) return;
 
     setCapturingPhoto(true);
     try {
@@ -326,18 +313,8 @@ export default function CreateCameraView({
     }
   };
 
-  const handleCenterTap = () => {
-    if (captureKind === "text") {
-      onTextPost();
-      return;
-    }
-    if (captureKind === "photo") {
-      void takePhoto();
-    }
-  };
-
   const handleRecordDown = (e: React.PointerEvent) => {
-    if (denied || !ready || recording || recordPendingRef.current || !isVideoCaptureKind(captureKind)) return;
+    if (denied || !ready || recording || recordPendingRef.current || capturingPhoto) return;
     e.preventDefault();
     pointerDownRef.current = true;
     try {
@@ -360,16 +337,6 @@ export default function CreateCameraView({
     }
     if (recording) finishRecording();
   };
-
-  const recordMode =
-    captureKind === "photo" ? "tap-photo" : captureKind === "text" ? "tap-text" : "hold";
-
-  const recordLabel =
-    captureKind === "photo"
-      ? "Tap to snap"
-      : captureKind === "text"
-        ? "Tap to write"
-        : `Hold · ${activeDuration}s max`;
 
   const centerDisabled = denied || !ready || recording || capturingPhoto;
 
@@ -412,20 +379,20 @@ export default function CreateCameraView({
         <div className="absolute inset-0 z-20 bg-white/20 pointer-events-none animate-pulse" aria-hidden />
       )}
 
-      {micMissing && ready && !recording && isVideoCaptureKind(captureKind) && (
+      {micMissing && ready && !recording && (
         <div className="absolute top-[calc(env(safe-area-inset-top)+3.5rem)] left-4 right-4 z-30 px-4 py-2 rounded-xl bg-amber-500/90 text-black text-xs font-semibold text-center">
           Microphone not detected — check browser permissions and try flipping the camera.
         </div>
       )}
 
-      <div className="relative z-20 flex items-center justify-between px-3 pt-[max(env(safe-area-inset-top),0.5rem)] pb-2">
+      <div className="relative z-20 flex items-center justify-between px-3 pt-[max(env(safe-area-inset-top),0.5rem)] pb-1">
         <button
           type="button"
           onClick={onClose}
-          className="w-11 h-11 flex items-center justify-center text-white drop-shadow-lg"
-          aria-label="Close"
+          className="w-10 h-10 flex items-center justify-center text-white drop-shadow-lg"
+          aria-label="Close and discard"
         >
-          <X className="w-7 h-7" strokeWidth={2.5} />
+          <X className="w-6 h-6" strokeWidth={2.5} />
         </button>
 
         <button
@@ -438,25 +405,24 @@ export default function CreateCameraView({
         <button
           type="button"
           onClick={flipCamera}
-          disabled={denied || !ready || recording || capturingPhoto || captureKind === "text"}
-          className="w-11 h-11 flex items-center justify-center text-white drop-shadow-lg disabled:opacity-30"
+          disabled={denied || !ready || recording || capturingPhoto}
+          className="w-10 h-10 flex items-center justify-center text-white drop-shadow-lg disabled:opacity-30"
           aria-label="Flip camera"
         >
-          <SwitchCamera className="w-7 h-7" strokeWidth={2.5} />
+          <SwitchCamera className="w-6 h-6" strokeWidth={2.5} />
         </button>
       </div>
 
-      <div className="absolute right-3 top-[calc(env(safe-area-inset-top)+4rem)] z-20 flex flex-col items-center gap-4">
+      <div className="absolute right-3 top-[calc(env(safe-area-inset-top)+3.5rem)] z-20 flex flex-col items-center gap-3">
         <button
           type="button"
           onClick={() => {
             setShowEffects(false);
             setShowEnhance((v) => !v);
           }}
-          disabled={captureKind === "text"}
-          className={`flex flex-col items-center gap-1 disabled:opacity-30 ${showEnhance ? "text-white" : "text-white/80"}`}
+          className={`flex flex-col items-center gap-0.5 ${showEnhance ? "text-white" : "text-white/80"}`}
         >
-          <Sparkles className="w-6 h-6" />
+          <Sparkles className="w-5 h-5" />
           <span className="text-[9px] font-semibold">Enhance</span>
         </button>
         <button
@@ -465,59 +431,61 @@ export default function CreateCameraView({
             setShowEnhance(false);
             setShowEffects((v) => !v);
           }}
-          disabled={captureKind === "text"}
-          className={`flex flex-col items-center gap-1 disabled:opacity-30 ${showEffects ? "text-white" : "text-white/80"}`}
+          className={`flex flex-col items-center gap-0.5 ${showEffects ? "text-white" : "text-white/80"}`}
         >
-          <Wand2 className="w-6 h-6" />
+          <Wand2 className="w-5 h-5" />
           <span className="text-[9px] font-semibold">Effects</span>
         </button>
       </div>
 
-      <div className="relative z-20 mt-auto pb-[calc(max(env(safe-area-inset-bottom),0.5rem)+2.75rem)]">
-        {captureKind === "text" && (
-          <div className="absolute inset-0 -top-[40vh] bg-gradient-to-b from-black/70 via-black/40 to-transparent pointer-events-none z-0" />
-        )}
-
-        <div className="relative z-10 flex justify-center px-4 mb-3">
-          <div className="inline-flex max-w-full items-center justify-center gap-1 overflow-x-auto scrollbar-hide rounded-full bg-black/35 border border-white/10 px-1 py-1">
-            {QUICK_CAPTURE_OPTIONS.map((opt) => {
-              const selected = captureKind === opt.id;
-              return (
-                <button
-                  key={String(opt.id)}
-                  type="button"
-                  disabled={recording || capturingPhoto}
-                  onClick={() => setCaptureKind(opt.id)}
-                  className={`shrink-0 text-[10px] font-bold tracking-wide px-2.5 py-1 rounded-full transition-all disabled:opacity-40 ${
-                    selected ? "bg-white text-black" : "text-white/55"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="relative z-10 flex justify-center px-8">
+      <div className="relative z-20 mt-auto pb-[calc(max(env(safe-area-inset-bottom),0.5rem)+2.5rem)]">
+        <div className="relative z-10 flex flex-col items-center px-6">
           <RecordButton
             recording={recording}
             progress={recordProgress}
-            disabled={captureKind === "text" ? false : centerDisabled}
-            mode={recordMode}
-            label={recordLabel}
+            disabled={centerDisabled}
             onPointerDown={handleRecordDown}
             onPointerUp={handleRecordUp}
-            onTap={handleCenterTap}
           />
-        </div>
 
-        {recording && (
-          <p className="relative z-10 text-center text-red-400 text-sm font-bold mt-2 flex items-center justify-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            {Math.ceil(activeDuration * (1 - recordProgress))}s left
-          </p>
-        )}
+          {!recording && (
+            <p className="mt-1.5 text-[10px] font-medium text-white/45">Hold · up to 60s</p>
+          )}
+
+          {recording && (
+            <p className="mt-2 text-red-400 text-xs font-bold flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+              {Math.ceil(QUICK_MAX_RECORD_SEC * (1 - recordProgress))}s left
+            </p>
+          )}
+
+          {!recording && (
+            <div className="flex items-center justify-center gap-10 mt-3">
+              <button
+                type="button"
+                disabled={centerDisabled}
+                onClick={() => void takePhoto()}
+                className="flex flex-col items-center gap-1 disabled:opacity-40 active:scale-95 transition-transform"
+              >
+                <span className="w-10 h-10 rounded-full border-2 border-white/70 bg-black/35 flex items-center justify-center shadow-lg">
+                  <Camera className="w-[1.15rem] h-[1.15rem] text-white" strokeWidth={2.25} />
+                </span>
+                <span className="text-[10px] font-semibold text-white/55">Photo</span>
+              </button>
+              <button
+                type="button"
+                disabled={recording || capturingPhoto}
+                onClick={onTextPost}
+                className="flex flex-col items-center gap-1 disabled:opacity-40 active:scale-95 transition-transform"
+              >
+                <span className="w-10 h-10 rounded-full border-2 border-white/70 bg-black/35 flex items-center justify-center shadow-lg">
+                  <Type className="w-[1.15rem] h-[1.15rem] text-white" strokeWidth={2.25} />
+                </span>
+                <span className="text-[10px] font-semibold text-white/55">Text</span>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <EnhancePanel
