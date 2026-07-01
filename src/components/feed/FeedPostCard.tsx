@@ -125,6 +125,11 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     const video = videoRef.current;
     if (!video || post.media_type !== "video" || !isActiveRef.current || userPausedRef.current) return false;
 
+    if (video.readyState === 0 && video.preload !== "auto") {
+      video.preload = "auto";
+      try { video.load(); } catch { /* ignore */ }
+    }
+
     if (isMuted) {
       musicAudioRef.current?.pause();
       applyFeedVideoAudio(video, { muted: getVideoMuted() });
@@ -331,6 +336,18 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     window.addEventListener("feed-audio-unlocked", onUnlocked);
     return () => window.removeEventListener("feed-audio-unlocked", onUnlocked);
   }, [isActive, autoplayAudioLocked, getVideoMuted, startAudiblePlayback]);
+
+  useEffect(() => {
+    const onFeedStartAudible = () => {
+      if (post.media_type !== "video" || !isActiveRef.current || userPausedRef.current || isMuted) return;
+      setFeedAudioUnlocked(true);
+      setAutoplayAudioLocked(false);
+      void startAudiblePlayback();
+    };
+
+    window.addEventListener("feed-start-audible", onFeedStartAudible);
+    return () => window.removeEventListener("feed-start-audible", onFeedStartAudible);
+  }, [post.media_type, isMuted, startAudiblePlayback]);
 
   // Added sound plays in sync with video — camera audio is muted when a sound is attached.
   useEffect(() => {

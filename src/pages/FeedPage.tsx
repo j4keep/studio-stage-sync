@@ -8,7 +8,7 @@ import FeedPostCard from "@/components/feed/FeedPostCard";
 import { useCreatePostSheet } from "@/hooks/use-create-post-sheet";
 import CreatePostSheet from "@/components/feed/CreatePostSheet";
 import { fetchFeedItems } from "@/lib/feed-items";
-import { initFeedAudioUnlockOnGesture } from "@/lib/feed-video-playback";
+import { initFeedAudioUnlockOnGesture, isFeedAudioSessionUnlocked, unlockFeedAudioSession } from "@/lib/feed-video-playback";
 import jhiLogo from "@/assets/wheuat-logo.png";
 
 type TabId = "radio" | "battle" | "marketplace" | "deals" | "support";
@@ -32,6 +32,7 @@ const FeedPage = () => {
   const { open: showCreate, cameraStream, openCreate, closeCreate } = useCreatePostSheet();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [chromeHidden, setChromeHidden] = useState(false);
+  const [showAudioLaunch, setShowAudioLaunch] = useState(() => !isFeedAudioSessionUnlocked());
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const { data: items = [], isLoading } = useQuery({
@@ -81,6 +82,19 @@ const FeedPage = () => {
   useEffect(() => {
     initFeedAudioUnlockOnGesture();
   }, []);
+
+  useEffect(() => {
+    const hideAudioLaunch = () => setShowAudioLaunch(false);
+    window.addEventListener("feed-audio-unlocked", hideAudioLaunch);
+    return () => window.removeEventListener("feed-audio-unlocked", hideAudioLaunch);
+  }, []);
+
+  const handleAudioLaunch = () => {
+    unlockFeedAudioSession();
+    window.dispatchEvent(new Event("feed-start-audible"));
+    setShowAudioLaunch(false);
+    requestAnimationFrame(() => window.dispatchEvent(new Event("feed-start-audible")));
+  };
 
   useEffect(() => {
     const resetToTop = () => {
@@ -198,6 +212,21 @@ const FeedPage = () => {
       </div>
 
       <CreatePostSheet open={showCreate} onClose={closeCreate} cameraStream={cameraStream} />
+
+      {showAudioLaunch && !isLoading && feedPosts.length > 0 && (
+        <div className="absolute inset-0 z-[70] flex items-center justify-center bg-black/90 px-8 backdrop-blur-md">
+          <button
+            type="button"
+            onPointerDown={handleAudioLaunch}
+            onClick={handleAudioLaunch}
+            className="flex min-h-[8rem] w-full max-w-xs flex-col items-center justify-center gap-4 rounded-3xl border border-white/15 bg-white/10 px-6 py-7 text-center text-white shadow-2xl active:scale-95"
+            aria-label="Together we show up"
+          >
+            <img src={jhiLogo} alt="JHi" className="h-12 w-auto" />
+            <span className="text-lg font-extrabold leading-tight">Together we show up</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 };
