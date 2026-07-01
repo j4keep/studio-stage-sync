@@ -438,52 +438,58 @@ export default function CreateCameraView({
         </button>
       </div>
 
-      <div className="relative z-20 mt-auto pb-[calc(max(env(safe-area-inset-bottom),0.5rem)+2.5rem)]">
-        <div className="relative z-10 flex flex-col items-center px-6">
-          <RecordButton
-            recording={recording}
-            progress={recordProgress}
-            disabled={centerDisabled}
-            onPointerDown={handleRecordDown}
-            onPointerUp={handleRecordUp}
-          />
+      {recording && (
+        <div className="absolute top-[calc(env(safe-area-inset-top)+3.25rem)] right-3 z-30 min-w-[3rem] px-2.5 py-1 rounded-lg bg-[#ff0069] text-white text-sm font-bold tabular-nums text-center shadow-lg">
+          {Math.floor((QUICK_MAX_RECORD_SEC * recordProgress) / 60)}:
+          {String(Math.floor(QUICK_MAX_RECORD_SEC * recordProgress) % 60).padStart(2, "0")}
+        </div>
+      )}
 
-          {!recording && (
-            <p className="mt-1.5 text-[10px] font-medium text-white/45">Hold · up to 60s</p>
+      <div className="relative z-20 mt-auto pb-[calc(max(env(safe-area-inset-bottom),0.5rem)+2rem)]">
+        <div className="relative z-10 flex items-end justify-center gap-7 px-5">
+          {!recording ? (
+            <button
+              type="button"
+              disabled={centerDisabled}
+              onClick={() => void takePhoto()}
+              className="flex flex-col items-center gap-1.5 w-[3.25rem] mb-3 disabled:opacity-40 active:scale-95 transition-transform"
+            >
+              <span className="w-11 h-11 rounded-full border-2 border-white/80 bg-black/30 flex items-center justify-center">
+                <Camera className="w-[1.2rem] h-[1.2rem] text-white" strokeWidth={2.25} />
+              </span>
+              <span className="text-[11px] font-semibold text-white/70">Photo</span>
+            </button>
+          ) : (
+            <span className="w-[3.25rem] mb-3" aria-hidden />
           )}
 
-          {recording && (
-            <p className="mt-2 text-red-400 text-xs font-bold flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-              {Math.ceil(QUICK_MAX_RECORD_SEC * (1 - recordProgress))}s left
-            </p>
-          )}
+          <div className="flex flex-col items-center">
+            <RecordButton
+              recording={recording}
+              progress={recordProgress}
+              disabled={centerDisabled}
+              onPointerDown={handleRecordDown}
+              onPointerUp={handleRecordUp}
+            />
+            {!recording && (
+              <span className="mt-1.5 text-[10px] font-medium text-white/40">Hold</span>
+            )}
+          </div>
 
-          {!recording && (
-            <div className="flex items-center justify-center gap-10 mt-3">
-              <button
-                type="button"
-                disabled={centerDisabled}
-                onClick={() => void takePhoto()}
-                className="flex flex-col items-center gap-1 disabled:opacity-40 active:scale-95 transition-transform"
-              >
-                <span className="w-10 h-10 rounded-full border-2 border-white/70 bg-black/35 flex items-center justify-center shadow-lg">
-                  <Camera className="w-[1.15rem] h-[1.15rem] text-white" strokeWidth={2.25} />
-                </span>
-                <span className="text-[10px] font-semibold text-white/55">Photo</span>
-              </button>
-              <button
-                type="button"
-                disabled={recording || capturingPhoto}
-                onClick={onTextPost}
-                className="flex flex-col items-center gap-1 disabled:opacity-40 active:scale-95 transition-transform"
-              >
-                <span className="w-10 h-10 rounded-full border-2 border-white/70 bg-black/35 flex items-center justify-center shadow-lg">
-                  <Type className="w-[1.15rem] h-[1.15rem] text-white" strokeWidth={2.25} />
-                </span>
-                <span className="text-[10px] font-semibold text-white/55">Text</span>
-              </button>
-            </div>
+          {!recording ? (
+            <button
+              type="button"
+              disabled={capturingPhoto}
+              onClick={onTextPost}
+              className="flex flex-col items-center gap-1.5 w-[3.25rem] mb-3 disabled:opacity-40 active:scale-95 transition-transform"
+            >
+              <span className="w-11 h-11 rounded-full border-2 border-white/80 bg-black/30 flex items-center justify-center">
+                <Type className="w-[1.2rem] h-[1.2rem] text-white" strokeWidth={2.25} />
+              </span>
+              <span className="text-[11px] font-semibold text-white/70">Text</span>
+            </button>
+          ) : (
+            <span className="w-[3.25rem] mb-3" aria-hidden />
           )}
         </div>
       </div>
