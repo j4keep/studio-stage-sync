@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { applyFeedVideoAudio, bindFeedMediaSession } from "@/lib/feed-video-playback";
-import { ChevronLeft, Hash, AtSign, Lightbulb, Wand2, ImageIcon, Trash2 } from "lucide-react";
+import { ChevronLeft, Hash, AtSign, Lightbulb, Wand2, ImageIcon, Trash2, Type } from "lucide-react";
 import { toast } from "sonner";
 import JhiIcon from "@/components/JhiIcon";
 import { jhiRewritePostDescription, jhiRewritePostTitle } from "@/lib/ask-jhi";
@@ -138,11 +138,11 @@ export default function PostPreviewView({
             type="button"
             onClick={onEditMedia}
             disabled={!onEditMedia || busy}
-            className="relative w-[88px] h-[88px] shrink-0 rounded-xl overflow-hidden bg-zinc-800 border border-white/10 disabled:opacity-60"
-            aria-label="Edit cover media"
+            className="relative w-[88px] h-[88px] shrink-0 rounded-xl overflow-hidden bg-zinc-800 border border-white/10 disabled:opacity-60 flex items-center justify-center"
+            aria-label={previewUrl ? "Edit cover media" : "Text post"}
           >
-            {previewUrl &&
-              (mediaType === "video" ? (
+            {previewUrl ? (
+              mediaType === "video" ? (
                 <video
                   src={previewUrl}
                   className="w-full h-full object-cover pointer-events-none"
@@ -157,17 +157,23 @@ export default function PostPreviewView({
                 />
               ) : (
                 <img src={previewUrl} alt="" className="w-full h-full object-cover pointer-events-none" />
-              ))}
+              )
+            ) : (
+              <div className="flex flex-col items-center gap-1 px-1 text-center">
+                <Type className="w-7 h-7 text-white/50" strokeWidth={2} />
+                <span className="text-[9px] font-semibold text-white/45 leading-tight">Text only</span>
+              </div>
+            )}
             <span className="absolute top-1.5 left-1.5 text-[10px] font-bold bg-black/60 px-1.5 py-0.5 rounded-md">
-              Cover
+              {previewUrl ? "Cover" : "Text"}
             </span>
-            {onEditMedia && (
+            {onEditMedia && previewUrl && (
               <span className="absolute bottom-1.5 right-1.5 w-6 h-6 rounded-full bg-black/55 flex items-center justify-center">
                 <ImageIcon className="w-3.5 h-3.5 text-white" />
               </span>
             )}
           </button>
-          {onEditMedia && (
+          {onEditMedia && previewUrl && (
             <button
               type="button"
               onClick={onEditMedia}

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { X, SwitchCamera, ImagePlus, Sparkles, Wand2 } from "lucide-react";
+import { X, SwitchCamera, Sparkles, Wand2 } from "lucide-react";
 import {
   warmCameraStream,
   releaseCameraStream,
@@ -10,29 +10,35 @@ import {
   ensureStreamHasAudio,
   createMirroredVideoRecordStream,
   shouldMirrorRecordOutput,
+  capturePhotoFromStream,
 } from "@/lib/create-camera";
-import type { CreateMode, EnhanceTab, ShortDuration } from "@/lib/create-modes";
-import { SHORT_DURATIONS } from "@/lib/create-modes";
+import type { CreateMode, EnhanceTab, QuickCaptureKind } from "@/lib/create-modes";
+import { QUICK_CAPTURE_OPTIONS, isVideoCaptureKind } from "@/lib/create-modes";
 import CreateModeTabs from "./CreateModeTabs";
 import RecordButton from "./RecordButton";
 import EnhancePanel from "./EnhancePanel";
 import EffectsPanel from "./EffectsPanel";
+import { toast } from "sonner";
 
 interface Props {
   onClose: () => void;
   onCapture: (file: File, mediaType: "image" | "video") => void;
   onOpenGallery: () => void;
+  onTextPost: () => void;
   initialStream?: MediaStream | null;
   createMode: CreateMode;
   onModeChange: (mode: CreateMode) => void;
-  durationSec: ShortDuration;
-  onDurationChange: (d: ShortDuration) => void;
+  durationSec: number;
+  onDurationChange: (d: 15 | 30 | 60) => void;
 }
+
+const RING_RADIUS = 96;
 
 export default function CreateCameraView({
   onClose,
   onCapture,
   onOpenGallery,
+  onTextPost,
   initialStream,
   createMode,
   onModeChange,
@@ -53,6 +59,7 @@ export default function CreateCameraView({
   const [facing, setFacing] = useState<"user" | "environment">("user");
   const [denied, setDenied] = useState(false);
   const [recording, setRecording] = useState(false);
+  const [capturingPhoto, setCapturingPhoto] = useState(false);
   const [recordProgress, setRecordProgress] = useState(0);
   const [ready, setReady] = useState(false);
   const [starting, setStarting] = useState(false);
@@ -63,6 +70,9 @@ export default function CreateCameraView({
   const [effectCategory, setEffectCategory] = useState("Trending");
   const [selectedEffect, setSelectedEffect] = useState("none");
   const [filterIntensity, setFilterIntensity] = useState(80);
+  const [captureKind, setCaptureKind] = useState<QuickCaptureKind>(durationSec as QuickCaptureKind);
+
+  const activeDuration = isVideoCaptureKind(captureKind) ? captureKind : durationSec;
 
   const stopStream = useCallback((forceRelease = false) => {
     if (ownsStreamRef.current || forceRelease) {
@@ -160,6 +170,12 @@ export default function CreateCameraView({
     };
   }, []);
 
+  useEffect(() => {
+    if (isVideoCaptureKind(captureKind)) {
+      onDurationChange(captureKind);
+    }
+  }, [captureKind, onDurationChange]);
+
   const clearProgressTimer = () => {
     if (progressTimerRef.current) {
       window.clearInterval(progressTimerRef.current);
@@ -168,7 +184,7 @@ export default function CreateCameraView({
   };
 
   const flipCamera = () => {
-    if (recording) return;
+    if (recording || capturingPhoto) return;
     stopStream(true);
     setFacing((f) => (f === "user" ? "environment" : "user"));
   };
@@ -198,7 +214,7 @@ export default function CreateCameraView({
   const startRecording = async () => {
     const video = videoRef.current;
     let stream = streamRef.current;
-    if (!video || !stream || recording) return;
+    if (!video || !stream || recording || !isVideoCaptureKind(captureKind)) return;
 
     recordPendingRef.current = true;
 
@@ -247,14 +263,15 @@ export default function CreateCameraView({
         mirrorRecordStopRef.current = null;
         setRecording(false);
         recordPendingRef.current = false;
-        stopStream(true);
         recorderRef.current = null;
+
         onCapture(
           new File([blob], `short-${Date.now()}.${ext}`, {
             type: blob.type,
           }),
           "video",
         );
+        stopStream(true);
       };
 
       rec.start(250);
@@ -266,7 +283,7 @@ export default function CreateCameraView({
       progressTimerRef.current = window.setInterval(() => {
         if (!recordStartRef.current) return;
         const elapsed = (Date.now() - recordStartRef.current) / 1000;
-        const progress = Math.min(1, elapsed / durationSec);
+        const progress = Math.min(1, elapsed / activeDuration);
         setRecordProgress(progress);
         if (progress >= 1) {
           finishRecording();
@@ -285,8 +302,44 @@ export default function CreateCameraView({
     }
   };
 
+  const takePhoto = async () => {
+    const video = videoRef.current;
+    const stream = streamRef.current;
+    if (!video || !stream || !ready || capturingPhoto) return;
+
+    setCapturingPhoto(true);
+    try {
+      const blob = await capturePhotoFromStream(stream, video, {
+        mirror: facing === "user",
+      });
+      if (!blob) {
+        toast.error("Couldn't capture photo — try again");
+        return;
+      }
+      onCapture(
+        new File([blob], `photo-${Date.now()}.jpg`, { type: "image/jpeg" }),
+        "image",
+      );
+      stopStream(true);
+    } catch {
+      toast.error("Photo capture failed");
+    } finally {
+      setCapturingPhoto(false);
+    }
+  };
+
+  const handleCenterTap = () => {
+    if (captureKind === "text") {
+      onTextPost();
+      return;
+    }
+    if (captureKind === "photo") {
+      void takePhoto();
+    }
+  };
+
   const handleRecordDown = (e: React.PointerEvent) => {
-    if (denied || !ready || recording || recordPendingRef.current) return;
+    if (denied || !ready || recording || recordPendingRef.current || !isVideoCaptureKind(captureKind)) return;
     e.preventDefault();
     pointerDownRef.current = true;
     try {
@@ -309,6 +362,18 @@ export default function CreateCameraView({
     }
     if (recording) finishRecording();
   };
+
+  const recordMode =
+    captureKind === "photo" ? "tap-photo" : captureKind === "text" ? "tap-text" : "hold";
+
+  const recordLabel =
+    captureKind === "photo"
+      ? "Tap to snap"
+      : captureKind === "text"
+        ? "Tap to write"
+        : `Hold · ${activeDuration}s max`;
+
+  const centerDisabled = denied || !ready || recording || capturingPhoto;
 
   return (
     <div className="absolute inset-0 bg-black flex flex-col touch-none">
@@ -345,7 +410,11 @@ export default function CreateCameraView({
         </div>
       )}
 
-      {micMissing && ready && !recording && (
+      {capturingPhoto && (
+        <div className="absolute inset-0 z-20 bg-white/20 pointer-events-none animate-pulse" aria-hidden />
+      )}
+
+      {micMissing && ready && !recording && isVideoCaptureKind(captureKind) && (
         <div className="absolute top-[calc(env(safe-area-inset-top)+3.5rem)] left-4 right-4 z-30 px-4 py-2 rounded-xl bg-amber-500/90 text-black text-xs font-semibold text-center">
           Microphone not detected — check browser permissions and try flipping the camera.
         </div>
@@ -371,7 +440,7 @@ export default function CreateCameraView({
         <button
           type="button"
           onClick={flipCamera}
-          disabled={denied || !ready || recording}
+          disabled={denied || !ready || recording || capturingPhoto || captureKind === "text"}
           className="w-11 h-11 flex items-center justify-center text-white drop-shadow-lg disabled:opacity-30"
           aria-label="Flip camera"
         >
@@ -386,7 +455,8 @@ export default function CreateCameraView({
             setShowEffects(false);
             setShowEnhance((v) => !v);
           }}
-          className={`flex flex-col items-center gap-1 ${showEnhance ? "text-white" : "text-white/80"}`}
+          disabled={captureKind === "text"}
+          className={`flex flex-col items-center gap-1 disabled:opacity-30 ${showEnhance ? "text-white" : "text-white/80"}`}
         >
           <Sparkles className="w-6 h-6" />
           <span className="text-[9px] font-semibold">Enhance</span>
@@ -397,7 +467,8 @@ export default function CreateCameraView({
             setShowEnhance(false);
             setShowEffects((v) => !v);
           }}
-          className={`flex flex-col items-center gap-1 ${showEffects ? "text-white" : "text-white/80"}`}
+          disabled={captureKind === "text"}
+          className={`flex flex-col items-center gap-1 disabled:opacity-30 ${showEffects ? "text-white" : "text-white/80"}`}
         >
           <Wand2 className="w-6 h-6" />
           <span className="text-[9px] font-semibold">Effects</span>
@@ -405,49 +476,55 @@ export default function CreateCameraView({
       </div>
 
       <div className="relative z-20 mt-auto pb-[calc(max(env(safe-area-inset-bottom),0.5rem)+2.75rem)]">
-        <div className="flex justify-center gap-2 mb-4 px-4 overflow-x-auto scrollbar-hide">
-          {SHORT_DURATIONS.map((sec) => (
-            <button
-              key={sec}
-              type="button"
-              disabled={recording}
-              onClick={() => onDurationChange(sec)}
-              className={`shrink-0 text-xs font-black tracking-widest px-4 py-1.5 rounded-full transition-all disabled:opacity-40 ${
-                durationSec === sec ? "bg-white text-black scale-105" : "text-white/60"
-              }`}
-            >
-              {sec}s
-            </button>
-          ))}
-        </div>
+        {captureKind === "text" && (
+          <div className="absolute inset-0 -top-[50vh] bg-gradient-to-b from-black/80 via-black/60 to-transparent pointer-events-none z-10" />
+        )}
 
-        <div className="flex items-end justify-center gap-10 px-8">
-          <button
-            type="button"
-            onClick={onOpenGallery}
-            disabled={recording}
-            className="w-12 h-12 rounded-xl border-2 border-white bg-zinc-900/60 flex items-center justify-center shadow-lg active:scale-95 disabled:opacity-40 mb-4"
-            aria-label="Gallery"
-          >
-            <ImagePlus className="w-6 h-6 text-white" />
-          </button>
+        <div className="relative mx-auto mb-2 z-20" style={{ width: 280, height: 280 }}>
+          {QUICK_CAPTURE_OPTIONS.map((opt, i) => {
+            const angleDeg = -90 + i * (360 / QUICK_CAPTURE_OPTIONS.length);
+            const angleRad = (angleDeg * Math.PI) / 180;
+            const x = Math.cos(angleRad) * RING_RADIUS;
+            const y = Math.sin(angleRad) * RING_RADIUS;
+            const selected = captureKind === opt.id;
+            return (
+              <button
+                key={String(opt.id)}
+                type="button"
+                disabled={recording || capturingPhoto}
+                onClick={() => setCaptureKind(opt.id)}
+                className={`absolute left-1/2 top-1/2 text-[11px] font-black tracking-wide px-3 py-1.5 rounded-full transition-all disabled:opacity-40 whitespace-nowrap ${
+                  selected
+                    ? "bg-white text-black scale-110 shadow-[0_0_12px_rgba(255,255,255,0.35)]"
+                    : "text-white/60 bg-black/40 border border-white/15"
+                }`}
+                style={{
+                  transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`,
+                }}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
 
-          <RecordButton
-            recording={recording}
-            progress={recordProgress}
-            disabled={denied || !ready}
-            label={`Hold · ${durationSec}s max`}
-            onPointerDown={handleRecordDown}
-            onPointerUp={handleRecordUp}
-          />
-
-          <div className="w-12 h-12 mb-4" aria-hidden />
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+            <RecordButton
+              recording={recording}
+              progress={recordProgress}
+              disabled={captureKind === "text" ? false : centerDisabled}
+              mode={recordMode}
+              label={recordLabel}
+              onPointerDown={handleRecordDown}
+              onPointerUp={handleRecordUp}
+              onTap={handleCenterTap}
+            />
+          </div>
         </div>
 
         {recording && (
           <p className="text-center text-red-400 text-sm font-bold mt-1 flex items-center justify-center gap-2">
             <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            {Math.ceil(durationSec * (1 - recordProgress))}s left
+            {Math.ceil(activeDuration * (1 - recordProgress))}s left
           </p>
         )}
       </div>
@@ -470,7 +547,12 @@ export default function CreateCameraView({
         onSelect={setSelectedEffect}
       />
 
-      <CreateModeTabs value={createMode} onChange={onModeChange} disabled={recording} />
+      <CreateModeTabs
+        value={createMode}
+        onChange={onModeChange}
+        disabled={recording || capturingPhoto}
+        onOpenGallery={onOpenGallery}
+      />
     </div>
   );
 }

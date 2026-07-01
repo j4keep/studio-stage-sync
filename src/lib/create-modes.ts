@@ -1,13 +1,28 @@
 export type CreateMode = "post" | "create" | "live";
 
 export const CREATE_MODES: { id: CreateMode; label: string }[] = [
-  { id: "post", label: "POST" },
+  { id: "post", label: "QUICK" },
   { id: "create", label: "CREATE" },
   { id: "live", label: "LIVE" },
 ];
 
 export const SHORT_DURATIONS = [15, 30, 60] as const;
 export type ShortDuration = (typeof SHORT_DURATIONS)[number];
+
+/** Quick tab capture modes — video durations plus photo and text-only. */
+export type QuickCaptureKind = ShortDuration | "photo" | "text";
+
+export const QUICK_CAPTURE_OPTIONS: { id: QuickCaptureKind; label: string }[] = [
+  { id: 15, label: "15s" },
+  { id: 30, label: "30s" },
+  { id: 60, label: "60s" },
+  { id: "photo", label: "Photo" },
+  { id: "text", label: "Text" },
+];
+
+export function isVideoCaptureKind(kind: QuickCaptureKind): kind is ShortDuration {
+  return typeof kind === "number";
+}
 
 export const TEMPLATE_CATEGORIES = [
   "For You",

@@ -353,8 +353,20 @@ setStep("edit");
 
 };
 
+const handleTextPost = () => {
+revokeBlobs();
+setFile(null);
+setPreview(null);
+setCurrentMediaUrl(null);
+setMediaType("image");
+setCaption("");
+setTitle("");
+setEditorMeta(defaultEditorMeta());
+setStep("preview");
+};
+
 const openGallery = () => {
-videoInputRef.current?.click();
+photoInputRef.current?.click();
 };
 
 const previewMediaUrl = preview || currentMediaUrl;
@@ -415,6 +427,7 @@ onDurationChange={setShortDuration}
 onClose={reset}
 onCapture={handleMediaFile}
 onOpenGallery={openGallery}
+onTextPost={handleTextPost}
 initialStream={cameraStream}
 />
 )}
@@ -466,7 +479,7 @@ initialStream={cameraStream}
         description={caption}
         onTitleChange={setTitle}
         onDescriptionChange={setCaption}
-        onBack={() => (postToEdit ? reset() : setStep("edit"))}
+        onBack={() => (postToEdit ? reset() : hasMedia ? setStep("edit") : setStep("camera"))}
         onPost={() => postMutation.mutate()}
         onEditMedia={() => setStep("edit")}
         onDelete={postToEdit ? () => deleteMutation.mutate() : undefined}
@@ -479,11 +492,14 @@ initialStream={cameraStream}
     <input
       ref={photoInputRef}
       type="file"
-      accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif"
+      accept="image/*,video/*,.jpg,.jpeg,.png,.webp,.heic,.heif,.mp4,.mov,.m4v,.webm"
       className="hidden"
       onChange={(e) => {
         const f = e.target.files?.[0];
-        if (f) handleMediaFile(f, "image");
+        if (f) {
+          const isVideo = f.type.startsWith("video/");
+          handleMediaFile(f, isVideo ? "video" : "image");
+        }
         e.target.value = "";
       }}
     />
