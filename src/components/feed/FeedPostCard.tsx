@@ -119,6 +119,12 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       onChromeHiddenChange?.(true);
     };
 
+    // Kick the network fetch immediately so playback isn't held up by lazy loading.
+    if (video.readyState === 0 && video.preload !== "auto") {
+      video.preload = "auto";
+      try { video.load(); } catch { /* ignore */ }
+    }
+
     try {
       // Mobile autoplay requires muted playback first — unmute after if allowed.
       applyFeedVideoAudio(video, { muted: true });
