@@ -129,7 +129,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     if (!video || post.media_type !== "video" || userPausedRef.current) return false;
 
     const targetMuted = getVideoMuted();
-    const preferredMuted = targetMuted || !canStartWithSound();
+    const preferredMuted = targetMuted;
 
     const markPlaying = (mutedForPlayback: boolean) => {
       applyFeedVideoAudio(video, { muted: mutedForPlayback });
@@ -152,16 +152,6 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       markPlaying(preferredMuted);
       return true;
     } catch {
-      if (!targetMuted && !preferredMuted) {
-        try {
-          applyFeedVideoAudio(video, { muted: true });
-          await video.play();
-          markPlaying(true);
-          return true;
-        } catch {
-          /* fall through */
-        }
-      }
       setIsPlaying(false);
       return false;
     }
@@ -211,9 +201,9 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
 
   useEffect(() => {
     if (!videoRef.current) return;
-    const muted = getVideoMuted() || autoplayAudioLocked || (isActive && !canStartWithSound() && !isPlaying);
+    const muted = getVideoMuted();
     applyFeedVideoAudio(videoRef.current, { muted });
-  }, [getVideoMuted, autoplayAudioLocked, isActive, canStartWithSound, isPlaying]);
+  }, [getVideoMuted]);
 
   useEffect(() => {
     const onUnlocked = () => setFeedAudioUnlocked(true);
@@ -569,7 +559,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
 
   const timeAgo = formatDistanceToNow(new Date(post.created_at), { addSuffix: false });
   const videoMutedForAutoplay =
-    getVideoMuted() || autoplayAudioLocked || (isActive && !userPaused && !getVideoMuted() && !canStartWithSound() && !isPlaying);
+    getVideoMuted();
 
   return (
     <>
@@ -656,7 +646,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
               className="feed-action-btn"
               aria-label={isMuted ? "Unmute video" : "Mute video"}
             >
-              {isMuted || autoplayAudioLocked ? <VolumeX className="feed-action-icon" /> : <Volume2 className="feed-action-icon" />}
+              {isMuted ? <VolumeX className="feed-action-icon" /> : <Volume2 className="feed-action-icon" />}
             </button>
           )}
 
