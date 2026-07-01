@@ -168,7 +168,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     } else if (autoplayAudioLocked) {
       unlockFeedAudio();
       applyFeedVideoAudio(video, { muted: getVideoMuted() });
-      activateFeedPlayback();
+      activateFeedPlayback(getVideoMuted());
     } else {
       userPausedRef.current = true;
       setUserPaused(true);
@@ -523,7 +523,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
         if (autoplayAudioLocked) {
           unlockFeedAudio();
           applyFeedVideoAudio(videoRef.current, { muted: getVideoMuted() });
-          activateFeedPlayback();
+          activateFeedPlayback(getVideoMuted());
           return;
         }
         toggleVideoPlayback();
