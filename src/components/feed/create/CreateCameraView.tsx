@@ -32,8 +32,6 @@ interface Props {
   onDurationChange: (d: 15 | 30 | 60) => void;
 }
 
-const RING_RADIUS = 96;
-
 export default function CreateCameraView({
   onClose,
   onCapture,
@@ -477,52 +475,45 @@ export default function CreateCameraView({
 
       <div className="relative z-20 mt-auto pb-[calc(max(env(safe-area-inset-bottom),0.5rem)+2.75rem)]">
         {captureKind === "text" && (
-          <div className="absolute inset-0 -top-[50vh] bg-gradient-to-b from-black/80 via-black/60 to-transparent pointer-events-none z-10" />
+          <div className="absolute inset-0 -top-[40vh] bg-gradient-to-b from-black/70 via-black/40 to-transparent pointer-events-none z-0" />
         )}
 
-        <div className="relative mx-auto mb-2 z-20" style={{ width: 280, height: 280 }}>
-          {QUICK_CAPTURE_OPTIONS.map((opt, i) => {
-            const angleDeg = -90 + i * (360 / QUICK_CAPTURE_OPTIONS.length);
-            const angleRad = (angleDeg * Math.PI) / 180;
-            const x = Math.cos(angleRad) * RING_RADIUS;
-            const y = Math.sin(angleRad) * RING_RADIUS;
-            const selected = captureKind === opt.id;
-            return (
-              <button
-                key={String(opt.id)}
-                type="button"
-                disabled={recording || capturingPhoto}
-                onClick={() => setCaptureKind(opt.id)}
-                className={`absolute left-1/2 top-1/2 text-[11px] font-black tracking-wide px-3 py-1.5 rounded-full transition-all disabled:opacity-40 whitespace-nowrap ${
-                  selected
-                    ? "bg-white text-black scale-110 shadow-[0_0_12px_rgba(255,255,255,0.35)]"
-                    : "text-white/60 bg-black/40 border border-white/15"
-                }`}
-                style={{
-                  transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`,
-                }}
-              >
-                {opt.label}
-              </button>
-            );
-          })}
-
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-            <RecordButton
-              recording={recording}
-              progress={recordProgress}
-              disabled={captureKind === "text" ? false : centerDisabled}
-              mode={recordMode}
-              label={recordLabel}
-              onPointerDown={handleRecordDown}
-              onPointerUp={handleRecordUp}
-              onTap={handleCenterTap}
-            />
+        <div className="relative z-10 flex justify-center px-4 mb-3">
+          <div className="inline-flex max-w-full items-center justify-center gap-1 overflow-x-auto scrollbar-hide rounded-full bg-black/35 border border-white/10 px-1 py-1">
+            {QUICK_CAPTURE_OPTIONS.map((opt) => {
+              const selected = captureKind === opt.id;
+              return (
+                <button
+                  key={String(opt.id)}
+                  type="button"
+                  disabled={recording || capturingPhoto}
+                  onClick={() => setCaptureKind(opt.id)}
+                  className={`shrink-0 text-[10px] font-bold tracking-wide px-2.5 py-1 rounded-full transition-all disabled:opacity-40 ${
+                    selected ? "bg-white text-black" : "text-white/55"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
           </div>
         </div>
 
+        <div className="relative z-10 flex justify-center px-8">
+          <RecordButton
+            recording={recording}
+            progress={recordProgress}
+            disabled={captureKind === "text" ? false : centerDisabled}
+            mode={recordMode}
+            label={recordLabel}
+            onPointerDown={handleRecordDown}
+            onPointerUp={handleRecordUp}
+            onTap={handleCenterTap}
+          />
+        </div>
+
         {recording && (
-          <p className="text-center text-red-400 text-sm font-bold mt-1 flex items-center justify-center gap-2">
+          <p className="relative z-10 text-center text-red-400 text-sm font-bold mt-2 flex items-center justify-center gap-2">
             <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
             {Math.ceil(activeDuration * (1 - recordProgress))}s left
           </p>
