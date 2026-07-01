@@ -90,7 +90,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
 
   const canStartWithSound = useCallback(() => {
     if (typeof navigator === "undefined" || !("userActivation" in navigator)) return true;
-    return Boolean(navigator.userActivation?.hasBeenActive);
+    return Boolean(navigator.userActivation?.isActive);
   }, []);
 
   const activateFeedPlayback = useCallback(() => {
@@ -549,7 +549,6 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
               loop
               playsInline
               muted={videoMutedForAutoplay}
-              defaultMuted={videoMutedForAutoplay}
               autoPlay={isActive && !userPaused}
               preload={isActive || isNear ? "auto" : "metadata"}
               onPlay={() => setIsPlaying(true)}
