@@ -200,8 +200,9 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
 
   useEffect(() => {
     if (!videoRef.current) return;
-    applyFeedVideoAudio(videoRef.current, { muted: getVideoMuted() });
-  }, [getVideoMuted]);
+    const muted = getVideoMuted() || autoplayAudioLocked || (isActive && !feedAudioUnlocked && !isPlaying);
+    applyFeedVideoAudio(videoRef.current, { muted });
+  }, [getVideoMuted, autoplayAudioLocked, isActive, feedAudioUnlocked, isPlaying]);
 
   useEffect(() => {
     const onUnlocked = () => setFeedAudioUnlocked(true);
