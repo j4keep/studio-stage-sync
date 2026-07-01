@@ -58,14 +58,22 @@ const FeedPage = () => {
 
     const observer = new IntersectionObserver(
       (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const index = Number(entry.target.getAttribute("data-index"));
-            if (!Number.isNaN(index)) setCurrentIndex(index);
+        let bestIndex: number | null = null;
+        let bestRatio = 0;
+
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          const index = Number(entry.target.getAttribute("data-index"));
+          if (Number.isNaN(index)) continue;
+          if (entry.intersectionRatio >= bestRatio) {
+            bestRatio = entry.intersectionRatio;
+            bestIndex = index;
           }
-        });
+        }
+
+        if (bestIndex !== null) setCurrentIndex(bestIndex);
       },
-      { root: container, threshold: 0.6 }
+      { root: container, threshold: [0, 0.35, 0.6, 0.85, 1] },
     );
 
     container.querySelectorAll("[data-index]").forEach((element) => observer.observe(element));

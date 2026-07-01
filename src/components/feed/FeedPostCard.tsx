@@ -71,6 +71,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
   const mediaSessionCleanupRef = useRef<(() => void) | null>(null);
   const lastTapRef = useRef(0);
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const userPausedRef = useRef(false);
   const { emojis, spawnEmoji } = useFloatingEmojis();
 
   const { caption: displayCaption, meta: postMeta } = parsePostCaption(post.caption);
@@ -106,6 +107,40 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
       mediaSessionCleanupRef.current = bindFeedMediaSession(video, playbackMeta);
     }
   }, [post.media_type, getVideoMuted, postMeta?.music?.audioUrl, playbackMeta]);
+
+  const startVideo = useCallback(async () => {
+    const video = videoRef.current;
+    if (!video || post.media_type !== "video") return false;
+
+    const ok = await playFeedVideo(video, playbackMeta, { muted: getVideoMuted() });
+    if (ok) {
+      activateFeedPlayback();
+      setIsPlaying(true);
+      onChromeHiddenChange?.(true);
+    } else {
+      setIsPlaying(false);
+    }
+    return ok;
+  }, [post.media_type, playbackMeta, getVideoMuted, activateFeedPlayback, onChromeHiddenChange]);
+
+  const toggleVideoPlayback = useCallback(() => {
+    const video = videoRef.current;
+    if (!video || post.media_type !== "video") return;
+
+    if (video.paused) {
+      userPausedRef.current = false;
+      activateFeedPlayback();
+      void video.play().then(() => {
+        setIsPlaying(true);
+        onChromeHiddenChange?.(true);
+      });
+    } else {
+      userPausedRef.current = true;
+      video.pause();
+      setIsPlaying(false);
+      onChromeHiddenChange?.(false);
+    }
+  }, [post.media_type, activateFeedPlayback, onChromeHiddenChange]);
 
   // Image posts bake text/stickers/draw into the file — overlay renderer would double them
   const showVisualOverlays =
@@ -195,24 +230,16 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
     if (!isActive) {
       mediaSessionCleanupRef.current?.();
       mediaSessionCleanupRef.current = null;
+      userPausedRef.current = false;
       video.pause();
       setIsPlaying(false);
       return;
     }
 
-    const playVideo = async () => {
-      const ok = await playFeedVideo(video, playbackMeta, { muted: getVideoMuted() });
-      if (ok) {
-        activateFeedPlayback();
-        setIsPlaying(true);
-        onChromeHiddenChange?.(true);
-      } else {
-        setIsPlaying(false);
-      }
-    };
+    if (userPausedRef.current) return;
 
-    void playVideo();
-  }, [isActive, post.media_type, onChromeHiddenChange, playbackMeta, getVideoMuted, activateFeedPlayback]);
+    void startVideo();
+  }, [isActive, post.media_type, startVideo]);
 
   useEffect(() => {
     if (!viewCounted && isActive && post.id) {
@@ -406,9 +433,12 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
 
     if (now - lastTapRef.current < doubleTapDelay) {
       if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
-      if (!liked) likeMutation.mutate();
-      setShowHeart(true);
-      setTimeout(() => setShowHeart(false), 800);
+      const willLike = !liked;
+      likeMutation.mutate();
+      if (willLike) {
+        setShowHeart(true);
+        setTimeout(() => setShowHeart(false), 800);
+      }
       toggleNav(true);
       lastTapRef.current = 0;
       return;
@@ -417,20 +447,12 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
     lastTapRef.current = now;
     tapTimerRef.current = setTimeout(() => {
       if (post.media_type === "video" && videoRef.current) {
-        if (videoRef.current.paused) {
-          activateFeedPlayback();
-          void videoRef.current.play().then(() => {
-            setIsPlaying(true);
-            toggleNav(true);
-          });
-        } else {
-          toggleNav(!chromeHidden);
-        }
+        toggleVideoPlayback();
       } else if (post.media_type === "image" || post.media_url) {
         toggleNav(!chromeHidden);
       }
     }, doubleTapDelay);
-  }, [liked, likeMutation, post.media_type, post.media_url, chromeHidden, toggleNav, activateFeedPlayback]);
+  }, [liked, likeMutation, post.media_type, post.media_url, chromeHidden, toggleNav, toggleVideoPlayback]);
 
   const handleShare = async () => {
     const shareUrl = `${window.location.origin}/feed`;
@@ -470,7 +492,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
               style={cropStyle}
               loop
               playsInline
-              preload="metadata"
+              preload="auto"
             />
           ) : (
             <img
@@ -508,19 +530,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
           <button
             onClick={(e) => {
               e.stopPropagation();
-              if (videoRef.current) {
-                if (videoRef.current.paused) {
-                  activateFeedPlayback();
-                  void videoRef.current.play().then(() => {
-                    setIsPlaying(true);
-                    toggleNav(true);
-                  });
-                } else {
-                  videoRef.current.pause();
-                  setIsPlaying(false);
-                  toggleNav(false);
-                }
-              }
+              toggleVideoPlayback();
             }}
             className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-30 flex h-16 w-16 items-center justify-center rounded-full bg-primary/80 backdrop-blur-md shadow-lg transition-all duration-300 active:scale-90 ${
               isPlaying ? "opacity-0 pointer-events-none" : "opacity-100"
