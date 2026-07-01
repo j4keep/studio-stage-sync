@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useLayoutEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
@@ -25,11 +25,7 @@ interface TrendingCreator {
   avatar_url: string | null;
 }
 
-interface FeedPageProps {
-  feedVisible?: boolean;
-}
-
-const FeedPage = ({ feedVisible = true }: FeedPageProps) => {
+const FeedPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { open: showCreate, cameraStream, openCreate, closeCreate } = useCreatePostSheet();
@@ -40,8 +36,6 @@ const FeedPage = ({ feedVisible = true }: FeedPageProps) => {
   const { data: items = [], isLoading } = useQuery({
     queryKey: ["feed-posts"],
     queryFn: () => fetchFeedItems({ currentUserId: user?.id }),
-    staleTime: 5 * 60 * 1000,
-    refetchOnMount: false,
   });
 
   const { data: trending = [] } = useQuery<TrendingCreator[]>({
@@ -57,19 +51,6 @@ const FeedPage = ({ feedVisible = true }: FeedPageProps) => {
   });
 
   const feedPosts = items.filter((item: any) => item.itemType === "post");
-
-  useLayoutEffect(() => {
-    if (!feedVisible || feedPosts.length === 0) return;
-    const container = scrollRef.current;
-    if (!container) return;
-    const height = container.clientHeight;
-    if (height <= 0) return;
-    const next = Math.min(
-      feedPosts.length - 1,
-      Math.max(0, Math.round(container.scrollTop / height)),
-    );
-    setCurrentIndex(next);
-  }, [feedVisible, feedPosts.length]);
 
   useEffect(() => {
     const container = scrollRef.current;
@@ -205,13 +186,7 @@ const FeedPage = ({ feedVisible = true }: FeedPageProps) => {
               className="h-[100dvh] w-full snap-start snap-always relative"
               style={{ scrollSnapAlign: "start" }}
             >
-              <FeedPostCard
-                post={item}
-                currentUserId={user?.id}
-                isActive={feedVisible && index === currentIndex}
-                chromeHidden={chromeHidden}
-                onChromeHiddenChange={setChromeHidden}
-              />
+              <FeedPostCard post={item} currentUserId={user?.id} isActive={index === currentIndex} chromeHidden={chromeHidden} onChromeHiddenChange={setChromeHidden} />
             </div>
           ))
         )}
