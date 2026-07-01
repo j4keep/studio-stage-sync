@@ -129,7 +129,6 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     if (!video || post.media_type !== "video" || userPausedRef.current) return false;
 
     const targetMuted = getVideoMuted();
-    const preferredMuted = targetMuted;
 
     const markPlaying = (mutedForPlayback: boolean) => {
       applyFeedVideoAudio(video, { muted: mutedForPlayback });
@@ -146,16 +145,31 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       try { video.load(); } catch { /* ignore */ }
     }
 
+    // Try audible playback first — the user wants sound by default.
     try {
-      applyFeedVideoAudio(video, { muted: preferredMuted });
+      applyFeedVideoAudio(video, { muted: targetMuted });
       await video.play();
-      markPlaying(preferredMuted);
+      markPlaying(targetMuted);
       return true;
     } catch {
-      setIsPlaying(false);
-      return false;
+      // Browser blocked audible autoplay (cold app entry, no gesture yet).
+      // Fall back to muted autoplay so the video still starts immediately,
+      // then unmute automatically as soon as the user interacts.
+      if (targetMuted) {
+        setIsPlaying(false);
+        return false;
+      }
+      try {
+        applyFeedVideoAudio(video, { muted: true });
+        await video.play();
+        markPlaying(true);
+        return true;
+      } catch {
+        setIsPlaying(false);
+        return false;
+      }
     }
-  }, [post.media_type, getVideoMuted, canStartWithSound, unlockFeedAudio, activateFeedPlayback, onChromeHiddenChange]);
+  }, [post.media_type, getVideoMuted, unlockFeedAudio, activateFeedPlayback, onChromeHiddenChange]);
 
   const toggleVideoPlayback = useCallback(() => {
     const video = videoRef.current;
