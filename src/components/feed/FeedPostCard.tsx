@@ -258,7 +258,8 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
 
     if (needsGestureForAudio) {
       setAutoplayAudioLocked(true);
-      return playSilently();
+      const played = await playSilently();
+      return played;
     }
 
     setAutoplayAudioLocked(false);
@@ -453,22 +454,18 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       }
     };
 
-    video.addEventListener("loadedmetadata", onReady);
     video.addEventListener("loadeddata", onReady);
     video.addEventListener("canplay", onReady);
-    video.addEventListener("canplaythrough", onReady);
 
     const rafId = requestAnimationFrame(tryPlay);
-    const retryDelays = isTouchFeedDevice() ? [0, 50, 150, 400, 800] : [0, 50, 150, 400];
+    const retryDelays = isTouchFeedDevice() ? [0, 80, 200, 500] : [0, 50, 150, 400];
     const timerIds = retryDelays.map((ms) => window.setTimeout(tryPlay, ms));
 
     return () => {
       cancelAnimationFrame(rafId);
       timerIds.forEach((id) => window.clearTimeout(id));
-      video.removeEventListener("loadedmetadata", onReady);
       video.removeEventListener("loadeddata", onReady);
       video.removeEventListener("canplay", onReady);
-      video.removeEventListener("canplaythrough", onReady);
     };
   }, [isActive, showComments, post.media_type, playWhenActive]);
 

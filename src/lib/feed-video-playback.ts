@@ -17,6 +17,11 @@ export function isTouchFeedDevice() {
   );
 }
 
+export function getFeedMountRadius() {
+  // Phone Safari chokes with dozens of mounted <video> nodes — keep a tight window.
+  return isTouchFeedDevice() ? 1 : 3;
+}
+
 export function isFeedAudioSessionUnlocked() {
   return feedAudioSessionUnlocked;
 }

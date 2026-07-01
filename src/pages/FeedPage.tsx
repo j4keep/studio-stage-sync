@@ -1,14 +1,12 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Search, MoreVertical, Radio as RadioIcon, Swords, Tv, Heart, Tag } from "lucide-react";
 import FeedPostCard from "@/components/feed/FeedPostCard";
-import { useCreatePostSheet } from "@/hooks/use-create-post-sheet";
-import CreatePostSheet from "@/components/feed/CreatePostSheet";
 import { fetchFeedItems } from "@/lib/feed-items";
-import { initFeedAudioUnlockOnGesture } from "@/lib/feed-video-playback";
+import { getFeedMountRadius, initFeedAudioUnlockOnGesture } from "@/lib/feed-video-playback";
 import jhiLogo from "@/assets/wheuat-logo.png";
 
 type TabId = "radio" | "battle" | "marketplace" | "deals" | "support";
@@ -29,10 +27,10 @@ interface TrendingCreator {
 const FeedPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { open: showCreate, cameraStream, openCreate, closeCreate } = useCreatePostSheet();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [chromeHidden, setChromeHidden] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const mountRadius = useMemo(() => getFeedMountRadius(), []);
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ["feed-posts"],
@@ -57,7 +55,7 @@ const FeedPage = () => {
     const container = scrollRef.current;
     if (!container || feedPosts.length === 0) return;
 
-    const slides = Array.from(container.querySelectorAll<HTMLElement>("[data-index]"));
+    let scrollDebounce: ReturnType<typeof setTimeout> | undefined;
 
     const syncActiveIndex = () => {
       const height = container.clientHeight;
@@ -69,43 +67,24 @@ const FeedPage = () => {
       setCurrentIndex((prev) => (prev === next ? prev : next));
     };
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        let bestIndex = -1;
-        let bestRatio = 0;
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          const idx = Number((entry.target as HTMLElement).dataset.index);
-          if (Number.isNaN(idx)) continue;
-          if (entry.intersectionRatio > bestRatio) {
-            bestRatio = entry.intersectionRatio;
-            bestIndex = idx;
-          }
-        }
-        if (bestIndex >= 0 && bestRatio >= 0.55) {
-          setCurrentIndex((prev) => (prev === bestIndex ? prev : bestIndex));
-        }
-      },
-      { root: container, threshold: [0.55, 0.75, 1] },
-    );
+    const onScroll = () => {
+      clearTimeout(scrollDebounce);
+      scrollDebounce = setTimeout(syncActiveIndex, 120);
+    };
 
-    slides.forEach((slide) => observer.observe(slide));
     syncActiveIndex();
     requestAnimationFrame(syncActiveIndex);
 
-    container.addEventListener("scroll", syncActiveIndex, { passive: true });
+    container.addEventListener("scroll", onScroll, { passive: true });
     container.addEventListener("scrollend", syncActiveIndex, { passive: true });
+    container.addEventListener("touchend", syncActiveIndex, { passive: true });
     return () => {
-      observer.disconnect();
-      container.removeEventListener("scroll", syncActiveIndex);
+      clearTimeout(scrollDebounce);
+      container.removeEventListener("scroll", onScroll);
       container.removeEventListener("scrollend", syncActiveIndex);
+      container.removeEventListener("touchend", syncActiveIndex);
     };
   }, [feedPosts.length]);
-
-  useEffect(() => {
-    if (feedPosts.length === 0) return;
-    window.dispatchEvent(new CustomEvent("feed-active-post", { detail: { index: currentIndex } }));
-  }, [currentIndex, feedPosts.length]);
 
   useEffect(() => {
     if (currentIndex >= feedPosts.length) setCurrentIndex(0);
@@ -210,27 +189,37 @@ const FeedPage = () => {
           <div className="h-[100dvh] flex flex-col items-center justify-center snap-start gap-3">
             <p className="text-white/60 text-sm">No posts yet</p>
             <button
-              onClick={() => void openCreate()}
+              onClick={() => window.dispatchEvent(new Event("open-create-post"))}
               className="px-4 py-2 bg-primary text-primary-foreground rounded-full text-sm font-semibold"
             >
               Create first post
             </button>
           </div>
         ) : (
-          feedPosts.map((item: any, index: number) => (
-            <div
-              key={item.id}
-              data-index={index}
-              className="h-[100dvh] w-full snap-start snap-always relative"
-              style={{ scrollSnapAlign: "start" }}
-            >
-              <FeedPostCard post={item} currentUserId={user?.id} isActive={index === currentIndex} isNear={Math.abs(index - currentIndex) <= 1} chromeHidden={chromeHidden} onChromeHiddenChange={setChromeHidden} />
-            </div>
-          ))
+          feedPosts.map((item: any, index: number) => {
+            const mounted = Math.abs(index - currentIndex) <= mountRadius;
+            return (
+              <div
+                key={item.id}
+                data-index={index}
+                className="h-[100dvh] w-full snap-start snap-always relative bg-black"
+                style={{ scrollSnapAlign: "start" }}
+              >
+                {mounted ? (
+                  <FeedPostCard
+                    post={item}
+                    currentUserId={user?.id}
+                    isActive={index === currentIndex}
+                    isNear={Math.abs(index - currentIndex) <= 1}
+                    chromeHidden={chromeHidden}
+                    onChromeHiddenChange={setChromeHidden}
+                  />
+                ) : null}
+              </div>
+            );
+          })
         )}
       </div>
-
-      <CreatePostSheet open={showCreate} onClose={closeCreate} cameraStream={cameraStream} />
     </div>
   );
 };
