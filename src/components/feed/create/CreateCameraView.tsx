@@ -43,6 +43,8 @@ export default function CreateCameraView({
   initialStream,
   createMode,
   onModeChange,
+  onAddSound,
+  soundLabel,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
