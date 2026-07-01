@@ -70,7 +70,14 @@ const PostCommentsSheet = ({ postId, open, onClose, onEmojiComment }: Props) => 
 
   const invalidateComments = () => {
     queryClient.invalidateQueries({ queryKey: ["post-comments", postId] });
-    queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
+    queryClient.setQueriesData({ queryKey: ["feed-posts"] }, (old: unknown) => {
+      if (!Array.isArray(old)) return old;
+      return old.map((item: any) =>
+        item.id === postId && item.itemType === "post"
+          ? { ...item, comments_count: (item.comments_count || 0) + 1 }
+          : item,
+      );
+    });
     queryClient.invalidateQueries({ queryKey: ["profile-posts"] });
   };
 

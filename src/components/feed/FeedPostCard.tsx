@@ -237,13 +237,10 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
   }, [isActive, postMeta?.music?.audioUrl, post.id, activateFeedPlayback]);
 
   useEffect(() => {
-    if (!isActive) setShowComments(false);
-  }, [isActive]);
-
-  useEffect(() => {
     if (post.media_type !== "video") return;
 
     if (!isActive) {
+      setShowComments(false);
       mediaSessionCleanupRef.current?.();
       mediaSessionCleanupRef.current = null;
       userPausedRef.current = false;
@@ -253,15 +250,18 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
       return;
     }
 
-    if (userPausedRef.current) return;
-
-    void playWhenActive();
-
     const video = videoRef.current;
+    const tryPlay = () => {
+      if (userPausedRef.current || showComments) return;
+      void playWhenActive();
+    };
+
+    tryPlay();
+
     if (!video) return;
 
     const onReady = () => {
-      if (isActive && !userPausedRef.current && video.paused) {
+      if (isActive && !userPausedRef.current && !showComments && video.paused) {
         void playWhenActive();
       }
     };
@@ -269,11 +269,16 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
     video.addEventListener("loadeddata", onReady);
     video.addEventListener("canplay", onReady);
 
+    const rafId = requestAnimationFrame(tryPlay);
+    const timerId = window.setTimeout(tryPlay, 120);
+
     return () => {
+      cancelAnimationFrame(rafId);
+      window.clearTimeout(timerId);
       video.removeEventListener("loadeddata", onReady);
       video.removeEventListener("canplay", onReady);
     };
-  }, [isActive, post.media_type, playWhenActive]);
+  }, [isActive, showComments, post.media_type, playWhenActive]);
 
   useEffect(() => {
     if (!viewCounted && isActive && post.id) {
