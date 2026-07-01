@@ -69,9 +69,11 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const userPausedRef = useRef(false);
   const [userPaused, setUserPaused] = useState(false);
+  const showCommentsRef = useRef(false);
   const { emojis, spawnEmoji } = useFloatingEmojis();
 
   const { caption: displayCaption, meta: postMeta } = parsePostCaption(post.caption);
+  showCommentsRef.current = showComments;
   const postTitle = postMeta?.title?.trim();
   const playbackMeta = useMemo<FeedPlaybackMeta>(
     () => ({
@@ -167,11 +169,6 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
     setLikesCount(post.likes_count || 0);
   }, [post.id, post.isLiked, post.likes_count]);
 
-  useEffect(() => {
-    if (!videoRef.current) return;
-    applyFeedVideoAudio(videoRef.current, { muted: getVideoMuted() });
-  }, [getVideoMuted]);
-
   // Added sound plays in sync with video — camera audio is muted when a sound is attached.
   useEffect(() => {
     musicStopRef.current?.();
@@ -231,7 +228,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
     if (post.media_type !== "video") return;
 
     if (!isActive) {
-      setShowComments(false);
+      if (showComments) setShowComments(false);
       mediaSessionCleanupRef.current?.();
       mediaSessionCleanupRef.current = null;
       userPausedRef.current = false;
@@ -243,7 +240,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
 
     const video = videoRef.current;
     const tryPlay = () => {
-      if (userPausedRef.current || showComments) return;
+      if (userPausedRef.current || showCommentsRef.current) return;
       void playWhenActive();
     };
 
@@ -252,7 +249,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
     if (!video) return;
 
     const onReady = () => {
-      if (isActive && !userPausedRef.current && !showComments && video.paused) {
+      if (isActive && !userPausedRef.current && !showCommentsRef.current && video.paused) {
         void playWhenActive();
       }
     };
@@ -273,7 +270,18 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
       video.removeEventListener("canplay", onReady);
       video.removeEventListener("canplaythrough", onReady);
     };
-  }, [isActive, showComments, post.media_type, playWhenActive]);
+  }, [isActive, post.media_type, playWhenActive]);
+
+  useEffect(() => {
+    if (post.media_type !== "video" || !isActive || showComments || userPausedRef.current) return;
+    void playWhenActive();
+  }, [showComments, isActive, post.media_type, playWhenActive]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || post.media_type !== "video") return;
+    applyFeedVideoAudio(video, { muted: getVideoMuted() });
+  }, [isMuted, post.media_type, getVideoMuted]);
 
   useEffect(() => {
     if (!viewCounted && isActive && post.id) {

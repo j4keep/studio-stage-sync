@@ -1,6 +1,4 @@
-import FeedPage from "./FeedPage";
-
-// Home now opens directly into the full-screen Shorts-style feed.
-const HomePage = () => <FeedPage />;
+// Feed is mounted persistently in AppLayout so tab switches do not destroy video players.
+const HomePage = () => null;
 
 export default HomePage;
