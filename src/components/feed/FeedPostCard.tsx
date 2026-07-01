@@ -669,10 +669,10 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
           <button
             onClick={(e) => { e.stopPropagation(); navigate("/circle"); }}
             className="feed-action-btn"
-            aria-label="Open Catch Up Circle"
+            aria-label="Open My Circle"
           >
             <Users className="feed-action-icon" />
-            <span className="feed-action-count text-[9px]">Circle</span>
+            <span className="feed-action-count text-[9px]">My Circle</span>
           </button>
         </div>
 

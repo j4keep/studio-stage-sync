@@ -5,8 +5,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import CreateCameraView from "./create/CreateCameraView";
+import CreateHubView from "./create/CreateHubView";
+import LiveCameraView from "./create/LiveCameraView";
 import MediaEditView from "./create/MediaEditView";
 import PostPreviewView from "./create/PostPreviewView";
+import type { CreateMode, ShortDuration } from "@/lib/create-modes";
 import SoundPickerSheet from "./SoundPickerSheet";
 import { exportEditedImage } from "./create/exportMedia";
 import {
@@ -30,7 +33,6 @@ cameraStream?: MediaStream | null;
 }
 
 type Step = "camera" | "edit" | "preview";
-type CaptureMode = "photo" | "video";
 
 const CreatePostSheet = ({
 open,
@@ -42,7 +44,8 @@ const { user } = useAuth();
 const queryClient = useQueryClient();
 
 const [step, setStep] = useState<Step>("camera");
-const [mode, setMode] = useState<CaptureMode>("video");
+const [createMode, setCreateMode] = useState<CreateMode>("post");
+const [shortDuration, setShortDuration] = useState<ShortDuration>(60);
 const [caption, setCaption] = useState("");
 const [title, setTitle] = useState("");
 const [file, setFile] = useState<File | null>(null);
@@ -119,7 +122,8 @@ setFile(null);
 setMusicFile(null);
 setMusicPreviewUrl(parsed.meta?.music?.audioUrl ?? null);
 setMediaType(postToEdit?.media_type === "video" ? "video" : "image");
-setMode(postToEdit?.media_type === "video" ? "video" : "photo");
+setCreateMode("post");
+setShortDuration(60);
 setCurrentMediaUrl(postToEdit?.media_url || null);
 setPreview(postToEdit?.media_url || null);
 setStep(postToEdit ? "preview" : "camera");
@@ -165,7 +169,8 @@ setMediaType("image");
 setCurrentMediaUrl(null);
 setEditorMeta(defaultEditorMeta());
 setStep("camera");
-setMode("video");
+setCreateMode("post");
+setShortDuration(60);
 
 onClose();
 
@@ -333,7 +338,6 @@ setFile(f);
 const isVideo = type === "video" || f.type.startsWith("video/");
 
 setMediaType(isVideo ? "video" : "image");
-setMode(isVideo ? "video" : "photo");
 setCurrentMediaUrl(null);
 
 revokeBlobs();
@@ -350,8 +354,7 @@ setStep("edit");
 };
 
 const openGallery = () => {
-const input = mode === "video" ? videoInputRef.current : photoInputRef.current;
-input?.click();
+videoInputRef.current?.click();
 };
 
 const previewMediaUrl = preview || currentMediaUrl;
@@ -403,13 +406,34 @@ exit={{ opacity: 0 }}
 className="fixed inset-0 z-[100] bg-black overflow-hidden touch-none overscroll-none"
 style={{ height: "100dvh", maxHeight: "100dvh" }}
 >
-{step === "camera" && (
+{step === "camera" && createMode === "post" && (
 <CreateCameraView
-mode={mode}
-onModeChange={setMode}
+createMode={createMode}
+onModeChange={setCreateMode}
+durationSec={shortDuration}
+onDurationChange={setShortDuration}
 onClose={reset}
 onCapture={handleMediaFile}
 onOpenGallery={openGallery}
+initialStream={cameraStream}
+/>
+)}
+
+{step === "camera" && createMode === "create" && (
+<CreateHubView
+createMode={createMode}
+onModeChange={setCreateMode}
+onClose={reset}
+onNewVideo={() => setCreateMode("post")}
+onUploadVideo={() => videoInputRef.current?.click()}
+/>
+)}
+
+{step === "camera" && createMode === "live" && (
+<LiveCameraView
+createMode={createMode}
+onModeChange={setCreateMode}
+onClose={reset}
 initialStream={cameraStream}
 />
 )}

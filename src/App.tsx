@@ -20,6 +20,7 @@ import RadioPage from "./pages/RadioPage";
 import StudiosPage from "./pages/StudiosPage";
 import MyStudiosPage from "./pages/MyStudiosPage";
 import MyBookingsPage from "./pages/MyBookingsPage";
+import MyCirclePage from "./pages/MyCirclePage";
 
 import ProfilePage from "./pages/ProfilePage";
 import TermsPage from "./pages/TermsPage";
@@ -249,8 +250,7 @@ const ProtectedRoutes = () => {
         <Route path="/podcast/*" element={<Navigate to="/" replace />} />
         <Route path="/wstudio/*" element={<Navigate to="/" replace />} />
         <Route path="/ai-studio" element={<Navigate to="/" replace />} />
-        <Route path="/circle" element={<Navigate to="/" replace />} />
-        <Route path="/circle/*" element={<Navigate to="/" replace />} />
+        <Route path="/circle" element={<MyCirclePage />} />
         <Route path="/m/*" element={<Navigate to="/" replace />} />
         <Route path="/studios" element={<StudiosPage />} />
         <Route path="/my-studios" element={<MyStudiosPage />} />
