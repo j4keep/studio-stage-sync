@@ -68,11 +68,10 @@ const musicStopRef = useRef<(() => void) | null>(null);
 useEffect(() => {
 if (!open) return;
 
-/*
-  Music preview during edit/preview only — camera records mic + video directly,
-  like a phone camera. Added sound plays over the video in the feed.
-*/
-const shouldPlay = step === "edit" || step === "preview";
+const shouldPlay =
+  step === "edit" ||
+  step === "preview" ||
+  (step === "camera" && createMode === "post");
 
 musicStopRef.current?.();
 musicStopRef.current = null;
@@ -89,8 +88,10 @@ return () => {
 }, [
 open,
 step,
+createMode,
 musicPreviewUrl,
 editorMeta.music?.audioUrl,
+editorMeta.music?.fileName,
 editorMeta.music?.durationSec,
 ]);
 
@@ -164,9 +165,6 @@ setPreview(null);
 setCurrentMediaUrl(null);
 setCaption("");
 setTitle("");
-setMusicFile(null);
-setMusicPreviewUrl(null);
-setEditorMeta(defaultEditorMeta());
 setMediaType("image");
 setCameraSessionKey((k) => k + 1);
 setStep("camera");
@@ -365,7 +363,14 @@ const url = URL.createObjectURL(f);
 setPreview(url);
 previewBlobRef.current = url;
 
-if (!postToEdit) setEditorMeta(defaultEditorMeta());
+if (!postToEdit) {
+  setEditorMeta((m) => ({
+    ...defaultEditorMeta(),
+    ...(m.music || musicFile
+      ? { muteOriginal: true, music: m.music }
+      : {}),
+  }));
+}
 
 setStep("edit");
 
@@ -389,7 +394,8 @@ photoInputRef.current?.click();
 
 const previewMediaUrl = preview || currentMediaUrl;
 const hasMedia = !!(file || currentMediaUrl);
-const soundLabel = getMusicDisplayName(editorMeta.music);
+const hasSelectedSound = !!(musicFile || editorMeta.music?.fileName || editorMeta.music?.audioUrl);
+const soundLabel = hasSelectedSound ? getMusicDisplayName(editorMeta.music) : undefined;
 
 const handleSoundButton = () => {
 setShowSoundPicker(true);
@@ -412,6 +418,20 @@ setEditorMeta((m) => ({
   },
 }));
 
+const probe = new Audio(url);
+probe.addEventListener("loadedmetadata", () => {
+  if (!Number.isFinite(probe.duration) || probe.duration <= 0) return;
+  setEditorMeta((m) => ({
+    ...m,
+    music: {
+      ...m.music,
+      fileName: f.name,
+      durationSec: probe.duration,
+    },
+  }));
+}, { once: true });
+
+toast.success("Sound added");
 };
 
 const clearMusic = () => {
@@ -445,6 +465,8 @@ onClose={reset}
 onCapture={handleMediaFile}
 onOpenGallery={openGallery}
 onTextPost={handleTextPost}
+onAddSound={handleSoundButton}
+soundLabel={soundLabel}
 initialStream={cameraSessionKey === 0 ? cameraStream : null}
 />
 )}
@@ -481,7 +503,7 @@ initialStream={cameraStream}
           onBack={() => (postToEdit ? setStep("preview") : undoToCamera())}
           onDone={() => setStep("preview")}
           onAddSound={handleSoundButton}
-          soundLabel={editorMeta.music ? soundLabel : undefined}
+          soundLabel={soundLabel}
           onMediaReplace={handleMediaReplace}
           isEditing={!!postToEdit}
         />

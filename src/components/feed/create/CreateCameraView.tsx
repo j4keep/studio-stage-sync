@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { X, SwitchCamera, Sparkles, Wand2, Camera, Type } from "lucide-react";
+import { X, SwitchCamera, Sparkles, Wand2, Camera, Type, Music } from "lucide-react";
 import {
   warmCameraStream,
   releaseCameraStream,
@@ -31,6 +31,8 @@ interface Props {
   initialStream?: MediaStream | null;
   createMode: CreateMode;
   onModeChange: (mode: CreateMode) => void;
+  onAddSound?: () => void;
+  soundLabel?: string;
 }
 
 export default function CreateCameraView({
@@ -501,9 +503,12 @@ export default function CreateCameraView({
         <div className="flex flex-col items-center gap-1.5 mt-2">
           <button
             type="button"
-            className="px-4 py-1.5 rounded-full bg-black/40 text-white text-xs font-semibold flex items-center gap-1.5"
+            onClick={onAddSound}
+            disabled={!onAddSound || recording}
+            className="max-w-[min(72vw,16rem)] px-4 py-1.5 rounded-full bg-black/40 border border-white/15 text-white text-xs font-semibold flex items-center gap-1.5 disabled:opacity-40 active:scale-95 transition-transform"
           >
-            Add sound
+            <Music className="w-3.5 h-3.5 shrink-0 text-primary" />
+            <span className="truncate">{soundLabel || "Add sound"}</span>
           </button>
           {recording && (
             <div className="min-w-[3rem] px-2.5 py-1 rounded-lg bg-red-500 text-white text-sm font-bold tabular-nums text-center shadow-lg">

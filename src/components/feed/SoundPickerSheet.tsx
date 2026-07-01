@@ -69,7 +69,7 @@ const SoundPickerSheet = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[90] bg-black/70"
+        className="fixed inset-0 z-[110] bg-black/70"
         onClick={() => {
           stopPreview();
           onClose();
@@ -80,7 +80,7 @@ const SoundPickerSheet = ({
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
         transition={{ type: "spring", damping: 28, stiffness: 320 }}
-        className="fixed bottom-0 left-0 right-0 z-[91] mx-auto max-w-lg rounded-t-2xl bg-zinc-950 border-t border-white/10 max-h-[55dvh] flex flex-col safe-area-bottom"
+        className="fixed bottom-0 left-0 right-0 z-[111] mx-auto max-w-lg rounded-t-2xl bg-zinc-950 border-t border-white/10 max-h-[55dvh] flex flex-col safe-area-bottom"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
