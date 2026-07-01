@@ -6,6 +6,7 @@ import {
   createVideoRecorder,
   pickVideoRecorderMimeType,
   streamHasLiveAudio,
+  streamHasLiveVideo,
   fileExtensionForMime,
   ensureStreamHasAudio,
   createMirroredVideoRecordStream,
@@ -127,17 +128,22 @@ export default function CreateCameraView({
     }
   }, [facing, attachStream, stopStream]);
 
+  const ensureLiveCamera = useCallback(() => {
+    if (streamHasLiveVideo(streamRef.current)) return;
+    void startCamera();
+  }, [startCamera]);
+
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
-      if (initialStream && !cancelled) {
-        ownsStreamRef.current = true;
+      if (initialStream && streamHasLiveVideo(initialStream) && !cancelled) {
+        ownsStreamRef.current = false;
         await attachStream(initialStream);
         return;
       }
 
-      if (!initialStream && !cancelled) {
+      if (!cancelled) {
         ownsStreamRef.current = true;
         await startCamera();
       }
@@ -299,10 +305,14 @@ export default function CreateCameraView({
         recorderRef.current = null;
         resetRecordingUi();
 
-        if (shouldDiscard) return;
+        if (shouldDiscard) {
+          ensureLiveCamera();
+          return;
+        }
 
         if (elapsedMs < MIN_RECORD_MS || blob.size < 800) {
           toast.message("Hold the button to record a short");
+          ensureLiveCamera();
           return;
         }
 
@@ -352,7 +362,14 @@ export default function CreateCameraView({
     wantsRecordRef.current = false;
     recordPendingRef.current = false;
     detachPointerEndListeners();
-    finishRecordingRef.current();
+
+    if (recorderRef.current?.state === "recording") {
+      finishRecordingRef.current();
+      return;
+    }
+
+    resetRecordingUi();
+    ensureLiveCamera();
   };
 
   const takePhoto = async () => {
@@ -459,32 +476,42 @@ export default function CreateCameraView({
         </div>
       )}
 
-      <div className="relative z-20 flex items-center justify-between px-3 pt-[max(env(safe-area-inset-top),0.5rem)] pb-1">
-        <button
-          type="button"
-          onClick={onClose}
-          className="w-10 h-10 flex items-center justify-center text-white drop-shadow-lg"
-          aria-label="Close and discard"
-        >
-          <X className="w-6 h-6" strokeWidth={2.5} />
-        </button>
+      <div className="relative z-20 px-3 pt-[max(env(safe-area-inset-top),0.5rem)] pb-1">
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-10 h-10 flex items-center justify-center text-white drop-shadow-lg"
+            aria-label="Close and discard"
+          >
+            <X className="w-6 h-6" strokeWidth={2.5} />
+          </button>
 
-        <button
-          type="button"
-          className="px-4 py-1.5 rounded-full bg-black/40 text-white text-xs font-semibold flex items-center gap-1.5"
-        >
-          Add sound
-        </button>
+          <button
+            type="button"
+            onClick={flipCamera}
+            disabled={denied || !ready || recording || capturingPhoto}
+            className="w-10 h-10 flex items-center justify-center text-white drop-shadow-lg disabled:opacity-30"
+            aria-label="Flip camera"
+          >
+            <SwitchCamera className="w-6 h-6" strokeWidth={2.5} />
+          </button>
+        </div>
 
-        <button
-          type="button"
-          onClick={flipCamera}
-          disabled={denied || !ready || recording || capturingPhoto}
-          className="w-10 h-10 flex items-center justify-center text-white drop-shadow-lg disabled:opacity-30"
-          aria-label="Flip camera"
-        >
-          <SwitchCamera className="w-6 h-6" strokeWidth={2.5} />
-        </button>
+        <div className="flex flex-col items-center gap-1.5 mt-2">
+          <button
+            type="button"
+            className="px-4 py-1.5 rounded-full bg-black/40 text-white text-xs font-semibold flex items-center gap-1.5"
+          >
+            Add sound
+          </button>
+          {recording && (
+            <div className="min-w-[3rem] px-2.5 py-1 rounded-lg bg-red-500 text-white text-sm font-bold tabular-nums text-center shadow-lg">
+              {Math.floor((QUICK_MAX_RECORD_SEC * recordProgress) / 60)}:
+              {String(Math.floor(QUICK_MAX_RECORD_SEC * recordProgress) % 60).padStart(2, "0")}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="absolute right-3 top-[calc(env(safe-area-inset-top)+3.5rem)] z-20 flex flex-col items-center gap-3">
@@ -511,13 +538,6 @@ export default function CreateCameraView({
           <span className="text-[9px] font-semibold">Effects</span>
         </button>
       </div>
-
-      {recording && (
-        <div className="absolute top-[calc(env(safe-area-inset-top)+3.25rem)] right-3 z-30 min-w-[3rem] px-2.5 py-1 rounded-lg bg-red-500 text-white text-sm font-bold tabular-nums text-center shadow-lg">
-          {Math.floor((QUICK_MAX_RECORD_SEC * recordProgress) / 60)}:
-          {String(Math.floor(QUICK_MAX_RECORD_SEC * recordProgress) % 60).padStart(2, "0")}
-        </div>
-      )}
 
       <div className="relative z-20 mt-auto pb-[calc(max(env(safe-area-inset-bottom),0.5rem)+2rem)]">
         <div className="relative z-10 flex items-end justify-center gap-7 px-5">

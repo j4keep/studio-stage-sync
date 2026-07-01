@@ -57,6 +57,7 @@ const [musicFile, setMusicFile] = useState<File | null>(null);
 const [musicPreviewUrl, setMusicPreviewUrl] = useState<string | null>(null);
 const [showSoundPicker, setShowSoundPicker] = useState(false);
 const [uploading, setUploading] = useState(false);
+const [cameraSessionKey, setCameraSessionKey] = useState(0);
 
 const photoInputRef = useRef<HTMLInputElement>(null);
 const videoInputRef = useRef<HTMLInputElement>(null);
@@ -122,6 +123,7 @@ setMusicFile(null);
 setMusicPreviewUrl(parsed.meta?.music?.audioUrl ?? null);
 setMediaType(postToEdit?.media_type === "video" ? "video" : "image");
 setCreateMode("post");
+setCameraSessionKey(0);
 setCurrentMediaUrl(postToEdit?.media_url || null);
 setPreview(postToEdit?.media_url || null);
 setStep(postToEdit ? "preview" : "camera");
@@ -166,6 +168,7 @@ setMusicFile(null);
 setMusicPreviewUrl(null);
 setEditorMeta(defaultEditorMeta());
 setMediaType("image");
+setCameraSessionKey((k) => k + 1);
 setStep("camera");
 }, []);
 
@@ -435,13 +438,14 @@ style={{ height: "100dvh", maxHeight: "100dvh" }}
 >
 {step === "camera" && createMode === "post" && (
 <CreateCameraView
+key={cameraSessionKey}
 createMode={createMode}
 onModeChange={setCreateMode}
 onClose={reset}
 onCapture={handleMediaFile}
 onOpenGallery={openGallery}
 onTextPost={handleTextPost}
-initialStream={cameraStream}
+initialStream={cameraSessionKey === 0 ? cameraStream : null}
 />
 )}
 

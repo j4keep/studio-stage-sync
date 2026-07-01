@@ -59,6 +59,13 @@ export function streamHasLiveAudio(stream: MediaStream | null | undefined): bool
   );
 }
 
+export function streamHasLiveVideo(stream: MediaStream | null | undefined): boolean {
+  return (
+    !!stream &&
+    stream.getVideoTracks().some((t) => t.readyState === "live" && t.enabled)
+  );
+}
+
 /** Clone active tracks into a fresh stream for MediaRecorder. */
 export function cloneStreamForRecording(stream: MediaStream): MediaStream {
   return new MediaStream([...stream.getVideoTracks(), ...stream.getAudioTracks()]);
