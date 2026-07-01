@@ -647,7 +647,8 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
                 setIsMuted((value) => {
                   const next = !value;
                   if (!next) {
-                    requestAnimationFrame(() => activateFeedPlayback());
+                    unlockFeedAudio();
+                    requestAnimationFrame(() => activateFeedPlayback(false));
                   }
                   return next;
                 });
@@ -655,7 +656,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
               className="feed-action-btn"
               aria-label={isMuted ? "Unmute video" : "Mute video"}
             >
-              {isMuted ? <VolumeX className="feed-action-icon" /> : <Volume2 className="feed-action-icon" />}
+              {isMuted || autoplayAudioLocked ? <VolumeX className="feed-action-icon" /> : <Volume2 className="feed-action-icon" />}
             </button>
           )}
 
