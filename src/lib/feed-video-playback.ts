@@ -16,6 +16,24 @@ export function unlockFeedAudioSession() {
   window.dispatchEvent(new Event("feed-audio-unlocked"));
 }
 
+let gestureUnlockAttached = false;
+
+/** One shared listener so any tap on the feed unlocks audio for the active video. */
+export function initFeedAudioUnlockOnGesture() {
+  if (gestureUnlockAttached || typeof window === "undefined") return;
+  gestureUnlockAttached = true;
+
+  const onGesture = () => {
+    if (feedAudioSessionUnlocked) return;
+    unlockFeedAudioSession();
+  };
+
+  const opts = { capture: true, passive: true } as AddEventListenerOptions;
+  window.addEventListener("pointerdown", onGesture, opts);
+  window.addEventListener("touchstart", onGesture, opts);
+  window.addEventListener("click", onGesture, opts);
+}
+
 export function applyFeedVideoAudio(
   video: HTMLVideoElement,
   options: { muted: boolean } = { muted: false },

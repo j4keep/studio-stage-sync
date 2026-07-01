@@ -8,6 +8,7 @@ import FeedPostCard from "@/components/feed/FeedPostCard";
 import { useCreatePostSheet } from "@/hooks/use-create-post-sheet";
 import CreatePostSheet from "@/components/feed/CreatePostSheet";
 import { fetchFeedItems } from "@/lib/feed-items";
+import { initFeedAudioUnlockOnGesture } from "@/lib/feed-video-playback";
 import jhiLogo from "@/assets/wheuat-logo.png";
 
 type TabId = "radio" | "battle" | "marketplace" | "deals" | "support";
@@ -76,6 +77,10 @@ const FeedPage = () => {
   useEffect(() => {
     if (currentIndex >= feedPosts.length) setCurrentIndex(0);
   }, [currentIndex, feedPosts.length]);
+
+  useEffect(() => {
+    initFeedAudioUnlockOnGesture();
+  }, []);
 
   useEffect(() => {
     const resetToTop = () => {

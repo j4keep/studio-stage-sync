@@ -97,13 +97,6 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     return isMuted || hasAddedSound || postMeta?.muteOriginal === true;
   }, [isMuted, hasAddedSound, postMeta?.muteOriginal]);
 
-  const canStartWithSound = useCallback(() => {
-    if (feedAudioUnlocked) return true;
-    if (typeof navigator === "undefined" || !("userActivation" in navigator)) return true;
-    const activation = navigator.userActivation;
-    return Boolean(activation?.hasBeenActive || activation?.isActive);
-  }, [feedAudioUnlocked]);
-
   const unlockFeedAudio = useCallback(() => {
     setFeedAudioUnlocked(true);
     setAutoplayAudioLocked(false);
@@ -185,49 +178,42 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
 
     const targetMuted = getVideoMuted();
 
-    const markPlaying = (mutedForPlayback: boolean) => {
-      applyFeedVideoAudio(video, { muted: mutedForPlayback });
-      setAutoplayAudioLocked(!targetMuted && mutedForPlayback);
-      if (!targetMuted && !mutedForPlayback) unlockFeedAudio();
-      activateFeedPlayback(mutedForPlayback);
-      setIsPlaying(true);
-      onChromeHiddenChange?.(true);
-      if (!isMuted && (hasAddedSound || !mutedForPlayback)) {
-        void startAudiblePlayback();
-      }
-    };
-
-    // Kick the network fetch immediately so playback isn't held up by lazy loading.
     if (video.readyState === 0 && video.preload !== "auto") {
       video.preload = "auto";
       try { video.load(); } catch { /* ignore */ }
     }
 
-    // Try audible playback first — the user wants sound by default.
     try {
-      applyFeedVideoAudio(video, { muted: targetMuted });
+      // Mobile requires muted autoplay — unmute immediately once playback starts.
+      applyFeedVideoAudio(video, { muted: true });
       await video.play();
-      markPlaying(targetMuted);
+
+      setAutoplayAudioLocked(false);
+      setIsPlaying(true);
+      onChromeHiddenChange?.(true);
+
+      if (targetMuted) {
+        applyFeedVideoAudio(video, { muted: true });
+        activateFeedPlayback(true);
+        return true;
+      }
+
+      applyFeedVideoAudio(video, { muted: false });
+      unlockFeedAudio();
+      activateFeedPlayback(false);
+
+      if (hasAddedSound) {
+        await startAudiblePlayback();
+      } else {
+        mediaSessionCleanupRef.current?.();
+        mediaSessionCleanupRef.current = bindFeedMediaSession(video, playbackMeta);
+      }
       return true;
     } catch {
-      // Browser blocked audible autoplay (cold app entry, no gesture yet).
-      // Fall back to muted autoplay so the video still starts immediately,
-      // then unmute automatically as soon as the user interacts.
-      if (targetMuted) {
-        setIsPlaying(false);
-        return false;
-      }
-      try {
-        applyFeedVideoAudio(video, { muted: true });
-        await video.play();
-        markPlaying(true);
-        return true;
-      } catch {
-        setIsPlaying(false);
-        return false;
-      }
+      setIsPlaying(false);
+      return false;
     }
-  }, [post.media_type, getVideoMuted, unlockFeedAudio, activateFeedPlayback, onChromeHiddenChange, isMuted, hasAddedSound, startAudiblePlayback]);
+  }, [post.media_type, getVideoMuted, unlockFeedAudio, activateFeedPlayback, onChromeHiddenChange, hasAddedSound, startAudiblePlayback, playbackMeta]);
 
   const toggleVideoPlayback = useCallback(() => {
     const video = videoRef.current;
@@ -280,40 +266,16 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
   useEffect(() => {
     const onUnlocked = () => {
       setFeedAudioUnlocked(true);
-      // If this card was force-muted due to autoplay block, unmute it now.
+      setAutoplayAudioLocked(false);
       const video = videoRef.current;
-      if (video && isActive && autoplayAudioLocked) {
+      if (!video || !isActive || userPausedRef.current) return;
+      if (!getVideoMuted() && (video.muted || autoplayAudioLocked)) {
         void startAudiblePlayback();
       }
     };
     window.addEventListener("feed-audio-unlocked", onUnlocked);
     return () => window.removeEventListener("feed-audio-unlocked", onUnlocked);
-  }, [isActive, autoplayAudioLocked, startAudiblePlayback]);
-
-  // Cold-entry autoplay: unmute on the very first user interaction anywhere.
-  useEffect(() => {
-    const onFirstInteract = () => {
-      if (isActiveRef.current && autoplayAudioLockedRef.current) {
-        suppressNextMediaToggleRef.current = true;
-        window.setTimeout(() => {
-          suppressNextMediaToggleRef.current = false;
-        }, 600);
-      }
-      unlockFeedAudioSession();
-      void startAudiblePlayback();
-    };
-    const opts = { once: true, capture: true } as AddEventListenerOptions;
-    window.addEventListener("pointerdown", onFirstInteract, opts);
-    window.addEventListener("touchstart", onFirstInteract, opts);
-    window.addEventListener("keydown", onFirstInteract, opts);
-    window.addEventListener("click", onFirstInteract, opts);
-    return () => {
-      window.removeEventListener("pointerdown", onFirstInteract, opts);
-      window.removeEventListener("touchstart", onFirstInteract, opts);
-      window.removeEventListener("keydown", onFirstInteract, opts);
-      window.removeEventListener("click", onFirstInteract, opts);
-    };
-  }, [startAudiblePlayback]);
+  }, [isActive, autoplayAudioLocked, getVideoMuted, startAudiblePlayback]);
 
   // Added sound plays in sync with video — camera audio is muted when a sound is attached.
   useEffect(() => {
