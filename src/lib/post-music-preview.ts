@@ -27,43 +27,75 @@ export function videoTimeToMusicTime(videoTime: number, trim: MusicTrim, fallbac
   return start + offset;
 }
 
-/** Standalone trimmed music preview (camera / no video). */
-export function playTrimmedMusicPreview(
-  url: string,
-  trim: MusicTrim = {},
-): { stop: () => void } {
+export function createTrimmedMusicPlayer(url: string, trim: MusicTrim = {}) {
   const audio = new Audio(url);
   audio.volume = trim.volume ?? 1;
   audio.loop = true;
+  audio.preload = "auto";
+  audio.setAttribute("playsinline", "true");
+  audio.setAttribute("webkit-playsinline", "true");
 
-  const applyStart = () => {
-    const start = Math.max(0, trim.trimStart ?? 0);
-    if (Number.isFinite(start)) audio.currentTime = start;
+  const getStart = () => Math.max(0, trim.trimStart ?? 0);
+
+  const getEnd = () => {
+    const start = getStart();
+    if (trim.trimEnd && trim.trimEnd > start) return trim.trimEnd;
+    if (audio.duration && Number.isFinite(audio.duration)) return audio.duration;
+    if (trim.sourceDurationSec && trim.sourceDurationSec > start) return trim.sourceDurationSec;
+    return undefined;
   };
 
-  audio.addEventListener("loadedmetadata", applyStart, { once: true });
-
   audio.addEventListener("timeupdate", () => {
-    const start = Math.max(0, trim.trimStart ?? 0);
-    const end =
-      trim.trimEnd && trim.trimEnd > start
-        ? trim.trimEnd
-        : audio.duration && Number.isFinite(audio.duration)
-          ? audio.duration
-          : undefined;
+    const start = getStart();
+    const end = getEnd();
     if (end && audio.currentTime >= end - 0.05) {
       audio.currentTime = start;
     }
   });
 
-  void audio.play().catch(() => {});
-
-  return {
-    stop: () => {
-      audio.pause();
-      audio.src = "";
-    },
+  const seekToTrimStart = async () => {
+    if (audio.readyState >= 1) {
+      audio.currentTime = getStart();
+      return;
+    }
+    await new Promise<void>((resolve) => {
+      audio.addEventListener("loadedmetadata", () => resolve(), { once: true });
+      audio.load();
+    });
+    audio.currentTime = getStart();
   };
+
+  const play = async (): Promise<boolean> => {
+    try {
+      await seekToTrimStart();
+      await audio.play();
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const stop = () => {
+    audio.pause();
+    audio.removeAttribute("src");
+    try {
+      audio.load();
+    } catch {
+      /* ignore */
+    }
+  };
+
+  return { audio, play, stop };
+}
+
+/** Standalone trimmed music preview (camera / no video). */
+export function playTrimmedMusicPreview(
+  url: string,
+  trim: MusicTrim = {},
+): { stop: () => void; play: () => Promise<boolean> } {
+  const player = createTrimmedMusicPlayer(url, trim);
+  void player.play();
+  return player;
 }
 
 /** Play added music in sync with a video while keeping the video vocal track audible. */
@@ -72,9 +104,8 @@ export function syncMusicWithVideo(
   musicUrl: string,
   options: MusicTrim & { muteOriginal?: boolean } = {},
 ): () => void {
-  const audio = new Audio(musicUrl);
-  audio.volume = options.volume ?? 0.85;
-  audio.loop = true;
+  const player = createTrimmedMusicPlayer(musicUrl, options);
+  const audio = player.audio;
 
   let fallbackDuration = options.sourceDurationSec ?? 0;
 
@@ -99,7 +130,7 @@ export function syncMusicWithVideo(
   const onPlay = () => {
     applyVideoMute();
     syncAudioToVideo();
-    void audio.play().catch(() => {});
+    void player.play();
   };
 
   const onPause = () => {
@@ -121,7 +152,7 @@ export function syncMusicWithVideo(
   video.addEventListener("timeupdate", onTimeUpdate);
 
   applyVideoMute();
-  if (!video.paused) onPlay();
+  if (!video.paused) void player.play();
 
   return () => {
     audio.removeEventListener("loadedmetadata", onLoadedMetadata);
@@ -129,8 +160,7 @@ export function syncMusicWithVideo(
     video.removeEventListener("pause", onPause);
     video.removeEventListener("seeked", onSeeked);
     video.removeEventListener("timeupdate", onTimeUpdate);
-    audio.pause();
-    audio.src = "";
+    player.stop();
   };
 }
 

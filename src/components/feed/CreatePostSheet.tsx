@@ -64,14 +64,22 @@ const videoInputRef = useRef<HTMLInputElement>(null);
 const previewBlobRef = useRef<string | null>(null);
 const musicBlobRef = useRef<string | null>(null);
 const musicStopRef = useRef<(() => void) | null>(null);
+const cameraMusicPlayRef = useRef<(() => Promise<boolean>) | null>(null);
+
+const registerCameraMusicPlay = useCallback((play: (() => Promise<boolean>) | null) => {
+  cameraMusicPlayRef.current = play;
+}, []);
+
+const resumeCameraMusic = useCallback(() => {
+  void cameraMusicPlayRef.current?.();
+}, []);
 
 useEffect(() => {
 if (!open) return;
 
 const shouldPlayStandaloneMusic =
   !!(musicPreviewUrl || editorMeta.music?.audioUrl) &&
-  ((step === "camera" && createMode === "post") ||
-    (step === "preview" && mediaType !== "video") ||
+  ((step === "preview" && mediaType !== "video") ||
     (step === "edit" && !(file || currentMediaUrl)));
 
 musicStopRef.current?.();
@@ -404,7 +412,13 @@ const hasSelectedSound = !!(musicFile || editorMeta.music?.fileName || editorMet
 const soundLabel = hasSelectedSound ? getMusicDisplayName(editorMeta.music) : undefined;
 
 const handleSoundButton = () => {
+musicStopRef.current?.();
+musicStopRef.current = null;
 setShowSoundPicker(true);
+};
+
+const handleSoundPickerClose = () => {
+setShowSoundPicker(false);
 };
 
 const handleMusicFile = (f: File, url: string, durationSec: number) => {
@@ -478,6 +492,15 @@ onOpenGallery={openGallery}
 onTextPost={handleTextPost}
 onAddSound={handleSoundButton}
 soundLabel={soundLabel}
+musicPreviewUrl={musicPreviewUrl}
+musicPaused={showSoundPicker}
+onRegisterMusicPlay={registerCameraMusicPlay}
+musicTrim={{
+  trimStart: editorMeta.music?.trimStart,
+  trimEnd: editorMeta.music?.trimEnd,
+  sourceDurationSec: editorMeta.music?.durationSec,
+  volume: editorMeta.music?.volume ?? 0.85,
+}}
 initialStream={cameraSessionKey === 0 ? cameraStream : null}
 />
 )}
@@ -569,7 +592,8 @@ initialStream={cameraStream}
 
   <SoundPickerSheet
     open={showSoundPicker}
-    onClose={() => setShowSoundPicker(false)}
+    onClose={handleSoundPickerClose}
+    onBeforeClose={resumeCameraMusic}
     meta={editorMeta}
     musicFile={musicFile}
     musicPreviewUrl={musicPreviewUrl}
