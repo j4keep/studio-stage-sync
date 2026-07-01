@@ -5,6 +5,17 @@ export type FeedPlaybackMeta = {
   artist?: string;
 };
 
+let feedAudioSessionUnlocked = false;
+
+export function isFeedAudioSessionUnlocked() {
+  return feedAudioSessionUnlocked;
+}
+
+export function unlockFeedAudioSession() {
+  feedAudioSessionUnlocked = true;
+  window.dispatchEvent(new Event("feed-audio-unlocked"));
+}
+
 export function applyFeedVideoAudio(
   video: HTMLVideoElement,
   options: { muted: boolean } = { muted: false },

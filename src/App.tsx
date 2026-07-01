@@ -56,6 +56,7 @@ import { SessionProvider } from "./wstudio/session/SessionContext";
 
 import TermsAgreementGate from "./components/TermsAgreementGate";
 import ThemePickerSheet from "./components/ThemePickerSheet";
+import { unlockFeedAudioSession } from "@/lib/feed-video-playback";
 
 
 const queryClient = new QueryClient();
@@ -272,6 +273,19 @@ const ProtectedRoutes = () => {
 };
 
 const App = () => {
+  useEffect(() => {
+    const unlock = () => unlockFeedAudioSession();
+    const options = { once: true, capture: true } as AddEventListenerOptions;
+    window.addEventListener("pointerdown", unlock, options);
+    window.addEventListener("touchstart", unlock, options);
+    window.addEventListener("keydown", unlock, options);
+    return () => {
+      window.removeEventListener("pointerdown", unlock, options);
+      window.removeEventListener("touchstart", unlock, options);
+      window.removeEventListener("keydown", unlock, options);
+    };
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
