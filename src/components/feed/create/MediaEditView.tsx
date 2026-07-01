@@ -7,6 +7,7 @@ import CropEditorView from "./CropEditorView";
 import type { PostEditorMeta, TextOverlay, StickerOverlay, DrawStroke, TextOverlayStyle } from "@/lib/post-editor";
 import { BRUSH_PRESETS, DRAW_COLORS, eraseStrokesNear } from "@/lib/post-editor";
 import { TEXT_COLORS, CREATE_TEXT_STYLES, getTextStyleInline } from "@/lib/text-styles";
+import { syncMusicWithVideo } from "@/lib/post-music-preview";
 
 const newId = () => Math.random().toString(36).slice(2, 9);
 
@@ -169,6 +170,7 @@ export default function MediaEditView({
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const textInputRef = useRef<HTMLInputElement>(null);
+  const previewVideoRef = useRef<HTMLVideoElement>(null);
   const pendingTextFocus = useRef(false);
 
   const bindTextInput = (el: HTMLInputElement | null) => {
@@ -193,6 +195,29 @@ export default function MediaEditView({
   };
 
   const isToolActive = activeTool !== null || showStickers;
+
+  useEffect(() => {
+    const video = previewVideoRef.current;
+    if (!video || mediaType !== "video" || !musicPreviewUrl || activeTool === "crop") return;
+
+    return syncMusicWithVideo(video, musicPreviewUrl, {
+      trimStart: meta.music?.trimStart,
+      trimEnd: meta.music?.trimEnd,
+      sourceDurationSec: meta.music?.durationSec,
+      volume: meta.music?.volume ?? 0.85,
+      muteOriginal: meta.muteOriginal,
+    });
+  }, [
+    musicPreviewUrl,
+    mediaType,
+    meta.music?.trimStart,
+    meta.music?.trimEnd,
+    meta.music?.durationSec,
+    meta.music?.volume,
+    meta.muteOriginal,
+    activeTool,
+    previewUrl,
+  ]);
 
   useEffect(() => {
     const vv = window.visualViewport;
@@ -344,6 +369,7 @@ export default function MediaEditView({
       {previewUrl && activeTool !== "crop" &&
         (mediaType === "video" ? (
           <video
+            ref={previewVideoRef}
             src={previewUrl}
             className="absolute inset-0 w-full h-full object-cover"
             playsInline

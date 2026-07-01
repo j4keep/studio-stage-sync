@@ -57,7 +57,17 @@ export interface PostEditorMeta {
   crop?: { scale: number; x: number; y: number };
   muteOriginal?: boolean;
   originalVolume?: number;
-  music?: { loopId?: string; fileName?: string; audioUrl?: string; volume?: number; durationSec?: number };
+  music?: {
+    loopId?: string;
+    fileName?: string;
+    audioUrl?: string;
+    volume?: number;
+    durationSec?: number;
+    /** Seconds into the source file where playback starts. */
+    trimStart?: number;
+    /** Seconds into the source file where the segment ends. */
+    trimEnd?: number;
+  };
   coverTime?: number;
   location?: string;
   /** Post title shown in feed (required before posting) */

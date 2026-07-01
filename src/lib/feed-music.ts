@@ -7,6 +7,9 @@ export type FeedMusicMeta =
       audioUrl?: string;
       fileName?: string;
       durationSec?: number;
+      trimStart?: number;
+      trimEnd?: number;
+      volume?: number;
     }
   | undefined;
 
@@ -16,12 +19,22 @@ export function playUploadedAudio(
     loop?: boolean;
     maxDurationSec?: number;
     autoplay?: boolean;
+    trimStart?: number;
+    trimEnd?: number;
+    volume?: number;
   } = {},
 ): { stop: () => void; audio: HTMLAudioElement } {
-  const { loop = true, maxDurationSec, autoplay = true } = options;
+  const {
+    loop = true,
+    maxDurationSec,
+    autoplay = true,
+    trimStart = 0,
+    trimEnd,
+    volume = 1,
+  } = options;
 
   const audio = new Audio(url);
-  audio.volume = 1;
+  audio.volume = volume;
   audio.loop = loop && !(maxDurationSec && maxDurationSec > 0);
 
   let durationTimer: ReturnType<typeof setTimeout> | null = null;
@@ -31,6 +44,28 @@ export function playUploadedAudio(
     audio.pause();
     audio.src = "";
   };
+
+  const start = Math.max(0, trimStart);
+
+  audio.addEventListener(
+    "loadedmetadata",
+    () => {
+      audio.currentTime = start;
+    },
+    { once: true },
+  );
+
+  audio.addEventListener("timeupdate", () => {
+    const end =
+      trimEnd && trimEnd > start
+        ? trimEnd
+        : audio.duration && Number.isFinite(audio.duration)
+          ? audio.duration
+          : undefined;
+    if (end && audio.currentTime >= end - 0.05) {
+      audio.currentTime = start;
+    }
+  });
 
   if (autoplay) {
     void audio.play().catch(() => {});
@@ -43,7 +78,7 @@ export function playUploadedAudio(
   return { audio, stop };
 }
 
-/** Preview attached sound during edit — plays instead of (muted) camera audio. */
+/** Preview attached sound during create — respects trim window. */
 export function playPostMusic(
   music: FeedMusicMeta,
   filePreviewUrl?: string | null,
@@ -51,13 +86,22 @@ export function playPostMusic(
   const url = filePreviewUrl || music?.audioUrl;
   if (!url) return null;
 
-  const dur =
-    music?.durationSec && music.durationSec > 0 ? music.durationSec : undefined;
+  const trimStart = music?.trimStart ?? 0;
+  const trimEnd = music?.trimEnd;
+  const segmentLen =
+    trimEnd && trimEnd > trimStart
+      ? trimEnd - trimStart
+      : music?.durationSec && music.durationSec > trimStart
+        ? music.durationSec - trimStart
+        : undefined;
 
   return playUploadedAudio(url, {
-    loop: !dur,
-    maxDurationSec: dur,
+    loop: true,
+    trimStart,
+    trimEnd,
+    maxDurationSec: segmentLen,
     autoplay: true,
+    volume: music?.volume ?? 1,
   });
 }
 

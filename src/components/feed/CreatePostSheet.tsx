@@ -68,15 +68,16 @@ const musicStopRef = useRef<(() => void) | null>(null);
 useEffect(() => {
 if (!open) return;
 
-const shouldPlay =
-  step === "edit" ||
-  step === "preview" ||
-  (step === "camera" && createMode === "post");
+const shouldPlayStandaloneMusic =
+  !!(musicPreviewUrl || editorMeta.music?.audioUrl) &&
+  ((step === "camera" && createMode === "post") ||
+    (step === "preview" && mediaType !== "video") ||
+    (step === "edit" && !(file || currentMediaUrl)));
 
 musicStopRef.current?.();
 musicStopRef.current = null;
 
-if (!shouldPlay) return;
+if (!shouldPlayStandaloneMusic) return;
 
 const player = playPostMusic(editorMeta.music, musicPreviewUrl);
 if (player) musicStopRef.current = player.stop;
@@ -89,10 +90,15 @@ return () => {
 open,
 step,
 createMode,
+mediaType,
+file,
+currentMediaUrl,
 musicPreviewUrl,
 editorMeta.music?.audioUrl,
 editorMeta.music?.fileName,
 editorMeta.music?.durationSec,
+editorMeta.music?.trimStart,
+editorMeta.music?.trimEnd,
 ]);
 
 useEffect(() => {
@@ -367,7 +373,7 @@ if (!postToEdit) {
   setEditorMeta((m) => ({
     ...defaultEditorMeta(),
     ...(m.music || musicFile
-      ? { muteOriginal: true, music: m.music }
+      ? { music: m.music, muteOriginal: m.muteOriginal ?? false }
       : {}),
   }));
 }
@@ -401,7 +407,7 @@ const handleSoundButton = () => {
 setShowSoundPicker(true);
 };
 
-const handleMusicFile = (f: File, url: string) => {
+const handleMusicFile = (f: File, url: string, durationSec: number) => {
 if (musicBlobRef.current) URL.revokeObjectURL(musicBlobRef.current);
 
 musicBlobRef.current = url;
@@ -409,29 +415,34 @@ musicBlobRef.current = url;
 setMusicFile(f);
 setMusicPreviewUrl(url);
 
+const dur = durationSec > 0 ? durationSec : undefined;
+
 setEditorMeta((m) => ({
   ...m,
-  muteOriginal: true,
+  muteOriginal: false,
   music: {
     fileName: f.name,
-    durationSec: m.music?.durationSec,
+    durationSec: dur,
+    trimStart: 0,
+    trimEnd: dur,
+    volume: m.music?.volume ?? 0.85,
   },
 }));
 
-const probe = new Audio(url);
-probe.addEventListener("loadedmetadata", () => {
-  if (!Number.isFinite(probe.duration) || probe.duration <= 0) return;
-  setEditorMeta((m) => ({
-    ...m,
-    music: {
-      ...m.music,
-      fileName: f.name,
-      durationSec: probe.duration,
-    },
-  }));
-}, { once: true });
-
 toast.success("Sound added");
+};
+
+const handleMusicTrimChange = (trimStart: number, trimEnd: number) => {
+setEditorMeta((m) => ({
+  ...m,
+  music: m.music
+    ? {
+        ...m.music,
+        trimStart,
+        trimEnd,
+      }
+    : undefined,
+}));
 };
 
 const clearMusic = () => {
@@ -561,7 +572,9 @@ initialStream={cameraStream}
     onClose={() => setShowSoundPicker(false)}
     meta={editorMeta}
     musicFile={musicFile}
+    musicPreviewUrl={musicPreviewUrl}
     onSelectFile={handleMusicFile}
+    onTrimChange={handleMusicTrimChange}
     onClear={clearMusic}
   />
 </AnimatePresence>

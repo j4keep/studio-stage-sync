@@ -25,6 +25,7 @@ import PostOverlayRenderer from "./create/PostOverlayRenderer";
 import useFloatingEmojis, { FloatingEmojiLayer } from "./FloatingEmojis";
 import { parsePostCaption, hasVisualOverlayLayers } from "@/lib/post-editor";
 import { playUploadedAudio, getMusicDisplayName } from "@/lib/feed-music";
+import { videoTimeToMusicTime } from "@/lib/post-music-preview";
 import {
   applyFeedVideoAudio,
   applyFeedAudioElementVolume,
@@ -96,9 +97,23 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
   );
   const hasAddedSound = Boolean(postMeta?.music?.audioUrl);
 
+  const musicTrim = useMemo(
+    () => ({
+      trimStart: postMeta?.music?.trimStart,
+      trimEnd: postMeta?.music?.trimEnd,
+      sourceDurationSec: postMeta?.music?.durationSec,
+    }),
+    [postMeta?.music?.trimStart, postMeta?.music?.trimEnd, postMeta?.music?.durationSec],
+  );
+
+  const mapMusicTime = useCallback(
+    (videoTime: number) => videoTimeToMusicTime(videoTime, musicTrim),
+    [musicTrim],
+  );
+
   const getVideoMuted = useCallback(() => {
-    return isMuted || hasAddedSound || postMeta?.muteOriginal === true;
-  }, [isMuted, hasAddedSound, postMeta?.muteOriginal]);
+    return isMuted || postMeta?.muteOriginal === true;
+  }, [isMuted, postMeta?.muteOriginal]);
 
   const unlockFeedAudio = useCallback(() => {
     setFeedAudioUnlocked(true);
@@ -142,13 +157,13 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
 
     if (hasAddedSound) {
       const audio = musicAudioRef.current;
-      applyFeedVideoAudio(video, { muted: true });
+      applyFeedVideoAudio(video, { muted: postMeta?.muteOriginal === true });
       const videoPlay = video.paused ? video.play().catch(() => undefined) : Promise.resolve();
       if (!audio) {
         setAutoplayAudioLocked(true);
         return false;
       }
-      audio.currentTime = video.currentTime;
+      audio.currentTime = mapMusicTime(video.currentTime);
       applyFeedAudioElementVolume(audio);
       mediaSessionCleanupRef.current?.();
       mediaSessionCleanupRef.current = bindFeedMediaSession(audio, playbackMeta);
@@ -178,7 +193,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       setAutoplayAudioLocked(true);
       return false;
     }
-  }, [post.media_type, isMuted, hasAddedSound, getVideoMuted, playbackMeta]);
+  }, [post.media_type, isMuted, hasAddedSound, getVideoMuted, playbackMeta, mapMusicTime, postMeta?.muteOriginal]);
 
   const playWhenActive = useCallback(async () => {
     const video = videoRef.current;
@@ -222,7 +237,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     }
 
     if (hasAddedSound) {
-      applyFeedVideoAudio(video, { muted: true });
+      applyFeedVideoAudio(video, { muted: postMeta?.muteOriginal === true });
       try {
         await video.play();
         markPlaying();
@@ -244,7 +259,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
         return true;
       }
 
-      audio.currentTime = video.currentTime;
+      audio.currentTime = mapMusicTime(video.currentTime);
       applyFeedAudioElementVolume(audio);
       mediaSessionCleanupRef.current?.();
       mediaSessionCleanupRef.current = bindFeedMediaSession(audio, playbackMeta);
@@ -286,7 +301,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       mediaSessionCleanupRef.current = null;
       return playSilently();
     }
-  }, [post.media_type, getVideoMuted, activateFeedPlayback, onChromeHiddenChange, isMuted, hasAddedSound, playbackMeta]);
+  }, [post.media_type, getVideoMuted, activateFeedPlayback, onChromeHiddenChange, isMuted, hasAddedSound, playbackMeta, mapMusicTime, postMeta?.muteOriginal]);
 
   const handleFirstFeedInteraction = useCallback(() => {
     const video = videoRef.current;
@@ -371,20 +386,18 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     return () => window.removeEventListener("feed-start-audible", onFeedStartAudible);
   }, [post.media_type, isMuted, startAudiblePlayback]);
 
-  // Added sound plays in sync with video — camera audio is muted when a sound is attached.
+  // Added sound plays in sync with video — vocal stays audible unless muted in editor.
   useEffect(() => {
     musicStopRef.current?.();
     musicStopRef.current = null;
     musicAudioRef.current = null;
     if (!isActive || !postMeta?.music?.audioUrl) return;
 
-    const dur =
-      postMeta.music.durationSec && postMeta.music.durationSec > 0
-        ? postMeta.music.durationSec
-        : undefined;
     const player = playUploadedAudio(postMeta.music.audioUrl, {
-      loop: !dur,
-      maxDurationSec: dur,
+      loop: true,
+      trimStart: postMeta.music.trimStart ?? 0,
+      trimEnd: postMeta.music.trimEnd,
+      volume: postMeta.music.volume ?? 0.85,
       autoplay: false,
     });
     musicAudioRef.current = player.audio;
@@ -395,7 +408,14 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       musicStopRef.current = null;
       musicAudioRef.current = null;
     };
-  }, [isActive, postMeta?.music?.audioUrl, postMeta?.music?.durationSec]);
+  }, [
+    isActive,
+    postMeta?.music?.audioUrl,
+    postMeta?.music?.durationSec,
+    postMeta?.music?.trimStart,
+    postMeta?.music?.trimEnd,
+    postMeta?.music?.volume,
+  ]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -407,7 +427,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     };
     const onPause = () => audio.pause();
     const onSeeked = () => {
-      audio.currentTime = video.currentTime;
+      audio.currentTime = mapMusicTime(video.currentTime);
     };
 
     video.addEventListener("play", onPlay);
@@ -421,7 +441,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       video.removeEventListener("pause", onPause);
       video.removeEventListener("seeked", onSeeked);
     };
-  }, [isActive, postMeta?.music?.audioUrl, post.id, startAudiblePlayback]);
+  }, [isActive, postMeta?.music?.audioUrl, post.id, startAudiblePlayback, mapMusicTime]);
 
   useEffect(() => {
     if (!isActive || isMuted || post.media_type !== "video") return;
@@ -852,7 +872,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
                     activateFeedPlayback(muted);
                     const addedAudio = musicAudioRef.current;
                     if (addedAudio && postMeta?.music?.audioUrl) {
-                      addedAudio.currentTime = video.currentTime;
+                      addedAudio.currentTime = mapMusicTime(video.currentTime);
                       applyFeedAudioElementVolume(addedAudio);
                       void addedAudio.play().catch(() => {});
                     }
@@ -871,7 +891,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
                     const video = videoRef.current;
                     const addedAudio = musicAudioRef.current;
                     if (video && addedAudio && postMeta?.music?.audioUrl) {
-                      addedAudio.currentTime = video.currentTime;
+                      addedAudio.currentTime = mapMusicTime(video.currentTime);
                       applyFeedAudioElementVolume(addedAudio);
                       void addedAudio.play().catch(() => {});
                     }
