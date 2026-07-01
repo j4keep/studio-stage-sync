@@ -237,6 +237,10 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, chromeHidden = fa
   }, [isActive, postMeta?.music?.audioUrl, post.id, activateFeedPlayback]);
 
   useEffect(() => {
+    if (!isActive) setShowComments(false);
+  }, [isActive]);
+
+  useEffect(() => {
     if (post.media_type !== "video") return;
 
     if (!isActive) {

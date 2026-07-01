@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, Send } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -6,10 +6,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
-import { EMOJI_MAP, EMOJI_CHARACTERS } from "@/lib/emoji-characters";
+import { EMOJI_MAP, FEED_EMOJI_SET } from "@/lib/emoji-characters";
 
 const EMOJI_LABEL_MAP: Record<string, string> = {};
-EMOJI_CHARACTERS.forEach((e) => {
+FEED_EMOJI_SET.forEach((e) => {
   EMOJI_LABEL_MAP[e.label] = e.src;
 });
 
@@ -24,6 +24,10 @@ const PostCommentsSheet = ({ postId, open, onClose, onEmojiComment }: Props) => 
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [text, setText] = useState("");
+
+  useEffect(() => {
+    if (!open) setText("");
+  }, [open]);
 
   const renderContent = (content: string) => {
     if (EMOJI_LABEL_MAP[content]) {
@@ -114,6 +118,7 @@ const PostCommentsSheet = ({ postId, open, onClose, onEmojiComment }: Props) => 
     onSuccess: () => {
       setText("");
       invalidateComments();
+      onClose();
     },
     onError: (error: any) => toast.error(error?.message || "Failed to comment"),
   });
@@ -132,6 +137,7 @@ const PostCommentsSheet = ({ postId, open, onClose, onEmojiComment }: Props) => 
     onSuccess: (emojiId) => {
       invalidateComments();
       onEmojiComment?.(emojiId);
+      onClose();
     },
     onError: (error: any) => toast.error(error?.message || "Failed to comment"),
   });
@@ -141,29 +147,31 @@ const PostCommentsSheet = ({ postId, open, onClose, onEmojiComment }: Props) => 
   return (
     <AnimatePresence>
       <motion.div
+        key="comments-backdrop"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[80] bg-black/60"
+        className="fixed inset-0 z-[90] bg-black/60"
         onClick={onClose}
       />
 
       <motion.div
+        key="comments-sheet"
         initial={{ y: "100%" }}
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
         transition={{ type: "spring", damping: 25, stiffness: 300 }}
-        className="fixed bottom-0 left-0 right-0 z-[80] mx-auto flex max-w-lg flex-col rounded-t-2xl border-t border-border bg-background max-h-[70vh]"
+        className="fixed bottom-0 left-0 right-0 z-[90] mx-auto flex max-w-lg min-h-0 max-h-[min(70dvh,520px)] flex-col rounded-t-2xl border-t border-border bg-background"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
           <h3 className="text-sm font-bold text-foreground">Comments ({comments.length})</h3>
           <button type="button" onClick={onClose}>
             <X className="w-5 h-5 text-muted-foreground" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 py-2 space-y-3">
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-2 space-y-3">
           {comments.length === 0 ? (
             <p className="py-8 text-center text-xs text-muted-foreground">
               No comments yet — react with an emoji or write something
@@ -197,13 +205,13 @@ const PostCommentsSheet = ({ postId, open, onClose, onEmojiComment }: Props) => 
           )}
         </div>
 
-        <div className="border-t border-border">
+        <div className="shrink-0 border-t border-border feed-pb-nav">
           <div className="px-3 pt-2 pb-1">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5 px-1">
               React with emoji
             </p>
             <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide pb-1">
-              {EMOJI_CHARACTERS.map((item) => (
+              {FEED_EMOJI_SET.map((item) => (
                 <button
                   key={item.id}
                   type="button"
@@ -218,12 +226,12 @@ const PostCommentsSheet = ({ postId, open, onClose, onEmojiComment }: Props) => 
             </div>
           </div>
 
-          <div className="flex items-center gap-2 px-4 py-2 pb-[max(env(safe-area-inset-bottom),0.5rem)]">
+          <div className="flex items-center gap-2 px-4 py-2">
             <input
               value={text}
               onChange={(event) => setText(event.target.value)}
               placeholder="Write a comment..."
-              className="flex-1 rounded-full bg-secondary px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground"
+              className="flex-1 min-w-0 rounded-full bg-secondary px-3 py-2.5 text-base text-foreground outline-none placeholder:text-muted-foreground"
               onKeyDown={(event) => {
                 if (event.key === "Enter" && text.trim()) {
                   commentMutation.mutate(text.trim());
