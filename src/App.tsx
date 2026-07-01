@@ -274,15 +274,48 @@ const ProtectedRoutes = () => {
 
 const App = () => {
   useEffect(() => {
-    const unlock = () => unlockFeedAudioSession();
+    // Silent WAV data URI — playing this INSIDE the first user gesture
+    // unlocks audible <video>/<audio> playback for the rest of the session
+    // (required on iOS Safari and mobile Chrome — a flag alone won't do it).
+    const SILENT_WAV =
+      "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
+    let primer: HTMLAudioElement | null = new Audio(SILENT_WAV);
+    primer.muted = false;
+    primer.volume = 1;
+    primer.setAttribute("playsinline", "true");
+
+    const unlock = () => {
+      try {
+        if (primer) {
+          const p = primer.play();
+          if (p && typeof p.then === "function") {
+            p.then(() => {
+              try { primer?.pause(); } catch { /* ignore */ }
+              primer = null;
+            }).catch(() => { primer = null; });
+          }
+        }
+        // Also nudge an AudioContext (helps WebKit).
+        const AC = (window as any).AudioContext || (window as any).webkitAudioContext;
+        if (AC) {
+          const ctx = new AC();
+          if (ctx.state === "suspended") ctx.resume().catch(() => {});
+          window.setTimeout(() => ctx.close().catch(() => {}), 200);
+        }
+      } catch { /* ignore */ }
+      unlockFeedAudioSession();
+    };
+
     const options = { once: true, capture: true } as AddEventListenerOptions;
     window.addEventListener("pointerdown", unlock, options);
     window.addEventListener("touchstart", unlock, options);
     window.addEventListener("keydown", unlock, options);
+    window.addEventListener("click", unlock, options);
     return () => {
       window.removeEventListener("pointerdown", unlock, options);
       window.removeEventListener("touchstart", unlock, options);
       window.removeEventListener("keydown", unlock, options);
+      window.removeEventListener("click", unlock, options);
     };
   }, []);
 
