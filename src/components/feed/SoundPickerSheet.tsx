@@ -6,6 +6,9 @@ import { AUDIO_FILE_ACCEPT } from "@/lib/feed-music";
 import { createTrimmedMusicPlayer, formatAudioTime } from "@/lib/post-music-preview";
 import type { PostEditorMeta } from "@/lib/post-editor";
 
+/** Full-level preview while trimming — separate from post playback mix levels. */
+const TRIM_PREVIEW_VOLUME = 1;
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -84,7 +87,7 @@ const SoundPickerSheet = ({
       trimStart,
       trimEnd: effectiveTrimEnd,
       sourceDurationSec: effectiveDuration,
-      volume: meta.music?.volume ?? 1,
+      volume: TRIM_PREVIEW_VOLUME,
     });
     previewStopRef.current = player.stop;
 
@@ -143,7 +146,7 @@ const SoundPickerSheet = ({
           trimStart: 0,
           trimEnd: dur,
           sourceDurationSec: dur,
-          volume: meta.music?.volume ?? 1,
+          volume: TRIM_PREVIEW_VOLUME,
         });
         previewStopRef.current = player.stop;
         void player.play().then((ok) => {
