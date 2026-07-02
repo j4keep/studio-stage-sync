@@ -10,20 +10,8 @@ const RAW_MIC_AUDIO: MediaTrackConstraints = {
   autoGainControl: false,
 };
 
-/** Mic while recording with added sound — boost voice, still don't cancel speaker bleed. */
-const RECORD_WITH_SOUND_MIC: MediaTrackConstraints = {
-  echoCancellation: false,
-  noiseSuppression: false,
-  autoGainControl: true,
-};
-
-async function openCameraStream(
-  facing: CameraFacing,
-  recordWithSound = false,
-): Promise<MediaStream | null> {
+async function openCameraStream(facing: CameraFacing): Promise<MediaStream | null> {
   if (!navigator.mediaDevices?.getUserMedia) return null;
-
-  const mic = recordWithSound ? RECORD_WITH_SOUND_MIC : RAW_MIC_AUDIO;
 
   // Raw "camcorder" mic: disable echo cancellation, noise suppression, and
   // auto-gain so the mic captures the actual room — your voice AND any music
@@ -38,9 +26,9 @@ async function openCameraStream(
         height: { ideal: 720 },
         frameRate: { ideal: 30 },
       },
-      audio: mic,
+      audio: RAW_MIC_AUDIO,
     },
-    { video: { facingMode: facing }, audio: mic },
+    { video: { facingMode: facing }, audio: RAW_MIC_AUDIO },
     { video: { facingMode: facing }, audio: true },
   ];
 
@@ -56,11 +44,8 @@ async function openCameraStream(
   return null;
 }
 
-export async function warmCameraStream(
-  facing: CameraFacing = "user",
-  options: { recordWithSound?: boolean } = {},
-): Promise<MediaStream | null> {
-  return openCameraStream(facing, options.recordWithSound);
+export async function warmCameraStream(facing: CameraFacing = "user"): Promise<MediaStream | null> {
+  return openCameraStream(facing);
 }
 
 export function releaseCameraStream(stream: MediaStream | null | undefined) {

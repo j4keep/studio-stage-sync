@@ -24,7 +24,6 @@ import {
 getMusicDisplayName,
 playPostMusic,
 } from "@/lib/feed-music";
-import { MIXED_ADDED_MUSIC_VOLUME, MIXED_VOCAL_VIDEO_VOLUME } from "@/lib/post-music-preview";
 
 interface Props {
 open: boolean;
@@ -401,11 +400,7 @@ if (!postToEdit) {
   setEditorMeta((m) => ({
     ...defaultEditorMeta(),
     ...(m.music || musicFile
-      ? {
-          music: m.music,
-          muteOriginal: m.muteOriginal ?? false,
-          originalVolume: m.originalVolume ?? MIXED_VOCAL_VIDEO_VOLUME,
-        }
+      ? { music: m.music, muteOriginal: m.muteOriginal ?? false }
       : {}),
   }));
 }
@@ -465,7 +460,7 @@ setEditorMeta((m) => ({
     durationSec: dur,
     trimStart: 0,
     trimEnd: dur,
-    volume: m.music?.volume ?? MIXED_ADDED_MUSIC_VOLUME,
+    volume: m.music?.volume ?? 0.85,
   },
 }));
 
@@ -523,7 +518,7 @@ musicTrim={{
   trimStart: editorMeta.music?.trimStart,
   trimEnd: editorMeta.music?.trimEnd,
   sourceDurationSec: editorMeta.music?.durationSec,
-  volume: editorMeta.music?.volume ?? MIXED_ADDED_MUSIC_VOLUME,
+  volume: editorMeta.music?.volume ?? 0.85,
 }}
 initialStream={cameraSessionKey === 0 ? cameraStream : null}
 />
@@ -586,7 +581,6 @@ initialStream={cameraStream}
         musicPreviewUrl={musicPreviewUrl}
         music={editorMeta.music}
         muteOriginal={editorMeta.muteOriginal}
-        originalVolume={editorMeta.originalVolume}
       />
     )}
 
