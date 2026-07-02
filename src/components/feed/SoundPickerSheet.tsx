@@ -8,13 +8,7 @@ import {
   bindFeedMediaSession,
   unlockFeedAudioSession,
 } from "@/lib/feed-video-playback";
-import {
-  createTrimmedMusicPlayer,
-  ensureTrimPickerAudioBoost,
-  formatAudioTime,
-  releaseTrimPickerAudioBoost,
-  sameMediaElementSrc,
-} from "@/lib/post-music-preview";
+import { createTrimmedMusicPlayer, formatAudioTime, sameMediaElementSrc } from "@/lib/post-music-preview";
 import type { PostEditorMeta } from "@/lib/post-editor";
 
 /** Full-level preview while trimming — separate from post playback mix levels. */
@@ -45,7 +39,6 @@ const SoundPickerSheet = ({
 }: Props) => {
   const audioInputRef = useRef<HTMLInputElement>(null);
   const previewAudioRef = useRef<HTMLAudioElement>(null);
-  const boostedAudioRef = useRef<HTMLAudioElement | null>(null);
   const previewStopRef = useRef<(() => void) | null>(null);
   const previewSessionRef = useRef<(() => void) | null>(null);
   const [previewing, setPreviewing] = useState(false);
@@ -75,12 +68,6 @@ const SoundPickerSheet = ({
     }
   }, [open, sourceUrl]);
 
-  useEffect(() => {
-    if (open) return;
-    releaseTrimPickerAudioBoost(boostedAudioRef.current);
-    boostedAudioRef.current = null;
-  }, [open]);
-
   const stopPreview = () => {
     previewSessionRef.current?.();
     previewSessionRef.current = null;
@@ -96,8 +83,6 @@ const SoundPickerSheet = ({
 
   const armLoudPreview = (audio: HTMLAudioElement) => {
     unlockFeedAudioSession();
-    ensureTrimPickerAudioBoost(audio);
-    boostedAudioRef.current = audio;
     applyFeedAudioElementVolume(audio);
     audio.volume = TRIM_PREVIEW_VOLUME;
     previewSessionRef.current?.();
