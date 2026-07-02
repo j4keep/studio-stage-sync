@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { X, Music, Upload, Play, Pause } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -8,7 +8,7 @@ import {
   bindFeedMediaSession,
   unlockFeedAudioSession,
 } from "@/lib/feed-video-playback";
-import { createTrimmedMusicPlayer, formatAudioTime } from "@/lib/post-music-preview";
+import { createTrimmedMusicPlayer, formatAudioTime, sameMediaElementSrc } from "@/lib/post-music-preview";
 import type { PostEditorMeta } from "@/lib/post-editor";
 
 /** Full-level preview while trimming — separate from post playback mix levels. */
@@ -52,6 +52,21 @@ const SoundPickerSheet = ({
       : duration > 0
         ? duration
         : 0;
+
+  useEffect(() => {
+    if (!open || !sourceUrl) return;
+    const audio = previewAudioRef.current;
+    if (!audio) return;
+    if (!sameMediaElementSrc(audio, sourceUrl)) {
+      audio.src = sourceUrl;
+      audio.preload = "auto";
+      try {
+        audio.load();
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [open, sourceUrl]);
 
   const stopPreview = () => {
     previewSessionRef.current?.();
@@ -112,7 +127,10 @@ const SoundPickerSheet = ({
     const effectiveTrimEnd = trimEnd > trimStart ? trimEnd : duration > 0 ? duration : 0;
     const effectiveDuration = duration > 0 ? duration : effectiveTrimEnd;
 
-    stopPreview();
+    previewSessionRef.current?.();
+    previewSessionRef.current = null;
+    previewStopRef.current?.();
+    previewStopRef.current = null;
 
     const player = mountPreviewPlayer(
       sourceUrl,
@@ -131,18 +149,23 @@ const SoundPickerSheet = ({
     }
 
     try {
-      const playPromise = audio.play();
-      if (playPromise !== undefined) {
-        void playPromise
-          .then(() => {
-            armLoudPreview(audio);
-            setPreviewing(true);
-          })
-          .catch(() => {
-            toast.error("Couldn't start preview — tap Preview again");
-            stopPreview();
+      void audio
+        .play()
+        .then(() => {
+          armLoudPreview(audio);
+          setPreviewing(true);
+        })
+        .catch(() => {
+          void player.play().then((ok) => {
+            if (ok) {
+              armLoudPreview(player.audio);
+              setPreviewing(true);
+            } else {
+              toast.error("Couldn't start preview — tap Preview again");
+              stopPreview();
+            }
           });
-      }
+        });
       return true;
     } catch {
       toast.error("Couldn't start preview — tap Preview again");
@@ -241,25 +264,32 @@ const SoundPickerSheet = ({
       mountPreviewPlayer(url, 0, dur, dur);
       armLoudPreview(audio);
       if (audio.paused) {
-        void audio.play().then((ok) => {
-          if (ok) setPreviewing(true);
-        });
+        void audio
+          .play()
+          .then(() => setPreviewing(true))
+          .catch(() => {});
       } else {
         setPreviewing(true);
       }
     };
 
     audio.addEventListener("loadedmetadata", onMeta, { once: true });
-    audio.src = url;
+    if (!sameMediaElementSrc(audio, url)) {
+      audio.src = url;
+      try {
+        audio.load();
+      } catch {
+        /* ignore */
+      }
+    }
     armLoudPreview(audio);
 
-    try {
-      void audio.play().then((ok) => {
-        if (ok) setPreviewing(true);
+    void audio
+      .play()
+      .then(() => setPreviewing(true))
+      .catch(() => {
+        /* loadedmetadata will retry */
       });
-    } catch {
-      /* loadedmetadata will retry */
-    }
 
     e.target.value = "";
   };
@@ -351,12 +381,11 @@ const SoundPickerSheet = ({
                   type="button"
                   onPointerDown={(e) => {
                     if (e.button !== 0) return;
-                    if (previewing) return;
-                    e.preventDefault();
+                    if (previewing) {
+                      stopPreview();
+                      return;
+                    }
                     startPreviewFromGesture();
-                  }}
-                  onClick={() => {
-                    if (previewing) stopPreview();
                   }}
                   className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/20 border border-primary/40 text-primary text-[11px] font-semibold active:scale-95 transition-transform"
                 >

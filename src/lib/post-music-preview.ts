@@ -32,6 +32,15 @@ export function videoTimeToMusicTime(videoTime: number, trim: MusicTrim, fallbac
   return start + offset;
 }
 
+export function sameMediaElementSrc(element: HTMLMediaElement, url: string): boolean {
+  if (!url) return !element.src;
+  try {
+    return element.src === url || element.src === new URL(url, window.location.href).href;
+  } catch {
+    return element.src === url;
+  }
+}
+
 export function createTrimmedMusicPlayer(
   url: string,
   trim: MusicTrim = {},
@@ -42,8 +51,13 @@ export function createTrimmedMusicPlayer(
   const audio = options.audioElement ?? new Audio(url);
   if (!options.audioElement) {
     audio.src = url;
-  } else if (audio.src !== url) {
+  } else if (!sameMediaElementSrc(audio, url)) {
     audio.src = url;
+    try {
+      audio.load();
+    } catch {
+      /* ignore */
+    }
   }
   audio.volume = trim.volume ?? 1;
   audio.loop = false;
@@ -61,14 +75,17 @@ export function createTrimmedMusicPlayer(
     return undefined;
   };
 
+  let loopHandler: (() => void) | null = null;
+
   if (selfManagedLoop) {
-    audio.addEventListener("timeupdate", () => {
+    loopHandler = () => {
       const start = getStart();
       const end = getEnd();
       if (end && audio.currentTime >= end - 0.05) {
         audio.currentTime = start;
       }
-    });
+    };
+    audio.addEventListener("timeupdate", loopHandler);
   }
 
   const seekToTrimStart = async () => {
@@ -95,6 +112,10 @@ export function createTrimmedMusicPlayer(
 
   const stop = () => {
     audio.pause();
+    if (loopHandler) {
+      audio.removeEventListener("timeupdate", loopHandler);
+      loopHandler = null;
+    }
     if (!retainElement) {
       audio.removeAttribute("src");
       try {
