@@ -196,7 +196,7 @@ export default function CreateCameraView({
     cameraMusicPlayerRef.current = null;
     onRegisterMusicPlay?.(null);
 
-    if (!musicPreviewUrl || !ready) return;
+    if (!musicPreviewUrl || !ready || musicPaused) return;
 
     const player = createTrimmedMusicPlayer(musicPreviewUrl, musicTrim ?? {});
     cameraMusicStopRef.current = player.stop;
@@ -217,15 +217,8 @@ export default function CreateCameraView({
     musicTrim?.sourceDurationSec,
     musicTrim?.volume,
     onRegisterMusicPlay,
+    musicPaused,
   ]);
-
-  useEffect(() => {
-    const player = cameraMusicPlayerRef.current;
-    if (!player) return;
-    if (musicPaused) {
-      player.audio.pause();
-    }
-  }, [musicPaused]);
 
   useEffect(() => {
     return () => {

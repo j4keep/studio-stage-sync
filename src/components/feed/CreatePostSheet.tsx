@@ -72,7 +72,9 @@ const registerCameraMusicPlay = useCallback((play: (() => Promise<boolean>) | nu
 }, []);
 
 const resumeCameraMusic = useCallback(() => {
-  void cameraMusicPlayRef.current?.();
+  window.setTimeout(() => {
+    void cameraMusicPlayRef.current?.();
+  }, 0);
 }, []);
 
 useEffect(() => {

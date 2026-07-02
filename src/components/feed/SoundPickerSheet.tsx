@@ -3,6 +3,11 @@ import { X, Music, Upload, Play, Pause } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { AUDIO_FILE_ACCEPT } from "@/lib/feed-music";
+import {
+  applyFeedAudioElementVolume,
+  bindFeedMediaSession,
+  unlockFeedAudioSession,
+} from "@/lib/feed-video-playback";
 import { createTrimmedMusicPlayer, formatAudioTime } from "@/lib/post-music-preview";
 import type { PostEditorMeta } from "@/lib/post-editor";
 
@@ -34,6 +39,7 @@ const SoundPickerSheet = ({
 }: Props) => {
   const audioInputRef = useRef<HTMLInputElement>(null);
   const previewStopRef = useRef<(() => void) | null>(null);
+  const previewSessionRef = useRef<(() => void) | null>(null);
   const [previewing, setPreviewing] = useState(false);
 
   const sourceUrl = musicPreviewUrl || meta.music?.audioUrl || null;
@@ -47,12 +53,29 @@ const SoundPickerSheet = ({
         : 0;
 
   const stopPreview = () => {
+    previewSessionRef.current?.();
+    previewSessionRef.current = null;
     previewStopRef.current?.();
     previewStopRef.current = null;
     setPreviewing(false);
   };
 
+  const armLoudPreview = (audio: HTMLAudioElement) => {
+    unlockFeedAudioSession();
+    applyFeedAudioElementVolume(audio);
+    audio.volume = TRIM_PREVIEW_VOLUME;
+    previewSessionRef.current?.();
+    previewSessionRef.current = bindFeedMediaSession(audio, {
+      title:
+        meta.music?.fileName?.replace(/\.[^.]+$/, "") ||
+        musicFile?.name?.replace(/\.[^.]+$/, "") ||
+        "Sound preview",
+    });
+  };
+
   const startPreview = async () => {
+    unlockFeedAudioSession();
+
     if (!sourceUrl) {
       toast.message("Choose a sound first");
       return false;
@@ -93,6 +116,7 @@ const SoundPickerSheet = ({
 
     const ok = await player.play();
     if (ok) {
+      armLoudPreview(player.audio);
       setPreviewing(true);
       return true;
     }
@@ -150,7 +174,10 @@ const SoundPickerSheet = ({
         });
         previewStopRef.current = player.stop;
         void player.play().then((ok) => {
-          if (ok) setPreviewing(true);
+          if (ok) {
+            armLoudPreview(player.audio);
+            setPreviewing(true);
+          }
         });
       },
       { once: true },
