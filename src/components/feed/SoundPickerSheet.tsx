@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from "react";
-import { X, Music, Upload, Play, Pause } from "lucide-react";
+import { X, Music, Upload, Play, Pause, Mic } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { AUDIO_FILE_ACCEPT } from "@/lib/feed-music";
@@ -17,6 +17,7 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onBeforeClose?: () => void;
+  onSelectOriginalSound?: () => void;
   meta: PostEditorMeta;
   musicFile: File | null;
   musicPreviewUrl?: string | null;
@@ -29,6 +30,7 @@ const SoundPickerSheet = ({
   open,
   onClose,
   onBeforeClose,
+  onSelectOriginalSound,
   meta,
   musicFile,
   musicPreviewUrl,
@@ -66,6 +68,11 @@ const SoundPickerSheet = ({
       }
     }
   }, [open, sourceUrl]);
+
+  useEffect(() => {
+    if (!open) return;
+    unlockFeedAudioSession();
+  }, [open]);
 
   const stopPreview = () => {
     previewSessionRef.current?.();
@@ -232,6 +239,13 @@ const SoundPickerSheet = ({
     onClose();
   };
 
+  const selectOriginalSound = () => {
+    stopPreview();
+    onSelectOriginalSound?.();
+    onBeforeClose?.();
+    onClose();
+  };
+
   const openAudioPicker = () => {
     stopPreview();
     const input = audioInputRef.current;
@@ -327,7 +341,7 @@ const SoundPickerSheet = ({
       >
         <audio
           ref={previewAudioRef}
-          className="sr-only"
+          className="fixed left-0 bottom-0 w-px h-px opacity-[0.01] pointer-events-none"
           playsInline
           preload="auto"
         />
@@ -440,7 +454,28 @@ const SoundPickerSheet = ({
 
         <div className="flex-1 overflow-y-auto p-4">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-white/40 mb-2">
-            Upload audio
+            Record with
+          </p>
+          <button
+            type="button"
+            onClick={selectOriginalSound}
+            className={`w-full flex items-center gap-3 rounded-xl px-4 py-3 text-left mb-4 active:scale-[0.99] transition-transform ${
+              !selectedLabel
+                ? "border-2 border-primary/60 bg-primary/10"
+                : "border border-white/15 bg-white/5 active:bg-white/10"
+            }`}
+          >
+            <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+              <Mic className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-white">Original sound</p>
+              <p className="text-[11px] text-white/50">Raw vocals only — no added song</p>
+            </div>
+          </button>
+
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-white/40 mb-2">
+            Or add a song
           </p>
           <button
             type="button"
@@ -462,7 +497,7 @@ const SoundPickerSheet = ({
             onChange={handleAudioFile}
           />
           <p className="text-[11px] text-white/40 mt-4 leading-relaxed">
-            Tap Preview to hear your trim. The sound plays through your speaker while you record so you can lip-sync or vibe to the beat.
+            Choose original sound for raw vocals, or upload a track and tap Preview to hear your trim before recording.
           </p>
         </div>
       </motion.div>

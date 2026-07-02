@@ -24,7 +24,12 @@ import {
 getMusicDisplayName,
 playPostMusic,
 } from "@/lib/feed-music";
-import { MIXED_ADDED_MUSIC_VOLUME, ADDED_SOUND_PLAYBACK_VOLUME, MIXED_VOCAL_VIDEO_VOLUME } from "@/lib/post-music-preview";
+import { unlockFeedAudioSession } from "@/lib/feed-video-playback";
+import {
+  ADDED_SOUND_PLAYBACK_VOLUME,
+  MIXED_ADDED_MUSIC_VOLUME,
+  MIXED_VOCAL_VIDEO_VOLUME,
+} from "@/lib/post-music-preview";
 
 interface Props {
 open: boolean;
@@ -442,7 +447,13 @@ const soundLabel = hasSelectedSound ? getMusicDisplayName(editorMeta.music) : un
 const handleSoundButton = () => {
 musicStopRef.current?.();
 musicStopRef.current = null;
+unlockFeedAudioSession();
 setShowSoundPicker(true);
+};
+
+const handleSelectOriginalSound = () => {
+clearMusic();
+setShowSoundPicker(false);
 };
 
 const handleSoundPickerClose = () => {
@@ -625,6 +636,7 @@ initialStream={cameraStream}
     open={showSoundPicker}
     onClose={handleSoundPickerClose}
     onBeforeClose={resumeCameraMusic}
+    onSelectOriginalSound={handleSelectOriginalSound}
     meta={editorMeta}
     musicFile={musicFile}
     musicPreviewUrl={musicPreviewUrl}
