@@ -1,5 +1,8 @@
 import { applyFeedVideoAudio } from "@/lib/feed-video-playback";
 
+/** Video vocal level when mixed with a separate added-sound track (reduces mic bleed pumping). */
+export const MIXED_VOCAL_VIDEO_VOLUME = 0.32;
+
 export type MusicTrim = {
   trimStart?: number;
   trimEnd?: number;
@@ -27,10 +30,15 @@ export function videoTimeToMusicTime(videoTime: number, trim: MusicTrim, fallbac
   return start + offset;
 }
 
-export function createTrimmedMusicPlayer(url: string, trim: MusicTrim = {}) {
+export function createTrimmedMusicPlayer(
+  url: string,
+  trim: MusicTrim = {},
+  options: { selfManagedLoop?: boolean } = {},
+) {
+  const selfManagedLoop = options.selfManagedLoop !== false;
   const audio = new Audio(url);
   audio.volume = trim.volume ?? 1;
-  audio.loop = true;
+  audio.loop = false;
   audio.preload = "auto";
   audio.setAttribute("playsinline", "true");
   audio.setAttribute("webkit-playsinline", "true");
@@ -45,13 +53,15 @@ export function createTrimmedMusicPlayer(url: string, trim: MusicTrim = {}) {
     return undefined;
   };
 
-  audio.addEventListener("timeupdate", () => {
-    const start = getStart();
-    const end = getEnd();
-    if (end && audio.currentTime >= end - 0.05) {
-      audio.currentTime = start;
-    }
-  });
+  if (selfManagedLoop) {
+    audio.addEventListener("timeupdate", () => {
+      const start = getStart();
+      const end = getEnd();
+      if (end && audio.currentTime >= end - 0.05) {
+        audio.currentTime = start;
+      }
+    });
+  }
 
   const seekToTrimStart = async () => {
     if (audio.readyState >= 1) {
@@ -88,6 +98,32 @@ export function createTrimmedMusicPlayer(url: string, trim: MusicTrim = {}) {
   return { audio, play, stop };
 }
 
+function musicDriftSec(audioTime: number, targetTime: number, segmentLen: number): number {
+  const direct = Math.abs(audioTime - targetTime);
+  if (segmentLen <= 0) return direct;
+  const wrapped = Math.min(
+    Math.abs(audioTime - targetTime + segmentLen),
+    Math.abs(audioTime - targetTime - segmentLen),
+  );
+  return Math.min(direct, wrapped);
+}
+
+/** Keep added sound aligned to video without constant micro-seeks (prevents volume pumping). */
+export function syncTrimmedAudioToVideo(
+  video: HTMLVideoElement,
+  audio: HTMLAudioElement,
+  trim: MusicTrim,
+  fallbackDuration = 0,
+  force = false,
+): void {
+  const segmentLen = musicSegmentLength(trim, fallbackDuration);
+  const target = videoTimeToMusicTime(video.currentTime, trim, fallbackDuration);
+  const drift = musicDriftSec(audio.currentTime, target, segmentLen);
+  if (force || drift > 0.45) {
+    audio.currentTime = target;
+  }
+}
+
 /** Standalone trimmed music preview (camera / no video). */
 export function playTrimmedMusicPreview(
   url: string,
@@ -102,34 +138,39 @@ export function playTrimmedMusicPreview(
 export function syncMusicWithVideo(
   video: HTMLVideoElement,
   musicUrl: string,
-  options: MusicTrim & { muteOriginal?: boolean } = {},
+  options: MusicTrim & { muteOriginal?: boolean; originalVolume?: number } = {},
 ): () => void {
-  const player = createTrimmedMusicPlayer(musicUrl, options);
+  const player = createTrimmedMusicPlayer(musicUrl, options, { selfManagedLoop: false });
   const audio = player.audio;
 
   let fallbackDuration = options.sourceDurationSec ?? 0;
+  let lastSyncMs = 0;
 
-  const applyVideoMute = () => {
-    applyFeedVideoAudio(video, { muted: options.muteOriginal === true });
+  const applyVideoMix = () => {
+    const muteOriginal = options.muteOriginal === true;
+    applyFeedVideoAudio(video, {
+      muted: muteOriginal,
+      volume: muteOriginal ? 0 : (options.originalVolume ?? MIXED_VOCAL_VIDEO_VOLUME),
+    });
   };
 
-  const syncAudioToVideo = () => {
-    const target = videoTimeToMusicTime(video.currentTime, options, fallbackDuration);
-    if (Math.abs(audio.currentTime - target) > 0.2) {
-      audio.currentTime = target;
-    }
+  const syncAudioToVideo = (force = false) => {
+    const now = performance.now();
+    if (!force && now - lastSyncMs < 250) return;
+    syncTrimmedAudioToVideo(video, audio, options, fallbackDuration, force);
+    lastSyncMs = now;
   };
 
   const onLoadedMetadata = () => {
     if (audio.duration && Number.isFinite(audio.duration)) {
       fallbackDuration = audio.duration;
     }
-    syncAudioToVideo();
+    syncAudioToVideo(true);
   };
 
   const onPlay = () => {
-    applyVideoMute();
-    syncAudioToVideo();
+    applyVideoMix();
+    syncAudioToVideo(true);
     void player.play();
   };
 
@@ -138,11 +179,11 @@ export function syncMusicWithVideo(
   };
 
   const onSeeked = () => {
-    syncAudioToVideo();
+    syncAudioToVideo(true);
   };
 
   const onTimeUpdate = () => {
-    syncAudioToVideo();
+    syncAudioToVideo(false);
   };
 
   audio.addEventListener("loadedmetadata", onLoadedMetadata);
@@ -151,8 +192,11 @@ export function syncMusicWithVideo(
   video.addEventListener("seeked", onSeeked);
   video.addEventListener("timeupdate", onTimeUpdate);
 
-  applyVideoMute();
-  if (!video.paused) void player.play();
+  applyVideoMix();
+  if (!video.paused) {
+    syncAudioToVideo(true);
+    void player.play();
+  }
 
   return () => {
     audio.removeEventListener("loadedmetadata", onLoadedMetadata);

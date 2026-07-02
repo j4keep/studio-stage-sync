@@ -7,7 +7,7 @@ import CropEditorView from "./CropEditorView";
 import type { PostEditorMeta, TextOverlay, StickerOverlay, DrawStroke, TextOverlayStyle } from "@/lib/post-editor";
 import { BRUSH_PRESETS, DRAW_COLORS, eraseStrokesNear } from "@/lib/post-editor";
 import { TEXT_COLORS, CREATE_TEXT_STYLES, getTextStyleInline } from "@/lib/text-styles";
-import { syncMusicWithVideo } from "@/lib/post-music-preview";
+import { syncMusicWithVideo, MIXED_VOCAL_VIDEO_VOLUME } from "@/lib/post-music-preview";
 
 const newId = () => Math.random().toString(36).slice(2, 9);
 
@@ -355,6 +355,12 @@ export default function MediaEditView({
       ? { text: textDraft, style: textStyle, color: textColor, ...textPos }
       : null;
 
+  const videoMixAudio = {
+    muted: meta.muteOriginal,
+    volume:
+      meta.muteOriginal || !musicPreviewUrl ? undefined : MIXED_VOCAL_VIDEO_VOLUME,
+  };
+
   const bottomTools = [
     { id: "text" as const, icon: Type, label: "Text", action: startTextMode },
     { id: "sticker" as const, icon: Sticker, label: "Stickers", action: () => setShowStickers(true) },
@@ -377,10 +383,10 @@ export default function MediaEditView({
             muted={meta.muteOriginal}
             autoPlay
             onLoadedMetadata={(e) => {
-              applyFeedVideoAudio(e.currentTarget, { muted: meta.muteOriginal });
+              applyFeedVideoAudio(e.currentTarget, videoMixAudio);
             }}
             onPlay={(e) => {
-              applyFeedVideoAudio(e.currentTarget, { muted: meta.muteOriginal });
+              applyFeedVideoAudio(e.currentTarget, videoMixAudio);
               if (!meta.muteOriginal) {
                 bindFeedMediaSession(e.currentTarget, { title: "Preview" });
               }
@@ -639,10 +645,10 @@ export default function MediaEditView({
             muted={meta.muteOriginal}
             autoPlay
             onLoadedMetadata={(e) => {
-              applyFeedVideoAudio(e.currentTarget, { muted: meta.muteOriginal });
+              applyFeedVideoAudio(e.currentTarget, videoMixAudio);
             }}
             onPlay={(e) => {
-              applyFeedVideoAudio(e.currentTarget, { muted: meta.muteOriginal });
+              applyFeedVideoAudio(e.currentTarget, videoMixAudio);
               if (!meta.muteOriginal) {
                 bindFeedMediaSession(e.currentTarget, { title: "Preview" });
               }

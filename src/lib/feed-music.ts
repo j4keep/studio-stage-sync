@@ -22,6 +22,8 @@ export function playUploadedAudio(
     trimStart?: number;
     trimEnd?: number;
     volume?: number;
+    /** When true, skip internal trim looping — video sync drives position. */
+    externallySynced?: boolean;
   } = {},
 ): { stop: () => void; audio: HTMLAudioElement } {
   const {
@@ -31,11 +33,12 @@ export function playUploadedAudio(
     trimStart = 0,
     trimEnd,
     volume = 1,
+    externallySynced = false,
   } = options;
 
   const audio = new Audio(url);
   audio.volume = volume;
-  audio.loop = loop && !(maxDurationSec && maxDurationSec > 0);
+  audio.loop = false;
 
   let durationTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -55,17 +58,19 @@ export function playUploadedAudio(
     { once: true },
   );
 
-  audio.addEventListener("timeupdate", () => {
-    const end =
-      trimEnd && trimEnd > start
-        ? trimEnd
-        : audio.duration && Number.isFinite(audio.duration)
-          ? audio.duration
-          : undefined;
-    if (end && audio.currentTime >= end - 0.05) {
-      audio.currentTime = start;
-    }
-  });
+  if (!externallySynced && loop && !(maxDurationSec && maxDurationSec > 0)) {
+    audio.addEventListener("timeupdate", () => {
+      const end =
+        trimEnd && trimEnd > start
+          ? trimEnd
+          : audio.duration && Number.isFinite(audio.duration)
+            ? audio.duration
+            : undefined;
+      if (end && audio.currentTime >= end - 0.05) {
+        audio.currentTime = start;
+      }
+    });
+  }
 
   if (autoplay) {
     void audio.play().catch(() => {});

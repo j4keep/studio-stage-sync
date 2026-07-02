@@ -79,9 +79,9 @@ export function initFeedAudioUnlockOnGesture() {
 
 export function applyFeedVideoAudio(
   video: HTMLVideoElement,
-  options: { muted: boolean } = { muted: false },
+  options: { muted: boolean; volume?: number } = { muted: false },
 ) {
-  video.volume = 1;
+  video.volume = options.muted ? 0 : Math.min(1, Math.max(0, options.volume ?? 1));
   video.defaultMuted = options.muted;
   video.muted = options.muted;
   if (options.muted) {

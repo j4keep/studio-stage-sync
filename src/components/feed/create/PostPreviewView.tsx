@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { applyFeedVideoAudio, bindFeedMediaSession } from "@/lib/feed-video-playback";
-import { syncMusicWithVideo } from "@/lib/post-music-preview";
+import { syncMusicWithVideo, MIXED_VOCAL_VIDEO_VOLUME } from "@/lib/post-music-preview";
 import type { PostEditorMeta } from "@/lib/post-editor";
 import { ChevronLeft, Hash, AtSign, Lightbulb, Wand2, ImageIcon, Trash2, Type } from "lucide-react";
 import { toast } from "sonner";
@@ -71,6 +71,13 @@ export default function PostPreviewView({
     muteOriginal,
     previewUrl,
   ]);
+
+  const coverVideoMix = {
+    muted: muteOriginal,
+    volume: muteOriginal || !(musicPreviewUrl || music?.audioUrl)
+      ? undefined
+      : MIXED_VOCAL_VIDEO_VOLUME,
+  };
 
   const rewriteTitle = async () => {
     if (rewriting) return;
@@ -184,10 +191,10 @@ export default function PostPreviewView({
                   loop
                   muted={muteOriginal}
                   onLoadedMetadata={(e) => {
-                    applyFeedVideoAudio(e.currentTarget, { muted: muteOriginal });
+                    applyFeedVideoAudio(e.currentTarget, coverVideoMix);
                   }}
                   onPlay={(e) => {
-                    applyFeedVideoAudio(e.currentTarget, { muted: muteOriginal });
+                    applyFeedVideoAudio(e.currentTarget, coverVideoMix);
                     if (!muteOriginal) {
                       bindFeedMediaSession(e.currentTarget, { title: title || "Preview" });
                     }
