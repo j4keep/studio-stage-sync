@@ -164,20 +164,33 @@ export async function playFeedVideo(
   }
 }
 
+export function applyFeedMediaElementVolume(media: HTMLMediaElement) {
+  if (media instanceof HTMLVideoElement) {
+    applyFeedVideoAudio(media, { muted: false, volume: 1 });
+    return;
+  }
+  media.muted = false;
+  media.volume = 1;
+}
+
 export function applyFeedAudioElementVolume(audio: HTMLAudioElement) {
-  audio.volume = 1;
+  applyFeedMediaElementVolume(audio);
 }
 
 /** Unlock iOS media volume and bind session before play — not after. */
 export function armFeedAudioPlayback(
-  audio: HTMLAudioElement,
+  media: HTMLMediaElement,
   meta: FeedPlaybackMeta = {},
   volume = 1,
 ): () => void {
   unlockFeedAudioSession();
-  applyFeedAudioElementVolume(audio);
-  audio.volume = Math.min(1, Math.max(0, volume));
-  return bindFeedMediaSession(audio, meta);
+  if (media instanceof HTMLVideoElement) {
+    applyFeedVideoAudio(media, { muted: false, volume: Math.min(1, Math.max(0, volume)) });
+  } else {
+    media.muted = false;
+    media.volume = Math.min(1, Math.max(0, volume));
+  }
+  return bindFeedMediaSession(media, meta);
 }
 
 export async function resetIosAudioSessionToPlayback(): Promise<void> {

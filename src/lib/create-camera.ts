@@ -1,23 +1,12 @@
-/** Acquire camera during a user tap gesture (required for iOS Safari). */
+/** Acquire camera with the device factory mic settings (browser defaults). */
 
 export type CameraFacing = "user" | "environment";
 
 const PHOTO_JPEG_QUALITY = 0.94;
 
-const RAW_MIC_AUDIO: MediaTrackConstraints = {
-  echoCancellation: false,
-  noiseSuppression: false,
-  autoGainControl: false,
-};
-
 async function openCameraStream(facing: CameraFacing): Promise<MediaStream | null> {
   if (!navigator.mediaDevices?.getUserMedia) return null;
 
-  // Raw "camcorder" mic: disable echo cancellation, noise suppression, and
-  // auto-gain so the mic captures the actual room — your voice AND any music
-  // playing from the speaker — at real loudness. Defaults (`audio: true`) turn
-  // those filters ON, which makes iOS subtract speaker audio as "echo" and is
-  // why background music sounded almost silent in playback.
   const attempts: MediaStreamConstraints[] = [
     {
       video: {
@@ -26,9 +15,8 @@ async function openCameraStream(facing: CameraFacing): Promise<MediaStream | nul
         height: { ideal: 720 },
         frameRate: { ideal: 30 },
       },
-      audio: RAW_MIC_AUDIO,
+      audio: true,
     },
-    { video: { facingMode: facing }, audio: RAW_MIC_AUDIO },
     { video: { facingMode: facing }, audio: true },
   ];
 
@@ -77,7 +65,7 @@ export async function ensureStreamHasAudio(
 ): Promise<boolean> {
   if (streamHasLiveAudio(stream)) return true;
 
-  for (const audioConstraints of [RAW_MIC_AUDIO, true] as const) {
+  for (const audioConstraints of [true] as const) {
     try {
       const audioStream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
       const track = audioStream.getAudioTracks()[0];

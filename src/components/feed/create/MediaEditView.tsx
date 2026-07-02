@@ -381,7 +381,7 @@ export default function MediaEditView({
       applyFeedVideoAudio(el, { muted: true, volume: 0 });
       return;
     }
-    applyFeedVideoAudio(el, { muted: meta.muteOriginal });
+    applyFeedVideoAudio(el, { muted: meta.muteOriginal, volume: 1 });
     if (!meta.muteOriginal) {
       bindFeedMediaSession(el, { title: "Preview" });
     }

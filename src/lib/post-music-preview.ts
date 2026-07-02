@@ -74,7 +74,7 @@ export function sameMediaElementSrc(element: HTMLMediaElement, url: string): boo
 export function createTrimmedMusicPlayer(
   url: string,
   trim: MusicTrim = {},
-  options: { selfManagedLoop?: boolean; audioElement?: HTMLAudioElement; retainElement?: boolean } = {},
+  options: { selfManagedLoop?: boolean; audioElement?: HTMLMediaElement; retainElement?: boolean } = {},
 ) {
   const selfManagedLoop = options.selfManagedLoop !== false;
   const retainElement = options.retainElement === true;

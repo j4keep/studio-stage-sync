@@ -210,10 +210,10 @@ export default function CreateCameraView({
   }, [musicPaused, ready]);
 
   const armCameraMusic = useCallback(
-    (audio: HTMLAudioElement) => {
+    (media: HTMLMediaElement) => {
       cameraMusicSessionRef.current?.();
       cameraMusicSessionRef.current = armFeedAudioPlayback(
-        audio,
+        media,
         { title: soundLabel || "Added sound" },
         CAMERA_ADDED_SOUND_MONITOR_VOLUME,
       );

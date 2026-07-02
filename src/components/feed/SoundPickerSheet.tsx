@@ -39,7 +39,7 @@ const SoundPickerSheet = ({
   onClear,
 }: Props) => {
   const audioInputRef = useRef<HTMLInputElement>(null);
-  const previewAudioRef = useRef<HTMLAudioElement>(null);
+  const previewMediaRef = useRef<HTMLVideoElement>(null);
   const previewStopRef = useRef<(() => void) | null>(null);
   const previewSessionRef = useRef<(() => void) | null>(null);
   const [previewing, setPreviewing] = useState(false);
@@ -56,7 +56,7 @@ const SoundPickerSheet = ({
 
   useEffect(() => {
     if (!open || !sourceUrl) return;
-    const audio = previewAudioRef.current;
+    const audio = previewMediaRef.current;
     if (!audio) return;
     if (!sameMediaElementSrc(audio, sourceUrl)) {
       audio.src = sourceUrl;
@@ -87,10 +87,10 @@ const SoundPickerSheet = ({
     musicFile?.name?.replace(/\.[^.]+$/, "") ||
     "Sound preview";
 
-  const armLoudPreview = (audio: HTMLAudioElement) => {
+  const armLoudPreview = (media: HTMLMediaElement) => {
     previewSessionRef.current?.();
     previewSessionRef.current = armFeedAudioPlayback(
-      audio,
+      media,
       { title: previewTitle() },
       TRIM_PREVIEW_VOLUME,
     );
@@ -102,7 +102,7 @@ const SoundPickerSheet = ({
     end: number,
     sourceDurationSec: number,
   ) => {
-    const audio = previewAudioRef.current;
+    const audio = previewMediaRef.current;
     if (!audio) return null;
 
     previewStopRef.current?.();
@@ -193,7 +193,7 @@ const SoundPickerSheet = ({
       duration > 0
         ? duration
         : await new Promise<number>((resolve) => {
-            const probe = previewAudioRef.current ?? new Audio(sourceUrl);
+            const probe = previewMediaRef.current ?? document.createElement("video");
             probe.addEventListener(
               "loadedmetadata",
               () => {
@@ -201,7 +201,10 @@ const SoundPickerSheet = ({
               },
               { once: true },
             );
-            if (probe !== previewAudioRef.current) probe.load();
+            if (probe !== previewMediaRef.current) {
+              probe.src = sourceUrl;
+              probe.load();
+            }
           });
 
     if (effectiveDuration <= 0) {
@@ -265,7 +268,7 @@ const SoundPickerSheet = ({
 
     stopPreview();
     const url = URL.createObjectURL(f);
-    const audio = previewAudioRef.current;
+    const audio = previewMediaRef.current;
     if (!audio) return;
 
     if (!sameMediaElementSrc(audio, url)) {
@@ -339,11 +342,12 @@ const SoundPickerSheet = ({
         className="fixed bottom-0 left-0 right-0 z-[111] mx-auto max-w-lg rounded-t-2xl bg-zinc-950 border-t border-white/10 max-h-[70dvh] flex flex-col safe-area-bottom"
         onClick={(e) => e.stopPropagation()}
       >
-        <audio
-          ref={previewAudioRef}
+        <video
+          ref={previewMediaRef}
           className="fixed left-0 bottom-0 w-px h-px opacity-[0.01] pointer-events-none"
           playsInline
           preload="auto"
+          muted={false}
         />
 
         <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
