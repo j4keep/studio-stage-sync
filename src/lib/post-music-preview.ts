@@ -1,7 +1,9 @@
-import { applyFeedVideoAudio } from "@/lib/feed-video-playback";
+import { applyFeedVideoAudio, bindFeedMediaSession, type FeedPlaybackMeta } from "@/lib/feed-video-playback";
 
-/** Video vocal level when mixed with a separate added-sound track (reduces mic bleed pumping). */
-export const MIXED_VOCAL_VIDEO_VOLUME = 0.32;
+/** Playback mix — video vocal (includes mic recording). */
+export const MIXED_VOCAL_VIDEO_VOLUME = 0.78;
+/** Playback mix — added song (separate track; kept below vocal bleed in recording). */
+export const MIXED_ADDED_MUSIC_VOLUME = 0.52;
 
 export type MusicTrim = {
   trimStart?: number;
@@ -108,7 +110,7 @@ function musicDriftSec(audioTime: number, targetTime: number, segmentLen: number
   return Math.min(direct, wrapped);
 }
 
-/** Keep added sound aligned to video without constant micro-seeks (prevents volume pumping). */
+/** Keep added sound aligned to video — only correct large drift (avoids loop pumping). */
 export function syncTrimmedAudioToVideo(
   video: HTMLVideoElement,
   audio: HTMLAudioElement,
@@ -119,9 +121,24 @@ export function syncTrimmedAudioToVideo(
   const segmentLen = musicSegmentLength(trim, fallbackDuration);
   const target = videoTimeToMusicTime(video.currentTime, trim, fallbackDuration);
   const drift = musicDriftSec(audio.currentTime, target, segmentLen);
-  if (force || drift > 0.45) {
+  if (force || drift > 0.85) {
     audio.currentTime = target;
   }
+}
+
+export function getMixedPlaybackVolumes(options: {
+  muteOriginal?: boolean;
+  originalVolume?: number;
+  musicVolume?: number;
+}): { videoVolume: number; musicVolume: number; videoMuted: boolean } {
+  if (options.muteOriginal) {
+    return { videoVolume: 0, musicVolume: options.musicVolume ?? 1, videoMuted: true };
+  }
+  return {
+    videoVolume: options.originalVolume ?? MIXED_VOCAL_VIDEO_VOLUME,
+    musicVolume: options.musicVolume ?? MIXED_ADDED_MUSIC_VOLUME,
+    videoMuted: false,
+  };
 }
 
 /** Standalone trimmed music preview (camera / no video). */
@@ -138,40 +155,72 @@ export function playTrimmedMusicPreview(
 export function syncMusicWithVideo(
   video: HTMLVideoElement,
   musicUrl: string,
-  options: MusicTrim & { muteOriginal?: boolean; originalVolume?: number } = {},
+  options: MusicTrim & {
+    muteOriginal?: boolean;
+    originalVolume?: number;
+    mediaSessionMeta?: FeedPlaybackMeta;
+  } = {},
 ): () => void {
   const player = createTrimmedMusicPlayer(musicUrl, options, { selfManagedLoop: false });
   const audio = player.audio;
 
-  let fallbackDuration = options.sourceDurationSec ?? 0;
-  let lastSyncMs = 0;
+  const getMix = () =>
+    getMixedPlaybackVolumes({
+      muteOriginal: options.muteOriginal,
+      originalVolume: options.originalVolume,
+      musicVolume: options.volume,
+    });
 
-  const applyVideoMix = () => {
-    const muteOriginal = options.muteOriginal === true;
+  let fallbackDuration = options.sourceDurationSec ?? 0;
+  let mediaSessionCleanup: (() => void) | null = null;
+
+  const applyMixLevels = () => {
+    const mix = getMix();
+    audio.volume = mix.musicVolume;
     applyFeedVideoAudio(video, {
-      muted: muteOriginal,
-      volume: muteOriginal ? 0 : (options.originalVolume ?? MIXED_VOCAL_VIDEO_VOLUME),
+      muted: mix.videoMuted,
+      volume: mix.videoVolume,
     });
   };
 
+  const bindSession = () => {
+    mediaSessionCleanup?.();
+    mediaSessionCleanup = bindFeedMediaSession(
+      audio,
+      options.mediaSessionMeta ?? { title: "Preview" },
+    );
+  };
+
   const syncAudioToVideo = (force = false) => {
-    const now = performance.now();
-    if (!force && now - lastSyncMs < 250) return;
     syncTrimmedAudioToVideo(video, audio, options, fallbackDuration, force);
-    lastSyncMs = now;
+  };
+
+  const ensureMusicPlaying = () => {
+    applyMixLevels();
+    syncAudioToVideo(true);
+    if (!video.paused && audio.paused) {
+      void player.play().then((ok) => {
+        if (ok) bindSession();
+      });
+      return;
+    }
+    if (!audio.paused) bindSession();
   };
 
   const onLoadedMetadata = () => {
     if (audio.duration && Number.isFinite(audio.duration)) {
       fallbackDuration = audio.duration;
     }
-    syncAudioToVideo(true);
+    ensureMusicPlaying();
   };
 
   const onPlay = () => {
-    applyVideoMix();
-    syncAudioToVideo(true);
-    void player.play();
+    ensureMusicPlaying();
+    if (audio.paused) {
+      void player.play().then((ok) => {
+        if (ok) bindSession();
+      });
+    }
   };
 
   const onPause = () => {
@@ -179,31 +228,29 @@ export function syncMusicWithVideo(
   };
 
   const onSeeked = () => {
-    syncAudioToVideo(true);
-  };
-
-  const onTimeUpdate = () => {
-    syncAudioToVideo(false);
+    ensureMusicPlaying();
   };
 
   audio.addEventListener("loadedmetadata", onLoadedMetadata);
   video.addEventListener("play", onPlay);
   video.addEventListener("pause", onPause);
   video.addEventListener("seeked", onSeeked);
-  video.addEventListener("timeupdate", onTimeUpdate);
 
-  applyVideoMix();
+  applyMixLevels();
   if (!video.paused) {
     syncAudioToVideo(true);
-    void player.play();
+    void player.play().then((ok) => {
+      if (ok) bindSession();
+    });
   }
 
   return () => {
+    mediaSessionCleanup?.();
+    mediaSessionCleanup = null;
     audio.removeEventListener("loadedmetadata", onLoadedMetadata);
     video.removeEventListener("play", onPlay);
     video.removeEventListener("pause", onPause);
     video.removeEventListener("seeked", onSeeked);
-    video.removeEventListener("timeupdate", onTimeUpdate);
     player.stop();
   };
 }

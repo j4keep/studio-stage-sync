@@ -7,7 +7,7 @@ import CropEditorView from "./CropEditorView";
 import type { PostEditorMeta, TextOverlay, StickerOverlay, DrawStroke, TextOverlayStyle } from "@/lib/post-editor";
 import { BRUSH_PRESETS, DRAW_COLORS, eraseStrokesNear } from "@/lib/post-editor";
 import { TEXT_COLORS, CREATE_TEXT_STYLES, getTextStyleInline } from "@/lib/text-styles";
-import { syncMusicWithVideo, MIXED_VOCAL_VIDEO_VOLUME } from "@/lib/post-music-preview";
+import { syncMusicWithVideo, MIXED_VOCAL_VIDEO_VOLUME, MIXED_ADDED_MUSIC_VOLUME } from "@/lib/post-music-preview";
 
 const newId = () => Math.random().toString(36).slice(2, 9);
 
@@ -204,8 +204,10 @@ export default function MediaEditView({
       trimStart: meta.music?.trimStart,
       trimEnd: meta.music?.trimEnd,
       sourceDurationSec: meta.music?.durationSec,
-      volume: meta.music?.volume ?? 0.85,
+      volume: meta.music?.volume ?? MIXED_ADDED_MUSIC_VOLUME,
       muteOriginal: meta.muteOriginal,
+      originalVolume: meta.originalVolume ?? MIXED_VOCAL_VIDEO_VOLUME,
+      mediaSessionMeta: { title: "Preview" },
     });
   }, [
     musicPreviewUrl,
@@ -215,6 +217,7 @@ export default function MediaEditView({
     meta.music?.durationSec,
     meta.music?.volume,
     meta.muteOriginal,
+    meta.originalVolume,
     activeTool,
     previewUrl,
   ]);
@@ -355,10 +358,12 @@ export default function MediaEditView({
       ? { text: textDraft, style: textStyle, color: textColor, ...textPos }
       : null;
 
-  const videoMixAudio = {
-    muted: meta.muteOriginal,
-    volume:
-      meta.muteOriginal || !musicPreviewUrl ? undefined : MIXED_VOCAL_VIDEO_VOLUME,
+  const applyVideoAudioHandlers = (el: HTMLVideoElement) => {
+    if (musicPreviewUrl) return;
+    applyFeedVideoAudio(el, { muted: meta.muteOriginal });
+    if (!meta.muteOriginal) {
+      bindFeedMediaSession(el, { title: "Preview" });
+    }
   };
 
   const bottomTools = [
@@ -383,13 +388,10 @@ export default function MediaEditView({
             muted={meta.muteOriginal}
             autoPlay
             onLoadedMetadata={(e) => {
-              applyFeedVideoAudio(e.currentTarget, videoMixAudio);
+              applyVideoAudioHandlers(e.currentTarget);
             }}
             onPlay={(e) => {
-              applyFeedVideoAudio(e.currentTarget, videoMixAudio);
-              if (!meta.muteOriginal) {
-                bindFeedMediaSession(e.currentTarget, { title: "Preview" });
-              }
+              applyVideoAudioHandlers(e.currentTarget);
             }}
           />
         ) : (
@@ -645,13 +647,10 @@ export default function MediaEditView({
             muted={meta.muteOriginal}
             autoPlay
             onLoadedMetadata={(e) => {
-              applyFeedVideoAudio(e.currentTarget, videoMixAudio);
+              applyVideoAudioHandlers(e.currentTarget);
             }}
             onPlay={(e) => {
-              applyFeedVideoAudio(e.currentTarget, videoMixAudio);
-              if (!meta.muteOriginal) {
-                bindFeedMediaSession(e.currentTarget, { title: "Preview" });
-              }
+              applyVideoAudioHandlers(e.currentTarget);
             }}
           />
           <div
