@@ -24,7 +24,7 @@ import {
 getMusicDisplayName,
 playPostMusic,
 } from "@/lib/feed-music";
-import { MIXED_ADDED_MUSIC_VOLUME, MIXED_VOCAL_VIDEO_VOLUME } from "@/lib/post-music-preview";
+import { MIXED_ADDED_MUSIC_VOLUME, ADDED_SOUND_PLAYBACK_VOLUME, MIXED_VOCAL_VIDEO_VOLUME } from "@/lib/post-music-preview";
 
 interface Props {
 open: boolean;
@@ -405,7 +405,7 @@ if (!postToEdit) {
     ...(m.music || musicFile
       ? {
           music: m.music,
-          muteOriginal: m.muteOriginal ?? false,
+          muteOriginal: m.muteOriginal ?? true,
           originalVolume: m.originalVolume ?? MIXED_VOCAL_VIDEO_VOLUME,
         }
       : {}),
@@ -461,13 +461,13 @@ const dur = durationSec > 0 ? durationSec : undefined;
 
 setEditorMeta((m) => ({
   ...m,
-  muteOriginal: false,
+  muteOriginal: true,
   music: {
     fileName: f.name,
     durationSec: dur,
     trimStart: 0,
     trimEnd: dur,
-    volume: m.music?.volume ?? MIXED_ADDED_MUSIC_VOLUME,
+    volume: ADDED_SOUND_PLAYBACK_VOLUME,
   },
 }));
 

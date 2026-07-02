@@ -168,6 +168,18 @@ export function applyFeedAudioElementVolume(audio: HTMLAudioElement) {
   audio.volume = 1;
 }
 
+/** Unlock iOS media volume and bind session before play — not after. */
+export function armFeedAudioPlayback(
+  audio: HTMLAudioElement,
+  meta: FeedPlaybackMeta = {},
+  volume = 1,
+): () => void {
+  unlockFeedAudioSession();
+  applyFeedAudioElementVolume(audio);
+  audio.volume = Math.min(1, Math.max(0, volume));
+  return bindFeedMediaSession(audio, meta);
+}
+
 export async function resetIosAudioSessionToPlayback(): Promise<void> {
   /* no-op — previous workaround disabled */
 }

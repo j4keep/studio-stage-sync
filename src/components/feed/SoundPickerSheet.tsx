@@ -4,8 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { AUDIO_FILE_ACCEPT } from "@/lib/feed-music";
 import {
-  applyFeedAudioElementVolume,
-  bindFeedMediaSession,
+  armFeedAudioPlayback,
   unlockFeedAudioSession,
 } from "@/lib/feed-video-playback";
 import { createTrimmedMusicPlayer, formatAudioTime, sameMediaElementSrc } from "@/lib/post-music-preview";
@@ -82,11 +81,12 @@ const SoundPickerSheet = ({
     "Sound preview";
 
   const armLoudPreview = (audio: HTMLAudioElement) => {
-    unlockFeedAudioSession();
-    applyFeedAudioElementVolume(audio);
-    audio.volume = TRIM_PREVIEW_VOLUME;
     previewSessionRef.current?.();
-    previewSessionRef.current = bindFeedMediaSession(audio, { title: previewTitle() });
+    previewSessionRef.current = armFeedAudioPlayback(
+      audio,
+      { title: previewTitle() },
+      TRIM_PREVIEW_VOLUME,
+    );
   };
 
   const mountPreviewPlayer = (
@@ -254,9 +254,14 @@ const SoundPickerSheet = ({
     const audio = previewAudioRef.current;
     if (!audio) return;
 
-    unlockFeedAudioSession();
-    applyFeedAudioElementVolume(audio);
-    audio.volume = TRIM_PREVIEW_VOLUME;
+    if (!sameMediaElementSrc(audio, url)) {
+      audio.src = url;
+      try {
+        audio.load();
+      } catch {
+        /* ignore */
+      }
+    }
 
     const onMeta = () => {
       const dur = Number.isFinite(audio.duration) ? audio.duration : 0;
@@ -274,14 +279,6 @@ const SoundPickerSheet = ({
     };
 
     audio.addEventListener("loadedmetadata", onMeta, { once: true });
-    if (!sameMediaElementSrc(audio, url)) {
-      audio.src = url;
-      try {
-        audio.load();
-      } catch {
-        /* ignore */
-      }
-    }
     armLoudPreview(audio);
 
     void audio

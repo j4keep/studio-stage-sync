@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { applyFeedVideoAudio, bindFeedMediaSession } from "@/lib/feed-video-playback";
-import { syncMusicWithVideo, MIXED_VOCAL_VIDEO_VOLUME, MIXED_ADDED_MUSIC_VOLUME } from "@/lib/post-music-preview";
+import { syncMusicWithVideo, getAddedSoundVideoSyncOptions, MIXED_VOCAL_VIDEO_VOLUME } from "@/lib/post-music-preview";
 import type { PostEditorMeta } from "@/lib/post-editor";
 import { ChevronLeft, Hash, AtSign, Lightbulb, Wand2, ImageIcon, Trash2, Type } from "lucide-react";
 import { toast } from "sonner";
@@ -55,12 +55,14 @@ export default function PostPreviewView({
     const musicUrl = musicPreviewUrl || music?.audioUrl;
     if (!video || mediaType !== "video" || !musicUrl) return;
 
+    const soundSync = getAddedSoundVideoSyncOptions(true, { muteOriginal, music });
+
     return syncMusicWithVideo(video, musicUrl, {
       trimStart: music?.trimStart,
       trimEnd: music?.trimEnd,
       sourceDurationSec: music?.durationSec,
-      volume: music?.volume ?? MIXED_ADDED_MUSIC_VOLUME,
-      muteOriginal,
+      volume: soundSync.volume,
+      muteOriginal: soundSync.muteOriginal,
       originalVolume: originalVolume ?? MIXED_VOCAL_VIDEO_VOLUME,
       mediaSessionMeta: { title: title || "Preview" },
     });
@@ -198,7 +200,7 @@ export default function PostPreviewView({
                   className="w-full h-full object-cover pointer-events-none"
                   playsInline
                   loop
-                  muted={muteOriginal}
+                  muted={muteOriginal || hasAddedSound}
                   onLoadedMetadata={(e) => {
                     applyCoverVideoAudio(e.currentTarget);
                   }}

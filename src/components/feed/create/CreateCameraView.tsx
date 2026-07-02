@@ -15,7 +15,8 @@ import {
 } from "@/lib/create-camera";
 import type { CreateMode, EnhanceTab } from "@/lib/create-modes";
 import { QUICK_MAX_RECORD_SEC } from "@/lib/create-modes";
-import { createTrimmedMusicPlayer, type MusicTrim } from "@/lib/post-music-preview";
+import { createTrimmedMusicPlayer, CAMERA_ADDED_SOUND_MONITOR_VOLUME, type MusicTrim } from "@/lib/post-music-preview";
+import { armFeedAudioPlayback } from "@/lib/feed-video-playback";
 import CreateModeTabs from "./CreateModeTabs";
 import RecordButton from "./RecordButton";
 import EnhancePanel from "./EnhancePanel";
@@ -71,6 +72,7 @@ export default function CreateCameraView({
   const pointerCleanupRef = useRef<(() => void) | null>(null);
   const cameraMusicStopRef = useRef<(() => void) | null>(null);
   const cameraMusicPlayerRef = useRef<ReturnType<typeof createTrimmedMusicPlayer> | null>(null);
+  const cameraMusicSessionRef = useRef<(() => void) | null>(null);
 
   const [facing, setFacing] = useState<"user" | "environment">("user");
   const [denied, setDenied] = useState(false);
@@ -199,7 +201,28 @@ export default function CreateCameraView({
     }
   }, [musicPaused, ready]);
 
+  const armCameraMusic = useCallback(
+    (audio: HTMLAudioElement) => {
+      cameraMusicSessionRef.current?.();
+      cameraMusicSessionRef.current = armFeedAudioPlayback(
+        audio,
+        { title: soundLabel || "Added sound" },
+        CAMERA_ADDED_SOUND_MONITOR_VOLUME,
+      );
+    },
+    [soundLabel],
+  );
+
+  const playCameraMusic = useCallback(async (): Promise<boolean> => {
+    const player = cameraMusicPlayerRef.current;
+    if (!player) return false;
+    armCameraMusic(player.audio);
+    return player.play();
+  }, [armCameraMusic]);
+
   useEffect(() => {
+    cameraMusicSessionRef.current?.();
+    cameraMusicSessionRef.current = null;
     cameraMusicStopRef.current?.();
     cameraMusicStopRef.current = null;
     cameraMusicPlayerRef.current = null;
@@ -207,12 +230,17 @@ export default function CreateCameraView({
 
     if (!musicPreviewUrl || !ready || musicPaused) return;
 
-    const player = createTrimmedMusicPlayer(musicPreviewUrl, musicTrim ?? {});
+    const player = createTrimmedMusicPlayer(musicPreviewUrl, {
+      ...(musicTrim ?? {}),
+      volume: CAMERA_ADDED_SOUND_MONITOR_VOLUME,
+    });
     cameraMusicStopRef.current = player.stop;
     cameraMusicPlayerRef.current = player;
-    onRegisterMusicPlay?.(() => player.play());
+    onRegisterMusicPlay?.(() => playCameraMusic());
 
     return () => {
+      cameraMusicSessionRef.current?.();
+      cameraMusicSessionRef.current = null;
       player.stop();
       cameraMusicStopRef.current = null;
       cameraMusicPlayerRef.current = null;
@@ -224,13 +252,15 @@ export default function CreateCameraView({
     musicTrim?.trimStart,
     musicTrim?.trimEnd,
     musicTrim?.sourceDurationSec,
-    musicTrim?.volume,
     onRegisterMusicPlay,
     musicPaused,
+    playCameraMusic,
   ]);
 
   useEffect(() => {
     return () => {
+      cameraMusicSessionRef.current?.();
+      cameraMusicSessionRef.current = null;
       cameraMusicStopRef.current?.();
       cameraMusicStopRef.current = null;
     };
@@ -471,7 +501,7 @@ export default function CreateCameraView({
     } catch {
       /* ignore */
     }
-    void cameraMusicPlayerRef.current?.play();
+    void playCameraMusic();
     startRecording();
   };
 

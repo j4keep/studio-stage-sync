@@ -26,6 +26,7 @@ import useFloatingEmojis, { FloatingEmojiLayer } from "./FloatingEmojis";
 import { parsePostCaption, hasVisualOverlayLayers } from "@/lib/post-editor";
 import { playUploadedAudio, getMusicDisplayName } from "@/lib/feed-music";
 import {
+  getAddedSoundVideoSyncOptions,
   getMixedPlaybackVolumes,
   syncTrimmedAudioToVideo,
   videoTimeToMusicTime,
@@ -116,8 +117,10 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
   );
 
   const getVideoMuted = useCallback(() => {
-    return isMuted || postMeta?.muteOriginal === true;
-  }, [isMuted, postMeta?.muteOriginal]);
+    if (isMuted) return true;
+    if (hasAddedSound && postMeta?.muteOriginal !== false) return true;
+    return postMeta?.muteOriginal === true;
+  }, [isMuted, hasAddedSound, postMeta?.muteOriginal]);
 
   const getVideoMixAudio = useCallback(
     (forceMuted?: boolean): { muted: boolean; volume?: number } => {
@@ -177,24 +180,25 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
 
     if (hasAddedSound) {
       const audio = musicAudioRef.current;
+      const soundSync = getAddedSoundVideoSyncOptions(true, postMeta ?? {});
       const mix = getMixedPlaybackVolumes({
-        muteOriginal: postMeta?.muteOriginal,
+        muteOriginal: soundSync.muteOriginal,
         originalVolume: postMeta?.originalVolume,
-        musicVolume: postMeta?.music?.volume,
+        musicVolume: soundSync.volume,
       });
-      applyFeedVideoAudio(video, getVideoMixAudio());
-      const videoPlay = video.paused ? video.play().catch(() => undefined) : Promise.resolve();
+      applyFeedVideoAudio(video, { muted: true, volume: 0 });
       if (!audio) {
         setAutoplayAudioLocked(true);
         return false;
       }
       audio.currentTime = mapMusicTime(video.currentTime);
       audio.volume = mix.musicVolume;
+      unlockFeedAudioSession();
       mediaSessionCleanupRef.current?.();
       mediaSessionCleanupRef.current = bindFeedMediaSession(audio, playbackMeta);
       try {
         await audio.play();
-        await videoPlay;
+        if (video.paused) await video.play();
         setAutoplayAudioLocked(false);
         setFeedAudioUnlocked(true);
         if (!isFeedAudioSessionUnlocked()) unlockFeedAudioSession();

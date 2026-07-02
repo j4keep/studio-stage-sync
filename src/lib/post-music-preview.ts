@@ -1,9 +1,39 @@
-import { applyFeedVideoAudio, bindFeedMediaSession, type FeedPlaybackMeta } from "@/lib/feed-video-playback";
+import { applyFeedVideoAudio, bindFeedMediaSession, unlockFeedAudioSession, type FeedPlaybackMeta } from "@/lib/feed-video-playback";
 
 /** Playback mix — video vocal (includes mic recording). */
 export const MIXED_VOCAL_VIDEO_VOLUME = 0.78;
 /** Playback mix — added song (separate track; kept below vocal bleed in recording). */
 export const MIXED_ADDED_MUSIC_VOLUME = 0.52;
+/** TikTok-style playback when added sound replaces the video track. */
+export const ADDED_SOUND_PLAYBACK_VOLUME = 1;
+/** Camera lip-sync monitor — full media volume while recording; not used on edit/feed playback. */
+export const CAMERA_ADDED_SOUND_MONITOR_VOLUME = 1;
+
+export function getAddedSoundVideoSyncOptions(
+  hasMusic: boolean,
+  meta: { muteOriginal?: boolean; music?: { volume?: number } } = {},
+): { muteOriginal: boolean; volume: number } {
+  if (!hasMusic) {
+    return {
+      muteOriginal: meta.muteOriginal ?? false,
+      volume: meta.music?.volume ?? MIXED_ADDED_MUSIC_VOLUME,
+    };
+  }
+
+  const replaceOriginal = meta.muteOriginal ?? true;
+
+  if (replaceOriginal) {
+    return {
+      muteOriginal: true,
+      volume: meta.music?.volume ?? ADDED_SOUND_PLAYBACK_VOLUME,
+    };
+  }
+
+  return {
+    muteOriginal: false,
+    volume: meta.music?.volume ?? MIXED_ADDED_MUSIC_VOLUME,
+  };
+}
 
 export type MusicTrim = {
   trimStart?: number;
@@ -180,7 +210,7 @@ export function playTrimmedMusicPreview(
   return player;
 }
 
-/** Play added music in sync with a video while keeping the video vocal track audible. */
+/** Play added music in sync with video — when muteOriginal, TikTok-style song-only playback. */
 export function syncMusicWithVideo(
   video: HTMLVideoElement,
   musicUrl: string,
@@ -192,6 +222,7 @@ export function syncMusicWithVideo(
 ): () => void {
   const player = createTrimmedMusicPlayer(musicUrl, options, { selfManagedLoop: false });
   const audio = player.audio;
+  const replacingOriginal = options.muteOriginal === true;
 
   const getMix = () =>
     getMixedPlaybackVolumes({
@@ -202,6 +233,7 @@ export function syncMusicWithVideo(
 
   let fallbackDuration = options.sourceDurationSec ?? 0;
   let mediaSessionCleanup: (() => void) | null = null;
+  let pendingVideoResume = false;
 
   const applyMixLevels = () => {
     const mix = getMix();
@@ -214,6 +246,7 @@ export function syncMusicWithVideo(
 
   const bindSession = () => {
     mediaSessionCleanup?.();
+    unlockFeedAudioSession();
     mediaSessionCleanup = bindFeedMediaSession(
       audio,
       options.mediaSessionMeta ?? { title: "Preview" },
@@ -224,32 +257,41 @@ export function syncMusicWithVideo(
     syncTrimmedAudioToVideo(video, audio, options, fallbackDuration, force);
   };
 
-  const ensureMusicPlaying = () => {
+  const startFromMusicReady = () => {
     applyMixLevels();
     syncAudioToVideo(true);
-    if (!video.paused && audio.paused) {
-      void player.play().then((ok) => {
-        if (ok) bindSession();
-      });
+    bindSession();
+    void player.play().then((ok) => {
+      if (!ok) return;
+      if (pendingVideoResume || !video.paused) {
+        pendingVideoResume = false;
+        void video.play().catch(() => {});
+      }
+    });
+  };
+
+  const startSyncedMusic = () => {
+    if (replacingOriginal && audio.paused) {
+      startFromMusicReady();
       return;
     }
-    if (!audio.paused) bindSession();
+    applyMixLevels();
+    syncAudioToVideo(true);
+    bindSession();
+    if (!video.paused && audio.paused) {
+      void player.play();
+    }
   };
 
   const onLoadedMetadata = () => {
     if (audio.duration && Number.isFinite(audio.duration)) {
       fallbackDuration = audio.duration;
     }
-    ensureMusicPlaying();
+    startFromMusicReady();
   };
 
   const onPlay = () => {
-    ensureMusicPlaying();
-    if (audio.paused) {
-      void player.play().then((ok) => {
-        if (ok) bindSession();
-      });
-    }
+    startSyncedMusic();
   };
 
   const onPause = () => {
@@ -257,20 +299,36 @@ export function syncMusicWithVideo(
   };
 
   const onSeeked = () => {
-    ensureMusicPlaying();
+    startSyncedMusic();
   };
 
-  audio.addEventListener("loadedmetadata", onLoadedMetadata);
+  const onVideoPlaying = () => {
+    if (replacingOriginal) return;
+    bindSession();
+    if (audio.paused && !video.paused) {
+      void player.play();
+    }
+  };
+
+  if (replacingOriginal && !video.paused) {
+    pendingVideoResume = true;
+    video.pause();
+  }
+
+  audio.addEventListener("loadedmetadata", onLoadedMetadata, { once: true });
   video.addEventListener("play", onPlay);
+  video.addEventListener("playing", onVideoPlaying);
   video.addEventListener("pause", onPause);
   video.addEventListener("seeked", onSeeked);
 
   applyMixLevels();
-  if (!video.paused) {
-    syncAudioToVideo(true);
-    void player.play().then((ok) => {
-      if (ok) bindSession();
-    });
+
+  if (replacingOriginal) {
+    if (audio.readyState >= 1) {
+      startFromMusicReady();
+    }
+  } else if (!video.paused) {
+    startSyncedMusic();
   }
 
   return () => {
@@ -278,6 +336,7 @@ export function syncMusicWithVideo(
     mediaSessionCleanup = null;
     audio.removeEventListener("loadedmetadata", onLoadedMetadata);
     video.removeEventListener("play", onPlay);
+    video.removeEventListener("playing", onVideoPlaying);
     video.removeEventListener("pause", onPause);
     video.removeEventListener("seeked", onSeeked);
     player.stop();

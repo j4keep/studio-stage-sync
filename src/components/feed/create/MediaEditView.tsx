@@ -7,7 +7,7 @@ import CropEditorView from "./CropEditorView";
 import type { PostEditorMeta, TextOverlay, StickerOverlay, DrawStroke, TextOverlayStyle } from "@/lib/post-editor";
 import { BRUSH_PRESETS, DRAW_COLORS, eraseStrokesNear } from "@/lib/post-editor";
 import { TEXT_COLORS, CREATE_TEXT_STYLES, getTextStyleInline } from "@/lib/text-styles";
-import { syncMusicWithVideo, MIXED_VOCAL_VIDEO_VOLUME, MIXED_ADDED_MUSIC_VOLUME } from "@/lib/post-music-preview";
+import { syncMusicWithVideo, getAddedSoundVideoSyncOptions, MIXED_VOCAL_VIDEO_VOLUME } from "@/lib/post-music-preview";
 
 const newId = () => Math.random().toString(36).slice(2, 9);
 
@@ -212,12 +212,14 @@ export default function MediaEditView({
     const video = previewVideoRef.current;
     if (!video || mediaType !== "video" || !musicPreviewUrl || activeTool === "crop" || soundPickerOpen) return;
 
+    const soundSync = getAddedSoundVideoSyncOptions(true, meta);
+
     return syncMusicWithVideo(video, musicPreviewUrl, {
       trimStart: meta.music?.trimStart,
       trimEnd: meta.music?.trimEnd,
       sourceDurationSec: meta.music?.durationSec,
-      volume: meta.music?.volume ?? MIXED_ADDED_MUSIC_VOLUME,
-      muteOriginal: meta.muteOriginal,
+      volume: soundSync.volume,
+      muteOriginal: soundSync.muteOriginal,
       originalVolume: meta.originalVolume ?? MIXED_VOCAL_VIDEO_VOLUME,
       mediaSessionMeta: { title: "Preview" },
     });
@@ -371,8 +373,14 @@ export default function MediaEditView({
       ? { text: textDraft, style: textStyle, color: textColor, ...textPos }
       : null;
 
+  const videoMutedForPlayback =
+    meta.muteOriginal || !!musicPreviewUrl;
+
   const applyVideoAudioHandlers = (el: HTMLVideoElement) => {
-    if (musicPreviewUrl) return;
+    if (musicPreviewUrl) {
+      applyFeedVideoAudio(el, { muted: true, volume: 0 });
+      return;
+    }
     applyFeedVideoAudio(el, { muted: meta.muteOriginal });
     if (!meta.muteOriginal) {
       bindFeedMediaSession(el, { title: "Preview" });
@@ -398,7 +406,7 @@ export default function MediaEditView({
             className="absolute inset-0 w-full h-full object-cover"
             playsInline
             loop
-            muted={meta.muteOriginal}
+            muted={videoMutedForPlayback}
             autoPlay
             onLoadedMetadata={(e) => {
               applyVideoAudioHandlers(e.currentTarget);
@@ -657,7 +665,7 @@ export default function MediaEditView({
             }}
             playsInline
             loop
-            muted={meta.muteOriginal}
+            muted={videoMutedForPlayback}
             autoPlay
             onLoadedMetadata={(e) => {
               applyVideoAudioHandlers(e.currentTarget);
