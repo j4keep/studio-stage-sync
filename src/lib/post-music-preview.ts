@@ -4,6 +4,55 @@ import { applyFeedVideoAudio, bindFeedMediaSession, type FeedPlaybackMeta } from
 export const MIXED_VOCAL_VIDEO_VOLUME = 0.78;
 /** Playback mix — added song (separate track; kept below vocal bleed in recording). */
 export const MIXED_ADDED_MUSIC_VOLUME = 0.52;
+/** Add-sound trim sheet only — extra gain above element volume=1. Not used after Done. */
+export const TRIM_PICKER_PREVIEW_GAIN = 1.45;
+
+type TrimPickerBoostGraph = {
+  ctx: AudioContext;
+  gain: GainNode;
+};
+
+const trimPickerBoostByAudio = new WeakMap<HTMLAudioElement, TrimPickerBoostGraph>();
+
+function getAudioContextCtor(): typeof AudioContext | null {
+  if (typeof window === "undefined") return null;
+  const w = window as Window & { webkitAudioContext?: typeof AudioContext };
+  return w.AudioContext || w.webkitAudioContext || null;
+}
+
+/** Route picker preview through Web Audio so it can exceed HTMLMediaElement volume=1. */
+export function ensureTrimPickerAudioBoost(audio: HTMLAudioElement): void {
+  const existing = trimPickerBoostByAudio.get(audio);
+  if (existing) {
+    if (existing.ctx.state === "suspended") void existing.ctx.resume();
+    return;
+  }
+
+  const AudioCtx = getAudioContextCtor();
+  if (!AudioCtx) return;
+
+  try {
+    const ctx = new AudioCtx();
+    const source = ctx.createMediaElementSource(audio);
+    const gain = ctx.createGain();
+    gain.gain.value = TRIM_PICKER_PREVIEW_GAIN;
+    source.connect(gain);
+    gain.connect(ctx.destination);
+    trimPickerBoostByAudio.set(audio, { ctx, gain });
+    audio.volume = 1;
+    if (ctx.state === "suspended") void ctx.resume();
+  } catch {
+    /* element already wired or Web Audio unavailable */
+  }
+}
+
+export function releaseTrimPickerAudioBoost(audio: HTMLAudioElement | null): void {
+  if (!audio) return;
+  const graph = trimPickerBoostByAudio.get(audio);
+  if (!graph) return;
+  trimPickerBoostByAudio.delete(audio);
+  void graph.ctx.close().catch(() => {});
+}
 
 export type MusicTrim = {
   trimStart?: number;
