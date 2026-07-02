@@ -4,26 +4,41 @@ export type CameraFacing = "user" | "environment";
 
 const PHOTO_JPEG_QUALITY = 0.94;
 
-async function openCameraStream(facing: CameraFacing): Promise<MediaStream | null> {
+async function openCameraStream(
+  facing: CameraFacing,
+  withAudio: boolean,
+): Promise<MediaStream | null> {
   if (!navigator.mediaDevices?.getUserMedia) return null;
 
-  const attempts: MediaStreamConstraints[] = [
-    {
-      video: {
-        facingMode: facing,
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-        frameRate: { ideal: 30 },
-      },
-      audio: true,
-    },
-    { video: { facingMode: facing }, audio: true },
-  ];
+  const attempts: MediaStreamConstraints[] = withAudio
+    ? [
+        {
+          video: {
+            facingMode: facing,
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            frameRate: { ideal: 30 },
+          },
+          audio: true,
+        },
+        { video: { facingMode: facing }, audio: true },
+      ]
+    : [
+        {
+          video: {
+            facingMode: facing,
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            frameRate: { ideal: 30 },
+          },
+        },
+        { video: { facingMode: facing } },
+      ];
 
   for (const constraints of attempts) {
     try {
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      if (stream.getAudioTracks().length > 0) return stream;
+      if (streamHasLiveVideo(stream)) return stream;
       stream.getTracks().forEach((t) => t.stop());
     } catch {
       /* try simpler fallback */
@@ -32,8 +47,12 @@ async function openCameraStream(facing: CameraFacing): Promise<MediaStream | nul
   return null;
 }
 
-export async function warmCameraStream(facing: CameraFacing = "user"): Promise<MediaStream | null> {
-  return openCameraStream(facing);
+export async function warmCameraStream(
+  facing: CameraFacing = "user",
+  options: { withAudio?: boolean } = {},
+): Promise<MediaStream | null> {
+  const withAudio = options.withAudio !== false;
+  return openCameraStream(facing, withAudio);
 }
 
 export function releaseCameraStream(stream: MediaStream | null | undefined) {
@@ -62,6 +81,14 @@ export function cloneStreamForRecording(stream: MediaStream): MediaStream {
 /** Lip-sync posts: record picture only — added song is mixed in at edit/feed time. */
 export function videoOnlyRecordStream(stream: MediaStream): MediaStream {
   return new MediaStream(stream.getVideoTracks());
+}
+
+/** Stop mic hardware so iOS won't duck speaker playback during lip-sync. */
+export function stripStreamAudio(stream: MediaStream): void {
+  for (const track of [...stream.getAudioTracks()]) {
+    track.stop();
+    stream.removeTrack(track);
+  }
 }
 
 /** Add a mic track without restarting the camera preview (avoids black screen on mobile). */
