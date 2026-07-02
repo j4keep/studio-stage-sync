@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { applyFeedVideoAudio, bindFeedMediaSession } from "@/lib/feed-video-playback";
-import { syncMusicWithVideo, MIXED_VOCAL_VIDEO_VOLUME } from "@/lib/post-music-preview";
+import { syncMusicWithVideo, MIXED_VOCAL_VIDEO_VOLUME, MIXED_ADDED_MUSIC_VOLUME } from "@/lib/post-music-preview";
 import type { PostEditorMeta } from "@/lib/post-editor";
 import { ChevronLeft, Hash, AtSign, Lightbulb, Wand2, ImageIcon, Trash2, Type } from "lucide-react";
 import { toast } from "sonner";
@@ -24,6 +24,7 @@ interface Props {
   musicPreviewUrl?: string | null;
   music?: PostEditorMeta["music"];
   muteOriginal?: boolean;
+  originalVolume?: number;
 }
 
 export default function PostPreviewView({
@@ -43,6 +44,7 @@ export default function PostPreviewView({
   musicPreviewUrl,
   music,
   muteOriginal = false,
+  originalVolume,
 }: Props) {
   const [rewriting, setRewriting] = useState<"title" | "description" | null>(null);
   const descRef = useRef<HTMLTextAreaElement>(null);
@@ -57,8 +59,10 @@ export default function PostPreviewView({
       trimStart: music?.trimStart,
       trimEnd: music?.trimEnd,
       sourceDurationSec: music?.durationSec,
-      volume: music?.volume ?? 0.85,
+      volume: music?.volume ?? MIXED_ADDED_MUSIC_VOLUME,
       muteOriginal,
+      originalVolume: originalVolume ?? MIXED_VOCAL_VIDEO_VOLUME,
+      mediaSessionMeta: { title: title || "Preview" },
     });
   }, [
     mediaType,
@@ -69,14 +73,16 @@ export default function PostPreviewView({
     music?.durationSec,
     music?.volume,
     muteOriginal,
+    originalVolume,
     previewUrl,
+    title,
   ]);
 
   const coverVideoMix = {
     muted: muteOriginal,
     volume: muteOriginal || !(musicPreviewUrl || music?.audioUrl)
       ? undefined
-      : MIXED_VOCAL_VIDEO_VOLUME,
+      : (originalVolume ?? MIXED_VOCAL_VIDEO_VOLUME),
   };
 
   const rewriteTitle = async () => {
@@ -195,7 +201,7 @@ export default function PostPreviewView({
                   }}
                   onPlay={(e) => {
                     applyFeedVideoAudio(e.currentTarget, coverVideoMix);
-                    if (!muteOriginal) {
+                    if (!muteOriginal && !(musicPreviewUrl || music?.audioUrl)) {
                       bindFeedMediaSession(e.currentTarget, { title: title || "Preview" });
                     }
                   }}

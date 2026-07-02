@@ -15,7 +15,7 @@ import {
 } from "@/lib/create-camera";
 import type { CreateMode, EnhanceTab } from "@/lib/create-modes";
 import { QUICK_MAX_RECORD_SEC } from "@/lib/create-modes";
-import { createTrimmedMusicPlayer, type MusicTrim } from "@/lib/post-music-preview";
+import { createTrimmedMusicPlayer, CAMERA_RECORD_MUSIC_VOLUME, type MusicTrim } from "@/lib/post-music-preview";
 import CreateModeTabs from "./CreateModeTabs";
 import RecordButton from "./RecordButton";
 import EnhancePanel from "./EnhancePanel";
@@ -132,7 +132,7 @@ export default function CreateCameraView({
     setReady(false);
 
     try {
-      const stream = await warmCameraStream(facing);
+      const stream = await warmCameraStream(facing, { recordWithSound: !!musicPreviewUrl });
       if (!stream) throw new Error("denied");
       ownsStreamRef.current = true;
       await attachStream(stream);
@@ -141,7 +141,7 @@ export default function CreateCameraView({
     } finally {
       setStarting(false);
     }
-  }, [facing, attachStream, stopStream]);
+  }, [facing, attachStream, stopStream, musicPreviewUrl]);
 
   const ensureLiveCamera = useCallback(() => {
     if (streamHasLiveVideo(streamRef.current)) return;
@@ -180,6 +180,15 @@ export default function CreateCameraView({
     void startCamera();
   }, [facing, startCamera]);
 
+  const hadMusicRef = useRef(!!musicPreviewUrl);
+  useEffect(() => {
+    const hadMusic = hadMusicRef.current;
+    hadMusicRef.current = !!musicPreviewUrl;
+    if (musicPreviewUrl && !hadMusic && ready && !recordingRef.current) {
+      void startCamera();
+    }
+  }, [musicPreviewUrl, ready, startCamera]);
+
   useEffect(() => {
     recordingRef.current = recording;
   }, [recording]);
@@ -198,7 +207,10 @@ export default function CreateCameraView({
 
     if (!musicPreviewUrl || !ready) return;
 
-    const player = createTrimmedMusicPlayer(musicPreviewUrl, musicTrim ?? {});
+    const player = createTrimmedMusicPlayer(musicPreviewUrl, {
+      ...(musicTrim ?? {}),
+      volume: CAMERA_RECORD_MUSIC_VOLUME,
+    });
     cameraMusicStopRef.current = player.stop;
     cameraMusicPlayerRef.current = player;
     onRegisterMusicPlay?.(() => player.play());
