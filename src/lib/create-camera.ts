@@ -59,6 +59,11 @@ export function cloneStreamForRecording(stream: MediaStream): MediaStream {
   return new MediaStream([...stream.getVideoTracks(), ...stream.getAudioTracks()]);
 }
 
+/** Lip-sync posts: record picture only — added song is mixed in at edit/feed time. */
+export function videoOnlyRecordStream(stream: MediaStream): MediaStream {
+  return new MediaStream(stream.getVideoTracks());
+}
+
 /** Add a mic track without restarting the camera preview (avoids black screen on mobile). */
 export async function ensureStreamHasAudio(
   stream: MediaStream,

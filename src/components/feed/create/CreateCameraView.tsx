@@ -12,6 +12,7 @@ import {
   createMirroredVideoRecordStream,
   shouldMirrorRecordOutput,
   capturePhotoFromStream,
+  videoOnlyRecordStream,
 } from "@/lib/create-camera";
 import type { CreateMode, EnhanceTab } from "@/lib/create-modes";
 import { QUICK_MAX_RECORD_SEC } from "@/lib/create-modes";
@@ -189,25 +190,38 @@ export default function CreateCameraView({
   useEffect(() => {
     const stream = streamRef.current;
     if (!ready || !stream) return;
+    if (musicPreviewUrl) {
+      setMicMissing(false);
+      return;
+    }
     void ensureStreamHasAudio(stream).then((ok) => setMicMissing(!ok));
-  }, [ready]);
+  }, [ready, musicPreviewUrl]);
 
-  /** Release camera/mic session while the sound picker is open so preview uses media volume. */
+  /** Lip-sync: mic off when a song is added. Picker open: pause whole camera for loud preview. */
   useEffect(() => {
     const stream = streamRef.current;
     const video = videoRef.current;
-    if (!stream) return;
-
-    for (const track of stream.getTracks()) {
-      track.enabled = !musicPaused;
-    }
+    if (!stream || !ready) return;
 
     if (musicPaused) {
+      for (const track of stream.getTracks()) {
+        track.enabled = false;
+      }
       video?.pause();
-    } else if (video && ready) {
+      return;
+    }
+
+    for (const track of stream.getVideoTracks()) {
+      track.enabled = true;
+    }
+    if (video?.paused) {
       void video.play().catch(() => {});
     }
-  }, [musicPaused, ready]);
+
+    for (const track of stream.getAudioTracks()) {
+      track.enabled = !musicPreviewUrl;
+    }
+  }, [musicPaused, musicPreviewUrl, ready]);
 
   const armCameraMusic = useCallback(
     (media: HTMLMediaElement) => {
@@ -358,19 +372,30 @@ export default function CreateCameraView({
     if (!video || !stream || recordingRef.current || !wantsRecordRef.current) return;
 
     recordPendingRef.current = true;
+    const lipSyncMode = !!musicPreviewUrl;
 
-    if (!streamHasLiveAudio(stream)) {
-      void ensureStreamHasAudio(stream).then((ok) => setMicMissing(!ok));
+    if (!lipSyncMode) {
+      if (!streamHasLiveAudio(stream)) {
+        void ensureStreamHasAudio(stream).then((ok) => setMicMissing(!ok));
+      }
+      if (!wantsRecordRef.current) {
+        recordPendingRef.current = false;
+        return;
+      }
+      stream.getAudioTracks().forEach((track) => {
+        track.enabled = true;
+      });
+    } else {
+      stream.getAudioTracks().forEach((track) => {
+        track.enabled = false;
+      });
+      setMicMissing(false);
     }
 
     if (!wantsRecordRef.current) {
       recordPendingRef.current = false;
       return;
     }
-
-    stream.getAudioTracks().forEach((track) => {
-      track.enabled = true;
-    });
 
     chunksRef.current = [];
     mirrorRecordStopRef.current?.();
@@ -383,8 +408,12 @@ export default function CreateCameraView({
     );
     mirrorRecordStopRef.current = stopMirror;
 
+    const recorderStream = lipSyncMode
+      ? videoOnlyRecordStream(recordStream)
+      : recordStream;
+
     try {
-      const rec = createVideoRecorder(recordStream, pickVideoRecorderMimeType());
+      const rec = createVideoRecorder(recorderStream, pickVideoRecorderMimeType());
       recorderRef.current = rec;
 
       rec.ondataavailable = (e) => {
@@ -570,7 +599,7 @@ export default function CreateCameraView({
         <div className="absolute inset-0 z-20 bg-white/20 pointer-events-none animate-pulse" aria-hidden />
       )}
 
-      {micMissing && ready && !recording && (
+      {micMissing && ready && !recording && !musicPreviewUrl && (
         <div className="absolute top-[calc(env(safe-area-inset-top)+3.5rem)] left-4 right-4 z-30 px-4 py-2 rounded-xl bg-amber-500/90 text-black text-xs font-semibold text-center">
           Microphone not detected — video will record without sound.
         </div>
