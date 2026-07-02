@@ -564,6 +564,7 @@ initialStream={cameraStream}
           onDone={() => setStep("preview")}
           onAddSound={handleSoundButton}
           soundLabel={soundLabel}
+          soundPickerOpen={showSoundPicker}
           onMediaReplace={handleMediaReplace}
           isEditing={!!postToEdit}
         />

@@ -25,6 +25,7 @@ interface Props {
   onDone: () => void;
   onAddSound?: () => void;
   soundLabel?: string;
+  soundPickerOpen?: boolean;
   onMediaReplace?: (file: File, previewUrl: string) => void;
   isEditing?: boolean;
 }
@@ -153,6 +154,7 @@ export default function MediaEditView({
   onDone,
   onAddSound,
   soundLabel,
+  soundPickerOpen = false,
   onMediaReplace,
   isEditing = false,
 }: Props) {
@@ -198,7 +200,17 @@ export default function MediaEditView({
 
   useEffect(() => {
     const video = previewVideoRef.current;
-    if (!video || mediaType !== "video" || !musicPreviewUrl || activeTool === "crop") return;
+    if (!video || mediaType !== "video") return;
+    if (soundPickerOpen) {
+      video.pause();
+    } else {
+      void video.play().catch(() => {});
+    }
+  }, [soundPickerOpen, mediaType]);
+
+  useEffect(() => {
+    const video = previewVideoRef.current;
+    if (!video || mediaType !== "video" || !musicPreviewUrl || activeTool === "crop" || soundPickerOpen) return;
 
     return syncMusicWithVideo(video, musicPreviewUrl, {
       trimStart: meta.music?.trimStart,
@@ -220,6 +232,7 @@ export default function MediaEditView({
     meta.originalVolume,
     activeTool,
     previewUrl,
+    soundPickerOpen,
   ]);
 
   useEffect(() => {

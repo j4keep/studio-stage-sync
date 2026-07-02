@@ -190,6 +190,15 @@ export default function CreateCameraView({
     void ensureStreamHasAudio(stream).then((ok) => setMicMissing(!ok));
   }, [ready]);
 
+  /** iOS ducks playback while the mic is hot — mute mic only while the sound picker is open. */
+  useEffect(() => {
+    const stream = streamRef.current;
+    if (!stream) return;
+    for (const track of stream.getAudioTracks()) {
+      track.enabled = !musicPaused;
+    }
+  }, [musicPaused, ready]);
+
   useEffect(() => {
     cameraMusicStopRef.current?.();
     cameraMusicStopRef.current = null;

@@ -38,6 +38,7 @@ const SoundPickerSheet = ({
   onClear,
 }: Props) => {
   const audioInputRef = useRef<HTMLInputElement>(null);
+  const previewAudioRef = useRef<HTMLAudioElement>(null);
   const previewStopRef = useRef<(() => void) | null>(null);
   const previewSessionRef = useRef<(() => void) | null>(null);
   const [previewing, setPreviewing] = useState(false);
@@ -60,20 +61,97 @@ const SoundPickerSheet = ({
     setPreviewing(false);
   };
 
+  const previewTitle = () =>
+    meta.music?.fileName?.replace(/\.[^.]+$/, "") ||
+    musicFile?.name?.replace(/\.[^.]+$/, "") ||
+    "Sound preview";
+
   const armLoudPreview = (audio: HTMLAudioElement) => {
     unlockFeedAudioSession();
     applyFeedAudioElementVolume(audio);
     audio.volume = TRIM_PREVIEW_VOLUME;
     previewSessionRef.current?.();
-    previewSessionRef.current = bindFeedMediaSession(audio, {
-      title:
-        meta.music?.fileName?.replace(/\.[^.]+$/, "") ||
-        musicFile?.name?.replace(/\.[^.]+$/, "") ||
-        "Sound preview",
-    });
+    previewSessionRef.current = bindFeedMediaSession(audio, { title: previewTitle() });
   };
 
-  const startPreview = async () => {
+  const mountPreviewPlayer = (
+    url: string,
+    start: number,
+    end: number,
+    sourceDurationSec: number,
+  ) => {
+    const audio = previewAudioRef.current;
+    if (!audio) return null;
+
+    previewStopRef.current?.();
+    previewStopRef.current = null;
+
+    const player = createTrimmedMusicPlayer(
+      url,
+      {
+        trimStart: start,
+        trimEnd: end,
+        sourceDurationSec,
+        volume: TRIM_PREVIEW_VOLUME,
+      },
+      { audioElement: audio, retainElement: true },
+    );
+    previewStopRef.current = player.stop;
+    return player;
+  };
+
+  /** Start playback in the same user-gesture turn — required for iOS media volume. */
+  const startPreviewFromGesture = (): boolean => {
+    unlockFeedAudioSession();
+
+    if (!sourceUrl) {
+      toast.message("Choose a sound first");
+      return false;
+    }
+
+    const effectiveTrimEnd = trimEnd > trimStart ? trimEnd : duration > 0 ? duration : 0;
+    const effectiveDuration = duration > 0 ? duration : effectiveTrimEnd;
+
+    stopPreview();
+
+    const player = mountPreviewPlayer(
+      sourceUrl,
+      trimStart,
+      effectiveTrimEnd > trimStart ? effectiveTrimEnd : effectiveDuration,
+      effectiveDuration,
+    );
+    if (!player) return false;
+
+    const audio = player.audio;
+    armLoudPreview(audio);
+
+    const start = Math.max(0, trimStart);
+    if (audio.readyState >= 1) {
+      audio.currentTime = start;
+    }
+
+    try {
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        void playPromise
+          .then(() => {
+            armLoudPreview(audio);
+            setPreviewing(true);
+          })
+          .catch(() => {
+            toast.error("Couldn't start preview — tap Preview again");
+            stopPreview();
+          });
+      }
+      return true;
+    } catch {
+      toast.error("Couldn't start preview — tap Preview again");
+      stopPreview();
+      return false;
+    }
+  };
+
+  const startPreviewAsync = async () => {
     unlockFeedAudioSession();
 
     if (!sourceUrl) {
@@ -85,7 +163,7 @@ const SoundPickerSheet = ({
       duration > 0
         ? duration
         : await new Promise<number>((resolve) => {
-            const probe = new Audio(sourceUrl);
+            const probe = previewAudioRef.current ?? new Audio(sourceUrl);
             probe.addEventListener(
               "loadedmetadata",
               () => {
@@ -93,7 +171,7 @@ const SoundPickerSheet = ({
               },
               { once: true },
             );
-            probe.load();
+            if (probe !== previewAudioRef.current) probe.load();
           });
 
     if (effectiveDuration <= 0) {
@@ -101,18 +179,17 @@ const SoundPickerSheet = ({
       return false;
     }
 
-    const effectiveTrimEnd =
-      trimEnd > trimStart ? trimEnd : effectiveDuration;
+    const effectiveTrimEnd = trimEnd > trimStart ? trimEnd : effectiveDuration;
 
     stopPreview();
 
-    const player = createTrimmedMusicPlayer(sourceUrl, {
+    const player = mountPreviewPlayer(
+      sourceUrl,
       trimStart,
-      trimEnd: effectiveTrimEnd,
-      sourceDurationSec: effectiveDuration,
-      volume: TRIM_PREVIEW_VOLUME,
-    });
-    previewStopRef.current = player.stop;
+      effectiveTrimEnd,
+      effectiveDuration,
+    );
+    if (!player) return false;
 
     const ok = await player.play();
     if (ok) {
@@ -124,14 +201,6 @@ const SoundPickerSheet = ({
     toast.error("Couldn't start preview — tap Preview again");
     stopPreview();
     return false;
-  };
-
-  const togglePreview = () => {
-    if (previewing) {
-      stopPreview();
-      return;
-    }
-    void startPreview();
   };
 
   const closePicker = () => {
@@ -159,30 +228,39 @@ const SoundPickerSheet = ({
 
     stopPreview();
     const url = URL.createObjectURL(f);
-    const probe = new Audio(url);
-    probe.addEventListener(
-      "loadedmetadata",
-      () => {
-        const dur = Number.isFinite(probe.duration) ? probe.duration : 0;
-        onSelectFile(f, url, dur);
-        stopPreview();
-        const player = createTrimmedMusicPlayer(url, {
-          trimStart: 0,
-          trimEnd: dur,
-          sourceDurationSec: dur,
-          volume: TRIM_PREVIEW_VOLUME,
+    const audio = previewAudioRef.current;
+    if (!audio) return;
+
+    unlockFeedAudioSession();
+    applyFeedAudioElementVolume(audio);
+    audio.volume = TRIM_PREVIEW_VOLUME;
+
+    const onMeta = () => {
+      const dur = Number.isFinite(audio.duration) ? audio.duration : 0;
+      onSelectFile(f, url, dur);
+      mountPreviewPlayer(url, 0, dur, dur);
+      armLoudPreview(audio);
+      if (audio.paused) {
+        void audio.play().then((ok) => {
+          if (ok) setPreviewing(true);
         });
-        previewStopRef.current = player.stop;
-        void player.play().then((ok) => {
-          if (ok) {
-            armLoudPreview(player.audio);
-            setPreviewing(true);
-          }
-        });
-      },
-      { once: true },
-    );
-    probe.load();
+      } else {
+        setPreviewing(true);
+      }
+    };
+
+    audio.addEventListener("loadedmetadata", onMeta, { once: true });
+    audio.src = url;
+    armLoudPreview(audio);
+
+    try {
+      void audio.play().then((ok) => {
+        if (ok) setPreviewing(true);
+      });
+    } catch {
+      /* loadedmetadata will retry */
+    }
+
     e.target.value = "";
   };
 
@@ -220,6 +298,13 @@ const SoundPickerSheet = ({
         className="fixed bottom-0 left-0 right-0 z-[111] mx-auto max-w-lg rounded-t-2xl bg-zinc-950 border-t border-white/10 max-h-[70dvh] flex flex-col safe-area-bottom"
         onClick={(e) => e.stopPropagation()}
       >
+        <audio
+          ref={previewAudioRef}
+          className="sr-only"
+          playsInline
+          preload="auto"
+        />
+
         <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
           <button
             onClick={closePicker}
@@ -264,7 +349,15 @@ const SoundPickerSheet = ({
                 </span>
                 <button
                   type="button"
-                  onClick={togglePreview}
+                  onPointerDown={(e) => {
+                    if (e.button !== 0) return;
+                    if (previewing) return;
+                    e.preventDefault();
+                    startPreviewFromGesture();
+                  }}
+                  onClick={() => {
+                    if (previewing) stopPreview();
+                  }}
                   className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/20 border border-primary/40 text-primary text-[11px] font-semibold active:scale-95 transition-transform"
                 >
                   {previewing ? (
@@ -292,7 +385,7 @@ const SoundPickerSheet = ({
                   value={trimStart}
                   onChange={(e) => setTrimStart(Number(e.target.value))}
                   onPointerUp={() => {
-                    if (previewing) void startPreview();
+                    if (previewing) void startPreviewAsync();
                   }}
                   className="w-full accent-primary"
                 />
@@ -307,7 +400,7 @@ const SoundPickerSheet = ({
                   value={trimEnd}
                   onChange={(e) => setTrimEnd(Number(e.target.value))}
                   onPointerUp={() => {
-                    if (previewing) void startPreview();
+                    if (previewing) void startPreviewAsync();
                   }}
                   className="w-full accent-primary"
                 />

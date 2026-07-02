@@ -35,10 +35,16 @@ export function videoTimeToMusicTime(videoTime: number, trim: MusicTrim, fallbac
 export function createTrimmedMusicPlayer(
   url: string,
   trim: MusicTrim = {},
-  options: { selfManagedLoop?: boolean } = {},
+  options: { selfManagedLoop?: boolean; audioElement?: HTMLAudioElement; retainElement?: boolean } = {},
 ) {
   const selfManagedLoop = options.selfManagedLoop !== false;
-  const audio = new Audio(url);
+  const retainElement = options.retainElement === true;
+  const audio = options.audioElement ?? new Audio(url);
+  if (!options.audioElement) {
+    audio.src = url;
+  } else if (audio.src !== url) {
+    audio.src = url;
+  }
   audio.volume = trim.volume ?? 1;
   audio.loop = false;
   audio.preload = "auto";
@@ -89,11 +95,13 @@ export function createTrimmedMusicPlayer(
 
   const stop = () => {
     audio.pause();
-    audio.removeAttribute("src");
-    try {
-      audio.load();
-    } catch {
-      /* ignore */
+    if (!retainElement) {
+      audio.removeAttribute("src");
+      try {
+        audio.load();
+      } catch {
+        /* ignore */
+      }
     }
   };
 
