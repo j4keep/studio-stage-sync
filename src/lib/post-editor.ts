@@ -67,8 +67,6 @@ export interface PostEditorMeta {
     trimStart?: number;
     /** Seconds into the source file where the segment ends. */
     trimEnd?: number;
-    /** Lip-sync capture: seconds from video start until monitor music was audible. */
-    syncDelaySec?: number;
   };
   coverTime?: number;
   location?: string;
