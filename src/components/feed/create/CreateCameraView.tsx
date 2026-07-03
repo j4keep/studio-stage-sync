@@ -18,7 +18,11 @@ import {
 import type { CreateMode, EnhanceTab } from "@/lib/create-modes";
 import { QUICK_MAX_RECORD_SEC } from "@/lib/create-modes";
 import { createTrimmedMusicPlayer, CAMERA_ADDED_SOUND_MONITOR_VOLUME, type MusicTrim } from "@/lib/post-music-preview";
-import { armFeedAudioPlayback } from "@/lib/feed-video-playback";
+import {
+  armFeedAudioPlayback,
+  resetIosAudioSessionToPlayback,
+  setBrowserAudioSession,
+} from "@/lib/feed-video-playback";
 import CreateModeTabs from "./CreateModeTabs";
 import RecordButton from "./RecordButton";
 import EnhancePanel from "./EnhancePanel";
@@ -27,9 +31,13 @@ import { toast } from "sonner";
 
 const MIN_RECORD_MS = 400;
 
+export type CaptureMeta = {
+  musicSyncDelaySec?: number;
+};
+
 interface Props {
   onClose: () => void;
-  onCapture: (file: File, mediaType: "image" | "video") => void;
+  onCapture: (file: File, mediaType: "image" | "video", captureMeta?: CaptureMeta) => void;
   onOpenGallery: () => void;
   onTextPost: () => void;
   initialStream?: MediaStream | null;
@@ -76,6 +84,7 @@ export default function CreateCameraView({
   const cameraMusicPlayerRef = useRef<ReturnType<typeof createTrimmedMusicPlayer> | null>(null);
   const cameraMusicSessionRef = useRef<(() => void) | null>(null);
   const lipSyncModeRef = useRef(!!musicPreviewUrl);
+  const musicSyncDelayRef = useRef<number | undefined>(undefined);
 
   const [facing, setFacing] = useState<"user" | "environment">("user");
   const [denied, setDenied] = useState(false);
@@ -195,8 +204,13 @@ export default function CreateCameraView({
     const video = videoRef.current;
     if (!stream || !ready) return;
 
+    if (musicPreviewUrl) {
+      stripStreamAudio(stream);
+      setMicMissing(false);
+    }
+
     if (musicPaused) {
-      for (const track of stream.getTracks()) {
+      for (const track of stream.getVideoTracks()) {
         track.enabled = false;
       }
       video?.pause();
@@ -210,10 +224,7 @@ export default function CreateCameraView({
       void video.play().catch(() => {});
     }
 
-    if (musicPreviewUrl) {
-      stripStreamAudio(stream);
-      setMicMissing(false);
-    } else {
+    if (!musicPreviewUrl) {
       void ensureStreamHasAudio(stream).then((ok) => setMicMissing(!ok));
     }
   }, [musicPaused, musicPreviewUrl, ready]);
@@ -221,11 +232,11 @@ export default function CreateCameraView({
   /** Re-open camera with/without mic when switching original ↔ added song (iOS session). */
   useEffect(() => {
     const lipSync = !!musicPreviewUrl;
-    if (!ready || musicPaused || lipSync === lipSyncModeRef.current) return;
+    if (!ready || lipSync === lipSyncModeRef.current) return;
     lipSyncModeRef.current = lipSync;
     if (recordingRef.current) return;
     void startCamera();
-  }, [musicPreviewUrl, musicPaused, ready, startCamera]);
+  }, [musicPreviewUrl, ready, startCamera]);
 
   const armCameraMusic = useCallback(
     (media: HTMLMediaElement) => {
@@ -263,6 +274,7 @@ export default function CreateCameraView({
     cameraMusicStopRef.current = player.stop;
     cameraMusicPlayerRef.current = player;
     onRegisterMusicPlay?.(() => playCameraMusic());
+    void player.prepare();
 
     return () => {
       cameraMusicSessionRef.current?.();
@@ -370,13 +382,14 @@ export default function CreateCameraView({
     finishRecordingRef.current = finishRecording;
   }, [finishRecording]);
 
-  const startRecording = () => {
+  const startRecording = async () => {
     const video = videoRef.current;
     const stream = streamRef.current;
     if (!video || !stream || recordingRef.current || !wantsRecordRef.current) return;
 
     recordPendingRef.current = true;
     const lipSyncMode = !!musicPreviewUrl;
+    musicSyncDelayRef.current = undefined;
 
     if (!lipSyncMode) {
       if (!streamHasLiveAudio(stream)) {
@@ -389,6 +402,8 @@ export default function CreateCameraView({
     } else {
       stripStreamAudio(stream);
       setMicMissing(false);
+      setBrowserAudioSession("playback");
+      void resetIosAudioSessionToPlayback();
     }
 
     if (!wantsRecordRef.current) {
@@ -411,6 +426,12 @@ export default function CreateCameraView({
       ? videoOnlyRecordStream(recordStream)
       : recordStream;
 
+    let musicPlayPromise: Promise<boolean> | null = null;
+    if (lipSyncMode && cameraMusicPlayerRef.current) {
+      armCameraMusic(cameraMusicPlayerRef.current.audio);
+      musicPlayPromise = cameraMusicPlayerRef.current.play();
+    }
+
     try {
       const rec = createVideoRecorder(recorderStream, pickVideoRecorderMimeType());
       recorderRef.current = rec;
@@ -425,12 +446,21 @@ export default function CreateCameraView({
         const ext = fileExtensionForMime(mime);
         const elapsedMs = recordStartRef.current ? Date.now() - recordStartRef.current : 0;
         const shouldDiscard = discardClipRef.current;
+        const captureMeta: CaptureMeta | undefined = lipSyncMode
+          ? { musicSyncDelaySec: musicSyncDelayRef.current ?? 0 }
+          : undefined;
 
         mirrorRecordStopRef.current?.();
         mirrorRecordStopRef.current = null;
         discardClipRef.current = false;
         recorderRef.current = null;
+        musicSyncDelayRef.current = undefined;
         resetRecordingUi();
+        try {
+          cameraMusicPlayerRef.current?.audio.pause();
+        } catch {
+          /* ignore */
+        }
 
         if (shouldDiscard) {
           ensureLiveCamera();
@@ -448,6 +478,7 @@ export default function CreateCameraView({
             type: blob.type || mime,
           }),
           "video",
+          captureMeta,
         );
         stopStream(true);
       };
@@ -459,10 +490,19 @@ export default function CreateCameraView({
       };
 
       rec.start(100);
+      const recordEpoch = performance.now();
       recordPendingRef.current = false;
       setRecording(true);
       recordStartRef.current = Date.now();
       setRecordProgress(0);
+
+      if (musicPlayPromise) {
+        void musicPlayPromise.then((ok) => {
+          if (ok && recordingRef.current) {
+            musicSyncDelayRef.current = (performance.now() - recordEpoch) / 1000;
+          }
+        });
+      }
 
       progressTimerRef.current = window.setInterval(() => {
         if (!recordStartRef.current) return;
@@ -537,13 +577,7 @@ export default function CreateCameraView({
     } catch {
       /* ignore */
     }
-    if (musicPreviewUrl && cameraMusicPlayerRef.current) {
-      armCameraMusic(cameraMusicPlayerRef.current.audio);
-      void cameraMusicPlayerRef.current.play();
-    } else {
-      void playCameraMusic();
-    }
-    startRecording();
+    void startRecording();
   };
 
   const handleRecordUp = (e: React.PointerEvent) => {

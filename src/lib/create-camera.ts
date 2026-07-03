@@ -1,5 +1,10 @@
 /** Acquire camera with the device factory mic settings (browser defaults). */
 
+import {
+  enterMicCaptureAudioSession,
+  resetIosAudioSessionToPlayback,
+} from "@/lib/feed-video-playback";
+
 export type CameraFacing = "user" | "environment";
 
 const PHOTO_JPEG_QUALITY = 0.94;
@@ -52,6 +57,11 @@ export async function warmCameraStream(
   options: { withAudio?: boolean } = {},
 ): Promise<MediaStream | null> {
   const withAudio = options.withAudio !== false;
+  if (withAudio) {
+    enterMicCaptureAudioSession();
+  } else {
+    await resetIosAudioSessionToPlayback();
+  }
   return openCameraStream(facing, withAudio);
 }
 
@@ -85,9 +95,13 @@ export function videoOnlyRecordStream(stream: MediaStream): MediaStream {
 
 /** Stop mic hardware so iOS won't duck speaker playback during lip-sync. */
 export function stripStreamAudio(stream: MediaStream): void {
+  const hadAudio = stream.getAudioTracks().length > 0;
   for (const track of [...stream.getAudioTracks()]) {
     track.stop();
     stream.removeTrack(track);
+  }
+  if (hadAudio) {
+    void resetIosAudioSessionToPlayback();
   }
 }
 
@@ -96,6 +110,8 @@ export async function ensureStreamHasAudio(
   stream: MediaStream,
 ): Promise<boolean> {
   if (streamHasLiveAudio(stream)) return true;
+
+  enterMicCaptureAudioSession();
 
   for (const audioConstraints of [true] as const) {
     try {

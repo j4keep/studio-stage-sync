@@ -40,6 +40,8 @@ export type MusicTrim = {
   trimEnd?: number;
   sourceDurationSec?: number;
   volume?: number;
+  /** Seconds from video record start until monitor music was audible (+ = music late). */
+  syncDelaySec?: number;
 };
 
 export function musicSegmentLength(trim: MusicTrim, fallbackDuration = 0): number {
@@ -58,7 +60,9 @@ export function musicSegmentLength(trim: MusicTrim, fallbackDuration = 0): numbe
 export function videoTimeToMusicTime(videoTime: number, trim: MusicTrim, fallbackDuration = 0): number {
   const start = Math.max(0, trim.trimStart ?? 0);
   const len = musicSegmentLength(trim, fallbackDuration);
-  const offset = ((videoTime % len) + len) % len;
+  const delay = trim.syncDelaySec ?? 0;
+  const syncedVideoTime = Math.max(0, videoTime - delay);
+  const offset = ((syncedVideoTime % len) + len) % len;
   return start + offset;
 }
 
@@ -130,6 +134,10 @@ export function createTrimmedMusicPlayer(
     audio.currentTime = getStart();
   };
 
+  const prepare = async (): Promise<void> => {
+    await seekToTrimStart();
+  };
+
   const play = async (): Promise<boolean> => {
     try {
       await seekToTrimStart();
@@ -156,7 +164,7 @@ export function createTrimmedMusicPlayer(
     }
   };
 
-  return { audio, play, stop };
+  return { audio, play, stop, prepare };
 }
 
 function musicDriftSec(audioTime: number, targetTime: number, segmentLen: number): number {

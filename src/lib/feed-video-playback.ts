@@ -5,6 +5,26 @@ export type FeedPlaybackMeta = {
   artist?: string;
 };
 
+export type BrowserAudioSessionType =
+  | "auto"
+  | "playback"
+  | "transient"
+  | "transient-solo"
+  | "ambient"
+  | "play-and-record";
+
+/** Safari 16.4+ — route added-sound preview through loud playback, not play-and-record. */
+export function setBrowserAudioSession(type: BrowserAudioSessionType): void {
+  try {
+    const nav = navigator as Navigator & {
+      audioSession?: { type?: BrowserAudioSessionType };
+    };
+    if (nav.audioSession) nav.audioSession.type = type;
+  } catch {
+    /* unsupported */
+  }
+}
+
 let feedAudioSessionUnlocked = false;
 
 /** Phones/tablets need a user gesture before unmuted playback (iOS Safari). */
@@ -184,6 +204,7 @@ export function armFeedAudioPlayback(
   volume = 1,
 ): () => void {
   unlockFeedAudioSession();
+  setBrowserAudioSession("playback");
   if (media instanceof HTMLVideoElement) {
     applyFeedVideoAudio(media, { muted: false, volume: Math.min(1, Math.max(0, volume)) });
   } else {
@@ -193,6 +214,32 @@ export function armFeedAudioPlayback(
   return bindFeedMediaSession(media, meta);
 }
 
+const SILENT_WAV =
+  "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
+
+/**
+ * After releasing mic tracks, iOS Safari can stay in play-and-record and duck
+ * speaker playback when the user speaks. Nudge the session back to playback.
+ */
 export async function resetIosAudioSessionToPlayback(): Promise<void> {
-  /* no-op — previous workaround disabled */
+  setBrowserAudioSession("playback");
+  try {
+    const a = new Audio(SILENT_WAV);
+    a.volume = 0.01;
+    await a.play().catch(() => {});
+    await new Promise<void>((resolve) => window.setTimeout(resolve, 80));
+    try {
+      a.pause();
+      a.src = "";
+      a.load();
+    } catch {
+      /* ignore */
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+export function enterMicCaptureAudioSession(): void {
+  setBrowserAudioSession("play-and-record");
 }

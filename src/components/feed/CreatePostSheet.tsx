@@ -389,7 +389,11 @@ setEditorMeta((m) => ({ ...m, crop: undefined }));
 
 }, []);
 
-const handleMediaFile = (f: File, type?: "image" | "video") => {
+const handleMediaFile = (
+  f: File,
+  type?: "image" | "video",
+  captureMeta?: { musicSyncDelaySec?: number },
+) => {
 setFile(f);
 
 const isVideo = type === "video" || f.type.startsWith("video/");
@@ -409,7 +413,10 @@ if (!postToEdit) {
     ...defaultEditorMeta(),
     ...(m.music || musicFile
       ? {
-          music: m.music,
+          music: {
+            ...m.music!,
+            syncDelaySec: captureMeta?.musicSyncDelaySec ?? m.music?.syncDelaySec,
+          },
           muteOriginal: m.muteOriginal ?? true,
           originalVolume: m.originalVolume ?? MIXED_VOCAL_VIDEO_VOLUME,
         }

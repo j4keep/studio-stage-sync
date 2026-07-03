@@ -107,8 +107,14 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       trimStart: postMeta?.music?.trimStart,
       trimEnd: postMeta?.music?.trimEnd,
       sourceDurationSec: postMeta?.music?.durationSec,
+      syncDelaySec: postMeta?.music?.syncDelaySec,
     }),
-    [postMeta?.music?.trimStart, postMeta?.music?.trimEnd, postMeta?.music?.durationSec],
+    [
+      postMeta?.music?.trimStart,
+      postMeta?.music?.trimEnd,
+      postMeta?.music?.durationSec,
+      postMeta?.music?.syncDelaySec,
+    ],
   );
 
   const mapMusicTime = useCallback(

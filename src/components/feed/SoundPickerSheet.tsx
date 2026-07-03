@@ -6,6 +6,7 @@ import { AUDIO_FILE_ACCEPT } from "@/lib/feed-music";
 import {
   armFeedAudioPlayback,
   unlockFeedAudioSession,
+  resetIosAudioSessionToPlayback,
 } from "@/lib/feed-video-playback";
 import { createTrimmedMusicPlayer, formatAudioTime, sameMediaElementSrc } from "@/lib/post-music-preview";
 import type { PostEditorMeta } from "@/lib/post-editor";
@@ -125,6 +126,7 @@ const SoundPickerSheet = ({
   /** Start playback in the same user-gesture turn — required for iOS media volume. */
   const startPreviewFromGesture = (): boolean => {
     unlockFeedAudioSession();
+    void resetIosAudioSessionToPlayback();
 
     if (!sourceUrl) {
       toast.message("Choose a sound first");
