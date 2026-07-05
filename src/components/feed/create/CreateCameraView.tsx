@@ -471,57 +471,39 @@ export default function CreateCameraView({
 
       rec.start(100);
 
-if (lipSyncMode && cameraMusicPlayerRef.current) {
-  const audio = cameraMusicPlayerRef.current.audio;
-  try {
-    audio.pause();
-    audio.currentTime = musicTrim?.trimStart ?? 0;
-  } catch {
-    /* ignore */
-  }
+      if (lipSyncMode && cameraMusicPlayerRef.current) {
+        const audio = cameraMusicPlayerRef.current.audio;
+        try {
+          audio.pause();
+          audio.currentTime = musicTrim?.trimStart ?? 0;
+        } catch {
+          /* ignore */
+        }
 
-  armCameraMusic(audio);
-  void cameraMusicPlayerRef.current.play();
-}
+        armCameraMusic(audio);
+        void cameraMusicPlayerRef.current.play();
+      }
 
-recordPendingRef.current = false;
-setRecording(true);
-recordStartRef.current = Date.now();
+      recordPendingRef.current = false;
+      setRecording(true);
+      recordStartRef.current = Date.now();
       setRecordProgress(0);
 
       progressTimerRef.current = window.setInterval(() => {
         if (!recordStartRef.current) return;
         const elapsed = (Date.now() - recordStartRef.current) / 1000;
         const SAFE_MAX_RECORD_SEC = QUICK_MAX_RECORD_SEC - 0.35;
-const progress = Math.min(1, elapsed / SAFE_MAX_RECORD_SEC);
+        const progress = Math.min(1, elapsed / SAFE_MAX_RECORD_SEC);
         setRecordProgress(progress);
         if (progress >= 1) {
-  setRecordProgress(1);
-  clearProgressTimer();
-
-  wantsRecordRef.current = false;
-  detachPointerEndListeners();
-
-  window.setTimeout(() => {
-    finishRecordingRef.current();
-  }, 300);
-}
-
-  const rec = recorderRef.current;
-  if (rec?.state === "recording") {
-    try {
-      rec.requestData();
-    } catch {
-      /* ignore */
-    }
-
-    window.setTimeout(() => {
-      if (rec.state === "recording") {
-        rec.stop();
-      }
-    }, 800);
-  }
-}
+          setRecordProgress(1);
+          clearProgressTimer();
+          wantsRecordRef.current = false;
+          detachPointerEndListeners();
+          window.setTimeout(() => {
+            finishRecordingRef.current();
+          }, 300);
+        }
       }, 50);
     } catch {
       mirrorRecordStopRef.current?.();
