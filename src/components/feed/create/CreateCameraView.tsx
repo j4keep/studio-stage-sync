@@ -499,6 +499,14 @@ const progress = Math.min(1, elapsed / SAFE_MAX_RECORD_SEC);
   setRecordProgress(1);
   clearProgressTimer();
 
+  wantsRecordRef.current = false;
+  detachPointerEndListeners();
+
+  window.setTimeout(() => {
+    finishRecordingRef.current();
+  }, 300);
+}
+
   const rec = recorderRef.current;
   if (rec?.state === "recording") {
     try {
