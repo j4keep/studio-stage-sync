@@ -492,7 +492,8 @@ recordStartRef.current = Date.now();
       progressTimerRef.current = window.setInterval(() => {
         if (!recordStartRef.current) return;
         const elapsed = (Date.now() - recordStartRef.current) / 1000;
-        const progress = Math.min(1, elapsed / QUICK_MAX_RECORD_SEC);
+        const SAFE_MAX_RECORD_SEC = QUICK_MAX_RECORD_SEC - 0.35;
+const progress = Math.min(1, elapsed / SAFE_MAX_RECORD_SEC);
         setRecordProgress(progress);
         if (progress >= 1) {
   setRecordProgress(1);
