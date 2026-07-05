@@ -436,7 +436,10 @@ setStep("preview");
 };
 
 const openGallery = () => {
-photoInputRef.current?.click();
+  window.dispatchEvent(new CustomEvent("jhi-stop-create-camera"));
+  window.setTimeout(() => {
+    photoInputRef.current?.click();
+  }, 250);
 };
 
 const previewMediaUrl = preview || currentMediaUrl;
