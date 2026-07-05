@@ -459,9 +459,23 @@ export default function CreateCameraView({
       };
 
       rec.start(100);
-      recordPendingRef.current = false;
-      setRecording(true);
-      recordStartRef.current = Date.now();
+
+if (lipSyncMode && cameraMusicPlayerRef.current) {
+  const audio = cameraMusicPlayerRef.current.audio;
+  try {
+    audio.pause();
+    audio.currentTime = musicTrim?.trimStart ?? 0;
+  } catch {
+    /* ignore */
+  }
+
+  armCameraMusic(audio);
+  void cameraMusicPlayerRef.current.play();
+}
+
+recordPendingRef.current = false;
+setRecording(true);
+recordStartRef.current = Date.now();
       setRecordProgress(0);
 
       progressTimerRef.current = window.setInterval(() => {
