@@ -610,7 +610,7 @@ initialStream={cameraStream}
     <input
       ref={photoInputRef}
       type="file"
-      accept="image/*,video/*,.jpg,.jpeg,.png,.webp,.heic,.heif,.mp4,.mov,.m4v,.webm"
+      accept=".jpg,.jpeg,.png,.webp,.heic,.heif,.mp4,.mov,.m4v,.webm"
       className="hidden"
       onChange={(e) => {
         const f = e.target.files?.[0];
