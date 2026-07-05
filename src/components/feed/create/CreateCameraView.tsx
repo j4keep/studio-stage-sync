@@ -499,9 +499,20 @@ const progress = Math.min(1, elapsed / SAFE_MAX_RECORD_SEC);
   setRecordProgress(1);
   clearProgressTimer();
 
-  window.setTimeout(() => {
-    finishRecordingRef.current();
-  }, 250);
+  const rec = recorderRef.current;
+  if (rec?.state === "recording") {
+    try {
+      rec.requestData();
+    } catch {
+      /* ignore */
+    }
+
+    window.setTimeout(() => {
+      if (rec.state === "recording") {
+        rec.stop();
+      }
+    }, 800);
+  }
 }
       }, 50);
     } catch {
