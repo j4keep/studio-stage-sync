@@ -76,6 +76,8 @@ export default function CreateCameraView({
   const cameraMusicPlayerRef = useRef<ReturnType<typeof createTrimmedMusicPlayer> | null>(null);
   const cameraMusicSessionRef = useRef<(() => void) | null>(null);
   const lipSyncModeRef = useRef(!!musicPreviewUrl);
+  const recordStartedAtRef = useRef<number | null>(null);
+  const isStoppingRecordingRef = useRef(false);
 
   const [facing, setFacing] = useState<"user" | "environment">("user");
   const [denied, setDenied] = useState(false);
@@ -320,7 +322,7 @@ export default function CreateCameraView({
     const onEnd = () => {
       wantsRecordRef.current = false;
       detachPointerEndListeners();
-      if (recordingRef.current) {
+      if (recordingRef.current && !isStoppingRecordingRef.current) {
         finishRecordingRef.current();
       } else {
         recordPendingRef.current = false;
@@ -352,6 +354,7 @@ export default function CreateCameraView({
   const resetRecordingUi = () => {
     clearProgressTimer();
     recordStartRef.current = null;
+    recordStartedAtRef.current = null;
     recordPendingRef.current = false;
     setRecordProgress(0);
     setRecording(false);
@@ -360,9 +363,13 @@ export default function CreateCameraView({
   const finishRecording = useCallback(() => {
     wantsRecordRef.current = false;
     detachPointerEndListeners();
+    clearProgressTimer();
+
+    if (isStoppingRecordingRef.current) return;
 
     const rec = recorderRef.current;
     if (rec?.state === "recording") {
+      isStoppingRecordingRef.current = true;
       try {
         rec.requestData();
       } catch {
@@ -372,9 +379,11 @@ export default function CreateCameraView({
       return;
     }
 
-    mirrorRecordStopRef.current?.();
-    mirrorRecordStopRef.current = null;
-    resetRecordingUi();
+    // Never stop the mirror stream here — onstop owns teardown. Stopping early
+    // truncates max-length clips to a single frame when auto-stop races pointer-up.
+    if (!recorderRef.current) {
+      resetRecordingUi();
+    }
   }, [detachPointerEndListeners]);
 
   useEffect(() => {
@@ -434,13 +443,17 @@ export default function CreateCameraView({
         const mime = rec.mimeType || pickVideoRecorderMimeType() || "video/webm";
         const blob = new Blob(chunksRef.current, { type: mime });
         const ext = fileExtensionForMime(mime);
-        const elapsedMs = recordStartRef.current ? Date.now() - recordStartRef.current : 0;
+        const elapsedMs = recordStartedAtRef.current
+          ? Date.now() - recordStartedAtRef.current
+          : 0;
         const shouldDiscard = discardClipRef.current;
 
         mirrorRecordStopRef.current?.();
         mirrorRecordStopRef.current = null;
         discardClipRef.current = false;
         recorderRef.current = null;
+        isStoppingRecordingRef.current = false;
+        recordStartedAtRef.current = null;
         resetRecordingUi();
 
         if (shouldDiscard) {
@@ -486,23 +499,20 @@ export default function CreateCameraView({
 
       recordPendingRef.current = false;
       setRecording(true);
-      recordStartRef.current = Date.now();
+      const startedAt = Date.now();
+      recordStartedAtRef.current = startedAt;
+      recordStartRef.current = startedAt;
       setRecordProgress(0);
 
       progressTimerRef.current = window.setInterval(() => {
-        if (!recordStartRef.current) return;
-        const elapsed = (Date.now() - recordStartRef.current) / 1000;
-        const SAFE_MAX_RECORD_SEC = QUICK_MAX_RECORD_SEC - 0.35;
-        const progress = Math.min(1, elapsed / SAFE_MAX_RECORD_SEC);
+        if (!recordStartedAtRef.current) return;
+        const elapsed = (Date.now() - recordStartedAtRef.current) / 1000;
+        const progress = Math.min(1, elapsed / QUICK_MAX_RECORD_SEC);
         setRecordProgress(progress);
         if (progress >= 1) {
           setRecordProgress(1);
-          clearProgressTimer();
           wantsRecordRef.current = false;
-          detachPointerEndListeners();
-          window.setTimeout(() => {
-            finishRecordingRef.current();
-          }, 300);
+          finishRecordingRef.current();
         }
       }, 50);
     } catch {
@@ -580,7 +590,7 @@ export default function CreateCameraView({
     } catch {
       /* ignore */
     }
-    if (recordingRef.current) {
+    if (recordingRef.current && !isStoppingRecordingRef.current) {
       finishRecordingRef.current();
     } else {
       recordPendingRef.current = false;
