@@ -495,7 +495,13 @@ recordStartRef.current = Date.now();
         const progress = Math.min(1, elapsed / QUICK_MAX_RECORD_SEC);
         setRecordProgress(progress);
         if (progress >= 1) {
-          finishRecordingRef.current();
+  setRecordProgress(1);
+  clearProgressTimer();
+
+  window.setTimeout(() => {
+    finishRecordingRef.current();
+  }, 250);
+}
         }
       }, 50);
     } catch {
