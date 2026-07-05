@@ -502,7 +502,6 @@ recordStartRef.current = Date.now();
     finishRecordingRef.current();
   }, 250);
 }
-        }
       }, 50);
     } catch {
       mirrorRecordStopRef.current?.();
