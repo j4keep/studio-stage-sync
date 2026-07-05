@@ -6,11 +6,11 @@ export const CREATE_MODES: { id: CreateMode; label: string }[] = [
   { id: "live", label: "LIVE" },
 ];
 
-export const SHORT_DURATIONS = [15, 30, 60] as const;
+export const SHORT_DURATIONS = [15, 30, 59] as const;
 export type ShortDuration = (typeof SHORT_DURATIONS)[number];
 
 /** Quick tab: hold-to-record max length (seconds). */
-export const QUICK_MAX_RECORD_SEC = 60;
+export const QUICK_MAX_RECORD_SEC = 59;
 
 export const QUICK_ALT_OPTIONS = [
   { id: "photo" as const, label: "Photo" },
