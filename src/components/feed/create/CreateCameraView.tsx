@@ -154,6 +154,17 @@ export default function CreateCameraView({
   }, [startCamera]);
 
   useEffect(() => {
+useEffect(() => {
+  const stopForGallery = () => {
+    stopStream(true);
+  };
+
+  window.addEventListener("jhi-stop-create-camera", stopForGallery);
+
+  return () => {
+    window.removeEventListener("jhi-stop-create-camera", stopForGallery);
+  };
+}, [stopStream]);
     let cancelled = false;
 
     (async () => {
