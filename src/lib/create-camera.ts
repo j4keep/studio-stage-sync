@@ -3,7 +3,14 @@
 export type CameraFacing = "user" | "environment";
 
 const PHOTO_JPEG_QUALITY = 0.94;
-
+const SOCIAL_AUDIO: MediaTrackConstraints = {
+  echoCancellation: false,
+  noiseSuppression: false,
+  autoGainControl: false,
+  channelCount: { ideal: 1 },
+  sampleRate: { ideal: 48000 },
+  sampleSize: { ideal: 16 },
+};
 async function openCameraStream(
   facing: CameraFacing,
   withAudio: boolean,
@@ -19,9 +26,9 @@ async function openCameraStream(
             height: { ideal: 720 },
             frameRate: { ideal: 30 },
           },
-          audio: true,
+          audio: SOCIAL_AUDIO,
         },
-        { video: { facingMode: facing }, audio: true },
+        { video: { facingMode: facing }, audio: SOCIAL_AUDIO },
       ]
     : [
         {
@@ -99,7 +106,7 @@ export async function ensureStreamHasAudio(
 
   for (const audioConstraints of [true] as const) {
     try {
-      const audioStream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
+      const audioStream = await navigator.mediaDevices.getUserMedia({ audio: SOCIAL_AUDIO });
       const track = audioStream.getAudioTracks()[0];
       if (track) {
         stream.addTrack(track);
