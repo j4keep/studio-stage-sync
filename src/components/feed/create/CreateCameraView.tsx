@@ -568,12 +568,6 @@ recordStartRef.current = Date.now();
     } catch {
       /* ignore */
     }
-    if (musicPreviewUrl && cameraMusicPlayerRef.current) {
-      armCameraMusic(cameraMusicPlayerRef.current.audio);
-      void cameraMusicPlayerRef.current.play();
-    } else {
-      void playCameraMusic();
-    }
     startRecording();
   };
 
