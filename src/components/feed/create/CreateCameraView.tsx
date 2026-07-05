@@ -154,18 +154,18 @@ export default function CreateCameraView({
   }, [startCamera]);
 
   useEffect(() => {
-useEffect(() => {
-  const stopForGallery = () => {
-    stopStream(true);
-  };
+    const stopForGallery = () => {
+      stopStream(true);
+    };
+    window.addEventListener("jhi-stop-create-camera", stopForGallery);
+    return () => {
+      window.removeEventListener("jhi-stop-create-camera", stopForGallery);
+    };
+  }, [stopStream]);
 
-  window.addEventListener("jhi-stop-create-camera", stopForGallery);
-
-  return () => {
-    window.removeEventListener("jhi-stop-create-camera", stopForGallery);
-  };
-}, [stopStream]);
+  useEffect(() => {
     let cancelled = false;
+
 
     (async () => {
       if (initialStream && streamHasLiveVideo(initialStream) && !cancelled) {
