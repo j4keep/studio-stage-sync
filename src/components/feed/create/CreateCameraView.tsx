@@ -14,8 +14,8 @@ import {
   capturePhotoFromStream,
   videoOnlyRecordStream,
   stripStreamAudio,
-  videoRecorderTimesliceMs,
-  stopVideoRecorderWithFinalChunk,
+  isAppleMobileDevice,
+  probeVideoBlobDuration,
 } from "@/lib/create-camera";
 import type { CreateMode, EnhanceTab } from "@/lib/create-modes";
 import { QUICK_MAX_RECORD_SEC } from "@/lib/create-modes";
@@ -28,8 +28,9 @@ import EffectsPanel from "./EffectsPanel";
 import { toast } from "sonner";
 
 const MIN_RECORD_MS = 400;
-/** Auto-stop slightly before 60s — iOS Safari corrupts clips at the hard limit. */
-const AUTO_STOP_AT_SEC = QUICK_MAX_RECORD_SEC - 1;
+/** Stop before the iOS ~60s cliff; timer UI still reaches 1:00 via progress mapping. */
+const AUTO_STOP_AT_SEC = QUICK_MAX_RECORD_SEC - 1.5;
+const RECORDER_TIMESLICE_MS = 250;
 
 interface Props {
   onClose: () => void;
@@ -83,6 +84,7 @@ export default function CreateCameraView({
   const recordStartedAtRef = useRef<number | null>(null);
   const isStoppingRecordingRef = useRef(false);
   const maxDurationStopRef = useRef(false);
+  const finalizeRecordingRef = useRef<(() => void) | null>(null);
 
   const [facing, setFacing] = useState<"user" | "environment">("user");
   const [denied, setDenied] = useState(false);
@@ -375,10 +377,17 @@ export default function CreateCameraView({
     const rec = recorderRef.current;
     if (rec?.state === "recording") {
       isStoppingRecordingRef.current = true;
-      void stopVideoRecorderWithFinalChunk(rec).catch(() => {
+      try {
+        rec.requestData();
+      } catch {
+        /* ignore */
+      }
+      try {
+        rec.stop();
+      } catch {
         isStoppingRecordingRef.current = false;
         toast.error("Couldn't finish recording — try again");
-      });
+      }
       return;
     }
 
@@ -442,47 +451,73 @@ export default function CreateCameraView({
         if (e.data.size) chunksRef.current.push(e.data);
       };
 
+      finalizeRecordingRef.current = () => {
+        void (async () => {
+          if (isAppleMobileDevice()) {
+            await new Promise<void>((resolve) => window.setTimeout(resolve, 150));
+          }
+
+          const mime = rec.mimeType || pickVideoRecorderMimeType() || "video/webm";
+          const blob = new Blob(chunksRef.current, { type: mime });
+          const ext = fileExtensionForMime(mime);
+          const elapsedMs = recordStartedAtRef.current
+            ? Date.now() - recordStartedAtRef.current
+            : 0;
+          const shouldDiscard = discardClipRef.current;
+
+          mirrorRecordStopRef.current?.();
+          mirrorRecordStopRef.current = null;
+          discardClipRef.current = false;
+          recorderRef.current = null;
+          chunksRef.current = [];
+
+          if (shouldDiscard) {
+            isStoppingRecordingRef.current = false;
+            recordStartedAtRef.current = null;
+            resetRecordingUi();
+            ensureLiveCamera();
+            return;
+          }
+
+          if (elapsedMs < MIN_RECORD_MS || blob.size < 800) {
+            toast.message("Hold the button to record a short");
+            isStoppingRecordingRef.current = false;
+            recordStartedAtRef.current = null;
+            resetRecordingUi();
+            ensureLiveCamera();
+            return;
+          }
+
+          const durationSec = await probeVideoBlobDuration(blob);
+          const expectedMinDuration = Math.max(0.5, elapsedMs / 1000 - 4);
+          if (durationSec < expectedMinDuration) {
+            toast.error("Recording didn't save — try releasing just before 1:00");
+            isStoppingRecordingRef.current = false;
+            recordStartedAtRef.current = null;
+            resetRecordingUi();
+            ensureLiveCamera();
+            return;
+          }
+
+          // Go to edit while still in "recording" UI so Photo can't flash under the finger.
+          onCapture(
+            new File([blob], `short-${Date.now()}.${ext}`, {
+              type: blob.type || mime,
+            }),
+            "video",
+          );
+          stopStream(true);
+          isStoppingRecordingRef.current = false;
+          recordStartedAtRef.current = null;
+          resetRecordingUi();
+        })();
+      };
+
+      let finalizeStarted = false;
       rec.onstop = () => {
-        const mime = rec.mimeType || pickVideoRecorderMimeType() || "video/webm";
-        const blob = new Blob(chunksRef.current, { type: mime });
-        const ext = fileExtensionForMime(mime);
-        const elapsedMs = recordStartedAtRef.current
-          ? Date.now() - recordStartedAtRef.current
-          : 0;
-        const shouldDiscard = discardClipRef.current;
-
-        mirrorRecordStopRef.current?.();
-        mirrorRecordStopRef.current = null;
-        discardClipRef.current = false;
-        recorderRef.current = null;
-        isStoppingRecordingRef.current = false;
-        recordStartedAtRef.current = null;
-        resetRecordingUi();
-
-        if (shouldDiscard) {
-          ensureLiveCamera();
-          return;
-        }
-
-        if (elapsedMs < MIN_RECORD_MS || blob.size < 800) {
-          toast.message("Hold the button to record a short");
-          ensureLiveCamera();
-          return;
-        }
-
-        if (elapsedMs >= 25_000 && blob.size < 120_000) {
-          toast.error("Recording didn't save fully — try stopping just before 1:00");
-          ensureLiveCamera();
-          return;
-        }
-
-        onCapture(
-          new File([blob], `short-${Date.now()}.${ext}`, {
-            type: blob.type || mime,
-          }),
-          "video",
-        );
-        stopStream(true);
+        if (finalizeStarted) return;
+        finalizeStarted = true;
+        finalizeRecordingRef.current?.();
       };
 
       rec.onerror = () => {
@@ -491,12 +526,7 @@ export default function CreateCameraView({
         finishRecordingRef.current();
       };
 
-      const timeslice = videoRecorderTimesliceMs();
-      if (timeslice) {
-        rec.start(timeslice);
-      } else {
-        rec.start();
-      }
+      rec.start(RECORDER_TIMESLICE_MS);
 
       if (lipSyncMode && cameraMusicPlayerRef.current) {
         const audio = cameraMusicPlayerRef.current.audio;
@@ -560,7 +590,16 @@ export default function CreateCameraView({
   const takePhoto = async () => {
     const video = videoRef.current;
     const stream = streamRef.current;
-    if (!video || !stream || !ready || capturingPhoto || recording) return;
+    if (
+      !video ||
+      !stream ||
+      !ready ||
+      capturingPhoto ||
+      recording ||
+      isStoppingRecordingRef.current
+    ) {
+      return;
+    }
 
     setCapturingPhoto(true);
     try {
@@ -584,7 +623,16 @@ export default function CreateCameraView({
   };
 
   const handleRecordDown = (e: React.PointerEvent) => {
-    if (denied || !ready || recording || recordPendingRef.current || capturingPhoto) return;
+    if (
+      denied ||
+      !ready ||
+      recording ||
+      recordPendingRef.current ||
+      capturingPhoto ||
+      isStoppingRecordingRef.current
+    ) {
+      return;
+    }
     e.preventDefault();
     e.stopPropagation();
     wantsRecordRef.current = true;

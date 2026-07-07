@@ -198,46 +198,23 @@ export function isAppleMobileDevice(): boolean {
   return isAppleMobile();
 }
 
-/** iOS Safari muxes long clips more reliably without periodic timeslices. */
-export function videoRecorderTimesliceMs(): number | undefined {
-  return isAppleMobile() ? undefined : 100;
-}
-
-/** Wait for requestData() flush, then stop — avoids truncated last seconds on iOS. */
-export function stopVideoRecorderWithFinalChunk(
-  recorder: MediaRecorder,
-  timeoutMs = 350,
-): Promise<void> {
-  if (recorder.state !== "recording") return Promise.resolve();
-
-  return new Promise((resolve) => {
-    let settled = false;
-    const finishWait = () => {
-      if (settled) return;
-      settled = true;
-      recorder.removeEventListener("dataavailable", onFinalChunk);
-      window.clearTimeout(fallback);
-      resolve();
-    };
-
-    const onFinalChunk = () => finishWait();
-    recorder.addEventListener("dataavailable", onFinalChunk, { once: true });
-    const fallback = window.setTimeout(finishWait, timeoutMs);
-
-    try {
-      recorder.requestData();
-    } catch {
-      finishWait();
-    }
-  }).then(() => {
-    if (recorder.state === "recording") {
-      try {
-        recorder.stop();
-      } catch {
-        /* ignore */
-      }
-    }
-  });
+/** Read back recorded length — catches single-frame iOS clips before opening edit. */
+export async function probeVideoBlobDuration(blob: Blob): Promise<number> {
+  const url = URL.createObjectURL(blob);
+  try {
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    video.src = url;
+    await new Promise<void>((resolve, reject) => {
+      video.onloadedmetadata = () => resolve();
+      video.onerror = () => reject(new Error("metadata"));
+    });
+    return Number.isFinite(video.duration) ? video.duration : 0;
+  } catch {
+    return 0;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 function isMobileDevice(): boolean {
