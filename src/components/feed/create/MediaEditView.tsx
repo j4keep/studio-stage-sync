@@ -200,6 +200,12 @@ export default function MediaEditView({
   const isToolActive = activeTool !== null || showStickers;
 
   useEffect(() => {
+    const video = previewVideoRef.current;
+    if (!video || mediaType !== "video" || musicPreviewUrl || iosAutoplayMuted) return;
+    applyFeedVideoAudio(video, { muted: meta.muteOriginal, volume: 1 });
+  }, [meta.muteOriginal, mediaType, musicPreviewUrl, iosAutoplayMuted]);
+
+  useEffect(() => {
     setIosAutoplayMuted(true);
   }, [previewUrl]);
 
@@ -402,11 +408,6 @@ export default function MediaEditView({
   const applyVideoAudioHandlers = (el: HTMLVideoElement) => {
     if (musicPreviewUrl) {
       applyFeedVideoAudio(el, { muted: true, volume: 0 });
-      return;
-    }
-    applyFeedVideoAudio(el, { muted: meta.muteOriginal, volume: 1 });
-    if (!meta.muteOriginal) {
-      bindFeedMediaSession(el, { title: "Preview" });
     }
   };
 
@@ -414,7 +415,17 @@ export default function MediaEditView({
     if (iosAutoplayMuted) {
       setIosAutoplayMuted(false);
     }
-    applyVideoAudioHandlers(el);
+    if (musicPreviewUrl) {
+      applyFeedVideoAudio(el, { muted: true, volume: 0 });
+      return;
+    }
+    applyFeedVideoAudio(el, { muted: meta.muteOriginal, volume: 1 });
+    if (!meta.muteOriginal) {
+      bindFeedMediaSession(el, { title: "Preview" });
+      if (el.paused) {
+        void el.play().catch(() => {});
+      }
+    }
   };
 
   const bottomTools = [
@@ -431,6 +442,7 @@ export default function MediaEditView({
       {previewUrl && activeTool !== "crop" &&
         (mediaType === "video" ? (
           <video
+            key={previewUrl}
             ref={previewVideoRef}
             src={previewUrl}
             className="absolute inset-0 w-full h-full object-cover"
@@ -442,6 +454,7 @@ export default function MediaEditView({
             onLoadedData={(e) => {
               const v = e.currentTarget;
               if (mediaType === "video" && v.paused && Number.isFinite(v.duration) && v.duration > 0.5) {
+                v.muted = true;
                 void v.play().catch(() => {});
               }
             }}

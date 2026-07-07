@@ -250,6 +250,42 @@ export async function probeVideoBlobDuration(blob: Blob): Promise<number> {
   }
 }
 
+/** iOS can report full duration on a clip that only decodes one frame — verify playback advances. */
+export async function probeVideoBlobPlayable(
+  blob: Blob,
+  minDurationSec: number,
+): Promise<{ duration: number; playable: boolean }> {
+  const url = URL.createObjectURL(blob);
+  try {
+    const video = document.createElement("video");
+    video.preload = "auto";
+    video.muted = true;
+    video.playsInline = true;
+    video.src = url;
+
+    await new Promise<void>((resolve, reject) => {
+      video.onloadeddata = () => resolve();
+      video.onerror = () => reject(new Error("load"));
+    });
+
+    const duration = Number.isFinite(video.duration) ? video.duration : 0;
+    if (duration < minDurationSec) {
+      return { duration, playable: false };
+    }
+
+    await video.play();
+    const startTime = video.currentTime;
+    await new Promise<void>((resolve) => window.setTimeout(resolve, 350));
+    const advanced = video.currentTime - startTime > 0.12;
+    video.pause();
+    return { duration, playable: advanced };
+  } catch {
+    return { duration: 0, playable: false };
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 function isMobileDevice(): boolean {
   return isAppleMobile() || /Android/i.test(navigator.userAgent);
 }

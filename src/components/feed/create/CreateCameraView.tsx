@@ -15,7 +15,7 @@ import {
   videoOnlyRecordStream,
   stripStreamAudio,
   isAppleMobileDevice,
-  probeVideoBlobDuration,
+  probeVideoBlobPlayable,
   waitForRecordingChunks,
 } from "@/lib/create-camera";
 import type { CreateMode, EnhanceTab } from "@/lib/create-modes";
@@ -28,10 +28,17 @@ import EnhancePanel from "./EnhancePanel";
 import EffectsPanel from "./EffectsPanel";
 import { toast } from "sonner";
 
+function autoStopAtSec(withMicAudio: boolean): number {
+  if (withMicAudio && isAppleMobileDevice()) {
+    // iOS corrupts long audio+video mux near 60s; lip-sync (video-only) is fine.
+    return QUICK_MAX_RECORD_SEC - 5;
+  }
+  return QUICK_MAX_RECORD_SEC - 2;
+}
+
 const MIN_RECORD_MS = 400;
-/** Stop before the iOS ~60s cliff; timer UI still reaches 1:00 via progress mapping. */
-const AUTO_STOP_AT_SEC = QUICK_MAX_RECORD_SEC - 2;
 const RECORDER_TIMESLICE_MS = 250;
+const RECORDER_TIMESLICE_WITH_AUDIO_MS = 1000;
 
 interface Props {
   onClose: () => void;
@@ -85,6 +92,8 @@ export default function CreateCameraView({
   const recordStartedAtRef = useRef<number | null>(null);
   const isStoppingRecordingRef = useRef(false);
   const maxDurationStopRef = useRef(false);
+  const recordingWithMicRef = useRef(false);
+  const autoStopAtSecRef = useRef(QUICK_MAX_RECORD_SEC - 2);
   const finalizeRecordingRef = useRef<(() => void) | null>(null);
 
   const [facing, setFacing] = useState<"user" | "environment">("user");
@@ -384,6 +393,13 @@ export default function CreateCameraView({
       } catch {
         /* ignore */
       }
+      if (recordingWithMicRef.current && isAppleMobileDevice()) {
+        try {
+          rec.requestData();
+        } catch {
+          /* ignore */
+        }
+      }
       try {
         rec.stop();
       } catch {
@@ -411,6 +427,8 @@ export default function CreateCameraView({
 
     recordPendingRef.current = true;
     const lipSyncMode = !!musicPreviewUrl;
+    recordingWithMicRef.current = !lipSyncMode;
+    autoStopAtSecRef.current = autoStopAtSec(!lipSyncMode);
 
     if (!lipSyncMode) {
       if (!streamHasLiveAudio(stream)) {
@@ -459,7 +477,10 @@ export default function CreateCameraView({
             ? Date.now() - recordStartedAtRef.current
             : 0;
           const chunkWaitMs = isAppleMobileDevice()
-            ? Math.min(650, Math.max(200, Math.round(elapsedForWait / 120)))
+            ? Math.min(
+                900,
+                Math.max(recordingWithMicRef.current ? 350 : 200, Math.round(elapsedForWait / 100)),
+              )
             : 80;
           const finalChunks = await waitForRecordingChunks(chunksRef.current, chunkWaitMs);
 
@@ -494,10 +515,14 @@ export default function CreateCameraView({
             return;
           }
 
-          const durationSec = await probeVideoBlobDuration(blob);
           const expectedMinDuration = Math.max(0.5, elapsedMs / 1000 - 4);
-          if (durationSec < expectedMinDuration) {
-            toast.error("Recording didn't save — try releasing just before 1:00");
+          const { duration: durationSec, playable } = await probeVideoBlobPlayable(blob, expectedMinDuration);
+          if (!playable || durationSec < expectedMinDuration) {
+            toast.error(
+              recordingWithMicRef.current
+                ? "Recording didn't save — try releasing just before 1:00"
+                : "Recording didn't save — try again",
+            );
             isStoppingRecordingRef.current = false;
             recordStartedAtRef.current = null;
             resetRecordingUi();
@@ -534,7 +559,11 @@ export default function CreateCameraView({
         finishRecordingRef.current();
       };
 
-      rec.start(RECORDER_TIMESLICE_MS);
+      rec.start(
+        recordingWithMicRef.current && isAppleMobileDevice()
+          ? RECORDER_TIMESLICE_WITH_AUDIO_MS
+          : RECORDER_TIMESLICE_MS,
+      );
 
       if (lipSyncMode && cameraMusicPlayerRef.current) {
         const audio = cameraMusicPlayerRef.current.audio;
@@ -560,7 +589,8 @@ export default function CreateCameraView({
       progressTimerRef.current = window.setInterval(() => {
         if (!recordStartedAtRef.current) return;
         const elapsed = (Date.now() - recordStartedAtRef.current) / 1000;
-        const progress = Math.min(1, elapsed / AUTO_STOP_AT_SEC);
+        const stopAt = autoStopAtSecRef.current;
+        const progress = Math.min(1, elapsed / stopAt);
         setRecordProgress(progress);
         if (progress >= 1 && !maxDurationStopRef.current) {
           maxDurationStopRef.current = true;
