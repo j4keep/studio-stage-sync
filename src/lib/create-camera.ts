@@ -198,6 +198,39 @@ export function isAppleMobileDevice(): boolean {
   return isAppleMobile();
 }
 
+/** iOS may emit the last MediaRecorder chunk after onstop — wait until size stabilizes. */
+export function waitForRecordingChunks(
+  chunks: Blob[],
+  timeoutMs = 450,
+  stableChecks = 3,
+): Promise<Blob[]> {
+  return new Promise((resolve) => {
+    const sizeOf = () => chunks.reduce((sum, chunk) => sum + chunk.size, 0);
+    let lastSize = sizeOf();
+    let stable = 0;
+
+    const interval = window.setInterval(() => {
+      const size = sizeOf();
+      if (size === lastSize) {
+        stable += 1;
+        if (stable >= stableChecks) {
+          window.clearInterval(interval);
+          window.clearTimeout(timer);
+          resolve([...chunks]);
+        }
+      } else {
+        stable = 0;
+        lastSize = size;
+      }
+    }, 40);
+
+    const timer = window.setTimeout(() => {
+      window.clearInterval(interval);
+      resolve([...chunks]);
+    }, timeoutMs);
+  });
+}
+
 /** Read back recorded length — catches single-frame iOS clips before opening edit. */
 export async function probeVideoBlobDuration(blob: Blob): Promise<number> {
   const url = URL.createObjectURL(blob);

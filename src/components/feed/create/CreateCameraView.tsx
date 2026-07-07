@@ -16,11 +16,12 @@ import {
   stripStreamAudio,
   isAppleMobileDevice,
   probeVideoBlobDuration,
+  waitForRecordingChunks,
 } from "@/lib/create-camera";
 import type { CreateMode, EnhanceTab } from "@/lib/create-modes";
 import { QUICK_MAX_RECORD_SEC } from "@/lib/create-modes";
 import { createTrimmedMusicPlayer, CAMERA_ADDED_SOUND_MONITOR_VOLUME, type MusicTrim } from "@/lib/post-music-preview";
-import { armFeedAudioPlayback } from "@/lib/feed-video-playback";
+import { armFeedAudioPlayback, unlockFeedAudioSession } from "@/lib/feed-video-playback";
 import CreateModeTabs from "./CreateModeTabs";
 import RecordButton from "./RecordButton";
 import EnhancePanel from "./EnhancePanel";
@@ -29,7 +30,7 @@ import { toast } from "sonner";
 
 const MIN_RECORD_MS = 400;
 /** Stop before the iOS ~60s cliff; timer UI still reaches 1:00 via progress mapping. */
-const AUTO_STOP_AT_SEC = QUICK_MAX_RECORD_SEC - 1.5;
+const AUTO_STOP_AT_SEC = QUICK_MAX_RECORD_SEC - 2;
 const RECORDER_TIMESLICE_MS = 250;
 
 interface Props {
@@ -371,6 +372,7 @@ export default function CreateCameraView({
     wantsRecordRef.current = false;
     detachPointerEndListeners();
     clearProgressTimer();
+    unlockFeedAudioSession();
 
     if (isStoppingRecordingRef.current) return;
 
@@ -453,12 +455,16 @@ export default function CreateCameraView({
 
       finalizeRecordingRef.current = () => {
         void (async () => {
-          if (isAppleMobileDevice()) {
-            await new Promise<void>((resolve) => window.setTimeout(resolve, 150));
-          }
+          const elapsedForWait = recordStartedAtRef.current
+            ? Date.now() - recordStartedAtRef.current
+            : 0;
+          const chunkWaitMs = isAppleMobileDevice()
+            ? Math.min(650, Math.max(200, Math.round(elapsedForWait / 120)))
+            : 80;
+          const finalChunks = await waitForRecordingChunks(chunksRef.current, chunkWaitMs);
 
           const mime = rec.mimeType || pickVideoRecorderMimeType() || "video/webm";
-          const blob = new Blob(chunksRef.current, { type: mime });
+          const blob = new Blob(finalChunks, { type: mime });
           const ext = fileExtensionForMime(mime);
           const elapsedMs = recordStartedAtRef.current
             ? Date.now() - recordStartedAtRef.current
@@ -498,6 +504,8 @@ export default function CreateCameraView({
             ensureLiveCamera();
             return;
           }
+
+          unlockFeedAudioSession();
 
           // Go to edit while still in "recording" UI so Photo can't flash under the finger.
           onCapture(
@@ -635,6 +643,7 @@ export default function CreateCameraView({
     }
     e.preventDefault();
     e.stopPropagation();
+    unlockFeedAudioSession();
     wantsRecordRef.current = true;
     discardClipRef.current = false;
     attachPointerEndListeners();

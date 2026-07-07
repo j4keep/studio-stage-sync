@@ -419,6 +419,7 @@ if (!postToEdit) {
 
 ensureMusicPreviewUrl(musicFile);
 
+unlockFeedAudioSession();
 setStep("edit");
 
 };

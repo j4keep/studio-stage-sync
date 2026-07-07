@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Type, Sticker, Pencil, Crop, Volume2, VolumeX, Undo2, Check, X, Trash2, ChevronLeft, Music } from "lucide-react";
-import { applyFeedVideoAudio, bindFeedMediaSession } from "@/lib/feed-video-playback";
+import { applyFeedVideoAudio, bindFeedMediaSession, unlockFeedAudioSession, waitForVideoCanPlay } from "@/lib/feed-video-playback";
 import PostOverlayRenderer from "./PostOverlayRenderer";
 import StickerDrawer from "./StickerDrawer";
 import CropEditorView from "./CropEditorView";
@@ -174,6 +174,7 @@ export default function MediaEditView({
   const textInputRef = useRef<HTMLInputElement>(null);
   const previewVideoRef = useRef<HTMLVideoElement>(null);
   const pendingTextFocus = useRef(false);
+  const [iosAutoplayMuted, setIosAutoplayMuted] = useState(true);
 
   const bindTextInput = (el: HTMLInputElement | null) => {
     textInputRef.current = el;
@@ -197,6 +198,26 @@ export default function MediaEditView({
   };
 
   const isToolActive = activeTool !== null || showStickers;
+
+  useEffect(() => {
+    setIosAutoplayMuted(true);
+  }, [previewUrl]);
+
+  useEffect(() => {
+    const video = previewVideoRef.current;
+    if (!video || mediaType !== "video" || !previewUrl || soundPickerOpen) return;
+
+    unlockFeedAudioSession();
+    void (async () => {
+      await waitForVideoCanPlay(video);
+      try {
+        video.muted = true;
+        await video.play();
+      } catch {
+        /* playing handler / syncMusicWithVideo will retry */
+      }
+    })();
+  }, [previewUrl, mediaType, soundPickerOpen]);
 
   useEffect(() => {
     const video = previewVideoRef.current;
@@ -376,6 +397,8 @@ export default function MediaEditView({
   const videoMutedForPlayback =
     meta.muteOriginal || !!musicPreviewUrl;
 
+  const videoElementMuted = iosAutoplayMuted || videoMutedForPlayback;
+
   const applyVideoAudioHandlers = (el: HTMLVideoElement) => {
     if (musicPreviewUrl) {
       applyFeedVideoAudio(el, { muted: true, volume: 0 });
@@ -385,6 +408,13 @@ export default function MediaEditView({
     if (!meta.muteOriginal) {
       bindFeedMediaSession(el, { title: "Preview" });
     }
+  };
+
+  const handlePreviewPlaying = (el: HTMLVideoElement) => {
+    if (iosAutoplayMuted) {
+      setIosAutoplayMuted(false);
+    }
+    applyVideoAudioHandlers(el);
   };
 
   const bottomTools = [
@@ -407,7 +437,7 @@ export default function MediaEditView({
             playsInline
             loop
             preload="auto"
-            muted={videoMutedForPlayback}
+            muted={videoElementMuted}
             autoPlay
             onLoadedData={(e) => {
               const v = e.currentTarget;
@@ -420,6 +450,9 @@ export default function MediaEditView({
             }}
             onPlay={(e) => {
               applyVideoAudioHandlers(e.currentTarget);
+            }}
+            onPlaying={(e) => {
+              handlePreviewPlaying(e.currentTarget);
             }}
           />
         ) : (
