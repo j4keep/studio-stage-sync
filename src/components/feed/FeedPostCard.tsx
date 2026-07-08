@@ -198,7 +198,6 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
         /* wait for metadata */
       }
       audio.volume = mix.musicVolume;
-      unlockFeedAudioSession();
       mediaSessionCleanupRef.current?.();
       mediaSessionCleanupRef.current = bindFeedMediaSession(audio, playbackMeta);
       try {
@@ -419,7 +418,13 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
 
   useEffect(() => {
     const onFeedStartAudible = () => {
-      if (post.media_type !== "video" || !isActiveRef.current || userPausedRef.current || isMuted) return;
+      if (
+        post.media_type !== "video" ||
+        !isActiveRef.current ||
+        userPausedRef.current ||
+        isMuted ||
+        !autoplayAudioLockedRef.current
+      ) return;
       setFeedAudioUnlocked(true);
       setAutoplayAudioLocked(false);
       void startAudiblePlayback();
