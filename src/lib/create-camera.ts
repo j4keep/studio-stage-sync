@@ -256,32 +256,83 @@ export async function probeVideoBlobPlayable(
   minDurationSec: number,
 ): Promise<{ duration: number; playable: boolean }> {
   const url = URL.createObjectURL(blob);
+  const video = document.createElement("video");
+  const withTimeout = <T>(p: Promise<T>, ms: number): Promise<T> =>
+    new Promise((resolve, reject) => {
+      const t = window.setTimeout(() => reject(new Error("timeout")), ms);
+      p.then(
+        (v) => { window.clearTimeout(t); resolve(v); },
+        (e) => { window.clearTimeout(t); reject(e); },
+      );
+    });
+
   try {
-    const video = document.createElement("video");
     video.preload = "auto";
     video.muted = true;
     video.playsInline = true;
     video.src = url;
 
-    await new Promise<void>((resolve, reject) => {
-      video.onloadeddata = () => resolve();
-      video.onerror = () => reject(new Error("load"));
-    });
+    // Wait for metadata (fast) — full data load can stall on long iOS mp4 blobs.
+    await withTimeout(
+      new Promise<void>((resolve, reject) => {
+        video.onloadedmetadata = () => resolve();
+        video.onerror = () => reject(new Error("load"));
+      }),
+      2500,
+    ).catch(() => {});
 
-    const duration = Number.isFinite(video.duration) ? video.duration : 0;
-    if (duration < minDurationSec) {
+    // MediaRecorder blobs often report duration=Infinity until you seek past the end.
+    let duration = Number.isFinite(video.duration) ? video.duration : 0;
+    if (!Number.isFinite(video.duration) || video.duration === 0) {
+      try {
+        await withTimeout(
+          new Promise<void>((resolve) => {
+            const onDur = () => {
+              if (Number.isFinite(video.duration)) {
+                video.removeEventListener("durationchange", onDur);
+                resolve();
+              }
+            };
+            video.addEventListener("durationchange", onDur);
+            try { video.currentTime = 1e9; } catch { /* ignore */ }
+          }),
+          800,
+        );
+      } catch { /* ignore */ }
+      duration = Number.isFinite(video.duration) ? video.duration : 0;
+      try { video.currentTime = 0; } catch { /* ignore */ }
+    }
+
+    // If we still couldn't determine duration but the blob is substantial, trust it.
+    // Better to let the user into the editor than bounce them after a long hold.
+    if (duration === 0 && blob.size > 200_000) {
+      return { duration: minDurationSec, playable: true };
+    }
+
+    if (duration > 0 && duration < minDurationSec) {
       return { duration, playable: false };
     }
 
-    await video.play();
-    const startTime = video.currentTime;
-    await new Promise<void>((resolve) => window.setTimeout(resolve, 350));
-    const advanced = video.currentTime - startTime > 0.12;
-    video.pause();
-    return { duration, playable: advanced };
+    try {
+      await withTimeout(video.play(), 1500);
+      const startTime = video.currentTime;
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 350));
+      const advanced = video.currentTime - startTime > 0.12;
+      video.pause();
+      if (advanced) return { duration, playable: true };
+    } catch { /* fall through */ }
+
+    // Playback check couldn't confirm advance — accept if blob & duration look sane.
+    if (blob.size > 200_000 && duration >= Math.max(0.5, minDurationSec * 0.75)) {
+      return { duration: duration || minDurationSec, playable: true };
+    }
+    return { duration, playable: false };
   } catch {
+    // Never bounce a large recording purely because the probe crashed.
+    if (blob.size > 200_000) return { duration: minDurationSec, playable: true };
     return { duration: 0, playable: false };
   } finally {
+    try { video.removeAttribute("src"); video.load(); } catch { /* ignore */ }
     URL.revokeObjectURL(url);
   }
 }

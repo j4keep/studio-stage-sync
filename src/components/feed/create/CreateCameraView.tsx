@@ -584,8 +584,11 @@ export default function CreateCameraView({
           }
 
           const expectedMinDuration = Math.max(0.5, elapsedMs / 1000 - 4);
-          const { duration: durationSec, playable } = await probeVideoBlobPlayable(blob, expectedMinDuration);
-          if (!playable || durationSec < expectedMinDuration) {
+          const { playable } = await probeVideoBlobPlayable(blob, expectedMinDuration);
+          // For long clips (or any clip where we have a substantial blob), never bounce
+          // the user back to camera — TikTok always drops you into edit and lets you retake.
+          const acceptAnyway = blob.size > 200_000;
+          if (!playable && !acceptAnyway) {
             toast.error(
               recordingWithMicRef.current
                 ? "Recording didn't save — try releasing just before 1:00"
