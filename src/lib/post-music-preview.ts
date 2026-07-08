@@ -226,7 +226,6 @@ export function syncMusicWithVideo(
 ): () => void {
   const player = createTrimmedMusicPlayer(musicUrl, options, { selfManagedLoop: false });
   const audio = player.audio;
-  const replacingOriginal = options.muteOriginal === true;
 
   const getMix = () =>
     getMixedPlaybackVolumes({
@@ -267,25 +266,20 @@ export function syncMusicWithVideo(
     }
   };
 
-  const startFromMusicReady = () => {
-    applyMixLevels();
-    syncAudioToVideo(true);
-    bindSession();
-    ensureVideoPlaying();
-    void player.play();
-  };
-
-  const startSyncedMusic = () => {
-    if (replacingOriginal && audio.paused) {
-      startFromMusicReady();
-      return;
-    }
+  /**
+   * Start/resume the added song aligned to the current video time. We must NOT
+   * use `player.play()` here — it reseeks to trimStart on every call, which
+   * causes the song to jump back to its beginning whenever this fires mid-clip
+   * (breaks lip-sync). Instead, snap audio.currentTime to the mapped position
+   * for the current video frame, then start playback from there.
+   */
+  const resumeAudioAtVideoTime = () => {
     applyMixLevels();
     syncAudioToVideo(true);
     bindSession();
     ensureVideoPlaying();
     if (audio.paused) {
-      void player.play();
+      void audio.play().catch(() => {});
     }
   };
 
@@ -293,11 +287,11 @@ export function syncMusicWithVideo(
     if (audio.duration && Number.isFinite(audio.duration)) {
       fallbackDuration = audio.duration;
     }
-    startFromMusicReady();
+    resumeAudioAtVideoTime();
   };
 
   const onPlay = () => {
-    startSyncedMusic();
+    resumeAudioAtVideoTime();
   };
 
   const onPause = () => {
@@ -305,14 +299,13 @@ export function syncMusicWithVideo(
   };
 
   const onSeeked = () => {
-    startSyncedMusic();
+    resumeAudioAtVideoTime();
   };
 
   const onVideoPlaying = () => {
     bindSession();
     if (audio.paused && !video.paused) {
-      syncAudioToVideo(true);
-      void player.play();
+      resumeAudioAtVideoTime();
     }
   };
 
@@ -324,12 +317,11 @@ export function syncMusicWithVideo(
 
   applyMixLevels();
 
-  if (replacingOriginal) {
-    if (audio.readyState >= 1) {
-      startFromMusicReady();
-    }
+  if (audio.readyState >= 1) {
+    resumeAudioAtVideoTime();
   } else if (!video.paused) {
-    startSyncedMusic();
+    // wait for loadedmetadata; keep video rolling in the meantime
+    ensureVideoPlaying();
   }
 
   return () => {
