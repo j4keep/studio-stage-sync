@@ -39,7 +39,7 @@ const SoundPickerSheet = ({
   onClear,
 }: Props) => {
   const audioInputRef = useRef<HTMLInputElement>(null);
-  const previewMediaRef = useRef<HTMLVideoElement>(null);
+  const previewMediaRef = useRef<HTMLAudioElement>(null);
   const previewStopRef = useRef<(() => void) | null>(null);
   const previewSessionRef = useRef<(() => void) | null>(null);
   const [previewing, setPreviewing] = useState(false);
@@ -193,7 +193,7 @@ const SoundPickerSheet = ({
       duration > 0
         ? duration
         : await new Promise<number>((resolve) => {
-            const probe = previewMediaRef.current ?? document.createElement("video");
+            const probe = previewMediaRef.current ?? document.createElement("audio");
             probe.addEventListener(
               "loadedmetadata",
               () => {
@@ -342,12 +342,10 @@ const SoundPickerSheet = ({
         className="fixed bottom-0 left-0 right-0 z-[111] mx-auto max-w-lg rounded-t-2xl bg-zinc-950 border-t border-white/10 max-h-[70dvh] flex flex-col safe-area-bottom"
         onClick={(e) => e.stopPropagation()}
       >
-        <video
+        <audio
           ref={previewMediaRef}
-          className="fixed left-0 bottom-0 w-px h-px opacity-[0.01] pointer-events-none"
-          playsInline
+          className="sr-only"
           preload="auto"
-          muted={false}
         />
 
         <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
