@@ -79,6 +79,7 @@ export default function CreateCameraView({
   const recordStartRef = useRef<number | null>(null);
   const progressTimerRef = useRef<number | null>(null);
   const maxDurationTimerRef = useRef<number | null>(null);
+  const stopWatchdogTimerRef = useRef<number | null>(null);
   const recordPendingRef = useRef(false);
   const mirrorRecordStopRef = useRef<(() => void) | null>(null);
   const wantsRecordRef = useRef(false);
@@ -337,6 +338,13 @@ export default function CreateCameraView({
     }
   };
 
+  const clearStopWatchdogTimer = () => {
+    if (stopWatchdogTimerRef.current) {
+      window.clearTimeout(stopWatchdogTimerRef.current);
+      stopWatchdogTimerRef.current = null;
+    }
+  };
+
   const detachPointerEndListeners = useCallback(() => {
     pointerCleanupRef.current?.();
     pointerCleanupRef.current = null;
@@ -365,6 +373,7 @@ export default function CreateCameraView({
     return () => {
       clearProgressTimer();
       clearMaxDurationTimer();
+      clearStopWatchdogTimer();
       detachPointerEndListeners();
       mirrorRecordStopRef.current?.();
       mirrorRecordStopRef.current = null;
@@ -380,6 +389,7 @@ export default function CreateCameraView({
   const resetRecordingUi = () => {
     clearProgressTimer();
     clearMaxDurationTimer();
+    clearStopWatchdogTimer();
     recordStartRef.current = null;
     recordStartedAtRef.current = null;
     recordPendingRef.current = false;
@@ -398,6 +408,31 @@ export default function CreateCameraView({
     const rec = recorderRef.current;
     if (rec?.state === "recording") {
       isStoppingRecordingRef.current = true;
+
+      // Ensure we never leave the UI stuck if Safari fails to emit onstop.
+      clearStopWatchdogTimer();
+      stopWatchdogTimerRef.current = window.setTimeout(() => {
+        if (!isStoppingRecordingRef.current) return;
+        const r = recorderRef.current;
+        if (r?.state === "recording") {
+          try {
+            r.stop();
+          } catch {
+            /* ignore */
+          }
+        }
+        // Drop back to camera UI; user can retry without getting stuck at 1:00.
+        mirrorRecordStopRef.current?.();
+        mirrorRecordStopRef.current = null;
+        recorderRef.current = null;
+        chunksRef.current = [];
+        isStoppingRecordingRef.current = false;
+        recordStartedAtRef.current = null;
+        toast.error("Recording got stuck — try again");
+        resetRecordingUi();
+        ensureLiveCamera();
+      }, 3500);
+
       try {
         rec.requestData();
       } catch {
@@ -414,6 +449,7 @@ export default function CreateCameraView({
         rec.stop();
       } catch {
         isStoppingRecordingRef.current = false;
+        clearStopWatchdogTimer();
         toast.error("Couldn't finish recording — try again");
       }
       return;
