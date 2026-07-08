@@ -17,6 +17,7 @@ import {
   isAppleMobileDevice,
   probeVideoBlobPlayable,
   waitForRecordingChunks,
+  socialVideoRecorderOptions,
 } from "@/lib/create-camera";
 import type { CreateMode, EnhanceTab } from "@/lib/create-modes";
 import { QUICK_MAX_RECORD_SEC } from "@/lib/create-modes";
@@ -530,7 +531,11 @@ export default function CreateCameraView({
     recorderStreamRef.current = recorderStream;
 
     try {
-      const rec = createVideoRecorder(recorderStream, pickVideoRecorderMimeType());
+      const rec = createVideoRecorder(
+        recorderStream,
+        pickVideoRecorderMimeType(),
+        socialVideoRecorderOptions(),
+      );
       recorderRef.current = rec;
 
       rec.ondataavailable = (e) => {
