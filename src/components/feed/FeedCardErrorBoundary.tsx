@@ -29,7 +29,7 @@ export default class FeedCardErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.failedKey) {
       return (
-        <div className="absolute inset-0 flex items-center justify-center bg-black px-6 text-center text-sm text-white/70">
+        <div className="absolute inset-0 flex items-center justify-center bg-background px-6 text-center text-sm text-muted-foreground">
           This post couldn&apos;t load. Swipe for the next one.
         </div>
       );

@@ -807,7 +807,11 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
           activateFeedPlayback(muted);
           const addedAudio = musicAudioRef.current;
           if (addedAudio && postMeta?.music?.audioUrl && !isMuted) {
-            addedAudio.currentTime = videoRef.current.currentTime;
+            try {
+              addedAudio.currentTime = mapMusicTime(videoRef.current.currentTime);
+            } catch {
+              /* wait for metadata */
+            }
             applyFeedAudioElementVolume(addedAudio);
             void addedAudio.play().catch(() => {});
           }
@@ -885,7 +889,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
           ))}
 
         {mediaFailed && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black px-6 text-center text-sm text-white/70">
+          <div className="absolute inset-0 flex items-center justify-center bg-background px-6 text-center text-sm text-muted-foreground">
             This post couldn&apos;t load. Swipe for the next one.
           </div>
         )}
@@ -949,7 +953,11 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
                     activateFeedPlayback(muted);
                     const addedAudio = musicAudioRef.current;
                     if (addedAudio && postMeta?.music?.audioUrl) {
-                      addedAudio.currentTime = mapMusicTime(video.currentTime);
+                      try {
+                        addedAudio.currentTime = mapMusicTime(video.currentTime);
+                      } catch {
+                        /* wait for metadata */
+                      }
                       applyFeedAudioElementVolume(addedAudio);
                       void addedAudio.play().catch(() => {});
                     }
@@ -968,7 +976,11 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
                     const video = videoRef.current;
                     const addedAudio = musicAudioRef.current;
                     if (video && addedAudio && postMeta?.music?.audioUrl) {
-                      addedAudio.currentTime = mapMusicTime(video.currentTime);
+                      try {
+                        addedAudio.currentTime = mapMusicTime(video.currentTime);
+                      } catch {
+                        /* wait for metadata */
+                      }
                       applyFeedAudioElementVolume(addedAudio);
                       void addedAudio.play().catch(() => {});
                     }
