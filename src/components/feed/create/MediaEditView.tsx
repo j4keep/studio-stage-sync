@@ -174,7 +174,7 @@ export default function MediaEditView({
   const textInputRef = useRef<HTMLInputElement>(null);
   const previewVideoRef = useRef<HTMLVideoElement>(null);
   const pendingTextFocus = useRef(false);
-  const [iosAutoplayMuted, setIosAutoplayMuted] = useState(true);
+  const [iosAutoplayMuted, setIosAutoplayMuted] = useState(false);
 
   const bindTextInput = (el: HTMLInputElement | null) => {
     textInputRef.current = el;
