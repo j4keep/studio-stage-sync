@@ -666,6 +666,7 @@ export default function CreateCameraView({
       }
 
       rec.start(timeslice);
+      rec.start(timeslice);
 
       recordPendingRef.current = false;
       setRecording(true);
