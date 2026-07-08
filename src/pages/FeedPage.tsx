@@ -5,7 +5,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Search, MoreVertical, Radio as RadioIcon, Swords, Tv, Heart, Tag } from "lucide-react";
 import FeedPostCard from "@/components/feed/FeedPostCard";
-import FeedCardErrorBoundary from "@/components/feed/FeedCardErrorBoundary";
 import { fetchFeedItems } from "@/lib/feed-items";
 import { getFeedMountRadius, initFeedAudioUnlockOnGesture } from "@/lib/feed-video-playback";
 import jhiLogo from "@/assets/wheuat-logo.png";
@@ -199,18 +198,14 @@ const FeedPage = () => {
                 className="h-[100dvh] w-full snap-start snap-always relative bg-black"
                 style={{ scrollSnapAlign: "start" }}
               >
-                {mounted ? (
-                  <FeedCardErrorBoundary resetKey={item.id}>
-                    <FeedPostCard
-                      post={item}
-                      currentUserId={user?.id}
-                      isActive={index === currentIndex}
-                      isNear={Math.abs(index - currentIndex) <= 1}
-                      chromeHidden={chromeHidden}
-                      onChromeHiddenChange={setChromeHidden}
-                    />
-                  </FeedCardErrorBoundary>
-                ) : null}
+                <FeedPostCard
+                  post={item}
+                  currentUserId={user?.id}
+                  isActive={index === currentIndex}
+                  isNear={mounted}
+                  chromeHidden={chromeHidden}
+                  onChromeHiddenChange={setChromeHidden}
+                />
               </div>
             );
           })
