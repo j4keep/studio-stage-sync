@@ -226,7 +226,6 @@ export function syncMusicWithVideo(
 ): () => void {
   const player = createTrimmedMusicPlayer(musicUrl, options, { selfManagedLoop: false });
   const audio = player.audio;
-  const replacingOriginal = options.muteOriginal === true;
 
   const getMix = () =>
     getMixedPlaybackVolumes({
