@@ -78,6 +78,7 @@ export default function CreateCameraView({
   const chunksRef = useRef<Blob[]>([]);
   const recordStartRef = useRef<number | null>(null);
   const progressTimerRef = useRef<number | null>(null);
+  const maxDurationTimerRef = useRef<number | null>(null);
   const recordPendingRef = useRef(false);
   const mirrorRecordStopRef = useRef<(() => void) | null>(null);
   const wantsRecordRef = useRef(false);
@@ -329,6 +330,13 @@ export default function CreateCameraView({
     }
   };
 
+  const clearMaxDurationTimer = () => {
+    if (maxDurationTimerRef.current) {
+      window.clearTimeout(maxDurationTimerRef.current);
+      maxDurationTimerRef.current = null;
+    }
+  };
+
   const detachPointerEndListeners = useCallback(() => {
     pointerCleanupRef.current?.();
     pointerCleanupRef.current = null;
@@ -356,6 +364,7 @@ export default function CreateCameraView({
   useEffect(() => {
     return () => {
       clearProgressTimer();
+      clearMaxDurationTimer();
       detachPointerEndListeners();
       mirrorRecordStopRef.current?.();
       mirrorRecordStopRef.current = null;
@@ -370,6 +379,7 @@ export default function CreateCameraView({
 
   const resetRecordingUi = () => {
     clearProgressTimer();
+    clearMaxDurationTimer();
     recordStartRef.current = null;
     recordStartedAtRef.current = null;
     recordPendingRef.current = false;
@@ -586,10 +596,31 @@ export default function CreateCameraView({
       recordStartRef.current = startedAt;
       setRecordProgress(0);
 
+      clearMaxDurationTimer();
+      const stopAt = autoStopAtSecRef.current;
+      maxDurationTimerRef.current = window.setTimeout(() => {
+        if (!recordingRef.current || maxDurationStopRef.current) return;
+        maxDurationStopRef.current = true;
+        setRecordProgress(1);
+        wantsRecordRef.current = false;
+        finishRecordingRef.current();
+
+        // Failsafe: if Safari never fires onstop, retry stopping.
+        window.setTimeout(() => {
+          const r = recorderRef.current;
+          if (r?.state === "recording") {
+            try {
+              r.stop();
+            } catch {
+              /* ignore */
+            }
+          }
+        }, 1200);
+      }, Math.max(500, Math.round(stopAt * 1000)));
+
       progressTimerRef.current = window.setInterval(() => {
         if (!recordStartedAtRef.current) return;
         const elapsed = (Date.now() - recordStartedAtRef.current) / 1000;
-        const stopAt = autoStopAtSecRef.current;
         const progress = Math.min(1, elapsed / stopAt);
         setRecordProgress(progress);
         if (progress >= 1 && !maxDurationStopRef.current) {
