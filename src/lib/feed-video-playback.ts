@@ -19,9 +19,7 @@ export function isTouchFeedDevice() {
 
 export function getFeedMountRadius() {
   // Keep next/prev posts mounted so swipe doesn't cold-start a new <video>.
-  // Mobile Safari can crash/blank when several large newly-recorded clips are
-  // decoded at once, so keep this tight on phones.
-  return isTouchFeedDevice() ? 1 : 2;
+  return isTouchFeedDevice() ? 2 : 3;
 }
 
 /** Wait until Safari has enough buffered to start playback. */
