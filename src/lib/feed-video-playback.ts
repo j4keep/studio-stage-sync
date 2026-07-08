@@ -22,9 +22,10 @@ export function getFeedMountRadius() {
   return isTouchFeedDevice() ? 2 : 3;
 }
 
-/** Wait until Safari has enough buffered to start playback. */
-export function waitForVideoCanPlay(video: HTMLVideoElement, timeoutMs = 5000): Promise<boolean> {
-  if (video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) return Promise.resolve(true);
+/** Wait until the active clip has usable data without restarting an in-flight load. */
+export function waitForVideoCanPlay(video: HTMLVideoElement, timeoutMs = 2500): Promise<boolean> {
+  if (video.error || video.networkState === HTMLMediaElement.NETWORK_NO_SOURCE) return Promise.resolve(false);
+  if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) return Promise.resolve(true);
 
   return new Promise((resolve) => {
     const finish = (ok: boolean) => {
@@ -36,11 +37,15 @@ export function waitForVideoCanPlay(video: HTMLVideoElement, timeoutMs = 5000): 
     const onReady = () => finish(true);
     video.addEventListener("canplay", onReady);
     video.addEventListener("loadeddata", onReady);
-    video.preload = "auto";
-    try {
-      video.load();
-    } catch {
-      /* ignore */
+    if (video.preload !== "auto") {
+      video.preload = "auto";
+    }
+    if (video.networkState === HTMLMediaElement.NETWORK_EMPTY) {
+      try {
+        video.load();
+      } catch {
+        /* ignore */
+      }
     }
     const timer = window.setTimeout(
       () => finish(video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA),

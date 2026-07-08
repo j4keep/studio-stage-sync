@@ -82,6 +82,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const userPausedRef = useRef(false);
   const autoplayAudioLockedRef = useRef(false);
+  const playWhenActivePromiseRef = useRef<Promise<boolean> | null>(null);
   const audiblePlaybackPromiseRef = useRef<Promise<boolean> | null>(null);
   const isActiveRef = useRef(isActive);
   const suppressNextMediaToggleRef = useRef(false);
@@ -241,7 +242,10 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     return promise;
   }, [post.media_type, isMuted, hasAddedSound, getVideoMuted, playbackMeta, mapMusicTime, postMeta?.muteOriginal, getVideoMixAudio]);
 
-  const playWhenActive = useCallback(async () => {
+  const playWhenActive = useCallback(() => {
+    if (playWhenActivePromiseRef.current) return playWhenActivePromiseRef.current;
+
+    const run = async () => {
     const video = videoRef.current;
     if (!video || post.media_type !== "video" || userPausedRef.current) return false;
 
@@ -283,7 +287,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     }
 
     if (hasAddedSound) {
-      applyFeedVideoAudio(video, getVideoMixAudio());
+      applyFeedVideoAudio(video, { muted: true, volume: 0 });
       try {
         await video.play();
         markPlaying();
@@ -305,27 +309,16 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
         return true;
       }
 
-      try {
-        audio.currentTime = mapMusicTime(video.currentTime);
-      } catch {
-        /* wait for metadata */
-      }
-      applyFeedAudioElementVolume(audio);
-      mediaSessionCleanupRef.current?.();
-      mediaSessionCleanupRef.current = bindFeedMediaSession(audio, playbackMeta);
-
-      try {
-        await audio.play();
+      const audibleStarted = await startAudiblePlayback();
+      if (audibleStarted) {
         setAutoplayAudioLocked(false);
-        setFeedAudioUnlocked(true);
-        if (!isFeedAudioSessionUnlocked()) unlockFeedAudioSession();
-        return true;
-      } catch {
-        audio.pause();
-        setAutoplayAudioLocked(true);
-        activateFeedPlayback(true);
         return true;
       }
+
+      audio.pause();
+      setAutoplayAudioLocked(true);
+      activateFeedPlayback(true);
+      return true;
     }
 
     if (needsGestureForAudio) {
@@ -351,7 +344,17 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       mediaSessionCleanupRef.current = null;
       return playSilently();
     }
-  }, [post.media_type, getVideoMuted, activateFeedPlayback, onChromeHiddenChange, isMuted, hasAddedSound, playbackMeta, mapMusicTime, postMeta?.muteOriginal]);
+
+    };
+
+    const promise = run().finally(() => {
+      if (playWhenActivePromiseRef.current === promise) {
+        playWhenActivePromiseRef.current = null;
+      }
+    });
+    playWhenActivePromiseRef.current = promise;
+    return promise;
+  }, [post.media_type, getVideoMuted, activateFeedPlayback, onChromeHiddenChange, isMuted, hasAddedSound, startAudiblePlayback]);
 
   const handleFirstFeedInteraction = useCallback(() => {
     const video = videoRef.current;
@@ -399,9 +402,9 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
         }
       : undefined;
 
-  // Mobile WebKit can blank/crash the feed when several full-screen videos hold
-  // decoders at once. Images stay attached; videos attach only when active.
-  const shouldAttachMedia = post.media_type !== "video" || isActive;
+  // Keep adjacent videos attached only as metadata so swipes don't cold-start,
+  // while avoiding several full-screen auto decoders at once.
+  const shouldAttachMedia = post.media_type !== "video" || isActive || isNear;
 
   useEffect(() => {
     setLiked(!!post.isLiked);
@@ -494,7 +497,9 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     if (!video || !audio || !postMeta?.music?.audioUrl || !isActive) return;
 
     const onPlay = () => {
-      void startAudiblePlayback();
+      if (!isMuted && isFeedAudioSessionUnlocked() && audio.paused) {
+        void startAudiblePlayback();
+      }
     };
     const onPause = () => audio.pause();
     const onSeeked = () => {
@@ -528,7 +533,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       video.removeEventListener("pause", onPause);
       video.removeEventListener("seeked", onSeeked);
     };
-  }, [isActive, postMeta?.music?.audioUrl, post.id, startAudiblePlayback, musicTrim, postMeta?.music?.durationSec, postMeta?.originalVolume, postMeta?.muteOriginal, postMeta?.music?.volume]);
+  }, [isActive, postMeta?.music?.audioUrl, post.id, startAudiblePlayback, musicTrim, postMeta?.music?.durationSec, postMeta?.originalVolume, postMeta?.muteOriginal, postMeta?.music?.volume, isMuted]);
 
   useEffect(() => {
     if (!isActive || isMuted || post.media_type !== "video") return;
