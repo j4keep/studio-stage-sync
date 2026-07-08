@@ -485,7 +485,7 @@ export default function CreateCameraView({
     finishRecordingRef.current = finishRecording;
   }, [finishRecording]);
 
-  const startRecording = () => {
+  const startRecording = async () => {
     const video = videoRef.current;
     const stream = streamRef.current;
     if (!video || !stream || recordingRef.current || !wantsRecordRef.current) return;
@@ -630,24 +630,42 @@ export default function CreateCameraView({
         finishRecordingRef.current();
       };
 
-      rec.start(
+      const timeslice =
         recordingWithMicRef.current && isAppleMobileDevice()
           ? RECORDER_TIMESLICE_WITH_AUDIO_MS
-          : RECORDER_TIMESLICE_MS,
-      );
+          : RECORDER_TIMESLICE_MS;
 
+      // Lip-sync: start the added song BEFORE the recorder so the first video frame
+      // captured aligns with music time zero. Waiting on `playing` locks the offset
+      // to a single audio pipeline tick (typically <30ms) instead of the ~150-400ms
+      // gap you get when the recorder starts first and audio.play() resolves later.
       if (lipSyncMode && cameraMusicPlayerRef.current) {
-        const audio = cameraMusicPlayerRef.current.audio;
+        const musicPlayer = cameraMusicPlayerRef.current;
+        const audio = musicPlayer.audio;
         try {
           audio.pause();
           audio.currentTime = musicTrim?.trimStart ?? 0;
         } catch {
           /* ignore */
         }
-
         armCameraMusic(audio);
-        void cameraMusicPlayerRef.current.play();
+        await new Promise<void>((resolve) => {
+          let done = false;
+          const settle = () => {
+            if (done) return;
+            done = true;
+            audio.removeEventListener("playing", settle);
+            resolve();
+          };
+          audio.addEventListener("playing", settle, { once: true });
+          void musicPlayer.play().then((ok) => {
+            if (!ok) settle();
+          });
+          window.setTimeout(settle, 250);
+        });
       }
+
+      rec.start(timeslice);
 
       recordPendingRef.current = false;
       setRecording(true);
