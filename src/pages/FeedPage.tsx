@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Search, MoreVertical, Radio as RadioIcon, Swords, Tv, Heart, Tag } from "lucide-react";
 import FeedPostCard from "@/components/feed/FeedPostCard";
+import FeedCardErrorBoundary from "@/components/feed/FeedCardErrorBoundary";
 import { fetchFeedItems } from "@/lib/feed-items";
 import { getFeedMountRadius, initFeedAudioUnlockOnGesture } from "@/lib/feed-video-playback";
 import jhiLogo from "@/assets/wheuat-logo.png";
@@ -49,7 +50,10 @@ const FeedPage = () => {
     },
   });
 
-  const feedPosts = items.filter((item: any) => item.itemType === "post");
+  const feedPosts = useMemo(
+    () => items.filter((item: any) => item?.itemType === "post"),
+    [items],
+  );
 
   useEffect(() => {
     const container = scrollRef.current;
@@ -196,14 +200,16 @@ const FeedPage = () => {
                 style={{ scrollSnapAlign: "start" }}
               >
                 {mounted ? (
-                  <FeedPostCard
-                    post={item}
-                    currentUserId={user?.id}
-                    isActive={index === currentIndex}
-                    isNear={Math.abs(index - currentIndex) <= 1}
-                    chromeHidden={chromeHidden}
-                    onChromeHiddenChange={setChromeHidden}
-                  />
+                  <FeedCardErrorBoundary resetKey={item.id}>
+                    <FeedPostCard
+                      post={item}
+                      currentUserId={user?.id}
+                      isActive={index === currentIndex}
+                      isNear={Math.abs(index - currentIndex) <= 1}
+                      chromeHidden={chromeHidden}
+                      onChromeHiddenChange={setChromeHidden}
+                    />
+                  </FeedCardErrorBoundary>
                 ) : null}
               </div>
             );

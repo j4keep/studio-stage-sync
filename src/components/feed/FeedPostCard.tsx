@@ -67,6 +67,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
   const [isPlaying, setIsPlaying] = useState(false);
   const [showHeart, setShowHeart] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [mediaFailed, setMediaFailed] = useState(false);
   const [autoplayAudioLocked, setAutoplayAudioLocked] = useState(false);
   const [feedAudioUnlocked, setFeedAudioUnlocked] = useState(isFeedAudioSessionUnlocked);
   const [videoProgress, setVideoProgress] = useState(0);
@@ -191,7 +192,11 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
         setAutoplayAudioLocked(true);
         return false;
       }
-      audio.currentTime = mapMusicTime(video.currentTime);
+      try {
+        audio.currentTime = mapMusicTime(video.currentTime);
+      } catch {
+        /* wait for metadata */
+      }
       audio.volume = mix.musicVolume;
       unlockFeedAudioSession();
       mediaSessionCleanupRef.current?.();
@@ -288,7 +293,11 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
         return true;
       }
 
-      audio.currentTime = mapMusicTime(video.currentTime);
+      try {
+        audio.currentTime = mapMusicTime(video.currentTime);
+      } catch {
+        /* wait for metadata */
+      }
       applyFeedAudioElementVolume(audio);
       mediaSessionCleanupRef.current?.();
       mediaSessionCleanupRef.current = bindFeedMediaSession(audio, playbackMeta);
@@ -381,6 +390,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
   useEffect(() => {
     setLiked(!!post.isLiked);
     setLikesCount(post.likes_count || 0);
+    setMediaFailed(false);
   }, [post.id, post.isLiked, post.likes_count]);
 
   useEffect(() => {
@@ -518,6 +528,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       setVideoProgress(0);
       setVideoDuration(0);
       videoRef.current?.pause();
+      musicAudioRef.current?.pause();
       setIsPlaying(false);
       return;
     }
@@ -796,7 +807,11 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
           activateFeedPlayback(muted);
           const addedAudio = musicAudioRef.current;
           if (addedAudio && postMeta?.music?.audioUrl && !isMuted) {
-            addedAudio.currentTime = videoRef.current.currentTime;
+            try {
+              addedAudio.currentTime = mapMusicTime(videoRef.current.currentTime);
+            } catch {
+              /* wait for metadata */
+            }
             applyFeedAudioElementVolume(addedAudio);
             void addedAudio.play().catch(() => {});
           }
@@ -856,17 +871,28 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
               playsInline
               muted={videoMutedForAutoplay}
               autoPlay={false}
-              preload={isActive || isNear ? "auto" : "metadata"}
+              preload={isActive ? "auto" : "metadata"}
               onPlay={() => setIsPlaying(true)}
               onPause={() => setIsPlaying(false)}
+              onError={() => {
+                setMediaFailed(true);
+                musicAudioRef.current?.pause();
+              }}
             />
           ) : (
             <img
               src={post.media_url}
               alt={displayCaption || "Feed post"}
               className="absolute inset-0 h-full w-full object-cover"
+              onError={() => setMediaFailed(true)}
             />
           ))}
+
+        {mediaFailed && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background px-6 text-center text-sm text-muted-foreground">
+            This post couldn&apos;t load. Swipe for the next one.
+          </div>
+        )}
 
         {!post.media_url && (
           <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-card to-background">
@@ -927,7 +953,11 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
                     activateFeedPlayback(muted);
                     const addedAudio = musicAudioRef.current;
                     if (addedAudio && postMeta?.music?.audioUrl) {
-                      addedAudio.currentTime = mapMusicTime(video.currentTime);
+                      try {
+                        addedAudio.currentTime = mapMusicTime(video.currentTime);
+                      } catch {
+                        /* wait for metadata */
+                      }
                       applyFeedAudioElementVolume(addedAudio);
                       void addedAudio.play().catch(() => {});
                     }
@@ -946,7 +976,11 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
                     const video = videoRef.current;
                     const addedAudio = musicAudioRef.current;
                     if (video && addedAudio && postMeta?.music?.audioUrl) {
-                      addedAudio.currentTime = mapMusicTime(video.currentTime);
+                      try {
+                        addedAudio.currentTime = mapMusicTime(video.currentTime);
+                      } catch {
+                        /* wait for metadata */
+                      }
                       applyFeedAudioElementVolume(addedAudio);
                       void addedAudio.play().catch(() => {});
                     }
