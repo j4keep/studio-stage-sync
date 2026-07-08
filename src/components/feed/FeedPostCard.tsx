@@ -387,7 +387,9 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
         }
       : undefined;
 
-  const shouldAttachMedia = post.media_type !== "video" || isActive || isNear;
+  // Mobile WebKit can blank/crash the feed when several full-screen videos hold
+  // decoders at once. Images stay attached; videos attach only when active.
+  const shouldAttachMedia = post.media_type !== "video" || isActive;
 
   useEffect(() => {
     setLiked(!!post.isLiked);
