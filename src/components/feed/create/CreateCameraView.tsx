@@ -665,7 +665,12 @@ export default function CreateCameraView({
         });
       }
 
-      rec.start(timeslice);
+      // If the user released while we were waiting for music to start, don't start recording.
+      if (!wantsRecordRef.current) {
+        recordPendingRef.current = false;
+        return;
+      }
+
       rec.start(timeslice);
 
       recordPendingRef.current = false;
