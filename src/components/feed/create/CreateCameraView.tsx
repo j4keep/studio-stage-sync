@@ -82,6 +82,7 @@ export default function CreateCameraView({
   const stopWatchdogTimerRef = useRef<number | null>(null);
   const recordPendingRef = useRef(false);
   const mirrorRecordStopRef = useRef<(() => void) | null>(null);
+  const recorderStreamRef = useRef<MediaStream | null>(null);
   const wantsRecordRef = useRef(false);
   const discardClipRef = useRef(false);
   const recordingRef = useRef(false);
@@ -415,22 +416,40 @@ export default function CreateCameraView({
         if (!isStoppingRecordingRef.current) return;
         const r = recorderRef.current;
         if (r?.state === "recording") {
+          // Try to salvage the recording by stopping the tracks backing the recorder,
+          // then finalize even if Safari never fires `onstop`.
+          try {
+            r.requestData();
+          } catch {
+            /* ignore */
+          }
+          const rs = recorderStreamRef.current;
+          rs?.getTracks().forEach((t) => {
+            try {
+              t.stop();
+            } catch {
+              /* ignore */
+            }
+          });
           try {
             r.stop();
           } catch {
             /* ignore */
           }
+
+          window.setTimeout(() => {
+            // If onstop still didn't fire, manually finalize from chunks.
+            if (isStoppingRecordingRef.current) {
+              finalizeRecordingRef.current?.();
+            }
+          }, 350);
+          return;
         }
-        // Drop back to camera UI; user can retry without getting stuck at 1:00.
-        mirrorRecordStopRef.current?.();
-        mirrorRecordStopRef.current = null;
-        recorderRef.current = null;
-        chunksRef.current = [];
-        isStoppingRecordingRef.current = false;
-        recordStartedAtRef.current = null;
-        toast.error("Recording got stuck — try again");
-        resetRecordingUi();
-        ensureLiveCamera();
+
+        // If recorder isn't recording anymore but we still didn't finalize, finalize now.
+        if (isStoppingRecordingRef.current) {
+          finalizeRecordingRef.current?.();
+        }
       }, 3500);
 
       try {
@@ -508,6 +527,7 @@ export default function CreateCameraView({
     const recorderStream = lipSyncMode
       ? videoOnlyRecordStream(recordStream)
       : recordStream;
+    recorderStreamRef.current = recorderStream;
 
     try {
       const rec = createVideoRecorder(recorderStream, pickVideoRecorderMimeType());
@@ -519,6 +539,7 @@ export default function CreateCameraView({
 
       finalizeRecordingRef.current = () => {
         void (async () => {
+          clearStopWatchdogTimer();
           const elapsedForWait = recordStartedAtRef.current
             ? Date.now() - recordStartedAtRef.current
             : 0;
@@ -542,6 +563,7 @@ export default function CreateCameraView({
           mirrorRecordStopRef.current = null;
           discardClipRef.current = false;
           recorderRef.current = null;
+          recorderStreamRef.current = null;
           chunksRef.current = [];
 
           if (shouldDiscard) {
