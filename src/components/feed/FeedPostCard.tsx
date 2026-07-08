@@ -82,6 +82,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const userPausedRef = useRef(false);
   const autoplayAudioLockedRef = useRef(false);
+  const audiblePlaybackPromiseRef = useRef<Promise<boolean> | null>(null);
   const isActiveRef = useRef(isActive);
   const suppressNextMediaToggleRef = useRef(false);
   const isScrubbingRef = useRef(false);
@@ -163,7 +164,10 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     }
   }, [post.media_type, getVideoMuted, autoplayAudioLocked, hasAddedSound, playbackMeta, getVideoMixAudio]);
 
-  const startAudiblePlayback = useCallback(async () => {
+  const startAudiblePlayback = useCallback(() => {
+    if (audiblePlaybackPromiseRef.current) return audiblePlaybackPromiseRef.current;
+
+    const run = async () => {
     const video = videoRef.current;
     if (!video || post.media_type !== "video" || !isActiveRef.current || userPausedRef.current) return false;
 
@@ -198,7 +202,6 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
         /* wait for metadata */
       }
       audio.volume = mix.musicVolume;
-      unlockFeedAudioSession();
       mediaSessionCleanupRef.current?.();
       mediaSessionCleanupRef.current = bindFeedMediaSession(audio, playbackMeta);
       try {
@@ -227,6 +230,15 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       setAutoplayAudioLocked(true);
       return false;
     }
+    };
+
+    const promise = run().finally(() => {
+      if (audiblePlaybackPromiseRef.current === promise) {
+        audiblePlaybackPromiseRef.current = null;
+      }
+    });
+    audiblePlaybackPromiseRef.current = promise;
+    return promise;
   }, [post.media_type, isMuted, hasAddedSound, getVideoMuted, playbackMeta, mapMusicTime, postMeta?.muteOriginal, getVideoMixAudio]);
 
   const playWhenActive = useCallback(async () => {
@@ -419,7 +431,13 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
 
   useEffect(() => {
     const onFeedStartAudible = () => {
-      if (post.media_type !== "video" || !isActiveRef.current || userPausedRef.current || isMuted) return;
+      if (
+        post.media_type !== "video" ||
+        !isActiveRef.current ||
+        userPausedRef.current ||
+        isMuted ||
+        !autoplayAudioLockedRef.current
+      ) return;
       setFeedAudioUnlocked(true);
       setAutoplayAudioLocked(false);
       void startAudiblePlayback();
@@ -618,9 +636,16 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
 
     const trim = postMeta?.trim;
     let rafId = 0;
-    const tick = () => {
+    let lastProgress = -1;
+    let lastProgressAt = 0;
+    const tick = (now: number) => {
       if (!isScrubbingRef.current && video.duration && isFinite(video.duration) && !video.paused) {
-        setVideoProgress((video.currentTime / video.duration) * 100);
+        const nextProgress = (video.currentTime / video.duration) * 100;
+        if (now - lastProgressAt > 180 || Math.abs(nextProgress - lastProgress) > 1.25) {
+          lastProgress = nextProgress;
+          lastProgressAt = now;
+          setVideoProgress(nextProgress);
+        }
       }
       if (trim && !video.paused && video.currentTime >= trim.end) {
         video.currentTime = trim.start;
