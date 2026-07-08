@@ -485,7 +485,7 @@ export default function CreateCameraView({
     finishRecordingRef.current = finishRecording;
   }, [finishRecording]);
 
-  const startRecording = () => {
+  const startRecording = async () => {
     const video = videoRef.current;
     const stream = streamRef.current;
     if (!video || !stream || recordingRef.current || !wantsRecordRef.current) return;
