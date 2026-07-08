@@ -387,6 +387,8 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
         }
       : undefined;
 
+  const shouldAttachMedia = post.media_type !== "video" || isActive || isNear;
+
   useEffect(() => {
     setLiked(!!post.isLiked);
     setLikesCount(post.likes_count || 0);
@@ -860,7 +862,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
         onTouchStartCapture={handleFirstFeedInteraction}
         onMouseDownCapture={handleFirstFeedInteraction}
       >
-        {post.media_url &&
+        {post.media_url && shouldAttachMedia &&
           (post.media_type === "video" ? (
             <video
               ref={videoRef}
@@ -887,6 +889,10 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
               onError={() => setMediaFailed(true)}
             />
           ))}
+
+        {post.media_url && !shouldAttachMedia && (
+          <div className="absolute inset-0 bg-background" />
+        )}
 
         {mediaFailed && (
           <div className="absolute inset-0 flex items-center justify-center bg-background px-6 text-center text-sm text-muted-foreground">
