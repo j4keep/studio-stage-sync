@@ -120,10 +120,16 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
   );
 
   const getVideoMuted = useCallback(() => {
-    if (isMuted) return true;
-    if (hasAddedSound && postMeta?.muteOriginal !== false) return true;
-    return postMeta?.muteOriginal === true;
-  }, [isMuted, hasAddedSound, postMeta?.muteOriginal]);
+  if (isMuted) return true;
+
+  // If user added a separate sound, mute original video unless they chose to mix it.
+  if (hasAddedSound) {
+    return postMeta?.muteOriginal !== false;
+  }
+
+  // Regular recorded videos should play their original audio.
+  return false;
+}, [isMuted, hasAddedSound, postMeta?.muteOriginal]);
 
   const getVideoMixAudio = useCallback(
     (forceMuted?: boolean): { muted: boolean; volume?: number } => {
