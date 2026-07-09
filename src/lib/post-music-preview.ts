@@ -4,10 +4,10 @@ import {
   type FeedPlaybackMeta,
 } from "@/lib/feed-video-playback";
 
-/** Playback mix — video vocal (includes mic recording). */
-export const MIXED_VOCAL_VIDEO_VOLUME = 0.78;
-/** Playback mix — added song (separate track; kept below vocal bleed in recording). */
-export const MIXED_ADDED_MUSIC_VOLUME = 0.52;
+/** Playback mix — video vocal (includes mic recording). Full volume so lip-sync recordings match the record-time monitor. */
+export const MIXED_VOCAL_VIDEO_VOLUME = 1;
+/** Playback mix — added song. Full volume; matches what the user hears while recording. */
+export const MIXED_ADDED_MUSIC_VOLUME = 1;
 /** TikTok-style playback when added sound replaces the video track. */
 export const ADDED_SOUND_PLAYBACK_VOLUME = 1;
 /** Camera lip-sync monitor — full media volume while recording; not used on edit/feed playback. */

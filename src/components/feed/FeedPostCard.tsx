@@ -520,21 +520,11 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     const audio = musicAudioRef.current;
     if (!video || !audio || !postMeta?.music?.audioUrl || !isActive) return;
 
-    const syncAndPlayAudio = () => {
-      syncTrimmedAudioToVideo(
-        video,
-        audio,
-        musicTrim,
-        postMeta?.music?.durationSec ?? 0,
-        true,
-      );
+    const onPlay = () => {
+      syncTrimmedAudioToVideo(video, audio, musicTrim, postMeta?.music?.durationSec ?? 0, true);
       if (!isMuted && isFeedAudioSessionUnlocked() && audio.paused) {
-        void startAudiblePlayback();
+        void audio.play().catch(() => {});
       }
-    };
-    const onPlay = () => syncAndPlayAudio();
-    const onBuffering = () => {
-      if (!audio.paused) audio.pause();
     };
     const onPause = () => audio.pause();
     const onSeeked = () => {
@@ -545,13 +535,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       });
       audio.volume = mix.musicVolume;
       applyFeedVideoAudio(video, { muted: mix.videoMuted, volume: mix.videoVolume });
-      syncTrimmedAudioToVideo(
-        video,
-        audio,
-        musicTrim,
-        postMeta?.music?.durationSec ?? 0,
-        true,
-      );
+      syncTrimmedAudioToVideo(video, audio, musicTrim, postMeta?.music?.durationSec ?? 0, true);
       if (!video.paused && audio.paused) {
         void audio.play().catch(() => {});
       }
@@ -559,9 +543,6 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
 
     video.addEventListener("play", onPlay);
     video.addEventListener("playing", onPlay);
-    video.addEventListener("waiting", onBuffering);
-    video.addEventListener("stalled", onBuffering);
-    video.addEventListener("seeking", onBuffering);
     video.addEventListener("pause", onPause);
     video.addEventListener("seeked", onSeeked);
 
@@ -570,13 +551,10 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     return () => {
       video.removeEventListener("play", onPlay);
       video.removeEventListener("playing", onPlay);
-      video.removeEventListener("waiting", onBuffering);
-      video.removeEventListener("stalled", onBuffering);
-      video.removeEventListener("seeking", onBuffering);
       video.removeEventListener("pause", onPause);
       video.removeEventListener("seeked", onSeeked);
     };
-  }, [isActive, postMeta?.music?.audioUrl, post.id, startAudiblePlayback, musicTrim, postMeta?.music?.durationSec, postMeta?.originalVolume, postMeta?.muteOriginal, postMeta?.music?.volume, isMuted]);
+  }, [isActive, postMeta?.music?.audioUrl, post.id, musicTrim, postMeta?.music?.durationSec, postMeta?.originalVolume, postMeta?.muteOriginal, postMeta?.music?.volume, isMuted]);
 
   useEffect(() => {
     if (!isActive || isMuted || post.media_type !== "video") return;
