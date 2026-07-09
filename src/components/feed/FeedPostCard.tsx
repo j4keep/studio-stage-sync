@@ -192,7 +192,8 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
         originalVolume: postMeta?.originalVolume,
         musicVolume: soundSync.volume,
       });
-      applyFeedVideoAudio(video, { muted: true, volume: 0 });
+      // Respect muteOriginal: when false, mix recorded video audio with the added song.
+      applyFeedVideoAudio(video, { muted: mix.videoMuted, volume: mix.videoVolume });
       if (!audio) {
         setAutoplayAudioLocked(true);
         return false;
@@ -222,6 +223,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
         return false;
       }
     }
+
 
     applyFeedVideoAudio(video, { muted: false });
     mediaSessionCleanupRef.current?.();
