@@ -39,13 +39,6 @@ export function playUploadedAudio(
   const audio = new Audio(url);
   audio.volume = volume;
   audio.loop = false;
-  audio.preload = "auto";
-
-  audio.setAttribute("playsinline", "true");
-  audio.setAttribute("webkit-playsinline", "true");
-  try { audio.load(); } catch { /* ignore */ }
-
-
 
   let durationTimer: ReturnType<typeof setTimeout> | null = null;
 

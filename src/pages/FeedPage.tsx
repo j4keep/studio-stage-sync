@@ -49,10 +49,7 @@ const FeedPage = () => {
     },
   });
 
-  const feedPosts = useMemo(
-    () => items.filter((item: any) => item?.itemType === "post"),
-    [items],
-  );
+  const feedPosts = items.filter((item: any) => item.itemType === "post");
 
   useEffect(() => {
     const container = scrollRef.current;
@@ -198,14 +195,16 @@ const FeedPage = () => {
                 className="h-[100dvh] w-full snap-start snap-always relative bg-black"
                 style={{ scrollSnapAlign: "start" }}
               >
-                <FeedPostCard
-                  post={item}
-                  currentUserId={user?.id}
-                  isActive={index === currentIndex}
-                  isNear={mounted}
-                  chromeHidden={chromeHidden}
-                  onChromeHiddenChange={setChromeHidden}
-                />
+                {mounted ? (
+                  <FeedPostCard
+                    post={item}
+                    currentUserId={user?.id}
+                    isActive={index === currentIndex}
+                    isNear={Math.abs(index - currentIndex) <= 1}
+                    chromeHidden={chromeHidden}
+                    onChromeHiddenChange={setChromeHidden}
+                  />
+                ) : null}
               </div>
             );
           })

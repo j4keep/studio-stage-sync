@@ -174,7 +174,7 @@ export default function MediaEditView({
   const textInputRef = useRef<HTMLInputElement>(null);
   const previewVideoRef = useRef<HTMLVideoElement>(null);
   const pendingTextFocus = useRef(false);
-  const [iosAutoplayMuted, setIosAutoplayMuted] = useState(false);
+  const [iosAutoplayMuted, setIosAutoplayMuted] = useState(true);
 
   const bindTextInput = (el: HTMLInputElement | null) => {
     textInputRef.current = el;
@@ -206,7 +206,7 @@ export default function MediaEditView({
   }, [meta.muteOriginal, mediaType, musicPreviewUrl, iosAutoplayMuted]);
 
   useEffect(() => {
-    setIosAutoplayMuted(false);
+    setIosAutoplayMuted(true);
   }, [previewUrl]);
 
   useEffect(() => {
@@ -216,24 +216,14 @@ export default function MediaEditView({
     unlockFeedAudioSession();
     void (async () => {
       await waitForVideoCanPlay(video);
-      // Prefer unmuted autoplay — recording flow already carried a user gesture,
-      // so the sound should stay on by default (matches TikTok behavior).
-      video.muted = musicPreviewUrl ? true : meta.muteOriginal;
       try {
+        video.muted = true;
         await video.play();
       } catch {
-        // Browser rejected unmuted autoplay — fall back to muted so the video
-        // still plays, and mark the UI so onPlaying can restore audio.
-        try {
-          video.muted = true;
-          setIosAutoplayMuted(true);
-          await video.play();
-        } catch {
-          /* playing handler / syncMusicWithVideo will retry */
-        }
+        /* playing handler / syncMusicWithVideo will retry */
       }
     })();
-  }, [previewUrl, mediaType, soundPickerOpen, musicPreviewUrl, meta.muteOriginal]);
+  }, [previewUrl, mediaType, soundPickerOpen]);
 
   useEffect(() => {
     const video = previewVideoRef.current;

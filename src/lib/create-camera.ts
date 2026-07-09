@@ -3,7 +3,6 @@
 export type CameraFacing = "user" | "environment";
 
 const PHOTO_JPEG_QUALITY = 0.94;
-const SOCIAL_VIDEO_BITS_PER_SECOND = 2_400_000;
 const SOCIAL_AUDIO: MediaTrackConstraints = {
   echoCancellation: false,
   noiseSuppression: false,
@@ -403,25 +402,16 @@ export function pickVideoRecorderMimeType(): string {
   return "";
 }
 
-export function socialVideoRecorderOptions(): MediaRecorderOptions {
-  return { videoBitsPerSecond: SOCIAL_VIDEO_BITS_PER_SECOND };
-}
-
-export function createVideoRecorder(
-  stream: MediaStream,
-  mimeType = "",
-  options: MediaRecorderOptions = {},
-): MediaRecorder {
+export function createVideoRecorder(stream: MediaStream, mimeType = ""): MediaRecorder {
   const supportedMimeType = mimeType || pickVideoRecorderMimeType();
 
+  // No explicit bitrates — let the browser pick its native defaults, the same
+  // way a phone's stock camera app records. Forcing audio/video bitrates on
+  // iOS Safari produces distorted, crackling output.
   const attempts: MediaRecorderOptions[] = [];
 
   if (supportedMimeType) {
-    attempts.push({ mimeType: supportedMimeType, ...options });
-  }
-
-  if (Object.keys(options).length > 0) {
-    attempts.push(options);
+    attempts.push({ mimeType: supportedMimeType });
   }
 
   attempts.push({});

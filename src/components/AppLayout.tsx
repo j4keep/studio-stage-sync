@@ -1,4 +1,4 @@
-import { ReactNode, useEffect } from "react";
+import { ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import BottomNav from "./BottomNav";
 import GlobalRadioPlayer from "./GlobalRadioPlayer";
@@ -10,7 +10,6 @@ import { MessageCircle } from "lucide-react";
 import { useProGate } from "@/hooks/use-pro-gate";
 import ProGateModal from "./ProGateModal";
 import IncognitoFeedWindow from "./IncognitoFeedWindow";
-import { initFeedAudioUnlockOnGesture } from "@/lib/feed-video-playback";
 
 const AppLayout = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
@@ -22,10 +21,6 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   const isPodcastLobby = location.pathname === "/tv/podcast";
   const isFullScreenPage = ["/", "/feed"].includes(location.pathname) || isPodcastWorkspace || isPodcastLobby;
   const showTopBar = !["/auth", "/", "/feed"].includes(location.pathname) && !isPodcastWorkspace && !isPodcastLobby;
-
-  useEffect(() => {
-    initFeedAudioUnlockOnGesture();
-  }, []);
 
   const handleAskJhi = () => {
     if (!isPro) {

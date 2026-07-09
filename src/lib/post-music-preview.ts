@@ -4,10 +4,10 @@ import {
   type FeedPlaybackMeta,
 } from "@/lib/feed-video-playback";
 
-/** Playback mix — video vocal (includes mic recording). Full volume so lip-sync recordings match the record-time monitor. */
-export const MIXED_VOCAL_VIDEO_VOLUME = 1;
-/** Playback mix — added song. Full volume; matches what the user hears while recording. */
-export const MIXED_ADDED_MUSIC_VOLUME = 1;
+/** Playback mix — video vocal (includes mic recording). */
+export const MIXED_VOCAL_VIDEO_VOLUME = 0.78;
+/** Playback mix — added song (separate track; kept below vocal bleed in recording). */
+export const MIXED_ADDED_MUSIC_VOLUME = 0.52;
 /** TikTok-style playback when added sound replaces the video track. */
 export const ADDED_SOUND_PLAYBACK_VOLUME = 1;
 /** Camera lip-sync monitor — full media volume while recording; not used on edit/feed playback. */
@@ -173,7 +173,7 @@ function musicDriftSec(audioTime: number, targetTime: number, segmentLen: number
   return Math.min(direct, wrapped);
 }
 
-/** Keep added sound aligned to video — tight enough for lip-sync without constant seeking. */
+/** Keep added sound aligned to video — only correct large drift (avoids loop pumping). */
 export function syncTrimmedAudioToVideo(
   video: HTMLVideoElement,
   audio: HTMLAudioElement,
@@ -184,7 +184,7 @@ export function syncTrimmedAudioToVideo(
   const segmentLen = musicSegmentLength(trim, fallbackDuration);
   const target = videoTimeToMusicTime(video.currentTime, trim, fallbackDuration);
   const drift = musicDriftSec(audio.currentTime, target, segmentLen);
-  if (force || drift > 0.06) {
+  if (force || drift > 0.85) {
     audio.currentTime = target;
   }
 }
@@ -226,6 +226,7 @@ export function syncMusicWithVideo(
 ): () => void {
   const player = createTrimmedMusicPlayer(musicUrl, options, { selfManagedLoop: false });
   const audio = player.audio;
+  const replacingOriginal = options.muteOriginal === true;
 
   const getMix = () =>
     getMixedPlaybackVolumes({
@@ -266,20 +267,25 @@ export function syncMusicWithVideo(
     }
   };
 
-  /**
-   * Start/resume the added song aligned to the current video time. We must NOT
-   * use `player.play()` here — it reseeks to trimStart on every call, which
-   * causes the song to jump back to its beginning whenever this fires mid-clip
-   * (breaks lip-sync). Instead, snap audio.currentTime to the mapped position
-   * for the current video frame, then start playback from there.
-   */
-  const resumeAudioAtVideoTime = () => {
+  const startFromMusicReady = () => {
+    applyMixLevels();
+    syncAudioToVideo(true);
+    bindSession();
+    ensureVideoPlaying();
+    void player.play();
+  };
+
+  const startSyncedMusic = () => {
+    if (replacingOriginal && audio.paused) {
+      startFromMusicReady();
+      return;
+    }
     applyMixLevels();
     syncAudioToVideo(true);
     bindSession();
     ensureVideoPlaying();
     if (audio.paused) {
-      void audio.play().catch(() => {});
+      void player.play();
     }
   };
 
@@ -287,11 +293,11 @@ export function syncMusicWithVideo(
     if (audio.duration && Number.isFinite(audio.duration)) {
       fallbackDuration = audio.duration;
     }
-    resumeAudioAtVideoTime();
+    startFromMusicReady();
   };
 
   const onPlay = () => {
-    resumeAudioAtVideoTime();
+    startSyncedMusic();
   };
 
   const onPause = () => {
@@ -299,13 +305,14 @@ export function syncMusicWithVideo(
   };
 
   const onSeeked = () => {
-    resumeAudioAtVideoTime();
+    startSyncedMusic();
   };
 
   const onVideoPlaying = () => {
     bindSession();
     if (audio.paused && !video.paused) {
-      resumeAudioAtVideoTime();
+      syncAudioToVideo(true);
+      void player.play();
     }
   };
 
@@ -317,11 +324,12 @@ export function syncMusicWithVideo(
 
   applyMixLevels();
 
-  if (audio.readyState >= 1) {
-    resumeAudioAtVideoTime();
+  if (replacingOriginal) {
+    if (audio.readyState >= 1) {
+      startFromMusicReady();
+    }
   } else if (!video.paused) {
-    // wait for loadedmetadata; keep video rolling in the meantime
-    ensureVideoPlaying();
+    startSyncedMusic();
   }
 
   return () => {

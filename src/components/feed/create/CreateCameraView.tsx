@@ -17,7 +17,6 @@ import {
   isAppleMobileDevice,
   probeVideoBlobPlayable,
   waitForRecordingChunks,
-  socialVideoRecorderOptions,
 } from "@/lib/create-camera";
 import type { CreateMode, EnhanceTab } from "@/lib/create-modes";
 import { QUICK_MAX_RECORD_SEC } from "@/lib/create-modes";
@@ -531,11 +530,7 @@ export default function CreateCameraView({
     recorderStreamRef.current = recorderStream;
 
     try {
-      const rec = createVideoRecorder(
-        recorderStream,
-        pickVideoRecorderMimeType(),
-        socialVideoRecorderOptions(),
-      );
+      const rec = createVideoRecorder(recorderStream, pickVideoRecorderMimeType());
       recorderRef.current = rec;
 
       rec.ondataavailable = (e) => {
@@ -670,12 +665,7 @@ export default function CreateCameraView({
         });
       }
 
-      // If the user released while we were waiting for music to start, don't start recording.
-      if (!wantsRecordRef.current) {
-        recordPendingRef.current = false;
-        return;
-      }
-
+      rec.start(timeslice);
       rec.start(timeslice);
 
       recordPendingRef.current = false;
