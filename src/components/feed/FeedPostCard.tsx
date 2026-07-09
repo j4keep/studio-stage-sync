@@ -198,17 +198,24 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
         setAutoplayAudioLocked(true);
         return false;
       }
-      try {
-        audio.currentTime = mapMusicTime(video.currentTime);
-      } catch {
-        /* wait for metadata */
-      }
       audio.volume = mix.musicVolume;
       mediaSessionCleanupRef.current?.();
       mediaSessionCleanupRef.current = bindFeedMediaSession(audio, playbackMeta);
       try {
+        if (video.paused) {
+          await video.play().catch(() => {});
+        }
+        try {
+          audio.currentTime = mapMusicTime(video.currentTime);
+        } catch {
+          /* wait for metadata */
+        }
         await audio.play();
-        if (video.paused) await video.play();
+        if (video.paused) {
+          audio.pause();
+          setAutoplayAudioLocked(true);
+          return false;
+        }
         try {
           syncTrimmedAudioToVideo(video, audio, musicTrim, postMeta?.music?.durationSec ?? 0, true);
         } catch {
@@ -256,13 +263,27 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     const video = videoRef.current;
     if (!video || post.media_type !== "video" || userPausedRef.current) return false;
 
-    if (!video.paused && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-      setIsPlaying(true);
-      return true;
-    }
-
     const targetMuted = getVideoMuted();
     const trim = postMeta?.trim;
+    const touchDevice = isTouchFeedDevice();
+    const needsGestureForAudio = touchDevice && !isFeedAudioSessionUnlocked();
+
+    if (!video.paused && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+      setIsPlaying(true);
+      if (!isMuted) {
+        if (hasAddedSound) {
+          if (needsGestureForAudio) {
+            setAutoplayAudioLocked(true);
+            activateFeedPlayback(true);
+          } else if (musicAudioRef.current?.paused) {
+            void startAudiblePlayback();
+          }
+        } else if (video.muted && !targetMuted && !needsGestureForAudio) {
+          void startAudiblePlayback();
+        }
+      }
+      return true;
+    }
 
     video.autoplay = true;
     video.preload = "auto";
@@ -275,9 +296,6 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
         try { video.currentTime = trim.start; } catch { /* wait for metadata */ }
       }
     }
-
-    const touchDevice = isTouchFeedDevice();
-    const needsGestureForAudio = touchDevice && !isFeedAudioSessionUnlocked();
 
     const markPlaying = () => {
       setIsPlaying(true);
@@ -522,11 +540,14 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     const audio = musicAudioRef.current;
     if (!video || !audio || !postMeta?.music?.audioUrl || !isActive) return;
 
-    const onPlay = () => {
+    const resumeAddedSound = () => {
       syncTrimmedAudioToVideo(video, audio, musicTrim, postMeta?.music?.durationSec ?? 0, true);
       if (!isMuted && isFeedAudioSessionUnlocked() && audio.paused) {
         void audio.play().catch(() => {});
       }
+    };
+    const onPlay = () => {
+      resumeAddedSound();
     };
     const onPause = () => audio.pause();
     const onSeeked = () => {
@@ -547,6 +568,8 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     video.addEventListener("playing", onPlay);
     video.addEventListener("pause", onPause);
     video.addEventListener("seeked", onSeeked);
+    audio.addEventListener("canplay", resumeAddedSound);
+    audio.addEventListener("loadeddata", resumeAddedSound);
 
     if (!video.paused) onPlay();
 
@@ -555,6 +578,8 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       video.removeEventListener("playing", onPlay);
       video.removeEventListener("pause", onPause);
       video.removeEventListener("seeked", onSeeked);
+      audio.removeEventListener("canplay", resumeAddedSound);
+      audio.removeEventListener("loadeddata", resumeAddedSound);
     };
   }, [isActive, postMeta?.music?.audioUrl, post.id, musicTrim, postMeta?.music?.durationSec, postMeta?.originalVolume, postMeta?.muteOriginal, postMeta?.music?.volume, isMuted]);
 
