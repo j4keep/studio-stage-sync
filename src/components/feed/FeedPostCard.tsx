@@ -520,7 +520,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     const audio = musicAudioRef.current;
     if (!video || !audio || !postMeta?.music?.audioUrl || !isActive) return;
 
-    const onPlay = () => {
+    const syncAndPlayAudio = () => {
       syncTrimmedAudioToVideo(
         video,
         audio,
@@ -531,6 +531,10 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       if (!isMuted && isFeedAudioSessionUnlocked() && audio.paused) {
         void startAudiblePlayback();
       }
+    };
+    const onPlay = () => syncAndPlayAudio();
+    const onBuffering = () => {
+      if (!audio.paused) audio.pause();
     };
     const onPause = () => audio.pause();
     const onSeeked = () => {
@@ -555,6 +559,9 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
 
     video.addEventListener("play", onPlay);
     video.addEventListener("playing", onPlay);
+    video.addEventListener("waiting", onBuffering);
+    video.addEventListener("stalled", onBuffering);
+    video.addEventListener("seeking", onBuffering);
     video.addEventListener("pause", onPause);
     video.addEventListener("seeked", onSeeked);
 
@@ -563,6 +570,9 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     return () => {
       video.removeEventListener("play", onPlay);
       video.removeEventListener("playing", onPlay);
+      video.removeEventListener("waiting", onBuffering);
+      video.removeEventListener("stalled", onBuffering);
+      video.removeEventListener("seeking", onBuffering);
       video.removeEventListener("pause", onPause);
       video.removeEventListener("seeked", onSeeked);
     };
