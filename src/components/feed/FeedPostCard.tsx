@@ -568,6 +568,8 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
 
     const attemptPlay = () => {
       if (cancelled || userPausedRef.current || showComments) return;
+      const v = videoRef.current;
+      if (v && !v.paused && v.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) return;
       void playWhenActive();
     };
 
@@ -577,12 +579,19 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
 
     const onReady = () => attemptPlay();
     video.addEventListener("canplay", onReady);
-    const retryId = window.setTimeout(attemptPlay, 250);
+    video.addEventListener("loadeddata", onReady);
+    video.addEventListener("loadedmetadata", onReady);
+
+    // Multiple staggered retries — iOS Safari sometimes needs a few tries after
+    // becoming active before the decoder is warm enough to actually paint frames.
+    const retryTimers = [120, 320, 700, 1400].map((ms) => window.setTimeout(attemptPlay, ms));
 
     return () => {
       cancelled = true;
-      window.clearTimeout(retryId);
+      retryTimers.forEach((id) => window.clearTimeout(id));
       video.removeEventListener("canplay", onReady);
+      video.removeEventListener("loadeddata", onReady);
+      video.removeEventListener("loadedmetadata", onReady);
     };
   }, [isActive, showComments, post.media_type, playWhenActive]);
 
