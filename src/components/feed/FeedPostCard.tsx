@@ -1013,7 +1013,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
               ref={(node) => {
                 videoRef.current = node;
                 if (node) {
-                  node.defaultMuted = videoMutedForDomAutoplay;
+                  node.defaultMuted = false;
                 }
               }}
               src={post.media_url}
@@ -1021,7 +1021,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
               style={cropStyle}
               loop
               playsInline
-              muted={videoMutedForDomAutoplay}
+              muted={isMuted}
               autoPlay={isActive}
               preload={isActive ? "auto" : "metadata"}
               onLoadedData={() => {
