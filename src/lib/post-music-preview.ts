@@ -1,8 +1,4 @@
-import {
-  applyFeedVideoAudio,
-  armFeedAudioPlayback,
-  type FeedPlaybackMeta,
-} from "@/lib/feed-video-playback";
+import { applyFeedVideoAudio, bindFeedMediaSession, unlockFeedAudioSession, type FeedPlaybackMeta } from "@/lib/feed-video-playback";
 
 /** Playback mix — video vocal (includes mic recording). */
 export const MIXED_VOCAL_VIDEO_VOLUME = 0.78;
@@ -237,6 +233,7 @@ export function syncMusicWithVideo(
 
   let fallbackDuration = options.sourceDurationSec ?? 0;
   let mediaSessionCleanup: (() => void) | null = null;
+  let pendingVideoResume = false;
 
   const applyMixLevels = () => {
     const mix = getMix();
@@ -249,11 +246,10 @@ export function syncMusicWithVideo(
 
   const bindSession = () => {
     mediaSessionCleanup?.();
-    const mix = getMix();
-    mediaSessionCleanup = armFeedAudioPlayback(
+    unlockFeedAudioSession();
+    mediaSessionCleanup = bindFeedMediaSession(
       audio,
       options.mediaSessionMeta ?? { title: "Preview" },
-      mix.musicVolume,
     );
   };
 
@@ -261,18 +257,17 @@ export function syncMusicWithVideo(
     syncTrimmedAudioToVideo(video, audio, options, fallbackDuration, force);
   };
 
-  const ensureVideoPlaying = () => {
-    if (video.paused) {
-      void video.play().catch(() => {});
-    }
-  };
-
   const startFromMusicReady = () => {
     applyMixLevels();
     syncAudioToVideo(true);
     bindSession();
-    ensureVideoPlaying();
-    void player.play();
+    void player.play().then((ok) => {
+      if (!ok) return;
+      if (pendingVideoResume || !video.paused) {
+        pendingVideoResume = false;
+        void video.play().catch(() => {});
+      }
+    });
   };
 
   const startSyncedMusic = () => {
@@ -283,8 +278,7 @@ export function syncMusicWithVideo(
     applyMixLevels();
     syncAudioToVideo(true);
     bindSession();
-    ensureVideoPlaying();
-    if (audio.paused) {
+    if (!video.paused && audio.paused) {
       void player.play();
     }
   };
@@ -309,12 +303,17 @@ export function syncMusicWithVideo(
   };
 
   const onVideoPlaying = () => {
+    if (replacingOriginal) return;
     bindSession();
     if (audio.paused && !video.paused) {
-      syncAudioToVideo(true);
       void player.play();
     }
   };
+
+  if (replacingOriginal && !video.paused) {
+    pendingVideoResume = true;
+    video.pause();
+  }
 
   audio.addEventListener("loadedmetadata", onLoadedMetadata, { once: true });
   video.addEventListener("play", onPlay);

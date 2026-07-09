@@ -14,31 +14,22 @@ import {
   capturePhotoFromStream,
   videoOnlyRecordStream,
   stripStreamAudio,
-  isAppleMobileDevice,
-  probeVideoBlobPlayable,
-  waitForRecordingChunks,
+  videoRecorderTimesliceMs,
+  stopVideoRecorderWithFinalChunk,
 } from "@/lib/create-camera";
 import type { CreateMode, EnhanceTab } from "@/lib/create-modes";
 import { QUICK_MAX_RECORD_SEC } from "@/lib/create-modes";
 import { createTrimmedMusicPlayer, CAMERA_ADDED_SOUND_MONITOR_VOLUME, type MusicTrim } from "@/lib/post-music-preview";
-import { armFeedAudioPlayback, unlockFeedAudioSession } from "@/lib/feed-video-playback";
+import { armFeedAudioPlayback } from "@/lib/feed-video-playback";
 import CreateModeTabs from "./CreateModeTabs";
 import RecordButton from "./RecordButton";
 import EnhancePanel from "./EnhancePanel";
 import EffectsPanel from "./EffectsPanel";
 import { toast } from "sonner";
 
-function autoStopAtSec(withMicAudio: boolean): number {
-  if (withMicAudio && isAppleMobileDevice()) {
-    // iOS corrupts long audio+video mux near 60s; lip-sync (video-only) is fine.
-    return QUICK_MAX_RECORD_SEC - 5;
-  }
-  return QUICK_MAX_RECORD_SEC - 2;
-}
-
 const MIN_RECORD_MS = 400;
-const RECORDER_TIMESLICE_MS = 250;
-const RECORDER_TIMESLICE_WITH_AUDIO_MS = 1000;
+/** Auto-stop slightly before 60s — iOS Safari corrupts clips at the hard limit. */
+const AUTO_STOP_AT_SEC = QUICK_MAX_RECORD_SEC - 1;
 
 interface Props {
   onClose: () => void;
@@ -78,11 +69,8 @@ export default function CreateCameraView({
   const chunksRef = useRef<Blob[]>([]);
   const recordStartRef = useRef<number | null>(null);
   const progressTimerRef = useRef<number | null>(null);
-  const maxDurationTimerRef = useRef<number | null>(null);
-  const stopWatchdogTimerRef = useRef<number | null>(null);
   const recordPendingRef = useRef(false);
   const mirrorRecordStopRef = useRef<(() => void) | null>(null);
-  const recorderStreamRef = useRef<MediaStream | null>(null);
   const wantsRecordRef = useRef(false);
   const discardClipRef = useRef(false);
   const recordingRef = useRef(false);
@@ -95,9 +83,6 @@ export default function CreateCameraView({
   const recordStartedAtRef = useRef<number | null>(null);
   const isStoppingRecordingRef = useRef(false);
   const maxDurationStopRef = useRef(false);
-  const recordingWithMicRef = useRef(false);
-  const autoStopAtSecRef = useRef(QUICK_MAX_RECORD_SEC - 2);
-  const finalizeRecordingRef = useRef<(() => void) | null>(null);
 
   const [facing, setFacing] = useState<"user" | "environment">("user");
   const [denied, setDenied] = useState(false);
@@ -332,20 +317,6 @@ export default function CreateCameraView({
     }
   };
 
-  const clearMaxDurationTimer = () => {
-    if (maxDurationTimerRef.current) {
-      window.clearTimeout(maxDurationTimerRef.current);
-      maxDurationTimerRef.current = null;
-    }
-  };
-
-  const clearStopWatchdogTimer = () => {
-    if (stopWatchdogTimerRef.current) {
-      window.clearTimeout(stopWatchdogTimerRef.current);
-      stopWatchdogTimerRef.current = null;
-    }
-  };
-
   const detachPointerEndListeners = useCallback(() => {
     pointerCleanupRef.current?.();
     pointerCleanupRef.current = null;
@@ -373,8 +344,6 @@ export default function CreateCameraView({
   useEffect(() => {
     return () => {
       clearProgressTimer();
-      clearMaxDurationTimer();
-      clearStopWatchdogTimer();
       detachPointerEndListeners();
       mirrorRecordStopRef.current?.();
       mirrorRecordStopRef.current = null;
@@ -389,8 +358,6 @@ export default function CreateCameraView({
 
   const resetRecordingUi = () => {
     clearProgressTimer();
-    clearMaxDurationTimer();
-    clearStopWatchdogTimer();
     recordStartRef.current = null;
     recordStartedAtRef.current = null;
     recordPendingRef.current = false;
@@ -402,75 +369,16 @@ export default function CreateCameraView({
     wantsRecordRef.current = false;
     detachPointerEndListeners();
     clearProgressTimer();
-    unlockFeedAudioSession();
 
     if (isStoppingRecordingRef.current) return;
 
     const rec = recorderRef.current;
     if (rec?.state === "recording") {
       isStoppingRecordingRef.current = true;
-
-      // Ensure we never leave the UI stuck if Safari fails to emit onstop.
-      clearStopWatchdogTimer();
-      stopWatchdogTimerRef.current = window.setTimeout(() => {
-        if (!isStoppingRecordingRef.current) return;
-        const r = recorderRef.current;
-        if (r?.state === "recording") {
-          // Try to salvage the recording by stopping the tracks backing the recorder,
-          // then finalize even if Safari never fires `onstop`.
-          try {
-            r.requestData();
-          } catch {
-            /* ignore */
-          }
-          const rs = recorderStreamRef.current;
-          rs?.getTracks().forEach((t) => {
-            try {
-              t.stop();
-            } catch {
-              /* ignore */
-            }
-          });
-          try {
-            r.stop();
-          } catch {
-            /* ignore */
-          }
-
-          window.setTimeout(() => {
-            // If onstop still didn't fire, manually finalize from chunks.
-            if (isStoppingRecordingRef.current) {
-              finalizeRecordingRef.current?.();
-            }
-          }, 350);
-          return;
-        }
-
-        // If recorder isn't recording anymore but we still didn't finalize, finalize now.
-        if (isStoppingRecordingRef.current) {
-          finalizeRecordingRef.current?.();
-        }
-      }, 3500);
-
-      try {
-        rec.requestData();
-      } catch {
-        /* ignore */
-      }
-      if (recordingWithMicRef.current && isAppleMobileDevice()) {
-        try {
-          rec.requestData();
-        } catch {
-          /* ignore */
-        }
-      }
-      try {
-        rec.stop();
-      } catch {
+      void stopVideoRecorderWithFinalChunk(rec).catch(() => {
         isStoppingRecordingRef.current = false;
-        clearStopWatchdogTimer();
         toast.error("Couldn't finish recording — try again");
-      }
+      });
       return;
     }
 
@@ -492,8 +400,6 @@ export default function CreateCameraView({
 
     recordPendingRef.current = true;
     const lipSyncMode = !!musicPreviewUrl;
-    recordingWithMicRef.current = !lipSyncMode;
-    autoStopAtSecRef.current = autoStopAtSec(!lipSyncMode);
 
     if (!lipSyncMode) {
       if (!streamHasLiveAudio(stream)) {
@@ -527,7 +433,6 @@ export default function CreateCameraView({
     const recorderStream = lipSyncMode
       ? videoOnlyRecordStream(recordStream)
       : recordStream;
-    recorderStreamRef.current = recorderStream;
 
     try {
       const rec = createVideoRecorder(recorderStream, pickVideoRecorderMimeType());
@@ -537,91 +442,47 @@ export default function CreateCameraView({
         if (e.data.size) chunksRef.current.push(e.data);
       };
 
-      finalizeRecordingRef.current = () => {
-        void (async () => {
-          clearStopWatchdogTimer();
-          const elapsedForWait = recordStartedAtRef.current
-            ? Date.now() - recordStartedAtRef.current
-            : 0;
-          const chunkWaitMs = isAppleMobileDevice()
-            ? Math.min(
-                900,
-                Math.max(recordingWithMicRef.current ? 350 : 200, Math.round(elapsedForWait / 100)),
-              )
-            : 80;
-          const finalChunks = await waitForRecordingChunks(chunksRef.current, chunkWaitMs);
-
-          const mime = rec.mimeType || pickVideoRecorderMimeType() || "video/webm";
-          const blob = new Blob(finalChunks, { type: mime });
-          const ext = fileExtensionForMime(mime);
-          const elapsedMs = recordStartedAtRef.current
-            ? Date.now() - recordStartedAtRef.current
-            : 0;
-          const shouldDiscard = discardClipRef.current;
-
-          mirrorRecordStopRef.current?.();
-          mirrorRecordStopRef.current = null;
-          discardClipRef.current = false;
-          recorderRef.current = null;
-          recorderStreamRef.current = null;
-          chunksRef.current = [];
-
-          if (shouldDiscard) {
-            isStoppingRecordingRef.current = false;
-            recordStartedAtRef.current = null;
-            resetRecordingUi();
-            ensureLiveCamera();
-            return;
-          }
-
-          if (elapsedMs < MIN_RECORD_MS || blob.size < 800) {
-            toast.message("Hold the button to record a short");
-            isStoppingRecordingRef.current = false;
-            recordStartedAtRef.current = null;
-            resetRecordingUi();
-            ensureLiveCamera();
-            return;
-          }
-
-          const expectedMinDuration = Math.max(0.5, elapsedMs / 1000 - 4);
-          const { playable } = await probeVideoBlobPlayable(blob, expectedMinDuration);
-          // For long clips (or any clip where we have a substantial blob), never bounce
-          // the user back to camera — TikTok always drops you into edit and lets you retake.
-          const acceptAnyway = blob.size > 200_000;
-          if (!playable && !acceptAnyway) {
-            toast.error(
-              recordingWithMicRef.current
-                ? "Recording didn't save — try releasing just before 1:00"
-                : "Recording didn't save — try again",
-            );
-            isStoppingRecordingRef.current = false;
-            recordStartedAtRef.current = null;
-            resetRecordingUi();
-            ensureLiveCamera();
-            return;
-          }
-
-          unlockFeedAudioSession();
-
-          // Go to edit while still in "recording" UI so Photo can't flash under the finger.
-          onCapture(
-            new File([blob], `short-${Date.now()}.${ext}`, {
-              type: blob.type || mime,
-            }),
-            "video",
-          );
-          stopStream(true);
-          isStoppingRecordingRef.current = false;
-          recordStartedAtRef.current = null;
-          resetRecordingUi();
-        })();
-      };
-
-      let finalizeStarted = false;
       rec.onstop = () => {
-        if (finalizeStarted) return;
-        finalizeStarted = true;
-        finalizeRecordingRef.current?.();
+        const mime = rec.mimeType || pickVideoRecorderMimeType() || "video/webm";
+        const blob = new Blob(chunksRef.current, { type: mime });
+        const ext = fileExtensionForMime(mime);
+        const elapsedMs = recordStartedAtRef.current
+          ? Date.now() - recordStartedAtRef.current
+          : 0;
+        const shouldDiscard = discardClipRef.current;
+
+        mirrorRecordStopRef.current?.();
+        mirrorRecordStopRef.current = null;
+        discardClipRef.current = false;
+        recorderRef.current = null;
+        isStoppingRecordingRef.current = false;
+        recordStartedAtRef.current = null;
+        resetRecordingUi();
+
+        if (shouldDiscard) {
+          ensureLiveCamera();
+          return;
+        }
+
+        if (elapsedMs < MIN_RECORD_MS || blob.size < 800) {
+          toast.message("Hold the button to record a short");
+          ensureLiveCamera();
+          return;
+        }
+
+        if (elapsedMs >= 25_000 && blob.size < 120_000) {
+          toast.error("Recording didn't save fully — try stopping just before 1:00");
+          ensureLiveCamera();
+          return;
+        }
+
+        onCapture(
+          new File([blob], `short-${Date.now()}.${ext}`, {
+            type: blob.type || mime,
+          }),
+          "video",
+        );
+        stopStream(true);
       };
 
       rec.onerror = () => {
@@ -630,11 +491,12 @@ export default function CreateCameraView({
         finishRecordingRef.current();
       };
 
-      rec.start(
-        recordingWithMicRef.current && isAppleMobileDevice()
-          ? RECORDER_TIMESLICE_WITH_AUDIO_MS
-          : RECORDER_TIMESLICE_MS,
-      );
+      const timeslice = videoRecorderTimesliceMs();
+      if (timeslice) {
+        rec.start(timeslice);
+      } else {
+        rec.start();
+      }
 
       if (lipSyncMode && cameraMusicPlayerRef.current) {
         const audio = cameraMusicPlayerRef.current.audio;
@@ -657,32 +519,10 @@ export default function CreateCameraView({
       recordStartRef.current = startedAt;
       setRecordProgress(0);
 
-      clearMaxDurationTimer();
-      const stopAt = autoStopAtSecRef.current;
-      maxDurationTimerRef.current = window.setTimeout(() => {
-        if (!recordingRef.current || maxDurationStopRef.current) return;
-        maxDurationStopRef.current = true;
-        setRecordProgress(1);
-        wantsRecordRef.current = false;
-        finishRecordingRef.current();
-
-        // Failsafe: if Safari never fires onstop, retry stopping.
-        window.setTimeout(() => {
-          const r = recorderRef.current;
-          if (r?.state === "recording") {
-            try {
-              r.stop();
-            } catch {
-              /* ignore */
-            }
-          }
-        }, 1200);
-      }, Math.max(500, Math.round(stopAt * 1000)));
-
       progressTimerRef.current = window.setInterval(() => {
         if (!recordStartedAtRef.current) return;
         const elapsed = (Date.now() - recordStartedAtRef.current) / 1000;
-        const progress = Math.min(1, elapsed / stopAt);
+        const progress = Math.min(1, elapsed / AUTO_STOP_AT_SEC);
         setRecordProgress(progress);
         if (progress >= 1 && !maxDurationStopRef.current) {
           maxDurationStopRef.current = true;
@@ -720,16 +560,7 @@ export default function CreateCameraView({
   const takePhoto = async () => {
     const video = videoRef.current;
     const stream = streamRef.current;
-    if (
-      !video ||
-      !stream ||
-      !ready ||
-      capturingPhoto ||
-      recording ||
-      isStoppingRecordingRef.current
-    ) {
-      return;
-    }
+    if (!video || !stream || !ready || capturingPhoto || recording) return;
 
     setCapturingPhoto(true);
     try {
@@ -753,19 +584,9 @@ export default function CreateCameraView({
   };
 
   const handleRecordDown = (e: React.PointerEvent) => {
-    if (
-      denied ||
-      !ready ||
-      recording ||
-      recordPendingRef.current ||
-      capturingPhoto ||
-      isStoppingRecordingRef.current
-    ) {
-      return;
-    }
+    if (denied || !ready || recording || recordPendingRef.current || capturingPhoto) return;
     e.preventDefault();
     e.stopPropagation();
-    unlockFeedAudioSession();
     wantsRecordRef.current = true;
     discardClipRef.current = false;
     attachPointerEndListeners();

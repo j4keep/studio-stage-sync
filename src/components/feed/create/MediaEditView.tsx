@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Type, Sticker, Pencil, Crop, Volume2, VolumeX, Undo2, Check, X, Trash2, ChevronLeft, Music } from "lucide-react";
-import { applyFeedVideoAudio, bindFeedMediaSession, unlockFeedAudioSession, waitForVideoCanPlay } from "@/lib/feed-video-playback";
+import { applyFeedVideoAudio, bindFeedMediaSession } from "@/lib/feed-video-playback";
 import PostOverlayRenderer from "./PostOverlayRenderer";
 import StickerDrawer from "./StickerDrawer";
 import CropEditorView from "./CropEditorView";
@@ -174,7 +174,6 @@ export default function MediaEditView({
   const textInputRef = useRef<HTMLInputElement>(null);
   const previewVideoRef = useRef<HTMLVideoElement>(null);
   const pendingTextFocus = useRef(false);
-  const [iosAutoplayMuted, setIosAutoplayMuted] = useState(true);
 
   const bindTextInput = (el: HTMLInputElement | null) => {
     textInputRef.current = el;
@@ -198,32 +197,6 @@ export default function MediaEditView({
   };
 
   const isToolActive = activeTool !== null || showStickers;
-
-  useEffect(() => {
-    const video = previewVideoRef.current;
-    if (!video || mediaType !== "video" || musicPreviewUrl || iosAutoplayMuted) return;
-    applyFeedVideoAudio(video, { muted: meta.muteOriginal, volume: 1 });
-  }, [meta.muteOriginal, mediaType, musicPreviewUrl, iosAutoplayMuted]);
-
-  useEffect(() => {
-    setIosAutoplayMuted(true);
-  }, [previewUrl]);
-
-  useEffect(() => {
-    const video = previewVideoRef.current;
-    if (!video || mediaType !== "video" || !previewUrl || soundPickerOpen) return;
-
-    unlockFeedAudioSession();
-    void (async () => {
-      await waitForVideoCanPlay(video);
-      try {
-        video.muted = true;
-        await video.play();
-      } catch {
-        /* playing handler / syncMusicWithVideo will retry */
-      }
-    })();
-  }, [previewUrl, mediaType, soundPickerOpen]);
 
   useEffect(() => {
     const video = previewVideoRef.current;
@@ -403,18 +376,7 @@ export default function MediaEditView({
   const videoMutedForPlayback =
     meta.muteOriginal || !!musicPreviewUrl;
 
-  const videoElementMuted = iosAutoplayMuted || videoMutedForPlayback;
-
   const applyVideoAudioHandlers = (el: HTMLVideoElement) => {
-    if (musicPreviewUrl) {
-      applyFeedVideoAudio(el, { muted: true, volume: 0 });
-    }
-  };
-
-  const handlePreviewPlaying = (el: HTMLVideoElement) => {
-    if (iosAutoplayMuted) {
-      setIosAutoplayMuted(false);
-    }
     if (musicPreviewUrl) {
       applyFeedVideoAudio(el, { muted: true, volume: 0 });
       return;
@@ -422,9 +384,6 @@ export default function MediaEditView({
     applyFeedVideoAudio(el, { muted: meta.muteOriginal, volume: 1 });
     if (!meta.muteOriginal) {
       bindFeedMediaSession(el, { title: "Preview" });
-      if (el.paused) {
-        void el.play().catch(() => {});
-      }
     }
   };
 
@@ -442,19 +401,17 @@ export default function MediaEditView({
       {previewUrl && activeTool !== "crop" &&
         (mediaType === "video" ? (
           <video
-            key={previewUrl}
             ref={previewVideoRef}
             src={previewUrl}
             className="absolute inset-0 w-full h-full object-cover"
             playsInline
             loop
             preload="auto"
-            muted={videoElementMuted}
+            muted={videoMutedForPlayback}
             autoPlay
             onLoadedData={(e) => {
               const v = e.currentTarget;
               if (mediaType === "video" && v.paused && Number.isFinite(v.duration) && v.duration > 0.5) {
-                v.muted = true;
                 void v.play().catch(() => {});
               }
             }}
@@ -463,9 +420,6 @@ export default function MediaEditView({
             }}
             onPlay={(e) => {
               applyVideoAudioHandlers(e.currentTarget);
-            }}
-            onPlaying={(e) => {
-              handlePreviewPlaying(e.currentTarget);
             }}
           />
         ) : (

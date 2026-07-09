@@ -198,143 +198,46 @@ export function isAppleMobileDevice(): boolean {
   return isAppleMobile();
 }
 
-/** iOS may emit the last MediaRecorder chunk after onstop — wait until size stabilizes. */
-export function waitForRecordingChunks(
-  chunks: Blob[],
-  timeoutMs = 450,
-  stableChecks = 3,
-): Promise<Blob[]> {
+/** iOS Safari muxes long clips more reliably without periodic timeslices. */
+export function videoRecorderTimesliceMs(): number | undefined {
+  return isAppleMobile() ? undefined : 100;
+}
+
+/** Wait for requestData() flush, then stop — avoids truncated last seconds on iOS. */
+export function stopVideoRecorderWithFinalChunk(
+  recorder: MediaRecorder,
+  timeoutMs = 350,
+): Promise<void> {
+  if (recorder.state !== "recording") return Promise.resolve();
+
   return new Promise((resolve) => {
-    const sizeOf = () => chunks.reduce((sum, chunk) => sum + chunk.size, 0);
-    let lastSize = sizeOf();
-    let stable = 0;
+    let settled = false;
+    const finishWait = () => {
+      if (settled) return;
+      settled = true;
+      recorder.removeEventListener("dataavailable", onFinalChunk);
+      window.clearTimeout(fallback);
+      resolve();
+    };
 
-    const interval = window.setInterval(() => {
-      const size = sizeOf();
-      if (size === lastSize) {
-        stable += 1;
-        if (stable >= stableChecks) {
-          window.clearInterval(interval);
-          window.clearTimeout(timer);
-          resolve([...chunks]);
-        }
-      } else {
-        stable = 0;
-        lastSize = size;
-      }
-    }, 40);
-
-    const timer = window.setTimeout(() => {
-      window.clearInterval(interval);
-      resolve([...chunks]);
-    }, timeoutMs);
-  });
-}
-
-/** Read back recorded length — catches single-frame iOS clips before opening edit. */
-export async function probeVideoBlobDuration(blob: Blob): Promise<number> {
-  const url = URL.createObjectURL(blob);
-  try {
-    const video = document.createElement("video");
-    video.preload = "metadata";
-    video.src = url;
-    await new Promise<void>((resolve, reject) => {
-      video.onloadedmetadata = () => resolve();
-      video.onerror = () => reject(new Error("metadata"));
-    });
-    return Number.isFinite(video.duration) ? video.duration : 0;
-  } catch {
-    return 0;
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
-
-/** iOS can report full duration on a clip that only decodes one frame — verify playback advances. */
-export async function probeVideoBlobPlayable(
-  blob: Blob,
-  minDurationSec: number,
-): Promise<{ duration: number; playable: boolean }> {
-  const url = URL.createObjectURL(blob);
-  const video = document.createElement("video");
-  const withTimeout = <T>(p: Promise<T>, ms: number): Promise<T> =>
-    new Promise((resolve, reject) => {
-      const t = window.setTimeout(() => reject(new Error("timeout")), ms);
-      p.then(
-        (v) => { window.clearTimeout(t); resolve(v); },
-        (e) => { window.clearTimeout(t); reject(e); },
-      );
-    });
-
-  try {
-    video.preload = "auto";
-    video.muted = true;
-    video.playsInline = true;
-    video.src = url;
-
-    // Wait for metadata (fast) — full data load can stall on long iOS mp4 blobs.
-    await withTimeout(
-      new Promise<void>((resolve, reject) => {
-        video.onloadedmetadata = () => resolve();
-        video.onerror = () => reject(new Error("load"));
-      }),
-      2500,
-    ).catch(() => {});
-
-    // MediaRecorder blobs often report duration=Infinity until you seek past the end.
-    let duration = Number.isFinite(video.duration) ? video.duration : 0;
-    if (!Number.isFinite(video.duration) || video.duration === 0) {
-      try {
-        await withTimeout(
-          new Promise<void>((resolve) => {
-            const onDur = () => {
-              if (Number.isFinite(video.duration)) {
-                video.removeEventListener("durationchange", onDur);
-                resolve();
-              }
-            };
-            video.addEventListener("durationchange", onDur);
-            try { video.currentTime = 1e9; } catch { /* ignore */ }
-          }),
-          800,
-        );
-      } catch { /* ignore */ }
-      duration = Number.isFinite(video.duration) ? video.duration : 0;
-      try { video.currentTime = 0; } catch { /* ignore */ }
-    }
-
-    // If we still couldn't determine duration but the blob is substantial, trust it.
-    // Better to let the user into the editor than bounce them after a long hold.
-    if (duration === 0 && blob.size > 200_000) {
-      return { duration: minDurationSec, playable: true };
-    }
-
-    if (duration > 0 && duration < minDurationSec) {
-      return { duration, playable: false };
-    }
+    const onFinalChunk = () => finishWait();
+    recorder.addEventListener("dataavailable", onFinalChunk, { once: true });
+    const fallback = window.setTimeout(finishWait, timeoutMs);
 
     try {
-      await withTimeout(video.play(), 1500);
-      const startTime = video.currentTime;
-      await new Promise<void>((resolve) => window.setTimeout(resolve, 350));
-      const advanced = video.currentTime - startTime > 0.12;
-      video.pause();
-      if (advanced) return { duration, playable: true };
-    } catch { /* fall through */ }
-
-    // Playback check couldn't confirm advance — accept if blob & duration look sane.
-    if (blob.size > 200_000 && duration >= Math.max(0.5, minDurationSec * 0.75)) {
-      return { duration: duration || minDurationSec, playable: true };
+      recorder.requestData();
+    } catch {
+      finishWait();
     }
-    return { duration, playable: false };
-  } catch {
-    // Never bounce a large recording purely because the probe crashed.
-    if (blob.size > 200_000) return { duration: minDurationSec, playable: true };
-    return { duration: 0, playable: false };
-  } finally {
-    try { video.removeAttribute("src"); video.load(); } catch { /* ignore */ }
-    URL.revokeObjectURL(url);
-  }
+  }).then(() => {
+    if (recorder.state === "recording") {
+      try {
+        recorder.stop();
+      } catch {
+        /* ignore */
+      }
+    }
+  });
 }
 
 function isMobileDevice(): boolean {
