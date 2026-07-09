@@ -540,11 +540,16 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     const audio = musicAudioRef.current;
     if (!video || !audio || !postMeta?.music?.audioUrl || !isActive) return;
 
-    const resumeAddedSound = () => {
-      syncTrimmedAudioToVideo(video, audio, musicTrim, postMeta?.music?.durationSec ?? 0, true);
-      if (!isMuted && isFeedAudioSessionUnlocked() && audio.paused) {
+    const tryPlayAudio = () => {
+      if (isMuted) return;
+      if (audio.paused) {
         void audio.play().catch(() => {});
       }
+    };
+
+    const resumeAddedSound = () => {
+      syncTrimmedAudioToVideo(video, audio, musicTrim, postMeta?.music?.durationSec ?? 0, true);
+      tryPlayAudio();
     };
     const onPlay = () => {
       resumeAddedSound();
@@ -559,17 +564,35 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       audio.volume = mix.musicVolume;
       applyFeedVideoAudio(video, { muted: mix.videoMuted, volume: mix.videoVolume });
       syncTrimmedAudioToVideo(video, audio, musicTrim, postMeta?.music?.durationSec ?? 0, true);
-      if (!video.paused && audio.paused) {
-        void audio.play().catch(() => {});
+      if (!video.paused) tryPlayAudio();
+    };
+    // Video with `loop` restarts silently — snap audio back and keep it playing.
+    const onTimeUpdate = () => {
+      if (video.paused || isMuted) return;
+      if (audio.paused && !audio.ended) {
+        tryPlayAudio();
+        return;
       }
+      // near-loop point: sync audio to mapped time
+      if (video.duration && video.currentTime < 0.3 && audio.currentTime > (audio.duration || 999) - 0.5) {
+        syncTrimmedAudioToVideo(video, audio, musicTrim, postMeta?.music?.durationSec ?? 0, true);
+        tryPlayAudio();
+      }
+    };
+    const onAudioEnded = () => {
+      if (video.paused || isMuted) return;
+      syncTrimmedAudioToVideo(video, audio, musicTrim, postMeta?.music?.durationSec ?? 0, true);
+      tryPlayAudio();
     };
 
     video.addEventListener("play", onPlay);
     video.addEventListener("playing", onPlay);
     video.addEventListener("pause", onPause);
     video.addEventListener("seeked", onSeeked);
+    video.addEventListener("timeupdate", onTimeUpdate);
     audio.addEventListener("canplay", resumeAddedSound);
     audio.addEventListener("loadeddata", resumeAddedSound);
+    audio.addEventListener("ended", onAudioEnded);
 
     if (!video.paused) onPlay();
 
@@ -578,10 +601,13 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       video.removeEventListener("playing", onPlay);
       video.removeEventListener("pause", onPause);
       video.removeEventListener("seeked", onSeeked);
+      video.removeEventListener("timeupdate", onTimeUpdate);
       audio.removeEventListener("canplay", resumeAddedSound);
       audio.removeEventListener("loadeddata", resumeAddedSound);
+      audio.removeEventListener("ended", onAudioEnded);
     };
   }, [isActive, postMeta?.music?.audioUrl, post.id, musicTrim, postMeta?.music?.durationSec, postMeta?.originalVolume, postMeta?.muteOriginal, postMeta?.music?.volume, isMuted]);
+
 
   useEffect(() => {
     if (!isActive || isMuted || post.media_type !== "video") return;
