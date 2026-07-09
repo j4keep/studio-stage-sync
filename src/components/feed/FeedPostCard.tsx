@@ -208,6 +208,11 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       try {
         await audio.play();
         if (video.paused) await video.play();
+        try {
+          syncTrimmedAudioToVideo(video, audio, musicTrim, postMeta?.music?.durationSec ?? 0, true);
+        } catch {
+          /* ignore transient seek failures */
+        }
         setAutoplayAudioLocked(false);
         setFeedAudioUnlocked(true);
         if (!isFeedAudioSessionUnlocked()) unlockFeedAudioSession();
@@ -240,7 +245,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     });
     audiblePlaybackPromiseRef.current = promise;
     return promise;
-  }, [post.media_type, isMuted, hasAddedSound, getVideoMuted, playbackMeta, mapMusicTime, postMeta?.muteOriginal, getVideoMixAudio]);
+  }, [post.media_type, isMuted, hasAddedSound, getVideoMuted, playbackMeta, mapMusicTime, musicTrim, postMeta?.music?.durationSec]);
 
   const playWhenActive = useCallback(() => {
     if (playWhenActivePromiseRef.current) return playWhenActivePromiseRef.current;
@@ -432,9 +437,10 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
 
   useEffect(() => {
     if (!videoRef.current) return;
-    const muted = getVideoMuted() || autoplayAudioLocked;
-    applyFeedVideoAudio(videoRef.current, { muted });
-  }, [getVideoMuted, autoplayAudioLocked]);
+    const mustStartMuted = isTouchFeedDevice() && !feedAudioUnlocked && !isFeedAudioSessionUnlocked();
+    const muted = getVideoMuted() || autoplayAudioLocked || mustStartMuted;
+    applyFeedVideoAudio(videoRef.current, muted ? { muted: true } : getVideoMixAudio(false));
+  }, [getVideoMuted, autoplayAudioLocked, feedAudioUnlocked, getVideoMixAudio]);
 
   useEffect(() => {
     const onUnlocked = () => {
