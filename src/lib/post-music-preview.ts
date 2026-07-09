@@ -173,7 +173,7 @@ function musicDriftSec(audioTime: number, targetTime: number, segmentLen: number
   return Math.min(direct, wrapped);
 }
 
-/** Keep added sound aligned to video — only correct large drift (avoids loop pumping). */
+/** Keep added sound aligned to video — tight enough for lip-sync without constant seeking. */
 export function syncTrimmedAudioToVideo(
   video: HTMLVideoElement,
   audio: HTMLAudioElement,
@@ -184,7 +184,7 @@ export function syncTrimmedAudioToVideo(
   const segmentLen = musicSegmentLength(trim, fallbackDuration);
   const target = videoTimeToMusicTime(video.currentTime, trim, fallbackDuration);
   const drift = musicDriftSec(audio.currentTime, target, segmentLen);
-  if (force || drift > 0.85) {
+  if (force || drift > 0.06) {
     audio.currentTime = target;
   }
 }
