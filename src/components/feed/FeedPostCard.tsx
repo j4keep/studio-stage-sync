@@ -520,18 +520,6 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     const audio = musicAudioRef.current;
     if (!video || !audio || !postMeta?.music?.audioUrl || !isActive) return;
 
-    const syncAndPlayAudio = () => {
-      syncTrimmedAudioToVideo(
-        video,
-        audio,
-        musicTrim,
-        postMeta?.music?.durationSec ?? 0,
-        true,
-      );
-      if (!isMuted && isFeedAudioSessionUnlocked() && audio.paused) {
-        void startAudiblePlayback();
-      }
-    };
     const onPlay = () => {
       syncTrimmedAudioToVideo(video, audio, musicTrim, postMeta?.music?.durationSec ?? 0, true);
       if (!isMuted && isFeedAudioSessionUnlocked() && audio.paused) {
