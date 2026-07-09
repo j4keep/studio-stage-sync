@@ -624,6 +624,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
   }, [isActive, post.id, viewCounted]);
 
   // Video progress — rAF while active so iOS timeupdate throttling doesn't freeze the bar.
+  // Also keep added-sound audio locked to video timeline (tight drift threshold ~120ms).
   useEffect(() => {
     if (!isActive || post.media_type !== "video") return;
 
@@ -643,6 +644,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     let rafId = 0;
     let lastProgress = -1;
     let lastProgressAt = 0;
+    let lastDriftCheckAt = 0;
     const tick = (now: number) => {
       if (!isScrubbingRef.current && video.duration && isFinite(video.duration) && !video.paused) {
         const nextProgress = (video.currentTime / video.duration) * 100;
@@ -655,6 +657,25 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       if (trim && !video.paused && video.currentTime >= trim.end) {
         video.currentTime = trim.start;
       }
+
+      // Lip-sync correction for added sound — snap when drift > ~120ms.
+      const audio = musicAudioRef.current;
+      if (
+        audio &&
+        postMeta?.music?.audioUrl &&
+        !video.paused &&
+        !audio.paused &&
+        audio.readyState >= 2 &&
+        now - lastDriftCheckAt > 250
+      ) {
+        lastDriftCheckAt = now;
+        const target = mapMusicTime(video.currentTime);
+        const drift = Math.abs(audio.currentTime - target);
+        if (drift > 0.12 && drift < 5) {
+          try { audio.currentTime = target; } catch { /* ignore */ }
+        }
+      }
+
       rafId = requestAnimationFrame(tick);
     };
     rafId = requestAnimationFrame(tick);
@@ -664,7 +685,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       video.removeEventListener("loadedmetadata", syncDuration);
       video.removeEventListener("durationchange", syncDuration);
     };
-  }, [isActive, post.media_type, post.id, postMeta?.trim]);
+  }, [isActive, post.media_type, post.id, postMeta?.trim, postMeta?.music?.audioUrl, mapMusicTime]);
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
