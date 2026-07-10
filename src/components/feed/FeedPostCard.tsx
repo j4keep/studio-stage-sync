@@ -871,7 +871,10 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
               muted={videoMutedForAutoplay}
               autoPlay={false}
               preload={isActive || isNear ? "auto" : "metadata"}
-              onLoadedMetadata={(e) => revealFirstFrame(e.currentTarget)}
+              onLoadedMetadata={(e) => {
+                revealFirstFrame(e.currentTarget);
+                if (coverUrl) setMediaReady(true);
+              }}
               onLoadedData={() => setMediaReady(true)}
               onCanPlay={() => setMediaReady(true)}
               onError={() => setMediaFailed(true)}
@@ -900,7 +903,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
         )}
 
         {hasMediaUrl && !mediaFailed && post.media_type === "video" && isActive && !mediaReady && (
-          <div className="absolute inset-0 z-[1] flex items-center justify-center bg-black pointer-events-none">
+          <div className="absolute inset-0 z-[1] flex items-center justify-center bg-black/20 pointer-events-none">
             <div className="w-8 h-8 border-2 border-white/40 border-t-white rounded-full animate-spin" />
           </div>
         )}

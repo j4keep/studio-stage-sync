@@ -134,7 +134,8 @@ export function encodeCaptionWithMeta(caption: string, meta: PostEditorMeta): st
     meta.coverTime !== undefined ||
     meta.coverUrl ||
     meta.location ||
-    meta.title;
+    meta.title ||
+    meta.isReel !== undefined;
 
   if (!hasMeta) return trimmed || "";
   return `${trimmed}${META_MARKER}${JSON.stringify(meta)}-->`;
