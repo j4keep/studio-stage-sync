@@ -1,12 +1,14 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Search, MoreVertical, Radio as RadioIcon, Swords, Tv, Heart, Tag } from "lucide-react";
-import FeedPostCard from "@/components/feed/FeedPostCard";
-import { fetchFeedItems } from "@/lib/feed-items";
-import { getFeedMountRadius, initFeedAudioUnlockOnGesture } from "@/lib/feed-video-playback";
+import { fetchFeedItems, isReelItem } from "@/lib/feed-items";
+import { initFeedAudioUnlockOnGesture } from "@/lib/feed-video-playback";
+import FeedThumbCard from "@/components/feed/FeedThumbCard";
+import FeedFullscreenViewer from "@/components/feed/FeedFullscreenViewer";
+import FlagBackground from "@/components/FlagBackground";
 import jhiLogo from "@/assets/wheuat-logo.png";
 
 type TabId = "radio" | "battle" | "marketplace" | "deals" | "support";
@@ -24,13 +26,12 @@ interface TrendingCreator {
   avatar_url: string | null;
 }
 
+type ViewerState = { rail: "reel" | "post"; index: number } | null;
+
 const FeedPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [chromeHidden, setChromeHidden] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const mountRadius = useMemo(() => getFeedMountRadius(), []);
+  const [viewer, setViewer] = useState<ViewerState>(null);
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ["feed-posts"],
@@ -49,55 +50,26 @@ const FeedPage = () => {
     },
   });
 
-  const feedPosts = items.filter((item: any) => item.itemType === "post");
-
-  useEffect(() => {
-    const container = scrollRef.current;
-    if (!container || feedPosts.length === 0) return;
-
-    const syncActiveIndex = () => {
-      const height = container.clientHeight;
-      if (height <= 0) return;
-      const next = Math.min(
-        feedPosts.length - 1,
-        Math.max(0, Math.round(container.scrollTop / height)),
-      );
-      setCurrentIndex((prev) => (prev === next ? prev : next));
-    };
-
-    syncActiveIndex();
-    requestAnimationFrame(syncActiveIndex);
-
-    container.addEventListener("scroll", syncActiveIndex, { passive: true });
-    container.addEventListener("scrollend", syncActiveIndex, { passive: true });
-    return () => {
-      container.removeEventListener("scroll", syncActiveIndex);
-      container.removeEventListener("scrollend", syncActiveIndex);
-    };
-  }, [feedPosts.length]);
-
-  useEffect(() => {
-    if (currentIndex >= feedPosts.length) setCurrentIndex(0);
-  }, [currentIndex, feedPosts.length]);
+  const { reels, posts } = useMemo(() => {
+    const feedPosts = items.filter((it: any) => it.itemType === "post");
+    const reels: any[] = [];
+    const posts: any[] = [];
+    feedPosts.forEach((p: any) => (isReelItem(p) ? reels : posts).push(p));
+    return { reels, posts };
+  }, [items]);
 
   useEffect(() => {
     initFeedAudioUnlockOnGesture();
   }, []);
 
-  useEffect(() => {
-    const resetToTop = () => {
-      scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-      setCurrentIndex(0);
-      setChromeHidden(false);
-    };
-    window.addEventListener("feed-scroll-top", resetToTop);
-    return () => window.removeEventListener("feed-scroll-top", resetToTop);
-  }, []);
+  const activeItems = viewer?.rail === "reel" ? reels : viewer?.rail === "post" ? posts : [];
 
   return (
-    <div className="h-[100dvh] w-full bg-black flex flex-col overflow-hidden relative overscroll-none">
+    <div className="h-[100dvh] w-full flex flex-col overflow-hidden relative overscroll-none">
+      <FlagBackground />
+
       {/* Header overlay */}
-      <div className={`absolute top-0 left-0 right-0 z-50 px-4 pt-[calc(env(safe-area-inset-top)+0.625rem)] pb-3 bg-gradient-to-b from-black/85 via-black/50 to-transparent pointer-events-none transition-all duration-300 ${chromeHidden ? "-translate-y-full opacity-0" : "translate-y-0 opacity-100"}`}>
+      <div className="absolute top-0 left-0 right-0 z-40 px-4 pt-[calc(env(safe-area-inset-top)+0.625rem)] pb-3 bg-gradient-to-b from-black/85 via-black/50 to-transparent pointer-events-none">
         <div className="flex items-center justify-between text-white pointer-events-auto">
           <img src={jhiLogo} alt="JHi" className="h-7 w-auto" />
           <div className="flex items-center gap-1">
@@ -110,7 +82,6 @@ const FeedPage = () => {
           </div>
         </div>
 
-        {/* Category pills */}
         <div className="mt-2 w-full flex justify-center pointer-events-auto pb-0.5">
           <div className="inline-flex max-w-full items-center justify-center gap-1 overflow-x-auto scrollbar-hide px-0.5">
             {TABS.map((tab) => {
@@ -129,7 +100,6 @@ const FeedPage = () => {
           </div>
         </div>
 
-        {/* Trending creators strip */}
         {trending.length > 0 && (
           <div className="mt-2.5 flex items-center gap-2.5 overflow-x-auto scrollbar-hide pointer-events-auto -mx-1 px-1 pb-0.5">
             <button
@@ -162,54 +132,70 @@ const FeedPage = () => {
             ))}
           </div>
         )}
-
       </div>
 
-      <div
-        ref={scrollRef}
-        className="h-full overflow-y-scroll snap-y snap-mandatory scrollbar-hide overscroll-y-contain"
-        style={{ scrollSnapType: "y mandatory", WebkitOverflowScrolling: "touch" }}
-        onScroll={() => { if (!chromeHidden) setChromeHidden(true); }}
-      >
-        {isLoading ? (
-          <div className="h-[100dvh] flex items-center justify-center snap-start">
-            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      {/* Split columns */}
+      {isLoading ? (
+        <div className="relative z-10 h-full flex items-center justify-center">
+          <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : (
+        <div className="relative z-10 flex-1 flex overflow-hidden pt-[8.5rem]">
+          {/* Reels — left 25% */}
+          <div className="w-1/4 h-full overflow-y-scroll scrollbar-hide overscroll-y-contain px-1.5 pb-24 space-y-2">
+            <div className="sticky top-0 z-10 -mx-1.5 px-2 py-1 bg-black/40 backdrop-blur-sm rounded-b-md">
+              <p className="text-[10px] font-black tracking-wider text-white uppercase">Reels</p>
+            </div>
+            {reels.length === 0 ? (
+              <p className="text-[10px] text-white/60 text-center mt-4">No reels yet</p>
+            ) : (
+              reels.map((post, i) => (
+                <FeedThumbCard
+                  key={post.id}
+                  post={post}
+                  compact
+                  onOpen={() => setViewer({ rail: "reel", index: i })}
+                />
+              ))
+            )}
           </div>
-        ) : feedPosts.length === 0 ? (
-          <div className="h-[100dvh] flex flex-col items-center justify-center snap-start gap-3">
-            <p className="text-white/60 text-sm">No posts yet</p>
-            <button
-              onClick={() => window.dispatchEvent(new Event("open-create-post"))}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-full text-sm font-semibold"
-            >
-              Create first post
-            </button>
-          </div>
-        ) : (
-          feedPosts.map((item: any, index: number) => {
-            const mounted = Math.abs(index - currentIndex) <= mountRadius;
-            return (
-              <div
-                key={item.id}
-                data-index={index}
-                className="h-[100dvh] w-full snap-start snap-always relative bg-black"
-                style={{ scrollSnapAlign: "start" }}
-              >
-                {mounted ? (
-                  <FeedPostCard
-                    post={item}
-                    currentUserId={user?.id}
-                    isActive={index === currentIndex}
-                    isNear={Math.abs(index - currentIndex) <= 1}
-                    chromeHidden={chromeHidden}
-                    onChromeHiddenChange={setChromeHidden}
-                  />
-                ) : null}
+
+          {/* Posts — right 75% */}
+          <div className="w-3/4 h-full overflow-y-scroll scrollbar-hide overscroll-y-contain px-2 pb-24 space-y-3 border-l border-white/10">
+            <div className="sticky top-0 z-10 -mx-2 px-3 py-1 bg-black/40 backdrop-blur-sm rounded-b-md">
+              <p className="text-[11px] font-black tracking-wider text-white uppercase">Posts</p>
+            </div>
+            {posts.length === 0 ? (
+              <div className="flex flex-col items-center gap-3 mt-6">
+                <p className="text-white/60 text-xs">No posts yet</p>
+                <button
+                  onClick={() => window.dispatchEvent(new Event("open-create-post"))}
+                  className="px-4 py-2 bg-primary text-primary-foreground rounded-full text-xs font-semibold"
+                >
+                  Create first post
+                </button>
               </div>
-            );
-          })
-        )}
-      </div>
+            ) : (
+              posts.map((post, i) => (
+                <FeedThumbCard
+                  key={post.id}
+                  post={post}
+                  onOpen={() => setViewer({ rail: "post", index: i })}
+                />
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {viewer && activeItems.length > 0 && (
+        <FeedFullscreenViewer
+          items={activeItems}
+          startIndex={viewer.index}
+          currentUserId={user?.id}
+          onClose={() => setViewer(null)}
+        />
+      )}
     </div>
   );
 };
