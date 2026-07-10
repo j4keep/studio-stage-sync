@@ -72,13 +72,13 @@ const BottomNav = () => {
         onClick={handleClick}
         className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-1 min-h-[3rem] rounded-lg transition-all duration-200 ${
           active
-            ? isFeed ? "text-white" : "text-primary"
-            : isFeed ? "text-white/55 hover:text-white/80" : "text-muted-foreground hover:text-foreground"
+            ? isFeed ? "text-foreground" : "text-primary"
+            : isFeed ? "text-muted-foreground hover:text-foreground" : "text-muted-foreground hover:text-foreground"
         }`}
       >
         <Icon
           className={`w-[1.35rem] h-[1.35rem] transition-all ${
-            active ? (isFeed ? "drop-shadow-[0_0_10px_rgba(255,255,255,0.45)]" : "drop-shadow-[0_0_8px_hsl(var(--primary)/0.55)]") : ""
+            active ? (isFeed ? "drop-shadow-[0_0_8px_hsl(var(--primary)/0.35)]" : "drop-shadow-[0_0_8px_hsl(var(--primary)/0.55)]") : ""
           }`}
           strokeWidth={active ? 2.5 : 2}
         />
@@ -94,7 +94,7 @@ const BottomNav = () => {
           isFeed ? "absolute inset-x-0 bottom-0 w-full" : "fixed bottom-0 left-0 right-0"
         } z-50 border-t backdrop-blur-2xl safe-area-bottom transition-transform duration-300 ${
           isFeed
-            ? "border-white/10 bg-black/75 supports-[backdrop-filter]:bg-black/55"
+            ? "border-border bg-background/90 supports-[backdrop-filter]:bg-background/80"
             : "border-border bg-background/90"
         } ${hidden ? "translate-y-full" : "translate-y-0"}`}
       >

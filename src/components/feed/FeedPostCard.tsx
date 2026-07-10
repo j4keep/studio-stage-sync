@@ -399,27 +399,10 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     const onUnlocked = () => {
       setFeedAudioUnlocked(true);
       setAutoplayAudioLocked(false);
-      const video = videoRef.current;
-      if (!video || !isActive || userPausedRef.current) return;
-      if (!getVideoMuted()) {
-        void startAudiblePlayback();
-      }
     };
     window.addEventListener("feed-audio-unlocked", onUnlocked);
     return () => window.removeEventListener("feed-audio-unlocked", onUnlocked);
-  }, [isActive, getVideoMuted, startAudiblePlayback]);
-
-  useEffect(() => {
-    const onFeedStartAudible = () => {
-      if (post.media_type !== "video" || !isActiveRef.current || userPausedRef.current || isMuted) return;
-      setFeedAudioUnlocked(true);
-      setAutoplayAudioLocked(false);
-      void startAudiblePlayback();
-    };
-
-    window.addEventListener("feed-start-audible", onFeedStartAudible);
-    return () => window.removeEventListener("feed-start-audible", onFeedStartAudible);
-  }, [post.media_type, isMuted, startAudiblePlayback]);
+  }, []);
 
   // Added sound plays in sync with video — vocal stays audible unless muted in editor.
   useEffect(() => {
@@ -609,9 +592,14 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
 
     const trim = postMeta?.trim;
     let rafId = 0;
+    let lastProgressSync = 0;
     const tick = () => {
       if (!isScrubbingRef.current && video.duration && isFinite(video.duration) && !video.paused) {
-        setVideoProgress((video.currentTime / video.duration) * 100);
+        const now = performance.now();
+        if (now - lastProgressSync > 250) {
+          lastProgressSync = now;
+          setVideoProgress((video.currentTime / video.duration) * 100);
+        }
       }
       if (trim && !video.paused && video.currentTime >= trim.end) {
         video.currentTime = trim.start;
