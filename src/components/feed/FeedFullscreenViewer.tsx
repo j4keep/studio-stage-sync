@@ -26,14 +26,22 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
+    let rafId = 0;
     const sync = () => {
-      const h = el.clientHeight;
-      if (h <= 0) return;
-      const next = Math.min(items.length - 1, Math.max(0, Math.round(el.scrollTop / h)));
-      setCurrentIndex((prev) => (prev === next ? prev : next));
+      if (rafId) return;
+      rafId = window.requestAnimationFrame(() => {
+        rafId = 0;
+        const h = el.clientHeight;
+        if (h <= 0) return;
+        const next = Math.min(items.length - 1, Math.max(0, Math.round(el.scrollTop / h)));
+        setCurrentIndex((prev) => (prev === next ? prev : next));
+      });
     };
     el.addEventListener("scroll", sync, { passive: true });
-    return () => el.removeEventListener("scroll", sync);
+    return () => {
+      el.removeEventListener("scroll", sync);
+      if (rafId) window.cancelAnimationFrame(rafId);
+    };
   }, [items.length]);
 
   return (
@@ -64,7 +72,7 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
                   post={item}
                   currentUserId={currentUserId}
                   isActive={index === currentIndex}
-                  isNear={Math.abs(index - currentIndex) <= 1}
+                  isNear={mounted}
                 />
               ) : null}
             </div>

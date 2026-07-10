@@ -18,8 +18,9 @@ export function isTouchFeedDevice() {
 }
 
 export function getFeedMountRadius() {
-  // Keep only the closest videos mounted on phones; too many preloaded videos freezes iOS feeds.
-  return isTouchFeedDevice() ? 1 : 2;
+  // Keep only the active full-screen card mounted on phones; extra video/audio
+  // elements are the main cause of iOS feed freezes during vertical swipes.
+  return isTouchFeedDevice() ? 0 : 1;
 }
 
 /** Wait until Safari has enough buffered to start playback. */
