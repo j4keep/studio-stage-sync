@@ -134,7 +134,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
         originalVolume: postMeta?.originalVolume,
         musicVolume: postMeta?.music?.volume,
       });
-      if (hasAddedSound && postMeta?.muteOriginal !== true) {
+      if (hasAddedSound && !playbackMuteOriginal) {
         return { muted: false, volume: mix.videoVolume };
       }
       return { muted: false };
