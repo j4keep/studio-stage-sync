@@ -76,6 +76,7 @@ export default function CreateCameraView({
   const lipSyncModeRef = useRef(!!musicPreviewUrl);
   const recordStartedAtRef = useRef<number | null>(null);
   const isStoppingRecordingRef = useRef(false);
+  const cameraStoppedForSoundPickerRef = useRef(false);
 
   const [facing, setFacing] = useState<"user" | "environment">("user");
   const [denied, setDenied] = useState(false);
@@ -206,14 +207,20 @@ export default function CreateCameraView({
     const video = videoRef.current;
 
     if (musicPaused) {
+      cameraStoppedForSoundPickerRef.current = true;
       stopStream(true);
       return;
     }
 
-    if (!stream || !ready) {
+    if (cameraStoppedForSoundPickerRef.current && !streamHasLiveVideo(stream)) {
+      cameraStoppedForSoundPickerRef.current = false;
       void startCamera();
       return;
     }
+
+    cameraStoppedForSoundPickerRef.current = false;
+
+    if (!stream || !ready) return;
 
     for (const track of stream.getVideoTracks()) {
       track.enabled = true;
