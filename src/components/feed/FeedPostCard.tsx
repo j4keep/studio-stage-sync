@@ -35,6 +35,7 @@ import {
   applyFeedVideoAudio,
   applyFeedAudioElementVolume,
   bindFeedMediaSession,
+  forceIosAudioSessionToPlayback,
   isFeedAudioSessionUnlocked,
   isTouchFeedDevice,
   unlockFeedAudioSession,
@@ -103,6 +104,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     [postTitle, displayCaption, profile.display_name],
   );
   const hasAddedSound = Boolean(postMeta?.music?.audioUrl);
+  const coverUrl = postMeta?.coverUrl;
   const hasMediaUrl = typeof post.media_url === "string" && post.media_url.trim().length > 0;
   const showMediaFallback = !hasMediaUrl || mediaFailed;
   const playbackMuteOriginal = hasAddedSound ? false : postMeta?.muteOriginal === true;
@@ -183,6 +185,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     }
 
     if (hasAddedSound) {
+      forceIosAudioSessionToPlayback();
       const audio = musicAudioRef.current;
       const soundSync = getAddedSoundVideoSyncOptions(true, { ...(postMeta ?? {}), muteOriginal: playbackMuteOriginal });
       const mix = getMixedPlaybackVolumes({
@@ -214,6 +217,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     }
 
     applyFeedVideoAudio(video, { muted: false });
+    forceIosAudioSessionToPlayback();
     mediaSessionCleanupRef.current?.();
     mediaSessionCleanupRef.current = bindFeedMediaSession(video, playbackMeta);
     try {
@@ -277,6 +281,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       }
 
       applyFeedVideoAudio(video, getVideoMixAudio());
+      forceIosAudioSessionToPlayback();
       try {
         await video.play();
         markPlaying();
@@ -319,6 +324,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
 
     setAutoplayAudioLocked(false);
     applyFeedVideoAudio(video, { muted: false });
+      forceIosAudioSessionToPlayback();
     mediaSessionCleanupRef.current?.();
     mediaSessionCleanupRef.current = bindFeedMediaSession(video, playbackMeta);
 
@@ -831,6 +837,19 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
   const videoMutedForAutoplay =
     getVideoMuted() || autoplayAudioLocked;
 
+  const revealFirstFrame = (video: HTMLVideoElement) => {
+    if (coverUrl) return;
+    if (video.currentTime > 0.05) return;
+    const target = postMeta?.coverTime ?? 0.12;
+    if (Number.isFinite(video.duration) && video.duration > target + 0.05) {
+      try {
+        video.currentTime = target;
+      } catch {
+        /* ignore */
+      }
+    }
+  };
+
   return (
     <>
       <div
@@ -844,6 +863,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
             <video
               ref={videoRef}
               src={post.media_url}
+              poster={coverUrl}
               className="absolute inset-0 h-full w-full object-cover"
               style={cropStyle}
               loop
@@ -851,6 +871,10 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
               muted={videoMutedForAutoplay}
               autoPlay={false}
               preload={isActive || isNear ? "auto" : "metadata"}
+              onLoadedMetadata={(e) => {
+                revealFirstFrame(e.currentTarget);
+                if (coverUrl) setMediaReady(true);
+              }}
               onLoadedData={() => setMediaReady(true)}
               onCanPlay={() => setMediaReady(true)}
               onError={() => setMediaFailed(true)}
@@ -879,7 +903,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
         )}
 
         {hasMediaUrl && !mediaFailed && post.media_type === "video" && isActive && !mediaReady && (
-          <div className="absolute inset-0 z-[1] flex items-center justify-center bg-black pointer-events-none">
+          <div className="absolute inset-0 z-[1] flex items-center justify-center bg-black/20 pointer-events-none">
             <div className="w-8 h-8 border-2 border-white/40 border-t-white rounded-full animate-spin" />
           </div>
         )}

@@ -1,4 +1,4 @@
-import { applyFeedVideoAudio, bindFeedMediaSession, unlockFeedAudioSession, type FeedPlaybackMeta } from "@/lib/feed-video-playback";
+import { applyFeedVideoAudio, bindFeedMediaSession, forceIosAudioSessionToPlayback, unlockFeedAudioSession, type FeedPlaybackMeta } from "@/lib/feed-video-playback";
 
 /** Playback mix — video vocal (includes mic recording). */
 export const MIXED_VOCAL_VIDEO_VOLUME = 1;
@@ -166,6 +166,7 @@ export function createTrimmedMusicPlayer(
 
   const play = async (): Promise<boolean> => {
     try {
+      forceIosAudioSessionToPlayback();
       await seekToTrimStart();
       audio.muted = false;
       audio.volume = trim.volume ?? 1;
@@ -282,6 +283,7 @@ export function syncMusicWithVideo(
 
   const bindSession = () => {
     mediaSessionCleanup?.();
+    forceIosAudioSessionToPlayback();
     unlockFeedAudioSession();
     mediaSessionCleanup = bindFeedMediaSession(
       audio,

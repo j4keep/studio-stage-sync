@@ -33,6 +33,11 @@ export async function resetIosAudioSessionToPlayback(): Promise<void> {
   await new Promise<void>((resolve) => window.setTimeout(resolve, 60));
 }
 
+/** Synchronous version for user-gesture audio starts. */
+export function forceIosAudioSessionToPlayback(): void {
+  setWebAudioSessionType("playback");
+}
+
 /** Phones/tablets need a user gesture before unmuted playback (iOS Safari). */
 export function isTouchFeedDevice() {
   if (typeof window === "undefined") return false;
@@ -210,6 +215,7 @@ export function armFeedAudioPlayback(
   meta: FeedPlaybackMeta = {},
   volume = 1,
 ): () => void {
+  forceIosAudioSessionToPlayback();
   unlockFeedAudioSession();
   if (media instanceof HTMLVideoElement) {
     applyFeedVideoAudio(media, { muted: false, volume: Math.min(1, Math.max(0, volume)) });
