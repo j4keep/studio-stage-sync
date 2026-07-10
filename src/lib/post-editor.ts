@@ -74,6 +74,8 @@ export interface PostEditorMeta {
   title?: string;
   /** Visual layers were flattened into the image file — do not render HTML overlays */
   bakedEdits?: boolean;
+  /** Feed routing: true → Reels column, false → Posts column. */
+  isReel?: boolean;
 }
 
 const META_MARKER = "\u200B<!--wheuat:";

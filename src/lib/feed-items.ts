@@ -1,4 +1,16 @@
 import { supabase } from "@/integrations/supabase/client";
+import { parsePostCaption } from "@/lib/post-editor";
+
+/** Classify a post row into the "reel" (short/fast) column or "post" (long) column. */
+export function isReelItem(item: any): boolean {
+  if (!item) return false;
+  if (item.itemType && item.itemType !== "post") return false;
+  const meta = parsePostCaption(item.caption).meta;
+  if (meta?.isReel === true) return true;
+  if (meta?.isReel === false) return false;
+  // Backwards-compat fallback: images → Reels, videos → Posts.
+  return item.media_type === "image";
+}
 
 export type FeedItem =
   | {

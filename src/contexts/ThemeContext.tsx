@@ -21,8 +21,10 @@ export const THEME_PRESETS: ThemePreset[] = [
 interface ThemeContextType {
   currentPreset: string;
   customAccent: string | null;
+  countryFlag: string | null;
   setThemePreset: (presetId: string) => void;
   setCustomAccent: (hsl: string | null) => void;
+  setCountryFlag: (flagId: string | null) => void;
   saveThemeToProfile: () => Promise<void>;
   themeSetupDone: boolean | null;
 }
@@ -30,8 +32,10 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType>({
   currentPreset: "default",
   customAccent: null,
+  countryFlag: null,
   setThemePreset: () => {},
   setCustomAccent: () => {},
+  setCountryFlag: () => {},
   saveThemeToProfile: async () => {},
   themeSetupDone: null,
 });
@@ -58,6 +62,9 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   const { user } = useAuth();
   const [currentPreset, setCurrentPreset] = useState("default");
   const [customAccent, setCustomAccentState] = useState<string | null>(null);
+  const [countryFlag, setCountryFlagState] = useState<string | null>(() => {
+    return localStorage.getItem("jhi_country_flag");
+  });
   const [themeSetupDone, setThemeSetupDone] = useState<boolean | null>(() => {
     // If localStorage says done, never show onboarding again
     return localStorage.getItem("wheuat_theme_setup_done") ? true : null;
@@ -74,9 +81,9 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
 
     const load = async () => {
       try {
-        const { data } = await supabase
+        const { data } = await (supabase as any)
           .from("profiles")
-          .select("theme_preset, custom_accent_color")
+          .select("theme_preset, custom_accent_color, country_flag")
           .eq("user_id", user.id)
           .maybeSingle();
 
@@ -86,6 +93,11 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
           const preset = data.theme_preset || "default";
           setCurrentPreset(preset);
           setCustomAccentState(data.custom_accent_color || null);
+          if (data.country_flag !== undefined) {
+            setCountryFlagState(data.country_flag || null);
+            if (data.country_flag) localStorage.setItem("jhi_country_flag", data.country_flag);
+            else localStorage.removeItem("jhi_country_flag");
+          }
 
           if (data.custom_accent_color) {
             applyAccentColor(data.custom_accent_color);
@@ -125,25 +137,34 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
     if (hsl) applyAccentColor(hsl);
   }, []);
 
+  const setCountryFlag = useCallback((flagId: string | null) => {
+    setCountryFlagState(flagId);
+    if (flagId) localStorage.setItem("jhi_country_flag", flagId);
+    else localStorage.removeItem("jhi_country_flag");
+  }, []);
+
   const saveThemeToProfile = useCallback(async () => {
     if (!user) return;
-    await supabase
+    await (supabase as any)
       .from("profiles")
       .update({
         theme_preset: currentPreset,
         custom_accent_color: customAccent,
+        country_flag: countryFlag,
       })
       .eq("user_id", user.id);
     localStorage.setItem("wheuat_theme_setup_done", "true");
     setThemeSetupDone(true);
-  }, [user, currentPreset, customAccent]);
+  }, [user, currentPreset, customAccent, countryFlag]);
 
   return (
     <ThemeContext.Provider value={{
       currentPreset,
       customAccent,
+      countryFlag,
       setThemePreset,
       setCustomAccent,
+      setCountryFlag,
       saveThemeToProfile,
       themeSetupDone,
     }}>
@@ -151,3 +172,4 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
     </ThemeContext.Provider>
   );
 };
+

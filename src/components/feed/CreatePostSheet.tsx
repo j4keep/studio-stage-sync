@@ -345,6 +345,9 @@ if (!user) throw new Error("Not authenticated");
 
   setUploading(false);
 
+  // Tag the post for the feed's Reels vs Posts split.
+  meta = { ...meta, isReel: createMode === "post" };
+
   const payload = {
     caption: encodeCaptionWithMeta(caption.trim(), meta) || null,
     media_url: mediaUrl,
