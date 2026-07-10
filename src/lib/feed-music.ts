@@ -1,4 +1,6 @@
 /** iOS Safari needs explicit extensions — audio/* alone opens the photo library. */
+import { forceIosAudioSessionToPlayback } from "@/lib/feed-video-playback";
+
 export const AUDIO_FILE_ACCEPT =
   ".mp3,.m4a,.wav,.aac,.ogg,.flac,audio/mpeg,audio/mp4,audio/x-m4a,audio/wav,audio/aac,audio/ogg,audio/*";
 
@@ -76,6 +78,7 @@ export function playUploadedAudio(
   }
 
   if (autoplay) {
+    forceIosAudioSessionToPlayback();
     void audio.play().catch(() => {});
   }
 

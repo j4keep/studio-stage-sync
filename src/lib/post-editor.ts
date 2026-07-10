@@ -69,6 +69,8 @@ export interface PostEditorMeta {
     trimEnd?: number;
   };
   coverTime?: number;
+  /** Uploaded still frame used so feed cards never render a black video tile before autoplay. */
+  coverUrl?: string;
   location?: string;
   /** Post title shown in feed (required before posting) */
   title?: string;
@@ -130,6 +132,7 @@ export function encodeCaptionWithMeta(caption: string, meta: PostEditorMeta): st
     (meta.originalVolume !== undefined && meta.originalVolume !== 1) ||
     meta.music ||
     meta.coverTime !== undefined ||
+    meta.coverUrl ||
     meta.location ||
     meta.title;
 

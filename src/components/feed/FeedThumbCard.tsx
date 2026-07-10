@@ -11,11 +11,41 @@ interface Props {
 /** Compact card used in the split-feed columns. Nothing floats — all chrome inside the card. */
 export default function FeedThumbCard({ post, compact = false, onOpen }: Props) {
   const cardRef = useRef<HTMLButtonElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [inView, setInView] = useState(false);
   const { caption, meta } = useMemo(() => parsePostCaption(post.caption), [post.caption]);
   const profile = post.profile || { display_name: "Artist", avatar_url: null };
   const isVideo = post.media_type === "video";
   const title = (meta?.title || caption || "").trim();
+  const coverUrl = meta?.coverUrl;
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !isVideo || !inView) return;
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = "auto";
+    const play = () => void video.play().catch(() => {});
+    play();
+    video.addEventListener("canplay", play);
+    return () => {
+      video.removeEventListener("canplay", play);
+      video.pause();
+    };
+  }, [inView, isVideo, post.media_url]);
+
+  const revealFirstFrame = (video: HTMLVideoElement) => {
+    if (coverUrl) return;
+    if (video.currentTime > 0.05) return;
+    const target = meta?.coverTime ?? 0.12;
+    if (Number.isFinite(video.duration) && video.duration > target + 0.05) {
+      try {
+        video.currentTime = target;
+      } catch {
+        /* ignore */
+      }
+    }
+  };
 
   useEffect(() => {
     const node = cardRef.current;
@@ -43,12 +73,16 @@ export default function FeedThumbCard({ post, compact = false, onOpen }: Props) 
         {post.media_url ? (
           isVideo && inView ? (
             <video
+              ref={videoRef}
               src={post.media_url}
+              poster={coverUrl}
               className="absolute inset-0 w-full h-full object-cover pointer-events-none"
               muted
               playsInline
-              preload="metadata"
+              loop
+              preload="auto"
               tabIndex={-1}
+              onLoadedMetadata={(e) => revealFirstFrame(e.currentTarget)}
             />
           ) : isVideo ? (
             <div className="absolute inset-0 flex items-center justify-center bg-black pointer-events-none">

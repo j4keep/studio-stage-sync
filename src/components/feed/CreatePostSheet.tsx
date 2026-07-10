@@ -29,6 +29,7 @@ import {
   MIXED_ADDED_MUSIC_VOLUME,
   MIXED_VOCAL_VIDEO_VOLUME,
 } from "@/lib/post-music-preview";
+import { captureVideoPosterFromBlob, dataUrlToFile } from "@/lib/video-preview";
 
 interface Props {
 open: boolean;
@@ -311,6 +312,14 @@ if (!user) throw new Error("Not authenticated");
   }
 
   if (uploadFile) {
+    let coverFile: File | null = null;
+    if (mediaType === "video") {
+      const coverDataUrl = await captureVideoPosterFromBlob(uploadFile);
+      if (coverDataUrl) {
+        coverFile = dataUrlToFile(coverDataUrl, `cover-${Date.now()}.jpg`);
+      }
+    }
+
     const ext =
       uploadFile instanceof File
         ? uploadFile.name.split(".").pop()
@@ -336,6 +345,24 @@ if (!user) throw new Error("Not authenticated");
       .getPublicUrl(path);
 
     mediaUrl = urlData.publicUrl;
+
+    if (coverFile) {
+      const coverPath = `posts/${user.id}/cover-${Date.now()}.jpg`;
+      const { error: coverErr } = await supabase.storage
+        .from("media")
+        .upload(coverPath, coverFile, { contentType: coverFile.type || "image/jpeg" });
+
+      if (!coverErr) {
+        const { data: coverUrlData } = supabase.storage
+          .from("media")
+          .getPublicUrl(coverPath);
+        meta = {
+          ...meta,
+          coverUrl: coverUrlData.publicUrl,
+          coverTime: meta.coverTime ?? 0.12,
+        };
+      }
+    }
 
     nextMediaType =
       uploadFile instanceof File && uploadFile.type.startsWith("video/")

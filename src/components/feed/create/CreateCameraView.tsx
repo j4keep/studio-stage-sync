@@ -16,7 +16,7 @@ import {
 import type { CreateMode, EnhanceTab } from "@/lib/create-modes";
 import { QUICK_MAX_RECORD_SEC } from "@/lib/create-modes";
 import { createTrimmedMusicPlayer, CAMERA_ADDED_SOUND_MONITOR_VOLUME, type MusicTrim } from "@/lib/post-music-preview";
-import { armFeedAudioPlayback, resetIosAudioSessionToPlayback } from "@/lib/feed-video-playback";
+import { armFeedAudioPlayback, forceIosAudioSessionToPlayback, resetIosAudioSessionToPlayback } from "@/lib/feed-video-playback";
 import CreateModeTabs from "./CreateModeTabs";
 import RecordButton from "./RecordButton";
 import EnhancePanel from "./EnhancePanel";
@@ -209,6 +209,7 @@ export default function CreateCameraView({
     if (musicPaused) {
       cameraStoppedForSoundPickerRef.current = true;
       stopStream(true);
+      void resetIosAudioSessionToPlayback();
       return;
     }
 
@@ -240,6 +241,7 @@ export default function CreateCameraView({
 
   const armCameraMusic = useCallback(
     (media: HTMLMediaElement) => {
+      forceIosAudioSessionToPlayback();
       cameraMusicSessionRef.current?.();
       cameraMusicSessionRef.current = armFeedAudioPlayback(
         media,
@@ -472,8 +474,6 @@ export default function CreateCameraView({
         finishRecordingRef.current();
       };
 
-      rec.start(100);
-
       if (lipSyncMode && cameraMusicPlayerRef.current) {
         const audio = cameraMusicPlayerRef.current.audio;
         try {
@@ -484,8 +484,10 @@ export default function CreateCameraView({
         }
 
         armCameraMusic(audio);
-        void cameraMusicPlayerRef.current.play();
+        await cameraMusicPlayerRef.current.play();
       }
+
+      rec.start(100);
 
       recordPendingRef.current = false;
       setRecording(true);
