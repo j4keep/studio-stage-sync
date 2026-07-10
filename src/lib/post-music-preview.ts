@@ -71,6 +71,40 @@ export function sameMediaElementSrc(element: HTMLMediaElement, url: string): boo
   }
 }
 
+// Cache WebAudio boost so tapping Preview/Play repeatedly doesn't leak nodes.
+const boostedElements = new WeakMap<HTMLMediaElement, { ctx: AudioContext; gain: GainNode }>();
+
+/** Route an <audio>/<video> element through a WebAudio GainNode > 1 so iOS/Android
+ *  preview and mixed playback are as loud as TikTok/Instagram. Safe to call repeatedly. */
+export function boostMediaElementLoudness(media: HTMLMediaElement, gainValue = 2.2): void {
+  try {
+    let entry = boostedElements.get(media);
+    if (!entry) {
+      const AC: typeof AudioContext =
+        (window as any).AudioContext || (window as any).webkitAudioContext;
+      if (!AC) return;
+      const ctx = new AC();
+      const src = ctx.createMediaElementSource(media);
+      const gain = ctx.createGain();
+      const comp = ctx.createDynamicsCompressor();
+      comp.threshold.value = -12;
+      comp.knee.value = 12;
+      comp.ratio.value = 3;
+      comp.attack.value = 0.005;
+      comp.release.value = 0.2;
+      src.connect(gain).connect(comp).connect(ctx.destination);
+      entry = { ctx, gain };
+      boostedElements.set(media, entry);
+    }
+    entry.gain.gain.value = gainValue;
+    if (entry.ctx.state === "suspended") {
+      void entry.ctx.resume().catch(() => {});
+    }
+  } catch {
+    /* creating a MediaElementSource twice throws — safe to ignore. */
+  }
+}
+
 export function createTrimmedMusicPlayer(
   url: string,
   trim: MusicTrim = {},
@@ -133,6 +167,7 @@ export function createTrimmedMusicPlayer(
   const play = async (): Promise<boolean> => {
     try {
       await seekToTrimStart();
+      boostMediaElementLoudness(audio);
       await audio.play();
       return true;
     } catch {
