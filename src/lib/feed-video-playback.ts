@@ -55,6 +55,7 @@ export function isFeedAudioSessionUnlocked() {
 }
 
 export function unlockFeedAudioSession() {
+  if (feedAudioSessionUnlocked) return;
   feedAudioSessionUnlocked = true;
   window.dispatchEvent(new Event("feed-audio-unlocked"));
 }

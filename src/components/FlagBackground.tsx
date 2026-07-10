@@ -5,7 +5,7 @@ interface Props {
   className?: string;
 }
 
-/** Renders the user's chosen flag as a full-bleed background. Falls back to black. */
+/** Renders the user's chosen flag as a full-bleed background. Falls back to transparent. */
 export default function FlagBackground({ className = "" }: Props) {
   const { countryFlag } = useTheme();
   const flag = getFlagById(countryFlag);
@@ -14,7 +14,7 @@ export default function FlagBackground({ className = "" }: Props) {
     <div
       className={`absolute inset-0 pointer-events-none ${className}`}
       style={{
-        background: flag ? flagBackgroundCss(flag) : "#000",
+        background: flag ? flagBackgroundCss(flag) : "transparent",
       }}
       aria-hidden
     />
