@@ -2,8 +2,8 @@ import { applyFeedVideoAudio, bindFeedMediaSession, unlockFeedAudioSession, type
 
 /** Playback mix — video vocal (includes mic recording). */
 export const MIXED_VOCAL_VIDEO_VOLUME = 1;
-/** Playback mix — added song (separate track; kept under the recorded vocal). */
-export const MIXED_ADDED_MUSIC_VOLUME = 0.82;
+/** Playback mix — added song (separate track) at normal social-app media volume. */
+export const MIXED_ADDED_MUSIC_VOLUME = 1;
 /** TikTok-style playback when added sound replaces the video track. */
 export const ADDED_SOUND_PLAYBACK_VOLUME = 1;
 /** Camera lip-sync monitor — full media volume while recording; not used on edit/feed playback. */
@@ -167,7 +167,8 @@ export function createTrimmedMusicPlayer(
   const play = async (): Promise<boolean> => {
     try {
       await seekToTrimStart();
-      boostMediaElementLoudness(audio);
+      audio.muted = false;
+      audio.volume = trim.volume ?? 1;
       await audio.play();
       return true;
     } catch {
