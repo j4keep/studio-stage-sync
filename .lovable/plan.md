@@ -1,63 +1,49 @@
-# Home Feed + Create Post — Cleanup Pass
+# Cleanup: Remove W.STUDIO + Podcast, pivot to J-HI
 
-This is a large surface (~4,600 lines across 8 files). To avoid burning your remaining credits on a thrash, I'll do this as **one focused pass** on the specific behaviors you listed — no UI redesign, no touching Shop/Explore/Profile/Battle/Radio/W.STUDIO/Podcast.
+This is a UI/route-level removal. I will hide the dead surfaces and rewire navigation, **without** mass-deleting files yet (safer rollback, fewer broken imports). A follow-up pass can hard-delete the orphaned files once you confirm nothing regressed.
 
-## Files I will change
+## Note on backup branch
+I can't create git branches from inside Lovable (git is managed by the platform). Before I start, please create the backup branch yourself:
+- Open the GitHub integration → create branch `legacy-wstudio-podcast-backup` from current `main`.
+- Then tell me "go" and I'll proceed on `main`.
 
-1. `src/lib/feed-video-playback.ts` — single source of truth for feed audio unlock + play/pause.
-2. `src/components/feed/FeedPostCard.tsx` — collapse the tangled autoplay/mute retry logic into one clean state machine.
-3. `src/pages/FeedPage.tsx` — ensure only the active index plays; pause + release neighbors past ±1.
-4. `src/components/feed/create/CreateCameraView.tsx` — hold-to-record, unified stop path (manual + auto-stop at 60s), front camera default, mic settings locked to the social preset.
-5. `src/components/feed/CreatePostSheet.tsx` — upload icon uses a plain `<input type="file" accept="image/*,video/*">` with **no** `capture` attribute (gallery only, never live camera).
-6. `src/components/feed/create/MediaEditView.tsx` — guarantee the recorded/uploaded blob is playable before entering editor; keep `media_type` correct on post.
-7. `src/lib/post-music-preview.ts` — lip-sync start: recorder starts first, then music seeks to `trimStart` and plays in the same tick.
-8. `src/lib/create-camera.ts` — keep the current natural-mic settings, remove any remaining bitrate hints, ensure `stopVideoRecorderWithFinalChunk` is used in both manual and auto-stop paths.
+Alternatively, Lovable's version history (top of chat) lets you revert to this exact message later, so the branch is optional.
 
-## Behavior fixes (mapped to your list)
+## Scope of changes
 
-### Feed (1)
-- One `activeIndex` in `FeedPage`; every card receives `isActive`. Non-active cards call `video.pause()` and set `src=""` when >±1 away to cap concurrent decoders.
-- Mute button toggles `video.muted` directly; state derived from the element, not a parallel React flag.
-- On active-change: `video.muted = !audioUnlocked`, `play()`. If `play()` rejects → fall back to `muted=true`, `play()` again, and register a one-shot pointerdown to unmute.
-- No post is muted by default when there's no added sound.
+### 1. Bottom navigation (`src/components/BottomNav.tsx`)
+Replace tabs:
+- Old: Home · W.STUDIO · [Create] · JiHi · Profile
+- New: Home · Explore · [Create] · Communities · Profile
+- Center "+" button kept (opens CreatePostSheet).
+- Routes: `/explore` and `/communities` will be added as lightweight placeholder pages ("Coming soon") so nav doesn't 404.
 
-### Create camera (2, 4)
-- Default `facingMode: "user"`.
-- Record button: `onPointerDown` starts, `onPointerUp`/`onPointerCancel`/`onPointerLeave` stops. Min 1s (ignore stop if <1s), max 60s auto-stop via timer that calls the **same** `finalizeRecording()` used on manual release.
-- `finalizeRecording()` = `stopVideoRecorderWithFinalChunk()` → wait for final `dataavailable` → concat blobs → hand to editor.
-- Mic constraints: `{ echoCancellation:false, noiseSuppression:false, autoGainControl:false, sampleRate:{ideal:48000}, channelCount:{ideal:1} }` (already in `SOCIAL_AUDIO`).
+### 2. Routes removed from `src/App.tsx`
+- `/tv` and all TV subroutes
+- `/wstudio/*` (DAW, session join, artist, engineer, bridge, live)
+- `/podcast/*` (studio, room, join, lobby, schedule, editor, contacts)
+- Any redirect that points to `/tv` (e.g. `HomePage` → already goes to FeedPage, fine)
 
-### Upload (3)
-- Media button opens a hidden `<input type="file" accept="image/*,video/*" />` — **no `capture` attr**. On iOS this shows the photo library, never the camera.
+Removed route components will no longer be imported. Files stay on disk (dead code) for now.
 
-### Lip-sync (5)
-- On record down (with added sound):
-  1. `recorder.start()`
-  2. `music.currentTime = trimStart`
-  3. `await music.play()` in the same gesture
-- Music does not play before recorder starts; both stop together on release/auto-stop.
+### 3. Entry points / cards that link to the above
+Audit and remove buttons/cards pointing to TV, W.STUDIO, DAW, Podcast Studio from:
+- HomePage / FeedPage headers
+- ProfilePage quick actions
+- Any "Recording Studio" or "Live Podcast" card
 
-### Editor (6)
-- Wait for `loadedmetadata` on the recorded blob URL before showing editor; if it fails, show a retry instead of a frozen frame.
-- Text/sticker/crop/mute already exist — I'll only fix any that break playback (event listeners not stopping propagation to `<video>`).
+### 4. Rebrand label
+- "W.STUDIO" / "WHEUAT" labels in nav/headers → "J-HI" where they're user-facing nav strings. Logo asset stays unless you want it changed.
+- The `JiHi` tab → renamed conceptually to Communities (Ask-JHi page stays reachable from elsewhere if you want — confirm below).
 
-### Post (7)
-- Recorded video → `media_type: "video"`, MIME from blob, keep `music` metadata (`url`, `trimStart`, `trimEnd`, `volume`, `muteOriginal`) so feed playback re-syncs.
+### 5. Kept intact
+Feed, CreatePostSheet, camera, MediaEditView, SoundPickerSheet, Add Sound, profile, battles, radio, auth, storage, Ask-JHi page (route kept at `/ask-jhi`, just removed from bottom nav unless you want it as Communities target).
 
-### Stability (8)
-- Remove leftover DAW/podcast audio hooks from the feed/create paths.
-- One `MediaRecorder` per camera session; explicit teardown on unmount and on navigation away from `/` or the create sheet.
-- All timers/listeners tracked in refs and cleared in cleanup.
+## Open questions before I start
 
-## What I will NOT do
-- No visual redesign, no new buttons, no changes to Shop/Explore/Profile/Battle/Radio/Podcast/W.STUDIO.
-- No new dependencies.
+1. **Ask-JHi chat** — keep route `/ask-jhi` accessible (e.g. from profile or floating button), or fully hide?
+2. **Communities tab** — placeholder "Coming soon" page now, or wire it to existing `/ask-jhi` temporarily?
+3. **Explore tab** — placeholder, or point at existing browse pages (`/browse-songs`, `/browse-videos`)?
+4. **Hard delete vs hide** — confirm OK with leaving `src/wstudio/**` and `src/pages/podcast/**` files on disk this pass (just unrouted), and doing the file deletion as a second step after smoke test?
 
-## Verification after the pass
-- `bun run build` succeeds.
-- Manual smoke test checklist you already wrote (A/B/C flows).
-
-## Credits reality check
-This touches 8 files and rewrites the trickiest parts of two of them. If the pass doesn't fully resolve every mobile-Safari audio quirk on the first try, I'll stop and report rather than iterate blindly — mobile autoplay policies genuinely require a real user tap before the *first* sound plays, and no code change can bypass that on iOS Safari.
-
-Approve and I'll execute the whole pass in one go.
+Once you answer (or say "use defaults: hide ask-jhi, placeholder for both, soft-delete only"), I'll execute.

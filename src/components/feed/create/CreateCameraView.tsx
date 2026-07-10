@@ -14,8 +14,6 @@ import {
   capturePhotoFromStream,
   videoOnlyRecordStream,
   stripStreamAudio,
-  videoRecorderTimesliceMs,
-  stopVideoRecorderWithFinalChunk,
 } from "@/lib/create-camera";
 import type { CreateMode, EnhanceTab } from "@/lib/create-modes";
 import { QUICK_MAX_RECORD_SEC } from "@/lib/create-modes";
@@ -28,8 +26,6 @@ import EffectsPanel from "./EffectsPanel";
 import { toast } from "sonner";
 
 const MIN_RECORD_MS = 400;
-/** Auto-stop slightly before 60s — iOS Safari corrupts clips at the hard limit. */
-const AUTO_STOP_AT_SEC = QUICK_MAX_RECORD_SEC - 1;
 
 interface Props {
   onClose: () => void;
@@ -82,7 +78,6 @@ export default function CreateCameraView({
   const lipSyncModeRef = useRef(!!musicPreviewUrl);
   const recordStartedAtRef = useRef<number | null>(null);
   const isStoppingRecordingRef = useRef(false);
-  const maxDurationStopRef = useRef(false);
 
   const [facing, setFacing] = useState<"user" | "environment">("user");
   const [denied, setDenied] = useState(false);
@@ -375,10 +370,12 @@ export default function CreateCameraView({
     const rec = recorderRef.current;
     if (rec?.state === "recording") {
       isStoppingRecordingRef.current = true;
-      void stopVideoRecorderWithFinalChunk(rec).catch(() => {
-        isStoppingRecordingRef.current = false;
-        toast.error("Couldn't finish recording — try again");
-      });
+      try {
+        rec.requestData();
+      } catch {
+        /* ignore */
+      }
+      rec.stop();
       return;
     }
 
@@ -470,12 +467,6 @@ export default function CreateCameraView({
           return;
         }
 
-        if (elapsedMs >= 25_000 && blob.size < 120_000) {
-          toast.error("Recording didn't save fully — try stopping just before 1:00");
-          ensureLiveCamera();
-          return;
-        }
-
         onCapture(
           new File([blob], `short-${Date.now()}.${ext}`, {
             type: blob.type || mime,
@@ -491,12 +482,7 @@ export default function CreateCameraView({
         finishRecordingRef.current();
       };
 
-      const timeslice = videoRecorderTimesliceMs();
-      if (timeslice) {
-        rec.start(timeslice);
-      } else {
-        rec.start();
-      }
+      rec.start(100);
 
       if (lipSyncMode && cameraMusicPlayerRef.current) {
         const audio = cameraMusicPlayerRef.current.audio;
@@ -513,7 +499,6 @@ export default function CreateCameraView({
 
       recordPendingRef.current = false;
       setRecording(true);
-      maxDurationStopRef.current = false;
       const startedAt = Date.now();
       recordStartedAtRef.current = startedAt;
       recordStartRef.current = startedAt;
@@ -522,10 +507,9 @@ export default function CreateCameraView({
       progressTimerRef.current = window.setInterval(() => {
         if (!recordStartedAtRef.current) return;
         const elapsed = (Date.now() - recordStartedAtRef.current) / 1000;
-        const progress = Math.min(1, elapsed / AUTO_STOP_AT_SEC);
+        const progress = Math.min(1, elapsed / QUICK_MAX_RECORD_SEC);
         setRecordProgress(progress);
-        if (progress >= 1 && !maxDurationStopRef.current) {
-          maxDurationStopRef.current = true;
+        if (progress >= 1) {
           setRecordProgress(1);
           wantsRecordRef.current = false;
           finishRecordingRef.current();

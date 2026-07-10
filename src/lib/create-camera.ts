@@ -194,52 +194,6 @@ function isAppleMobile(): boolean {
   );
 }
 
-export function isAppleMobileDevice(): boolean {
-  return isAppleMobile();
-}
-
-/** iOS Safari muxes long clips more reliably without periodic timeslices. */
-export function videoRecorderTimesliceMs(): number | undefined {
-  return isAppleMobile() ? undefined : 100;
-}
-
-/** Wait for requestData() flush, then stop — avoids truncated last seconds on iOS. */
-export function stopVideoRecorderWithFinalChunk(
-  recorder: MediaRecorder,
-  timeoutMs = 350,
-): Promise<void> {
-  if (recorder.state !== "recording") return Promise.resolve();
-
-  return new Promise((resolve) => {
-    let settled = false;
-    const finishWait = () => {
-      if (settled) return;
-      settled = true;
-      recorder.removeEventListener("dataavailable", onFinalChunk);
-      window.clearTimeout(fallback);
-      resolve();
-    };
-
-    const onFinalChunk = () => finishWait();
-    recorder.addEventListener("dataavailable", onFinalChunk, { once: true });
-    const fallback = window.setTimeout(finishWait, timeoutMs);
-
-    try {
-      recorder.requestData();
-    } catch {
-      finishWait();
-    }
-  }).then(() => {
-    if (recorder.state === "recording") {
-      try {
-        recorder.stop();
-      } catch {
-        /* ignore */
-      }
-    }
-  });
-}
-
 function isMobileDevice(): boolean {
   return isAppleMobile() || /Android/i.test(navigator.userAgent);
 }

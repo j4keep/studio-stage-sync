@@ -406,15 +406,8 @@ export default function MediaEditView({
             className="absolute inset-0 w-full h-full object-cover"
             playsInline
             loop
-            preload="auto"
             muted={videoMutedForPlayback}
             autoPlay
-            onLoadedData={(e) => {
-              const v = e.currentTarget;
-              if (mediaType === "video" && v.paused && Number.isFinite(v.duration) && v.duration > 0.5) {
-                void v.play().catch(() => {});
-              }
-            }}
             onLoadedMetadata={(e) => {
               applyVideoAudioHandlers(e.currentTarget);
             }}
