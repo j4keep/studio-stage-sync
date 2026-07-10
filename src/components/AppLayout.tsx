@@ -42,8 +42,8 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
 
     // Center phone-style frame on desktop; full-bleed on mobile.
     return (
-      <div className="fixed inset-0 bg-black text-foreground overflow-hidden flex items-center justify-center">
-        <div className="relative h-[100dvh] w-full max-w-[440px] overflow-hidden bg-black shadow-2xl">
+      <div className="fixed inset-0 bg-background text-foreground overflow-hidden flex items-center justify-center">
+        <div className="relative h-[100dvh] w-full max-w-[440px] overflow-hidden bg-background shadow-2xl">
           {children}
           <BottomNav />
         </div>

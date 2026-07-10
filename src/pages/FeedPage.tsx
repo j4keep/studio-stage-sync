@@ -65,18 +65,18 @@ const FeedPage = () => {
   const activeItems = viewer?.rail === "reel" ? reels : viewer?.rail === "post" ? posts : [];
 
   return (
-    <div className="h-[100dvh] w-full flex flex-col overflow-hidden relative overscroll-none">
-      <FlagBackground />
+    <div className="h-[100dvh] w-full flex flex-col overflow-hidden relative overscroll-none bg-background text-foreground dark:bg-background dark:text-foreground">
+      <FlagBackground className="opacity-80 dark:opacity-100" />
 
       {/* Header overlay */}
-      <div className="absolute top-0 left-0 right-0 z-40 px-4 pt-[calc(env(safe-area-inset-top)+0.625rem)] pb-3 bg-gradient-to-b from-black/85 via-black/50 to-transparent pointer-events-none">
-        <div className="flex items-center justify-between text-white pointer-events-auto">
+      <div className="absolute top-0 left-0 right-0 z-40 px-4 pt-[calc(env(safe-area-inset-top)+0.625rem)] pb-2 bg-background/90 dark:bg-black/85 backdrop-blur-md border-b border-border/70 dark:border-white/10 pointer-events-none">
+        <div className="flex items-center justify-between text-foreground pointer-events-auto">
           <img src={jhiLogo} alt="JHi" className="h-7 w-auto" />
           <div className="flex items-center gap-1">
-            <button onClick={() => navigate("/browse-songs")} className="w-9 h-9 flex items-center justify-center rounded-full active:bg-white/10" aria-label="Search">
+            <button onClick={() => navigate("/browse-songs")} className="w-9 h-9 flex items-center justify-center rounded-full bg-card/80 border border-border active:bg-muted" aria-label="Search">
               <Search className="w-[1.35rem] h-[1.35rem]" strokeWidth={2.25} />
             </button>
-            <button className="w-9 h-9 flex items-center justify-center rounded-full active:bg-white/10" aria-label="More">
+            <button className="w-9 h-9 flex items-center justify-center rounded-full bg-card/80 border border-border active:bg-muted" aria-label="More">
               <MoreVertical className="w-[1.35rem] h-[1.35rem]" strokeWidth={2.25} />
             </button>
           </div>
@@ -100,39 +100,42 @@ const FeedPage = () => {
           </div>
         </div>
 
-        {trending.length > 0 && (
-          <div className="mt-2.5 flex items-center gap-2.5 overflow-x-auto scrollbar-hide pointer-events-auto -mx-1 px-1 pb-0.5">
+      </div>
+
+      {trending.length > 0 && (
+        <div className="absolute left-0 right-0 top-[calc(env(safe-area-inset-top)+6.5rem)] z-30 px-3 pointer-events-none">
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pointer-events-auto rounded-xl border border-border bg-card/92 px-2 py-2 shadow-sm dark:border-white/10 dark:bg-black/70 dark:backdrop-blur-md">
             <button
               onClick={() => navigate("/profile")}
               className="shrink-0 flex flex-col items-center gap-1"
               aria-label="Pitch your profile"
             >
-              <div className="w-11 h-11 rounded-full ring-2 ring-primary flex items-center justify-center bg-black/50 text-white text-lg font-light">+</div>
-              <span className="text-[10px] text-white/85 leading-none font-medium">Pitch</span>
+              <div className="w-10 h-10 rounded-full ring-2 ring-primary flex items-center justify-center bg-muted text-foreground text-lg font-light">+</div>
+              <span className="text-[10px] text-foreground/80 leading-none font-medium">Pitch</span>
             </button>
             {trending.map((c) => (
               <button
                 key={c.user_id}
                 onClick={() => navigate(`/artist/${c.user_id}`)}
-                className="shrink-0 flex flex-col items-center gap-1 w-[3.25rem]"
+                className="shrink-0 flex flex-col items-center gap-1 w-[3rem]"
               >
-                <div className="w-11 h-11 rounded-full overflow-hidden ring-2 ring-white/35 bg-white/10">
+                <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-border bg-muted dark:ring-white/35 dark:bg-white/10">
                   {c.avatar_url ? (
                     <img src={c.avatar_url} alt="" className="w-full h-full object-cover" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-white text-xs font-bold">
+                    <div className="w-full h-full flex items-center justify-center text-foreground text-xs font-bold">
                       {(c.display_name || "?")[0]?.toUpperCase()}
                     </div>
                   )}
                 </div>
-                <span className="text-[10px] text-white/85 leading-none truncate w-full text-center font-medium">
+                <span className="text-[10px] text-foreground/80 leading-none truncate w-full text-center font-medium">
                   {c.display_name || "Artist"}
                 </span>
               </button>
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Split columns */}
       {isLoading ? (
@@ -140,14 +143,14 @@ const FeedPage = () => {
           <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
         </div>
       ) : (
-        <div className="relative z-10 flex-1 flex overflow-hidden pt-[8.5rem]">
+        <div className="relative z-10 flex-1 flex overflow-hidden pt-[11rem]">
           {/* Reels — left 25% */}
           <div className="w-1/4 h-full overflow-y-scroll scrollbar-hide overscroll-y-contain touch-pan-y px-1.5 pb-24 space-y-2">
-            <div className="sticky top-0 z-10 -mx-1.5 px-2 py-1 bg-black/40 backdrop-blur-sm rounded-b-md">
-              <p className="text-[10px] font-black tracking-wider text-white uppercase">Reels</p>
+            <div className="sticky top-0 z-10 -mx-1.5 px-2 py-1 bg-card/95 border-b border-border rounded-b-md dark:bg-black/60 dark:border-white/10 backdrop-blur-sm">
+              <p className="text-[10px] font-black tracking-wider text-foreground uppercase">Reels</p>
             </div>
             {reels.length === 0 ? (
-              <p className="text-[10px] text-white/60 text-center mt-4">No reels yet</p>
+              <p className="rounded-lg bg-card/90 border border-border px-2 py-3 text-[10px] text-muted-foreground text-center mt-4">No reels yet</p>
             ) : (
               reels.map((post, i) => (
                 <FeedThumbCard
@@ -161,13 +164,13 @@ const FeedPage = () => {
           </div>
 
           {/* Posts — right 75% */}
-          <div className="w-3/4 h-full overflow-y-scroll scrollbar-hide overscroll-y-contain touch-pan-y px-2 pb-24 space-y-3 border-l border-white/10">
-            <div className="sticky top-0 z-10 -mx-2 px-3 py-1 bg-black/40 backdrop-blur-sm rounded-b-md">
-              <p className="text-[11px] font-black tracking-wider text-white uppercase">Posts</p>
+          <div className="w-3/4 h-full overflow-y-scroll scrollbar-hide overscroll-y-contain touch-pan-y px-2 pb-24 space-y-3 border-l border-border/70 dark:border-white/10">
+            <div className="sticky top-0 z-10 -mx-2 px-3 py-1 bg-card/95 border-b border-border rounded-b-md dark:bg-black/60 dark:border-white/10 backdrop-blur-sm">
+              <p className="text-[11px] font-black tracking-wider text-foreground uppercase">Posts</p>
             </div>
             {posts.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 mt-6">
-                <p className="text-white/60 text-xs">No posts yet</p>
+              <div className="flex flex-col items-center gap-3 mt-6 rounded-xl bg-card/92 border border-border p-4 shadow-sm">
+                <p className="text-muted-foreground text-xs">No posts yet</p>
                 <button
                   onClick={() => window.dispatchEvent(new Event("open-create-post"))}
                   className="px-4 py-2 bg-primary text-primary-foreground rounded-full text-xs font-semibold"

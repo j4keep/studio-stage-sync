@@ -57,7 +57,6 @@ export function isFeedAudioSessionUnlocked() {
 export function unlockFeedAudioSession() {
   feedAudioSessionUnlocked = true;
   window.dispatchEvent(new Event("feed-audio-unlocked"));
-  window.dispatchEvent(new Event("feed-start-audible"));
 }
 
 let gestureUnlockAttached = false;
