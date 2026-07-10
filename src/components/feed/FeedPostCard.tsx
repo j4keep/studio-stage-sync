@@ -67,6 +67,8 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
   const [isPlaying, setIsPlaying] = useState(false);
   const [showHeart, setShowHeart] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [mediaReady, setMediaReady] = useState(false);
+  const [mediaFailed, setMediaFailed] = useState(false);
   const [autoplayAudioLocked, setAutoplayAudioLocked] = useState(false);
   const [feedAudioUnlocked, setFeedAudioUnlocked] = useState(isFeedAudioSessionUnlocked);
   const [videoProgress, setVideoProgress] = useState(0);
@@ -101,6 +103,9 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     [postTitle, displayCaption, profile.display_name],
   );
   const hasAddedSound = Boolean(postMeta?.music?.audioUrl);
+  const hasMediaUrl = typeof post.media_url === "string" && post.media_url.trim().length > 0;
+  const showMediaFallback = !hasMediaUrl || mediaFailed;
+  const playbackMuteOriginal = hasAddedSound ? false : postMeta?.muteOriginal === true;
 
   const musicTrim = useMemo(
     () => ({
@@ -118,15 +123,14 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
 
   const getVideoMuted = useCallback(() => {
     if (isMuted) return true;
-    if (hasAddedSound && postMeta?.muteOriginal !== false) return true;
-    return postMeta?.muteOriginal === true;
-  }, [isMuted, hasAddedSound, postMeta?.muteOriginal]);
+    return playbackMuteOriginal;
+  }, [isMuted, playbackMuteOriginal]);
 
   const getVideoMixAudio = useCallback(
     (forceMuted?: boolean): { muted: boolean; volume?: number } => {
       if (forceMuted || getVideoMuted()) return { muted: true };
       const mix = getMixedPlaybackVolumes({
-        muteOriginal: postMeta?.muteOriginal,
+        muteOriginal: playbackMuteOriginal,
         originalVolume: postMeta?.originalVolume,
         musicVolume: postMeta?.music?.volume,
       });
@@ -135,7 +139,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       }
       return { muted: false };
     },
-    [getVideoMuted, hasAddedSound, postMeta?.muteOriginal, postMeta?.originalVolume, postMeta?.music?.volume],
+    [getVideoMuted, hasAddedSound, playbackMuteOriginal, postMeta?.originalVolume, postMeta?.music?.volume],
   );
 
   const unlockFeedAudio = useCallback(() => {
@@ -180,7 +184,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
 
     if (hasAddedSound) {
       const audio = musicAudioRef.current;
-      const soundSync = getAddedSoundVideoSyncOptions(true, postMeta ?? {});
+      const soundSync = getAddedSoundVideoSyncOptions(true, { ...(postMeta ?? {}), muteOriginal: playbackMuteOriginal });
       const mix = getMixedPlaybackVolumes({
         muteOriginal: soundSync.muteOriginal,
         originalVolume: postMeta?.originalVolume,
@@ -222,7 +226,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       setAutoplayAudioLocked(true);
       return false;
     }
-  }, [post.media_type, isMuted, hasAddedSound, getVideoMuted, playbackMeta, mapMusicTime, postMeta?.muteOriginal, getVideoMixAudio]);
+  }, [post.media_type, isMuted, hasAddedSound, getVideoMuted, playbackMeta, mapMusicTime, playbackMuteOriginal, getVideoMixAudio]);
 
   const playWhenActive = useCallback(async () => {
     const video = videoRef.current;
@@ -330,7 +334,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       mediaSessionCleanupRef.current = null;
       return playSilently();
     }
-  }, [post.media_type, getVideoMuted, activateFeedPlayback, onChromeHiddenChange, isMuted, hasAddedSound, playbackMeta, mapMusicTime, postMeta?.muteOriginal]);
+  }, [post.media_type, getVideoMuted, activateFeedPlayback, onChromeHiddenChange, isMuted, hasAddedSound, playbackMeta, mapMusicTime, playbackMuteOriginal]);
 
   const handleFirstFeedInteraction = useCallback(() => {
     const video = videoRef.current;
@@ -381,7 +385,9 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
   useEffect(() => {
     setLiked(!!post.isLiked);
     setLikesCount(post.likes_count || 0);
-  }, [post.id, post.isLiked, post.likes_count]);
+    setMediaReady(false);
+    setMediaFailed(false);
+  }, [post.id, post.media_url, post.isLiked, post.likes_count]);
 
   useEffect(() => {
     if (!videoRef.current) return;
@@ -423,7 +429,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     if (!isActive || !postMeta?.music?.audioUrl) return;
 
     const mix = getMixedPlaybackVolumes({
-      muteOriginal: postMeta?.muteOriginal,
+      muteOriginal: playbackMuteOriginal,
       originalVolume: postMeta?.originalVolume,
       musicVolume: postMeta?.music?.volume,
     });
@@ -453,7 +459,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     postMeta?.music?.trimEnd,
     postMeta?.music?.volume,
     postMeta?.originalVolume,
-    postMeta?.muteOriginal,
+    playbackMuteOriginal,
   ]);
 
   useEffect(() => {
@@ -467,7 +473,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     const onPause = () => audio.pause();
     const onSeeked = () => {
       const mix = getMixedPlaybackVolumes({
-        muteOriginal: postMeta?.muteOriginal,
+        muteOriginal: playbackMuteOriginal,
         originalVolume: postMeta?.originalVolume,
         musicVolume: postMeta?.music?.volume,
       });
@@ -496,7 +502,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       video.removeEventListener("pause", onPause);
       video.removeEventListener("seeked", onSeeked);
     };
-  }, [isActive, postMeta?.music?.audioUrl, post.id, startAudiblePlayback, musicTrim, postMeta?.music?.durationSec, postMeta?.originalVolume, postMeta?.muteOriginal, postMeta?.music?.volume]);
+  }, [isActive, postMeta?.music?.audioUrl, post.id, startAudiblePlayback, musicTrim, postMeta?.music?.durationSec, postMeta?.originalVolume, playbackMuteOriginal, postMeta?.music?.volume]);
 
   useEffect(() => {
     if (!isActive || isMuted || post.media_type !== "video") return;
@@ -845,7 +851,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
         onTouchStartCapture={handleFirstFeedInteraction}
         onMouseDownCapture={handleFirstFeedInteraction}
       >
-        {post.media_url &&
+        {hasMediaUrl && !mediaFailed &&
           (post.media_type === "video" ? (
             <video
               ref={videoRef}
@@ -857,7 +863,13 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
               muted={videoMutedForAutoplay}
               autoPlay={false}
               preload={isActive || isNear ? "auto" : "metadata"}
-              onPlay={() => setIsPlaying(true)}
+              onLoadedData={() => setMediaReady(true)}
+              onCanPlay={() => setMediaReady(true)}
+              onError={() => setMediaFailed(true)}
+              onPlay={() => {
+                setMediaReady(true);
+                setIsPlaying(true);
+              }}
               onPause={() => setIsPlaying(false)}
             />
           ) : (
@@ -865,12 +877,22 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
               src={post.media_url}
               alt={displayCaption || "Feed post"}
               className="absolute inset-0 h-full w-full object-cover"
+              onLoad={() => setMediaReady(true)}
+              onError={() => setMediaFailed(true)}
             />
           ))}
 
-        {!post.media_url && (
-          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-card to-background">
-            <p className="px-8 text-center text-lg font-semibold leading-relaxed text-foreground">{displayCaption}</p>
+        {showMediaFallback && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black">
+            <p className="px-8 text-center text-lg font-semibold leading-relaxed text-white">
+              {displayCaption || postTitle || "Post unavailable"}
+            </p>
+          </div>
+        )}
+
+        {hasMediaUrl && !mediaFailed && post.media_type === "video" && isActive && !mediaReady && (
+          <div className="absolute inset-0 z-[1] flex items-center justify-center bg-black pointer-events-none">
+            <div className="w-8 h-8 border-2 border-white/40 border-t-white rounded-full animate-spin" />
           </div>
         )}
 

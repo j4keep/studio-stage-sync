@@ -476,13 +476,13 @@ const dur = durationSec > 0 ? durationSec : undefined;
 setEditorMeta((m) => ({
   ...m,
   muteOriginal: false,
-  originalVolume: MIXED_VOCAL_VIDEO_VOLUME,
+    originalVolume: MIXED_VOCAL_VIDEO_VOLUME,
   music: {
     fileName: f.name,
     durationSec: dur,
     trimStart: 0,
     trimEnd: dur,
-    volume: ADDED_SOUND_PLAYBACK_VOLUME,
+      volume: MIXED_ADDED_MUSIC_VOLUME,
   },
 }));
 

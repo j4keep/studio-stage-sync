@@ -200,7 +200,7 @@ export default function PostPreviewView({
                   className="w-full h-full object-cover pointer-events-none"
                   playsInline
                   loop
-                  muted={muteOriginal || hasAddedSound}
+                  muted={muteOriginal}
                   onLoadedMetadata={(e) => {
                     applyCoverVideoAudio(e.currentTarget);
                   }}

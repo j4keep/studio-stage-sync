@@ -373,12 +373,14 @@ export default function MediaEditView({
       ? { text: textDraft, style: textStyle, color: textColor, ...textPos }
       : null;
 
-  const videoMutedForPlayback =
-    meta.muteOriginal || !!musicPreviewUrl;
+  const videoMutedForPlayback = meta.muteOriginal === true;
 
   const applyVideoAudioHandlers = (el: HTMLVideoElement) => {
     if (musicPreviewUrl) {
-      applyFeedVideoAudio(el, { muted: true, volume: 0 });
+      applyFeedVideoAudio(el, {
+        muted: meta.muteOriginal === true,
+        volume: meta.muteOriginal === true ? 0 : (meta.originalVolume ?? MIXED_VOCAL_VIDEO_VOLUME),
+      });
       return;
     }
     applyFeedVideoAudio(el, { muted: meta.muteOriginal, volume: 1 });
