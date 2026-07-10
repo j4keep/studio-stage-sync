@@ -882,7 +882,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
 
         <button
           onClick={handleContentTap}
-          className="absolute inset-0 z-20"
+          className="absolute inset-0 z-10"
           aria-label="Tap to play or pause, double tap to like"
         />
 
@@ -905,7 +905,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
           </button>
         )}
 
-        <div className="absolute right-3 feed-bottom-offset z-40 flex flex-col items-center gap-4 pb-1">
+        <div className="absolute right-3 feed-bottom-offset z-40 flex flex-col items-center gap-4 pb-1 pointer-events-auto">
           {post.media_type === "video" && (
             <button
               onPointerDown={(e) => {
@@ -989,7 +989,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
           </button>
         </div>
 
-        <div className="absolute left-3 right-[4.5rem] feed-bottom-offset z-40 pb-1 max-w-[calc(100%-5.5rem)]">
+        <div className="absolute left-3 right-[4.5rem] feed-bottom-offset z-40 pb-1 max-w-[calc(100%-5.5rem)] pointer-events-auto">
           <div className="relative z-50 mb-1.5">
             <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-white/40">
               {profile.avatar_url ? (

@@ -380,7 +380,7 @@ export default function CreateCameraView({
     finishRecordingRef.current = finishRecording;
   }, [finishRecording]);
 
-  const startRecording = () => {
+  const startRecording = async () => {
     const video = videoRef.current;
     const stream = streamRef.current;
     if (!video || !stream || recordingRef.current || !wantsRecordRef.current) return;
@@ -389,11 +389,8 @@ export default function CreateCameraView({
     const lipSyncMode = !!musicPreviewUrl;
 
     if (!streamHasLiveAudio(stream)) {
-      void ensureStreamHasAudio(stream).then((ok) => setMicMissing(!ok));
-    }
-    if (!wantsRecordRef.current) {
-      recordPendingRef.current = false;
-      return;
+      const ok = await ensureStreamHasAudio(stream);
+      setMicMissing(!ok);
     }
 
     if (!wantsRecordRef.current) {
@@ -560,7 +557,7 @@ export default function CreateCameraView({
     } catch {
       /* ignore */
     }
-    startRecording();
+    void startRecording();
   };
 
   const handleRecordUp = (e: React.PointerEvent) => {
