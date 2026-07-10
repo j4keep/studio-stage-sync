@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Type, Sticker, Pencil, Crop, Volume2, VolumeX, Undo2, Check, X, Trash2, ChevronLeft, Music } from "lucide-react";
-import { applyFeedVideoAudio, bindFeedMediaSession } from "@/lib/feed-video-playback";
+import { applyFeedVideoAudio, bindFeedMediaSession, resetIosAudioSessionToPlayback } from "@/lib/feed-video-playback";
 import PostOverlayRenderer from "./PostOverlayRenderer";
 import StickerDrawer from "./StickerDrawer";
 import CropEditorView from "./CropEditorView";
@@ -161,6 +161,7 @@ export default function MediaEditView({
   const [activeTool, setActiveTool] = useState<Tool>(null);
   const [showStickers, setShowStickers] = useState(false);
   const [selected, setSelected] = useState<{ id: string; type: "text" | "sticker" } | null>(null);
+  const [needsPlaybackTap, setNeedsPlaybackTap] = useState(false);
   const [textDraft, setTextDraft] = useState("");
   const [textStyle, setTextStyle] = useState<TextOverlayStyle>("bubble");
   const [textColor, setTextColor] = useState("#ffffff");
@@ -383,35 +384,23 @@ export default function MediaEditView({
     video.setAttribute("webkit-playsinline", "true");
     video.preload = "auto";
 
-    // First guarantee motion. If the browser blocks audible autoplay after the
-    // recorder closes, muted playback still prevents the edit screen freezing on
-    // a single still frame.
-    const shouldStayMuted = meta.muteOriginal === true;
-    video.defaultMuted = true;
-    video.muted = true;
+    await resetIosAudioSessionToPlayback();
+    applyVideoAudioHandlers(video);
 
     try {
       await video.play();
+      setNeedsPlaybackTap(false);
     } catch {
-      window.setTimeout(() => {
-        video.muted = true;
-        void video.play().catch(() => {});
-      }, 120);
-      return;
-    }
-
-    applyVideoAudioHandlers(video);
-
-    if (!shouldStayMuted) {
-      video.muted = false;
-      video.defaultMuted = false;
-      void video.play().catch(() => {
-        video.muted = true;
-        video.defaultMuted = true;
-        void video.play().catch(() => {});
-      });
+      setNeedsPlaybackTap(true);
     }
   }, [mediaType, meta.muteOriginal, meta.originalVolume, musicPreviewUrl]);
+
+  const resumePreviewPlayback = useCallback(() => {
+    const video = previewVideoRef.current;
+    if (!video) return;
+    setNeedsPlaybackTap(false);
+    void startEditVideoPlayback(video);
+  }, [startEditVideoPlayback]);
 
   const applyVideoAudioHandlers = (el: HTMLVideoElement) => {
     if (musicPreviewUrl) {
@@ -455,6 +444,7 @@ export default function MediaEditView({
               if (e.currentTarget.paused) void startEditVideoPlayback(e.currentTarget);
             }}
             onPlaying={(e) => {
+              setNeedsPlaybackTap(false);
               applyVideoAudioHandlers(e.currentTarget);
             }}
             onPlay={(e) => {
@@ -491,6 +481,17 @@ export default function MediaEditView({
         onLiveTextFocus={() => textInputRef.current?.focus({ preventScroll: true })}
         liveTextPlaceholder="Add text"
       />
+      )}
+
+      {needsPlaybackTap && mediaType === "video" && activeTool !== "crop" && (
+        <button
+          type="button"
+          onClick={resumePreviewPlayback}
+          className="absolute inset-0 z-40 flex items-center justify-center bg-black/15 text-white text-sm font-bold editor-touch-none"
+          aria-label="Play preview"
+        >
+          Tap to play preview
+        </button>
       )}
 
       {/* ── Main chrome: back + sound + done (hidden during tools) ── */}
