@@ -1,8 +1,8 @@
 export type CreateMode = "post" | "create" | "live";
 
 export const CREATE_MODES: { id: CreateMode; label: string }[] = [
-  { id: "post", label: "QUICK" },
-  { id: "create", label: "CREATE" },
+  { id: "post", label: "REEL" },
+  { id: "create", label: "POST" },
   { id: "live", label: "LIVE" },
 ];
 
