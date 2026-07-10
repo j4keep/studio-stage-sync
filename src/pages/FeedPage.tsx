@@ -142,7 +142,7 @@ const FeedPage = () => {
       ) : (
         <div className="relative z-10 flex-1 flex overflow-hidden pt-[8.5rem]">
           {/* Reels — left 25% */}
-          <div className="w-1/4 h-full overflow-y-scroll scrollbar-hide overscroll-y-contain px-1.5 pb-24 space-y-2">
+          <div className="w-1/4 h-full overflow-y-scroll scrollbar-hide overscroll-y-contain touch-pan-y px-1.5 pb-24 space-y-2">
             <div className="sticky top-0 z-10 -mx-1.5 px-2 py-1 bg-black/40 backdrop-blur-sm rounded-b-md">
               <p className="text-[10px] font-black tracking-wider text-white uppercase">Reels</p>
             </div>
@@ -161,7 +161,7 @@ const FeedPage = () => {
           </div>
 
           {/* Posts — right 75% */}
-          <div className="w-3/4 h-full overflow-y-scroll scrollbar-hide overscroll-y-contain px-2 pb-24 space-y-3 border-l border-white/10">
+          <div className="w-3/4 h-full overflow-y-scroll scrollbar-hide overscroll-y-contain touch-pan-y px-2 pb-24 space-y-3 border-l border-white/10">
             <div className="sticky top-0 z-10 -mx-2 px-3 py-1 bg-black/40 backdrop-blur-sm rounded-b-md">
               <p className="text-[11px] font-black tracking-wider text-white uppercase">Posts</p>
             </div>

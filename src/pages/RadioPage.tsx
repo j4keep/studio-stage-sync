@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, Pause, Heart, Share2, MessageCircle, MoreHorizontal, ListMusic, ChevronDown, Music, Send, Search, Shuffle, Volume2, VolumeX } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -41,10 +41,14 @@ const RadioPage = () => {
   const {
     isPlaying, currentTrack, queue, allTracks, toggle, skip, previous, skipsLeft,
     playTrack, setGenreFilter, activeGenre, loading,
-    currentTime, duration, seek,
+    currentTime, duration, seek, fetchRadioSongs,
     volume, setVolume, shuffled, toggleShuffle,
     songPlayCount, resetSongPlayCount,
   } = useRadio();
+
+  useEffect(() => {
+    if (allTracks.length === 0) void fetchRadioSongs();
+  }, [allTracks.length, fetchRadioSongs]);
 
   const songIds = allTracks.filter(s => s.source !== "podcast").map(s => s.id);
   const podcastIds = allTracks.filter(s => s.source === "podcast").map(s => s.id);

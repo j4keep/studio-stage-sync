@@ -68,7 +68,7 @@ function shuffleArray<T>(arr: T[]): T[] {
 
 export const RadioProvider = ({ children }: { children: ReactNode }) => {
   const [songs, setSongs] = useState<RadioTrack[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [skipsLeft, setSkipsLeft] = useState(6);
@@ -250,7 +250,6 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
     setLoading(false);
   }, []);
 
-  useEffect(() => { fetchRadioSongs(); }, [fetchRadioSongs]);
   useEffect(() => {
     const handler = () => fetchRadioSongs();
     window.addEventListener("wheuat-radio-updated", handler);
