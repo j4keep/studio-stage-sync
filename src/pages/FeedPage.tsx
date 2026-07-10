@@ -104,7 +104,7 @@ const FeedPage = () => {
 
       {trending.length > 0 && (
         <div className="absolute left-0 right-0 top-[calc(env(safe-area-inset-top)+6.5rem)] z-30 px-3 pointer-events-none">
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pointer-events-auto rounded-xl border border-border bg-card/92 px-2 py-2 shadow-sm dark:border-white/10 dark:bg-black/70 dark:backdrop-blur-md">
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pointer-events-auto rounded-xl border border-border bg-card/95 px-2 py-2 shadow-sm dark:border-white/10 dark:bg-black/70 dark:backdrop-blur-md">
             <button
               onClick={() => navigate("/profile")}
               className="shrink-0 flex flex-col items-center gap-1"
@@ -169,7 +169,7 @@ const FeedPage = () => {
               <p className="text-[11px] font-black tracking-wider text-foreground uppercase">Posts</p>
             </div>
             {posts.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 mt-6 rounded-xl bg-card/92 border border-border p-4 shadow-sm">
+              <div className="flex flex-col items-center gap-3 mt-6 rounded-xl bg-card/95 border border-border p-4 shadow-sm">
                 <p className="text-muted-foreground text-xs">No posts yet</p>
                 <button
                   onClick={() => window.dispatchEvent(new Event("open-create-post"))}
