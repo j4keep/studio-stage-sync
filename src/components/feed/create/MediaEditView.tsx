@@ -374,6 +374,11 @@ export default function MediaEditView({
       : null;
 
   const videoMutedForPlayback = meta.muteOriginal === true;
+  // Start muted so iOS/Safari always autoplays; unmute after first successful play.
+  const [initialAutoplayMuted, setInitialAutoplayMuted] = useState(true);
+  useEffect(() => {
+    setInitialAutoplayMuted(true);
+  }, [previewUrl, mediaType]);
 
   const applyVideoAudioHandlers = (el: HTMLVideoElement) => {
     if (musicPreviewUrl) {
