@@ -18,8 +18,8 @@ export function isTouchFeedDevice() {
 }
 
 export function getFeedMountRadius() {
-  // Keep next/prev posts mounted so swipe doesn't cold-start a new <video>.
-  return isTouchFeedDevice() ? 2 : 3;
+  // Keep only the closest videos mounted on phones; too many preloaded videos freezes iOS feeds.
+  return isTouchFeedDevice() ? 1 : 2;
 }
 
 /** Wait until Safari has enough buffered to start playback. */
