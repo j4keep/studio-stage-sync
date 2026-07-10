@@ -399,15 +399,10 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     const onUnlocked = () => {
       setFeedAudioUnlocked(true);
       setAutoplayAudioLocked(false);
-      const video = videoRef.current;
-      if (!video || !isActive || userPausedRef.current) return;
-      if (!getVideoMuted()) {
-        void startAudiblePlayback();
-      }
     };
     window.addEventListener("feed-audio-unlocked", onUnlocked);
     return () => window.removeEventListener("feed-audio-unlocked", onUnlocked);
-  }, [isActive, getVideoMuted, startAudiblePlayback]);
+  }, []);
 
   // Added sound plays in sync with video — vocal stays audible unless muted in editor.
   useEffect(() => {
