@@ -45,6 +45,7 @@ interface PlaylistContextType {
   deletePlaylist: (id: string) => void;
   renamePlaylist: (id: string, newName: string) => void;
   loading: boolean;
+  loadPlaylists: () => Promise<void>;
   // Global playback
   nowPlaying: { items: PlaylistItem[]; index: number } | null;
   isPlaylistPlaying: boolean;
@@ -70,43 +71,49 @@ export const usePlaylists = () => {
 export const PlaylistProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const loadedForUserRef = useRef<string | null>(null);
 
-  // Fetch playlists from database
-  useEffect(() => {
+  const loadPlaylists = useCallback(async () => {
     if (!user) {
       setPlaylists([]);
+      setLoading(false);
+      loadedForUserRef.current = null;
+      return;
+    }
+
+    if (loadedForUserRef.current === user.id) return;
+
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("playlists")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching playlists:", error);
       setLoading(false);
       return;
     }
 
-    const fetchPlaylists = async () => {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("playlists")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
+    loadedForUserRef.current = user.id;
+    setPlaylists(
+      (data || []).map((row: any) => ({
+        id: row.id,
+        name: row.name,
+        items: (row.items as PlaylistItem[]) || [],
+      }))
+    );
+    setLoading(false);
+  }, [user]);
 
-      if (error) {
-        console.error("Error fetching playlists:", error);
-        setLoading(false);
-        return;
-      }
-
-      if (data) {
-        setPlaylists(
-          data.map((row: any) => ({
-            id: row.id,
-            name: row.name,
-            items: (row.items as PlaylistItem[]) || [],
-          }))
-        );
-      }
+  useEffect(() => {
+    if (!user) {
+      loadedForUserRef.current = null;
+      setPlaylists([]);
       setLoading(false);
-    };
-
-    fetchPlaylists();
+    }
   }, [user]);
 
   const syncToDb = useCallback(async (playlistId: string, updates: { name?: string; items?: PlaylistItem[] }) => {
@@ -156,6 +163,7 @@ export const PlaylistProvider = ({ children }: { children: ReactNode }) => {
         .single()
         .then(({ data }) => {
           if (data) {
+            loadedForUserRef.current = user.id;
             setPlaylists(prev => prev.map(p => p.id === tempId ? { ...p, id: data.id } : p));
           }
         });
@@ -271,7 +279,7 @@ export const PlaylistProvider = ({ children }: { children: ReactNode }) => {
   return (
     <PlaylistContext.Provider value={{
       playlists, setPlaylists, sampleLibrary, addItemToPlaylist, removeItemFromPlaylist,
-      createPlaylist, deletePlaylist, renamePlaylist, loading,
+      createPlaylist, deletePlaylist, renamePlaylist, loading, loadPlaylists,
       nowPlaying, isPlaylistPlaying, playFromPlaylist, togglePlaylistPlayback,
       skipPlaylistTrack, prevPlaylistTrack, stopPlaylistPlayback, playlistAudioRef,
       playerSheetOpen, setPlayerSheetOpen,

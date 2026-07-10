@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Heart, BookmarkPlus, MessageCircle, UserCircle, ChevronLeft, ListMusic } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -16,8 +16,12 @@ interface RadioMoreSheetProps {
 
 const RadioMoreSheet = ({ open, onOpenChange, track, isLiked, onToggleLike, onViewComments }: RadioMoreSheetProps) => {
   const navigate = useNavigate();
-  const { playlists, addItemToPlaylist } = usePlaylists();
+  const { playlists, addItemToPlaylist, loadPlaylists } = usePlaylists();
   const [showPlaylistPicker, setShowPlaylistPicker] = useState(false);
+
+  useEffect(() => {
+    if (open && showPlaylistPicker) void loadPlaylists();
+  }, [open, showPlaylistPicker, loadPlaylists]);
 
   if (!track) return null;
 
