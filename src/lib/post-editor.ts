@@ -147,14 +147,21 @@ export function parsePostCaption(raw: string | null | undefined): {
   const end = jsonPart.lastIndexOf("-->");
   if (end === -1) return { caption: raw, meta: null };
   try {
-    const meta = JSON.parse(jsonPart.slice(0, end)) as PostEditorMeta;
-    if (!meta.drawings) meta.drawings = [];
-    meta.overlays = (meta.overlays || []).map((o) => ({
+    const parsed = JSON.parse(jsonPart.slice(0, end)) as Partial<PostEditorMeta>;
+    const meta: PostEditorMeta = {
+      ...defaultEditorMeta(),
+      ...parsed,
+      overlays: Array.isArray(parsed.overlays) ? parsed.overlays : [],
+      stickers: Array.isArray(parsed.stickers) ? parsed.stickers : [],
+      drawings: Array.isArray(parsed.drawings) ? parsed.drawings : [],
+      music: parsed.music && typeof parsed.music === "object" ? parsed.music : undefined,
+    };
+    meta.overlays = meta.overlays.map((o) => ({
       rotation: 0,
       ...o,
-      style: normalizeTextStyle(o.style),
+      style: normalizeTextStyle(o.style || "bubble"),
     }));
-    meta.stickers = (meta.stickers || []).map((s) => ({
+    meta.stickers = meta.stickers.map((s) => ({
       rotation: 0,
       stickerId: s.stickerId || s.emojiId || "",
       ...s,
