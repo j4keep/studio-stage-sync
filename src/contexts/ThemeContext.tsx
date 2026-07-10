@@ -21,8 +21,10 @@ export const THEME_PRESETS: ThemePreset[] = [
 interface ThemeContextType {
   currentPreset: string;
   customAccent: string | null;
+  countryFlag: string | null;
   setThemePreset: (presetId: string) => void;
   setCustomAccent: (hsl: string | null) => void;
+  setCountryFlag: (flagId: string | null) => void;
   saveThemeToProfile: () => Promise<void>;
   themeSetupDone: boolean | null;
 }
@@ -30,8 +32,10 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType>({
   currentPreset: "default",
   customAccent: null,
+  countryFlag: null,
   setThemePreset: () => {},
   setCustomAccent: () => {},
+  setCountryFlag: () => {},
   saveThemeToProfile: async () => {},
   themeSetupDone: null,
 });
