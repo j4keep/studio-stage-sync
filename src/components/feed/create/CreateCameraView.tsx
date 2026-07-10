@@ -16,7 +16,7 @@ import {
 import type { CreateMode, EnhanceTab } from "@/lib/create-modes";
 import { QUICK_MAX_RECORD_SEC } from "@/lib/create-modes";
 import { createTrimmedMusicPlayer, CAMERA_ADDED_SOUND_MONITOR_VOLUME, type MusicTrim } from "@/lib/post-music-preview";
-import { armFeedAudioPlayback } from "@/lib/feed-video-playback";
+import { armFeedAudioPlayback, resetIosAudioSessionToPlayback } from "@/lib/feed-video-playback";
 import CreateModeTabs from "./CreateModeTabs";
 import RecordButton from "./RecordButton";
 import EnhancePanel from "./EnhancePanel";
@@ -436,6 +436,10 @@ export default function CreateCameraView({
 
         mirrorRecordStopRef.current?.();
         mirrorRecordStopRef.current = null;
+        streamRef.current?.getTracks().forEach((track) => track.stop());
+        if (videoRef.current) {
+          videoRef.current.srcObject = null;
+        }
         discardClipRef.current = false;
         recorderRef.current = null;
         isStoppingRecordingRef.current = false;
@@ -453,13 +457,13 @@ export default function CreateCameraView({
           return;
         }
 
-        onCapture(
-          new File([blob], `short-${Date.now()}.${ext}`, {
-            type: blob.type || mime,
-          }),
-          "video",
-        );
-        stopStream(true);
+        const capturedFile = new File([blob], `short-${Date.now()}.${ext}`, {
+          type: blob.type || mime,
+        });
+
+        void resetIosAudioSessionToPlayback().finally(() => {
+          onCapture(capturedFile, "video");
+        });
       };
 
       rec.onerror = () => {
