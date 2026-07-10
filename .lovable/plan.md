@@ -1,49 +1,76 @@
-# Cleanup: Remove W.STUDIO + Podcast, pivot to J-HI
+# Feed Redesign + Flag Backgrounds + Split Create Flows
 
-This is a UI/route-level removal. I will hide the dead surfaces and rewire navigation, **without** mass-deleting files yet (safer rollback, fewer broken imports). A follow-up pass can hard-delete the orphaned files once you confirm nothing regressed.
+## 1. Feed Page — Two-column split
 
-## Note on backup branch
-I can't create git branches from inside Lovable (git is managed by the platform). Before I start, please create the backup branch yourself:
-- Open the GitHub integration → create branch `legacy-wstudio-podcast-backup` from current `main`.
-- Then tell me "go" and I'll proceed on `main`.
+Rework `src/pages/FeedPage.tsx` into a two-column layout:
 
-Alternatively, Lovable's version history (top of chat) lets you revert to this exact message later, so the branch is optional.
+```text
+┌──────┬──────────────────────────┐
+│ REEL │        POSTS             │
+│ 25%  │        75%               │
+│      │                          │
+│ swipe│ swipe up/down            │
+│ up/dn│                          │
+└──────┴──────────────────────────┘
+```
 
-## Scope of changes
+- **Left column (25%)** — Reels rail: vertical snap-scroll of short items (video ≤60s OR photos tagged as reel). Small preview cards, each a rounded card floating on the flag background.
+- **Right column (75%)** — Posts rail: vertical snap-scroll of long-form posts (video >60s, photos, text). Larger cards.
+- Tap a card → opens **fullscreen viewer** for that rail only. Swiping in the viewer stays within that rail's items. Close returns to the split view at the same index.
+- Header (logo, search, category pills, trending strip) unchanged.
+- All text/icons (like/comment/share/caption) live **inside the card**. Nothing floats on the flag background.
 
-### 1. Bottom navigation (`src/components/BottomNav.tsx`)
-Replace tabs:
-- Old: Home · W.STUDIO · [Create] · JiHi · Profile
-- New: Home · Explore · [Create] · Communities · Profile
-- Center "+" button kept (opens CreatePostSheet).
-- Routes: `/explore` and `/communities` will be added as lightweight placeholder pages ("Coming soon") so nav doesn't 404.
+### Item routing
 
-### 2. Routes removed from `src/App.tsx`
-- `/tv` and all TV subroutes
-- `/wstudio/*` (DAW, session join, artist, engineer, bridge, live)
-- `/podcast/*` (studio, room, join, lobby, schedule, editor, contacts)
-- Any redirect that points to `/tv` (e.g. `HomePage` → already goes to FeedPage, fine)
+Classify feed items in `src/lib/feed-items.ts` helper (or FeedPage memo):
+- `reel` = video with `duration_seconds <= 60` OR photo posts flagged short.
+- `post` = everything else.
 
-Removed route components will no longer be imported. Files stay on disk (dead code) for now.
+New components:
+- `src/components/feed/FeedReelCard.tsx` — compact card (thumbnail, small overlay caption).
+- `src/components/feed/FeedPostCardMini.tsx` — larger card variant of the existing FeedPostCard, chrome always visible.
+- `src/components/feed/FeedFullscreenViewer.tsx` — reuses existing `FeedPostCard` fullscreen, scoped to a filtered list + start index.
 
-### 3. Entry points / cards that link to the above
-Audit and remove buttons/cards pointing to TV, W.STUDIO, DAW, Podcast Studio from:
-- HomePage / FeedPage headers
-- ProfilePage quick actions
-- Any "Recording Studio" or "Live Podcast" card
+## 2. Flag backgrounds
 
-### 4. Rebrand label
-- "W.STUDIO" / "WHEUAT" labels in nav/headers → "J-HI" where they're user-facing nav strings. Logo asset stays unless you want it changed.
-- The `JiHi` tab → renamed conceptually to Communities (Ask-JHi page stays reachable from elsewhere if you want — confirm below).
+### Data
+Add `country_flag` (text nullable) to `profiles`. Migration + grants + policy update if needed. Store flag ID (e.g. `us`, `jp`, `pride`, `trans`).
 
-### 5. Kept intact
-Feed, CreatePostSheet, camera, MediaEditView, SoundPickerSheet, Add Sound, profile, battles, radio, auth, storage, Ask-JHi page (route kept at `/ask-jhi`, just removed from bottom nav unless you want it as Communities target).
+### Library
+`src/lib/flag-themes.ts` — list of ~50 major countries + pride/trans/nb flags. Each entry: `{ id, label, emoji, colors: string[] }`. Background = full flag pattern rendered as CSS gradient stripes (horizontal or vertical based on flag). Include a `pattern` field: `horizontal` | `vertical` | `solid`.
 
-## Open questions before I start
+### Renderer
+`src/components/FlagBackground.tsx` — renders the striped background full-bleed behind the feed columns.
 
-1. **Ask-JHi chat** — keep route `/ask-jhi` accessible (e.g. from profile or floating button), or fully hide?
-2. **Communities tab** — placeholder "Coming soon" page now, or wire it to existing `/ask-jhi` temporarily?
-3. **Explore tab** — placeholder, or point at existing browse pages (`/browse-songs`, `/browse-videos`)?
-4. **Hard delete vs hide** — confirm OK with leaving `src/wstudio/**` and `src/pages/podcast/**` files on disk this pass (just unrouted), and doing the file deletion as a second step after smoke test?
+### Profile UI
+In `src/components/ThemePickerSheet.tsx`, add a **second tab** row: `Theme | Flag`. Flag tab shows a grid of flag chips (emoji + label). Selecting one saves to `profiles.country_flag` and reflects on the feed background.
 
-Once you answer (or say "use defaults: hide ask-jhi, placeholder for both, soft-delete only"), I'll execute.
+### Context
+Extend `ThemeContext.tsx` with `countryFlag` + `setCountryFlag`, loaded/saved alongside theme.
+
+## 3. Create flow split — Reel vs Post
+
+Update `src/lib/create-modes.ts`:
+- `QUICK` → rename to `REEL` (60s hold-to-record, or upload video ≤60s / photo).
+- `CREATE` → `POST` (no time limit, upload video/photo, no hold-to-record cap).
+- Keep `LIVE` unchanged.
+
+`CreateCameraView.tsx` reads mode:
+- Reel: enforce `QUICK_MAX_RECORD_SEC = 60` (already 60).
+- Post: remove the 60s ceiling; allow long tap-to-start / tap-to-stop and gallery upload of any duration.
+
+On publish, tag the post with `is_reel: boolean` in metadata so the feed can route it correctly.
+
+## 4. Technical notes
+
+- Backwards compat: existing posts without `is_reel` classified by duration.
+- Fullscreen viewer keeps current audio-unlock and mount-radius logic; just receives a filtered array.
+- Card visual: `rounded-2xl overflow-hidden bg-black shadow-xl` sitting on the flag background with a `p-2` gap between cards.
+- Flag background sits behind the columns; header keeps its dark gradient overlay so pills stay readable.
+- No changes to bottom nav, icons, or header sizes per user's earlier rule.
+
+## Out of scope this pass
+- No changes to Communities, Profile layout beyond the flag tab, or WStudio.
+- No new DB analytics — `is_reel` stored inside existing metadata JSON, no schema change needed for posts table.
+
+Confirm and I'll build it in one pass.
