@@ -1,5 +1,7 @@
 /** Acquire camera with the device factory mic settings (browser defaults). */
 
+import { setIosAudioSessionForRecording } from "@/lib/feed-video-playback";
+
 export type CameraFacing = "user" | "environment";
 
 const PHOTO_JPEG_QUALITY = 0.94;
@@ -16,6 +18,7 @@ async function openCameraStream(
   withAudio: boolean,
 ): Promise<MediaStream | null> {
   if (!navigator.mediaDevices?.getUserMedia) return null;
+  if (withAudio) setIosAudioSessionForRecording();
 
   const attempts: MediaStreamConstraints[] = withAudio
     ? [
@@ -137,7 +140,7 @@ export function createMirroredVideoRecordStream(
 ): MirroredRecordStream {
   const audioTracks = sourceStream.getAudioTracks();
 
-  if (!mirror) {
+  if (!mirror || isAppleMobile()) {
     const cloned = new MediaStream([...sourceStream.getVideoTracks(), ...audioTracks]);
     return {
       stream: cloned,
