@@ -69,7 +69,7 @@ const FeedPage = () => {
       <FlagBackground className="opacity-80 dark:opacity-100" />
 
       {/* Header overlay */}
-      <div className="absolute top-0 left-0 right-0 z-40 px-4 pt-[calc(env(safe-area-inset-top)+0.625rem)] pb-2 bg-background/90 dark:bg-black/85 backdrop-blur-md border-b border-border/70 dark:border-white/10 pointer-events-none">
+      <div className="absolute top-0 left-0 right-0 z-40 px-4 pt-[calc(env(safe-area-inset-top)+0.625rem)] pb-2 bg-background/90 backdrop-blur-md border-b border-border/70 pointer-events-none">
         <div className="flex items-center justify-between text-foreground pointer-events-auto">
           <img src={jhiLogo} alt="JHi" className="h-7 w-auto" />
           <div className="flex items-center gap-1">
@@ -104,7 +104,7 @@ const FeedPage = () => {
 
       {trending.length > 0 && (
         <div className="absolute left-0 right-0 top-[calc(env(safe-area-inset-top)+6.5rem)] z-30 px-3 pointer-events-none">
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pointer-events-auto rounded-xl border border-border bg-card/95 px-2 py-2 shadow-sm dark:border-white/10 dark:bg-black/70 dark:backdrop-blur-md">
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pointer-events-auto rounded-xl border border-border bg-card/95 px-2 py-2 shadow-sm dark:backdrop-blur-md">
             <button
               onClick={() => navigate("/profile")}
               className="shrink-0 flex flex-col items-center gap-1"
@@ -146,7 +146,7 @@ const FeedPage = () => {
         <div className="relative z-10 flex-1 flex overflow-hidden pt-[11rem]">
           {/* Reels — left 25% */}
           <div className="w-1/4 h-full overflow-y-scroll scrollbar-hide overscroll-y-contain touch-pan-y px-1.5 pb-24 space-y-2">
-            <div className="sticky top-0 z-10 -mx-1.5 px-2 py-1 bg-card/95 border-b border-border rounded-b-md dark:bg-black/60 dark:border-white/10 backdrop-blur-sm">
+            <div className="sticky top-0 z-10 -mx-1.5 px-2 py-1 bg-card/95 border-b border-border rounded-b-md backdrop-blur-sm">
               <p className="text-[10px] font-black tracking-wider text-foreground uppercase">Reels</p>
             </div>
             {reels.length === 0 ? (
@@ -165,7 +165,7 @@ const FeedPage = () => {
 
           {/* Posts — right 75% */}
           <div className="w-3/4 h-full overflow-y-scroll scrollbar-hide overscroll-y-contain touch-pan-y px-2 pb-24 space-y-3 border-l border-border/70 dark:border-white/10">
-            <div className="sticky top-0 z-10 -mx-2 px-3 py-1 bg-card/95 border-b border-border rounded-b-md dark:bg-black/60 dark:border-white/10 backdrop-blur-sm">
+            <div className="sticky top-0 z-10 -mx-2 px-3 py-1 bg-card/95 border-b border-border rounded-b-md backdrop-blur-sm">
               <p className="text-[11px] font-black tracking-wider text-foreground uppercase">Posts</p>
             </div>
             {posts.length === 0 ? (
