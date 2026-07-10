@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, Music, Video, Mic2, Play, Trash2, Edit3, X,
@@ -15,7 +15,7 @@ const typeIcon = (type: PlaylistItem["type"]) => {
 };
 
 const PlaylistsSection = () => {
-  const { playlists, sampleLibrary, addItemToPlaylist, removeItemFromPlaylist, createPlaylist, deletePlaylist, renamePlaylist, playFromPlaylist } = usePlaylists();
+  const { playlists, sampleLibrary, addItemToPlaylist, removeItemFromPlaylist, createPlaylist, deletePlaylist, renamePlaylist, playFromPlaylist, loadPlaylists } = usePlaylists();
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -25,6 +25,10 @@ const PlaylistsSection = () => {
   const [editName, setEditName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
+
+  useEffect(() => {
+    void loadPlaylists();
+  }, [loadPlaylists]);
 
   const handlePlayItem = (playlist: { items: PlaylistItem[] }, itemIndex: number) => {
     playFromPlaylist(playlist.items, itemIndex);

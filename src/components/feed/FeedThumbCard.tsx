@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Heart, MessageCircle, Play, Image as ImageIcon } from "lucide-react";
 import { parsePostCaption } from "@/lib/post-editor";
 
@@ -10,20 +10,38 @@ interface Props {
 
 /** Compact card used in the split-feed columns. Nothing floats — all chrome inside the card. */
 export default function FeedThumbCard({ post, compact = false, onOpen }: Props) {
+  const cardRef = useRef<HTMLButtonElement>(null);
+  const [inView, setInView] = useState(false);
   const { caption, meta } = useMemo(() => parsePostCaption(post.caption), [post.caption]);
   const profile = post.profile || { display_name: "Artist", avatar_url: null };
   const isVideo = post.media_type === "video";
   const title = (meta?.title || caption || "").trim();
 
+  useEffect(() => {
+    const node = cardRef.current;
+    if (!node) return;
+    if (!("IntersectionObserver" in window)) {
+      setInView(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => setInView(entry.isIntersecting),
+      { root: null, rootMargin: "320px 0px", threshold: 0.01 },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <button
+      ref={cardRef}
       type="button"
       onClick={onOpen}
       className="w-full text-left rounded-2xl overflow-hidden bg-black shadow-xl border border-white/10 active:scale-[0.98] transition-transform cursor-pointer"
     >
       <div className={`relative w-full ${compact ? "aspect-[9/16]" : "aspect-[4/5]"} bg-neutral-900 pointer-events-none`}>
         {post.media_url ? (
-          isVideo ? (
+          isVideo && inView ? (
             <video
               src={post.media_url}
               className="absolute inset-0 w-full h-full object-cover pointer-events-none"
@@ -32,6 +50,10 @@ export default function FeedThumbCard({ post, compact = false, onOpen }: Props) 
               preload="metadata"
               tabIndex={-1}
             />
+          ) : isVideo ? (
+            <div className="absolute inset-0 flex items-center justify-center bg-black pointer-events-none">
+              <Play className="w-7 h-7 text-white/70 fill-white/70" />
+            </div>
           ) : (
             <img
               src={post.media_url}
