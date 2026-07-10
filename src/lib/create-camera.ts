@@ -6,7 +6,7 @@ const PHOTO_JPEG_QUALITY = 0.94;
 const SOCIAL_AUDIO: MediaTrackConstraints = {
   echoCancellation: false,
   noiseSuppression: false,
-  autoGainControl: false,
+  autoGainControl: true,
   channelCount: { ideal: 1 },
   sampleRate: { ideal: 48000 },
   sampleSize: { ideal: 16 },
@@ -127,44 +127,6 @@ export type MirroredRecordStream = {
 };
 
 /**
- * Boost mic loudness before recording so playback matches TikTok/IG-style loudness.
- * Returns a boosted audio track + cleanup. Falls back to raw track on failure.
- */
-function boostAudioTrack(track: MediaStreamTrack): { track: MediaStreamTrack; stop: () => void } {
-  try {
-    const AC: typeof AudioContext =
-      (window as any).AudioContext || (window as any).webkitAudioContext;
-    if (!AC) return { track, stop: () => {} };
-    const ctx = new AC();
-    const src = ctx.createMediaStreamSource(new MediaStream([track]));
-    const gain = ctx.createGain();
-    gain.gain.value = 2.4; // ~+7.6dB — matches perceived mobile-record loudness
-    const comp = ctx.createDynamicsCompressor();
-    comp.threshold.value = -18;
-    comp.knee.value = 12;
-    comp.ratio.value = 3;
-    comp.attack.value = 0.005;
-    comp.release.value = 0.15;
-    const dest = ctx.createMediaStreamDestination();
-    src.connect(gain).connect(comp).connect(dest);
-    const boosted = dest.stream.getAudioTracks()[0];
-    if (!boosted) {
-      try { ctx.close(); } catch { /* ignore */ }
-      return { track, stop: () => {} };
-    }
-    return {
-      track: boosted,
-      stop: () => {
-        try { boosted.stop(); } catch { /* ignore */ }
-        try { ctx.close(); } catch { /* ignore */ }
-      },
-    };
-  } catch {
-    return { track, stop: () => {} };
-  }
-}
-
-/**
  * Record through a canvas when the live preview is CSS-mirrored (front camera)
  * so the saved file matches what the user saw.
  */
@@ -173,32 +135,23 @@ export function createMirroredVideoRecordStream(
   video: HTMLVideoElement,
   mirror: boolean,
 ): MirroredRecordStream {
-  const audioBoosts: Array<() => void> = [];
-  const boostedAudioTracks = sourceStream.getAudioTracks().map((t) => {
-    const b = boostAudioTrack(t);
-    audioBoosts.push(b.stop);
-    return b.track;
-  });
+  const audioTracks = sourceStream.getAudioTracks();
 
   if (!mirror) {
-    const cloned = new MediaStream([...sourceStream.getVideoTracks(), ...boostedAudioTracks]);
+    const cloned = new MediaStream([...sourceStream.getVideoTracks(), ...audioTracks]);
     return {
       stream: cloned,
-      stop: () => {
-        audioBoosts.forEach((s) => s());
-      },
+      stop: () => {},
     };
   }
 
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
   if (!ctx) {
-    const fallback = new MediaStream([...sourceStream.getVideoTracks(), ...boostedAudioTracks]);
+    const fallback = new MediaStream([...sourceStream.getVideoTracks(), ...audioTracks]);
     return {
       stream: fallback,
-      stop: () => {
-        audioBoosts.forEach((s) => s());
-      },
+      stop: () => {},
     };
   }
 
@@ -230,7 +183,7 @@ export function createMirroredVideoRecordStream(
   drawFrame();
 
   const canvasStream = canvas.captureStream(30);
-  boostedAudioTracks.forEach((track) => {
+  audioTracks.forEach((track) => {
     canvasStream.addTrack(track);
   });
 
@@ -240,7 +193,6 @@ export function createMirroredVideoRecordStream(
       stopped = true;
       cancelAnimationFrame(rafId);
       canvasStream.getVideoTracks().forEach((t) => t.stop());
-      audioBoosts.forEach((s) => s());
     },
   };
 }
