@@ -7,6 +7,32 @@ export type FeedPlaybackMeta = {
 
 let feedAudioSessionUnlocked = false;
 
+type WebAudioSessionType = "auto" | "ambient" | "playback" | "play-and-record";
+
+function setWebAudioSessionType(type: WebAudioSessionType): void {
+  const audioSession = (navigator as Navigator & {
+    audioSession?: { type?: WebAudioSessionType };
+  }).audioSession;
+
+  if (!audioSession || audioSession.type === type) return;
+
+  try {
+    audioSession.type = type;
+  } catch {
+    /* Audio Session API is Safari-only and may reject unsupported modes. */
+  }
+}
+
+/** iOS Safari lowers playback volume after getUserMedia unless the session is reset. */
+export function setIosAudioSessionForRecording(): void {
+  setWebAudioSessionType("play-and-record");
+}
+
+export async function resetIosAudioSessionToPlayback(): Promise<void> {
+  setWebAudioSessionType("playback");
+  await new Promise<void>((resolve) => window.setTimeout(resolve, 60));
+}
+
 /** Phones/tablets need a user gesture before unmuted playback (iOS Safari). */
 export function isTouchFeedDevice() {
   if (typeof window === "undefined") return false;
@@ -194,6 +220,3 @@ export function armFeedAudioPlayback(
   return bindFeedMediaSession(media, meta);
 }
 
-export async function resetIosAudioSessionToPlayback(): Promise<void> {
-  /* no-op — previous workaround disabled */
-}
