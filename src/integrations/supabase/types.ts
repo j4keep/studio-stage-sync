@@ -1411,6 +1411,7 @@ export type Database = {
           background_image_url: string | null
           banner_url: string | null
           bio: string | null
+          country_flag: string | null
           created_at: string
           custom_accent_color: string | null
           daw_shortcuts: Json | null
@@ -1427,6 +1428,7 @@ export type Database = {
           background_image_url?: string | null
           banner_url?: string | null
           bio?: string | null
+          country_flag?: string | null
           created_at?: string
           custom_accent_color?: string | null
           daw_shortcuts?: Json | null
@@ -1443,6 +1445,7 @@ export type Database = {
           background_image_url?: string | null
           banner_url?: string | null
           bio?: string | null
+          country_flag?: string | null
           created_at?: string
           custom_accent_color?: string | null
           daw_shortcuts?: Json | null
