@@ -137,7 +137,7 @@ export default function PostPreviewView({
   };
 
   const busy = posting || deleting || !!rewriting;
-  const canSave = title.trim().length > 0 && !busy;
+  const canSave = !busy && (!!previewUrl || title.trim().length > 0 || description.trim().length > 0);
   const saveLabel = posting
     ? isEditing
       ? "Saving…"
@@ -328,14 +328,6 @@ export default function PostPreviewView({
         <div style={{ height: "max(env(safe-area-inset-bottom), 1rem)" }} aria-hidden />
       </div>
 
-      {!title.trim() && (
-        <p
-          className="shrink-0 text-center text-[11px] text-white/40 pb-2"
-          style={{ paddingBottom: "max(env(safe-area-inset-bottom), 0.5rem)" }}
-        >
-          Add a title to {isEditing ? "save" : "post"}
-        </p>
-      )}
     </div>
   );
 }

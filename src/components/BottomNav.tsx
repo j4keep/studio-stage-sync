@@ -51,11 +51,8 @@ const BottomNav = () => {
   const handleCreate = async () => {
     if (waving || showCreate) return;
     setWaving(true);
-    try {
-      await openCreate({ waveMs: CREATE_WAVE_MS });
-    } finally {
-      setWaving(false);
-    }
+    void openCreate({ waveMs: CREATE_WAVE_MS });
+    window.setTimeout(() => setWaving(false), CREATE_WAVE_MS);
   };
 
   const renderTab = (tab: typeof tabs[number]) => {
