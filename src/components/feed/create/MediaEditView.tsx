@@ -413,9 +413,18 @@ export default function MediaEditView({
             className="absolute inset-0 w-full h-full object-cover"
             playsInline
             loop
-            muted={videoMutedForPlayback}
+            muted={initialAutoplayMuted || videoMutedForPlayback}
             autoPlay
             onLoadedMetadata={(e) => {
+              const v = e.currentTarget;
+              // Kick off muted playback so iOS shows video, not a still frame.
+              void v.play().catch(() => {}).then(() => {
+                setInitialAutoplayMuted(false);
+                applyVideoAudioHandlers(v);
+              });
+            }}
+            onPlaying={(e) => {
+              if (initialAutoplayMuted) setInitialAutoplayMuted(false);
               applyVideoAudioHandlers(e.currentTarget);
             }}
             onPlay={(e) => {
