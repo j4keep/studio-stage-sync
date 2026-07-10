@@ -410,7 +410,7 @@ if (!postToEdit) {
     ...(m.music || musicFile
       ? {
           music: m.music,
-          muteOriginal: m.muteOriginal ?? true,
+          muteOriginal: false,
           originalVolume: m.originalVolume ?? MIXED_VOCAL_VIDEO_VOLUME,
         }
       : {}),
@@ -475,7 +475,8 @@ const dur = durationSec > 0 ? durationSec : undefined;
 
 setEditorMeta((m) => ({
   ...m,
-  muteOriginal: true,
+  muteOriginal: false,
+  originalVolume: MIXED_VOCAL_VIDEO_VOLUME,
   music: {
     fileName: f.name,
     durationSec: dur,

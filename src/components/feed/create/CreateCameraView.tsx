@@ -12,8 +12,6 @@ import {
   createMirroredVideoRecordStream,
   shouldMirrorRecordOutput,
   capturePhotoFromStream,
-  videoOnlyRecordStream,
-  stripStreamAudio,
 } from "@/lib/create-camera";
 import type { CreateMode, EnhanceTab } from "@/lib/create-modes";
 import { QUICK_MAX_RECORD_SEC } from "@/lib/create-modes";
@@ -139,7 +137,7 @@ export default function CreateCameraView({
     setReady(false);
 
     try {
-      const stream = await warmCameraStream(facing, { withAudio: !musicPreviewUrl });
+      const stream = await warmCameraStream(facing, { withAudio: true });
       if (!stream) throw new Error("denied");
       ownsStreamRef.current = true;
       await attachStream(stream);
@@ -202,7 +200,7 @@ export default function CreateCameraView({
     recordingRef.current = recording;
   }, [recording]);
 
-  /** Lip-sync: remove mic entirely when a song is added. Picker open: pause camera for preview. */
+  /** Keep camera + mic live like the phone camera. Picker open pauses preview only. */
   useEffect(() => {
     const stream = streamRef.current;
     const video = videoRef.current;
@@ -223,22 +221,14 @@ export default function CreateCameraView({
       void video.play().catch(() => {});
     }
 
-    if (musicPreviewUrl) {
-      stripStreamAudio(stream);
-      setMicMissing(false);
-    } else {
-      void ensureStreamHasAudio(stream).then((ok) => setMicMissing(!ok));
-    }
+    void ensureStreamHasAudio(stream).then((ok) => setMicMissing(!ok));
   }, [musicPaused, musicPreviewUrl, ready]);
 
-  /** Re-open camera with/without mic when switching original ↔ added song (iOS session). */
+  /** Keep track of added-sound mode without rebuilding the camera stream. */
   useEffect(() => {
     const lipSync = !!musicPreviewUrl;
-    if (!ready || musicPaused || lipSync === lipSyncModeRef.current) return;
     lipSyncModeRef.current = lipSync;
-    if (recordingRef.current) return;
-    void startCamera();
-  }, [musicPreviewUrl, musicPaused, ready, startCamera]);
+  }, [musicPreviewUrl]);
 
   const armCameraMusic = useCallback(
     (media: HTMLMediaElement) => {
@@ -398,17 +388,12 @@ export default function CreateCameraView({
     recordPendingRef.current = true;
     const lipSyncMode = !!musicPreviewUrl;
 
-    if (!lipSyncMode) {
-      if (!streamHasLiveAudio(stream)) {
-        void ensureStreamHasAudio(stream).then((ok) => setMicMissing(!ok));
-      }
-      if (!wantsRecordRef.current) {
-        recordPendingRef.current = false;
-        return;
-      }
-    } else {
-      stripStreamAudio(stream);
-      setMicMissing(false);
+    if (!streamHasLiveAudio(stream)) {
+      void ensureStreamHasAudio(stream).then((ok) => setMicMissing(!ok));
+    }
+    if (!wantsRecordRef.current) {
+      recordPendingRef.current = false;
+      return;
     }
 
     if (!wantsRecordRef.current) {
@@ -427,12 +412,8 @@ export default function CreateCameraView({
     );
     mirrorRecordStopRef.current = stopMirror;
 
-    const recorderStream = lipSyncMode
-      ? videoOnlyRecordStream(recordStream)
-      : recordStream;
-
     try {
-      const rec = createVideoRecorder(recorderStream, pickVideoRecorderMimeType());
+      const rec = createVideoRecorder(recordStream, pickVideoRecorderMimeType());
       recorderRef.current = rec;
 
       rec.ondataavailable = (e) => {
