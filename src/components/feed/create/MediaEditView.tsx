@@ -374,11 +374,44 @@ export default function MediaEditView({
       : null;
 
   const videoMutedForPlayback = meta.muteOriginal === true;
-  // Start muted so iOS/Safari always autoplays; unmute after first successful play.
-  const [initialAutoplayMuted, setInitialAutoplayMuted] = useState(true);
-  useEffect(() => {
-    setInitialAutoplayMuted(true);
-  }, [previewUrl, mediaType]);
+
+  const startEditVideoPlayback = useCallback(async (video: HTMLVideoElement) => {
+    if (mediaType !== "video") return;
+
+    video.playsInline = true;
+    video.setAttribute("playsinline", "true");
+    video.setAttribute("webkit-playsinline", "true");
+    video.preload = "auto";
+
+    // First guarantee motion. If the browser blocks audible autoplay after the
+    // recorder closes, muted playback still prevents the edit screen freezing on
+    // a single still frame.
+    const shouldStayMuted = meta.muteOriginal === true;
+    video.defaultMuted = true;
+    video.muted = true;
+
+    try {
+      await video.play();
+    } catch {
+      window.setTimeout(() => {
+        video.muted = true;
+        void video.play().catch(() => {});
+      }, 120);
+      return;
+    }
+
+    applyVideoAudioHandlers(video);
+
+    if (!shouldStayMuted) {
+      video.muted = false;
+      video.defaultMuted = false;
+      void video.play().catch(() => {
+        video.muted = true;
+        video.defaultMuted = true;
+        void video.play().catch(() => {});
+      });
+    }
+  }, [mediaType, meta.muteOriginal, meta.originalVolume, musicPreviewUrl]);
 
   const applyVideoAudioHandlers = (el: HTMLVideoElement) => {
     if (musicPreviewUrl) {
@@ -413,18 +446,15 @@ export default function MediaEditView({
             className="absolute inset-0 w-full h-full object-cover"
             playsInline
             loop
-            muted={initialAutoplayMuted || videoMutedForPlayback}
+            muted={videoMutedForPlayback}
             autoPlay
             onLoadedMetadata={(e) => {
-              const v = e.currentTarget;
-              // Kick off muted playback so iOS shows video, not a still frame.
-              void v.play().catch(() => {}).then(() => {
-                setInitialAutoplayMuted(false);
-                applyVideoAudioHandlers(v);
-              });
+              void startEditVideoPlayback(e.currentTarget);
+            }}
+            onCanPlay={(e) => {
+              if (e.currentTarget.paused) void startEditVideoPlayback(e.currentTarget);
             }}
             onPlaying={(e) => {
-              if (initialAutoplayMuted) setInitialAutoplayMuted(false);
               applyVideoAudioHandlers(e.currentTarget);
             }}
             onPlay={(e) => {

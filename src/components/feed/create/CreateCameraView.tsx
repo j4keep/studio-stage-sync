@@ -76,6 +76,7 @@ export default function CreateCameraView({
   const lipSyncModeRef = useRef(!!musicPreviewUrl);
   const recordStartedAtRef = useRef<number | null>(null);
   const isStoppingRecordingRef = useRef(false);
+  const cameraStoppedForSoundPickerRef = useRef(false);
 
   const [facing, setFacing] = useState<"user" | "environment">("user");
   const [denied, setDenied] = useState(false);
@@ -200,19 +201,26 @@ export default function CreateCameraView({
     recordingRef.current = recording;
   }, [recording]);
 
-  /** Keep camera + mic live like the phone camera. Picker open pauses preview only. */
+  /** Stop camera/mic while Add Sound is open so iOS does not duck speaker volume. */
   useEffect(() => {
     const stream = streamRef.current;
     const video = videoRef.current;
-    if (!stream || !ready) return;
 
     if (musicPaused) {
-      for (const track of stream.getTracks()) {
-        track.enabled = false;
-      }
-      video?.pause();
+      cameraStoppedForSoundPickerRef.current = true;
+      stopStream(true);
       return;
     }
+
+    if (cameraStoppedForSoundPickerRef.current && !streamHasLiveVideo(stream)) {
+      cameraStoppedForSoundPickerRef.current = false;
+      void startCamera();
+      return;
+    }
+
+    cameraStoppedForSoundPickerRef.current = false;
+
+    if (!stream || !ready) return;
 
     for (const track of stream.getVideoTracks()) {
       track.enabled = true;
@@ -222,7 +230,7 @@ export default function CreateCameraView({
     }
 
     void ensureStreamHasAudio(stream).then((ok) => setMicMissing(!ok));
-  }, [musicPaused, musicPreviewUrl, ready]);
+  }, [musicPaused, ready, startCamera, stopStream]);
 
   /** Keep track of added-sound mode without rebuilding the camera stream. */
   useEffect(() => {
