@@ -186,7 +186,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
         originalVolume: postMeta?.originalVolume,
         musicVolume: soundSync.volume,
       });
-      applyFeedVideoAudio(video, { muted: true, volume: 0 });
+      applyFeedVideoAudio(video, { muted: mix.videoMuted, volume: mix.videoVolume });
       if (!audio) {
         setAutoplayAudioLocked(true);
         return false;
@@ -266,6 +266,12 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     }
 
     if (hasAddedSound) {
+      if (needsGestureForAudio) {
+        const played = await playSilently();
+        setAutoplayAudioLocked(true);
+        return played;
+      }
+
       applyFeedVideoAudio(video, getVideoMixAudio());
       try {
         await video.play();
@@ -277,12 +283,6 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
 
       const audio = musicAudioRef.current;
       if (!audio) {
-        setAutoplayAudioLocked(true);
-        activateFeedPlayback(true);
-        return true;
-      }
-
-      if (needsGestureForAudio) {
         setAutoplayAudioLocked(true);
         activateFeedPlayback(true);
         return true;
