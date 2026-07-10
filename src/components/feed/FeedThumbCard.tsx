@@ -19,40 +19,42 @@ export default function FeedThumbCard({ post, compact = false, onOpen }: Props) 
     <button
       type="button"
       onClick={onOpen}
-      className="w-full text-left rounded-2xl overflow-hidden bg-black shadow-xl border border-white/10 active:scale-[0.98] transition-transform"
+      className="w-full text-left rounded-2xl overflow-hidden bg-black shadow-xl border border-white/10 active:scale-[0.98] transition-transform cursor-pointer"
     >
-      <div className={`relative w-full ${compact ? "aspect-[9/16]" : "aspect-[4/5]"} bg-neutral-900`}>
+      <div className={`relative w-full ${compact ? "aspect-[9/16]" : "aspect-[4/5]"} bg-neutral-900 pointer-events-none`}>
         {post.media_url ? (
           isVideo ? (
             <video
               src={post.media_url}
-              className="absolute inset-0 w-full h-full object-cover"
+              className="absolute inset-0 w-full h-full object-cover pointer-events-none"
               muted
               playsInline
               preload="metadata"
+              tabIndex={-1}
             />
           ) : (
             <img
               src={post.media_url}
               alt=""
               loading="lazy"
-              className="absolute inset-0 w-full h-full object-cover"
+              draggable={false}
+              className="absolute inset-0 w-full h-full object-cover pointer-events-none"
             />
           )
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-white/40">
+          <div className="absolute inset-0 flex items-center justify-center text-white/40 pointer-events-none">
             <ImageIcon className="w-6 h-6" />
           </div>
         )}
 
         {isVideo && (
-          <div className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 backdrop-blur flex items-center justify-center">
+          <div className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 backdrop-blur flex items-center justify-center pointer-events-none">
             <Play className="w-3 h-3 text-white fill-white" />
           </div>
         )}
 
         {/* Gradient + caption footer inside the card */}
-        <div className="absolute inset-x-0 bottom-0 p-2 pt-6 bg-gradient-to-t from-black/85 via-black/40 to-transparent">
+        <div className="absolute inset-x-0 bottom-0 p-2 pt-6 bg-gradient-to-t from-black/85 via-black/40 to-transparent pointer-events-none">
           {title && (
             <p className={`text-white font-semibold leading-tight line-clamp-2 ${compact ? "text-[10px]" : "text-xs"}`}>
               {title}
