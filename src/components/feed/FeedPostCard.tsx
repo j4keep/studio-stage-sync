@@ -25,6 +25,7 @@ import PostCommentsSheet from "./PostCommentsSheet";
 import CreatePostSheet from "./CreatePostSheet";
 import PostOverlayRenderer from "./create/PostOverlayRenderer";
 import useFloatingEmojis, { FloatingEmojiLayer } from "./FloatingEmojis";
+import { VideoPoster } from "@/components/VideoPoster";
 import { parsePostCaption, hasVisualOverlayLayers } from "@/lib/post-editor";
 import { playUploadedAudio, getMusicDisplayName } from "@/lib/feed-music";
 import {
@@ -998,6 +999,12 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     Boolean(posterOverlayUrl) &&
     !videoFrameReady &&
     !mediaFailed;
+  const showGeneratedPosterOverlay =
+    post.media_type === "video" &&
+    hasMediaUrl &&
+    !posterOverlayUrl &&
+    !videoFrameReady &&
+    !mediaFailed;
 
   return (
     <>
@@ -1060,6 +1067,14 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
           />
         )}
 
+        {showGeneratedPosterOverlay && (
+          <VideoPoster
+            src={post.media_url}
+            alt={displayCaption || postTitle || "Video preview"}
+            className="absolute inset-0 z-[1] h-full w-full object-cover pointer-events-none"
+          />
+        )}
+
         {showMediaFallback && (
           <div className="absolute inset-0 flex items-center justify-center bg-black">
             <p className="px-8 text-center text-lg font-semibold leading-relaxed text-white">
@@ -1068,7 +1083,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
           </div>
         )}
 
-        {hasMediaUrl && !mediaFailed && post.media_type === "video" && isActive && !mediaReady && !showPosterOverlay && (
+        {hasMediaUrl && !mediaFailed && post.media_type === "video" && isActive && !mediaReady && !showPosterOverlay && !showGeneratedPosterOverlay && (
           <div className="absolute inset-0 z-[1] flex items-center justify-center bg-black/20 pointer-events-none">
             <div className="w-8 h-8 border-2 border-white/40 border-t-white rounded-full animate-spin" />
           </div>
