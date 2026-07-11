@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, MoreVertical, Radio as RadioIcon, Swords, Tv, Tag, HandHeart } from "lucide-react";
+import { Search, MoreVertical, Radio as RadioIcon, Swords, Tv, Tag } from "lucide-react";
 import { fetchFeedItems, isReelItem } from "@/lib/feed-items";
 import { initFeedAudioUnlockOnGesture } from "@/lib/feed-video-playback";
 import FeedThumbCard from "@/components/feed/FeedThumbCard";
@@ -106,16 +106,6 @@ const FeedPage = () => {
             >
               <div className="w-10 h-10 rounded-full ring-2 ring-primary flex items-center justify-center bg-muted text-foreground text-lg font-light">+</div>
               <span className="text-[10px] text-foreground/80 leading-none font-medium">Pitch</span>
-            </button>
-            <button
-              onClick={() => navigate("/my-projects")}
-              className="shrink-0 flex flex-col items-center gap-1 w-[3rem]"
-              aria-label="Support"
-            >
-              <div className="w-10 h-10 rounded-full ring-2 ring-border bg-muted flex items-center justify-center text-foreground dark:ring-white/35 dark:bg-white/10">
-                <HandHeart className="w-[1.15rem] h-[1.15rem]" strokeWidth={2.25} />
-              </div>
-              <span className="text-[10px] text-foreground/80 leading-none truncate w-full text-center font-medium">Support</span>
             </button>
 
             {trending.map((c) => (

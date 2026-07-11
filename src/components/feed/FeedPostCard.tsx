@@ -12,6 +12,7 @@ import {
   VolumeX,
   Play,
   Users,
+  HandHeart,
 } from "lucide-react";
 import { incrementPostViews } from "@/hooks/use-likes";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -1177,6 +1178,16 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
           <button onClick={handleShare} className="feed-action-btn">
             <Forward className="feed-action-icon" />
           </button>
+
+          <button
+            onClick={(e) => { e.stopPropagation(); navigate("/my-projects"); }}
+            className="feed-action-btn"
+            aria-label="Support this artist"
+          >
+            <HandHeart className="feed-action-icon" />
+            <span className="feed-action-count text-[9px]">Support</span>
+          </button>
+
 
           <button
             onClick={(e) => { e.stopPropagation(); navigate("/circle"); }}
