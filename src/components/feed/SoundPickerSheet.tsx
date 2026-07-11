@@ -5,9 +5,11 @@ import { toast } from "sonner";
 import { AUDIO_FILE_ACCEPT } from "@/lib/feed-music";
 import {
   armFeedAudioPlayback,
+  forceIosAudioSessionToPlayback,
+  resetIosAudioSessionToPlayback,
   unlockFeedAudioSession,
 } from "@/lib/feed-video-playback";
-import { createTrimmedMusicPlayer, formatAudioTime, sameMediaElementSrc } from "@/lib/post-music-preview";
+import { boostMediaElementLoudness, createTrimmedMusicPlayer, formatAudioTime, sameMediaElementSrc } from "@/lib/post-music-preview";
 import type { PostEditorMeta } from "@/lib/post-editor";
 
 /** Full-level preview while trimming — separate from post playback mix levels. */
@@ -59,6 +61,7 @@ const SoundPickerSheet = ({
     const audio = previewMediaRef.current;
     if (!audio) return;
     if (!sameMediaElementSrc(audio, sourceUrl)) {
+      audio.crossOrigin = "anonymous";
       audio.src = sourceUrl;
       audio.preload = "auto";
       try {
@@ -72,6 +75,7 @@ const SoundPickerSheet = ({
   useEffect(() => {
     if (!open) return;
     unlockFeedAudioSession();
+    void resetIosAudioSessionToPlayback();
   }, [open]);
 
   const stopPreview = () => {
@@ -89,6 +93,8 @@ const SoundPickerSheet = ({
 
   const armLoudPreview = (media: HTMLMediaElement) => {
     previewSessionRef.current?.();
+    forceIosAudioSessionToPlayback();
+    boostMediaElementLoudness(media, 1.9);
     previewSessionRef.current = armFeedAudioPlayback(
       media,
       { title: previewTitle() },
@@ -124,6 +130,7 @@ const SoundPickerSheet = ({
 
   /** Start playback in the same user-gesture turn — required for iOS media volume. */
   const startPreviewFromGesture = (): boolean => {
+    forceIosAudioSessionToPlayback();
     unlockFeedAudioSession();
 
     if (!sourceUrl) {
@@ -182,6 +189,7 @@ const SoundPickerSheet = ({
   };
 
   const startPreviewAsync = async () => {
+    forceIosAudioSessionToPlayback();
     unlockFeedAudioSession();
 
     if (!sourceUrl) {
@@ -194,6 +202,7 @@ const SoundPickerSheet = ({
         ? duration
         : await new Promise<number>((resolve) => {
             const probe = previewMediaRef.current ?? document.createElement("audio");
+      probe.crossOrigin = "anonymous";
             probe.addEventListener(
               "loadedmetadata",
               () => {
@@ -271,7 +280,10 @@ const SoundPickerSheet = ({
     const audio = previewMediaRef.current;
     if (!audio) return;
 
+    forceIosAudioSessionToPlayback();
+
     if (!sameMediaElementSrc(audio, url)) {
+      audio.crossOrigin = "anonymous";
       audio.src = url;
       try {
         audio.load();

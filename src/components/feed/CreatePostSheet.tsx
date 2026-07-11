@@ -24,7 +24,7 @@ import {
 getMusicDisplayName,
 playPostMusic,
 } from "@/lib/feed-music";
-import { unlockFeedAudioSession } from "@/lib/feed-video-playback";
+import { forceIosAudioSessionToPlayback, resetIosAudioSessionToPlayback, unlockFeedAudioSession } from "@/lib/feed-video-playback";
 import {
   MIXED_ADDED_MUSIC_VOLUME,
   MIXED_VOCAL_VIDEO_VOLUME,
@@ -479,7 +479,10 @@ const soundLabel = hasSelectedSound ? getMusicDisplayName(editorMeta.music) : un
 const handleSoundButton = () => {
 musicStopRef.current?.();
 musicStopRef.current = null;
+window.dispatchEvent(new CustomEvent("jhi-stop-create-camera"));
+forceIosAudioSessionToPlayback();
 unlockFeedAudioSession();
+void resetIosAudioSessionToPlayback();
 setShowSoundPicker(true);
 };
 

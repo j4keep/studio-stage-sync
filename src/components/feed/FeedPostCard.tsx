@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import type { CSSProperties } from "react";
 import {
   Heart,
   MessageCircle,
@@ -69,6 +70,8 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
   const [showHeart, setShowHeart] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [mediaReady, setMediaReady] = useState(false);
+  const [videoFrameReady, setVideoFrameReady] = useState(false);
+  const [localPosterUrl, setLocalPosterUrl] = useState<string | null>(null);
   const [mediaFailed, setMediaFailed] = useState(false);
   const [autoplayAudioLocked, setAutoplayAudioLocked] = useState(false);
   const [feedAudioUnlocked, setFeedAudioUnlocked] = useState(isFeedAudioSessionUnlocked);
@@ -392,6 +395,8 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     setLiked(!!post.isLiked);
     setLikesCount(post.likes_count || 0);
     setMediaReady(false);
+    setVideoFrameReady(false);
+    setLocalPosterUrl(null);
     setMediaFailed(false);
   }, [post.id, post.media_url, post.isLiked, post.likes_count]);
 
@@ -837,18 +842,83 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
   const videoMutedForAutoplay =
     getVideoMuted() || autoplayAudioLocked;
 
+  const captureLocalPoster = useCallback((video: HTMLVideoElement) => {
+    if (coverUrl || localPosterUrl || video.videoWidth <= 0 || video.videoHeight <= 0) return;
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      setLocalPosterUrl(canvas.toDataURL("image/jpeg", 0.82));
+    } catch {
+      /* Cross-origin or decoder not ready — native poster/first frame still applies. */
+    }
+  }, [coverUrl, localPosterUrl]);
+
   const revealFirstFrame = (video: HTMLVideoElement) => {
     if (coverUrl) return;
-    if (video.currentTime > 0.05) return;
+    if (video.currentTime > 0.05) {
+      captureLocalPoster(video);
+      return;
+    }
     const target = postMeta?.coverTime ?? 0.12;
     if (Number.isFinite(video.duration) && video.duration > target + 0.05) {
       try {
+        video.addEventListener("seeked", () => captureLocalPoster(video), { once: true });
         video.currentTime = target;
       } catch {
         /* ignore */
       }
+    } else {
+      captureLocalPoster(video);
     }
   };
+
+  const markVideoFrameReady = useCallback((video: HTMLVideoElement) => {
+    if (video !== videoRef.current) return;
+
+    const reveal = () => {
+      if (video !== videoRef.current) return;
+      if ((coverUrl || localPosterUrl) && !video.paused && video.currentTime < 0.35) {
+        window.setTimeout(reveal, 150);
+        return;
+      }
+      setVideoFrameReady(true);
+      setMediaReady(true);
+    };
+
+    const requestFrame = (video as HTMLVideoElement & {
+      requestVideoFrameCallback?: (callback: () => void) => number;
+    }).requestVideoFrameCallback;
+
+    if (typeof requestFrame === "function") {
+      requestFrame.call(video, reveal);
+      return;
+    }
+
+    if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+      window.setTimeout(reveal, video.paused ? 120 : 420);
+    }
+  }, [coverUrl, localPosterUrl]);
+
+  const cropTransform = cropStyle?.transform;
+  const compositedTransform = `${cropTransform ? `${cropTransform} ` : ""}translateZ(0)`;
+  const videoCompositedStyle = {
+    ...cropStyle,
+    transform: compositedTransform,
+    WebkitTransform: compositedTransform,
+    backfaceVisibility: "hidden",
+    WebkitBackfaceVisibility: "hidden",
+  } as CSSProperties;
+
+  const posterOverlayUrl = coverUrl || localPosterUrl;
+  const showPosterOverlay =
+    post.media_type === "video" &&
+    Boolean(posterOverlayUrl) &&
+    !videoFrameReady &&
+    !mediaFailed;
 
   return (
     <>
@@ -865,7 +935,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
               src={post.media_url}
               poster={coverUrl}
               className="absolute inset-0 h-full w-full object-cover"
-              style={cropStyle}
+              style={videoCompositedStyle}
               loop
               playsInline
               muted={videoMutedForAutoplay}
@@ -875,12 +945,25 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
                 revealFirstFrame(e.currentTarget);
                 if (coverUrl) setMediaReady(true);
               }}
-              onLoadedData={() => setMediaReady(true)}
-              onCanPlay={() => setMediaReady(true)}
+              onLoadedData={(e) => {
+                setMediaReady(true);
+                markVideoFrameReady(e.currentTarget);
+              }}
+              onCanPlay={(e) => {
+                setMediaReady(true);
+                markVideoFrameReady(e.currentTarget);
+              }}
               onError={() => setMediaFailed(true)}
               onPlay={() => {
                 setMediaReady(true);
                 setIsPlaying(true);
+                if (videoRef.current) markVideoFrameReady(videoRef.current);
+              }}
+              onPlaying={(e) => markVideoFrameReady(e.currentTarget)}
+              onTimeUpdate={(e) => {
+                if (!videoFrameReady && e.currentTarget.currentTime > 0.12) {
+                  markVideoFrameReady(e.currentTarget);
+                }
               }}
               onPause={() => setIsPlaying(false)}
             />
@@ -894,6 +977,16 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
             />
           ))}
 
+        {showPosterOverlay && posterOverlayUrl && (
+          <img
+            src={posterOverlayUrl}
+            alt=""
+            draggable={false}
+            className="absolute inset-0 z-[1] h-full w-full object-cover pointer-events-none transition-opacity duration-200"
+            style={videoCompositedStyle}
+          />
+        )}
+
         {showMediaFallback && (
           <div className="absolute inset-0 flex items-center justify-center bg-black">
             <p className="px-8 text-center text-lg font-semibold leading-relaxed text-white">
@@ -902,7 +995,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
           </div>
         )}
 
-        {hasMediaUrl && !mediaFailed && post.media_type === "video" && isActive && !mediaReady && (
+        {hasMediaUrl && !mediaFailed && post.media_type === "video" && isActive && !mediaReady && !showPosterOverlay && (
           <div className="absolute inset-0 z-[1] flex items-center justify-center bg-black/20 pointer-events-none">
             <div className="w-8 h-8 border-2 border-white/40 border-t-white rounded-full animate-spin" />
           </div>
