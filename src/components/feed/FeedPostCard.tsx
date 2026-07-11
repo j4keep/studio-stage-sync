@@ -908,7 +908,6 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       window.setTimeout(() => {
         if (!isActiveRef.current || userPausedRef.current) return;
         void playWhenActive();
-        markVideoFrameReady(v);
       }, 90);
     }, paintRecoveryAttemptsRef.current === 0 ? 450 : 750);
   }, [mediaFailed, playWhenActive, videoFrameReady]);
@@ -972,12 +971,12 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
   useEffect(() => {
     if (!isActive || post.media_type !== "video") return;
     if (videoFrameReady || mediaFailed) return;
-      const video = videoRef.current;
-      if (!video) return;
+    const video = videoRef.current;
+    if (!video) return;
     const timer = window.setTimeout(() => {
       const v = videoRef.current;
       if (!v || videoFrameReady) return;
-        scheduleVideoPaintRecovery(v);
+      scheduleVideoPaintRecovery(v);
     }, 650);
     return () => window.clearTimeout(timer);
   }, [isActive, videoFrameReady, mediaFailed, isPlaying, post.media_type, scheduleVideoPaintRecovery]);
