@@ -883,8 +883,9 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       }
       return darkPixels / (data.length / 4) < 0.96;
     } catch {
-      // If browser/CORS blocks sampling, trust the decoded frame rather than hiding forever.
-      return true;
+      // If the browser blocks canvas sampling, wait until real playback has advanced.
+      // This keeps the cover visible instead of flashing a black decoder frame.
+      return video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.currentTime > 0.12;
     }
   }, []);
 
@@ -913,25 +914,6 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       }, 90);
     }, paintRecoveryAttemptsRef.current === 0 ? 450 : 750);
   }, [mediaFailed, playWhenActive, videoFrameReady]);
-
-  const revealFirstFrame = (video: HTMLVideoElement) => {
-    if (coverUrl) return;
-    if (video.currentTime > 0.05) {
-      captureLocalPoster(video);
-      return;
-    }
-    const target = postMeta?.coverTime ?? 0.12;
-    if (Number.isFinite(video.duration) && video.duration > target + 0.05) {
-      try {
-        video.addEventListener("seeked", () => captureLocalPoster(video), { once: true });
-        video.currentTime = target;
-      } catch {
-        /* ignore */
-      }
-    } else {
-      captureLocalPoster(video);
-    }
-  };
 
   const markVideoFrameReady = useCallback((video: HTMLVideoElement) => {
     if (video !== videoRef.current) return;
@@ -983,6 +965,25 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     return () => window.clearTimeout(timer);
   }, [isActive, videoFrameReady, mediaFailed, isPlaying, post.media_type, scheduleVideoPaintRecovery]);
 
+  useEffect(() => {
+    if (post.media_type !== "video") return;
+    const video = videoRef.current;
+    if (!video) return;
+    const showCoverDuringDecoderStall = () => {
+      if (!isActiveRef.current || mediaFailed) return;
+      setVideoFrameReady(false);
+      scheduleVideoPaintRecovery(video);
+    };
+    video.addEventListener("waiting", showCoverDuringDecoderStall);
+    video.addEventListener("stalled", showCoverDuringDecoderStall);
+    video.addEventListener("emptied", showCoverDuringDecoderStall);
+    return () => {
+      video.removeEventListener("waiting", showCoverDuringDecoderStall);
+      video.removeEventListener("stalled", showCoverDuringDecoderStall);
+      video.removeEventListener("emptied", showCoverDuringDecoderStall);
+    };
+  }, [post.media_type, mediaFailed, scheduleVideoPaintRecovery]);
+
   const cropTransform = cropStyle?.transform;
   const compositedTransform = `${cropTransform ? `${cropTransform} ` : ""}translateZ(0)`;
   const videoCompositedStyle = {
@@ -1020,14 +1021,13 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
               ref={videoRef}
               src={post.media_url}
               className="absolute inset-0 h-full w-full object-cover"
-              style={{ ...videoCompositedStyle, opacity: showPosterOverlay ? 0.01 : 1 }}
+              style={{ ...videoCompositedStyle, opacity: showPosterOverlay || showGeneratedPosterOverlay ? 0.01 : 1 }}
               loop
               playsInline
               muted={videoMutedForAutoplay}
               autoPlay={false}
               preload={isActive || isNear ? "auto" : "metadata"}
               onLoadedMetadata={(e) => {
-                revealFirstFrame(e.currentTarget);
                 if (coverUrl) setMediaReady(true);
               }}
               onLoadedData={(e) => {
