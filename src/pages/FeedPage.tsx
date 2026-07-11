@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, MoreVertical, Radio as RadioIcon, Swords, Tv, Heart, Tag } from "lucide-react";
+import { Search, MoreVertical, Radio as RadioIcon, Swords, Tv, Tag, HandHeart } from "lucide-react";
 import { fetchFeedItems, isReelItem } from "@/lib/feed-items";
 import { initFeedAudioUnlockOnGesture } from "@/lib/feed-video-playback";
 import FeedThumbCard from "@/components/feed/FeedThumbCard";
@@ -11,13 +11,12 @@ import FeedFullscreenViewer from "@/components/feed/FeedFullscreenViewer";
 import FlagBackground from "@/components/FlagBackground";
 import jhiLogo from "@/assets/wheuat-logo.png";
 
-type TabId = "radio" | "battle" | "marketplace" | "deals" | "support";
+type TabId = "radio" | "battle" | "marketplace" | "deals";
 const TABS: { id: TabId; label: string; route: string; icon: typeof RadioIcon }[] = [
   { id: "radio", label: "Radio", route: "/radio", icon: RadioIcon },
   { id: "battle", label: "Battle", route: "/battles", icon: Swords },
   { id: "marketplace", label: "Marketplace", route: "/tv/watch", icon: Tv },
   { id: "deals", label: "Deals", route: "/store", icon: Tag },
-  { id: "support", label: "Support", route: "/my-projects", icon: Heart },
 ];
 
 interface TrendingCreator {
@@ -68,29 +67,18 @@ const FeedPage = () => {
     <div className="h-[100dvh] w-full flex flex-col overflow-hidden relative overscroll-none bg-background text-foreground dark:bg-background dark:text-foreground">
       <FlagBackground className="opacity-80 dark:opacity-100" />
 
-      {/* Header overlay */}
-      <div className="absolute top-0 left-0 right-0 z-40 px-4 pt-[calc(env(safe-area-inset-top)+0.625rem)] pb-2 bg-background/90 backdrop-blur-md border-b border-border/70 pointer-events-none">
-        <div className="flex items-center justify-between text-foreground pointer-events-auto">
-          <img src={jhiLogo} alt="JHi" className="h-7 w-auto" />
-          <div className="flex items-center gap-1">
-            <button onClick={() => navigate("/browse-songs")} className="w-9 h-9 flex items-center justify-center rounded-full bg-card/80 border border-border active:bg-muted" aria-label="Search">
-              <Search className="w-[1.35rem] h-[1.35rem]" strokeWidth={2.25} />
-            </button>
-            <button className="w-9 h-9 flex items-center justify-center rounded-full bg-card/80 border border-border active:bg-muted" aria-label="More">
-              <MoreVertical className="w-[1.35rem] h-[1.35rem]" strokeWidth={2.25} />
-            </button>
-          </div>
-        </div>
-
-        <div className="mt-2 w-full flex justify-center pointer-events-auto pb-0.5">
-          <div className="inline-flex max-w-full items-center justify-center gap-1 overflow-x-auto scrollbar-hide px-0.5">
+      {/* Header overlay — single row: logo + tabs + search + more */}
+      <div className="absolute top-0 left-0 right-0 z-40 px-3 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-1.5 bg-background/90 backdrop-blur-md border-b border-border/70 pointer-events-none">
+        <div className="flex items-center gap-2 text-foreground pointer-events-auto">
+          <img src={jhiLogo} alt="JHi" className="h-6 w-auto shrink-0" />
+          <div className="flex-1 min-w-0 flex items-center gap-1 overflow-x-auto scrollbar-hide">
             {TABS.map((tab) => {
               const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
                   onClick={() => navigate(tab.route)}
-                  className="feed-glass-pill shrink-0 min-w-[3.35rem] px-1.5"
+                  className="feed-glass-pill shrink-0 min-w-[3.1rem] px-1.5"
                 >
                   <Icon className="w-3.5 h-3.5 shrink-0" strokeWidth={2.25} />
                   <span className="text-[9px] font-semibold leading-none whitespace-nowrap">{tab.label}</span>
@@ -98,12 +86,18 @@ const FeedPage = () => {
               );
             })}
           </div>
+          <button onClick={() => navigate("/browse-songs")} className="w-8 h-8 flex items-center justify-center rounded-full bg-card/80 border border-border active:bg-muted shrink-0" aria-label="Search">
+            <Search className="w-[1.15rem] h-[1.15rem]" strokeWidth={2.25} />
+          </button>
+          <button className="w-8 h-8 flex items-center justify-center rounded-full bg-card/80 border border-border active:bg-muted shrink-0" aria-label="More">
+            <MoreVertical className="w-[1.15rem] h-[1.15rem]" strokeWidth={2.25} />
+          </button>
         </div>
-
       </div>
 
+
       {trending.length > 0 && (
-        <div className="absolute left-0 right-0 top-[calc(env(safe-area-inset-top)+6.5rem)] z-30 px-3 pointer-events-none">
+        <div className="absolute left-0 right-0 top-[calc(env(safe-area-inset-top)+3.25rem)] z-30 px-3 pointer-events-none">
           <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pointer-events-auto rounded-xl border border-border bg-card/95 px-2 py-2 shadow-sm dark:backdrop-blur-md">
             <button
               onClick={() => navigate("/profile")}
@@ -113,6 +107,17 @@ const FeedPage = () => {
               <div className="w-10 h-10 rounded-full ring-2 ring-primary flex items-center justify-center bg-muted text-foreground text-lg font-light">+</div>
               <span className="text-[10px] text-foreground/80 leading-none font-medium">Pitch</span>
             </button>
+            <button
+              onClick={() => navigate("/my-projects")}
+              className="shrink-0 flex flex-col items-center gap-1 w-[3rem]"
+              aria-label="Support"
+            >
+              <div className="w-10 h-10 rounded-full ring-2 ring-border bg-muted flex items-center justify-center text-foreground dark:ring-white/35 dark:bg-white/10">
+                <HandHeart className="w-[1.15rem] h-[1.15rem]" strokeWidth={2.25} />
+              </div>
+              <span className="text-[10px] text-foreground/80 leading-none truncate w-full text-center font-medium">Support</span>
+            </button>
+
             {trending.map((c) => (
               <button
                 key={c.user_id}
@@ -143,7 +148,7 @@ const FeedPage = () => {
           <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
         </div>
       ) : (
-        <div className="relative z-10 flex-1 flex overflow-hidden pt-[11rem]">
+        <div className="relative z-10 flex-1 flex overflow-hidden pt-[7.5rem]">
           {/* Reels — left 25% */}
           <div className="w-1/4 h-full overflow-y-scroll scrollbar-hide overscroll-y-contain touch-pan-y px-1.5 pb-24 space-y-2">
             <div className="sticky top-0 z-10 -mx-1.5 px-2 py-1 bg-card/95 border-b border-border rounded-b-md backdrop-blur-sm">
