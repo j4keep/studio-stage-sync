@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Heart, MessageCircle, Play, Image as ImageIcon } from "lucide-react";
 import { VideoPoster } from "@/components/VideoPoster";
 import { parsePostCaption } from "@/lib/post-editor";
@@ -7,19 +7,53 @@ interface Props {
   post: any;
   compact?: boolean;
   onOpen: () => void;
+  /** When true, the card auto-plays a muted looping preview so the feed has visible motion. */
+  autoPlayMuted?: boolean;
 }
 
 /** Compact card used in the split-feed columns. Nothing floats — all chrome inside the card. */
-export default function FeedThumbCard({ post, compact = false, onOpen }: Props) {
+export default function FeedThumbCard({ post, compact = false, onOpen, autoPlayMuted = false }: Props) {
   const cardRef = useRef<HTMLButtonElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [videoReady, setVideoReady] = useState(false);
   const { caption, meta } = useMemo(() => parsePostCaption(post.caption), [post.caption]);
   const profile = post.profile || { display_name: "Artist", avatar_url: null };
   const isVideo = post.media_type === "video";
   const title = (meta?.title || caption || "").trim();
   const coverUrl = meta?.coverUrl;
-  // Thumbnails never autoplay — only the tapped item plays in the fullscreen viewer.
-  // This keeps only one video active at a time and prevents overlapping audio.
   const thumbSrc = isVideo ? coverUrl || post.media_url : post.media_url;
+  const shouldAutoPlay = autoPlayMuted && isVideo && Boolean(post.media_url);
+
+  useEffect(() => {
+    if (!shouldAutoPlay) return;
+    const video = videoRef.current;
+    const card = cardRef.current;
+    if (!video || !card) return;
+
+    video.muted = true;
+    video.defaultMuted = true;
+    video.setAttribute("muted", "");
+    video.setAttribute("playsinline", "true");
+    video.setAttribute("webkit-playsinline", "true");
+    video.loop = true;
+    video.playsInline = true;
+    video.preload = "auto";
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            void video.play().catch(() => {});
+          } else {
+            video.pause();
+          }
+        });
+      },
+      { threshold: 0.35 },
+    );
+    io.observe(card);
+    return () => io.disconnect();
+  }, [shouldAutoPlay, post.media_url]);
 
   return (
     <button
@@ -29,7 +63,29 @@ export default function FeedThumbCard({ post, compact = false, onOpen }: Props) 
       className="w-full text-left rounded-2xl overflow-hidden bg-black shadow-xl border border-white/10 active:scale-[0.98] transition-transform cursor-pointer"
     >
       <div className={`relative w-full ${compact ? "aspect-[9/16]" : "aspect-[4/5]"} bg-neutral-900 pointer-events-none`}>
-        {isVideo && post.media_url ? (
+        {shouldAutoPlay ? (
+          <>
+            <video
+              ref={videoRef}
+              src={post.media_url}
+              poster={coverUrl || undefined}
+              muted
+              loop
+              playsInline
+              preload="auto"
+              onLoadedData={() => setVideoReady(true)}
+              onCanPlay={() => setVideoReady(true)}
+              className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+            />
+            {!videoReady && (coverUrl ? (
+              <img
+                src={coverUrl}
+                alt={title || "Video preview"}
+                className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+              />
+            ) : null)}
+          </>
+        ) : isVideo && post.media_url ? (
           <VideoPoster
             src={post.media_url}
             poster={coverUrl}
@@ -54,7 +110,7 @@ export default function FeedThumbCard({ post, compact = false, onOpen }: Props) 
           </div>
         )}
 
-        {isVideo && (
+        {isVideo && !shouldAutoPlay && (
           <div className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 backdrop-blur flex items-center justify-center pointer-events-none">
             <Play className="w-3 h-3 text-white fill-white" />
           </div>
