@@ -1,5 +1,6 @@
 import { useMemo, useRef } from "react";
 import { Heart, MessageCircle, Play, Image as ImageIcon } from "lucide-react";
+import { VideoPoster } from "@/components/VideoPoster";
 import { parsePostCaption } from "@/lib/post-editor";
 
 interface Props {
@@ -18,7 +19,7 @@ export default function FeedThumbCard({ post, compact = false, onOpen }: Props) 
   const coverUrl = meta?.coverUrl;
   // Thumbnails never autoplay — only the tapped item plays in the fullscreen viewer.
   // This keeps only one video active at a time and prevents overlapping audio.
-  const thumbSrc = isVideo ? coverUrl : post.media_url;
+  const thumbSrc = isVideo ? coverUrl || post.media_url : post.media_url;
 
   return (
     <button
@@ -28,17 +29,24 @@ export default function FeedThumbCard({ post, compact = false, onOpen }: Props) 
       className="w-full text-left rounded-2xl overflow-hidden bg-black shadow-xl border border-white/10 active:scale-[0.98] transition-transform cursor-pointer"
     >
       <div className={`relative w-full ${compact ? "aspect-[9/16]" : "aspect-[4/5]"} bg-neutral-900 pointer-events-none`}>
-        {thumbSrc ? (
+        {isVideo && post.media_url ? (
+          <VideoPoster
+            src={post.media_url}
+            poster={coverUrl}
+            alt={title || "Video preview"}
+            className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+          />
+        ) : thumbSrc ? (
           <img
             src={thumbSrc}
-            alt=""
+            alt={title || "Post preview"}
             loading="lazy"
             draggable={false}
             className="absolute inset-0 w-full h-full object-cover pointer-events-none"
           />
         ) : isVideo ? (
-          <div className="absolute inset-0 flex items-center justify-center bg-black pointer-events-none">
-            <Play className="w-7 h-7 text-white/70 fill-white/70" />
+          <div className="absolute inset-0 flex items-center justify-center bg-muted text-muted-foreground pointer-events-none">
+            <ImageIcon className="w-6 h-6" />
           </div>
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-white/40 pointer-events-none">
