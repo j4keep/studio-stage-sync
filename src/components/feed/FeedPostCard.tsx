@@ -881,27 +881,45 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
 
     const reveal = () => {
       if (video !== videoRef.current) return;
-      if ((coverUrl || localPosterUrl) && !video.paused && video.currentTime < 0.35) {
-        window.setTimeout(reveal, 150);
-        return;
-      }
       setVideoFrameReady(true);
       setMediaReady(true);
+      captureLocalPoster(video);
     };
 
     const requestFrame = (video as HTMLVideoElement & {
-      requestVideoFrameCallback?: (callback: () => void) => number;
+      requestVideoFrameCallback?: (cb: (now: number, meta: { width: number; height: number }) => void) => number;
     }).requestVideoFrameCallback;
 
     if (typeof requestFrame === "function") {
-      requestFrame.call(video, reveal);
+      requestFrame.call(video, (_now, meta) => {
+        if (meta && meta.width > 0 && meta.height > 0) reveal();
+      });
       return;
     }
 
+    // Fallback for browsers without rVFC — trust that data is decoded.
     if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-      window.setTimeout(reveal, video.paused ? 120 : 420);
+      window.setTimeout(reveal, 120);
     }
-  }, [coverUrl, localPosterUrl]);
+  }, [captureLocalPoster]);
+
+  // iOS Safari sometimes plays audio but stalls the video decoder on the
+  // active card — nudge currentTime by a hair to force a frame paint.
+  useEffect(() => {
+    if (!isActive || post.media_type !== "video") return;
+    if (videoFrameReady || mediaFailed) return;
+    const video = videoRef.current;
+    if (!video) return;
+    const timer = window.setTimeout(() => {
+      const v = videoRef.current;
+      if (!v || videoFrameReady) return;
+      try {
+        const t = v.currentTime;
+        v.currentTime = Math.max(0, t + 0.001);
+      } catch { /* ignore */ }
+    }, 650);
+    return () => window.clearTimeout(timer);
+  }, [isActive, videoFrameReady, mediaFailed, isPlaying, post.media_type]);
 
   const cropTransform = cropStyle?.transform;
   const compositedTransform = `${cropTransform ? `${cropTransform} ` : ""}translateZ(0)`;
