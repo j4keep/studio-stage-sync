@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import type { CSSProperties } from "react";
 import {
   Heart,
   MessageCircle,
@@ -883,7 +884,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     WebkitTransform: compositedTransform,
     backfaceVisibility: "hidden",
     WebkitBackfaceVisibility: "hidden",
-  } as React.CSSProperties;
+  } as CSSProperties;
 
   const showPosterOverlay =
     post.media_type === "video" &&
