@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import FeedPostCard from "./FeedPostCard";
-import { getFeedMountRadius } from "@/lib/feed-video-playback";
+import {
+  getFeedMountRadius,
+  forceIosAudioSessionToPlayback,
+  unlockFeedAudioSession,
+} from "@/lib/feed-video-playback";
 
 interface Props {
   items: any[];
@@ -17,6 +21,12 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
   const mountRadius = getFeedMountRadius();
 
   useEffect(() => {
+    // Opening the fullscreen viewer is itself a user-gesture-triggered navigation,
+    // so unlock the iOS audio session and force "playback" routing immediately.
+    // Without this, the first audible play on iOS lands in ambient/quiet mode
+    // and the song audio comes in noticeably faded.
+    forceIosAudioSessionToPlayback();
+    unlockFeedAudioSession();
     const el = scrollRef.current;
     if (!el) return;
     // Snap directly to the picked item on mount.
