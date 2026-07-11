@@ -15,7 +15,7 @@ import {
 } from "@/lib/create-camera";
 import type { CreateMode, EnhanceTab } from "@/lib/create-modes";
 import { QUICK_MAX_RECORD_SEC } from "@/lib/create-modes";
-import { createTrimmedMusicPlayer, CAMERA_ADDED_SOUND_MONITOR_VOLUME, type MusicTrim } from "@/lib/post-music-preview";
+import { boostMediaElementLoudness, createTrimmedMusicPlayer, CAMERA_ADDED_SOUND_MONITOR_VOLUME, type MusicTrim } from "@/lib/post-music-preview";
 import { armFeedAudioPlayback, forceIosAudioSessionToPlayback, resetIosAudioSessionToPlayback } from "@/lib/feed-video-playback";
 import CreateModeTabs from "./CreateModeTabs";
 import RecordButton from "./RecordButton";
@@ -242,6 +242,7 @@ export default function CreateCameraView({
   const armCameraMusic = useCallback(
     (media: HTMLMediaElement) => {
       forceIosAudioSessionToPlayback();
+      boostMediaElementLoudness(media, 1.9);
       cameraMusicSessionRef.current?.();
       cameraMusicSessionRef.current = armFeedAudioPlayback(
         media,
