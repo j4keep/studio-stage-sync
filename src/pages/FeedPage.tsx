@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, MoreVertical, Radio as RadioIcon, Swords, Tv, Heart, Tag } from "lucide-react";
+import { Search, MoreVertical, Radio as RadioIcon, Swords, Tv, Tag, HandHeart } from "lucide-react";
 import { fetchFeedItems, isReelItem } from "@/lib/feed-items";
 import { initFeedAudioUnlockOnGesture } from "@/lib/feed-video-playback";
 import FeedThumbCard from "@/components/feed/FeedThumbCard";
@@ -11,13 +11,12 @@ import FeedFullscreenViewer from "@/components/feed/FeedFullscreenViewer";
 import FlagBackground from "@/components/FlagBackground";
 import jhiLogo from "@/assets/wheuat-logo.png";
 
-type TabId = "radio" | "battle" | "marketplace" | "deals" | "support";
+type TabId = "radio" | "battle" | "marketplace" | "deals";
 const TABS: { id: TabId; label: string; route: string; icon: typeof RadioIcon }[] = [
   { id: "radio", label: "Radio", route: "/radio", icon: RadioIcon },
   { id: "battle", label: "Battle", route: "/battles", icon: Swords },
   { id: "marketplace", label: "Marketplace", route: "/tv/watch", icon: Tv },
   { id: "deals", label: "Deals", route: "/store", icon: Tag },
-  { id: "support", label: "Support", route: "/my-projects", icon: Heart },
 ];
 
 interface TrendingCreator {
