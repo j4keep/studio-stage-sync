@@ -70,7 +70,7 @@ const FeedPage = () => {
       {/* Header overlay — single row: logo + tabs + search + more */}
       <div className="absolute top-0 left-0 right-0 z-40 px-3 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-1.5 bg-background/90 backdrop-blur-md border-b border-border/70 pointer-events-none">
         <div className="flex items-center gap-2 text-foreground pointer-events-auto">
-          <img src={jhiLogo} alt="JHi" className="h-6 w-auto shrink-0" />
+          <img src={jhiLogo} alt="JHi" className="h-10 w-auto shrink-0" />
           <div className="flex-1 min-w-0 flex items-center gap-1 overflow-x-auto scrollbar-hide">
             {TABS.map((tab) => {
               const Icon = tab.icon;
