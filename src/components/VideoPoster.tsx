@@ -51,14 +51,16 @@ type VideoPosterProps = {
   poster?: string | null;
   alt?: string;
   className?: string;
+  generatePoster?: boolean;
 };
 
-export function VideoPoster({ src, poster, alt = "Video preview", className = "" }: VideoPosterProps) {
+export function VideoPoster({ src, poster, alt = "Video preview", className = "", generatePoster = false }: VideoPosterProps) {
   const [generatedPoster, setGeneratedPoster] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [videoReady, setVideoReady] = useState(false);
 
   useEffect(() => {
-    if (poster || !src) {
+    if (poster || !src || !generatePoster) {
       setGeneratedPoster(null);
       setLoading(false);
       return;
@@ -79,7 +81,20 @@ export function VideoPoster({ src, poster, alt = "Video preview", className = ""
 
   return (
     <div className={`relative overflow-hidden bg-muted text-muted-foreground ${className}`} aria-label={alt}>
-      <div className="absolute inset-0 grid place-items-center bg-muted">
+      {src && (
+        <video
+          src={`${src}#t=0.2`}
+          muted
+          playsInline
+          preload="metadata"
+          aria-label={alt}
+          className="absolute inset-0 h-full w-full object-cover"
+          onLoadedData={() => setVideoReady(true)}
+          onCanPlay={() => setVideoReady(true)}
+          onError={() => setLoading(false)}
+        />
+      )}
+      <div className={`absolute inset-0 grid place-items-center bg-muted transition-opacity duration-200 ${videoReady ? "opacity-0" : "opacity-100"}`}>
         {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : <Film className="h-7 w-7" />}
       </div>
     </div>
