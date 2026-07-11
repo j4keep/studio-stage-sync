@@ -57,6 +57,12 @@ const FeedPage = () => {
     return { reels, posts };
   }, [items]);
 
+  // Pick one video to autoplay muted so the feed always has visible motion on load.
+  const featuredReelIndex = useMemo(
+    () => reels.findIndex((p: any) => p.media_type === "video" && p.media_url),
+    [reels],
+  );
+
   useEffect(() => {
     initFeedAudioUnlockOnGesture();
   }, []);
