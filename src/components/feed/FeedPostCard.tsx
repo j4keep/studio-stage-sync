@@ -12,6 +12,7 @@ import {
   VolumeX,
   Play,
   Users,
+  HandHeart,
 } from "lucide-react";
 import { incrementPostViews } from "@/hooks/use-likes";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
