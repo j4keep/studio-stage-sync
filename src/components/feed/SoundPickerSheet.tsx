@@ -61,6 +61,7 @@ const SoundPickerSheet = ({
     const audio = previewMediaRef.current;
     if (!audio) return;
     if (!sameMediaElementSrc(audio, sourceUrl)) {
+      audio.crossOrigin = "anonymous";
       audio.src = sourceUrl;
       audio.preload = "auto";
       try {
@@ -201,6 +202,7 @@ const SoundPickerSheet = ({
         ? duration
         : await new Promise<number>((resolve) => {
             const probe = previewMediaRef.current ?? document.createElement("audio");
+      probe.crossOrigin = "anonymous";
             probe.addEventListener(
               "loadedmetadata",
               () => {
@@ -281,6 +283,7 @@ const SoundPickerSheet = ({
     forceIosAudioSessionToPlayback();
 
     if (!sameMediaElementSrc(audio, url)) {
+      audio.crossOrigin = "anonymous";
       audio.src = url;
       try {
         audio.load();

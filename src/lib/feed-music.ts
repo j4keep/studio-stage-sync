@@ -38,7 +38,9 @@ export function playUploadedAudio(
     externallySynced = false,
   } = options;
 
-  const audio = new Audio(url);
+  const audio = new Audio();
+  audio.crossOrigin = "anonymous";
+  audio.src = url;
   audio.volume = volume;
   audio.loop = false;
   audio.preload = "auto";

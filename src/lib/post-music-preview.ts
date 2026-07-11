@@ -112,10 +112,12 @@ export function createTrimmedMusicPlayer(
 ) {
   const selfManagedLoop = options.selfManagedLoop !== false;
   const retainElement = options.retainElement === true;
-  const audio = options.audioElement ?? new Audio(url);
+  const audio = options.audioElement ?? new Audio();
   if (!options.audioElement) {
+    audio.crossOrigin = "anonymous";
     audio.src = url;
   } else if (!sameMediaElementSrc(audio, url)) {
+    audio.crossOrigin = "anonymous";
     audio.src = url;
     try {
       audio.load();
