@@ -148,7 +148,7 @@ const FeedPage = () => {
           <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
         </div>
       ) : (
-        <div className="relative z-10 flex-1 flex overflow-hidden pt-[11rem]">
+        <div className="relative z-10 flex-1 flex overflow-hidden pt-[7.5rem]">
           {/* Reels — left 25% */}
           <div className="w-1/4 h-full overflow-y-scroll scrollbar-hide overscroll-y-contain touch-pan-y px-1.5 pb-24 space-y-2">
             <div className="sticky top-0 z-10 -mx-1.5 px-2 py-1 bg-card/95 border-b border-border rounded-b-md backdrop-blur-sm">
