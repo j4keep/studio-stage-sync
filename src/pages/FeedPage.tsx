@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, MoreVertical, Radio as RadioIcon, Swords, Tv, Tag, HandHeart } from "lucide-react";
+import { Search, MoreVertical, Radio as RadioIcon, Swords, Tv, Tag } from "lucide-react";
 import { fetchFeedItems, isReelItem } from "@/lib/feed-items";
 import { initFeedAudioUnlockOnGesture } from "@/lib/feed-video-playback";
 import FeedThumbCard from "@/components/feed/FeedThumbCard";
