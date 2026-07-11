@@ -83,7 +83,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
   const musicStopRef = useRef<(() => void) | null>(null);
   const musicAudioRef = useRef<HTMLAudioElement | null>(null);
   const mediaSessionCleanupRef = useRef<(() => void) | null>(null);
-  const paintRecoveryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const paintRecoveryTimerRef = useRef<number | null>(null);
   const paintRecoveryAttemptsRef = useRef(0);
   const lastTapRef = useRef(0);
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
