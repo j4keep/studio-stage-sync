@@ -445,3 +445,173 @@
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 2px rgba(15,23,42,0.04);
 }
 
+/* ─── 3D waving flags (settings picker + feed background) ─── */
+.flag-3d {
+  position: relative;
+  width: 100%;
+}
+
+.flag-3d--thumb {
+  height: 2.75rem;
+  padding-left: 0.35rem;
+}
+
+.flag-3d--background {
+  height: 100%;
+  min-height: 100%;
+}
+
+.flag-3d__pole {
+  position: absolute;
+  left: 0;
+  top: 8%;
+  bottom: 8%;
+  width: 3px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #b8b8b8 0%, #5a5a5a 45%, #8a8a8a 100%);
+  box-shadow: 1px 0 3px rgba(0, 0, 0, 0.45);
+  z-index: 3;
+}
+
+.flag-3d__scene {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  perspective: 520px;
+  transform-style: preserve-3d;
+}
+
+.flag-3d--thumb .flag-3d__scene {
+  padding-left: 0.45rem;
+}
+
+.flag-3d__fabric {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-origin: left center;
+  transform-style: preserve-3d;
+  border-radius: 0 6px 6px 0;
+  overflow: hidden;
+  box-shadow:
+    3px 6px 14px rgba(0, 0, 0, 0.38),
+    inset -10px 0 18px rgba(0, 0, 0, 0.18);
+  animation: flag-3d-wave 3.8s ease-in-out infinite;
+}
+
+.flag-3d--background .flag-3d__fabric {
+  border-radius: 0;
+  animation: flag-3d-wave-slow 7s ease-in-out infinite;
+  box-shadow:
+    inset -24px 0 40px rgba(0, 0, 0, 0.22),
+    inset 0 -20px 30px rgba(0, 0, 0, 0.12);
+}
+
+.flag-3d__fabric--back {
+  position: absolute;
+  inset: 0;
+  transform: translateZ(-6px) rotateY(-4deg);
+  opacity: 0.35;
+  filter: blur(0.4px);
+  animation: flag-3d-wave-back 4.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.flag-3d__image,
+.flag-3d__stripes {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.flag-3d__image--dim,
+.flag-3d__stripes--dim {
+  filter: brightness(0.72);
+}
+
+.flag-3d__fold {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    105deg,
+    rgba(0, 0, 0, 0.28) 0%,
+    transparent 12%,
+    transparent 55%,
+    rgba(255, 255, 255, 0.1) 72%,
+    rgba(0, 0, 0, 0.14) 100%
+  );
+}
+
+.flag-3d__highlight {
+  position: absolute;
+  top: -10%;
+  left: 18%;
+  width: 28%;
+  height: 120%;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.22),
+    transparent
+  );
+  animation: flag-3d-shine 5s ease-in-out infinite;
+}
+
+.flag-3d__shadow-edge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 14%;
+  height: 100%;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.22));
+}
+
+@keyframes flag-3d-wave {
+  0%,
+  100% {
+    transform: rotateY(-6deg) rotateX(1deg) skewY(0deg);
+  }
+  33% {
+    transform: rotateY(7deg) rotateX(-1deg) skewY(1.2deg);
+  }
+  66% {
+    transform: rotateY(-4deg) rotateX(0.5deg) skewY(-0.8deg);
+  }
+}
+
+@keyframes flag-3d-wave-slow {
+  0%,
+  100% {
+    transform: rotateY(-3deg) scale(1.04);
+  }
+  50% {
+    transform: rotateY(4deg) scale(1.06);
+  }
+}
+
+@keyframes flag-3d-wave-back {
+  0%,
+  100% {
+    transform: translateZ(-6px) rotateY(-8deg);
+  }
+  50% {
+    transform: translateZ(-8px) rotateY(2deg);
+  }
+}
+
+@keyframes flag-3d-shine {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translateX(-8%);
+  }
+  50% {
+    opacity: 0.75;
+    transform: translateX(18%);
+  }
+}
+

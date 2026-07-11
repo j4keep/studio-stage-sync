@@ -81,6 +81,17 @@ export function getFlagById(id: string | null | undefined): FlagTheme | null {
   return FLAG_THEMES.find((f) => f.id === id) ?? null;
 }
 
+const IDENTITY_FLAG_IDS = new Set(["pride", "trans", "nb", "bi", "lesbian"]);
+
+/** Real flag image for country codes; identity flags use waved stripe art. */
+export function getFlagImageUrl(flag: FlagTheme): string | null {
+  if (IDENTITY_FLAG_IDS.has(flag.id)) return null;
+  if (/^[a-z]{2}$/.test(flag.id)) {
+    return `https://flagcdn.com/w640/${flag.id}.png`;
+  }
+  return null;
+}
+
 /** CSS `background` value that renders a stripe pattern from a flag. */
 export function flagBackgroundCss(flag: FlagTheme): string {
   if (flag.pattern === "solid") {

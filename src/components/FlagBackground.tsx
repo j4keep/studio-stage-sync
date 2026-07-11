@@ -1,5 +1,6 @@
 import { useTheme } from "@/contexts/ThemeContext";
-import { getFlagById, flagBackgroundCss } from "@/lib/flag-themes";
+import { getFlagById } from "@/lib/flag-themes";
+import Flag3D from "@/components/Flag3D";
 
 interface Props {
   className?: string;
@@ -11,12 +12,8 @@ export default function FlagBackground({ className = "" }: Props) {
   const flag = getFlagById(countryFlag);
 
   return (
-    <div
-      className={`absolute inset-0 pointer-events-none ${className}`}
-      style={{
-        background: flag ? flagBackgroundCss(flag) : "transparent",
-      }}
-      aria-hidden
-    />
+    <div className={`absolute inset-0 pointer-events-none overflow-hidden ${className}`}>
+      {flag ? <Flag3D flag={flag} variant="background" className="w-full h-full" /> : null}
+    </div>
   );
 }

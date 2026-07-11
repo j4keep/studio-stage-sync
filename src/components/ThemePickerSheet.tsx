@@ -3,7 +3,8 @@ import { motion } from "framer-motion";
 import { Palette, Check, Info, Flag } from "lucide-react";
 import { useTheme, THEME_PRESETS } from "@/contexts/ThemeContext";
 import { useToast } from "@/hooks/use-toast";
-import { FLAG_THEMES, flagBackgroundCss } from "@/lib/flag-themes";
+import { FLAG_THEMES } from "@/lib/flag-themes";
+import Flag3D from "@/components/Flag3D";
 
 interface ThemePickerSheetProps {
   isOnboarding?: boolean;
@@ -156,10 +157,7 @@ const ThemePickerSheet = ({ isOnboarding = false, onComplete }: ThemePickerSheet
                     isSelected ? "border-primary bg-primary/10" : "border-border bg-card"
                   }`}
                 >
-                  <div
-                    className="w-full h-10 rounded-md border border-black/10"
-                    style={{ background: flagBackgroundCss(flag) }}
-                  />
+                  <Flag3D flag={flag} variant="thumb" className="w-full" />
                   <span className="text-[10px] font-medium text-foreground text-center leading-tight truncate w-full">
                     {flag.emoji} {flag.label}
                   </span>
