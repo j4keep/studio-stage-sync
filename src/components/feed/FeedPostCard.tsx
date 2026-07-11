@@ -71,6 +71,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
   const [isMuted, setIsMuted] = useState(false);
   const [mediaReady, setMediaReady] = useState(false);
   const [videoFrameReady, setVideoFrameReady] = useState(false);
+  const [localPosterUrl, setLocalPosterUrl] = useState<string | null>(null);
   const [mediaFailed, setMediaFailed] = useState(false);
   const [autoplayAudioLocked, setAutoplayAudioLocked] = useState(false);
   const [feedAudioUnlocked, setFeedAudioUnlocked] = useState(isFeedAudioSessionUnlocked);
@@ -395,6 +396,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     setLikesCount(post.likes_count || 0);
     setMediaReady(false);
     setVideoFrameReady(false);
+    setLocalPosterUrl(null);
     setMediaFailed(false);
   }, [post.id, post.media_url, post.isLiked, post.likes_count]);
 
@@ -840,16 +842,37 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
   const videoMutedForAutoplay =
     getVideoMuted() || autoplayAudioLocked;
 
+  const captureLocalPoster = useCallback((video: HTMLVideoElement) => {
+    if (coverUrl || localPosterUrl || video.videoWidth <= 0 || video.videoHeight <= 0) return;
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      setLocalPosterUrl(canvas.toDataURL("image/jpeg", 0.82));
+    } catch {
+      /* Cross-origin or decoder not ready — native poster/first frame still applies. */
+    }
+  }, [coverUrl, localPosterUrl]);
+
   const revealFirstFrame = (video: HTMLVideoElement) => {
     if (coverUrl) return;
-    if (video.currentTime > 0.05) return;
+    if (video.currentTime > 0.05) {
+      captureLocalPoster(video);
+      return;
+    }
     const target = postMeta?.coverTime ?? 0.12;
     if (Number.isFinite(video.duration) && video.duration > target + 0.05) {
       try {
+        video.addEventListener("seeked", () => captureLocalPoster(video), { once: true });
         video.currentTime = target;
       } catch {
         /* ignore */
       }
+    } else {
+      captureLocalPoster(video);
     }
   };
 
@@ -858,6 +881,10 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
 
     const reveal = () => {
       if (video !== videoRef.current) return;
+      if ((coverUrl || localPosterUrl) && !video.paused && video.currentTime < 0.35) {
+        window.setTimeout(reveal, 150);
+        return;
+      }
       setVideoFrameReady(true);
       setMediaReady(true);
     };
@@ -874,7 +901,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
       window.setTimeout(reveal, video.paused ? 120 : 420);
     }
-  }, []);
+  }, [coverUrl, localPosterUrl]);
 
   const cropTransform = cropStyle?.transform;
   const compositedTransform = `${cropTransform ? `${cropTransform} ` : ""}translateZ(0)`;
@@ -886,9 +913,10 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     WebkitBackfaceVisibility: "hidden",
   } as CSSProperties;
 
+  const posterOverlayUrl = coverUrl || localPosterUrl;
   const showPosterOverlay =
     post.media_type === "video" &&
-    Boolean(coverUrl) &&
+    Boolean(posterOverlayUrl) &&
     !videoFrameReady &&
     !mediaFailed;
 
@@ -949,9 +977,9 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
             />
           ))}
 
-        {showPosterOverlay && coverUrl && (
+        {showPosterOverlay && posterOverlayUrl && (
           <img
-            src={coverUrl}
+            src={posterOverlayUrl}
             alt=""
             draggable={false}
             className="absolute inset-0 z-[1] h-full w-full object-cover pointer-events-none transition-opacity duration-200"
