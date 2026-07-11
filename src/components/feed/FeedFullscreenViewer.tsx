@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import FeedPostCard from "./FeedPostCard";
-import { getFeedMountRadius } from "@/lib/feed-video-playback";
+import {
+  getFeedMountRadius,
+  forceIosAudioSessionToPlayback,
+  unlockFeedAudioSession,
+} from "@/lib/feed-video-playback";
 
 interface Props {
   items: any[];
