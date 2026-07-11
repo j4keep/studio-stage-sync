@@ -951,7 +951,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
             <video
               ref={videoRef}
               src={post.media_url}
-              poster={coverUrl}
+              poster={coverUrl || localPosterUrl || undefined}
               className="absolute inset-0 h-full w-full object-cover"
               style={videoCompositedStyle}
               loop
@@ -978,11 +978,6 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
                 if (videoRef.current) markVideoFrameReady(videoRef.current);
               }}
               onPlaying={(e) => markVideoFrameReady(e.currentTarget)}
-              onTimeUpdate={(e) => {
-                if (!videoFrameReady && e.currentTarget.currentTime > 0.12) {
-                  markVideoFrameReady(e.currentTarget);
-                }
-              }}
               onPause={() => setIsPlaying(false)}
             />
           ) : (
