@@ -951,7 +951,6 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
             <video
               ref={videoRef}
               src={post.media_url}
-              poster={coverUrl || localPosterUrl || undefined}
               className="absolute inset-0 h-full w-full object-cover"
               style={videoCompositedStyle}
               loop
