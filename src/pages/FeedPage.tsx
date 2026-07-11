@@ -152,6 +152,7 @@ const FeedPage = () => {
                   key={post.id}
                   post={post}
                   compact
+                  autoPlayMuted={post.media_type === "video" && i === featuredReelIndex}
                   onOpen={() => setViewer({ rail: "reel", index: i })}
                 />
               ))
