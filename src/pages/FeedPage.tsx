@@ -67,29 +67,18 @@ const FeedPage = () => {
     <div className="h-[100dvh] w-full flex flex-col overflow-hidden relative overscroll-none bg-background text-foreground dark:bg-background dark:text-foreground">
       <FlagBackground className="opacity-80 dark:opacity-100" />
 
-      {/* Header overlay */}
-      <div className="absolute top-0 left-0 right-0 z-40 px-4 pt-[calc(env(safe-area-inset-top)+0.625rem)] pb-2 bg-background/90 backdrop-blur-md border-b border-border/70 pointer-events-none">
-        <div className="flex items-center justify-between text-foreground pointer-events-auto">
-          <img src={jhiLogo} alt="JHi" className="h-7 w-auto" />
-          <div className="flex items-center gap-1">
-            <button onClick={() => navigate("/browse-songs")} className="w-9 h-9 flex items-center justify-center rounded-full bg-card/80 border border-border active:bg-muted" aria-label="Search">
-              <Search className="w-[1.35rem] h-[1.35rem]" strokeWidth={2.25} />
-            </button>
-            <button className="w-9 h-9 flex items-center justify-center rounded-full bg-card/80 border border-border active:bg-muted" aria-label="More">
-              <MoreVertical className="w-[1.35rem] h-[1.35rem]" strokeWidth={2.25} />
-            </button>
-          </div>
-        </div>
-
-        <div className="mt-2 w-full flex justify-center pointer-events-auto pb-0.5">
-          <div className="inline-flex max-w-full items-center justify-center gap-1 overflow-x-auto scrollbar-hide px-0.5">
+      {/* Header overlay — single row: logo + tabs + search + more */}
+      <div className="absolute top-0 left-0 right-0 z-40 px-3 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-1.5 bg-background/90 backdrop-blur-md border-b border-border/70 pointer-events-none">
+        <div className="flex items-center gap-2 text-foreground pointer-events-auto">
+          <img src={jhiLogo} alt="JHi" className="h-6 w-auto shrink-0" />
+          <div className="flex-1 min-w-0 flex items-center gap-1 overflow-x-auto scrollbar-hide">
             {TABS.map((tab) => {
               const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
                   onClick={() => navigate(tab.route)}
-                  className="feed-glass-pill shrink-0 min-w-[3.35rem] px-1.5"
+                  className="feed-glass-pill shrink-0 min-w-[3.1rem] px-1.5"
                 >
                   <Icon className="w-3.5 h-3.5 shrink-0" strokeWidth={2.25} />
                   <span className="text-[9px] font-semibold leading-none whitespace-nowrap">{tab.label}</span>
@@ -97,9 +86,15 @@ const FeedPage = () => {
               );
             })}
           </div>
+          <button onClick={() => navigate("/browse-songs")} className="w-8 h-8 flex items-center justify-center rounded-full bg-card/80 border border-border active:bg-muted shrink-0" aria-label="Search">
+            <Search className="w-[1.15rem] h-[1.15rem]" strokeWidth={2.25} />
+          </button>
+          <button className="w-8 h-8 flex items-center justify-center rounded-full bg-card/80 border border-border active:bg-muted shrink-0" aria-label="More">
+            <MoreVertical className="w-[1.15rem] h-[1.15rem]" strokeWidth={2.25} />
+          </button>
         </div>
-
       </div>
+
 
       {trending.length > 0 && (
         <div className="absolute left-0 right-0 top-[calc(env(safe-area-inset-top)+6.5rem)] z-30 px-3 pointer-events-none">
