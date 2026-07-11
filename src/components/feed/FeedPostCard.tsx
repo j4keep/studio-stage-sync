@@ -1180,6 +1180,15 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
           </button>
 
           <button
+            onClick={(e) => { e.stopPropagation(); navigate("/circle"); }}
+            className="feed-action-btn"
+            aria-label="Open My Circle"
+          >
+            <Users className="feed-action-icon" />
+            <span className="feed-action-count text-[9px]">My Circle</span>
+          </button>
+
+          <button
             onClick={(e) => { e.stopPropagation(); navigate("/my-projects"); }}
             className="feed-action-btn"
             aria-label="Support this artist"
@@ -1188,15 +1197,6 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
             <span className="feed-action-count text-[9px]">Support</span>
           </button>
 
-
-          <button
-            onClick={(e) => { e.stopPropagation(); navigate("/circle"); }}
-            className="feed-action-btn"
-            aria-label="Open My Circle"
-          >
-            <Users className="feed-action-icon" />
-            <span className="feed-action-count text-[9px]">My Circle</span>
-          </button>
         </div>
 
         <div className="absolute left-3 right-[4.5rem] feed-bottom-offset z-40 pb-1 max-w-[calc(100%-5.5rem)] pointer-events-auto">
