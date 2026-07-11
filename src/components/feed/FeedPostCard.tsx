@@ -83,6 +83,8 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
   const musicStopRef = useRef<(() => void) | null>(null);
   const musicAudioRef = useRef<HTMLAudioElement | null>(null);
   const mediaSessionCleanupRef = useRef<(() => void) | null>(null);
+  const paintRecoveryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const paintRecoveryAttemptsRef = useRef(0);
   const lastTapRef = useRef(0);
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const userPausedRef = useRef(false);
@@ -398,6 +400,11 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     setVideoFrameReady(false);
     setLocalPosterUrl(null);
     setMediaFailed(false);
+    paintRecoveryAttemptsRef.current = 0;
+    if (paintRecoveryTimerRef.current) {
+      window.clearTimeout(paintRecoveryTimerRef.current);
+      paintRecoveryTimerRef.current = null;
+    }
   }, [post.id, post.media_url, post.isLiked, post.likes_count]);
 
   useEffect(() => {
@@ -857,6 +864,55 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     }
   }, [coverUrl, localPosterUrl]);
 
+  const hasVisibleVideoFrame = useCallback((video: HTMLVideoElement) => {
+    if (video.videoWidth <= 0 || video.videoHeight <= 0) return false;
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = 24;
+      canvas.height = 24;
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      if (!ctx) return true;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+      let darkPixels = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        const brightness = data[i] + data[i + 1] + data[i + 2];
+        if (brightness < 24) darkPixels += 1;
+      }
+      return darkPixels / (data.length / 4) < 0.96;
+    } catch {
+      // If browser/CORS blocks sampling, trust the decoded frame rather than hiding forever.
+      return true;
+    }
+  }, []);
+
+  const scheduleVideoPaintRecovery = useCallback((video: HTMLVideoElement) => {
+    if (paintRecoveryTimerRef.current || paintRecoveryAttemptsRef.current >= 3) return;
+    paintRecoveryTimerRef.current = window.setTimeout(() => {
+      paintRecoveryTimerRef.current = null;
+      const v = videoRef.current;
+      if (!v || v !== video || !isActiveRef.current || userPausedRef.current || mediaFailed || videoFrameReady) return;
+      paintRecoveryAttemptsRef.current += 1;
+      try {
+        const nextTime = Math.min(
+          Number.isFinite(v.duration) && v.duration > 0 ? Math.max(0, v.duration - 0.05) : v.currentTime + 0.034,
+          Math.max(0, v.currentTime + 0.034),
+        );
+        v.currentTime = nextTime;
+      } catch { /* ignore */ }
+
+      // The user's manual pause/play is what wakes the iOS decoder; do it invisibly while the poster stays up.
+      if (!v.paused) {
+        v.pause();
+      }
+      window.setTimeout(() => {
+        if (!isActiveRef.current || userPausedRef.current) return;
+        void playWhenActive();
+        markVideoFrameReady(v);
+      }, 90);
+    }, paintRecoveryAttemptsRef.current === 0 ? 450 : 750);
+  }, [mediaFailed, playWhenActive, videoFrameReady]);
+
   const revealFirstFrame = (video: HTMLVideoElement) => {
     if (coverUrl) return;
     if (video.currentTime > 0.05) {
@@ -881,6 +937,14 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
 
     const reveal = () => {
       if (video !== videoRef.current) return;
+      if (!hasVisibleVideoFrame(video)) {
+        scheduleVideoPaintRecovery(video);
+        return;
+      }
+      if (paintRecoveryTimerRef.current) {
+        window.clearTimeout(paintRecoveryTimerRef.current);
+        paintRecoveryTimerRef.current = null;
+      }
       setVideoFrameReady(true);
       setMediaReady(true);
       captureLocalPoster(video);
@@ -901,25 +965,22 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
       window.setTimeout(reveal, 120);
     }
-  }, [captureLocalPoster]);
+  }, [captureLocalPoster, hasVisibleVideoFrame, scheduleVideoPaintRecovery]);
 
   // iOS Safari sometimes plays audio but stalls the video decoder on the
   // active card — nudge currentTime by a hair to force a frame paint.
   useEffect(() => {
     if (!isActive || post.media_type !== "video") return;
     if (videoFrameReady || mediaFailed) return;
-    const video = videoRef.current;
-    if (!video) return;
+      const video = videoRef.current;
+      if (!video) return;
     const timer = window.setTimeout(() => {
       const v = videoRef.current;
       if (!v || videoFrameReady) return;
-      try {
-        const t = v.currentTime;
-        v.currentTime = Math.max(0, t + 0.001);
-      } catch { /* ignore */ }
+        scheduleVideoPaintRecovery(v);
     }, 650);
     return () => window.clearTimeout(timer);
-  }, [isActive, videoFrameReady, mediaFailed, isPlaying, post.media_type]);
+  }, [isActive, videoFrameReady, mediaFailed, isPlaying, post.media_type, scheduleVideoPaintRecovery]);
 
   const cropTransform = cropStyle?.transform;
   const compositedTransform = `${cropTransform ? `${cropTransform} ` : ""}translateZ(0)`;
@@ -952,7 +1013,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
               ref={videoRef}
               src={post.media_url}
               className="absolute inset-0 h-full w-full object-cover"
-              style={videoCompositedStyle}
+              style={{ ...videoCompositedStyle, opacity: showPosterOverlay ? 0.01 : 1 }}
               loop
               playsInline
               muted={videoMutedForAutoplay}
