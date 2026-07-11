@@ -17,6 +17,7 @@ interface Props {
   onBack: () => void;
   onPost: () => void;
   onEditMedia?: () => void;
+  onChangeVideo?: () => void;
   onDelete?: () => void;
   posting?: boolean;
   deleting?: boolean;
@@ -37,6 +38,7 @@ export default function PostPreviewView({
   onBack,
   onPost,
   onEditMedia,
+  onChangeVideo,
   onDelete,
   posting = false,
   deleting = false,
@@ -146,6 +148,9 @@ export default function PostPreviewView({
       ? "Update"
       : "Post";
 
+  const coverAction = onChangeVideo ?? onEditMedia;
+  const coverActionLabel = onChangeVideo ? "Change video" : "Edit stickers & text";
+
   return (
     <div
       className="fixed inset-0 z-[100] flex flex-col bg-zinc-950 text-white overflow-hidden"
@@ -187,10 +192,10 @@ export default function PostPreviewView({
         <div className="flex gap-3 mb-5">
           <button
             type="button"
-            onClick={onEditMedia}
-            disabled={!onEditMedia || busy}
+            onClick={coverAction}
+            disabled={!coverAction || busy}
             className="relative w-[88px] h-[88px] shrink-0 rounded-xl overflow-hidden bg-zinc-800 border border-white/10 disabled:opacity-60 flex items-center justify-center"
-            aria-label={previewUrl ? "Edit cover media" : "Text post"}
+            aria-label={previewUrl ? (onChangeVideo ? "Change video" : "Edit cover media") : "Text post"}
           >
             {previewUrl ? (
               mediaType === "video" ? (
@@ -220,20 +225,20 @@ export default function PostPreviewView({
             <span className="absolute top-1.5 left-1.5 text-[10px] font-bold bg-black/60 px-1.5 py-0.5 rounded-md">
               {previewUrl ? "Cover" : "Text"}
             </span>
-            {onEditMedia && previewUrl && (
+            {coverAction && previewUrl && (
               <span className="absolute bottom-1.5 right-1.5 w-6 h-6 rounded-full bg-black/55 flex items-center justify-center">
                 <ImageIcon className="w-3.5 h-3.5 text-white" />
               </span>
             )}
           </button>
-          {onEditMedia && previewUrl && (
+          {coverAction && previewUrl && (
             <button
               type="button"
-              onClick={onEditMedia}
+              onClick={coverAction}
               disabled={busy}
               className="text-xs font-semibold text-primary self-end mb-1 disabled:opacity-40"
             >
-              Edit stickers &amp; text
+              {coverActionLabel}
             </button>
           )}
         </div>

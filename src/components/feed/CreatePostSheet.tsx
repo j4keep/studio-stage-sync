@@ -71,6 +71,7 @@ const previewBlobRef = useRef<string | null>(null);
 const musicBlobRef = useRef<string | null>(null);
 const musicStopRef = useRef<(() => void) | null>(null);
 const cameraMusicPlayRef = useRef<(() => Promise<boolean>) | null>(null);
+const openedPostUploadRef = useRef(false);
 
 const registerCameraMusicPlay = useCallback((play: (() => Promise<boolean>) | null) => {
   cameraMusicPlayRef.current = play;
@@ -145,11 +146,12 @@ setFile(null);
 setMusicFile(null);
 setMusicPreviewUrl(parsed.meta?.music?.audioUrl ?? null);
 setMediaType(postToEdit?.media_type === "video" ? "video" : "image");
-setCreateMode("post");
+setCreateMode(postToEdit ? (parsed.meta?.isReel === true ? "post" : "create") : "create");
 setCameraSessionKey(0);
 setCurrentMediaUrl(postToEdit?.media_url || null);
 setPreview(postToEdit?.media_url || null);
 setStep(postToEdit ? "preview" : "camera");
+openedPostUploadRef.current = false;
 
 return () => {
   window.dispatchEvent(
@@ -166,6 +168,14 @@ return () => {
   window.scrollTo(0, scrollY);
 };
 }, [open, postToEdit]);
+
+useEffect(() => {
+  if (!open || postToEdit || step !== "camera" || createMode !== "create") return;
+  if (openedPostUploadRef.current) return;
+  openedPostUploadRef.current = true;
+  const t = window.setTimeout(() => videoInputRef.current?.click(), 350);
+  return () => window.clearTimeout(t);
+}, [open, postToEdit, step, createMode]);
 
 const revokePreviewBlob = () => {
 if (previewBlobRef.current) URL.revokeObjectURL(previewBlobRef.current);
@@ -227,7 +237,7 @@ setMediaType("image");
 setCurrentMediaUrl(null);
 setEditorMeta(defaultEditorMeta());
 setStep("camera");
-setCreateMode("post");
+setCreateMode("create");
 
 onClose();
 
@@ -448,7 +458,7 @@ if (!postToEdit) {
 
 ensureMusicPreviewUrl(musicFile);
 
-setStep("edit");
+setStep(createMode === "create" ? "preview" : "edit");
 
 };
 
@@ -626,9 +636,18 @@ initialStream={cameraStream}
         description={caption}
         onTitleChange={setTitle}
         onDescriptionChange={setCaption}
-        onBack={() => (postToEdit ? reset() : hasMedia ? setStep("edit") : undoToCamera())}
+        onBack={() =>
+          postToEdit
+            ? reset()
+            : hasMedia
+              ? createMode === "create"
+                ? undoToCamera()
+                : setStep("edit")
+              : undoToCamera()
+        }
         onPost={() => postMutation.mutate()}
-        onEditMedia={() => setStep("edit")}
+        onEditMedia={createMode === "post" ? () => setStep("edit") : undefined}
+        onChangeVideo={createMode === "create" && mediaType === "video" ? () => videoInputRef.current?.click() : undefined}
         onDelete={postToEdit ? () => deleteMutation.mutate() : undefined}
         posting={postMutation.isPending || uploading}
         deleting={deleteMutation.isPending}
