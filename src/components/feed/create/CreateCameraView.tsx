@@ -59,6 +59,8 @@ export default function CreateCameraView({
   musicTrim,
   musicPaused = false,
   onRegisterMusicPlay,
+  recordMode = "hold",
+  maxRecordSec = QUICK_MAX_RECORD_SEC,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
