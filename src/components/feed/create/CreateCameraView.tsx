@@ -709,8 +709,13 @@ export default function CreateCameraView({
           </button>
           {recording && (
             <div className="min-w-[3rem] px-2.5 py-1 rounded-lg bg-red-500 text-white text-sm font-bold tabular-nums text-center shadow-lg">
-              {Math.floor((QUICK_MAX_RECORD_SEC * recordProgress) / 60)}:
-              {String(Math.floor(QUICK_MAX_RECORD_SEC * recordProgress) % 60).padStart(2, "0")}
+              {(() => {
+                const totalSec =
+                  maxRecordSec == null
+                    ? Math.floor(((recordStartedAtRef.current ? Date.now() - recordStartedAtRef.current : 0) / 1000))
+                    : Math.floor(maxRecordSec * recordProgress);
+                return `${Math.floor(totalSec / 60)}:${String(totalSec % 60).padStart(2, "0")}`;
+              })()}
             </div>
           )}
         </div>
