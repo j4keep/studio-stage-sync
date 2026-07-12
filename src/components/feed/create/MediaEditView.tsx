@@ -803,20 +803,20 @@ export default function MediaEditView({
       )}
 
       {activeTool === "effects" && (
-        <>
-          <div className="absolute z-[115]" style={toolBarTop}>
-            <ToolBackBtn onClick={exitActiveTool} />
-          </div>
-          <div className="absolute inset-x-0 bottom-0 z-[110] pb-[calc(env(safe-area-inset-bottom)+0.5rem)]">
-            <EffectsPanel
-              selected={meta.visualEffect || "none"}
-              onSelect={(id) => patch({ visualEffect: id === "none" ? undefined : id })}
-              activeCategory={effectCategory}
-              onCategoryChange={setEffectCategory}
-            />
-          </div>
-        </>
+        <div className="absolute z-[115]" style={toolBarTop}>
+          <ToolBackBtn onClick={exitActiveTool} />
+        </div>
       )}
+
+      <EffectsPanel
+        open={activeTool === "effects"}
+        category={effectCategory}
+        onCategoryChange={setEffectCategory}
+        onClose={() => setActiveTool(null)}
+        selectedId={meta.visualEffect || "none"}
+        onSelect={(id) => patch({ visualEffect: id === "none" ? undefined : id })}
+      />
+
 
       {showStickers && (
         <div className="absolute z-[115]" style={toolBarTop}>
