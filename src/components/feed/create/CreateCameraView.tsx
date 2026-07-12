@@ -573,7 +573,26 @@ export default function CreateCameraView({
   };
 
   const handleRecordDown = (e: React.PointerEvent) => {
-    if (denied || !ready || recording || recordPendingRef.current || capturingPhoto) return;
+    if (denied || !ready || capturingPhoto) return;
+
+    // Tap-to-toggle mode (Post): first press starts, next press stops.
+    if (recordMode === "tap") {
+      e.preventDefault();
+      e.stopPropagation();
+      if (recording || recordPendingRef.current) {
+        wantsRecordRef.current = false;
+        if (recordingRef.current && !isStoppingRecordingRef.current) {
+          finishRecordingRef.current();
+        }
+        return;
+      }
+      wantsRecordRef.current = true;
+      discardClipRef.current = false;
+      void startRecording();
+      return;
+    }
+
+    if (recording || recordPendingRef.current) return;
     e.preventDefault();
     e.stopPropagation();
     wantsRecordRef.current = true;
@@ -588,6 +607,7 @@ export default function CreateCameraView({
   };
 
   const handleRecordUp = (e: React.PointerEvent) => {
+    if (recordMode === "tap") return; // ignore release in tap-toggle mode
     wantsRecordRef.current = false;
     e.preventDefault();
     try {
