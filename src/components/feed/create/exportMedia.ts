@@ -1,6 +1,7 @@
 import type { PostEditorMeta, TextOverlayStyle } from "@/lib/post-editor";
 import { getStickerSrc } from "@/lib/sticker-library";
 import { normalizeTextStyle, strokeToSmoothPath } from "@/lib/post-editor";
+import { getEffectFilter } from "@/lib/create-modes";
 import {
   EDITOR_DRAW_STROKE_DIVISOR,
   EDITOR_STICKER_BASE_PX,
