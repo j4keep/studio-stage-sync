@@ -419,7 +419,7 @@ setEditorMeta((m) => ({ ...m, crop: undefined }));
 
 }, []);
 
-const handleMediaFile = (f: File, type?: "image" | "video") => {
+const handleMediaFile = (f: File, type?: "image" | "video", visualEffect?: string) => {
 setFile(f);
 
 const isVideo = type === "video" || f.type.startsWith("video/");
@@ -437,6 +437,7 @@ previewBlobRef.current = url;
 if (!postToEdit) {
   setEditorMeta((m) => ({
     ...defaultEditorMeta(),
+    ...(visualEffect && visualEffect !== "none" ? { visualEffect } : {}),
     ...(m.music || musicFile
       ? {
           music: m.music,
@@ -445,10 +446,13 @@ if (!postToEdit) {
         }
       : {}),
   }));
+} else if (visualEffect && visualEffect !== "none") {
+  setEditorMeta((m) => ({ ...m, visualEffect }));
 }
 
 ensureMusicPreviewUrl(musicFile);
 
+setPostCameraOpen(false);
 setStep("edit");
 
 };
