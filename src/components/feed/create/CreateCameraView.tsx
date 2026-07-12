@@ -624,9 +624,8 @@ export default function CreateCameraView({
   };
 
   const recordDisabled = denied || !ready || capturingPhoto;
-
-  const recordDisabled = denied || !ready || capturingPhoto;
   const liveFilter = getEffectFilter(selectedEffect);
+
 
   return (
     <div className="absolute inset-0 bg-black flex flex-col touch-none">
