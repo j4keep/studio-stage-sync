@@ -779,7 +779,9 @@ export default function CreateCameraView({
               onPointerUp={handleRecordUp}
             />
             {!recording && (
-              <span className="mt-1.5 text-[10px] font-medium text-white/40">Hold · 60s max</span>
+              <span className="mt-1.5 text-[10px] font-medium text-white/40">
+                {recordMode === "tap" ? "Tap · unlimited" : "Hold · 60s max"}
+              </span>
             )}
           </div>
 
