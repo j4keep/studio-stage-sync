@@ -471,7 +471,7 @@ export default function CreateCameraView({
         });
 
         void resetIosAudioSessionToPlayback().finally(() => {
-          onCapture(capturedFile, "video");
+          onCapture(capturedFile, "video", selectedEffect);
         });
       };
 
