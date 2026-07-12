@@ -583,13 +583,38 @@ initialStream={cameraSessionKey === 0 ? cameraStream : null}
 />
 )}
 
-{step === "camera" && createMode === "create" && (
+{step === "camera" && createMode === "create" && !postCameraOpen && (
 <CreateHubView
 createMode={createMode}
-onModeChange={setCreateMode}
+onModeChange={(m) => { setPostCameraOpen(false); setCreateMode(m); }}
 onClose={reset}
-onNewVideo={() => setCreateMode("post")}
+onNewVideo={() => setPostCameraOpen(true)}
 onUploadVideo={() => videoInputRef.current?.click()}
+/>
+)}
+
+{step === "camera" && createMode === "create" && postCameraOpen && (
+<CreateCameraView
+key={`post-${cameraSessionKey}`}
+createMode={createMode}
+onModeChange={(m) => { setPostCameraOpen(false); setCreateMode(m); }}
+onClose={() => setPostCameraOpen(false)}
+onCapture={handleMediaFile}
+onOpenGallery={openGallery}
+onTextPost={handleTextPost}
+onAddSound={handleSoundButton}
+soundLabel={soundLabel}
+musicPreviewUrl={musicPreviewUrl}
+musicPaused={showSoundPicker}
+onRegisterMusicPlay={registerCameraMusicPlay}
+musicTrim={{
+  trimStart: editorMeta.music?.trimStart,
+  trimEnd: editorMeta.music?.trimEnd,
+  sourceDurationSec: editorMeta.music?.durationSec,
+  volume: editorMeta.music?.volume ?? MIXED_ADDED_MUSIC_VOLUME,
+}}
+recordMode="tap"
+maxRecordSec={null}
 />
 )}
 
