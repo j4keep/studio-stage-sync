@@ -78,6 +78,8 @@ export interface PostEditorMeta {
   bakedEdits?: boolean;
   /** Feed routing: true → Reels column, false → Posts column. */
   isReel?: boolean;
+  /** TikTok-style visual filter effect id (see EFFECT_ITEMS in create-modes). */
+  visualEffect?: string;
 }
 
 const META_MARKER = "\u200B<!--wheuat:";
