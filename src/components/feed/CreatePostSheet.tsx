@@ -51,6 +51,7 @@ const queryClient = useQueryClient();
 
 const [step, setStep] = useState<Step>("camera");
 const [createMode, setCreateMode] = useState<CreateMode>("post");
+const [postCameraOpen, setPostCameraOpen] = useState(false);
 const [caption, setCaption] = useState("");
 const [title, setTitle] = useState("");
 const [file, setFile] = useState<File | null>(null);
