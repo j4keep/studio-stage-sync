@@ -173,6 +173,7 @@ export default function MediaEditView({
   const [drawHighlighter, setDrawHighlighter] = useState(false);
   const [brushPreset, setBrushPreset] = useState("medium");
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
+  const [effectCategory, setEffectCategory] = useState<string>("Trending");
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const textInputRef = useRef<HTMLInputElement>(null);
   const previewVideoRef = useRef<HTMLVideoElement>(null);
