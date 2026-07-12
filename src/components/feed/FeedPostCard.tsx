@@ -27,6 +27,7 @@ import PostOverlayRenderer from "./create/PostOverlayRenderer";
 import useFloatingEmojis, { FloatingEmojiLayer } from "./FloatingEmojis";
 import { VideoPoster } from "@/components/VideoPoster";
 import { parsePostCaption, hasVisualOverlayLayers } from "@/lib/post-editor";
+import { getEffectFilter } from "@/lib/create-modes";
 import { playUploadedAudio, getMusicDisplayName } from "@/lib/feed-music";
 import {
   getAddedSoundVideoSyncOptions,
