@@ -13,7 +13,7 @@ import { syncMusicWithVideo, getAddedSoundVideoSyncOptions, MIXED_VOCAL_VIDEO_VO
 
 const newId = () => Math.random().toString(36).slice(2, 9);
 
-type Tool = "text" | "draw" | "crop" | null;
+type Tool = "text" | "draw" | "crop" | "effects" | null;
 
 interface Props {
   mediaType: "image" | "video";
