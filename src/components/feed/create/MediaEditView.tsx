@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Type, Sticker, Pencil, Crop, Volume2, VolumeX, Undo2, Check, X, Trash2, ChevronLeft, Music } from "lucide-react";
+import { Type, Sticker, Pencil, Crop, Volume2, VolumeX, Undo2, Check, X, Trash2, ChevronLeft, Music, Wand2 } from "lucide-react";
+import { getEffectFilter } from "@/lib/create-modes";
+import EffectsPanel from "./EffectsPanel";
 import { applyFeedVideoAudio, bindFeedMediaSession, resetIosAudioSessionToPlayback } from "@/lib/feed-video-playback";
 import PostOverlayRenderer from "./PostOverlayRenderer";
 import StickerDrawer from "./StickerDrawer";
