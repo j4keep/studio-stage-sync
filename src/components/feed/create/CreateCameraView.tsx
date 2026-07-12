@@ -27,7 +27,7 @@ const MIN_RECORD_MS = 400;
 
 interface Props {
   onClose: () => void;
-  onCapture: (file: File, mediaType: "image" | "video") => void;
+  onCapture: (file: File, mediaType: "image" | "video", visualEffect?: string) => void;
   onOpenGallery: () => void;
   onTextPost: () => void;
   initialStream?: MediaStream | null;
@@ -39,6 +39,10 @@ interface Props {
   musicTrim?: MusicTrim;
   musicPaused?: boolean;
   onRegisterMusicPlay?: (play: (() => Promise<boolean>) | null) => void;
+  /** "hold" (Reel) = press-and-hold with a max; "tap" (Post) = tap to start/stop. */
+  recordMode?: "hold" | "tap";
+  /** Max recording seconds. null = unlimited. */
+  maxRecordSec?: number | null;
 }
 
 export default function CreateCameraView({
