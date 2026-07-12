@@ -986,12 +986,14 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
 
   const cropTransform = cropStyle?.transform;
   const compositedTransform = `${cropTransform ? `${cropTransform} ` : ""}translateZ(0)`;
+  const playbackVisualFilter = getEffectFilter(postMeta?.visualEffect);
   const videoCompositedStyle = {
     ...cropStyle,
     transform: compositedTransform,
     WebkitTransform: compositedTransform,
     backfaceVisibility: "hidden",
     WebkitBackfaceVisibility: "hidden",
+    ...(playbackVisualFilter !== "none" ? { filter: playbackVisualFilter } : {}),
   } as CSSProperties;
 
   const posterOverlayUrl = coverUrl || localPosterUrl;
