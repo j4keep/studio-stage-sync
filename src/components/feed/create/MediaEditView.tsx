@@ -443,6 +443,7 @@ export default function MediaEditView({
             loop
             muted={videoMutedForPlayback}
             autoPlay
+            style={{ filter: visualFilter }}
             onLoadedMetadata={(e) => {
               void startEditVideoPlayback(e.currentTarget);
             }}
@@ -458,7 +459,7 @@ export default function MediaEditView({
             }}
           />
         ) : (
-          <img src={previewUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+          <img src={previewUrl} alt="" className="absolute inset-0 w-full h-full object-cover" style={{ filter: visualFilter }} />
         ))}
 
       {activeTool !== "crop" && (
