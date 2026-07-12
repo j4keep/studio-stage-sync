@@ -27,6 +27,7 @@ import PostOverlayRenderer from "./create/PostOverlayRenderer";
 import useFloatingEmojis, { FloatingEmojiLayer } from "./FloatingEmojis";
 import { VideoPoster } from "@/components/VideoPoster";
 import { parsePostCaption, hasVisualOverlayLayers } from "@/lib/post-editor";
+import { getEffectFilter } from "@/lib/create-modes";
 import { playUploadedAudio, getMusicDisplayName } from "@/lib/feed-music";
 import {
   getAddedSoundVideoSyncOptions,
@@ -986,12 +987,14 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
 
   const cropTransform = cropStyle?.transform;
   const compositedTransform = `${cropTransform ? `${cropTransform} ` : ""}translateZ(0)`;
+  const playbackVisualFilter = getEffectFilter(postMeta?.visualEffect);
   const videoCompositedStyle = {
     ...cropStyle,
     transform: compositedTransform,
     WebkitTransform: compositedTransform,
     backfaceVisibility: "hidden",
     WebkitBackfaceVisibility: "hidden",
+    ...(playbackVisualFilter !== "none" ? { filter: playbackVisualFilter } : {}),
   } as CSSProperties;
 
   const posterOverlayUrl = coverUrl || localPosterUrl;

@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Type, Sticker, Pencil, Crop, Volume2, VolumeX, Undo2, Check, X, Trash2, ChevronLeft, Music } from "lucide-react";
+import { Type, Sticker, Pencil, Crop, Volume2, VolumeX, Undo2, Check, X, Trash2, ChevronLeft, Music, Wand2 } from "lucide-react";
+import { getEffectFilter } from "@/lib/create-modes";
+import EffectsPanel from "./EffectsPanel";
 import { applyFeedVideoAudio, bindFeedMediaSession, resetIosAudioSessionToPlayback } from "@/lib/feed-video-playback";
 import PostOverlayRenderer from "./PostOverlayRenderer";
 import StickerDrawer from "./StickerDrawer";
@@ -11,7 +13,7 @@ import { syncMusicWithVideo, getAddedSoundVideoSyncOptions, MIXED_VOCAL_VIDEO_VO
 
 const newId = () => Math.random().toString(36).slice(2, 9);
 
-type Tool = "text" | "draw" | "crop" | null;
+type Tool = "text" | "draw" | "crop" | "effects" | null;
 
 interface Props {
   mediaType: "image" | "video";
@@ -171,6 +173,7 @@ export default function MediaEditView({
   const [drawHighlighter, setDrawHighlighter] = useState(false);
   const [brushPreset, setBrushPreset] = useState("medium");
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
+  const [effectCategory, setEffectCategory] = useState<string>("Trending");
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const textInputRef = useRef<HTMLInputElement>(null);
   const previewVideoRef = useRef<HTMLVideoElement>(null);
@@ -193,7 +196,7 @@ export default function MediaEditView({
 
   const exitActiveTool = () => {
     if (activeTool === "text") cancelText();
-    else if (activeTool === "draw" || activeTool === "crop") setActiveTool(null);
+    else if (activeTool === "draw" || activeTool === "crop" || activeTool === "effects") setActiveTool(null);
     else if (showStickers) setShowStickers(false);
   };
 
@@ -419,10 +422,13 @@ export default function MediaEditView({
   const bottomTools = [
     { id: "text" as const, icon: Type, label: "Text", action: startTextMode },
     { id: "sticker" as const, icon: Sticker, label: "Stickers", action: () => setShowStickers(true) },
+    { id: "effects" as const, icon: Wand2, label: "Effects", action: () => setActiveTool("effects") },
     { id: "draw" as const, icon: Pencil, label: "Draw", action: () => setActiveTool("draw") },
     { id: "crop" as const, icon: Crop, label: "Crop", action: () => setActiveTool("crop") },
     { id: "mute" as const, icon: meta.muteOriginal ? VolumeX : Volume2, label: "Mute", action: () => patch({ muteOriginal: !meta.muteOriginal }) },
   ];
+
+  const visualFilter = getEffectFilter(meta.visualEffect);
 
   return (
     <div className="fixed inset-0 bg-black overflow-hidden overscroll-none touch-none">
@@ -437,6 +443,7 @@ export default function MediaEditView({
             loop
             muted={videoMutedForPlayback}
             autoPlay
+            style={{ filter: visualFilter }}
             onLoadedMetadata={(e) => {
               void startEditVideoPlayback(e.currentTarget);
             }}
@@ -452,7 +459,7 @@ export default function MediaEditView({
             }}
           />
         ) : (
-          <img src={previewUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+          <img src={previewUrl} alt="" className="absolute inset-0 w-full h-full object-cover" style={{ filter: visualFilter }} />
         ))}
 
       {activeTool !== "crop" && (
@@ -794,6 +801,22 @@ export default function MediaEditView({
           </div>
         </>
       )}
+
+      {activeTool === "effects" && (
+        <div className="absolute z-[115]" style={toolBarTop}>
+          <ToolBackBtn onClick={exitActiveTool} />
+        </div>
+      )}
+
+      <EffectsPanel
+        open={activeTool === "effects"}
+        category={effectCategory}
+        onCategoryChange={setEffectCategory}
+        onClose={() => setActiveTool(null)}
+        selectedId={meta.visualEffect || "none"}
+        onSelect={(id) => patch({ visualEffect: id === "none" ? undefined : id })}
+      />
+
 
       {showStickers && (
         <div className="absolute z-[115]" style={toolBarTop}>

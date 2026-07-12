@@ -14,7 +14,7 @@ import {
   capturePhotoFromStream,
 } from "@/lib/create-camera";
 import type { CreateMode, EnhanceTab } from "@/lib/create-modes";
-import { QUICK_MAX_RECORD_SEC } from "@/lib/create-modes";
+import { QUICK_MAX_RECORD_SEC, getEffectFilter } from "@/lib/create-modes";
 import { boostMediaElementLoudness, createTrimmedMusicPlayer, CAMERA_ADDED_SOUND_MONITOR_VOLUME, type MusicTrim } from "@/lib/post-music-preview";
 import { armFeedAudioPlayback, forceIosAudioSessionToPlayback, resetIosAudioSessionToPlayback } from "@/lib/feed-video-playback";
 import CreateModeTabs from "./CreateModeTabs";
@@ -27,7 +27,7 @@ const MIN_RECORD_MS = 400;
 
 interface Props {
   onClose: () => void;
-  onCapture: (file: File, mediaType: "image" | "video") => void;
+  onCapture: (file: File, mediaType: "image" | "video", visualEffect?: string) => void;
   onOpenGallery: () => void;
   onTextPost: () => void;
   initialStream?: MediaStream | null;
@@ -39,6 +39,10 @@ interface Props {
   musicTrim?: MusicTrim;
   musicPaused?: boolean;
   onRegisterMusicPlay?: (play: (() => Promise<boolean>) | null) => void;
+  /** "hold" (Reel) = press-and-hold with a max; "tap" (Post) = tap to start/stop. */
+  recordMode?: "hold" | "tap";
+  /** Max recording seconds. null = unlimited. */
+  maxRecordSec?: number | null;
 }
 
 export default function CreateCameraView({
@@ -55,6 +59,8 @@ export default function CreateCameraView({
   musicTrim,
   musicPaused = false,
   onRegisterMusicPlay,
+  recordMode = "hold",
+  maxRecordSec = QUICK_MAX_RECORD_SEC,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -465,7 +471,7 @@ export default function CreateCameraView({
         });
 
         void resetIosAudioSessionToPlayback().finally(() => {
-          onCapture(capturedFile, "video");
+          onCapture(capturedFile, "video", selectedEffect);
         });
       };
 
@@ -500,7 +506,12 @@ export default function CreateCameraView({
       progressTimerRef.current = window.setInterval(() => {
         if (!recordStartedAtRef.current) return;
         const elapsed = (Date.now() - recordStartedAtRef.current) / 1000;
-        const progress = Math.min(1, elapsed / QUICK_MAX_RECORD_SEC);
+        if (maxRecordSec == null) {
+          // Unlimited (Post/Create mode) — just advance the readout.
+          setRecordProgress((elapsed % 60) / 60);
+          return;
+        }
+        const progress = Math.min(1, elapsed / maxRecordSec);
         setRecordProgress(progress);
         if (progress >= 1) {
           setRecordProgress(1);
@@ -551,6 +562,7 @@ export default function CreateCameraView({
       onCapture(
         new File([blob], `photo-${Date.now()}.jpg`, { type: "image/jpeg" }),
         "image",
+        selectedEffect,
       );
       stopStream(true);
     } catch {
@@ -561,7 +573,26 @@ export default function CreateCameraView({
   };
 
   const handleRecordDown = (e: React.PointerEvent) => {
-    if (denied || !ready || recording || recordPendingRef.current || capturingPhoto) return;
+    if (denied || !ready || capturingPhoto) return;
+
+    // Tap-to-toggle mode (Post): first press starts, next press stops.
+    if (recordMode === "tap") {
+      e.preventDefault();
+      e.stopPropagation();
+      if (recording || recordPendingRef.current) {
+        wantsRecordRef.current = false;
+        if (recordingRef.current && !isStoppingRecordingRef.current) {
+          finishRecordingRef.current();
+        }
+        return;
+      }
+      wantsRecordRef.current = true;
+      discardClipRef.current = false;
+      void startRecording();
+      return;
+    }
+
+    if (recording || recordPendingRef.current) return;
     e.preventDefault();
     e.stopPropagation();
     wantsRecordRef.current = true;
@@ -576,6 +607,7 @@ export default function CreateCameraView({
   };
 
   const handleRecordUp = (e: React.PointerEvent) => {
+    if (recordMode === "tap") return; // ignore release in tap-toggle mode
     wantsRecordRef.current = false;
     e.preventDefault();
     try {
@@ -592,6 +624,8 @@ export default function CreateCameraView({
   };
 
   const recordDisabled = denied || !ready || capturingPhoto;
+  const liveFilter = getEffectFilter(selectedEffect);
+
 
   return (
     <div className="absolute inset-0 bg-black flex flex-col touch-none">
@@ -602,7 +636,10 @@ export default function CreateCameraView({
           playsInline
           muted
           autoPlay
-          style={{ transform: facing === "user" ? "scaleX(-1)" : undefined }}
+          style={{
+            transform: facing === "user" ? "scaleX(-1)" : undefined,
+            filter: liveFilter,
+          }}
         />
       )}
 
@@ -672,8 +709,13 @@ export default function CreateCameraView({
           </button>
           {recording && (
             <div className="min-w-[3rem] px-2.5 py-1 rounded-lg bg-red-500 text-white text-sm font-bold tabular-nums text-center shadow-lg">
-              {Math.floor((QUICK_MAX_RECORD_SEC * recordProgress) / 60)}:
-              {String(Math.floor(QUICK_MAX_RECORD_SEC * recordProgress) % 60).padStart(2, "0")}
+              {(() => {
+                const totalSec =
+                  maxRecordSec == null
+                    ? Math.floor(((recordStartedAtRef.current ? Date.now() - recordStartedAtRef.current : 0) / 1000))
+                    : Math.floor(maxRecordSec * recordProgress);
+                return `${Math.floor(totalSec / 60)}:${String(totalSec % 60).padStart(2, "0")}`;
+              })()}
             </div>
           )}
         </div>
@@ -737,7 +779,9 @@ export default function CreateCameraView({
               onPointerUp={handleRecordUp}
             />
             {!recording && (
-              <span className="mt-1.5 text-[10px] font-medium text-white/40">Hold · 60s max</span>
+              <span className="mt-1.5 text-[10px] font-medium text-white/40">
+                {recordMode === "tap" ? "Tap · unlimited" : "Hold · 60s max"}
+              </span>
             )}
           </div>
 

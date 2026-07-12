@@ -78,6 +78,8 @@ export interface PostEditorMeta {
   bakedEdits?: boolean;
   /** Feed routing: true → Reels column, false → Posts column. */
   isReel?: boolean;
+  /** TikTok-style visual filter effect id (see EFFECT_ITEMS in create-modes). */
+  visualEffect?: string;
 }
 
 const META_MARKER = "\u200B<!--wheuat:";
@@ -135,7 +137,8 @@ export function encodeCaptionWithMeta(caption: string, meta: PostEditorMeta): st
     meta.coverUrl ||
     meta.location ||
     meta.title ||
-    meta.isReel !== undefined;
+    meta.isReel !== undefined ||
+    meta.visualEffect;
 
   if (!hasMeta) return trimmed || "";
   return `${trimmed}${META_MARKER}${JSON.stringify(meta)}-->`;

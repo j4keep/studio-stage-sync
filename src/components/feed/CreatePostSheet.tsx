@@ -51,6 +51,7 @@ const queryClient = useQueryClient();
 
 const [step, setStep] = useState<Step>("camera");
 const [createMode, setCreateMode] = useState<CreateMode>("post");
+const [postCameraOpen, setPostCameraOpen] = useState(false);
 const [caption, setCaption] = useState("");
 const [title, setTitle] = useState("");
 const [file, setFile] = useState<File | null>(null);
@@ -418,7 +419,7 @@ setEditorMeta((m) => ({ ...m, crop: undefined }));
 
 }, []);
 
-const handleMediaFile = (f: File, type?: "image" | "video") => {
+const handleMediaFile = (f: File, type?: "image" | "video", visualEffect?: string) => {
 setFile(f);
 
 const isVideo = type === "video" || f.type.startsWith("video/");
@@ -436,6 +437,7 @@ previewBlobRef.current = url;
 if (!postToEdit) {
   setEditorMeta((m) => ({
     ...defaultEditorMeta(),
+    ...(visualEffect && visualEffect !== "none" ? { visualEffect } : {}),
     ...(m.music || musicFile
       ? {
           music: m.music,
@@ -444,10 +446,13 @@ if (!postToEdit) {
         }
       : {}),
   }));
+} else if (visualEffect && visualEffect !== "none") {
+  setEditorMeta((m) => ({ ...m, visualEffect }));
 }
 
 ensureMusicPreviewUrl(musicFile);
 
+setPostCameraOpen(false);
 setStep("edit");
 
 };
@@ -578,13 +583,38 @@ initialStream={cameraSessionKey === 0 ? cameraStream : null}
 />
 )}
 
-{step === "camera" && createMode === "create" && (
+{step === "camera" && createMode === "create" && !postCameraOpen && (
 <CreateHubView
 createMode={createMode}
-onModeChange={setCreateMode}
+onModeChange={(m) => { setPostCameraOpen(false); setCreateMode(m); }}
 onClose={reset}
-onNewVideo={() => setCreateMode("post")}
+onNewVideo={() => setPostCameraOpen(true)}
 onUploadVideo={() => videoInputRef.current?.click()}
+/>
+)}
+
+{step === "camera" && createMode === "create" && postCameraOpen && (
+<CreateCameraView
+key={`post-${cameraSessionKey}`}
+createMode={createMode}
+onModeChange={(m) => { setPostCameraOpen(false); setCreateMode(m); }}
+onClose={() => setPostCameraOpen(false)}
+onCapture={handleMediaFile}
+onOpenGallery={openGallery}
+onTextPost={handleTextPost}
+onAddSound={handleSoundButton}
+soundLabel={soundLabel}
+musicPreviewUrl={musicPreviewUrl}
+musicPaused={showSoundPicker}
+onRegisterMusicPlay={registerCameraMusicPlay}
+musicTrim={{
+  trimStart: editorMeta.music?.trimStart,
+  trimEnd: editorMeta.music?.trimEnd,
+  sourceDurationSec: editorMeta.music?.durationSec,
+  volume: editorMeta.music?.volume ?? MIXED_ADDED_MUSIC_VOLUME,
+}}
+recordMode="tap"
+maxRecordSec={null}
 />
 )}
 

@@ -1,6 +1,7 @@
 import type { PostEditorMeta, TextOverlayStyle } from "@/lib/post-editor";
 import { getStickerSrc } from "@/lib/sticker-library";
 import { normalizeTextStyle, strokeToSmoothPath } from "@/lib/post-editor";
+import { getEffectFilter } from "@/lib/create-modes";
 import {
   EDITOR_DRAW_STROKE_DIVISOR,
   EDITOR_STICKER_BASE_PX,
@@ -120,7 +121,14 @@ export async function exportEditedImage(
   const cy = (meta.crop?.y ?? 50) / 100;
   const sw = w / cropScale;
   const sh = h / cropScale;
+  const visualFilter = getEffectFilter(meta.visualEffect);
+  if (visualFilter !== "none") {
+    // Bake the CSS filter into the exported pixels (image posts only).
+    // Videos keep the effect id in meta and apply it at playback time.
+    (ctx as CanvasRenderingContext2D & { filter: string }).filter = visualFilter;
+  }
   ctx.drawImage(img, (w - sw) * cx, (h - sh) * cy, sw, sh, 0, 0, w, h);
+  (ctx as CanvasRenderingContext2D & { filter: string }).filter = "none";
 
   for (const stroke of meta.drawings || []) {
     if (stroke.points.length < 2) continue;
