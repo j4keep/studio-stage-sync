@@ -14,7 +14,7 @@ import {
   capturePhotoFromStream,
 } from "@/lib/create-camera";
 import type { CreateMode, EnhanceTab } from "@/lib/create-modes";
-import { QUICK_MAX_RECORD_SEC } from "@/lib/create-modes";
+import { QUICK_MAX_RECORD_SEC, getEffectFilter } from "@/lib/create-modes";
 import { boostMediaElementLoudness, createTrimmedMusicPlayer, CAMERA_ADDED_SOUND_MONITOR_VOLUME, type MusicTrim } from "@/lib/post-music-preview";
 import { armFeedAudioPlayback, forceIosAudioSessionToPlayback, resetIosAudioSessionToPlayback } from "@/lib/feed-video-playback";
 import CreateModeTabs from "./CreateModeTabs";
