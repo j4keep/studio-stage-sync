@@ -562,6 +562,7 @@ export default function CreateCameraView({
       onCapture(
         new File([blob], `photo-${Date.now()}.jpg`, { type: "image/jpeg" }),
         "image",
+        selectedEffect,
       );
       stopStream(true);
     } catch {
