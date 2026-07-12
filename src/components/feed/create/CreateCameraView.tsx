@@ -506,7 +506,12 @@ export default function CreateCameraView({
       progressTimerRef.current = window.setInterval(() => {
         if (!recordStartedAtRef.current) return;
         const elapsed = (Date.now() - recordStartedAtRef.current) / 1000;
-        const progress = Math.min(1, elapsed / QUICK_MAX_RECORD_SEC);
+        if (maxRecordSec == null) {
+          // Unlimited (Post/Create mode) — just advance the readout.
+          setRecordProgress((elapsed % 60) / 60);
+          return;
+        }
+        const progress = Math.min(1, elapsed / maxRecordSec);
         setRecordProgress(progress);
         if (progress >= 1) {
           setRecordProgress(1);
