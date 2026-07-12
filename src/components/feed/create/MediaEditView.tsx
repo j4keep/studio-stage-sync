@@ -196,7 +196,7 @@ export default function MediaEditView({
 
   const exitActiveTool = () => {
     if (activeTool === "text") cancelText();
-    else if (activeTool === "draw" || activeTool === "crop") setActiveTool(null);
+    else if (activeTool === "draw" || activeTool === "crop" || activeTool === "effects") setActiveTool(null);
     else if (showStickers) setShowStickers(false);
   };
 
