@@ -1,4 +1,4 @@
-import { X, Search, Plus, Sparkles, Film, Wand2, ImageIcon, Captions, Scissors, Upload } from "lucide-react";
+import { X, Search, Plus, Sparkles, Film, Wand2, ImageIcon, Captions, Scissors } from "lucide-react";
 import { CREATE_TOOLS, TEMPLATE_CATEGORIES, TEMPLATE_ITEMS } from "@/lib/create-modes";
 import CreateModeTabs from "./CreateModeTabs";
 import type { CreateMode } from "@/lib/create-modes";
@@ -60,19 +60,19 @@ export default function CreateHubView({
       <div className="px-4 py-3 flex gap-3">
         <button
           type="button"
-          onClick={onUploadVideo}
-          className="flex-1 h-28 rounded-2xl bg-gradient-to-br from-zinc-100 to-zinc-300 text-black flex flex-col items-center justify-center gap-2 font-bold active:scale-[0.98] transition-transform"
+          onClick={onNewVideo}
+          className="flex-1 h-28 rounded-2xl bg-gradient-to-br from-zinc-100 to-zinc-300 text-black flex flex-col items-center justify-center gap-2 font-bold"
         >
-          <Upload className="w-8 h-8" />
-          <span className="text-sm leading-tight text-center px-2">Upload video or photo</span>
+          <Plus className="w-8 h-8" />
+          New video
         </button>
         <button
           type="button"
-          onClick={onNewVideo}
-          className="w-28 h-28 rounded-2xl bg-zinc-900 border border-white/15 flex flex-col items-center justify-center gap-1 text-xs text-white/70 active:scale-[0.98] transition-transform"
+          onClick={onUploadVideo}
+          className="w-28 h-28 rounded-2xl bg-zinc-900 border border-white/15 flex flex-col items-center justify-center gap-1 text-xs text-white/70"
         >
-          <Plus className="w-7 h-7 text-white" />
-          New reel
+          <div className="w-full h-14 bg-zinc-800 rounded-t-2xl mb-1" />
+          Upload any length
         </button>
       </div>
 
@@ -97,7 +97,7 @@ export default function CreateHubView({
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-3 grid grid-cols-2 gap-3 content-start pb-24">
+      <div className="flex-1 overflow-y-auto px-4 py-3 grid grid-cols-2 gap-3 content-start">
         {TEMPLATE_ITEMS.map((tpl) => (
           <button
             key={tpl.id}
