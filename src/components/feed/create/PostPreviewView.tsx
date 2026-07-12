@@ -149,7 +149,7 @@ export default function PostPreviewView({
       : "Post";
 
   const coverAction = onChangeVideo ?? onEditMedia;
-  const coverActionLabel = onChangeVideo ? "Change video" : "Edit stickers & text";
+  const coverActionLabel = onChangeVideo ? "Change photo or video" : "Edit stickers & text";
 
   return (
     <div
@@ -195,7 +195,7 @@ export default function PostPreviewView({
             onClick={coverAction}
             disabled={!coverAction || busy}
             className="relative w-[88px] h-[88px] shrink-0 rounded-xl overflow-hidden bg-zinc-800 border border-white/10 disabled:opacity-60 flex items-center justify-center"
-            aria-label={previewUrl ? (onChangeVideo ? "Change video" : "Edit cover media") : "Text post"}
+            aria-label={previewUrl ? (onChangeVideo ? "Change photo or video" : "Edit cover media") : "Text post"}
           >
             {previewUrl ? (
               mediaType === "video" ? (

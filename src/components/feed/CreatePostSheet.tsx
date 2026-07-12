@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useLayoutEffect, useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -50,7 +50,7 @@ const { user } = useAuth();
 const queryClient = useQueryClient();
 
 const [step, setStep] = useState<Step>("camera");
-const [createMode, setCreateMode] = useState<CreateMode>("post");
+const [createMode, setCreateMode] = useState<CreateMode>("create");
 const [caption, setCaption] = useState("");
 const [title, setTitle] = useState("");
 const [file, setFile] = useState<File | null>(null);
@@ -71,7 +71,6 @@ const previewBlobRef = useRef<string | null>(null);
 const musicBlobRef = useRef<string | null>(null);
 const musicStopRef = useRef<(() => void) | null>(null);
 const cameraMusicPlayRef = useRef<(() => Promise<boolean>) | null>(null);
-const openedPostUploadRef = useRef(false);
 
 const registerCameraMusicPlay = useCallback((play: (() => Promise<boolean>) | null) => {
   cameraMusicPlayRef.current = play;
@@ -118,64 +117,60 @@ editorMeta.music?.trimStart,
 editorMeta.music?.trimEnd,
 ]);
 
-useEffect(() => {
-if (!open) return;
+useLayoutEffect(() => {
+  if (!open) return;
 
-window.dispatchEvent(
-  new CustomEvent("feed-nav-toggle", { detail: { hidden: true } }),
-);
+  const parsed = parsePostCaption(postToEdit?.caption);
 
-const scrollY = window.scrollY;
-
-document.body.style.overflow = "hidden";
-document.body.style.position = "fixed";
-document.body.style.width = "100%";
-document.body.style.top = `-${scrollY}px`;
-
-const parsed = parsePostCaption(postToEdit?.caption);
-
-setCaption(parsed.caption);
-setTitle(
-  parsed.meta?.title ??
-    (postToEdit && parsed.caption
-      ? parsed.caption.split("\n")[0].slice(0, 120)
-      : ""),
-);
-setEditorMeta(parsed.meta ?? defaultEditorMeta());
-setFile(null);
-setMusicFile(null);
-setMusicPreviewUrl(parsed.meta?.music?.audioUrl ?? null);
-setMediaType(postToEdit?.media_type === "video" ? "video" : "image");
-setCreateMode(postToEdit ? (parsed.meta?.isReel === true ? "post" : "create") : "create");
-setCameraSessionKey(0);
-setCurrentMediaUrl(postToEdit?.media_url || null);
-setPreview(postToEdit?.media_url || null);
-setStep(postToEdit ? "preview" : "camera");
-openedPostUploadRef.current = false;
-
-return () => {
-  window.dispatchEvent(
-    new CustomEvent("feed-nav-toggle", { detail: { hidden: false } }),
+  setCaption(parsed.caption);
+  setTitle(
+    parsed.meta?.title ??
+      (postToEdit && parsed.caption
+        ? parsed.caption.split("\n")[0].slice(0, 120)
+        : ""),
   );
-
-  musicStopRef.current?.();
-  musicStopRef.current = null;
-
-  document.body.style.overflow = "";
-  document.body.style.position = "";
-  document.body.style.width = "";
-  document.body.style.top = "";
-  window.scrollTo(0, scrollY);
-};
+  setEditorMeta(parsed.meta ?? defaultEditorMeta());
+  setFile(null);
+  setMusicFile(null);
+  setMusicPreviewUrl(parsed.meta?.music?.audioUrl ?? null);
+  setMediaType(postToEdit?.media_type === "video" ? "video" : "image");
+  // New posts open on POST hub (create). Reels open camera (post).
+  setCreateMode(postToEdit ? (parsed.meta?.isReel === true ? "post" : "create") : "create");
+  setCameraSessionKey(0);
+  setCurrentMediaUrl(postToEdit?.media_url || null);
+  setPreview(postToEdit?.media_url || null);
+  setStep(postToEdit ? "preview" : "camera");
 }, [open, postToEdit]);
 
 useEffect(() => {
-  if (!open || postToEdit || step !== "camera" || createMode !== "create") return;
-  if (openedPostUploadRef.current) return;
-  openedPostUploadRef.current = true;
-  const t = window.setTimeout(() => videoInputRef.current?.click(), 350);
-  return () => window.clearTimeout(t);
-}, [open, postToEdit, step, createMode]);
+  if (!open) return;
+
+  window.dispatchEvent(
+    new CustomEvent("feed-nav-toggle", { detail: { hidden: true } }),
+  );
+
+  const scrollY = window.scrollY;
+
+  document.body.style.overflow = "hidden";
+  document.body.style.position = "fixed";
+  document.body.style.width = "100%";
+  document.body.style.top = `-${scrollY}px`;
+
+  return () => {
+    window.dispatchEvent(
+      new CustomEvent("feed-nav-toggle", { detail: { hidden: false } }),
+    );
+
+    musicStopRef.current?.();
+    musicStopRef.current = null;
+
+    document.body.style.overflow = "";
+    document.body.style.position = "";
+    document.body.style.width = "";
+    document.body.style.top = "";
+    window.scrollTo(0, scrollY);
+  };
+}, [open, postToEdit]);
 
 const revokePreviewBlob = () => {
 if (previewBlobRef.current) URL.revokeObjectURL(previewBlobRef.current);
@@ -594,7 +589,7 @@ createMode={createMode}
 onModeChange={setCreateMode}
 onClose={reset}
 onNewVideo={() => setCreateMode("post")}
-onUploadVideo={() => videoInputRef.current?.click()}
+onUploadVideo={() => photoInputRef.current?.click()}
 />
 )}
 
@@ -647,7 +642,7 @@ initialStream={cameraStream}
         }
         onPost={() => postMutation.mutate()}
         onEditMedia={createMode === "post" ? () => setStep("edit") : undefined}
-        onChangeVideo={createMode === "create" && mediaType === "video" ? () => videoInputRef.current?.click() : undefined}
+        onChangeVideo={createMode === "create" ? () => photoInputRef.current?.click() : undefined}
         onDelete={postToEdit ? () => deleteMutation.mutate() : undefined}
         posting={postMutation.isPending || uploading}
         deleting={deleteMutation.isPending}
