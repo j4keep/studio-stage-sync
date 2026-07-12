@@ -422,10 +422,13 @@ export default function MediaEditView({
   const bottomTools = [
     { id: "text" as const, icon: Type, label: "Text", action: startTextMode },
     { id: "sticker" as const, icon: Sticker, label: "Stickers", action: () => setShowStickers(true) },
+    { id: "effects" as const, icon: Wand2, label: "Effects", action: () => setActiveTool("effects") },
     { id: "draw" as const, icon: Pencil, label: "Draw", action: () => setActiveTool("draw") },
     { id: "crop" as const, icon: Crop, label: "Crop", action: () => setActiveTool("crop") },
     { id: "mute" as const, icon: meta.muteOriginal ? VolumeX : Volume2, label: "Mute", action: () => patch({ muteOriginal: !meta.muteOriginal }) },
   ];
+
+  const visualFilter = getEffectFilter(meta.visualEffect);
 
   return (
     <div className="fixed inset-0 bg-black overflow-hidden overscroll-none touch-none">
