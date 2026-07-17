@@ -29,7 +29,7 @@ const SECTIONS: ExploreSection[] = [
   {
     title: "YAJ Favorites",
     items: [
-      { label: "Radio", emojiId: "music", background: backgrounds.green, route: "/radio" },
+      { label: "Radio", emojiId: "vibing", background: backgrounds.green, route: "/radio" },
       { label: "Battle", emojiId: "punch", background: backgrounds.purple, route: "/battles" },
       { label: "Marketplace", emojiId: "diamond", background: backgrounds.pink, route: "/tv/watch" },
       { label: "Deals", emojiId: "money", background: backgrounds.blue, route: "/store" },
