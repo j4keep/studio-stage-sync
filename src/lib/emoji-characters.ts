@@ -112,6 +112,7 @@ export const EMOJI_CHARACTERS: EmojiCharacter[] = [
   { label: "Water Nerd", src: waterbucket5Img, id: "waterbucket5" },
   { label: "Flowers", src: flowersImg, id: "flowers" },
   { label: "Poop Bucket", src: poopbucketImg, id: "poopbucket" },
+  { label: "Music", src: musicImg, id: "music" },
 ];
 
 // Quick lookup by id
