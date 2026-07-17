@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { ChevronRight, Info, Search, Sparkles, X } from "lucide-react";
 import { EMOJI_MAP } from "@/lib/emoji-characters";
 import yajLogo from "@/assets/yaj-logo.png";
@@ -7,6 +8,7 @@ type ExploreItem = {
   label: string;
   emojiId: string;
   background: string;
+  route?: string;
 };
 
 type ExploreSection = {
@@ -27,10 +29,10 @@ const SECTIONS: ExploreSection[] = [
   {
     title: "YAJ Favorites",
     items: [
-      { label: "Buddy Dance", emojiId: "yaj-dance", background: backgrounds.green },
-      { label: "Buddy Peace", emojiId: "yaj-peace", background: backgrounds.purple },
-      { label: "Buddy Love", emojiId: "yaj-love", background: backgrounds.pink },
-      { label: "Buddy Wave", emojiId: "yaj-wave", background: backgrounds.blue },
+      { label: "Radio", emojiId: "music", background: backgrounds.green, route: "/radio" },
+      { label: "Battle", emojiId: "punch", background: backgrounds.purple, route: "/battles" },
+      { label: "Marketplace", emojiId: "diamond", background: backgrounds.pink, route: "/tv/watch" },
+      { label: "Deals", emojiId: "money", background: backgrounds.blue, route: "/store" },
     ],
   },
   {
@@ -99,9 +101,11 @@ const SECTIONS: ExploreSection[] = [
 ];
 
 function ExploreCard({ item }: { item: ExploreItem }) {
+  const navigate = useNavigate();
   return (
     <button
       type="button"
+      onClick={item.route ? () => navigate(item.route!) : undefined}
       className="w-[8.75rem] shrink-0 snap-start text-left active:scale-[0.98] transition-transform"
     >
       <div

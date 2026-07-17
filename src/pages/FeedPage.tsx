@@ -3,21 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, MoreVertical, Radio as RadioIcon, Swords, Tv, Tag } from "lucide-react";
+import { Search, MoreVertical } from "lucide-react";
 import { fetchFeedItems, isReelItem } from "@/lib/feed-items";
 import { initFeedAudioUnlockOnGesture } from "@/lib/feed-video-playback";
 import FeedThumbCard from "@/components/feed/FeedThumbCard";
 import FeedFullscreenViewer from "@/components/feed/FeedFullscreenViewer";
 import FlagBackground from "@/components/FlagBackground";
 import yajLogo from "@/assets/yaj-logo.png";
-
-type TabId = "radio" | "battle" | "marketplace" | "deals";
-const TABS: { id: TabId; label: string; route: string; icon: typeof RadioIcon }[] = [
-  { id: "radio", label: "Radio", route: "/radio", icon: RadioIcon },
-  { id: "battle", label: "Battle", route: "/battles", icon: Swords },
-  { id: "marketplace", label: "Marketplace", route: "/tv/watch", icon: Tv },
-  { id: "deals", label: "Deals", route: "/store", icon: Tag },
-];
 
 interface TrendingCreator {
   user_id: string;
@@ -77,21 +69,7 @@ const FeedPage = () => {
       <div className="absolute top-0 left-0 right-0 z-40 px-3 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-1.5 bg-background/90 backdrop-blur-md border-b border-border/70 pointer-events-none">
         <div className="flex items-center gap-2 text-foreground pointer-events-auto">
           <img src={yajLogo} alt="YAJ" className="h-16 w-auto shrink-0 -my-3" />
-          <div className="flex-1 min-w-0 flex items-center gap-1 overflow-x-auto scrollbar-hide">
-            {TABS.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => navigate(tab.route)}
-                  className="feed-glass-pill shrink-0 min-w-[3.1rem] px-1.5"
-                >
-                  <Icon className="w-3.5 h-3.5 shrink-0" strokeWidth={2.25} />
-                  <span className="text-[9px] font-semibold leading-none whitespace-nowrap">{tab.label}</span>
-                </button>
-              );
-            })}
-          </div>
+          <div className="flex-1 min-w-0" />
           <button onClick={() => navigate("/browse-songs")} className="w-8 h-8 flex items-center justify-center rounded-full bg-card/80 border border-border active:bg-muted shrink-0" aria-label="Search">
             <Search className="w-[1.15rem] h-[1.15rem]" strokeWidth={2.25} />
           </button>
