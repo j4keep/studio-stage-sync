@@ -50,6 +50,7 @@ import HelpDeskPage from "./pages/HelpDeskPage";
 import AdminTicketsPage from "./pages/AdminTicketsPage";
 import AdminSoundLibraryPage from "./pages/AdminSoundLibraryPage";
 import AskJhiPage from "./pages/AskJhiPage";
+import ExplorePage from "./pages/ExplorePage";
 
 
 import { SessionProvider } from "./wstudio/session/SessionContext";
@@ -246,7 +247,7 @@ const ProtectedRoutes = () => {
         <Route path="/helpdesk" element={<HelpDeskPage />} />
         <Route path="/ask-yaj" element={<AskJhiPage />} />
         <Route path="/ask-jhi" element={<Navigate to="/ask-yaj" replace />} />
-        <Route path="/explore" element={<ComingSoonPage title="Explore" />} />
+        <Route path="/explore" element={<ExplorePage />} />
         <Route path="/communities" element={<Navigate to="/store" replace />} />
         <Route path="/tv/*" element={<Navigate to="/" replace />} />
         <Route path="/podcast/*" element={<Navigate to="/" replace />} />
