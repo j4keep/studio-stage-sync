@@ -1,5 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
+import { motion } from "framer-motion";
 import { EMOJI_MAP } from "@/lib/emoji-characters";
+import { getYajBuddyMotion } from "@/lib/yaj-buddy-motion";
 
 interface FloatingEmoji {
   id: number;
@@ -40,22 +42,29 @@ export const useFloatingEmojis = () => {
 
 export const FloatingEmojiLayer = ({ emojis }: { emojis: FloatingEmoji[] }) => (
   <div className="absolute inset-0 pointer-events-none z-[60] overflow-visible" style={{ willChange: "transform", transform: "translateZ(0)" }}>
-    {emojis.map((e) => (
-      <div
-        key={e.id}
-        className="absolute feed-bottom-offset pointer-events-none animate-emoji-float"
-        style={{ left: `${e.x}%` }}
-      >
-        <div className="animate-emoji-wobble">
-          <img
-            src={e.src}
-            alt=""
-            className="w-32 h-32 object-contain drop-shadow-lg"
-            style={{ filter: "drop-shadow(0 0 8px rgba(255,165,0,0.5))" }}
-          />
+    {emojis.map((e) => {
+      const buddyMotion = getYajBuddyMotion(e.emojiId);
+      return (
+        <div
+          key={e.id}
+          className="absolute feed-bottom-offset pointer-events-none animate-emoji-float"
+          style={{ left: `${e.x}%` }}
+        >
+          <motion.div
+            className={buddyMotion ? undefined : "animate-emoji-wobble"}
+            animate={buddyMotion?.animate}
+            transition={buddyMotion?.transition}
+          >
+            <img
+              src={e.src}
+              alt=""
+              className="w-32 h-32 object-contain drop-shadow-lg"
+              style={{ filter: "drop-shadow(0 0 8px rgba(255,165,0,0.5))" }}
+            />
+          </motion.div>
         </div>
-      </div>
-    ))}
+      );
+    })}
   </div>
 );
 

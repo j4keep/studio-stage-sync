@@ -106,8 +106,8 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
   const postTitle = postMeta?.title?.trim();
   const playbackMeta = useMemo<FeedPlaybackMeta>(
     () => ({
-      title: postTitle || displayCaption.split("\n")[0] || "JHi",
-      artist: profile.display_name || "JHi",
+      title: postTitle || displayCaption.split("\n")[0] || "YAJ",
+      artist: profile.display_name || "YAJ",
     }),
     [postTitle, displayCaption, profile.display_name],
   );

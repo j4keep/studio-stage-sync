@@ -166,7 +166,7 @@ const SettingsPage = () => {
         <ActionRow icon={<Info className="w-4 h-4" />} label="Help & Support" onClick={() => navigate("/help")} />
       </Section>
 
-      <p className="text-center text-[10px] text-muted-foreground mt-6">JHi v1.0.0</p>
+      <p className="text-center text-[10px] text-muted-foreground mt-6">YAJ v1.0.0</p>
 
       <ProGateModal open={showProModal} onClose={closeProModal} featureName={gatedFeature} />
 
@@ -175,7 +175,7 @@ const SettingsPage = () => {
         <DialogContent className="max-w-sm rounded-xl">
           <DialogHeader>
             <DialogTitle>Cancel PRO Subscription?</DialogTitle>
-            <DialogDescription>You'll lose access to all PRO features including analytics, earnings, store management, battles, Ask Jhi, and the ad-free experience.</DialogDescription>
+            <DialogDescription>You'll lose access to all PRO features including analytics, earnings, store management, battles, YAJ Buddy, and the ad-free experience.</DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex gap-2">
             <button onClick={() => setShowCancelDialog(false)} className="flex-1 py-2.5 rounded-xl bg-card border border-border text-foreground text-sm font-semibold">Keep PRO</button>

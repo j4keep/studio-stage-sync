@@ -63,7 +63,7 @@ const NewsCategoryPage = () => {
         .in("user_id", authorIds);
 
       const nameMap: Record<string, string> = {};
-      (profiles || []).forEach((p: any) => { nameMap[p.user_id] = p.display_name || "JHi"; });
+      (profiles || []).forEach((p: any) => { nameMap[p.user_id] = p.display_name || "YAJ"; });
 
       return data.map((a: any) => ({
         id: a.id,
@@ -72,7 +72,7 @@ const NewsCategoryPage = () => {
         category: a.category,
         cover_url: resolveImageUrl(a.cover_url),
         published_at: a.published_at,
-        author_name: nameMap[a.author_id] || "JHi",
+        author_name: nameMap[a.author_id] || "YAJ",
       }));
     },
   });

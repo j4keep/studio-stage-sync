@@ -16,7 +16,7 @@ const PRO_FEATURES = [
   { icon: Building2, label: "List & Book Studios" },
   { icon: FileText, label: "Legal Vault Access" },
   { icon: Zap, label: "Boosts & Promotions" },
-  { icon: Crown, label: "Ask Jhi AI Assistant" },
+  { icon: Crown, label: "YAJ Buddy AI Assistant" },
   { icon: Ban, label: "Zero Ads Experience" },
 ];
 

@@ -53,8 +53,8 @@
       },
       {
         "name": "ask_jhi",
-        "title": "Ask Jhi (WHEUAT creative companion)",
-        "description": "Ask Jhi — WHEUAT's AI creative companion for indie artists and creators — a question about content ideas, music, channel growth, or the WHEUAT platform.",
+        "title": "Ask YAJ (YAJ Buddy community companion)",
+        "description": "Ask YAJ Buddy — YAJ's AI community companion — about creative ideas, music, opportunities, Circles, collaboration, or the YAJ platform.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": false,
@@ -67,7 +67,7 @@
               "type": "string",
               "minLength": 1,
               "maxLength": 2000,
-              "description": "The question or request for Jhi."
+              "description": "The question or request for YAJ Buddy."
             }
           },
           "required": [

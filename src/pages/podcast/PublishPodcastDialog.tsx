@@ -104,8 +104,8 @@ export function usePublishPodcastChoice() {
             <label className="flex items-start gap-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/40">
               <RadioGroupItem value="video" id="pk-video" className="mt-1" />
               <div>
-                <div className="font-medium">Video — JHi.TV</div>
-                <div className="text-xs text-muted-foreground">Publish to the JHi.TV Free tab.</div>
+                <div className="font-medium">Video — YAJ.TV</div>
+                <div className="text-xs text-muted-foreground">Publish to the YAJ.TV Free tab.</div>
               </div>
             </label>
             <label className="flex items-start gap-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/40">

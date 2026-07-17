@@ -52,6 +52,11 @@ import waterbucket4Img from "@/assets/emojis/waterbucket4.png";
 import waterbucket5Img from "@/assets/emojis/waterbucket5.png";
 import flowersImg from "@/assets/emojis/flowers.png";
 import poopbucketImg from "@/assets/emojis/poopbucket.png";
+import yajBuddyWaveImg from "@/assets/emojis/yaj-buddy-wave.png";
+import yajBuddyPeaceImg from "@/assets/emojis/yaj-buddy-peace.png";
+import yajBuddyLoveImg from "@/assets/emojis/yaj-buddy-love.png";
+import yajBuddyDanceImg from "@/assets/emojis/yaj-buddy-dance.png";
+import yajBuddyCelebrateImg from "@/assets/emojis/yaj-buddy-celebrate.png";
 
 export interface EmojiCharacter {
   label: string;
@@ -60,6 +65,11 @@ export interface EmojiCharacter {
 }
 
 export const EMOJI_CHARACTERS: EmojiCharacter[] = [
+  { label: "YAJ Buddy Wave", src: yajBuddyWaveImg, id: "yaj-wave" },
+  { label: "YAJ Buddy Peace", src: yajBuddyPeaceImg, id: "yaj-peace" },
+  { label: "YAJ Buddy Love", src: yajBuddyLoveImg, id: "yaj-love" },
+  { label: "YAJ Buddy Dance", src: yajBuddyDanceImg, id: "yaj-dance" },
+  { label: "YAJ Buddy Celebrate", src: yajBuddyCelebrateImg, id: "yaj-celebrate" },
   { label: "Fire", src: fireImg, id: "fire" },
   { label: "Thumbs Up", src: thumbsupImg, id: "thumbsup" },
   { label: "Heart", src: heartImg, id: "heart" },
@@ -108,5 +118,8 @@ export const EMOJI_CHARACTERS: EmojiCharacter[] = [
 export const EMOJI_MAP: Record<string, string> = {};
 EMOJI_CHARACTERS.forEach((e) => { EMOJI_MAP[e.id] = e.src; });
 
-// Subset for feed emoji bar (first 12 most popular)
-export const FEED_EMOJI_SET = EMOJI_CHARACTERS.slice(0, 12);
+// Put YAJ Buddy first while retaining the existing 12-item feed selection.
+export const FEED_EMOJI_SET = [
+  ...EMOJI_CHARACTERS.filter((emoji) => emoji.id.startsWith("yaj-")),
+  ...EMOJI_CHARACTERS.filter((emoji) => !emoji.id.startsWith("yaj-")).slice(0, 12),
+];

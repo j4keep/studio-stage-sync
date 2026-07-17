@@ -42,10 +42,10 @@ import { defineTool as defineTool2 } from "npm:@lovable.dev/mcp-js@0.20.0";
 import { z as z2 } from "npm:zod@^3.25.76";
 var ask_jhi_default = defineTool2({
   name: "ask_jhi",
-  title: "Ask Jhi (WHEUAT creative companion)",
-  description: "Ask Jhi \u2014 WHEUAT's AI creative companion for indie artists and creators \u2014 a question about content ideas, music, channel growth, or the WHEUAT platform.",
+  title: "Ask YAJ (YAJ Buddy community companion)",
+  description: "Ask YAJ Buddy \u2014 YAJ's AI community companion \u2014 about creative ideas, music, opportunities, Circles, collaboration, or the YAJ platform.",
   inputSchema: {
-    prompt: z2.string().min(1).max(2e3).describe("The question or request for Jhi.")
+    prompt: z2.string().min(1).max(2e3).describe("The question or request for YAJ Buddy.")
   },
   annotations: { readOnlyHint: true, idempotentHint: false, openWorldHint: false },
   handler: async ({ prompt }) => {
@@ -64,7 +64,7 @@ var ask_jhi_default = defineTool2({
     });
     if (!resp.ok || !resp.body) {
       const txt = await resp.text().catch(() => "");
-      return { content: [{ type: "text", text: `Jhi error (${resp.status}): ${txt}` }], isError: true };
+      return { content: [{ type: "text", text: `YAJ Buddy error (${resp.status}): ${txt}` }], isError: true };
     }
     const reader = resp.body.getReader();
     const decoder = new TextDecoder();
@@ -103,7 +103,7 @@ var mcp_default = defineMcp({
   name: "wheuat-mcp",
   title: "WHEUAT",
   version: "0.1.0",
-  instructions: "Tools for WHEUAT \u2014 a mobile-first platform for independent artists and creators. Use `get_featured_content` to browse recent podcasts, videos, songs, battles, or posts. Use `ask_jhi` to consult WHEUAT's AI creative companion for content ideas, music, and platform guidance.",
+  instructions: "Tools for WHEUAT \u2014 a mobile-first platform for independent artists and creators. Use `get_featured_content` to browse recent podcasts, videos, songs, battles, or posts. Use `ask_jhi` to consult YAJ Buddy, YAJ's AI community companion, for creative ideas, music, opportunities, Circles, collaboration, and platform guidance.",
   tools: [get_featured_content_default, ask_jhi_default]
 });
 

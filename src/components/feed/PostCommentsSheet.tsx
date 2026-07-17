@@ -40,7 +40,7 @@ const PostCommentsSheet = ({ postId, open, onClose, onEmojiComment }: Props) => 
       );
     }
 
-    const exactMatch = content.match(/^:([a-z0-9]+):$/);
+    const exactMatch = content.match(/^:([a-z0-9-]+):$/);
     if (exactMatch && EMOJI_MAP[exactMatch[1]]) {
       return (
         <img
@@ -51,9 +51,9 @@ const PostCommentsSheet = ({ postId, open, onClose, onEmojiComment }: Props) => 
       );
     }
 
-    const parts = content.split(/(:[a-z0-9]+:)/g);
+    const parts = content.split(/(:[a-z0-9-]+:)/g);
     return parts.map((part, index) => {
-      const match = part.match(/^:([a-z0-9]+):$/);
+      const match = part.match(/^:([a-z0-9-]+):$/);
       if (match && EMOJI_MAP[match[1]]) {
         return (
           <img

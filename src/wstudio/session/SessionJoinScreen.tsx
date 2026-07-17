@@ -170,7 +170,7 @@ export default function SessionJoinScreen() {
         </div>
 
         <div className="flex w-full min-h-0 flex-1 flex-col items-center justify-between gap-2 py-1.5">
-          {/* Pro Logo Mark — matches JHi branding */}
+          {/* Pro Logo Mark — matches YAJ branding */}
           <div className="flex flex-col items-center gap-1 text-center">
             <div
               className="inline-flex items-center gap-2 rounded-full border px-3 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em]"

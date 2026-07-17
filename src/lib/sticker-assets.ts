@@ -1,4 +1,9 @@
-/** WhatsApp-style SVG sticker packs — not device/unicode emojis. */
+/** WhatsApp-style sticker packs — not device/unicode emojis. */
+import yajBuddyWaveImg from "@/assets/emojis/yaj-buddy-wave.png";
+import yajBuddyPeaceImg from "@/assets/emojis/yaj-buddy-peace.png";
+import yajBuddyLoveImg from "@/assets/emojis/yaj-buddy-love.png";
+import yajBuddyDanceImg from "@/assets/emojis/yaj-buddy-dance.png";
+import yajBuddyCelebrateImg from "@/assets/emojis/yaj-buddy-celebrate.png";
 
 export type StickerPackId =
   | "trending"
@@ -8,13 +13,14 @@ export type StickerPackId =
   | "sports"
   | "love"
   | "celebration"
+  | "yaj-buddy"
   | "wheuat";
 
 export interface StickerAsset {
   id: string;
   label: string;
   pack: StickerPackId;
-  /** SVG data URI with transparent background */
+  /** Imported raster URL or SVG data URI with transparent background */
   src: string;
   tags?: string[];
 }
@@ -26,6 +32,13 @@ const svg = (body: string, viewBox = "0 0 128 128") =>
 
 /** Cartoon sticker graphics — bold fills, sticker-style outlines */
 export const STICKER_ASSETS: StickerAsset[] = [
+  // YAJ Buddy
+  { id: "st-yaj-wave", label: "YAJ Buddy Wave", pack: "yaj-buddy", tags: ["hello", "hi", "buddy"], src: yajBuddyWaveImg },
+  { id: "st-yaj-peace", label: "YAJ Buddy Peace", pack: "yaj-buddy", tags: ["peace", "chill", "buddy"], src: yajBuddyPeaceImg },
+  { id: "st-yaj-love", label: "YAJ Buddy Love", pack: "yaj-buddy", tags: ["heart", "love", "buddy"], src: yajBuddyLoveImg },
+  { id: "st-yaj-dance", label: "YAJ Buddy Dance", pack: "yaj-buddy", tags: ["music", "party", "buddy"], src: yajBuddyDanceImg },
+  { id: "st-yaj-celebrate", label: "YAJ Buddy Celebrate", pack: "yaj-buddy", tags: ["win", "party", "buddy"], src: yajBuddyCelebrateImg },
+
   // Trending
   { id: "st-fire", label: "Fire", pack: "trending", tags: ["hot", "lit"], src: svg('<ellipse cx="64" cy="100" rx="28" ry="8" fill="#000" opacity=".15"/><path d="M64 18c-8 22-24 28-24 48 0 18 14 32 32 32s32-14 32-32c0-20-16-26-24-48-4 12-8 18-16 18s-12-6-16-18z" fill="#ff6b00" stroke="#1a1a1a" stroke-width="3"/><path d="M64 42c-4 10-12 14-12 26 0 10 8 18 18 18s18-8 18-18c0-12-8-16-12-26-2 6-4 10-8 10s-6-4-8-10z" fill="#ffd000" stroke="#1a1a1a" stroke-width="2"/>') },
   { id: "st-clap", label: "Clap", pack: "trending", tags: ["hands", "applause"], src: svg('<ellipse cx="64" cy="108" rx="30" ry="8" fill="#000" opacity=".12"/><path d="M36 72c0-8 4-16 12-20v-8c0-6 4-10 10-10s10 4 10 10v4c4-2 8-2 12 2 4 4 4 10 0 14l-8 8c-6 6-14 8-22 4l-14-14z" fill="#fde68a" stroke="#1a1a1a" stroke-width="3"/><path d="M92 72c0-8-4-16-12-20v-8c0-6-4-10-10-10s-10 4-10 10v4c-4-2-8-2-12 2-4 4-4 10 0 14l8 8c6 6 14 8 22 4l14-14z" fill="#fde68a" stroke="#1a1a1a" stroke-width="3"/><rect x="20" y="20" width="88" height="88" rx="44" fill="none" stroke="#a855f7" stroke-width="4" stroke-dasharray="8 6"/>') },
@@ -65,11 +78,11 @@ export const STICKER_ASSETS: StickerAsset[] = [
   { id: "st-confetti", label: "Confetti", pack: "celebration", src: svg('<rect x="28" y="40" width="12" height="12" rx="2" fill="#ef4444" transform="rotate(20 34 46)"/><rect x="80" y="32" width="10" height="10" fill="#3b82f6" transform="rotate(-15 85 37)"/><circle cx="64" cy="48" r="6" fill="#fbbf24"/><rect x="48" y="72" width="14" height="6" rx="1" fill="#a855f7" transform="rotate(45 55 75)"/><circle cx="88" cy="68" r="5" fill="#22c55e"/><circle cx="40" cy="80" r="4" fill="#ec4899"/>') },
   { id: "st-star-burst", label: "Star", pack: "celebration", src: svg('<polygon points="64,12 76,48 116,48 84,68 96,108 64,84 32,108 44,68 12,48 52,48" fill="#fde047" stroke="#1a1a1a" stroke-width="3"/>') },
 
-  // JHi custom
-  { id: "st-wheuat-crown", label: "JHi Crown", pack: "wheuat", src: svg('<ellipse cx="64" cy="108" rx="30" ry="7" fill="#000" opacity=".12"/><path d="M24 72 L36 40 L52 56 L64 32 L76 56 L92 40 L104 72 Z" fill="#a855f7" stroke="#1a1a1a" stroke-width="3"/><rect x="24" y="72" width="80" height="16" rx="4" fill="#7c3aed" stroke="#1a1a1a" stroke-width="2"/><text x="64" y="84" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">JHi</text>') },
-  { id: "st-wheuat-mic", label: "JHi Mic", pack: "wheuat", src: svg('<circle cx="64" cy="64" r="44" fill="#0ea5e9" stroke="#1a1a1a" stroke-width="3"/><rect x="56" y="36" width="16" height="32" rx="8" fill="#fff" stroke="#1a1a1a" stroke-width="2"/><text x="64" y="98" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">JHi</text>') },
+  // Classic pack
+  { id: "st-wheuat-crown", label: "YAJ Crown", pack: "wheuat", src: svg('<ellipse cx="64" cy="108" rx="30" ry="7" fill="#000" opacity=".12"/><path d="M24 72 L36 40 L52 56 L64 32 L76 56 L92 40 L104 72 Z" fill="#a855f7" stroke="#1a1a1a" stroke-width="3"/><rect x="24" y="72" width="80" height="16" rx="4" fill="#7c3aed" stroke="#1a1a1a" stroke-width="2"/><text x="64" y="84" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">YAJ</text>') },
+  { id: "st-wheuat-mic", label: "YAJ Mic", pack: "wheuat", src: svg('<circle cx="64" cy="64" r="44" fill="#0ea5e9" stroke="#1a1a1a" stroke-width="3"/><rect x="56" y="36" width="16" height="32" rx="8" fill="#fff" stroke="#1a1a1a" stroke-width="2"/><text x="64" y="98" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">YAJ</text>') },
   { id: "st-wheuat-wave", label: "Sound Wave", pack: "wheuat", tags: ["music"], src: svg('<rect x="20" y="48" width="8" height="32" rx="4" fill="#22d3ee" stroke="#1a1a1a" stroke-width="2"/><rect x="36" y="36" width="8" height="56" rx="4" fill="#a855f7" stroke="#1a1a1a" stroke-width="2"/><rect x="52" y="28" width="8" height="72" rx="4" fill="#f472b6" stroke="#1a1a1a" stroke-width="2"/><rect x="68" y="36" width="8" height="56" rx="4" fill="#a855f7" stroke="#1a1a1a" stroke-width="2"/><rect x="84" y="48" width="8" height="32" rx="4" fill="#22d3ee" stroke="#1a1a1a" stroke-width="2"/>') },
-  { id: "st-wheuat-vibe", label: "Vibe", pack: "wheuat", src: svg('<circle cx="64" cy="64" r="48" fill="#312e81" stroke="#a855f7" stroke-width="4"/><text x="64" y="58" text-anchor="middle" fill="#e879f9" font-size="22" font-weight="bold">VIBE</text><text x="64" y="82" text-anchor="middle" fill="#fff" font-size="10">JHi</text>') },
+  { id: "st-wheuat-vibe", label: "Vibe", pack: "wheuat", src: svg('<circle cx="64" cy="64" r="48" fill="#312e81" stroke="#a855f7" stroke-width="4"/><text x="64" y="58" text-anchor="middle" fill="#e879f9" font-size="22" font-weight="bold">VIBE</text><text x="64" y="82" text-anchor="middle" fill="#fff" font-size="10">YAJ</text>') },
 ];
 
 const ASSET_MAP = new Map(STICKER_ASSETS.map((s) => [s.id, s]));

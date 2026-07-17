@@ -244,7 +244,8 @@ const ProtectedRoutes = () => {
         <Route path="/news/:category" element={<NewsCategoryPage />} />
         <Route path="/my-boosts" element={<MyBoostsPage />} />
         <Route path="/helpdesk" element={<HelpDeskPage />} />
-        <Route path="/ask-jhi" element={<AskJhiPage />} />
+        <Route path="/ask-yaj" element={<AskJhiPage />} />
+        <Route path="/ask-jhi" element={<Navigate to="/ask-yaj" replace />} />
         <Route path="/explore" element={<ComingSoonPage title="Explore" />} />
         <Route path="/communities" element={<Navigate to="/store" replace />} />
         <Route path="/tv/*" element={<Navigate to="/" replace />} />
@@ -262,7 +263,7 @@ const ProtectedRoutes = () => {
         <Route path="/battles" element={<BreakGuard><BattlesPage /></BreakGuard>} />
         <Route path="/battle/:battleId" element={<BreakGuard><MusicBattlePlayerPage /></BreakGuard>} />
         <Route path="/feed" element={<BreakGuard><FeedPage /></BreakGuard>} />
-        <Route path="/jhi" element={<Navigate to="/ask-jhi" replace />} />
+        <Route path="/jhi" element={<Navigate to="/ask-yaj" replace />} />
         <Route path="/artist/:userId" element={<BreakGuard><ArtistProfilePage /></BreakGuard>} />
         <Route path="/dollar-club" element={<div className="px-4 pt-4 pb-4 text-center"><h1 className="text-lg font-display font-bold text-foreground mb-2">Dollar Club</h1><p className="text-sm text-muted-foreground">Sell your products for $1 and build your fanbase. Coming soon!</p></div>} />
         <Route path="*" element={<NotFound />} />

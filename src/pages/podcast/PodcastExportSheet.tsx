@@ -272,7 +272,7 @@ export function PodcastExportSheet({ open, onClose, engine, tracks, clips, proje
         const blob = await renderComposite(mode, engine, tracks, clips, videos as any, len);
         if (wantsPublish) {
           await WheuatTv.add({ kind: "podcast", title: projectName || base, blob, mime: blob.type || "video/webm", ext: "webm", durationMs: len * 1000 });
-          toast.success("Published to JHi.TV", { id: "exp" });
+          toast.success("Published to YAJ.TV", { id: "exp" });
         } else {
           downloadBlob(blob, `${base}-${mode}.webm`);
           toast.success("Video exported", { id: "exp" });

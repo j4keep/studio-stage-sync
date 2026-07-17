@@ -66,7 +66,7 @@ Collaborator 3: _________________________ Date: __________`,
     id: "radio-streaming",
     title: "Radio Streaming Agreement",
     category: "License",
-    description: "Agreement for streaming your music on JHi Radio and similar platforms.",
+    description: "Agreement for streaming your music on YAJ Radio and similar platforms.",
     content: `RADIO STREAMING AGREEMENT
 
 Date: _______________
@@ -79,7 +79,7 @@ Address: _________________________
 Email: _________________________
 
 PLATFORM ("Licensee"):
-JHi Radio / Platform Name: _________________________
+YAJ Radio / Platform Name: _________________________
 
 GRANT OF LICENSE:
 

@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { EMOJI_CHARACTERS, EMOJI_MAP, type EmojiCharacter } from "@/lib/emoji-characters";
+import { getYajBuddyMotion } from "@/lib/yaj-buddy-motion";
 
 interface Props {
   post: any;
@@ -22,6 +23,7 @@ interface Props {
 /* ─── floating effect types ─── */
 interface FloatingEffect {
   id: string;
+  emojiId: string;
   src: string;
   x: number;
   y: number;
@@ -53,6 +55,23 @@ const ANIM = {
   },
 };
 const ANIM_TYPES: Array<FloatingEffect["type"]> = ["float-up", "burst", "spiral"];
+
+const renderEmojiContent = (content: string) =>
+  content.split(/(:[a-z0-9-]+:)/g).map((part, index) => {
+    const match = part.match(/^:([a-z0-9-]+):$/);
+    const emojiId = match?.[1];
+    const src = emojiId ? EMOJI_MAP[emojiId] : undefined;
+    return src ? (
+      <img
+        key={`${emojiId}-${index}`}
+        src={src}
+        alt={emojiId}
+        className="inline-block w-5 h-5 object-contain align-middle mx-0.5"
+      />
+    ) : (
+      <span key={`text-${index}`}>{part}</span>
+    );
+  });
 
 const ExpandedPostView = ({ post, liked, likesCount, onLike, onComment, onShare, onClose }: Props) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -106,7 +125,7 @@ const ExpandedPostView = ({ post, liked, likesCount, onLike, onComment, onShare,
   const spawnEffect = useCallback((emojiId: string, src: string) => {
     const id = `fx-${counterRef.current++}`;
     const animType = ANIM_TYPES[Math.floor(Math.random() * ANIM_TYPES.length)];
-    const effect: FloatingEffect = { id, src, x: 5 + Math.random() * 70, y: 10 + Math.random() * 50, type: animType };
+    const effect: FloatingEffect = { id, emojiId, src, x: 5 + Math.random() * 70, y: 10 + Math.random() * 50, type: animType };
     setEffects(prev => [...prev, effect]);
     setTimeout(() => setEffects(prev => prev.filter(e => e.id !== id)), 5000);
   }, []);
@@ -255,11 +274,14 @@ const ExpandedPostView = ({ post, liked, likesCount, onLike, onComment, onShare,
             <AnimatePresence>
               {effects.map(effect => {
                 const a = ANIM[effect.type];
+                const buddyMotion = getYajBuddyMotion(effect.emojiId);
                 return (
                   <motion.div key={effect.id} initial={a.initial} animate={a.animate} transition={a.transition}
                     className="absolute pointer-events-none" style={{ left: `${effect.x}%`, top: `${effect.y}%` }}>
-                    <motion.div animate={{ rotate: [0, -8, 8, -6, 6, 0], scaleX: [1, 1.05, 0.95, 1], scaleY: [1, 0.95, 1.05, 1] }}
-                      transition={{ duration: 0.6, repeat: Infinity, ease: "easeInOut" }}>
+                    <motion.div
+                      animate={buddyMotion?.animate ?? { rotate: [0, -8, 8, -6, 6, 0], scaleX: [1, 1.05, 0.95, 1], scaleY: [1, 0.95, 1.05, 1] }}
+                      transition={buddyMotion?.transition ?? { duration: 0.6, repeat: Infinity, ease: "easeInOut" }}
+                    >
                       <img src={effect.src} alt="" className="w-20 h-20 md:w-28 md:h-28 object-contain"
                         style={{ filter: "drop-shadow(0 0 12px rgba(255,165,0,0.6)) drop-shadow(0 4px 8px rgba(0,0,0,0.4))" }} />
                     </motion.div>
@@ -278,7 +300,7 @@ const ExpandedPostView = ({ post, liked, likesCount, onLike, onComment, onShare,
                   className="mb-2 flex items-start gap-2 max-w-[80%]">
                   <div className="px-3 py-1.5 bg-black/50 backdrop-blur-sm rounded-2xl">
                     <span className="text-[11px] font-bold text-white/80">{fc.name}: </span>
-                    <span className="text-[12px] text-white/90">{fc.text}</span>
+                    <span className="text-[12px] text-white/90">{renderEmojiContent(fc.text)}</span>
                   </div>
                 </motion.div>
               ))}
@@ -522,7 +544,7 @@ const ExpandedPostView = ({ post, liked, likesCount, onLike, onComment, onShare,
                       <div className="flex-1 min-w-0">
                         <div className="bg-secondary rounded-2xl px-3 py-2">
                           <p className="text-[12px] font-bold text-foreground">{c.profile.display_name || "User"}</p>
-                          <p className="text-[13px] text-foreground">{c.content}</p>
+                          <p className="text-[13px] text-foreground">{renderEmojiContent(c.content)}</p>
                         </div>
                         <div className="flex items-center gap-3 mt-1 px-1">
                           <span className="text-[11px] text-muted-foreground">{formatDistanceToNow(new Date(c.created_at), { addSuffix: false })}</span>

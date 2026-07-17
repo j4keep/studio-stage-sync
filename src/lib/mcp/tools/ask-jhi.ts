@@ -3,11 +3,11 @@ import { z } from "zod";
 
 export default defineTool({
   name: "ask_jhi",
-  title: "Ask Jhi (WHEUAT creative companion)",
+  title: "Ask YAJ (YAJ Buddy community companion)",
   description:
-    "Ask Jhi — WHEUAT's AI creative companion for indie artists and creators — a question about content ideas, music, channel growth, or the WHEUAT platform.",
+    "Ask YAJ Buddy — YAJ's AI community companion — about creative ideas, music, opportunities, Circles, collaboration, or the YAJ platform.",
   inputSchema: {
-    prompt: z.string().min(1).max(2000).describe("The question or request for Jhi."),
+    prompt: z.string().min(1).max(2000).describe("The question or request for YAJ Buddy."),
   },
   annotations: { readOnlyHint: true, idempotentHint: false, openWorldHint: false },
   handler: async ({ prompt }) => {
@@ -26,7 +26,7 @@ export default defineTool({
     });
     if (!resp.ok || !resp.body) {
       const txt = await resp.text().catch(() => "");
-      return { content: [{ type: "text", text: `Jhi error (${resp.status}): ${txt}` }], isError: true };
+      return { content: [{ type: "text", text: `YAJ Buddy error (${resp.status}): ${txt}` }], isError: true };
     }
     // Parse SSE stream
     const reader = resp.body.getReader();

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 const TILES = [
   { label: "Live Podcasts", desc: "Record, edit & publish", icon: Radio, path: "/tv/podcast" },
-  { label: "JHi.TV", desc: "Manage your videos", icon: Tv, path: "/tv/wheuat" },
+  { label: "YAJ.TV", desc: "Manage your videos", icon: Tv, path: "/tv/wheuat" },
   { label: "Recording Studio", desc: "Remote sessions", icon: Mic2, path: "/wstudio/session/join" },
   { label: "Store", desc: "Sell your merch", icon: ShoppingBag, path: "/my-store" },
   { label: "Studios", desc: "List your room", icon: Building2, path: "/my-studios" },

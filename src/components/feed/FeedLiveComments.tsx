@@ -21,9 +21,9 @@ const FeedLiveComments = ({ postId, isActive }: FeedLiveCommentsProps) => {
   const counterRef = useRef(0);
 
   const renderContent = useCallback((content: string) => {
-    const parts = content.split(/(:[a-z0-9]+:)/g);
+    const parts = content.split(/(:[a-z0-9-]+:)/g);
     return parts.map((part, index) => {
-      const match = part.match(/^:([a-z0-9]+):$/);
+      const match = part.match(/^:([a-z0-9-]+):$/);
       if (match && EMOJI_MAP[match[1]]) {
         return (
           <img

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { ArrowUp, Trash2, Paperclip, X, Music2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import JhiIcon from "@/components/JhiIcon";
+import YajBuddyIcon from "@/components/YajBuddyIcon";
 import ReactMarkdown from "react-markdown";
 
 type ContentPart =
@@ -18,10 +18,10 @@ type Msg = {
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ask-jhi`;
 
 const SUGGESTIONS = [
-  "Give me a 4-bar 808 loop like Lil Jon's Get Low",
-  "Suggest a chord progression for an R&B ballad in F minor",
-  "What BPM and key works for a drill beat?",
-  "How do I mix vocals so they sit on top of the beat?",
+  "Help me find a creative collaborator in my community",
+  "Give me a launch plan for my next song",
+  "Write a strong post for a new opportunity",
+  "How can I grow my Circle and keep people engaged?",
 ];
 
 // Map a File's MIME type to the format string Lovable AI Gateway expects.
@@ -137,7 +137,7 @@ const AskJhiPage = () => {
 
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({}));
-        throw new Error(err.error || "Failed to reach Jhi");
+        throw new Error(err.error || "Failed to reach YAJ Buddy");
       }
 
       if (!resp.body) throw new Error("No response stream");
@@ -188,7 +188,7 @@ const AskJhiPage = () => {
         }
       }
     } catch (e: any) {
-      console.error("Jhi error:", e);
+      console.error("YAJ Buddy error:", e);
       toast({ title: "Oops!", description: e.message || "Something went wrong", variant: "destructive" });
       if (assistantSoFar === "") {
         setMessages((prev) => prev.slice(0, -1));
@@ -233,11 +233,11 @@ const AskJhiPage = () => {
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
-            <JhiIcon className="w-5 h-5" active />
+            <YajBuddyIcon className="w-5 h-5" active />
           </div>
           <div>
-            <h1 className="text-sm font-display font-bold text-foreground">Ask Jhi</h1>
-            <p className="text-[10px] text-muted-foreground">Producer · Engineer · JHi guide</p>
+            <h1 className="text-sm font-display font-bold text-foreground">Ask YAJ</h1>
+            <p className="text-[10px] text-muted-foreground">YAJ Buddy · Community companion</p>
           </div>
         </div>
         {messages.length > 0 && (
@@ -252,12 +252,12 @@ const AskJhiPage = () => {
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-4">
             <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-              <JhiIcon className="w-10 h-10" active />
+              <YajBuddyIcon className="w-10 h-10" active />
             </div>
             <div className="text-center">
-              <h2 className="text-lg font-display font-bold text-foreground">Hey! I'm Jhi 🎛️</h2>
+              <h2 className="text-lg font-display font-bold text-foreground">Hey! I'm YAJ Buddy</h2>
               <p className="text-xs text-muted-foreground mt-1 max-w-[280px]">
-                Your in-house producer. Ask for beats, chord progressions, mix tips — or attach a clip and I'll break down the BPM, key, and vibe.
+                Your AI community companion for ideas, opportunities, music, and building together. Your space. Your people. Your vibe.
               </p>
             </div>
             <div className="grid grid-cols-1 gap-2 w-full max-w-sm mt-2">
@@ -336,7 +336,7 @@ const AskJhiPage = () => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={audioFile ? "Add a note (optional)..." : "Ask Jhi anything..."}
+            placeholder={audioFile ? "Add a note (optional)..." : "Ask YAJ Buddy anything..."}
             rows={1}
             className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground resize-none outline-none max-h-24"
             style={{ minHeight: "24px" }}

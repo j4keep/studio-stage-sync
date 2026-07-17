@@ -9,7 +9,7 @@ import { initFeedAudioUnlockOnGesture } from "@/lib/feed-video-playback";
 import FeedThumbCard from "@/components/feed/FeedThumbCard";
 import FeedFullscreenViewer from "@/components/feed/FeedFullscreenViewer";
 import FlagBackground from "@/components/FlagBackground";
-import jhiLogo from "@/assets/wheuat-logo.png";
+import yajLogo from "@/assets/yaj-logo.png";
 
 type TabId = "radio" | "battle" | "marketplace" | "deals";
 const TABS: { id: TabId; label: string; route: string; icon: typeof RadioIcon }[] = [
@@ -76,7 +76,7 @@ const FeedPage = () => {
       {/* Header overlay — single row: logo + tabs + search + more */}
       <div className="absolute top-0 left-0 right-0 z-40 px-3 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-1.5 bg-background/90 backdrop-blur-md border-b border-border/70 pointer-events-none">
         <div className="flex items-center gap-2 text-foreground pointer-events-auto">
-          <img src={jhiLogo} alt="JHi" className="h-10 w-auto shrink-0" />
+          <img src={yajLogo} alt="YAJ" className="h-10 w-auto shrink-0" />
           <div className="flex-1 min-w-0 flex items-center gap-1 overflow-x-auto scrollbar-hide">
             {TABS.map((tab) => {
               const Icon = tab.icon;

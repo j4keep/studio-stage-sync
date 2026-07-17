@@ -11,6 +11,7 @@ export type StickerCategory =
   | "sports"
   | "music"
   | "creator"
+  | "yaj-buddy"
   | "wheuat";
 
 export interface StickerDef {
@@ -28,7 +29,8 @@ export const STICKER_CATEGORIES: { id: StickerCategory; label: string }[] = [
   { id: "sports", label: "Sports" },
   { id: "music", label: "Music" },
   { id: "creator", label: "Creator" },
-  { id: "wheuat", label: "JHi" },
+  { id: "yaj-buddy", label: "YAJ Buddy" },
+  { id: "wheuat", label: "Classic" },
 ];
 
 export const STICKER_LIBRARY: StickerDef[] = STICKER_ASSETS.map((a) => ({
@@ -59,8 +61,8 @@ export function getStickersByCategory(
     list = STICKER_LIBRARY.filter(
       (s) => s.pack === "trending" || s.pack === "celebration" || s.pack === "love",
     );
-  } else if (category === "wheuat") {
-    list = STICKER_LIBRARY.filter((s) => s.pack === "wheuat");
+  } else if (category === "wheuat" || category === "yaj-buddy") {
+    list = STICKER_LIBRARY.filter((s) => s.pack === category);
   } else {
     list = STICKER_LIBRARY.filter((s) => s.pack === category);
   }
@@ -87,13 +89,13 @@ export function getSuggestedStickers(ctx: {
   const ids: string[] = [];
 
   if (ctx.hasMusic) {
-    ids.push("st-music-note", "st-dj", "st-mic", "st-headphones", "st-wheuat-wave");
+    ids.push("st-yaj-dance", "st-music-note", "st-dj", "st-mic", "st-headphones");
   }
   if (ctx.mediaType === "video" || ctx.likelyHasFace) {
-    ids.push("st-wheuat-crown", "st-heart", "st-cool", "st-star-burst");
+    ids.push("st-yaj-wave", "st-yaj-peace", "st-heart", "st-cool", "st-star-burst");
   }
   if (ctx.mediaType === "video") {
-    ids.push("st-fire", "st-clap", "st-laugh", "st-trophy", "st-party");
+    ids.push("st-yaj-celebrate", "st-fire", "st-clap", "st-laugh", "st-trophy");
   } else {
     ids.push("st-heart", "st-star-burst", "st-cool", "st-love-eyes");
   }

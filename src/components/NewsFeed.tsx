@@ -43,7 +43,7 @@ const fetchPublishedArticles = async (): Promise<NewsArticle[]> => {
     .in("user_id", authorIds);
 
   const nameMap: Record<string, string> = {};
-  (profiles || []).forEach((p: any) => { nameMap[p.user_id] = p.display_name || "JHi"; });
+  (profiles || []).forEach((p: any) => { nameMap[p.user_id] = p.display_name || "YAJ"; });
 
   return data.map((a: any) => ({
     id: a.id,
@@ -52,7 +52,7 @@ const fetchPublishedArticles = async (): Promise<NewsArticle[]> => {
     category: a.category,
     cover_url: resolveImageUrl(a.cover_url),
     published_at: a.published_at,
-    author_name: nameMap[a.author_id] || "JHi",
+    author_name: nameMap[a.author_id] || "YAJ",
   }));
 };
 
@@ -90,7 +90,7 @@ const NewsFeed = () => {
 
   if (articles.length === 0) return null;
 
-  // JHi articles first, then group the rest by category
+  // YAJ articles first, then group the rest by category
   const wheuatArticles = articles.filter(a => a.category === "Featured" || a.category === "New Music" || a.category === "Upcoming Artist" || a.category === "Behind The Scenes" || a.category === "Interview" || a.category === "Trending");
   const otherArticles = articles.filter(a => !wheuatArticles.includes(a));
   
@@ -155,13 +155,13 @@ const NewsFeed = () => {
         <div className="flex items-center gap-2">
           <Newspaper className="w-4 h-4 text-primary" />
           <h2 className="text-sm font-display font-bold text-foreground uppercase tracking-wide">
-            JHi News
+            YAJ News
           </h2>
         </div>
       </div>
 
       <div className="rounded-2xl bg-card border border-border overflow-hidden py-2">
-        {/* Top Stories - JHi first */}
+        {/* Top Stories - YAJ first */}
         {Object.entries(wheuatGrouped).map(([cat, items]) =>
           renderCategory(cat, items)
         )}

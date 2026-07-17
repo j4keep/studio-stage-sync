@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { EMOJI_CHARACTERS, EMOJI_MAP } from "@/lib/emoji-characters";
+import { getYajBuddyMotion } from "@/lib/yaj-buddy-motion";
 
 /* ───────── animation variants with body movement ───────── */
 interface FloatingEffect {
@@ -143,6 +144,7 @@ const BattleEffectsOverlay = ({ battleId, side, isExpanded }: BattleEffectsOverl
         <AnimatePresence>
           {effects.map((effect) => {
             const anim = ANIMATION_VARIANTS[effect.animationType];
+            const buddyMotion = getYajBuddyMotion(effect.emojiId);
             return (
               <motion.div
                 key={effect.id}
@@ -153,12 +155,12 @@ const BattleEffectsOverlay = ({ battleId, side, isExpanded }: BattleEffectsOverl
                 style={{ left: `${effect.x}%`, top: `${effect.y}%` }}
               >
                 <motion.div
-                  animate={{
+                  animate={buddyMotion?.animate ?? {
                     rotate: [0, -8, 8, -6, 6, -4, 4, 0],
                     scaleX: [1, 1.05, 0.95, 1.05, 0.95, 1],
                     scaleY: [1, 0.95, 1.05, 0.95, 1.05, 1],
                   }}
-                  transition={{
+                  transition={buddyMotion?.transition ?? {
                     duration: 0.6,
                     repeat: Infinity,
                     ease: "easeInOut",

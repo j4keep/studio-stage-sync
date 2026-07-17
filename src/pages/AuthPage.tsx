@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import wheuatLogo from "@/assets/wheuat-logo.png";
+import yajLogo from "@/assets/yaj-logo.png";
 
 type AuthView = "splash" | "welcome" | "login" | "signup" | "forgot";
 
@@ -100,8 +100,8 @@ const AuthPage = () => {
       {view === "splash" && (
         <div className="flex flex-col items-center justify-center">
           <img
-            src={wheuatLogo}
-            alt="JHi"
+            src={yajLogo}
+            alt="YAJ"
             className="w-40 h-40 object-contain"
           />
           <div className="w-40 h-1 rounded-full gradient-primary mt-6" />
@@ -112,15 +112,15 @@ const AuthPage = () => {
       {view === "welcome" && (
         <div className="w-full flex flex-col items-center">
           <img
-            src={wheuatLogo}
-            alt="JHi"
+            src={yajLogo}
+            alt="YAJ"
             className="w-24 h-24 object-contain mb-6"
           />
           <h1 className="text-3xl font-display font-bold text-foreground mb-2">
-            Welcome to JHi
+            Welcome to YAJ
           </h1>
           <p className="text-sm text-muted-foreground text-center mb-10">
-            Your music. Your platform. Your future.
+            Your space. Your people. Your vibe.
           </p>
           <button
             onClick={() => setView("login")}
@@ -207,7 +207,7 @@ const AuthPage = () => {
               <ArrowLeft className="w-5 h-5" />
             </button>
             <h2 className="text-2xl font-display font-bold text-foreground mb-1">Create account</h2>
-            <p className="text-sm text-muted-foreground mb-8">Join the JHi community</p>
+            <p className="text-sm text-muted-foreground mb-8">Join the YAJ community</p>
 
             <div className="flex flex-col gap-4">
               <div className="relative">

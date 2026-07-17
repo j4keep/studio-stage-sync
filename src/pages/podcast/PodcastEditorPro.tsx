@@ -412,7 +412,7 @@ export default function PodcastEditorPro({
           toast({ title: "Saved to Project" });
         } else if (mode === "publish" && onPublishToTv) {
           await onPublishToTv(src0.blob, mime, ext);
-          toast({ title: "Published to JHi.TV" });
+          toast({ title: "Published to YAJ.TV" });
         } else {
           const url = URL.createObjectURL(src0.blob);
           const a = document.createElement("a"); a.href = url; a.download = `wstudio-podcast.${ext}`;
@@ -522,7 +522,7 @@ export default function PodcastEditorPro({
         toast({ title: "Saved to Project", description: "Edited episode is in your Project library." });
       } else if (mode === "publish" && onPublishToTv) {
         await onPublishToTv(blob, mime, ext);
-        toast({ title: "Published to JHi.TV", description: "Live on the TV feed now." });
+        toast({ title: "Published to YAJ.TV", description: "Live on the TV feed now." });
       } else {
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
@@ -649,7 +649,7 @@ export default function PodcastEditorPro({
         {onPublishToTv && (
           <Button size="sm" onClick={() => exportFinal("publish")} disabled={exporting} className={`${onSaveToProject ? "" : "ml-auto"} bg-sky-600 hover:bg-sky-500 gap-1.5 h-8`}>
             {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Film className="w-3.5 h-3.5" />}
-            {exporting ? `Publishing… ${exportProgress}%` : "Publish to JHi.TV"}
+            {exporting ? `Publishing… ${exportProgress}%` : "Publish to YAJ.TV"}
           </Button>
         )}
         <Button size="sm" onClick={() => exportFinal("download")} disabled={exporting} className={`${(onSaveToProject || onPublishToTv) ? "" : "ml-auto"} bg-purple-600 hover:bg-purple-500 gap-1.5 h-8`}>

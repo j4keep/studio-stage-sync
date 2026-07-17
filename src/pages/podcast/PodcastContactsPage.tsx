@@ -71,7 +71,7 @@ const PodcastContactsPage = () => {
             <ArrowLeft className="h-4 w-4" />
           </button>
           <div className="flex-1 min-w-0">
-            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">JHi Studio</div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">YAJ Studio</div>
             <h1 className="truncate text-2xl font-bold">People · Contacts</h1>
           </div>
           <Button onClick={() => { setEditing(null); setShowForm(true); }} className="gap-1.5">

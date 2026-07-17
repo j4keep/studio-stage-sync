@@ -1,4 +1,4 @@
-/** Gradient circle + up-arrow — matches JHi create branding, scales to fill the nav button. */
+/** Gradient circle + up-arrow — matches YAJ create branding, scales to fill the nav button. */
 const CreateNavIcon = ({ className = "w-full h-full" }: { className?: string }) => (
   <svg viewBox="0 0 80 80" fill="none" className={className} aria-hidden>
     <defs>

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { ArrowUp, Trash2, Paperclip, X, Music2, MessageSquare, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
-import JhiIcon from "@/components/JhiIcon";
+import YajBuddyIcon from "@/components/YajBuddyIcon";
 
 type ContentPart =
   | { type: "text"; text: string }
@@ -47,7 +47,7 @@ const QUICK_PROMPTS = [
 ];
 
 /**
- * Floating Jhi button + slide-in side panel for use inside the DAW.
+ * Floating YAJ Buddy button + slide-in side panel for use inside the DAW.
  * Self-contained: streams from the same `ask-jhi` edge function.
  */
 export function JhiDawPanel({ themeMode = "dark" }: { themeMode?: "light" | "dark" }) {
@@ -128,7 +128,7 @@ export function JhiDawPanel({ themeMode = "dark" }: { themeMode?: "light" | "dar
       });
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({}));
-        throw new Error(err.error || "Failed to reach Jhi");
+        throw new Error(err.error || "Failed to reach YAJ Buddy");
       }
       if (!resp.body) throw new Error("No response stream");
 
@@ -156,7 +156,7 @@ export function JhiDawPanel({ themeMode = "dark" }: { themeMode?: "light" | "dar
         }
       }
     } catch (e: any) {
-      toast.error(e.message || "Jhi error");
+      toast.error(e.message || "YAJ Buddy error");
       if (soFar === "") setMessages((prev) => prev.slice(0, -1));
     } finally {
       setIsLoading(false);
@@ -180,10 +180,10 @@ export function JhiDawPanel({ themeMode = "dark" }: { themeMode?: "light" | "dar
       {!open && (
         <button
           onClick={() => setOpen(true)}
-          className="fixed bottom-6 right-6 z-[80] w-14 h-14 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 shadow-2xl shadow-cyan-500/30 flex items-center justify-center text-white hover:scale-105 active:scale-95 transition-transform"
-          title="Ask Jhi"
+          className="fixed bottom-6 right-6 z-[80] w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-violet-700 shadow-2xl shadow-purple-500/30 flex items-center justify-center text-white hover:scale-105 active:scale-95 transition-transform"
+          title="Ask YAJ Buddy"
         >
-          <JhiIcon className="w-7 h-7" active />
+          <YajBuddyIcon className="w-7 h-7" active />
         </button>
       )}
 
@@ -196,11 +196,11 @@ export function JhiDawPanel({ themeMode = "dark" }: { themeMode?: "light" | "dar
           <div className={`flex items-center justify-between px-4 py-3 border-b ${border}`}>
             <div className="flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-500/20 to-blue-600/20 flex items-center justify-center">
-                <JhiIcon className="w-5 h-5" active />
+                <YajBuddyIcon className="w-5 h-5" active />
               </div>
               <div>
-                <div className="text-sm font-bold">Ask Jhi</div>
-                <div className={`text-[10px] ${muted}`}>Producer · in-DAW assistant</div>
+                <div className="text-sm font-bold">YAJ Buddy</div>
+                <div className={`text-[10px] ${muted}`}>Creative copilot · Community companion</div>
               </div>
             </div>
             <div className="flex items-center gap-1">
@@ -230,9 +230,9 @@ export function JhiDawPanel({ themeMode = "dark" }: { themeMode?: "light" | "dar
                   <Sparkles className="w-7 h-7 text-cyan-400" />
                 </div>
                 <div className="text-center">
-                  <div className="text-base font-bold">Your in-house producer</div>
+                  <div className="text-base font-bold">Create with YAJ Buddy</div>
                   <div className={`text-xs ${muted} mt-1 max-w-[280px]`}>
-                    Ask for beats, chord progressions, mix tips. Attach a clip and I'll tell you the BPM, key, and vibe.
+                    Ask for beats, chord progressions, or mix tips. Your space. Your people. Your vibe.
                   </div>
                 </div>
                 <div className="w-full space-y-1.5">

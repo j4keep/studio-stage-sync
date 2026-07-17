@@ -133,14 +133,14 @@ export function bindFeedMediaSession(
 ): () => void {
   if (!("mediaSession" in navigator)) return () => {};
 
-  const title = meta.title?.trim() || "JHi";
-  const artist = meta.artist?.trim() || "JHi";
+  const title = meta.title?.trim() || "YAJ";
+  const artist = meta.artist?.trim() || "YAJ";
 
   try {
     navigator.mediaSession.metadata = new MediaMetadata({
       title,
       artist,
-      album: "JHi Feed",
+      album: "YAJ Feed",
     });
   } catch {
     /* MediaMetadata unsupported */

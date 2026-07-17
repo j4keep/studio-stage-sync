@@ -10,7 +10,7 @@ import RadioShareSheet from "@/components/RadioShareSheet";
 import RadioMoreSheet from "@/components/RadioMoreSheet";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import BoostAdOverlay from "@/components/BoostAdOverlay";
-import jhiLogo from "@/assets/wheuat-logo.png";
+import yajLogo from "@/assets/yaj-logo.png";
 
 
 const RADIO_GENRE_FILTERS = ["All", "Podcasts", ...GENRES.filter(g => g !== "Beats")];
@@ -145,7 +145,7 @@ const RadioPage = () => {
           <button onClick={() => navigate(-1)} className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center">
             <ChevronDown className="w-4 h-4 text-muted-foreground" />
           </button>
-          <img src={jhiLogo} alt="JHi" className="h-5 w-auto" />
+          <img src={yajLogo} alt="YAJ" className="h-5 w-auto" />
           <div className="w-8" />
         </div>
         <div className="flex gap-2 w-full overflow-x-auto scrollbar-hide mb-6 pb-1">

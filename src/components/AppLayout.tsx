@@ -5,7 +5,7 @@ import GlobalRadioPlayer from "./GlobalRadioPlayer";
 import GlobalPlaylistPlayer from "./GlobalPlaylistPlayer";
 import PlaylistPlayerSheet from "./PlaylistPlayerSheet";
 import NotificationBell from "./NotificationBell";
-import JhiIcon from "./JhiIcon";
+import YajBuddyIcon from "./YajBuddyIcon";
 import { MessageCircle } from "lucide-react";
 import { useProGate } from "@/hooks/use-pro-gate";
 import ProGateModal from "./ProGateModal";
@@ -22,11 +22,11 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   const isFullScreenPage = ["/", "/feed"].includes(location.pathname) || isPodcastWorkspace || isPodcastLobby;
   const showTopBar = !["/auth", "/", "/feed"].includes(location.pathname) && !isPodcastWorkspace && !isPodcastLobby;
 
-  const handleAskJhi = () => {
+  const handleAskYaj = () => {
     if (!isPro) {
-      requirePro("Ask Jhi");
+      requirePro("Ask YAJ");
     } else {
-      navigate("/ask-jhi");
+      navigate("/ask-yaj");
     }
   };
 
@@ -63,10 +63,11 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
       {showTopBar && (
         <div className="sticky top-0 z-40 bg-background/90 backdrop-blur-xl border-b border-border px-4 py-2 flex items-center justify-end gap-2">
           <button
-            onClick={handleAskJhi}
+            onClick={handleAskYaj}
             className="relative w-9 h-9 rounded-full bg-muted flex items-center justify-center"
+            aria-label="Ask YAJ Buddy"
           >
-            <JhiIcon className="w-4.5 h-4.5" active={location.pathname === "/ask-jhi"} />
+            <YajBuddyIcon className="w-4.5 h-4.5" active={location.pathname === "/ask-yaj"} />
             {!isPro && (
               <span className="absolute -top-0.5 -right-0.5 text-[6px] bg-primary text-primary-foreground px-1 py-0.5 rounded-full font-bold leading-none">PRO</span>
             )}
