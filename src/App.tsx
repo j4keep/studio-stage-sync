@@ -250,7 +250,8 @@ const ProtectedRoutes = () => {
         <Route path="/ask-yaj" element={<AskJhiPage />} />
         <Route path="/ask-jhi" element={<Navigate to="/ask-yaj" replace />} />
         <Route path="/explore" element={<ExplorePage />} />
-        <Route path="/communities" element={<Navigate to="/store" replace />} />
+        <Route path="/jobs" element={<JobsPage />} />
+        <Route path="/communities" element={<Navigate to="/circle" replace />} />
         <Route path="/tv/watch" element={<WheuatTvWatchPage />} />
         <Route path="/tv/*" element={<Navigate to="/" replace />} />
         <Route path="/podcast/*" element={<Navigate to="/" replace />} />
