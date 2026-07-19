@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Home, User, ShoppingCart, Compass } from "lucide-react";
+import { Home, User, Briefcase, Compass } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import ProGateModal from "@/components/ProGateModal";
 import { useProGate } from "@/hooks/use-pro-gate";
@@ -39,7 +39,7 @@ const BottomNav = () => {
   const tabs = [
     { path: "/", label: "Home", icon: Home },
     { path: "/explore", label: "Explore", icon: Compass },
-    { path: "/store", label: "Shop", icon: ShoppingCart },
+    { path: "/jobs", label: "Jobs", icon: Briefcase },
     { path: "/profile", label: "Profile", icon: User },
   ] as const;
 
