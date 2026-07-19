@@ -51,6 +51,7 @@ import AdminTicketsPage from "./pages/AdminTicketsPage";
 import AdminSoundLibraryPage from "./pages/AdminSoundLibraryPage";
 import AskJhiPage from "./pages/AskJhiPage";
 import ExplorePage from "./pages/ExplorePage";
+import JobsPage from "./pages/JobsPage";
 import WheuatTvWatchPage from "./pages/wheuat-tv/WheuatTvWatchPage";
 
 
