@@ -56,6 +56,8 @@ import JobDetailPage from "./pages/JobDetailPage";
 import GigDetailPage from "./pages/GigDetailPage";
 import MyJobsPage from "./pages/MyJobsPage";
 import ResumeBuilderPage from "./pages/ResumeBuilderPage";
+import JobPreferencesPage from "./pages/JobPreferencesPage";
+import EmployerDashboardPage from "./pages/EmployerDashboardPage";
 import WheuatTvWatchPage from "./pages/wheuat-tv/WheuatTvWatchPage";
 
 
@@ -259,6 +261,8 @@ const ProtectedRoutes = () => {
         <Route path="/gigs/:id" element={<GigDetailPage />} />
         <Route path="/my-jobs" element={<MyJobsPage />} />
         <Route path="/resume-builder" element={<ResumeBuilderPage />} />
+        <Route path="/job-preferences" element={<JobPreferencesPage />} />
+        <Route path="/employer-dashboard" element={<EmployerDashboardPage />} />
         <Route path="/communities" element={<Navigate to="/circle" replace />} />
         <Route path="/tv/watch" element={<WheuatTvWatchPage />} />
         <Route path="/tv/*" element={<Navigate to="/" replace />} />

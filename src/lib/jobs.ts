@@ -64,3 +64,39 @@ export function timeAgo(iso: string): string {
   if (s < 86400) return `${Math.floor(s / 3600)}h`;
   return `${Math.floor(s / 86400)}d`;
 }
+
+export type Prefs = {
+  titles?: string[] | null;
+  categories?: string[] | null;
+  locations?: string[] | null;
+  employment_types?: string[] | null;
+  experience_level?: string | null;
+  salary_expect?: number | null;
+  remote_ok?: boolean | null;
+  hybrid_ok?: boolean | null;
+  onsite_ok?: boolean | null;
+  alert_keywords?: string[] | null;
+};
+
+/** Score a job/gig listing against a user's preferences (0-100). */
+export function scoreListing(item: any, prefs: Prefs | null): number {
+  if (!prefs) return 0;
+  let score = 0;
+  const title = (item.title || "").toLowerCase();
+  const cat = (item.category || "").toLowerCase();
+  const loc = (item.location || "").toLowerCase();
+  const type = item.employment_type || "";
+  const mode = item.remote_mode || "";
+
+  (prefs.titles || []).forEach((t) => { if (t && title.includes(t.toLowerCase())) score += 25; });
+  (prefs.alert_keywords || []).forEach((k) => { if (k && title.includes(k.toLowerCase())) score += 15; });
+  (prefs.categories || []).forEach((c) => { if (c && cat.includes(c.toLowerCase())) score += 20; });
+  (prefs.locations || []).forEach((l) => { if (l && loc.includes(l.toLowerCase())) score += 15; });
+  if (prefs.employment_types?.includes(type)) score += 10;
+  if (item.experience_level && prefs.experience_level === item.experience_level) score += 8;
+  if (mode === "remote" && prefs.remote_ok) score += 12;
+  if (mode === "hybrid" && prefs.hybrid_ok) score += 8;
+  if (mode === "onsite" && prefs.onsite_ok) score += 6;
+  if (prefs.salary_expect && item.salary_max && item.salary_max >= prefs.salary_expect) score += 10;
+  return score;
+}
