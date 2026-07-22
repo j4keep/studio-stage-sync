@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Search, MapPin, Clock, Briefcase, Sparkles, Plus, X, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { JOB_CATEGORIES, formatSalary, timeAgo, EMPLOYMENT_TYPES } from "@/lib/jobs";
+import { JOB_CATEGORIES, formatSalary, timeAgo, EMPLOYMENT_TYPES, scoreListing, type Prefs } from "@/lib/jobs";
 import PostChooserSheet from "@/components/jobs/PostChooserSheet";
 import PostJobSheet from "@/components/jobs/PostJobSheet";
 import PostGigSheet from "@/components/jobs/PostGigSheet";
@@ -45,9 +45,19 @@ export default function JobsPage() {
   const [showChooser, setShowChooser] = useState(false);
   const [showJobSheet, setShowJobSheet] = useState(false);
   const [showGigSheet, setShowGigSheet] = useState(false);
+  const [forYou, setForYou] = useState(false);
+  const [prefs, setPrefs] = useState<Prefs | null>(null);
   const [recents, setRecents] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem(RECENT_KEY) || "[]"); } catch { return []; }
   });
+
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const { data } = await supabase.from("job_preferences").select("*").eq("user_id", user.id).maybeSingle();
+      if (data) setPrefs(data as Prefs);
+    })();
+  }, [user]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -94,6 +104,14 @@ export default function JobsPage() {
     }
     return items;
   }, [query, activeCategory, listings]);
+
+  const displayed = useMemo(() => {
+    if (!forYou || !prefs) return filtered;
+    return [...filtered]
+      .map((i) => ({ i, s: scoreListing(i, prefs) }))
+      .sort((a, b) => b.s - a.s)
+      .map(({ i }) => i);
+  }, [filtered, forYou, prefs]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
