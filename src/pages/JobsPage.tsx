@@ -241,6 +241,7 @@ export default function JobsPage() {
         ) : (
           displayed.map((item) => {
             const s = forYou && prefs ? scoreListing(item, prefs) : 0;
+            const verified = item.__kind === "job" && verifiedEmployers.has((item as JobRow).employer_id);
             return (
             <button key={`${item.__kind}-${item.id}`} type="button"
               onClick={() => nav(item.__kind === "job" ? `/jobs/${item.id}` : `/gigs/${item.id}`)}
@@ -249,6 +250,9 @@ export default function JobsPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <p className="text-sm font-bold text-foreground truncate">{item.title}</p>
+                    {verified && (
+                      <BadgeCheck className="w-3.5 h-3.5 text-sky-500 shrink-0" aria-label="Verified employer" />
+                    )}
                     {item.__kind === "gig" && (
                       <span className="shrink-0 text-[9px] font-bold uppercase tracking-wide bg-emerald-500/15 text-emerald-600 px-1.5 py-0.5 rounded">Gig</span>
                     )}
