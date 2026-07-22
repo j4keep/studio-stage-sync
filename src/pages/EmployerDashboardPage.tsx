@@ -51,10 +51,30 @@ export default function EmployerDashboardPage() {
       if (emp) {
         setCompanyId(emp.id);
         setCompany({ company_name: emp.company_name || "", description: emp.description || "", website: emp.website || "" });
+        setVerified(!!emp.verified);
       }
       setLoading(false);
     })();
   }, [user]);
+
+  const requestVerification = async () => {
+    if (!user) return;
+    if (!company.company_name.trim()) {
+      toast.error("Save your company name first");
+      setShowCompany(true);
+      return;
+    }
+    setRequesting(true);
+    const { error } = await supabase.from("support_tickets").insert({
+      user_id: user.id,
+      subject: `🪪 Business verification — ${company.company_name}`,
+      message: `Please verify business account.\nCompany: ${company.company_name}\nWebsite: ${company.website || "—"}\nDescription: ${company.description || "—"}`,
+      status: "open",
+    });
+    setRequesting(false);
+    if (error) return toast.error(error.message);
+    toast.success("Verification requested — we'll review shortly");
+  };
 
   const openJob = async (jobId: string) => {
     setSelectedJob(jobId);
