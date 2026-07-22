@@ -18,6 +18,7 @@ type JobRow = {
   location: string | null;
   remote_mode: string;
   created_at: string;
+  employer_id: string;
   __kind: "job";
 };
 type GigRow = {
