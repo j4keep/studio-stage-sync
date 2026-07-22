@@ -131,7 +131,10 @@ export default function EmployerDashboardPage() {
         <button onClick={() => nav(-1)} className="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
           <ArrowLeft className="w-4 h-4" />
         </button>
-        <h1 className="text-base font-bold flex-1">Employer Dashboard</h1>
+        <h1 className="text-base font-bold flex-1 flex items-center gap-1">
+          Employer Dashboard
+          {verified && <BadgeCheck className="w-4 h-4 text-sky-500" aria-label="Verified" />}
+        </h1>
         <button onClick={() => setShowCompany(true)} className="h-8 px-3 rounded-full bg-muted text-[11px] font-bold flex items-center gap-1">
           <Building2 className="w-3 h-3" /> Company
         </button>
@@ -143,6 +146,24 @@ export default function EmployerDashboardPage() {
           <Stat icon={<Users className="w-4 h-4" />} label="Total applicants" value={totalApps} />
           <Stat icon={<TrendingUp className="w-4 h-4" />} label="New" value={newApps} highlight />
         </div>
+
+        {!verified && (
+          <button
+            onClick={requestVerification}
+            disabled={requesting}
+            className="w-full flex items-center justify-between gap-2 p-3 rounded-2xl bg-sky-500/10 border border-sky-500/25 text-left"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <ShieldCheck className="w-4 h-4 text-sky-500 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-sm font-bold">Get the verified badge</p>
+                <p className="text-[11px] text-muted-foreground">Build trust — verified badge shows on all your jobs.</p>
+              </div>
+            </div>
+            <span className="text-[11px] font-bold text-sky-600 shrink-0">{requesting ? "Sending…" : "Request"}</span>
+          </button>
+        )}
+
 
         {jobs.length === 0 ? (
           <div className="text-center py-16">
