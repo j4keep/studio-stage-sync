@@ -63,7 +63,7 @@ export default function JobsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     const [{ data: jobs }, { data: gigs }] = await Promise.all([
-      supabase.from("job_listings").select("id,title,category,employment_type,salary_min,salary_max,location,remote_mode,created_at")
+      supabase.from("job_listings").select("id,title,category,employment_type,salary_min,salary_max,location,remote_mode,created_at,employer_id")
         .eq("status", "open").order("created_at", { ascending: false }).limit(50),
       supabase.from("gig_listings").select("id,title,category,location,budget_min,budget_max,urgency,created_at")
         .eq("status", "open").order("created_at", { ascending: false }).limit(50),
