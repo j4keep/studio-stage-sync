@@ -209,27 +209,25 @@ export default function EmployerDashboardPage() {
                       <FunnelChart apps={apps} />
                     </>
                     )}
-                    {apps.length > 0 && (
-                      apps.map((a) => (
-                        <div key={a.id} className="rounded-xl bg-card border border-border p-3">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm font-bold">{a.applicant?.display_name ?? "Applicant"}</p>
-                              <p className="text-[10px] text-muted-foreground">{timeAgo(a.created_at)}</p>
-                            </div>
-                            <select value={a.status} onChange={(e) => updateAppStatus(a.id, e.target.value)}
-                              className="h-8 rounded-full bg-muted border border-border px-2 text-[11px] font-semibold outline-none">
-                              {Object.entries(APPLICATION_STATUS).map(([k, v]) => (
-                                <option key={k} value={k}>{v}</option>
-                              ))}
-                            </select>
+                    {apps.length > 0 && apps.map((a) => (
+                      <div key={a.id} className="rounded-xl bg-card border border-border p-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-bold">{a.applicant?.display_name ?? "Applicant"}</p>
+                            <p className="text-[10px] text-muted-foreground">{timeAgo(a.created_at)}</p>
                           </div>
-                          {a.cover_letter && (
-                            <p className="text-xs mt-2 whitespace-pre-wrap text-muted-foreground leading-relaxed">{a.cover_letter}</p>
-                          )}
+                          <select value={a.status} onChange={(e) => updateAppStatus(a.id, e.target.value)}
+                            className="h-8 rounded-full bg-muted border border-border px-2 text-[11px] font-semibold outline-none">
+                            {Object.entries(APPLICATION_STATUS).map(([k, v]) => (
+                              <option key={k} value={k}>{v}</option>
+                            ))}
+                          </select>
                         </div>
-                      ))
-                    )}
+                        {a.cover_letter && (
+                          <p className="text-xs mt-2 whitespace-pre-wrap text-muted-foreground leading-relaxed">{a.cover_letter}</p>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
