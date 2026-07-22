@@ -60,19 +60,23 @@ export default function MyJobsPage() {
         {loading ? (
           <p className="text-sm text-muted-foreground text-center py-8">Loading…</p>
         ) : tab === "applied" ? (
-          applied.length === 0 ? <Empty text="No applications yet." /> :
-          applied.map((a) => a.job && (
-            <button key={a.id} onClick={() => nav(`/jobs/${a.job.id}`)} className="w-full text-left p-4 rounded-2xl bg-card border border-border">
-              <p className="text-sm font-bold">{a.job.title}</p>
-              <p className="text-xs text-muted-foreground">{a.job.location ?? "—"}</p>
-              <div className="mt-2 flex items-center justify-between">
-                <span className="text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
-                  {APPLICATION_STATUS[a.status as keyof typeof APPLICATION_STATUS] ?? a.status}
-                </span>
-                <span className="text-[11px] text-muted-foreground">{timeAgo(a.created_at)}</span>
-              </div>
-            </button>
-          ))
+          applied.length === 0 ? <Empty text="No applications yet." /> : (
+            <>
+              <AppliedFunnel apps={applied} />
+              {applied.map((a) => a.job && (
+                <button key={a.id} onClick={() => nav(`/jobs/${a.job.id}`)} className="w-full text-left p-4 rounded-2xl bg-card border border-border">
+                  <p className="text-sm font-bold">{a.job.title}</p>
+                  <p className="text-xs text-muted-foreground">{a.job.location ?? "—"}</p>
+                  <div className="mt-2 flex items-center justify-between">
+                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
+                      {APPLICATION_STATUS[a.status as keyof typeof APPLICATION_STATUS] ?? a.status}
+                    </span>
+                    <span className="text-[11px] text-muted-foreground">{timeAgo(a.created_at)}</span>
+                  </div>
+                </button>
+              ))}
+            </>
+          )
         ) : tab === "saved" ? (
           saved.length === 0 ? <Empty text="Nothing saved yet." /> :
           saved.map((s) => s.job && (
