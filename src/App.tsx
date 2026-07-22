@@ -52,6 +52,9 @@ import AdminSoundLibraryPage from "./pages/AdminSoundLibraryPage";
 import AskJhiPage from "./pages/AskJhiPage";
 import ExplorePage from "./pages/ExplorePage";
 import JobsPage from "./pages/JobsPage";
+import JobDetailPage from "./pages/JobDetailPage";
+import GigDetailPage from "./pages/GigDetailPage";
+import MyJobsPage from "./pages/MyJobsPage";
 import WheuatTvWatchPage from "./pages/wheuat-tv/WheuatTvWatchPage";
 
 
@@ -251,6 +254,9 @@ const ProtectedRoutes = () => {
         <Route path="/ask-jhi" element={<Navigate to="/ask-yaj" replace />} />
         <Route path="/explore" element={<ExplorePage />} />
         <Route path="/jobs" element={<JobsPage />} />
+        <Route path="/jobs/:id" element={<JobDetailPage />} />
+        <Route path="/gigs/:id" element={<GigDetailPage />} />
+        <Route path="/my-jobs" element={<MyJobsPage />} />
         <Route path="/communities" element={<Navigate to="/circle" replace />} />
         <Route path="/tv/watch" element={<WheuatTvWatchPage />} />
         <Route path="/tv/*" element={<Navigate to="/" replace />} />
