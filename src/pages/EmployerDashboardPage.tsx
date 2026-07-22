@@ -269,3 +269,38 @@ function Stat({ icon, label, value, highlight }: { icon: React.ReactNode; label:
     </div>
   );
 }
+
+function FunnelChart({ apps }: { apps: any[] }) {
+  const counts = useMemo(() => {
+    const c: Record<string, number> = {};
+    for (const a of apps) c[a.status] = (c[a.status] ?? 0) + 1;
+    return c;
+  }, [apps]);
+  const max = Math.max(1, ...Object.values(counts));
+  const colors: Record<string, string> = {
+    applied: "bg-sky-500",
+    reviewed: "bg-violet-500",
+    interview: "bg-amber-500",
+    offered: "bg-emerald-500",
+    hired: "bg-emerald-600",
+    rejected: "bg-rose-500",
+    withdrawn: "bg-muted-foreground/50",
+  };
+  return (
+    <div className="rounded-xl bg-card border border-border p-3 space-y-1.5">
+      <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-1">Pipeline</p>
+      {Object.entries(APPLICATION_STATUS).map(([k, label]) => {
+        const n = counts[k] ?? 0;
+        return (
+          <div key={k} className="flex items-center gap-2">
+            <span className="text-[10px] w-16 text-muted-foreground">{label}</span>
+            <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+              <div className={`${colors[k] ?? "bg-primary"} h-full rounded-full transition-all`} style={{ width: `${(n / max) * 100}%` }} />
+            </div>
+            <span className="text-[10px] font-bold w-5 text-right">{n}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
