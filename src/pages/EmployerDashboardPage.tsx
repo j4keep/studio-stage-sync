@@ -25,7 +25,9 @@ export default function EmployerDashboardPage() {
   const [apps, setApps] = useState<any[]>([]);
   const [company, setCompany] = useState({ company_name: "", description: "", website: "" });
   const [companyId, setCompanyId] = useState<string | null>(null);
+  const [verified, setVerified] = useState(false);
   const [showCompany, setShowCompany] = useState(false);
+  const [requesting, setRequesting] = useState(false);
 
   useEffect(() => {
     if (!user) return;
