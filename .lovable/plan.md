@@ -1,76 +1,80 @@
-# Feed Redesign + Flag Backgrounds + Split Create Flows
+# YAJ Jobs — Phased Build Plan
 
-## 1. Feed Page — Two-column split
+This is a large module (Jobs board + Gigs + AI Resume + AI Gig Assistant + Employer/Applicant dashboards + Preferences + AI Matching). To ship it well without breaking what's working, I'll build in 4 phases. You approve, I ship Phase 1 immediately, then we iterate.
 
-Rework `src/pages/FeedPage.tsx` into a two-column layout:
+---
 
-```text
-┌──────┬──────────────────────────┐
-│ REEL │        POSTS             │
-│ 25%  │        75%               │
-│      │                          │
-│ swipe│ swipe up/down            │
-│ up/dn│                          │
-└──────┴──────────────────────────┘
-```
+## Phase 1 — Foundation (ship first)
 
-- **Left column (25%)** — Reels rail: vertical snap-scroll of short items (video ≤60s OR photos tagged as reel). Small preview cards, each a rounded card floating on the flag background.
-- **Right column (75%)** — Posts rail: vertical snap-scroll of long-form posts (video >60s, photos, text). Larger cards.
-- Tap a card → opens **fullscreen viewer** for that rail only. Swiping in the viewer stays within that rail's items. Close returns to the split view at the same index.
-- Header (logo, search, category pills, trending strip) unchanged.
-- All text/icons (like/comment/share/caption) live **inside the card**. Nothing floats on the flag background.
+**Backend (Lovable Cloud)**
+New tables with RLS + GRANTs:
+- `job_listings` — title, description, category, employment_type, salary_min/max, location, remote_mode, skills[], experience_level, deadline, media[], employer_id, status, visibility, created_at
+- `gig_listings` — title, description, category, location, budget_min/max, urgency, preferred_date, media[], poster_id, status, ai_estimate (jsonb)
+- `job_applications` — job_id, applicant_id, resume_id, cover_letter, status (applied/reviewing/interview/offer/accepted/declined/closed), anonymous_mode
+- `resumes` — user_id, source (upload/ai), file_url, structured_data (jsonb), visibility, is_default
+- `job_preferences` — user_id, titles[], categories[], locations[], radius, employment_types[], salary_expect, availability, experience_level, alert_keywords[], notify_frequency
+- `saved_jobs` — user_id, job_id
+- `employer_profiles` — user_id, company_name, verified, logo_url, description, website
 
-### Item routing
+**Frontend**
+Rebuild `src/pages/JobsPage.tsx` from static sample data → real listings, with:
+- Working search (title/company/location/skills) with recent searches (localStorage)
+- Category chips filter real data
+- Find Work / Hire Someone quick actions route to real flows
+- Real job/gig cards with tap-through to detail page
 
-Classify feed items in `src/lib/feed-items.ts` helper (or FeedPage memo):
-- `reel` = video with `duration_seconds <= 60` OR photo posts flagged short.
-- `post` = everything else.
+New pages:
+- `JobDetailPage` — full listing view + Apply / Save buttons
+- `GigDetailPage` — full gig view + Contact / Apply
+- `PostJobSheet` — job posting form (all fields listed in spec)
+- `PostGigSheet` — gig posting form
+- `MyJobsPage` — tabs: Applied / Saved / Posted
 
-New components:
-- `src/components/feed/FeedReelCard.tsx` — compact card (thumbnail, small overlay caption).
-- `src/components/feed/FeedPostCardMini.tsx` — larger card variant of the existing FeedPostCard, chrome always visible.
-- `src/components/feed/FeedFullscreenViewer.tsx` — reuses existing `FeedPostCard` fullscreen, scoped to a filtered list + start index.
+**Nav:** Jobs tab already exists → wire to real data.
 
-## 2. Flag backgrounds
+---
 
-### Data
-Add `country_flag` (text nullable) to `profiles`. Migration + grants + policy update if needed. Store flag ID (e.g. `us`, `jp`, `pride`, `trans`).
+## Phase 2 — AI Assistants
 
-### Library
-`src/lib/flag-themes.ts` — list of ~50 major countries + pride/trans/nb flags. Each entry: `{ id, label, emoji, colors: string[] }`. Background = full flag pattern rendered as CSS gradient stripes (horizontal or vertical based on flag). Include a `pattern` field: `horizontal` | `vertical` | `solid`.
+- **YAJ AI Gig Assistant**: new edge function `analyze-gig-photos` — takes uploaded photos, calls `google/gemini-2.5-pro` (vision) via Lovable AI Gateway, returns title/description/difficulty/tools/materials + 3-tier price ranges (budget/average/premium). Wired into `PostGigSheet`.
+- **AI Improve Description** button on job posting (Lovable AI text).
+- **AI Resume Builder**: new `ResumeBuilderPage` — conversational chat (edge function `resume-builder`) that interviews the user and outputs structured resume JSON + PDF export (client-side via `jspdf`).
+- **AI Cover Letters**: `generate-cover-letter` edge function.
+- **Resume Center** in Profile: upload / preview / delete / regenerate / visibility toggle.
 
-### Renderer
-`src/components/FlagBackground.tsx` — renders the striped background full-bleed behind the feed columns.
+---
 
-### Profile UI
-In `src/components/ThemePickerSheet.tsx`, add a **second tab** row: `Theme | Flag`. Flag tab shows a grid of flag chips (emoji + label). Selecting one saves to `profiles.country_flag` and reflects on the feed background.
+## Phase 3 — Preferences, Matching, Dashboards
 
-### Context
-Extend `ThemeContext.tsx` with `countryFlag` + `setCountryFlag`, loaded/saved alongside theme.
+- `JobPreferencesPage` with every preference from the spec
+- `AI Matching`: edge function `match-jobs` — scores listings vs. user resume+preferences, returns ranked feed on Jobs home ("Recommended for you" section with explain-why chips)
+- `EmployerDashboardPage`: manage listings, view applicants, shortlist, message, schedule, close/reopen/duplicate
+- `ApplicantDashboardPage`: applications + status timeline
+- Anonymous-until-accepted mode on applications (masks name/photo until both accept)
 
-## 3. Create flow split — Reel vs Post
+---
 
-Update `src/lib/create-modes.ts`:
-- `QUICK` → rename to `REEL` (60s hold-to-record, or upload video ≤60s / photo).
-- `CREATE` → `POST` (no time limit, upload video/photo, no hold-to-record cap).
-- Keep `LIVE` unchanged.
+## Phase 4 — Polish & Future-Ready Hooks
 
-`CreateCameraView.tsx` reads mode:
-- Reel: enforce `QUICK_MAX_RECORD_SEC = 60` (already 60).
-- Post: remove the 60s ceiling; allow long tap-to-start / tap-to-stop and gallery upload of any duration.
+- Business Profile toggle in Profile settings
+- Notification preferences (instant/daily/weekly) wired to `notifications` table
+- Analytics view for employers (views, applications, shortlist rate)
+- Scaffolding stubs for future: video resumes, verified skills, AI interview practice, salary negotiation, background verification
 
-On publish, tag the post with `is_reel: boolean` in metadata so the feed can route it correctly.
+---
 
-## 4. Technical notes
+## Technical notes
 
-- Backwards compat: existing posts without `is_reel` classified by duration.
-- Fullscreen viewer keeps current audio-unlock and mount-radius logic; just receives a filtered array.
-- Card visual: `rounded-2xl overflow-hidden bg-black shadow-xl` sitting on the flag background with a `p-2` gap between cards.
-- Flag background sits behind the columns; header keeps its dark gradient overlay so pills stay readable.
-- No changes to bottom nav, icons, or header sizes per user's earlier rule.
+- Reuse `ProGateModal` for advanced AI features (AI Resume, AI Cover Letter, AI Gig Estimate) — free tier gets basic posting/search.
+- All AI calls go through Supabase Edge Functions using `LOVABLE_API_KEY` — never expose to client.
+- Media uploads: reuse existing R2 bucket for job/gig photos & videos, resume PDFs stay in Supabase storage (`media` bucket, private folder).
+- Anonymous mode: applications join `profiles` only after `both_accepted = true`; before that, client shows "Verified YAJ Member" placeholder.
+- All new tables get: `authenticated` GRANTs, RLS enabled, policies scoped to `auth.uid()` for owner-write, public-read on `status='open'` listings.
 
-## Out of scope this pass
-- No changes to Communities, Profile layout beyond the flag tab, or WStudio.
-- No new DB analytics — `is_reel` stored inside existing metadata JSON, no schema change needed for posts table.
+---
 
-Confirm and I'll build it in one pass.
+## What I'll do right now if you approve
+
+Ship **Phase 1** end-to-end (migration + all Phase 1 pages/sheets + wire to real data). That alone is a meaningful, usable Jobs product. Then you tell me to go on Phase 2.
+
+Reply **"go phase 1"** to start, or tell me to reorder / drop / add anything.
