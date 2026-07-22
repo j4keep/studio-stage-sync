@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Briefcase, Users, TrendingUp, Building2 } from "lucide-react";
+import { ArrowLeft, Briefcase, Users, TrendingUp, Building2, BadgeCheck, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -25,7 +25,9 @@ export default function EmployerDashboardPage() {
   const [apps, setApps] = useState<any[]>([]);
   const [company, setCompany] = useState({ company_name: "", description: "", website: "" });
   const [companyId, setCompanyId] = useState<string | null>(null);
+  const [verified, setVerified] = useState(false);
   const [showCompany, setShowCompany] = useState(false);
+  const [requesting, setRequesting] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -49,10 +51,30 @@ export default function EmployerDashboardPage() {
       if (emp) {
         setCompanyId(emp.id);
         setCompany({ company_name: emp.company_name || "", description: emp.description || "", website: emp.website || "" });
+        setVerified(!!emp.verified);
       }
       setLoading(false);
     })();
   }, [user]);
+
+  const requestVerification = async () => {
+    if (!user) return;
+    if (!company.company_name.trim()) {
+      toast.error("Save your company name first");
+      setShowCompany(true);
+      return;
+    }
+    setRequesting(true);
+    const { error } = await supabase.from("support_tickets").insert({
+      user_id: user.id,
+      subject: `🪪 Business verification — ${company.company_name}`,
+      message: `Please verify business account.\nCompany: ${company.company_name}\nWebsite: ${company.website || "—"}\nDescription: ${company.description || "—"}`,
+      status: "open",
+    });
+    setRequesting(false);
+    if (error) return toast.error(error.message);
+    toast.success("Verification requested — we'll review shortly");
+  };
 
   const openJob = async (jobId: string) => {
     setSelectedJob(jobId);
@@ -109,7 +131,10 @@ export default function EmployerDashboardPage() {
         <button onClick={() => nav(-1)} className="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
           <ArrowLeft className="w-4 h-4" />
         </button>
-        <h1 className="text-base font-bold flex-1">Employer Dashboard</h1>
+        <h1 className="text-base font-bold flex-1 flex items-center gap-1">
+          Employer Dashboard
+          {verified && <BadgeCheck className="w-4 h-4 text-sky-500" aria-label="Verified" />}
+        </h1>
         <button onClick={() => setShowCompany(true)} className="h-8 px-3 rounded-full bg-muted text-[11px] font-bold flex items-center gap-1">
           <Building2 className="w-3 h-3" /> Company
         </button>
@@ -121,6 +146,24 @@ export default function EmployerDashboardPage() {
           <Stat icon={<Users className="w-4 h-4" />} label="Total applicants" value={totalApps} />
           <Stat icon={<TrendingUp className="w-4 h-4" />} label="New" value={newApps} highlight />
         </div>
+
+        {!verified && (
+          <button
+            onClick={requestVerification}
+            disabled={requesting}
+            className="w-full flex items-center justify-between gap-2 p-3 rounded-2xl bg-sky-500/10 border border-sky-500/25 text-left"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <ShieldCheck className="w-4 h-4 text-sky-500 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-sm font-bold">Get the verified badge</p>
+                <p className="text-[11px] text-muted-foreground">Build trust — verified badge shows on all your jobs.</p>
+              </div>
+            </div>
+            <span className="text-[11px] font-bold text-sky-600 shrink-0">{requesting ? "Sending…" : "Request"}</span>
+          </button>
+        )}
+
 
         {jobs.length === 0 ? (
           <div className="text-center py-16">
@@ -162,26 +205,29 @@ export default function EmployerDashboardPage() {
                     {apps.length === 0 ? (
                       <p className="text-xs text-muted-foreground py-2">No applicants yet.</p>
                     ) : (
-                      apps.map((a) => (
-                        <div key={a.id} className="rounded-xl bg-card border border-border p-3">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm font-bold">{a.applicant?.display_name ?? "Applicant"}</p>
-                              <p className="text-[10px] text-muted-foreground">{timeAgo(a.created_at)}</p>
-                            </div>
-                            <select value={a.status} onChange={(e) => updateAppStatus(a.id, e.target.value)}
-                              className="h-8 rounded-full bg-muted border border-border px-2 text-[11px] font-semibold outline-none">
-                              {Object.entries(APPLICATION_STATUS).map(([k, v]) => (
-                                <option key={k} value={k}>{v}</option>
-                              ))}
-                            </select>
-                          </div>
-                          {a.cover_letter && (
-                            <p className="text-xs mt-2 whitespace-pre-wrap text-muted-foreground leading-relaxed">{a.cover_letter}</p>
-                          )}
-                        </div>
-                      ))
+                    <>
+                      <FunnelChart apps={apps} />
+                    </>
                     )}
+                    {apps.length > 0 && apps.map((a) => (
+                      <div key={a.id} className="rounded-xl bg-card border border-border p-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-bold">{a.applicant?.display_name ?? "Applicant"}</p>
+                            <p className="text-[10px] text-muted-foreground">{timeAgo(a.created_at)}</p>
+                          </div>
+                          <select value={a.status} onChange={(e) => updateAppStatus(a.id, e.target.value)}
+                            className="h-8 rounded-full bg-muted border border-border px-2 text-[11px] font-semibold outline-none">
+                            {Object.entries(APPLICATION_STATUS).map(([k, v]) => (
+                              <option key={k} value={k}>{v}</option>
+                            ))}
+                          </select>
+                        </div>
+                        {a.cover_letter && (
+                          <p className="text-xs mt-2 whitespace-pre-wrap text-muted-foreground leading-relaxed">{a.cover_letter}</p>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -220,6 +266,41 @@ function Stat({ icon, label, value, highlight }: { icon: React.ReactNode; label:
       </div>
       <p className="text-lg font-black leading-none">{value}</p>
       <p className="text-[10px] text-muted-foreground mt-1">{label}</p>
+    </div>
+  );
+}
+
+function FunnelChart({ apps }: { apps: any[] }) {
+  const counts = useMemo(() => {
+    const c: Record<string, number> = {};
+    for (const a of apps) c[a.status] = (c[a.status] ?? 0) + 1;
+    return c;
+  }, [apps]);
+  const max = Math.max(1, ...Object.values(counts));
+  const colors: Record<string, string> = {
+    applied: "bg-sky-500",
+    reviewed: "bg-violet-500",
+    interview: "bg-amber-500",
+    offered: "bg-emerald-500",
+    hired: "bg-emerald-600",
+    rejected: "bg-rose-500",
+    withdrawn: "bg-muted-foreground/50",
+  };
+  return (
+    <div className="rounded-xl bg-card border border-border p-3 space-y-1.5">
+      <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-1">Pipeline</p>
+      {Object.entries(APPLICATION_STATUS).map(([k, label]) => {
+        const n = counts[k] ?? 0;
+        return (
+          <div key={k} className="flex items-center gap-2">
+            <span className="text-[10px] w-16 text-muted-foreground">{label}</span>
+            <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+              <div className={`${colors[k] ?? "bg-primary"} h-full rounded-full transition-all`} style={{ width: `${(n / max) * 100}%` }} />
+            </div>
+            <span className="text-[10px] font-bold w-5 text-right">{n}</span>
+          </div>
+        );
+      })}
     </div>
   );
 }

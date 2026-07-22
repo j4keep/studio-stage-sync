@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, MapPin, Clock, Briefcase, Sparkles, Plus, X, User, Settings2, Building2 } from "lucide-react";
+import { Search, MapPin, Clock, Briefcase, Sparkles, Plus, X, User, Settings2, Building2, BadgeCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { JOB_CATEGORIES, formatSalary, timeAgo, EMPLOYMENT_TYPES, scoreListing, type Prefs } from "@/lib/jobs";
@@ -18,6 +18,7 @@ type JobRow = {
   location: string | null;
   remote_mode: string;
   created_at: string;
+  employer_id: string;
   __kind: "job";
 };
 type GigRow = {
@@ -59,10 +60,12 @@ export default function JobsPage() {
     })();
   }, [user]);
 
+  const [verifiedEmployers, setVerifiedEmployers] = useState<Set<string>>(new Set());
+
   const load = useCallback(async () => {
     setLoading(true);
     const [{ data: jobs }, { data: gigs }] = await Promise.all([
-      supabase.from("job_listings").select("id,title,category,employment_type,salary_min,salary_max,location,remote_mode,created_at")
+      supabase.from("job_listings").select("id,title,category,employment_type,salary_min,salary_max,location,remote_mode,created_at,employer_id")
         .eq("status", "open").order("created_at", { ascending: false }).limit(50),
       supabase.from("gig_listings").select("id,title,category,location,budget_min,budget_max,urgency,created_at")
         .eq("status", "open").order("created_at", { ascending: false }).limit(50),
@@ -72,6 +75,14 @@ export default function JobsPage() {
       ...(gigs ?? []).map((g) => ({ ...g, __kind: "gig" as const })),
     ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     setListings(merged);
+    const employerIds = Array.from(new Set((jobs ?? []).map((j: any) => j.employer_id).filter(Boolean)));
+    if (employerIds.length) {
+      const { data: emps } = await supabase.from("employer_profiles")
+        .select("user_id,verified").in("user_id", employerIds).eq("verified", true);
+      setVerifiedEmployers(new Set((emps ?? []).map((e: any) => e.user_id)));
+    } else {
+      setVerifiedEmployers(new Set());
+    }
     setLoading(false);
   }, []);
 
@@ -230,6 +241,7 @@ export default function JobsPage() {
         ) : (
           displayed.map((item) => {
             const s = forYou && prefs ? scoreListing(item, prefs) : 0;
+            const verified = item.__kind === "job" && verifiedEmployers.has((item as JobRow).employer_id);
             return (
             <button key={`${item.__kind}-${item.id}`} type="button"
               onClick={() => nav(item.__kind === "job" ? `/jobs/${item.id}` : `/gigs/${item.id}`)}
@@ -238,6 +250,9 @@ export default function JobsPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <p className="text-sm font-bold text-foreground truncate">{item.title}</p>
+                    {verified && (
+                      <BadgeCheck className="w-3.5 h-3.5 text-sky-500 shrink-0" aria-label="Verified employer" />
+                    )}
                     {item.__kind === "gig" && (
                       <span className="shrink-0 text-[9px] font-bold uppercase tracking-wide bg-emerald-500/15 text-emerald-600 px-1.5 py-0.5 rounded">Gig</span>
                     )}

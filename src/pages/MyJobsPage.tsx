@@ -60,19 +60,23 @@ export default function MyJobsPage() {
         {loading ? (
           <p className="text-sm text-muted-foreground text-center py-8">Loading…</p>
         ) : tab === "applied" ? (
-          applied.length === 0 ? <Empty text="No applications yet." /> :
-          applied.map((a) => a.job && (
-            <button key={a.id} onClick={() => nav(`/jobs/${a.job.id}`)} className="w-full text-left p-4 rounded-2xl bg-card border border-border">
-              <p className="text-sm font-bold">{a.job.title}</p>
-              <p className="text-xs text-muted-foreground">{a.job.location ?? "—"}</p>
-              <div className="mt-2 flex items-center justify-between">
-                <span className="text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
-                  {APPLICATION_STATUS[a.status as keyof typeof APPLICATION_STATUS] ?? a.status}
-                </span>
-                <span className="text-[11px] text-muted-foreground">{timeAgo(a.created_at)}</span>
-              </div>
-            </button>
-          ))
+          applied.length === 0 ? <Empty text="No applications yet." /> : (
+            <>
+              <AppliedFunnel apps={applied} />
+              {applied.map((a) => a.job && (
+                <button key={a.id} onClick={() => nav(`/jobs/${a.job.id}`)} className="w-full text-left p-4 rounded-2xl bg-card border border-border">
+                  <p className="text-sm font-bold">{a.job.title}</p>
+                  <p className="text-xs text-muted-foreground">{a.job.location ?? "—"}</p>
+                  <div className="mt-2 flex items-center justify-between">
+                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
+                      {APPLICATION_STATUS[a.status as keyof typeof APPLICATION_STATUS] ?? a.status}
+                    </span>
+                    <span className="text-[11px] text-muted-foreground">{timeAgo(a.created_at)}</span>
+                  </div>
+                </button>
+              ))}
+            </>
+          )
         ) : tab === "saved" ? (
           saved.length === 0 ? <Empty text="Nothing saved yet." /> :
           saved.map((s) => s.job && (
@@ -107,6 +111,38 @@ function Empty({ text }: { text: string }) {
     <div className="text-center py-12">
       <Briefcase className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
       <p className="text-sm text-muted-foreground">{text}</p>
+    </div>
+  );
+}
+
+function AppliedFunnel({ apps }: { apps: any[] }) {
+  const counts: Record<string, number> = {};
+  for (const a of apps) counts[a.status] = (counts[a.status] ?? 0) + 1;
+  const max = Math.max(1, ...Object.values(counts));
+  const colors: Record<string, string> = {
+    applied: "bg-sky-500",
+    reviewed: "bg-violet-500",
+    interview: "bg-amber-500",
+    offered: "bg-emerald-500",
+    hired: "bg-emerald-600",
+    rejected: "bg-rose-500",
+    withdrawn: "bg-muted-foreground/50",
+  };
+  return (
+    <div className="rounded-2xl bg-card border border-border p-4 space-y-1.5 mb-1">
+      <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-1">Your pipeline</p>
+      {Object.entries(APPLICATION_STATUS).map(([k, label]) => {
+        const n = counts[k] ?? 0;
+        return (
+          <div key={k} className="flex items-center gap-2">
+            <span className="text-[11px] w-20 text-muted-foreground">{label}</span>
+            <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+              <div className={`${colors[k] ?? "bg-primary"} h-full rounded-full`} style={{ width: `${(n / max) * 100}%` }} />
+            </div>
+            <span className="text-[11px] font-bold w-5 text-right">{n}</span>
+          </div>
+        );
+      })}
     </div>
   );
 }
