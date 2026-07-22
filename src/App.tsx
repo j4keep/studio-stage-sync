@@ -52,6 +52,9 @@ import AdminSoundLibraryPage from "./pages/AdminSoundLibraryPage";
 import AskJhiPage from "./pages/AskJhiPage";
 import ExplorePage from "./pages/ExplorePage";
 import JobsPage from "./pages/JobsPage";
+import JobDetailPage from "./pages/JobDetailPage";
+import GigDetailPage from "./pages/GigDetailPage";
+import MyJobsPage from "./pages/MyJobsPage";
 import WheuatTvWatchPage from "./pages/wheuat-tv/WheuatTvWatchPage";
 
 
