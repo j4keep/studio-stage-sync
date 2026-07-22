@@ -60,6 +60,8 @@ export default function JobsPage() {
     })();
   }, [user]);
 
+  const [verifiedEmployers, setVerifiedEmployers] = useState<Set<string>>(new Set());
+
   const load = useCallback(async () => {
     setLoading(true);
     const [{ data: jobs }, { data: gigs }] = await Promise.all([
@@ -73,6 +75,14 @@ export default function JobsPage() {
       ...(gigs ?? []).map((g) => ({ ...g, __kind: "gig" as const })),
     ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     setListings(merged);
+    const employerIds = Array.from(new Set((jobs ?? []).map((j: any) => j.employer_id).filter(Boolean)));
+    if (employerIds.length) {
+      const { data: emps } = await supabase.from("employer_profiles")
+        .select("user_id,verified").in("user_id", employerIds).eq("verified", true);
+      setVerifiedEmployers(new Set((emps ?? []).map((e: any) => e.user_id)));
+    } else {
+      setVerifiedEmployers(new Set());
+    }
     setLoading(false);
   }, []);
 
