@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, MapPin, Clock, Briefcase, Sparkles, Plus, X, User } from "lucide-react";
+import { Search, MapPin, Clock, Briefcase, Sparkles, Plus, X, User, Settings2, Building2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { JOB_CATEGORIES, formatSalary, timeAgo, EMPLOYMENT_TYPES, scoreListing, type Prefs } from "@/lib/jobs";
@@ -166,6 +166,21 @@ export default function JobsPage() {
             ))}
           </div>
         )}
+        <div className="mt-3 flex items-center gap-2 flex-wrap">
+          <button onClick={() => setForYou((v) => !v)}
+            className={`inline-flex items-center gap-1 px-3 h-8 rounded-full text-[11px] font-bold ${forYou ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}>
+            <Sparkles className="w-3 h-3" /> {forYou ? "For You ✓" : "For You"}
+          </button>
+          <button onClick={() => nav("/job-preferences")} className="inline-flex items-center gap-1 px-3 h-8 rounded-full bg-muted text-[11px] font-semibold">
+            <Settings2 className="w-3 h-3" /> Preferences
+          </button>
+          <button onClick={() => nav("/employer-dashboard")} className="inline-flex items-center gap-1 px-3 h-8 rounded-full bg-muted text-[11px] font-semibold">
+            <Building2 className="w-3 h-3" /> Hiring
+          </button>
+          {forYou && !prefs && (
+            <span className="text-[10px] text-muted-foreground">Set preferences for personalized matches</span>
+          )}
+        </div>
       </header>
 
       <div className="flex gap-2 overflow-x-auto px-4 pb-3 scrollbar-hide touch-pan-x">
@@ -205,7 +220,7 @@ export default function JobsPage() {
       <section className="px-4 pb-24 space-y-3">
         {loading ? (
           <p className="text-sm text-muted-foreground text-center py-8">Loading…</p>
-        ) : filtered.length === 0 ? (
+        ) : displayed.length === 0 ? (
           <div className="text-center py-16">
             <p className="font-semibold">No opportunities yet</p>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -213,7 +228,9 @@ export default function JobsPage() {
             </p>
           </div>
         ) : (
-          filtered.map((item) => (
+          displayed.map((item) => {
+            const s = forYou && prefs ? scoreListing(item, prefs) : 0;
+            return (
             <button key={`${item.__kind}-${item.id}`} type="button"
               onClick={() => nav(item.__kind === "job" ? `/jobs/${item.id}` : `/gigs/${item.id}`)}
               className="w-full text-left p-4 rounded-2xl bg-card border border-border hover:border-primary/40 transition-colors active:scale-[0.99]">
@@ -223,6 +240,9 @@ export default function JobsPage() {
                     <p className="text-sm font-bold text-foreground truncate">{item.title}</p>
                     {item.__kind === "gig" && (
                       <span className="shrink-0 text-[9px] font-bold uppercase tracking-wide bg-emerald-500/15 text-emerald-600 px-1.5 py-0.5 rounded">Gig</span>
+                    )}
+                    {s >= 30 && (
+                      <span className="shrink-0 text-[9px] font-bold uppercase tracking-wide bg-primary/15 text-primary px-1.5 py-0.5 rounded">Match</span>
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground truncate capitalize">{item.category}</p>
