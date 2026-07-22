@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Briefcase } from "lucide-react";
+import { ArrowLeft, Briefcase, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { APPLICATION_STATUS, formatSalary, timeAgo } from "@/lib/jobs";
@@ -41,7 +41,10 @@ export default function MyJobsPage() {
         <button onClick={() => nav(-1)} className="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
           <ArrowLeft className="w-4 h-4" />
         </button>
-        <h1 className="text-base font-bold">My Jobs</h1>
+        <h1 className="text-base font-bold flex-1">My Jobs</h1>
+        <button onClick={() => nav("/resume-builder")} className="h-8 px-3 rounded-full bg-primary text-primary-foreground text-[11px] font-bold flex items-center gap-1">
+          <Sparkles className="w-3 h-3" /> Resume
+        </button>
       </header>
 
       <div className="flex gap-2 px-4 py-3 border-b border-border">
