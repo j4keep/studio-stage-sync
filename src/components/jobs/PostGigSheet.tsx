@@ -1,15 +1,20 @@
-import { useState } from "react";
-import { X, Sparkles } from "lucide-react";
+import { useRef, useState } from "react";
+import { X, Sparkles, ImagePlus, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { URGENCY_OPTIONS } from "@/lib/jobs";
+import { analyzeGigPhotos, fileToDataUrl } from "@/lib/yaj-jobs-ai";
 
 type Props = { open: boolean; onClose: () => void; onCreated?: () => void };
 
 export default function PostGigSheet({ open, onClose, onCreated }: Props) {
   const { user } = useAuth();
   const [saving, setSaving] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [photos, setPhotos] = useState<string[]>([]); // data URLs
+  const [aiTip, setAiTip] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -25,6 +30,41 @@ export default function PostGigSheet({ open, onClose, onCreated }: Props) {
   if (!open) return null;
 
   const update = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  const addPhotos = async (files: FileList | null) => {
+    if (!files || !files.length) return;
+    const remaining = 4 - photos.length;
+    const chosen = Array.from(files).slice(0, remaining);
+    const urls = await Promise.all(chosen.map(fileToDataUrl));
+    setPhotos((p) => [...p, ...urls]);
+  };
+
+  const analyze = async () => {
+    if (!photos.length) {
+      toast.error("Add at least one photo first");
+      return;
+    }
+    setAnalyzing(true);
+    setAiTip(null);
+    try {
+      const r = await analyzeGigPhotos(photos, form.description || form.title);
+      setForm((f) => ({
+        ...f,
+        title: r.title || f.title,
+        description: r.description || f.description,
+        category: r.category || f.category,
+        urgency: r.urgency || f.urgency,
+        budget_min: r.budget_min ? String(r.budget_min) : f.budget_min,
+        budget_max: r.budget_max ? String(r.budget_max) : f.budget_max,
+      }));
+      if (r.tips) setAiTip(r.tips);
+      toast.success("YAJ Buddy filled in your gig details!");
+    } catch (e: any) {
+      toast.error(e.message || "AI analysis failed");
+    } finally {
+      setAnalyzing(false);
+    }
+  };
 
   const submit = async () => {
     if (!user) {
@@ -75,11 +115,62 @@ export default function PostGigSheet({ open, onClose, onCreated }: Props) {
       </header>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        <div className="rounded-2xl p-3 bg-gradient-to-br from-fuchsia-500/10 to-cyan-500/10 border border-primary/20 flex items-start gap-2">
-          <Sparkles className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            <span className="font-semibold text-foreground">YAJ AI Assistant</span> — upload photos and Buddy will suggest a title, description, and pricing. <span className="opacity-60">(Coming soon in Phase 2)</span>
-          </p>
+        <div className="rounded-2xl p-3 bg-gradient-to-br from-fuchsia-500/10 to-cyan-500/10 border border-primary/20 space-y-2">
+          <div className="flex items-start gap-2">
+            <Sparkles className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              <span className="font-semibold text-foreground">YAJ AI Gig Assistant</span> — upload photos and Buddy will suggest a title, description, category, and price range.
+            </p>
+          </div>
+
+          {photos.length > 0 && (
+            <div className="grid grid-cols-4 gap-2">
+              {photos.map((p, i) => (
+                <div key={i} className="relative aspect-square rounded-lg overflow-hidden bg-muted">
+                  <img src={p} className="w-full h-full object-cover" alt="" />
+                  <button
+                    onClick={() => setPhotos((ph) => ph.filter((_, j) => j !== i))}
+                    className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-white flex items-center justify-center"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(e) => { addPhotos(e.target.files); e.target.value = ""; }}
+            />
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={photos.length >= 4}
+              className="flex-1 h-10 rounded-xl bg-card border border-border text-xs font-semibold flex items-center justify-center gap-1.5 disabled:opacity-40"
+            >
+              <ImagePlus className="w-3.5 h-3.5" />
+              {photos.length ? `Add photo (${photos.length}/4)` : "Add photos"}
+            </button>
+            <button
+              onClick={analyze}
+              disabled={analyzing || !photos.length}
+              className="flex-1 h-10 rounded-xl bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-40"
+            >
+              {analyzing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+              {analyzing ? "Analyzing…" : "Analyze with AI"}
+            </button>
+          </div>
+
+          {aiTip && (
+            <p className="text-[11px] text-primary bg-primary/10 rounded-lg px-2 py-1.5 leading-snug">
+              💡 {aiTip}
+            </p>
+          )}
         </div>
 
         <Field label="Gig Title *">

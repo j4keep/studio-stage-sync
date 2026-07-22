@@ -55,6 +55,7 @@ import JobsPage from "./pages/JobsPage";
 import JobDetailPage from "./pages/JobDetailPage";
 import GigDetailPage from "./pages/GigDetailPage";
 import MyJobsPage from "./pages/MyJobsPage";
+import ResumeBuilderPage from "./pages/ResumeBuilderPage";
 import WheuatTvWatchPage from "./pages/wheuat-tv/WheuatTvWatchPage";
 
 
@@ -257,6 +258,7 @@ const ProtectedRoutes = () => {
         <Route path="/jobs/:id" element={<JobDetailPage />} />
         <Route path="/gigs/:id" element={<GigDetailPage />} />
         <Route path="/my-jobs" element={<MyJobsPage />} />
+        <Route path="/resume-builder" element={<ResumeBuilderPage />} />
         <Route path="/communities" element={<Navigate to="/circle" replace />} />
         <Route path="/tv/watch" element={<WheuatTvWatchPage />} />
         <Route path="/tv/*" element={<Navigate to="/" replace />} />
