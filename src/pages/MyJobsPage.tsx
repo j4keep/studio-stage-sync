@@ -114,3 +114,35 @@ function Empty({ text }: { text: string }) {
     </div>
   );
 }
+
+function AppliedFunnel({ apps }: { apps: any[] }) {
+  const counts: Record<string, number> = {};
+  for (const a of apps) counts[a.status] = (counts[a.status] ?? 0) + 1;
+  const max = Math.max(1, ...Object.values(counts));
+  const colors: Record<string, string> = {
+    applied: "bg-sky-500",
+    reviewed: "bg-violet-500",
+    interview: "bg-amber-500",
+    offered: "bg-emerald-500",
+    hired: "bg-emerald-600",
+    rejected: "bg-rose-500",
+    withdrawn: "bg-muted-foreground/50",
+  };
+  return (
+    <div className="rounded-2xl bg-card border border-border p-4 space-y-1.5 mb-1">
+      <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-1">Your pipeline</p>
+      {Object.entries(APPLICATION_STATUS).map(([k, label]) => {
+        const n = counts[k] ?? 0;
+        return (
+          <div key={k} className="flex items-center gap-2">
+            <span className="text-[11px] w-20 text-muted-foreground">{label}</span>
+            <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+              <div className={`${colors[k] ?? "bg-primary"} h-full rounded-full`} style={{ width: `${(n / max) * 100}%` }} />
+            </div>
+            <span className="text-[11px] font-bold w-5 text-right">{n}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
