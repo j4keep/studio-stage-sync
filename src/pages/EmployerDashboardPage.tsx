@@ -205,6 +205,11 @@ export default function EmployerDashboardPage() {
                     {apps.length === 0 ? (
                       <p className="text-xs text-muted-foreground py-2">No applicants yet.</p>
                     ) : (
+                    <>
+                      <FunnelChart apps={apps} />
+                    </>
+                    )}
+                    {apps.length > 0 && (
                       apps.map((a) => (
                         <div key={a.id} className="rounded-xl bg-card border border-border p-3">
                           <div className="flex items-center justify-between">
