@@ -37,6 +37,29 @@ export default function JobDetailPage() {
   const [coverLetter, setCoverLetter] = useState("");
   const [showApply, setShowApply] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [aiGen, setAiGen] = useState(false);
+
+  const genCoverLetter = async () => {
+    if (!user || !job) return;
+    setAiGen(true);
+    try {
+      const { data: r } = await supabase.from("resumes").select("structured_data")
+        .eq("user_id", user.id).eq("is_default", true).maybeSingle();
+      const { data: p } = await supabase.from("profiles").select("display_name,bio")
+        .eq("user_id", user.id).maybeSingle();
+      const letter = await generateCoverLetter(
+        { title: job.title, description: job.description, skills: job.skills, location: job.location },
+        r?.structured_data ?? { profile: p },
+        coverLetter,
+      );
+      setCoverLetter(letter);
+      toast.success("Cover letter drafted by YAJ Buddy");
+    } catch (e: any) {
+      toast.error(e.message || "Failed to generate cover letter");
+    } finally {
+      setAiGen(false);
+    }
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -160,14 +183,22 @@ export default function JobDetailPage() {
             <textarea
               value={coverLetter}
               onChange={(e) => setCoverLetter(e.target.value)}
-              rows={5}
+              rows={7}
               placeholder="Optional cover letter — why you're a great fit"
               className="w-full rounded-xl bg-muted border border-border p-3 text-sm outline-none"
             />
             <button
+              onClick={genCoverLetter}
+              disabled={aiGen}
+              className="mt-2 w-full h-10 rounded-full bg-gradient-to-r from-fuchsia-500/15 to-cyan-500/15 border border-primary/30 text-primary font-bold text-xs disabled:opacity-50 flex items-center justify-center gap-1.5"
+            >
+              {aiGen ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+              {aiGen ? "Drafting…" : coverLetter ? "Rewrite with YAJ Buddy" : "Write with YAJ Buddy"}
+            </button>
+            <button
               onClick={apply}
               disabled={submitting}
-              className="mt-3 w-full h-11 rounded-full bg-primary text-primary-foreground font-bold text-sm disabled:opacity-50"
+              className="mt-2 w-full h-11 rounded-full bg-primary text-primary-foreground font-bold text-sm disabled:opacity-50"
             >
               {submitting ? "Sending…" : "Send Application"}
             </button>
