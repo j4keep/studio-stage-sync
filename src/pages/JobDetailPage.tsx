@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, MapPin, Clock, Bookmark, BookmarkCheck, Building2 } from "lucide-react";
+import { ArrowLeft, MapPin, Clock, Bookmark, BookmarkCheck, Building2, Sparkles, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { formatSalary, timeAgo, EMPLOYMENT_TYPES, REMOTE_MODES } from "@/lib/jobs";
+import { generateCoverLetter } from "@/lib/yaj-jobs-ai";
 
 type Job = {
   id: string;
