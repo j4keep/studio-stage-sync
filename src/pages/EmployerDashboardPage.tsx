@@ -79,7 +79,7 @@ export default function EmployerDashboardPage() {
   const openJob = async (jobId: string) => {
     setSelectedJob(jobId);
     const { data } = await supabase.from("job_applications")
-      .select("id,status,cover_letter,created_at,applicant_id")
+      .select("id,status,cover_letter,created_at,applicant_id,full_name,email,phone,portfolio_url,linkedin_url,years_experience,expected_salary,availability,work_authorized,willing_to_relocate,resume_url")
       .eq("job_id", jobId).order("created_at", { ascending: false });
     const rows = data ?? [];
     const ids = Array.from(new Set(rows.map((a: any) => a.applicant_id)));
