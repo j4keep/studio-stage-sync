@@ -626,40 +626,76 @@ export type Database = {
           anonymous_mode: boolean
           applicant_accepted: boolean
           applicant_id: string
+          availability: string | null
           cover_letter: string | null
           created_at: string
+          email: string | null
           employer_accepted: boolean
+          expected_salary: number | null
+          full_name: string | null
           id: string
           job_id: string
+          linkedin_url: string | null
+          phone: string | null
+          portfolio_url: string | null
           resume_id: string | null
+          resume_snapshot: Json | null
+          resume_url: string | null
           status: string
           updated_at: string
+          willing_to_relocate: boolean | null
+          work_authorized: boolean | null
+          years_experience: number | null
         }
         Insert: {
           anonymous_mode?: boolean
           applicant_accepted?: boolean
           applicant_id: string
+          availability?: string | null
           cover_letter?: string | null
           created_at?: string
+          email?: string | null
           employer_accepted?: boolean
+          expected_salary?: number | null
+          full_name?: string | null
           id?: string
           job_id: string
+          linkedin_url?: string | null
+          phone?: string | null
+          portfolio_url?: string | null
           resume_id?: string | null
+          resume_snapshot?: Json | null
+          resume_url?: string | null
           status?: string
           updated_at?: string
+          willing_to_relocate?: boolean | null
+          work_authorized?: boolean | null
+          years_experience?: number | null
         }
         Update: {
           anonymous_mode?: boolean
           applicant_accepted?: boolean
           applicant_id?: string
+          availability?: string | null
           cover_letter?: string | null
           created_at?: string
+          email?: string | null
           employer_accepted?: boolean
+          expected_salary?: number | null
+          full_name?: string | null
           id?: string
           job_id?: string
+          linkedin_url?: string | null
+          phone?: string | null
+          portfolio_url?: string | null
           resume_id?: string | null
+          resume_snapshot?: Json | null
+          resume_url?: string | null
           status?: string
           updated_at?: string
+          willing_to_relocate?: boolean | null
+          work_authorized?: boolean | null
+          years_experience?: number | null
         }
         Relationships: [
           {
