@@ -10,7 +10,7 @@ type Props = {
 export default function PostChooserSheet({ open, onClose, onPickJob, onPickGig }: Props) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-[70] bg-black/60 flex items-end sm:items-center justify-center" onClick={onClose}>
       <div className="w-full max-w-md bg-background rounded-t-3xl sm:rounded-3xl p-5 pb-8" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-base font-bold">What are you posting?</h3>
