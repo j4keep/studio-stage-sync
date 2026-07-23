@@ -158,6 +158,7 @@ export default function PostJobSheet({ open, onClose, onCreated }: Props) {
 
         <div className="h-8" />
       </div>
+      </div>
     </div>
   );
 }
