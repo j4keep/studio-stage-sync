@@ -3,13 +3,14 @@ import { X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { JOB_CATEGORIES, EMPLOYMENT_TYPES, REMOTE_MODES, EXPERIENCE_LEVELS } from "@/lib/jobs";
+import { JOB_CATEGORIES, EMPLOYMENT_TYPES, REMOTE_MODES, EXPERIENCE_LEVELS, QUALIFICATION_OPTIONS } from "@/lib/jobs";
 
 type Props = { open: boolean; onClose: () => void; onCreated?: () => void };
 
 export default function PostJobSheet({ open, onClose, onCreated }: Props) {
   const { user } = useAuth();
   const [saving, setSaving] = useState(false);
+  const [qualifications, setQualifications] = useState<string[]>([]);
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -24,7 +25,11 @@ export default function PostJobSheet({ open, onClose, onCreated }: Props) {
     experience_level: "mid",
     benefits: "",
     deadline: "",
+    external_apply_url: "",
   });
+
+  const toggleQual = (q: string) =>
+    setQualifications((prev) => (prev.includes(q) ? prev.filter((x) => x !== q) : [...prev, q]));
 
   if (!open) return null;
 
@@ -55,6 +60,8 @@ export default function PostJobSheet({ open, onClose, onCreated }: Props) {
       experience_level: form.experience_level,
       benefits: form.benefits.split(",").map((s) => s.trim()).filter(Boolean),
       deadline: form.deadline || null,
+      qualifications,
+      external_apply_url: form.external_apply_url.trim() || null,
     });
     setSaving(false);
     if (error) {
