@@ -307,7 +307,7 @@ function FunnelChart({ apps }: { apps: any[] }) {
   const max = Math.max(1, ...Object.values(counts));
   const colors: Record<string, string> = {
     applied: "bg-sky-500",
-    reviewed: "bg-violet-500",
+    reviewing: "bg-violet-500",
     interview: "bg-amber-500",
     offered: "bg-emerald-500",
     hired: "bg-emerald-600",
