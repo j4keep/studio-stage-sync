@@ -202,14 +202,24 @@ export default function EmployerDashboardPage() {
                 </button>
                 {selectedJob === j.id && (
                   <div className="border-t border-border bg-muted/40 p-3 space-y-2">
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                       <button onClick={() => toggleJobStatus(j)} className="text-[11px] px-2 h-7 rounded-full bg-card border border-border font-semibold">
                         {j.status === "open" ? "Close job" : "Reopen job"}
                       </button>
                       <button onClick={() => nav(`/jobs/${j.id}`)} className="text-[11px] px-2 h-7 rounded-full bg-card border border-border font-semibold">
                         View public
                       </button>
+                      <button onClick={() => deleteJob(j)} className="text-[11px] px-2 h-7 rounded-full bg-rose-500/10 text-rose-500 border border-rose-500/30 font-semibold">
+                        Delete
+                      </button>
                     </div>
+                    {apps.length === 0 ? (
+                      <p className="text-xs text-muted-foreground py-2">No applicants yet.</p>
+                    ) : (
+                    <>
+                      <FunnelChart apps={apps} />
+                    </>
+                    )}
                     {apps.length === 0 ? (
                       <p className="text-xs text-muted-foreground py-2">No applicants yet.</p>
                     ) : (
