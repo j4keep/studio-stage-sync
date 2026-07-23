@@ -222,6 +222,7 @@ export default function PostGigSheet({ open, onClose, onCreated }: Props) {
 
         <div className="h-8" />
       </div>
+      </div>
     </div>
   );
 }
