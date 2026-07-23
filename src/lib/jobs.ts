@@ -40,14 +40,14 @@ export const URGENCY_OPTIONS = [
 
 export const APPLICATION_STATUS = {
   applied: "Applied",
-  reviewing: "Under Review",
-  interview_requested: "Interview Requested",
-  interview_scheduled: "Interview Scheduled",
-  offer_sent: "Offer Sent",
-  accepted: "Accepted",
-  declined: "Declined",
-  closed: "Closed",
+  reviewing: "Reviewing",
+  interview: "Interview",
+  offered: "Offered",
+  hired: "Hired",
+  rejected: "Rejected",
+  withdrawn: "Withdrawn",
 } as const;
+export type ApplicationStatus = keyof typeof APPLICATION_STATUS;
 
 export function formatSalary(min?: number | null, max?: number | null, currency = "USD"): string {
   const fmt = (n: number) =>
