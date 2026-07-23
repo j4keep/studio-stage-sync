@@ -229,9 +229,9 @@ export default function EmployerDashboardPage() {
                     )}
                     {apps.length > 0 && apps.map((a) => (
                       <div key={a.id} className="rounded-xl bg-card border border-border p-3">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-bold">{a.applicant?.display_name ?? "Applicant"}</p>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold truncate">{a.full_name ?? a.applicant?.display_name ?? "Applicant"}</p>
                             <p className="text-[10px] text-muted-foreground">{timeAgo(a.created_at)}</p>
                           </div>
                           <select value={a.status} onChange={(e) => updateAppStatus(a.id, e.target.value)}
@@ -240,6 +240,16 @@ export default function EmployerDashboardPage() {
                               <option key={k} value={k}>{v}</option>
                             ))}
                           </select>
+                        </div>
+                        <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1 text-[11px] text-muted-foreground">
+                          {a.email && <a href={`mailto:${a.email}`} className="truncate hover:text-primary">✉︎ {a.email}</a>}
+                          {a.phone && <a href={`tel:${a.phone}`} className="truncate hover:text-primary">☎ {a.phone}</a>}
+                          {a.portfolio_url && <a href={a.portfolio_url} target="_blank" rel="noreferrer" className="truncate hover:text-primary">🌐 Portfolio</a>}
+                          {a.linkedin_url && <a href={a.linkedin_url} target="_blank" rel="noreferrer" className="truncate hover:text-primary">in LinkedIn</a>}
+                          {a.resume_url && <a href={a.resume_url} target="_blank" rel="noreferrer" className="truncate hover:text-primary">📄 Résumé</a>}
+                          {a.years_experience != null && <span>🕒 {a.years_experience} yrs experience</span>}
+                          {a.expected_salary != null && <span>💰 Expects ${a.expected_salary.toLocaleString()}</span>}
+                          {a.availability && <span>📅 {a.availability}</span>}
                         </div>
                         {a.cover_letter && (
                           <p className="text-xs mt-2 whitespace-pre-wrap text-muted-foreground leading-relaxed">{a.cover_letter}</p>
