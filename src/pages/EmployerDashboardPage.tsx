@@ -105,6 +105,14 @@ export default function EmployerDashboardPage() {
     setJobs((prev) => prev.map((j) => j.id === job.id ? { ...j, status: next } : j));
   };
 
+  const deleteJob = async (job: JobStat) => {
+    if (!confirm(`Delete "${job.title}"? This can't be undone.`)) return;
+    const { error } = await supabase.from("job_listings").delete().eq("id", job.id);
+    if (error) return toast.error(error.message);
+    setJobs((prev) => prev.filter((j) => j.id !== job.id));
+    toast.success("Job deleted");
+  };
+
   const saveCompany = async () => {
     if (!user) return;
     if (!company.company_name.trim()) return toast.error("Company name required");
