@@ -623,14 +623,21 @@ export type Database = {
       }
       job_applications: {
         Row: {
+          address: string | null
           anonymous_mode: boolean
           applicant_accepted: boolean
           applicant_id: string
+          application_skills: string[] | null
           availability: string | null
+          available_start_date: string | null
+          certifications: string[] | null
           cover_letter: string | null
           created_at: string
+          desired_position: string | null
+          education_history: Json | null
           email: string | null
           employer_accepted: boolean
+          employment_history: Json | null
           expected_salary: number | null
           full_name: string | null
           id: string
@@ -638,24 +645,34 @@ export type Database = {
           linkedin_url: string | null
           phone: string | null
           portfolio_url: string | null
+          references_json: Json | null
           resume_id: string | null
           resume_snapshot: Json | null
           resume_url: string | null
+          shift_preference: string | null
           status: string
+          target_pay_rate: string | null
           updated_at: string
           willing_to_relocate: boolean | null
           work_authorized: boolean | null
           years_experience: number | null
         }
         Insert: {
+          address?: string | null
           anonymous_mode?: boolean
           applicant_accepted?: boolean
           applicant_id: string
+          application_skills?: string[] | null
           availability?: string | null
+          available_start_date?: string | null
+          certifications?: string[] | null
           cover_letter?: string | null
           created_at?: string
+          desired_position?: string | null
+          education_history?: Json | null
           email?: string | null
           employer_accepted?: boolean
+          employment_history?: Json | null
           expected_salary?: number | null
           full_name?: string | null
           id?: string
@@ -663,24 +680,34 @@ export type Database = {
           linkedin_url?: string | null
           phone?: string | null
           portfolio_url?: string | null
+          references_json?: Json | null
           resume_id?: string | null
           resume_snapshot?: Json | null
           resume_url?: string | null
+          shift_preference?: string | null
           status?: string
+          target_pay_rate?: string | null
           updated_at?: string
           willing_to_relocate?: boolean | null
           work_authorized?: boolean | null
           years_experience?: number | null
         }
         Update: {
+          address?: string | null
           anonymous_mode?: boolean
           applicant_accepted?: boolean
           applicant_id?: string
+          application_skills?: string[] | null
           availability?: string | null
+          available_start_date?: string | null
+          certifications?: string[] | null
           cover_letter?: string | null
           created_at?: string
+          desired_position?: string | null
+          education_history?: Json | null
           email?: string | null
           employer_accepted?: boolean
+          employment_history?: Json | null
           expected_salary?: number | null
           full_name?: string | null
           id?: string
@@ -688,10 +715,13 @@ export type Database = {
           linkedin_url?: string | null
           phone?: string | null
           portfolio_url?: string | null
+          references_json?: Json | null
           resume_id?: string | null
           resume_snapshot?: Json | null
           resume_url?: string | null
+          shift_preference?: string | null
           status?: string
+          target_pay_rate?: string | null
           updated_at?: string
           willing_to_relocate?: boolean | null
           work_authorized?: boolean | null
@@ -725,9 +755,11 @@ export type Database = {
           employer_id: string
           employment_type: string
           experience_level: string | null
+          external_apply_url: string | null
           id: string
           location: string | null
           media: Json | null
+          qualifications: string[] | null
           remote_mode: string | null
           salary_currency: string | null
           salary_max: number | null
@@ -748,9 +780,11 @@ export type Database = {
           employer_id: string
           employment_type?: string
           experience_level?: string | null
+          external_apply_url?: string | null
           id?: string
           location?: string | null
           media?: Json | null
+          qualifications?: string[] | null
           remote_mode?: string | null
           salary_currency?: string | null
           salary_max?: number | null
@@ -771,9 +805,11 @@ export type Database = {
           employer_id?: string
           employment_type?: string
           experience_level?: string | null
+          external_apply_url?: string | null
           id?: string
           location?: string | null
           media?: Json | null
+          qualifications?: string[] | null
           remote_mode?: string | null
           salary_currency?: string | null
           salary_max?: number | null

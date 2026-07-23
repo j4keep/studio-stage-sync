@@ -3,13 +3,14 @@ import { X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { JOB_CATEGORIES, EMPLOYMENT_TYPES, REMOTE_MODES, EXPERIENCE_LEVELS } from "@/lib/jobs";
+import { JOB_CATEGORIES, EMPLOYMENT_TYPES, REMOTE_MODES, EXPERIENCE_LEVELS, QUALIFICATION_OPTIONS } from "@/lib/jobs";
 
 type Props = { open: boolean; onClose: () => void; onCreated?: () => void };
 
 export default function PostJobSheet({ open, onClose, onCreated }: Props) {
   const { user } = useAuth();
   const [saving, setSaving] = useState(false);
+  const [qualifications, setQualifications] = useState<string[]>([]);
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -24,7 +25,11 @@ export default function PostJobSheet({ open, onClose, onCreated }: Props) {
     experience_level: "mid",
     benefits: "",
     deadline: "",
+    external_apply_url: "",
   });
+
+  const toggleQual = (q: string) =>
+    setQualifications((prev) => (prev.includes(q) ? prev.filter((x) => x !== q) : [...prev, q]));
 
   if (!open) return null;
 
@@ -55,6 +60,8 @@ export default function PostJobSheet({ open, onClose, onCreated }: Props) {
       experience_level: form.experience_level,
       benefits: form.benefits.split(",").map((s) => s.trim()).filter(Boolean),
       deadline: form.deadline || null,
+      qualifications,
+      external_apply_url: form.external_apply_url.trim() || null,
     });
     setSaving(false);
     if (error) {
@@ -150,6 +157,43 @@ export default function PostJobSheet({ open, onClose, onCreated }: Props) {
         <Field label="Benefits (comma-separated)">
           <input value={form.benefits} onChange={(e) => update("benefits", e.target.value)}
             placeholder="Health, 401k, Remote-friendly" className={inputCls} />
+        </Field>
+
+        <Field label="Required Qualifications">
+          <div className="flex flex-wrap gap-2">
+            {QUALIFICATION_OPTIONS.map((q) => {
+              const on = qualifications.includes(q);
+              return (
+                <button
+                  type="button"
+                  key={q}
+                  onClick={() => toggleQual(q)}
+                  className={`px-3 h-8 rounded-full border text-[11px] font-semibold transition ${
+                    on
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-muted border-border text-foreground/80 hover:border-primary/40"
+                  }`}
+                >
+                  {q}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-2">
+            Applicants will see these as required qualifications for the role.
+          </p>
+        </Field>
+
+        <Field label="Apply on external website (optional)">
+          <input
+            value={form.external_apply_url}
+            onChange={(e) => update("external_apply_url", e.target.value)}
+            placeholder="https://company.com/careers/apply"
+            className={inputCls}
+          />
+          <p className="text-[11px] text-muted-foreground mt-1">
+            If set, the Apply button sends candidates to your own site instead of the YAJ form.
+          </p>
         </Field>
 
         <Field label="Application Deadline">

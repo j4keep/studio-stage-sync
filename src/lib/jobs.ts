@@ -38,6 +38,41 @@ export const URGENCY_OPTIONS = [
   { id: "flexible", label: "Flexible" },
 ] as const;
 
+export const QUALIFICATION_OPTIONS = [
+  "Driver's License",
+  "CDL License",
+  "High School Diploma / GED",
+  "Associate's Degree",
+  "Bachelor's Degree",
+  "Master's Degree",
+  "Doctorate",
+  "Professional Certification",
+  "Trade / Vocational Certificate",
+  "State License (specify in description)",
+  "Background Check",
+  "Drug Test",
+  "Reliable Transportation",
+  "Legally Authorized to Work in the U.S.",
+  "18 years or older",
+  "21 years or older",
+  "Bilingual",
+  "First Aid / CPR",
+  "OSHA Certified",
+  "Food Handler's Card",
+  "ServSafe Certified",
+  "Notary",
+  "Own Tools / Equipment",
+] as const;
+
+export const SHIFT_OPTIONS = [
+  "Full-time",
+  "Part-time",
+  "Weekends",
+  "Evenings",
+  "Overnight",
+  "Flexible",
+] as const;
+
 export const APPLICATION_STATUS = {
   applied: "Applied",
   reviewing: "Reviewing",
