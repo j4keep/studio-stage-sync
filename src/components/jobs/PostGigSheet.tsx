@@ -99,7 +99,8 @@ export default function PostGigSheet({ open, onClose, onCreated }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-background flex flex-col">
+    <div className="fixed inset-0 z-[70] bg-background flex flex-col md:items-center md:justify-center md:bg-black/60">
+      <div className="w-full h-full md:h-[92vh] md:max-w-2xl md:rounded-2xl md:overflow-hidden bg-background flex flex-col">
       <header className="flex items-center justify-between px-4 py-3 border-b border-border">
         <button onClick={onClose} className="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
           <X className="w-4 h-4" />
@@ -114,7 +115,8 @@ export default function PostGigSheet({ open, onClose, onCreated }: Props) {
         </button>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-40">
+
         <div className="rounded-2xl p-3 bg-gradient-to-br from-fuchsia-500/10 to-cyan-500/10 border border-primary/20 space-y-2">
           <div className="flex items-start gap-2">
             <Sparkles className="w-4 h-4 text-primary mt-0.5 shrink-0" />
@@ -219,6 +221,7 @@ export default function PostGigSheet({ open, onClose, onCreated }: Props) {
         </div>
 
         <div className="h-8" />
+      </div>
       </div>
     </div>
   );

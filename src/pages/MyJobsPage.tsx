@@ -64,16 +64,31 @@ export default function MyJobsPage() {
             <>
               <AppliedFunnel apps={applied} />
               {applied.map((a) => a.job && (
-                <button key={a.id} onClick={() => nav(`/jobs/${a.job.id}`)} className="w-full text-left p-4 rounded-2xl bg-card border border-border">
-                  <p className="text-sm font-bold">{a.job.title}</p>
-                  <p className="text-xs text-muted-foreground">{a.job.location ?? "—"}</p>
-                  <div className="mt-2 flex items-center justify-between">
-                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
-                      {APPLICATION_STATUS[a.status as keyof typeof APPLICATION_STATUS] ?? a.status}
-                    </span>
-                    <span className="text-[11px] text-muted-foreground">{timeAgo(a.created_at)}</span>
-                  </div>
-                </button>
+                <div key={a.id} className="p-4 rounded-2xl bg-card border border-border">
+                  <button onClick={() => nav(`/jobs/${a.job.id}`)} className="w-full text-left">
+                    <p className="text-sm font-bold">{a.job.title}</p>
+                    <p className="text-xs text-muted-foreground">{a.job.location ?? "—"}</p>
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
+                        {APPLICATION_STATUS[a.status as keyof typeof APPLICATION_STATUS] ?? a.status}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">{timeAgo(a.created_at)}</span>
+                    </div>
+                  </button>
+                  {a.status !== "withdrawn" && a.status !== "hired" && (
+                    <button
+                      onClick={async () => {
+                        if (!confirm("Withdraw this application?")) return;
+                        const { error } = await supabase.from("job_applications").update({ status: "withdrawn" }).eq("id", a.id);
+                        if (error) return;
+                        setApplied((prev) => prev.map((x) => x.id === a.id ? { ...x, status: "withdrawn" } : x));
+                      }}
+                      className="mt-2 text-[11px] font-semibold text-rose-500"
+                    >
+                      Withdraw application
+                    </button>
+                  )}
+                </div>
               ))}
             </>
           )
@@ -121,7 +136,7 @@ function AppliedFunnel({ apps }: { apps: any[] }) {
   const max = Math.max(1, ...Object.values(counts));
   const colors: Record<string, string> = {
     applied: "bg-sky-500",
-    reviewed: "bg-violet-500",
+    reviewing: "bg-violet-500",
     interview: "bg-amber-500",
     offered: "bg-emerald-500",
     hired: "bg-emerald-600",

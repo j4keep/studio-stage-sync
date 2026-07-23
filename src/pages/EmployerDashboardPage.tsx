@@ -79,7 +79,7 @@ export default function EmployerDashboardPage() {
   const openJob = async (jobId: string) => {
     setSelectedJob(jobId);
     const { data } = await supabase.from("job_applications")
-      .select("id,status,cover_letter,created_at,applicant_id")
+      .select("id,status,cover_letter,created_at,applicant_id,full_name,email,phone,portfolio_url,linkedin_url,years_experience,expected_salary,availability,work_authorized,willing_to_relocate,resume_url")
       .eq("job_id", jobId).order("created_at", { ascending: false });
     const rows = data ?? [];
     const ids = Array.from(new Set(rows.map((a: any) => a.applicant_id)));
@@ -103,6 +103,14 @@ export default function EmployerDashboardPage() {
     const { error } = await supabase.from("job_listings").update({ status: next }).eq("id", job.id);
     if (error) return toast.error(error.message);
     setJobs((prev) => prev.map((j) => j.id === job.id ? { ...j, status: next } : j));
+  };
+
+  const deleteJob = async (job: JobStat) => {
+    if (!confirm(`Delete "${job.title}"? This can't be undone.`)) return;
+    const { error } = await supabase.from("job_listings").delete().eq("id", job.id);
+    if (error) return toast.error(error.message);
+    setJobs((prev) => prev.filter((j) => j.id !== job.id));
+    toast.success("Job deleted");
   };
 
   const saveCompany = async () => {
@@ -194,12 +202,15 @@ export default function EmployerDashboardPage() {
                 </button>
                 {selectedJob === j.id && (
                   <div className="border-t border-border bg-muted/40 p-3 space-y-2">
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                       <button onClick={() => toggleJobStatus(j)} className="text-[11px] px-2 h-7 rounded-full bg-card border border-border font-semibold">
                         {j.status === "open" ? "Close job" : "Reopen job"}
                       </button>
                       <button onClick={() => nav(`/jobs/${j.id}`)} className="text-[11px] px-2 h-7 rounded-full bg-card border border-border font-semibold">
                         View public
+                      </button>
+                      <button onClick={() => deleteJob(j)} className="text-[11px] px-2 h-7 rounded-full bg-rose-500/10 text-rose-500 border border-rose-500/30 font-semibold">
+                        Delete
                       </button>
                     </div>
                     {apps.length === 0 ? (
@@ -209,11 +220,18 @@ export default function EmployerDashboardPage() {
                       <FunnelChart apps={apps} />
                     </>
                     )}
+                    {apps.length === 0 ? (
+                      <p className="text-xs text-muted-foreground py-2">No applicants yet.</p>
+                    ) : (
+                    <>
+                      <FunnelChart apps={apps} />
+                    </>
+                    )}
                     {apps.length > 0 && apps.map((a) => (
                       <div key={a.id} className="rounded-xl bg-card border border-border p-3">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-bold">{a.applicant?.display_name ?? "Applicant"}</p>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold truncate">{a.full_name ?? a.applicant?.display_name ?? "Applicant"}</p>
                             <p className="text-[10px] text-muted-foreground">{timeAgo(a.created_at)}</p>
                           </div>
                           <select value={a.status} onChange={(e) => updateAppStatus(a.id, e.target.value)}
@@ -222,6 +240,16 @@ export default function EmployerDashboardPage() {
                               <option key={k} value={k}>{v}</option>
                             ))}
                           </select>
+                        </div>
+                        <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1 text-[11px] text-muted-foreground">
+                          {a.email && <a href={`mailto:${a.email}`} className="truncate hover:text-primary">✉︎ {a.email}</a>}
+                          {a.phone && <a href={`tel:${a.phone}`} className="truncate hover:text-primary">☎ {a.phone}</a>}
+                          {a.portfolio_url && <a href={a.portfolio_url} target="_blank" rel="noreferrer" className="truncate hover:text-primary">🌐 Portfolio</a>}
+                          {a.linkedin_url && <a href={a.linkedin_url} target="_blank" rel="noreferrer" className="truncate hover:text-primary">in LinkedIn</a>}
+                          {a.resume_url && <a href={a.resume_url} target="_blank" rel="noreferrer" className="truncate hover:text-primary">📄 Résumé</a>}
+                          {a.years_experience != null && <span>🕒 {a.years_experience} yrs experience</span>}
+                          {a.expected_salary != null && <span>💰 Expects ${a.expected_salary.toLocaleString()}</span>}
+                          {a.availability && <span>📅 {a.availability}</span>}
                         </div>
                         {a.cover_letter && (
                           <p className="text-xs mt-2 whitespace-pre-wrap text-muted-foreground leading-relaxed">{a.cover_letter}</p>
@@ -279,7 +307,7 @@ function FunnelChart({ apps }: { apps: any[] }) {
   const max = Math.max(1, ...Object.values(counts));
   const colors: Record<string, string> = {
     applied: "bg-sky-500",
-    reviewed: "bg-violet-500",
+    reviewing: "bg-violet-500",
     interview: "bg-amber-500",
     offered: "bg-emerald-500",
     hired: "bg-emerald-600",
