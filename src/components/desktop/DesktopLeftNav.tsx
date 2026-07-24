@@ -34,7 +34,7 @@ export default function DesktopLeftNav() {
   }, [user?.id]);
 
   const isActive = (path: string) => {
-    if (path === "/") return location.pathname === "/" || location.pathname === "/feed";
+    if (path === "/") return location.pathname === "/";
     if (path === "/jobs") return location.pathname === "/jobs" || (location.pathname.startsWith("/jobs/") && !location.pathname.includes("/interview"));
     return location.pathname === path || location.pathname.startsWith(`${path}/`);
   };

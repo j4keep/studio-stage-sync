@@ -38,7 +38,6 @@ const IncognitoFeedWindow = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const isFullFeed = location.pathname === "/feed" || location.pathname === "/";
   const [open, setOpen] = useState(() => {
     try {
       return sessionStorage.getItem(OPEN_KEY) === "true";
@@ -53,6 +52,15 @@ const IncognitoFeedWindow = () => {
       return false;
     }
   });
+
+  useEffect(() => {
+    const openWindow = () => {
+      setOpen(true);
+      setMinimized(false);
+    };
+    window.addEventListener("open-incognito-feed", openWindow);
+    return () => window.removeEventListener("open-incognito-feed", openWindow);
+  }, []);
   const [sizeMode, setSizeMode] = useState<SizeMode>(() => {
     try {
       const raw = localStorage.getItem(SIZE_KEY);
@@ -186,8 +194,6 @@ const IncognitoFeedWindow = () => {
 
   if (!user) return null;
 
-  if (isFullFeed) return null;
-
   // Floating bubble (closed)
   if (!open) {
     return createPortal(
@@ -214,7 +220,7 @@ const IncognitoFeedWindow = () => {
     { path: "/", icon: Home, label: "Home" },
     { path: "/feed", icon: ImagePlus, label: "Feed" },
     { path: getStoredStudioRoute, icon: Music, label: "TV", matchPrefix: "/tv" },
-    { path: "/profile", icon: User, label: "Profile" },
+    { path: "/explore", icon: User, label: "Profile" },
   ];
 
 
@@ -255,13 +261,20 @@ const IncognitoFeedWindow = () => {
             const path = typeof tab.path === "function" ? tab.path() : tab.path;
             const isActive = tab.matchPrefix
               ? location.pathname.startsWith(tab.matchPrefix)
-              : location.pathname === path;
+              : path === "/feed"
+                ? open && !minimized
+                : location.pathname === path;
             return (
               <button
                 key={tab.label}
                 onClick={(event) => {
                   if (draggedRecentlyRef.current) {
                     event.preventDefault();
+                    return;
+                  }
+                  if (path === "/feed") {
+                    setOpen(true);
+                    setMinimized(false);
                     return;
                   }
                   navigate(path);

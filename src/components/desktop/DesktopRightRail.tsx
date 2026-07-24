@@ -55,8 +55,8 @@ export default function DesktopRightRail() {
             <li key={label}>
               <button
                 type="button"
-                onClick={() => navigate("/explore")}
-                className="w-full rounded-lg px-2 py-1.5 text-left text-sm text-foreground hover:bg-muted"
+                  onClick={() => navigate("/")}
+                  className="w-full rounded-lg px-2 py-1.5 text-left text-sm text-foreground hover:bg-muted"
               >
                 {label}
               </button>

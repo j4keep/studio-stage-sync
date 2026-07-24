@@ -18,7 +18,6 @@ function isDesktopShellPath(pathname: string) {
   if (pathname.startsWith("/jobs/interview")) return false;
   if (
     pathname === "/" ||
-    pathname === "/feed" ||
     pathname === "/explore" ||
     pathname === "/jobs" ||
     pathname === "/profile" ||
@@ -32,8 +31,9 @@ function isDesktopShellPath(pathname: string) {
   return false;
 }
 
-function isHomeFeedPath(pathname: string) {
-  return pathname === "/" || pathname === "/feed";
+/** Home keeps the desktop right rail (Trending / People / Open roles). */
+function showHomeRightRail(pathname: string) {
+  return pathname === "/";
 }
 
 const AppLayout = ({ children }: { children: ReactNode }) => {
@@ -45,9 +45,9 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
     location.pathname.startsWith("/podcast/room/");
   const isPodcastLobby = location.pathname === "/tv/podcast";
   const desktopShell = isDesktopShellPath(location.pathname);
-  const isHomeFeed = isHomeFeedPath(location.pathname);
+  const withRightRail = showHomeRightRail(location.pathname);
   const showMobileTopBar =
-    !["/auth", "/", "/feed"].includes(location.pathname) && !isPodcastWorkspace && !isPodcastLobby;
+    !["/auth", "/"].includes(location.pathname) && !isPodcastWorkspace && !isPodcastLobby;
 
   const handleAskYaj = () => {
     if (!isPro) {
@@ -61,7 +61,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
     return (
       <div className="relative min-h-screen overflow-x-hidden overscroll-x-none bg-background text-foreground">
         {children}
-        {location.pathname !== "/" && <IncognitoFeedWindow />}
+        <IncognitoFeedWindow />
       </div>
     );
   }
@@ -99,8 +99,8 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
 
         <div
           className={
-            isHomeFeed
-              ? "fixed inset-0 mx-auto flex w-full max-w-[440px] flex-col overflow-hidden bg-background lg:static lg:mx-auto lg:grid lg:h-auto lg:max-w-[1280px] lg:grid-cols-[280px_minmax(0,1fr)_300px] lg:gap-4 lg:overflow-visible lg:bg-transparent lg:px-4 lg:py-3"
+            withRightRail
+              ? "relative mx-auto w-full max-w-lg min-w-0 overflow-x-hidden lg:grid lg:max-w-[1280px] lg:grid-cols-[280px_minmax(0,1fr)_300px] lg:gap-4 lg:overflow-visible lg:px-4 lg:py-3"
               : "relative mx-auto w-full max-w-lg min-w-0 overflow-x-hidden lg:grid lg:max-w-[1280px] lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-4 lg:overflow-visible lg:px-4 lg:py-3"
           }
         >
@@ -108,17 +108,11 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
             <DesktopLeftNav />
           </div>
 
-          <main
-            className={
-              isHomeFeed
-                ? "min-h-0 min-w-0 flex-1 overflow-hidden lg:overflow-visible"
-                : "min-w-0 pb-20 lg:pb-4"
-            }
-          >
+          <main className="min-w-0 pb-20 lg:pb-4 lg:min-h-0">
             {children}
           </main>
 
-          {isHomeFeed && (
+          {withRightRail && (
             <div className="hidden lg:block">
               <DesktopRightRail />
             </div>
@@ -126,6 +120,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
 
           <BottomNav />
         </div>
+
         <GlobalRadioPlayer />
         <GlobalPlaylistPlayer />
         <PlaylistPlayerSheet />

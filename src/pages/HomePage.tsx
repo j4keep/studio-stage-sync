@@ -1,6 +1,6 @@
-import FeedPage from "./FeedPage";
+import ExplorePage from "./ExplorePage";
 
-// Home now opens directly into the full-screen Shorts-style feed.
-const HomePage = () => <FeedPage />;
+/** Home center column is Explore; video feed lives in the Incognito window. */
+const HomePage = () => <ExplorePage />;
 
 export default HomePage;

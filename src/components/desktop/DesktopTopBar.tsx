@@ -30,7 +30,7 @@ export default function DesktopTopBar() {
   }, [user?.id]);
 
   const isActive = (path: string) => {
-    if (path === "/") return location.pathname === "/" || location.pathname === "/feed";
+    if (path === "/") return location.pathname === "/";
     return location.pathname === path || location.pathname.startsWith(`${path}/`);
   };
 
