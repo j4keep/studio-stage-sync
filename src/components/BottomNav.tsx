@@ -16,6 +16,7 @@ const BottomNav = () => {
   const [hidden, setHidden] = useState(false);
   const [waving, setWaving] = useState(false);
   const { open: showCreate, cameraStream, openCreate, closeCreate } = useCreatePostSheet();
+  const isFeed = location.pathname === "/feed" || location.pathname === "/";
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -32,7 +33,7 @@ const BottomNav = () => {
   }, [openCreate]);
 
   useEffect(() => {
-    setHidden(false);
+    if (location.pathname !== "/feed" && location.pathname !== "/") setHidden(false);
   }, [location.pathname]);
 
   const tabs = [
@@ -57,21 +58,31 @@ const BottomNav = () => {
   const renderTab = (tab: typeof tabs[number]) => {
     const active = isActive(tab);
     const Icon = tab.icon;
+    const handleClick = () => {
+      if (tab.path === "/" && isFeed) {
+        window.dispatchEvent(new Event("feed-scroll-top"));
+        window.dispatchEvent(new CustomEvent("feed-nav-toggle", { detail: { hidden: false } }));
+        return;
+      }
+      navigate(tab.path);
+    };
     return (
       <button
         key={tab.path}
-        onClick={() => navigate(tab.path)}
+        onClick={handleClick}
         className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-1 min-h-[3rem] rounded-lg transition-all duration-200 ${
-          active ? "text-primary" : "text-muted-foreground hover:text-foreground"
+          active
+            ? isFeed ? "text-foreground" : "text-primary"
+            : isFeed ? "text-muted-foreground hover:text-foreground" : "text-muted-foreground hover:text-foreground"
         }`}
       >
         <Icon
           className={`w-[1.35rem] h-[1.35rem] transition-all ${
-            active ? "drop-shadow-[0_0_8px_hsl(var(--primary)/0.55)]" : ""
+            active ? (isFeed ? "drop-shadow-[0_0_8px_hsl(var(--primary)/0.35)]" : "drop-shadow-[0_0_8px_hsl(var(--primary)/0.55)]") : ""
           }`}
           strokeWidth={active ? 2.5 : 2}
         />
-        <span className={`text-[10px] font-semibold leading-tight ${active ? "text-glow" : ""}`}>{tab.label}</span>
+        <span className={`text-[10px] font-semibold leading-tight ${active && !isFeed ? "text-glow" : ""}`}>{tab.label}</span>
       </button>
     );
   };
@@ -79,9 +90,13 @@ const BottomNav = () => {
   return (
     <>
       <nav
-        className={`lg:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/90 backdrop-blur-2xl safe-area-bottom transition-transform duration-300 ${
-          hidden ? "translate-y-full" : "translate-y-0"
-        }`}
+        className={`lg:hidden ${
+          isFeed ? "absolute inset-x-0 bottom-0 w-full" : "fixed bottom-0 left-0 right-0"
+        } z-50 border-t backdrop-blur-2xl safe-area-bottom transition-transform duration-300 ${
+          isFeed
+            ? "border-border bg-background/90 supports-[backdrop-filter]:bg-background/80"
+            : "border-border bg-background/90"
+        } ${hidden ? "translate-y-full" : "translate-y-0"}`}
       >
         <div className="flex items-end py-1.5 px-2 max-w-lg mx-auto gap-0.5">
           {left.map(renderTab)}

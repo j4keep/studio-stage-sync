@@ -18,6 +18,7 @@ function isDesktopShellPath(pathname: string) {
   if (pathname.startsWith("/jobs/interview")) return false;
   if (
     pathname === "/" ||
+    pathname === "/feed" ||
     pathname === "/explore" ||
     pathname === "/jobs" ||
     pathname === "/profile" ||
@@ -31,9 +32,8 @@ function isDesktopShellPath(pathname: string) {
   return false;
 }
 
-/** Home keeps the desktop right rail (Trending / People / Open roles). */
-function showHomeRightRail(pathname: string) {
-  return pathname === "/";
+function isMobileFeedPath(pathname: string) {
+  return pathname === "/" || pathname === "/feed";
 }
 
 const AppLayout = ({ children }: { children: ReactNode }) => {
@@ -45,9 +45,9 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
     location.pathname.startsWith("/podcast/room/");
   const isPodcastLobby = location.pathname === "/tv/podcast";
   const desktopShell = isDesktopShellPath(location.pathname);
-  const withRightRail = showHomeRightRail(location.pathname);
+  const mobileFeed = isMobileFeedPath(location.pathname);
   const showMobileTopBar =
-    !["/auth", "/"].includes(location.pathname) && !isPodcastWorkspace && !isPodcastLobby;
+    !["/auth", "/", "/feed"].includes(location.pathname) && !isPodcastWorkspace && !isPodcastLobby;
 
   const handleAskYaj = () => {
     if (!isPro) {
@@ -61,7 +61,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
     return (
       <div className="relative min-h-screen overflow-x-hidden overscroll-x-none bg-background text-foreground">
         {children}
-        <IncognitoFeedWindow />
+        {location.pathname !== "/" && <IncognitoFeedWindow />}
       </div>
     );
   }
@@ -99,8 +99,9 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
 
         <div
           className={
-            withRightRail
-              ? "relative mx-auto w-full max-w-lg min-w-0 overflow-x-hidden lg:grid lg:max-w-[1280px] lg:grid-cols-[280px_minmax(0,1fr)_300px] lg:gap-4 lg:overflow-visible lg:px-4 lg:py-3"
+            mobileFeed
+              ? // Phone: original full-bleed feed frame. Desktop home: 3-col with right rail.
+                "fixed inset-0 mx-auto flex w-full max-w-[440px] flex-col overflow-hidden bg-background lg:static lg:mx-auto lg:grid lg:h-auto lg:max-w-[1280px] lg:grid-cols-[280px_minmax(0,1fr)_300px] lg:gap-4 lg:overflow-visible lg:bg-transparent lg:px-4 lg:py-3"
               : "relative mx-auto w-full max-w-lg min-w-0 overflow-x-hidden lg:grid lg:max-w-[1280px] lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-4 lg:overflow-visible lg:px-4 lg:py-3"
           }
         >
@@ -108,11 +109,18 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
             <DesktopLeftNav />
           </div>
 
-          <main className="min-w-0 pb-20 lg:pb-4 lg:min-h-0">
+          <main
+            className={
+              mobileFeed
+                ? "min-h-0 min-w-0 flex-1 overflow-hidden lg:overflow-visible lg:pb-4"
+                : "min-w-0 pb-20 lg:pb-4"
+            }
+          >
             {children}
           </main>
 
-          {withRightRail && (
+          {/* Right rail only on desktop Home (/) — hidden on phone */}
+          {location.pathname === "/" && (
             <div className="hidden lg:block">
               <DesktopRightRail />
             </div>

@@ -1,12 +1,20 @@
 import { useEffect } from "react";
 import { Navigate } from "react-router-dom";
+import FeedPage from "./FeedPage";
+import { useIsDesktop } from "@/hooks/use-is-desktop";
 
 const OPEN_KEY = "incognito-feed-window-open";
 const MINIMIZED_KEY = "incognito-feed-window-minimized";
 
-/** /feed no longer hosts a full-page feed — open the Incognito window on Home instead. */
-export default function OpenIncognitoFeedRedirect() {
+/**
+ * Phone: full Feed page.
+ * Desktop: open Incognito feed window and return Home.
+ */
+export default function FeedRoutePage() {
+  const isDesktop = useIsDesktop();
+
   useEffect(() => {
+    if (!isDesktop) return;
     try {
       sessionStorage.setItem(OPEN_KEY, "true");
       sessionStorage.setItem(MINIMIZED_KEY, "false");
@@ -14,7 +22,8 @@ export default function OpenIncognitoFeedRedirect() {
       /* ignore */
     }
     window.dispatchEvent(new Event("open-incognito-feed"));
-  }, []);
+  }, [isDesktop]);
 
-  return <Navigate to="/" replace />;
+  if (isDesktop) return <Navigate to="/" replace />;
+  return <FeedPage />;
 }
