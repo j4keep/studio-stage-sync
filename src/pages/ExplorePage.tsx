@@ -117,7 +117,7 @@ function SectionRow({ section }: { section: ExploreSection }) {
           <p className="text-[11px] text-muted-foreground mt-0.5">{section.subtitle}</p>
         )}
       </div>
-      <div className="flex gap-3 overflow-x-auto px-4 pb-2 snap-x snap-mandatory scrollbar-hide overscroll-x-contain touch-pan-x">
+      <div className="h-scroll-isolate flex gap-3 overflow-x-auto px-4 pb-2 snap-x snap-mandatory scrollbar-hide">
         {section.items.map((item) => (
           <ExploreCard key={`${section.title}-${item.label}`} item={item} />
         ))}
@@ -219,7 +219,7 @@ export default function ExplorePage() {
             <h2 className="text-base font-bold text-foreground">Top Picks</h2>
             <p className="text-[11px] text-muted-foreground mt-0.5">Your front door to YAJ</p>
           </div>
-          <div className="flex gap-3 overflow-x-auto px-4 pb-2 snap-x snap-mandatory scrollbar-hide overscroll-x-contain touch-pan-x">
+          <div className="h-scroll-isolate flex gap-3 overflow-x-auto px-4 pb-2 snap-x snap-mandatory scrollbar-hide">
             {filteredTop.map((item) => (
               <ExploreCard key={`top-${item.label}`} item={item} />
             ))}

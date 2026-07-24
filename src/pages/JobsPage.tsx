@@ -179,7 +179,7 @@ export default function JobsPage() {
         </form>
 
         {!query && recents.length > 0 && (
-          <div className="mt-2 flex gap-2 overflow-x-auto scrollbar-hide">
+          <div className="mt-2 h-scroll-isolate flex gap-2 overflow-x-auto scrollbar-hide">
             {recents.map((r) => (
               <button key={r} onClick={() => setQuery(r)}
                 className="shrink-0 px-2.5 h-7 rounded-full bg-muted border border-border text-[11px] text-muted-foreground">
@@ -205,7 +205,7 @@ export default function JobsPage() {
         </div>
       </header>
 
-      <div className="flex gap-2 overflow-x-auto px-4 pb-3 scrollbar-hide touch-pan-x">
+      <div className="h-scroll-isolate flex gap-2 overflow-x-auto px-4 pb-3 scrollbar-hide">
         {JOB_CATEGORIES.map((cat) => {
           const active = activeCategory === cat.id;
           return (

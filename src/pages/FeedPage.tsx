@@ -49,7 +49,6 @@ const FeedPage = () => {
     return { reels, posts };
   }, [items]);
 
-  // Pick one video to autoplay muted so the feed always has visible motion on load.
   const featuredReelIndex = useMemo(
     () => reels.findIndex((p: any) => p.media_type === "video" && p.media_url),
     [reels],
@@ -61,114 +60,164 @@ const FeedPage = () => {
 
   const activeItems = viewer?.rail === "reel" ? reels : viewer?.rail === "post" ? posts : [];
 
-  return (
-    <div className="h-[100dvh] w-full flex flex-col overflow-hidden relative overscroll-none bg-background text-foreground dark:bg-background dark:text-foreground">
-      <FlagBackground className="opacity-80 dark:opacity-100" />
+  const trendingRow = trending.length > 0 && (
+    <div className="flex max-w-full min-w-0 items-center gap-2 overflow-x-auto overscroll-x-contain touch-pan-x scrollbar-hide h-scroll-isolate rounded-xl border border-border bg-card/95 px-2 py-2 shadow-sm dark:backdrop-blur-md">
+      <button
+        onClick={() => navigate("/profile")}
+        className="flex shrink-0 flex-col items-center gap-1"
+        aria-label="Pitch your profile"
+      >
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-lg font-light text-foreground ring-2 ring-primary">+</div>
+        <span className="text-[10px] font-medium leading-none text-foreground/80">Pitch</span>
+      </button>
 
-      {/* Header overlay — single row: logo + tabs + search + more */}
-      <div className="absolute top-0 left-0 right-0 z-40 px-3 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-1.5 bg-background/90 backdrop-blur-md border-b border-border/70 pointer-events-none">
-        <div className="flex items-center gap-2 text-foreground pointer-events-auto">
-          <img src={yajLogo} alt="YAJ" className="h-16 w-auto shrink-0 -my-3" />
-          <div className="flex-1 min-w-0" />
-          <button onClick={() => navigate("/browse-songs")} className="w-8 h-8 flex items-center justify-center rounded-full bg-card/80 border border-border active:bg-muted shrink-0" aria-label="Search">
-            <Search className="w-[1.15rem] h-[1.15rem]" strokeWidth={2.25} />
+      {trending.map((c) => (
+        <button
+          key={c.user_id}
+          onClick={() => navigate(`/artist/${c.user_id}`)}
+          className="flex w-[3rem] shrink-0 flex-col items-center gap-1"
+        >
+          <div className="h-10 w-10 overflow-hidden rounded-full bg-muted ring-2 ring-border dark:bg-white/10 dark:ring-white/35">
+            {c.avatar_url ? (
+              <img src={c.avatar_url} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-xs font-bold text-foreground">
+                {(c.display_name || "?")[0]?.toUpperCase()}
+              </div>
+            )}
+          </div>
+          <span className="w-full truncate text-center text-[10px] font-medium leading-none text-foreground/80">
+            {c.display_name || "Artist"}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+
+  return (
+    <div className="relative flex h-[100dvh] w-full min-w-0 flex-col overflow-hidden overscroll-none bg-background text-foreground dark:bg-background dark:text-foreground lg:h-[calc(100dvh-3.5rem-1.5rem)] lg:rounded-xl lg:border lg:border-border lg:bg-card lg:shadow-sm">
+      <FlagBackground className="opacity-80 dark:opacity-100 lg:opacity-40" />
+
+      {/* Mobile header */}
+      <div className="pointer-events-none absolute left-0 right-0 top-0 z-40 border-b border-border/70 bg-background/90 px-3 pb-1.5 pt-[calc(env(safe-area-inset-top)+0.5rem)] backdrop-blur-md lg:hidden">
+        <div className="pointer-events-auto flex items-center gap-2 text-foreground">
+          <img src={yajLogo} alt="YAJ" className="-my-3 h-16 w-auto shrink-0" />
+          <div className="min-w-0 flex-1" />
+          <button onClick={() => navigate("/browse-songs")} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-card/80 active:bg-muted" aria-label="Search">
+            <Search className="h-[1.15rem] w-[1.15rem]" strokeWidth={2.25} />
           </button>
-          <button className="w-8 h-8 flex items-center justify-center rounded-full bg-card/80 border border-border active:bg-muted shrink-0" aria-label="More">
-            <MoreVertical className="w-[1.15rem] h-[1.15rem]" strokeWidth={2.25} />
+          <button className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-card/80 active:bg-muted" aria-label="More">
+            <MoreVertical className="h-[1.15rem] w-[1.15rem]" strokeWidth={2.25} />
           </button>
         </div>
       </div>
 
-
+      {/* Mobile trending overlay */}
       {trending.length > 0 && (
-        <div className="absolute left-0 right-0 top-[calc(env(safe-area-inset-top)+3.25rem)] z-30 px-3 pointer-events-none">
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pointer-events-auto rounded-xl border border-border bg-card/95 px-2 py-2 shadow-sm dark:backdrop-blur-md">
-            <button
-              onClick={() => navigate("/profile")}
-              className="shrink-0 flex flex-col items-center gap-1"
-              aria-label="Pitch your profile"
-            >
-              <div className="w-10 h-10 rounded-full ring-2 ring-primary flex items-center justify-center bg-muted text-foreground text-lg font-light">+</div>
-              <span className="text-[10px] text-foreground/80 leading-none font-medium">Pitch</span>
-            </button>
-
-            {trending.map((c) => (
-              <button
-                key={c.user_id}
-                onClick={() => navigate(`/artist/${c.user_id}`)}
-                className="shrink-0 flex flex-col items-center gap-1 w-[3rem]"
-              >
-                <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-border bg-muted dark:ring-white/35 dark:bg-white/10">
-                  {c.avatar_url ? (
-                    <img src={c.avatar_url} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-foreground text-xs font-bold">
-                      {(c.display_name || "?")[0]?.toUpperCase()}
-                    </div>
-                  )}
-                </div>
-                <span className="text-[10px] text-foreground/80 leading-none truncate w-full text-center font-medium">
-                  {c.display_name || "Artist"}
-                </span>
-              </button>
-            ))}
-          </div>
+        <div className="pointer-events-none absolute left-0 right-0 top-[calc(env(safe-area-inset-top)+3.25rem)] z-30 px-3 lg:hidden">
+          <div className="pointer-events-auto">{trendingRow}</div>
         </div>
       )}
 
-      {/* Split columns */}
       {isLoading ? (
-        <div className="relative z-10 h-full flex items-center justify-center">
-          <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
+        <div className="relative z-10 flex h-full items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-white border-t-transparent" />
         </div>
       ) : (
-        <div className="relative z-10 flex-1 flex overflow-hidden pt-[7.5rem]">
-          {/* Reels — left 25% */}
-          <div className="w-1/4 h-full overflow-y-scroll scrollbar-hide overscroll-y-contain touch-pan-y px-1.5 pb-24 space-y-2">
-            <div className="sticky top-0 z-10 -mx-1.5 px-2 py-1 bg-card/95 border-b border-border rounded-b-md backdrop-blur-sm">
-              <p className="text-[10px] font-black tracking-wider text-foreground uppercase">Reels</p>
+        <>
+          {/* Mobile split columns */}
+          <div className="relative z-10 flex flex-1 overflow-hidden pt-[7.5rem] lg:hidden">
+            <div className="h-full w-1/4 space-y-2 overflow-y-scroll overscroll-y-contain touch-pan-y px-1.5 pb-24 scrollbar-hide">
+              <div className="-mx-1.5 sticky top-0 z-10 rounded-b-md border-b border-border bg-card/95 px-2 py-1 backdrop-blur-sm">
+                <p className="text-[10px] font-black uppercase tracking-wider text-foreground">Reels</p>
+              </div>
+              {reels.length === 0 ? (
+                <p className="mt-4 rounded-lg border border-border bg-card/90 px-2 py-3 text-center text-[10px] text-muted-foreground">No reels yet</p>
+              ) : (
+                reels.map((post, i) => (
+                  <FeedThumbCard
+                    key={post.id}
+                    post={post}
+                    compact
+                    autoPlayMuted={post.media_type === "video" && i === featuredReelIndex}
+                    onOpen={() => setViewer({ rail: "reel", index: i })}
+                  />
+                ))
+              )}
             </div>
-            {reels.length === 0 ? (
-              <p className="rounded-lg bg-card/90 border border-border px-2 py-3 text-[10px] text-muted-foreground text-center mt-4">No reels yet</p>
-            ) : (
-              reels.map((post, i) => (
-                <FeedThumbCard
-                  key={post.id}
-                  post={post}
-                  compact
-                  autoPlayMuted={post.media_type === "video" && i === featuredReelIndex}
-                  onOpen={() => setViewer({ rail: "reel", index: i })}
-                />
-              ))
-            )}
+
+            <div className="h-full w-3/4 space-y-3 overflow-y-scroll overscroll-y-contain touch-pan-y border-l border-border/70 px-2 pb-24 scrollbar-hide dark:border-white/10">
+              <div className="-mx-2 sticky top-0 z-10 rounded-b-md border-b border-border bg-card/95 px-3 py-1 backdrop-blur-sm">
+                <p className="text-[11px] font-black uppercase tracking-wider text-foreground">Posts</p>
+              </div>
+              {posts.length === 0 ? (
+                <div className="mt-6 flex flex-col items-center gap-3 rounded-xl border border-border bg-card/95 p-4 shadow-sm">
+                  <p className="text-xs text-muted-foreground">No posts yet</p>
+                  <button
+                    onClick={() => window.dispatchEvent(new Event("open-create-post"))}
+                    className="rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground"
+                  >
+                    Create first post
+                  </button>
+                </div>
+              ) : (
+                posts.map((post, i) => (
+                  <FeedThumbCard
+                    key={post.id}
+                    post={post}
+                    onOpen={() => setViewer({ rail: "post", index: i })}
+                  />
+                ))
+              )}
+            </div>
           </div>
 
-          {/* Posts — right 75% */}
-          <div className="w-3/4 h-full overflow-y-scroll scrollbar-hide overscroll-y-contain touch-pan-y px-2 pb-24 space-y-3 border-l border-border/70 dark:border-white/10">
-            <div className="sticky top-0 z-10 -mx-2 px-3 py-1 bg-card/95 border-b border-border rounded-b-md backdrop-blur-sm">
-              <p className="text-[11px] font-black tracking-wider text-foreground uppercase">Posts</p>
-            </div>
-            {posts.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 mt-6 rounded-xl bg-card/95 border border-border p-4 shadow-sm">
-                <p className="text-muted-foreground text-xs">No posts yet</p>
-                <button
-                  onClick={() => window.dispatchEvent(new Event("open-create-post"))}
-                  className="px-4 py-2 bg-primary text-primary-foreground rounded-full text-xs font-semibold"
-                >
-                  Create first post
-                </button>
+          {/* Desktop: single center column (stories + posts) */}
+          <div className="relative z-10 hidden min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain touch-pan-y p-4 scrollbar-hide lg:flex">
+            {trending.length > 0 && <div className="mb-4 shrink-0">{trendingRow}</div>}
+
+            {reels.length > 0 && (
+              <div className="mb-4 shrink-0">
+                <p className="mb-2 text-[11px] font-black uppercase tracking-wider text-muted-foreground">Reels</p>
+                <div className="h-scroll-isolate flex max-w-full min-w-0 gap-2 overflow-x-auto overscroll-x-contain touch-pan-x pb-1 scrollbar-hide">
+                  {reels.slice(0, 12).map((post, i) => (
+                    <div key={post.id} className="w-28 shrink-0">
+                      <FeedThumbCard
+                        post={post}
+                        compact
+                        autoPlayMuted={post.media_type === "video" && i === featuredReelIndex}
+                        onOpen={() => setViewer({ rail: "reel", index: i })}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
-            ) : (
-              posts.map((post, i) => (
-                <FeedThumbCard
-                  key={post.id}
-                  post={post}
-                  onOpen={() => setViewer({ rail: "post", index: i })}
-                />
-              ))
             )}
+
+            <div className="space-y-3 pb-6">
+              <p className="text-[11px] font-black uppercase tracking-wider text-muted-foreground">Posts</p>
+              {posts.length === 0 ? (
+                <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-background p-6">
+                  <p className="text-sm text-muted-foreground">No posts yet</p>
+                  <button
+                    onClick={() => window.dispatchEvent(new Event("open-create-post"))}
+                    className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
+                  >
+                    Create first post
+                  </button>
+                </div>
+              ) : (
+                posts.map((post, i) => (
+                  <FeedThumbCard
+                    key={post.id}
+                    post={post}
+                    onOpen={() => setViewer({ rail: "post", index: i })}
+                  />
+                ))
+              )}
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       {viewer && activeItems.length > 0 && (

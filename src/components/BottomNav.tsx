@@ -90,7 +90,7 @@ const BottomNav = () => {
   return (
     <>
       <nav
-        className={`${
+        className={`lg:hidden ${
           isFeed ? "absolute inset-x-0 bottom-0 w-full" : "fixed bottom-0 left-0 right-0"
         } z-50 border-t backdrop-blur-2xl safe-area-bottom transition-transform duration-300 ${
           isFeed

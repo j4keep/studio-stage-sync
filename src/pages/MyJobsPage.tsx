@@ -107,7 +107,7 @@ export default function MyJobsPage() {
         </button>
       </header>
 
-      <div className="flex gap-2 px-4 py-3 border-b border-border overflow-x-auto">
+      <div className="h-scroll-isolate flex gap-2 overflow-x-auto border-b border-border px-4 py-3">
         {([
           ["applied", "Applied"],
           ["interviews", `Interviews${interviews.length ? ` (${interviews.length})` : ""}`],
