@@ -118,11 +118,45 @@ export default function JobInterviewPage() {
     }
   };
 
-  const hangUp = async () => {
+  const hangUp = async (leavePage = false) => {
     const room = roomRef.current;
     roomRef.current = null;
-    await room?.disconnect();
+    try {
+      if (room) {
+        room.localParticipant.trackPublications.forEach((pub) => {
+          const track = pub.track as { stop?: () => void; detach?: () => void } | null;
+          try {
+            track?.stop?.();
+            track?.detach?.();
+          } catch {
+            /* ignore */
+          }
+        });
+        await room.disconnect();
+      }
+    } catch {
+      /* ignore */
+    }
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = null;
+      localVideoRef.current.removeAttribute("src");
+      localVideoRef.current.load();
+    }
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = null;
+      remoteVideoRef.current.removeAttribute("src");
+      remoteVideoRef.current.load();
+    }
+    if (remoteAudioRef.current) {
+      remoteAudioRef.current.srcObject = null;
+      remoteAudioRef.current.pause();
+    }
     setConn("idle");
+    setMicOn(true);
+    setCamOn(true);
+    if (leavePage) {
+      nav(isEmployer ? "/employer-dashboard" : "/my-jobs", { replace: true });
+    }
   };
 
   const toggleMic = async () => {
@@ -143,8 +177,18 @@ export default function JobInterviewPage() {
 
   useEffect(() => {
     return () => {
-      roomRef.current?.disconnect();
+      const room = roomRef.current;
       roomRef.current = null;
+      try {
+        room?.localParticipant.trackPublications.forEach((pub) => {
+          const track = pub.track as { stop?: () => void; detach?: () => void } | null;
+          track?.stop?.();
+          track?.detach?.();
+        });
+        room?.disconnect();
+      } catch {
+        /* ignore */
+      }
     };
   }, []);
 
@@ -161,7 +205,7 @@ export default function JobInterviewPage() {
   return (
     <div className="min-h-screen bg-zinc-950 text-white flex flex-col">
       <header className="flex items-center gap-2 px-3 py-2 border-b border-white/10">
-        <button onClick={() => { hangUp(); nav(-1); }} className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center">
+        <button onClick={() => { void hangUp(true); }} className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center">
           <ArrowLeft className="w-4 h-4" />
         </button>
         <div className="min-w-0 flex-1">
@@ -227,7 +271,11 @@ export default function JobInterviewPage() {
                 {camOn ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5 text-rose-400" />}
               </button>
             )}
-            <button onClick={hangUp} className="w-14 h-12 rounded-full bg-rose-500 flex items-center justify-center">
+            <button
+              onClick={() => { void hangUp(true); }}
+              className="w-14 h-12 rounded-full bg-rose-500 flex items-center justify-center"
+              aria-label="End call"
+            >
               <PhoneOff className="w-5 h-5" />
             </button>
           </>

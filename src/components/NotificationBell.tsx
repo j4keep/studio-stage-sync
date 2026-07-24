@@ -6,6 +6,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { formatDistanceToNow } from "date-fns";
+import { jobNotificationsEnabled } from "@/pages/JobPreferencesPage";
+
+const isJobNotification = (n: any) =>
+  n?.type === "job" ||
+  n?.type === "job_application" ||
+  n?.reference_type === "job" ||
+  n?.reference_type === "job_application";
 
 const NotificationBell = () => {
   const { user } = useAuth();
@@ -14,9 +21,10 @@ const NotificationBell = () => {
   const [open, setOpen] = useState(false);
 
   const notificationsEnabled = localStorage.getItem("wheuat_notifications") !== "false";
+  const showJobNotifs = jobNotificationsEnabled();
 
   const { data: notifications = [] } = useQuery({
-    queryKey: ["notifications", user?.id],
+    queryKey: ["notifications", user?.id, showJobNotifs],
     queryFn: async () => {
       if (!user) return [];
       const { data } = await (supabase as any)
@@ -25,7 +33,9 @@ const NotificationBell = () => {
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(50);
-      return data || [];
+      const rows = data || [];
+      if (showJobNotifs) return rows;
+      return rows.filter((n: any) => !isJobNotification(n));
     },
     enabled: !!user && notificationsEnabled,
   });
@@ -71,10 +81,12 @@ const NotificationBell = () => {
     else if (notification.reference_type === "follow") navigate(`/artist/${notification.reference_id}`);
     else if (notification.reference_type === "studio") navigate("/my-studios");
     else if (notification.reference_type === "session_verify") navigate("/bookings");
-    else if (notification.reference_type === "job_application" || notification.reference_type === "job") {
-      if (notification.title === "Job removed" || !notification.reference_id) navigate("/my-jobs");
-      else if (String(notification.title || "").toLowerCase().includes("interview")) navigate("/my-jobs");
-      else navigate(`/jobs/${notification.reference_id}`);
+    else if (notification.reference_type === "job_application" || notification.reference_type === "job" || notification.type === "job" || notification.type === "job_application") {
+      if (notification.title === "Job removed" || String(notification.title || "").toLowerCase().includes("interview") || !notification.reference_id) {
+        navigate("/my-jobs");
+      } else {
+        navigate(`/jobs/${notification.reference_id}`);
+      }
     }
     setOpen(false);
   };
@@ -121,9 +133,16 @@ const NotificationBell = () => {
               >
                 <div className="flex items-start gap-3">
                   <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-semibold ${!n.is_read ? "text-foreground" : "text-muted-foreground"}`}>
-                      {n.title}
-                    </p>
+                    <div className="flex items-center gap-1.5">
+                      {isJobNotification(n) && (
+                        <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700">
+                          Jobs
+                        </span>
+                      )}
+                      <p className={`text-sm font-semibold truncate ${!n.is_read ? "text-foreground" : "text-muted-foreground"}`}>
+                        {n.title}
+                      </p>
+                    </div>
                     {n.body && (
                       <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{n.body}</p>
                     )}
