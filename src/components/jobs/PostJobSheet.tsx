@@ -11,6 +11,8 @@ import {
   QUALIFICATION_OPTIONS,
   normalizeExternalApplyUrl,
   parseMoney,
+  jobCoverMedia,
+  resolveJobCover,
 } from "@/lib/jobs";
 
 export type EditableJob = {
@@ -31,6 +33,7 @@ export type EditableJob = {
   qualifications: string[] | null;
   external_apply_url: string | null;
   cover_image_url?: string | null;
+  media?: unknown;
 };
 
 type Props = {
@@ -91,7 +94,7 @@ export default function PostJobSheet({ open, onClose, onCreated, editJob }: Prop
       });
       setQualifications(editJob.qualifications ?? []);
       setCustomQual("");
-      setPostImageUrl(editJob.cover_image_url || "");
+      setPostImageUrl(resolveJobCover(editJob) || "");
     } else {
       setForm(emptyForm);
       setQualifications([]);
@@ -202,7 +205,8 @@ export default function PostJobSheet({ open, onClose, onCreated, editJob }: Prop
       deadline: form.deadline || null,
       qualifications,
       external_apply_url,
-      cover_image_url: postImageUrl || null,
+      // Stored in existing media jsonb so posts work before cover_image_url migration is applied
+      media: jobCoverMedia(postImageUrl),
     };
   };
 

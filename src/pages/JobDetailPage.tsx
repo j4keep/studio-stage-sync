@@ -4,7 +4,7 @@ import { ArrowLeft, MapPin, Clock, Bookmark, BookmarkCheck, Building2, Sparkles,
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { formatSalary, timeAgo, EMPLOYMENT_TYPES, REMOTE_MODES, SHIFT_OPTIONS, googleMapsUrl, normalizeExternalApplyUrl } from "@/lib/jobs";
+import { formatSalary, timeAgo, EMPLOYMENT_TYPES, REMOTE_MODES, SHIFT_OPTIONS, googleMapsUrl, normalizeExternalApplyUrl, resolveJobCover } from "@/lib/jobs";
 import { generateCoverLetter } from "@/lib/yaj-jobs-ai";
 import ResumePreview from "@/components/jobs/ResumePreview";
 
@@ -28,6 +28,7 @@ type Job = {
   qualifications: string[] | null;
   external_apply_url: string | null;
   cover_image_url?: string | null;
+  media?: unknown;
 };
 
 type EmploymentEntry = { employer: string; supervisor: string; phone: string; title: string; start: string; end: string; pay: string; reason: string };
@@ -253,6 +254,7 @@ export default function JobDetailPage() {
   const mode = REMOTE_MODES.find((m) => m.id === job.remote_mode)?.label ?? job.remote_mode;
   const isOwner = user && job.employer_id === user.id;
   const hasExternal = !!job.external_apply_url;
+  const jobCover = resolveJobCover(job);
 
   const handleApplyClick = () => {
     if (applied || isOwner) return;
@@ -281,18 +283,18 @@ export default function JobDetailPage() {
       </header>
 
       <div className="max-w-3xl mx-auto p-4 space-y-4 pb-40">
-        {(job.cover_image_url || employerBrand?.company_name) && (
+        {(jobCover || employerBrand?.company_name) && (
           <div className="space-y-3">
-            {job.cover_image_url && (
+            {jobCover && (
               <div className="w-full h-36 md:h-48 rounded-2xl overflow-hidden border border-border bg-muted">
-                <img src={job.cover_image_url} alt="" className="w-full h-full object-cover" />
+                <img src={jobCover} alt="" className="w-full h-full object-cover" />
               </div>
             )}
             {employerBrand?.company_name && (
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-xl bg-muted border border-border overflow-hidden flex items-center justify-center shrink-0">
-                  {job.cover_image_url ? (
-                    <img src={job.cover_image_url} alt="" className="w-full h-full object-cover" />
+                  {jobCover ? (
+                    <img src={jobCover} alt="" className="w-full h-full object-cover" />
                   ) : (
                     <Building2 className="w-5 h-5 text-muted-foreground" />
                   )}
@@ -407,8 +409,8 @@ export default function JobDetailPage() {
                 <div className="rounded-xl border border-border bg-muted/40 p-3 space-y-2">
                   {employerBrand?.company_name && (
                     <div className="flex items-center gap-2.5 pb-1">
-                      {job.cover_image_url ? (
-                        <img src={job.cover_image_url} alt="" className="w-10 h-10 rounded-lg object-cover border border-border" />
+                      {jobCover ? (
+                        <img src={jobCover} alt="" className="w-10 h-10 rounded-lg object-cover border border-border" />
                       ) : (
                         <div className="w-10 h-10 rounded-lg bg-muted border border-border flex items-center justify-center">
                           <Building2 className="w-4 h-4 text-muted-foreground" />

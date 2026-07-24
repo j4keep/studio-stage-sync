@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Search, MapPin, Clock, Briefcase, Sparkles, Plus, X, User, Settings2, Building2, BadgeCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { JOB_CATEGORIES, formatSalary, timeAgo, EMPLOYMENT_TYPES, scoreListing, type Prefs } from "@/lib/jobs";
+import { JOB_CATEGORIES, formatSalary, timeAgo, EMPLOYMENT_TYPES, scoreListing, resolveJobCover, type Prefs } from "@/lib/jobs";
 import PostChooserSheet from "@/components/jobs/PostChooserSheet";
 import PostJobSheet from "@/components/jobs/PostJobSheet";
 import PostGigSheet from "@/components/jobs/PostGigSheet";
@@ -19,6 +19,7 @@ type JobRow = {
   remote_mode: string;
   created_at: string;
   employer_id: string;
+  media?: unknown;
   cover_image_url?: string | null;
   __kind: "job";
 };
@@ -67,7 +68,7 @@ export default function JobsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     const [{ data: jobs }, { data: gigs }] = await Promise.all([
-      supabase.from("job_listings").select("id,title,category,employment_type,salary_min,salary_max,location,remote_mode,created_at,employer_id,cover_image_url")
+      supabase.from("job_listings").select("id,title,category,employment_type,salary_min,salary_max,location,remote_mode,created_at,employer_id,media")
         .eq("status", "open").order("created_at", { ascending: false }).limit(50),
       supabase.from("gig_listings").select("id,title,category,location,budget_min,budget_max,urgency,created_at")
         .eq("status", "open").order("created_at", { ascending: false }).limit(50),
@@ -253,7 +254,7 @@ export default function JobsPage() {
             const s = forYou && prefs ? scoreListing(item, prefs) : 0;
             const verified = item.__kind === "job" && verifiedEmployers.has((item as JobRow).employer_id);
             const brand = item.__kind === "job" ? employerBrands[(item as JobRow).employer_id] : null;
-            const jobCover = item.__kind === "job" ? (item as JobRow).cover_image_url : null;
+            const jobCover = item.__kind === "job" ? resolveJobCover(item as JobRow) : null;
             return (
             <button key={`${item.__kind}-${item.id}`} type="button"
               onClick={() => nav(item.__kind === "job" ? `/jobs/${item.id}` : `/gigs/${item.id}`)}

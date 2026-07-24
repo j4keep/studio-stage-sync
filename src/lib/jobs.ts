@@ -183,3 +183,35 @@ export function scoreListing(item: any, prefs: Prefs | null): number {
   if (prefs.salary_expect && item.salary_max && item.salary_max >= prefs.salary_expect) score += 10;
   return score;
 }
+
+/** Per-job cover image stored in job_listings.media (works without cover_image_url column). */
+export function jobCoverFromMedia(media: unknown): string | null {
+  if (!media) return null;
+  if (typeof media === "string" && media.startsWith("http")) return media;
+  if (Array.isArray(media)) {
+    for (const item of media) {
+      if (!item || typeof item !== "object") continue;
+      const row = item as Record<string, unknown>;
+      if (typeof row.url === "string" && row.url) return row.url;
+      if (typeof row.cover_image_url === "string" && row.cover_image_url) return row.cover_image_url;
+    }
+    return null;
+  }
+  if (typeof media === "object") {
+    const row = media as Record<string, unknown>;
+    if (typeof row.url === "string" && row.url) return row.url;
+    if (typeof row.cover_image_url === "string" && row.cover_image_url) return row.cover_image_url;
+  }
+  return null;
+}
+
+export function jobCoverMedia(url: string | null | undefined) {
+  if (!url) return [];
+  return [{ kind: "cover", url }];
+}
+
+export function resolveJobCover(job: { cover_image_url?: string | null; media?: unknown } | null | undefined): string | null {
+  if (!job) return null;
+  if (job.cover_image_url) return job.cover_image_url;
+  return jobCoverFromMedia(job.media);
+}
