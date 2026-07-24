@@ -4,7 +4,7 @@ import { ArrowLeft, MapPin, Clock, Bookmark, BookmarkCheck, Building2, Sparkles,
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { formatSalary, timeAgo, EMPLOYMENT_TYPES, REMOTE_MODES, SHIFT_OPTIONS } from "@/lib/jobs";
+import { formatSalary, timeAgo, EMPLOYMENT_TYPES, REMOTE_MODES, SHIFT_OPTIONS, googleMapsUrl, normalizeExternalApplyUrl } from "@/lib/jobs";
 import { generateCoverLetter } from "@/lib/yaj-jobs-ai";
 
 type Job = {
@@ -30,11 +30,9 @@ type Job = {
 
 type EmploymentEntry = { employer: string; supervisor: string; phone: string; title: string; start: string; end: string; pay: string; reason: string };
 type EducationEntry = { school: string; degree: string; year: string };
-type ReferenceEntry = { name: string; relationship: string; phone: string; email: string };
 
 const emptyEmployment = (): EmploymentEntry => ({ employer: "", supervisor: "", phone: "", title: "", start: "", end: "", pay: "", reason: "" });
 const emptyEducation = (): EducationEntry => ({ school: "", degree: "", year: "" });
-const emptyReference = (): ReferenceEntry => ({ name: "", relationship: "", phone: "", email: "" });
 
 export default function JobDetailPage() {
   const { id } = useParams();
@@ -58,10 +56,7 @@ export default function JobDetailPage() {
   const [workAuthorized, setWorkAuthorized] = useState(true);
   const [willingRelocate, setWillingRelocate] = useState(false);
   const [yearsExp, setYearsExp] = useState("");
-  const [expectedSalary, setExpectedSalary] = useState("");
   const [availability, setAvailability] = useState("");
-  const [desiredPosition, setDesiredPosition] = useState("");
-  const [targetPay, setTargetPay] = useState("");
   const [startDate, setStartDate] = useState("");
   const [shiftPref, setShiftPref] = useState("");
   const [skillsText, setSkillsText] = useState("");
@@ -71,7 +66,6 @@ export default function JobDetailPage() {
   const [confirmedQuals, setConfirmedQuals] = useState<string[]>([]);
   const [employment, setEmployment] = useState<EmploymentEntry[]>([emptyEmployment()]);
   const [education, setEducation] = useState<EducationEntry[]>([emptyEducation()]);
-  const [references, setReferences] = useState<ReferenceEntry[]>([emptyReference()]);
 
   useEffect(() => {
     if (!id) return;
@@ -158,22 +152,22 @@ export default function JobDetailPage() {
       phone: phone.trim(),
       address: address.trim(),
       years_experience: yearsExp ? Number(yearsExp) : null,
-      expected_salary: expectedSalary ? Number(expectedSalary) : null,
+      expected_salary: null,
       availability: availability.trim() || null,
       work_authorized: workAuthorized,
       willing_to_relocate: willingRelocate,
       resume_url: resumeUrl || null,
       resume_snapshot: resumeSnapshot,
       cover_letter: coverLetter.trim() || null,
-      desired_position: desiredPosition.trim() || job.title,
-      target_pay_rate: targetPay.trim() || null,
+      desired_position: job.title,
+      target_pay_rate: null,
       available_start_date: startDate || null,
       shift_preference: shiftPref || null,
       application_skills: skillsText.split(",").map((s) => s.trim()).filter(Boolean),
       certifications: [...confirmedQuals, ...certsText.split(",").map((s) => s.trim()).filter(Boolean)],
       employment_history: employment.filter((e) => e.employer.trim()) as any,
       education_history: education.filter((e) => e.school.trim()) as any,
-      references_json: references.filter((r) => r.name.trim()) as any,
+      references_json: [],
     });
     setSubmitting(false);
     if (error) return toast.error(error.message);
@@ -193,7 +187,13 @@ export default function JobDetailPage() {
   const handleApplyClick = () => {
     if (applied || isOwner) return;
     if (hasExternal) {
-      window.open(job.external_apply_url!, "_blank", "noopener,noreferrer");
+      const url = normalizeExternalApplyUrl(job.external_apply_url || "");
+      if (!url) {
+        toast.error("This job’s external apply link is invalid. Try Apply on YAJ instead.");
+        setShowApply(true);
+        return;
+      }
+      window.open(url, "_blank", "noopener,noreferrer");
       return;
     }
     setShowApply(true);
@@ -214,7 +214,22 @@ export default function JobDetailPage() {
         <div>
           <h1 className="text-xl md:text-3xl font-black tracking-tight">{job.title}</h1>
           <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground flex-wrap">
-            {job.location && <span className="inline-flex items-center gap-1"><MapPin className="w-3 h-3" /> {job.location}</span>}
+            {job.location && (
+              <span className="inline-flex items-center gap-1">
+                <MapPin className="w-3 h-3" />
+                <span>{job.location}</span>
+                <a
+                  href={googleMapsUrl(job.location)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-0.5 inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary"
+                  aria-label="Open job location in Google Maps"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <MapPin className="w-3.5 h-3.5" />
+                </a>
+              </span>
+            )}
             <span className="inline-flex items-center gap-1"><Clock className="w-3 h-3" /> {timeAgo(job.created_at)}</span>
             <span className="inline-flex items-center gap-1"><Building2 className="w-3 h-3" /> {mode}</span>
           </div>
@@ -292,6 +307,36 @@ export default function JobDetailPage() {
             </div>
 
             <div className="flex-1 p-4 md:p-6 space-y-6">
+              {/* Job being applied for — description + location from employer post */}
+              <FormGroup title="Job you're applying for">
+                <div className="rounded-xl border border-border bg-muted/40 p-3 space-y-2">
+                  <p className="text-sm font-bold">{job.title}</p>
+                  <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground/90">{job.description}</p>
+                  {job.location && (
+                    <div className="flex items-center gap-2 pt-1">
+                      <span className="text-xs text-muted-foreground inline-flex items-center gap-1">
+                        <MapPin className="w-3.5 h-3.5" />
+                        {job.location}
+                      </span>
+                      <a
+                        href={googleMapsUrl(job.location)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 h-8 px-2.5 rounded-full bg-primary/10 text-primary text-[11px] font-bold"
+                      >
+                        <MapPin className="w-3.5 h-3.5" />
+                        Open in Maps
+                      </a>
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-2 text-[11px] pt-1">
+                    <span className="px-2 py-1 rounded-full bg-primary/10 text-primary font-semibold">{empType}</span>
+                    <span className="px-2 py-1 rounded-full bg-muted font-semibold">{formatSalary(job.salary_min, job.salary_max)}</span>
+                    <span className="px-2 py-1 rounded-full bg-muted font-semibold">{mode}</span>
+                  </div>
+                </div>
+              </FormGroup>
+
               {/* Personal & contact */}
               <FormGroup title="Personal & Contact Information">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -393,14 +438,8 @@ export default function JobDetailPage() {
               </FormGroup>
 
               {/* Availability */}
-              <FormGroup title="Availability & Preferences">
+              <FormGroup title="Availability">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <Field label="Desired position">
-                    <input value={desiredPosition} onChange={(e) => setDesiredPosition(e.target.value)} placeholder={job.title} className={inputCls} />
-                  </Field>
-                  <Field label="Target pay rate">
-                    <input value={targetPay} onChange={(e) => setTargetPay(e.target.value)} placeholder="$/hr or $/yr" className={inputCls} />
-                  </Field>
                   <Field label="Available start date">
                     <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} />
                   </Field>
@@ -413,9 +452,6 @@ export default function JobDetailPage() {
                   <Field label="Years of experience">
                     <input inputMode="numeric" value={yearsExp} onChange={(e) => setYearsExp(e.target.value)} className={inputCls} />
                   </Field>
-                  <Field label="Expected salary ($/yr)">
-                    <input inputMode="numeric" value={expectedSalary} onChange={(e) => setExpectedSalary(e.target.value)} className={inputCls} />
-                  </Field>
                   <Field label="Notice / availability">
                     <input value={availability} onChange={(e) => setAvailability(e.target.value)} placeholder="Immediate, 2 weeks…" className={inputCls} />
                   </Field>
@@ -424,31 +460,6 @@ export default function JobDetailPage() {
                   <input type="checkbox" checked={willingRelocate} onChange={(e) => setWillingRelocate(e.target.checked)} />
                   Willing to relocate
                 </label>
-              </FormGroup>
-
-              {/* References */}
-              <FormGroup title="References">
-                {references.map((row, i) => (
-                  <div key={i} className="rounded-xl border border-border p-3 mb-2 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-muted-foreground">Reference #{i + 1}</span>
-                      {references.length > 1 && (
-                        <button onClick={() => setReferences(references.filter((_, idx) => idx !== i))} className="text-muted-foreground">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                      <input placeholder="Name" value={row.name} onChange={(e) => setReferences(references.map((r, idx) => idx === i ? { ...r, name: e.target.value } : r))} className={inputCls} />
-                      <input placeholder="Relationship" value={row.relationship} onChange={(e) => setReferences(references.map((r, idx) => idx === i ? { ...r, relationship: e.target.value } : r))} className={inputCls} />
-                      <input placeholder="Phone" value={row.phone} onChange={(e) => setReferences(references.map((r, idx) => idx === i ? { ...r, phone: e.target.value } : r))} className={inputCls} />
-                      <input placeholder="Email" value={row.email} onChange={(e) => setReferences(references.map((r, idx) => idx === i ? { ...r, email: e.target.value } : r))} className={inputCls} />
-                    </div>
-                  </div>
-                ))}
-                <button onClick={() => setReferences([...references, emptyReference()])} className="inline-flex items-center gap-1 text-xs font-semibold text-primary">
-                  <Plus className="w-3.5 h-3.5" /> Add another reference
-                </button>
               </FormGroup>
 
               {/* Résumé + Cover letter */}

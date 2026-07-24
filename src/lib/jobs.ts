@@ -100,6 +100,27 @@ export function timeAgo(iso: string): string {
   return `${Math.floor(s / 86400)}d`;
 }
 
+/** Opens Google Maps search for a job address/location. */
+export function googleMapsUrl(address: string): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address.trim())}`;
+}
+
+/**
+ * Normalize employer apply URLs so bare domains don't open as relative paths
+ * (which 404 inside this app under HashRouter).
+ */
+export function normalizeExternalApplyUrl(raw: string): string | null {
+  const value = raw.trim();
+  if (!value) return null;
+  if (/^https?:\/\//i.test(value)) return value;
+  if (value.startsWith("//")) return `https:${value}`;
+  // Treat bare domains / paths as external https URLs, not in-app routes.
+  if (/^[\w.-]+\.[a-z]{2,}([/:?#].*)?$/i.test(value) || value.includes(".")) {
+    return `https://${value}`;
+  }
+  return null;
+}
+
 export type Prefs = {
   titles?: string[] | null;
   categories?: string[] | null;
