@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, MapPin, Clock, Bookmark, BookmarkCheck, Building2, Sparkles, Loader2, X, Upload, Plus, Trash2, ExternalLink, CheckCircle2 } from "lucide-react";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { ArrowLeft, MapPin, Clock, Bookmark, BookmarkCheck, Building2, Sparkles, Loader2, X, Upload, Plus, Trash2, ExternalLink, CheckCircle2, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { formatSalary, timeAgo, EMPLOYMENT_TYPES, REMOTE_MODES, SHIFT_OPTIONS, googleMapsUrl, normalizeExternalApplyUrl } from "@/lib/jobs";
 import { generateCoverLetter } from "@/lib/yaj-jobs-ai";
+import ResumePreview from "@/components/jobs/ResumePreview";
 
 type Job = {
   id: string;
@@ -37,6 +38,7 @@ const emptyEducation = (): EducationEntry => ({ school: "", degree: "", year: ""
 export default function JobDetailPage() {
   const { id } = useParams();
   const nav = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,6 +49,9 @@ export default function JobDetailPage() {
   const [aiGen, setAiGen] = useState(false);
   const [uploadingResume, setUploadingResume] = useState(false);
   const [resumeSnapshot, setResumeSnapshot] = useState<any>(null);
+  const [resumeId, setResumeId] = useState<string | null>(null);
+  const [attachAiResume, setAttachAiResume] = useState(false);
+  const [hasSavedAiResume, setHasSavedAiResume] = useState(false);
 
   // Application form
   const [fullName, setFullName] = useState("");
@@ -67,6 +72,27 @@ export default function JobDetailPage() {
   const [education, setEducation] = useState<EducationEntry[]>([emptyEducation()]);
   const [employerBrand, setEmployerBrand] = useState<{ company_name: string; logo_url: string | null } | null>(null);
 
+  const loadSavedResume = async (uid: string) => {
+    const { data: r } = await supabase
+      .from("resumes")
+      .select("id,structured_data,file_url,source")
+      .eq("user_id", uid)
+      .eq("is_default", true)
+      .maybeSingle();
+    if (!r) {
+      setHasSavedAiResume(false);
+      setResumeId(null);
+      return null;
+    }
+    const structured = (r as any).structured_data;
+    const hasAi = !!(structured && (structured.summary || structured.experience?.length || structured.skills?.length));
+    setHasSavedAiResume(hasAi);
+    setResumeId(r.id);
+    setResumeSnapshot(structured ?? null);
+    if ((r as any).file_url) setResumeUrl((r as any).file_url);
+    return r;
+  };
+
   useEffect(() => {
     if (!id) return;
     (async () => {
@@ -82,21 +108,35 @@ export default function JobDetailPage() {
         if (emp) setEmployerBrand({ company_name: emp.company_name, logo_url: emp.logo_url });
       }
       if (user && data) {
-        const [{ data: s }, { data: a }, { data: p }, { data: r }] = await Promise.all([
+        const [{ data: s }, { data: a }, { data: p }] = await Promise.all([
           supabase.from("saved_jobs").select("id").eq("user_id", user.id).eq("job_id", id).maybeSingle(),
           supabase.from("job_applications").select("id").eq("applicant_id", user.id).eq("job_id", id).maybeSingle(),
           supabase.from("profiles").select("display_name,email").eq("user_id", user.id).maybeSingle(),
-          supabase.from("resumes").select("structured_data,file_url").eq("user_id", user.id).eq("is_default", true).maybeSingle(),
         ]);
         setSaved(!!s);
         setApplied(!!a);
-        setResumeSnapshot((r as any)?.structured_data ?? null);
         setFullName(p?.display_name ?? "");
         setEmail(p?.email ?? user.email ?? "");
-        setResumeUrl((r as any)?.file_url ?? "");
+        const r = await loadSavedResume(user.id);
+        if (r && (r as any).structured_data) setAttachAiResume(true);
       }
     })();
   }, [id, user]);
+
+  // Return from resume builder → open apply with AI resume attached
+  useEffect(() => {
+    if (!job || applied) return;
+    if (searchParams.get("apply") !== "1") return;
+    (async () => {
+      if (user) await loadSavedResume(user.id);
+      setAttachAiResume(true);
+      setShowApply(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete("apply");
+      setSearchParams(next, { replace: true });
+      toast.success("YAJ AI résumé ready to attach");
+    })();
+  }, [job, applied, searchParams, user]);
 
   const toggleSave = async () => {
     if (!user || !job) return toast.error("Please sign in");
@@ -161,8 +201,9 @@ export default function JobDetailPage() {
       availability: availability.trim() || null,
       work_authorized: workAuthorized,
       willing_to_relocate: willingRelocate,
+      resume_id: attachAiResume && resumeId ? resumeId : null,
       resume_url: resumeUrl || null,
-      resume_snapshot: resumeSnapshot,
+      resume_snapshot: attachAiResume ? resumeSnapshot : null,
       cover_letter: coverLetter.trim() || null,
       desired_position: job.title,
       target_pay_rate: null,
@@ -472,19 +513,66 @@ export default function JobDetailPage() {
 
               {/* Résumé + Cover letter */}
               <FormGroup title="Résumé & Cover Letter">
-                <Field label="Résumé (optional)">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <label className="inline-flex items-center gap-1.5 h-10 px-3 rounded-xl bg-muted border border-border text-xs font-semibold cursor-pointer">
-                      {uploadingResume ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-                      {resumeUrl ? "Replace file" : "Upload PDF"}
-                      <input type="file" accept=".pdf,.doc,.docx" hidden onChange={(e) => e.target.files?.[0] && uploadResume(e.target.files[0])} />
-                    </label>
-                    {resumeUrl && (
-                      <a href={resumeUrl} target="_blank" rel="noreferrer" className="text-xs text-primary underline truncate">Preview</a>
+                <Field label="Attach résumé">
+                  <div className="space-y-3">
+                    {hasSavedAiResume ? (
+                      <label className="flex items-start gap-3 rounded-xl border border-border bg-muted/40 p-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="mt-1"
+                          checked={attachAiResume}
+                          onChange={(e) => setAttachAiResume(e.target.checked)}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-bold inline-flex items-center gap-1.5">
+                            <FileText className="w-3.5 h-3.5 text-primary" />
+                            My YAJ AI résumé
+                          </p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            Attach the résumé you generated and saved. Employers can open and read it with your application.
+                          </p>
+                        </div>
+                      </label>
+                    ) : (
+                      <div className="rounded-xl border border-dashed border-border p-3">
+                        <p className="text-xs text-muted-foreground mb-2">No saved YAJ AI résumé yet.</p>
+                        <button
+                          type="button"
+                          onClick={() => nav(`/resume-builder?returnTo=${encodeURIComponent(`/jobs/${job.id}?apply=1`)}`)}
+                          className="inline-flex items-center gap-1.5 text-xs font-bold text-primary"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
+                          Build one with YAJ Buddy →
+                        </button>
+                      </div>
                     )}
-                    <button type="button" onClick={() => nav("/resume-builder")} className="text-xs text-primary font-semibold">
-                      Or build with AI →
-                    </button>
+
+                    {attachAiResume && resumeSnapshot && (
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-1.5">Preview (employer view)</p>
+                        <ResumePreview data={resumeSnapshot} />
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <label className="inline-flex items-center gap-1.5 h-10 px-3 rounded-xl bg-muted border border-border text-xs font-semibold cursor-pointer">
+                        {uploadingResume ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                        {resumeUrl ? "Replace PDF / file" : "Upload PDF / file"}
+                        <input type="file" accept=".pdf,.doc,.docx" hidden onChange={(e) => e.target.files?.[0] && uploadResume(e.target.files[0])} />
+                      </label>
+                      {resumeUrl && (
+                        <a href={resumeUrl} target="_blank" rel="noreferrer" className="text-xs text-primary underline truncate">Preview file</a>
+                      )}
+                      {hasSavedAiResume && (
+                        <button
+                          type="button"
+                          onClick={() => nav(`/resume-builder?returnTo=${encodeURIComponent(`/jobs/${job.id}?apply=1`)}`)}
+                          className="text-xs text-primary font-semibold"
+                        >
+                          Edit AI résumé →
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </Field>
 

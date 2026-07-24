@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Sparkles, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,6 +8,8 @@ import { buildResume, type ResumeAiResult } from "@/lib/yaj-jobs-ai";
 
 export default function ResumeBuilderPage() {
   const nav = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnTo = searchParams.get("returnTo");
   const { user } = useAuth();
   const [raw, setRaw] = useState("");
   const [resume, setResume] = useState<ResumeAiResult | null>(null);
@@ -44,7 +46,7 @@ export default function ResumeBuilderPage() {
     }
   };
 
-  const save = async () => {
+  const save = async (thenReturn = false) => {
     if (!user || !resume) return;
     setSaving(true);
     const payload = {
@@ -64,13 +66,22 @@ export default function ResumeBuilderPage() {
       return;
     }
     if (!resumeId && data && (data as any).id) setResumeId((data as any).id);
-    toast.success("Resume saved");
+    toast.success(thenReturn && returnTo ? "Resume saved — attaching to application" : "Resume saved");
+    if (thenReturn && returnTo) {
+      nav(returnTo.startsWith("/") ? returnTo : `/${returnTo}`);
+    }
   };
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border flex items-center gap-2 px-3 py-2">
-        <button onClick={() => nav(-1)} className="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
+        <button
+          onClick={() => {
+            if (returnTo && returnTo.startsWith("/")) nav(returnTo);
+            else nav(-1);
+          }}
+          className="w-9 h-9 rounded-full bg-muted flex items-center justify-center"
+        >
           <ArrowLeft className="w-4 h-4" />
         </button>
         <h1 className="text-base font-bold">YAJ AI Resume Builder</h1>
@@ -81,6 +92,7 @@ export default function ResumeBuilderPage() {
           <Sparkles className="w-4 h-4 text-primary mt-0.5 shrink-0" />
           <p className="text-xs text-muted-foreground leading-relaxed">
             Paste your work history, skills, education, or a rough draft. YAJ Buddy will structure it into an ATS-friendly resume.
+            {returnTo ? " Save it to attach it to your job application." : ""}
           </p>
         </div>
 
@@ -151,13 +163,23 @@ export default function ResumeBuilderPage() {
             )}
 
             <button
-              onClick={save}
+              onClick={() => save(false)}
               disabled={saving}
               className="w-full h-11 rounded-full bg-foreground text-background font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2"
             >
               <Save className="w-4 h-4" />
               {saving ? "Saving…" : "Save as my default resume"}
             </button>
+
+            {returnTo && (
+              <button
+                onClick={() => save(true)}
+                disabled={saving}
+                className="w-full h-11 rounded-full bg-primary text-primary-foreground font-bold text-sm disabled:opacity-50"
+              >
+                {saving ? "Saving…" : "Save & attach to application"}
+              </button>
+            )}
           </div>
         )}
       </div>

@@ -3,8 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Briefcase, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { formatSalary, timeAgo } from "@/lib/jobs";
-import ApplicationPhaseDots from "@/components/jobs/ApplicationPhaseDots";
+import { formatSalary, timeAgo, applicationStatusLabel, normalizeAppStatus } from "@/lib/jobs";
 import { toast } from "sonner";
 
 type Tab = "applied" | "saved" | "posted";
@@ -110,7 +109,9 @@ export default function MyJobsPage() {
                     {a.job.location ?? "—"} · {formatSalary(a.job.salary_min, a.job.salary_max)}
                   </p>
                   <div className="mt-2.5 flex items-center justify-between gap-2">
-                    <ApplicationPhaseDots status={a.status} mode="employee" />
+                    <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${statusTone(a.status)}`}>
+                      {applicationStatusLabel(a.status)}
+                    </span>
                     <span className="text-[11px] text-muted-foreground shrink-0">{timeAgo(a.created_at)}</span>
                   </div>
                 </button>
@@ -166,4 +167,13 @@ function Empty({ text }: { text: string }) {
       <p className="text-sm text-muted-foreground">{text}</p>
     </div>
   );
+}
+
+function statusTone(status: string): string {
+  const s = normalizeAppStatus(status);
+  if (s === "hired" || s === "offered") return "bg-emerald-500/15 text-emerald-600";
+  if (s === "interview") return "bg-amber-500/15 text-amber-700";
+  if (s === "rejected") return "bg-rose-500/15 text-rose-600";
+  if (s === "withdrawn") return "bg-muted text-muted-foreground";
+  return "bg-primary/10 text-primary";
 }
