@@ -71,6 +71,9 @@ const NotificationBell = () => {
     else if (notification.reference_type === "follow") navigate(`/artist/${notification.reference_id}`);
     else if (notification.reference_type === "studio") navigate("/my-studios");
     else if (notification.reference_type === "session_verify") navigate("/bookings");
+    else if (notification.reference_type === "job_application" || notification.reference_type === "job") {
+      navigate(notification.reference_id ? `/jobs/${notification.reference_id}` : "/my-jobs");
+    }
     setOpen(false);
   };
 

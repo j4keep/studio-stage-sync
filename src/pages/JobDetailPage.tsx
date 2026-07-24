@@ -63,9 +63,9 @@ export default function JobDetailPage() {
   const [certsText, setCertsText] = useState("");
   const [resumeUrl, setResumeUrl] = useState("");
   const [coverLetter, setCoverLetter] = useState("");
-  const [confirmedQuals, setConfirmedQuals] = useState<string[]>([]);
   const [employment, setEmployment] = useState<EmploymentEntry[]>([emptyEmployment()]);
   const [education, setEducation] = useState<EducationEntry[]>([emptyEducation()]);
+  const [employerBrand, setEmployerBrand] = useState<{ company_name: string; logo_url: string | null } | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -73,6 +73,14 @@ export default function JobDetailPage() {
       const { data } = await supabase.from("job_listings").select("*").eq("id", id).maybeSingle();
       setJob(data as Job | null);
       setLoading(false);
+      if (data?.employer_id) {
+        const { data: emp } = await supabase
+          .from("employer_profiles")
+          .select("company_name,logo_url")
+          .eq("user_id", data.employer_id)
+          .maybeSingle();
+        if (emp) setEmployerBrand({ company_name: emp.company_name, logo_url: emp.logo_url });
+      }
       if (user && data) {
         const [{ data: s }, { data: a }, { data: p }, { data: r }] = await Promise.all([
           supabase.from("saved_jobs").select("id").eq("user_id", user.id).eq("job_id", id).maybeSingle(),
@@ -134,9 +142,6 @@ export default function JobDetailPage() {
     }
   };
 
-  const toggleQual = (q: string) =>
-    setConfirmedQuals((prev) => (prev.includes(q) ? prev.filter((x) => x !== q) : [...prev, q]));
-
   const submitApplication = async () => {
     if (!user || !job) return toast.error("Please sign in first");
     if (!fullName.trim() || !email.trim() || !phone.trim() || !address.trim()) {
@@ -146,7 +151,7 @@ export default function JobDetailPage() {
     const { error } = await supabase.from("job_applications").insert({
       job_id: job.id,
       applicant_id: user.id,
-      status: "applied",
+      status: "reviewing",
       full_name: fullName.trim(),
       email: email.trim(),
       phone: phone.trim(),
@@ -164,7 +169,7 @@ export default function JobDetailPage() {
       available_start_date: startDate || null,
       shift_preference: shiftPref || null,
       application_skills: skillsText.split(",").map((s) => s.trim()).filter(Boolean),
-      certifications: [...confirmedQuals, ...certsText.split(",").map((s) => s.trim()).filter(Boolean)],
+      certifications: certsText.split(",").map((s) => s.trim()).filter(Boolean),
       employment_history: employment.filter((e) => e.employer.trim()) as any,
       education_history: education.filter((e) => e.school.trim()) as any,
       references_json: [],
@@ -211,6 +216,22 @@ export default function JobDetailPage() {
       </header>
 
       <div className="max-w-3xl mx-auto p-4 space-y-4 pb-40">
+        {employerBrand && (employerBrand.logo_url || employerBrand.company_name) && (
+          <div className="flex items-center gap-3">
+            {employerBrand.logo_url ? (
+              <img src={employerBrand.logo_url} alt="" className="w-12 h-12 rounded-xl object-cover border border-border" />
+            ) : (
+              <div className="w-12 h-12 rounded-xl bg-muted border border-border flex items-center justify-center">
+                <Building2 className="w-5 h-5 text-muted-foreground" />
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="text-sm font-bold truncate">{employerBrand.company_name || "Employer"}</p>
+              <p className="text-[11px] text-muted-foreground">Hiring on YAJ</p>
+            </div>
+          </div>
+        )}
+
         <div>
           <h1 className="text-xl md:text-3xl font-black tracking-tight">{job.title}</h1>
           <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground flex-wrap">
@@ -310,6 +331,18 @@ export default function JobDetailPage() {
               {/* Job being applied for — description + location from employer post */}
               <FormGroup title="Job you're applying for">
                 <div className="rounded-xl border border-border bg-muted/40 p-3 space-y-2">
+                  {employerBrand && (employerBrand.logo_url || employerBrand.company_name) && (
+                    <div className="flex items-center gap-2.5 pb-1">
+                      {employerBrand.logo_url ? (
+                        <img src={employerBrand.logo_url} alt="" className="w-10 h-10 rounded-lg object-cover border border-border" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-lg bg-muted border border-border flex items-center justify-center">
+                          <Building2 className="w-4 h-4 text-muted-foreground" />
+                        </div>
+                      )}
+                      <p className="text-sm font-bold truncate">{employerBrand.company_name || "Employer"}</p>
+                    </div>
+                  )}
                   <p className="text-sm font-bold">{job.title}</p>
                   <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground/90">{job.description}</p>
                   {job.location && (
@@ -350,31 +383,6 @@ export default function JobDetailPage() {
                   Legally authorized to work in the country
                 </label>
               </FormGroup>
-
-              {/* Qualifications confirmation */}
-              {job.qualifications && job.qualifications.length > 0 && (
-                <FormGroup title="Confirm Qualifications" subtitle="Check the ones you meet.">
-                  <div className="flex flex-wrap gap-2">
-                    {job.qualifications.map((q) => {
-                      const on = confirmedQuals.includes(q);
-                      return (
-                        <button
-                          type="button"
-                          key={q}
-                          onClick={() => toggleQual(q)}
-                          className={`px-3 h-8 rounded-full border text-[11px] font-semibold transition ${
-                            on
-                              ? "bg-primary text-primary-foreground border-primary"
-                              : "bg-muted border-border text-foreground/80"
-                          }`}
-                        >
-                          {on ? "✓ " : ""}{q}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </FormGroup>
-              )}
 
               {/* Employment history */}
               <FormGroup title="Employment History">
@@ -431,8 +439,8 @@ export default function JobDetailPage() {
                   <Field label="Special skills (comma-separated)">
                     <input value={skillsText} onChange={(e) => setSkillsText(e.target.value)} placeholder="e.g. Forklift, Excel, Spanish" className={inputCls} />
                   </Field>
-                  <Field label="Licenses / Certifications (comma-separated)">
-                    <input value={certsText} onChange={(e) => setCertsText(e.target.value)} placeholder="e.g. Driver's License, CPR, OSHA-10" className={inputCls} />
+                  <Field label="Your qualifications & certifications (comma-separated)">
+                    <input value={certsText} onChange={(e) => setCertsText(e.target.value)} placeholder="e.g. Driver's License, CPR, OSHA-10, Forklift" className={inputCls} />
                   </Field>
                 </div>
               </FormGroup>

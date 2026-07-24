@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,29 +12,85 @@ import {
   normalizeExternalApplyUrl,
 } from "@/lib/jobs";
 
-type Props = { open: boolean; onClose: () => void; onCreated?: () => void };
+export type EditableJob = {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  employment_type: string;
+  salary_min: number | null;
+  salary_max: number | null;
+  location: string | null;
+  remote_mode: string | null;
+  skills: string[] | null;
+  education: string | null;
+  experience_level: string | null;
+  benefits: string[] | null;
+  deadline: string | null;
+  qualifications: string[] | null;
+  external_apply_url: string | null;
+};
 
-export default function PostJobSheet({ open, onClose, onCreated }: Props) {
+type Props = {
+  open: boolean;
+  onClose: () => void;
+  onCreated?: () => void;
+  /** When set, sheet edits this listing instead of creating. */
+  editJob?: EditableJob | null;
+};
+
+const emptyForm = {
+  title: "",
+  description: "",
+  category: "corporate",
+  employment_type: "full_time",
+  salary_min: "",
+  salary_max: "",
+  location: "",
+  remote_mode: "onsite",
+  skills: "",
+  education: "",
+  experience_level: "mid",
+  benefits: "",
+  deadline: "",
+  external_apply_url: "",
+};
+
+export default function PostJobSheet({ open, onClose, onCreated, editJob }: Props) {
   const { user } = useAuth();
   const [saving, setSaving] = useState(false);
   const [qualifications, setQualifications] = useState<string[]>([]);
   const [customQual, setCustomQual] = useState("");
-  const [form, setForm] = useState({
-    title: "",
-    description: "",
-    category: "corporate",
-    employment_type: "full_time",
-    salary_min: "",
-    salary_max: "",
-    location: "",
-    remote_mode: "onsite",
-    skills: "",
-    education: "",
-    experience_level: "mid",
-    benefits: "",
-    deadline: "",
-    external_apply_url: "",
-  });
+  const [form, setForm] = useState(emptyForm);
+  const isEdit = !!editJob;
+
+  useEffect(() => {
+    if (!open) return;
+    if (editJob) {
+      setForm({
+        title: editJob.title || "",
+        description: editJob.description || "",
+        category: editJob.category || "corporate",
+        employment_type: editJob.employment_type || "full_time",
+        salary_min: editJob.salary_min != null ? String(editJob.salary_min) : "",
+        salary_max: editJob.salary_max != null ? String(editJob.salary_max) : "",
+        location: editJob.location || "",
+        remote_mode: editJob.remote_mode || "onsite",
+        skills: (editJob.skills ?? []).join(", "),
+        education: editJob.education || "",
+        experience_level: editJob.experience_level || "mid",
+        benefits: (editJob.benefits ?? []).join(", "),
+        deadline: editJob.deadline ? editJob.deadline.slice(0, 10) : "",
+        external_apply_url: editJob.external_apply_url || "",
+      });
+      setQualifications(editJob.qualifications ?? []);
+      setCustomQual("");
+    } else {
+      setForm(emptyForm);
+      setQualifications([]);
+      setCustomQual("");
+    }
+  }, [open, editJob]);
 
   if (!open) return null;
 
@@ -55,29 +111,14 @@ export default function PostJobSheet({ open, onClose, onCreated }: Props) {
     setCustomQual("");
   };
 
-  const submit = async () => {
-    if (!user) {
-      toast.error("Please sign in first");
-      return;
-    }
-    if (!form.title.trim() || !form.description.trim()) {
-      toast.error("Title and description are required");
-      return;
-    }
-
+  const buildPayload = () => {
     const externalUrlRaw = form.external_apply_url.trim();
     let external_apply_url: string | null = null;
     if (externalUrlRaw) {
       external_apply_url = normalizeExternalApplyUrl(externalUrlRaw);
-      if (!external_apply_url) {
-        toast.error("Enter a full website like https://company.com/careers");
-        return;
-      }
+      if (!external_apply_url) return null;
     }
-
-    setSaving(true);
-    const { error } = await supabase.from("job_listings").insert({
-      employer_id: user.id,
+    return {
       title: form.title.trim(),
       description: form.description.trim(),
       category: form.category,
@@ -93,13 +134,35 @@ export default function PostJobSheet({ open, onClose, onCreated }: Props) {
       deadline: form.deadline || null,
       qualifications,
       external_apply_url,
-    });
+    };
+  };
+
+  const submit = async () => {
+    if (!user) {
+      toast.error("Please sign in first");
+      return;
+    }
+    if (!form.title.trim() || !form.description.trim()) {
+      toast.error("Title and description are required");
+      return;
+    }
+
+    const payload = buildPayload();
+    if (payload === null) {
+      toast.error("Enter a full website like https://company.com/careers");
+      return;
+    }
+
+    setSaving(true);
+    const { error } = isEdit
+      ? await supabase.from("job_listings").update(payload).eq("id", editJob!.id).eq("employer_id", user.id)
+      : await supabase.from("job_listings").insert({ ...payload, employer_id: user.id });
     setSaving(false);
     if (error) {
       toast.error(error.message);
       return;
     }
-    toast.success("Job posted!");
+    toast.success(isEdit ? "Job updated!" : "Job posted!");
     onCreated?.();
     onClose();
   };
@@ -113,13 +176,13 @@ export default function PostJobSheet({ open, onClose, onCreated }: Props) {
           <button onClick={onClose} className="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
             <X className="w-4 h-4" />
           </button>
-          <h2 className="text-sm font-bold">Post a Job</h2>
+          <h2 className="text-sm font-bold">{isEdit ? "Edit Job" : "Post a Job"}</h2>
           <button
             onClick={submit}
             disabled={saving}
             className="px-4 h-9 rounded-full bg-primary text-primary-foreground text-xs font-bold disabled:opacity-50"
           >
-            {saving ? "Posting…" : "Publish"}
+            {saving ? (isEdit ? "Saving…" : "Posting…") : isEdit ? "Save" : "Publish"}
           </button>
         </header>
 
@@ -311,7 +374,7 @@ export default function PostJobSheet({ open, onClose, onCreated }: Props) {
               </div>
             )}
             <p className="text-[11px] text-muted-foreground mt-2">
-              Applicants will see these as required qualifications for the role.
+              Shown on the listing for applicants. They enter their own qualifications when applying.
             </p>
           </Field>
 

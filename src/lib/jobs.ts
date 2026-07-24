@@ -74,7 +74,6 @@ export const SHIFT_OPTIONS = [
 ] as const;
 
 export const APPLICATION_STATUS = {
-  applied: "Applied",
   reviewing: "Reviewing",
   interview: "Interview",
   offered: "Offered",
@@ -83,6 +82,20 @@ export const APPLICATION_STATUS = {
   withdrawn: "Withdrawn",
 } as const;
 export type ApplicationStatus = keyof typeof APPLICATION_STATUS;
+
+/** Ordered progress phases (terminal outcomes excluded). */
+export const APPLICATION_PHASE_FLOW = ["reviewing", "interview", "offered", "hired"] as const;
+
+/** Map legacy "applied" rows to reviewing for display/pipeline. */
+export function normalizeAppStatus(status: string): ApplicationStatus | string {
+  if (status === "applied") return "reviewing";
+  return status;
+}
+
+export function applicationStatusLabel(status: string): string {
+  const key = normalizeAppStatus(status);
+  return APPLICATION_STATUS[key as ApplicationStatus] ?? String(key);
+}
 
 export function formatSalary(min?: number | null, max?: number | null, currency = "USD"): string {
   const fmt = (n: number) =>
