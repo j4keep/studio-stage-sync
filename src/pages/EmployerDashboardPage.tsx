@@ -4,7 +4,7 @@ import { ArrowLeft, Briefcase, Users, TrendingUp, Building2, BadgeCheck, ShieldC
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { APPLICATION_STATUS, normalizeAppStatus, timeAgo } from "@/lib/jobs";
+import { APPLICATION_STATUS, normalizeAppStatus, notifyJobApplicant, timeAgo } from "@/lib/jobs";
 import ApplicationPhaseDots from "@/components/jobs/ApplicationPhaseDots";
 import PostJobSheet, { type EditableJob } from "@/components/jobs/PostJobSheet";
 import ResumePreview from "@/components/jobs/ResumePreview";
@@ -137,7 +137,11 @@ export default function EmployerDashboardPage() {
     const { error } = await supabase.from("job_applications").update({ status }).eq("id", appId);
     if (error) return toast.error(error.message);
     setApps((prev) => prev.map((a) => a.id === appId ? { ...a, status } : a));
-    toast.success("Status updated — applicant notified");
+    const notified = await notifyJobApplicant(appId);
+    toast.success(notified.ok ? "Status updated — applicant notified" : "Status updated");
+    if (!notified.ok && notified.error && !/could not find|does not exist|404/i.test(notified.error)) {
+      console.warn("Applicant notify failed:", notified.error);
+    }
   };
 
   const saveInterviewInvite = async (payload: {
@@ -149,8 +153,14 @@ export default function EmployerDashboardPage() {
     const { error } = await supabase.from("job_applications").update(payload).eq("id", interviewApp.id);
     if (error) return toast.error(error.message);
     setApps((prev) => prev.map((a) => a.id === interviewApp.id ? { ...a, ...payload } : a));
+    const appId = interviewApp.id;
     setInterviewApp(null);
-    toast.success("Interview invite sent — applicant can accept in My Jobs");
+    const notified = await notifyJobApplicant(appId);
+    toast.success(
+      notified.ok
+        ? "Interview invite sent — applicant can accept in My Jobs"
+        : "Interview saved — notification may be delayed until DB sync",
+    );
   };
 
   const toggleJobStatus = async (job: JobStat) => {

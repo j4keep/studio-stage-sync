@@ -1,3 +1,5 @@
+import { supabase } from "@/integrations/supabase/client";
+
 export const JOB_CATEGORIES = [
   { id: "featured", label: "Featured", emoji: "🔥" },
   { id: "near-you", label: "Near You", emoji: "📍" },
@@ -214,4 +216,26 @@ export function resolveJobCover(job: { cover_image_url?: string | null; media?: 
   if (!job) return null;
   if (job.cover_image_url) return job.cover_image_url;
   return jobCoverFromMedia(job.media);
+}
+
+/** Notify applicant after employer status/interview update (edge function + optional RPC). */
+export async function notifyJobApplicant(applicationId: string): Promise<{ ok: boolean; error?: string }> {
+  // Prefer edge function (service role insert) — works even before SQL trigger migrations apply
+  const { data, error: fnError } = await supabase.functions.invoke("notify-job-applicant", {
+    body: { application_id: applicationId },
+  });
+  if (!fnError && data && (data as { ok?: boolean }).ok) {
+    return { ok: true };
+  }
+
+  const { error } = await (supabase as any).rpc("notify_job_applicant", {
+    p_application_id: applicationId,
+  });
+  if (!error) return { ok: true };
+
+  const msg = fnError?.message || error.message;
+  if (/could not find|does not exist|404|Failed to send/i.test(msg)) {
+    return { ok: false, error: msg };
+  }
+  return { ok: false, error: msg };
 }
