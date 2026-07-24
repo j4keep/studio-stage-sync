@@ -73,6 +73,7 @@ const NotificationBell = () => {
     else if (notification.reference_type === "session_verify") navigate("/bookings");
     else if (notification.reference_type === "job_application" || notification.reference_type === "job") {
       if (notification.title === "Job removed" || !notification.reference_id) navigate("/my-jobs");
+      else if (String(notification.title || "").toLowerCase().includes("interview")) navigate("/my-jobs");
       else navigate(`/jobs/${notification.reference_id}`);
     }
     setOpen(false);

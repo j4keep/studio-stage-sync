@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Briefcase, Users, TrendingUp, Building2, BadgeCheck, ShieldCheck, ChevronDown, ChevronUp, Upload, Pencil, FileText } from "lucide-react";
+import { ArrowLeft, Briefcase, Users, TrendingUp, Building2, BadgeCheck, ShieldCheck, ChevronDown, ChevronUp, Upload, Pencil, FileText, Video } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -8,6 +8,8 @@ import { APPLICATION_STATUS, normalizeAppStatus, timeAgo } from "@/lib/jobs";
 import ApplicationPhaseDots from "@/components/jobs/ApplicationPhaseDots";
 import PostJobSheet, { type EditableJob } from "@/components/jobs/PostJobSheet";
 import ResumePreview from "@/components/jobs/ResumePreview";
+import ScheduleInterviewSheet from "@/components/jobs/ScheduleInterviewSheet";
+import { formatInterviewWhen, getInterviewInvite } from "@/lib/job-interview";
 
 type JobStat = {
   id: string;
@@ -35,6 +37,7 @@ export default function EmployerDashboardPage() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [editJob, setEditJob] = useState<EditableJob | null>(null);
   const [showEditSheet, setShowEditSheet] = useState(false);
+  const [interviewApp, setInterviewApp] = useState<any | null>(null);
 
   const loadJobs = async () => {
     if (!user) return;
@@ -126,10 +129,28 @@ export default function EmployerDashboardPage() {
   };
 
   const updateAppStatus = async (appId: string, status: string) => {
+    if (status === "interview") {
+      const app = apps.find((a) => a.id === appId);
+      if (app) setInterviewApp(app);
+      return;
+    }
     const { error } = await supabase.from("job_applications").update({ status }).eq("id", appId);
     if (error) return toast.error(error.message);
     setApps((prev) => prev.map((a) => a.id === appId ? { ...a, status } : a));
     toast.success("Status updated — applicant notified");
+  };
+
+  const saveInterviewInvite = async (payload: {
+    status: "interview";
+    applicant_accepted: boolean;
+    references_json: Record<string, unknown>;
+  }) => {
+    if (!interviewApp) return;
+    const { error } = await supabase.from("job_applications").update(payload).eq("id", interviewApp.id);
+    if (error) return toast.error(error.message);
+    setApps((prev) => prev.map((a) => a.id === interviewApp.id ? { ...a, ...payload } : a));
+    setInterviewApp(null);
+    toast.success("Interview invite sent — applicant can accept in My Jobs");
   };
 
   const toggleJobStatus = async (job: JobStat) => {
@@ -317,12 +338,37 @@ export default function EmployerDashboardPage() {
                                   <option key={k} value={k}>{v}</option>
                                 ))}
                               </select>
+                              {normalizeAppStatus(a.status) === "interview" && (
+                                <button
+                                  type="button"
+                                  onClick={() => setInterviewApp(a)}
+                                  className="h-8 px-2 rounded-full bg-amber-500/15 text-amber-700 text-[11px] font-bold inline-flex items-center gap-1"
+                                >
+                                  <Video className="w-3 h-3" />
+                                  {getInterviewInvite(a) ? "Edit interview" : "Schedule"}
+                                </button>
+                              )}
+                              {getInterviewInvite(a) && (
+                                <button
+                                  type="button"
+                                  onClick={() => nav(`/jobs/interview/${a.id}`)}
+                                  className="h-8 px-2 rounded-full bg-emerald-500/15 text-emerald-700 text-[11px] font-bold"
+                                >
+                                  Join channel
+                                </button>
+                              )}
                               {(a.resume_url || a.resume_snapshot) && (
                                 <span className="inline-flex items-center gap-1 text-[10px] font-bold text-primary">
                                   <FileText className="w-3 h-3" /> Résumé
                                 </span>
                               )}
                             </div>
+                            {getInterviewInvite(a) && (
+                              <p className="text-[10px] text-muted-foreground">
+                                Interview {formatInterviewWhen(getInterviewInvite(a)!.at)} · join by {formatInterviewWhen(getInterviewInvite(a)!.join_deadline)}
+                                {a.applicant_accepted ? " · Applicant accepted" : " · Waiting for accept"}
+                              </p>
+                            )}
                           </div>
 
                           {open && <ApplicationDetail a={a} />}
@@ -385,6 +431,21 @@ export default function EmployerDashboardPage() {
         editJob={editJob}
         onClose={() => { setShowEditSheet(false); setEditJob(null); }}
         onCreated={() => { loadJobs(); if (selectedJob) loadApps(selectedJob); }}
+      />
+
+      <ScheduleInterviewSheet
+        open={!!interviewApp}
+        applicantName={interviewApp?.full_name ?? interviewApp?.applicant?.display_name ?? "Applicant"}
+        applicationId={interviewApp?.id ?? ""}
+        existingRefs={interviewApp?.references_json}
+        onClose={() => setInterviewApp(null)}
+        onScheduled={(payload) => {
+          void saveInterviewInvite({
+            status: payload.status,
+            applicant_accepted: payload.applicant_accepted,
+            references_json: payload.references_json,
+          });
+        }}
       />
     </div>
   );

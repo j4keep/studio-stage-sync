@@ -58,6 +58,7 @@ import MyJobsPage from "./pages/MyJobsPage";
 import ResumeBuilderPage from "./pages/ResumeBuilderPage";
 import JobPreferencesPage from "./pages/JobPreferencesPage";
 import EmployerDashboardPage from "./pages/EmployerDashboardPage";
+import JobInterviewPage from "./pages/JobInterviewPage";
 import WheuatTvWatchPage from "./pages/wheuat-tv/WheuatTvWatchPage";
 
 
@@ -257,6 +258,7 @@ const ProtectedRoutes = () => {
         <Route path="/ask-jhi" element={<Navigate to="/ask-yaj" replace />} />
         <Route path="/explore" element={<ExplorePage />} />
         <Route path="/jobs" element={<JobsPage />} />
+        <Route path="/jobs/interview/:applicationId" element={<JobInterviewPage />} />
         <Route path="/jobs/:id" element={<JobDetailPage />} />
         <Route path="/gigs/:id" element={<GigDetailPage />} />
         <Route path="/my-jobs" element={<MyJobsPage />} />

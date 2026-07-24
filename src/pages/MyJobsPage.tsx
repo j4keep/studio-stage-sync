@@ -1,12 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Briefcase, Sparkles } from "lucide-react";
+import { ArrowLeft, Briefcase, Sparkles, Video, Phone, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatSalary, timeAgo, applicationStatusLabel, normalizeAppStatus } from "@/lib/jobs";
+import {
+  formatInterviewWhen,
+  getInterviewInvite,
+  interviewJoinState,
+} from "@/lib/job-interview";
 import { toast } from "sonner";
 
-type Tab = "applied" | "saved" | "posted";
+type Tab = "applied" | "interviews" | "saved" | "posted";
 
 export default function MyJobsPage() {
   const nav = useNavigate();
@@ -21,14 +26,14 @@ export default function MyJobsPage() {
     if (!user) return;
     setLoading(true);
     const [a, s, p] = await Promise.all([
-      supabase.from("job_applications").select("id,status,created_at,job_id,job:job_listings(id,title,location,salary_min,salary_max)")
+      supabase.from("job_applications")
+        .select("id,status,created_at,job_id,applicant_accepted,references_json,job:job_listings(id,title,location,salary_min,salary_max)")
         .eq("applicant_id", user.id).order("created_at", { ascending: false }),
       supabase.from("saved_jobs").select("id,created_at,job_id,job:job_listings(id,title,location,salary_min,salary_max,created_at)")
         .eq("user_id", user.id).order("created_at", { ascending: false }),
       supabase.from("job_listings").select("id,title,location,salary_min,salary_max,status,created_at")
         .eq("employer_id", user.id).order("created_at", { ascending: false }),
     ]);
-    // Drop rows whose job was deleted (join returns null)
     setApplied((a.data ?? []).filter((row: any) => row.job));
     setSaved((s.data ?? []).filter((row: any) => row.job));
     setPosted(p.data ?? []);
@@ -39,7 +44,6 @@ export default function MyJobsPage() {
     load();
   }, [user]);
 
-  // Live sync: status updates + removals when employer deletes the job
   useEffect(() => {
     if (!user) return;
     const channel = supabase
@@ -48,8 +52,12 @@ export default function MyJobsPage() {
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "job_applications", filter: `applicant_id=eq.${user.id}` },
         (payload) => {
-          const next = payload.new as { id: string; status: string };
-          setApplied((prev) => prev.map((x) => (x.id === next.id ? { ...x, status: next.status } : x)));
+          const next = payload.new as Record<string, unknown> & { id: string };
+          setApplied((prev) => prev.map((x) => (x.id === next.id ? { ...x, ...next } : x)));
+          if (next.status === "interview") {
+            toast.message("Interview invite — check Interviews tab");
+            setTab("interviews");
+          }
         },
       )
       .on(
@@ -75,6 +83,18 @@ export default function MyJobsPage() {
     };
   }, [user]);
 
+  const interviews = useMemo(
+    () => applied.filter((a) => normalizeAppStatus(a.status) === "interview" && getInterviewInvite(a)),
+    [applied],
+  );
+
+  const acceptInterview = async (appId: string) => {
+    const { error } = await supabase.from("job_applications").update({ applicant_accepted: true }).eq("id", appId);
+    if (error) return toast.error(error.message);
+    setApplied((prev) => prev.map((x) => (x.id === appId ? { ...x, applicant_accepted: true } : x)));
+    toast.success("Interview accepted — you can join when the channel opens");
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border flex items-center gap-2 px-3 py-2">
@@ -87,11 +107,16 @@ export default function MyJobsPage() {
         </button>
       </header>
 
-      <div className="flex gap-2 px-4 py-3 border-b border-border">
-        {(["applied", "saved", "posted"] as Tab[]).map((t) => (
+      <div className="flex gap-2 px-4 py-3 border-b border-border overflow-x-auto">
+        {([
+          ["applied", "Applied"],
+          ["interviews", `Interviews${interviews.length ? ` (${interviews.length})` : ""}`],
+          ["saved", "Saved"],
+          ["posted", "Posted"],
+        ] as [Tab, string][]).map(([t, label]) => (
           <button key={t} onClick={() => setTab(t)}
-            className={`px-3 h-8 rounded-full text-xs font-bold capitalize ${tab === t ? "bg-foreground text-background" : "bg-muted text-foreground"}`}>
-            {t}
+            className={`shrink-0 px-3 h-8 rounded-full text-xs font-bold ${tab === t ? "bg-foreground text-background" : "bg-muted text-foreground"}`}>
+            {label}
           </button>
         ))}
       </div>
@@ -99,6 +124,66 @@ export default function MyJobsPage() {
       <div className="p-4 space-y-3 pb-24">
         {loading ? (
           <p className="text-sm text-muted-foreground text-center py-8">Loading…</p>
+        ) : tab === "interviews" ? (
+          interviews.length === 0 ? <Empty text="No interview invites yet." /> : (
+            interviews.map((a) => {
+              const invite = getInterviewInvite(a)!;
+              const state = interviewJoinState({
+                invite,
+                applicantAccepted: !!a.applicant_accepted,
+              });
+              return (
+                <div key={a.id} className="p-4 rounded-2xl bg-card border border-border space-y-3">
+                  <div>
+                    <p className="text-sm font-bold">{a.job.title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{a.job.location ?? "—"}</p>
+                  </div>
+
+                  <div className="rounded-xl bg-amber-500/10 border border-amber-500/25 p-3 space-y-1.5">
+                    <p className="text-[11px] font-bold text-amber-700 inline-flex items-center gap-1">
+                      {invite.call_kind === "video" ? <Video className="w-3.5 h-3.5" /> : <Phone className="w-3.5 h-3.5" />}
+                      {invite.call_kind === "video" ? "Video" : "Audio"} interview invite
+                    </p>
+                    <p className="text-xs"><span className="text-muted-foreground">When:</span> {formatInterviewWhen(invite.at)}</p>
+                    <p className="text-xs"><span className="text-muted-foreground">Join by:</span> {formatInterviewWhen(invite.join_deadline)}</p>
+                  </div>
+
+                  {!a.applicant_accepted && state !== "expired" && (
+                    <button
+                      onClick={() => acceptInterview(a.id)}
+                      className="w-full h-11 rounded-full bg-primary text-primary-foreground font-bold text-sm inline-flex items-center justify-center gap-1.5"
+                    >
+                      <Check className="w-4 h-4" /> Accept interview
+                    </button>
+                  )}
+
+                  {a.applicant_accepted && state === "too_early" && (
+                    <p className="text-[11px] text-muted-foreground text-center">Accepted ✓ — channel opens 15 min before start.</p>
+                  )}
+
+                  {(state === "open" || (a.applicant_accepted && state === "too_early")) && (
+                    <button
+                      onClick={() => nav(`/jobs/interview/${a.id}`)}
+                      disabled={state !== "open"}
+                      className="w-full h-11 rounded-full bg-emerald-500 text-white font-bold text-sm disabled:opacity-40"
+                    >
+                      {state === "open" ? "Join interview channel" : "Join (opens soon)"}
+                    </button>
+                  )}
+
+                  {invite.external_url && a.applicant_accepted && state !== "expired" && (
+                    <a href={invite.external_url} target="_blank" rel="noreferrer" className="block text-center text-xs font-semibold text-primary">
+                      Or open external call link
+                    </a>
+                  )}
+
+                  {state === "expired" && (
+                    <p className="text-[11px] text-rose-500 text-center">Join deadline passed</p>
+                  )}
+                </div>
+              );
+            })
+          )
         ) : tab === "applied" ? (
           applied.length === 0 ? <Empty text="No applications yet." /> : (
             applied.map((a) => (
@@ -115,6 +200,14 @@ export default function MyJobsPage() {
                     <span className="text-[11px] text-muted-foreground shrink-0">{timeAgo(a.created_at)}</span>
                   </div>
                 </button>
+                {normalizeAppStatus(a.status) === "interview" && getInterviewInvite(a) && (
+                  <button
+                    onClick={() => setTab("interviews")}
+                    className="mt-2 text-[11px] font-bold text-amber-600"
+                  >
+                    View interview invite →
+                  </button>
+                )}
                 {a.status !== "withdrawn" && a.status !== "hired" && a.status !== "rejected" && (
                   <button
                     onClick={async () => {
