@@ -10,6 +10,7 @@ import {
   EXPERIENCE_LEVELS,
   QUALIFICATION_OPTIONS,
   normalizeExternalApplyUrl,
+  parseMoney,
 } from "@/lib/jobs";
 
 export type EditableJob = {
@@ -193,8 +194,8 @@ export default function PostJobSheet({ open, onClose, onCreated, editJob }: Prop
       description: form.description.trim(),
       category: form.category,
       employment_type: form.employment_type,
-      salary_min: form.salary_min ? Number(form.salary_min) : null,
-      salary_max: form.salary_max ? Number(form.salary_max) : null,
+      salary_min: parseMoney(form.salary_min),
+      salary_max: parseMoney(form.salary_max),
       location: form.location.trim() || null,
       remote_mode: form.remote_mode,
       skills: form.skills.split(",").map((s) => s.trim()).filter(Boolean),
@@ -382,23 +383,28 @@ export default function PostJobSheet({ open, onClose, onCreated, editJob }: Prop
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Salary Min ($/yr)">
+            <Field label="Compensation min ($/yr)">
               <input
-                inputMode="numeric"
+                inputMode="decimal"
                 value={form.salary_min}
                 onChange={(e) => update("salary_min", e.target.value)}
+                placeholder="e.g. 45000"
                 className={inputCls}
               />
             </Field>
-            <Field label="Salary Max ($/yr)">
+            <Field label="Compensation max ($/yr)">
               <input
-                inputMode="numeric"
+                inputMode="decimal"
                 value={form.salary_max}
                 onChange={(e) => update("salary_max", e.target.value)}
+                placeholder="e.g. 65000"
                 className={inputCls}
               />
             </Field>
           </div>
+          <p className="text-[11px] text-muted-foreground -mt-2">
+            Shown to applicants on the job and their application. Leave blank only if pay is truly TBD.
+          </p>
 
           <Field label="Job address / location">
             <input

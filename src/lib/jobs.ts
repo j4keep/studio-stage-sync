@@ -97,12 +97,26 @@ export function applicationStatusLabel(status: string): string {
   return APPLICATION_STATUS[key as ApplicationStatus] ?? String(key);
 }
 
-export function formatSalary(min?: number | null, max?: number | null, currency = "USD"): string {
+export function parseMoney(raw: string | number | null | undefined): number | null {
+  if (raw == null || raw === "") return null;
+  if (typeof raw === "number") return Number.isFinite(raw) ? raw : null;
+  const cleaned = String(raw).replace(/[^0-9.]/g, "");
+  if (!cleaned) return null;
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : null;
+}
+
+export function formatSalary(min?: number | string | null, max?: number | string | null, currency = "USD"): string {
+  const a = parseMoney(min ?? null);
+  const b = parseMoney(max ?? null);
   const fmt = (n: number) =>
     n >= 1000 ? `${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}k` : `${n}`;
-  if (!min && !max) return "Compensation TBD";
-  if (min && max) return `$${fmt(min)}–$${fmt(max)}`;
-  return `$${fmt((min || max)!)}`;
+  if (a == null && b == null) return "Compensation TBD";
+  if (a != null && b != null) {
+    if (a === b) return `$${fmt(a)}`;
+    return `$${fmt(Math.min(a, b))}–$${fmt(Math.max(a, b))}`;
+  }
+  return `$${fmt((a ?? b)!)}`;
 }
 
 export function timeAgo(iso: string): string {

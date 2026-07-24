@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatSalary, timeAgo } from "@/lib/jobs";
 import ApplicationPhaseDots from "@/components/jobs/ApplicationPhaseDots";
+import { toast } from "sonner";
 
 type Tab = "applied" | "saved" | "posted";
 
@@ -21,15 +22,16 @@ export default function MyJobsPage() {
     if (!user) return;
     setLoading(true);
     const [a, s, p] = await Promise.all([
-      supabase.from("job_applications").select("id,status,created_at,job:job_listings(id,title,location,salary_min,salary_max)")
+      supabase.from("job_applications").select("id,status,created_at,job_id,job:job_listings(id,title,location,salary_min,salary_max)")
         .eq("applicant_id", user.id).order("created_at", { ascending: false }),
-      supabase.from("saved_jobs").select("id,created_at,job:job_listings(id,title,location,salary_min,salary_max,created_at)")
+      supabase.from("saved_jobs").select("id,created_at,job_id,job:job_listings(id,title,location,salary_min,salary_max,created_at)")
         .eq("user_id", user.id).order("created_at", { ascending: false }),
       supabase.from("job_listings").select("id,title,location,salary_min,salary_max,status,created_at")
         .eq("employer_id", user.id).order("created_at", { ascending: false }),
     ]);
-    setApplied(a.data ?? []);
-    setSaved(s.data ?? []);
+    // Drop rows whose job was deleted (join returns null)
+    setApplied((a.data ?? []).filter((row: any) => row.job));
+    setSaved((s.data ?? []).filter((row: any) => row.job));
     setPosted(p.data ?? []);
     setLoading(false);
   };
@@ -38,7 +40,7 @@ export default function MyJobsPage() {
     load();
   }, [user]);
 
-  // Live status updates when employer changes phase
+  // Live sync: status updates + removals when employer deletes the job
   useEffect(() => {
     if (!user) return;
     const channel = supabase
@@ -49,6 +51,23 @@ export default function MyJobsPage() {
         (payload) => {
           const next = payload.new as { id: string; status: string };
           setApplied((prev) => prev.map((x) => (x.id === next.id ? { ...x, status: next.status } : x)));
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "job_applications", filter: `applicant_id=eq.${user.id}` },
+        (payload) => {
+          const old = payload.old as { id?: string; job_id?: string };
+          setApplied((prev) => prev.filter((x) => x.id !== old.id && x.job_id !== old.job_id));
+          toast.message("A job you applied to was removed by the employer");
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "saved_jobs", filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          const old = payload.old as { id?: string; job_id?: string };
+          setSaved((prev) => prev.filter((x) => x.id !== old.id && x.job_id !== old.job_id));
         },
       )
       .subscribe();
@@ -83,11 +102,13 @@ export default function MyJobsPage() {
           <p className="text-sm text-muted-foreground text-center py-8">Loading…</p>
         ) : tab === "applied" ? (
           applied.length === 0 ? <Empty text="No applications yet." /> : (
-            applied.map((a) => a.job && (
+            applied.map((a) => (
               <div key={a.id} className="p-4 rounded-2xl bg-card border border-border">
                 <button onClick={() => nav(`/jobs/${a.job.id}`)} className="w-full text-left">
                   <p className="text-sm font-bold">{a.job.title}</p>
-                  <p className="text-xs text-muted-foreground">{a.job.location ?? "—"}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {a.job.location ?? "—"} · {formatSalary(a.job.salary_min, a.job.salary_max)}
+                  </p>
                   <div className="mt-2.5 flex items-center justify-between gap-2">
                     <ApplicationPhaseDots status={a.status} mode="employee" />
                     <span className="text-[11px] text-muted-foreground shrink-0">{timeAgo(a.created_at)}</span>
@@ -111,7 +132,7 @@ export default function MyJobsPage() {
           )
         ) : tab === "saved" ? (
           saved.length === 0 ? <Empty text="Nothing saved yet." /> :
-          saved.map((s) => s.job && (
+          saved.map((s) => (
             <button key={s.id} onClick={() => nav(`/jobs/${s.job.id}`)} className="w-full text-left p-4 rounded-2xl bg-card border border-border">
               <p className="text-sm font-bold">{s.job.title}</p>
               <p className="text-xs text-muted-foreground">{s.job.location ?? "—"} · {formatSalary(s.job.salary_min, s.job.salary_max)}</p>

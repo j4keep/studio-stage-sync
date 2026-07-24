@@ -144,7 +144,7 @@ export default function EmployerDashboardPage() {
     if (error) return toast.error(error.message);
     setJobs((prev) => prev.filter((j) => j.id !== job.id));
     if (selectedJob === job.id) setSelectedJob(null);
-    toast.success("Job deleted");
+    toast.success("Job deleted — removed from applicants’ lists too");
   };
 
   const startEditJob = async (jobId: string) => {
