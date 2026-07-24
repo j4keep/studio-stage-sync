@@ -348,15 +348,6 @@ export default function EmployerDashboardPage() {
                                   {getInterviewInvite(a) ? "Edit interview" : "Schedule"}
                                 </button>
                               )}
-                              {getInterviewInvite(a) && (
-                                <button
-                                  type="button"
-                                  onClick={() => nav(`/jobs/interview/${a.id}`)}
-                                  className="h-8 px-2 rounded-full bg-emerald-500/15 text-emerald-700 text-[11px] font-bold"
-                                >
-                                  Join channel
-                                </button>
-                              )}
                               {(a.resume_url || a.resume_snapshot) && (
                                 <span className="inline-flex items-center gap-1 text-[10px] font-bold text-primary">
                                   <FileText className="w-3 h-3" /> Résumé
@@ -364,10 +355,20 @@ export default function EmployerDashboardPage() {
                               )}
                             </div>
                             {getInterviewInvite(a) && (
-                              <p className="text-[10px] text-muted-foreground">
-                                Interview {formatInterviewWhen(getInterviewInvite(a)!.at)} · join by {formatInterviewWhen(getInterviewInvite(a)!.join_deadline)}
-                                {a.applicant_accepted ? " · Applicant accepted" : " · Waiting for accept"}
-                              </p>
+                              <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/25 p-2.5 space-y-2">
+                                <p className="text-[10px] text-muted-foreground">
+                                  Interview {formatInterviewWhen(getInterviewInvite(a)!.at)} · join by {formatInterviewWhen(getInterviewInvite(a)!.join_deadline)}
+                                  {a.applicant_accepted ? " · Applicant accepted ✓" : " · Waiting for applicant to accept"}
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={() => nav(`/jobs/interview/${a.id}`)}
+                                  className="w-full h-10 rounded-full bg-emerald-500 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5"
+                                >
+                                  <Video className="w-3.5 h-3.5" />
+                                  Start meeting
+                                </button>
+                              </div>
                             )}
                           </div>
 

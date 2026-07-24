@@ -75,7 +75,7 @@ export default function JobInterviewPage() {
     if (!invite || !user) return;
     if (joinState === "expired") return toast.error("Join deadline has passed");
     if (joinState === "pending_accept") return toast.error("Applicant must accept first");
-    if (joinState === "too_early") return toast.error("Interview channel opens 15 minutes before the scheduled time");
+    if (joinState === "missing") return toast.error("Interview not scheduled");
 
     setConn("connecting");
     setError(null);
@@ -178,8 +178,10 @@ export default function JobInterviewPage() {
             <p>Scheduled: <span className="text-white font-semibold">{formatInterviewWhen(invite.at)}</span></p>
             <p>Join by: <span className="text-white font-semibold">{formatInterviewWhen(invite.join_deadline)}</span></p>
             {joinState === "pending_accept" && <p className="text-amber-400">Waiting for applicant to accept the invite.</p>}
-            {joinState === "too_early" && <p className="text-amber-400">Channel opens 15 minutes before start.</p>}
             {joinState === "expired" && <p className="text-rose-400">Join deadline has passed.</p>}
+            {isEmployer && joinState === "open" && (
+              <p className="text-emerald-400">You’re the host — tap Start meeting below to open the channel.</p>
+            )}
             {invite.external_url && (
               <a href={invite.external_url} target="_blank" rel="noreferrer" className="text-sky-400 underline block pt-1">
                 Open external call link
@@ -232,11 +234,11 @@ export default function JobInterviewPage() {
         ) : (
           <button
             onClick={connect}
-            disabled={conn === "connecting" || joinState === "expired" || joinState === "pending_accept" || joinState === "too_early" || joinState === "missing"}
+            disabled={conn === "connecting" || joinState === "expired" || joinState === "pending_accept" || joinState === "missing"}
             className="h-12 px-6 rounded-full bg-emerald-500 text-white font-bold text-sm disabled:opacity-40 inline-flex items-center gap-2"
           >
             {conn === "connecting" ? <Loader2 className="w-4 h-4 animate-spin" /> : invite?.call_kind === "audio" ? <Mic className="w-4 h-4" /> : <Video className="w-4 h-4" />}
-            {conn === "connecting" ? "Joining…" : "Join interview channel"}
+            {conn === "connecting" ? "Starting…" : isEmployer ? "Start meeting" : "Join meeting"}
           </button>
         )}
       </div>

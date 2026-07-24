@@ -54,7 +54,7 @@ export function formatInterviewWhen(iso: string): string {
   }
 }
 
-export type InterviewJoinState = "pending_accept" | "too_early" | "open" | "expired" | "missing";
+export type InterviewJoinState = "pending_accept" | "open" | "expired" | "missing";
 
 export function interviewJoinState(opts: {
   invite: JobInterviewInvite | null;
@@ -65,12 +65,12 @@ export function interviewJoinState(opts: {
   const { invite, applicantAccepted, isEmployer } = opts;
   const now = opts.now ?? new Date();
   if (!invite) return "missing";
-  const start = new Date(invite.at).getTime();
   const deadline = new Date(invite.join_deadline).getTime();
   if (Number.isNaN(deadline) || now.getTime() > deadline) return "expired";
-  if (!isEmployer && !applicantAccepted) return "pending_accept";
-  // Allow joining 15 minutes before scheduled start
-  if (now.getTime() < start - 15 * 60 * 1000) return "too_early";
+  // Employer can start the meeting any time before the join deadline
+  if (isEmployer) return "open";
+  if (!applicantAccepted) return "pending_accept";
+  // After accept, applicant can join until the deadline (no waiting for scheduled clock)
   return "open";
 }
 

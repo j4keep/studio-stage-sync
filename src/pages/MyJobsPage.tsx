@@ -157,18 +157,20 @@ export default function MyJobsPage() {
                     </button>
                   )}
 
-                  {a.applicant_accepted && state === "too_early" && (
-                    <p className="text-[11px] text-muted-foreground text-center">Accepted ✓ — channel opens 15 min before start.</p>
-                  )}
-
-                  {(state === "open" || (a.applicant_accepted && state === "too_early")) && (
+                  {a.applicant_accepted && state === "open" && (
                     <button
                       onClick={() => nav(`/jobs/interview/${a.id}`)}
-                      disabled={state !== "open"}
-                      className="w-full h-11 rounded-full bg-emerald-500 text-white font-bold text-sm disabled:opacity-40"
+                      className="w-full h-11 rounded-full bg-emerald-500 text-white font-bold text-sm inline-flex items-center justify-center gap-1.5"
                     >
-                      {state === "open" ? "Join interview channel" : "Join (opens soon)"}
+                      {invite.call_kind === "video" ? <Video className="w-4 h-4" /> : <Phone className="w-4 h-4" />}
+                      Join meeting
                     </button>
+                  )}
+
+                  {a.applicant_accepted && state === "open" && (
+                    <p className="text-[11px] text-muted-foreground text-center">
+                      Accepted ✓ — you can join anytime before {formatInterviewWhen(invite.join_deadline)}.
+                    </p>
                   )}
 
                   {invite.external_url && a.applicant_accepted && state !== "expired" && (
