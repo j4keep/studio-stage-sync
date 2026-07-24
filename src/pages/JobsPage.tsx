@@ -61,6 +61,7 @@ export default function JobsPage() {
   }, [user]);
 
   const [verifiedEmployers, setVerifiedEmployers] = useState<Set<string>>(new Set());
+  const [employerBrands, setEmployerBrands] = useState<Record<string, { company_name: string; logo_url: string | null }>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -78,10 +79,14 @@ export default function JobsPage() {
     const employerIds = Array.from(new Set((jobs ?? []).map((j: any) => j.employer_id).filter(Boolean)));
     if (employerIds.length) {
       const { data: emps } = await supabase.from("employer_profiles")
-        .select("user_id,verified").in("user_id", employerIds).eq("verified", true);
-      setVerifiedEmployers(new Set((emps ?? []).map((e: any) => e.user_id)));
+        .select("user_id,company_name,logo_url,verified").in("user_id", employerIds);
+      setVerifiedEmployers(new Set((emps ?? []).filter((e: any) => e.verified).map((e: any) => e.user_id)));
+      setEmployerBrands(Object.fromEntries(
+        (emps ?? []).map((e: any) => [e.user_id, { company_name: e.company_name || "", logo_url: e.logo_url || null }]),
+      ));
     } else {
       setVerifiedEmployers(new Set());
+      setEmployerBrands({});
     }
     setLoading(false);
   }, []);
@@ -107,14 +112,18 @@ export default function JobsPage() {
       items = items.filter((i) => i.category === activeCategory);
     }
     if (n) {
-      items = items.filter((i) =>
-        i.title.toLowerCase().includes(n) ||
-        (i.location ?? "").toLowerCase().includes(n) ||
-        i.category.toLowerCase().includes(n),
-      );
+      items = items.filter((i) => {
+        const brand = i.__kind === "job" ? employerBrands[(i as JobRow).employer_id] : null;
+        return (
+          i.title.toLowerCase().includes(n) ||
+          (i.location ?? "").toLowerCase().includes(n) ||
+          i.category.toLowerCase().includes(n) ||
+          (brand?.company_name || "").toLowerCase().includes(n)
+        );
+      });
     }
     return items;
-  }, [query, activeCategory, listings]);
+  }, [query, activeCategory, listings, employerBrands]);
 
   const displayed = useMemo(() => {
     if (!forYou || !prefs) return filtered;
@@ -242,28 +251,48 @@ export default function JobsPage() {
           displayed.map((item) => {
             const s = forYou && prefs ? scoreListing(item, prefs) : 0;
             const verified = item.__kind === "job" && verifiedEmployers.has((item as JobRow).employer_id);
+            const brand = item.__kind === "job" ? employerBrands[(item as JobRow).employer_id] : null;
             return (
             <button key={`${item.__kind}-${item.id}`} type="button"
               onClick={() => nav(item.__kind === "job" ? `/jobs/${item.id}` : `/gigs/${item.id}`)}
               className="w-full text-left p-4 rounded-2xl bg-card border border-border hover:border-primary/40 transition-colors active:scale-[0.99]">
               <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <p className="text-sm font-bold text-foreground truncate">{item.title}</p>
-                    {verified && (
-                      <BadgeCheck className="w-3.5 h-3.5 text-sky-500 shrink-0" aria-label="Verified employer" />
+                <div className="flex items-start gap-3 min-w-0 flex-1">
+                  {item.__kind === "job" && (
+                    <div className="w-11 h-11 rounded-xl bg-muted border border-border overflow-hidden flex items-center justify-center shrink-0">
+                      {brand?.logo_url ? (
+                        <img src={brand.logo_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <Building2 className="w-5 h-5 text-muted-foreground" />
+                      )}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    {brand?.company_name && (
+                      <div className="flex items-center gap-1 mb-0.5">
+                        <p className="text-[11px] font-semibold text-muted-foreground truncate">{brand.company_name}</p>
+                        {verified && (
+                          <BadgeCheck className="w-3.5 h-3.5 text-sky-500 shrink-0" aria-label="Verified employer" />
+                        )}
+                      </div>
                     )}
-                    {item.__kind === "gig" && (
-                      <span className="shrink-0 text-[9px] font-bold uppercase tracking-wide bg-emerald-500/15 text-emerald-600 px-1.5 py-0.5 rounded">Gig</span>
-                    )}
-                    {s >= 30 && (
-                      <span className="shrink-0 text-[9px] font-bold uppercase tracking-wide bg-primary/15 text-primary px-1.5 py-0.5 rounded">Match</span>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground truncate capitalize">{item.category}</p>
-                  <div className="flex items-center gap-3 mt-2 text-[11px] text-muted-foreground">
-                    <span className="inline-flex items-center gap-1"><MapPin className="w-3 h-3" />{item.location ?? "—"}</span>
-                    <span className="inline-flex items-center gap-1"><Clock className="w-3 h-3" />{timeAgo(item.created_at)}</span>
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="text-sm font-bold text-foreground truncate">{item.title}</p>
+                      {!brand?.company_name && verified && (
+                        <BadgeCheck className="w-3.5 h-3.5 text-sky-500 shrink-0" aria-label="Verified employer" />
+                      )}
+                      {item.__kind === "gig" && (
+                        <span className="shrink-0 text-[9px] font-bold uppercase tracking-wide bg-emerald-500/15 text-emerald-600 px-1.5 py-0.5 rounded">Gig</span>
+                      )}
+                      {s >= 30 && (
+                        <span className="shrink-0 text-[9px] font-bold uppercase tracking-wide bg-primary/15 text-primary px-1.5 py-0.5 rounded">Match</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate capitalize">{item.category}</p>
+                    <div className="flex items-center gap-3 mt-2 text-[11px] text-muted-foreground">
+                      <span className="inline-flex items-center gap-1"><MapPin className="w-3 h-3" />{item.location ?? "—"}</span>
+                      <span className="inline-flex items-center gap-1"><Clock className="w-3 h-3" />{timeAgo(item.created_at)}</span>
+                    </div>
                   </div>
                 </div>
                 <div className="text-right shrink-0">

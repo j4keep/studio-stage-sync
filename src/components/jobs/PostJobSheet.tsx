@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, X } from "lucide-react";
+import { Building2, Plus, Upload, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -59,9 +59,13 @@ const emptyForm = {
 export default function PostJobSheet({ open, onClose, onCreated, editJob }: Props) {
   const { user } = useAuth();
   const [saving, setSaving] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [qualifications, setQualifications] = useState<string[]>([]);
   const [customQual, setCustomQual] = useState("");
   const [form, setForm] = useState(emptyForm);
+  const [companyName, setCompanyName] = useState("");
+  const [logoUrl, setLogoUrl] = useState("");
+  const [companyProfileId, setCompanyProfileId] = useState<string | null>(null);
   const isEdit = !!editJob;
 
   useEffect(() => {
@@ -90,7 +94,25 @@ export default function PostJobSheet({ open, onClose, onCreated, editJob }: Prop
       setQualifications([]);
       setCustomQual("");
     }
-  }, [open, editJob]);
+
+    if (!user) return;
+    (async () => {
+      const { data: emp } = await supabase
+        .from("employer_profiles")
+        .select("id,company_name,logo_url")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (emp) {
+        setCompanyProfileId(emp.id);
+        setCompanyName(emp.company_name || "");
+        setLogoUrl(emp.logo_url || "");
+      } else {
+        setCompanyProfileId(null);
+        setCompanyName("");
+        setLogoUrl("");
+      }
+    })();
+  }, [open, editJob, user]);
 
   if (!open) return null;
 
@@ -109,6 +131,54 @@ export default function PostJobSheet({ open, onClose, onCreated, editJob }: Prop
     if (!customQual.trim()) return;
     addQualification(customQual);
     setCustomQual("");
+  };
+
+  const uploadLogo = async (file: File) => {
+    if (!user) return;
+    setUploadingLogo(true);
+    const path = `employer-logos/${user.id}/${Date.now()}-${file.name}`;
+    const { error } = await supabase.storage.from("media").upload(path, file, { upsert: true });
+    if (error) {
+      setUploadingLogo(false);
+      return toast.error(error.message);
+    }
+    const { data: pub } = supabase.storage.from("media").getPublicUrl(path);
+    setLogoUrl(pub.publicUrl);
+    setUploadingLogo(false);
+    toast.success("Company logo uploaded");
+  };
+
+  const saveCompanyProfile = async () => {
+    if (!user) return false;
+    const name = companyName.trim();
+    if (!name && !logoUrl) {
+      toast.error("Add your company name or upload a logo/header");
+      return false;
+    }
+    if (!name) {
+      toast.error("Company name is required so applicants know who they’re applying to");
+      return false;
+    }
+    const payload = {
+      user_id: user.id,
+      company_name: name,
+      logo_url: logoUrl || null,
+    };
+    if (companyProfileId) {
+      const { error } = await supabase.from("employer_profiles").update(payload).eq("id", companyProfileId);
+      if (error) {
+        toast.error(error.message);
+        return false;
+      }
+    } else {
+      const { data, error } = await supabase.from("employer_profiles").insert(payload).select("id").single();
+      if (error) {
+        toast.error(error.message);
+        return false;
+      }
+      if (data?.id) setCompanyProfileId(data.id);
+    }
+    return true;
   };
 
   const buildPayload = () => {
@@ -142,6 +212,10 @@ export default function PostJobSheet({ open, onClose, onCreated, editJob }: Prop
       toast.error("Please sign in first");
       return;
     }
+    if (!companyName.trim()) {
+      toast.error("Company name is required");
+      return;
+    }
     if (!form.title.trim() || !form.description.trim()) {
       toast.error("Title and description are required");
       return;
@@ -154,6 +228,12 @@ export default function PostJobSheet({ open, onClose, onCreated, editJob }: Prop
     }
 
     setSaving(true);
+    const companyOk = await saveCompanyProfile();
+    if (!companyOk) {
+      setSaving(false);
+      return;
+    }
+
     const { error } = isEdit
       ? await supabase.from("job_listings").update(payload).eq("id", editJob!.id).eq("employer_id", user.id)
       : await supabase.from("job_listings").insert({ ...payload, employer_id: user.id });
@@ -187,6 +267,76 @@ export default function PostJobSheet({ open, onClose, onCreated, editJob }: Prop
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-40">
+          <div className="rounded-2xl border border-primary/25 bg-primary/5 p-4 space-y-3">
+            <div>
+              <p className="text-sm font-bold">Your company *</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Required — applicants see your business name and logo on the job and application.
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-border bg-background overflow-hidden">
+              <div className="h-24 bg-muted relative flex items-center justify-center">
+                {logoUrl ? (
+                  <img src={logoUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                ) : (
+                  <Building2 className="w-8 h-8 text-muted-foreground/50" />
+                )}
+              </div>
+              <div className="p-3 flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-muted border border-border overflow-hidden flex items-center justify-center shrink-0 -mt-8 ring-2 ring-background relative z-[1]">
+                  {logoUrl ? (
+                    <img src={logoUrl} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <Building2 className="w-5 h-5 text-muted-foreground" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold truncate">{companyName.trim() || "Company name"}</p>
+                  <p className="text-[10px] text-muted-foreground">Preview for applicants</p>
+                </div>
+              </div>
+            </div>
+
+            <Field label="Company / business name *">
+              <input
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                placeholder="e.g. Acme Studios"
+                className={inputCls}
+              />
+            </Field>
+
+            <div>
+              <span className="text-xs font-semibold text-muted-foreground mb-1 block">Company logo / header</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="inline-flex items-center gap-1.5 h-11 px-3 rounded-xl bg-muted border border-border text-xs font-bold cursor-pointer">
+                  <Upload className="w-3.5 h-3.5" />
+                  {uploadingLogo ? "Uploading…" : logoUrl ? "Replace image" : "Upload logo or header"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    disabled={uploadingLogo}
+                    onChange={(e) => e.target.files?.[0] && uploadLogo(e.target.files[0])}
+                  />
+                </label>
+                {logoUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setLogoUrl("")}
+                    className="text-[11px] font-semibold text-rose-500"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1.5">
+                Square logo or wide header image works — shown on your job post.
+              </p>
+            </div>
+          </div>
+
           <Field label="Job Title *">
             <input
               value={form.title}
