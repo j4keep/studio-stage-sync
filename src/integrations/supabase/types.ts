@@ -748,6 +748,7 @@ export type Database = {
         Row: {
           benefits: string[] | null
           category: string
+          cover_image_url: string | null
           created_at: string
           deadline: string | null
           description: string
@@ -773,6 +774,7 @@ export type Database = {
         Insert: {
           benefits?: string[] | null
           category?: string
+          cover_image_url?: string | null
           created_at?: string
           deadline?: string | null
           description: string
@@ -798,6 +800,7 @@ export type Database = {
         Update: {
           benefits?: string[] | null
           category?: string
+          cover_image_url?: string | null
           created_at?: string
           deadline?: string | null
           description?: string

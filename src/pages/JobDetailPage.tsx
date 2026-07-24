@@ -27,6 +27,7 @@ type Job = {
   created_at: string;
   qualifications: string[] | null;
   external_apply_url: string | null;
+  cover_image_url?: string | null;
 };
 
 type EmploymentEntry = { employer: string; supervisor: string; phone: string; title: string; start: string; end: string; pay: string; reason: string };
@@ -70,27 +71,50 @@ export default function JobDetailPage() {
   const [coverLetter, setCoverLetter] = useState("");
   const [employment, setEmployment] = useState<EmploymentEntry[]>([emptyEmployment()]);
   const [education, setEducation] = useState<EducationEntry[]>([emptyEducation()]);
-  const [employerBrand, setEmployerBrand] = useState<{ company_name: string; logo_url: string | null } | null>(null);
+  const [employerBrand, setEmployerBrand] = useState<{ company_name: string } | null>(null);
 
   const loadSavedResume = async (uid: string) => {
-    const { data: r } = await supabase
+    // Prefer default, then any résumé with structured AI data
+    const { data: preferred } = await supabase
       .from("resumes")
-      .select("id,structured_data,file_url,source")
+      .select("id,structured_data,file_url,source,is_default")
       .eq("user_id", uid)
       .eq("is_default", true)
       .maybeSingle();
+
+    let r = preferred;
+    if (!r) {
+      const { data: anyResume } = await supabase
+        .from("resumes")
+        .select("id,structured_data,file_url,source,is_default")
+        .eq("user_id", uid)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      r = anyResume;
+    }
+
     if (!r) {
       setHasSavedAiResume(false);
       setResumeId(null);
+      setResumeSnapshot(null);
       return null;
     }
+
     const structured = (r as any).structured_data;
-    const hasAi = !!(structured && (structured.summary || structured.experience?.length || structured.skills?.length));
-    setHasSavedAiResume(hasAi);
+    setHasSavedAiResume(true);
     setResumeId(r.id);
     setResumeSnapshot(structured ?? null);
     if ((r as any).file_url) setResumeUrl((r as any).file_url);
     return r;
+  };
+
+  const openApply = async () => {
+    if (user) {
+      const r = await loadSavedResume(user.id);
+      if (r) setAttachAiResume(true);
+    }
+    setShowApply(true);
   };
 
   useEffect(() => {
@@ -102,10 +126,10 @@ export default function JobDetailPage() {
       if (data?.employer_id) {
         const { data: emp } = await supabase
           .from("employer_profiles")
-          .select("company_name,logo_url")
+          .select("company_name")
           .eq("user_id", data.employer_id)
           .maybeSingle();
-        if (emp) setEmployerBrand({ company_name: emp.company_name, logo_url: emp.logo_url });
+        if (emp) setEmployerBrand({ company_name: emp.company_name });
       }
       if (user && data) {
         const [{ data: s }, { data: a }, { data: p }] = await Promise.all([
@@ -201,9 +225,9 @@ export default function JobDetailPage() {
       availability: availability.trim() || null,
       work_authorized: workAuthorized,
       willing_to_relocate: willingRelocate,
-      resume_id: attachAiResume && resumeId ? resumeId : null,
+      resume_id: attachAiResume && hasSavedAiResume && resumeId ? resumeId : null,
       resume_url: resumeUrl || null,
-      resume_snapshot: attachAiResume ? resumeSnapshot : null,
+      resume_snapshot: attachAiResume && hasSavedAiResume ? resumeSnapshot : null,
       cover_letter: coverLetter.trim() || null,
       desired_position: job.title,
       target_pay_rate: null,
@@ -236,13 +260,13 @@ export default function JobDetailPage() {
       const url = normalizeExternalApplyUrl(job.external_apply_url || "");
       if (!url) {
         toast.error("This job’s external apply link is invalid. Try Apply on YAJ instead.");
-        setShowApply(true);
+        void openApply();
         return;
       }
       window.open(url, "_blank", "noopener,noreferrer");
       return;
     }
-    setShowApply(true);
+    void openApply();
   };
 
   return (
@@ -257,19 +281,28 @@ export default function JobDetailPage() {
       </header>
 
       <div className="max-w-3xl mx-auto p-4 space-y-4 pb-40">
-        {employerBrand && (employerBrand.logo_url || employerBrand.company_name) && (
-          <div className="flex items-center gap-3">
-            {employerBrand.logo_url ? (
-              <img src={employerBrand.logo_url} alt="" className="w-12 h-12 rounded-xl object-cover border border-border" />
-            ) : (
-              <div className="w-12 h-12 rounded-xl bg-muted border border-border flex items-center justify-center">
-                <Building2 className="w-5 h-5 text-muted-foreground" />
+        {(job.cover_image_url || employerBrand?.company_name) && (
+          <div className="space-y-3">
+            {job.cover_image_url && (
+              <div className="w-full h-36 md:h-48 rounded-2xl overflow-hidden border border-border bg-muted">
+                <img src={job.cover_image_url} alt="" className="w-full h-full object-cover" />
               </div>
             )}
-            <div className="min-w-0">
-              <p className="text-sm font-bold truncate">{employerBrand.company_name || "Employer"}</p>
-              <p className="text-[11px] text-muted-foreground">Hiring on YAJ</p>
-            </div>
+            {employerBrand?.company_name && (
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-muted border border-border overflow-hidden flex items-center justify-center shrink-0">
+                  {job.cover_image_url ? (
+                    <img src={job.cover_image_url} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <Building2 className="w-5 h-5 text-muted-foreground" />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold truncate">{employerBrand.company_name}</p>
+                  <p className="text-[11px] text-muted-foreground">Hiring on YAJ</p>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -372,16 +405,16 @@ export default function JobDetailPage() {
               {/* Job being applied for — description + location from employer post */}
               <FormGroup title="Job you're applying for">
                 <div className="rounded-xl border border-border bg-muted/40 p-3 space-y-2">
-                  {employerBrand && (employerBrand.logo_url || employerBrand.company_name) && (
+                  {employerBrand?.company_name && (
                     <div className="flex items-center gap-2.5 pb-1">
-                      {employerBrand.logo_url ? (
-                        <img src={employerBrand.logo_url} alt="" className="w-10 h-10 rounded-lg object-cover border border-border" />
+                      {job.cover_image_url ? (
+                        <img src={job.cover_image_url} alt="" className="w-10 h-10 rounded-lg object-cover border border-border" />
                       ) : (
                         <div className="w-10 h-10 rounded-lg bg-muted border border-border flex items-center justify-center">
                           <Building2 className="w-4 h-4 text-muted-foreground" />
                         </div>
                       )}
-                      <p className="text-sm font-bold truncate">{employerBrand.company_name || "Employer"}</p>
+                      <p className="text-sm font-bold truncate">{employerBrand.company_name}</p>
                     </div>
                   )}
                   <p className="text-sm font-bold">{job.title}</p>
@@ -511,71 +544,8 @@ export default function JobDetailPage() {
                 </label>
               </FormGroup>
 
-              {/* Résumé + Cover letter */}
-              <FormGroup title="Résumé & Cover Letter">
-                <Field label="Attach résumé">
-                  <div className="space-y-3">
-                    {hasSavedAiResume ? (
-                      <label className="flex items-start gap-3 rounded-xl border border-border bg-muted/40 p-3 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          className="mt-1"
-                          checked={attachAiResume}
-                          onChange={(e) => setAttachAiResume(e.target.checked)}
-                        />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-bold inline-flex items-center gap-1.5">
-                            <FileText className="w-3.5 h-3.5 text-primary" />
-                            My YAJ AI résumé
-                          </p>
-                          <p className="text-[11px] text-muted-foreground mt-0.5">
-                            Attach the résumé you generated and saved. Employers can open and read it with your application.
-                          </p>
-                        </div>
-                      </label>
-                    ) : (
-                      <div className="rounded-xl border border-dashed border-border p-3">
-                        <p className="text-xs text-muted-foreground mb-2">No saved YAJ AI résumé yet.</p>
-                        <button
-                          type="button"
-                          onClick={() => nav(`/resume-builder?returnTo=${encodeURIComponent(`/jobs/${job.id}?apply=1`)}`)}
-                          className="inline-flex items-center gap-1.5 text-xs font-bold text-primary"
-                        >
-                          <Sparkles className="w-3.5 h-3.5" />
-                          Build one with YAJ Buddy →
-                        </button>
-                      </div>
-                    )}
-
-                    {attachAiResume && resumeSnapshot && (
-                      <div>
-                        <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-1.5">Preview (employer view)</p>
-                        <ResumePreview data={resumeSnapshot} />
-                      </div>
-                    )}
-
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <label className="inline-flex items-center gap-1.5 h-10 px-3 rounded-xl bg-muted border border-border text-xs font-semibold cursor-pointer">
-                        {uploadingResume ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-                        {resumeUrl ? "Replace PDF / file" : "Upload PDF / file"}
-                        <input type="file" accept=".pdf,.doc,.docx" hidden onChange={(e) => e.target.files?.[0] && uploadResume(e.target.files[0])} />
-                      </label>
-                      {resumeUrl && (
-                        <a href={resumeUrl} target="_blank" rel="noreferrer" className="text-xs text-primary underline truncate">Preview file</a>
-                      )}
-                      {hasSavedAiResume && (
-                        <button
-                          type="button"
-                          onClick={() => nav(`/resume-builder?returnTo=${encodeURIComponent(`/jobs/${job.id}?apply=1`)}`)}
-                          className="text-xs text-primary font-semibold"
-                        >
-                          Edit AI résumé →
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </Field>
-
+              {/* Cover letter + optional file upload */}
+              <FormGroup title="Cover Letter">
                 <Field label="Cover letter (optional)">
                   <textarea
                     value={coverLetter}
@@ -593,16 +563,93 @@ export default function JobDetailPage() {
                     {aiGen ? "Drafting…" : coverLetter ? "Rewrite with YAJ Buddy" : "Write with YAJ Buddy"}
                   </button>
                 </Field>
+
+                <div className="mt-3">
+                  <span className="text-xs font-semibold text-muted-foreground mb-1 block">Or upload a résumé file (optional)</span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <label className="inline-flex items-center gap-1.5 h-10 px-3 rounded-xl bg-muted border border-border text-xs font-semibold cursor-pointer">
+                      {uploadingResume ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                      {resumeUrl ? "Replace PDF / file" : "Upload PDF / file"}
+                      <input type="file" accept=".pdf,.doc,.docx" hidden onChange={(e) => e.target.files?.[0] && uploadResume(e.target.files[0])} />
+                    </label>
+                    {resumeUrl && (
+                      <a href={resumeUrl} target="_blank" rel="noreferrer" className="text-xs text-primary underline truncate">Preview file</a>
+                    )}
+                  </div>
+                </div>
               </FormGroup>
             </div>
 
-            <div className="sticky bottom-0 bg-background/95 backdrop-blur border-t border-border p-4">
+            <div className="sticky bottom-0 bg-background/95 backdrop-blur border-t border-border p-4 space-y-3">
+              <label
+                className={`flex items-center gap-3 rounded-2xl border-2 p-3.5 cursor-pointer transition-colors ${
+                  attachAiResume && hasSavedAiResume
+                    ? "border-primary bg-primary/10"
+                    : "border-primary/40 bg-primary/5"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  className="w-5 h-5 accent-primary shrink-0"
+                  checked={attachAiResume && hasSavedAiResume}
+                  disabled={!hasSavedAiResume}
+                  onChange={(e) => {
+                    if (!hasSavedAiResume) return;
+                    setAttachAiResume(e.target.checked);
+                  }}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold inline-flex items-center gap-1.5">
+                    <FileText className="w-4 h-4 text-primary shrink-0" />
+                    Attach my YAJ AI résumé
+                  </p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    {hasSavedAiResume
+                      ? "Check this so the employer can open and read your résumé with this application."
+                      : "No saved YAJ AI résumé yet — build one, then come back and check this box."}
+                  </p>
+                  {!hasSavedAiResume && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        nav(`/resume-builder?returnTo=${encodeURIComponent(`/jobs/${job.id}?apply=1`)}`);
+                      }}
+                      className="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-primary"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      Build with YAJ Buddy →
+                    </button>
+                  )}
+                  {hasSavedAiResume && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        nav(`/resume-builder?returnTo=${encodeURIComponent(`/jobs/${job.id}?apply=1`)}`);
+                      }}
+                      className="mt-1.5 text-[11px] font-semibold text-primary"
+                    >
+                      Edit résumé →
+                    </button>
+                  )}
+                </div>
+              </label>
+
+              {attachAiResume && hasSavedAiResume && resumeSnapshot && (
+                <div className="max-h-40 overflow-y-auto rounded-xl border border-border">
+                  <ResumePreview data={resumeSnapshot} className="border-0 rounded-none" />
+                </div>
+              )}
+
               <button
                 onClick={submitApplication}
                 disabled={submitting}
                 className="w-full h-12 rounded-full bg-primary text-primary-foreground font-bold text-sm disabled:opacity-50"
               >
-                {submitting ? "Sending…" : "Send Application"}
+                {submitting ? "Sending…" : attachAiResume && hasSavedAiResume ? "Send Application + Résumé" : "Send Application"}
               </button>
             </div>
           </div>

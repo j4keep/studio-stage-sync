@@ -19,6 +19,7 @@ type JobRow = {
   remote_mode: string;
   created_at: string;
   employer_id: string;
+  cover_image_url?: string | null;
   __kind: "job";
 };
 type GigRow = {
@@ -66,7 +67,7 @@ export default function JobsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     const [{ data: jobs }, { data: gigs }] = await Promise.all([
-      supabase.from("job_listings").select("id,title,category,employment_type,salary_min,salary_max,location,remote_mode,created_at,employer_id")
+      supabase.from("job_listings").select("id,title,category,employment_type,salary_min,salary_max,location,remote_mode,created_at,employer_id,cover_image_url")
         .eq("status", "open").order("created_at", { ascending: false }).limit(50),
       supabase.from("gig_listings").select("id,title,category,location,budget_min,budget_max,urgency,created_at")
         .eq("status", "open").order("created_at", { ascending: false }).limit(50),
@@ -79,10 +80,10 @@ export default function JobsPage() {
     const employerIds = Array.from(new Set((jobs ?? []).map((j: any) => j.employer_id).filter(Boolean)));
     if (employerIds.length) {
       const { data: emps } = await supabase.from("employer_profiles")
-        .select("user_id,company_name,logo_url,verified").in("user_id", employerIds);
+        .select("user_id,company_name,verified").in("user_id", employerIds);
       setVerifiedEmployers(new Set((emps ?? []).filter((e: any) => e.verified).map((e: any) => e.user_id)));
       setEmployerBrands(Object.fromEntries(
-        (emps ?? []).map((e: any) => [e.user_id, { company_name: e.company_name || "", logo_url: e.logo_url || null }]),
+        (emps ?? []).map((e: any) => [e.user_id, { company_name: e.company_name || "", logo_url: null as string | null }]),
       ));
     } else {
       setVerifiedEmployers(new Set());
@@ -252,6 +253,7 @@ export default function JobsPage() {
             const s = forYou && prefs ? scoreListing(item, prefs) : 0;
             const verified = item.__kind === "job" && verifiedEmployers.has((item as JobRow).employer_id);
             const brand = item.__kind === "job" ? employerBrands[(item as JobRow).employer_id] : null;
+            const jobCover = item.__kind === "job" ? (item as JobRow).cover_image_url : null;
             return (
             <button key={`${item.__kind}-${item.id}`} type="button"
               onClick={() => nav(item.__kind === "job" ? `/jobs/${item.id}` : `/gigs/${item.id}`)}
@@ -260,8 +262,8 @@ export default function JobsPage() {
                 <div className="flex items-start gap-3 min-w-0 flex-1">
                   {item.__kind === "job" && (
                     <div className="w-11 h-11 rounded-xl bg-muted border border-border overflow-hidden flex items-center justify-center shrink-0">
-                      {brand?.logo_url ? (
-                        <img src={brand.logo_url} alt="" className="w-full h-full object-cover" />
+                      {jobCover ? (
+                        <img src={jobCover} alt="" className="w-full h-full object-cover" />
                       ) : (
                         <Building2 className="w-5 h-5 text-muted-foreground" />
                       )}

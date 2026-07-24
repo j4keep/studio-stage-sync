@@ -30,6 +30,7 @@ export type EditableJob = {
   deadline: string | null;
   qualifications: string[] | null;
   external_apply_url: string | null;
+  cover_image_url?: string | null;
 };
 
 type Props = {
@@ -65,7 +66,7 @@ export default function PostJobSheet({ open, onClose, onCreated, editJob }: Prop
   const [customQual, setCustomQual] = useState("");
   const [form, setForm] = useState(emptyForm);
   const [companyName, setCompanyName] = useState("");
-  const [logoUrl, setLogoUrl] = useState("");
+  const [postImageUrl, setPostImageUrl] = useState("");
   const [companyProfileId, setCompanyProfileId] = useState<string | null>(null);
   const isEdit = !!editJob;
 
@@ -90,27 +91,27 @@ export default function PostJobSheet({ open, onClose, onCreated, editJob }: Prop
       });
       setQualifications(editJob.qualifications ?? []);
       setCustomQual("");
+      setPostImageUrl(editJob.cover_image_url || "");
     } else {
       setForm(emptyForm);
       setQualifications([]);
       setCustomQual("");
+      setPostImageUrl(""); // each new post starts with no image — pick per listing
     }
 
     if (!user) return;
     (async () => {
       const { data: emp } = await supabase
         .from("employer_profiles")
-        .select("id,company_name,logo_url")
+        .select("id,company_name")
         .eq("user_id", user.id)
         .maybeSingle();
       if (emp) {
         setCompanyProfileId(emp.id);
         setCompanyName(emp.company_name || "");
-        setLogoUrl(emp.logo_url || "");
       } else {
         setCompanyProfileId(null);
         setCompanyName("");
-        setLogoUrl("");
       }
     })();
   }, [open, editJob, user]);
@@ -134,36 +135,32 @@ export default function PostJobSheet({ open, onClose, onCreated, editJob }: Prop
     setCustomQual("");
   };
 
-  const uploadLogo = async (file: File) => {
+  const uploadPostImage = async (file: File) => {
     if (!user) return;
     setUploadingLogo(true);
-    const path = `employer-logos/${user.id}/${Date.now()}-${file.name}`;
+    const path = `job-covers/${user.id}/${Date.now()}-${file.name}`;
     const { error } = await supabase.storage.from("media").upload(path, file, { upsert: true });
     if (error) {
       setUploadingLogo(false);
       return toast.error(error.message);
     }
     const { data: pub } = supabase.storage.from("media").getPublicUrl(path);
-    setLogoUrl(pub.publicUrl);
+    setPostImageUrl(pub.publicUrl);
     setUploadingLogo(false);
-    toast.success("Company logo uploaded");
+    toast.success("Post image uploaded — only for this job");
   };
 
   const saveCompanyProfile = async () => {
     if (!user) return false;
     const name = companyName.trim();
-    if (!name && !logoUrl) {
-      toast.error("Add your company name or upload a logo/header");
-      return false;
-    }
     if (!name) {
       toast.error("Company name is required so applicants know who they’re applying to");
       return false;
     }
+    // Name only — do not overwrite a shared logo; images are per job post
     const payload = {
       user_id: user.id,
       company_name: name,
-      logo_url: logoUrl || null,
     };
     if (companyProfileId) {
       const { error } = await supabase.from("employer_profiles").update(payload).eq("id", companyProfileId);
@@ -205,6 +202,7 @@ export default function PostJobSheet({ open, onClose, onCreated, editJob }: Prop
       deadline: form.deadline || null,
       qualifications,
       external_apply_url,
+      cover_image_url: postImageUrl || null,
     };
   };
 
@@ -272,29 +270,29 @@ export default function PostJobSheet({ open, onClose, onCreated, editJob }: Prop
             <div>
               <p className="text-sm font-bold">Your company *</p>
               <p className="text-[11px] text-muted-foreground mt-0.5">
-                Required — applicants see your business name and logo on the job and application.
+                Business name is saved to your employer profile. Post image is for this job only — pick a different one on each post if you want.
               </p>
             </div>
 
             <div className="rounded-xl border border-border bg-background overflow-hidden">
               <div className="h-24 bg-muted relative flex items-center justify-center">
-                {logoUrl ? (
-                  <img src={logoUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                {postImageUrl ? (
+                  <img src={postImageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
                 ) : (
                   <Building2 className="w-8 h-8 text-muted-foreground/50" />
                 )}
               </div>
               <div className="p-3 flex items-center gap-3">
                 <div className="w-12 h-12 rounded-xl bg-muted border border-border overflow-hidden flex items-center justify-center shrink-0 -mt-8 ring-2 ring-background relative z-[1]">
-                  {logoUrl ? (
-                    <img src={logoUrl} alt="" className="w-full h-full object-cover" />
+                  {postImageUrl ? (
+                    <img src={postImageUrl} alt="" className="w-full h-full object-cover" />
                   ) : (
                     <Building2 className="w-5 h-5 text-muted-foreground" />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold truncate">{companyName.trim() || "Company name"}</p>
-                  <p className="text-[10px] text-muted-foreground">Preview for applicants</p>
+                  <p className="text-[10px] text-muted-foreground">Preview for this job post</p>
                 </div>
               </div>
             </div>
@@ -309,23 +307,23 @@ export default function PostJobSheet({ open, onClose, onCreated, editJob }: Prop
             </Field>
 
             <div>
-              <span className="text-xs font-semibold text-muted-foreground mb-1 block">Company logo / header</span>
+              <span className="text-xs font-semibold text-muted-foreground mb-1 block">Image for this job post (optional)</span>
               <div className="flex flex-wrap items-center gap-2">
                 <label className="inline-flex items-center gap-1.5 h-11 px-3 rounded-xl bg-muted border border-border text-xs font-bold cursor-pointer">
                   <Upload className="w-3.5 h-3.5" />
-                  {uploadingLogo ? "Uploading…" : logoUrl ? "Replace image" : "Upload logo or header"}
+                  {uploadingLogo ? "Uploading…" : postImageUrl ? "Replace image" : "Upload image for this post"}
                   <input
                     type="file"
                     accept="image/*"
                     hidden
                     disabled={uploadingLogo}
-                    onChange={(e) => e.target.files?.[0] && uploadLogo(e.target.files[0])}
+                    onChange={(e) => e.target.files?.[0] && uploadPostImage(e.target.files[0])}
                   />
                 </label>
-                {logoUrl && (
+                {postImageUrl && (
                   <button
                     type="button"
-                    onClick={() => setLogoUrl("")}
+                    onClick={() => setPostImageUrl("")}
                     className="text-[11px] font-semibold text-rose-500"
                   >
                     Remove
@@ -333,7 +331,7 @@ export default function PostJobSheet({ open, onClose, onCreated, editJob }: Prop
                 )}
               </div>
               <p className="text-[11px] text-muted-foreground mt-1.5">
-                Square logo or wide header image works — shown on your job post.
+                Only shows on this listing — other job posts keep their own images.
               </p>
             </div>
           </div>
