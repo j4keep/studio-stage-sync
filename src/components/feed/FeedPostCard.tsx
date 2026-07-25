@@ -21,7 +21,7 @@ import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import PostCommentsSheet from "./PostCommentsSheet";
+import PostCommentsSheet, { MOBILE_COMMENTS_VIDEO_HEIGHT } from "./PostCommentsSheet";
 import CreatePostSheet from "./CreatePostSheet";
 import PostOverlayRenderer from "./create/PostOverlayRenderer";
 import useFloatingEmojis, { FloatingEmojiLayer } from "./FloatingEmojis";
@@ -1047,7 +1047,12 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
   return (
     <>
       <div
-        className="absolute inset-0 bg-black overflow-hidden"
+        className={
+          showComments
+            ? "fixed inset-x-0 top-0 z-[85] mx-auto max-w-lg overflow-hidden bg-black"
+            : "absolute inset-0 overflow-hidden bg-black"
+        }
+        style={showComments ? { height: MOBILE_COMMENTS_VIDEO_HEIGHT } : undefined}
         onPointerDownCapture={handleFirstFeedInteraction}
         onTouchStartCapture={handleFirstFeedInteraction}
         onMouseDownCapture={handleFirstFeedInteraction}
@@ -1130,7 +1135,9 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
           <PostOverlayRenderer meta={postMeta} />
         )}
 
-        <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-black via-black/75 to-transparent pointer-events-none" />
+        {!showComments && (
+          <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-black via-black/75 to-transparent pointer-events-none" />
+        )}
 
         <button
           onClick={handleContentTap}
@@ -1144,7 +1151,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
           </div>
         )}
 
-        {post.media_type === "video" && userPaused && (
+        {post.media_type === "video" && userPaused && !showComments && (
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -1157,6 +1164,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
           </button>
         )}
 
+        {!showComments && (
         <div className="absolute right-3 feed-bottom-offset z-40 flex flex-col items-center gap-4 pb-1 pointer-events-auto">
           {post.media_type === "video" && (
             <button
@@ -1334,8 +1342,9 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
           )}
 
         </div>
+        )}
 
-        {currentUserId === post.user_id && (
+        {currentUserId === post.user_id && !showComments && (
           <div className="absolute top-16 right-3 z-50">
             <button
               onClick={() => setShowMenu(!showMenu)}
@@ -1379,6 +1388,8 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
         open={showComments}
         onClose={() => setShowComments(false)}
         onEmojiComment={handleEmojiComment}
+        authorUserId={post.user_id}
+        commentsCount={post.comments_count}
       />
       <CreatePostSheet open={showEdit} onClose={() => setShowEdit(false)} postToEdit={post} />
     </>
