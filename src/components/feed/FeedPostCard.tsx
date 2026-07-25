@@ -1165,6 +1165,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
         )}
 
         {!showComments && (
+        <>
         <div className="absolute right-3 feed-bottom-offset z-40 flex flex-col items-center gap-4 pb-1 pointer-events-auto">
           {post.media_type === "video" && (
             <button
