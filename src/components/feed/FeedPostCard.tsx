@@ -191,13 +191,8 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       return true;
     }
 
-    // Clear lock before any await so React muted={…||autoplayAudioLocked} cannot remute mid-play.
-    setAutoplayAudioLocked(false);
-    setFeedAudioUnlocked(true);
-    unlockFeedAudioSession();
-    forceIosAudioSessionToPlayback();
-
     if (hasAddedSound) {
+      forceIosAudioSessionToPlayback();
       const audio = musicAudioRef.current;
       const soundSync = getAddedSoundVideoSyncOptions(true, { ...(postMeta ?? {}), muteOriginal: playbackMuteOriginal });
       const mix = getMixedPlaybackVolumes({
@@ -210,23 +205,18 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
         setAutoplayAudioLocked(true);
         return false;
       }
-
+      audio.currentTime = mapMusicTime(video.currentTime);
+      audio.volume = mix.musicVolume;
+      audio.muted = false;
+      unlockFeedAudioSession();
       mediaSessionCleanupRef.current?.();
       mediaSessionCleanupRef.current = bindFeedMediaSession(audio, playbackMeta);
-
-      // Video first so frames and sound stay paired (never audio-only over a frozen poster).
       try {
+        // Keep A/V paired: start video, then music; never leave music running alone.
         if (video.paused) await video.play();
-      } catch {
-        setAutoplayAudioLocked(true);
-        return false;
-      }
-
-      try {
-        audio.currentTime = mapMusicTime(video.currentTime);
-        audio.volume = mix.musicVolume;
-        audio.muted = false;
         await audio.play();
+        setAutoplayAudioLocked(false);
+        setFeedAudioUnlocked(true);
         return true;
       } catch {
         audio.pause();
@@ -236,31 +226,27 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     }
 
     applyFeedVideoAudio(video, { muted: false });
+    forceIosAudioSessionToPlayback();
     mediaSessionCleanupRef.current?.();
     mediaSessionCleanupRef.current = bindFeedMediaSession(video, playbackMeta);
     try {
       await video.play();
+      setAutoplayAudioLocked(false);
+      setFeedAudioUnlocked(true);
+      unlockFeedAudioSession();
       return true;
     } catch {
       setAutoplayAudioLocked(true);
       return false;
     }
-  }, [post.media_type, isMuted, hasAddedSound, getVideoMuted, playbackMeta, mapMusicTime, playbackMuteOriginal, getVideoMixAudio, postMeta]);
+  }, [post.media_type, isMuted, hasAddedSound, getVideoMuted, playbackMeta, mapMusicTime, playbackMuteOriginal, postMeta]);
 
   const playWhenActive = useCallback(async () => {
     const video = videoRef.current;
     if (!video || post.media_type !== "video" || userPausedRef.current) return false;
 
-    // Already playing — still upgrade to audible if we were locked silent.
     if (!video.paused && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
       setIsPlaying(true);
-      if (
-        !isMuted &&
-        (autoplayAudioLockedRef.current || video.muted) &&
-        isFeedAudioSessionUnlocked()
-      ) {
-        return startAudiblePlayback();
-      }
       return true;
     }
 
@@ -303,9 +289,6 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
         return played;
       }
 
-      // Clear lock before awaits so React cannot remute the video mid-start.
-      setAutoplayAudioLocked(false);
-      setFeedAudioUnlocked(true);
       applyFeedVideoAudio(video, getVideoMixAudio());
       forceIosAudioSessionToPlayback();
       try {
@@ -337,6 +320,8 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
 
       try {
         await audio.play();
+        setAutoplayAudioLocked(false);
+        setFeedAudioUnlocked(true);
         unlockFeedAudioSession();
         return true;
       } catch {
@@ -349,8 +334,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
 
     if (needsGestureForAudio) {
       setAutoplayAudioLocked(true);
-      const played = await playSilently();
-      return played;
+      return playSilently();
     }
 
     setAutoplayAudioLocked(false);
@@ -381,7 +365,6 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     playbackMeta,
     mapMusicTime,
     playbackMuteOriginal,
-    startAudiblePlayback,
     getVideoMixAudio,
     postMeta,
   ]);
@@ -925,30 +908,22 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       if (!v || v !== video || !isActiveRef.current || userPausedRef.current || mediaFailed || videoFrameReady) return;
       paintRecoveryAttemptsRef.current += 1;
 
-      // Keep music paused while nudging the decoder so we don't get audio over a frozen frame.
+      // Never let added music run over a frozen frame.
       musicAudioRef.current?.pause();
 
       try {
-        const nextTime = Math.min(
-          Number.isFinite(v.duration) && v.duration > 0 ? Math.max(0, v.duration - 0.05) : v.currentTime + 0.034,
-          Math.max(0, v.currentTime + 0.034),
-        );
-        // Soft nudge only — avoid pause()/play() which stalls iOS video while audio restarts.
-        v.currentTime = nextTime;
+        // Tiny seek nudge only — avoid pause/play thrash that freezes iOS decoders.
+        const t = v.currentTime;
+        v.currentTime = Math.max(0, t + 0.001);
       } catch {
         /* ignore */
       }
 
-      window.setTimeout(() => {
-        if (!isActiveRef.current || userPausedRef.current) return;
-        void playWhenActive().then((ok) => {
-          if (ok && isFeedAudioSessionUnlocked() && !isMuted) {
-            void startAudiblePlayback();
-          }
-        });
-      }, 60);
-    }, paintRecoveryAttemptsRef.current === 0 ? 450 : 750);
-  }, [mediaFailed, playWhenActive, videoFrameReady, isMuted, startAudiblePlayback]);
+      if (v.paused) {
+        void v.play().catch(() => {});
+      }
+    }, paintRecoveryAttemptsRef.current === 0 ? 500 : 900);
+  }, [mediaFailed, videoFrameReady]);
 
   const markVideoFrameReady = useCallback((video: HTMLVideoElement) => {
     if (video !== videoRef.current) return;
@@ -1006,6 +981,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     if (!video) return;
     const showCoverDuringDecoderStall = () => {
       if (!isActiveRef.current || mediaFailed) return;
+      musicAudioRef.current?.pause();
       setVideoFrameReady(false);
       scheduleVideoPaintRecovery(video);
     };
@@ -1379,6 +1355,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
         open={showComments}
         onClose={() => setShowComments(false)}
         onEmojiComment={handleEmojiComment}
+        authorUserId={post.user_id}
       />
       <CreatePostSheet open={showEdit} onClose={() => setShowEdit(false)} postToEdit={post} />
     </>

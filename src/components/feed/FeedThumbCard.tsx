@@ -3,6 +3,7 @@ import { Heart, MessageCircle, Play, Image as ImageIcon } from "lucide-react";
 import { VideoPoster } from "@/components/VideoPoster";
 import { parsePostCaption } from "@/lib/post-editor";
 import { unlockFeedAudioSession, forceIosAudioSessionToPlayback } from "@/lib/feed-video-playback";
+import { primeMediaPlaybackGesture } from "@/lib/prime-media-gesture";
 
 interface Props {
   post: any;
@@ -31,6 +32,7 @@ export default function FeedThumbCard({ post, compact = false, onOpen, autoPlayM
   const shouldAutoPlay = autoPlayMuted && isVideo && Boolean(post.media_url);
 
   const openWithAudio = () => {
+    primeMediaPlaybackGesture(post.media_url);
     forceIosAudioSessionToPlayback();
     unlockFeedAudioSession();
     onOpen();
