@@ -570,6 +570,7 @@ export type Database = {
           created_at: string
           currency: string | null
           description: string
+          hide_yaj_profile: boolean
           id: string
           location: string | null
           media: Json | null
@@ -589,6 +590,7 @@ export type Database = {
           created_at?: string
           currency?: string | null
           description: string
+          hide_yaj_profile?: boolean
           id?: string
           location?: string | null
           media?: Json | null
@@ -608,6 +610,7 @@ export type Database = {
           created_at?: string
           currency?: string | null
           description?: string
+          hide_yaj_profile?: boolean
           id?: string
           location?: string | null
           media?: Json | null
@@ -1784,6 +1787,7 @@ export type Database = {
           daw_shortcuts: Json | null
           display_name: string | null
           email: string | null
+          hide_yaj_page_on_gigs: boolean
           id: string
           terms_accepted_at: string | null
           theme_preset: string | null
@@ -1801,6 +1805,7 @@ export type Database = {
           daw_shortcuts?: Json | null
           display_name?: string | null
           email?: string | null
+          hide_yaj_page_on_gigs?: boolean
           id?: string
           terms_accepted_at?: string | null
           theme_preset?: string | null
@@ -1818,6 +1823,7 @@ export type Database = {
           daw_shortcuts?: Json | null
           display_name?: string | null
           email?: string | null
+          hide_yaj_page_on_gigs?: boolean
           id?: string
           terms_accepted_at?: string | null
           theme_preset?: string | null
