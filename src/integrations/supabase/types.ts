@@ -570,6 +570,7 @@ export type Database = {
           created_at: string
           currency: string | null
           description: string
+          hide_yaj_profile: boolean
           id: string
           location: string | null
           media: Json | null
@@ -580,7 +581,6 @@ export type Database = {
           title: string
           updated_at: string
           urgency: string | null
-          hide_yaj_profile: boolean
         }
         Insert: {
           ai_estimate?: Json | null
@@ -590,6 +590,7 @@ export type Database = {
           created_at?: string
           currency?: string | null
           description: string
+          hide_yaj_profile?: boolean
           id?: string
           location?: string | null
           media?: Json | null
@@ -600,7 +601,6 @@ export type Database = {
           title: string
           updated_at?: string
           urgency?: string | null
-          hide_yaj_profile?: boolean
         }
         Update: {
           ai_estimate?: Json | null
@@ -610,6 +610,7 @@ export type Database = {
           created_at?: string
           currency?: string | null
           description?: string
+          hide_yaj_profile?: boolean
           id?: string
           location?: string | null
           media?: Json | null
@@ -620,7 +621,6 @@ export type Database = {
           title?: string
           updated_at?: string
           urgency?: string | null
-          hide_yaj_profile?: boolean
         }
         Relationships: []
       }
@@ -1787,12 +1787,12 @@ export type Database = {
           daw_shortcuts: Json | null
           display_name: string | null
           email: string | null
+          hide_yaj_page_on_gigs: boolean
           id: string
           terms_accepted_at: string | null
           theme_preset: string | null
           updated_at: string
           user_id: string
-          hide_yaj_page_on_gigs: boolean
         }
         Insert: {
           avatar_url?: string | null
@@ -1805,12 +1805,12 @@ export type Database = {
           daw_shortcuts?: Json | null
           display_name?: string | null
           email?: string | null
+          hide_yaj_page_on_gigs?: boolean
           id?: string
           terms_accepted_at?: string | null
           theme_preset?: string | null
           updated_at?: string
           user_id: string
-          hide_yaj_page_on_gigs?: boolean
         }
         Update: {
           avatar_url?: string | null
@@ -1823,12 +1823,12 @@ export type Database = {
           daw_shortcuts?: Json | null
           display_name?: string | null
           email?: string | null
+          hide_yaj_page_on_gigs?: boolean
           id?: string
           terms_accepted_at?: string | null
           theme_preset?: string | null
           updated_at?: string
           user_id?: string
-          hide_yaj_page_on_gigs?: boolean
         }
         Relationships: []
       }
