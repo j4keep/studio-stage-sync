@@ -4,6 +4,7 @@ import { Briefcase, Compass, Home, MessageCircle, PlusSquare, Search } from "luc
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import NotificationBell from "@/components/NotificationBell";
+import IncognitoHeaderButton from "@/components/IncognitoHeaderButton";
 import yajLogo from "@/assets/yaj-logo.png";
 
 const centerTabs = [
@@ -18,6 +19,7 @@ export default function DesktopTopBar() {
   const { user } = useAuth();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const isHome = location.pathname === "/" || location.pathname === "/feed";
 
   useEffect(() => {
     if (!user) return;
@@ -30,7 +32,7 @@ export default function DesktopTopBar() {
   }, [user?.id]);
 
   const isActive = (path: string) => {
-    if (path === "/") return location.pathname === "/";
+    if (path === "/") return location.pathname === "/" || location.pathname === "/feed";
     return location.pathname === path || location.pathname.startsWith(`${path}/`);
   };
 
@@ -61,36 +63,41 @@ export default function DesktopTopBar() {
           />
         </form>
 
-        <nav className="mx-auto flex h-full flex-1 items-stretch justify-center gap-1 max-w-md">
-          {centerTabs.map((tab) => {
-            const Icon = tab.icon;
-            const active = isActive(tab.path);
-            return (
-              <button
-                key={tab.path}
-                type="button"
-                onClick={() => navigate(tab.path)}
-                aria-label={tab.label}
-                className={`relative flex flex-1 items-center justify-center rounded-lg transition-colors ${
-                  active ? "text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                }`}
-              >
-                <Icon className="h-6 w-6" strokeWidth={active ? 2.5 : 2} />
-                {active && <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-primary" />}
-              </button>
-            );
-          })}
-          <button
-            type="button"
-            onClick={() => window.dispatchEvent(new Event("open-create-post"))}
-            aria-label="Create"
-            className="relative flex flex-1 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          >
-            <PlusSquare className="h-6 w-6" strokeWidth={2} />
-          </button>
-        </nav>
+        {/* Center menu stays on non-home pages; on Home it moves to the right icon rail */}
+        {!isHome && (
+          <nav className="mx-auto flex h-full max-w-md flex-1 items-stretch justify-center gap-1">
+            {centerTabs.map((tab) => {
+              const Icon = tab.icon;
+              const active = isActive(tab.path);
+              return (
+                <button
+                  key={tab.path}
+                  type="button"
+                  onClick={() => navigate(tab.path)}
+                  aria-label={tab.label}
+                  className={`relative flex flex-1 items-center justify-center rounded-lg transition-colors ${
+                    active ? "text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  <Icon className="h-6 w-6" strokeWidth={active ? 2.5 : 2} />
+                  {active && <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-primary" />}
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new Event("open-create-post"))}
+              aria-label="Create"
+              className="relative flex flex-1 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <PlusSquare className="h-6 w-6" strokeWidth={2} />
+            </button>
+          </nav>
+        )}
+        {isHome && <div className="flex-1" />}
 
         <div className="flex shrink-0 items-center gap-2">
+          <IncognitoHeaderButton />
           <button
             type="button"
             onClick={() => navigate("/messages")}

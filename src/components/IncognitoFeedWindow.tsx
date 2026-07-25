@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
-import { X, Minus, Eye, GripHorizontal, Home, ImagePlus, Music, User, Maximize2, Minimize2 } from "lucide-react";
+import { X, Minus, GripHorizontal, Home, ImagePlus, Music, User, Maximize2, Minimize2 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchFeedItems, type FeedItem } from "@/lib/feed-items";
@@ -38,8 +38,6 @@ const IncognitoFeedWindow = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  // Full-page feed on Home/Feed (phone + desktop) — hide floating Incognito there.
-  const isFullFeedPage = location.pathname === "/" || location.pathname === "/feed";
   const [open, setOpen] = useState(() => {
     try {
       return sessionStorage.getItem(OPEN_KEY) === "true";
@@ -196,25 +194,8 @@ const IncognitoFeedWindow = () => {
 
   if (!user) return null;
 
-  if (isFullFeedPage) return null;
-
-  // Floating bubble (closed)
-  if (!open) {
-    return createPortal(
-      <button
-        onClick={() => {
-          setOpen(true);
-          setMinimized(false);
-        }}
-        className="fixed z-[9999] w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-2xl flex items-center justify-center active:scale-95 transition-transform"
-        style={{ right: 16, bottom: 96 }}
-        aria-label="Open incognito feed"
-      >
-        <Eye className="w-5 h-5" />
-      </button>,
-      document.body
-    );
-  }
+  // Closed: no floating bubble — open from header Incognito icon instead
+  if (!open) return null;
 
   const dims = SIZE_DIMS[sizeMode];
   const width = dims.w;

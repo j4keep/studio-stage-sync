@@ -9,12 +9,16 @@ interface Props {
   onOpen: () => void;
   /** When true, the card auto-plays a muted looping preview so the feed has visible motion. */
   autoPlayMuted?: boolean;
+  /** Desktop: open after press-hold (also opens on click). */
+  pressHoldMs?: number;
 }
 
 /** Compact card used in the split-feed columns. Nothing floats — all chrome inside the card. */
-export default function FeedThumbCard({ post, compact = false, onOpen, autoPlayMuted = false }: Props) {
+export default function FeedThumbCard({ post, compact = false, onOpen, autoPlayMuted = false, pressHoldMs }: Props) {
   const cardRef = useRef<HTMLButtonElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const holdTimer = useRef<number | null>(null);
+  const holdFired = useRef(false);
   const [videoReady, setVideoReady] = useState(false);
   const { caption, meta } = useMemo(() => parsePostCaption(post.caption), [post.caption]);
   const profile = post.profile || { display_name: "Artist", avatar_url: null };
@@ -59,7 +63,38 @@ export default function FeedThumbCard({ post, compact = false, onOpen, autoPlayM
     <button
       ref={cardRef}
       type="button"
-      onClick={onOpen}
+      onClick={(e) => {
+        if (holdFired.current) {
+          e.preventDefault();
+          holdFired.current = false;
+          return;
+        }
+        onOpen();
+      }}
+      onPointerDown={() => {
+        if (!pressHoldMs) return;
+        holdFired.current = false;
+        if (holdTimer.current) window.clearTimeout(holdTimer.current);
+        holdTimer.current = window.setTimeout(() => {
+          holdFired.current = true;
+          onOpen();
+        }, pressHoldMs);
+      }}
+      onPointerUp={() => {
+        if (holdTimer.current) {
+          window.clearTimeout(holdTimer.current);
+          holdTimer.current = null;
+        }
+      }}
+      onPointerLeave={() => {
+        if (holdTimer.current) {
+          window.clearTimeout(holdTimer.current);
+          holdTimer.current = null;
+        }
+      }}
+      onContextMenu={(e) => {
+        if (pressHoldMs) e.preventDefault();
+      }}
       className="w-full text-left rounded-2xl overflow-hidden bg-black shadow-xl border border-white/10 active:scale-[0.98] transition-transform cursor-pointer"
     >
       <div className={`relative w-full ${compact ? "aspect-[9/16]" : "aspect-[4/5]"} bg-neutral-900 pointer-events-none`}>
