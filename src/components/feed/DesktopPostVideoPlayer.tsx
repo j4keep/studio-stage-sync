@@ -11,10 +11,10 @@ import {
 } from "lucide-react";
 import {
   applyFeedVideoAudio,
-  armFeedAudioPlayback,
+  bindFeedMediaSession,
   forceIosAudioSessionToPlayback,
-  playFeedVideo,
   unlockFeedAudioSession,
+  waitForVideoCanPlay,
 } from "@/lib/feed-video-playback";
 import { toast } from "sonner";
 
@@ -31,52 +31,67 @@ function formatTime(seconds: number) {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-/** Desktop post video: custom chrome with sound, fullscreen, PiP, download — no playback speed. */
+/** Desktop post video — phone-style audio, bottom progress, no playback speed. */
 export default function DesktopPostVideoPlayer({ src, className = "", title = "YAJ" }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const shellRef = useRef<HTMLDivElement>(null);
+  const sessionCleanupRef = useRef<(() => void) | null>(null);
   const [playing, setPlaying] = useState(true);
   const [muted, setMuted] = useState(false);
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  useLayoutEffect(() => {
+  const syncMuteUi = () => {
     const v = videoRef.current;
     if (!v) return;
+    setMuted(v.muted || v.volume === 0);
+  };
 
+  /** Same path as phone feed: unlock session → apply unmuted → bind media session → play. */
+  const activateSoundPlayback = async () => {
+    const v = videoRef.current;
+    if (!v) return false;
     forceIosAudioSessionToPlayback();
     unlockFeedAudioSession();
-    const cleanup = armFeedAudioPlayback(v, { title, artist: "YAJ" }, 1);
     applyFeedVideoAudio(v, { muted: false, volume: 1 });
-    v.currentTime = 0;
-
-    let cancelled = false;
-    void (async () => {
-      const ok = await playFeedVideo(v, { title, artist: "YAJ" }, { muted: false });
-      if (cancelled) return;
-      if (ok && !v.muted) {
-        setMuted(false);
-        setPlaying(true);
-        return;
-      }
-      // Autoplay may force mute — play muted then immediately unmute while activation may still apply.
+    sessionCleanupRef.current?.();
+    sessionCleanupRef.current = bindFeedMediaSession(v, { title, artist: "YAJ" });
+    try {
+      await waitForVideoCanPlay(v);
+      await v.play();
+      setPlaying(true);
+      setMuted(false);
+      return true;
+    } catch {
       applyFeedVideoAudio(v, { muted: true, volume: 1 });
       try {
         await v.play();
+        setPlaying(true);
       } catch {
-        /* ignore */
+        setPlaying(false);
       }
-      if (cancelled) return;
-      applyFeedVideoAudio(v, { muted: false, volume: 1 });
-      setMuted(v.muted);
-      setPlaying(!v.paused);
-    })();
+      setMuted(true);
+      return false;
+    }
+  };
 
+  useLayoutEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.currentTime = 0;
+    let cancelled = false;
+    void (async () => {
+      const ok = await activateSoundPlayback();
+      if (cancelled) return;
+      if (!ok) syncMuteUi();
+    })();
     return () => {
       cancelled = true;
-      cleanup();
+      sessionCleanupRef.current?.();
+      sessionCleanupRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- remount per src
   }, [src, title]);
 
   useEffect(() => {
@@ -86,7 +101,7 @@ export default function DesktopPostVideoPlayer({ src, className = "", title = "Y
     const onMeta = () => setDuration(v.duration || 0);
     const onPlay = () => setPlaying(true);
     const onPause = () => setPlaying(false);
-    const onVolume = () => setMuted(v.muted || v.volume === 0);
+    const onVolume = () => syncMuteUi();
     v.addEventListener("timeupdate", onTime);
     v.addEventListener("loadedmetadata", onMeta);
     v.addEventListener("durationchange", onMeta);
@@ -109,31 +124,18 @@ export default function DesktopPostVideoPlayer({ src, className = "", title = "Y
     return () => document.removeEventListener("fullscreenchange", onFs);
   }, []);
 
-  const ensureSound = () => {
-    const v = videoRef.current;
-    if (!v) return;
-    forceIosAudioSessionToPlayback();
-    unlockFeedAudioSession();
-    applyFeedVideoAudio(v, { muted: false, volume: 1 });
-    setMuted(false);
-    void v.play().catch(() => {});
-  };
-
   const togglePlay = () => {
     const v = videoRef.current;
     if (!v) return;
-    if (v.paused) {
-      ensureSound();
-    } else {
-      v.pause();
-    }
+    if (v.paused) void activateSoundPlayback();
+    else v.pause();
   };
 
   const toggleMute = () => {
     const v = videoRef.current;
     if (!v) return;
-    if (muted || v.muted) {
-      ensureSound();
+    if (v.muted || v.volume === 0) {
+      void activateSoundPlayback();
     } else {
       applyFeedVideoAudio(v, { muted: true, volume: 0 });
       setMuted(true);
@@ -187,10 +189,12 @@ export default function DesktopPostVideoPlayer({ src, className = "", title = "Y
     setCurrent(value);
   };
 
+  const progress = duration > 0 ? Math.min(1, current / duration) : 0;
+
   return (
     <div
       ref={shellRef}
-      className={`relative flex h-full max-h-full w-full items-center justify-center overflow-hidden bg-black ${className}`}
+      className={`relative h-full w-full overflow-hidden bg-black ${className}`}
     >
       <video
         ref={videoRef}
@@ -199,22 +203,13 @@ export default function DesktopPostVideoPlayer({ src, className = "", title = "Y
         autoPlay
         loop
         controls={false}
-        className="max-h-full max-w-full object-contain"
+        className="h-full w-full object-contain"
         onClick={togglePlay}
       />
 
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/35 to-transparent px-3 pb-2.5 pt-10">
-        <input
-          type="range"
-          min={0}
-          max={duration || 0}
-          step={0.05}
-          value={Math.min(current, duration || 0)}
-          onChange={(e) => onSeek(Number(e.target.value))}
-          className="mb-2 h-1 w-full cursor-pointer accent-white"
-          aria-label="Seek"
-        />
-        <div className="flex items-center gap-2 text-white">
+      {/* Controls sit above a flush bottom progress bar */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10">
+        <div className="pointer-events-auto flex items-center gap-2 bg-gradient-to-t from-black/75 to-transparent px-3 pb-3.5 pt-10 text-white">
           <button
             type="button"
             onClick={togglePlay}
@@ -261,6 +256,20 @@ export default function DesktopPostVideoPlayer({ src, className = "", title = "Y
           >
             <Download className="h-4 w-4" />
           </button>
+        </div>
+
+        <div className="pointer-events-auto relative h-1.5 w-full bg-white/25">
+          <div className="absolute inset-y-0 left-0 bg-white" style={{ width: `${progress * 100}%` }} />
+          <input
+            type="range"
+            min={0}
+            max={duration || 0}
+            step={0.05}
+            value={Math.min(current, duration || 0)}
+            onChange={(e) => onSeek(Number(e.target.value))}
+            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            aria-label="Seek"
+          />
         </div>
       </div>
     </div>

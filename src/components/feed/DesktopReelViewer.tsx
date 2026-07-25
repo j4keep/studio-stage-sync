@@ -30,6 +30,7 @@ import {
   DesktopCommentEmojiBar,
   renderDesktopCommentContent,
 } from "@/components/feed/DesktopCommentEmojis";
+import useFloatingEmojis, { FloatingEmojiLayer } from "@/components/feed/FloatingEmojis";
 
 type Props = {
   items: any[];
@@ -45,8 +46,9 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
   const videoRef = useRef<HTMLVideoElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const swipeRef = useRef<{ y: number; active: boolean } | null>(null);
+  const { emojis, spawnEmoji } = useFloatingEmojis();
   const [index, setIndex] = useState(startIndex);
-  const [showComments, setShowComments] = useState(true);
+  const [showComments, setShowComments] = useState(false);
   const [showMore, setShowMore] = useState(false);
   const [muted, setMuted] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -67,7 +69,7 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
   useEffect(() => {
     setLiked(Boolean(post?.isLiked));
     setLikesCount(post?.likes_count || 0);
-    setShowComments(true);
+    setShowComments(false);
     setShowMore(false);
     setSaved(false);
     setText("");
@@ -201,6 +203,7 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
         content: `:${emojiId}:`,
       });
       if (error) throw error;
+      return emojiId;
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["desktop-reel-comments", post.id] });
@@ -274,26 +277,24 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
         swipeRef.current = null;
       }}
     >
-      <button
-        type="button"
-        data-no-swipe
-        onClick={onClose}
-        className="absolute left-4 top-4 z-[90] flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white"
-        aria-label="Close"
-      >
-        <X className="h-5 w-5" />
-      </button>
+      <div className="absolute left-4 top-4 z-[90] flex items-center gap-3" data-no-swipe>
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
+          aria-label="Close"
+        >
+          <X className="h-5 w-5" />
+        </button>
+        <img src={yajLogo} alt="YAJ" className="h-12 w-auto object-contain drop-shadow-lg sm:h-14" />
+      </div>
 
       <div
-        className={`flex h-full w-full items-stretch gap-3 px-3 pt-16 transition-all sm:gap-5 sm:px-5 ${
+        className={`flex h-full w-full items-center justify-center gap-3 px-4 transition-all ${
           showComments ? "pr-[min(400px,36vw)]" : ""
         }`}
       >
-        <aside className="hidden w-[7.5rem] shrink-0 flex-col items-center justify-center lg:flex xl:w-40" data-no-swipe>
-          <img src={yajLogo} alt="YAJ" className="h-24 w-auto object-contain drop-shadow-2xl xl:h-32" />
-        </aside>
-
-        <div className="relative flex min-h-0 min-w-0 flex-1 items-center justify-center">
+        <div className="relative flex min-h-0 min-w-0 items-center justify-center">
           <div
             className={`relative overflow-hidden rounded-2xl bg-neutral-900 transition-all ${
               showComments
@@ -315,6 +316,8 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
             ) : (
               <img src={post.media_url} alt="" className="h-full w-full object-cover" />
             )}
+
+            <FloatingEmojiLayer emojis={emojis} />
 
             <button
               type="button"
@@ -366,7 +369,7 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
             </div>
           </div>
 
-          <div className="relative z-[82] ml-3 flex flex-col items-center self-start pt-8" data-no-swipe>
+          <div className="relative z-[82] ml-3 flex flex-col items-center self-center" data-no-swipe>
             <button
               type="button"
               onClick={() => setShowMore((v) => !v)}
@@ -380,7 +383,7 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
             </button>
 
             {showMore && (
-              <div className="mt-2 flex max-h-[min(70vh,520px)] flex-col items-center gap-2.5 overflow-y-auto overscroll-contain rounded-2xl border border-white/15 bg-black/85 px-2.5 py-2.5 shadow-2xl backdrop-blur-md scrollbar-hide">
+              <div className="mt-2 flex max-h-[min(75vh,560px)] flex-col items-center gap-2.5 overflow-y-auto overscroll-contain rounded-2xl border border-white/15 bg-black/85 px-2.5 py-2.5 shadow-2xl backdrop-blur-md scrollbar-hide">
                 <button type="button" onClick={toggleLike} className="flex flex-col items-center gap-0.5 text-white">
                   <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
                     <Heart className={`h-5 w-5 ${liked ? "fill-red-500 text-red-500" : ""}`} />
@@ -389,7 +392,10 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowComments((v) => !v)}
+                  onClick={() => {
+                    setShowComments((v) => !v);
+                    setShowMore(false);
+                  }}
                   className="flex flex-col items-center gap-0.5 text-white"
                 >
                   <span
@@ -399,9 +405,7 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
                   >
                     <MessageCircle className="h-5 w-5" />
                   </span>
-                  <span className="text-[10px] font-semibold">
-                    {showComments ? "Hide" : post.comments_count || 0}
-                  </span>
+                  <span className="text-[10px] font-semibold">{post.comments_count || 0}</span>
                 </button>
                 <button
                   type="button"
@@ -453,8 +457,6 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
             )}
           </div>
         </div>
-
-        <aside className="hidden w-[7.5rem] shrink-0 lg:block xl:w-40" aria-hidden />
       </div>
 
       {showComments && (
@@ -504,6 +506,7 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
             disabled={!user || emojiCommentMutation.isPending}
             onPick={(id) => {
               if (!user) return toast.error("Sign in to comment");
+              spawnEmoji(id);
               emojiCommentMutation.mutate(id);
             }}
           />

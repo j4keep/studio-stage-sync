@@ -12,7 +12,6 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { parsePostCaption } from "@/lib/post-editor";
@@ -25,6 +24,8 @@ import {
   DesktopCommentEmojiBar,
   renderDesktopCommentContent,
 } from "@/components/feed/DesktopCommentEmojis";
+import useFloatingEmojis, { FloatingEmojiLayer } from "@/components/feed/FloatingEmojis";
+import { forceIosAudioSessionToPlayback, unlockFeedAudioSession } from "@/lib/feed-video-playback";
 
 type Props = {
   items: any[];
@@ -32,21 +33,27 @@ type Props = {
   onClose: () => void;
 };
 
-/** Desktop post theater: media + caption, actions in ⋯, comments open at bottom when toggled. */
+/** Desktop post theater: video-first like phone/FB — profile on media, comments on demand. */
 export default function DesktopPostDetail({ items, startIndex, onClose }: Props) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { emojis, spawnEmoji } = useFloatingEmojis();
   const [index, setIndex] = useState(startIndex);
   const [text, setText] = useState("");
   const [showMore, setShowMore] = useState(false);
-  const [showComments, setShowComments] = useState(true);
+  const [showComments, setShowComments] = useState(false);
   const [saved, setSaved] = useState(false);
   const post = items[index];
   const profile = post?.profile || { display_name: "Artist", avatar_url: null, user_id: post?.user_id };
   const { caption } = useMemo(() => parsePostCaption(post?.caption), [post?.caption]);
   const [liked, setLiked] = useState(Boolean(post?.isLiked));
   const [likesCount, setLikesCount] = useState(post?.likes_count || 0);
+
+  useEffect(() => {
+    forceIosAudioSessionToPlayback();
+    unlockFeedAudioSession();
+  }, []);
 
   useEffect(() => {
     setIndex(startIndex);
@@ -57,7 +64,7 @@ export default function DesktopPostDetail({ items, startIndex, onClose }: Props)
     setLikesCount(post?.likes_count || 0);
     setText("");
     setShowMore(false);
-    setShowComments(true);
+    setShowComments(false);
     setSaved(false);
   }, [post?.id, post?.isLiked, post?.likes_count]);
 
@@ -129,6 +136,7 @@ export default function DesktopPostDetail({ items, startIndex, onClose }: Props)
         content: `:${emojiId}:`,
       });
       if (error) throw error;
+      return emojiId;
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["desktop-post-comments", post.id] });
@@ -178,248 +186,259 @@ export default function DesktopPostDetail({ items, startIndex, onClose }: Props)
   };
 
   return (
-    <div className="fixed inset-0 z-[80] flex bg-black/85" onClick={onClose}>
-      <button
-        type="button"
-        onClick={onClose}
-        className="absolute left-4 top-4 z-[90] flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white"
-        aria-label="Close"
-      >
-        <X className="h-5 w-5" />
-      </button>
-
+    <div className="fixed inset-0 z-[80] bg-black/90" onClick={onClose}>
+      {/* Facebook-style top-left: close + brand logo */}
       <div
-        className="flex h-full w-full items-stretch gap-3 px-3 py-4 pt-16 sm:gap-5 sm:px-5"
+        className="absolute left-4 top-4 z-[90] flex items-center gap-3"
         onClick={(e) => e.stopPropagation()}
       >
-        <aside className="hidden w-[7.5rem] shrink-0 flex-col items-center justify-center lg:flex xl:w-40">
-          <img src={yajLogo} alt="YAJ" className="h-24 w-auto object-contain drop-shadow-2xl xl:h-32" />
-        </aside>
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
+          aria-label="Close"
+        >
+          <X className="h-5 w-5" />
+        </button>
+        <img src={yajLogo} alt="YAJ" className="h-12 w-auto object-contain drop-shadow-lg sm:h-14" />
+      </div>
 
-        <div className="relative flex min-h-0 min-w-0 flex-1 items-center justify-center">
-          {index > 0 && (
+      <div
+        className={`flex h-full items-center justify-center gap-3 px-4 transition-all ${
+          showComments ? "pr-[min(380px,34vw)]" : ""
+        }`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {index > 0 && (
+          <button
+            type="button"
+            onClick={() => setIndex((i) => i - 1)}
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur"
+            aria-label="Previous"
+          >
+            <ChevronLeft className="h-6 w-6" />
+          </button>
+        )}
+
+        {/* Tall media only — no white profile/caption panel under it */}
+        <div className="relative h-[min(92vh,920px)] w-[min(480px,48vw)] overflow-hidden rounded-2xl bg-neutral-950 shadow-2xl">
+          {post.media_type === "video" && post.media_url ? (
+            <DesktopPostVideoPlayer src={post.media_url} title={caption || "YAJ post"} className="h-full" />
+          ) : post.media_url ? (
+            <img src={post.media_url} alt="" className="h-full w-full object-contain" />
+          ) : (
+            <div className="flex h-full items-center justify-center text-sm text-white/60">No media</div>
+          )}
+
+          <FloatingEmojiLayer emojis={emojis} />
+
+          {/* Profile + caption overlaid on media (phone-style) */}
+          <div className="pointer-events-none absolute inset-x-0 bottom-12 z-[15] bg-gradient-to-t from-black/80 via-black/30 to-transparent px-4 pb-6 pt-16">
             <button
               type="button"
-              onClick={() => setIndex((i) => i - 1)}
-              className="absolute left-0 z-[85] flex h-11 w-11 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur sm:left-2"
-              aria-label="Previous"
+              className="pointer-events-auto flex items-center gap-2 text-left"
+              onClick={() => {
+                onClose();
+                navigate(`/artist/${profile.user_id || post.user_id}`);
+              }}
             >
-              <ChevronLeft className="h-6 w-6" />
+              <div className="h-9 w-9 overflow-hidden rounded-full bg-white/20">
+                {profile.avatar_url ? (
+                  <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <span className="flex h-full w-full items-center justify-center text-xs font-bold text-white">
+                    {(profile.display_name || "?")[0]?.toUpperCase()}
+                  </span>
+                )}
+              </div>
+              <span className="text-sm font-bold text-white">{profile.display_name || "Artist"}</span>
             </button>
-          )}
-          {index < items.length - 1 && (
-            <button
-              type="button"
-              onClick={() => setIndex((i) => i + 1)}
-              className="absolute right-0 z-[85] flex h-11 w-11 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur sm:right-2"
-              aria-label="Next"
-            >
-              <ChevronRight className="h-6 w-6" />
-            </button>
-          )}
-
-          <div className="relative flex max-h-full w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-card shadow-2xl">
-            <div className="absolute right-3 top-3 z-20">
-              <button
-                type="button"
-                onClick={() => setShowMore((v) => !v)}
-                className={`flex h-10 w-10 items-center justify-center rounded-full border bg-black/50 text-white backdrop-blur ${
-                  showMore ? "border-sky-400" : "border-white/25"
-                }`}
-                aria-label="More options"
-                title="More options"
-              >
-                <MoreHorizontal className="h-5 w-5" />
-              </button>
-              {showMore && (
-                <div className="mt-2 flex max-h-[min(55vh,420px)] flex-col items-center gap-2.5 overflow-y-auto overscroll-contain rounded-2xl border border-white/15 bg-black/90 px-2.5 py-2.5 shadow-2xl scrollbar-hide">
-                  <button type="button" onClick={toggleLike} className="flex flex-col items-center gap-0.5 text-white">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
-                      <Heart className={`h-5 w-5 ${liked ? "fill-red-500 text-red-500" : ""}`} />
-                    </span>
-                    <span className="text-[10px] font-semibold">{likesCount || 0}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowComments((v) => !v)}
-                    className="flex flex-col items-center gap-0.5 text-white"
-                  >
-                    <span
-                      className={`flex h-10 w-10 items-center justify-center rounded-full bg-white/10 ${
-                        showComments ? "text-primary" : ""
-                      }`}
-                    >
-                      <MessageCircle className="h-5 w-5" />
-                    </span>
-                    <span className="text-[10px] font-semibold">
-                      {showComments ? "Hide" : post.comments_count || 0}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSaved((s) => !s);
-                      toast.success(saved ? "Removed from saved" : "Saved");
-                    }}
-                    className="flex flex-col items-center gap-0.5 text-white"
-                    aria-label="Save"
-                  >
-                    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
-                      <Bookmark className={`h-5 w-5 ${saved ? "fill-white text-white" : ""}`} />
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={share}
-                    className="flex flex-col items-center gap-0.5 text-white"
-                    aria-label="Share"
-                  >
-                    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
-                      <Forward className="h-5 w-5" />
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onClose();
-                      navigate("/circle");
-                    }}
-                    className="flex flex-col items-center gap-0.5 text-white"
-                    aria-label="Open My Circle"
-                  >
-                    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
-                      <Users className="h-5 w-5" />
-                    </span>
-                    <span className="text-[9px] font-semibold">My Circle</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onClose();
-                      navigate("/my-projects");
-                    }}
-                    className="flex flex-col items-center gap-0.5 text-white"
-                    aria-label="Support this artist"
-                  >
-                    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
-                      <HandHeart className="h-5 w-5" />
-                    </span>
-                    <span className="text-[9px] font-semibold">Support</span>
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div className="relative h-[min(42vh,420px)] w-full shrink-0 overflow-hidden bg-black">
-              {post.media_type === "video" && post.media_url ? (
-                <DesktopPostVideoPlayer src={post.media_url} title={caption || "YAJ post"} className="h-full" />
-              ) : post.media_url ? (
-                <img src={post.media_url} alt="" className="mx-auto h-full w-full object-contain" />
-              ) : (
-                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">No media</div>
-              )}
-            </div>
-
-            <div className="shrink-0 border-b border-border p-4">
-              <button
-                type="button"
-                className="flex items-center gap-2 text-left"
-                onClick={() => {
-                  onClose();
-                  navigate(`/artist/${profile.user_id || post.user_id}`);
-                }}
-              >
-                <div className="h-10 w-10 overflow-hidden rounded-full bg-muted">
-                  {profile.avatar_url ? (
-                    <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    <span className="flex h-full w-full items-center justify-center text-sm font-bold">
-                      {(profile.display_name || "?")[0]?.toUpperCase()}
-                    </span>
-                  )}
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-foreground">{profile.display_name || "Artist"}</p>
-                  {post.created_at && (
-                    <p className="text-[11px] text-muted-foreground">
-                      {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
-                    </p>
-                  )}
-                </div>
-              </button>
-              {caption && <p className="mt-3 whitespace-pre-wrap text-sm text-foreground">{caption}</p>}
-              <p className="mt-2 text-xs text-muted-foreground">
-                {likesCount} likes
-                {typeof post.comments_count === "number" ? ` · ${post.comments_count} comments` : ""}
-              </p>
-            </div>
-
-            {showComments && (
-              <>
-                <div className="min-h-0 max-h-[28vh] flex-1 space-y-3 overflow-y-auto px-4 py-3">
-                  {commentsLoading && <p className="text-xs text-muted-foreground">Loading comments…</p>}
-                  {!commentsLoading && comments.length === 0 && (
-                    <p className="py-4 text-center text-xs text-muted-foreground">
-                      No comments yet — react with an emoji or write something
-                    </p>
-                  )}
-                  {comments.map((c: any) => (
-                    <div key={c.id} className="flex gap-2">
-                      <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-muted">
-                        {c.profile?.avatar_url ? (
-                          <img src={c.profile.avatar_url} alt="" className="h-full w-full object-cover" />
-                        ) : (
-                          <span className="flex h-full w-full items-center justify-center text-[10px] font-bold">
-                            {(c.profile?.display_name || "?")[0]?.toUpperCase()}
-                          </span>
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1 rounded-2xl bg-muted px-3 py-2">
-                        <p className="text-xs font-bold text-foreground">{c.profile?.display_name || "User"}</p>
-                        <p className="text-sm text-foreground">{renderDesktopCommentContent(c.content)}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <DesktopCommentEmojiBar
-                  disabled={!user || emojiCommentMutation.isPending}
-                  onPick={(id) => {
-                    if (!user) return toast.error("Sign in to comment");
-                    emojiCommentMutation.mutate(id);
-                  }}
-                />
-
-                <form
-                  className="flex shrink-0 items-center gap-2 border-t border-border p-3"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    commentMutation.mutate(text);
-                  }}
-                >
-                  <input
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    placeholder={user ? "Write a comment…" : "Sign in to comment"}
-                    disabled={!user || commentMutation.isPending}
-                    className="h-10 flex-1 rounded-full border border-border bg-muted px-4 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!user || !text.trim() || commentMutation.isPending}
-                    className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground disabled:opacity-40"
-                    aria-label="Send comment"
-                  >
-                    <Send className="h-4 w-4" />
-                  </button>
-                </form>
-              </>
-            )}
+            {caption && <p className="mt-2 line-clamp-3 text-sm text-white/90">{caption}</p>}
+            <p className="mt-1 text-[11px] text-white/65">
+              {likesCount} likes
+              {typeof post.comments_count === "number" ? ` · ${post.comments_count} comments` : ""}
+            </p>
           </div>
         </div>
 
-        <aside className="hidden w-[7.5rem] shrink-0 lg:block xl:w-40" aria-hidden />
+        {/* Actions outside the card so nothing gets clipped */}
+        <div className="relative z-[82] flex shrink-0 flex-col items-center self-center">
+          <button
+            type="button"
+            onClick={() => setShowMore((v) => !v)}
+            className={`flex h-11 w-11 items-center justify-center rounded-full border bg-white/10 text-white ${
+              showMore ? "border-sky-400 bg-sky-500/20" : "border-white/25"
+            }`}
+            aria-label="More options"
+            title="More options"
+          >
+            <MoreHorizontal className="h-5 w-5" />
+          </button>
+
+          {showMore && (
+            <div className="mt-2 flex max-h-[min(75vh,560px)] flex-col items-center gap-2.5 overflow-y-auto overscroll-contain rounded-2xl border border-white/15 bg-black/90 px-2.5 py-2.5 shadow-2xl scrollbar-hide">
+              <button type="button" onClick={toggleLike} className="flex flex-col items-center gap-0.5 text-white">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
+                  <Heart className={`h-5 w-5 ${liked ? "fill-red-500 text-red-500" : ""}`} />
+                </span>
+                <span className="text-[10px] font-semibold">{likesCount || 0}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowComments((v) => !v);
+                  setShowMore(false);
+                }}
+                className="flex flex-col items-center gap-0.5 text-white"
+              >
+                <span
+                  className={`flex h-10 w-10 items-center justify-center rounded-full bg-white/10 ${
+                    showComments ? "text-primary" : ""
+                  }`}
+                >
+                  <MessageCircle className="h-5 w-5" />
+                </span>
+                <span className="text-[10px] font-semibold">{post.comments_count || 0}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSaved((s) => !s);
+                  toast.success(saved ? "Removed from saved" : "Saved");
+                }}
+                className="flex flex-col items-center gap-0.5 text-white"
+                aria-label="Save"
+              >
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
+                  <Bookmark className={`h-5 w-5 ${saved ? "fill-white text-white" : ""}`} />
+                </span>
+              </button>
+              <button type="button" onClick={share} className="flex flex-col items-center gap-0.5 text-white" aria-label="Share">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
+                  <Forward className="h-5 w-5" />
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  navigate("/circle");
+                }}
+                className="flex flex-col items-center gap-0.5 text-white"
+                aria-label="Open My Circle"
+              >
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
+                  <Users className="h-5 w-5" />
+                </span>
+                <span className="text-[9px] font-semibold">My Circle</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  navigate("/my-projects");
+                }}
+                className="flex flex-col items-center gap-0.5 text-white"
+                aria-label="Support this artist"
+              >
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
+                  <HandHeart className="h-5 w-5" />
+                </span>
+                <span className="text-[9px] font-semibold">Support</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {index < items.length - 1 && (
+          <button
+            type="button"
+            onClick={() => setIndex((i) => i + 1)}
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur"
+            aria-label="Next"
+          >
+            <ChevronRight className="h-6 w-6" />
+          </button>
+        )}
       </div>
+
+      {showComments && (
+        <aside
+          className="absolute bottom-0 right-0 top-0 z-[81] flex w-[min(380px,34vw)] flex-col border-l border-white/10 bg-card"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between border-b border-border px-4 py-3">
+            <p className="text-sm font-bold text-foreground">Comments</p>
+            <button
+              type="button"
+              onClick={() => setShowComments(false)}
+              className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-muted"
+              aria-label="Hide comments"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">
+            {commentsLoading && <p className="text-xs text-muted-foreground">Loading comments…</p>}
+            {!commentsLoading && comments.length === 0 && (
+              <p className="py-4 text-center text-xs text-muted-foreground">
+                No comments yet — react with an emoji or write something
+              </p>
+            )}
+            {comments.map((c: any) => (
+              <div key={c.id} className="flex gap-2">
+                <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-muted">
+                  {c.profile?.avatar_url ? (
+                    <img src={c.profile.avatar_url} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="flex h-full w-full items-center justify-center text-[10px] font-bold">
+                      {(c.profile?.display_name || "?")[0]?.toUpperCase()}
+                    </span>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1 rounded-2xl bg-muted px-3 py-2">
+                  <p className="text-xs font-bold text-foreground">{c.profile?.display_name || "User"}</p>
+                  <p className="text-sm text-foreground">{renderDesktopCommentContent(c.content)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <DesktopCommentEmojiBar
+            disabled={!user || emojiCommentMutation.isPending}
+            onPick={(id) => {
+              if (!user) return toast.error("Sign in to comment");
+              spawnEmoji(id);
+              emojiCommentMutation.mutate(id);
+            }}
+          />
+
+          <form
+            className="flex shrink-0 items-center gap-2 border-t border-border p-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              commentMutation.mutate(text);
+            }}
+          >
+            <input
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder={user ? "Write a comment…" : "Sign in to comment"}
+              disabled={!user || commentMutation.isPending}
+              className="h-10 flex-1 rounded-full border border-border bg-muted px-4 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+            />
+            <button
+              type="submit"
+              disabled={!user || !text.trim() || commentMutation.isPending}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground disabled:opacity-40"
+              aria-label="Send comment"
+            >
+              <Send className="h-4 w-4" />
+            </button>
+          </form>
+        </aside>
+      )}
     </div>
   );
 }
