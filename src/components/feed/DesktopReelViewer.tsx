@@ -6,11 +6,13 @@ import {
   Heart,
   MessageCircle,
   MoreHorizontal,
+  Send,
   Users,
   Volume2,
   VolumeX,
   X,
 } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { parsePostCaption } from "@/lib/post-editor";
 import { useAuth } from "@/contexts/AuthContext";
@@ -20,10 +22,14 @@ import {
   applyFeedVideoAudio,
   armFeedAudioPlayback,
   forceIosAudioSessionToPlayback,
+  playFeedVideo,
   unlockFeedAudioSession,
 } from "@/lib/feed-video-playback";
 import yajLogo from "@/assets/yaj-logo.png";
-import PostCommentsPanel from "@/components/feed/PostCommentsPanel";
+import {
+  DesktopCommentEmojiBar,
+  renderDesktopCommentContent,
+} from "@/components/feed/DesktopCommentEmojis";
 import useFloatingEmojis, { FloatingEmojiLayer } from "@/components/feed/FloatingEmojis";
 
 type Props = {
@@ -36,6 +42,7 @@ type Props = {
 export default function DesktopReelViewer({ items, startIndex, onClose }: Props) {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const videoRef = useRef<HTMLVideoElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const swipeRef = useRef<{ y: number; active: boolean } | null>(null);
@@ -45,6 +52,7 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
   const [showMore, setShowMore] = useState(false);
   const [muted, setMuted] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [text, setText] = useState("");
   const post = items[index];
   const profile = post?.profile || { display_name: "Artist", avatar_url: null, user_id: post?.user_id };
   const { caption } = useMemo(() => parsePostCaption(post?.caption), [post?.caption]);
@@ -64,6 +72,7 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
     setShowComments(false);
     setShowMore(false);
     setSaved(false);
+    setText("");
   }, [post?.id, post?.isLiked, post?.likes_count]);
 
   useEffect(() => {
@@ -75,24 +84,24 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
     const cleanup = armFeedAudioPlayback(v, meta, 1);
     applyFeedVideoAudio(v, { muted: false, volume: 1 });
     v.currentTime = 0;
-    setMuted(false);
 
     let cancelled = false;
     void (async () => {
+      const ok = await playFeedVideo(v, meta, { muted: false });
+      if (cancelled) return;
+      if (ok && !v.muted) {
+        setMuted(false);
+        return;
+      }
+      applyFeedVideoAudio(v, { muted: true, volume: 1 });
       try {
         await v.play();
-        if (cancelled) return;
-        setMuted(Boolean(v.muted));
       } catch {
-        if (cancelled) return;
-        applyFeedVideoAudio(v, { muted: true, volume: 1 });
-        setMuted(true);
-        try {
-          await v.play();
-        } catch {
-          /* ignore */
-        }
+        /* ignore */
       }
+      if (cancelled) return;
+      applyFeedVideoAudio(v, { muted: false, volume: 1 });
+      setMuted(v.muted);
     })();
 
     return () => {
@@ -139,6 +148,68 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
   }, [items.length, index]);
+
+  const { data: comments = [], isLoading: commentsLoading } = useQuery({
+    queryKey: ["desktop-reel-comments", post?.id],
+    enabled: Boolean(post?.id) && showComments,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("post_comments")
+        .select("id, user_id, content, created_at")
+        .eq("post_id", post.id)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      const ids = Array.from(new Set((data || []).map((c: any) => c.user_id)));
+      let profileMap = new Map();
+      if (ids.length) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("user_id, display_name, avatar_url")
+          .in("user_id", ids);
+        profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
+      }
+      return (data || []).map((c: any) => ({
+        ...c,
+        profile: profileMap.get(c.user_id) || { display_name: "User", avatar_url: null },
+      }));
+    },
+  });
+
+  const commentMutation = useMutation({
+    mutationFn: async (content: string) => {
+      if (!user) throw new Error("Sign in to comment");
+      const trimmed = content.trim();
+      if (!trimmed) throw new Error("Comment cannot be empty");
+      const { error } = await (supabase as any).from("post_comments").insert({
+        post_id: post.id,
+        user_id: user.id,
+        content: trimmed,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setText("");
+      void queryClient.invalidateQueries({ queryKey: ["desktop-reel-comments", post.id] });
+    },
+    onError: (e: any) => toast.error(e?.message || "Failed to comment"),
+  });
+
+  const emojiCommentMutation = useMutation({
+    mutationFn: async (emojiId: string) => {
+      if (!user) throw new Error("Sign in to comment");
+      const { error } = await (supabase as any).from("post_comments").insert({
+        post_id: post.id,
+        user_id: user.id,
+        content: `:${emojiId}:`,
+      });
+      if (error) throw error;
+      return emojiId;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["desktop-reel-comments", post.id] });
+    },
+    onError: (e: any) => toast.error(e?.message || "Failed to react"),
+  });
 
   if (!post) return null;
 
@@ -393,8 +464,8 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
           data-no-swipe
           className="absolute bottom-0 right-0 top-0 z-[81] flex w-[min(400px,36vw)] flex-col border-l border-white/10 bg-card"
         >
-          <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
-            <p className="text-[15px] font-bold text-foreground">Comments</p>
+          <div className="flex items-center justify-between border-b border-border px-4 py-3">
+            <p className="text-sm font-bold text-foreground">Comments</p>
             <button
               type="button"
               onClick={() => setShowComments(false)}
@@ -404,13 +475,65 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
               <X className="h-4 w-4" />
             </button>
           </div>
-          <PostCommentsPanel
-            postId={post.id}
-            authorUserId={post.user_id}
-            queryKey={["desktop-reel-comments", post.id]}
-            variant="panel"
-            onEmojiComment={spawnEmoji}
+
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">
+            {commentsLoading && <p className="text-xs text-muted-foreground">Loading…</p>}
+            {!commentsLoading && comments.length === 0 && (
+              <p className="py-8 text-center text-xs text-muted-foreground">
+                No comments yet — react with an emoji or write something
+              </p>
+            )}
+            {comments.map((c: any) => (
+              <div key={c.id} className="flex gap-2">
+                <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-muted">
+                  {c.profile?.avatar_url ? (
+                    <img src={c.profile.avatar_url} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="flex h-full w-full items-center justify-center text-[10px] font-bold">
+                      {(c.profile?.display_name || "?")[0]?.toUpperCase()}
+                    </span>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1 rounded-2xl bg-muted px-3 py-2">
+                  <p className="text-xs font-bold text-foreground">{c.profile?.display_name || "User"}</p>
+                  <p className="text-sm text-foreground">{renderDesktopCommentContent(c.content)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <DesktopCommentEmojiBar
+            disabled={!user || emojiCommentMutation.isPending}
+            onPick={(id) => {
+              if (!user) return toast.error("Sign in to comment");
+              spawnEmoji(id);
+              emojiCommentMutation.mutate(id);
+            }}
           />
+
+          <form
+            className="flex shrink-0 items-center gap-2 border-t border-border p-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              commentMutation.mutate(text);
+            }}
+          >
+            <input
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder={user ? "Write a comment…" : "Sign in to comment"}
+              disabled={!user || commentMutation.isPending}
+              className="h-10 flex-1 rounded-full border border-border bg-muted px-4 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+            />
+            <button
+              type="submit"
+              disabled={!user || !text.trim() || commentMutation.isPending}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground disabled:opacity-40"
+              aria-label="Send comment"
+            >
+              <Send className="h-4 w-4" />
+            </button>
+          </form>
         </aside>
       )}
     </div>

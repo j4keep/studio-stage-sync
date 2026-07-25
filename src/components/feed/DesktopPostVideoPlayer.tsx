@@ -30,7 +30,7 @@ function formatTime(seconds: number) {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-/** Desktop post video with primed unmuted start + simple mute toggle. */
+/** Desktop post video — gesture-safe unmute, bottom progress, no playback speed. */
 export default function DesktopPostVideoPlayer({ src, className = "", title = "YAJ" }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const shellRef = useRef<HTMLDivElement>(null);
@@ -41,51 +41,93 @@ export default function DesktopPostVideoPlayer({ src, className = "", title = "Y
   const [duration, setDuration] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  useLayoutEffect(() => {
+  const syncMuteUi = () => {
     const v = videoRef.current;
     if (!v) return;
+    setMuted(Boolean(v.muted || v.volume === 0));
+  };
+
+  /**
+   * Phone-aligned audible start:
+   * unlock → unmute DOM props → bind session → play() with no await beforehand
+   * (awaiting canplay/load() drops the user gesture and Chrome forces mute).
+   */
+  const activateSoundPlayback = async (fromGesture = false) => {
+    const v = videoRef.current;
+    if (!v) return false;
 
     forceIosAudioSessionToPlayback();
     unlockFeedAudioSession();
+    applyFeedVideoAudio(v, { muted: false, volume: 1 });
+    setMuted(false);
     sessionCleanupRef.current?.();
     sessionCleanupRef.current = bindFeedMediaSession(v, { title, artist: "YAJ" });
 
-    // Open click primes unmuted media; try unmuted first, fall back to muted autoplay.
-    applyFeedVideoAudio(v, { muted: false, volume: 1 });
-    setMuted(false);
-    v.currentTime = 0;
-
-    let cancelled = false;
-    void (async () => {
+    try {
+      await v.play();
+      setPlaying(true);
+      setMuted(false);
+      return !v.muted;
+    } catch {
+      // Autoplay policy: keep picture going muted, then unmute on next gesture.
+      applyFeedVideoAudio(v, { muted: true, volume: 1 });
       try {
         await v.play();
-        if (cancelled) return;
-        if (v.muted) {
-          // Browser forced mute — keep playing, show muted UI.
-          setMuted(true);
-        } else {
-          setMuted(false);
-        }
         setPlaying(true);
       } catch {
-        if (cancelled) return;
-        applyFeedVideoAudio(v, { muted: true, volume: 1 });
-        setMuted(true);
+        setPlaying(false);
+      }
+      setMuted(true);
+      if (fromGesture) {
+        // Gesture still active — try unmute again immediately after muted play starts.
+        applyFeedVideoAudio(v, { muted: false, volume: 1 });
         try {
           await v.play();
-          if (!cancelled) setPlaying(true);
+          setMuted(v.muted);
+          return !v.muted;
         } catch {
-          if (!cancelled) setPlaying(false);
+          setMuted(true);
+          return false;
         }
       }
-    })();
+      return false;
+    }
+  };
 
+  useLayoutEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.preload = "auto";
+    v.currentTime = 0;
+    let cancelled = false;
+    void (async () => {
+      const ok = await activateSoundPlayback(false);
+      if (cancelled) return;
+      if (!ok) syncMuteUi();
+    })();
     return () => {
       cancelled = true;
       sessionCleanupRef.current?.();
       sessionCleanupRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [src, title]);
+
+  // Capture the next pointer on the player to unmute (user gesture).
+  useEffect(() => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    const onPointerDown = () => {
+      const v = videoRef.current;
+      if (!v) return;
+      if (v.muted || v.volume === 0) {
+        void activateSoundPlayback(true);
+      }
+    };
+    shell.addEventListener("pointerdown", onPointerDown, { capture: true });
+    return () => shell.removeEventListener("pointerdown", onPointerDown, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [src]);
 
   useEffect(() => {
     const v = videoRef.current;
@@ -94,7 +136,7 @@ export default function DesktopPostVideoPlayer({ src, className = "", title = "Y
     const onMeta = () => setDuration(v.duration || 0);
     const onPlay = () => setPlaying(true);
     const onPause = () => setPlaying(false);
-    const onVolume = () => setMuted(Boolean(v.muted || v.volume === 0));
+    const onVolume = () => syncMuteUi();
     v.addEventListener("timeupdate", onTime);
     v.addEventListener("loadedmetadata", onMeta);
     v.addEventListener("durationchange", onMeta);
@@ -120,27 +162,17 @@ export default function DesktopPostVideoPlayer({ src, className = "", title = "Y
   const togglePlay = () => {
     const v = videoRef.current;
     if (!v) return;
-    if (v.paused) {
-      forceIosAudioSessionToPlayback();
-      // Prefer keeping current mute state when resuming.
-      void v.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
-    } else {
-      v.pause();
-      setPlaying(false);
-    }
+    if (v.paused) void activateSoundPlayback(true);
+    else v.pause();
   };
 
   const toggleMute = () => {
     const v = videoRef.current;
     if (!v) return;
-    forceIosAudioSessionToPlayback();
-    unlockFeedAudioSession();
     if (v.muted || v.volume === 0) {
-      applyFeedVideoAudio(v, { muted: false, volume: 1 });
-      setMuted(false);
-      void v.play().catch(() => {});
+      void activateSoundPlayback(true);
     } else {
-      applyFeedVideoAudio(v, { muted: true, volume: 1 });
+      applyFeedVideoAudio(v, { muted: true, volume: 0 });
       setMuted(true);
     }
   };
@@ -195,7 +227,10 @@ export default function DesktopPostVideoPlayer({ src, className = "", title = "Y
   const progress = duration > 0 ? Math.min(1, current / duration) : 0;
 
   return (
-    <div ref={shellRef} className={`relative h-full w-full overflow-hidden bg-black ${className}`}>
+    <div
+      ref={shellRef}
+      className={`relative h-full w-full overflow-hidden bg-black ${className}`}
+    >
       <video
         ref={videoRef}
         src={src}

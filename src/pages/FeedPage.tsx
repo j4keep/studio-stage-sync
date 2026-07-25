@@ -6,7 +6,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { MessageCircle, Search } from "lucide-react";
 import { fetchFeedItems, isReelItem } from "@/lib/feed-items";
 import { forceIosAudioSessionToPlayback, initFeedAudioUnlockOnGesture, unlockFeedAudioSession } from "@/lib/feed-video-playback";
-import { primeMediaPlaybackGesture } from "@/lib/prime-media-gesture";
 import FeedThumbCard from "@/components/feed/FeedThumbCard";
 import FeedFullscreenViewer from "@/components/feed/FeedFullscreenViewer";
 import DesktopPostDetail from "@/components/feed/DesktopPostDetail";
@@ -66,9 +65,6 @@ const FeedPage = () => {
   }, []);
 
   const openItem = (rail: "reel" | "post", index: number) => {
-    const list = rail === "reel" ? reels : posts;
-    const item = list[index];
-    primeMediaPlaybackGesture(item?.media_url);
     forceIosAudioSessionToPlayback();
     unlockFeedAudioSession();
     setViewer({ rail, index });
