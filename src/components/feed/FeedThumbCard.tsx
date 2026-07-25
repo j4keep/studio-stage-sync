@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Heart, MessageCircle, Play, Image as ImageIcon } from "lucide-react";
 import { VideoPoster } from "@/components/VideoPoster";
 import { parsePostCaption } from "@/lib/post-editor";
+import { unlockFeedAudioSession, forceIosAudioSessionToPlayback } from "@/lib/feed-video-playback";
 
 interface Props {
   post: any;
@@ -9,7 +10,7 @@ interface Props {
   onOpen: () => void;
   /** When true, the card auto-plays a muted looping preview so the feed has visible motion. */
   autoPlayMuted?: boolean;
-  /** Desktop: open after press-hold (also opens on click). */
+  /** Desktop: open after press-hold (also opens on click). Opens on pointer-up so audio gesture stays valid. */
   pressHoldMs?: number;
 }
 
@@ -18,7 +19,8 @@ export default function FeedThumbCard({ post, compact = false, onOpen, autoPlayM
   const cardRef = useRef<HTMLButtonElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const holdTimer = useRef<number | null>(null);
-  const holdFired = useRef(false);
+  const holdReady = useRef(false);
+  const holdOpened = useRef(false);
   const [videoReady, setVideoReady] = useState(false);
   const { caption, meta } = useMemo(() => parsePostCaption(post.caption), [post.caption]);
   const profile = post.profile || { display_name: "Artist", avatar_url: null };
@@ -27,6 +29,12 @@ export default function FeedThumbCard({ post, compact = false, onOpen, autoPlayM
   const coverUrl = meta?.coverUrl;
   const thumbSrc = isVideo ? coverUrl || post.media_url : post.media_url;
   const shouldAutoPlay = autoPlayMuted && isVideo && Boolean(post.media_url);
+
+  const openWithAudio = () => {
+    forceIosAudioSessionToPlayback();
+    unlockFeedAudioSession();
+    onOpen();
+  };
 
   useEffect(() => {
     if (!shouldAutoPlay) return;
@@ -59,39 +67,44 @@ export default function FeedThumbCard({ post, compact = false, onOpen, autoPlayM
     return () => io.disconnect();
   }, [shouldAutoPlay, post.media_url]);
 
+  const clearHold = () => {
+    if (holdTimer.current) {
+      window.clearTimeout(holdTimer.current);
+      holdTimer.current = null;
+    }
+  };
+
   return (
     <button
       ref={cardRef}
       type="button"
       onClick={(e) => {
-        if (holdFired.current) {
+        if (holdOpened.current) {
           e.preventDefault();
-          holdFired.current = false;
+          holdOpened.current = false;
           return;
         }
-        onOpen();
+        openWithAudio();
       }}
       onPointerDown={() => {
         if (!pressHoldMs) return;
-        holdFired.current = false;
-        if (holdTimer.current) window.clearTimeout(holdTimer.current);
+        holdReady.current = false;
+        holdOpened.current = false;
+        clearHold();
         holdTimer.current = window.setTimeout(() => {
-          holdFired.current = true;
-          onOpen();
+          holdReady.current = true;
         }, pressHoldMs);
       }}
       onPointerUp={() => {
-        if (holdTimer.current) {
-          window.clearTimeout(holdTimer.current);
-          holdTimer.current = null;
+        clearHold();
+        if (pressHoldMs && holdReady.current) {
+          holdReady.current = false;
+          holdOpened.current = true;
+          openWithAudio();
         }
       }}
-      onPointerLeave={() => {
-        if (holdTimer.current) {
-          window.clearTimeout(holdTimer.current);
-          holdTimer.current = null;
-        }
-      }}
+      onPointerCancel={clearHold}
+      onPointerLeave={clearHold}
       onContextMenu={(e) => {
         if (pressHoldMs) e.preventDefault();
       }}

@@ -18,7 +18,13 @@ import { parsePostCaption } from "@/lib/post-editor";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { armFeedAudioPlayback, playFeedVideo } from "@/lib/feed-video-playback";
+import {
+  applyFeedVideoAudio,
+  armFeedAudioPlayback,
+  forceIosAudioSessionToPlayback,
+  playFeedVideo,
+  unlockFeedAudioSession,
+} from "@/lib/feed-video-playback";
 import yajLogo from "@/assets/yaj-logo.png";
 import {
   DesktopCommentEmojiBar,
@@ -40,7 +46,7 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
   const stageRef = useRef<HTMLDivElement>(null);
   const swipeRef = useRef<{ y: number; active: boolean } | null>(null);
   const [index, setIndex] = useState(startIndex);
-  const [showComments, setShowComments] = useState(false);
+  const [showComments, setShowComments] = useState(true);
   const [showMore, setShowMore] = useState(false);
   const [muted, setMuted] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -61,7 +67,7 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
   useEffect(() => {
     setLiked(Boolean(post?.isLiked));
     setLikesCount(post?.likes_count || 0);
-    setShowComments(false);
+    setShowComments(true);
     setShowMore(false);
     setSaved(false);
     setText("");
@@ -71,12 +77,42 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
     const v = videoRef.current;
     if (!v || !post?.media_url) return;
     const meta = { title: caption || "YAJ", artist: profile.display_name || "YAJ" };
+    forceIosAudioSessionToPlayback();
+    unlockFeedAudioSession();
     const cleanup = armFeedAudioPlayback(v, meta, 1);
+    applyFeedVideoAudio(v, { muted: false, volume: 1 });
     v.currentTime = 0;
-    v.muted = muted;
-    void playFeedVideo(v, meta, { muted });
-    return cleanup;
-  }, [post?.id, post?.media_url, muted, caption, profile.display_name]);
+
+    let cancelled = false;
+    void (async () => {
+      const ok = await playFeedVideo(v, meta, { muted: false });
+      if (cancelled) return;
+      if (ok && !v.muted) {
+        setMuted(false);
+        return;
+      }
+      applyFeedVideoAudio(v, { muted: true, volume: 1 });
+      try {
+        await v.play();
+      } catch {
+        /* ignore */
+      }
+      if (cancelled) return;
+      applyFeedVideoAudio(v, { muted: false, volume: 1 });
+      setMuted(v.muted);
+    })();
+
+    return () => {
+      cancelled = true;
+      cleanup();
+    };
+  }, [post?.id, post?.media_url, caption, profile.display_name]);
+
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    applyFeedVideoAudio(v, { muted, volume: muted ? 0 : 1 });
+  }, [muted]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -238,170 +274,187 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
         swipeRef.current = null;
       }}
     >
-      <img
-        src={yajLogo}
-        alt="YAJ"
-        className="pointer-events-none absolute left-5 top-20 z-[81] h-28 w-auto object-contain drop-shadow-2xl sm:h-36 lg:h-44"
-      />
-
       <button
         type="button"
         data-no-swipe
         onClick={onClose}
-        className="absolute left-4 top-4 z-[82] flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white"
+        className="absolute left-4 top-4 z-[90] flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white"
         aria-label="Close"
       >
         <X className="h-5 w-5" />
       </button>
 
       <div
-        className={`flex h-full items-center justify-center px-4 transition-all ${
+        className={`flex h-full w-full items-stretch gap-3 px-3 pt-16 transition-all sm:gap-5 sm:px-5 ${
           showComments ? "pr-[min(400px,36vw)]" : ""
         }`}
       >
-        <div
-          className={`relative overflow-hidden rounded-2xl bg-neutral-900 transition-all ${
-            showComments
-              ? "h-[min(92vh,900px)] w-[min(460px,46vw)]"
-              : "h-[min(96vh,960px)] w-[min(560px,58vw)]"
-          }`}
-        >
-          {post.media_type === "video" ? (
-            <video
-              ref={videoRef}
-              key={post.id}
-              src={post.media_url}
-              className="h-full w-full object-cover"
-              playsInline
-              loop
-              autoPlay
-              muted={muted}
-              controls={false}
-            />
-          ) : (
-            <img src={post.media_url} alt="" className="h-full w-full object-cover" />
-          )}
+        <aside className="hidden w-[7.5rem] shrink-0 flex-col items-center justify-center lg:flex xl:w-40" data-no-swipe>
+          <img src={yajLogo} alt="YAJ" className="h-24 w-auto object-contain drop-shadow-2xl xl:h-32" />
+        </aside>
 
-          <button
-            type="button"
-            data-no-swipe
-            onClick={() => setMuted((m) => !m)}
-            className="absolute left-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white"
-            aria-label={muted ? "Unmute" : "Mute"}
+        <div className="relative flex min-h-0 min-w-0 flex-1 items-center justify-center">
+          <div
+            className={`relative overflow-hidden rounded-2xl bg-neutral-900 transition-all ${
+              showComments
+                ? "h-[min(92vh,900px)] w-[min(460px,46vw)]"
+                : "h-[min(96vh,960px)] w-[min(560px,58vw)]"
+            }`}
           >
-            {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-          </button>
+            {post.media_type === "video" ? (
+              <video
+                ref={videoRef}
+                key={post.id}
+                src={post.media_url}
+                className="h-full w-full object-cover"
+                playsInline
+                loop
+                autoPlay
+                controls={false}
+              />
+            ) : (
+              <img src={post.media_url} alt="" className="h-full w-full object-cover" />
+            )}
 
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent p-4 pt-20">
             <button
               type="button"
               data-no-swipe
-              className="pointer-events-auto flex items-center gap-2"
               onClick={() => {
-                onClose();
-                navigate(`/artist/${profile.user_id || post.user_id}`);
+                if (muted) {
+                  forceIosAudioSessionToPlayback();
+                  unlockFeedAudioSession();
+                  const v = videoRef.current;
+                  if (v) {
+                    applyFeedVideoAudio(v, { muted: false, volume: 1 });
+                    void v.play().catch(() => {});
+                  }
+                  setMuted(false);
+                } else {
+                  setMuted(true);
+                }
               }}
+              className={`absolute left-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/45 ${
+                muted ? "text-white/50" : "text-white"
+              }`}
+              aria-label={muted ? "Unmute" : "Mute"}
             >
-              <div className="h-9 w-9 overflow-hidden rounded-full bg-muted">
-                {profile.avatar_url ? (
-                  <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <span className="flex h-full w-full items-center justify-center text-xs font-bold text-white">
-                    {(profile.display_name || "?")[0]?.toUpperCase()}
-                  </span>
-                )}
-              </div>
-              <span className="text-sm font-bold text-white">{profile.display_name || "Artist"}</span>
+              {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
             </button>
-            {caption && <p className="mt-2 line-clamp-3 text-sm text-white/90">{caption}</p>}
+
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent p-4 pt-20">
+              <button
+                type="button"
+                data-no-swipe
+                className="pointer-events-auto flex items-center gap-2"
+                onClick={() => {
+                  onClose();
+                  navigate(`/artist/${profile.user_id || post.user_id}`);
+                }}
+              >
+                <div className="h-9 w-9 overflow-hidden rounded-full bg-muted">
+                  {profile.avatar_url ? (
+                    <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="flex h-full w-full items-center justify-center text-xs font-bold text-white">
+                      {(profile.display_name || "?")[0]?.toUpperCase()}
+                    </span>
+                  )}
+                </div>
+                <span className="text-sm font-bold text-white">{profile.display_name || "Artist"}</span>
+              </button>
+              {caption && <p className="mt-2 line-clamp-3 text-sm text-white/90">{caption}</p>}
+            </div>
+          </div>
+
+          <div className="relative z-[82] ml-3 flex flex-col items-center self-start pt-8" data-no-swipe>
+            <button
+              type="button"
+              onClick={() => setShowMore((v) => !v)}
+              className={`flex h-11 w-11 items-center justify-center rounded-full border bg-white/10 text-white transition-colors ${
+                showMore ? "border-sky-400 bg-sky-500/20" : "border-white/25"
+              }`}
+              aria-label="More options"
+              title="More options"
+            >
+              <MoreHorizontal className="h-5 w-5" />
+            </button>
+
+            {showMore && (
+              <div className="mt-2 flex max-h-[min(70vh,520px)] flex-col items-center gap-2.5 overflow-y-auto overscroll-contain rounded-2xl border border-white/15 bg-black/85 px-2.5 py-2.5 shadow-2xl backdrop-blur-md scrollbar-hide">
+                <button type="button" onClick={toggleLike} className="flex flex-col items-center gap-0.5 text-white">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
+                    <Heart className={`h-5 w-5 ${liked ? "fill-red-500 text-red-500" : ""}`} />
+                  </span>
+                  <span className="text-[10px] font-semibold">{likesCount || 0}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowComments((v) => !v)}
+                  className="flex flex-col items-center gap-0.5 text-white"
+                >
+                  <span
+                    className={`flex h-10 w-10 items-center justify-center rounded-full bg-white/10 ${
+                      showComments ? "text-primary" : ""
+                    }`}
+                  >
+                    <MessageCircle className="h-5 w-5" />
+                  </span>
+                  <span className="text-[10px] font-semibold">
+                    {showComments ? "Hide" : post.comments_count || 0}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSaved((s) => !s);
+                    toast.success(saved ? "Removed from saved" : "Saved");
+                  }}
+                  className="flex flex-col items-center gap-0.5 text-white"
+                  aria-label="Save"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
+                    <Bookmark className={`h-5 w-5 ${saved ? "fill-white text-white" : ""}`} />
+                  </span>
+                </button>
+                <button type="button" onClick={share} className="flex flex-col items-center gap-0.5 text-white" aria-label="Share">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
+                    <Forward className="h-5 w-5" />
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    navigate("/circle");
+                  }}
+                  className="flex flex-col items-center gap-0.5 text-white"
+                  aria-label="Open My Circle"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
+                    <Users className="h-5 w-5" />
+                  </span>
+                  <span className="text-[9px] font-semibold">My Circle</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    navigate("/my-projects");
+                  }}
+                  className="flex flex-col items-center gap-0.5 text-white"
+                  aria-label="Support this artist"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
+                    <HandHeart className="h-5 w-5" />
+                  </span>
+                  <span className="text-[9px] font-semibold">Support</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
-        <div
-          className={`relative z-[82] ml-3 flex flex-col items-center self-start pt-16 ${
-            showComments ? "" : ""
-          }`}
-          data-no-swipe
-        >
-          <button
-            type="button"
-            onClick={() => setShowMore((v) => !v)}
-            className={`flex h-11 w-11 items-center justify-center rounded-full border bg-white/10 text-white transition-colors ${
-              showMore ? "border-sky-400 bg-sky-500/20" : "border-white/25"
-            }`}
-            aria-label="More options"
-            title="More options"
-          >
-            <MoreHorizontal className="h-5 w-5" />
-          </button>
-
-          {showMore && (
-            <div className="mt-2 flex max-h-[min(70vh,520px)] flex-col items-center gap-2.5 overflow-y-auto overscroll-contain rounded-2xl border border-white/15 bg-black/85 px-2.5 py-2.5 shadow-2xl backdrop-blur-md scrollbar-hide">
-              <button type="button" onClick={toggleLike} className="flex flex-col items-center gap-0.5 text-white">
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
-                  <Heart className={`h-5 w-5 ${liked ? "fill-red-500 text-red-500" : ""}`} />
-                </span>
-                <span className="text-[10px] font-semibold">{likesCount || 0}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowComments((v) => !v)}
-                className="flex flex-col items-center gap-0.5 text-white"
-              >
-                <span className={`flex h-10 w-10 items-center justify-center rounded-full bg-white/10 ${showComments ? "text-primary" : ""}`}>
-                  <MessageCircle className="h-5 w-5" />
-                </span>
-                <span className="text-[10px] font-semibold">{showComments ? "Hide" : (post.comments_count || 0)}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setSaved((s) => !s);
-                  toast.success(saved ? "Removed from saved" : "Saved");
-                }}
-                className="flex flex-col items-center gap-0.5 text-white"
-                aria-label="Save"
-              >
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
-                  <Bookmark className={`h-5 w-5 ${saved ? "fill-white text-white" : ""}`} />
-                </span>
-              </button>
-              <button type="button" onClick={share} className="flex flex-col items-center gap-0.5 text-white" aria-label="Share">
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
-                  <Forward className="h-5 w-5" />
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  navigate("/circle");
-                }}
-                className="flex flex-col items-center gap-0.5 text-white"
-                aria-label="Open My Circle"
-              >
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
-                  <Users className="h-5 w-5" />
-                </span>
-                <span className="text-[9px] font-semibold">My Circle</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  navigate("/my-projects");
-                }}
-                className="flex flex-col items-center gap-0.5 text-white"
-                aria-label="Support this artist"
-              >
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
-                  <HandHeart className="h-5 w-5" />
-                </span>
-                <span className="text-[9px] font-semibold">Support</span>
-              </button>
-            </div>
-          )}
-        </div>
+        <aside className="hidden w-[7.5rem] shrink-0 lg:block xl:w-40" aria-hidden />
       </div>
 
       {showComments && (

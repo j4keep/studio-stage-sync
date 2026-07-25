@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Download,
   Maximize,
@@ -9,7 +9,13 @@ import {
   Volume2,
   VolumeX,
 } from "lucide-react";
-import { armFeedAudioPlayback, playFeedVideo } from "@/lib/feed-video-playback";
+import {
+  applyFeedVideoAudio,
+  armFeedAudioPlayback,
+  forceIosAudioSessionToPlayback,
+  playFeedVideo,
+  unlockFeedAudioSession,
+} from "@/lib/feed-video-playback";
 import { toast } from "sonner";
 
 type Props = {
@@ -35,24 +41,43 @@ export default function DesktopPostVideoPlayer({ src, className = "", title = "Y
   const [duration, setDuration] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const v = videoRef.current;
     if (!v) return;
-    const cleanup = armFeedAudioPlayback(v, { title, artist: "YAJ" }, 1);
-    v.currentTime = 0;
-    void playFeedVideo(v, { title, artist: "YAJ" }, { muted: false }).then((ok) => {
-      setPlaying(ok && !v.paused);
-      setMuted(v.muted);
-    });
-    return cleanup;
-  }, [src, title]);
 
-  useEffect(() => {
-    const v = videoRef.current;
-    if (!v) return;
-    v.muted = muted;
-    v.volume = muted ? 0 : 1;
-  }, [muted]);
+    forceIosAudioSessionToPlayback();
+    unlockFeedAudioSession();
+    const cleanup = armFeedAudioPlayback(v, { title, artist: "YAJ" }, 1);
+    applyFeedVideoAudio(v, { muted: false, volume: 1 });
+    v.currentTime = 0;
+
+    let cancelled = false;
+    void (async () => {
+      const ok = await playFeedVideo(v, { title, artist: "YAJ" }, { muted: false });
+      if (cancelled) return;
+      if (ok && !v.muted) {
+        setMuted(false);
+        setPlaying(true);
+        return;
+      }
+      // Autoplay may force mute — play muted then immediately unmute while activation may still apply.
+      applyFeedVideoAudio(v, { muted: true, volume: 1 });
+      try {
+        await v.play();
+      } catch {
+        /* ignore */
+      }
+      if (cancelled) return;
+      applyFeedVideoAudio(v, { muted: false, volume: 1 });
+      setMuted(v.muted);
+      setPlaying(!v.paused);
+    })();
+
+    return () => {
+      cancelled = true;
+      cleanup();
+    };
+  }, [src, title]);
 
   useEffect(() => {
     const v = videoRef.current;
@@ -61,17 +86,20 @@ export default function DesktopPostVideoPlayer({ src, className = "", title = "Y
     const onMeta = () => setDuration(v.duration || 0);
     const onPlay = () => setPlaying(true);
     const onPause = () => setPlaying(false);
+    const onVolume = () => setMuted(v.muted || v.volume === 0);
     v.addEventListener("timeupdate", onTime);
     v.addEventListener("loadedmetadata", onMeta);
     v.addEventListener("durationchange", onMeta);
     v.addEventListener("play", onPlay);
     v.addEventListener("pause", onPause);
+    v.addEventListener("volumechange", onVolume);
     return () => {
       v.removeEventListener("timeupdate", onTime);
       v.removeEventListener("loadedmetadata", onMeta);
       v.removeEventListener("durationchange", onMeta);
       v.removeEventListener("play", onPlay);
       v.removeEventListener("pause", onPause);
+      v.removeEventListener("volumechange", onVolume);
     };
   }, [src]);
 
@@ -81,24 +109,35 @@ export default function DesktopPostVideoPlayer({ src, className = "", title = "Y
     return () => document.removeEventListener("fullscreenchange", onFs);
   }, []);
 
+  const ensureSound = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    forceIosAudioSessionToPlayback();
+    unlockFeedAudioSession();
+    applyFeedVideoAudio(v, { muted: false, volume: 1 });
+    setMuted(false);
+    void v.play().catch(() => {});
+  };
+
   const togglePlay = () => {
     const v = videoRef.current;
     if (!v) return;
-    if (v.paused) void playFeedVideo(v, { title, artist: "YAJ" }, { muted });
-    else v.pause();
+    if (v.paused) {
+      ensureSound();
+    } else {
+      v.pause();
+    }
   };
 
   const toggleMute = () => {
     const v = videoRef.current;
-    setMuted((m) => {
-      const next = !m;
-      if (v) {
-        v.muted = next;
-        v.volume = next ? 0 : 1;
-        if (!next) void playFeedVideo(v, { title, artist: "YAJ" }, { muted: false });
-      }
-      return next;
-    });
+    if (!v) return;
+    if (muted || v.muted) {
+      ensureSound();
+    } else {
+      applyFeedVideoAudio(v, { muted: true, volume: 0 });
+      setMuted(true);
+    }
   };
 
   const toggleFullscreen = async () => {
@@ -149,16 +188,18 @@ export default function DesktopPostVideoPlayer({ src, className = "", title = "Y
   };
 
   return (
-    <div ref={shellRef} className={`relative bg-black ${className}`}>
+    <div
+      ref={shellRef}
+      className={`relative flex h-full max-h-full w-full items-center justify-center overflow-hidden bg-black ${className}`}
+    >
       <video
         ref={videoRef}
         src={src}
         playsInline
         autoPlay
         loop
-        muted={muted}
         controls={false}
-        className="mx-auto max-h-full w-full object-contain"
+        className="max-h-full max-w-full object-contain"
         onClick={togglePlay}
       />
 
