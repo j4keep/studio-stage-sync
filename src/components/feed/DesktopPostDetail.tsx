@@ -19,6 +19,12 @@ import { parsePostCaption } from "@/lib/post-editor";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import yajLogo from "@/assets/yaj-logo.png";
+import DesktopPostVideoPlayer from "@/components/feed/DesktopPostVideoPlayer";
+import {
+  DesktopCommentEmojiBar,
+  renderDesktopCommentContent,
+} from "@/components/feed/DesktopCommentEmojis";
 
 type Props = {
   items: any[];
@@ -114,6 +120,22 @@ export default function DesktopPostDetail({ items, startIndex, onClose }: Props)
     onError: (e: any) => toast.error(e?.message || "Failed to comment"),
   });
 
+  const emojiCommentMutation = useMutation({
+    mutationFn: async (emojiId: string) => {
+      if (!user) throw new Error("Sign in to comment");
+      const { error } = await (supabase as any).from("post_comments").insert({
+        post_id: post.id,
+        user_id: user.id,
+        content: `:${emojiId}:`,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["desktop-post-comments", post.id] });
+    },
+    onError: (e: any) => toast.error(e?.message || "Failed to react"),
+  });
+
   if (!post) return null;
 
   const toggleLike = async () => {
@@ -157,10 +179,16 @@ export default function DesktopPostDetail({ items, startIndex, onClose }: Props)
 
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 p-4" onClick={onClose}>
+      <img
+        src={yajLogo}
+        alt="YAJ"
+        className="pointer-events-none absolute left-5 top-20 z-[81] h-28 w-auto object-contain drop-shadow-2xl sm:h-36 lg:h-44"
+      />
+
       <button
         type="button"
         onClick={onClose}
-        className="absolute left-4 top-4 z-[81] flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white"
+        className="absolute left-4 top-4 z-[82] flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white"
         aria-label="Close"
       >
         <X className="h-5 w-5" />
@@ -279,13 +307,11 @@ export default function DesktopPostDetail({ items, startIndex, onClose }: Props)
         </div>
 
         <div className={`relative w-full shrink-0 bg-black ${showComments ? "max-h-[36vh]" : "max-h-[58vh]"} min-h-[200px]`}>
-          {post.media_type === "video" ? (
-            <video
+          {post.media_type === "video" && post.media_url ? (
+            <DesktopPostVideoPlayer
               src={post.media_url}
-              controls
-              autoPlay
-              playsInline
-              className={`mx-auto w-full object-contain ${showComments ? "max-h-[36vh]" : "max-h-[58vh]"}`}
+              title={caption || "YAJ post"}
+              className={showComments ? "max-h-[36vh]" : "max-h-[58vh]"}
             />
           ) : post.media_url ? (
             <img
@@ -336,7 +362,9 @@ export default function DesktopPostDetail({ items, startIndex, onClose }: Props)
             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">
               {commentsLoading && <p className="text-xs text-muted-foreground">Loading comments…</p>}
               {!commentsLoading && comments.length === 0 && (
-                <p className="py-4 text-center text-xs text-muted-foreground">No comments yet</p>
+                <p className="py-4 text-center text-xs text-muted-foreground">
+                  No comments yet — react with an emoji or write something
+                </p>
               )}
               {comments.map((c: any) => (
                 <div key={c.id} className="flex gap-2">
@@ -351,11 +379,19 @@ export default function DesktopPostDetail({ items, startIndex, onClose }: Props)
                   </div>
                   <div className="min-w-0 flex-1 rounded-2xl bg-muted px-3 py-2">
                     <p className="text-xs font-bold text-foreground">{c.profile?.display_name || "User"}</p>
-                    <p className="text-sm text-foreground">{c.content}</p>
+                    <p className="text-sm text-foreground">{renderDesktopCommentContent(c.content)}</p>
                   </div>
                 </div>
               ))}
             </div>
+
+            <DesktopCommentEmojiBar
+              disabled={!user || emojiCommentMutation.isPending}
+              onPick={(id) => {
+                if (!user) return toast.error("Sign in to comment");
+                emojiCommentMutation.mutate(id);
+              }}
+            />
 
             <form
               className="flex shrink-0 items-center gap-2 border-t border-border p-3"

@@ -18,6 +18,12 @@ import { parsePostCaption } from "@/lib/post-editor";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { armFeedAudioPlayback, playFeedVideo } from "@/lib/feed-video-playback";
+import yajLogo from "@/assets/yaj-logo.png";
+import {
+  DesktopCommentEmojiBar,
+  renderDesktopCommentContent,
+} from "@/components/feed/DesktopCommentEmojis";
 
 type Props = {
   items: any[];
@@ -63,11 +69,14 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
 
   useEffect(() => {
     const v = videoRef.current;
-    if (!v) return;
-    v.muted = muted;
+    if (!v || !post?.media_url) return;
+    const meta = { title: caption || "YAJ", artist: profile.display_name || "YAJ" };
+    const cleanup = armFeedAudioPlayback(v, meta, 1);
     v.currentTime = 0;
-    void v.play().catch(() => {});
-  }, [post?.id, post?.media_url, muted]);
+    v.muted = muted;
+    void playFeedVideo(v, meta, { muted });
+    return cleanup;
+  }, [post?.id, post?.media_url, muted, caption, profile.display_name]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -147,6 +156,22 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
     onError: (e: any) => toast.error(e?.message || "Failed to comment"),
   });
 
+  const emojiCommentMutation = useMutation({
+    mutationFn: async (emojiId: string) => {
+      if (!user) throw new Error("Sign in to comment");
+      const { error } = await (supabase as any).from("post_comments").insert({
+        post_id: post.id,
+        user_id: user.id,
+        content: `:${emojiId}:`,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["desktop-reel-comments", post.id] });
+    },
+    onError: (e: any) => toast.error(e?.message || "Failed to react"),
+  });
+
   if (!post) return null;
 
   const toggleLike = async () => {
@@ -213,11 +238,17 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
         swipeRef.current = null;
       }}
     >
+      <img
+        src={yajLogo}
+        alt="YAJ"
+        className="pointer-events-none absolute left-5 top-20 z-[81] h-28 w-auto object-contain drop-shadow-2xl sm:h-36 lg:h-44"
+      />
+
       <button
         type="button"
         data-no-swipe
         onClick={onClose}
-        className="absolute left-4 top-4 z-[81] flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white"
+        className="absolute left-4 top-4 z-[82] flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white"
         aria-label="Close"
       >
         <X className="h-5 w-5" />
@@ -393,7 +424,9 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
           <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">
             {commentsLoading && <p className="text-xs text-muted-foreground">Loading…</p>}
             {!commentsLoading && comments.length === 0 && (
-              <p className="py-8 text-center text-xs text-muted-foreground">No comments yet</p>
+              <p className="py-8 text-center text-xs text-muted-foreground">
+                No comments yet — react with an emoji or write something
+              </p>
             )}
             {comments.map((c: any) => (
               <div key={c.id} className="flex gap-2">
@@ -408,11 +441,19 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
                 </div>
                 <div className="min-w-0 flex-1 rounded-2xl bg-muted px-3 py-2">
                   <p className="text-xs font-bold text-foreground">{c.profile?.display_name || "User"}</p>
-                  <p className="text-sm text-foreground">{c.content}</p>
+                  <p className="text-sm text-foreground">{renderDesktopCommentContent(c.content)}</p>
                 </div>
               </div>
             ))}
           </div>
+
+          <DesktopCommentEmojiBar
+            disabled={!user || emojiCommentMutation.isPending}
+            onPick={(id) => {
+              if (!user) return toast.error("Sign in to comment");
+              emojiCommentMutation.mutate(id);
+            }}
+          />
 
           <form
             className="flex shrink-0 items-center gap-2 border-t border-border p-3"
