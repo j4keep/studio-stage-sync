@@ -1,10 +1,11 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { X, Sparkles, ImagePlus, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { URGENCY_OPTIONS } from "@/lib/jobs";
 import { analyzeGigPhotos, fileToDataUrl } from "@/lib/yaj-jobs-ai";
+import GigProfileCard, { type GigProfileInfo } from "@/components/jobs/GigProfileCard";
 
 type Props = { open: boolean; onClose: () => void; onCreated?: () => void };
 
@@ -12,8 +13,10 @@ export default function PostGigSheet({ open, onClose, onCreated }: Props) {
   const { user } = useAuth();
   const [saving, setSaving] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
-  const [photos, setPhotos] = useState<string[]>([]); // data URLs
+  const [photos, setPhotos] = useState<string[]>([]);
   const [aiTip, setAiTip] = useState<string | null>(null);
+  const [myProfile, setMyProfile] = useState<GigProfileInfo | null>(null);
+  const [hideYajProfile, setHideYajProfile] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
     title: "",
@@ -26,6 +29,31 @@ export default function PostGigSheet({ open, onClose, onCreated }: Props) {
     preferred_date: "",
     preferred_time: "",
   });
+
+  useEffect(() => {
+    if (!open || !user) return;
+    void (async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("user_id, display_name, avatar_url, hide_yaj_page_on_gigs")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (data) {
+        setMyProfile({
+          user_id: data.user_id,
+          display_name: data.display_name,
+          avatar_url: data.avatar_url,
+        });
+        setHideYajProfile(Boolean((data as any).hide_yaj_page_on_gigs));
+      } else {
+        setMyProfile({
+          user_id: user.id,
+          display_name: user.email?.split("@")[0] || "You",
+          avatar_url: null,
+        });
+      }
+    })();
+  }, [open, user]);
 
   if (!open) return null;
 
@@ -76,7 +104,7 @@ export default function PostGigSheet({ open, onClose, onCreated }: Props) {
       return;
     }
     setSaving(true);
-    const { error } = await supabase.from("gig_listings").insert({
+    const { error } = await (supabase as any).from("gig_listings").insert({
       poster_id: user.id,
       title: form.title.trim(),
       description: form.description.trim(),
@@ -87,7 +115,14 @@ export default function PostGigSheet({ open, onClose, onCreated }: Props) {
       urgency: form.urgency,
       preferred_date: form.preferred_date || null,
       preferred_time: form.preferred_time || null,
+      hide_yaj_profile: hideYajProfile,
     });
+    if (!error) {
+      await (supabase as any)
+        .from("profiles")
+        .update({ hide_yaj_page_on_gigs: hideYajProfile })
+        .eq("user_id", user.id);
+    }
     setSaving(false);
     if (error) {
       toast.error(error.message);
@@ -116,6 +151,14 @@ export default function PostGigSheet({ open, onClose, onCreated }: Props) {
       </header>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-40">
+
+        <GigProfileCard
+          label="Your profile on this gig"
+          profile={myProfile}
+          hideYajPage={hideYajProfile}
+          onToggleHide={setHideYajProfile}
+          toggleLabel="Hide my YAJ page account — others only see your picture and name"
+        />
 
         <div className="rounded-2xl p-3 bg-gradient-to-br from-fuchsia-500/10 to-cyan-500/10 border border-primary/20 space-y-2">
           <div className="flex items-start gap-2">

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Search, Send, Paperclip, Image, X, Plus, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,6 +18,8 @@ interface Conversation {
   updated_at: string;
   other_user: Profile | null;
   last_message?: string;
+  /** When true, chat header name/photo only — no YAJ page link */
+  hideOtherYajPage?: boolean;
 }
 
 interface Message {
@@ -31,15 +33,28 @@ interface Message {
   created_at: string;
 }
 
+type MessagesNavState = {
+  startWithUserId?: string;
+  startWithProfile?: Profile;
+  hideOtherYajPage?: boolean;
+  hideMyYajPage?: boolean;
+  gigId?: string;
+  gigTitle?: string;
+} | null;
+
 const MessagesPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
   const [messageText, setMessageText] = useState("");
   const [showNewChat, setShowNewChat] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [hideOtherYajPage, setHideOtherYajPage] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const autoStartDoneRef = useRef(false);
+
 
   // Fetch conversations
   const { data: conversations = [], isLoading: convLoading } = useQuery({
@@ -193,12 +208,16 @@ const MessagesPage = () => {
     toast({ title: "File sent" });
   };
 
-  const startConversation = async (otherUser: Profile) => {
+  const startConversation = async (
+    otherUser: Profile,
+    opts?: { hideOtherYajPage?: boolean; introGigTitle?: string },
+  ) => {
     if (!user) return;
     // Check if conversation already exists
     const existing = conversations.find(c => c.other_user?.user_id === otherUser.user_id);
     if (existing) {
-      setActiveConversation(existing);
+      setActiveConversation({ ...existing, hideOtherYajPage: opts?.hideOtherYajPage });
+      setHideOtherYajPage(Boolean(opts?.hideOtherYajPage));
       setShowNewChat(false);
       setSearchQuery("");
       return;
@@ -213,17 +232,60 @@ const MessagesPage = () => {
       { conversation_id: conv.id, user_id: otherUser.user_id },
     ]);
 
+    if (opts?.introGigTitle) {
+      await supabase.from("messages").insert({
+        conversation_id: conv.id,
+        sender_id: user.id,
+        content: `Hi — I'm interested in your gig: ${opts.introGigTitle}`,
+      });
+    }
+
     const newConv: Conversation = {
       id: conv.id,
       updated_at: new Date().toISOString(),
       other_user: otherUser,
-      last_message: "No messages yet",
+      last_message: opts?.introGigTitle ? `Hi — I'm interested in your gig: ${opts.introGigTitle}` : "No messages yet",
+      hideOtherYajPage: opts?.hideOtherYajPage,
     };
+    setHideOtherYajPage(Boolean(opts?.hideOtherYajPage));
     setActiveConversation(newConv);
     setShowNewChat(false);
     setSearchQuery("");
     queryClient.invalidateQueries({ queryKey: ["conversations"] });
   };
+
+  // Open a chat from gig detail (or other deep links).
+  useEffect(() => {
+    if (!user || autoStartDoneRef.current || convLoading) return;
+    const state = (location.state || null) as MessagesNavState;
+    if (!state?.startWithUserId) return;
+    autoStartDoneRef.current = true;
+    const profile =
+      state.startWithProfile ||
+      ({
+        user_id: state.startWithUserId,
+        display_name: "User",
+        avatar_url: null,
+      } satisfies Profile);
+
+    void (async () => {
+      let resolved = profile;
+      if (!state.startWithProfile) {
+        const { data } = await supabase
+          .from("profiles")
+          .select("user_id, display_name, avatar_url")
+          .eq("user_id", state.startWithUserId!)
+          .maybeSingle();
+        if (data) resolved = data;
+      }
+      await startConversation(resolved, {
+        hideOtherYajPage: state.hideOtherYajPage,
+        introGigTitle: state.gigTitle,
+      });
+      navigate(location.pathname, { replace: true, state: null });
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, location.state, conversations, convLoading]);
 
   // Conversation view
   if (activeConversation) {
@@ -234,16 +296,34 @@ const MessagesPage = () => {
           <button onClick={() => setActiveConversation(null)} className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center">
             <ArrowLeft className="w-4 h-4 text-foreground" />
           </button>
-          <div className="w-9 h-9 rounded-full bg-muted overflow-hidden">
-            {activeConversation.other_user?.avatar_url ? (
-              <img src={activeConversation.other_user.avatar_url} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full bg-primary/20 flex items-center justify-center text-primary font-bold text-sm">
-                {activeConversation.other_user?.display_name?.[0] || "?"}
-              </div>
-            )}
-          </div>
-          <p className="text-sm font-semibold text-foreground">{activeConversation.other_user?.display_name || "User"}</p>
+          <button
+            type="button"
+            className="flex min-w-0 flex-1 items-center gap-3 text-left disabled:opacity-100"
+            disabled={hideOtherYajPage || activeConversation.hideOtherYajPage || !activeConversation.other_user?.user_id}
+            onClick={() => {
+              if (hideOtherYajPage || activeConversation.hideOtherYajPage) return;
+              const id = activeConversation.other_user?.user_id;
+              if (id) navigate(`/artist/${id}`);
+            }}
+          >
+            <div className="w-9 h-9 rounded-full bg-muted overflow-hidden shrink-0">
+              {activeConversation.other_user?.avatar_url ? (
+                <img src={activeConversation.other_user.avatar_url} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-primary/20 flex items-center justify-center text-primary font-bold text-sm">
+                  {activeConversation.other_user?.display_name?.[0] || "?"}
+                </div>
+              )}
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-foreground truncate">
+                {activeConversation.other_user?.display_name || "User"}
+              </p>
+              {(hideOtherYajPage || activeConversation.hideOtherYajPage) && (
+                <p className="text-[10px] text-muted-foreground">Name & photo only</p>
+              )}
+            </div>
+          </button>
         </div>
 
         {/* Messages */}

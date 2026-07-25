@@ -2,7 +2,10 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, MapPin, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 import { timeAgo, URGENCY_OPTIONS } from "@/lib/jobs";
+import GigProfileCard, { type GigProfileInfo } from "@/components/jobs/GigProfileCard";
 
 type Gig = {
   id: string;
@@ -17,19 +20,111 @@ type Gig = {
   preferred_date: string | null;
   preferred_time: string | null;
   created_at: string;
+  hide_yaj_profile?: boolean;
 };
 
 export default function GigDetailPage() {
   const { id } = useParams();
   const nav = useNavigate();
+  const { user } = useAuth();
   const [gig, setGig] = useState<Gig | null>(null);
+  const [poster, setPoster] = useState<GigProfileInfo | null>(null);
+  const [me, setMe] = useState<GigProfileInfo | null>(null);
+  const [hideMyYajPage, setHideMyYajPage] = useState(false);
+  const [messaging, setMessaging] = useState(false);
 
   useEffect(() => {
     if (!id) return;
-    supabase.from("gig_listings").select("*").eq("id", id).maybeSingle().then(({ data }) => {
-      setGig(data as Gig | null);
-    });
+    void (async () => {
+      const { data } = await (supabase as any).from("gig_listings").select("*").eq("id", id).maybeSingle();
+      const row = data as Gig | null;
+      setGig(row);
+      if (!row?.poster_id) return;
+
+      const { data: posterProfile } = await supabase
+        .from("profiles")
+        .select("user_id, display_name, avatar_url")
+        .eq("user_id", row.poster_id)
+        .maybeSingle();
+      setPoster(
+        posterProfile || {
+          user_id: row.poster_id,
+          display_name: "Poster",
+          avatar_url: null,
+        },
+      );
+    })();
   }, [id]);
+
+  useEffect(() => {
+    if (!user) {
+      setMe(null);
+      return;
+    }
+    void (async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("user_id, display_name, avatar_url, hide_yaj_page_on_gigs")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (data) {
+        setMe({
+          user_id: data.user_id,
+          display_name: data.display_name,
+          avatar_url: data.avatar_url,
+        });
+        setHideMyYajPage(Boolean((data as any).hide_yaj_page_on_gigs));
+      } else {
+        setMe({
+          user_id: user.id,
+          display_name: user.email?.split("@")[0] || "You",
+          avatar_url: null,
+        });
+      }
+    })();
+  }, [user]);
+
+  const saveMyHidePreference = async (hide: boolean) => {
+    setHideMyYajPage(hide);
+    if (!user) return;
+    const { error } = await (supabase as any)
+      .from("profiles")
+      .update({ hide_yaj_page_on_gigs: hide })
+      .eq("user_id", user.id);
+    if (error) toast.error(error.message);
+  };
+
+  const messagePoster = async () => {
+    if (!user) {
+      toast.error("Sign in to message the poster");
+      return;
+    }
+    if (!gig || !poster) return;
+    if (user.id === gig.poster_id) {
+      toast.error("This is your gig");
+      return;
+    }
+    setMessaging(true);
+    try {
+      await (supabase as any)
+        .from("profiles")
+        .update({ hide_yaj_page_on_gigs: hideMyYajPage })
+        .eq("user_id", user.id);
+
+      nav("/messages", {
+        state: {
+          startWithUserId: gig.poster_id,
+          startWithProfile: poster,
+          hideOtherYajPage: Boolean(gig.hide_yaj_profile),
+          hideMyYajPage,
+          gigId: gig.id,
+          gigTitle: gig.title,
+        },
+      });
+    } finally {
+      setMessaging(false);
+    }
+  };
 
   if (!gig) return <div className="p-6 text-sm text-muted-foreground">Loading…</div>;
 
@@ -37,6 +132,8 @@ export default function GigDetailPage() {
   const budget = gig.budget_min || gig.budget_max
     ? `$${gig.budget_min ?? ""}${gig.budget_min && gig.budget_max ? "–" : ""}${gig.budget_max ?? ""}`
     : "Open budget";
+  const isOwnGig = Boolean(user && user.id === gig.poster_id);
+  const posterHidesPage = Boolean(gig.hide_yaj_profile);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -58,6 +155,31 @@ export default function GigDetailPage() {
           <span className="px-2 py-1 rounded-full bg-muted font-semibold">{gig.category}</span>
         </div>
 
+        <div className="grid gap-3 sm:grid-cols-2">
+          <GigProfileCard
+            label={isOwnGig ? "Your profile on this gig" : "Posted by"}
+            profile={poster}
+            hideYajPage={posterHidesPage}
+            onOpenProfile={
+              poster && !posterHidesPage && !isOwnGig
+                ? () => nav(`/artist/${poster.user_id}`)
+                : undefined
+            }
+          />
+          {user && !isOwnGig && (
+            <GigProfileCard
+              label="Your profile (visible to poster)"
+              profile={me}
+              hideYajPage={hideMyYajPage}
+              onToggleHide={saveMyHidePreference}
+              toggleLabel="Hide my YAJ page — poster only sees your picture and name"
+              onOpenProfile={
+                me && !hideMyYajPage ? () => nav(`/artist/${me.user_id}`) : undefined
+              }
+            />
+          )}
+        </div>
+
         <p className="text-sm whitespace-pre-wrap leading-relaxed">{gig.description}</p>
 
         {(gig.preferred_date || gig.preferred_time) && (
@@ -68,12 +190,15 @@ export default function GigDetailPage() {
           </div>
         )}
 
-        <button
-          onClick={() => nav("/messages")}
-          className="w-full h-12 rounded-2xl bg-primary text-primary-foreground font-bold text-sm"
-        >
-          Message Poster
-        </button>
+        {!isOwnGig && (
+          <button
+            onClick={() => void messagePoster()}
+            disabled={messaging}
+            className="w-full h-12 rounded-2xl bg-primary text-primary-foreground font-bold text-sm disabled:opacity-50"
+          >
+            {messaging ? "Opening…" : "Message Poster"}
+          </button>
+        )}
       </div>
     </div>
   );
