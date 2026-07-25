@@ -286,36 +286,41 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
           </div>
         </div>
 
-        <div className="relative z-[82] ml-3 flex flex-col items-center self-center" data-no-swipe>
+        <div
+          className={`relative z-[82] ml-3 flex flex-col items-center self-start pt-16 ${
+            showComments ? "" : ""
+          }`}
+          data-no-swipe
+        >
           <button
             type="button"
             onClick={() => setShowMore((v) => !v)}
-            className={`flex h-12 w-12 items-center justify-center rounded-full border bg-white/10 text-white transition-colors ${
+            className={`flex h-11 w-11 items-center justify-center rounded-full border bg-white/10 text-white transition-colors ${
               showMore ? "border-sky-400 bg-sky-500/20" : "border-white/25"
             }`}
             aria-label="More options"
             title="More options"
           >
-            <MoreHorizontal className="h-6 w-6" />
+            <MoreHorizontal className="h-5 w-5" />
           </button>
 
           {showMore && (
-            <div className="absolute left-1/2 top-14 z-[83] flex -translate-x-1/2 flex-col items-center gap-3 rounded-2xl border border-white/15 bg-black/85 px-3 py-3 shadow-2xl backdrop-blur-md">
-              <button type="button" onClick={toggleLike} className="flex flex-col items-center gap-1 text-white">
-                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10">
+            <div className="mt-2 flex max-h-[min(70vh,520px)] flex-col items-center gap-2.5 overflow-y-auto overscroll-contain rounded-2xl border border-white/15 bg-black/85 px-2.5 py-2.5 shadow-2xl backdrop-blur-md scrollbar-hide">
+              <button type="button" onClick={toggleLike} className="flex flex-col items-center gap-0.5 text-white">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
                   <Heart className={`h-5 w-5 ${liked ? "fill-red-500 text-red-500" : ""}`} />
                 </span>
-                <span className="text-[11px] font-semibold">{likesCount || 0}</span>
+                <span className="text-[10px] font-semibold">{likesCount || 0}</span>
               </button>
               <button
                 type="button"
                 onClick={() => setShowComments((v) => !v)}
-                className="flex flex-col items-center gap-1 text-white"
+                className="flex flex-col items-center gap-0.5 text-white"
               >
-                <span className={`flex h-11 w-11 items-center justify-center rounded-full bg-white/10 ${showComments ? "text-primary" : ""}`}>
+                <span className={`flex h-10 w-10 items-center justify-center rounded-full bg-white/10 ${showComments ? "text-primary" : ""}`}>
                   <MessageCircle className="h-5 w-5" />
                 </span>
-                <span className="text-[11px] font-semibold">{showComments ? "Hide" : (post.comments_count || 0)}</span>
+                <span className="text-[10px] font-semibold">{showComments ? "Hide" : (post.comments_count || 0)}</span>
               </button>
               <button
                 type="button"
@@ -323,15 +328,15 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
                   setSaved((s) => !s);
                   toast.success(saved ? "Removed from saved" : "Saved");
                 }}
-                className="flex flex-col items-center gap-1 text-white"
+                className="flex flex-col items-center gap-0.5 text-white"
                 aria-label="Save"
               >
-                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
                   <Bookmark className={`h-5 w-5 ${saved ? "fill-white text-white" : ""}`} />
                 </span>
               </button>
-              <button type="button" onClick={share} className="flex flex-col items-center gap-1 text-white" aria-label="Share">
-                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10">
+              <button type="button" onClick={share} className="flex flex-col items-center gap-0.5 text-white" aria-label="Share">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
                   <Forward className="h-5 w-5" />
                 </span>
               </button>
@@ -341,10 +346,10 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
                   onClose();
                   navigate("/circle");
                 }}
-                className="flex flex-col items-center gap-1 text-white"
+                className="flex flex-col items-center gap-0.5 text-white"
                 aria-label="Open My Circle"
               >
-                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
                   <Users className="h-5 w-5" />
                 </span>
                 <span className="text-[9px] font-semibold">My Circle</span>
@@ -355,10 +360,10 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
                   onClose();
                   navigate("/my-projects");
                 }}
-                className="flex flex-col items-center gap-1 text-white"
+                className="flex flex-col items-center gap-0.5 text-white"
                 aria-label="Support this artist"
               >
-                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
                   <HandHeart className="h-5 w-5" />
                 </span>
                 <span className="text-[9px] font-semibold">Support</span>
