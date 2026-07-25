@@ -6,7 +6,6 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchFeedItems, type FeedItem } from "@/lib/feed-items";
 import FeedPostCard from "@/components/feed/FeedPostCard";
-import { useIsDesktop } from "@/hooks/use-is-desktop";
 
 const STORAGE_KEY = "incognito-feed-window-pos";
 const SIZE_KEY = "incognito-feed-window-size";
@@ -39,11 +38,8 @@ const IncognitoFeedWindow = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const isDesktop = useIsDesktop();
-  // Phone home/feed is the full-page video feed — hide the floating window there.
-  // Desktop home uses Explore + Incognito for the feed.
-  const isMobileFullFeed =
-    !isDesktop && (location.pathname === "/" || location.pathname === "/feed");
+  // Full-page feed on Home/Feed (phone + desktop) — hide floating Incognito there.
+  const isFullFeedPage = location.pathname === "/" || location.pathname === "/feed";
   const [open, setOpen] = useState(() => {
     try {
       return sessionStorage.getItem(OPEN_KEY) === "true";
@@ -200,7 +196,7 @@ const IncognitoFeedWindow = () => {
 
   if (!user) return null;
 
-  if (isMobileFullFeed) return null;
+  if (isFullFeedPage) return null;
 
   // Floating bubble (closed)
   if (!open) {
