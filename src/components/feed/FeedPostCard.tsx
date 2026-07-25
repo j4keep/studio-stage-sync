@@ -1343,6 +1343,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
           )}
 
         </div>
+        </>
         )}
 
         {currentUserId === post.user_id && !showComments && (
