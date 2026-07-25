@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Bookmark,
+  Forward,
+  HandHeart,
+  Heart,
   MessageCircle,
   MoreHorizontal,
   Send,
-  Share2,
-  ThumbsUp,
   Users,
   Volume2,
   VolumeX,
@@ -158,14 +159,15 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
         await (supabase as any).from("likes").insert({
           user_id: user.id,
           content_id: post.id,
-          content_type: "video",
+          content_type: "post",
         });
       } else {
         await (supabase as any)
           .from("likes")
           .delete()
           .eq("user_id", user.id)
-          .eq("content_id", post.id);
+          .eq("content_id", post.id)
+          .eq("content_type", "post");
       }
     } catch {
       setLiked(!next);
@@ -300,8 +302,8 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
           {showMore && (
             <div className="absolute left-1/2 top-14 z-[83] flex -translate-x-1/2 flex-col items-center gap-3 rounded-2xl border border-white/15 bg-black/85 px-3 py-3 shadow-2xl backdrop-blur-md">
               <button type="button" onClick={toggleLike} className="flex flex-col items-center gap-1 text-white">
-                <span className={`flex h-11 w-11 items-center justify-center rounded-full bg-white/10 ${liked ? "text-primary" : ""}`}>
-                  <ThumbsUp className="h-5 w-5" />
+                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10">
+                  <Heart className={`h-5 w-5 ${liked ? "fill-red-500 text-red-500" : ""}`} />
                 </span>
                 <span className="text-[11px] font-semibold">{likesCount || 0}</span>
               </button>
@@ -313,13 +315,7 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
                 <span className={`flex h-11 w-11 items-center justify-center rounded-full bg-white/10 ${showComments ? "text-primary" : ""}`}>
                   <MessageCircle className="h-5 w-5" />
                 </span>
-                <span className="text-[11px] font-semibold">{showComments ? "Hide" : "Comment"}</span>
-              </button>
-              <button type="button" onClick={share} className="flex flex-col items-center gap-1 text-white">
-                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10">
-                  <Share2 className="h-5 w-5" />
-                </span>
-                <span className="text-[11px] font-semibold">Share</span>
+                <span className="text-[11px] font-semibold">{showComments ? "Hide" : (post.comments_count || 0)}</span>
               </button>
               <button
                 type="button"
@@ -328,11 +324,16 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
                   toast.success(saved ? "Removed from saved" : "Saved");
                 }}
                 className="flex flex-col items-center gap-1 text-white"
+                aria-label="Save"
               >
-                <span className={`flex h-11 w-11 items-center justify-center rounded-full bg-white/10 ${saved ? "text-primary" : ""}`}>
-                  <Bookmark className="h-5 w-5" />
+                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10">
+                  <Bookmark className={`h-5 w-5 ${saved ? "fill-white text-white" : ""}`} />
                 </span>
-                <span className="text-[11px] font-semibold">Save</span>
+              </button>
+              <button type="button" onClick={share} className="flex flex-col items-center gap-1 text-white" aria-label="Share">
+                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10">
+                  <Forward className="h-5 w-5" />
+                </span>
               </button>
               <button
                 type="button"
@@ -341,11 +342,26 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
                   navigate("/circle");
                 }}
                 className="flex flex-col items-center gap-1 text-white"
+                aria-label="Open My Circle"
               >
                 <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10">
                   <Users className="h-5 w-5" />
                 </span>
-                <span className="text-[11px] font-semibold">Circle</span>
+                <span className="text-[9px] font-semibold">My Circle</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  navigate("/my-projects");
+                }}
+                className="flex flex-col items-center gap-1 text-white"
+                aria-label="Support this artist"
+              >
+                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10">
+                  <HandHeart className="h-5 w-5" />
+                </span>
+                <span className="text-[9px] font-semibold">Support</span>
               </button>
             </div>
           )}
