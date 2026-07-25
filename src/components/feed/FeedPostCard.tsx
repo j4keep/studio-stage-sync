@@ -1188,7 +1188,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
         {!showComments && (
         <>
         <div className="absolute right-3 feed-bottom-offset z-40 flex flex-col items-center gap-4 pb-1 pointer-events-auto">
-          {post.media_type === "video" && (
+          { (post.media_type === "video" || hasAddedSound) && (
             <button
               onPointerDown={(e) => {
                 if (!autoplayAudioLockedRef.current) return;
@@ -1219,7 +1219,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
                 });
               }}
               className="feed-action-btn"
-              aria-label={isMuted ? "Unmute video" : "Mute video"}
+              aria-label={isMuted ? "Unmute" : "Mute"}
             >
               {isMuted ? <VolumeX className="feed-action-icon" /> : <Volume2 className="feed-action-icon" />}
             </button>

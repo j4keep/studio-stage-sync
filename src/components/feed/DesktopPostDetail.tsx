@@ -62,11 +62,21 @@ export default function DesktopPostDetail({ items, startIndex, onClose }: Props)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const typing =
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable);
+
       if (e.key === "Escape") {
         if (showComments) setShowComments(false);
         else if (showMore) setShowMore(false);
         else onClose();
+        return;
       }
+      if (typing) return;
       if (e.key === "ArrowLeft") setIndex((i) => Math.max(0, i - 1));
       if (e.key === "ArrowRight") setIndex((i) => Math.min(items.length - 1, i + 1));
     };
@@ -298,7 +308,7 @@ export default function DesktopPostDetail({ items, startIndex, onClose }: Props)
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
-            <p className="text-[15px] font-bold text-foreground">Comments</p>
+            <p className="text-[14px] font-semibold text-foreground">Comments</p>
             <button
               type="button"
               onClick={() => setShowComments(false)}

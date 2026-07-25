@@ -6,6 +6,7 @@ import {
   Heart,
   MessageCircle,
   MoreHorizontal,
+  Play,
   Users,
   Volume2,
   VolumeX,
@@ -48,9 +49,12 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
   const [saved, setSaved] = useState(false);
   const post = items[index];
   const profile = post?.profile || { display_name: "Artist", avatar_url: null, user_id: post?.user_id };
-  const { caption } = useMemo(() => parsePostCaption(post?.caption), [post?.caption]);
+  const { caption, meta: postMeta } = useMemo(() => parsePostCaption(post?.caption), [post?.caption]);
+  const hasAddedSound = Boolean(postMeta?.music?.audioUrl);
+  const showVolumeControl = post?.media_type === "video" || hasAddedSound;
   const [liked, setLiked] = useState(Boolean(post?.isLiked));
   const [likesCount, setLikesCount] = useState(post?.likes_count || 0);
+  const [paused, setPaused] = useState(false);
 
   const goPrev = () => setIndex((i) => Math.max(0, i - 1));
   const goNext = () => setIndex((i) => Math.min(items.length - 1, i + 1));
@@ -65,17 +69,19 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
     setShowComments(false);
     setShowMore(false);
     setSaved(false);
+    setPaused(false);
   }, [post?.id, post?.isLiked, post?.likes_count]);
 
   useEffect(() => {
     const v = videoRef.current;
-    if (!v || !post?.media_url) return;
+    if (!v || !post?.media_url || post.media_type !== "video") return;
     const meta = { title: caption || "YAJ", artist: profile.display_name || "YAJ" };
     forceIosAudioSessionToPlayback();
     unlockFeedAudioSession();
     const cleanup = armFeedAudioPlayback(v, meta, 1);
     applyFeedVideoAudio(v, { muted: false, volume: 1 });
     v.currentTime = 0;
+    setPaused(false);
 
     let cancelled = false;
     void (async () => {
@@ -100,27 +106,57 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
       cancelled = true;
       cleanup();
     };
-  }, [post?.id, post?.media_url, caption, profile.display_name]);
+  }, [post?.id, post?.media_url, post?.media_type, caption, profile.display_name]);
 
   useEffect(() => {
     const v = videoRef.current;
-    if (!v) return;
+    if (!v || post?.media_type !== "video") return;
     applyFeedVideoAudio(v, { muted, volume: muted ? 0 : 1 });
-  }, [muted]);
+  }, [muted, post?.media_type]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const typing =
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable);
+
       if (e.key === "Escape") {
         if (showComments) setShowComments(false);
         else if (showMore) setShowMore(false);
         else onClose();
+        return;
       }
-      if (e.key === "ArrowUp") goPrev();
-      if (e.key === "ArrowDown") goNext();
+      if (typing) return;
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        goPrev();
+      }
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        goNext();
+      }
+      if ((e.code === "Space" || e.key === " ") && post?.media_type === "video") {
+        e.preventDefault();
+        const v = videoRef.current;
+        if (!v) return;
+        if (v.paused) {
+          forceIosAudioSessionToPlayback();
+          unlockFeedAudioSession();
+          applyFeedVideoAudio(v, { muted, volume: muted ? 0 : 1 });
+          void v.play().then(() => setPaused(false)).catch(() => setPaused(true));
+        } else {
+          v.pause();
+          setPaused(true);
+        }
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [items.length, onClose, showComments, showMore]);
+  }, [items.length, onClose, showComments, showMore, post?.media_type, muted]);
 
   useEffect(() => {
     const el = stageRef.current;
@@ -249,30 +285,51 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
 
             <FloatingEmojiLayer emojis={emojis} />
 
-            <button
-              type="button"
-              data-no-swipe
-              onClick={() => {
-                if (muted) {
+            {showVolumeControl && (
+              <button
+                type="button"
+                data-no-swipe
+                onClick={() => {
+                  if (muted) {
+                    forceIosAudioSessionToPlayback();
+                    unlockFeedAudioSession();
+                    const v = videoRef.current;
+                    if (v) {
+                      applyFeedVideoAudio(v, { muted: false, volume: 1 });
+                      void v.play().catch(() => {});
+                    }
+                    setMuted(false);
+                  } else {
+                    setMuted(true);
+                  }
+                }}
+                className={`absolute left-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/45 ${
+                  muted ? "text-white/50" : "text-white"
+                }`}
+                aria-label={muted ? "Unmute" : "Mute"}
+              >
+                {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+              </button>
+            )}
+
+            {post.media_type === "video" && paused && (
+              <button
+                type="button"
+                data-no-swipe
+                onClick={() => {
+                  const v = videoRef.current;
+                  if (!v) return;
                   forceIosAudioSessionToPlayback();
                   unlockFeedAudioSession();
-                  const v = videoRef.current;
-                  if (v) {
-                    applyFeedVideoAudio(v, { muted: false, volume: 1 });
-                    void v.play().catch(() => {});
-                  }
-                  setMuted(false);
-                } else {
-                  setMuted(true);
-                }
-              }}
-              className={`absolute left-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/45 ${
-                muted ? "text-white/50" : "text-white"
-              }`}
-              aria-label={muted ? "Unmute" : "Mute"}
-            >
-              {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-            </button>
+                  applyFeedVideoAudio(v, { muted, volume: muted ? 0 : 1 });
+                  void v.play().then(() => setPaused(false)).catch(() => {});
+                }}
+                className="absolute left-1/2 top-1/2 z-10 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-white"
+                aria-label="Play"
+              >
+                <Play className="ml-0.5 h-6 w-6 fill-white" />
+              </button>
+            )}
 
             <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent p-4 pt-20">
               <button
@@ -395,7 +452,7 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
           className="absolute bottom-0 right-0 top-0 z-[81] flex w-[min(400px,36vw)] flex-col border-l border-white/10 bg-card"
         >
           <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
-            <p className="text-[15px] font-bold text-foreground">Comments</p>
+            <p className="text-[14px] font-semibold text-foreground">Comments</p>
             <button
               type="button"
               onClick={() => setShowComments(false)}
