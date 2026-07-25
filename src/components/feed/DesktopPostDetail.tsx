@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Bookmark,
   ChevronLeft,
   ChevronRight,
-  Download,
   Forward,
   HandHeart,
   Heart,
@@ -20,8 +19,6 @@ import { parsePostCaption } from "@/lib/post-editor";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { armFeedAudioPlayback, playFeedVideo } from "@/lib/feed-video-playback";
-import { downloadMediaWithYajLogo } from "@/lib/download-media-with-logo";
 
 type Props = {
   items: any[];
@@ -34,13 +31,11 @@ export default function DesktopPostDetail({ items, startIndex, onClose }: Props)
   const navigate = useNavigate();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const videoRef = useRef<HTMLVideoElement>(null);
   const [index, setIndex] = useState(startIndex);
   const [text, setText] = useState("");
   const [showMore, setShowMore] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [downloading, setDownloading] = useState(false);
   const post = items[index];
   const profile = post?.profile || { display_name: "Artist", avatar_url: null, user_id: post?.user_id };
   const { caption } = useMemo(() => parsePostCaption(post?.caption), [post?.caption]);
@@ -59,16 +54,6 @@ export default function DesktopPostDetail({ items, startIndex, onClose }: Props)
     setShowComments(false);
     setSaved(false);
   }, [post?.id, post?.isLiked, post?.likes_count]);
-
-  useEffect(() => {
-    const v = videoRef.current;
-    if (!v || post?.media_type !== "video" || !post?.media_url) return;
-    const meta = { title: caption || "YAJ", artist: profile.display_name || "YAJ" };
-    const cleanup = armFeedAudioPlayback(v, meta, 1);
-    v.currentTime = 0;
-    void playFeedVideo(v, meta, { muted: false });
-    return cleanup;
-  }, [post?.id, post?.media_url, post?.media_type, caption, profile.display_name]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -170,24 +155,6 @@ export default function DesktopPostDetail({ items, startIndex, onClose }: Props)
     }
   };
 
-  const download = async () => {
-    if (!post.media_url || downloading) return;
-    setDownloading(true);
-    try {
-      await downloadMediaWithYajLogo({
-        mediaUrl: post.media_url,
-        mediaType: post.media_type,
-        filenameBase: `yaj-post-${post.id || Date.now()}`,
-      });
-      toast.success("Downloaded with YAJ logo");
-      setShowMore(false);
-    } catch (e: any) {
-      toast.error(e?.message || "Download failed");
-    } finally {
-      setDownloading(false);
-    }
-  };
-
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 p-4" onClick={onClose}>
       <button
@@ -274,18 +241,6 @@ export default function DesktopPostDetail({ items, startIndex, onClose }: Props)
                   <Bookmark className={`h-5 w-5 ${saved ? "fill-white text-white" : ""}`} />
                 </span>
               </button>
-              <button
-                type="button"
-                onClick={() => void download()}
-                disabled={downloading || !post.media_url}
-                className="flex flex-col items-center gap-0.5 text-white disabled:opacity-50"
-                aria-label="Download"
-              >
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
-                  <Download className="h-5 w-5" />
-                </span>
-                <span className="text-[9px] font-semibold">{downloading ? "…" : "Download"}</span>
-              </button>
               <button type="button" onClick={share} className="flex flex-col items-center gap-0.5 text-white" aria-label="Share">
                 <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
                   <Forward className="h-5 w-5" />
@@ -326,14 +281,10 @@ export default function DesktopPostDetail({ items, startIndex, onClose }: Props)
         <div className={`relative w-full shrink-0 bg-black ${showComments ? "max-h-[36vh]" : "max-h-[58vh]"} min-h-[200px]`}>
           {post.media_type === "video" ? (
             <video
-              ref={videoRef}
-              key={post.id}
               src={post.media_url}
+              controls
               autoPlay
               playsInline
-              loop
-              muted={false}
-              controls={false}
               className={`mx-auto w-full object-contain ${showComments ? "max-h-[36vh]" : "max-h-[58vh]"}`}
             />
           ) : post.media_url ? (
