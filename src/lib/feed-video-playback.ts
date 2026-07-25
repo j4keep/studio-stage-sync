@@ -54,7 +54,7 @@ export function getFeedMountRadius() {
   return isTouchFeedDevice() ? 0 : 1;
 }
 
-/** Wait until Safari has enough buffered to start playback. */
+/** Wait until Safari has enough buffered to start playback — never call load() (resets decoder). */
 export function waitForVideoCanPlay(video: HTMLVideoElement, timeoutMs = 5000): Promise<boolean> {
   if (video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) return Promise.resolve(true);
 
@@ -68,12 +68,7 @@ export function waitForVideoCanPlay(video: HTMLVideoElement, timeoutMs = 5000): 
     const onReady = () => finish(true);
     video.addEventListener("canplay", onReady);
     video.addEventListener("loadeddata", onReady);
-    video.preload = "auto";
-    try {
-      video.load();
-    } catch {
-      /* ignore */
-    }
+    if (video.preload !== "auto") video.preload = "auto";
     const timer = window.setTimeout(
       () => finish(video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA),
       timeoutMs,

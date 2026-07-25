@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { MessageCircle, Search } from "lucide-react";
 import { fetchFeedItems, isReelItem } from "@/lib/feed-items";
-import { initFeedAudioUnlockOnGesture } from "@/lib/feed-video-playback";
+import { forceIosAudioSessionToPlayback, initFeedAudioUnlockOnGesture, unlockFeedAudioSession } from "@/lib/feed-video-playback";
 import FeedThumbCard from "@/components/feed/FeedThumbCard";
 import FeedFullscreenViewer from "@/components/feed/FeedFullscreenViewer";
 import DesktopPostDetail from "@/components/feed/DesktopPostDetail";
@@ -64,7 +64,11 @@ const FeedPage = () => {
     initFeedAudioUnlockOnGesture();
   }, []);
 
-  const openItem = (rail: "reel" | "post", index: number) => setViewer({ rail, index });
+  const openItem = (rail: "reel" | "post", index: number) => {
+    forceIosAudioSessionToPlayback();
+    unlockFeedAudioSession();
+    setViewer({ rail, index });
+  };
   const activeItems = viewer?.rail === "reel" ? reels : viewer?.rail === "post" ? posts : [];
 
   const trendingRow = trending.length > 0 && (
