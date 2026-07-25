@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Bookmark,
+  Download,
   Forward,
   HandHeart,
   Heart,
@@ -8,8 +9,6 @@ import {
   MoreHorizontal,
   Send,
   Users,
-  Volume2,
-  VolumeX,
   X,
 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -18,6 +17,9 @@ import { parsePostCaption } from "@/lib/post-editor";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { armFeedAudioPlayback, playFeedVideo } from "@/lib/feed-video-playback";
+import { downloadMediaWithYajLogo } from "@/lib/download-media-with-logo";
+import yajLogo from "@/assets/yaj-logo.png";
 
 type Props = {
   items: any[];
@@ -36,8 +38,8 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
   const [index, setIndex] = useState(startIndex);
   const [showComments, setShowComments] = useState(false);
   const [showMore, setShowMore] = useState(false);
-  const [muted, setMuted] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [text, setText] = useState("");
   const post = items[index];
   const profile = post?.profile || { display_name: "Artist", avatar_url: null, user_id: post?.user_id };
@@ -63,11 +65,13 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
 
   useEffect(() => {
     const v = videoRef.current;
-    if (!v) return;
-    v.muted = muted;
+    if (!v || !post?.media_url) return;
+    const meta = { title: caption || "YAJ", artist: profile.display_name || "YAJ" };
+    const cleanup = armFeedAudioPlayback(v, meta, 1);
     v.currentTime = 0;
-    void v.play().catch(() => {});
-  }, [post?.id, post?.media_url, muted]);
+    void playFeedVideo(v, meta, { muted: false });
+    return cleanup;
+  }, [post?.id, post?.media_url, caption, profile.display_name]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -188,6 +192,24 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
     }
   };
 
+  const download = async () => {
+    if (!post.media_url || downloading) return;
+    setDownloading(true);
+    try {
+      await downloadMediaWithYajLogo({
+        mediaUrl: post.media_url,
+        mediaType: post.media_type || "video",
+        filenameBase: `yaj-reel-${post.id || Date.now()}`,
+      });
+      toast.success("Downloaded with YAJ logo");
+      setShowMore(false);
+    } catch (e: any) {
+      toast.error(e?.message || "Download failed");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   const onPointerDown = (e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest("[data-no-swipe]")) return;
     swipeRef.current = { y: e.clientY, active: true };
@@ -244,22 +266,19 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
               playsInline
               loop
               autoPlay
-              muted={muted}
+              muted={false}
               controls={false}
             />
           ) : (
             <img src={post.media_url} alt="" className="h-full w-full object-cover" />
           )}
 
-          <button
-            type="button"
+          <img
+            src={yajLogo}
+            alt="YAJ"
             data-no-swipe
-            onClick={() => setMuted((m) => !m)}
-            className="absolute left-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white"
-            aria-label={muted ? "Unmute" : "Mute"}
-          >
-            {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-          </button>
+            className="pointer-events-none absolute right-3 top-3 z-10 h-9 w-auto object-contain drop-shadow-md"
+          />
 
           <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent p-4 pt-20">
             <button
@@ -334,6 +353,18 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
                 <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
                   <Bookmark className={`h-5 w-5 ${saved ? "fill-white text-white" : ""}`} />
                 </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => void download()}
+                disabled={downloading || !post.media_url}
+                className="flex flex-col items-center gap-0.5 text-white disabled:opacity-50"
+                aria-label="Download"
+              >
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
+                  <Download className="h-5 w-5" />
+                </span>
+                <span className="text-[9px] font-semibold">{downloading ? "…" : "Download"}</span>
               </button>
               <button type="button" onClick={share} className="flex flex-col items-center gap-0.5 text-white" aria-label="Share">
                 <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
