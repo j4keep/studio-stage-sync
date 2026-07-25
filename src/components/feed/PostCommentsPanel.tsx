@@ -166,7 +166,7 @@ export default function PostCommentsPanel({
       if (error) throw error;
       if (!data?.length) return [] as CommentRow[];
 
-      const userIds = [...new Set(data.map((c: any) => c.user_id))];
+      const userIds = [...new Set(data.map((c: any) => c.user_id))] as string[];
       const { data: profiles } = await supabase
         .from("profiles")
         .select("user_id, display_name, avatar_url")

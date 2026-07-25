@@ -150,7 +150,7 @@ export default function EmployerDashboardPage() {
     references_json: Record<string, unknown>;
   }) => {
     if (!interviewApp) return;
-    const { error } = await supabase.from("job_applications").update(payload).eq("id", interviewApp.id);
+    const { error } = await supabase.from("job_applications").update(payload as any).eq("id", interviewApp.id);
     if (error) return toast.error(error.message);
     setApps((prev) => prev.map((a) => a.id === interviewApp.id ? { ...a, ...payload } : a));
     const appId = interviewApp.id;
