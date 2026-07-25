@@ -748,7 +748,6 @@ export type Database = {
         Row: {
           benefits: string[] | null
           category: string
-          cover_image_url: string | null
           created_at: string
           deadline: string | null
           description: string
@@ -774,7 +773,6 @@ export type Database = {
         Insert: {
           benefits?: string[] | null
           category?: string
-          cover_image_url?: string | null
           created_at?: string
           deadline?: string | null
           description: string
@@ -800,7 +798,6 @@ export type Database = {
         Update: {
           benefits?: string[] | null
           category?: string
-          cover_image_url?: string | null
           created_at?: string
           deadline?: string | null
           description?: string
@@ -1667,7 +1664,6 @@ export type Database = {
           content: string
           created_at: string
           id: string
-          parent_id: string | null
           post_id: string
           user_id: string
         }
@@ -1675,7 +1671,6 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
-          parent_id?: string | null
           post_id: string
           user_id: string
         }
@@ -1683,7 +1678,6 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
-          parent_id?: string | null
           post_id?: string
           user_id?: string
         }
@@ -1693,13 +1687,6 @@ export type Database = {
             columns: ["post_id"]
             isOneToOne: false
             referencedRelation: "posts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "post_comments_parent_id_fkey"
-            columns: ["parent_id"]
-            isOneToOne: false
-            referencedRelation: "post_comments"
             referencedColumns: ["id"]
           },
         ]
