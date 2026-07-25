@@ -67,6 +67,22 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
   const [showComments, setShowComments] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+
+  // Lock the fullscreen snap scroller while comments are open so the video stay shrunk on top.
+  useEffect(() => {
+    if (!showComments) return;
+    const stage = videoRef.current?.closest(".snap-start") as HTMLElement | null;
+    const scroller = stage?.parentElement;
+    if (!scroller) return;
+    const prevOverflow = scroller.style.overflowY;
+    const prevTouch = scroller.style.touchAction;
+    scroller.style.overflowY = "hidden";
+    scroller.style.touchAction = "none";
+    return () => {
+      scroller.style.overflowY = prevOverflow;
+      scroller.style.touchAction = prevTouch;
+    };
+  }, [showComments]);
   const [viewCounted, setViewCounted] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -1046,10 +1062,15 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
 
   return (
     <>
+      {/*
+        Keep the media stage absolutely positioned inside the snap slide.
+        Do not use position:fixed here — it breaks inside the overflow scroll viewer on iOS,
+        which is why the video was not shrinking and chrome looked mid-screen.
+      */}
       <div
         className={
           showComments
-            ? "fixed inset-x-0 top-0 z-[85] mx-auto max-w-lg overflow-hidden bg-black"
+            ? "absolute inset-x-0 top-0 z-[5] overflow-hidden bg-black transition-[height] duration-300 ease-out"
             : "absolute inset-0 overflow-hidden bg-black"
         }
         style={showComments ? { height: MOBILE_COMMENTS_VIDEO_HEIGHT } : undefined}
@@ -1062,7 +1083,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
             <video
               ref={videoRef}
               src={post.media_url}
-              className="absolute inset-0 h-full w-full object-cover"
+              className={`absolute inset-0 h-full w-full ${showComments ? "object-contain" : "object-cover"}`}
               style={{ ...videoCompositedStyle, opacity: showPosterOverlay || showGeneratedPosterOverlay ? 0.01 : 1 }}
               loop
               playsInline
@@ -1093,7 +1114,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
             <img
               src={post.media_url}
               alt={displayCaption || "Feed post"}
-              className="absolute inset-0 h-full w-full object-cover"
+              className={`absolute inset-0 h-full w-full ${showComments ? "object-contain" : "object-cover"}`}
               onLoad={() => setMediaReady(true)}
               onError={() => setMediaFailed(true)}
             />
@@ -1104,7 +1125,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
             src={posterOverlayUrl}
             alt=""
             draggable={false}
-            className="absolute inset-0 z-[1] h-full w-full object-cover pointer-events-none transition-opacity duration-200"
+            className={`absolute inset-0 z-[1] h-full w-full pointer-events-none transition-opacity duration-200 ${showComments ? "object-contain" : "object-cover"}`}
             style={videoCompositedStyle}
           />
         )}
@@ -1113,7 +1134,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
           <VideoPoster
             src={post.media_url}
             alt={displayCaption || postTitle || "Video preview"}
-            className="absolute inset-0 z-[1] h-full w-full object-cover pointer-events-none"
+            className={`absolute inset-0 z-[1] h-full w-full pointer-events-none ${showComments ? "object-contain" : "object-cover"}`}
           />
         )}
 

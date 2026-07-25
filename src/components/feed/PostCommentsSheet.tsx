@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import PostCommentsPanel from "@/components/feed/PostCommentsPanel";
 
 /** Top band reserved for the shrunk mobile video while comments are open */
-export const MOBILE_COMMENTS_VIDEO_HEIGHT = "min(32dvh, 280px)";
+export const MOBILE_COMMENTS_VIDEO_HEIGHT = "38dvh";
 
 interface Props {
   postId: string;
@@ -50,19 +50,19 @@ const PostCommentsSheet = ({
           exit={{ y: "100%" }}
           transition={{ type: "spring", damping: 28, stiffness: 340 }}
           className="fixed inset-x-0 bottom-0 z-[90] mx-auto flex max-w-lg flex-col rounded-t-2xl border-t border-border bg-background shadow-[0_-8px_30px_rgba(0,0,0,0.25)]"
-          style={{ top: MOBILE_COMMENTS_VIDEO_HEIGHT }}
+          style={{ top: MOBILE_COMMENTS_VIDEO_HEIGHT, height: `calc(100dvh - ${MOBILE_COMMENTS_VIDEO_HEIGHT})` }}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex shrink-0 flex-col items-center border-b border-border px-3 pb-2.5 pt-2">
             <div className="mb-2 h-1 w-10 rounded-full bg-muted-foreground/35" />
-            <div className="flex w-full items-center gap-2">
-              <h3 className="min-w-0 flex-1 text-[15px] font-bold text-foreground">
+            <div className="relative flex w-full items-center justify-center">
+              <h3 className="text-[14px] font-semibold text-foreground">
                 {Number(displayCount).toLocaleString()} comments
               </h3>
               <button
                 type="button"
                 onClick={onClose}
-                className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-muted"
+                className="absolute right-0 flex h-8 w-8 items-center justify-center rounded-full hover:bg-muted"
                 aria-label="Close comments"
               >
                 <X className="h-5 w-5 text-muted-foreground" />

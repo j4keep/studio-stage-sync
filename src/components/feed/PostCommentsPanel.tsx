@@ -258,7 +258,7 @@ export default function PostCommentsPanel({
           <Avatar name={comment.profile.display_name} url={comment.profile.avatar_url} size={depth ? "sm" : "md"} />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-x-1.5">
-              <span className="text-[13px] font-medium leading-tight text-muted-foreground">
+              <span className="text-[12px] font-normal leading-tight text-muted-foreground">
                 {comment.profile.display_name || "User"}
               </span>
               {isAuthor && (
@@ -267,14 +267,14 @@ export default function PostCommentsPanel({
                 </span>
               )}
             </div>
-            <p className="mt-0.5 break-words text-[15px] font-bold leading-[1.35] text-foreground">
+            <p className="mt-0.5 break-words text-[13px] font-semibold leading-[1.35] text-foreground">
               {renderCommentBody(comment.content)}
             </p>
-            <div className="mt-1.5 flex items-center gap-3">
-              <span className="text-[12px] text-muted-foreground">{formatCommentAge(comment.created_at)}</span>
+            <div className="mt-1 flex items-center gap-3">
+              <span className="text-[11px] text-muted-foreground">{formatCommentAge(comment.created_at)}</span>
               <button
                 type="button"
-                className="text-[12px] font-semibold text-muted-foreground hover:text-foreground"
+                className="text-[11px] font-semibold text-muted-foreground hover:text-foreground"
                 onClick={() => {
                   setReplyTo(comment);
                   setExpanded((prev) => ({ ...prev, [comment.id]: true }));
@@ -287,7 +287,7 @@ export default function PostCommentsPanel({
             {depth === 0 && replies.length > 0 && !open && (
               <button
                 type="button"
-                className="mt-2 flex items-center gap-1 text-[13px] font-semibold text-muted-foreground hover:text-foreground"
+                className="mt-1.5 flex items-center gap-1 text-[12px] font-semibold text-muted-foreground hover:text-foreground"
                 onClick={() => setExpanded((prev) => ({ ...prev, [comment.id]: true }))}
               >
                 View {replies.length} {replies.length === 1 ? "reply" : "replies"}
@@ -364,7 +364,7 @@ export default function PostCommentsPanel({
                   : "Add comment..."
             }
             disabled={!user || commentMutation.isPending}
-            className="h-11 min-w-0 flex-1 rounded-full border border-border bg-muted/80 px-4 text-[15px] text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/25"
+            className="h-11 min-w-0 flex-1 rounded-full border border-border bg-muted/80 px-4 text-[14px] text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/25"
           />
           <button
             type="submit"
