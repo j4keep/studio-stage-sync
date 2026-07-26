@@ -183,6 +183,15 @@ export default function MyGigsPage() {
           </button>
         ))}
       </div>
+
+      <PostGigSheet
+        open={postOpen}
+        onClose={() => setPostOpen(false)}
+        onCreated={() => {
+          setPostOpen(false);
+          void load();
+        }}
+      />
     </div>
   );
 }
