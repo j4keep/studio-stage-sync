@@ -561,6 +561,44 @@ export type Database = {
           },
         ]
       }
+      gig_interests: {
+        Row: {
+          created_at: string
+          experience_bio: string | null
+          gig_id: string
+          id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          experience_bio?: string | null
+          gig_id: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          experience_bio?: string | null
+          gig_id?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gig_interests_gig_id_fkey"
+            columns: ["gig_id"]
+            isOneToOne: false
+            referencedRelation: "gig_listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gig_listings: {
         Row: {
           ai_estimate: Json | null
@@ -639,36 +677,6 @@ export type Database = {
           updated_at?: string
           urgency?: string | null
           worker_completed_at?: string | null
-        }
-        Relationships: []
-      }
-      gig_interests: {
-        Row: {
-          id: string
-          gig_id: string
-          user_id: string
-          experience_bio: string | null
-          status: string
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          gig_id: string
-          user_id: string
-          experience_bio?: string | null
-          status?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          gig_id?: string
-          user_id?: string
-          experience_bio?: string | null
-          status?: string
-          created_at?: string
-          updated_at?: string
         }
         Relationships: []
       }
@@ -1835,8 +1843,8 @@ export type Database = {
           daw_shortcuts: Json | null
           display_name: string | null
           email: string | null
-          hide_yaj_page_on_gigs: boolean
           gig_experience_bio: string | null
+          hide_yaj_page_on_gigs: boolean
           id: string
           terms_accepted_at: string | null
           theme_preset: string | null
@@ -1854,8 +1862,8 @@ export type Database = {
           daw_shortcuts?: Json | null
           display_name?: string | null
           email?: string | null
-          hide_yaj_page_on_gigs?: boolean
           gig_experience_bio?: string | null
+          hide_yaj_page_on_gigs?: boolean
           id?: string
           terms_accepted_at?: string | null
           theme_preset?: string | null
@@ -1873,8 +1881,8 @@ export type Database = {
           daw_shortcuts?: Json | null
           display_name?: string | null
           email?: string | null
-          hide_yaj_page_on_gigs?: boolean
           gig_experience_bio?: string | null
+          hide_yaj_page_on_gigs?: boolean
           id?: string
           terms_accepted_at?: string | null
           theme_preset?: string | null
