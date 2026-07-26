@@ -561,6 +561,44 @@ export type Database = {
           },
         ]
       }
+      gig_interests: {
+        Row: {
+          created_at: string
+          experience_bio: string | null
+          gig_id: string
+          id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          experience_bio?: string | null
+          gig_id: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          experience_bio?: string | null
+          gig_id?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gig_interests_gig_id_fkey"
+            columns: ["gig_id"]
+            isOneToOne: false
+            referencedRelation: "gig_listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gig_listings: {
         Row: {
           ai_estimate: Json | null
@@ -1805,6 +1843,7 @@ export type Database = {
           daw_shortcuts: Json | null
           display_name: string | null
           email: string | null
+          gig_experience_bio: string | null
           hide_yaj_page_on_gigs: boolean
           id: string
           terms_accepted_at: string | null
@@ -1823,6 +1862,7 @@ export type Database = {
           daw_shortcuts?: Json | null
           display_name?: string | null
           email?: string | null
+          gig_experience_bio?: string | null
           hide_yaj_page_on_gigs?: boolean
           id?: string
           terms_accepted_at?: string | null
@@ -1841,6 +1881,7 @@ export type Database = {
           daw_shortcuts?: Json | null
           display_name?: string | null
           email?: string | null
+          gig_experience_bio?: string | null
           hide_yaj_page_on_gigs?: boolean
           id?: string
           terms_accepted_at?: string | null
