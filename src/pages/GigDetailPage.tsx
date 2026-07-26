@@ -16,6 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { timeAgo, URGENCY_OPTIONS } from "@/lib/jobs";
 import { canRateGig, formatGigBudget, gigHelperId, gigStatusLabel } from "@/lib/gigs";
+import { fetchRatingsByUserIds, type DisplayRating } from "@/lib/ratings";
 import { blockUser } from "@/lib/blocks";
 import GigProfileCard, { type GigProfileInfo } from "@/components/jobs/GigProfileCard";
 import PostGigSheet from "@/components/jobs/PostGigSheet";
@@ -60,7 +61,7 @@ export default function GigDetailPage() {
   const [blockOpen, setBlockOpen] = useState(false);
   const [blockBusy, setBlockBusy] = useState(false);
   const [myRating, setMyRating] = useState<number | null>(null);
-  const [ratingsByUser, setRatingsByUser] = useState<Record<string, { avg: number; count: number }>>({});
+  const [ratingsByUser, setRatingsByUser] = useState<Record<string, DisplayRating>>({});
 
   const load = async () => {
     if (!id) return;
@@ -70,7 +71,7 @@ export default function GigDetailPage() {
     if (!row) return;
 
     const helperId = gigHelperId(row);
-    const ids = [row.poster_id, helperId].filter(Boolean) as string[];
+    const ids = [row.poster_id, helperId, user?.id].filter(Boolean) as string[];
     const { data: profiles } = await supabase
       .from("profiles")
       .select("user_id, display_name, avatar_url")
@@ -84,19 +85,7 @@ export default function GigDetailPage() {
     );
 
     if (ids.length) {
-      const { data: ratingRows } = await supabase.from("user_ratings").select("ratee_id, score").in("ratee_id", ids);
-      const acc: Record<string, { sum: number; count: number }> = {};
-      for (const r of ratingRows || []) {
-        const cur = acc[r.ratee_id] || { sum: 0, count: 0 };
-        cur.sum += r.score;
-        cur.count += 1;
-        acc[r.ratee_id] = cur;
-      }
-      const next: Record<string, { avg: number; count: number }> = {};
-      for (const [uid, v] of Object.entries(acc)) {
-        next[uid] = { avg: v.sum / v.count, count: v.count };
-      }
-      setRatingsByUser(next);
+      setRatingsByUser(await fetchRatingsByUserIds(ids));
     }
 
     if (user) {
@@ -143,6 +132,11 @@ export default function GigDetailPage() {
   const isPoster = Boolean(user && gig && user.id === gig.poster_id);
   const isWorker = Boolean(user && helperId && user.id === helperId);
   const isParty = isPoster || isWorker;
+  const hasHelper = Boolean(helperId);
+  const canComplete =
+    isParty &&
+    hasHelper &&
+    !["completed", "closed", "cancelled"].includes(gig?.status || "");
   const otherParty = isPoster ? worker : isWorker ? poster : poster;
   const otherName = otherParty?.display_name || "User";
 
@@ -258,8 +252,7 @@ export default function GigDetailPage() {
             label={isPoster ? "Your profile on this gig" : "Posted by"}
             profile={poster}
             hideYajPage={posterHidesPage}
-            ratingAvg={poster ? ratingsByUser[poster.user_id]?.avg : null}
-            ratingCount={poster ? ratingsByUser[poster.user_id]?.count : null}
+            rating={poster ? ratingsByUser[poster.user_id] : null}
             onOpenProfile={poster && !posterHidesPage && !isPoster ? () => nav(`/artist/${poster.user_id}`) : undefined}
           />
           {worker && (
@@ -267,8 +260,7 @@ export default function GigDetailPage() {
               label={isWorker ? "Your profile (helper)" : "Helper"}
               profile={worker}
               hideYajPage={false}
-              ratingAvg={ratingsByUser[worker.user_id]?.avg}
-              ratingCount={ratingsByUser[worker.user_id]?.count}
+              rating={ratingsByUser[worker.user_id]}
               onOpenProfile={!isWorker ? () => nav(`/artist/${worker.user_id}`) : undefined}
             />
           )}
@@ -277,8 +269,7 @@ export default function GigDetailPage() {
               label="Your profile (visible to poster)"
               profile={me}
               hideYajPage={hideMyYajPage}
-              ratingAvg={me ? ratingsByUser[me.user_id]?.avg : null}
-              ratingCount={me ? ratingsByUser[me.user_id]?.count : null}
+              rating={me ? ratingsByUser[me.user_id] : null}
               onToggleHide={saveMyHidePreference}
               toggleLabel="Hide my YAJ page — poster only sees your picture and name"
             />
@@ -345,7 +336,7 @@ export default function GigDetailPage() {
             </button>
           )}
 
-          {isParty && !iCompleted && gig.status !== "closed" && gig.status !== "cancelled" && (
+          {canComplete && !iCompleted && (
             <button
               type="button"
               onClick={() => void markComplete()}

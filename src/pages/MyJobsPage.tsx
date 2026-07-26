@@ -102,6 +102,9 @@ export default function MyJobsPage() {
           <ArrowLeft className="w-4 h-4" />
         </button>
         <h1 className="text-base font-bold flex-1">My Jobs</h1>
+        <button onClick={() => nav("/my-gigs")} className="h-8 px-3 rounded-full bg-muted text-[11px] font-bold">
+          My Gigs
+        </button>
         <button onClick={() => nav("/resume-builder")} className="h-8 px-3 rounded-full bg-primary text-primary-foreground text-[11px] font-bold flex items-center gap-1">
           <Sparkles className="w-3 h-3" /> Resume
         </button>

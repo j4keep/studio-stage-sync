@@ -1,15 +1,18 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Briefcase, Bookmark, Compass, Home, PlusSquare, User } from "lucide-react";
+import { Briefcase, Bookmark, Compass, HandHelping, Home, PlusSquare, User } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import UserRatingStars from "@/components/UserRatingStars";
+import { fetchUserDisplayRating, type DisplayRating } from "@/lib/ratings";
 
 const links = [
   { path: "/", label: "Home", icon: Home },
   { path: "/explore", label: "Explore", icon: Compass },
-  { path: "/jobs", label: "Jobs", icon: Briefcase },
+  { path: "/jobs", label: "Opportunities", icon: Briefcase },
   { path: "/profile", label: "Profile", icon: User },
-  { path: "/my-jobs", label: "Saved jobs", icon: Bookmark },
+  { path: "/my-jobs", label: "My Jobs", icon: Bookmark },
+  { path: "/my-gigs", label: "My Gigs", icon: HandHelping },
 ] as const;
 
 export default function DesktopLeftNav() {
@@ -18,6 +21,7 @@ export default function DesktopLeftNav() {
   const { user } = useAuth();
   const [displayName, setDisplayName] = useState("You");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [displayRating, setDisplayRating] = useState<DisplayRating | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -31,6 +35,7 @@ export default function DesktopLeftNav() {
         setDisplayName(row?.display_name || user.email?.split("@")[0] || "You");
         setAvatarUrl(row?.avatar_url ?? null);
       });
+    void fetchUserDisplayRating(user.id).then(setDisplayRating);
   }, [user?.id]);
 
   const isActive = (path: string) => {
@@ -55,7 +60,10 @@ export default function DesktopLeftNav() {
             </span>
           )}
         </div>
-        <span className="truncate text-sm font-semibold text-foreground">{displayName}</span>
+        <div className="min-w-0">
+          <span className="block truncate text-sm font-semibold text-foreground">{displayName}</span>
+          <UserRatingStars rating={displayRating} variant="compact" className="mt-0.5" />
+        </div>
       </button>
 
       <nav className="space-y-0.5">

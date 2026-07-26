@@ -11,6 +11,8 @@ import FollowersSheet from "@/components/FollowersSheet";
 import ProfileFeedSection from "@/components/ProfileFeedSection";
 import BattleWinsSheet from "@/components/BattleWinsSheet";
 import UserProjectsSheet from "@/components/UserProjectsSheet";
+import UserRatingStars from "@/components/UserRatingStars";
+import { fetchUserDisplayRating, type DisplayRating } from "@/lib/ratings";
 import BlockConfirmDialog from "@/components/BlockConfirmDialog";
 import { blockUser, isBlockedBetween } from "@/lib/blocks";
 
@@ -30,6 +32,7 @@ const ArtistProfilePage = () => {
   const [showBlock, setShowBlock] = useState(false);
   const [blockBusy, setBlockBusy] = useState(false);
   const [blockedPeer, setBlockedPeer] = useState(false);
+  const [displayRating, setDisplayRating] = useState<DisplayRating | null>(null);
   const [profileInfo, setProfileInfo] = useState<{
     display_name: string;
     avatar_url: string | null;
@@ -124,6 +127,8 @@ const ArtistProfilePage = () => {
         setIsFollowing(!!followData);
       }
 
+      setDisplayRating(await fetchUserDisplayRating(userId));
+
       setLoading(false);
     };
     load();
@@ -214,6 +219,7 @@ const ArtistProfilePage = () => {
           )}
           <div className="flex-1 pb-1">
             <h2 className="text-lg font-display font-bold text-foreground">{profileInfo.display_name}</h2>
+            <UserRatingStars rating={displayRating} variant="full" className="mt-1" />
           </div>
         </div>
 

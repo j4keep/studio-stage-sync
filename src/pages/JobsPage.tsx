@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, MapPin, Clock, Briefcase, Sparkles, Plus, X, User, Settings2, Building2, BadgeCheck } from "lucide-react";
+import { Search, MapPin, Clock, Briefcase, Sparkles, Plus, X, User, Settings2, Building2, BadgeCheck, HandHelping } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { JOB_CATEGORIES, formatSalary, timeAgo, EMPLOYMENT_TYPES, scoreListing, resolveJobCover, type Prefs } from "@/lib/jobs";
@@ -152,18 +152,21 @@ export default function JobsPage() {
             <button
               type="button"
               onClick={() => nav("/my-jobs")}
-              className="w-9 h-9 rounded-full bg-muted flex items-center justify-center"
-              aria-label="My jobs"
+              className="inline-flex h-9 items-center gap-1.5 rounded-full bg-muted px-2.5 text-[11px] font-bold"
+              aria-label="My jobs dashboard"
               title="My Jobs"
             >
-              <User className="w-4 h-4" />
+              <User className="h-3.5 w-3.5" />
+              Jobs
             </button>
             <button
               type="button"
               onClick={() => nav("/my-gigs")}
-              className="h-9 rounded-full bg-muted px-2.5 text-[10px] font-bold"
-              aria-label="My gigs"
+              className="inline-flex h-9 items-center gap-1.5 rounded-full bg-muted px-2.5 text-[11px] font-bold"
+              aria-label="My gigs dashboard"
+              title="My Gigs"
             >
+              <HandHelping className="h-3.5 w-3.5" />
               Gigs
             </button>
             <button

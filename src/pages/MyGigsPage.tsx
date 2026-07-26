@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, MapPin } from "lucide-react";
+import { ArrowLeft, HandHelping, MapPin } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,11 +19,11 @@ type GigRow = {
   poster_id: string;
   assigned_to: string | null;
   worker_id?: string | null;
-  poster_completed_at: string | null;
-  worker_completed_at: string | null;
+  poster_completed_at?: string | null;
+  worker_completed_at?: string | null;
 };
 
-/** Manage gigs you posted or are working on — mirrors My Jobs. */
+/** Gig dashboard — Posted / Working / Completed (mirrors My Jobs). */
 export default function MyGigsPage() {
   const nav = useNavigate();
   const { user } = useAuth();
@@ -65,15 +65,13 @@ export default function MyGigsPage() {
     void load();
   }, [user]);
 
+  const activePosted = posted.filter((g) => g.status !== "completed" && g.status !== "cancelled");
+  const activeWorking = working.filter((g) => g.status !== "completed" && g.status !== "cancelled");
   const completed = [...posted, ...working].filter(
     (g, i, arr) => g.status === "completed" && arr.findIndex((x) => x.id === g.id) === i,
   );
-  const list =
-    tab === "posted"
-      ? posted.filter((g) => g.status !== "completed")
-      : tab === "working"
-        ? working.filter((g) => g.status !== "completed")
-        : completed;
+
+  const list = tab === "posted" ? activePosted : tab === "working" ? activeWorking : completed;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -82,6 +80,13 @@ export default function MyGigsPage() {
           <ArrowLeft className="h-4 w-4" />
         </button>
         <h1 className="flex-1 text-base font-bold">My Gigs</h1>
+        <button
+          type="button"
+          onClick={() => nav("/my-jobs")}
+          className="h-8 rounded-full bg-muted px-3 text-[11px] font-bold"
+        >
+          My Jobs
+        </button>
         <button
           type="button"
           onClick={() => nav("/jobs")}
@@ -94,8 +99,8 @@ export default function MyGigsPage() {
       <div className="flex gap-2 overflow-x-auto border-b border-border px-4 py-3">
         {(
           [
-            ["posted", `Posted (${posted.filter((g) => g.status !== "completed").length})`],
-            ["working", `Working (${working.filter((g) => g.status !== "completed").length})`],
+            ["posted", `Posted (${activePosted.length})`],
+            ["working", `Working (${activeWorking.length})`],
             ["completed", `Completed (${completed.length})`],
           ] as [Tab, string][]
         ).map(([t, label]) => (
@@ -113,9 +118,30 @@ export default function MyGigsPage() {
       </div>
 
       <div className="space-y-2 p-4 pb-24">
-        {loading && <p className="text-sm text-muted-foreground">Loading…</p>}
+        {loading && <p className="py-8 text-center text-sm text-muted-foreground">Loading…</p>}
         {!loading && list.length === 0 && (
-          <p className="py-10 text-center text-sm text-muted-foreground">No gigs here yet</p>
+          <div className="flex flex-col items-center py-16 text-center">
+            <HandHelping className="mb-3 h-10 w-10 text-muted-foreground" />
+            <p className="text-sm font-semibold text-foreground">
+              {tab === "posted" && "No gigs posted yet"}
+              {tab === "working" && "No gigs you're helping with"}
+              {tab === "completed" && "No completed gigs yet"}
+            </p>
+            <p className="mt-1 max-w-xs text-xs text-muted-foreground">
+              {tab === "completed"
+                ? "When both sides press Complete on a gig, it shows up here so you can rate each other."
+                : "Post a gig or join one from Opportunities — manage everything here."}
+            </p>
+            {tab !== "completed" && (
+              <button
+                type="button"
+                onClick={() => nav("/jobs")}
+                className="mt-4 h-9 rounded-full bg-primary px-4 text-xs font-bold text-primary-foreground"
+              >
+                Go to Opportunities
+              </button>
+            )}
+          </div>
         )}
         {list.map((g) => (
           <button
@@ -140,13 +166,18 @@ export default function MyGigsPage() {
               <span>{formatGigBudget(g.budget_min, g.budget_max)}</span>
               <span>{timeAgo(g.created_at)}</span>
             </div>
+            {tab === "posted" && gigHelperId(g) && g.status !== "completed" && (
+              <p className="mt-2 text-[11px] font-semibold text-primary">Helper assigned — open to message or complete</p>
+            )}
             {(g.poster_completed_at || g.worker_completed_at) && g.status !== "completed" && (
               <p className="mt-2 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
                 Waiting for both sides to press Complete before rating
               </p>
             )}
-            {gigHelperId(g) && tab === "posted" && g.status !== "completed" && (
-              <p className="mt-1 text-[11px] text-muted-foreground">Helper assigned</p>
+            {tab === "completed" && (
+              <p className="mt-2 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                Open to rate the other person
+              </p>
             )}
           </button>
         ))}
