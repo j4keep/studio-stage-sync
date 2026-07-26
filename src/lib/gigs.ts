@@ -1,16 +1,26 @@
-export type GigStatus = "open" | "in_progress" | "completed" | "closed";
+export type GigStatus = "open" | "assigned" | "in_progress" | "completed" | "closed" | "cancelled";
 
 export function gigStatusLabel(status: string | null | undefined) {
   switch (status) {
+    case "assigned":
     case "in_progress":
       return "In progress";
     case "completed":
       return "Completed";
     case "closed":
-      return "Closed";
+    case "cancelled":
+      return "Cancelled";
     default:
       return "Open";
   }
+}
+
+/** Helper user id — prefers live `assigned_to`, falls back to legacy `worker_id`. */
+export function gigHelperId(gig: {
+  assigned_to?: string | null;
+  worker_id?: string | null;
+}) {
+  return gig.assigned_to || gig.worker_id || null;
 }
 
 export function bothPartiesCompleted(gig: {

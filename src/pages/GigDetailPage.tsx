@@ -15,7 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { timeAgo, URGENCY_OPTIONS } from "@/lib/jobs";
-import { canRateGig, formatGigBudget, gigStatusLabel } from "@/lib/gigs";
+import { canRateGig, formatGigBudget, gigHelperId, gigStatusLabel } from "@/lib/gigs";
 import { blockUser } from "@/lib/blocks";
 import GigProfileCard, { type GigProfileInfo } from "@/components/jobs/GigProfileCard";
 import PostGigSheet from "@/components/jobs/PostGigSheet";
@@ -26,7 +26,8 @@ import BlockConfirmDialog from "@/components/BlockConfirmDialog";
 type Gig = {
   id: string;
   poster_id: string;
-  worker_id: string | null;
+  assigned_to?: string | null;
+  worker_id?: string | null;
   title: string;
   description: string;
   category: string;
@@ -68,7 +69,8 @@ export default function GigDetailPage() {
     setGig(row);
     if (!row) return;
 
-    const ids = [row.poster_id, row.worker_id].filter(Boolean) as string[];
+    const helperId = gigHelperId(row);
+    const ids = [row.poster_id, helperId].filter(Boolean) as string[];
     const { data: profiles } = await supabase
       .from("profiles")
       .select("user_id, display_name, avatar_url")
@@ -76,8 +78,8 @@ export default function GigDetailPage() {
     const map = new Map((profiles || []).map((p) => [p.user_id, p]));
     setPoster(map.get(row.poster_id) || { user_id: row.poster_id, display_name: "Poster", avatar_url: null });
     setWorker(
-      row.worker_id
-        ? map.get(row.worker_id) || { user_id: row.worker_id, display_name: "Helper", avatar_url: null }
+      helperId
+        ? map.get(helperId) || { user_id: helperId, display_name: "Helper", avatar_url: null }
         : null,
     );
 
@@ -137,8 +139,9 @@ export default function GigDetailPage() {
     await (supabase as any).from("profiles").update({ hide_yaj_page_on_gigs: hide }).eq("user_id", user.id);
   };
 
+  const helperId = gig ? gigHelperId(gig) : null;
   const isPoster = Boolean(user && gig && user.id === gig.poster_id);
-  const isWorker = Boolean(user && gig && gig.worker_id && user.id === gig.worker_id);
+  const isWorker = Boolean(user && helperId && user.id === helperId);
   const isParty = isPoster || isWorker;
   const otherParty = isPoster ? worker : isWorker ? poster : poster;
   const otherName = otherParty?.display_name || "User";
@@ -151,12 +154,12 @@ export default function GigDetailPage() {
     try {
       await (supabase as any).from("profiles").update({ hide_yaj_page_on_gigs: hideMyYajPage }).eq("user_id", user.id);
       // First messenger becomes the assigned helper so both can manage the gig
-      if (!gig.worker_id) {
+      if (!gigHelperId(gig)) {
         await (supabase as any)
           .from("gig_listings")
-          .update({ worker_id: user.id, status: "in_progress" })
+          .update({ assigned_to: user.id, status: "assigned" })
           .eq("id", gig.id)
-          .is("worker_id", null);
+          .is("assigned_to", null);
       }
       nav("/messages", {
         state: {
@@ -342,7 +345,7 @@ export default function GigDetailPage() {
             </button>
           )}
 
-          {isParty && !iCompleted && gig.status !== "closed" && (
+          {isParty && !iCompleted && gig.status !== "closed" && gig.status !== "cancelled" && (
             <button
               type="button"
               onClick={() => void markComplete()}

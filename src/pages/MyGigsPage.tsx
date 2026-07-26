@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { timeAgo } from "@/lib/jobs";
-import { formatGigBudget, gigStatusLabel } from "@/lib/gigs";
+import { formatGigBudget, gigHelperId, gigStatusLabel } from "@/lib/gigs";
 
 type Tab = "posted" | "working" | "completed";
 
@@ -17,7 +17,8 @@ type GigRow = {
   status: string;
   created_at: string;
   poster_id: string;
-  worker_id: string | null;
+  assigned_to: string | null;
+  worker_id?: string | null;
   poster_completed_at: string | null;
   worker_completed_at: string | null;
 };
@@ -34,24 +35,29 @@ export default function MyGigsPage() {
   const load = async () => {
     if (!user) return;
     setLoading(true);
-    const [p, w] = await Promise.all([
-      (supabase as any)
+    const base =
+      "id,title,location,budget_min,budget_max,status,created_at,poster_id,assigned_to";
+    const withComplete = `${base},poster_completed_at,worker_completed_at`;
+
+    const fetchSide = async (column: "poster_id" | "assigned_to") => {
+      let res = await (supabase as any)
         .from("gig_listings")
-        .select(
-          "id,title,location,budget_min,budget_max,status,created_at,poster_id,worker_id,poster_completed_at,worker_completed_at",
-        )
-        .eq("poster_id", user.id)
-        .order("created_at", { ascending: false }),
-      (supabase as any)
-        .from("gig_listings")
-        .select(
-          "id,title,location,budget_min,budget_max,status,created_at,poster_id,worker_id,poster_completed_at,worker_completed_at",
-        )
-        .eq("worker_id", user.id)
-        .order("created_at", { ascending: false }),
-    ]);
-    setPosted(p.data ?? []);
-    setWorking(w.data ?? []);
+        .select(withComplete)
+        .eq(column, user.id)
+        .order("created_at", { ascending: false });
+      if (res.error) {
+        res = await (supabase as any)
+          .from("gig_listings")
+          .select(base)
+          .eq(column, user.id)
+          .order("created_at", { ascending: false });
+      }
+      return (res.data ?? []) as GigRow[];
+    };
+
+    const [p, w] = await Promise.all([fetchSide("poster_id"), fetchSide("assigned_to")]);
+    setPosted(p);
+    setWorking(w);
     setLoading(false);
   };
 
@@ -138,6 +144,9 @@ export default function MyGigsPage() {
               <p className="mt-2 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
                 Waiting for both sides to press Complete before rating
               </p>
+            )}
+            {gigHelperId(g) && tab === "posted" && g.status !== "completed" && (
+              <p className="mt-1 text-[11px] text-muted-foreground">Helper assigned</p>
             )}
           </button>
         ))}
