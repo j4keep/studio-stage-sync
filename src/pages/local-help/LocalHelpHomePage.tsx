@@ -124,16 +124,24 @@ export default function LocalHelpHomePage() {
             onClick={() => setPostOpen(true)}
             className="rounded-2xl border border-border bg-card p-3 text-left shadow-sm"
           >
-            <p className="text-[13px] font-black">Post a need</p>
+            <p className="text-[13px] font-black">Post a gig</p>
             <p className="mt-0.5 text-[11px] text-muted-foreground">Let local helpers come to you</p>
           </button>
           <button
             type="button"
-            onClick={() => nav("/my-gigs")}
+            onClick={() => nav("/gigs")}
             className="rounded-2xl border border-border bg-card p-3 text-left shadow-sm"
           >
-            <p className="text-[13px] font-black">My requests</p>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">Track helpers & completion</p>
+            <p className="text-[13px] font-black">Gig board</p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">See what neighbors need fixed</p>
+          </button>
+          <button
+            type="button"
+            onClick={() => nav("/my-gigs")}
+            className="col-span-2 rounded-2xl border border-border bg-card p-3 text-left shadow-sm"
+          >
+            <p className="text-[13px] font-black">My gigs dashboard</p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">Track helpers, completion & ratings</p>
           </button>
         </div>
       </section>
