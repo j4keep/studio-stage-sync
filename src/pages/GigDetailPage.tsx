@@ -531,6 +531,38 @@ export default function GigDetailPage() {
         </div>
       </div>
 
+      {businessGateOpen && (
+        <div className="fixed inset-0 z-[85] flex items-end justify-center bg-black/50 md:items-center" onClick={() => setBusinessGateOpen(false)}>
+          <div
+            className="w-full max-w-md rounded-t-2xl border border-border bg-background p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] md:rounded-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-2 flex items-center gap-2">
+              <Building2 className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-bold">Set up your business profile first</h3>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Gig hosts see a business page — not your social profile — when you reach out. Create your free helper
+              business profile (handyman, DJ, cleaner, photographer and more) to take gigs.
+            </p>
+            <button
+              type="button"
+              onClick={() => nav("/local-help/business", { state: { returnTo: `/gigs/${gig.id}` } })}
+              className="mt-3 h-11 w-full rounded-xl bg-primary text-sm font-bold text-primary-foreground"
+            >
+              Create business profile
+            </button>
+            <button
+              type="button"
+              onClick={() => setBusinessGateOpen(false)}
+              className="mt-2 h-10 w-full rounded-xl border border-border text-sm font-bold"
+            >
+              Not now
+            </button>
+          </div>
+        </div>
+      )}
+
       {user && (
         <GigInterestSheet
           open={interestOpen}
