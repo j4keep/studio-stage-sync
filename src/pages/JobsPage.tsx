@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, MapPin, Clock, Briefcase, Sparkles, Plus, X, User, Settings2, Building2, BadgeCheck, HandHelping } from "lucide-react";
+import { Search, MapPin, Clock, Briefcase, Sparkles, Plus, X, User, Settings2, Building2, BadgeCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { JOB_CATEGORIES, formatSalary, timeAgo, EMPLOYMENT_TYPES, scoreListing, resolveJobCover, type Prefs } from "@/lib/jobs";
-import PostChooserSheet from "@/components/jobs/PostChooserSheet";
 import PostJobSheet from "@/components/jobs/PostJobSheet";
-import PostGigSheet from "@/components/jobs/PostGigSheet";
 import { listBlockedPeerIds } from "@/lib/blocks";
 
 type JobRow = {
@@ -24,19 +22,6 @@ type JobRow = {
   cover_image_url?: string | null;
   __kind: "job";
 };
-type GigRow = {
-  id: string;
-  title: string;
-  category: string;
-  location: string | null;
-  budget_min: number | null;
-  budget_max: number | null;
-  urgency: string;
-  created_at: string;
-  poster_id?: string;
-  __kind: "gig";
-};
-type Listing = JobRow | GigRow;
 
 const RECENT_KEY = "yaj_jobs_recent_searches";
 
@@ -45,11 +30,9 @@ export default function JobsPage() {
   const { user } = useAuth();
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string>("featured");
-  const [listings, setListings] = useState<Listing[]>([]);
+  const [listings, setListings] = useState<JobRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showChooser, setShowChooser] = useState(false);
   const [showJobSheet, setShowJobSheet] = useState(false);
-  const [showGigSheet, setShowGigSheet] = useState(false);
   const [forYou, setForYou] = useState(false);
   const [prefs, setPrefs] = useState<Prefs | null>(null);
   const [recents, setRecents] = useState<string[]>(() => {
@@ -69,20 +52,13 @@ export default function JobsPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [{ data: jobs }, { data: gigs }] = await Promise.all([
-      supabase.from("job_listings").select("id,title,category,employment_type,salary_min,salary_max,location,remote_mode,created_at,employer_id,media")
-        .eq("status", "open").order("created_at", { ascending: false }).limit(50),
-      supabase.from("gig_listings").select("id,title,category,location,budget_min,budget_max,urgency,created_at,poster_id")
-        .eq("status", "open").order("created_at", { ascending: false }).limit(50),
-    ]);
+    const { data: jobs } = await supabase
+      .from("job_listings")
+      .select("id,title,category,employment_type,salary_min,salary_max,location,remote_mode,created_at,employer_id,media")
+      .eq("status", "open").order("created_at", { ascending: false }).limit(50);
     const blocked = user ? await listBlockedPeerIds(user.id) : new Set<string>();
-    const openGigs = (gigs ?? []).filter((g: any) => !g.poster_id || !blocked.has(g.poster_id));
     const openJobs = (jobs ?? []).filter((j: any) => !j.employer_id || !blocked.has(j.employer_id));
-    const merged: Listing[] = [
-      ...openJobs.map((j) => ({ ...j, __kind: "job" as const })),
-      ...openGigs.map((g) => ({ ...g, __kind: "gig" as const })),
-    ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-    setListings(merged);
+    setListings(openJobs.map((j) => ({ ...j, __kind: "job" as const })) as JobRow[]);
     const employerIds = Array.from(new Set(openJobs.map((j: any) => j.employer_id).filter(Boolean)));
     if (employerIds.length) {
       const { data: emps } = await supabase.from("employer_profiles")
@@ -112,15 +88,13 @@ export default function JobsPage() {
     const n = query.trim().toLowerCase();
     let items = listings;
     if (activeCategory === "remote") {
-      items = items.filter((i) => i.__kind === "job" && (i as JobRow).remote_mode === "remote");
-    } else if (activeCategory === "need-help") {
-      items = items.filter((i) => i.__kind === "gig");
+      items = items.filter((i) => i.remote_mode === "remote");
     } else if (activeCategory !== "featured") {
       items = items.filter((i) => i.category === activeCategory);
     }
     if (n) {
       items = items.filter((i) => {
-        const brand = i.__kind === "job" ? employerBrands[(i as JobRow).employer_id] : null;
+        const brand = employerBrands[i.employer_id];
         return (
           i.title.toLowerCase().includes(n) ||
           (i.location ?? "").toLowerCase().includes(n) ||
@@ -146,7 +120,7 @@ export default function JobsPage() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold text-primary">Create • Connect • Elevate</p>
-            <h1 className="text-2xl font-black tracking-tight">Opportunities</h1>
+            <h1 className="text-2xl font-black tracking-tight">Jobs</h1>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -157,21 +131,11 @@ export default function JobsPage() {
               title="My Jobs"
             >
               <User className="h-3.5 w-3.5" />
-              Jobs
+              My Jobs
             </button>
             <button
               type="button"
-              onClick={() => nav("/my-gigs")}
-              className="inline-flex h-9 items-center gap-1.5 rounded-full bg-muted px-2.5 text-[11px] font-bold"
-              aria-label="My gigs dashboard"
-              title="My Gigs"
-            >
-              <HandHelping className="h-3.5 w-3.5" />
-              Gigs
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowChooser(true)}
+              onClick={() => setShowJobSheet(true)}
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-primary text-primary-foreground text-xs font-bold shadow-sm active:scale-95 transition-transform"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -185,7 +149,7 @@ export default function JobsPage() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search jobs, gigs, skills, companies"
+            placeholder="Search jobs, skills, companies"
             className="w-full h-11 rounded-xl bg-muted border border-border pl-10 pr-10 text-sm outline-none focus:ring-2 focus:ring-primary/35"
           />
           {query && (
@@ -244,13 +208,13 @@ export default function JobsPage() {
               className="relative overflow-hidden rounded-2xl p-4 text-left bg-gradient-to-br from-emerald-400 to-cyan-500 text-white shadow-sm active:scale-[0.98] transition">
               <Sparkles className="w-5 h-5 mb-2" />
               <p className="text-sm font-bold">Find Work</p>
-              <p className="text-[11px] opacity-90">Jobs, gigs & internships</p>
+              <p className="text-[11px] opacity-90">Jobs & internships</p>
             </button>
-            <button onClick={() => setShowChooser(true)}
+            <button onClick={() => setShowJobSheet(true)}
               className="relative overflow-hidden rounded-2xl p-4 text-left bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-sm active:scale-[0.98] transition">
               <Briefcase className="w-5 h-5 mb-2" />
               <p className="text-sm font-bold">Hire Someone</p>
-              <p className="text-[11px] opacity-90">Post a job or gig</p>
+              <p className="text-[11px] opacity-90">Post a job listing</p>
             </button>
           </div>
         </section>
@@ -261,32 +225,30 @@ export default function JobsPage() {
           <p className="text-sm text-muted-foreground text-center py-8">Loading…</p>
         ) : displayed.length === 0 ? (
           <div className="text-center py-16">
-            <p className="font-semibold">No opportunities yet</p>
+            <p className="font-semibold">No jobs yet</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              {user ? "Be the first to post one." : "Sign in to post a job or gig."}
+              {user ? "Be the first to post one." : "Sign in to post a job."}
             </p>
           </div>
         ) : (
           displayed.map((item) => {
             const s = forYou && prefs ? scoreListing(item, prefs) : 0;
-            const verified = item.__kind === "job" && verifiedEmployers.has((item as JobRow).employer_id);
-            const brand = item.__kind === "job" ? employerBrands[(item as JobRow).employer_id] : null;
-            const jobCover = item.__kind === "job" ? resolveJobCover(item as JobRow) : null;
+            const verified = verifiedEmployers.has(item.employer_id);
+            const brand = employerBrands[item.employer_id];
+            const jobCover = resolveJobCover(item);
             return (
-            <button key={`${item.__kind}-${item.id}`} type="button"
-              onClick={() => nav(item.__kind === "job" ? `/jobs/${item.id}` : `/gigs/${item.id}`)}
+            <button key={`job-${item.id}`} type="button"
+              onClick={() => nav(`/jobs/${item.id}`)}
               className="w-full text-left p-4 rounded-2xl bg-card border border-border hover:border-primary/40 transition-colors active:scale-[0.99]">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3 min-w-0 flex-1">
-                  {item.__kind === "job" && (
-                    <div className="w-11 h-11 rounded-xl bg-muted border border-border overflow-hidden flex items-center justify-center shrink-0">
-                      {jobCover ? (
-                        <img src={jobCover} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <Building2 className="w-5 h-5 text-muted-foreground" />
-                      )}
-                    </div>
-                  )}
+                  <div className="w-11 h-11 rounded-xl bg-muted border border-border overflow-hidden flex items-center justify-center shrink-0">
+                    {jobCover ? (
+                      <img src={jobCover} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <Building2 className="w-5 h-5 text-muted-foreground" />
+                    )}
+                  </div>
                   <div className="min-w-0 flex-1">
                     {brand?.company_name && (
                       <div className="flex items-center gap-1 mb-0.5">
@@ -301,9 +263,6 @@ export default function JobsPage() {
                       {!brand?.company_name && verified && (
                         <BadgeCheck className="w-3.5 h-3.5 text-sky-500 shrink-0" aria-label="Verified employer" />
                       )}
-                      {item.__kind === "gig" && (
-                        <span className="shrink-0 text-[9px] font-bold uppercase tracking-wide bg-emerald-500/15 text-emerald-600 px-1.5 py-0.5 rounded">Gig</span>
-                      )}
                       {s >= 30 && (
                         <span className="shrink-0 text-[9px] font-bold uppercase tracking-wide bg-primary/15 text-primary px-1.5 py-0.5 rounded">Match</span>
                       )}
@@ -317,34 +276,20 @@ export default function JobsPage() {
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-sm font-bold text-foreground">
-                    {item.__kind === "job"
-                      ? formatSalary((item as JobRow).salary_min, (item as JobRow).salary_max)
-                      : ((item as GigRow).budget_min || (item as GigRow).budget_max)
-                        ? `$${(item as GigRow).budget_min ?? ""}${(item as GigRow).budget_min && (item as GigRow).budget_max ? "–" : ""}${(item as GigRow).budget_max ?? ""}`
-                        : "Open"}
+                    {formatSalary(item.salary_min, item.salary_max)}
                   </p>
                   <p className="text-[10px] text-muted-foreground mt-0.5">
-                    {item.__kind === "job"
-                      ? EMPLOYMENT_TYPES.find((t) => t.id === (item as JobRow).employment_type)?.label
-                      : (item as GigRow).urgency}
+                    {EMPLOYMENT_TYPES.find((t) => t.id === item.employment_type)?.label}
                   </p>
                 </div>
               </div>
             </button>
             );
           })
-
         )}
       </section>
 
-      <PostChooserSheet
-        open={showChooser}
-        onClose={() => setShowChooser(false)}
-        onPickJob={() => { setShowChooser(false); setShowJobSheet(true); }}
-        onPickGig={() => { setShowChooser(false); setShowGigSheet(true); }}
-      />
       <PostJobSheet open={showJobSheet} onClose={() => setShowJobSheet(false)} onCreated={load} />
-      <PostGigSheet open={showGigSheet} onClose={() => setShowGigSheet(false)} onCreated={load} />
     </div>
   );
 }
