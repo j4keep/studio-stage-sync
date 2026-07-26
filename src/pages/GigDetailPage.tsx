@@ -479,14 +479,46 @@ export default function GigDetailPage() {
           </div>
         )}
 
-        {ratingUnlocked && (
+        {ratingUnlocked && isParty && (
           <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm">
             <p className="font-bold text-emerald-700 dark:text-emerald-300">Gig completed</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {myRating ? `You rated them ${myRating}/5.` : "Both sides finished — rate each other."}
-            </p>
+            {myRating ? (
+              <>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  You rated {otherName} {myRating}/5{myComment ? ` — "${myComment}"` : ""}.
+                </p>
+                <div className="mt-2 rounded-xl border border-border bg-card p-2.5">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {otherName} rated you
+                  </p>
+                  {receivedRating ? (
+                    <>
+                      <div className="mt-1 flex items-center gap-1">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`h-3.5 w-3.5 ${i < receivedRating.score ? "fill-amber-400 text-amber-400" : "text-muted-foreground/40"}`}
+                          />
+                        ))}
+                        <span className="ml-1 text-xs font-bold tabular-nums">{receivedRating.score}/5</span>
+                      </div>
+                      {receivedRating.comment && (
+                        <p className="mt-1 text-[13px] leading-snug text-foreground">{receivedRating.comment}</p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="mt-1 text-xs text-muted-foreground">Waiting on their review.</p>
+                  )}
+                </div>
+              </>
+            ) : (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Leave your review and comment to see what {otherName} said about you.
+              </p>
+            )}
           </div>
         )}
+
 
         <div className="space-y-2">
           {user && !isPoster && !isWorker && isOpen && (
