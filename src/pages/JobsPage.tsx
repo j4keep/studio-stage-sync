@@ -238,23 +238,7 @@ export default function JobsPage() {
       </div>
 
       {activeCategory === "featured" && !query && (
-        <section className="px-4 mb-4 space-y-3">
-          <button
-            type="button"
-            onClick={() => nav("/hire")}
-            className="relative block w-full overflow-hidden rounded-2xl text-left shadow-sm active:scale-[0.99] transition"
-          >
-            <img
-              src="https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=1200&q=80"
-              alt=""
-              className="h-36 w-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent" />
-            <div className="absolute inset-0 flex flex-col justify-end p-4">
-              <p className="text-2xl font-black tracking-tight text-white">Hire a Pro</p>
-              <p className="text-[11px] text-white/85">Browse local helpers by category — like Nextdoor</p>
-            </div>
-          </button>
+        <section className="px-4 mb-4">
           <div className="grid grid-cols-2 gap-3">
             <button onClick={() => setActiveCategory("remote")}
               className="relative overflow-hidden rounded-2xl p-4 text-left bg-gradient-to-br from-emerald-400 to-cyan-500 text-white shadow-sm active:scale-[0.98] transition">
@@ -265,30 +249,14 @@ export default function JobsPage() {
             <button onClick={() => setShowChooser(true)}
               className="relative overflow-hidden rounded-2xl p-4 text-left bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-sm active:scale-[0.98] transition">
               <Briefcase className="w-5 h-5 mb-2" />
-              <p className="text-sm font-bold">Post a need</p>
+              <p className="text-sm font-bold">Hire Someone</p>
               <p className="text-[11px] opacity-90">Post a job or gig</p>
             </button>
           </div>
         </section>
       )}
 
-      {activeCategory === "need-help" && (
-        <section className="px-4 mb-3">
-          <button
-            type="button"
-            onClick={() => nav("/hire")}
-            className="flex w-full items-center justify-between rounded-2xl border border-primary/30 bg-primary/10 px-4 py-3 text-left"
-          >
-            <div>
-              <p className="text-sm font-bold text-foreground">Browse Hire a Pro</p>
-              <p className="text-[11px] text-muted-foreground">Find handymen, cleaners, and more nearby</p>
-            </div>
-            <span className="text-xs font-bold text-primary">Open →</span>
-          </button>
-        </section>
-      )}
-
-      <section className="px-4 space-y-3">
+      <section className="px-4 pb-24 space-y-3">
         {loading ? (
           <p className="text-sm text-muted-foreground text-center py-8">Loading…</p>
         ) : displayed.length === 0 ? (

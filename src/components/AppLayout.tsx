@@ -27,8 +27,6 @@ function isDesktopShellPath(pathname: string) {
     pathname === "/my-jobs" ||
     pathname === "/my-gigs" ||
     pathname === "/messages" ||
-    pathname === "/hire" ||
-    pathname.startsWith("/hire/") ||
     pathname === "/employer-dashboard" ||
     pathname === "/employer"
   ) {
