@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
+  BadgeCheck,
   Check,
   Clock,
   MapPin,
@@ -155,22 +156,31 @@ export default function LocalHelpProPage() {
       </header>
 
       {/* Hero */}
-      <div className={`relative h-36 bg-gradient-to-br ${cat?.gradient || "from-primary to-violet-500"}`}>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.35),transparent_45%)]" />
-        <span className="absolute right-4 top-4 text-5xl opacity-80">{cat?.emoji || "🛠"}</span>
+      <div className={`relative h-36 overflow-hidden bg-gradient-to-br ${cat?.gradient || "from-primary to-violet-500"}`}>
+        {pro.banner_url ? (
+          <img src={pro.banner_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        ) : (
+          <>
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.35),transparent_45%)]" />
+            <span className="absolute right-4 top-4 text-5xl opacity-80">{cat?.emoji || "🛠"}</span>
+          </>
+        )}
       </div>
 
       <div className="relative -mt-10 px-4">
         <div className="flex items-end gap-3">
           <div className="h-20 w-20 overflow-hidden rounded-full border-4 border-background bg-muted shadow">
-            {pro.avatar_url ? (
-              <img src={pro.avatar_url} alt="" className="h-full w-full object-cover" />
+            {pro.logo_url || pro.avatar_url ? (
+              <img src={pro.logo_url || pro.avatar_url || ""} alt="" className="h-full w-full object-cover" />
             ) : (
               <span className="flex h-full w-full items-center justify-center text-2xl font-bold text-primary">{name[0]?.toUpperCase()}</span>
             )}
           </div>
           <div className="min-w-0 flex-1 pb-1">
-            <p className="truncate text-xl font-black">{name}</p>
+            <p className="flex items-center gap-1.5 truncate text-xl font-black">
+              {name}
+              {pro.verified && <BadgeCheck className="h-5 w-5 shrink-0 text-primary" />}
+            </p>
             <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[12px]">
               <span className="inline-flex items-center gap-1 font-semibold">
                 <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
@@ -226,7 +236,29 @@ export default function LocalHelpProPage() {
                 Serves {pro.service_area}
               </li>
             )}
+            {pro.business_hours && (
+              <li className="flex items-center gap-2 text-muted-foreground">
+                <Clock className="h-4 w-4 shrink-0" />
+                {pro.business_hours}
+              </li>
+            )}
             {price && <li className="font-bold text-foreground">From {price}</li>}
+            {pro.website && (
+              <li>
+                <a href={pro.website.startsWith("http") ? pro.website : `https://${pro.website}`} target="_blank" rel="noreferrer" className="text-primary text-[13px] font-semibold">
+                  Website
+                </a>
+              </li>
+            )}
+            {pro.certifications.length > 0 && (
+              <li className="text-muted-foreground">Certs: {pro.certifications.join(" · ")}</li>
+            )}
+            {pro.languages.length > 0 && (
+              <li className="text-muted-foreground">Languages: {pro.languages.join(", ")}</li>
+            )}
+            {pro.insurance_note && (
+              <li className="text-muted-foreground">Insurance: {pro.insurance_note}</li>
+            )}
           </ul>
         </section>
 

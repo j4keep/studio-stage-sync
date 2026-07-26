@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Search, Sparkles, X } from "lucide-react";
 import { LOCAL_HELP_CATEGORIES, TRENDING_SERVICES } from "@/lib/local-help";
 import AskYajHelpSheet from "@/components/local-help/AskYajHelpSheet";
-import OfferHelpSheet from "@/components/local-help/OfferHelpSheet";
 
 const RECENT_KEY = "yaj_local_help_recent";
 
@@ -12,7 +11,6 @@ export default function LocalHelpHomePage() {
   const nav = useNavigate();
   const [q, setQ] = useState("");
   const [askOpen, setAskOpen] = useState(false);
-  const [offerOpen, setOfferOpen] = useState(false);
   const [recents, setRecents] = useState<string[]>(() => {
     try {
       return JSON.parse(localStorage.getItem(RECENT_KEY) || "[]");
@@ -58,8 +56,12 @@ export default function LocalHelpHomePage() {
             <p className="text-[10px] font-semibold uppercase tracking-wide text-primary">Create • Connect • Elevate</p>
             <h1 className="text-lg font-black tracking-tight">Find Local Help</h1>
           </div>
-          <button type="button" onClick={() => setOfferOpen(true)} className="rounded-full bg-muted px-3 py-1.5 text-[11px] font-bold">
-            Offer help
+          <button
+            type="button"
+            onClick={() => nav("/local-help/business")}
+            className="rounded-full bg-primary px-3 py-1.5 text-[11px] font-bold text-primary-foreground"
+          >
+            My Business
           </button>
         </div>
         <form
@@ -84,7 +86,7 @@ export default function LocalHelpHomePage() {
         </form>
       </header>
 
-      <section className="px-4 pt-4">
+      <section className="space-y-3 px-4 pt-4">
         <button
           type="button"
           onClick={() => setAskOpen(true)}
@@ -100,6 +102,18 @@ export default function LocalHelpHomePage() {
               Upload photos or type what you need — Buddy suggests category, budget, and helpers.
             </p>
           </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => nav("/local-help/business")}
+          className="w-full rounded-2xl border border-border bg-card p-4 text-left shadow-sm"
+        >
+          <p className="text-[10px] font-bold uppercase tracking-wide text-primary">Offer services</p>
+          <p className="mt-1 text-base font-black">Become a Handyman (or DJ, cleaner…)</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            Create your Local Help business page — logo, rates, services, portfolio — and go live.
+          </p>
         </button>
       </section>
 
@@ -167,7 +181,6 @@ export default function LocalHelpHomePage() {
       </section>
 
       <AskYajHelpSheet open={askOpen} onClose={() => setAskOpen(false)} />
-      <OfferHelpSheet open={offerOpen} onClose={() => setOfferOpen(false)} />
     </div>
   );
 }

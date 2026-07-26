@@ -60,6 +60,7 @@ import MyGigsPage from "./pages/MyGigsPage";
 import LocalHelpHomePage from "./pages/local-help/LocalHelpHomePage";
 import LocalHelpCategoryPage from "./pages/local-help/LocalHelpCategoryPage";
 import LocalHelpProPage from "./pages/local-help/LocalHelpProPage";
+import LocalHelpBusinessPage from "./pages/local-help/LocalHelpBusinessPage";
 import BlockingSettingsPage from "./pages/BlockingSettingsPage";
 import ResumeBuilderPage from "./pages/ResumeBuilderPage";
 import JobPreferencesPage from "./pages/JobPreferencesPage";
@@ -264,6 +265,7 @@ const ProtectedRoutes = () => {
         <Route path="/ask-jhi" element={<Navigate to="/ask-yaj" replace />} />
         <Route path="/explore" element={<ExplorePage />} />
         <Route path="/local-help" element={<LocalHelpHomePage />} />
+        <Route path="/local-help/business" element={<LocalHelpBusinessPage />} />
         <Route path="/local-help/pro/:userId" element={<LocalHelpProPage />} />
         <Route path="/local-help/:categoryId" element={<LocalHelpCategoryPage />} />
         <Route path="/jobs" element={<JobsPage />} />

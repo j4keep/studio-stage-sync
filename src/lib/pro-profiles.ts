@@ -19,6 +19,14 @@ export type LocalHelpPro = {
   is_active: boolean;
   hired_count: number;
   similar_jobs_count: number;
+  logo_url: string | null;
+  banner_url: string | null;
+  website: string | null;
+  business_hours: string | null;
+  certifications: string[];
+  languages: string[];
+  insurance_note: string | null;
+  verified: boolean;
   display_name: string | null;
   avatar_url: string | null;
   gig_experience_bio: string | null;
@@ -49,8 +57,16 @@ function mapRow(row: any, profile: any, rating: DisplayRating): LocalHelpPro {
     is_active: Boolean(row.is_active),
     hired_count: row.hired_count || 0,
     similar_jobs_count: row.similar_jobs_count || 0,
+    logo_url: row.logo_url || null,
+    banner_url: row.banner_url || null,
+    website: row.website || null,
+    business_hours: row.business_hours || null,
+    certifications: row.certifications || [],
+    languages: row.languages || [],
+    insurance_note: row.insurance_note || null,
+    verified: Boolean(row.verified),
     display_name: profile?.display_name || row.business_name || "Helper",
-    avatar_url: profile?.avatar_url || null,
+    avatar_url: row.logo_url || profile?.avatar_url || null,
     gig_experience_bio: profile?.gig_experience_bio || null,
     rating,
   };
@@ -106,10 +122,17 @@ export type LocalHelpProUpsert = {
   skills?: string[];
   responds_minutes?: number | null;
   is_active?: boolean;
+  logo_url?: string | null;
+  banner_url?: string | null;
+  website?: string | null;
+  business_hours?: string | null;
+  certifications?: string[];
+  languages?: string[];
+  insurance_note?: string | null;
 };
 
 export async function upsertLocalHelpPro(userId: string, patch: LocalHelpProUpsert) {
-  const payload = {
+  const payload: Record<string, unknown> = {
     user_id: userId,
     business_name: patch.business_name ?? null,
     about: patch.about ?? null,
@@ -122,9 +145,32 @@ export async function upsertLocalHelpPro(userId: string, patch: LocalHelpProUpse
     skills: patch.skills ?? [],
     responds_minutes: patch.responds_minutes ?? 45,
     is_active: patch.is_active ?? true,
+    logo_url: patch.logo_url ?? null,
+    banner_url: patch.banner_url ?? null,
+    website: patch.website ?? null,
+    business_hours: patch.business_hours ?? null,
+    certifications: patch.certifications ?? [],
+    languages: patch.languages ?? [],
+    insurance_note: patch.insurance_note ?? null,
     updated_at: new Date().toISOString(),
   };
-  const { error } = await (supabase as any).from("pro_profiles").upsert(payload, { onConflict: "user_id" });
+
+  let { error } = await (supabase as any).from("pro_profiles").upsert(payload, { onConflict: "user_id" });
+
+  // If migration not applied yet, retry without new columns so core listing still works
+  if (error && /column|schema cache/i.test(error.message || "")) {
+    const {
+      logo_url: _l,
+      banner_url: _b,
+      website: _w,
+      business_hours: _h,
+      certifications: _c,
+      languages: _lang,
+      insurance_note: _i,
+      ...core
+    } = payload;
+    ({ error } = await (supabase as any).from("pro_profiles").upsert(core, { onConflict: "user_id" }));
+  }
   if (error) throw error;
 }
 
@@ -173,7 +219,6 @@ export async function hireLocalHelper(opts: {
     .single();
   if (error) throw error;
 
-  // Record preferred helper as interested so host can approve from gig detail
   try {
     await (supabase as any).from("gig_interests").upsert(
       {
