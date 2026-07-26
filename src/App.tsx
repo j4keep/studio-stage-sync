@@ -30,6 +30,7 @@ import LegalVaultPage from "./pages/LegalVaultPage";
 import PlaylistsPage from "./pages/PlaylistsPage";
 import SettingsPage from "./pages/SettingsPage";
 import AuthPage from "./pages/AuthPage";
+import OAuthConsent from "./pages/OAuthConsent";
 import NotFound from "./pages/NotFound";
 import MySongsPage from "./pages/MySongsPage";
 import MyVideosPage from "./pages/MyVideosPage";
