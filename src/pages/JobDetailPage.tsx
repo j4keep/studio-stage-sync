@@ -375,11 +375,11 @@ export default function JobDetailPage() {
       </div>
 
       <div className="fixed bottom-24 md:bottom-6 left-0 right-0 px-4 z-40 pointer-events-none">
-        <div className="max-w-lg mx-auto pointer-events-auto">
+        <div className="max-w-lg mx-auto pointer-events-auto flex gap-2">
           <button
             onClick={handleApplyClick}
             disabled={applied || !!isOwner}
-            className="w-full h-12 rounded-2xl bg-primary text-primary-foreground font-bold text-sm shadow-lg disabled:opacity-60 inline-flex items-center justify-center gap-2"
+            className="flex-1 h-12 rounded-2xl bg-primary text-primary-foreground font-bold text-sm shadow-lg disabled:opacity-60 inline-flex items-center justify-center gap-2"
           >
             {isOwner
               ? "Your job"
@@ -389,7 +389,13 @@ export default function JobDetailPage() {
               ? <>Apply on Company Site <ExternalLink className="w-4 h-4" /></>
               : "Apply Now"}
           </button>
+          <MessageUserButton
+            userId={job.employer_id}
+            label="Message"
+            className="h-12 px-4 rounded-2xl bg-card border border-border text-foreground font-bold text-sm shadow-lg inline-flex items-center justify-center gap-1.5"
+          />
         </div>
+
       </div>
 
       {showApply && (
