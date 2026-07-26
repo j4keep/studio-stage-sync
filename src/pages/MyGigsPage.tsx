@@ -82,17 +82,17 @@ export default function MyGigsPage() {
         <h1 className="flex-1 text-base font-bold">My Gigs</h1>
         <button
           type="button"
-          onClick={() => nav("/my-jobs")}
+          onClick={() => nav("/local-help")}
           className="h-8 rounded-full bg-muted px-3 text-[11px] font-bold"
         >
-          My Jobs
+          Local Help
         </button>
         <button
           type="button"
-          onClick={() => nav("/jobs")}
+          onClick={() => setPostOpen(true)}
           className="h-8 rounded-full bg-primary px-3 text-[11px] font-bold text-primary-foreground"
         >
-          Find gigs
+          Post a gig
         </button>
       </header>
 
