@@ -21,7 +21,13 @@ type GigRow = {
   urgency: string;
   created_at: string;
   poster_id: string;
+  media?: any;
 };
+
+function gigPhotos(media: any): string[] {
+  if (!Array.isArray(media)) return [];
+  return media.map((m: any) => (typeof m === "string" ? m : m?.url)).filter(Boolean);
+}
 
 /** Explore → Gigs board. Neighbors post what they need fixed; helpers claim it. */
 export default function GigBoardPage() {
@@ -39,7 +45,7 @@ export default function GigBoardPage() {
     setLoading(true);
     const { data } = await (supabase as any)
       .from("gig_listings")
-      .select("id,title,description,category,location,budget_min,budget_max,urgency,created_at,poster_id")
+      .select("id,title,description,category,location,budget_min,budget_max,urgency,created_at,poster_id,media")
       .eq("status", "open")
       .order("created_at", { ascending: false })
       .limit(60);
@@ -196,38 +202,49 @@ export default function GigBoardPage() {
             </button>
           </div>
         )}
-        {filtered.map((g) => (
-          <button
-            key={g.id}
-            type="button"
-            onClick={() => nav(`/gigs/${g.id}`)}
-            className="w-full rounded-2xl border border-border bg-card p-3 text-left shadow-sm active:scale-[0.99] transition"
-          >
-            <div className="flex items-start justify-between gap-2">
-              <p className="text-sm font-bold leading-snug">{g.title}</p>
-              <span className="shrink-0 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-600">
-                Gig
-              </span>
-            </div>
-            {g.description && <p className="mt-1 line-clamp-2 text-[12px] text-muted-foreground">{g.description}</p>}
-            <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
-              {g.location && (
-                <span className="inline-flex items-center gap-1">
-                  <MapPin className="h-3 w-3" /> {g.location}
-                </span>
-              )}
-              <span className="inline-flex items-center gap-1">
-                <Clock className="h-3 w-3" /> {timeAgo(g.created_at)}
-              </span>
-              <span className="rounded-full bg-primary/10 px-2 py-0.5 font-semibold text-primary">
-                {formatGigBudget(g.budget_min, g.budget_max)}
-              </span>
-              <span className="rounded-full bg-muted px-2 py-0.5 font-semibold">
-                {URGENCY_OPTIONS.find((u) => u.id === g.urgency)?.label ?? g.urgency}
-              </span>
-            </div>
-          </button>
-        ))}
+        <div className="grid grid-cols-2 gap-3">
+          {filtered.map((g) => {
+            const photo = gigPhotos(g.media)[0];
+            return (
+              <button
+                key={g.id}
+                type="button"
+                onClick={() => nav(`/gigs/${g.id}`)}
+                className="overflow-hidden rounded-2xl border border-border bg-card text-left shadow-sm transition active:scale-[0.99]"
+              >
+                <div className="relative aspect-square w-full bg-muted">
+                  {photo ? (
+                    <img src={photo} alt={g.title} loading="lazy" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/15 to-fuchsia-500/15 text-3xl">
+                      🧰
+                    </div>
+                  )}
+                  <span className="absolute left-2 top-2 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-bold uppercase text-white">
+                    Gig
+                  </span>
+                </div>
+                <div className="p-2.5">
+                  <p className="text-sm font-black text-primary">{formatGigBudget(g.budget_min, g.budget_max)}</p>
+                  <p className="mt-0.5 line-clamp-2 text-[12px] font-semibold leading-snug">{g.title}</p>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 text-[10px] text-muted-foreground">
+                    {g.location && (
+                      <span className="inline-flex items-center gap-1">
+                        <MapPin className="h-3 w-3" /> {g.location}
+                      </span>
+                    )}
+                    <span className="inline-flex items-center gap-1">
+                      <Clock className="h-3 w-3" /> {timeAgo(g.created_at)}
+                    </span>
+                  </div>
+                  <span className="mt-1 inline-block rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold">
+                    {URGENCY_OPTIONS.find((u) => u.id === g.urgency)?.label ?? g.urgency}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </section>
 
       <AskYajHelpSheet open={askOpen} onClose={() => setAskOpen(false)} />
