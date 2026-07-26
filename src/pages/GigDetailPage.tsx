@@ -289,6 +289,17 @@ export default function GigDetailPage() {
     if (otherDone) setRateOpen(true);
   };
 
+  /** Both sides pressed Complete → prompt this user for their review/comment. */
+  useEffect(() => {
+    if (!gig || !user || autoRatePromptedRef.current) return;
+    const party = user.id === gig.poster_id || user.id === gigHelperId(gig);
+    if (!party) return;
+    if (canRateGig(gig) && myRating == null) {
+      autoRatePromptedRef.current = true;
+      setRateOpen(true);
+    }
+  }, [gig, user, myRating]);
+
 
   const confirmBlock = async () => {
     if (!user || !otherParty) return;
