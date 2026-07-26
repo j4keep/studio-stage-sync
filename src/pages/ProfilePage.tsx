@@ -309,10 +309,18 @@ const ProfilePage = () => {
               onClick={item.action}
               className="flex items-center gap-3 p-3.5 rounded-xl bg-card border border-border hover:border-primary/30 transition-all"
             >
-              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+              <div className="relative w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
                 <item.icon className="w-4 h-4 text-primary" />
+                {item.section && notifCounts[item.section] > 0 && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-destructive ring-2 ring-card" />
+                )}
               </div>
               <span className="flex-1 text-sm font-medium text-foreground text-left">{item.label}</span>
+              {item.section && notifCounts[item.section] > 0 && (
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-destructive text-destructive-foreground">
+                  {notifCounts[item.section]} new
+                </span>
+              )}
               {item.pro && !isPro && (
                 <span className="text-[9px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">PRO</span>
               )}
