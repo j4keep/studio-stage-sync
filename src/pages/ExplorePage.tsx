@@ -192,60 +192,42 @@ export default function ExplorePage() {
         </div>
       </header>
 
-      {/* Featured — Local Help discovery */}
+      {/* Featured — one Explore hero */}
       {!query && (
         <section className="px-4 mt-2 mb-5 space-y-3">
           <button
             type="button"
-            onClick={() => navigate("/local-help")}
-            className="relative w-full h-36 rounded-2xl overflow-hidden text-left bg-gradient-to-br from-teal-500 via-emerald-500 to-cyan-600 shadow-sm"
+            onClick={() => navigate("/gigs")}
+            className="relative w-full h-36 rounded-2xl overflow-hidden text-left bg-gradient-to-br from-violet-500 via-fuchsia-500 to-orange-500 shadow-sm"
           >
             <div className="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_20%_30%,white,transparent_25%),radial-gradient(circle_at_80%_70%,white,transparent_22%)]" />
-            <div className="absolute left-4 top-4 z-10 max-w-[70%]">
+            <div className="absolute left-4 top-4 z-10 max-w-[72%]">
               <div className="inline-flex items-center gap-1 rounded-full bg-black/50 text-white px-2 py-1 text-[10px] font-bold">
                 <Sparkles className="w-3 h-3" />
-                LOCAL SERVICES
+                EXPLORE YAJ
               </div>
-              <h2 className="mt-3 text-xl font-black text-white leading-tight">Need a handyman?</h2>
+              <h2 className="mt-3 text-xl font-black text-white leading-tight">What are you looking for?</h2>
               <p className="mt-1 text-xs font-medium text-white/90">
-                Cleaners, DJs, photographers & neighbors ready to help.
+                Gigs, local help, jobs, deals, live rooms and communities — all in one place.
               </p>
             </div>
-            <div className="absolute -right-2 -bottom-2 text-[6.5rem] leading-none opacity-90" aria-hidden>
-              🛠
-            </div>
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate("/gigs")}
-            className="relative w-full h-36 rounded-2xl overflow-hidden text-left bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 shadow-sm"
-          >
-            <div className="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_25%_25%,white,transparent_25%),radial-gradient(circle_at_75%_75%,white,transparent_22%)]" />
-            <div className="absolute left-4 top-4 z-10 max-w-[70%]">
-              <div className="inline-flex items-center gap-1 rounded-full bg-black/50 text-white px-2 py-1 text-[10px] font-bold">
-                <Sparkles className="w-3 h-3" />
-                GIGS
-              </div>
-              <h2 className="mt-3 text-xl font-black text-white leading-tight">Something need fixing?</h2>
-              <p className="mt-1 text-xs font-medium text-white/90">
-                Post the gig with a photo — local helpers claim it.
-              </p>
-            </div>
-            <div className="absolute -right-2 -bottom-2 text-[6.5rem] leading-none opacity-90" aria-hidden>
-              🧰
+            <div className="absolute -right-2 -bottom-3 text-[6.5rem] leading-none opacity-90" aria-hidden>
+              🧭
             </div>
           </button>
           <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-0.5">
             {[
-              { label: "House cleaning", emoji: "🧹", id: "cleaning" },
-              { label: "Photographers", emoji: "📸", id: "photography" },
-              { label: "DJs this weekend", emoji: "🎧", id: "dj" },
-              { label: "Mobile mechanics", emoji: "🚗", id: "auto" },
+              { label: "Gigs", emoji: "🧰", route: "/gigs" },
+              { label: "Local help", emoji: "🛠", route: "/local-help" },
+              { label: "Jobs", emoji: "💼", route: "/jobs" },
+              { label: "Deals", emoji: "💰", route: "/store" },
+              { label: "Battles", emoji: "🏆", route: "/battles" },
+              { label: "Communities", emoji: "❤️", route: "/circle" },
             ].map((chip) => (
               <button
-                key={chip.id}
+                key={chip.label}
                 type="button"
-                onClick={() => navigate(`/local-help/${chip.id}`)}
+                onClick={() => navigate(chip.route)}
                 className="shrink-0 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-semibold"
               >
                 {chip.emoji} {chip.label}
