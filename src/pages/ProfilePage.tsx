@@ -171,6 +171,7 @@ const ProfilePage = () => {
     { icon: ShoppingBag, label: "Purchases", sub: "View history", action: () => navigate("/purchases"), pro: false },
     { icon: CalendarDays, label: "My Bookings", sub: "Sessions & receipts", action: () => navigate("/my-bookings"), pro: false },
     { icon: Building2, label: "Local Help Business", sub: "Handyman, DJ, cleaning & more", action: () => navigate("/local-help/business"), pro: false },
+    { icon: Wrench, label: "My Gigs Dashboard", sub: "Posted, working & completed gigs", action: () => navigate("/my-gigs"), pro: false },
     { icon: Building2, label: "My Studios", sub: "Manage listings", action: () => proGatedNav("Studio Listings", "/my-studios"), pro: true },
     { icon: BarChart3, label: "Analytics", sub: "View insights", action: () => proGatedNav("Analytics", "/analytics"), pro: true },
     { icon: DollarSign, label: "Earnings", sub: "Revenue", action: () => proGatedNav("Earnings", "/earnings"), pro: true },
