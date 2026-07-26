@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Mail, Lock, Eye, EyeOff, User, Calendar, ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import yajLogo from "@/assets/yaj-logo.png";
