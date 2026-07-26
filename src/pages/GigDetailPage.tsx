@@ -46,6 +46,7 @@ type Gig = {
   created_at: string;
   status: string;
   hide_yaj_profile?: boolean;
+  media?: any;
   poster_completed_at?: string | null;
   worker_completed_at?: string | null;
 };
@@ -320,6 +321,9 @@ export default function GigDetailPage() {
 
   const urgency = URGENCY_OPTIONS.find((u) => u.id === gig.urgency)?.label ?? gig.urgency;
   const budget = formatGigBudget(gig.budget_min, gig.budget_max);
+  const photos: string[] = Array.isArray(gig.media)
+    ? gig.media.map((m: any) => (typeof m === "string" ? m : m?.url)).filter(Boolean)
+    : [];
   const posterHidesPage = Boolean(gig.hide_yaj_profile);
   const iCompleted = isPoster ? Boolean(gig.poster_completed_at) : isWorker ? Boolean(gig.worker_completed_at) : false;
   const theyCompleted = isPoster ? Boolean(gig.worker_completed_at) : isWorker ? Boolean(gig.poster_completed_at) : false;
@@ -345,6 +349,20 @@ export default function GigDetailPage() {
       </header>
 
       <div className="space-y-4 p-4 pb-28">
+        {photos.length > 0 && (
+          <div className="-mx-4 -mt-4">
+            <div className="flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pt-4">
+              {photos.map((url, i) => (
+                <img
+                  key={i}
+                  src={url}
+                  alt={`${gig.title} photo ${i + 1}`}
+                  className={`h-64 snap-center rounded-2xl object-cover ${photos.length === 1 ? "w-full" : "w-[85%] shrink-0"}`}
+                />
+              ))}
+            </div>
+          </div>
+        )}
         <h1 className="text-xl font-black tracking-tight">{gig.title}</h1>
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           {gig.location && (
