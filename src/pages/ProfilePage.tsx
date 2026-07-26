@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   User, Music, FolderHeart, Building2, Heart, Download, DollarSign,
   Settings, Shield, BarChart3, HelpCircle, Trophy, Video, ShoppingBag,
-  CheckCircle, UserPlus, Share2, ChevronRight, Library, Edit3, UserCheck, ExternalLink, Crown, Lock, Rocket, CalendarDays
+  CheckCircle, UserPlus, Share2, ChevronRight, Library, Edit3, UserCheck, ExternalLink, Crown, Lock, Rocket, CalendarDays, Wrench
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
