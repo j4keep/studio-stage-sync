@@ -3256,6 +3256,10 @@ export type Database = {
       increment_song_plays: { Args: { song_id: string }; Returns: undefined }
       increment_video_views: { Args: { video_id: string }; Returns: undefined }
       is_blocked: { Args: { user_a: string; user_b: string }; Returns: boolean }
+      is_conversation_member: {
+        Args: { _conversation_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_podcast_participant: {
         Args: { _episode: string; _user: string }
         Returns: boolean

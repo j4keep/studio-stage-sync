@@ -6,6 +6,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { APPLICATION_STATUS, normalizeAppStatus, notifyJobApplicant, timeAgo } from "@/lib/jobs";
 import ApplicationPhaseDots from "@/components/jobs/ApplicationPhaseDots";
+import MessageUserButton from "@/components/MessageUserButton";
+
 import PostJobSheet, { type EditableJob } from "@/components/jobs/PostJobSheet";
 import ResumePreview from "@/components/jobs/ResumePreview";
 import ScheduleInterviewSheet from "@/components/jobs/ScheduleInterviewSheet";
@@ -339,6 +341,13 @@ export default function EmployerDashboardPage() {
 
                             <div className="flex flex-wrap items-center gap-2">
                               <ApplicationPhaseDots status={a.status} mode="employer" />
+                              <MessageUserButton
+                                userId={a.applicant_id}
+                                displayName={a.full_name ?? a.applicant?.display_name}
+                                avatarUrl={a.applicant?.avatar_url}
+                                className="h-8 px-2 rounded-full bg-muted border border-border text-[11px] font-bold inline-flex items-center gap-1"
+                              />
+
                               <select
                                 value={normalizeAppStatus(a.status)}
                                 onChange={(e) => updateAppStatus(a.id, e.target.value)}

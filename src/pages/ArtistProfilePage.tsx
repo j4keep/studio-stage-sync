@@ -8,6 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import profileBanner from "@/assets/profile-banner.jpg";
 import FollowersSheet from "@/components/FollowersSheet";
+import MessageUserButton from "@/components/MessageUserButton";
+
 import ProfileFeedSection from "@/components/ProfileFeedSection";
 import BattleWinsSheet from "@/components/BattleWinsSheet";
 import UserProjectsSheet from "@/components/UserProjectsSheet";
@@ -232,6 +234,13 @@ const ArtistProfilePage = () => {
             {isFollowing ? <UserCheck className="w-3.5 h-3.5" /> : <UserPlus className="w-3.5 h-3.5" />}
             {isFollowing ? "Following" : "Follow"}
           </button>
+          <MessageUserButton
+            userId={userId}
+            displayName={profileInfo?.display_name}
+            avatarUrl={(profileInfo as any)?.avatar_url}
+            className="flex-1 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 bg-card border border-border text-foreground hover:border-primary/30 transition-all"
+          />
+
           <button onClick={handleShare} className="w-10 py-2.5 rounded-xl bg-card border border-border text-muted-foreground flex items-center justify-center hover:border-primary/30 transition-all">
             <Share2 className="w-4 h-4" />
           </button>
