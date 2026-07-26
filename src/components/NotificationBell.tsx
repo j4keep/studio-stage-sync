@@ -71,9 +71,20 @@ const NotificationBell = () => {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications", user?.id] }),
   });
 
-  const handleNotificationClick = (notification: any) => {
+  const handleNotificationClick = async (notification: any) => {
+    if (user && !notification.is_read) {
+      await (supabase as any)
+        .from("notifications")
+        .update({ is_read: true, read: true })
+        .eq("id", notification.id)
+        .eq("user_id", user.id);
+      queryClient.invalidateQueries({ queryKey: ["notifications", user.id] });
+    }
     if (notification.reference_type === "battle") navigate("/battles");
-    else if (notification.reference_type === "message") navigate("/messages");
+    else if (notification.reference_type === "message") {
+      if (notification.reference_id) navigate("/messages", { state: { conversationId: notification.reference_id } });
+      else navigate("/messages");
+    }
     else if (notification.reference_type === "purchase") navigate("/earnings");
     else if (notification.reference_type === "post") navigate("/feed");
     else if (notification.reference_type === "booking") navigate("/bookings");
@@ -130,7 +141,7 @@ const NotificationBell = () => {
             notifications.map((n: any) => (
               <button
                 key={n.id}
-                onClick={() => handleNotificationClick(n)}
+                onClick={() => void handleNotificationClick(n)}
                 className={`w-full text-left px-4 py-3 border-b border-border/50 hover:bg-muted/50 transition-colors ${
                   !n.is_read ? "bg-primary/5" : ""
                 }`}
