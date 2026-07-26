@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { timeAgo } from "@/lib/jobs";
 import { formatGigBudget, gigHelperId, gigStatusLabel } from "@/lib/gigs";
+import PostGigSheet from "@/components/jobs/PostGigSheet";
 
 type Tab = "posted" | "working" | "completed";
 
