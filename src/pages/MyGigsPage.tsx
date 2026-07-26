@@ -1,11 +1,23 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, HandHelping, MapPin } from "lucide-react";
+import { ArrowLeft, HandHelping, MapPin, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { timeAgo } from "@/lib/jobs";
 import { formatGigBudget, gigHelperId, gigStatusLabel } from "@/lib/gigs";
 import PostGigSheet from "@/components/jobs/PostGigSheet";
+import { toast } from "sonner";
+
+const DISMISSED_KEY = "yaj:gigs:dismissed";
+
+function readDismissed(): string[] {
+  try {
+    const raw = localStorage.getItem(DISMISSED_KEY);
+    return Array.isArray(JSON.parse(raw || "[]")) ? JSON.parse(raw || "[]") : [];
+  } catch {
+    return [];
+  }
+}
 
 type Tab = "posted" | "working" | "completed";
 
@@ -33,6 +45,27 @@ export default function MyGigsPage() {
   const [working, setWorking] = useState<GigRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [postOpen, setPostOpen] = useState(false);
+  const [dismissed, setDismissed] = useState<string[]>(() => readDismissed());
+
+  /** Trash a finished gig — posters delete it for good, helpers hide it from their dashboard. */
+  const removeCompleted = async (g: GigRow) => {
+    if (!user) return;
+    if (g.poster_id === user.id) {
+      const { error } = await (supabase as any).from("gig_listings").delete().eq("id", g.id);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      setPosted((p) => p.filter((x) => x.id !== g.id));
+      setWorking((w) => w.filter((x) => x.id !== g.id));
+      toast.success("Gig deleted");
+      return;
+    }
+    const next = [...new Set([...dismissed, g.id])];
+    setDismissed(next);
+    localStorage.setItem(DISMISSED_KEY, JSON.stringify(next));
+    toast.success("Removed from your dashboard");
+  };
 
   const load = async () => {
     if (!user) return;
@@ -70,7 +103,8 @@ export default function MyGigsPage() {
   const activePosted = posted.filter((g) => g.status !== "completed" && g.status !== "cancelled");
   const activeWorking = working.filter((g) => g.status !== "completed" && g.status !== "cancelled");
   const completed = [...posted, ...working].filter(
-    (g, i, arr) => g.status === "completed" && arr.findIndex((x) => x.id === g.id) === i,
+    (g, i, arr) =>
+      g.status === "completed" && !dismissed.includes(g.id) && arr.findIndex((x) => x.id === g.id) === i,
   );
 
   const list = tab === "posted" ? activePosted : tab === "working" ? activeWorking : completed;
@@ -146,17 +180,34 @@ export default function MyGigsPage() {
           </div>
         )}
         {list.map((g) => (
-          <button
+          <div
             key={g.id}
-            type="button"
+            role="button"
+            tabIndex={0}
             onClick={() => nav(`/gigs/${g.id}`)}
-            className="w-full rounded-2xl border border-border bg-card p-3 text-left"
+            onKeyDown={(e) => e.key === "Enter" && nav(`/gigs/${g.id}`)}
+            className="w-full cursor-pointer rounded-2xl border border-border bg-card p-3 text-left"
           >
             <div className="flex items-start justify-between gap-2">
               <p className="text-sm font-bold text-foreground">{g.title}</p>
-              <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold">
-                {gigStatusLabel(g.status)}
-              </span>
+              <div className="flex shrink-0 items-center gap-1.5">
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold">
+                  {gigStatusLabel(g.status)}
+                </span>
+                {g.status === "completed" && (
+                  <button
+                    type="button"
+                    aria-label="Delete gig"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void removeCompleted(g);
+                    }}
+                    className="flex h-7 w-7 items-center justify-center rounded-full bg-destructive/10 text-destructive"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
             </div>
             <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
               {g.location && (
@@ -181,7 +232,7 @@ export default function MyGigsPage() {
                 Open to rate the other person
               </p>
             )}
-          </button>
+          </div>
         ))}
       </div>
 

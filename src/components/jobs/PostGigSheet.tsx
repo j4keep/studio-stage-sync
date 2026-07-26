@@ -19,7 +19,10 @@ type GigEdit = {
   preferred_date: string | null;
   preferred_time: string | null;
   hide_yaj_profile?: boolean;
+  media?: any;
 };
+
+type GigPhoto = { preview: string; file?: File; url?: string };
 
 type Props = {
   open: boolean;
@@ -30,11 +33,13 @@ type Props = {
   autoOpenPhotos?: boolean;
 };
 
+const MAX_GIG_PHOTOS = 6;
+
 export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, autoOpenPhotos }: Props) {
   const { user } = useAuth();
   const [saving, setSaving] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
-  const [photos, setPhotos] = useState<string[]>([]);
+  const [photos, setPhotos] = useState<GigPhoto[]>([]);
   const [aiTip, setAiTip] = useState<string | null>(null);
   const [myProfile, setMyProfile] = useState<GigProfileInfo | null>(null);
   const [hideYajProfile, setHideYajProfile] = useState(false);
@@ -66,6 +71,14 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
       preferred_time: gigToEdit.preferred_time || "",
     });
     setHideYajProfile(Boolean(gigToEdit.hide_yaj_profile));
+    const existing = Array.isArray(gigToEdit.media) ? gigToEdit.media : [];
+    setPhotos(
+      existing
+        .map((m: any) => (typeof m === "string" ? m : m?.url))
+        .filter(Boolean)
+        .slice(0, MAX_GIG_PHOTOS)
+        .map((url: string) => ({ preview: url, url })),
+    );
   }, [open, gigToEdit]);
 
   useEffect(() => {
@@ -105,10 +118,35 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
 
   const addPhotos = async (files: FileList | null) => {
     if (!files || !files.length) return;
-    const remaining = 4 - photos.length;
+    const remaining = MAX_GIG_PHOTOS - photos.length;
+    if (remaining <= 0) {
+      toast.error(`Up to ${MAX_GIG_PHOTOS} photos`);
+      return;
+    }
     const chosen = Array.from(files).slice(0, remaining);
-    const urls = await Promise.all(chosen.map(fileToDataUrl));
-    setPhotos((p) => [...p, ...urls]);
+    const added = await Promise.all(
+      chosen.map(async (file) => ({ preview: await fileToDataUrl(file), file })),
+    );
+    setPhotos((p) => [...p, ...added]);
+  };
+
+  const uploadPhotos = async (): Promise<{ url: string }[]> => {
+    if (!user) return [];
+    const out: { url: string }[] = [];
+    for (const p of photos) {
+      if (p.url) {
+        out.push({ url: p.url });
+        continue;
+      }
+      if (!p.file) continue;
+      const ext = p.file.name.split(".").pop() || "jpg";
+      const path = `gigs/${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error } = await supabase.storage.from("media").upload(path, p.file, { upsert: true });
+      if (error) throw error;
+      const { data: pub } = supabase.storage.from("media").getPublicUrl(path);
+      out.push({ url: pub.publicUrl });
+    }
+    return out;
   };
 
   const analyze = async () => {
@@ -119,7 +157,7 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
     setAnalyzing(true);
     setAiTip(null);
     try {
-      const r = await analyzeGigPhotos(photos, form.description || form.title);
+      const r = await analyzeGigPhotos(photos.map((p) => p.preview), form.description || form.title);
       setForm((f) => ({
         ...f,
         title: r.title || f.title,
@@ -148,6 +186,14 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
       return;
     }
     setSaving(true);
+    let media: { url: string }[] = [];
+    try {
+      media = await uploadPhotos();
+    } catch (e: any) {
+      setSaving(false);
+      toast.error(e?.message || "Photo upload failed");
+      return;
+    }
     const payload = {
       title: form.title.trim(),
       description: form.description.trim(),
@@ -159,6 +205,7 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
       preferred_date: form.preferred_date || null,
       preferred_time: form.preferred_time || null,
       hide_yaj_profile: hideYajProfile,
+      media,
     };
 
     let error: { message: string } | null = null;
@@ -219,15 +266,15 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
           <div className="flex items-start gap-2">
             <Sparkles className="w-4 h-4 text-primary mt-0.5 shrink-0" />
             <p className="text-xs text-muted-foreground leading-relaxed">
-              <span className="font-semibold text-foreground">YAJ AI Gig Assistant</span> — upload photos and Buddy will suggest a title, description, category, and price range.
+              <span className="font-semibold text-foreground">Photos of the job</span> — add up to {MAX_GIG_PHOTOS} pictures so helpers can see the work. Buddy can also suggest a title, description, category, and price range.
             </p>
           </div>
 
           {photos.length > 0 && (
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {photos.map((p, i) => (
                 <div key={i} className="relative aspect-square rounded-lg overflow-hidden bg-muted">
-                  <img src={p} className="w-full h-full object-cover" alt="" />
+                  <img src={p.preview} className="w-full h-full object-cover" alt="" />
                   <button
                     onClick={() => setPhotos((ph) => ph.filter((_, j) => j !== i))}
                     className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-white flex items-center justify-center"
@@ -258,7 +305,7 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
             />
             <button
               onClick={() => cameraRef.current?.click()}
-              disabled={photos.length >= 4}
+              disabled={photos.length >= MAX_GIG_PHOTOS}
               className="flex-1 h-10 rounded-xl bg-card border border-border text-xs font-semibold flex items-center justify-center gap-1.5 disabled:opacity-40"
             >
               <Camera className="w-3.5 h-3.5" />
@@ -266,11 +313,11 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
             </button>
             <button
               onClick={() => fileRef.current?.click()}
-              disabled={photos.length >= 4}
+              disabled={photos.length >= MAX_GIG_PHOTOS}
               className="flex-1 h-10 rounded-xl bg-card border border-border text-xs font-semibold flex items-center justify-center gap-1.5 disabled:opacity-40"
             >
               <ImagePlus className="w-3.5 h-3.5" />
-              {photos.length ? `Upload (${photos.length}/4)` : "Upload"}
+              {photos.length ? `Upload (${photos.length}/${MAX_GIG_PHOTOS})` : "Upload"}
             </button>
             <button
               onClick={analyze}

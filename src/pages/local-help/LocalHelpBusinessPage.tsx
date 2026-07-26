@@ -19,6 +19,9 @@ import {
   WORK_FOCUS,
   defaultServiceMap,
 } from "@/lib/local-help";
+import UserRatingStars from "@/components/UserRatingStars";
+import UserReviewsSection from "@/components/UserReviewsSection";
+import { fetchUserDisplayRating, resolveDisplayRating, type DisplayRating } from "@/lib/ratings";
 import {
   getLocalHelpPro,
   upsertLocalHelpPro,
@@ -59,6 +62,12 @@ export default function LocalHelpBusinessPage() {
   const [isActive, setIsActive] = useState(true);
   const [hiredCount, setHiredCount] = useState(0);
   const [verified, setVerified] = useState(false);
+  const [rating, setRating] = useState<DisplayRating>(() => resolveDisplayRating(null, 0));
+
+  useEffect(() => {
+    if (!user) return;
+    void (async () => setRating(await fetchUserDisplayRating(user.id)))();
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
@@ -247,8 +256,14 @@ export default function LocalHelpBusinessPage() {
               <Building2 className="h-3 w-3" /> Business account
             </div>
             <h2 className="mt-2 text-xl font-black leading-tight">
-              {exists ? "Manage your Local Help business" : "Become a helper on YAJ"}
+              {exists ? businessName || "Manage your Local Help business" : "Become a helper on YAJ"}
             </h2>
+            <div className="mt-1 flex items-center gap-2 rounded-full bg-black/20 px-2 py-1 w-fit">
+              <UserRatingStars rating={rating} variant="full" className="[&_span]:text-white" />
+              <span className="text-[10px] font-semibold text-white/85">
+                {rating.isDefault ? "New — starter rating" : `${rating.count} review${rating.count === 1 ? "" : "s"}`}
+              </span>
+            </div>
             <p className="mt-1 text-[12px] text-white/90">
               Handyman, cleaner, DJ, photographer, student side hustle — list what you do and get hired nearby.
             </p>
@@ -515,6 +530,12 @@ export default function LocalHelpBusinessPage() {
               </div>
             </div>
           </section>
+
+          {user && (
+            <div className="-mx-4">
+              <UserReviewsSection userId={user.id} title="Your reviews" />
+            </div>
+          )}
 
           <div className="space-y-2 pb-4">
             <button
