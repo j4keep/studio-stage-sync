@@ -3,7 +3,7 @@
 // supabase function: mcp
 // Bundled from src/lib/mcp/index.ts by @lovable.dev/mcp-js.
 // src/lib/mcp/index.ts
-import { defineMcp } from "npm:@lovable.dev/mcp-js@0.20.0";
+import { auth, defineMcp } from "npm:@lovable.dev/mcp-js@0.20.0";
 
 // src/lib/mcp/tools/get-featured-content.ts
 import { defineTool } from "npm:@lovable.dev/mcp-js@0.20.0";
@@ -99,11 +99,16 @@ var ask_jhi_default = defineTool2({
 });
 
 // src/lib/mcp/index.ts
+var projectRef = "cdcdlqbjyptamtleitdp";
 var mcp_default = defineMcp({
   name: "wheuat-mcp",
   title: "WHEUAT",
   version: "0.1.0",
   instructions: "Tools for WHEUAT \u2014 a mobile-first platform for independent artists and creators. Use `get_featured_content` to browse recent podcasts, videos, songs, battles, or posts. Use `ask_jhi` to consult YAJ Buddy, YAJ's AI community companion, for creative ideas, music, opportunities, Circles, collaboration, and platform guidance.",
+  auth: auth.oauth.issuer({
+    issuer: `https://${projectRef}.supabase.co/auth/v1`,
+    acceptedAudiences: "authenticated"
+  }),
   tools: [get_featured_content_default, ask_jhi_default]
 });
 
