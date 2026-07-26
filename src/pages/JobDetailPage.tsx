@@ -138,12 +138,12 @@ export default function JobDetailPage() {
         const [{ data: s }, { data: a }, { data: p }] = await Promise.all([
           supabase.from("saved_jobs").select("id").eq("user_id", user.id).eq("job_id", id).maybeSingle(),
           supabase.from("job_applications").select("id").eq("applicant_id", user.id).eq("job_id", id).maybeSingle(),
-          supabase.from("profiles").select("display_name,email").eq("user_id", user.id).maybeSingle(),
+          supabase.from("profiles").select("display_name").eq("user_id", user.id).maybeSingle(),
         ]);
         setSaved(!!s);
         setApplied(!!a);
         setFullName(p?.display_name ?? "");
-        setEmail(p?.email ?? user.email ?? "");
+        setEmail(user.email ?? "");
         const r = await loadSavedResume(user.id);
         if (r && (r as any).structured_data) setAttachAiResume(true);
       }

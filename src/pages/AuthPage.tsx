@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Mail, Lock, Eye, EyeOff, User, Calendar, ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import yajLogo from "@/assets/yaj-logo.png";
@@ -19,12 +19,22 @@ const AuthPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
+
+  // Only same-origin relative paths are allowed as a post-login destination.
+  const rawNext = searchParams.get("next");
+  const nextPath = rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : null;
 
   // Redirect if already logged in
   useEffect(() => {
-    if (user) navigate("/", { replace: true });
-  }, [user, navigate]);
+    if (!user) return;
+    if (nextPath) {
+      window.location.href = `${window.location.origin}${nextPath}`;
+      return;
+    }
+    navigate("/", { replace: true });
+  }, [user, navigate, nextPath]);
 
   // Splash animation → welcome
   useEffect(() => {
@@ -63,7 +73,9 @@ const AuthPage = () => {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth`,
+        emailRedirectTo: nextPath
+          ? `${window.location.origin}/#/auth?next=${encodeURIComponent(nextPath)}`
+          : `${window.location.origin}/auth`,
         data: { full_name: fullName, date_of_birth: dob },
       },
     });

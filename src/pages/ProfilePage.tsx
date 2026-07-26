@@ -48,14 +48,14 @@ const ProfilePage = () => {
     // Fetch profile info
     supabase
       .from("profiles")
-      .select("display_name, email, avatar_url, banner_url")
+      .select("display_name, avatar_url, banner_url")
       .eq("user_id", user.id)
       .single()
       .then(({ data }) => {
         if (data) {
           setProfileInfo({
             display_name: data.display_name || user.email?.split("@")[0] || "",
-            email: data.email || user.email || "",
+            email: user.email || "",
             avatar_url: data.avatar_url,
             banner_url: data.banner_url,
           });

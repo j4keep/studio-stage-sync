@@ -56,11 +56,10 @@ export default function SessionJoinScreen() {
 
     (async () => {
       setJoining(true);
-      const { data, error } = await (supabase as any)
-        .from("studio_bookings")
-        .select("id, session_code, session_status, studio_id, hours, user_id")
-        .eq("session_code", code.toUpperCase())
-        .single();
+      const { data: rows, error } = await (supabase as any).rpc("lookup_booking_by_session_code", {
+        _code: code.toUpperCase(),
+      });
+      const data = rows?.[0];
       setJoining(false);
 
       if (error || !data) {
@@ -113,11 +112,10 @@ export default function SessionJoinScreen() {
     if (sessionCode.length < 6) return;
     setJoining(true);
 
-    const { data, error } = await (supabase as any)
-      .from("studio_bookings")
-      .select("id, session_code, session_status, studio_id, hours, user_id")
-      .eq("session_code", sessionCode.toUpperCase())
-      .single();
+    const { data: rows, error } = await (supabase as any).rpc("lookup_booking_by_session_code", {
+      _code: sessionCode.toUpperCase(),
+    });
+    const data = rows?.[0];
 
     setJoining(false);
 
