@@ -16,6 +16,7 @@ import { useProGate } from "@/hooks/use-pro-gate";
 import ArtistSearchBar from "@/components/ArtistSearchBar";
 import FollowersSheet from "@/components/FollowersSheet";
 import ProfileFeedSection from "@/components/ProfileFeedSection";
+import UserReviewsSection from "@/components/UserReviewsSection";
 import BattleWinsSheet from "@/components/BattleWinsSheet";
 import UserProjectsSheet from "@/components/UserProjectsSheet";
 
