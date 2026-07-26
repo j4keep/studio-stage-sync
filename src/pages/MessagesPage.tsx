@@ -461,7 +461,16 @@ const MessagesPage = () => {
               )}
             </div>
           </button>
+          <button
+            type="button"
+            onClick={() => setActiveConversation(null)}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted"
+            aria-label="Close chat"
+          >
+            <X className="h-4 w-4 text-foreground" />
+          </button>
         </div>
+
 
         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 py-3">
           {messages.map((msg) => {
