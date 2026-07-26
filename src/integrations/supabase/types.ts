@@ -578,6 +578,7 @@ export type Database = {
           id: string
           location: string | null
           media: Json | null
+          poster_completed_at: string | null
           poster_id: string
           preferred_date: string | null
           preferred_time: string | null
@@ -585,6 +586,7 @@ export type Database = {
           title: string
           updated_at: string
           urgency: string | null
+          worker_completed_at: string | null
         }
         Insert: {
           ai_estimate?: Json | null
@@ -602,6 +604,7 @@ export type Database = {
           id?: string
           location?: string | null
           media?: Json | null
+          poster_completed_at?: string | null
           poster_id: string
           preferred_date?: string | null
           preferred_time?: string | null
@@ -609,6 +612,7 @@ export type Database = {
           title: string
           updated_at?: string
           urgency?: string | null
+          worker_completed_at?: string | null
         }
         Update: {
           ai_estimate?: Json | null
@@ -626,6 +630,7 @@ export type Database = {
           id?: string
           location?: string | null
           media?: Json | null
+          poster_completed_at?: string | null
           poster_id?: string
           preferred_date?: string | null
           preferred_time?: string | null
@@ -633,6 +638,7 @@ export type Database = {
           title?: string
           updated_at?: string
           urgency?: string | null
+          worker_completed_at?: string | null
         }
         Relationships: []
       }
