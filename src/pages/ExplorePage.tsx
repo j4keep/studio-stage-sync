@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronRight, Search, Sparkles, X } from "lucide-react";
+import { Search, X } from "lucide-react";
 import yajLogo from "@/assets/yaj-logo.png";
 
 type ExploreItem = {
@@ -8,12 +8,6 @@ type ExploreItem = {
   emoji: string;
   background: string;
   route?: string;
-};
-
-type ExploreSection = {
-  title: string;
-  subtitle?: string;
-  items: ExploreItem[];
 };
 
 const bg = {
@@ -29,66 +23,19 @@ const bg = {
   indigo: "from-indigo-300 to-violet-500",
 } as const;
 
-// Top-priority row — the "front door" to YAJ
 const TOP_PICKS: ExploreItem[] = [
-  { label: "Trending", emoji: "🔥", background: bg.orange },
-  { label: "Find Local Help", emoji: "🛠", background: bg.teal, route: "/local-help" },
-  { label: "Post a Gig", emoji: "🧰", background: bg.orange, route: "/gigs" },
+  { label: "Radio", emoji: "🎵", background: bg.purple, route: "/radio" },
+  { label: "Marketplace", emoji: "🛍", background: bg.pink, route: "/store" },
   { label: "Careers", emoji: "💼", background: bg.indigo, route: "/jobs" },
-  { label: "Marketplace", emoji: "🛍", background: bg.pink },
-  { label: "Deals", emoji: "💰", background: bg.green, route: "/store" },
-  { label: "Live", emoji: "🎤", background: bg.red },
-  { label: "Battles", emoji: "🏆", background: bg.yellow, route: "/battles" },
-  { label: "Communities", emoji: "❤️", background: bg.purple, route: "/circle" },
-];
-
-const SECTIONS: ExploreSection[] = [
-  {
-    title: "Create",
-    subtitle: "Make something, share it with the world",
-    items: [
-      { label: "Music", emoji: "🎵", background: bg.purple, route: "/radio" },
-      { label: "Gaming", emoji: "🎮", background: bg.indigo },
-      { label: "Entertainment", emoji: "🎬", background: bg.pink },
-      { label: "Fashion & Beauty", emoji: "💄", background: bg.red },
-      { label: "Food", emoji: "🍔", background: bg.orange },
-      { label: "Cars", emoji: "🚗", background: bg.slate },
-    ],
-  },
-  {
-    title: "Connect",
-    subtitle: "Find your people",
-    items: [
-      { label: "Find Local Help", emoji: "🛠", background: bg.teal, route: "/local-help" },
-      { label: "Communities", emoji: "❤️", background: bg.purple, route: "/circle" },
-      { label: "Live Now", emoji: "🎤", background: bg.red },
-      { label: "Battles", emoji: "🏆", background: bg.yellow, route: "/battles" },
-      { label: "Networking", emoji: "🤝", background: bg.blue },
-      { label: "Events", emoji: "🎟", background: bg.orange },
-    ],
-  },
-  {
-    title: "Elevate",
-    subtitle: "Level up your life",
-    items: [
-      { label: "Careers", emoji: "💼", background: bg.indigo, route: "/jobs" },
-      { label: "Find Local Help", emoji: "🤝", background: bg.teal, route: "/local-help" },
-      { label: "Business", emoji: "💡", background: bg.yellow },
-      { label: "Education", emoji: "📚", background: bg.blue },
-      { label: "Tech", emoji: "💻", background: bg.slate },
-      { label: "Fitness", emoji: "🏋️", background: bg.green },
-      { label: "Travel", emoji: "✈️", background: bg.orange },
-    ],
-  },
-  {
-    title: "Shop & Save",
-    items: [
-      { label: "Marketplace", emoji: "🛍", background: bg.pink },
-      { label: "Deals", emoji: "💰", background: bg.green, route: "/store" },
-      { label: "Flash Sales", emoji: "⚡", background: bg.yellow },
-      { label: "Local Spots", emoji: "📍", background: bg.orange },
-    ],
-  },
+  { label: "Wellness", emoji: "💪", background: bg.green },
+  { label: "Community", emoji: "🏠", background: bg.blue, route: "/circle" },
+  { label: "Find Local Help", emoji: "🛠", background: bg.teal, route: "/local-help" },
+  { label: "Post a Gig", emoji: "➕", background: bg.orange, route: "/gigs" },
+  { label: "Services", emoji: "🟰", background: bg.slate },
+  { label: "YAJ TV", emoji: "📺", background: bg.red, route: "/tv/watch" },
+  { label: "Games", emoji: "🎮", background: bg.indigo },
+  { label: "Battles", emoji: "⚔️", background: bg.yellow, route: "/battles" },
+  { label: "Events", emoji: "🎪", background: bg.orange },
 ];
 
 function ExploreCard({ item }: { item: ExploreItem }) {
@@ -97,13 +44,13 @@ function ExploreCard({ item }: { item: ExploreItem }) {
     <button
       type="button"
       onClick={item.route ? () => navigate(item.route!) : undefined}
-      className="w-[8.75rem] shrink-0 snap-start text-left active:scale-[0.98] transition-transform"
+      className="text-left active:scale-[0.98] transition-transform"
     >
       <div
         className={`relative aspect-square rounded-2xl overflow-hidden bg-gradient-to-br ${item.background} border border-black/5 shadow-sm flex items-center justify-center`}
       >
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_20%,rgba(255,255,255,0.6),transparent_38%)]" />
-        <span className="relative text-6xl drop-shadow-[0_6px_8px_rgba(0,0,0,0.25)]" aria-hidden>
+        <span className="relative text-5xl drop-shadow-[0_6px_8px_rgba(0,0,0,0.25)]" aria-hidden>
           {item.emoji}
         </span>
       </div>
@@ -112,49 +59,10 @@ function ExploreCard({ item }: { item: ExploreItem }) {
   );
 }
 
-function SectionRow({ section }: { section: ExploreSection }) {
-  return (
-    <section className="mb-6">
-      <div className="px-4 mb-2">
-        <h2 className="text-base font-bold text-foreground">{section.title}</h2>
-        {section.subtitle && (
-          <p className="text-[11px] text-muted-foreground mt-0.5">{section.subtitle}</p>
-        )}
-      </div>
-      <div className="h-scroll-isolate flex gap-3 overflow-x-auto px-4 pb-2 snap-x snap-mandatory scrollbar-hide">
-        {section.items.map((item) => (
-          <ExploreCard key={`${section.title}-${item.label}`} item={item} />
-        ))}
-        <button
-          type="button"
-          className="w-12 shrink-0 snap-start rounded-2xl border border-border bg-card flex items-center justify-center text-muted-foreground"
-          aria-label={`See more ${section.title}`}
-        >
-          <ChevronRight className="w-5 h-5" />
-        </button>
-      </div>
-    </section>
-  );
-}
-
 export default function ExplorePage() {
-  const navigate = useNavigate();
   const [query, setQuery] = useState("");
 
-  const sections = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    if (!normalized) return SECTIONS;
-    return SECTIONS.map((section) => ({
-      ...section,
-      items: section.items.filter(
-        (item) =>
-          item.label.toLowerCase().includes(normalized) ||
-          section.title.toLowerCase().includes(normalized),
-      ),
-    })).filter((section) => section.items.length > 0);
-  }, [query]);
-
-  const filteredTop = useMemo(() => {
+  const items = useMemo(() => {
     const n = query.trim().toLowerCase();
     if (!n) return TOP_PICKS;
     return TOP_PICKS.filter((i) => i.label.toLowerCase().includes(n));
@@ -192,76 +100,24 @@ export default function ExplorePage() {
         </div>
       </header>
 
-      {/* Featured — one Explore hero */}
-      {!query && (
-        <section className="px-4 mt-2 mb-5 space-y-3">
-          <button
-            type="button"
-            onClick={() => navigate("/gigs")}
-            className="relative w-full h-36 rounded-2xl overflow-hidden text-left bg-gradient-to-br from-violet-500 via-fuchsia-500 to-orange-500 shadow-sm"
-          >
-            <div className="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_20%_30%,white,transparent_25%),radial-gradient(circle_at_80%_70%,white,transparent_22%)]" />
-            <div className="absolute left-4 top-4 z-10 max-w-[72%]">
-              <div className="inline-flex items-center gap-1 rounded-full bg-black/50 text-white px-2 py-1 text-[10px] font-bold">
-                <Sparkles className="w-3 h-3" />
-                EXPLORE YAJ
-              </div>
-              <h2 className="mt-3 text-xl font-black text-white leading-tight">What are you looking for?</h2>
-              <p className="mt-1 text-xs font-medium text-white/90">
-                Gigs, local help, jobs, deals, live rooms and communities — all in one place.
-              </p>
-            </div>
-            <div className="absolute -right-2 -bottom-3 text-[6.5rem] leading-none opacity-90" aria-hidden>
-              🧭
-            </div>
-          </button>
-          <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-0.5">
-            {[
-              { label: "Gigs", emoji: "🧰", route: "/gigs" },
-              { label: "Local help", emoji: "🛠", route: "/local-help" },
-              { label: "Jobs", emoji: "💼", route: "/jobs" },
-              { label: "Deals", emoji: "💰", route: "/store" },
-              { label: "Battles", emoji: "🏆", route: "/battles" },
-              { label: "Communities", emoji: "❤️", route: "/circle" },
-            ].map((chip) => (
-              <button
-                key={chip.label}
-                type="button"
-                onClick={() => navigate(chip.route)}
-                className="shrink-0 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-semibold"
-              >
-                {chip.emoji} {chip.label}
-              </button>
+      <section className="px-4 pb-24">
+        <div className="mb-2">
+          <h2 className="text-base font-bold text-foreground">🔥 Top picks</h2>
+          <p className="text-[11px] text-muted-foreground mt-0.5">This section helps people improve</p>
+        </div>
+        {items.length ? (
+          <div className="grid grid-cols-3 gap-3">
+            {items.map((item) => (
+              <ExploreCard key={item.label} item={item} />
             ))}
           </div>
-        </section>
-      )}
-
-      {/* Top picks — the priority row */}
-      {filteredTop.length > 0 && (
-        <section className="mb-6">
-          <div className="px-4 mb-2">
-            <h2 className="text-base font-bold text-foreground">Top Picks</h2>
-            <p className="text-[11px] text-muted-foreground mt-0.5">Your front door to YAJ</p>
-          </div>
-          <div className="h-scroll-isolate flex gap-3 overflow-x-auto px-4 pb-2 snap-x snap-mandatory scrollbar-hide">
-            {filteredTop.map((item) => (
-              <ExploreCard key={`top-${item.label}`} item={item} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      <div>
-        {sections.length ? (
-          sections.map((section) => <SectionRow key={section.title} section={section} />)
         ) : (
           <div className="px-6 py-16 text-center">
             <p className="font-semibold">No results</p>
             <p className="mt-1 text-sm text-muted-foreground">Try a different search.</p>
           </div>
         )}
-      </div>
+      </section>
     </div>
   );
 }
