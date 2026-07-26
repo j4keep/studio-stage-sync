@@ -12,7 +12,7 @@ const SIZE_KEY = "incognito-feed-window-size";
 const OPEN_KEY = "incognito-feed-window-open";
 const MINIMIZED_KEY = "incognito-feed-window-minimized";
 const LAST_STUDIO_ROUTE_KEY = "wheuat-last-tv-route";
-const DEFAULT_STUDIO_ROUTE = "/tv";
+const DEFAULT_STUDIO_ROUTE = "/tv/watch";
 
 interface Pos {
   x: number;
