@@ -323,11 +323,11 @@ export default function GigDetailPage() {
           />
           {worker && (
             <GigProfileCard
-              label={isWorker ? "Your profile (helper)" : "Approved helper"}
+              label={isWorker ? "Your business profile (helper)" : "Approved helper — business profile"}
               profile={worker}
               hideYajPage={false}
               rating={ratingsByUser[worker.user_id]}
-              onOpenProfile={!isWorker ? () => nav(`/artist/${worker.user_id}`) : undefined}
+              onOpenProfile={!isWorker ? () => nav(`/local-help/pro/${worker.user_id}`) : undefined}
             />
           )}
           {user && !isPoster && !isWorker && (
