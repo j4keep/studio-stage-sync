@@ -131,6 +131,14 @@ export default function GigBoardPage() {
           </div>
         </button>
 
+        <button
+          type="button"
+          onClick={() => setAskOpen(true)}
+          className="w-full rounded-2xl border border-border bg-card p-2.5 text-[12px] font-bold text-muted-foreground"
+        >
+          Rather type it out? Describe it in words instead
+        </button>
+
         <div className="grid grid-cols-2 gap-3">
           <button
             type="button"
