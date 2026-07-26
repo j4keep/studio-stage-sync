@@ -58,6 +58,7 @@ import GigDetailPage from "./pages/GigDetailPage";
 import MyJobsPage from "./pages/MyJobsPage";
 import MyGigsPage from "./pages/MyGigsPage";
 import LocalHelpHomePage from "./pages/local-help/LocalHelpHomePage";
+import GigBoardPage from "./pages/local-help/GigBoardPage";
 import LocalHelpCategoryPage from "./pages/local-help/LocalHelpCategoryPage";
 import LocalHelpProPage from "./pages/local-help/LocalHelpProPage";
 import LocalHelpBusinessPage from "./pages/local-help/LocalHelpBusinessPage";
@@ -271,6 +272,7 @@ const ProtectedRoutes = () => {
         <Route path="/jobs" element={<JobsPage />} />
         <Route path="/jobs/interview/:applicationId" element={<JobInterviewPage />} />
         <Route path="/jobs/:id" element={<JobDetailPage />} />
+        <Route path="/gigs" element={<GigBoardPage />} />
         <Route path="/gigs/:id" element={<GigDetailPage />} />
         <Route path="/my-jobs" element={<MyJobsPage />} />
         <Route path="/my-gigs" element={<MyGigsPage />} />

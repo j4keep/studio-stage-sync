@@ -11,6 +11,7 @@ import {
   Ban,
   Star,
   UserCheck,
+  Building2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -323,11 +324,11 @@ export default function GigDetailPage() {
           />
           {worker && (
             <GigProfileCard
-              label={isWorker ? "Your profile (helper)" : "Approved helper"}
+              label={isWorker ? "Your business profile (helper)" : "Approved helper — business profile"}
               profile={worker}
               hideYajPage={false}
               rating={ratingsByUser[worker.user_id]}
-              onOpenProfile={!isWorker ? () => nav(`/artist/${worker.user_id}`) : undefined}
+              onOpenProfile={!isWorker ? () => nav(`/local-help/pro/${worker.user_id}`) : undefined}
             />
           )}
           {user && !isPoster && !isWorker && (
@@ -410,6 +411,13 @@ export default function GigDetailPage() {
                       {approvingId === interest.user_id ? "…" : "Approve"}
                     </button>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => nav(`/local-help/pro/${interest.user_id}`)}
+                    className="mt-2 flex h-9 w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-card text-[11px] font-bold"
+                  >
+                    <Building2 className="h-3.5 w-3.5" /> View business profile
+                  </button>
                 </div>
               ))
             )}

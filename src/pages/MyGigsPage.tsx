@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { timeAgo } from "@/lib/jobs";
 import { formatGigBudget, gigHelperId, gigStatusLabel } from "@/lib/gigs";
+import PostGigSheet from "@/components/jobs/PostGigSheet";
 
 type Tab = "posted" | "working" | "completed";
 
@@ -31,6 +32,7 @@ export default function MyGigsPage() {
   const [posted, setPosted] = useState<GigRow[]>([]);
   const [working, setWorking] = useState<GigRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [postOpen, setPostOpen] = useState(false);
 
   const load = async () => {
     if (!user) return;
@@ -82,17 +84,17 @@ export default function MyGigsPage() {
         <h1 className="flex-1 text-base font-bold">My Gigs</h1>
         <button
           type="button"
-          onClick={() => nav("/my-jobs")}
+          onClick={() => nav("/local-help")}
           className="h-8 rounded-full bg-muted px-3 text-[11px] font-bold"
         >
-          My Jobs
+          Local Help
         </button>
         <button
           type="button"
-          onClick={() => nav("/jobs")}
+          onClick={() => setPostOpen(true)}
           className="h-8 rounded-full bg-primary px-3 text-[11px] font-bold text-primary-foreground"
         >
-          Find gigs
+          Post a gig
         </button>
       </header>
 
@@ -182,6 +184,15 @@ export default function MyGigsPage() {
           </button>
         ))}
       </div>
+
+      <PostGigSheet
+        open={postOpen}
+        onClose={() => setPostOpen(false)}
+        onCreated={() => {
+          setPostOpen(false);
+          void load();
+        }}
+      />
     </div>
   );
 }
