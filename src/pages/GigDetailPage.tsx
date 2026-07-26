@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -283,10 +283,12 @@ export default function GigDetailPage() {
     if (error) return toast.error(error.message);
 
     const otherDone = isPoster ? gig.worker_completed_at : gig.poster_completed_at;
-    if (otherDone) toast.success("Gig completed — you can rate each other now");
+    if (otherDone) toast.success("Gig completed — leave your review now");
     else toast.success("Marked complete — reminding the other person to press Complete");
     await load();
+    if (otherDone) setRateOpen(true);
   };
+
 
   const confirmBlock = async () => {
     if (!user || !otherParty) return;
