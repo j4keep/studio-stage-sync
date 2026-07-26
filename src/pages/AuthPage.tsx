@@ -19,12 +19,22 @@ const AuthPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
+
+  // Only same-origin relative paths are allowed as a post-login destination.
+  const rawNext = searchParams.get("next");
+  const nextPath = rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : null;
 
   // Redirect if already logged in
   useEffect(() => {
-    if (user) navigate("/", { replace: true });
-  }, [user, navigate]);
+    if (!user) return;
+    if (nextPath) {
+      window.location.href = `${window.location.origin}${nextPath}`;
+      return;
+    }
+    navigate("/", { replace: true });
+  }, [user, navigate, nextPath]);
 
   // Splash animation → welcome
   useEffect(() => {
