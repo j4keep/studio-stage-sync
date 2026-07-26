@@ -32,6 +32,7 @@ const bg = {
 // Top-priority row — the "front door" to YAJ
 const TOP_PICKS: ExploreItem[] = [
   { label: "Trending", emoji: "🔥", background: bg.orange },
+  { label: "Find Local Help", emoji: "🛠", background: bg.teal, route: "/local-help" },
   { label: "Careers", emoji: "💼", background: bg.indigo, route: "/jobs" },
   { label: "Marketplace", emoji: "🛍", background: bg.pink },
   { label: "Deals", emoji: "💰", background: bg.green, route: "/store" },
@@ -57,11 +58,12 @@ const SECTIONS: ExploreSection[] = [
     title: "Connect",
     subtitle: "Find your people",
     items: [
+      { label: "Find Local Help", emoji: "🛠", background: bg.teal, route: "/local-help" },
       { label: "Communities", emoji: "❤️", background: bg.purple, route: "/circle" },
       { label: "Live Now", emoji: "🎤", background: bg.red },
       { label: "Battles", emoji: "🏆", background: bg.yellow, route: "/battles" },
       { label: "Networking", emoji: "🤝", background: bg.blue },
-      { label: "Events", emoji: "🎟", background: bg.teal },
+      { label: "Events", emoji: "🎟", background: bg.orange },
     ],
   },
   {
@@ -69,11 +71,12 @@ const SECTIONS: ExploreSection[] = [
     subtitle: "Level up your life",
     items: [
       { label: "Careers", emoji: "💼", background: bg.indigo, route: "/jobs" },
+      { label: "Find Local Help", emoji: "🤝", background: bg.teal, route: "/local-help" },
       { label: "Business", emoji: "💡", background: bg.yellow },
       { label: "Education", emoji: "📚", background: bg.blue },
       { label: "Tech", emoji: "💻", background: bg.slate },
       { label: "Fitness", emoji: "🏋️", background: bg.green },
-      { label: "Travel", emoji: "✈️", background: bg.teal },
+      { label: "Travel", emoji: "✈️", background: bg.orange },
     ],
   },
   {
@@ -134,6 +137,7 @@ function SectionRow({ section }: { section: ExploreSection }) {
 }
 
 export default function ExplorePage() {
+  const navigate = useNavigate();
   const [query, setQuery] = useState("");
 
   const sections = useMemo(() => {
@@ -187,28 +191,46 @@ export default function ExplorePage() {
         </div>
       </header>
 
-      {/* Featured banner */}
+      {/* Featured — Local Help discovery */}
       {!query && (
-        <section className="px-4 mt-2 mb-5">
+        <section className="px-4 mt-2 mb-5 space-y-3">
           <button
             type="button"
-            className="relative w-full h-36 rounded-2xl overflow-hidden text-left bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 shadow-sm"
+            onClick={() => navigate("/local-help")}
+            className="relative w-full h-36 rounded-2xl overflow-hidden text-left bg-gradient-to-br from-teal-500 via-emerald-500 to-cyan-600 shadow-sm"
           >
             <div className="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_20%_30%,white,transparent_25%),radial-gradient(circle_at_80%_70%,white,transparent_22%)]" />
-            <div className="absolute left-4 top-4 z-10 max-w-[65%]">
-              <div className="inline-flex items-center gap-1 rounded-full bg-black/60 text-white px-2 py-1 text-[10px] font-bold">
+            <div className="absolute left-4 top-4 z-10 max-w-[70%]">
+              <div className="inline-flex items-center gap-1 rounded-full bg-black/50 text-white px-2 py-1 text-[10px] font-bold">
                 <Sparkles className="w-3 h-3" />
-                WHAT'S HOT
+                LOCAL SERVICES
               </div>
-              <h2 className="mt-3 text-xl font-black text-white leading-tight">Create • Connect • Elevate</h2>
-              <p className="mt-1 text-xs font-medium text-white/85">
-                Content, communities & opportunities in one place.
+              <h2 className="mt-3 text-xl font-black text-white leading-tight">Need a handyman?</h2>
+              <p className="mt-1 text-xs font-medium text-white/90">
+                Cleaners, DJs, photographers & neighbors ready to help.
               </p>
             </div>
-            <div className="absolute -right-4 -bottom-4 text-[7rem] leading-none opacity-90" aria-hidden>
-              🚀
+            <div className="absolute -right-2 -bottom-2 text-[6.5rem] leading-none opacity-90" aria-hidden>
+              🛠
             </div>
           </button>
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-0.5">
+            {[
+              { label: "House cleaning", emoji: "🧹", id: "cleaning" },
+              { label: "Photographers", emoji: "📸", id: "photography" },
+              { label: "DJs this weekend", emoji: "🎧", id: "dj" },
+              { label: "Mobile mechanics", emoji: "🚗", id: "auto" },
+            ].map((chip) => (
+              <button
+                key={chip.id}
+                type="button"
+                onClick={() => navigate(`/local-help/${chip.id}`)}
+                className="shrink-0 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-semibold"
+              >
+                {chip.emoji} {chip.label}
+              </button>
+            ))}
+          </div>
         </section>
       )}
 

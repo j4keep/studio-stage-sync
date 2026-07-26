@@ -22,6 +22,7 @@ function isDesktopShellPath(pathname: string) {
     pathname === "/" ||
     pathname === "/feed" ||
     pathname === "/explore" ||
+    pathname === "/local-help" ||
     pathname === "/jobs" ||
     pathname === "/profile" ||
     pathname === "/my-jobs" ||
@@ -33,6 +34,7 @@ function isDesktopShellPath(pathname: string) {
     return true;
   }
   if (pathname.startsWith("/jobs/")) return true;
+  if (pathname.startsWith("/local-help/")) return true;
   return false;
 }
 

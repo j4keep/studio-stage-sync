@@ -57,6 +57,9 @@ import JobDetailPage from "./pages/JobDetailPage";
 import GigDetailPage from "./pages/GigDetailPage";
 import MyJobsPage from "./pages/MyJobsPage";
 import MyGigsPage from "./pages/MyGigsPage";
+import LocalHelpHomePage from "./pages/local-help/LocalHelpHomePage";
+import LocalHelpCategoryPage from "./pages/local-help/LocalHelpCategoryPage";
+import LocalHelpProPage from "./pages/local-help/LocalHelpProPage";
 import BlockingSettingsPage from "./pages/BlockingSettingsPage";
 import ResumeBuilderPage from "./pages/ResumeBuilderPage";
 import JobPreferencesPage from "./pages/JobPreferencesPage";
@@ -260,6 +263,9 @@ const ProtectedRoutes = () => {
         <Route path="/ask-yaj" element={<AskJhiPage />} />
         <Route path="/ask-jhi" element={<Navigate to="/ask-yaj" replace />} />
         <Route path="/explore" element={<ExplorePage />} />
+        <Route path="/local-help" element={<LocalHelpHomePage />} />
+        <Route path="/local-help/pro/:userId" element={<LocalHelpProPage />} />
+        <Route path="/local-help/:categoryId" element={<LocalHelpCategoryPage />} />
         <Route path="/jobs" element={<JobsPage />} />
         <Route path="/jobs/interview/:applicationId" element={<JobInterviewPage />} />
         <Route path="/jobs/:id" element={<JobDetailPage />} />
