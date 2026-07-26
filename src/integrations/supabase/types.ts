@@ -1837,12 +1837,18 @@ export type Database = {
       pro_profiles: {
         Row: {
           about: string | null
+          banner_url: string | null
+          business_hours: string | null
           business_name: string | null
           categories: string[]
+          certifications: string[]
           created_at: string
           hired_count: number
           hourly_rate: number | null
+          insurance_note: string | null
           is_active: boolean
+          languages: string[]
+          logo_url: string | null
           media: Json
           project_types: Json
           responds_minutes: number | null
@@ -1851,16 +1857,23 @@ export type Database = {
           skills: string[]
           updated_at: string
           user_id: string
+          website: string | null
           work_focus: Json
         }
         Insert: {
           about?: string | null
+          banner_url?: string | null
+          business_hours?: string | null
           business_name?: string | null
           categories?: string[]
+          certifications?: string[]
           created_at?: string
           hired_count?: number
           hourly_rate?: number | null
+          insurance_note?: string | null
           is_active?: boolean
+          languages?: string[]
+          logo_url?: string | null
           media?: Json
           project_types?: Json
           responds_minutes?: number | null
@@ -1869,16 +1882,23 @@ export type Database = {
           skills?: string[]
           updated_at?: string
           user_id: string
+          website?: string | null
           work_focus?: Json
         }
         Update: {
           about?: string | null
+          banner_url?: string | null
+          business_hours?: string | null
           business_name?: string | null
           categories?: string[]
+          certifications?: string[]
           created_at?: string
           hired_count?: number
           hourly_rate?: number | null
+          insurance_note?: string | null
           is_active?: boolean
+          languages?: string[]
+          logo_url?: string | null
           media?: Json
           project_types?: Json
           responds_minutes?: number | null
@@ -1887,6 +1907,7 @@ export type Database = {
           skills?: string[]
           updated_at?: string
           user_id?: string
+          website?: string | null
           work_focus?: Json
         }
         Relationships: []
