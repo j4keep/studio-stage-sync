@@ -37,6 +37,7 @@ interface Message {
 }
 
 type MessagesNavState = {
+  conversationId?: string;
   startWithUserId?: string;
   startWithProfile?: Profile;
   hideOtherYajPage?: boolean;
@@ -141,6 +142,28 @@ const MessagesPage = () => {
     enabled: !!activeConversation,
     refetchInterval: 3000,
   });
+
+  useEffect(() => {
+    if (!user || !activeConversation?.id) return;
+    void (async () => {
+      await Promise.all([
+        (supabase as any)
+          .from("messages")
+          .update({ read: true })
+          .eq("conversation_id", activeConversation.id)
+          .neq("sender_id", user.id)
+          .eq("read", false),
+        (supabase as any)
+          .from("notifications")
+          .update({ is_read: true, read: true })
+          .eq("user_id", user.id)
+          .eq("reference_type", "message")
+          .eq("reference_id", activeConversation.id)
+          .eq("is_read", false),
+      ]);
+      queryClient.invalidateQueries({ queryKey: ["notifications", user.id] });
+    })();
+  }, [activeConversation?.id, queryClient, user?.id]);
 
   const { data: searchResults = [] } = useQuery({
     queryKey: ["search-users", searchQuery],
@@ -335,6 +358,14 @@ const MessagesPage = () => {
   useEffect(() => {
     if (!user || autoStartDoneRef.current || convLoading) return;
     const state = (location.state || null) as MessagesNavState;
+    if (state?.conversationId) {
+      const existing = conversations.find((c) => c.id === state.conversationId);
+      if (!existing) return;
+      autoStartDoneRef.current = true;
+      setActiveConversation(existing);
+      navigate(location.pathname, { replace: true, state: null });
+      return;
+    }
     if (!state?.startWithUserId) return;
     autoStartDoneRef.current = true;
     const profile =
@@ -369,7 +400,7 @@ const MessagesPage = () => {
   // Active chat — fixed shell so composer stays visible above bottom nav
   if (activeConversation) {
     return (
-      <div className="fixed inset-x-0 top-0 bottom-0 z-50 mx-auto flex w-full max-w-lg flex-col bg-background lg:static lg:z-auto lg:mx-0 lg:h-[calc(100dvh-3.5rem)] lg:max-w-none">
+      <div className="fixed inset-x-0 bottom-0 top-0 z-[80] mx-auto flex w-full max-w-lg flex-col bg-background lg:static lg:z-auto lg:mx-0 lg:h-[calc(100dvh-3.5rem)] lg:max-w-none">
         <div className="flex shrink-0 items-center gap-3 border-b border-border px-3 py-2.5 pt-[max(0.5rem,env(safe-area-inset-top))]">
           <button
             type="button"
@@ -451,7 +482,7 @@ const MessagesPage = () => {
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="shrink-0 border-t border-border bg-background px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">
+        <div className="relative z-[81] shrink-0 border-t border-border bg-background px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">
           <form
             className="flex items-center gap-2"
             onSubmit={(e) => {
