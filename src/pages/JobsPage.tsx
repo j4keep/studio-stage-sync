@@ -287,6 +287,8 @@ export default function JobsPage() {
           </button>
         </section>
       )}
+
+      <section className="px-4 space-y-3">
         {loading ? (
           <p className="text-sm text-muted-foreground text-center py-8">Loading…</p>
         ) : displayed.length === 0 ? (
