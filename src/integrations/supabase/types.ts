@@ -1834,6 +1834,63 @@ export type Database = {
         }
         Relationships: []
       }
+      pro_profiles: {
+        Row: {
+          about: string | null
+          business_name: string | null
+          categories: string[]
+          created_at: string
+          hired_count: number
+          hourly_rate: number | null
+          is_active: boolean
+          media: Json
+          project_types: Json
+          responds_minutes: number | null
+          service_area: string | null
+          similar_jobs_count: number
+          skills: string[]
+          updated_at: string
+          user_id: string
+          work_focus: Json
+        }
+        Insert: {
+          about?: string | null
+          business_name?: string | null
+          categories?: string[]
+          created_at?: string
+          hired_count?: number
+          hourly_rate?: number | null
+          is_active?: boolean
+          media?: Json
+          project_types?: Json
+          responds_minutes?: number | null
+          service_area?: string | null
+          similar_jobs_count?: number
+          skills?: string[]
+          updated_at?: string
+          user_id: string
+          work_focus?: Json
+        }
+        Update: {
+          about?: string | null
+          business_name?: string | null
+          categories?: string[]
+          created_at?: string
+          hired_count?: number
+          hourly_rate?: number | null
+          is_active?: boolean
+          media?: Json
+          project_types?: Json
+          responds_minutes?: number | null
+          service_area?: string | null
+          similar_jobs_count?: number
+          skills?: string[]
+          updated_at?: string
+          user_id?: string
+          work_focus?: Json
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
