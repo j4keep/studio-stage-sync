@@ -214,6 +214,26 @@ export default function ExplorePage() {
               🛠
             </div>
           </button>
+          <button
+            type="button"
+            onClick={() => navigate("/gigs")}
+            className="relative w-full h-36 rounded-2xl overflow-hidden text-left bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 shadow-sm"
+          >
+            <div className="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_25%_25%,white,transparent_25%),radial-gradient(circle_at_75%_75%,white,transparent_22%)]" />
+            <div className="absolute left-4 top-4 z-10 max-w-[70%]">
+              <div className="inline-flex items-center gap-1 rounded-full bg-black/50 text-white px-2 py-1 text-[10px] font-bold">
+                <Sparkles className="w-3 h-3" />
+                GIGS
+              </div>
+              <h2 className="mt-3 text-xl font-black text-white leading-tight">Something need fixing?</h2>
+              <p className="mt-1 text-xs font-medium text-white/90">
+                Post the gig with a photo — local helpers claim it.
+              </p>
+            </div>
+            <div className="absolute -right-2 -bottom-2 text-[6.5rem] leading-none opacity-90" aria-hidden>
+              🧰
+            </div>
+          </button>
           <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-0.5">
             {[
               { label: "House cleaning", emoji: "🧹", id: "cleaning" },
