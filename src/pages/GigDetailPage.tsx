@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -71,7 +71,11 @@ export default function GigDetailPage() {
   const [blockOpen, setBlockOpen] = useState(false);
   const [blockBusy, setBlockBusy] = useState(false);
   const [myRating, setMyRating] = useState<number | null>(null);
+  const [myComment, setMyComment] = useState<string | null>(null);
+  const [receivedRating, setReceivedRating] = useState<{ score: number; comment: string | null } | null>(null);
   const [ratingsByUser, setRatingsByUser] = useState<Record<string, DisplayRating>>({});
+  const autoRatePromptedRef = useRef(false);
+
 
   const load = async () => {
     if (!id) return;
@@ -136,15 +140,18 @@ export default function GigDetailPage() {
     }
 
     if (user) {
-      const { data: rating } = await supabase
+      const { data: gigRatings } = await supabase
         .from("user_ratings")
-        .select("score")
+        .select("score, comment, rater_id, ratee_id")
         .eq("context_type", "gig")
-        .eq("context_id", row.id)
-        .eq("rater_id", user.id)
-        .maybeSingle();
-      setMyRating(rating?.score ?? null);
+        .eq("context_id", row.id);
+      const mine = (gigRatings || []).find((r: any) => r.rater_id === user.id);
+      const theirs = (gigRatings || []).find((r: any) => r.ratee_id === user.id);
+      setMyRating(mine?.score ?? null);
+      setMyComment(mine?.comment ?? null);
+      setReceivedRating(theirs ? { score: theirs.score, comment: theirs.comment ?? null } : null);
     }
+
   };
 
   useEffect(() => {
@@ -276,10 +283,23 @@ export default function GigDetailPage() {
     if (error) return toast.error(error.message);
 
     const otherDone = isPoster ? gig.worker_completed_at : gig.poster_completed_at;
-    if (otherDone) toast.success("Gig completed — you can rate each other now");
+    if (otherDone) toast.success("Gig completed — leave your review now");
     else toast.success("Marked complete — reminding the other person to press Complete");
     await load();
+    if (otherDone) setRateOpen(true);
   };
+
+  /** Both sides pressed Complete → prompt this user for their review/comment. */
+  useEffect(() => {
+    if (!gig || !user || autoRatePromptedRef.current) return;
+    const party = user.id === gig.poster_id || user.id === gigHelperId(gig);
+    if (!party) return;
+    if (canRateGig(gig) && myRating == null) {
+      autoRatePromptedRef.current = true;
+      setRateOpen(true);
+    }
+  }, [gig, user, myRating]);
+
 
   const confirmBlock = async () => {
     if (!user || !otherParty) return;
@@ -459,14 +479,46 @@ export default function GigDetailPage() {
           </div>
         )}
 
-        {ratingUnlocked && (
+        {ratingUnlocked && isParty && (
           <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm">
             <p className="font-bold text-emerald-700 dark:text-emerald-300">Gig completed</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {myRating ? `You rated them ${myRating}/5.` : "Both sides finished — rate each other."}
-            </p>
+            {myRating ? (
+              <>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  You rated {otherName} {myRating}/5{myComment ? ` — "${myComment}"` : ""}.
+                </p>
+                <div className="mt-2 rounded-xl border border-border bg-card p-2.5">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {otherName} rated you
+                  </p>
+                  {receivedRating ? (
+                    <>
+                      <div className="mt-1 flex items-center gap-1">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`h-3.5 w-3.5 ${i < receivedRating.score ? "fill-amber-400 text-amber-400" : "text-muted-foreground/40"}`}
+                          />
+                        ))}
+                        <span className="ml-1 text-xs font-bold tabular-nums">{receivedRating.score}/5</span>
+                      </div>
+                      {receivedRating.comment && (
+                        <p className="mt-1 text-[13px] leading-snug text-foreground">{receivedRating.comment}</p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="mt-1 text-xs text-muted-foreground">Waiting on their review.</p>
+                  )}
+                </div>
+              </>
+            ) : (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Leave your review and comment to see what {otherName} said about you.
+              </p>
+            )}
           </div>
         )}
+
 
         <div className="space-y-2">
           {user && !isPoster && !isWorker && isOpen && (
