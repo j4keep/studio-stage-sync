@@ -11,6 +11,7 @@ import FollowersSheet from "@/components/FollowersSheet";
 import MessageUserButton from "@/components/MessageUserButton";
 
 import ProfileFeedSection from "@/components/ProfileFeedSection";
+import UserReviewsSection from "@/components/UserReviewsSection";
 import BattleWinsSheet from "@/components/BattleWinsSheet";
 import UserProjectsSheet from "@/components/UserProjectsSheet";
 import BlockConfirmDialog from "@/components/BlockConfirmDialog";
@@ -273,6 +274,9 @@ const ArtistProfilePage = () => {
           <ProfileFeedSection userId={userId} isOwner={false} />
         </div>
       )}
+
+      {userId && <UserReviewsSection userId={userId} title="Reviews & comments" />}
+
 
       {userId && <FollowersSheet open={showFollowers} onClose={() => setShowFollowers(false)} userId={userId} isOwner={false} />}
       {userId && <BattleWinsSheet open={showWins} onClose={() => setShowWins(false)} userId={userId} />}

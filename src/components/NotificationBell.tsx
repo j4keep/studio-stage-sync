@@ -92,6 +92,7 @@ const NotificationBell = () => {
     else if (notification.reference_type === "follow") navigate(`/artist/${notification.reference_id}`);
     else if (notification.reference_type === "studio") navigate("/my-studios");
     else if (notification.reference_type === "session_verify") navigate("/bookings");
+    else if (notification.reference_type === "rating" || notification.type === "rating") navigate("/profile");
     else if (notification.reference_type === "gig" || notification.type === "gig") {
       if (notification.reference_id) navigate(`/gigs/${notification.reference_id}`);
       else navigate("/my-gigs");
