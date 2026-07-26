@@ -6,7 +6,7 @@ import GlobalPlaylistPlayer from "./GlobalPlaylistPlayer";
 import PlaylistPlayerSheet from "./PlaylistPlayerSheet";
 import NotificationBell from "./NotificationBell";
 import YajBuddyIcon from "./YajBuddyIcon";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, ArrowLeft } from "lucide-react";
 import { useProGate } from "@/hooks/use-pro-gate";
 import ProGateModal from "./ProGateModal";
 import IncognitoFeedWindow from "./IncognitoFeedWindow";
@@ -54,6 +54,21 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   const mobileFeed = isMobileFeedPath(location.pathname);
   const showMobileTopBar =
     !["/auth", "/", "/feed"].includes(location.pathname) && !isPodcastWorkspace && !isPodcastLobby;
+  const rootTabs = ["/", "/feed", "/explore", "/jobs", "/profile", "/auth"];
+  const showBackButton = !rootTabs.includes(location.pathname);
+
+  const backSlot = showBackButton ? (
+    <button
+      onClick={() => (window.history.length > 1 ? navigate(-1) : navigate("/"))}
+      className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"
+      aria-label="Go back"
+    >
+      <ArrowLeft className="h-4 w-4 text-foreground" />
+    </button>
+  ) : (
+    <span />
+  );
+
 
   const handleAskYaj = () => {
     if (!isPro) {
@@ -80,7 +95,10 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
         </div>
 
         {showMobileTopBar && (
-          <div className="sticky top-0 z-40 flex items-center justify-end gap-2 border-b border-border bg-background/90 px-4 py-2 backdrop-blur-xl lg:hidden">
+          <div className="sticky top-0 z-40 flex items-center justify-between gap-2 border-b border-border bg-background/90 px-4 py-2 backdrop-blur-xl lg:hidden">
+            {backSlot}
+            <div className="flex items-center gap-2">
+
             <button
               onClick={handleAskYaj}
               className="relative flex h-9 w-9 items-center justify-center rounded-full bg-muted"
@@ -101,7 +119,9 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
             </button>
             <NotificationBell />
             <IncognitoHeaderButton />
+            </div>
           </div>
+
         )}
 
         <div
@@ -153,8 +173,11 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   return (
     <div className="relative mx-auto min-h-screen min-w-0 max-w-lg overflow-x-hidden overscroll-x-none bg-background text-foreground lg:max-w-3xl">
       {showMobileTopBar && (
-        <div className="sticky top-0 z-40 flex items-center justify-end gap-2 border-b border-border bg-background/90 px-4 py-2 backdrop-blur-xl">
+        <div className="sticky top-0 z-40 flex items-center justify-between gap-2 border-b border-border bg-background/90 px-4 py-2 backdrop-blur-xl">
+          {backSlot}
+          <div className="flex items-center gap-2">
           <button
+
             onClick={handleAskYaj}
             className="relative flex h-9 w-9 items-center justify-center rounded-full bg-muted"
             aria-label="Ask YAJ Buddy"
@@ -174,7 +197,9 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
           </button>
           <NotificationBell />
           <IncognitoHeaderButton />
+          </div>
         </div>
+
       )}
       <main className="min-w-0 pb-20">{children}</main>
       <GlobalRadioPlayer />
