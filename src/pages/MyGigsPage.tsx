@@ -31,6 +31,7 @@ export default function MyGigsPage() {
   const [posted, setPosted] = useState<GigRow[]>([]);
   const [working, setWorking] = useState<GigRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [postOpen, setPostOpen] = useState(false);
 
   const load = async () => {
     if (!user) return;
