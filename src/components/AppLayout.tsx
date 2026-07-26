@@ -6,7 +6,7 @@ import GlobalPlaylistPlayer from "./GlobalPlaylistPlayer";
 import PlaylistPlayerSheet from "./PlaylistPlayerSheet";
 import NotificationBell from "./NotificationBell";
 import YajBuddyIcon from "./YajBuddyIcon";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, ArrowLeft } from "lucide-react";
 import { useProGate } from "@/hooks/use-pro-gate";
 import ProGateModal from "./ProGateModal";
 import IncognitoFeedWindow from "./IncognitoFeedWindow";
