@@ -132,12 +132,10 @@ export async function activateLiveSession(liveSessionId: string) {
   }
 }
 
-/** Resolve a session_code to a booking_id from studio_bookings (optional link). */
+/** Resolve a session_code to a booking_id via the secure lookup function. */
 export async function lookupBookingByCode(sessionCode: string): Promise<string | null> {
-  const { data } = await supabase
-    .from("studio_bookings")
-    .select("id")
-    .eq("session_code", sessionCode)
-    .maybeSingle();
-  return data?.id ?? null;
+  const { data } = await (supabase as any).rpc("lookup_booking_by_session_code", {
+    _code: sessionCode.toUpperCase(),
+  });
+  return data?.[0]?.id ?? null;
 }
