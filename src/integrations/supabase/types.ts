@@ -564,9 +564,13 @@ export type Database = {
       gig_listings: {
         Row: {
           ai_estimate: Json | null
+          assigned_at: string | null
+          assigned_to: string | null
           budget_max: number | null
           budget_min: number | null
+          cancelled_at: string | null
           category: string
+          completed_at: string | null
           created_at: string
           currency: string | null
           description: string
@@ -584,9 +588,13 @@ export type Database = {
         }
         Insert: {
           ai_estimate?: Json | null
+          assigned_at?: string | null
+          assigned_to?: string | null
           budget_max?: number | null
           budget_min?: number | null
+          cancelled_at?: string | null
           category?: string
+          completed_at?: string | null
           created_at?: string
           currency?: string | null
           description: string
@@ -604,9 +612,13 @@ export type Database = {
         }
         Update: {
           ai_estimate?: Json | null
+          assigned_at?: string | null
+          assigned_to?: string | null
           budget_max?: number | null
           budget_min?: number | null
+          cancelled_at?: string | null
           category?: string
+          completed_at?: string | null
           created_at?: string
           currency?: string | null
           description?: string
