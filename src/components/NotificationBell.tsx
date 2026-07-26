@@ -40,7 +40,7 @@ const NotificationBell = () => {
     enabled: !!user && notificationsEnabled,
   });
 
-  const unreadCount = notifications.filter((n: any) => !n.is_read).length;
+  const unreadCount = notifications.filter((n: any) => !(n.is_read || n.read)).length;
 
   // Realtime
   useEffect(() => {
@@ -48,7 +48,7 @@ const NotificationBell = () => {
     const channel = supabase
       .channel(`notifications-${user.id}`)
       .on("postgres_changes", {
-        event: "INSERT",
+        event: "*",
         schema: "public",
         table: "notifications",
         filter: `user_id=eq.${user.id}`,
@@ -64,7 +64,7 @@ const NotificationBell = () => {
       if (!user) return;
       await (supabase as any)
         .from("notifications")
-        .update({ is_read: true })
+        .update({ is_read: true, read: true })
         .eq("user_id", user.id)
         .eq("is_read", false);
     },
@@ -143,7 +143,7 @@ const NotificationBell = () => {
                 key={n.id}
                 onClick={() => void handleNotificationClick(n)}
                 className={`w-full text-left px-4 py-3 border-b border-border/50 hover:bg-muted/50 transition-colors ${
-                  !n.is_read ? "bg-primary/5" : ""
+                  !(n.is_read || n.read) ? "bg-primary/5" : ""
                 }`}
               >
                 <div className="flex items-start gap-3">
@@ -154,7 +154,7 @@ const NotificationBell = () => {
                           Jobs
                         </span>
                       )}
-                      <p className={`text-sm font-semibold truncate ${!n.is_read ? "text-foreground" : "text-muted-foreground"}`}>
+                      <p className={`text-sm font-semibold truncate ${!(n.is_read || n.read) ? "text-foreground" : "text-muted-foreground"}`}>
                         {n.title}
                       </p>
                     </div>
@@ -165,7 +165,7 @@ const NotificationBell = () => {
                       {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
                     </p>
                   </div>
-                  {!n.is_read && (
+                  {!(n.is_read || n.read) && (
                     <div className="w-2 h-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />
                   )}
                 </div>
