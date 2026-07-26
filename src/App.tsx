@@ -58,6 +58,7 @@ import GigDetailPage from "./pages/GigDetailPage";
 import MyJobsPage from "./pages/MyJobsPage";
 import MyGigsPage from "./pages/MyGigsPage";
 import LocalHelpHomePage from "./pages/local-help/LocalHelpHomePage";
+import GigBoardPage from "./pages/local-help/GigBoardPage";
 import LocalHelpCategoryPage from "./pages/local-help/LocalHelpCategoryPage";
 import LocalHelpProPage from "./pages/local-help/LocalHelpProPage";
 import LocalHelpBusinessPage from "./pages/local-help/LocalHelpBusinessPage";
