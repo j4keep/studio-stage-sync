@@ -410,8 +410,9 @@ const MessagesPage = () => {
   // Active chat — fixed shell so composer stays visible above bottom nav
   if (activeConversation) {
     return (
-      <div className="fixed inset-x-0 bottom-0 top-0 z-[80] mx-auto flex w-full max-w-lg flex-col bg-background lg:static lg:z-auto lg:mx-0 lg:h-[calc(100dvh-3.5rem)] lg:max-w-none">
-        <div className="flex shrink-0 items-center gap-3 border-b border-border px-3 py-2.5 pt-[max(0.5rem,env(safe-area-inset-top))]">
+      <div className="fixed inset-x-0 bottom-0 top-0 z-[80] mx-auto flex h-[100dvh] w-full max-w-lg flex-col bg-background lg:static lg:z-auto lg:mx-0 lg:h-[calc(100dvh-3.5rem)] lg:max-w-none">
+        <div className="sticky top-0 z-[82] flex shrink-0 items-center gap-3 border-b border-border bg-background px-3 py-2.5 pt-[max(0.5rem,env(safe-area-inset-top))]">
+
           <button
             type="button"
             onClick={() => setActiveConversation(null)}
