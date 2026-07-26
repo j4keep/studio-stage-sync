@@ -24,6 +24,7 @@ import { useSectionNotifications, type NotifSection } from "@/hooks/use-section-
 const ProfilePage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { counts: notifCounts, clearSection } = useSectionNotifications();
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followerCount, setFollowerCount] = useState("0");
