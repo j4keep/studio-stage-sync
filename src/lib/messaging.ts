@@ -24,7 +24,7 @@ export async function getOrCreateConversation(userId: string, otherUserId: strin
 
   const { data: conv, error: convErr } = await supabase
     .from("conversations")
-    .insert({})
+    .insert({ created_by: userId })
     .select("id")
     .single();
   if (convErr || !conv) throw new Error(convErr?.message || "Could not start chat");
