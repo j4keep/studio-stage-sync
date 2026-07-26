@@ -122,7 +122,8 @@ export default function GigDetailPage() {
         setInterests(list.filter((i) => i.status === "interested" || i.status === "approved"));
         const moreIds = list.map((i) => i.user_id);
         if (moreIds.length) {
-          setRatingsByUser((prev) => ({ ...prev, ...(await fetchRatingsByUserIds(moreIds)) }));
+          const moreRatings = await fetchRatingsByUserIds(moreIds);
+          setRatingsByUser((prev) => ({ ...prev, ...moreRatings }));
         }
       } catch {
         setInterests([]);
