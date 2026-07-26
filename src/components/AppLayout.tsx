@@ -173,8 +173,11 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   return (
     <div className="relative mx-auto min-h-screen min-w-0 max-w-lg overflow-x-hidden overscroll-x-none bg-background text-foreground lg:max-w-3xl">
       {showMobileTopBar && (
-        <div className="sticky top-0 z-40 flex items-center justify-end gap-2 border-b border-border bg-background/90 px-4 py-2 backdrop-blur-xl">
+        <div className="sticky top-0 z-40 flex items-center justify-between gap-2 border-b border-border bg-background/90 px-4 py-2 backdrop-blur-xl">
+          {backSlot}
+          <div className="flex items-center gap-2">
           <button
+
             onClick={handleAskYaj}
             className="relative flex h-9 w-9 items-center justify-center rounded-full bg-muted"
             aria-label="Ask YAJ Buddy"
