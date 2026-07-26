@@ -3256,6 +3256,10 @@ export type Database = {
       increment_song_plays: { Args: { song_id: string }; Returns: undefined }
       increment_video_views: { Args: { video_id: string }; Returns: undefined }
       is_blocked: { Args: { user_a: string; user_b: string }; Returns: boolean }
+      is_circle_member: {
+        Args: { _circle_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_conversation_member: {
         Args: { _conversation_id: string; _user_id: string }
         Returns: boolean
@@ -3263,6 +3267,17 @@ export type Database = {
       is_podcast_participant: {
         Args: { _episode: string; _user: string }
         Returns: boolean
+      }
+      lookup_booking_by_session_code: {
+        Args: { _code: string }
+        Returns: {
+          hours: number
+          id: string
+          session_code: string
+          session_status: string
+          studio_id: string
+          user_id: string
+        }[]
       }
     }
     Enums: {
