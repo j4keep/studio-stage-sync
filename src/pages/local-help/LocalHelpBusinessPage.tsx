@@ -38,6 +38,8 @@ export default function LocalHelpBusinessPage() {
   const logoRef = useRef<HTMLInputElement>(null);
   const bannerRef = useRef<HTMLInputElement>(null);
   const portfolioRef = useRef<HTMLInputElement>(null);
+  const beforeRef = useRef<HTMLInputElement>(null);
+  const afterRef = useRef<HTMLInputElement>(null);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -134,10 +136,23 @@ export default function LocalHelpBusinessPage() {
     if (url) setBannerUrl(url);
   };
 
+  const MAX_BEFORE_AFTER = 6;
+  const beforeAfter = media.filter((m) => m.category === "before" || m.category === "after");
+
   const onPortfolio = async (file: File | undefined) => {
     if (!file) return;
     const url = await uploadFile(file, "portfolio");
     if (url) setMedia((m) => [...m, { url, label: "Project", category: "portfolio" }]);
+  };
+
+  const onBeforeAfter = async (file: File | undefined, category: "before" | "after") => {
+    if (!file) return;
+    if (beforeAfter.length >= MAX_BEFORE_AFTER) {
+      toast.error(`Keep it neat — up to ${MAX_BEFORE_AFTER} before/after photos`);
+      return;
+    }
+    const url = await uploadFile(file, "portfolio");
+    if (url) setMedia((m) => [...m, { url, label: category === "before" ? "Before" : "After", category }]);
   };
 
   const toggleCat = (id: string) => {
@@ -467,25 +482,81 @@ export default function LocalHelpBusinessPage() {
               </button>
               <input ref={portfolioRef} type="file" accept="image/*" className="hidden" onChange={(e) => void onPortfolio(e.target.files?.[0])} />
             </div>
-            {media.length === 0 ? (
-              <p className="mt-2 text-[12px] text-muted-foreground">Show before/after or project photos.</p>
+            {media.filter((m) => m.category !== "before" && m.category !== "after").length === 0 ? (
+              <p className="mt-2 text-[12px] text-muted-foreground">Show project photos of your work.</p>
             ) : (
               <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-                {media.map((m, i) => (
-                  <div key={i} className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-muted">
-                    <img src={m.url} alt="" className="h-full w-full object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => setMedia((list) => list.filter((_, idx) => idx !== i))}
-                      className="absolute right-1 top-1 rounded-full bg-black/60 px-1.5 text-[10px] font-bold text-white"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
+                {media.map((m, i) =>
+                  m.category === "before" || m.category === "after" ? null : (
+                    <div key={i} className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-muted">
+                      <img src={m.url} alt="" className="h-full w-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setMedia((list) => list.filter((_, idx) => idx !== i))}
+                        className="absolute right-1 top-1 rounded-full bg-black/60 px-1.5 text-[10px] font-bold text-white"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ),
+                )}
               </div>
             )}
           </section>
+
+          {/* Before & after */}
+          <section>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold">Before &amp; after</h3>
+                <p className="text-[11px] text-muted-foreground">
+                  Up to {MAX_BEFORE_AFTER} photos so neighbors can see your results ({beforeAfter.length}/{MAX_BEFORE_AFTER})
+                </p>
+              </div>
+            </div>
+            <div className="mt-2 flex gap-2">
+              <button
+                type="button"
+                disabled={beforeAfter.length >= MAX_BEFORE_AFTER}
+                onClick={() => beforeRef.current?.click()}
+                className="flex-1 rounded-xl border border-border bg-card py-2 text-[11px] font-bold disabled:opacity-40"
+              >
+                + Before photo
+              </button>
+              <button
+                type="button"
+                disabled={beforeAfter.length >= MAX_BEFORE_AFTER}
+                onClick={() => afterRef.current?.click()}
+                className="flex-1 rounded-xl border border-border bg-card py-2 text-[11px] font-bold disabled:opacity-40"
+              >
+                + After photo
+              </button>
+              <input ref={beforeRef} type="file" accept="image/*" className="hidden" onChange={(e) => { void onBeforeAfter(e.target.files?.[0], "before"); e.target.value = ""; }} />
+              <input ref={afterRef} type="file" accept="image/*" className="hidden" onChange={(e) => { void onBeforeAfter(e.target.files?.[0], "after"); e.target.value = ""; }} />
+            </div>
+            {beforeAfter.length > 0 && (
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                {media.map((m, i) =>
+                  m.category === "before" || m.category === "after" ? (
+                    <div key={i} className="relative aspect-square overflow-hidden rounded-xl bg-muted">
+                      <img src={m.url} alt="" className="h-full w-full object-cover" />
+                      <span className="absolute bottom-1 left-1 rounded-full bg-black/70 px-1.5 py-0.5 text-[9px] font-bold uppercase text-white">
+                        {m.category}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setMedia((list) => list.filter((_, idx) => idx !== i))}
+                        className="absolute right-1 top-1 rounded-full bg-black/60 px-1.5 text-[10px] font-bold text-white"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : null,
+                )}
+              </div>
+            )}
+          </section>
+
 
           {/* Visibility */}
           <section className="rounded-2xl border border-border bg-card p-3">

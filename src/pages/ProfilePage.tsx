@@ -19,10 +19,12 @@ import ProfileFeedSection from "@/components/ProfileFeedSection";
 import UserReviewsSection from "@/components/UserReviewsSection";
 import BattleWinsSheet from "@/components/BattleWinsSheet";
 import UserProjectsSheet from "@/components/UserProjectsSheet";
+import { useSectionNotifications, type NotifSection } from "@/hooks/use-section-notifications";
 
 const ProfilePage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { counts: notifCounts, clearSection } = useSectionNotifications();
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followerCount, setFollowerCount] = useState("0");
@@ -167,17 +169,22 @@ const ProfilePage = () => {
     { id: "store", label: "Store", icon: ShoppingBag, route: "/my-store", pro: true },
   ];
 
+  const goSection = (section: NotifSection | null, route: string) => {
+    if (section) void clearSection(section);
+    navigate(route);
+  };
+
   const quickActions = [
-    { icon: Library, label: "Library", sub: "Playlists", action: () => navigate("/library"), pro: false },
-    { icon: ShoppingBag, label: "Purchases", sub: "View history", action: () => navigate("/purchases"), pro: false },
-    { icon: CalendarDays, label: "My Bookings", sub: "Sessions & receipts", action: () => navigate("/my-bookings"), pro: false },
-    { icon: Building2, label: "Local Help Business", sub: "Handyman, DJ, cleaning & more", action: () => navigate("/local-help/business"), pro: false },
-    { icon: Wrench, label: "My Gigs Dashboard", sub: "Posted, working & completed gigs", action: () => navigate("/my-gigs"), pro: false },
-    { icon: Building2, label: "My Studios", sub: "Manage listings", action: () => proGatedNav("Studio Listings", "/my-studios"), pro: true },
-    { icon: BarChart3, label: "Analytics", sub: "View insights", action: () => proGatedNav("Analytics", "/analytics"), pro: true },
-    { icon: DollarSign, label: "Earnings", sub: "Revenue", action: () => proGatedNav("Earnings", "/earnings"), pro: true },
-    { icon: Rocket, label: "My Boosts", sub: "Promotions", action: () => proGatedNav("Boosts", "/my-boosts"), pro: true },
-    { icon: HelpCircle, label: "Help & Support", sub: "", action: () => navigate("/help"), pro: false },
+    { icon: Library, label: "Library", sub: "Playlists", action: () => navigate("/library"), pro: false, section: null as NotifSection | null },
+    { icon: ShoppingBag, label: "Purchases", sub: "View history", action: () => goSection("purchases", "/purchases"), pro: false, section: "purchases" as NotifSection | null },
+    { icon: CalendarDays, label: "My Bookings", sub: "Sessions & receipts", action: () => goSection("bookings", "/my-bookings"), pro: false, section: "bookings" as NotifSection | null },
+    { icon: Building2, label: "Local Help Business", sub: "Handyman, DJ, cleaning & more", action: () => goSection("localHelp", "/local-help/business"), pro: false, section: "localHelp" as NotifSection | null },
+    { icon: Wrench, label: "My Gigs Dashboard", sub: "Posted, working & completed gigs", action: () => goSection("gigs", "/my-gigs"), pro: false, section: "gigs" as NotifSection | null },
+    { icon: Building2, label: "My Studios", sub: "Manage listings", action: () => proGatedNav("Studio Listings", "/my-studios"), pro: true, section: null as NotifSection | null },
+    { icon: BarChart3, label: "Analytics", sub: "View insights", action: () => proGatedNav("Analytics", "/analytics"), pro: true, section: null as NotifSection | null },
+    { icon: DollarSign, label: "Earnings", sub: "Revenue", action: () => proGatedNav("Earnings", "/earnings"), pro: true, section: null as NotifSection | null },
+    { icon: Rocket, label: "My Boosts", sub: "Promotions", action: () => proGatedNav("Boosts", "/my-boosts"), pro: true, section: null as NotifSection | null },
+    { icon: HelpCircle, label: "Help & Support", sub: "", action: () => goSection("support", "/help"), pro: false, section: "support" as NotifSection | null },
   ];
 
   return (
@@ -302,10 +309,18 @@ const ProfilePage = () => {
               onClick={item.action}
               className="flex items-center gap-3 p-3.5 rounded-xl bg-card border border-border hover:border-primary/30 transition-all"
             >
-              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+              <div className="relative w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
                 <item.icon className="w-4 h-4 text-primary" />
+                {item.section && notifCounts[item.section] > 0 && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-destructive ring-2 ring-card" />
+                )}
               </div>
               <span className="flex-1 text-sm font-medium text-foreground text-left">{item.label}</span>
+              {item.section && notifCounts[item.section] > 0 && (
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-destructive text-destructive-foreground">
+                  {notifCounts[item.section]} new
+                </span>
+              )}
               {item.pro && !isPro && (
                 <span className="text-[9px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">PRO</span>
               )}

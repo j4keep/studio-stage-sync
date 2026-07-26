@@ -280,14 +280,25 @@ export default function GigDetailPage() {
     if (isWorker) patch.worker_completed_at = new Date().toISOString();
     if (!Object.keys(patch).length) return toast.error("Only gig parties can complete");
 
-    const { error } = await (supabase as any).from("gig_listings").update(patch).eq("id", gig.id);
+    const { data: updated, error } = await (supabase as any)
+      .from("gig_listings")
+      .update(patch)
+      .eq("id", gig.id)
+      .select("*")
+      .maybeSingle();
     if (error) return toast.error(error.message);
 
-    const otherDone = isPoster ? gig.worker_completed_at : gig.poster_completed_at;
-    if (otherDone) toast.success("Gig completed — leave your review now");
+    // Use the freshly returned row (not stale state) so BOTH the host and the
+    // helper get the review prompt immediately from this page.
+    const fresh = (updated as Gig | null) || { ...gig, ...patch };
+    const bothDone = canRateGig(fresh as Gig);
+    if (bothDone) toast.success("Gig completed — leave your review now");
     else toast.success("Marked complete — reminding the other person to press Complete");
     await load();
-    if (otherDone) setRateOpen(true);
+    if (bothDone) {
+      autoRatePromptedRef.current = true;
+      setRateOpen(true);
+    }
   };
 
   /** Both sides pressed Complete → prompt this user for their review/comment. */

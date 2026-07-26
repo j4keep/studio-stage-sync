@@ -272,16 +272,38 @@ export default function LocalHelpProPage() {
           </section>
         )}
 
+        {/* Before & after */}
+        {pro.media.some((m) => m.category === "before" || m.category === "after") && (
+          <section className="mt-6">
+            <h2 className="text-base font-bold">Before &amp; after</h2>
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              {pro.media
+                .filter((m) => m.category === "before" || m.category === "after")
+                .slice(0, 6)
+                .map((m, i) => (
+                  <div key={i} className="relative aspect-square overflow-hidden rounded-xl bg-muted">
+                    <img src={m.url} alt={m.label || m.category || ""} className="h-full w-full object-cover" />
+                    <span className="absolute bottom-1 left-1 rounded-full bg-black/70 px-1.5 py-0.5 text-[9px] font-bold uppercase text-white">
+                      {m.category}
+                    </span>
+                  </div>
+                ))}
+            </div>
+          </section>
+        )}
+
         {/* Portfolio */}
-        {pro.media.length > 0 && (
+        {pro.media.some((m) => m.category !== "before" && m.category !== "after") && (
           <section className="mt-6">
             <h2 className="text-base font-bold">Projects & media</h2>
             <div className="mt-3 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-              {pro.media.map((m, i) => (
-                <div key={i} className="h-28 w-28 shrink-0 overflow-hidden rounded-xl bg-muted">
-                  <img src={m.url} alt={m.label || ""} className="h-full w-full object-cover" />
-                </div>
-              ))}
+              {pro.media
+                .filter((m) => m.category !== "before" && m.category !== "after")
+                .map((m, i) => (
+                  <div key={i} className="h-28 w-28 shrink-0 overflow-hidden rounded-xl bg-muted">
+                    <img src={m.url} alt={m.label || ""} className="h-full w-full object-cover" />
+                  </div>
+                ))}
             </div>
           </section>
         )}
