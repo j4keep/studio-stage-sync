@@ -578,16 +578,15 @@ export type Database = {
           id: string
           location: string | null
           media: Json | null
-          poster_id: string
-          worker_id: string | null
           poster_completed_at: string | null
-          worker_completed_at: string | null
+          poster_id: string
           preferred_date: string | null
           preferred_time: string | null
           status: string
           title: string
           updated_at: string
           urgency: string | null
+          worker_completed_at: string | null
         }
         Insert: {
           ai_estimate?: Json | null
@@ -605,16 +604,15 @@ export type Database = {
           id?: string
           location?: string | null
           media?: Json | null
-          poster_id: string
-          worker_id?: string | null
           poster_completed_at?: string | null
-          worker_completed_at?: string | null
+          poster_id: string
           preferred_date?: string | null
           preferred_time?: string | null
           status?: string
           title: string
           updated_at?: string
           urgency?: string | null
+          worker_completed_at?: string | null
         }
         Update: {
           ai_estimate?: Json | null
@@ -632,49 +630,15 @@ export type Database = {
           id?: string
           location?: string | null
           media?: Json | null
-          poster_id?: string
-          worker_id?: string | null
           poster_completed_at?: string | null
-          worker_completed_at?: string | null
+          poster_id?: string
           preferred_date?: string | null
           preferred_time?: string | null
           status?: string
           title?: string
           updated_at?: string
           urgency?: string | null
-        }
-        Relationships: []
-      }
-      gig_reports: {
-        Row: {
-          id: string
-          gig_id: string
-          reporter_id: string
-          reported_id: string
-          reason: string
-          details: string | null
-          status: string
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          gig_id: string
-          reporter_id: string
-          reported_id: string
-          reason: string
-          details?: string | null
-          status?: string
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          gig_id?: string
-          reporter_id?: string
-          reported_id?: string
-          reason?: string
-          details?: string | null
-          status?: string
-          created_at?: string
+          worker_completed_at?: string | null
         }
         Relationships: []
       }
