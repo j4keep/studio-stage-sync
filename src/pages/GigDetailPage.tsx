@@ -410,6 +410,13 @@ export default function GigDetailPage() {
                       {approvingId === interest.user_id ? "…" : "Approve"}
                     </button>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => nav(`/local-help/pro/${interest.user_id}`)}
+                    className="mt-2 flex h-9 w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-card text-[11px] font-bold"
+                  >
+                    <Building2 className="h-3.5 w-3.5" /> View business profile
+                  </button>
                 </div>
               ))
             )}
