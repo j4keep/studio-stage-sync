@@ -33,6 +33,7 @@ const bg = {
 const TOP_PICKS: ExploreItem[] = [
   { label: "Trending", emoji: "🔥", background: bg.orange },
   { label: "Find Local Help", emoji: "🛠", background: bg.teal, route: "/local-help" },
+  { label: "Post a Gig", emoji: "🧰", background: bg.orange, route: "/gigs" },
   { label: "Careers", emoji: "💼", background: bg.indigo, route: "/jobs" },
   { label: "Marketplace", emoji: "🛍", background: bg.pink },
   { label: "Deals", emoji: "💰", background: bg.green, route: "/store" },
