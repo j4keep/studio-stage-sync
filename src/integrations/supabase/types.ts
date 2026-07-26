@@ -579,6 +579,9 @@ export type Database = {
           location: string | null
           media: Json | null
           poster_id: string
+          worker_id: string | null
+          poster_completed_at: string | null
+          worker_completed_at: string | null
           preferred_date: string | null
           preferred_time: string | null
           status: string
@@ -603,6 +606,9 @@ export type Database = {
           location?: string | null
           media?: Json | null
           poster_id: string
+          worker_id?: string | null
+          poster_completed_at?: string | null
+          worker_completed_at?: string | null
           preferred_date?: string | null
           preferred_time?: string | null
           status?: string
@@ -627,12 +633,48 @@ export type Database = {
           location?: string | null
           media?: Json | null
           poster_id?: string
+          worker_id?: string | null
+          poster_completed_at?: string | null
+          worker_completed_at?: string | null
           preferred_date?: string | null
           preferred_time?: string | null
           status?: string
           title?: string
           updated_at?: string
           urgency?: string | null
+        }
+        Relationships: []
+      }
+      gig_reports: {
+        Row: {
+          id: string
+          gig_id: string
+          reporter_id: string
+          reported_id: string
+          reason: string
+          details: string | null
+          status: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          gig_id: string
+          reporter_id: string
+          reported_id: string
+          reason: string
+          details?: string | null
+          status?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          gig_id?: string
+          reporter_id?: string
+          reported_id?: string
+          reason?: string
+          details?: string | null
+          status?: string
+          created_at?: string
         }
         Relationships: []
       }

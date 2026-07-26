@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, Moon, Sun, Bell, BellOff, Globe, Lock, Eye, Trash2, LogOut, Info, ChevronRight, Smartphone, Palette, Crown, XCircle, Coffee } from "lucide-react";
+import { ArrowLeft, Moon, Sun, Bell, BellOff, Globe, Lock, Eye, Trash2, LogOut, Info, ChevronRight, Smartphone, Palette, Crown, XCircle, Coffee, Ban } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import ThemePickerSheet from "@/components/ThemePickerSheet";
@@ -117,14 +117,15 @@ const SettingsPage = () => {
         </div>
       </Section>
 
-      {/* Privacy */}
-      <Section title="Privacy & Security">
+      {/* Privacy & Visibility */}
+      <Section title="Privacy & Visibility">
         <SettingRow icon={<Lock className="w-4 h-4" />} label="Private Profile" description="Only followers can see your content">
           <Switch checked={privateProfile} onCheckedChange={setPrivateProfile} />
         </SettingRow>
         <SettingRow icon={<Eye className="w-4 h-4" />} label="Show Activity Status" description="Let others see when you're online">
           <Switch checked={showActivity} onCheckedChange={setShowActivity} />
         </SettingRow>
+        <ActionRow icon={<Ban className="w-4 h-4" />} label="Blocking" onClick={() => navigate("/settings/blocking")} />
       </Section>
 
       {/* Take A Break */}

@@ -81,6 +81,10 @@ const NotificationBell = () => {
     else if (notification.reference_type === "follow") navigate(`/artist/${notification.reference_id}`);
     else if (notification.reference_type === "studio") navigate("/my-studios");
     else if (notification.reference_type === "session_verify") navigate("/bookings");
+    else if (notification.reference_type === "gig" || notification.type === "gig") {
+      if (notification.reference_id) navigate(`/gigs/${notification.reference_id}`);
+      else navigate("/my-gigs");
+    }
     else if (notification.reference_type === "job_application" || notification.reference_type === "job" || notification.type === "job" || notification.type === "job_application") {
       if (notification.title === "Job removed" || String(notification.title || "").toLowerCase().includes("interview") || !notification.reference_id) {
         navigate("/my-jobs");

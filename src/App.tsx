@@ -55,6 +55,8 @@ import JobsPage from "./pages/JobsPage";
 import JobDetailPage from "./pages/JobDetailPage";
 import GigDetailPage from "./pages/GigDetailPage";
 import MyJobsPage from "./pages/MyJobsPage";
+import MyGigsPage from "./pages/MyGigsPage";
+import BlockingSettingsPage from "./pages/BlockingSettingsPage";
 import ResumeBuilderPage from "./pages/ResumeBuilderPage";
 import JobPreferencesPage from "./pages/JobPreferencesPage";
 import EmployerDashboardPage from "./pages/EmployerDashboardPage";
@@ -262,6 +264,8 @@ const ProtectedRoutes = () => {
         <Route path="/jobs/:id" element={<JobDetailPage />} />
         <Route path="/gigs/:id" element={<GigDetailPage />} />
         <Route path="/my-jobs" element={<MyJobsPage />} />
+        <Route path="/my-gigs" element={<MyGigsPage />} />
+        <Route path="/settings/blocking" element={<BlockingSettingsPage />} />
         <Route path="/resume-builder" element={<ResumeBuilderPage />} />
         <Route path="/job-preferences" element={<JobPreferencesPage />} />
         <Route path="/employer-dashboard" element={<EmployerDashboardPage />} />

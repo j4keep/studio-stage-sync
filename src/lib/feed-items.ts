@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { parsePostCaption } from "@/lib/post-editor";
+import { listBlockedPeerIds } from "@/lib/blocks";
 
 /** Classify a post row into the "reel" (short/fast) column or "post" (long) column. */
 export function isReelItem(item: any): boolean {
@@ -50,12 +51,24 @@ export const fetchFeedItems = async ({ currentUserId, userId }: FetchFeedItemsOp
   const posts = postsResult.data || [];
   const battles = battlesResult.data || [];
 
+  const blockedIds =
+    currentUserId && !userId ? await listBlockedPeerIds(currentUserId) : new Set<string>();
+
+  const visiblePosts = blockedIds.size
+    ? posts.filter((p: any) => !blockedIds.has(p.user_id))
+    : posts;
+  const visibleBattles = blockedIds.size
+    ? battles.filter(
+        (b: any) => !blockedIds.has(b.challenger_id) && !blockedIds.has(b.opponent_id),
+      )
+    : battles;
+
   let mappedPosts: FeedItem[] = [];
   let mappedBattles: FeedItem[] = [];
 
-  if (posts.length > 0) {
-    const postIds = posts.map((post: any) => post.id);
-    const userIds = [...new Set(posts.map((post: any) => post.user_id))];
+  if (visiblePosts.length > 0) {
+    const postIds = visiblePosts.map((post: any) => post.id);
+    const userIds = [...new Set(visiblePosts.map((post: any) => post.user_id))];
 
     const [{ data: profiles }, { data: postLikes }] = await Promise.all([
       (supabase as any).from("profiles").select("user_id, display_name, avatar_url").in("user_id", userIds),
@@ -77,7 +90,7 @@ export const fetchFeedItems = async ({ currentUserId, userId }: FetchFeedItemsOp
       }
     });
 
-    mappedPosts = posts.map((post: any) => ({
+    mappedPosts = visiblePosts.map((post: any) => ({
       ...post,
       itemType: "post",
       likes_count: likeCounts.get(post.id) || 0,
@@ -86,8 +99,8 @@ export const fetchFeedItems = async ({ currentUserId, userId }: FetchFeedItemsOp
     }));
   }
 
-  if (battles.length > 0) {
-    const battleIds = battles.map((battle: any) => battle.id);
+  if (visibleBattles.length > 0) {
+    const battleIds = visibleBattles.map((battle: any) => battle.id);
     const { data: battleLikes } = await (supabase as any)
       .from("likes")
       .select("content_id, user_id")
@@ -104,7 +117,7 @@ export const fetchFeedItems = async ({ currentUserId, userId }: FetchFeedItemsOp
       }
     });
 
-    mappedBattles = battles.map((battle: any) => ({
+    mappedBattles = visibleBattles.map((battle: any) => ({
       ...battle,
       itemType: "battle",
       likes_count: battleLikeCounts.get(battle.id) ?? battle.likes_count ?? 0,

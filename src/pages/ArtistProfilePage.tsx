@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import {
-  User, Music, Heart, Trophy, Video, UserPlus, Share2, UserCheck, DollarSign, FolderHeart, ShoppingBag, CheckCircle
+  User, Music, Heart, Trophy, Video, UserPlus, Share2, UserCheck, DollarSign, FolderHeart, ShoppingBag, CheckCircle, Ban
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -11,6 +11,8 @@ import FollowersSheet from "@/components/FollowersSheet";
 import ProfileFeedSection from "@/components/ProfileFeedSection";
 import BattleWinsSheet from "@/components/BattleWinsSheet";
 import UserProjectsSheet from "@/components/UserProjectsSheet";
+import BlockConfirmDialog from "@/components/BlockConfirmDialog";
+import { blockUser, isBlockedBetween } from "@/lib/blocks";
 
 const ArtistProfilePage = () => {
   const navigate = useNavigate();
@@ -25,6 +27,9 @@ const ArtistProfilePage = () => {
   const [showFollowers, setShowFollowers] = useState(false);
   const [showWins, setShowWins] = useState(false);
   const [showProjects, setShowProjects] = useState(false);
+  const [showBlock, setShowBlock] = useState(false);
+  const [blockBusy, setBlockBusy] = useState(false);
+  const [blockedPeer, setBlockedPeer] = useState(false);
   const [profileInfo, setProfileInfo] = useState<{
     display_name: string;
     avatar_url: string | null;
@@ -41,6 +46,16 @@ const ArtistProfilePage = () => {
     if (!userId) return;
     const load = async () => {
       setLoading(true);
+
+      if (user && user.id !== userId) {
+        const blocked = await isBlockedBetween(user.id, userId);
+        if (blocked) {
+          setBlockedPeer(true);
+          setLoading(false);
+          return;
+        }
+        setBlockedPeer(false);
+      }
 
       const { data: profile } = await supabase
         .from("profiles")
@@ -132,10 +147,45 @@ const ArtistProfilePage = () => {
     toast({ title: "Link copied!" });
   };
 
+  const confirmBlock = async () => {
+    if (!user || !userId) return;
+    setBlockBusy(true);
+    try {
+      await blockUser(user.id, userId);
+      toast({ title: `${profileInfo.display_name || "User"} blocked on all YAJ pages` });
+      setShowBlock(false);
+      setIsFollowing(false);
+      navigate(-1);
+    } catch (e: any) {
+      toast({ title: e?.message || "Could not block", variant: "destructive" });
+    } finally {
+      setBlockBusy(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center py-20">
         <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (blockedPeer) {
+    return (
+      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3 px-6 text-center">
+        <Ban className="h-10 w-10 text-muted-foreground" />
+        <p className="text-base font-bold text-foreground">Profile unavailable</p>
+        <p className="max-w-sm text-sm text-muted-foreground">
+          You can&apos;t view this YAJ page because of a block. Manage blocks in Settings → Blocking.
+        </p>
+        <button
+          type="button"
+          onClick={() => navigate("/settings/blocking")}
+          className="mt-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground"
+        >
+          Open Blocking
+        </button>
       </div>
     );
   }
@@ -179,6 +229,16 @@ const ArtistProfilePage = () => {
           <button onClick={handleShare} className="w-10 py-2.5 rounded-xl bg-card border border-border text-muted-foreground flex items-center justify-center hover:border-primary/30 transition-all">
             <Share2 className="w-4 h-4" />
           </button>
+          {user && userId && user.id !== userId && (
+            <button
+              type="button"
+              onClick={() => setShowBlock(true)}
+              className="w-10 py-2.5 rounded-xl bg-card border border-border text-destructive flex items-center justify-center hover:border-destructive/40 transition-all"
+              aria-label="Block"
+            >
+              <Ban className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         {/* Stats */}
@@ -208,6 +268,13 @@ const ArtistProfilePage = () => {
       {userId && <FollowersSheet open={showFollowers} onClose={() => setShowFollowers(false)} userId={userId} isOwner={false} />}
       {userId && <BattleWinsSheet open={showWins} onClose={() => setShowWins(false)} userId={userId} />}
       {userId && <UserProjectsSheet open={showProjects} onClose={() => setShowProjects(false)} userId={userId} />}
+      <BlockConfirmDialog
+        open={showBlock}
+        name={profileInfo.display_name || "User"}
+        loading={blockBusy}
+        onClose={() => setShowBlock(false)}
+        onConfirm={() => void confirmBlock()}
+      />
     </div>
   );
 };

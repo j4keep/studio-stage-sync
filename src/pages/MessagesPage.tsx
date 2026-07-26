@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { isBlockedBetween } from "@/lib/blocks";
 
 interface Profile {
   user_id: string;
@@ -173,6 +174,15 @@ const MessagesPage = () => {
 
   const sendMessage = async () => {
     if (!messageText.trim() || !activeConversation || !user) return;
+    const otherId = activeConversation.other_user?.user_id;
+    if (otherId && (await isBlockedBetween(user.id, otherId))) {
+      toast({
+        title: "Can't message this user",
+        description: "You're blocked from each other on YAJ.",
+        variant: "destructive",
+      });
+      return;
+    }
     const text = messageText.trim();
     setMessageText("");
     await supabase.from("messages").insert({
@@ -213,6 +223,14 @@ const MessagesPage = () => {
     opts?: { hideOtherYajPage?: boolean; introGigTitle?: string },
   ) => {
     if (!user) return;
+    if (await isBlockedBetween(user.id, otherUser.user_id)) {
+      toast({
+        title: "Can't message this user",
+        description: "You're blocked from each other on YAJ.",
+        variant: "destructive",
+      });
+      return;
+    }
     // Check if conversation already exists
     const existing = conversations.find(c => c.other_user?.user_id === otherUser.user_id);
     if (existing) {

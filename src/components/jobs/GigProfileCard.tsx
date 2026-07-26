@@ -1,4 +1,4 @@
-import { EyeOff, Eye } from "lucide-react";
+import { EyeOff, Eye, Star } from "lucide-react";
 
 export type GigProfileInfo = {
   user_id: string;
@@ -11,6 +11,9 @@ type Props = {
   profile: GigProfileInfo | null | undefined;
   /** When true, name + photo only — no link to full YAJ page */
   hideYajPage: boolean;
+  /** Average rating under the name (after completed gigs) */
+  ratingAvg?: number | null;
+  ratingCount?: number | null;
   onToggleHide?: (hide: boolean) => void;
   toggleLabel?: string;
   onOpenProfile?: () => void;
@@ -22,6 +25,8 @@ export default function GigProfileCard({
   label,
   profile,
   hideYajPage,
+  ratingAvg,
+  ratingCount,
   onToggleHide,
   toggleLabel = "Hide my YAJ page — only show name & photo",
   onOpenProfile,
@@ -29,6 +34,7 @@ export default function GigProfileCard({
 }: Props) {
   const name = profile?.display_name || "User";
   const canOpen = Boolean(onOpenProfile) && !hideYajPage;
+  const showRating = ratingAvg != null && ratingAvg > 0;
 
   return (
     <div className={`rounded-2xl border border-border bg-card p-3 ${className}`}>
@@ -51,9 +57,19 @@ export default function GigProfileCard({
           </div>
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-foreground">{name}</p>
-            <p className="text-[11px] text-muted-foreground">
-              {hideYajPage ? "Name & photo only" : canOpen ? "View YAJ page" : "YAJ profile"}
-            </p>
+            {showRating ? (
+              <p className="mt-0.5 flex items-center gap-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                {ratingAvg!.toFixed(1)}
+                {ratingCount != null && ratingCount > 0 ? (
+                  <span className="font-normal text-muted-foreground">({ratingCount})</span>
+                ) : null}
+              </p>
+            ) : (
+              <p className="text-[11px] text-muted-foreground">
+                {hideYajPage ? "Name & photo only" : canOpen ? "View YAJ page" : "YAJ profile"}
+              </p>
+            )}
           </div>
         </button>
       </div>

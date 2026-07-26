@@ -7,6 +7,7 @@ import { JOB_CATEGORIES, formatSalary, timeAgo, EMPLOYMENT_TYPES, scoreListing, 
 import PostChooserSheet from "@/components/jobs/PostChooserSheet";
 import PostJobSheet from "@/components/jobs/PostJobSheet";
 import PostGigSheet from "@/components/jobs/PostGigSheet";
+import { listBlockedPeerIds } from "@/lib/blocks";
 
 type JobRow = {
   id: string;
@@ -32,6 +33,7 @@ type GigRow = {
   budget_max: number | null;
   urgency: string;
   created_at: string;
+  poster_id?: string;
   __kind: "gig";
 };
 type Listing = JobRow | GigRow;
@@ -70,15 +72,18 @@ export default function JobsPage() {
     const [{ data: jobs }, { data: gigs }] = await Promise.all([
       supabase.from("job_listings").select("id,title,category,employment_type,salary_min,salary_max,location,remote_mode,created_at,employer_id,media")
         .eq("status", "open").order("created_at", { ascending: false }).limit(50),
-      supabase.from("gig_listings").select("id,title,category,location,budget_min,budget_max,urgency,created_at")
+      supabase.from("gig_listings").select("id,title,category,location,budget_min,budget_max,urgency,created_at,poster_id")
         .eq("status", "open").order("created_at", { ascending: false }).limit(50),
     ]);
+    const blocked = user ? await listBlockedPeerIds(user.id) : new Set<string>();
+    const openGigs = (gigs ?? []).filter((g: any) => !g.poster_id || !blocked.has(g.poster_id));
+    const openJobs = (jobs ?? []).filter((j: any) => !j.employer_id || !blocked.has(j.employer_id));
     const merged: Listing[] = [
-      ...(jobs ?? []).map((j) => ({ ...j, __kind: "job" as const })),
-      ...(gigs ?? []).map((g) => ({ ...g, __kind: "gig" as const })),
+      ...openJobs.map((j) => ({ ...j, __kind: "job" as const })),
+      ...openGigs.map((g) => ({ ...g, __kind: "gig" as const })),
     ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     setListings(merged);
-    const employerIds = Array.from(new Set((jobs ?? []).map((j: any) => j.employer_id).filter(Boolean)));
+    const employerIds = Array.from(new Set(openJobs.map((j: any) => j.employer_id).filter(Boolean)));
     if (employerIds.length) {
       const { data: emps } = await supabase.from("employer_profiles")
         .select("user_id,company_name,verified").in("user_id", employerIds);
@@ -91,7 +96,7 @@ export default function JobsPage() {
       setEmployerBrands({});
     }
     setLoading(false);
-  }, []);
+  }, [user]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -149,8 +154,17 @@ export default function JobsPage() {
               onClick={() => nav("/my-jobs")}
               className="w-9 h-9 rounded-full bg-muted flex items-center justify-center"
               aria-label="My jobs"
+              title="My Jobs"
             >
               <User className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => nav("/my-gigs")}
+              className="h-9 rounded-full bg-muted px-2.5 text-[10px] font-bold"
+              aria-label="My gigs"
+            >
+              Gigs
             </button>
             <button
               type="button"

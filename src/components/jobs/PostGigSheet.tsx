@@ -7,9 +7,28 @@ import { URGENCY_OPTIONS } from "@/lib/jobs";
 import { analyzeGigPhotos, fileToDataUrl } from "@/lib/yaj-jobs-ai";
 import GigProfileCard, { type GigProfileInfo } from "@/components/jobs/GigProfileCard";
 
-type Props = { open: boolean; onClose: () => void; onCreated?: () => void };
+type GigEdit = {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  location: string | null;
+  budget_min: number | null;
+  budget_max: number | null;
+  urgency: string;
+  preferred_date: string | null;
+  preferred_time: string | null;
+  hide_yaj_profile?: boolean;
+};
 
-export default function PostGigSheet({ open, onClose, onCreated }: Props) {
+type Props = {
+  open: boolean;
+  onClose: () => void;
+  onCreated?: () => void;
+  gigToEdit?: GigEdit | null;
+};
+
+export default function PostGigSheet({ open, onClose, onCreated, gigToEdit }: Props) {
   const { user } = useAuth();
   const [saving, setSaving] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
@@ -29,6 +48,22 @@ export default function PostGigSheet({ open, onClose, onCreated }: Props) {
     preferred_date: "",
     preferred_time: "",
   });
+
+  useEffect(() => {
+    if (!open || !gigToEdit) return;
+    setForm({
+      title: gigToEdit.title || "",
+      description: gigToEdit.description || "",
+      category: gigToEdit.category || "general",
+      location: gigToEdit.location || "",
+      budget_min: gigToEdit.budget_min != null ? String(gigToEdit.budget_min) : "",
+      budget_max: gigToEdit.budget_max != null ? String(gigToEdit.budget_max) : "",
+      urgency: gigToEdit.urgency || "flexible",
+      preferred_date: gigToEdit.preferred_date || "",
+      preferred_time: gigToEdit.preferred_time || "",
+    });
+    setHideYajProfile(Boolean(gigToEdit.hide_yaj_profile));
+  }, [open, gigToEdit]);
 
   useEffect(() => {
     if (!open || !user) return;
@@ -104,8 +139,7 @@ export default function PostGigSheet({ open, onClose, onCreated }: Props) {
       return;
     }
     setSaving(true);
-    const { error } = await (supabase as any).from("gig_listings").insert({
-      poster_id: user.id,
+    const payload = {
       title: form.title.trim(),
       description: form.description.trim(),
       category: form.category,
@@ -116,7 +150,19 @@ export default function PostGigSheet({ open, onClose, onCreated }: Props) {
       preferred_date: form.preferred_date || null,
       preferred_time: form.preferred_time || null,
       hide_yaj_profile: hideYajProfile,
-    });
+    };
+
+    let error: { message: string } | null = null;
+    if (gigToEdit?.id) {
+      const res = await (supabase as any).from("gig_listings").update(payload).eq("id", gigToEdit.id).eq("poster_id", user.id);
+      error = res.error;
+    } else {
+      const res = await (supabase as any).from("gig_listings").insert({
+        poster_id: user.id,
+        ...payload,
+      });
+      error = res.error;
+    }
     if (!error) {
       await (supabase as any)
         .from("profiles")
@@ -128,7 +174,7 @@ export default function PostGigSheet({ open, onClose, onCreated }: Props) {
       toast.error(error.message);
       return;
     }
-    toast.success("Gig posted!");
+    toast.success(gigToEdit ? "Gig updated!" : "Gig posted!");
     onCreated?.();
     onClose();
   };
@@ -140,13 +186,13 @@ export default function PostGigSheet({ open, onClose, onCreated }: Props) {
         <button onClick={onClose} className="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
           <X className="w-4 h-4" />
         </button>
-        <h2 className="text-sm font-bold">Post a Gig</h2>
+        <h2 className="text-sm font-bold">{gigToEdit ? "Edit gig" : "Post a Gig"}</h2>
         <button
           onClick={submit}
           disabled={saving}
           className="px-4 h-9 rounded-full bg-primary text-primary-foreground text-xs font-bold disabled:opacity-50"
         >
-          {saving ? "Posting…" : "Publish"}
+          {saving ? (gigToEdit ? "Saving…" : "Posting…") : gigToEdit ? "Save" : "Publish"}
         </button>
       </header>
 
