@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Search, Sparkles, X } from "lucide-react";
 import { LOCAL_HELP_CATEGORIES, TRENDING_SERVICES } from "@/lib/local-help";
 import AskYajHelpSheet from "@/components/local-help/AskYajHelpSheet";
+import PostGigSheet from "@/components/jobs/PostGigSheet";
 
 const RECENT_KEY = "yaj_local_help_recent";
 
@@ -11,6 +12,7 @@ export default function LocalHelpHomePage() {
   const nav = useNavigate();
   const [q, setQ] = useState("");
   const [askOpen, setAskOpen] = useState(false);
+  const [postOpen, setPostOpen] = useState(false);
   const [recents, setRecents] = useState<string[]>(() => {
     try {
       return JSON.parse(localStorage.getItem(RECENT_KEY) || "[]");
@@ -201,6 +203,7 @@ export default function LocalHelpHomePage() {
       </section>
 
       <AskYajHelpSheet open={askOpen} onClose={() => setAskOpen(false)} />
+      <PostGigSheet open={postOpen} onClose={() => setPostOpen(false)} onCreated={() => setPostOpen(false)} />
     </div>
   );
 }
