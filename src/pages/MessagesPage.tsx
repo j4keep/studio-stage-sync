@@ -7,6 +7,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { isBlockedBetween } from "@/lib/blocks";
+import { getOrCreateConversation } from "@/lib/messaging";
+
 
 interface Profile {
   user_id: string;
