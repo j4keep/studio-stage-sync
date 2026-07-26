@@ -61,6 +61,8 @@ export default function GigDetailPage() {
   const [hideMyYajPage, setHideMyYajPage] = useState(false);
   const [myBio, setMyBio] = useState("");
   const [interestOpen, setInterestOpen] = useState(false);
+  const [businessGateOpen, setBusinessGateOpen] = useState(false);
+  const [checkingBusiness, setCheckingBusiness] = useState(false);
   const [interests, setInterests] = useState<GigInterest[]>([]);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
@@ -203,7 +205,11 @@ export default function GigDetailPage() {
   const otherParty = isPoster ? worker : isWorker ? poster : poster;
   const otherName = otherParty?.display_name || "User";
 
-  const openMessageWith = (person: GigProfileInfo, hideOther?: boolean) => {
+  const openMessageWith = (
+    person: GigProfileInfo,
+    hideOther?: boolean,
+    opts?: { introMessage?: string; openBusinessProfile?: boolean },
+  ) => {
     if (!gig) return;
     nav("/messages", {
       state: {
@@ -213,6 +219,8 @@ export default function GigDetailPage() {
         hideMyYajPage,
         gigId: gig.id,
         gigTitle: gig.title,
+        introMessage: opts?.introMessage,
+        openBusinessProfile: opts?.openBusinessProfile,
       },
     });
   };
@@ -220,7 +228,27 @@ export default function GigDetailPage() {
   const onInterestReady = (bio: string) => {
     setMyBio(bio);
     setMe((prev) => (prev ? { ...prev, gig_experience_bio: bio } : prev));
-    if (poster) openMessageWith(poster, Boolean(gig?.hide_yaj_profile));
+    if (poster) openMessageWith(poster, Boolean(gig?.hide_yaj_profile), { introMessage: bio });
+  };
+
+  /** Helpers must have a Local Help business profile before they can take gigs. */
+  const startInterest = async () => {
+    if (!user || !gig) return;
+    setCheckingBusiness(true);
+    try {
+      const { data } = await (supabase as any)
+        .from("pro_profiles")
+        .select("user_id,business_name")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (!data || !data.business_name) {
+        setBusinessGateOpen(true);
+        return;
+      }
+      setInterestOpen(true);
+    } finally {
+      setCheckingBusiness(false);
+    }
   };
 
   const handleApprove = async (interest: GigInterest) => {
@@ -444,7 +472,8 @@ export default function GigDetailPage() {
           {user && !isPoster && !isWorker && isOpen && (
             <button
               type="button"
-              onClick={() => setInterestOpen(true)}
+              disabled={checkingBusiness}
+              onClick={() => void startInterest()}
               className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-sm font-bold text-primary-foreground"
             >
               <MessageCircle className="h-4 w-4" /> Message host
@@ -454,7 +483,7 @@ export default function GigDetailPage() {
           {isParty && otherParty && (
             <button
               type="button"
-              onClick={() => openMessageWith(otherParty)}
+              onClick={() => openMessageWith(otherParty, undefined, { openBusinessProfile: isPoster })}
               className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-border bg-card text-sm font-bold"
             >
               <MessageCircle className="h-4 w-4" /> Message
