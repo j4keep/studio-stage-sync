@@ -63,7 +63,7 @@ const MessagesPage = () => {
   const [hideOtherYajPage, setHideOtherYajPage] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const autoStartDoneRef = useRef(false);
+  const autoStartKeyRef = useRef<string | null>(null);
 
   const { data: conversations = [], isLoading: convLoading } = useQuery({
     queryKey: ["conversations", user?.id],
@@ -356,18 +356,28 @@ const MessagesPage = () => {
   };
 
   useEffect(() => {
-    if (!user || autoStartDoneRef.current || convLoading) return;
+    if (!user || convLoading) return;
     const state = (location.state || null) as MessagesNavState;
+    const autoStartKey = state?.conversationId
+      ? `conversation:${state.conversationId}`
+      : state?.startWithUserId
+        ? `user:${state.startWithUserId}:${state.introMessage || ""}:${state.gigTitle || ""}`
+        : "";
+    if (!autoStartKey) {
+      autoStartKeyRef.current = null;
+      return;
+    }
+    if (autoStartKeyRef.current === autoStartKey) return;
     if (state?.conversationId) {
       const existing = conversations.find((c) => c.id === state.conversationId);
       if (!existing) return;
-      autoStartDoneRef.current = true;
+      autoStartKeyRef.current = autoStartKey;
       setActiveConversation(existing);
       navigate(location.pathname, { replace: true, state: null });
       return;
     }
     if (!state?.startWithUserId) return;
-    autoStartDoneRef.current = true;
+    autoStartKeyRef.current = autoStartKey;
     const profile =
       state.startWithProfile ||
       ({
