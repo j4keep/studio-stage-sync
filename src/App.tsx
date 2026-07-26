@@ -271,6 +271,7 @@ const ProtectedRoutes = () => {
         <Route path="/jobs" element={<JobsPage />} />
         <Route path="/jobs/interview/:applicationId" element={<JobInterviewPage />} />
         <Route path="/jobs/:id" element={<JobDetailPage />} />
+        <Route path="/gigs" element={<GigBoardPage />} />
         <Route path="/gigs/:id" element={<GigDetailPage />} />
         <Route path="/my-jobs" element={<MyJobsPage />} />
         <Route path="/my-gigs" element={<MyGigsPage />} />
