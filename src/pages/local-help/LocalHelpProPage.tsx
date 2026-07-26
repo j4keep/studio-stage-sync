@@ -167,36 +167,35 @@ export default function LocalHelpProPage() {
         )}
       </div>
 
-      <div className="relative -mt-10 px-4">
-        <div className="flex items-end gap-3">
-          <div className="h-20 w-20 overflow-hidden rounded-full border-4 border-background bg-muted shadow">
-            {pro.logo_url || pro.avatar_url ? (
-              <img src={pro.logo_url || pro.avatar_url || ""} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <span className="flex h-full w-full items-center justify-center text-2xl font-bold text-primary">{name[0]?.toUpperCase()}</span>
+      <div className="relative px-4">
+        <div className="-mt-10 h-20 w-20 overflow-hidden rounded-full border-4 border-background bg-muted shadow">
+          {pro.logo_url || pro.avatar_url ? (
+            <img src={pro.logo_url || pro.avatar_url || ""} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <span className="flex h-full w-full items-center justify-center text-2xl font-bold text-primary">{name[0]?.toUpperCase()}</span>
+          )}
+        </div>
+        <div className="mt-2">
+          <p className="flex items-center gap-1.5 truncate text-xl font-black">
+            {name}
+            {pro.verified && <BadgeCheck className="h-5 w-5 shrink-0 text-primary" />}
+          </p>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[12px]">
+            <span className="inline-flex items-center gap-1 font-semibold">
+              <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+              {pro.rating.average.toFixed(1)}
+              <span className="font-normal text-muted-foreground">
+                ({pro.rating.isDefault ? "New" : `${pro.rating.count} reviews`})
+              </span>
+            </span>
+            {pro.hired_count >= 5 && (
+              <span className="inline-flex items-center gap-1 text-muted-foreground">
+                <Trophy className="h-3 w-3 text-amber-500" /> Top helper
+              </span>
             )}
           </div>
-          <div className="min-w-0 flex-1 pb-1">
-            <p className="flex items-center gap-1.5 truncate text-xl font-black">
-              {name}
-              {pro.verified && <BadgeCheck className="h-5 w-5 shrink-0 text-primary" />}
-            </p>
-            <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[12px]">
-              <span className="inline-flex items-center gap-1 font-semibold">
-                <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                {pro.rating.average.toFixed(1)}
-                <span className="font-normal text-muted-foreground">
-                  ({pro.rating.isDefault ? "New" : `${pro.rating.count} reviews`})
-                </span>
-              </span>
-              {pro.hired_count >= 5 && (
-                <span className="inline-flex items-center gap-1 text-muted-foreground">
-                  <Trophy className="h-3 w-3 text-amber-500" /> Top helper
-                </span>
-              )}
-            </div>
-          </div>
         </div>
+
 
         <div className="mt-4 grid grid-cols-2 gap-2">
           <button type="button" onClick={openMessage} className="flex h-11 items-center justify-center gap-1.5 rounded-xl border border-border bg-card text-sm font-bold">

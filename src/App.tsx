@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Toaster } from "@/components/ui/toaster";
+import ImageLightbox from "@/components/ImageLightbox";
+
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -371,6 +373,8 @@ const App = () => {
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <ImageLightbox />
+
         <HashRouter>
           <AuthProvider>
             <ThemeProvider>
