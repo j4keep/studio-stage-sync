@@ -9,7 +9,7 @@ export const JOB_CATEGORIES = [
   { id: "creative", label: "Creative", emoji: "🎨" },
   { id: "corporate", label: "Corporate", emoji: "💼" },
   { id: "startups", label: "Startups", emoji: "🚀" },
-  { id: "need-help", label: "Need Help Today", emoji: "🤝" },
+  
 ] as const;
 
 export const EMPLOYMENT_TYPES = [
