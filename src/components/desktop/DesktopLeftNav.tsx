@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Briefcase, Bookmark, Compass, HandHelping, Home, PlusSquare, User } from "lucide-react";
+import { Briefcase, Bookmark, Compass, HandHelping, Home, PlusSquare, User, Wrench } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import UserRatingStars from "@/components/UserRatingStars";
@@ -10,9 +10,10 @@ const links = [
   { path: "/", label: "Home", icon: Home },
   { path: "/explore", label: "Explore", icon: Compass },
   { path: "/jobs", label: "Opportunities", icon: Briefcase },
+  { path: "/hire", label: "Hire a Pro", icon: HandHelping },
   { path: "/profile", label: "Profile", icon: User },
   { path: "/my-jobs", label: "My Jobs", icon: Bookmark },
-  { path: "/my-gigs", label: "My Gigs", icon: HandHelping },
+  { path: "/my-gigs", label: "My Gigs", icon: Wrench },
 ] as const;
 
 export default function DesktopLeftNav() {
@@ -41,6 +42,7 @@ export default function DesktopLeftNav() {
   const isActive = (path: string) => {
     if (path === "/") return location.pathname === "/";
     if (path === "/jobs") return location.pathname === "/jobs" || (location.pathname.startsWith("/jobs/") && !location.pathname.includes("/interview"));
+    if (path === "/hire") return location.pathname === "/hire" || location.pathname.startsWith("/hire/");
     return location.pathname === path || location.pathname.startsWith(`${path}/`);
   };
 

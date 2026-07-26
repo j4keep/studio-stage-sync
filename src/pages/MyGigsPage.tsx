@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft, HandHelping, MapPin } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { timeAgo } from "@/lib/jobs";
 import { formatGigBudget, gigHelperId, gigStatusLabel } from "@/lib/gigs";
+import EditProProfileSheet from "@/components/hire/EditProProfileSheet";
 
 type Tab = "posted" | "working" | "completed";
 
@@ -26,11 +27,13 @@ type GigRow = {
 /** Gig dashboard — Posted / Working / Completed (mirrors My Jobs). */
 export default function MyGigsPage() {
   const nav = useNavigate();
+  const [params] = useSearchParams();
   const { user } = useAuth();
   const [tab, setTab] = useState<Tab>("posted");
   const [posted, setPosted] = useState<GigRow[]>([]);
   const [working, setWorking] = useState<GigRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [offerOpen, setOfferOpen] = useState(params.get("offer") === "1");
 
   const load = async () => {
     if (!user) return;
@@ -82,17 +85,17 @@ export default function MyGigsPage() {
         <h1 className="flex-1 text-base font-bold">My Gigs</h1>
         <button
           type="button"
-          onClick={() => nav("/my-jobs")}
+          onClick={() => setOfferOpen(true)}
           className="h-8 rounded-full bg-muted px-3 text-[11px] font-bold"
         >
-          My Jobs
+          Offer services
         </button>
         <button
           type="button"
-          onClick={() => nav("/jobs")}
+          onClick={() => nav("/hire")}
           className="h-8 rounded-full bg-primary px-3 text-[11px] font-bold text-primary-foreground"
         >
-          Find gigs
+          Hire a Pro
         </button>
       </header>
 
@@ -182,6 +185,15 @@ export default function MyGigsPage() {
           </button>
         ))}
       </div>
+
+      <EditProProfileSheet
+        open={offerOpen}
+        onClose={() => setOfferOpen(false)}
+        onSaved={() => {
+          setOfferOpen(false);
+          if (user) nav(`/hire/pro/${user.id}?edit=0`);
+        }}
+      />
     </div>
   );
 }

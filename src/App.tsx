@@ -58,6 +58,9 @@ import GigDetailPage from "./pages/GigDetailPage";
 import MyJobsPage from "./pages/MyJobsPage";
 import MyGigsPage from "./pages/MyGigsPage";
 import BlockingSettingsPage from "./pages/BlockingSettingsPage";
+import HireProPage from "./pages/HireProPage";
+import HireCategoryPage from "./pages/HireCategoryPage";
+import ProProfilePage from "./pages/ProProfilePage";
 import ResumeBuilderPage from "./pages/ResumeBuilderPage";
 import JobPreferencesPage from "./pages/JobPreferencesPage";
 import EmployerDashboardPage from "./pages/EmployerDashboardPage";
@@ -266,6 +269,9 @@ const ProtectedRoutes = () => {
         <Route path="/gigs/:id" element={<GigDetailPage />} />
         <Route path="/my-jobs" element={<MyJobsPage />} />
         <Route path="/my-gigs" element={<MyGigsPage />} />
+        <Route path="/hire" element={<HireProPage />} />
+        <Route path="/hire/:categoryId" element={<HireCategoryPage />} />
+        <Route path="/hire/pro/:userId" element={<ProProfilePage />} />
         <Route path="/settings/blocking" element={<BlockingSettingsPage />} />
         <Route path="/resume-builder" element={<ResumeBuilderPage />} />
         <Route path="/job-preferences" element={<JobPreferencesPage />} />
