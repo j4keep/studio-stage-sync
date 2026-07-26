@@ -73,7 +73,9 @@ const AuthPage = () => {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth`,
+        emailRedirectTo: nextPath
+          ? `${window.location.origin}/#/auth?next=${encodeURIComponent(nextPath)}`
+          : `${window.location.origin}/auth`,
         data: { full_name: fullName, date_of_birth: dob },
       },
     });
