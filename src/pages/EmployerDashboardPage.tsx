@@ -6,6 +6,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { APPLICATION_STATUS, normalizeAppStatus, notifyJobApplicant, timeAgo } from "@/lib/jobs";
 import ApplicationPhaseDots from "@/components/jobs/ApplicationPhaseDots";
+import MessageUserButton from "@/components/MessageUserButton";
+
 import PostJobSheet, { type EditableJob } from "@/components/jobs/PostJobSheet";
 import ResumePreview from "@/components/jobs/ResumePreview";
 import ScheduleInterviewSheet from "@/components/jobs/ScheduleInterviewSheet";
