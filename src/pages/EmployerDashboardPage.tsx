@@ -339,6 +339,13 @@ export default function EmployerDashboardPage() {
 
                             <div className="flex flex-wrap items-center gap-2">
                               <ApplicationPhaseDots status={a.status} mode="employer" />
+                              <MessageUserButton
+                                userId={a.applicant_id}
+                                displayName={a.full_name ?? a.applicant?.display_name}
+                                avatarUrl={a.applicant?.avatar_url}
+                                className="h-8 px-2 rounded-full bg-muted border border-border text-[11px] font-bold inline-flex items-center gap-1"
+                              />
+
                               <select
                                 value={normalizeAppStatus(a.status)}
                                 onChange={(e) => updateAppStatus(a.id, e.target.value)}
