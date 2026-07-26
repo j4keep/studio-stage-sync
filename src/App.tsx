@@ -343,6 +343,18 @@ const App = () => {
     };
   }, []);
 
+  if (window.location.pathname.startsWith("/.lovable/oauth/consent")) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <OAuthConsent />
+        </TooltipProvider>
+      </QueryClientProvider>
+    );
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
