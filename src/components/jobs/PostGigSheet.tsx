@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { X, Sparkles, ImagePlus, Loader2 } from "lucide-react";
+import { X, Sparkles, ImagePlus, Loader2, Camera } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -26,9 +26,11 @@ type Props = {
   onClose: () => void;
   onCreated?: () => void;
   gigToEdit?: GigEdit | null;
+  /** Open the camera/photo picker as soon as the sheet appears (Snap-a-photo flow). */
+  autoOpenPhotos?: boolean;
 };
 
-export default function PostGigSheet({ open, onClose, onCreated, gigToEdit }: Props) {
+export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, autoOpenPhotos }: Props) {
   const { user } = useAuth();
   const [saving, setSaving] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
@@ -37,6 +39,7 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit }: Pr
   const [myProfile, setMyProfile] = useState<GigProfileInfo | null>(null);
   const [hideYajProfile, setHideYajProfile] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -89,6 +92,12 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit }: Pr
       }
     })();
   }, [open, user]);
+
+  useEffect(() => {
+    if (!open || !autoOpenPhotos) return;
+    const t = window.setTimeout(() => cameraRef.current?.click(), 250);
+    return () => window.clearTimeout(t);
+  }, [open, autoOpenPhotos]);
 
   if (!open) return null;
 
@@ -239,13 +248,29 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit }: Pr
               className="hidden"
               onChange={(e) => { addPhotos(e.target.files); e.target.value = ""; }}
             />
+            <input
+              ref={cameraRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={(e) => { addPhotos(e.target.files); e.target.value = ""; }}
+            />
+            <button
+              onClick={() => cameraRef.current?.click()}
+              disabled={photos.length >= 4}
+              className="flex-1 h-10 rounded-xl bg-card border border-border text-xs font-semibold flex items-center justify-center gap-1.5 disabled:opacity-40"
+            >
+              <Camera className="w-3.5 h-3.5" />
+              Snap photo
+            </button>
             <button
               onClick={() => fileRef.current?.click()}
               disabled={photos.length >= 4}
               className="flex-1 h-10 rounded-xl bg-card border border-border text-xs font-semibold flex items-center justify-center gap-1.5 disabled:opacity-40"
             >
               <ImagePlus className="w-3.5 h-3.5" />
-              {photos.length ? `Add photo (${photos.length}/4)` : "Add photos"}
+              {photos.length ? `Upload (${photos.length}/4)` : "Upload"}
             </button>
             <button
               onClick={analyze}

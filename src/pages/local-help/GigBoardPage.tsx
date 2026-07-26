@@ -33,6 +33,7 @@ export default function GigBoardPage() {
   const [cat, setCat] = useState<string>("all");
   const [postOpen, setPostOpen] = useState(false);
   const [askOpen, setAskOpen] = useState(false);
+  const [snapOpen, setSnapOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -115,7 +116,7 @@ export default function GigBoardPage() {
       <section className="space-y-3 px-4 pt-4">
         <button
           type="button"
-          onClick={() => setAskOpen(true)}
+          onClick={() => (user ? setSnapOpen(true) : nav("/auth"))}
           className="relative w-full overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-violet-500 to-fuchsia-500 p-4 text-left text-primary-foreground shadow-sm"
         >
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.35),transparent_40%)]" />
@@ -125,7 +126,7 @@ export default function GigBoardPage() {
             </span>
             <p className="mt-2 text-base font-black">Snap a photo of what's broken</p>
             <p className="mt-1 text-[11px] text-white/90">
-              Buddy writes the gig for you — category, budget range and what to tell helpers.
+              Opens your camera — Buddy writes the gig: category, budget range and what to tell helpers.
             </p>
           </div>
         </button>
@@ -222,6 +223,15 @@ export default function GigBoardPage() {
       </section>
 
       <AskYajHelpSheet open={askOpen} onClose={() => setAskOpen(false)} />
+      <PostGigSheet
+        open={snapOpen}
+        autoOpenPhotos
+        onClose={() => setSnapOpen(false)}
+        onCreated={() => {
+          setSnapOpen(false);
+          void load();
+        }}
+      />
       <PostGigSheet
         open={postOpen}
         onClose={() => setPostOpen(false)}
