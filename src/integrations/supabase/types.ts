@@ -642,6 +642,36 @@ export type Database = {
         }
         Relationships: []
       }
+      gig_interests: {
+        Row: {
+          id: string
+          gig_id: string
+          user_id: string
+          experience_bio: string | null
+          status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          gig_id: string
+          user_id: string
+          experience_bio?: string | null
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          gig_id?: string
+          user_id?: string
+          experience_bio?: string | null
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       job_applications: {
         Row: {
           address: string | null
@@ -1806,6 +1836,7 @@ export type Database = {
           display_name: string | null
           email: string | null
           hide_yaj_page_on_gigs: boolean
+          gig_experience_bio: string | null
           id: string
           terms_accepted_at: string | null
           theme_preset: string | null
@@ -1824,6 +1855,7 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           hide_yaj_page_on_gigs?: boolean
+          gig_experience_bio?: string | null
           id?: string
           terms_accepted_at?: string | null
           theme_preset?: string | null
@@ -1842,6 +1874,7 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           hide_yaj_page_on_gigs?: boolean
+          gig_experience_bio?: string | null
           id?: string
           terms_accepted_at?: string | null
           theme_preset?: string | null

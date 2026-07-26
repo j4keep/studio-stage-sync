@@ -6,6 +6,7 @@ export type GigProfileInfo = {
   user_id: string;
   display_name: string | null;
   avatar_url: string | null;
+  gig_experience_bio?: string | null;
 };
 
 type Props = {
@@ -60,6 +61,11 @@ export default function GigProfileCard({
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-foreground">{name}</p>
             <UserRatingStars rating={rating} average={ratingAvg} count={ratingCount} variant="full" className="mt-0.5" />
+            {(profile?.gig_experience_bio || "").trim() ? (
+              <p className="mt-1 line-clamp-3 text-[11px] leading-snug text-muted-foreground">
+                {profile!.gig_experience_bio}
+              </p>
+            ) : null}
             {hideYajPage && <p className="mt-0.5 text-[10px] text-muted-foreground">Name & photo only</p>}
           </div>
         </button>

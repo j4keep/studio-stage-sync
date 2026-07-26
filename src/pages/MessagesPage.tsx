@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Search, Send, Paperclip, Image, X, Plus, MessageCircle } from "lucide-react";
+import { ArrowLeft, Send, Paperclip, Image, X, Plus, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
@@ -19,7 +19,6 @@ interface Conversation {
   updated_at: string;
   other_user: Profile | null;
   last_message?: string;
-  /** When true, chat header name/photo only — no YAJ page link */
   hideOtherYajPage?: boolean;
 }
 
@@ -50,14 +49,14 @@ const MessagesPage = () => {
   const queryClient = useQueryClient();
   const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
   const [messageText, setMessageText] = useState("");
+  const [sending, setSending] = useState(false);
   const [showNewChat, setShowNewChat] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [hideOtherYajPage, setHideOtherYajPage] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const autoStartDoneRef = useRef(false);
 
-
-  // Fetch conversations
   const { data: conversations = [], isLoading: convLoading } = useQuery({
     queryKey: ["conversations", user?.id],
     queryFn: async () => {
@@ -68,7 +67,7 @@ const MessagesPage = () => {
         .eq("user_id", user.id);
       if (!participants || participants.length === 0) return [];
 
-      const convIds = participants.map(p => p.conversation_id);
+      const convIds = participants.map((p) => p.conversation_id);
       const { data: convs } = await supabase
         .from("conversations")
         .select("id, updated_at")
@@ -76,29 +75,31 @@ const MessagesPage = () => {
         .order("updated_at", { ascending: false });
       if (!convs) return [];
 
-      // Get other participants
       const { data: allParticipants } = await supabase
         .from("conversation_participants")
         .select("conversation_id, user_id")
         .in("conversation_id", convIds);
 
       const otherUserIds = (allParticipants || [])
-        .filter(p => p.user_id !== user.id)
-        .map(p => p.user_id);
+        .filter((p) => p.user_id !== user.id)
+        .map((p) => p.user_id);
 
-      let profileMap: Record<string, Profile> = {};
+      const profileMap: Record<string, Profile> = {};
       if (otherUserIds.length > 0) {
         const { data: profiles } = await supabase
           .from("profiles")
           .select("user_id, display_name, avatar_url")
           .in("user_id", otherUserIds);
-        (profiles || []).forEach(p => { profileMap[p.user_id] = p; });
+        (profiles || []).forEach((p) => {
+          profileMap[p.user_id] = p;
+        });
       }
 
-      // Get last messages
       const results: Conversation[] = [];
       for (const conv of convs) {
-        const otherParticipant = (allParticipants || []).find(p => p.conversation_id === conv.id && p.user_id !== user.id);
+        const otherParticipant = (allParticipants || []).find(
+          (p) => p.conversation_id === conv.id && p.user_id !== user.id,
+        );
         const { data: lastMsg } = await supabase
           .from("messages")
           .select("content")
@@ -119,7 +120,6 @@ const MessagesPage = () => {
     staleTime: 10_000,
   });
 
-  // Fetch messages for active conversation
   const { data: messages = [] } = useQuery({
     queryKey: ["messages", activeConversation?.id],
     queryFn: async () => {
@@ -135,7 +135,6 @@ const MessagesPage = () => {
     refetchInterval: 3000,
   });
 
-  // Search users for new chat
   const { data: searchResults = [] } = useQuery({
     queryKey: ["search-users", searchQuery],
     queryFn: async () => {
@@ -151,29 +150,41 @@ const MessagesPage = () => {
     enabled: showNewChat && searchQuery.length > 1,
   });
 
-  // Subscribe to realtime messages
   useEffect(() => {
     if (!activeConversation) return;
     const channel = supabase
       .channel(`messages-${activeConversation.id}`)
-      .on("postgres_changes", {
-        event: "INSERT",
-        schema: "public",
-        table: "messages",
-        filter: `conversation_id=eq.${activeConversation.id}`,
-      }, () => {
-        queryClient.invalidateQueries({ queryKey: ["messages", activeConversation.id] });
-      })
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+          filter: `conversation_id=eq.${activeConversation.id}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["messages", activeConversation.id] });
+        },
+      )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [activeConversation?.id, queryClient]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  useEffect(() => {
+    if (activeConversation) {
+      const t = window.setTimeout(() => inputRef.current?.focus(), 150);
+      return () => window.clearTimeout(t);
+    }
+  }, [activeConversation?.id]);
+
   const sendMessage = async () => {
-    if (!messageText.trim() || !activeConversation || !user) return;
+    if (!messageText.trim() || !activeConversation || !user || sending) return;
     const otherId = activeConversation.other_user?.user_id;
     if (otherId && (await isBlockedBetween(user.id, otherId))) {
       toast({
@@ -185,25 +196,38 @@ const MessagesPage = () => {
     }
     const text = messageText.trim();
     setMessageText("");
-    await supabase.from("messages").insert({
-      conversation_id: activeConversation.id,
-      sender_id: user.id,
-      content: text,
-    });
-    await supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", activeConversation.id);
-    queryClient.invalidateQueries({ queryKey: ["messages", activeConversation.id] });
-    queryClient.invalidateQueries({ queryKey: ["conversations"] });
+    setSending(true);
+    try {
+      const { error } = await supabase.from("messages").insert({
+        conversation_id: activeConversation.id,
+        sender_id: user.id,
+        content: text,
+      });
+      if (error) {
+        setMessageText(text);
+        toast({ title: error.message || "Message failed", variant: "destructive" });
+        return;
+      }
+      await supabase
+        .from("conversations")
+        .update({ updated_at: new Date().toISOString() })
+        .eq("id", activeConversation.id);
+      queryClient.invalidateQueries({ queryKey: ["messages", activeConversation.id] });
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      inputRef.current?.focus();
+    } finally {
+      setSending(false);
+    }
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !activeConversation || !user) return;
 
-    // Convert to base64 data URL for now (small files)
     const reader = new FileReader();
     reader.onload = async () => {
       const dataUrl = reader.result as string;
-      await supabase.from("messages").insert({
+      const { error } = await supabase.from("messages").insert({
         conversation_id: activeConversation.id,
         sender_id: user.id,
         content: null,
@@ -211,11 +235,19 @@ const MessagesPage = () => {
         file_name: file.name,
         file_type: file.type,
       });
-      await supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", activeConversation.id);
+      if (error) {
+        toast({ title: error.message || "Upload failed", variant: "destructive" });
+        return;
+      }
+      await supabase
+        .from("conversations")
+        .update({ updated_at: new Date().toISOString() })
+        .eq("id", activeConversation.id);
       queryClient.invalidateQueries({ queryKey: ["messages", activeConversation.id] });
+      toast({ title: "File sent" });
     };
     reader.readAsDataURL(file);
-    toast({ title: "File sent" });
+    e.target.value = "";
   };
 
   const startConversation = async (
@@ -231,8 +263,7 @@ const MessagesPage = () => {
       });
       return;
     }
-    // Check if conversation already exists
-    const existing = conversations.find(c => c.other_user?.user_id === otherUser.user_id);
+    const existing = conversations.find((c) => c.other_user?.user_id === otherUser.user_id);
     if (existing) {
       setActiveConversation({ ...existing, hideOtherYajPage: opts?.hideOtherYajPage });
       setHideOtherYajPage(Boolean(opts?.hideOtherYajPage));
@@ -241,14 +272,20 @@ const MessagesPage = () => {
       return;
     }
 
-    // Create new conversation
-    const { data: conv } = await supabase.from("conversations").insert({}).select("id").single();
-    if (!conv) return;
+    const { data: conv, error: convError } = await supabase.from("conversations").insert({}).select("id").single();
+    if (convError || !conv) {
+      toast({ title: convError?.message || "Could not start chat", variant: "destructive" });
+      return;
+    }
 
-    await supabase.from("conversation_participants").insert([
+    const { error: partError } = await supabase.from("conversation_participants").insert([
       { conversation_id: conv.id, user_id: user.id },
       { conversation_id: conv.id, user_id: otherUser.user_id },
     ]);
+    if (partError) {
+      toast({ title: partError.message || "Could not add chat participants", variant: "destructive" });
+      return;
+    }
 
     if (opts?.introGigTitle) {
       await supabase.from("messages").insert({
@@ -272,7 +309,6 @@ const MessagesPage = () => {
     queryClient.invalidateQueries({ queryKey: ["conversations"] });
   };
 
-  // Open a chat from gig detail (or other deep links).
   useEffect(() => {
     if (!user || autoStartDoneRef.current || convLoading) return;
     const state = (location.state || null) as MessagesNavState;
@@ -305,18 +341,22 @@ const MessagesPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, location.state, conversations, convLoading]);
 
-  // Conversation view
+  // Active chat — fixed shell so composer stays visible above bottom nav
   if (activeConversation) {
     return (
-      <div className="flex flex-col h-[calc(100vh-80px)]">
-        {/* Header */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
-          <button onClick={() => setActiveConversation(null)} className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center">
-            <ArrowLeft className="w-4 h-4 text-foreground" />
+      <div className="fixed inset-x-0 top-0 bottom-0 z-50 mx-auto flex w-full max-w-lg flex-col bg-background lg:static lg:z-auto lg:mx-0 lg:h-[calc(100dvh-3.5rem)] lg:max-w-none">
+        <div className="flex shrink-0 items-center gap-3 border-b border-border px-3 py-2.5 pt-[max(0.5rem,env(safe-area-inset-top))]">
+          <button
+            type="button"
+            onClick={() => setActiveConversation(null)}
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"
+            aria-label="Back to chats"
+          >
+            <ArrowLeft className="h-4 w-4 text-foreground" />
           </button>
           <button
             type="button"
-            className="flex min-w-0 flex-1 items-center gap-3 text-left disabled:opacity-100"
+            className="flex min-w-0 flex-1 items-center gap-3 text-left"
             disabled={hideOtherYajPage || activeConversation.hideOtherYajPage || !activeConversation.other_user?.user_id}
             onClick={() => {
               if (hideOtherYajPage || activeConversation.hideOtherYajPage) return;
@@ -324,17 +364,17 @@ const MessagesPage = () => {
               if (id) navigate(`/artist/${id}`);
             }}
           >
-            <div className="w-9 h-9 rounded-full bg-muted overflow-hidden shrink-0">
+            <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-muted">
               {activeConversation.other_user?.avatar_url ? (
-                <img src={activeConversation.other_user.avatar_url} alt="" className="w-full h-full object-cover" />
+                <img src={activeConversation.other_user.avatar_url} alt="" className="h-full w-full object-cover" />
               ) : (
-                <div className="w-full h-full bg-primary/20 flex items-center justify-center text-primary font-bold text-sm">
+                <div className="flex h-full w-full items-center justify-center bg-primary/20 text-sm font-bold text-primary">
                   {activeConversation.other_user?.display_name?.[0] || "?"}
                 </div>
               )}
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-foreground truncate">
+              <p className="truncate text-sm font-semibold text-foreground">
                 {activeConversation.other_user?.display_name || "User"}
               </p>
               {(hideOtherYajPage || activeConversation.hideOtherYajPage) && (
@@ -344,21 +384,26 @@ const MessagesPage = () => {
           </button>
         </div>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 py-3">
           {messages.map((msg) => {
             const isMine = msg.sender_id === user?.id;
             return (
               <div key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[75%] rounded-2xl px-3 py-2 ${isMine ? "bg-primary text-primary-foreground" : "bg-card border border-border text-foreground"}`}>
-                  {msg.content && <p className="text-sm">{msg.content}</p>}
+                <div
+                  className={`max-w-[80%] rounded-2xl px-3 py-2 ${
+                    isMine ? "bg-primary text-primary-foreground" : "border border-border bg-card text-foreground"
+                  }`}
+                >
+                  {msg.content && <p className="whitespace-pre-wrap break-words text-sm">{msg.content}</p>}
                   {msg.file_url && msg.file_type?.startsWith("image/") && (
-                    <img src={msg.file_url} alt={msg.file_name || "image"} className="max-w-full rounded-lg mt-1" />
+                    <img src={msg.file_url} alt={msg.file_name || "image"} className="mt-1 max-w-full rounded-lg" />
                   )}
                   {msg.file_url && !msg.file_type?.startsWith("image/") && (
-                    <a href={msg.file_url} download={msg.file_name} className="text-xs underline">{msg.file_name || "Download file"}</a>
+                    <a href={msg.file_url} download={msg.file_name} className="text-xs underline">
+                      {msg.file_name || "Download file"}
+                    </a>
                   )}
-                  <p className={`text-[9px] mt-1 ${isMine ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
+                  <p className={`mt-1 text-[9px] ${isMine ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
                     {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   </p>
                 </div>
@@ -368,69 +413,109 @@ const MessagesPage = () => {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input */}
-        <div className="px-4 py-3 border-t border-border flex items-center gap-2">
-          <label className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center cursor-pointer">
-            <Paperclip className="w-4 h-4 text-muted-foreground" />
-            <input type="file" className="hidden" onChange={handleFileUpload} />
-          </label>
-          <label className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center cursor-pointer">
-            <Image className="w-4 h-4 text-muted-foreground" />
-            <input type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
-          </label>
-          <input
-            value={messageText}
-            onChange={(e) => setMessageText(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-            placeholder="Type a message…"
-            className="flex-1 px-3 py-2 rounded-full bg-card border border-border text-sm text-foreground placeholder:text-muted-foreground"
-          />
-          <button onClick={sendMessage} disabled={!messageText.trim()} className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center disabled:opacity-50">
-            <Send className="w-4 h-4 text-primary-foreground" />
-          </button>
+        <div className="shrink-0 border-t border-border bg-background px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">
+          <form
+            className="flex items-center gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void sendMessage();
+            }}
+          >
+            <label className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full border border-border bg-card">
+              <Paperclip className="h-4 w-4 text-muted-foreground" />
+              <input type="file" className="hidden" onChange={handleFileUpload} />
+            </label>
+            <label className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full border border-border bg-card">
+              <Image className="h-4 w-4 text-muted-foreground" />
+              <input type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
+            </label>
+            <input
+              ref={inputRef}
+              type="text"
+              inputMode="text"
+              enterKeyHint="send"
+              autoComplete="off"
+              value={messageText}
+              onChange={(e) => setMessageText(e.target.value)}
+              placeholder="Type a message…"
+              className="min-w-0 flex-1 rounded-full border border-border bg-card px-4 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/30"
+            />
+            <button
+              type="submit"
+              disabled={!messageText.trim() || sending}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground disabled:opacity-50"
+              aria-label="Send"
+            >
+              <Send className="h-4 w-4" />
+            </button>
+          </form>
         </div>
       </div>
     );
   }
 
-  // Conversation list
   return (
-    <div className="px-4 pt-4 pb-24">
-      <div className="flex items-center gap-3 mb-5">
-        <button onClick={() => navigate(-1)} className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center" aria-label="Back">
-          <ArrowLeft className="w-4 h-4 text-foreground" />
+    <div className="px-4 pb-24 pt-4">
+      <div className="mb-5 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card"
+          aria-label="Back"
+        >
+          <ArrowLeft className="h-4 w-4 text-foreground" />
         </button>
-        <h1 className="flex-1 text-xl font-display font-bold text-foreground">Messages</h1>
-        <button onClick={() => setShowNewChat(true)} className="w-8 h-8 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center">
-          <Plus className="w-4 h-4 text-primary" />
+        <h1 className="flex-1 font-display text-xl font-bold text-foreground">Messages</h1>
+        <button
+          type="button"
+          onClick={() => setShowNewChat(true)}
+          className="flex h-8 w-8 items-center justify-center rounded-full border border-primary/30 bg-primary/10"
+        >
+          <Plus className="h-4 w-4 text-primary" />
         </button>
       </div>
 
-      {/* New chat search */}
       <AnimatePresence>
         {showNewChat && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden mb-4">
-            <div className="flex items-center gap-2 mb-2">
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="mb-4 overflow-hidden"
+          >
+            <div className="mb-2 flex items-center gap-2">
               <input
                 autoFocus
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search for a user…"
-                className="flex-1 px-3 py-2.5 rounded-xl bg-card border border-border text-sm text-foreground placeholder:text-muted-foreground"
+                className="flex-1 rounded-xl border border-border bg-card px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground"
               />
-              <button onClick={() => { setShowNewChat(false); setSearchQuery(""); }} className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center">
-                <X className="w-4 h-4 text-muted-foreground" />
+              <button
+                type="button"
+                onClick={() => {
+                  setShowNewChat(false);
+                  setSearchQuery("");
+                }}
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card"
+              >
+                <X className="h-4 w-4 text-muted-foreground" />
               </button>
             </div>
             {searchResults.map((u) => (
               <button
                 key={u.user_id}
-                onClick={() => startConversation(u)}
-                className="flex items-center gap-3 w-full p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                type="button"
+                onClick={() => void startConversation(u)}
+                className="flex w-full items-center gap-3 rounded-lg p-3 transition-colors hover:bg-muted/50"
               >
-                <div className="w-9 h-9 rounded-full bg-muted overflow-hidden">
-                  {u.avatar_url ? <img src={u.avatar_url} alt="" className="w-full h-full object-cover" /> : (
-                    <div className="w-full h-full bg-primary/20 flex items-center justify-center text-primary font-bold text-sm">{u.display_name?.[0] || "?"}</div>
+                <div className="h-9 w-9 overflow-hidden rounded-full bg-muted">
+                  {u.avatar_url ? (
+                    <img src={u.avatar_url} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-primary/20 text-sm font-bold text-primary">
+                      {u.display_name?.[0] || "?"}
+                    </div>
                   )}
                 </div>
                 <span className="text-sm font-medium text-foreground">{u.display_name || "User"}</span>
@@ -440,37 +525,41 @@ const MessagesPage = () => {
         )}
       </AnimatePresence>
 
-      {/* Conversations */}
       {convLoading ? (
-        <div className="py-16 flex justify-center">
-          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        <div className="flex justify-center py-16">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
         </div>
       ) : conversations.length === 0 ? (
         <div className="py-16 text-center">
-          <MessageCircle className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+          <MessageCircle className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">No conversations yet</p>
-          <p className="text-xs text-muted-foreground mt-1">Tap + to start a new chat</p>
+          <p className="mt-1 text-xs text-muted-foreground">Tap + to start a new chat</p>
         </div>
       ) : (
         <div className="flex flex-col gap-1">
           {conversations.map((conv) => (
             <button
               key={conv.id}
+              type="button"
               onClick={() => setActiveConversation(conv)}
-              className="flex items-center gap-3 p-3 rounded-xl hover:bg-card transition-colors w-full text-left"
+              className="flex w-full items-center gap-3 rounded-xl p-3 text-left transition-colors hover:bg-card"
             >
-              <div className="w-11 h-11 rounded-full bg-muted overflow-hidden shrink-0">
+              <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full bg-muted">
                 {conv.other_user?.avatar_url ? (
-                  <img src={conv.other_user.avatar_url} alt="" className="w-full h-full object-cover" />
+                  <img src={conv.other_user.avatar_url} alt="" className="h-full w-full object-cover" />
                 ) : (
-                  <div className="w-full h-full bg-primary/20 flex items-center justify-center text-primary font-bold">{conv.other_user?.display_name?.[0] || "?"}</div>
+                  <div className="flex h-full w-full items-center justify-center bg-primary/20 font-bold text-primary">
+                    {conv.other_user?.display_name?.[0] || "?"}
+                  </div>
                 )}
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-foreground truncate">{conv.other_user?.display_name || "User"}</p>
-                <p className="text-xs text-muted-foreground truncate">{conv.last_message}</p>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-foreground">
+                  {conv.other_user?.display_name || "User"}
+                </p>
+                <p className="truncate text-xs text-muted-foreground">{conv.last_message}</p>
               </div>
-              <span className="text-[10px] text-muted-foreground shrink-0">
+              <span className="shrink-0 text-[10px] text-muted-foreground">
                 {new Date(conv.updated_at).toLocaleDateString([], { month: "short", day: "numeric" })}
               </span>
             </button>

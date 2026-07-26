@@ -10,6 +10,7 @@ import {
   Flag,
   Ban,
   Star,
+  UserCheck,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,12 +18,15 @@ import { toast } from "sonner";
 import { timeAgo, URGENCY_OPTIONS } from "@/lib/jobs";
 import { canRateGig, formatGigBudget, gigHelperId, gigStatusLabel } from "@/lib/gigs";
 import { fetchRatingsByUserIds, type DisplayRating } from "@/lib/ratings";
+import { approveGigHelper, listGigInterests, type GigInterest } from "@/lib/gig-interests";
 import { blockUser } from "@/lib/blocks";
 import GigProfileCard, { type GigProfileInfo } from "@/components/jobs/GigProfileCard";
+import GigInterestSheet from "@/components/jobs/GigInterestSheet";
 import PostGigSheet from "@/components/jobs/PostGigSheet";
 import RateGigSheet from "@/components/jobs/RateGigSheet";
 import ReportGigSheet from "@/components/jobs/ReportGigSheet";
 import BlockConfirmDialog from "@/components/BlockConfirmDialog";
+import UserRatingStars from "@/components/UserRatingStars";
 
 type Gig = {
   id: string;
@@ -54,7 +58,10 @@ export default function GigDetailPage() {
   const [worker, setWorker] = useState<GigProfileInfo | null>(null);
   const [me, setMe] = useState<GigProfileInfo | null>(null);
   const [hideMyYajPage, setHideMyYajPage] = useState(false);
-  const [messaging, setMessaging] = useState(false);
+  const [myBio, setMyBio] = useState("");
+  const [interestOpen, setInterestOpen] = useState(false);
+  const [interests, setInterests] = useState<GigInterest[]>([]);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [rateOpen, setRateOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
@@ -72,20 +79,56 @@ export default function GigDetailPage() {
 
     const helperId = gigHelperId(row);
     const ids = [row.poster_id, helperId, user?.id].filter(Boolean) as string[];
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("user_id, display_name, avatar_url")
-      .in("user_id", ids);
-    const map = new Map((profiles || []).map((p) => [p.user_id, p]));
-    setPoster(map.get(row.poster_id) || { user_id: row.poster_id, display_name: "Poster", avatar_url: null });
+    let profiles: any[] | null = null;
+    {
+      const res = await supabase
+        .from("profiles")
+        .select("user_id, display_name, avatar_url, gig_experience_bio")
+        .in("user_id", ids);
+      if (res.error) {
+        const fallback = await supabase
+          .from("profiles")
+          .select("user_id, display_name, avatar_url")
+          .in("user_id", ids);
+        profiles = fallback.data;
+      } else {
+        profiles = res.data;
+      }
+    }
+    const map = new Map((profiles || []).map((p: any) => [p.user_id, p]));
+    const posterRow = map.get(row.poster_id);
+    setPoster({
+      user_id: row.poster_id,
+      display_name: posterRow?.display_name || "Poster",
+      avatar_url: posterRow?.avatar_url || null,
+      gig_experience_bio: posterRow?.gig_experience_bio || null,
+    });
     setWorker(
       helperId
-        ? map.get(helperId) || { user_id: helperId, display_name: "Helper", avatar_url: null }
+        ? {
+            user_id: helperId,
+            display_name: map.get(helperId)?.display_name || "Helper",
+            avatar_url: map.get(helperId)?.avatar_url || null,
+            gig_experience_bio: map.get(helperId)?.gig_experience_bio || null,
+          }
         : null,
     );
 
-    if (ids.length) {
-      setRatingsByUser(await fetchRatingsByUserIds(ids));
+    if (ids.length) setRatingsByUser(await fetchRatingsByUserIds(ids));
+
+    if (user?.id === row.poster_id && row.status === "open") {
+      try {
+        const list = await listGigInterests(row.id);
+        setInterests(list.filter((i) => i.status === "interested" || i.status === "approved"));
+        const moreIds = list.map((i) => i.user_id);
+        if (moreIds.length) {
+          setRatingsByUser((prev) => ({ ...prev, ...(await fetchRatingsByUserIds(moreIds)) }));
+        }
+      } catch {
+        setInterests([]);
+      }
+    } else {
+      setInterests([]);
     }
 
     if (user) {
@@ -110,14 +153,31 @@ export default function GigDetailPage() {
       return;
     }
     void (async () => {
-      const { data } = await supabase
+      let data: any = null;
+      const full = await supabase
         .from("profiles")
-        .select("user_id, display_name, avatar_url, hide_yaj_page_on_gigs")
+        .select("user_id, display_name, avatar_url, hide_yaj_page_on_gigs, gig_experience_bio")
         .eq("user_id", user.id)
         .maybeSingle();
+      if (full.error) {
+        const basic = await supabase
+          .from("profiles")
+          .select("user_id, display_name, avatar_url, hide_yaj_page_on_gigs")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        data = basic.data;
+      } else {
+        data = full.data;
+      }
       if (data) {
-        setMe({ user_id: data.user_id, display_name: data.display_name, avatar_url: data.avatar_url });
-        setHideMyYajPage(Boolean((data as any).hide_yaj_page_on_gigs));
+        setMe({
+          user_id: data.user_id,
+          display_name: data.display_name,
+          avatar_url: data.avatar_url,
+          gig_experience_bio: data.gig_experience_bio || null,
+        });
+        setHideMyYajPage(Boolean(data.hide_yaj_page_on_gigs));
+        setMyBio(data.gig_experience_bio || "");
       }
     })();
   }, [user]);
@@ -133,40 +193,45 @@ export default function GigDetailPage() {
   const isWorker = Boolean(user && helperId && user.id === helperId);
   const isParty = isPoster || isWorker;
   const hasHelper = Boolean(helperId);
+  const isOpen = gig?.status === "open";
   const canComplete =
     isParty &&
     hasHelper &&
-    !["completed", "closed", "cancelled"].includes(gig?.status || "");
+    !["open", "completed", "closed", "cancelled"].includes(gig?.status || "");
   const otherParty = isPoster ? worker : isWorker ? poster : poster;
   const otherName = otherParty?.display_name || "User";
 
-  const messagePoster = async () => {
-    if (!user) return toast.error("Sign in to message the poster");
-    if (!gig || !poster) return;
-    if (user.id === gig.poster_id) return toast.error("This is your gig");
-    setMessaging(true);
+  const openMessageWith = (person: GigProfileInfo, hideOther?: boolean) => {
+    if (!gig) return;
+    nav("/messages", {
+      state: {
+        startWithUserId: person.user_id,
+        startWithProfile: person,
+        hideOtherYajPage: hideOther,
+        hideMyYajPage,
+        gigId: gig.id,
+        gigTitle: gig.title,
+      },
+    });
+  };
+
+  const onInterestReady = (bio: string) => {
+    setMyBio(bio);
+    setMe((prev) => (prev ? { ...prev, gig_experience_bio: bio } : prev));
+    if (poster) openMessageWith(poster, Boolean(gig?.hide_yaj_profile));
+  };
+
+  const handleApprove = async (interest: GigInterest) => {
+    if (!user || !gig) return;
+    setApprovingId(interest.user_id);
     try {
-      await (supabase as any).from("profiles").update({ hide_yaj_page_on_gigs: hideMyYajPage }).eq("user_id", user.id);
-      // First messenger becomes the assigned helper so both can manage the gig
-      if (!gigHelperId(gig)) {
-        await (supabase as any)
-          .from("gig_listings")
-          .update({ assigned_to: user.id, status: "assigned" })
-          .eq("id", gig.id)
-          .is("assigned_to", null);
-      }
-      nav("/messages", {
-        state: {
-          startWithUserId: gig.poster_id,
-          startWithProfile: poster,
-          hideOtherYajPage: Boolean(gig.hide_yaj_profile),
-          hideMyYajPage,
-          gigId: gig.id,
-          gigTitle: gig.title,
-        },
-      });
+      await approveGigHelper({ gigId: gig.id, posterId: user.id, helperId: interest.user_id });
+      toast.success(`${interest.display_name || "Helper"} approved — gig left Opportunities`);
+      await load();
+    } catch (e: any) {
+      toast.error(e?.message || "Could not approve");
     } finally {
-      setMessaging(false);
+      setApprovingId(null);
     }
   };
 
@@ -257,7 +322,7 @@ export default function GigDetailPage() {
           />
           {worker && (
             <GigProfileCard
-              label={isWorker ? "Your profile (helper)" : "Helper"}
+              label={isWorker ? "Your profile (helper)" : "Approved helper"}
               profile={worker}
               hideYajPage={false}
               rating={ratingsByUser[worker.user_id]}
@@ -286,12 +351,74 @@ export default function GigDetailPage() {
           </div>
         )}
 
+        {isPoster && isOpen && (
+          <div className="space-y-2">
+            <h2 className="text-sm font-bold">Interested people</h2>
+            <p className="text-xs text-muted-foreground">
+              Message them, then Approve the right fit. The gig stays on Opportunities until you approve someone.
+            </p>
+            {interests.length === 0 ? (
+              <p className="rounded-2xl border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
+                No one has messaged yet
+              </p>
+            ) : (
+              interests.map((interest) => (
+                <div key={interest.id} className="rounded-2xl border border-border bg-card p-3">
+                  <div className="flex items-start gap-3">
+                    <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full bg-muted">
+                      {interest.avatar_url ? (
+                        <img src={interest.avatar_url} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <span className="flex h-full w-full items-center justify-center text-sm font-bold text-primary">
+                          {(interest.display_name || "?")[0]?.toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold">{interest.display_name || "User"}</p>
+                      <UserRatingStars rating={ratingsByUser[interest.user_id]} variant="compact" className="mt-0.5" />
+                      {interest.experience_bio ? (
+                        <p className="mt-1 text-[12px] leading-snug text-muted-foreground">{interest.experience_bio}</p>
+                      ) : (
+                        <p className="mt-1 text-[11px] text-muted-foreground">No experience bio yet</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        openMessageWith({
+                          user_id: interest.user_id,
+                          display_name: interest.display_name || "User",
+                          avatar_url: interest.avatar_url || null,
+                          gig_experience_bio: interest.experience_bio,
+                        })
+                      }
+                      className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl border border-border bg-muted text-xs font-bold"
+                    >
+                      <MessageCircle className="h-3.5 w-3.5" /> Message
+                    </button>
+                    <button
+                      type="button"
+                      disabled={approvingId === interest.user_id}
+                      onClick={() => void handleApprove(interest)}
+                      className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary text-xs font-bold text-primary-foreground disabled:opacity-50"
+                    >
+                      <UserCheck className="h-3.5 w-3.5" />
+                      {approvingId === interest.user_id ? "…" : "Approve"}
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
         {isParty && theyCompleted && !iCompleted && (
           <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
             <p className="font-bold text-amber-700 dark:text-amber-300">The other person marked this gig complete</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Press Complete below so you can both leave ratings.
-            </p>
+            <p className="mt-1 text-xs text-muted-foreground">Press Complete below so you can both leave ratings.</p>
           </div>
         )}
 
@@ -305,31 +432,20 @@ export default function GigDetailPage() {
         )}
 
         <div className="space-y-2">
-          {!isPoster && !isWorker && (
+          {user && !isPoster && !isWorker && isOpen && (
             <button
               type="button"
-              onClick={() => void messagePoster()}
-              disabled={messaging}
-              className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-sm font-bold text-primary-foreground disabled:opacity-50"
+              onClick={() => setInterestOpen(true)}
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-sm font-bold text-primary-foreground"
             >
-              <MessageCircle className="h-4 w-4" />
-              {messaging ? "Opening…" : "Message & join gig"}
+              <MessageCircle className="h-4 w-4" /> Message host
             </button>
           )}
 
           {isParty && otherParty && (
             <button
               type="button"
-              onClick={() =>
-                nav("/messages", {
-                  state: {
-                    startWithUserId: otherParty.user_id,
-                    startWithProfile: otherParty,
-                    gigId: gig.id,
-                    gigTitle: gig.title,
-                  },
-                })
-              }
+              onClick={() => openMessageWith(otherParty)}
               className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-border bg-card text-sm font-bold"
             >
               <MessageCircle className="h-4 w-4" /> Message
@@ -376,6 +492,18 @@ export default function GigDetailPage() {
           )}
         </div>
       </div>
+
+      {user && (
+        <GigInterestSheet
+          open={interestOpen}
+          onClose={() => setInterestOpen(false)}
+          gigId={gig.id}
+          userId={user.id}
+          gigTitle={gig.title}
+          initialBio={myBio}
+          onReadyToMessage={onInterestReady}
+        />
+      )}
 
       <PostGigSheet open={editOpen} onClose={() => setEditOpen(false)} onCreated={() => void load()} gigToEdit={gig} />
       {user && otherParty && (
