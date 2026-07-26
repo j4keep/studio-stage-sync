@@ -8,17 +8,26 @@ export type DisplayRating = {
   isDefault: boolean;
 };
 
+/**
+ * Everyone starts at a 5.0. Real ratings are blended against that starter score
+ * so one bad review nudges the number (5.0 → 4.9) instead of tanking it.
+ */
+const STARTER_SCORE = 5;
+const STARTER_WEIGHT = 20;
+
 export function resolveDisplayRating(average: number | null | undefined, count: number | null | undefined): DisplayRating {
   const n = count ?? 0;
   if (n > 0 && average != null && Number.isFinite(average)) {
+    const blended = (STARTER_SCORE * STARTER_WEIGHT + average * n) / (STARTER_WEIGHT + n);
     return {
-      average: Math.round(average * 10) / 10,
+      average: Math.round(blended * 10) / 10,
       count: n,
       isDefault: false,
     };
   }
-  return { average: 5, count: 0, isDefault: true };
+  return { average: STARTER_SCORE, count: 0, isDefault: true };
 }
+
 
 export async function fetchRatingsByUserIds(userIds: string[]): Promise<Record<string, DisplayRating>> {
   const unique = [...new Set(userIds.filter(Boolean))];
