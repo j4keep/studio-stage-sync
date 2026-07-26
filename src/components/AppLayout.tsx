@@ -119,7 +119,9 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
             </button>
             <NotificationBell />
             <IncognitoHeaderButton />
+            </div>
           </div>
+
         )}
 
         <div
