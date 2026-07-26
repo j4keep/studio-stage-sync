@@ -28,7 +28,11 @@ const SIZE_DIMS: Record<SizeMode, { w: number; h: number }> = {
 
 const getStoredStudioRoute = () => {
   try {
-    return localStorage.getItem(LAST_STUDIO_ROUTE_KEY) || DEFAULT_STUDIO_ROUTE;
+    const stored = localStorage.getItem(LAST_STUDIO_ROUTE_KEY);
+    if (!stored || stored === "/tv" || stored.startsWith("/wstudio") || stored.startsWith("/podcast")) {
+      return DEFAULT_STUDIO_ROUTE;
+    }
+    return stored;
   } catch {
     return DEFAULT_STUDIO_ROUTE;
   }
