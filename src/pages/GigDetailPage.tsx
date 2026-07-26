@@ -71,7 +71,11 @@ export default function GigDetailPage() {
   const [blockOpen, setBlockOpen] = useState(false);
   const [blockBusy, setBlockBusy] = useState(false);
   const [myRating, setMyRating] = useState<number | null>(null);
+  const [myComment, setMyComment] = useState<string | null>(null);
+  const [receivedRating, setReceivedRating] = useState<{ score: number; comment: string | null } | null>(null);
   const [ratingsByUser, setRatingsByUser] = useState<Record<string, DisplayRating>>({});
+  const autoRatePromptedRef = useRef(false);
+
 
   const load = async () => {
     if (!id) return;
@@ -136,15 +140,18 @@ export default function GigDetailPage() {
     }
 
     if (user) {
-      const { data: rating } = await supabase
+      const { data: gigRatings } = await supabase
         .from("user_ratings")
-        .select("score")
+        .select("score, comment, rater_id, ratee_id")
         .eq("context_type", "gig")
-        .eq("context_id", row.id)
-        .eq("rater_id", user.id)
-        .maybeSingle();
-      setMyRating(rating?.score ?? null);
+        .eq("context_id", row.id);
+      const mine = (gigRatings || []).find((r: any) => r.rater_id === user.id);
+      const theirs = (gigRatings || []).find((r: any) => r.ratee_id === user.id);
+      setMyRating(mine?.score ?? null);
+      setMyComment(mine?.comment ?? null);
+      setReceivedRating(theirs ? { score: theirs.score, comment: theirs.comment ?? null } : null);
     }
+
   };
 
   useEffect(() => {
