@@ -115,7 +115,27 @@ export default function LocalHelpHomePage() {
             Create your Local Help business page — logo, rates, services, portfolio — and go live.
           </p>
         </button>
+
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => setPostOpen(true)}
+            className="rounded-2xl border border-border bg-card p-3 text-left shadow-sm"
+          >
+            <p className="text-[13px] font-black">Post a need</p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">Let local helpers come to you</p>
+          </button>
+          <button
+            type="button"
+            onClick={() => nav("/my-gigs")}
+            className="rounded-2xl border border-border bg-card p-3 text-left shadow-sm"
+          >
+            <p className="text-[13px] font-black">My requests</p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">Track helpers & completion</p>
+          </button>
+        </div>
       </section>
+
 
       {!q && recents.length > 0 && (
         <section className="mt-4 px-4">
