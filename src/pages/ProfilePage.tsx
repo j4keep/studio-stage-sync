@@ -19,6 +19,7 @@ import ProfileFeedSection from "@/components/ProfileFeedSection";
 import UserReviewsSection from "@/components/UserReviewsSection";
 import BattleWinsSheet from "@/components/BattleWinsSheet";
 import UserProjectsSheet from "@/components/UserProjectsSheet";
+import { useSectionNotifications, type NotifSection } from "@/hooks/use-section-notifications";
 
 const ProfilePage = () => {
   const navigate = useNavigate();
