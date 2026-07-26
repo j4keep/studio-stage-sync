@@ -72,7 +72,7 @@ const NotificationBell = () => {
   });
 
   const handleNotificationClick = async (notification: any) => {
-    if (user && !notification.is_read) {
+    if (user && !(notification.is_read || notification.read)) {
       await (supabase as any)
         .from("notifications")
         .update({ is_read: true, read: true })
