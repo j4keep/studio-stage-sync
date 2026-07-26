@@ -325,12 +325,18 @@ export default function LocalHelpBusinessPage() {
               className="relative mt-3 flex h-28 w-full items-center justify-center overflow-hidden rounded-2xl border border-dashed border-border bg-muted"
             >
               {bannerUrl ? (
-                <img src={bannerUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                <>
+                  <img src={bannerUrl} alt="" data-no-zoom className="absolute inset-0 h-full w-full object-cover" />
+                  <span className="absolute bottom-2 right-2 rounded-full bg-background/85 px-2 py-1 text-[10px] font-bold">
+                    {uploading ? "Uploading…" : "Change background"}
+                  </span>
+                </>
               ) : (
                 <span className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-                  <ImagePlus className="h-4 w-4" /> Add banner
+                  <ImagePlus className="h-4 w-4" /> {uploading ? "Uploading…" : "Add background image"}
                 </span>
               )}
+
             </button>
             <div className="relative -mt-8 ml-3 flex items-end gap-3">
               <button
