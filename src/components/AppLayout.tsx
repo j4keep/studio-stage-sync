@@ -197,7 +197,9 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
           </button>
           <NotificationBell />
           <IncognitoHeaderButton />
+          </div>
         </div>
+
       )}
       <main className="min-w-0 pb-20">{children}</main>
       <GlobalRadioPlayer />
