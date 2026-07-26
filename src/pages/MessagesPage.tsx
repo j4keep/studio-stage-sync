@@ -22,6 +22,7 @@ interface Conversation {
   other_user: Profile | null;
   last_message?: string;
   hideOtherYajPage?: boolean;
+  openBusinessProfile?: boolean;
 }
 
 interface Message {
@@ -42,6 +43,10 @@ type MessagesNavState = {
   hideMyYajPage?: boolean;
   gigId?: string;
   gigTitle?: string;
+  /** Exact message the sender wrote (helper's own intro) — sent instead of a canned line. */
+  introMessage?: string;
+  /** Open the other person's Local Help business profile from the chat header. */
+  openBusinessProfile?: boolean;
 } | null;
 
 const MessagesPage = () => {
@@ -254,7 +259,12 @@ const MessagesPage = () => {
 
   const startConversation = async (
     otherUser: Profile,
-    opts?: { hideOtherYajPage?: boolean; introGigTitle?: string },
+    opts?: {
+      hideOtherYajPage?: boolean;
+      introGigTitle?: string;
+      introMessage?: string;
+      openBusinessProfile?: boolean;
+    },
   ) => {
     if (!user) return;
     if (await isBlockedBetween(user.id, otherUser.user_id)) {
@@ -267,7 +277,19 @@ const MessagesPage = () => {
     }
     const existing = conversations.find((c) => c.other_user?.user_id === otherUser.user_id);
     if (existing) {
-      setActiveConversation({ ...existing, hideOtherYajPage: opts?.hideOtherYajPage });
+      if (opts?.introMessage?.trim()) {
+        await supabase.from("messages").insert({
+          conversation_id: existing.id,
+          sender_id: user.id,
+          content: opts.introMessage.trim(),
+        });
+        queryClient.invalidateQueries({ queryKey: ["messages", existing.id] });
+      }
+      setActiveConversation({
+        ...existing,
+        hideOtherYajPage: opts?.hideOtherYajPage,
+        openBusinessProfile: opts?.openBusinessProfile,
+      });
       setHideOtherYajPage(Boolean(opts?.hideOtherYajPage));
       setShowNewChat(false);
       setSearchQuery("");
@@ -283,11 +305,14 @@ const MessagesPage = () => {
     }
     const conv = { id: convId };
 
-    if (opts?.introGigTitle) {
+    const intro =
+      opts?.introMessage?.trim() ||
+      (opts?.introGigTitle ? `Hi — I'm interested in your gig: ${opts.introGigTitle}` : "");
+    if (intro) {
       await supabase.from("messages").insert({
         conversation_id: conv.id,
         sender_id: user.id,
-        content: `Hi — I'm interested in your gig: ${opts.introGigTitle}`,
+        content: intro,
       });
     }
 
@@ -296,8 +321,9 @@ const MessagesPage = () => {
       id: conv.id,
       updated_at: new Date().toISOString(),
       other_user: otherUser,
-      last_message: opts?.introGigTitle ? `Hi — I'm interested in your gig: ${opts.introGigTitle}` : "No messages yet",
+      last_message: intro || "No messages yet",
       hideOtherYajPage: opts?.hideOtherYajPage,
+      openBusinessProfile: opts?.openBusinessProfile,
     };
     setHideOtherYajPage(Boolean(opts?.hideOtherYajPage));
     setActiveConversation(newConv);
@@ -332,6 +358,8 @@ const MessagesPage = () => {
       await startConversation(resolved, {
         hideOtherYajPage: state.hideOtherYajPage,
         introGigTitle: state.gigTitle,
+        introMessage: state.introMessage,
+        openBusinessProfile: state.openBusinessProfile,
       });
       navigate(location.pathname, { replace: true, state: null });
     })();
@@ -354,11 +382,20 @@ const MessagesPage = () => {
           <button
             type="button"
             className="flex min-w-0 flex-1 items-center gap-3 text-left"
-            disabled={hideOtherYajPage || activeConversation.hideOtherYajPage || !activeConversation.other_user?.user_id}
+            disabled={
+              (!activeConversation.openBusinessProfile &&
+                (hideOtherYajPage || activeConversation.hideOtherYajPage)) ||
+              !activeConversation.other_user?.user_id
+            }
             onClick={() => {
-              if (hideOtherYajPage || activeConversation.hideOtherYajPage) return;
               const id = activeConversation.other_user?.user_id;
-              if (id) navigate(`/artist/${id}`);
+              if (!id) return;
+              if (activeConversation.openBusinessProfile) {
+                navigate(`/local-help/pro/${id}`);
+                return;
+              }
+              if (hideOtherYajPage || activeConversation.hideOtherYajPage) return;
+              navigate(`/artist/${id}`);
             }}
           >
             <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-muted">
@@ -374,8 +411,12 @@ const MessagesPage = () => {
               <p className="truncate text-sm font-semibold text-foreground">
                 {activeConversation.other_user?.display_name || "User"}
               </p>
-              {(hideOtherYajPage || activeConversation.hideOtherYajPage) && (
-                <p className="text-[10px] text-muted-foreground">Name & photo only</p>
+              {activeConversation.openBusinessProfile ? (
+                <p className="text-[10px] text-muted-foreground">Tap to view business profile</p>
+              ) : (
+                (hideOtherYajPage || activeConversation.hideOtherYajPage) && (
+                  <p className="text-[10px] text-muted-foreground">Name &amp; photo only</p>
+                )
               )}
             </div>
           </button>
