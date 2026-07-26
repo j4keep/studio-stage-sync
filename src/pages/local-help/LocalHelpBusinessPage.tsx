@@ -134,10 +134,23 @@ export default function LocalHelpBusinessPage() {
     if (url) setBannerUrl(url);
   };
 
+  const MAX_BEFORE_AFTER = 6;
+  const beforeAfter = media.filter((m) => m.category === "before" || m.category === "after");
+
   const onPortfolio = async (file: File | undefined) => {
     if (!file) return;
     const url = await uploadFile(file, "portfolio");
     if (url) setMedia((m) => [...m, { url, label: "Project", category: "portfolio" }]);
+  };
+
+  const onBeforeAfter = async (file: File | undefined, category: "before" | "after") => {
+    if (!file) return;
+    if (beforeAfter.length >= MAX_BEFORE_AFTER) {
+      toast.error(`Keep it neat — up to ${MAX_BEFORE_AFTER} before/after photos`);
+      return;
+    }
+    const url = await uploadFile(file, "portfolio");
+    if (url) setMedia((m) => [...m, { url, label: category === "before" ? "Before" : "After", category }]);
   };
 
   const toggleCat = (id: string) => {
