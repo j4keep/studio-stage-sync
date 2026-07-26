@@ -272,20 +272,14 @@ const MessagesPage = () => {
       return;
     }
 
-    const { data: conv, error: convError } = await supabase.from("conversations").insert({}).select("id").single();
-    if (convError || !conv) {
-      toast({ title: convError?.message || "Could not start chat", variant: "destructive" });
+    let convId: string;
+    try {
+      convId = await getOrCreateConversation(user.id, otherUser.user_id);
+    } catch (e: any) {
+      toast({ title: e?.message || "Could not start chat", variant: "destructive" });
       return;
     }
-
-    const { error: partError } = await supabase.from("conversation_participants").insert([
-      { conversation_id: conv.id, user_id: user.id },
-      { conversation_id: conv.id, user_id: otherUser.user_id },
-    ]);
-    if (partError) {
-      toast({ title: partError.message || "Could not add chat participants", variant: "destructive" });
-      return;
-    }
+    const conv = { id: convId };
 
     if (opts?.introGigTitle) {
       await supabase.from("messages").insert({
@@ -294,6 +288,7 @@ const MessagesPage = () => {
         content: `Hi — I'm interested in your gig: ${opts.introGigTitle}`,
       });
     }
+
 
     const newConv: Conversation = {
       id: conv.id,
