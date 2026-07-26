@@ -18,8 +18,6 @@ import FollowersSheet from "@/components/FollowersSheet";
 import ProfileFeedSection from "@/components/ProfileFeedSection";
 import BattleWinsSheet from "@/components/BattleWinsSheet";
 import UserProjectsSheet from "@/components/UserProjectsSheet";
-import UserRatingStars from "@/components/UserRatingStars";
-import { fetchUserDisplayRating, type DisplayRating } from "@/lib/ratings";
 
 const ProfilePage = () => {
   const navigate = useNavigate();
@@ -33,7 +31,6 @@ const ProfilePage = () => {
   const [showFollowers, setShowFollowers] = useState(false);
   const [showWins, setShowWins] = useState(false);
   const [showProjects, setShowProjects] = useState(false);
-  const [displayRating, setDisplayRating] = useState<DisplayRating | null>(null);
   const [profileInfo, setProfileInfo] = useState<{ display_name: string; email: string; avatar_url: string | null; banner_url: string | null }>({
     display_name: "",
     email: "",
@@ -112,7 +109,6 @@ const ProfilePage = () => {
       setTotalViews(total >= 1000 ? `${(total / 1000).toFixed(1)}K` : String(total));
     };
     fetchViews();
-    void fetchUserDisplayRating(user.id).then(setDisplayRating);
   }, [user]);
 
   // Refetch likes when page regains focus (e.g. navigating back)
@@ -222,7 +218,7 @@ const ProfilePage = () => {
               <h2 className="text-lg font-display font-bold text-foreground">{profileInfo.display_name || "Set Artist Name"}</h2>
               {isPro && <CheckCircle className="w-4 h-4 text-primary fill-primary/20" />}
             </div>
-            <UserRatingStars rating={displayRating} variant="full" className="mt-1" />
+            
           </div>
         </div>
 
