@@ -50,7 +50,7 @@ export default function MarketplaceHomePage() {
       const msg = e?.message || "Could not load marketplace";
       if (isMissingTableError(msg)) {
         setSetupNeeded(true);
-        toast.error("Marketplace database is still setting up — try again in a minute.");
+        toast.error("Marketplace tables aren’t in Supabase yet — run the migration once.");
       } else {
         toast.error(msg);
       }
@@ -142,9 +142,10 @@ export default function MarketplaceHomePage() {
 
       {setupNeeded && (
         <div className="relative z-10 mx-4 mt-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm">
-          <p className="font-bold">Marketplace is finishing setup</p>
+          <p className="font-bold">One-time database setup needed</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Tables are deploying to your project. Wait a minute, then refresh — or apply the marketplace migration in Supabase.
+            Pushing code does not create tables. In Supabase → SQL Editor, run the file{" "}
+            <span className="font-semibold text-foreground">supabase/migrations/20260727160000_marketplace_phase1.sql</span>, then tap Retry.
           </p>
           <button type="button" onClick={() => void load()} className="mt-2 text-xs font-bold text-primary">
             Retry

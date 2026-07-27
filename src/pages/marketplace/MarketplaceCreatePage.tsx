@@ -199,7 +199,7 @@ export default function MarketplaceCreatePage() {
     } catch (e: any) {
       const msg = e?.message || "Could not save listing";
       if (/marketplace_profiles|schema cache|does not exist/i.test(msg)) {
-        toast.error("Marketplace tables are still deploying. Wait ~1 min, then try again.");
+        toast.error("Run the marketplace SQL migration in Supabase, then try again.");
       } else {
         toast.error(msg);
       }
