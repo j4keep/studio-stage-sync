@@ -1,7 +1,7 @@
 import yajLogo from "@/assets/yaj-logo.png";
 import radioWordmark from "@/assets/yaj-radio-wordmark.png";
 
-/** YAJ logo + brush RADIO wordmark — aligned baseline, tight spacing, no splash marks. */
+/** YAJ logo + RADIO wordmark — RADIO smaller than YAJ, tight left cluster. */
 export default function YajRadioWordmark({
   size = "md",
   className = "",
@@ -9,21 +9,17 @@ export default function YajRadioWordmark({
   size?: "sm" | "md" | "lg";
   className?: string;
 }) {
-  const logoH = size === "lg" ? "h-14" : size === "sm" ? "h-10" : "h-12";
-  // Match visual letter height to YAJ (RADIO asset is wider)
-  const radioH = size === "lg" ? "h-10" : size === "sm" ? "h-7" : "h-8";
+  // YAJ is the hero size; RADIO stays clearly smaller
+  const logoH = size === "lg" ? "h-12" : size === "sm" ? "h-9" : "h-11";
+  const radioH = size === "lg" ? "h-6" : size === "sm" ? "h-5" : "h-[1.35rem]";
 
   return (
-    <div className={`flex items-end min-w-0 ${className}`} style={{ gap: 0 }}>
-      <img
-        src={yajLogo}
-        alt="YAJ"
-        className={`${logoH} w-auto shrink-0 -my-1`}
-      />
+    <div className={`inline-flex items-center min-w-0 ${className}`} style={{ gap: 0 }}>
+      <img src={yajLogo} alt="YAJ" className={`${logoH} w-auto shrink-0`} />
       <img
         src={radioWordmark}
         alt="Radio"
-        className={`${radioH} w-auto max-w-[8.5rem] shrink-0 object-contain object-left -ml-4 sm:-ml-5 translate-y-[-1px]`}
+        className={`${radioH} w-auto max-w-[6.5rem] shrink-0 object-contain object-left -ml-3.5 sm:-ml-4`}
       />
     </div>
   );
