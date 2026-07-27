@@ -126,9 +126,9 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
         <div
           className={
             mobileFeed
-              ? // Phone feed frame. Desktop home: left nav | wide feed | icon rail
+              ? // Phone feed frame. Desktop: left nav | content | icon rail
                 "fixed inset-0 mx-auto flex w-full max-w-[440px] flex-col overflow-hidden bg-background lg:static lg:mx-auto lg:grid lg:h-auto lg:max-w-[1400px] lg:grid-cols-[280px_minmax(0,1fr)_56px] lg:gap-4 lg:overflow-visible lg:bg-transparent lg:px-4 lg:py-3"
-              : "relative mx-auto w-full max-w-lg min-w-0 overflow-x-hidden lg:grid lg:max-w-[1280px] lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-4 lg:overflow-visible lg:px-4 lg:py-3"
+              : "relative mx-auto w-full max-w-lg min-w-0 overflow-x-hidden lg:grid lg:max-w-[1400px] lg:grid-cols-[280px_minmax(0,1fr)_56px] lg:gap-4 lg:overflow-visible lg:px-4 lg:py-3"
           }
         >
           <div className="hidden lg:block">
@@ -145,12 +145,10 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
             {children}
           </main>
 
-          {/* Vertical menu icons on desktop Home only */}
-          {location.pathname === "/" && (
-            <div className="hidden lg:block">
-              <DesktopHomeIconRail />
-            </div>
-          )}
+          {/* Vertical menu icons on all desktop shell pages (same as Home) */}
+          <div className="hidden lg:block">
+            <DesktopHomeIconRail />
+          </div>
 
           <BottomNav />
         </div>

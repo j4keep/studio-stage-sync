@@ -7,13 +7,29 @@ const tabs = [
   { path: "/jobs", label: "Jobs", icon: Briefcase },
 ] as const;
 
-/** Vertical menu strip on the right of desktop Home (replaces top center icons). */
+/** Vertical menu strip on the right of desktop shell pages. */
 export default function DesktopHomeIconRail() {
   const navigate = useNavigate();
   const location = useLocation();
 
   const isActive = (path: string) => {
     if (path === "/") return location.pathname === "/" || location.pathname === "/feed";
+    if (path === "/explore") {
+      return (
+        location.pathname === "/explore" ||
+        location.pathname.startsWith("/local-help")
+      );
+    }
+    if (path === "/jobs") {
+      return (
+        location.pathname === "/jobs" ||
+        (location.pathname.startsWith("/jobs/") && !location.pathname.includes("/interview")) ||
+        location.pathname === "/my-jobs" ||
+        location.pathname === "/my-gigs" ||
+        location.pathname === "/employer-dashboard" ||
+        location.pathname === "/employer"
+      );
+    }
     return location.pathname === path || location.pathname.startsWith(`${path}/`);
   };
 
