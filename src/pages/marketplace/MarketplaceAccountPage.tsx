@@ -106,7 +106,7 @@ export default function MarketplaceAccountPage() {
         {mine.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">No {filter} listings.</p>
         ) : (
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="space-y-2.5">
             {mine.map((l) => (
               <ListingCard key={l.id} listing={l} />
             ))}

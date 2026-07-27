@@ -380,7 +380,7 @@ export default function MarketplaceListingPage() {
                 View all listings
               </button>
             </div>
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="space-y-2.5">
               {more.slice(0, 4).map((l) => (
                 <ListingCard key={l.id} listing={l} />
               ))}

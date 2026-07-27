@@ -38,7 +38,7 @@ export default function MarketplaceSalesPage() {
         {listings.length === 0 ? (
           <p className="py-16 text-center text-sm text-muted-foreground">Pending and sold listings show up here.</p>
         ) : (
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="space-y-2.5">
             {listings.map((l) => (
               <ListingCard key={l.id} listing={l} />
             ))}

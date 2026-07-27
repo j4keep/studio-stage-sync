@@ -186,7 +186,7 @@ export default function MarketplaceSearchPage() {
             ))}
           </div>
           {loading ? (
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="space-y-2.5">
               {Array.from({ length: 4 }).map((_, i) => (
                 <ListingCardSkeleton key={i} />
               ))}
@@ -194,7 +194,7 @@ export default function MarketplaceSearchPage() {
           ) : listings.length === 0 ? (
             <p className="py-16 text-center text-sm text-muted-foreground">No results for “{q}”</p>
           ) : (
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="space-y-2.5">
               {listings.map((l) => (
                 <ListingCard key={l.id} listing={l} onToggleSave={onToggleSave} />
               ))}

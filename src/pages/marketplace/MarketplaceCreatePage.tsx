@@ -197,16 +197,31 @@ export default function MarketplaceCreatePage() {
         nav(`/marketplace/listing/${row.id}`);
       }
     } catch (e: any) {
-      toast.error(e?.message || "Could not save listing");
+      const msg = e?.message || "Could not save listing";
+      if (/marketplace_profiles|schema cache|does not exist/i.test(msg)) {
+        toast.error("Marketplace tables are still deploying. Wait ~1 min, then try again.");
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setBusy(false);
     }
   };
 
   const stepTitle = useMemo(
-    () => ["", "Listing type", "Photos", "Details", "Location", "Preview"][step],
+    () => ["", "What are you listing?", "Photos", "The story", "Where", "Ready to go live"][step],
     [step],
   );
+
+  const typeEmoji: Record<string, string> = {
+    item: "✨",
+    vehicle: "🚗",
+    motorcycle: "🏍",
+    boat: "⛵️",
+    rv: "🚐",
+    rental: "🔑",
+    free: "🎁",
+  };
 
   if (!user) {
     return (
@@ -220,29 +235,43 @@ export default function MarketplaceCreatePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-28 text-foreground">
-      <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
-        <button
-          type="button"
-          onClick={() => (step > 1 ? setStep((s) => s - 1) : nav(-1))}
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </button>
-        <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-semibold uppercase text-primary">
-            Step {step} of 5 · {isEdit ? "Edit" : "Sell"}
-          </p>
-          <h1 className="text-base font-black">{stepTitle}</h1>
+    <div className="relative min-h-screen overflow-x-hidden bg-background pb-28 text-foreground">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-56 bg-[radial-gradient(ellipse_at_top,_hsl(var(--primary)/0.18),_transparent_65%)]"
+      />
+      <header className="sticky top-0 z-20 border-b border-border/60 bg-background/90 px-4 pb-3 pt-3 backdrop-blur">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => (step > 1 ? setStep((s) => s - 1) : nav(-1))}
+            className="flex h-9 w-9 items-center justify-center rounded-2xl bg-muted"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">
+              {isEdit ? "Edit listing" : "New listing"} · {step}/5
+            </p>
+            <h1 className="text-base font-black">{stepTitle}</h1>
+          </div>
+          <button type="button" onClick={() => nav("/marketplace")} className="rounded-2xl bg-muted p-2">
+            <X className="h-4 w-4" />
+          </button>
         </div>
-        <button type="button" onClick={() => nav("/marketplace")} className="rounded-full bg-muted p-2">
-          <X className="h-4 w-4" />
-        </button>
+        <div className="mt-3 flex gap-1.5">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <div
+              key={n}
+              className={`h-1 flex-1 rounded-full transition-colors ${n <= step ? "bg-primary" : "bg-muted"}`}
+            />
+          ))}
+        </div>
       </header>
 
-      <div className="px-4 pt-4">
+      <div className="relative px-4 pt-4">
         {step === 1 && (
-          <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2.5">
             {LISTING_TYPES.map((t) => (
               <button
                 key={t.id}
@@ -254,11 +283,14 @@ export default function MarketplaceCreatePage() {
                   if (VEHICLE_LISTING_TYPES.has(t.id)) setCategory("vehicles");
                   setStep(2);
                 }}
-                className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3.5 text-left ${
-                  listingType === t.id ? "border-primary bg-primary/5" : "border-border bg-card"
+                className={`rounded-[1.35rem] border p-4 text-left transition active:scale-[0.98] ${
+                  listingType === t.id
+                    ? "border-primary bg-primary/10 shadow-[0_12px_30px_-18px_hsl(var(--primary))]"
+                    : "border-border/80 bg-card/90"
                 }`}
               >
-                <span className="text-sm font-bold">{t.label}</span>
+                <span className="text-2xl">{typeEmoji[t.id] || "✨"}</span>
+                <p className="mt-2 text-[13px] font-black leading-snug">{t.label}</p>
               </button>
             ))}
           </div>
@@ -496,35 +528,46 @@ export default function MarketplaceCreatePage() {
         )}
 
         {step === 5 && (
-          <div className="space-y-4">
-            <div className="overflow-hidden rounded-2xl border border-border">
-              {media[0] && <img src={media[0].url} alt="" className="aspect-[4/3] w-full object-cover" />}
-              <div className="space-y-1 p-3">
-                <p className="text-xl font-black">{listingType === "free" ? "Free" : `$${Number(price || 0).toLocaleString()}`}</p>
-                <p className="font-bold">{title || "Untitled"}</p>
-                <p className="text-xs text-muted-foreground">{[city, state].filter(Boolean).join(", ")}</p>
-                <p className="line-clamp-3 text-sm text-muted-foreground">{description}</p>
+          <div className="space-y-5">
+            <div className="overflow-hidden rounded-[1.75rem] border border-border/70 bg-card shadow-[0_20px_50px_-28px_rgba(0,0,0,0.45)]">
+              <div className="relative aspect-[16/11] bg-gradient-to-br from-primary/25 via-muted to-background">
+                {media[0] ? (
+                  <img src={media[0].url} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full items-center justify-center text-4xl opacity-50">✦</div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                <div className="absolute bottom-3 left-3 right-3 text-white">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/75">
+                    {[city, state].filter(Boolean).join(", ") || "Location TBD"}
+                  </p>
+                  <p className="mt-1 text-xl font-black leading-tight">{title || "Untitled listing"}</p>
+                </div>
+                <span className="absolute right-3 top-3 rounded-full bg-white px-3 py-1 text-sm font-black text-foreground shadow-sm">
+                  {listingType === "free" ? "Free" : `$${Number(price || 0).toLocaleString()}`}
+                </span>
               </div>
+              {description ? (
+                <p className="line-clamp-3 px-4 py-3 text-sm text-muted-foreground">{description}</p>
+              ) : null}
             </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void publish(true)}
-                className="h-12 flex-1 rounded-full bg-muted text-sm font-bold disabled:opacity-60"
-              >
-                Save draft
-              </button>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void publish(false)}
-                className="flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-primary text-sm font-bold text-primary-foreground disabled:opacity-60"
-              >
-                {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-                {isEdit ? "Save changes" : "Publish"}
-              </button>
-            </div>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void publish(false)}
+              className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-base font-black text-primary-foreground shadow-[0_14px_30px_-12px_hsl(var(--primary))] disabled:opacity-60"
+            >
+              {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+              {isEdit ? "Save changes" : "Go live"}
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void publish(true)}
+              className="w-full text-center text-sm font-bold text-muted-foreground underline-offset-4 hover:underline disabled:opacity-60"
+            >
+              Save as draft instead
+            </button>
           </div>
         )}
       </div>

@@ -51,7 +51,7 @@ export default function MarketplaceSavedPage() {
         {!user ? (
           <p className="py-16 text-center text-sm text-muted-foreground">Sign in to see saved listings.</p>
         ) : loading ? (
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="space-y-2.5">
             {Array.from({ length: 4 }).map((_, i) => (
               <ListingCardSkeleton key={i} />
             ))}
@@ -59,7 +59,7 @@ export default function MarketplaceSavedPage() {
         ) : listings.length === 0 ? (
           <p className="py-16 text-center text-sm text-muted-foreground">No saved listings yet.</p>
         ) : (
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="space-y-2.5">
             {listings.map((l) => (
               <ListingCard key={l.id} listing={{ ...l, saved: true }} onToggleSave={onToggleSave} />
             ))}

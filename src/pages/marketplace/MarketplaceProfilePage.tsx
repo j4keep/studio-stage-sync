@@ -12,7 +12,7 @@ import {
   type MarketplaceListing,
   type MarketplaceProfile,
 } from "@/lib/marketplace-api";
-import ListingCard, { ListingCardSkeleton } from "@/components/marketplace/ListingCard";
+import ListingCard from "@/components/marketplace/ListingCard";
 import MarketplaceNav from "@/components/marketplace/MarketplaceNav";
 
 export default function MarketplaceProfilePage() {
@@ -247,7 +247,7 @@ export default function MarketplaceProfilePage() {
             {list.length === 0 ? (
               <p className="py-12 text-center text-sm text-muted-foreground">No {tab} listings.</p>
             ) : (
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="space-y-2.5">
                 {list.map((l) => (
                   <ListingCard key={l.id} listing={l} onToggleSave={onToggleSave} />
                 ))}

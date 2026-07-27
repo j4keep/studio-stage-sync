@@ -59,7 +59,7 @@ export default function MarketplaceCategoryPage() {
 
       <div className="px-3 pt-3">
         {loading ? (
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="space-y-2.5">
             {Array.from({ length: 6 }).map((_, i) => (
               <ListingCardSkeleton key={i} />
             ))}
@@ -67,7 +67,7 @@ export default function MarketplaceCategoryPage() {
         ) : listings.length === 0 ? (
           <p className="py-16 text-center text-sm text-muted-foreground">Nothing in this category yet.</p>
         ) : (
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="space-y-2.5">
             {listings.map((l) => (
               <ListingCard key={l.id} listing={l} onToggleSave={onToggleSave} />
             ))}
