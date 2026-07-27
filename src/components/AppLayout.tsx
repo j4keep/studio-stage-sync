@@ -12,7 +12,6 @@ import ProGateModal from "./ProGateModal";
 import IncognitoFeedWindow from "./IncognitoFeedWindow";
 import DesktopTopBar from "./desktop/DesktopTopBar";
 import DesktopLeftNav from "./desktop/DesktopLeftNav";
-import DesktopRightRail from "./desktop/DesktopRightRail";
 import DesktopHomeIconRail from "./desktop/DesktopHomeIconRail";
 import IncognitoHeaderButton from "./IncognitoHeaderButton";
 
@@ -127,8 +126,8 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
         <div
           className={
             mobileFeed
-              ? // Phone feed frame. Desktop home: left | feed | right rail | icon rail
-                "fixed inset-0 mx-auto flex w-full max-w-[440px] flex-col overflow-hidden bg-background lg:static lg:mx-auto lg:grid lg:h-auto lg:max-w-[1280px] lg:grid-cols-[280px_minmax(0,1fr)_280px_56px] lg:gap-4 lg:overflow-visible lg:bg-transparent lg:px-4 lg:py-3"
+              ? // Phone feed frame. Desktop home: left nav | wide feed | icon rail
+                "fixed inset-0 mx-auto flex w-full max-w-[440px] flex-col overflow-hidden bg-background lg:static lg:mx-auto lg:grid lg:h-auto lg:max-w-[1400px] lg:grid-cols-[280px_minmax(0,1fr)_56px] lg:gap-4 lg:overflow-visible lg:bg-transparent lg:px-4 lg:py-3"
               : "relative mx-auto w-full max-w-lg min-w-0 overflow-x-hidden lg:grid lg:max-w-[1280px] lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-4 lg:overflow-visible lg:px-4 lg:py-3"
           }
         >
@@ -146,16 +145,11 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
             {children}
           </main>
 
-          {/* Right rail + vertical menu icons on desktop Home only */}
+          {/* Vertical menu icons on desktop Home only */}
           {location.pathname === "/" && (
-            <>
-              <div className="hidden lg:block">
-                <DesktopRightRail />
-              </div>
-              <div className="hidden lg:block">
-                <DesktopHomeIconRail />
-              </div>
-            </>
+            <div className="hidden lg:block">
+              <DesktopHomeIconRail />
+            </div>
           )}
 
           <BottomNav />

@@ -135,6 +135,7 @@ const FeedPage = () => {
         </div>
       ) : (
         <>
+          {/* Mobile: side-by-side independently scrolling columns */}
           <div className="relative z-10 flex flex-1 overflow-hidden pt-[7.5rem] lg:hidden">
             <div className="h-full w-1/4 space-y-2 overflow-y-scroll overscroll-y-contain touch-pan-y px-1.5 pb-24 scrollbar-hide">
               <div className="-mx-1.5 sticky top-0 z-10 rounded-b-md border-b border-border bg-card/95 px-2 py-1 backdrop-blur-sm">
@@ -177,48 +178,57 @@ const FeedPage = () => {
             </div>
           </div>
 
-          <div className="relative z-10 hidden min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain touch-pan-y p-4 scrollbar-hide lg:flex">
-            {trending.length > 0 && <div className="mb-4 shrink-0">{trendingRow}</div>}
-            {reels.length > 0 && (
-              <div className="mb-4 shrink-0">
-                <p className="mb-2 text-[11px] font-black uppercase tracking-wider text-muted-foreground">Reels</p>
-                <div className="h-scroll-isolate flex max-w-full min-w-0 gap-2 overflow-x-auto overscroll-x-contain touch-pan-x pb-1 scrollbar-hide">
-                  {reels.slice(0, 12).map((post, i) => (
-                    <div key={post.id} className="w-28 shrink-0">
-                      <FeedThumbCard
-                        post={post}
-                        compact
-                        autoPlayMuted={post.media_type === "video" && i === featuredReelIndex}
-                        onOpen={() => openItem("reel", i)}
-                        pressHoldMs={350}
-                      />
-                    </div>
-                  ))}
+          {/* Desktop: same side-by-side Reels | Posts, each scrolls independently */}
+          <div className="relative z-10 hidden min-h-0 flex-1 flex-col overflow-hidden p-3 lg:flex">
+            {trending.length > 0 && <div className="mb-3 shrink-0">{trendingRow}</div>}
+            <div className="flex min-h-0 flex-1 overflow-hidden rounded-lg border border-border/60 bg-background/40">
+              <div className="h-full w-[32%] min-w-[180px] max-w-[280px] space-y-2 overflow-y-scroll overscroll-y-contain touch-pan-y px-2 pb-4 scrollbar-hide">
+                <div className="-mx-2 sticky top-0 z-10 border-b border-border bg-card/95 px-3 py-1.5 backdrop-blur-sm">
+                  <p className="text-[11px] font-black uppercase tracking-wider text-foreground">Reels</p>
                 </div>
+                {reels.length === 0 ? (
+                  <p className="mt-4 rounded-lg border border-border bg-card px-2 py-3 text-center text-xs text-muted-foreground">
+                    No reels yet
+                  </p>
+                ) : (
+                  reels.map((post, i) => (
+                    <FeedThumbCard
+                      key={post.id}
+                      post={post}
+                      compact
+                      autoPlayMuted={post.media_type === "video" && i === featuredReelIndex}
+                      onOpen={() => openItem("reel", i)}
+                      pressHoldMs={350}
+                    />
+                  ))
+                )}
               </div>
-            )}
-            <div className="space-y-3 pb-6">
-              <p className="text-[11px] font-black uppercase tracking-wider text-muted-foreground">Posts</p>
-              {posts.length === 0 ? (
-                <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-background p-6">
-                  <p className="text-sm text-muted-foreground">No posts yet</p>
-                  <button
-                    onClick={() => window.dispatchEvent(new Event("open-create-post"))}
-                    className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
-                  >
-                    Create first post
-                  </button>
+
+              <div className="h-full min-w-0 flex-1 space-y-3 overflow-y-scroll overscroll-y-contain touch-pan-y border-l border-border px-3 pb-4 scrollbar-hide">
+                <div className="-mx-3 sticky top-0 z-10 border-b border-border bg-card/95 px-3 py-1.5 backdrop-blur-sm">
+                  <p className="text-[11px] font-black uppercase tracking-wider text-foreground">Posts</p>
                 </div>
-              ) : (
-                posts.map((post, i) => (
-                  <FeedThumbCard
-                    key={post.id}
-                    post={post}
-                    onOpen={() => openItem("post", i)}
-                    pressHoldMs={350}
-                  />
-                ))
-              )}
+                {posts.length === 0 ? (
+                  <div className="mt-6 flex flex-col items-center gap-3 rounded-xl border border-border bg-card p-6">
+                    <p className="text-sm text-muted-foreground">No posts yet</p>
+                    <button
+                      onClick={() => window.dispatchEvent(new Event("open-create-post"))}
+                      className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
+                    >
+                      Create first post
+                    </button>
+                  </div>
+                ) : (
+                  posts.map((post, i) => (
+                    <FeedThumbCard
+                      key={post.id}
+                      post={post}
+                      onOpen={() => openItem("post", i)}
+                      pressHoldMs={350}
+                    />
+                  ))
+                )}
+              </div>
             </div>
           </div>
         </>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Briefcase, Bookmark, Compass, HandHelping, Home, PlusSquare, User } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Briefcase, Compass, Home, PlusSquare, TrendingUp, User, Users } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -9,9 +10,13 @@ const links = [
   { path: "/explore", label: "Explore", icon: Compass },
   { path: "/jobs", label: "Opportunities", icon: Briefcase },
   { path: "/profile", label: "Profile", icon: User },
-  { path: "/my-jobs", label: "My Jobs", icon: Bookmark },
-  { path: "/my-gigs", label: "My Gigs", icon: HandHelping },
 ] as const;
+
+type Creator = {
+  user_id: string;
+  display_name: string | null;
+  avatar_url: string | null;
+};
 
 export default function DesktopLeftNav() {
   const navigate = useNavigate();
@@ -33,6 +38,18 @@ export default function DesktopLeftNav() {
         setAvatarUrl(row?.avatar_url ?? null);
       });
   }, [user?.id]);
+
+  const { data: creators = [] } = useQuery<Creator[]>({
+    queryKey: ["desktop-left-creators"],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("profiles")
+        .select("user_id, display_name, avatar_url")
+        .order("created_at", { ascending: false })
+        .limit(5);
+      return (data as Creator[]) || [];
+    },
+  });
 
   const isActive = (path: string) => {
     if (path === "/") return location.pathname === "/";
@@ -87,6 +104,61 @@ export default function DesktopLeftNav() {
           Create
         </button>
       </nav>
+
+      {/* Widgets under Create — fills the profile column; frees center for Reels + Posts */}
+      <div className="mt-4 space-y-3">
+        <section className="rounded-xl border border-border bg-card p-3">
+          <div className="mb-2 flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-primary" />
+            <h2 className="text-sm font-bold text-foreground">Trending on YAJ</h2>
+          </div>
+          <ul className="space-y-1">
+            {["Studio sessions", "Open mic nights", "Creator collabs"].map((label) => (
+              <li key={label}>
+                <button
+                  type="button"
+                  onClick={() => navigate("/")}
+                  className="w-full rounded-lg px-2 py-1.5 text-left text-sm text-foreground hover:bg-muted"
+                >
+                  {label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="rounded-xl border border-border bg-card p-3">
+          <div className="mb-2 flex items-center gap-2">
+            <Users className="h-4 w-4 text-primary" />
+            <h2 className="text-sm font-bold text-foreground">People to follow</h2>
+          </div>
+          <ul className="space-y-2">
+            {creators.map((c) => (
+              <li key={c.user_id}>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/artist/${c.user_id}`)}
+                  className="flex w-full items-center gap-2 rounded-lg px-1 py-1.5 text-left hover:bg-muted"
+                >
+                  <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-muted">
+                    {c.avatar_url ? (
+                      <img src={c.avatar_url} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="flex h-full w-full items-center justify-center text-xs font-bold">
+                        {(c.display_name || "?")[0]?.toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  <span className="truncate text-sm font-semibold">{c.display_name || "Creator"}</span>
+                </button>
+              </li>
+            ))}
+            {creators.length === 0 && (
+              <p className="px-1 text-xs text-muted-foreground">Discover creators in Explore.</p>
+            )}
+          </ul>
+        </section>
+      </div>
 
       <p className="mt-8 px-2 text-[11px] leading-relaxed text-muted-foreground">
         Privacy · Terms · Advertising · YAJ © {new Date().getFullYear()}
