@@ -1107,6 +1107,362 @@ export type Database = {
           },
         ]
       }
+      marketplace_listing_media: {
+        Row: {
+          created_at: string
+          id: string
+          is_cover: boolean
+          listing_id: string
+          sort_order: number
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_cover?: boolean
+          listing_id: string
+          sort_order?: number
+          url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_cover?: boolean
+          listing_id?: string
+          sort_order?: number
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_listing_media_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketplace_listings: {
+        Row: {
+          attributes: Json
+          brand: string | null
+          category: string
+          city: string | null
+          color: string | null
+          condition: string | null
+          cover_url: string | null
+          created_at: string
+          deleted_at: string | null
+          delivery: boolean
+          description: string
+          firm_price: boolean
+          id: string
+          lat: number | null
+          listing_type: string
+          lng: number | null
+          local_pickup: boolean
+          location_approx: string | null
+          model: string | null
+          open_to_offers: boolean
+          price: number | null
+          promoted: boolean
+          quantity: number
+          seller_id: string
+          shipping: boolean
+          state: string | null
+          status: string
+          subcategory: string | null
+          tags: string[]
+          title: string
+          updated_at: string
+          views_count: number
+          zip: string | null
+        }
+        Insert: {
+          attributes?: Json
+          brand?: string | null
+          category?: string
+          city?: string | null
+          color?: string | null
+          condition?: string | null
+          cover_url?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          delivery?: boolean
+          description?: string
+          firm_price?: boolean
+          id?: string
+          lat?: number | null
+          listing_type?: string
+          lng?: number | null
+          local_pickup?: boolean
+          location_approx?: string | null
+          model?: string | null
+          open_to_offers?: boolean
+          price?: number | null
+          promoted?: boolean
+          quantity?: number
+          seller_id: string
+          shipping?: boolean
+          state?: string | null
+          status?: string
+          subcategory?: string | null
+          tags?: string[]
+          title: string
+          updated_at?: string
+          views_count?: number
+          zip?: string | null
+        }
+        Update: {
+          attributes?: Json
+          brand?: string | null
+          category?: string
+          city?: string | null
+          color?: string | null
+          condition?: string | null
+          cover_url?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          delivery?: boolean
+          description?: string
+          firm_price?: boolean
+          id?: string
+          lat?: number | null
+          listing_type?: string
+          lng?: number | null
+          local_pickup?: boolean
+          location_approx?: string | null
+          model?: string | null
+          open_to_offers?: boolean
+          price?: number | null
+          promoted?: boolean
+          quantity?: number
+          seller_id?: string
+          shipping?: boolean
+          state?: string | null
+          status?: string
+          subcategory?: string | null
+          tags?: string[]
+          title?: string
+          updated_at?: string
+          views_count?: number
+          zip?: string | null
+        }
+        Relationships: []
+      }
+      marketplace_offers: {
+        Row: {
+          amount: number
+          buyer_id: string
+          created_at: string
+          id: string
+          listing_id: string
+          message: string | null
+          seller_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          buyer_id: string
+          created_at?: string
+          id?: string
+          listing_id: string
+          message?: string | null
+          seller_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          buyer_id?: string
+          created_at?: string
+          id?: string
+          listing_id?: string
+          message?: string | null
+          seller_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_offers_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketplace_profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          city: string | null
+          created_at: string
+          display_name: string | null
+          is_business: boolean
+          response_time_minutes: number | null
+          service_area: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          city?: string | null
+          created_at?: string
+          display_name?: string | null
+          is_business?: boolean
+          response_time_minutes?: number | null
+          service_area?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          city?: string | null
+          created_at?: string
+          display_name?: string | null
+          is_business?: boolean
+          response_time_minutes?: number | null
+          service_area?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      marketplace_saved_listings: {
+        Row: {
+          created_at: string
+          listing_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          listing_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          listing_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_saved_listings_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketplace_vehicle_details: {
+        Row: {
+          boat_type: string | null
+          body_style: string | null
+          cylinders: number | null
+          dealer: boolean
+          drivetrain: string | null
+          engine: string | null
+          engine_hours: number | null
+          engine_size: string | null
+          engine_type: string | null
+          exterior_color: string | null
+          extras: Json
+          fuel_type: string | null
+          hull_material: string | null
+          interior_color: string | null
+          length_ft: number | null
+          listing_id: string
+          make: string | null
+          mileage: number | null
+          model: string | null
+          motorcycle_type: string | null
+          rv_type: string | null
+          sleeping_capacity: number | null
+          slide_outs: number | null
+          title_status: string | null
+          trailer_included: boolean | null
+          transmission: string | null
+          trim: string | null
+          vin: string | null
+          year: number | null
+        }
+        Insert: {
+          boat_type?: string | null
+          body_style?: string | null
+          cylinders?: number | null
+          dealer?: boolean
+          drivetrain?: string | null
+          engine?: string | null
+          engine_hours?: number | null
+          engine_size?: string | null
+          engine_type?: string | null
+          exterior_color?: string | null
+          extras?: Json
+          fuel_type?: string | null
+          hull_material?: string | null
+          interior_color?: string | null
+          length_ft?: number | null
+          listing_id: string
+          make?: string | null
+          mileage?: number | null
+          model?: string | null
+          motorcycle_type?: string | null
+          rv_type?: string | null
+          sleeping_capacity?: number | null
+          slide_outs?: number | null
+          title_status?: string | null
+          trailer_included?: boolean | null
+          transmission?: string | null
+          trim?: string | null
+          vin?: string | null
+          year?: number | null
+        }
+        Update: {
+          boat_type?: string | null
+          body_style?: string | null
+          cylinders?: number | null
+          dealer?: boolean
+          drivetrain?: string | null
+          engine?: string | null
+          engine_hours?: number | null
+          engine_size?: string | null
+          engine_type?: string | null
+          exterior_color?: string | null
+          extras?: Json
+          fuel_type?: string | null
+          hull_material?: string | null
+          interior_color?: string | null
+          length_ft?: number | null
+          listing_id?: string
+          make?: string | null
+          mileage?: number | null
+          model?: string | null
+          motorcycle_type?: string | null
+          rv_type?: string | null
+          sleeping_capacity?: number | null
+          slide_outs?: number | null
+          title_status?: string | null
+          trailer_included?: boolean | null
+          transmission?: string | null
+          trim?: string | null
+          vin?: string | null
+          year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_vehicle_details_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: true
+            referencedRelation: "marketplace_listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string | null
