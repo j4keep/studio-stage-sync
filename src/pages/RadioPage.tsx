@@ -1,6 +1,21 @@
 import { useEffect, useState, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, Heart, Share2, MessageCircle, MoreHorizontal, ListMusic, ChevronDown, Music, Send, Search, Shuffle, Volume2, VolumeX } from "lucide-react";
+import {
+  Play,
+  Pause,
+  Heart,
+  Share2,
+  MessageCircle,
+  MoreHorizontal,
+  SkipForward,
+  ChevronDown,
+  Music,
+  Send,
+  Search,
+  Shuffle,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useRadio } from "@/contexts/RadioContext";
 import { GENRES } from "@/lib/genres";
@@ -12,8 +27,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import BoostAdOverlay from "@/components/BoostAdOverlay";
 import yajLogo from "@/assets/yaj-logo.png";
 
-
-const RADIO_GENRE_FILTERS = ["All", "Podcasts", ...GENRES.filter(g => g !== "Beats")];
+const RADIO_GENRE_FILTERS = ["All", "Podcasts", ...GENRES.filter((g) => g !== "Beats")];
 
 const SEEK_WAVE_BARS = Array.from({ length: 88 }, (_, index) => {
   const seed = (index * 17 + 23) % 100;
@@ -27,7 +41,6 @@ const formatTime = (s: number) => {
   return `${m}:${sec.toString().padStart(2, "0")}`;
 };
 
-// Local comments state type
 interface RadioComment {
   id: string;
   text: string;
@@ -39,19 +52,36 @@ interface RadioComment {
 const RadioPage = () => {
   const navigate = useNavigate();
   const {
-    isPlaying, currentTrack, queue, allTracks, toggle, skip, previous, skipsLeft,
-    playTrack, setGenreFilter, activeGenre, loading,
-    currentTime, duration, seek, fetchRadioSongs,
-    volume, setVolume, shuffled, toggleShuffle,
-    songPlayCount, resetSongPlayCount,
+    isPlaying,
+    currentTrack,
+    queue,
+    allTracks,
+    toggle,
+    skip,
+    previous,
+    skipsLeft,
+    playTrack,
+    setGenreFilter,
+    activeGenre,
+    loading,
+    currentTime,
+    duration,
+    seek,
+    fetchRadioSongs,
+    volume,
+    setVolume,
+    shuffled,
+    toggleShuffle,
+    songPlayCount,
+    resetSongPlayCount,
   } = useRadio();
 
   useEffect(() => {
     if (allTracks.length === 0) void fetchRadioSongs();
   }, [allTracks.length, fetchRadioSongs]);
 
-  const songIds = allTracks.filter(s => s.source !== "podcast").map(s => s.id);
-  const podcastIds = allTracks.filter(s => s.source === "podcast").map(s => s.id);
+  const songIds = allTracks.filter((s) => s.source !== "podcast").map((s) => s.id);
+  const podcastIds = allTracks.filter((s) => s.source === "podcast").map((s) => s.id);
   const songLikes = useLikes("song", songIds);
   const podcastLikes = useLikes("podcast", podcastIds);
 
@@ -69,12 +99,26 @@ const RadioPage = () => {
   const swipeStartY = useRef<number | null>(null);
   const seekGestureLockRef = useRef(false);
 
-  const trackComments = currentTrack ? (comments[currentTrack.id] || []) : [];
+  const trackComments = currentTrack ? comments[currentTrack.id] || [] : [];
   const sliderValue = isSeeking ? (seekPreview ?? currentTime) : currentTime;
   const progressRatio = duration > 0 ? Math.min(1, Math.max(0, sliderValue / duration)) : 0;
   const waveBars = useMemo(() => SEEK_WAVE_BARS, []);
   const seekAreaRef = useRef<HTMLDivElement>(null);
   const activePointerIdRef = useRef<number | null>(null);
+  const upNext = queue.slice(0, 4);
+
+  const searchMatches = useMemo(() => {
+    const q = radioSearchQuery.trim().toLowerCase();
+    if (!q) return [];
+    return allTracks
+      .filter(
+        (t) =>
+          t.title.toLowerCase().includes(q) ||
+          t.artist_name.toLowerCase().includes(q) ||
+          ((t as any).album || "").toLowerCase().includes(q),
+      )
+      .slice(0, 10);
+  }, [allTracks, radioSearchQuery]);
 
   const seekByClientX = (clientX: number) => {
     const rect = seekAreaRef.current?.getBoundingClientRect();
@@ -122,7 +166,7 @@ const RadioPage = () => {
       createdAt: new Date(),
       author: "You",
     };
-    setComments(prev => ({
+    setComments((prev) => ({
       ...prev,
       [currentTrack.id]: [...(prev[currentTrack.id] || []), newComment],
     }));
@@ -132,33 +176,47 @@ const RadioPage = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-muted-foreground text-sm">Loading radio...</div>
+      <div className="flex min-h-[60vh] items-center justify-center lg:min-h-[calc(100dvh-3.5rem-1.5rem)]">
+        <div className="text-sm text-muted-foreground">Loading radio...</div>
       </div>
     );
   }
 
   if (!currentTrack) {
     return (
-      <div className="px-4 pt-4 flex flex-col min-h-screen">
-        <div className="flex items-center justify-between w-full mb-4">
-          <button onClick={() => navigate(-1)} className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center">
-            <ChevronDown className="w-4 h-4 text-muted-foreground" />
+      <div className="flex min-h-screen flex-col bg-background px-4 pt-4 lg:min-h-[calc(100dvh-3.5rem-1.5rem)] lg:rounded-xl lg:border lg:border-border lg:bg-card lg:p-6">
+        <div className="mb-4 flex w-full items-center justify-between">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card"
+          >
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
           </button>
           <img src={yajLogo} alt="YAJ" className="h-5 w-auto" />
           <div className="w-8" />
         </div>
-        <div className="flex gap-2 w-full overflow-x-auto scrollbar-hide mb-6 pb-1">
+        <div className="mb-6 flex w-full gap-2 overflow-x-auto pb-1 scrollbar-hide">
           {RADIO_GENRE_FILTERS.map((g) => (
-            <button key={g} onClick={() => setGenreFilter(g)}
-              className={`px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
-                activeGenre === g ? "gradient-primary text-primary-foreground glow-primary" : "bg-card border border-border text-muted-foreground"
-              }`}>{g}</button>
+            <button
+              key={g}
+              type="button"
+              onClick={() => setGenreFilter(g)}
+              className={`whitespace-nowrap rounded-full px-4 py-1.5 text-xs font-medium transition-all ${
+                activeGenre === g
+                  ? "gradient-primary text-primary-foreground glow-primary"
+                  : "border border-border bg-card text-muted-foreground"
+              }`}
+            >
+              {g}
+            </button>
           ))}
         </div>
-        <div className="py-16 text-center flex-1 flex flex-col items-center justify-center">
-          <Music className="w-10 h-10 text-muted-foreground mb-3" />
-          <p className="text-sm text-muted-foreground">No songs on radio{activeGenre !== "All" ? ` for ${activeGenre}` : ""} yet</p>
+        <div className="flex flex-1 flex-col items-center justify-center py-16 text-center">
+          <Music className="mb-3 h-10 w-10 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">
+            No songs on radio{activeGenre !== "All" ? ` for ${activeGenre}` : ""} yet
+          </p>
         </div>
       </div>
     );
@@ -169,194 +227,129 @@ const RadioPage = () => {
   const likeCount = activeLikes.getLikeCount(track.id);
   const liked = activeLikes.isLiked(track.id);
 
-  return (
-    <div className="flex flex-col min-h-screen bg-background relative">
-      {/* Genre filter bar at top */}
-      <div className="absolute top-0 left-0 right-0 z-20 px-3 pt-3 pb-2">
-        <div className="flex items-center gap-2 mb-3">
-           <button onClick={() => navigate(-1)} className="w-8 h-8 rounded-full bg-background/60 backdrop-blur-sm flex items-center justify-center">
-            <ChevronDown className="w-5 h-5 text-foreground" />
+  const coverBlock = (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={track.id}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.3 }}
+        className="relative mx-auto aspect-square w-full max-w-md overflow-hidden rounded-2xl bg-muted shadow-sm lg:mx-0 lg:max-w-none lg:h-full lg:max-h-[min(640px,calc(100dvh-8rem))] lg:aspect-auto"
+        onTouchStart={(e) => {
+          if (seekGestureLockRef.current) return;
+          const target = e.target as HTMLElement;
+          if (target.closest('[role="slider"]') || target.closest(".seek-area")) return;
+          swipeStartX.current = e.touches[0].clientX;
+          swipeStartY.current = e.touches[0].clientY;
+        }}
+        onTouchMove={(e) => {
+          if (seekGestureLockRef.current) return;
+          const target = e.target as HTMLElement;
+          if (target.closest('[role="slider"]') || target.closest(".seek-area")) {
+            swipeStartX.current = null;
+            swipeStartY.current = null;
+          }
+        }}
+        onTouchEnd={(e) => {
+          if (seekGestureLockRef.current) {
+            swipeStartX.current = null;
+            swipeStartY.current = null;
+            return;
+          }
+          if (swipeStartX.current === null || swipeStartY.current === null) return;
+          const diffX = e.changedTouches[0].clientX - swipeStartX.current;
+          const diffY = e.changedTouches[0].clientY - swipeStartY.current;
+          swipeStartX.current = null;
+          swipeStartY.current = null;
+          if (diffY > 80 && Math.abs(diffX) < Math.abs(diffY)) {
+            navigate(-1);
+            return;
+          }
+          if (Math.abs(diffX) > 60) {
+            if (diffX < 0) skip();
+            else previous();
+          }
+        }}
+      >
+        <img src={track.cover_url} alt={track.title} className="h-full w-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/15" />
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <button
+            type="button"
+            onClick={toggle}
+            className="pointer-events-auto flex h-16 w-16 items-center justify-center rounded-full border border-white/20 bg-black/35 backdrop-blur-md transition hover:bg-black/50 lg:h-20 lg:w-20"
+            aria-label={isPlaying ? "Pause" : "Play"}
+          >
+            {isPlaying ? (
+              <Pause className="h-7 w-7 text-white lg:h-8 lg:w-8" />
+            ) : (
+              <Play className="ml-1 h-7 w-7 text-white lg:h-8 lg:w-8" />
+            )}
           </button>
-          <div className="flex-1" />
-          <button onClick={() => setShowRadioSearch(!showRadioSearch)} className="w-8 h-8 rounded-full bg-background/60 backdrop-blur-sm flex items-center justify-center mr-2">
-            <Search className="w-4 h-4 text-foreground" />
-          </button>
-          <span className="text-[10px] text-primary font-semibold uppercase tracking-wider flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" /> LIVE
-          </span>
         </div>
-        {showRadioSearch && (
-          <div className="mb-2">
-            <input
-              autoFocus
-              placeholder="Search by song, artist, or album…"
-              value={radioSearchQuery}
-              onChange={(e) => setRadioSearchQuery(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl bg-background/80 backdrop-blur-sm border border-border text-sm text-foreground placeholder:text-muted-foreground"
-            />
-          </div>
-        )}
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
-          {RADIO_GENRE_FILTERS.map((g) => (
-            <button key={g} onClick={() => setGenreFilter(g)}
-              className={`px-3 py-1 rounded-full text-[10px] font-medium whitespace-nowrap transition-all ${
-                activeGenre === g ? "gradient-primary text-primary-foreground" : "bg-background/40 backdrop-blur-sm text-foreground/70 border border-border/40"
-              }`}>{g}</button>
-          ))}
+      </motion.div>
+    </AnimatePresence>
+  );
+
+  const controlsBlock = (
+    <div className="flex min-w-0 flex-1 flex-col">
+      <div className="mb-4">
+        <h2 className="text-2xl font-black leading-tight tracking-tight text-foreground lg:text-3xl">{track.title}</h2>
+        <p className="mt-1 text-sm font-medium text-muted-foreground lg:text-base">
+          {track.artist_name}
+          {(track as any).album ? ` · ${(track as any).album}` : ""}
+        </p>
+        <span className="mt-2 inline-block rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
+          {track.genre}
+        </span>
+      </div>
+
+      <div
+        ref={seekAreaRef}
+        className="seek-area mb-4 select-none touch-none"
+        onPointerDown={handleSeekPointerDown}
+        onPointerMove={handleSeekPointerMove}
+        onPointerUp={handleSeekPointerUp}
+        onPointerCancel={handleSeekPointerUp}
+      >
+        <div className="mb-2 flex items-center justify-between text-[11px] font-semibold">
+          <span className="text-foreground/90">{formatTime(sliderValue)}</span>
+          <span className="text-muted-foreground">{formatTime(duration)}</span>
+        </div>
+        <div className="flex h-14 items-end gap-[2px] rounded-xl bg-muted/60 px-1.5 py-2 lg:h-16">
+          {waveBars.map((barHeight, index) => {
+            const barRatio = (index + 1) / waveBars.length;
+            const isPlayed = progressRatio >= barRatio;
+            return (
+              <div key={index} className="flex flex-1 flex-col items-center justify-end gap-[1px]" style={{ height: "100%" }}>
+                <span
+                  className="w-full rounded-[1px]"
+                  style={{
+                    height: `${barHeight}%`,
+                    backgroundColor: isPlayed ? "hsl(var(--primary))" : "hsl(var(--primary) / 0.28)",
+                  }}
+                />
+                <span
+                  className="w-full rounded-[1px]"
+                  style={{
+                    height: `${Math.max(15, barHeight * 0.45)}%`,
+                    backgroundColor: isPlayed ? "hsl(var(--primary) / 0.55)" : "hsl(var(--primary) / 0.12)",
+                  }}
+                />
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      {/* Search results overlay */}
-      {showRadioSearch && radioSearchQuery.trim() && (
-        <div className="absolute top-28 left-0 right-0 z-30 px-3 max-h-60 overflow-y-auto">
-          <div className="bg-card/95 backdrop-blur-xl rounded-xl border border-border shadow-lg">
-            {allTracks.filter(t => {
-              const q = radioSearchQuery.toLowerCase();
-              return t.title.toLowerCase().includes(q) || t.artist_name.toLowerCase().includes(q) || ((t as any).album || "").toLowerCase().includes(q);
-            }).slice(0, 10).map(t => (
-              <button key={t.id} onClick={() => { playTrack(t); setShowRadioSearch(false); setRadioSearchQuery(""); }}
-                className="flex items-center gap-3 p-2.5 w-full text-left hover:bg-primary/5 transition-all">
-                <img src={t.cover_url} alt="" className="w-9 h-9 rounded-lg object-cover" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-foreground truncate">{t.title}</p>
-                  <p className="text-[10px] text-muted-foreground truncate">{t.artist_name} · {(t as any).album || "Unknown Album"}</p>
-                </div>
-              </button>
-            ))}
-            {allTracks.filter(t => {
-              const q = radioSearchQuery.toLowerCase();
-              return t.title.toLowerCase().includes(q) || t.artist_name.toLowerCase().includes(q) || ((t as any).album || "").toLowerCase().includes(q);
-            }).length === 0 && (
-              <p className="text-xs text-muted-foreground text-center py-4">No matches found</p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Full-screen album art */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={track.id}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.3 }}
-          className="relative flex-1 min-h-0"
-          onTouchStart={(e) => {
-            if (seekGestureLockRef.current) return;
-
-            const touch = e.touches[0];
-            const touchY = touch.clientY;
-            const swipeZoneCutoff = window.innerHeight * 0.72;
-
-            // Only allow swipe-track gestures from the upper artwork zone.
-            // This prevents progress-bar drags and bottom controls from changing tracks.
-            if (touchY > swipeZoneCutoff) return;
-
-            const target = e.target as HTMLElement;
-            if (target.closest('[role="slider"]') || target.closest('.seek-area')) return;
-
-            swipeStartX.current = touch.clientX;
-            swipeStartY.current = touch.clientY;
-          }}
-          onTouchMove={(e) => {
-            if (seekGestureLockRef.current) return;
-            const target = e.target as HTMLElement;
-            if (target.closest('[role="slider"]') || target.closest('.seek-area')) {
-              swipeStartX.current = null;
-              swipeStartY.current = null;
-            }
-          }}
-          onTouchEnd={(e) => {
-            if (seekGestureLockRef.current) {
-              swipeStartX.current = null;
-              swipeStartY.current = null;
-              return;
-            }
-            if (swipeStartX.current === null || swipeStartY.current === null) return;
-            const diffX = e.changedTouches[0].clientX - swipeStartX.current;
-            const diffY = e.changedTouches[0].clientY - swipeStartY.current;
-            swipeStartX.current = null;
-            swipeStartY.current = null;
-            if (diffY > 80 && Math.abs(diffX) < Math.abs(diffY)) {
-              navigate(-1);
-              return;
-            }
-            if (Math.abs(diffX) > 60) {
-              if (diffX < 0) skip();
-              else previous();
-            }
-          }}
-        >
-          <div className="absolute inset-0">
-            <img src={track.cover_url} alt={track.title} className="w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-background/40" />
-          </div>
-
-          {/* Track info overlay */}
-          <div className="absolute bottom-0 left-0 right-0 px-4 pb-4 z-10">
-            <div className="mb-3">
-              <h2 className="text-lg font-bold text-foreground drop-shadow-lg leading-tight">{track.title}</h2>
-              <p className="text-sm text-foreground/80 drop-shadow-lg">{track.artist_name}</p>
-              <p className="text-xs text-foreground/60 drop-shadow-lg">{(track as any).album || "Unknown Album"}</p>
-              <span className="text-[9px] px-2 py-0.5 rounded-full bg-background/40 backdrop-blur-sm text-primary font-medium mt-1 inline-block">{track.genre}</span>
-            </div>
-
-            {/* Seekable progress bar */}
-            <div
-              ref={seekAreaRef}
-              className="mb-3 seek-area relative z-20 select-none touch-none"
-              onPointerDown={handleSeekPointerDown}
-              onPointerMove={handleSeekPointerMove}
-              onPointerUp={handleSeekPointerUp}
-              onPointerCancel={handleSeekPointerUp}
-            >
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <span className="text-[11px] font-semibold text-foreground/90">{formatTime(sliderValue)}</span>
-                <span className="text-[11px] text-foreground/40">|</span>
-                <span className="text-[11px] text-foreground/60">{formatTime(duration)}</span>
-              </div>
-
-              <div className="h-16 flex items-end gap-[2px] px-1.5 py-2 rounded-lg bg-background/20">
-                {waveBars.map((barHeight, index) => {
-                  const barRatio = (index + 1) / waveBars.length;
-                  const isPlayed = progressRatio >= barRatio;
-                  return (
-                    <div key={index} className="flex-1 flex flex-col items-center justify-end gap-[1px]" style={{ height: "100%" }}>
-                      <span
-                        className="w-full rounded-[1px]"
-                        style={{
-                          height: `${barHeight}%`,
-                          backgroundColor: isPlayed ? "hsl(var(--primary))" : "hsl(var(--primary) / 0.3)",
-                        }}
-                      />
-                      <span
-                        className="w-full rounded-[1px]"
-                        style={{
-                          height: `${Math.max(15, barHeight * 0.45)}%`,
-                          backgroundColor: isPlayed ? "hsl(var(--primary) / 0.6)" : "hsl(var(--primary) / 0.15)",
-                        }}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* Play button overlay center */}
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-10">
-            <button onClick={toggle} className="pointer-events-auto w-16 h-16 rounded-full bg-background/30 backdrop-blur-md flex items-center justify-center border border-foreground/10 hover:bg-background/50 transition-all">
-              {isPlaying ? <Pause className="w-7 h-7 text-foreground" /> : <Play className="w-7 h-7 text-foreground ml-1" />}
-            </button>
-          </div>
-        </motion.div>
-      </AnimatePresence>
-
-      {/* Volume & Shuffle controls */}
-      <div className="flex items-center gap-3 px-4 py-2 bg-background border-t border-border">
-        <button onClick={() => setVolume(volume === 0 ? 1 : 0)} className="shrink-0">
-          {volume === 0 ? <VolumeX className="w-4 h-4 text-muted-foreground" /> : <Volume2 className="w-4 h-4 text-foreground" />}
+      <div className="mb-5 flex items-center gap-3">
+        <button type="button" onClick={() => setVolume(volume === 0 ? 1 : 0)} className="shrink-0" aria-label="Mute">
+          {volume === 0 ? (
+            <VolumeX className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <Volume2 className="h-4 w-4 text-foreground" />
+          )}
         </button>
         <input
           type="range"
@@ -365,41 +358,173 @@ const RadioPage = () => {
           step={0.01}
           value={volume}
           onChange={(e) => setVolume(Number(e.target.value))}
-          className="flex-1 h-1 accent-primary cursor-pointer"
+          className="h-1 flex-1 cursor-pointer accent-primary"
         />
-        <button onClick={toggleShuffle} className={`shrink-0 ${shuffled ? "text-primary" : "text-muted-foreground"}`}>
-          <Shuffle className="w-4 h-4" />
+        <button
+          type="button"
+          onClick={toggleShuffle}
+          className={`shrink-0 ${shuffled ? "text-primary" : "text-muted-foreground"}`}
+          aria-label="Shuffle"
+        >
+          <Shuffle className="h-4 w-4" />
         </button>
       </div>
 
-      {/* Bottom action bar */}
-      <div className="flex items-center justify-around py-3 px-4 bg-background border-t border-border">
-        <button onClick={() => activeLikes.toggleLike(track.id)} className="flex items-center gap-1.5">
-          <Heart className={`w-6 h-6 transition-colors ${liked ? "text-primary fill-primary" : "text-foreground"}`} />
-          <span className="text-xs text-foreground font-medium">{likeCount}</span>
+      <div className="grid grid-cols-5 gap-1 border-t border-border pt-4">
+        <button
+          type="button"
+          onClick={() => activeLikes.toggleLike(track.id)}
+          className="flex flex-col items-center gap-1 py-1"
+        >
+          <Heart className={`h-6 w-6 ${liked ? "fill-primary text-primary" : "text-foreground"}`} />
+          <span className="text-[10px] font-medium text-muted-foreground">{likeCount || "Like"}</span>
         </button>
-
-        <button onClick={() => setCommentsOpen(true)}>
-          <MessageCircle className="w-6 h-6 text-foreground" />
+        <button type="button" onClick={() => setCommentsOpen(true)} className="flex flex-col items-center gap-1 py-1">
+          <MessageCircle className="h-6 w-6 text-foreground" />
+          <span className="text-[10px] font-medium text-muted-foreground">Comment</span>
         </button>
-
-        <button onClick={() => setShareOpen(true)}>
-          <Share2 className="w-6 h-6 text-foreground" />
+        <button type="button" onClick={() => setShareOpen(true)} className="flex flex-col items-center gap-1 py-1">
+          <Share2 className="h-6 w-6 text-foreground" />
+          <span className="text-[10px] font-medium text-muted-foreground">Share</span>
         </button>
-
-        <button onClick={skip} disabled={skipsLeft === 0}>
-          <ListMusic className="w-6 h-6 text-foreground disabled:opacity-30" />
+        <button
+          type="button"
+          onClick={skip}
+          disabled={skipsLeft === 0}
+          className="flex flex-col items-center gap-1 py-1 disabled:opacity-35"
+        >
+          <SkipForward className="h-6 w-6 text-foreground" />
+          <span className="text-[10px] font-medium text-muted-foreground">
+            {skipsLeft === 0 ? "No skips" : `${skipsLeft} left`}
+          </span>
         </button>
-
-        <button onClick={() => setMoreOpen(true)}>
-          <MoreHorizontal className="w-6 h-6 text-foreground" />
+        <button type="button" onClick={() => setMoreOpen(true)} className="flex flex-col items-center gap-1 py-1">
+          <MoreHorizontal className="h-6 w-6 text-foreground" />
+          <span className="text-[10px] font-medium text-muted-foreground">More</span>
         </button>
       </div>
 
-      {/* Share Sheet */}
+      {upNext.length > 0 && (
+        <div className="mt-6">
+          <p className="mb-2 text-[11px] font-black uppercase tracking-wider text-muted-foreground">Up next</p>
+          <ul className="space-y-2">
+            {upNext.map((t) => (
+              <li key={t.id}>
+                <button
+                  type="button"
+                  onClick={() => playTrack(t)}
+                  className="flex w-full items-center gap-3 rounded-xl border border-border/60 bg-muted/40 px-2 py-2 text-left transition hover:bg-muted"
+                >
+                  <img src={t.cover_url} alt="" className="h-11 w-11 rounded-lg object-cover" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-foreground">{t.title}</p>
+                    <p className="truncate text-[11px] text-muted-foreground">{t.artist_name}</p>
+                  </div>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="relative flex min-h-screen flex-col bg-background lg:min-h-[calc(100dvh-3.5rem-1.5rem)] lg:overflow-hidden lg:rounded-xl lg:border lg:border-border lg:bg-card lg:shadow-sm">
+      {/* Header */}
+      <div className="sticky top-0 z-20 border-b border-border/70 bg-background/95 px-3 pb-3 pt-3 backdrop-blur lg:static lg:bg-transparent lg:px-5 lg:pt-4">
+        <div className="mb-3 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-muted lg:hidden"
+            aria-label="Back"
+          >
+            <ChevronDown className="h-5 w-5 text-foreground" />
+          </button>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-primary">Create • Connect • Elevate</p>
+            <h1 className="text-lg font-black tracking-tight lg:text-xl">YAJ Radio</h1>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowRadioSearch(!showRadioSearch)}
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"
+            aria-label="Search radio"
+          >
+            <Search className="h-4 w-4 text-foreground" />
+          </button>
+          <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-primary">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" /> LIVE
+          </span>
+        </div>
+
+        {showRadioSearch && (
+          <div className="relative mb-3">
+            <input
+              autoFocus
+              placeholder="Search by song, artist, or album…"
+              value={radioSearchQuery}
+              onChange={(e) => setRadioSearchQuery(e.target.value)}
+              className="h-11 w-full rounded-xl border border-border bg-muted px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/30"
+            />
+            {radioSearchQuery.trim() && (
+              <div className="absolute left-0 right-0 top-[calc(100%+0.35rem)] z-30 max-h-60 overflow-y-auto rounded-xl border border-border bg-card shadow-lg">
+                {searchMatches.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => {
+                      playTrack(t);
+                      setShowRadioSearch(false);
+                      setRadioSearchQuery("");
+                    }}
+                    className="flex w-full items-center gap-3 p-2.5 text-left transition hover:bg-primary/5"
+                  >
+                    <img src={t.cover_url} alt="" className="h-9 w-9 rounded-lg object-cover" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-semibold text-foreground">{t.title}</p>
+                      <p className="truncate text-[10px] text-muted-foreground">
+                        {t.artist_name} · {(t as any).album || "Unknown Album"}
+                      </p>
+                    </div>
+                  </button>
+                ))}
+                {searchMatches.length === 0 && (
+                  <p className="py-4 text-center text-xs text-muted-foreground">No matches found</p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-hide">
+          {RADIO_GENRE_FILTERS.map((g) => (
+            <button
+              key={g}
+              type="button"
+              onClick={() => setGenreFilter(g)}
+              className={`whitespace-nowrap rounded-full px-3 py-1.5 text-[11px] font-semibold transition-all ${
+                activeGenre === g
+                  ? "gradient-primary text-primary-foreground"
+                  : "border border-border bg-muted/70 text-muted-foreground"
+              }`}
+            >
+              {g}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Mobile: scroll stack · Desktop: side-by-side stage */}
+      <div className="flex-1 overflow-y-auto overscroll-y-contain px-4 pb-28 pt-4 lg:overflow-hidden lg:px-5 lg:pb-5 lg:pt-5">
+        <div className="flex flex-col gap-6 lg:h-full lg:min-h-0 lg:flex-row lg:items-stretch lg:gap-8">
+          <div className="w-full shrink-0 lg:flex lg:w-[48%] lg:max-w-[520px] lg:items-center">{coverBlock}</div>
+          <div className="min-h-0 w-full lg:flex-1 lg:overflow-y-auto lg:pr-1">{controlsBlock}</div>
+        </div>
+      </div>
+
       <RadioShareSheet open={shareOpen} onOpenChange={setShareOpen} track={track} />
-
-      {/* More Options Sheet */}
       <RadioMoreSheet
         open={moreOpen}
         onOpenChange={setMoreOpen}
@@ -409,21 +534,19 @@ const RadioPage = () => {
         onViewComments={() => setCommentsOpen(true)}
       />
 
-      {/* Comments Sheet */}
       <Sheet open={commentsOpen} onOpenChange={setCommentsOpen}>
-        <SheetContent side="bottom" className="bg-card border-border rounded-t-2xl h-[70vh] flex flex-col">
-          <div className="flex items-center justify-between mb-4">
-            <button onClick={() => setCommentsOpen(false)}>
-              <ChevronDown className="w-5 h-5 text-muted-foreground" />
+        <SheetContent side="bottom" className="flex h-[70vh] flex-col rounded-t-2xl border-border bg-card">
+          <div className="mb-4 flex items-center justify-between">
+            <button type="button" onClick={() => setCommentsOpen(false)}>
+              <ChevronDown className="h-5 w-5 text-muted-foreground" />
             </button>
             <h3 className="text-sm font-bold text-foreground">Comments</h3>
             <div className="w-5" />
           </div>
 
-          {/* Track info */}
-          <div className="flex items-center gap-3 mb-4 pb-4 border-b border-border">
-            <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0">
-              <img src={track.cover_url} alt="" className="w-full h-full object-cover" />
+          <div className="mb-4 flex items-center gap-3 border-b border-border pb-4">
+            <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg">
+              <img src={track.cover_url} alt="" className="h-full w-full object-cover" />
             </div>
             <div>
               <p className="text-sm font-bold text-foreground">{track.title}</p>
@@ -431,17 +554,16 @@ const RadioPage = () => {
             </div>
           </div>
 
-          {/* Comments list */}
           <div className="flex-1 overflow-y-auto">
             {trackComments.length === 0 ? (
-              <div className="flex items-center justify-center h-full">
+              <div className="flex h-full items-center justify-center">
                 <p className="text-sm text-muted-foreground">No comments yet. Be the first!</p>
               </div>
             ) : (
               <div className="flex flex-col gap-3">
                 {trackComments.map((c) => (
                   <div key={c.id} className="flex gap-2">
-                    <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center shrink-0">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-secondary">
                       <span className="text-[10px] font-bold text-foreground">{c.author[0]}</span>
                     </div>
                     <div className="flex-1">
@@ -449,7 +571,7 @@ const RadioPage = () => {
                         <span className="text-xs font-semibold text-foreground">{c.author}</span>
                         <span className="text-[9px] text-muted-foreground">at {formatTime(c.timestamp)}</span>
                       </div>
-                      <p className="text-xs text-foreground/80 mt-0.5">{c.text}</p>
+                      <p className="mt-0.5 text-xs text-foreground/80">{c.text}</p>
                     </div>
                   </div>
                 ))}
@@ -457,33 +579,28 @@ const RadioPage = () => {
             )}
           </div>
 
-          {/* Comment input */}
-          <div className="flex items-center gap-2 pt-3 border-t border-border">
+          <div className="flex items-center gap-2 border-t border-border pt-3">
             <input
               ref={commentInputRef}
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handlePostComment()}
               placeholder={`Comment at ${formatTime(currentTime)}...`}
-              className="flex-1 bg-secondary rounded-full px-4 py-2.5 text-xs text-foreground placeholder:text-muted-foreground outline-none"
+              className="flex-1 rounded-full bg-secondary px-4 py-2.5 text-xs text-foreground outline-none placeholder:text-muted-foreground"
             />
             <button
+              type="button"
               onClick={handlePostComment}
               disabled={!commentText.trim()}
-              className="w-9 h-9 rounded-full gradient-primary flex items-center justify-center disabled:opacity-40"
+              className="flex h-9 w-9 items-center justify-center rounded-full gradient-primary disabled:opacity-40"
             >
-              <Send className="w-4 h-4 text-primary-foreground" />
+              <Send className="h-4 w-4 text-primary-foreground" />
             </button>
           </div>
         </SheetContent>
       </Sheet>
 
-      {/* Boost Ad Overlay - shows every 3 songs for non-PRO users */}
-      <BoostAdOverlay
-        songPlayCount={songPlayCount}
-        onAdComplete={resetSongPlayCount}
-        interval={3}
-      />
+      <BoostAdOverlay songPlayCount={songPlayCount} onAdComplete={resetSongPlayCount} interval={3} />
     </div>
   );
 };

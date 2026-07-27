@@ -24,6 +24,7 @@ function isDesktopShellPath(pathname: string) {
     pathname === "/local-help" ||
     pathname === "/jobs" ||
     pathname === "/profile" ||
+    pathname === "/radio" ||
     pathname === "/my-jobs" ||
     pathname === "/my-gigs" ||
     pathname === "/messages" ||
