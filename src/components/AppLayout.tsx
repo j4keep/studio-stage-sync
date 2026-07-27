@@ -22,6 +22,7 @@ function isDesktopShellPath(pathname: string) {
     pathname === "/feed" ||
     pathname === "/explore" ||
     pathname === "/local-help" ||
+    pathname === "/marketplace" ||
     pathname === "/jobs" ||
     pathname === "/profile" ||
     pathname === "/radio" ||
@@ -38,6 +39,7 @@ function isDesktopShellPath(pathname: string) {
   }
   if (pathname.startsWith("/jobs/")) return true;
   if (pathname.startsWith("/local-help/")) return true;
+  if (pathname.startsWith("/marketplace/")) return true;
   return false;
 }
 
@@ -55,8 +57,12 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   const isPodcastLobby = location.pathname === "/tv/podcast";
   const desktopShell = isDesktopShellPath(location.pathname);
   const mobileFeed = isMobileFeedPath(location.pathname);
+  const isMarketplace = location.pathname === "/marketplace" || location.pathname.startsWith("/marketplace/");
   const showMobileTopBar =
-    !["/auth", "/", "/feed"].includes(location.pathname) && !isPodcastWorkspace && !isPodcastLobby;
+    !["/auth", "/", "/feed"].includes(location.pathname) &&
+    !isPodcastWorkspace &&
+    !isPodcastLobby &&
+    !isMarketplace;
   const rootTabs = ["/", "/feed", "/explore", "/jobs", "/profile", "/auth"];
   const showBackButton = !rootTabs.includes(location.pathname);
 
@@ -154,7 +160,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
             <DesktopHomeIconRail />
           </div>
 
-          <BottomNav />
+          {!isMarketplace && <BottomNav />}
         </div>
 
         <GlobalRadioPlayer />
@@ -201,7 +207,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
       <GlobalRadioPlayer />
       <GlobalPlaylistPlayer />
       <PlaylistPlayerSheet />
-      <BottomNav />
+      {!isMarketplace && <BottomNav />}
       <ProGateModal open={showProModal} onClose={closeProModal} featureName={gatedFeature} onSubscribe={activatePro} />
       {location.pathname !== "/auth" && <IncognitoFeedWindow />}
     </div>

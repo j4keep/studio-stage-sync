@@ -23,6 +23,7 @@ interface Conversation {
   last_message?: string;
   hideOtherYajPage?: boolean;
   openBusinessProfile?: boolean;
+  openMarketplaceProfile?: boolean;
 }
 
 interface Message {
@@ -48,6 +49,8 @@ type MessagesNavState = {
   introMessage?: string;
   /** Open the other person's Local Help business profile from the chat header. */
   openBusinessProfile?: boolean;
+  /** Open the other person's Marketplace profile from the chat header. */
+  openMarketplaceProfile?: boolean;
 } | null;
 
 const MessagesPage = () => {
@@ -61,6 +64,7 @@ const MessagesPage = () => {
   const [showNewChat, setShowNewChat] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [hideOtherYajPage, setHideOtherYajPage] = useState(false);
+  const [openMarketplaceProfile, setOpenMarketplaceProfile] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const autoStartKeyRef = useRef<string | null>(null);
@@ -287,6 +291,7 @@ const MessagesPage = () => {
       introGigTitle?: string;
       introMessage?: string;
       openBusinessProfile?: boolean;
+      openMarketplaceProfile?: boolean;
     },
   ) => {
     if (!user) return;
@@ -312,8 +317,10 @@ const MessagesPage = () => {
         ...existing,
         hideOtherYajPage: opts?.hideOtherYajPage,
         openBusinessProfile: opts?.openBusinessProfile,
+        openMarketplaceProfile: opts?.openMarketplaceProfile,
       });
       setHideOtherYajPage(Boolean(opts?.hideOtherYajPage));
+      setOpenMarketplaceProfile(Boolean(opts?.openMarketplaceProfile));
       setShowNewChat(false);
       setSearchQuery("");
       return;
@@ -347,8 +354,10 @@ const MessagesPage = () => {
       last_message: intro || "No messages yet",
       hideOtherYajPage: opts?.hideOtherYajPage,
       openBusinessProfile: opts?.openBusinessProfile,
+      openMarketplaceProfile: opts?.openMarketplaceProfile,
     };
     setHideOtherYajPage(Boolean(opts?.hideOtherYajPage));
+    setOpenMarketplaceProfile(Boolean(opts?.openMarketplaceProfile));
     setActiveConversation(newConv);
     setShowNewChat(false);
     setSearchQuery("");
@@ -401,6 +410,7 @@ const MessagesPage = () => {
         introGigTitle: state.gigTitle,
         introMessage: state.introMessage,
         openBusinessProfile: state.openBusinessProfile,
+        openMarketplaceProfile: state.openMarketplaceProfile,
       });
       navigate(location.pathname, { replace: true, state: null });
     })();
@@ -426,6 +436,8 @@ const MessagesPage = () => {
             className="flex min-w-0 flex-1 items-center gap-3 text-left"
             disabled={
               (!activeConversation.openBusinessProfile &&
+                !activeConversation.openMarketplaceProfile &&
+                !openMarketplaceProfile &&
                 (hideOtherYajPage || activeConversation.hideOtherYajPage)) ||
               !activeConversation.other_user?.user_id
             }
@@ -434,6 +446,10 @@ const MessagesPage = () => {
               if (!id) return;
               if (activeConversation.openBusinessProfile) {
                 navigate(`/local-help/pro/${id}`);
+                return;
+              }
+              if (openMarketplaceProfile || activeConversation.openMarketplaceProfile) {
+                navigate(`/marketplace/profile/${id}`);
                 return;
               }
               if (hideOtherYajPage || activeConversation.hideOtherYajPage) return;
@@ -455,6 +471,8 @@ const MessagesPage = () => {
               </p>
               {activeConversation.openBusinessProfile ? (
                 <p className="text-[10px] text-muted-foreground">Tap to view business profile</p>
+              ) : openMarketplaceProfile || activeConversation.openMarketplaceProfile ? (
+                <p className="text-[10px] text-muted-foreground">Tap to view Marketplace profile</p>
               ) : (
                 (hideOtherYajPage || activeConversation.hideOtherYajPage) && (
                   <p className="text-[10px] text-muted-foreground">Name &amp; photo only</p>

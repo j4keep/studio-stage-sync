@@ -25,7 +25,7 @@ const bg = {
 
 const TOP_PICKS: ExploreItem[] = [
   { label: "Radio", emoji: "🎵", background: bg.purple, route: "/radio" },
-  { label: "Marketplace", emoji: "🛍", background: bg.pink, route: "/store" },
+  { label: "Marketplace", emoji: "🛍", background: bg.pink, route: "/marketplace" },
   { label: "Careers", emoji: "💼", background: bg.indigo, route: "/jobs" },
   { label: "Wellness", emoji: "💪", background: bg.green },
   { label: "Community", emoji: "🏠", background: bg.blue, route: "/circle" },

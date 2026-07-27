@@ -18,6 +18,7 @@ export default function DesktopHomeIconRail() {
       return (
         location.pathname === "/explore" ||
         location.pathname.startsWith("/local-help") ||
+        location.pathname.startsWith("/marketplace") ||
         location.pathname === "/radio"
       );
     }

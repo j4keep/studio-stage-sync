@@ -64,6 +64,19 @@ import GigBoardPage from "./pages/local-help/GigBoardPage";
 import LocalHelpCategoryPage from "./pages/local-help/LocalHelpCategoryPage";
 import LocalHelpProPage from "./pages/local-help/LocalHelpProPage";
 import LocalHelpBusinessPage from "./pages/local-help/LocalHelpBusinessPage";
+import MarketplaceHomePage from "./pages/marketplace/MarketplaceHomePage";
+import MarketplaceSearchPage from "./pages/marketplace/MarketplaceSearchPage";
+import MarketplaceCategoryPage from "./pages/marketplace/MarketplaceCategoryPage";
+import MarketplaceListingPage from "./pages/marketplace/MarketplaceListingPage";
+import MarketplaceCreatePage from "./pages/marketplace/MarketplaceCreatePage";
+import MarketplaceProfilePage from "./pages/marketplace/MarketplaceProfilePage";
+import MarketplaceSavedPage from "./pages/marketplace/MarketplaceSavedPage";
+import MarketplaceAccountPage from "./pages/marketplace/MarketplaceAccountPage";
+import MarketplaceMessagesPage from "./pages/marketplace/MarketplaceMessagesPage";
+import MarketplaceSettingsPage from "./pages/marketplace/MarketplaceSettingsPage";
+import MarketplaceOffersPage from "./pages/marketplace/MarketplaceOffersPage";
+import MarketplacePurchasesPage from "./pages/marketplace/MarketplacePurchasesPage";
+import MarketplaceSalesPage from "./pages/marketplace/MarketplaceSalesPage";
 import BlockingSettingsPage from "./pages/BlockingSettingsPage";
 import ResumeBuilderPage from "./pages/ResumeBuilderPage";
 import JobPreferencesPage from "./pages/JobPreferencesPage";
@@ -271,6 +284,20 @@ const ProtectedRoutes = () => {
         <Route path="/local-help/business" element={<LocalHelpBusinessPage />} />
         <Route path="/local-help/pro/:userId" element={<LocalHelpProPage />} />
         <Route path="/local-help/:categoryId" element={<LocalHelpCategoryPage />} />
+        <Route path="/marketplace" element={<MarketplaceHomePage />} />
+        <Route path="/marketplace/search" element={<MarketplaceSearchPage />} />
+        <Route path="/marketplace/category/:slug" element={<MarketplaceCategoryPage />} />
+        <Route path="/marketplace/listing/:id" element={<MarketplaceListingPage />} />
+        <Route path="/marketplace/create" element={<MarketplaceCreatePage />} />
+        <Route path="/marketplace/edit/:id" element={<MarketplaceCreatePage />} />
+        <Route path="/marketplace/profile/:userId" element={<MarketplaceProfilePage />} />
+        <Route path="/marketplace/saved" element={<MarketplaceSavedPage />} />
+        <Route path="/marketplace/purchases" element={<MarketplacePurchasesPage />} />
+        <Route path="/marketplace/sales" element={<MarketplaceSalesPage />} />
+        <Route path="/marketplace/offers" element={<MarketplaceOffersPage />} />
+        <Route path="/marketplace/messages" element={<MarketplaceMessagesPage />} />
+        <Route path="/marketplace/settings" element={<MarketplaceSettingsPage />} />
+        <Route path="/marketplace/account" element={<MarketplaceAccountPage />} />
         <Route path="/jobs" element={<JobsPage />} />
         <Route path="/jobs/interview/:applicationId" element={<JobInterviewPage />} />
         <Route path="/jobs/:id" element={<JobDetailPage />} />
