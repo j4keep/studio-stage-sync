@@ -25,6 +25,9 @@ function isDesktopShellPath(pathname: string) {
     pathname === "/jobs" ||
     pathname === "/profile" ||
     pathname === "/radio" ||
+    pathname === "/library" ||
+    pathname === "/playlists" ||
+    pathname === "/my-songs" ||
     pathname === "/my-jobs" ||
     pathname === "/my-gigs" ||
     pathname === "/messages" ||

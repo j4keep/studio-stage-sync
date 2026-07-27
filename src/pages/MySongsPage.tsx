@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Music, Play, Pause, Plus, Trash2, Upload, Image, Radio, ChevronDown, Loader2, Heart, Edit3, X, Rocket } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,6 +10,7 @@ import { uploadToR2, getR2DownloadUrl, deleteFromR2 } from "@/lib/r2-storage";
 import { useLikes, incrementSongPlays } from "@/hooks/use-likes";
 import album1 from "@/assets/album-1.jpg";
 import BoostSheet from "@/components/BoostSheet";
+import YajRadioWordmark from "@/components/YajRadioWordmark";
 
 interface Song {
   id: string;
@@ -34,6 +35,7 @@ const formatDuration = (seconds: number) => {
 
 const MySongsPage = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,6 +64,17 @@ const MySongsPage = () => {
   useEffect(() => {
     if (user) fetchSongs();
   }, [user]);
+
+  useEffect(() => {
+    if (searchParams.get("upload") === "1") {
+      setShowUpload(true);
+      setPendingAudioFile(null);
+      setPendingCover(null);
+      const next = new URLSearchParams(searchParams);
+      next.delete("upload");
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const fetchSongs = async () => {
     const { data, error } = await (supabase as any).from("songs").select("*").eq("user_id", user!.id).order("created_at", { ascending: false });
@@ -208,18 +221,32 @@ const MySongsPage = () => {
   if (!user) return <div className="px-4 pt-4 text-center text-muted-foreground text-sm">Please log in to view your songs.</div>;
 
   return (
-    <div className="px-4 pt-4 pb-4">
+    <div className="min-h-screen bg-background px-4 pb-28 pt-4 text-foreground lg:min-h-[calc(100dvh-3.5rem-1.5rem)] lg:rounded-xl lg:border lg:border-border lg:bg-card lg:px-5 lg:pb-6 lg:shadow-sm">
       <audio ref={audioRef} onEnded={() => setPlayingId(null)} playsInline />
-      <div className="flex items-center gap-3 mb-5">
-        <button onClick={() => navigate("/profile")} className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center">
-          <ArrowLeft className="w-4 h-4 text-foreground" />
+      <div className="mb-5 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => navigate("/radio")}
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card"
+        >
+          <ArrowLeft className="h-4 w-4 text-foreground" />
         </button>
-        <div className="flex-1">
-          <h1 className="text-lg font-display font-bold text-foreground">My Songs</h1>
-          <p className="text-[10px] text-muted-foreground">{songs.length} tracks uploaded</p>
+        <div className="min-w-0 flex-1">
+          <YajRadioWordmark size="sm" />
+          <p className="mt-0.5 text-[11px] font-semibold text-muted-foreground">
+            Add Song · {songs.length} tracks · publish to Radio
+          </p>
         </div>
-        <button onClick={() => { setShowUpload(!showUpload); setPendingAudioFile(null); setPendingCover(null); }} className="px-3 py-2 rounded-xl gradient-primary text-primary-foreground text-xs font-semibold glow-primary flex items-center gap-1.5">
-          <Plus className="w-3.5 h-3.5" /> Upload
+        <button
+          type="button"
+          onClick={() => {
+            setShowUpload(!showUpload);
+            setPendingAudioFile(null);
+            setPendingCover(null);
+          }}
+          className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#A855F7] via-[#EC4899] to-[#14B8A6] px-3 py-2 text-xs font-bold text-white"
+        >
+          <Plus className="h-3.5 w-3.5" /> Upload
         </button>
       </div>
 

@@ -15,6 +15,8 @@ import {
   Shuffle,
   Volume2,
   VolumeX,
+  Library,
+  Upload,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useRadio } from "@/contexts/RadioContext";
@@ -23,9 +25,9 @@ import { useLikes } from "@/hooks/use-likes";
 import { toast } from "@/hooks/use-toast";
 import RadioShareSheet from "@/components/RadioShareSheet";
 import RadioMoreSheet from "@/components/RadioMoreSheet";
+import YajRadioWordmark from "@/components/YajRadioWordmark";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import BoostAdOverlay from "@/components/BoostAdOverlay";
-import yajLogo from "@/assets/yaj-logo.png";
 
 const RADIO_GENRE_FILTERS = ["All", "Podcasts", ...GENRES.filter((g) => g !== "Beats")];
 
@@ -185,7 +187,7 @@ const RadioPage = () => {
   if (!currentTrack) {
     return (
       <div className="flex min-h-screen flex-col bg-background px-4 pt-4 lg:min-h-[calc(100dvh-3.5rem-1.5rem)] lg:rounded-xl lg:border lg:border-border lg:bg-card lg:p-6">
-        <div className="mb-4 flex w-full items-center justify-between">
+        <div className="mb-4 flex w-full items-center justify-between gap-2">
           <button
             type="button"
             onClick={() => navigate(-1)}
@@ -193,8 +195,26 @@ const RadioPage = () => {
           >
             <ChevronDown className="h-4 w-4 text-muted-foreground" />
           </button>
-          <img src={yajLogo} alt="YAJ" className="h-5 w-auto" />
+          <YajRadioWordmark size="sm" />
           <div className="w-8" />
+        </div>
+        <div className="mb-4 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => navigate("/my-songs?upload=1")}
+            className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5 text-left"
+          >
+            <Upload className="h-4 w-4 text-primary" />
+            <span className="text-[12px] font-bold">Add Song</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate("/library")}
+            className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5 text-left"
+          >
+            <Library className="h-4 w-4 text-primary" />
+            <span className="text-[12px] font-bold">My Library</span>
+          </button>
         </div>
         <div className="mb-6 flex w-full gap-2 overflow-x-auto pb-1 scrollbar-hide">
           {RADIO_GENRE_FILTERS.map((g) => (
@@ -217,6 +237,13 @@ const RadioPage = () => {
           <p className="text-sm text-muted-foreground">
             No songs on radio{activeGenre !== "All" ? ` for ${activeGenre}` : ""} yet
           </p>
+          <button
+            type="button"
+            onClick={() => navigate("/my-songs?upload=1")}
+            className="mt-4 rounded-full bg-gradient-to-r from-[#A855F7] via-[#EC4899] to-[#14B8A6] px-4 py-2 text-xs font-bold text-white"
+          >
+            Be the first — Add Song
+          </button>
         </div>
       </div>
     );
@@ -443,8 +470,7 @@ const RadioPage = () => {
             <ChevronDown className="h-5 w-5 text-foreground" />
           </button>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-primary">Create • Connect • Elevate</p>
-            <h1 className="text-lg font-black tracking-tight lg:text-xl">YAJ Radio</h1>
+            <YajRadioWordmark size="md" />
           </div>
           <button
             type="button"
@@ -457,6 +483,35 @@ const RadioPage = () => {
           <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-primary">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" /> LIVE
           </span>
+        </div>
+
+        <div className="mb-3 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => navigate("/my-songs?upload=1")}
+            className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5 text-left shadow-sm transition active:scale-[0.98]"
+          >
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#A855F7] via-[#EC4899] to-[#14B8A6] text-white">
+              <Upload className="h-4 w-4" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-[12px] font-black text-foreground">Add Song</span>
+              <span className="block text-[10px] text-muted-foreground">Upload & put on Radio</span>
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate("/library")}
+            className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5 text-left shadow-sm transition active:scale-[0.98]"
+          >
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-primary">
+              <Library className="h-4 w-4" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-[12px] font-black text-foreground">My Library</span>
+              <span className="block text-[10px] text-muted-foreground">Playlists & saves</span>
+            </span>
+          </button>
         </div>
 
         {showRadioSearch && (

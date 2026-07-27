@@ -56,18 +56,26 @@ const PlaylistsSection = () => {
   };
 
   return (
-    <div className="mt-5">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <ListMusic className="w-4 h-4 text-primary" />
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Playlists</h3>
+    <div className="mt-2">
+      <div className="mb-3 flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-black text-foreground">Your playlists</h3>
+          <p className="text-[11px] text-muted-foreground">Save tracks from Radio and add them here</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => setShowSearch(!showSearch)} className="w-7 h-7 rounded-full bg-card border border-border flex items-center justify-center">
-            <Search className="w-3 h-3 text-muted-foreground" />
+          <button
+            type="button"
+            onClick={() => setShowSearch(!showSearch)}
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card"
+          >
+            <Search className="h-3.5 w-3.5 text-muted-foreground" />
           </button>
-          <button onClick={() => setShowCreate(!showCreate)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg gradient-primary text-primary-foreground text-[10px] font-semibold glow-primary">
-            <Plus className="w-3 h-3" /> New Playlist
+          <button
+            type="button"
+            onClick={() => setShowCreate(!showCreate)}
+            className="flex items-center gap-1 rounded-full bg-gradient-to-r from-[#A855F7] via-[#EC4899] to-[#14B8A6] px-3 py-1.5 text-[11px] font-bold text-white"
+          >
+            <Plus className="h-3 w-3" /> New
           </button>
         </div>
       </div>
