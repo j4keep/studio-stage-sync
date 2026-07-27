@@ -8,6 +8,7 @@ import {
   MessageCircle,
   MoreHorizontal,
   SkipForward,
+  SkipBack,
   ChevronDown,
   Music,
   Send,
@@ -61,7 +62,6 @@ const RadioPage = () => {
     toggle,
     skip,
     previous,
-    skipsLeft,
     playTrack,
     setGenreFilter,
     activeGenre,
@@ -397,7 +397,40 @@ const RadioPage = () => {
         </button>
       </div>
 
-      <div className="grid grid-cols-5 gap-1 border-t border-border pt-4">
+      <div className="mb-5 flex items-center justify-center gap-6">
+        <button
+          type="button"
+          onClick={previous}
+          className="flex flex-col items-center gap-1"
+          aria-label="Previous song"
+        >
+          <span className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-muted">
+            <SkipBack className="h-5 w-5 text-foreground" />
+          </span>
+          <span className="text-[10px] font-semibold text-muted-foreground">Previous</span>
+        </button>
+        <button
+          type="button"
+          onClick={toggle}
+          className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#A855F7] via-[#EC4899] to-[#14B8A6] text-white shadow-sm"
+          aria-label={isPlaying ? "Pause" : "Play"}
+        >
+          {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="ml-0.5 h-6 w-6" />}
+        </button>
+        <button
+          type="button"
+          onClick={skip}
+          className="flex flex-col items-center gap-1"
+          aria-label="Next song"
+        >
+          <span className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-muted">
+            <SkipForward className="h-5 w-5 text-foreground" />
+          </span>
+          <span className="text-[10px] font-semibold text-muted-foreground">Next</span>
+        </button>
+      </div>
+
+      <div className="grid grid-cols-4 gap-1 border-t border-border pt-4">
         <button
           type="button"
           onClick={() => activeLikes.toggleLike(track.id)}
@@ -413,17 +446,6 @@ const RadioPage = () => {
         <button type="button" onClick={() => setShareOpen(true)} className="flex flex-col items-center gap-1 py-1">
           <Share2 className="h-6 w-6 text-foreground" />
           <span className="text-[10px] font-medium text-muted-foreground">Share</span>
-        </button>
-        <button
-          type="button"
-          onClick={skip}
-          disabled={skipsLeft === 0}
-          className="flex flex-col items-center gap-1 py-1 disabled:opacity-35"
-        >
-          <SkipForward className="h-6 w-6 text-foreground" />
-          <span className="text-[10px] font-medium text-muted-foreground">
-            {skipsLeft === 0 ? "No skips" : `${skipsLeft} left`}
-          </span>
         </button>
         <button type="button" onClick={() => setMoreOpen(true)} className="flex flex-col items-center gap-1 py-1">
           <MoreHorizontal className="h-6 w-6 text-foreground" />
@@ -457,9 +479,9 @@ const RadioPage = () => {
   );
 
   return (
-    <div className="relative flex min-h-screen flex-col bg-background lg:min-h-[calc(100dvh-3.5rem-1.5rem)] lg:overflow-hidden lg:rounded-xl lg:border lg:border-border lg:bg-card lg:shadow-sm">
+    <div className="relative bg-background lg:rounded-xl lg:border lg:border-border lg:bg-card lg:shadow-sm">
       {/* Header */}
-      <div className="sticky top-0 z-20 border-b border-border/70 bg-background/95 px-3 pb-3 pt-3 backdrop-blur lg:static lg:bg-transparent lg:px-5 lg:pt-4">
+      <div className="sticky top-0 z-20 border-b border-border/70 bg-background/95 px-3 pb-3 pt-3 backdrop-blur lg:static lg:bg-card lg:px-5 lg:pt-4">
         <div className="mb-3 flex items-center gap-2">
           <button
             type="button"
@@ -571,11 +593,11 @@ const RadioPage = () => {
         </div>
       </div>
 
-      {/* Mobile: scroll stack · Desktop: side-by-side stage */}
-      <div className="flex-1 overflow-y-auto overscroll-y-contain px-4 pb-28 pt-4 lg:overflow-hidden lg:px-5 lg:pb-5 lg:pt-5">
-        <div className="flex flex-col gap-6 lg:h-full lg:min-h-0 lg:flex-row lg:items-stretch lg:gap-8">
-          <div className="w-full shrink-0 lg:flex lg:w-[48%] lg:max-w-[520px] lg:items-center">{coverBlock}</div>
-          <div className="min-h-0 w-full lg:flex-1 lg:overflow-y-auto lg:pr-1">{controlsBlock}</div>
+      {/* One continuous page scroll — works anywhere on desktop & mobile */}
+      <div className="px-4 pb-28 pt-4 lg:px-5 lg:pb-10 lg:pt-5">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
+          <div className="w-full shrink-0 lg:sticky lg:top-4 lg:w-[48%] lg:max-w-[520px]">{coverBlock}</div>
+          <div className="min-w-0 w-full lg:flex-1">{controlsBlock}</div>
         </div>
       </div>
 

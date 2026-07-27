@@ -261,15 +261,14 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
   const toggle = useCallback(() => setIsPlaying(p => !p), []);
 
   const skip = useCallback(() => {
-    if (skipsLeft > 0 && filteredSongs.length > 1) {
-      setCurrentIndex(prev => (prev + 1) % filteredSongs.length);
-      setSkipsLeft(s => s - 1);
+    if (filteredSongs.length > 1) {
+      setCurrentIndex((prev) => (prev + 1) % filteredSongs.length);
     }
-  }, [skipsLeft, filteredSongs.length]);
+  }, [filteredSongs.length]);
 
   const previous = useCallback(() => {
     if (filteredSongs.length > 1) {
-      setCurrentIndex(prev => (prev - 1 + filteredSongs.length) % filteredSongs.length);
+      setCurrentIndex((prev) => (prev - 1 + filteredSongs.length) % filteredSongs.length);
     }
   }, [filteredSongs.length]);
 

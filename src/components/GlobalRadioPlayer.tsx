@@ -1,10 +1,10 @@
 import { useRadio } from "@/contexts/RadioContext";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Play, Pause, SkipForward, X } from "lucide-react";
+import { Play, Pause, SkipForward, SkipBack, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const GlobalRadioPlayer = () => {
-  const { isPlaying, currentTrack, toggle, skip, skipsLeft, pause } = useRadio();
+  const { isPlaying, currentTrack, toggle, skip, previous, pause } = useRadio();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -18,38 +18,65 @@ const GlobalRadioPlayer = () => {
         initial={{ y: 80, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 80, opacity: 0 }}
-        className="fixed bottom-16 left-0 right-0 z-40 px-3 pb-1 max-w-lg mx-auto"
+        className="fixed bottom-16 left-0 right-0 z-40 mx-auto max-w-lg px-3 pb-1"
       >
         <div
           onClick={() => navigate("/radio")}
-          className="flex items-center gap-3 p-2.5 rounded-xl bg-card/95 backdrop-blur-xl border border-border shadow-lg cursor-pointer"
+          className="flex cursor-pointer items-center gap-3 rounded-xl border border-border bg-card/95 p-2.5 shadow-lg backdrop-blur-xl"
         >
-          <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0">
-            <img src={currentTrack.cover_url} alt="" className="w-full h-full object-cover" />
+          <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg">
+            <img src={currentTrack.cover_url} alt="" className="h-full w-full object-cover" />
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-foreground truncate">{currentTrack.title}</p>
-            <p className="text-[10px] text-muted-foreground truncate">{currentTrack.artist_name}</p>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-semibold text-foreground">{currentTrack.title}</p>
+            <p className="truncate text-[10px] text-muted-foreground">{currentTrack.artist_name}</p>
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
             <button
-              onClick={(e) => { e.stopPropagation(); toggle(); }}
-              className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center"
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                previous();
+              }}
+              className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-foreground"
+              aria-label="Previous"
             >
-              {isPlaying ? <Pause className="w-3.5 h-3.5 text-primary-foreground" /> : <Play className="w-3.5 h-3.5 text-primary-foreground ml-0.5" />}
+              <SkipBack className="h-3 w-3" />
             </button>
             <button
-              onClick={(e) => { e.stopPropagation(); skip(); }}
-              disabled={skipsLeft === 0}
-              className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-foreground disabled:opacity-30"
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggle();
+              }}
+              className="flex h-8 w-8 items-center justify-center rounded-full gradient-primary"
             >
-              <SkipForward className="w-3 h-3" />
+              {isPlaying ? (
+                <Pause className="h-3.5 w-3.5 text-primary-foreground" />
+              ) : (
+                <Play className="ml-0.5 h-3.5 w-3.5 text-primary-foreground" />
+              )}
             </button>
             <button
-              onClick={(e) => { e.stopPropagation(); pause(); }}
-              className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-muted-foreground"
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                skip();
+              }}
+              className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-foreground"
+              aria-label="Next"
             >
-              <X className="w-3 h-3" />
+              <SkipForward className="h-3 w-3" />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                pause();
+              }}
+              className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-muted-foreground"
+            >
+              <X className="h-3 w-3" />
             </button>
           </div>
         </div>
