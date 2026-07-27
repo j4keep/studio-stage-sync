@@ -1,25 +1,18 @@
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import { Briefcase, Compass, Home, MessageCircle, PlusSquare, Search } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { MessageCircle, Search } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import NotificationBell from "@/components/NotificationBell";
 import IncognitoHeaderButton from "@/components/IncognitoHeaderButton";
 import yajLogo from "@/assets/yaj-logo.png";
 
-const centerTabs = [
-  { path: "/", label: "Home", icon: Home },
-  { path: "/explore", label: "Explore", icon: Compass },
-  { path: "/jobs", label: "Jobs", icon: Briefcase },
-] as const;
-
+/** Desktop top bar — logo, search, account actions. Page nav lives in the side icon rail. */
 export default function DesktopTopBar() {
   const navigate = useNavigate();
-  const location = useLocation();
   const { user } = useAuth();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const isHome = location.pathname === "/" || location.pathname === "/feed";
 
   useEffect(() => {
     if (!user) return;
@@ -30,11 +23,6 @@ export default function DesktopTopBar() {
       .maybeSingle()
       .then(({ data }) => setAvatarUrl((data as { avatar_url?: string | null } | null)?.avatar_url ?? null));
   }, [user?.id]);
-
-  const isActive = (path: string) => {
-    if (path === "/") return location.pathname === "/" || location.pathname === "/feed";
-    return location.pathname === path || location.pathname.startsWith(`${path}/`);
-  };
 
   const onSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,12 +36,12 @@ export default function DesktopTopBar() {
 
   return (
     <header className="sticky top-0 z-40 h-14 border-b border-border bg-card/95 backdrop-blur-md">
-      <div className="mx-auto flex h-full max-w-[1280px] items-center gap-4 px-4">
+      <div className="mx-auto flex h-full max-w-[1400px] items-center gap-4 px-4">
         <button type="button" onClick={() => navigate("/")} className="shrink-0" aria-label="YAJ home">
           <img src={yajLogo} alt="YAJ" className="h-10 w-auto" />
         </button>
 
-        <form onSubmit={onSearch} className="relative w-60 shrink-0">
+        <form onSubmit={onSearch} className="relative w-72 max-w-[40%] shrink-0">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             value={query}
@@ -63,38 +51,7 @@ export default function DesktopTopBar() {
           />
         </form>
 
-        {/* Center menu stays on non-home pages; on Home it moves to the right icon rail */}
-        {!isHome && (
-          <nav className="mx-auto flex h-full max-w-md flex-1 items-stretch justify-center gap-1">
-            {centerTabs.map((tab) => {
-              const Icon = tab.icon;
-              const active = isActive(tab.path);
-              return (
-                <button
-                  key={tab.path}
-                  type="button"
-                  onClick={() => navigate(tab.path)}
-                  aria-label={tab.label}
-                  className={`relative flex flex-1 items-center justify-center rounded-lg transition-colors ${
-                    active ? "text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  }`}
-                >
-                  <Icon className="h-6 w-6" strokeWidth={active ? 2.5 : 2} />
-                  {active && <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-primary" />}
-                </button>
-              );
-            })}
-            <button
-              type="button"
-              onClick={() => window.dispatchEvent(new Event("open-create-post"))}
-              aria-label="Create"
-              className="relative flex flex-1 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              <PlusSquare className="h-6 w-6" strokeWidth={2} />
-            </button>
-          </nav>
-        )}
-        {isHome && <div className="flex-1" />}
+        <div className="flex-1" />
 
         <div className="flex shrink-0 items-center gap-2">
           <IncognitoHeaderButton />
