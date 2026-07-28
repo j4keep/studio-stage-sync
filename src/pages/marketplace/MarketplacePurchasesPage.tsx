@@ -1,6 +1,5 @@
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
-import MarketplaceNav from "@/components/marketplace/MarketplaceNav";
 
 /** Purchases hub — transactions expand in Phase 2. */
 export default function MarketplacePurchasesPage() {
@@ -18,8 +17,6 @@ export default function MarketplacePurchasesPage() {
       </p>
       <button type="button" onClick={() => nav("/marketplace/offers")} className="mx-auto block text-sm font-bold text-primary">
         View offers
-      </button>
-      <MarketplaceNav />
-    </div>
+      </button>    </div>
   );
 }

@@ -8,7 +8,6 @@ import {
   getMarketplaceProfile,
   updateMarketplaceProfile,
 } from "@/lib/marketplace-api";
-import MarketplaceNav from "@/components/marketplace/MarketplaceNav";
 
 export default function MarketplaceSettingsPage() {
   const nav = useNavigate();
@@ -82,9 +81,7 @@ export default function MarketplaceSettingsPage() {
         >
           Save
         </button>
-      </div>
-      <MarketplaceNav />
-    </div>
+      </div>    </div>
   );
 }
 

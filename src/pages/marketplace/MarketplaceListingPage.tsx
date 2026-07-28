@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
-  ArrowLeft,
+  Bookmark,
   Flag,
   Heart,
   MapPin,
   MessageCircle,
+  MoreHorizontal,
+  Send,
   Share2,
+  Star,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -27,7 +30,18 @@ import {
   type MarketplaceListing,
 } from "@/lib/marketplace-api";
 import ListingCard from "@/components/marketplace/ListingCard";
-import MarketplaceNav from "@/components/marketplace/MarketplaceNav";
+import { supabase } from "@/integrations/supabase/client";
+
+type Comment = {
+  id: string;
+  listing_id: string;
+  user_id: string;
+  body: string;
+  created_at: string;
+  parent_id?: string | null;
+  display_name?: string | null;
+  avatar_url?: string | null;
+};
 
 export default function MarketplaceListingPage() {
   const { id = "" } = useParams();
@@ -35,13 +49,16 @@ export default function MarketplaceListingPage() {
   const { user } = useAuth();
   const [listing, setListing] = useState<MarketplaceListing | null>(null);
   const [more, setMore] = useState<MarketplaceListing[]>([]);
+  const [nearby, setNearby] = useState<MarketplaceListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [imgIdx, setImgIdx] = useState(0);
   const [lightbox, setLightbox] = useState(false);
   const [offerOpen, setOfferOpen] = useState(false);
   const [offerAmt, setOfferAmt] = useState("");
-  const [offerMsg, setOfferMsg] = useState("");
   const [busy, setBusy] = useState(false);
+  const [quickMsg, setQuickMsg] = useState("Hi, is this still available?");
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [commentText, setCommentText] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -49,14 +66,19 @@ export default function MarketplaceListingPage() {
       const row = await getMarketplaceListing(id, user?.id);
       setListing(row);
       if (row) {
-        const others = await listMarketplaceListings({
-          sellerId: row.seller_id,
-          viewerId: user?.id,
-          status: ["active", "pending"],
-          limit: 8,
-        });
+        const [others, near] = await Promise.all([
+          listMarketplaceListings({
+            sellerId: row.seller_id,
+            viewerId: user?.id,
+            status: ["active", "pending"],
+            limit: 8,
+          }),
+          listMarketplaceListings({ viewerId: user?.id, limit: 8 }),
+        ]);
         setMore(others.filter((l) => l.id !== row.id));
+        setNearby(near.filter((l) => l.id !== row.id && l.seller_id !== row.seller_id).slice(0, 6));
         setOfferAmt(row.price != null ? String(Math.max(0, Math.floor(Number(row.price) * 0.9))) : "");
+        await loadComments(row.id);
       }
     } catch (e: any) {
       toast.error(e?.message || "Listing not found");
@@ -65,21 +87,49 @@ export default function MarketplaceListingPage() {
     }
   }, [id, user?.id]);
 
+  const loadComments = async (listingId: string) => {
+    try {
+      const { data, error } = await (supabase as any)
+        .from("marketplace_listing_comments")
+        .select("*")
+        .eq("listing_id", listingId)
+        .order("created_at", { ascending: true })
+        .limit(40);
+      if (error) throw error;
+      const rows = data || [];
+      const ids = [...new Set(rows.map((r: any) => r.user_id))];
+      const { data: profiles } = ids.length
+        ? await supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", ids)
+        : { data: [] as any[] };
+      const map = new Map((profiles || []).map((p: any) => [p.user_id, p]));
+      setComments(
+        rows.map((r: any) => ({
+          ...r,
+          display_name: map.get(r.user_id)?.display_name,
+          avatar_url: map.get(r.user_id)?.avatar_url,
+        })),
+      );
+    } catch {
+      setComments([]);
+    }
+  };
+
   useEffect(() => {
     void load();
   }, [load]);
 
   const images = useMemo(() => {
     if (!listing) return [];
-    const fromMedia = (listing.media || [])
-      .map((m) => m.url)
-      .filter(Boolean);
+    const fromMedia = (listing.media || []).map((m) => m.url).filter(Boolean);
     if (fromMedia.length) return fromMedia;
     return listing.cover_url ? [listing.cover_url] : [];
   }, [listing]);
 
   const isOwner = user?.id === listing?.seller_id;
   const cat = getCategory(listing?.category);
+  const place = listing
+    ? approxLocation(listing.city, listing.state, listing.location_approx)
+    : "";
 
   const onSave = async () => {
     if (!user || !listing) return toast.error("Sign in to save");
@@ -92,9 +142,12 @@ export default function MarketplaceListingPage() {
     }
   };
 
-  const messageSeller = () => {
+  const messageSeller = (text?: string) => {
     if (!user || !listing) return toast.error("Sign in to message");
     if (isOwner) return toast.message("This is your listing");
+    const intro =
+      (text || quickMsg).trim() ||
+      `Hi — interested in: ${listing.title} (${formatPrice(listing.price, listing.listing_type)})`;
     nav("/messages", {
       state: {
         startWithUserId: listing.seller_id,
@@ -105,7 +158,7 @@ export default function MarketplaceListingPage() {
         },
         hideOtherYajPage: true,
         openMarketplaceProfile: true,
-        introMessage: `Hi — interested in your Marketplace listing: ${listing.title} (${formatPrice(listing.price, listing.listing_type)})`,
+        introMessage: intro,
       },
     });
   };
@@ -121,11 +174,10 @@ export default function MarketplaceListingPage() {
         buyerId: user.id,
         sellerId: listing.seller_id,
         amount,
-        message: offerMsg,
       });
       toast.success("Offer sent");
       setOfferOpen(false);
-      messageSeller();
+      messageSeller(`I'd like to offer ${formatPrice(amount)} for ${listing.title}.`);
     } catch (e: any) {
       toast.error(e?.message || "Could not send offer");
     } finally {
@@ -133,11 +185,32 @@ export default function MarketplaceListingPage() {
     }
   };
 
+  const postComment = async () => {
+    if (!user || !listing) return toast.error("Sign in to comment");
+    const body = commentText.trim();
+    if (!body) return;
+    if (/\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(body) || /\b\d{1,5}\s+\w+\s+(st|street|ave|avenue|rd|road|blvd|ln|lane)\b/i.test(body)) {
+      toast.error("Don’t post phone numbers or exact addresses in public comments.");
+      return;
+    }
+    try {
+      const { error } = await (supabase as any).from("marketplace_listing_comments").insert({
+        listing_id: listing.id,
+        user_id: user.id,
+        body: sanitizeDescription(body),
+      });
+      if (error) throw error;
+      setCommentText("");
+      await loadComments(listing.id);
+    } catch (e: any) {
+      toast.error(e?.message || "Could not post comment");
+    }
+  };
+
   const setStatus = async (status: string) => {
     if (!user || !listing || !isOwner) return;
     try {
-      const updated = await updateMarketplaceListing(listing.id, user.id, { status });
-      setListing(updated);
+      setListing(await updateMarketplaceListing(listing.id, user.id, { status }));
       toast.success(`Marked ${status}`);
     } catch (e: any) {
       toast.error(e?.message || "Update failed");
@@ -146,11 +219,11 @@ export default function MarketplaceListingPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background pb-28">
+      <div className="min-h-screen bg-background pb-24">
         <div className="aspect-[4/3] animate-pulse bg-muted" />
         <div className="space-y-3 p-4">
-          <div className="h-6 w-1/3 animate-pulse rounded bg-muted" />
-          <div className="h-4 w-2/3 animate-pulse rounded bg-muted" />
+          <div className="h-6 w-2/3 animate-pulse rounded bg-muted" />
+          <div className="h-5 w-20 animate-pulse rounded bg-muted" />
         </div>
       </div>
     );
@@ -158,8 +231,8 @@ export default function MarketplaceListingPage() {
 
   if (!listing) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-6 pb-28 text-center">
-        <p className="font-black">Listing not found</p>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-6 pb-24 text-center">
+        <p className="font-bold">Listing not found</p>
         <button type="button" onClick={() => nav("/marketplace")} className="rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground">
           Back to Marketplace
         </button>
@@ -170,48 +243,47 @@ export default function MarketplaceListingPage() {
   const desc = sanitizeDescription(listing.description);
 
   return (
-    <div className="min-h-screen bg-background pb-36 text-foreground">
+    <div className="min-h-screen bg-background pb-28 text-foreground">
+      {/* Photo */}
       <div className="relative">
-        <button
-          type="button"
-          onClick={() => nav(-1)}
-          className="absolute left-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </button>
+        <div className="absolute left-0 right-0 top-0 z-10 flex items-center justify-between p-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+          <button
+            type="button"
+            onClick={() => nav(-1)}
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-background/95 shadow-sm"
+            aria-label="Back"
+          >
+            <X className="h-4 w-4" />
+          </button>
+          <div className="flex gap-2">
+            <button type="button" onClick={onSave} className="flex h-9 w-9 items-center justify-center rounded-full bg-background/95 shadow-sm" aria-label="Save">
+              <Bookmark className={`h-4 w-4 ${listing.saved ? "fill-foreground" : ""}`} />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                void navigator.clipboard?.writeText(window.location.href);
+                toast.success("Link copied");
+              }}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-background/95 shadow-sm"
+              aria-label="Share"
+            >
+              <Share2 className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
         <button type="button" onClick={() => images.length && setLightbox(true)} className="block w-full">
           <div className="aspect-[4/3] bg-muted">
             {images[imgIdx] ? (
-              <img
-                src={images[imgIdx]}
-                alt=""
-                className="h-full w-full object-cover"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = "none";
-                }}
-              />
+              <img src={images[imgIdx]} alt="" className="h-full w-full object-cover" />
             ) : (
-              <div className="flex h-full items-center justify-center text-4xl opacity-40">✦</div>
+              <div className="flex h-full items-center justify-center text-muted-foreground/40">No photo</div>
             )}
           </div>
         </button>
-        <div className="absolute bottom-3 left-3 z-10 rounded-full bg-primary px-3.5 py-1.5 text-base font-black text-primary-foreground shadow-md">
-          {formatPrice(listing.price, listing.listing_type)}
-        </div>
-        {images.length > 1 && (
-          <div className="absolute bottom-14 left-0 right-0 z-10 flex justify-center gap-1.5">
-            {images.map((_, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => setImgIdx(i)}
-                className={`h-1.5 rounded-full transition-all ${i === imgIdx ? "w-4 bg-white" : "w-1.5 bg-white/50"}`}
-              />
-            ))}
-          </div>
-        )}
         {images.length > 0 && (
-          <span className="absolute bottom-3 right-3 z-10 rounded-md bg-black/55 px-2 py-0.5 text-[10px] font-bold text-white">
+          <span className="absolute bottom-3 right-3 rounded-md bg-black/55 px-2 py-0.5 text-[10px] font-semibold text-white">
             {imgIdx + 1} / {images.length}
           </span>
         )}
@@ -224,7 +296,7 @@ export default function MarketplaceListingPage() {
               key={url + i}
               type="button"
               onClick={() => setImgIdx(i)}
-              className={`h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 ${i === imgIdx ? "border-primary" : "border-transparent"}`}
+              className={`h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 ${i === imgIdx ? "border-foreground" : "border-transparent"}`}
             >
               <img src={url} alt="" className="h-full w-full object-cover" />
             </button>
@@ -232,169 +304,190 @@ export default function MarketplaceListingPage() {
         </div>
       )}
 
-      <div className="space-y-4 px-4 pt-2">
-        <div>
-          <div className="flex items-start justify-between gap-2">
-            <p className="text-2xl font-black">{formatPrice(listing.price, listing.listing_type)}</p>
-            {(listing.status === "sold" || listing.status === "pending") && (
-              <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase text-white ${listing.status === "sold" ? "bg-foreground" : "bg-amber-500"}`}>
-                {listing.status}
-              </span>
-            )}
+      <div className="space-y-5 px-4 pt-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold leading-snug">{listing.title}</h1>
+            <p className="mt-1 text-lg font-bold">{formatPrice(listing.price, listing.listing_type)}</p>
           </div>
-          <h1 className="mt-1 text-lg font-bold leading-snug">{listing.title}</h1>
-          <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-            <MapPin className="h-3 w-3" />
-            {approxLocation(listing.city, listing.state, listing.location_approx)} · {timeAgo(listing.created_at)}
-          </p>
-          {listing.promoted && (
-            <span className="mt-2 inline-block rounded-md bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary">Promoted</span>
-          )}
+          <button type="button" onClick={() => toast.message("Report submitted")} className="rounded-full p-2 text-muted-foreground" aria-label="More">
+            <MoreHorizontal className="h-5 w-5" />
+          </button>
         </div>
 
         <button
           type="button"
           onClick={() => nav(`/marketplace/profile/${listing.seller_id}`)}
-          className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-3 text-left"
+          className="flex w-full items-center gap-3 text-left"
         >
           <div className="h-11 w-11 overflow-hidden rounded-full bg-muted">
             {listing.seller?.avatar_url ? (
               <img src={listing.seller.avatar_url} alt="" className="h-full w-full object-cover" />
             ) : (
-              <div className="flex h-full w-full items-center justify-center font-bold text-primary">
+              <div className="flex h-full w-full items-center justify-center text-sm font-bold text-primary">
                 {(listing.seller?.display_name || "?")[0]}
               </div>
             )}
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-bold">{listing.seller?.display_name || "Seller"}</p>
-            <p className="text-[11px] text-muted-foreground">
-              Marketplace profile · {listing.seller?.is_business ? "Business" : "Private seller"}
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold">{listing.seller?.display_name || "Seller"}</p>
+            <p className="text-xs text-muted-foreground">
+              {place}
+              {listing.status === "sold" || listing.status === "pending" ? ` · ${listing.status}` : ""}
             </p>
           </div>
         </button>
 
-        <section>
-          <h2 className="text-sm font-black">Details</h2>
-          <dl className="mt-2 grid grid-cols-2 gap-2 text-xs">
-            {listing.condition && (
-              <>
-                <dt className="text-muted-foreground">Condition</dt>
-                <dd className="font-semibold">{listing.condition}</dd>
-              </>
-            )}
-            {cat && (
-              <>
-                <dt className="text-muted-foreground">Category</dt>
-                <dd className="font-semibold">{cat.label}</dd>
-              </>
-            )}
-            {listing.brand && (
-              <>
-                <dt className="text-muted-foreground">Brand</dt>
-                <dd className="font-semibold">{listing.brand}</dd>
-              </>
-            )}
-            {listing.vehicle?.year && (
-              <>
-                <dt className="text-muted-foreground">Year</dt>
-                <dd className="font-semibold">{listing.vehicle.year}</dd>
-              </>
-            )}
-            {listing.vehicle?.make && (
-              <>
-                <dt className="text-muted-foreground">Make</dt>
-                <dd className="font-semibold">{listing.vehicle.make}</dd>
-              </>
-            )}
-            {listing.vehicle?.model && (
-              <>
-                <dt className="text-muted-foreground">Model</dt>
-                <dd className="font-semibold">{listing.vehicle.model}</dd>
-              </>
-            )}
-            {listing.vehicle?.mileage != null && (
-              <>
-                <dt className="text-muted-foreground">Mileage</dt>
-                <dd className="font-semibold">{listing.vehicle.mileage.toLocaleString()} mi</dd>
-              </>
-            )}
-            {listing.vehicle?.vin && (
-              <>
-                <dt className="text-muted-foreground">VIN</dt>
-                <dd className="font-semibold">{listing.vehicle.vin}</dd>
-              </>
-            )}
-            {listing.vehicle?.transmission && (
-              <>
-                <dt className="text-muted-foreground">Transmission</dt>
-                <dd className="font-semibold">{listing.vehicle.transmission}</dd>
-              </>
-            )}
-          </dl>
-          <p className="mt-2 text-[11px] text-muted-foreground">
-            {[listing.local_pickup && "Local pickup", listing.delivery && "Delivery", listing.shipping && "Shipping"]
-              .filter(Boolean)
-              .join(" · ") || "Local pickup"}
+        <div>
+          <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">{desc || "No description."}</p>
+          <p className="mt-2 text-xs text-muted-foreground">{timeAgo(listing.created_at)}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {[listing.condition, cat?.label].filter(Boolean).join(" · ")}
           </p>
-        </section>
+        </div>
 
-        <section>
-          <h2 className="text-sm font-black">Description</h2>
-          <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">{desc || "No description."}</p>
-        </section>
+        {!isOwner && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              messageSeller(quickMsg);
+            }}
+            className="flex items-center gap-2 rounded-full border border-border bg-muted/40 py-1 pl-4 pr-1"
+          >
+            <input
+              value={quickMsg}
+              onChange={(e) => setQuickMsg(e.target.value)}
+              className="min-w-0 flex-1 bg-transparent text-sm outline-none"
+              placeholder="Hi, is this still available?"
+            />
+            <button type="submit" className="flex h-9 w-9 items-center justify-center rounded-full bg-foreground text-background" aria-label="Send">
+              <Send className="h-4 w-4" />
+            </button>
+          </form>
+        )}
 
-        <section>
-          <h2 className="mb-1 text-sm font-black">Location</h2>
-          <p className="text-sm text-muted-foreground">
-            {approxLocation(listing.city, listing.state, listing.location_approx)}
-          </p>
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            Exact address is private. Meetup details can be shared in Marketplace chat.
-          </p>
-          {(listing.attributes as any)?.public_exact_location && listing.lat != null && listing.lng != null && (
-            <a
-              href={`https://www.google.com/maps/dir/?api=1&destination=${listing.lat},${listing.lng}`}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-2 inline-flex rounded-full bg-primary px-4 py-2 text-xs font-bold text-primary-foreground"
-            >
-              Directions
-            </a>
-          )}
-        </section>
-
-        {isOwner && (
+        {!isOwner && (
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => nav(`/marketplace/edit/${listing.id}`)} className="rounded-full bg-muted px-3 py-2 text-xs font-bold">
-              Edit
+            <button type="button" onClick={() => messageSeller()} className="h-10 flex-1 rounded-full bg-primary text-sm font-bold text-primary-foreground">
+              Message
             </button>
-            <button type="button" onClick={() => void setStatus("pending")} className="rounded-full bg-muted px-3 py-2 text-xs font-bold">
-              Mark pending
+            {listing.open_to_offers && (
+              <button type="button" onClick={() => setOfferOpen(true)} className="h-10 flex-1 rounded-full border border-border text-sm font-semibold">
+                Make Offer
+              </button>
+            )}
+            <button type="button" onClick={onSave} className="flex h-10 w-10 items-center justify-center rounded-full border border-border" aria-label="Save">
+              <Bookmark className={`h-4 w-4 ${listing.saved ? "fill-foreground" : ""}`} />
             </button>
-            <button type="button" onClick={() => void setStatus("sold")} className="rounded-full bg-muted px-3 py-2 text-xs font-bold">
-              Mark sold
-            </button>
-            <button type="button" onClick={() => void setStatus("active")} className="rounded-full bg-muted px-3 py-2 text-xs font-bold">
-              Reactivate
+            <button type="button" onClick={() => toast.message("Report submitted")} className="flex h-10 w-10 items-center justify-center rounded-full border border-border" aria-label="Report">
+              <Flag className="h-4 w-4" />
             </button>
           </div>
         )}
 
+        {isOwner && (
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => nav(`/marketplace/edit/${listing.id}`)} className="rounded-full bg-muted px-3 py-2 text-xs font-semibold">
+              Edit
+            </button>
+            <button type="button" onClick={() => void setStatus("pending")} className="rounded-full bg-muted px-3 py-2 text-xs font-semibold">
+              Mark pending
+            </button>
+            <button type="button" onClick={() => void setStatus("sold")} className="rounded-full bg-muted px-3 py-2 text-xs font-semibold">
+              Mark sold
+            </button>
+          </div>
+        )}
+
+        <section className="border-t border-border pt-4">
+          <button type="button" className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-semibold">
+            <MapPin className="h-3.5 w-3.5" />
+            {place}
+          </button>
+          <div className="relative overflow-hidden rounded-2xl border border-border bg-muted/50">
+            <div className="flex h-40 items-center justify-center text-xs text-muted-foreground">
+              Approximate area · exact address stays private
+            </div>
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+              <div className="h-24 w-24 rounded-full border-2 border-primary/40 bg-primary/15" />
+            </div>
+          </div>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Meetup details can be shared privately in chat. Exact home addresses are never shown publicly.
+          </p>
+        </section>
+
+        <section className="border-t border-border pt-4">
+          <h2 className="mb-3 text-base font-bold">Comments</h2>
+          <div className="space-y-4">
+            {comments.length === 0 && (
+              <p className="text-sm text-muted-foreground">No comments yet. Ask a question below.</p>
+            )}
+            {comments.map((c) => (
+              <div key={c.id} className="flex gap-2.5">
+                <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-muted">
+                  {c.avatar_url ? (
+                    <img src={c.avatar_url} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-xs font-bold">
+                      {(c.display_name || "?")[0]}
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm">
+                    <span className="font-semibold">{c.display_name || "Member"}</span>
+                    {c.user_id === listing.seller_id && (
+                      <span className="ml-1.5 inline-flex items-center gap-0.5 text-[10px] font-semibold text-primary">
+                        Author
+                      </span>
+                    )}
+                    <span className="ml-1.5 text-xs text-muted-foreground">{timeAgo(c.created_at)}</span>
+                  </p>
+                  <p className="mt-0.5 text-sm">{c.body}</p>
+                  <div className="mt-1 flex gap-3 text-[11px] font-medium text-muted-foreground">
+                    <span className="inline-flex items-center gap-1"><Heart className="h-3 w-3" /> Like</span>
+                    <span className="inline-flex items-center gap-1"><Star className="h-3 w-3" /> Helpful</span>
+                    <span className="inline-flex items-center gap-1"><MessageCircle className="h-3 w-3" /> Reply</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 flex items-center gap-2">
+            <input
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+              placeholder="Comment"
+              className="h-10 flex-1 rounded-full border border-border bg-muted/50 px-4 text-sm outline-none"
+            />
+            <button type="button" onClick={() => void postComment()} className="rounded-full bg-foreground px-3 py-2 text-xs font-bold text-background">
+              Post
+            </button>
+          </div>
+        </section>
+
         {more.length > 0 && (
-          <section>
-            <div className="mb-2 flex items-center justify-between">
-              <h2 className="text-sm font-black">More from this seller</h2>
-              <button
-                type="button"
-                onClick={() => nav(`/marketplace/profile/${listing.seller_id}`)}
-                className="text-xs font-bold text-primary"
-              >
-                View all listings
+          <section className="border-t border-border pt-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-base font-bold">More listings from {listing.seller?.display_name || "seller"}</h2>
+              <button type="button" onClick={() => nav(`/marketplace/profile/${listing.seller_id}`)} className="text-xs font-semibold text-primary">
+                See all
               </button>
             </div>
-            <div className="space-y-2.5">
+            <div className="grid grid-cols-2 gap-3">
               {more.slice(0, 4).map((l) => (
+                <ListingCard key={l.id} listing={l} />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {nearby.length > 0 && (
+          <section className="border-t border-border pt-4">
+            <h2 className="mb-3 text-base font-bold">More listings near you</h2>
+            <div className="grid grid-cols-2 gap-3">
+              {nearby.map((l) => (
                 <ListingCard key={l.id} listing={l} />
               ))}
             </div>
@@ -402,105 +495,45 @@ export default function MarketplaceListingPage() {
         )}
       </div>
 
-      {/* Sticky actions */}
-      {!isOwner && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/95 px-3 py-3 backdrop-blur safe-area-bottom lg:static lg:mt-4 lg:border-0 lg:bg-transparent lg:px-4">
-          <div className="mx-auto flex max-w-lg gap-2">
-            <button type="button" onClick={onSave} className="flex h-11 w-11 items-center justify-center rounded-full bg-muted" aria-label="Save">
-              <Heart className={`h-5 w-5 ${listing.saved ? "fill-rose-500 text-rose-500" : ""}`} />
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                void navigator.clipboard?.writeText(window.location.href);
-                toast.success("Link copied");
-              }}
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-muted"
-              aria-label="Share"
-            >
-              <Share2 className="h-5 w-5" />
-            </button>
-            <button type="button" onClick={() => toast.message("Report submitted for review")} className="flex h-11 w-11 items-center justify-center rounded-full bg-muted" aria-label="Report">
-              <Flag className="h-5 w-5" />
-            </button>
-            {listing.open_to_offers && (
-              <button
-                type="button"
-                onClick={() => setOfferOpen(true)}
-                className="h-11 flex-1 rounded-full border border-border bg-card text-sm font-bold"
-              >
-                Make Offer
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={messageSeller}
-              className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-primary text-sm font-bold text-primary-foreground"
-            >
-              <MessageCircle className="h-4 w-4" /> Message
-            </button>
-          </div>
-        </div>
-      )}
-
       {lightbox && (
         <div className="fixed inset-0 z-[90] flex flex-col bg-black">
           <div className="flex items-center justify-between px-3 py-3 text-white">
-            <span className="text-sm font-bold">
+            <span className="text-sm font-semibold">
               {imgIdx + 1} / {images.length}
             </span>
             <button type="button" onClick={() => setLightbox(false)} className="rounded-full bg-white/15 p-2">
               <X className="h-5 w-5" />
             </button>
           </div>
-          <div className="flex flex-1 items-center justify-center overflow-hidden">
-            <img
-              src={images[imgIdx]}
-              alt=""
-              className="max-h-full max-w-full object-contain"
-              onClick={() => setImgIdx((i) => (i + 1) % images.length)}
-            />
+          <div className="flex flex-1 items-center justify-center">
+            <img src={images[imgIdx]} alt="" className="max-h-full max-w-full object-contain" onClick={() => setImgIdx((i) => (i + 1) % images.length)} />
           </div>
         </div>
       )}
 
       {offerOpen && (
-        <div className="fixed inset-0 z-[90] flex items-end bg-black/50 sm:items-center sm:justify-center">
+        <div className="fixed inset-0 z-[90] flex items-end bg-black/40 sm:items-center sm:justify-center">
           <div className="w-full max-w-md rounded-t-3xl bg-background p-5 sm:rounded-3xl">
-            <h3 className="text-lg font-black">Make an offer</h3>
+            <h3 className="text-lg font-bold">Make an offer</h3>
             <p className="mt-1 text-xs text-muted-foreground">Listed at {formatPrice(listing.price, listing.listing_type)}</p>
-            <label className="mt-4 block text-xs font-bold">Your offer ($)</label>
             <input
               value={offerAmt}
               onChange={(e) => setOfferAmt(e.target.value)}
               type="number"
-              className="mt-1 h-11 w-full rounded-xl border border-border bg-muted px-3 text-sm"
-            />
-            <label className="mt-3 block text-xs font-bold">Message (optional)</label>
-            <textarea
-              value={offerMsg}
-              onChange={(e) => setOfferMsg(e.target.value)}
-              rows={3}
-              className="mt-1 w-full rounded-xl border border-border bg-muted px-3 py-2 text-sm"
+              className="mt-4 h-11 w-full rounded-xl border border-border bg-muted px-3 text-sm"
+              placeholder="Your offer ($)"
             />
             <div className="mt-4 flex gap-2">
-              <button type="button" onClick={() => setOfferOpen(false)} className="h-11 flex-1 rounded-full bg-muted text-sm font-bold">
+              <button type="button" onClick={() => setOfferOpen(false)} className="h-11 flex-1 rounded-full bg-muted text-sm font-semibold">
                 Cancel
               </button>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void submitOffer()}
-                className="h-11 flex-1 rounded-full bg-primary text-sm font-bold text-primary-foreground disabled:opacity-60"
-              >
-                {busy ? "Sending…" : "Send offer"}
+              <button type="button" disabled={busy} onClick={() => void submitOffer()} className="h-11 flex-1 rounded-full bg-primary text-sm font-bold text-primary-foreground disabled:opacity-60">
+                Send offer
               </button>
             </div>
           </div>
         </div>
       )}
-
-      {isOwner && <MarketplaceNav />}
     </div>
   );
 }

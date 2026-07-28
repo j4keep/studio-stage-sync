@@ -1,29 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  ArrowLeft,
-  ChevronRight,
-  Heart,
-  MessageCircle,
-  Package,
-  Settings,
-  ShoppingBag,
-  Tag,
-} from "lucide-react";
+import { ArrowLeft, ChevronRight, Heart, Package, Settings, Tag } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { ensureMarketplaceProfile, listMarketplaceListings, type MarketplaceListing } from "@/lib/marketplace-api";
+import { listMarketplaceListings, type MarketplaceListing } from "@/lib/marketplace-api";
 import ListingCard from "@/components/marketplace/ListingCard";
-import MarketplaceNav from "@/components/marketplace/MarketplaceNav";
 
+/** Simple My Listings / saved management — not a Marketplace dashboard. */
 export default function MarketplaceAccountPage() {
   const nav = useNavigate();
   const { user } = useAuth();
   const [mine, setMine] = useState<MarketplaceListing[]>([]);
-  const [filter, setFilter] = useState<"active" | "draft" | "pending" | "sold" | "archived">("active");
+  const [filter, setFilter] = useState<"active" | "draft" | "pending" | "sold">("active");
 
   const load = useCallback(async () => {
     if (!user) return;
-    await ensureMarketplaceProfile(user.id);
     const rows = await listMarketplaceListings({
       sellerId: user.id,
       status: filter,
@@ -39,32 +29,26 @@ export default function MarketplaceAccountPage() {
 
   const links = [
     { label: "Saved items", icon: Heart, to: "/marketplace/saved" },
-    { label: "Purchases", icon: ShoppingBag, to: "/marketplace/purchases" },
-    { label: "Sales", icon: Tag, to: "/marketplace/sales" },
     { label: "Offers", icon: Package, to: "/marketplace/offers" },
-    { label: "Messages", icon: MessageCircle, to: "/marketplace/messages" },
-    { label: "Marketplace settings", icon: Settings, to: "/marketplace/settings" },
+    { label: "Sales", icon: Tag, to: "/marketplace/sales" },
+    { label: "Settings", icon: Settings, to: "/marketplace/settings" },
   ];
 
   return (
     <div className="min-h-screen bg-background pb-28 text-foreground">
       <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
-        <button type="button" onClick={() => nav("/marketplace")} className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
+        <button type="button" onClick={() => nav("/marketplace")} className="flex h-9 w-9 items-center justify-center rounded-full bg-muted" aria-label="Back">
           <ArrowLeft className="h-4 w-4" />
         </button>
-        <h1 className="flex-1 text-lg font-black">My Marketplace</h1>
+        <h1 className="flex-1 text-lg font-bold">My Listings</h1>
         {user && (
-          <button
-            type="button"
-            onClick={() => nav(`/marketplace/profile/${user.id}`)}
-            className="rounded-full bg-primary px-3 py-1.5 text-[11px] font-bold text-primary-foreground"
-          >
-            Profile
+          <button type="button" onClick={() => nav(`/marketplace/profile/${user.id}`)} className="text-xs font-semibold text-primary">
+            Seller view
           </button>
         )}
       </header>
 
-      <div className="space-y-1 px-4 pt-3">
+      <div className="space-y-0.5 px-2 pt-2">
         {links.map((l) => {
           const Icon = l.icon;
           return (
@@ -72,9 +56,9 @@ export default function MarketplaceAccountPage() {
               key={l.to}
               type="button"
               onClick={() => nav(l.to)}
-              className="flex w-full items-center gap-3 rounded-xl px-2 py-3 text-left hover:bg-muted"
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left hover:bg-muted"
             >
-              <Icon className="h-5 w-5 text-primary" />
+              <Icon className="h-5 w-5 text-muted-foreground" />
               <span className="flex-1 text-sm font-semibold">{l.label}</span>
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </button>
@@ -82,21 +66,15 @@ export default function MarketplaceAccountPage() {
         })}
       </div>
 
-      <section className="mt-4 px-4">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-sm font-black">My listings</h2>
-          <button type="button" onClick={() => nav("/marketplace/create")} className="text-xs font-bold text-primary">
-            + Sell
-          </button>
-        </div>
+      <section className="mt-4 px-3">
         <div className="no-scrollbar mb-3 flex gap-2 overflow-x-auto">
-          {(["active", "draft", "pending", "sold", "archived"] as const).map((f) => (
+          {(["active", "draft", "pending", "sold"] as const).map((f) => (
             <button
               key={f}
               type="button"
               onClick={() => setFilter(f)}
-              className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold capitalize ${
-                filter === f ? "bg-primary text-primary-foreground" : "bg-muted"
+              className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold capitalize ${
+                filter === f ? "border-foreground bg-foreground text-background" : "border-border"
               }`}
             >
               {f}
@@ -104,17 +82,15 @@ export default function MarketplaceAccountPage() {
           ))}
         </div>
         {mine.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">No {filter} listings.</p>
+          <p className="py-10 text-center text-sm text-muted-foreground">No {filter} listings.</p>
         ) : (
-          <div className="space-y-2.5">
+          <div className="grid grid-cols-2 gap-3">
             {mine.map((l) => (
               <ListingCard key={l.id} listing={l} />
             ))}
           </div>
         )}
       </section>
-
-      <MarketplaceNav />
     </div>
   );
 }

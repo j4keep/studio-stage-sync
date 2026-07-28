@@ -1,6 +1,5 @@
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, MessageCircle } from "lucide-react";
-import MarketplaceNav from "@/components/marketplace/MarketplaceNav";
 
 /** Marketplace messages hub — reuses YAJ chat with marketplace context. */
 export default function MarketplaceMessagesPage() {
@@ -29,8 +28,6 @@ export default function MarketplaceMessagesPage() {
         >
           Open messages
         </button>
-      </div>
-      <MarketplaceNav />
-    </div>
+      </div>    </div>
   );
 }

@@ -4,7 +4,6 @@ import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { listMarketplaceListings, type MarketplaceListing } from "@/lib/marketplace-api";
 import ListingCard from "@/components/marketplace/ListingCard";
-import MarketplaceNav from "@/components/marketplace/MarketplaceNav";
 
 export default function MarketplaceSalesPage() {
   const nav = useNavigate();
@@ -32,20 +31,19 @@ export default function MarketplaceSalesPage() {
         <button type="button" onClick={() => nav("/marketplace/account")} className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
           <ArrowLeft className="h-4 w-4" />
         </button>
-        <h1 className="text-lg font-black">Sales</h1>
+        <h1 className="text-lg font-bold">Sales</h1>
       </header>
       <div className="px-3 pt-3">
         {listings.length === 0 ? (
           <p className="py-16 text-center text-sm text-muted-foreground">Pending and sold listings show up here.</p>
         ) : (
-          <div className="space-y-2.5">
+          <div className="grid grid-cols-2 gap-3">
             {listings.map((l) => (
               <ListingCard key={l.id} listing={l} />
             ))}
           </div>
         )}
       </div>
-      <MarketplaceNav />
     </div>
   );
 }

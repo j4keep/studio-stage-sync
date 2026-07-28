@@ -1,159 +1,207 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Bell, MapPin, MessageCircle, Search, Sparkles } from "lucide-react";
+import { ArrowLeft, MessageCircle, MoreHorizontal, Pencil, Search } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { MARKETPLACE_CATEGORIES } from "@/lib/marketplace";
+import { MARKETPLACE_CATEGORIES, getRecentSearches, pushRecentSearch } from "@/lib/marketplace";
 import {
-  ensureMarketplaceProfile,
   listMarketplaceListings,
   toggleSaveListing,
   type MarketplaceListing,
 } from "@/lib/marketplace-api";
 import ListingCard, { ListingCardSkeleton } from "@/components/marketplace/ListingCard";
-import MarketplaceNav from "@/components/marketplace/MarketplaceNav";
 import { toast } from "sonner";
 
-const CAT_TINTS = [
-  "from-rose-400/90 to-orange-300/80",
-  "from-sky-400/90 to-cyan-300/80",
-  "from-violet-400/90 to-fuchsia-300/80",
-  "from-emerald-400/80 to-lime-300/70",
-  "from-amber-400/90 to-yellow-300/80",
-  "from-indigo-400/90 to-blue-300/80",
+type FilterId = "mine" | "all" | "free" | "distance" | "relevant" | "discounted";
+
+const FILTERS: { id: FilterId; label: string }[] = [
+  { id: "mine", label: "My Listings" },
+  { id: "all", label: "All Categories" },
+  { id: "free", label: "Free" },
+  { id: "distance", label: "15 mi" },
+  { id: "relevant", label: "Most Relevant" },
+  { id: "discounted", label: "Discounted" },
 ];
 
 function isMissingTableError(msg: string) {
-  return /marketplace_profiles|schema cache|does not exist/i.test(msg);
+  return /marketplace_profiles|marketplace_listings|schema cache|does not exist/i.test(msg);
 }
 
+/** Clean YAJ Marketplace home — Nextdoor-style structure, YAJ identity. */
 export default function MarketplaceHomePage() {
   const nav = useNavigate();
   const { user } = useAuth();
   const [listings, setListings] = useState<MarketplaceListing[]>([]);
   const [loading, setLoading] = useState(true);
-  const [avatar, setAvatar] = useState<string | null>(null);
-  const [locationLabel, setLocationLabel] = useState("Near you");
+  const [q, setQ] = useState("");
+  const [searchFocus, setSearchFocus] = useState(false);
+  const [recents, setRecents] = useState(getRecentSearches);
+  const [filter, setFilter] = useState<FilterId>("relevant");
+  const [category, setCategory] = useState<string | null>(null);
   const [setupNeeded, setSetupNeeded] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setSetupNeeded(false);
     try {
-      if (user) {
-        const p = await ensureMarketplaceProfile(user.id);
-        setAvatar(p.avatar_url);
-        if (p.city) setLocationLabel(p.city);
-      }
-      const rows = await listMarketplaceListings({ viewerId: user?.id, limit: 40 });
+      const opts: Parameters<typeof listMarketplaceListings>[0] = {
+        viewerId: user?.id,
+        limit: 48,
+        sort: filter === "relevant" ? "newest" : "newest",
+      };
+      if (filter === "mine" && user) opts.sellerId = user.id;
+      if (filter === "free") opts.category = "free";
+      if (category) opts.category = category;
+      if (q.trim()) opts.q = q.trim();
+      let rows = await listMarketplaceListings(opts);
+      if (filter === "free") rows = rows.filter((l) => l.listing_type === "free" || Number(l.price) === 0);
       setListings(rows);
     } catch (e: any) {
       const msg = e?.message || "Could not load marketplace";
       if (isMissingTableError(msg)) {
         setSetupNeeded(true);
         toast.error("Marketplace tables aren’t in Supabase yet — run the migration once.");
-      } else {
-        toast.error(msg);
-      }
+      } else toast.error(msg);
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, filter, category, q]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
   const onToggleSave = async (listing: MarketplaceListing) => {
-    if (!user) {
-      toast.error("Sign in to save listings");
-      return;
-    }
+    if (!user) return toast.error("Sign in to save listings");
     const next = !listing.saved;
     setListings((prev) => prev.map((l) => (l.id === listing.id ? { ...l, saved: next } : l)));
     try {
       await toggleSaveListing(user.id, listing.id, next);
     } catch {
       setListings((prev) => prev.map((l) => (l.id === listing.id ? { ...l, saved: !next } : l)));
-      toast.error("Could not update saved");
     }
   };
 
-  const featured = listings[0];
-  const rest = listings.slice(1);
+  const runSearch = (term: string) => {
+    const t = term.trim();
+    setQ(t);
+    if (t) {
+      pushRecentSearch(t);
+      setRecents(getRecentSearches());
+    }
+    setSearchFocus(false);
+  };
+
+  const newest = useMemo(() => listings.slice(0, 8), [listings]);
+  const freeItems = useMemo(
+    () => listings.filter((l) => l.listing_type === "free" || Number(l.price) === 0).slice(0, 4),
+    [listings],
+  );
+  const vehicles = useMemo(
+    () => listings.filter((l) => ["vehicle", "motorcycle", "boat", "rv"].includes(String(l.listing_type))).slice(0, 4),
+    [listings],
+  );
+
+  const onFilter = (id: FilterId) => {
+    if (id === "all") {
+      setCategory(null);
+      setFilter("all");
+      return;
+    }
+    if (id === "mine") {
+      if (!user) {
+        toast.error("Sign in to see your listings");
+        return;
+      }
+      nav("/marketplace/account");
+      return;
+    }
+    setFilter(id);
+  };
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-background pb-32 text-foreground">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(ellipse_at_top,_hsl(var(--primary)/0.22),_transparent_60%)]"
-      />
-
-      <header className="relative z-20 px-4 pb-2 pt-4">
-        <div className="mb-4 flex items-start gap-2">
+    <div className="relative min-h-screen bg-background pb-28 text-foreground">
+      <header className="sticky top-0 z-20 border-b border-border bg-background/95 px-3 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur">
+        <div className="mb-3 flex items-center gap-2">
           <button
             type="button"
             onClick={() => nav("/explore")}
-            className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-border/70 bg-card/80"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"
             aria-label="Back to Explore"
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">YAJ · Local commerce</p>
-            <h1 className="mt-0.5 font-black tracking-tight">
-              <span className="block text-[2rem] leading-none">Market</span>
-              <span className="block text-lg font-bold text-muted-foreground">Buy & sell with the community</span>
-            </h1>
-          </div>
+          <h1 className="flex-1 text-lg font-bold tracking-tight">Marketplace</h1>
           <button
             type="button"
-            onClick={() => nav("/marketplace/settings")}
-            className="mt-1 flex max-w-[6.5rem] items-center gap-1 rounded-2xl border border-border/70 bg-card/80 px-2.5 py-2 text-[11px] font-semibold backdrop-blur"
-          >
-            <MapPin className="h-3.5 w-3.5 shrink-0 text-primary" />
-            <span className="truncate">{locationLabel}</span>
-          </button>
-          <button type="button" className="mt-1 flex h-10 w-10 items-center justify-center rounded-2xl border border-border/70 bg-card/80" aria-label="Notifications">
-            <Bell className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => nav("/marketplace/messages")}
-            className="mt-1 flex h-10 w-10 items-center justify-center rounded-2xl border border-border/70 bg-card/80"
+            onClick={() => nav("/messages")}
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"
             aria-label="Messages"
           >
             <MessageCircle className="h-4 w-4" />
           </button>
           <button
             type="button"
-            onClick={() => user && nav(`/marketplace/profile/${user.id}`)}
-            className="mt-1 h-10 w-10 overflow-hidden rounded-2xl border border-border/70 bg-muted"
-            aria-label="Marketplace profile"
+            onClick={() => nav("/marketplace/account")}
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"
+            aria-label="More"
           >
-            {avatar ? (
-              <img src={avatar} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <span className="flex h-full w-full items-center justify-center text-xs font-bold text-primary">Y</span>
-            )}
+            <MoreHorizontal className="h-4 w-4" />
           </button>
         </div>
 
-        <button
-          type="button"
-          onClick={() => nav("/marketplace/search")}
-          className="relative flex h-12 w-full items-center rounded-2xl border border-border/80 bg-card/90 pl-11 pr-4 text-left text-sm text-muted-foreground shadow-sm backdrop-blur"
-        >
-          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
-          Search people, brands, rides…
-        </button>
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onFocus={() => setSearchFocus(true)}
+            onBlur={() => window.setTimeout(() => setSearchFocus(false), 150)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") runSearch(q);
+            }}
+            placeholder="Search For Sale & Free"
+            className="h-11 w-full rounded-full border border-border bg-muted/60 pl-10 pr-4 text-sm outline-none focus:ring-2 focus:ring-primary/25"
+          />
+          {searchFocus && recents.length > 0 && !q && (
+            <div className="absolute left-0 right-0 top-[calc(100%+0.35rem)] z-30 overflow-hidden rounded-2xl border border-border bg-card shadow-lg">
+              {recents.map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onMouseDown={() => runSearch(r)}
+                  className="block w-full px-4 py-2.5 text-left text-sm hover:bg-muted"
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto pb-0.5">
+          {FILTERS.map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              onClick={() => onFilter(f.id)}
+              className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                filter === f.id || (f.id === "all" && !category && filter === "all")
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-border bg-background text-foreground"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
       </header>
 
       {setupNeeded && (
-        <div className="relative z-10 mx-4 mt-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm">
-          <p className="font-bold">One-time database setup needed</p>
+        <div className="mx-4 mt-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm">
+          <p className="font-semibold">One-time database setup needed</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Pushing code does not create tables. In Supabase → SQL Editor, run the file{" "}
-            <span className="font-semibold text-foreground">supabase/migrations/20260727160000_marketplace_phase1.sql</span>, then tap Retry.
+            Run <span className="font-medium text-foreground">supabase/migrations/20260727160000_marketplace_phase1.sql</span> in
+            Supabase SQL Editor, then retry.
           </p>
           <button type="button" onClick={() => void load()} className="mt-2 text-xs font-bold text-primary">
             Retry
@@ -161,89 +209,102 @@ export default function MarketplaceHomePage() {
         </div>
       )}
 
-      <section className="relative z-10 px-4 pt-5">
-        <div className="mb-2 flex items-end justify-between">
-          <h2 className="text-sm font-black">Shop by vibe</h2>
-          <button type="button" onClick={() => nav("/marketplace/search")} className="text-[11px] font-bold text-primary">
-            See all
-          </button>
-        </div>
-        <div className="grid grid-cols-3 gap-2">
-          {MARKETPLACE_CATEGORIES.slice(0, 6).map((c, i) => (
-            <button
-              key={c.id}
-              type="button"
-              onClick={() => nav(`/marketplace/category/${c.id}`)}
-              className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${CAT_TINTS[i % CAT_TINTS.length]} p-3 text-left text-white shadow-sm`}
-            >
-              <span className="text-lg">{c.emoji}</span>
-              <p className="mt-1 text-[11px] font-black leading-tight drop-shadow-sm">{c.label}</p>
-            </button>
-          ))}
-        </div>
-        <div className="mt-2 flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-          {MARKETPLACE_CATEGORIES.slice(6).map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              onClick={() => nav(`/marketplace/category/${c.id}`)}
-              className="shrink-0 rounded-xl border border-border/70 bg-card/80 px-3 py-2 text-[11px] font-semibold"
-            >
-              {c.emoji} {c.label}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="relative z-10 mx-4 mt-5 overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-primary via-violet-600 to-fuchsia-600 p-4 text-primary-foreground shadow-sm">
-        <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/15 blur-2xl" />
-        <span className="inline-flex items-center gap-1 rounded-full bg-black/20 px-2 py-0.5 text-[10px] font-bold">
-          <Sparkles className="h-3 w-3" /> List something
-        </span>
-        <p className="mt-2 text-lg font-black leading-tight">Turn closet clutter into cash</p>
-        <p className="mt-1 text-[11px] text-white/90">Photos, price, neighborhood — live in under a minute.</p>
-        <button
-          type="button"
-          onClick={() => nav("/marketplace/create")}
-          className="mt-3 rounded-full bg-white px-4 py-2 text-xs font-black text-foreground"
-        >
-          Start a listing
-        </button>
-      </section>
-
-      <section className="relative z-10 space-y-3 px-4 pt-6">
-        <h2 className="text-sm font-black">Fresh near you</h2>
+      <div className="space-y-6 px-3 pt-4">
         {loading ? (
-          <div className="space-y-2.5">
-            {Array.from({ length: 4 }).map((_, i) => (
+          <div className="grid grid-cols-2 gap-3">
+            {Array.from({ length: 6 }).map((_, i) => (
               <ListingCardSkeleton key={i} />
             ))}
           </div>
         ) : listings.length === 0 ? (
-          <div className="rounded-[1.75rem] border border-dashed border-border px-4 py-14 text-center">
-            <p className="text-base font-black">Nothing listed yet</p>
-            <p className="mt-1 text-sm text-muted-foreground">Be the first drop in your city.</p>
-            <button
-              type="button"
-              onClick={() => nav("/marketplace/create")}
-              className="mt-4 rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground"
-            >
-              List an item
-            </button>
+          <div className="rounded-2xl border border-dashed border-border px-4 py-14 text-center">
+            <p className="font-semibold">No listings yet</p>
+            <p className="mt-1 text-sm text-muted-foreground">Be the first to post something nearby.</p>
           </div>
         ) : (
           <>
-            {featured && <ListingCard listing={featured} featured onToggleSave={onToggleSave} />}
-            <div className="space-y-2.5">
-              {rest.map((l) => (
-                <ListingCard key={l.id} listing={l} onToggleSave={onToggleSave} />
-              ))}
-            </div>
+            <section>
+              <h2 className="mb-3 text-base font-bold">Newest</h2>
+              <div className="grid grid-cols-2 gap-3">
+                {newest.map((l) => (
+                  <ListingCard key={l.id} listing={l} onToggleSave={onToggleSave} />
+                ))}
+              </div>
+              {listings.length > 8 && (
+                <button
+                  type="button"
+                  onClick={() => nav("/marketplace/search?q=")}
+                  className="mt-3 h-11 w-full rounded-full bg-muted text-sm font-semibold"
+                >
+                  See all new listings
+                </button>
+              )}
+            </section>
+
+            {freeItems.length > 0 && (
+              <section>
+                <h2 className="mb-3 text-base font-bold">Free Items</h2>
+                <div className="grid grid-cols-2 gap-3">
+                  {freeItems.map((l) => (
+                    <ListingCard key={l.id} listing={l} onToggleSave={onToggleSave} />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {vehicles.length > 0 && (
+              <section>
+                <h2 className="mb-3 text-base font-bold">Vehicles</h2>
+                <div className="grid grid-cols-2 gap-3">
+                  {vehicles.map((l) => (
+                    <ListingCard key={l.id} listing={l} onToggleSave={onToggleSave} />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            <section>
+              <h2 className="mb-3 text-base font-bold">Near You</h2>
+              <div className="grid grid-cols-2 gap-3">
+                {listings.slice(0, 12).map((l) => (
+                  <ListingCard key={`near-${l.id}`} listing={l} onToggleSave={onToggleSave} />
+                ))}
+              </div>
+            </section>
+
+            <section>
+              <h2 className="mb-2 text-sm font-semibold text-muted-foreground">Browse categories</h2>
+              <div className="flex flex-wrap gap-2">
+                {MARKETPLACE_CATEGORIES.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => {
+                      setCategory(c.id);
+                      setFilter("all");
+                    }}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                      category === c.id ? "border-foreground bg-foreground text-background" : "border-border"
+                    }`}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+            </section>
           </>
         )}
-      </section>
+      </div>
 
-      <MarketplaceNav />
+      <button
+        type="button"
+        onClick={() => nav("/marketplace/create")}
+        className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-14 items-center gap-2 rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground shadow-lg lg:bottom-8"
+        aria-label="Post listing"
+      >
+        <Pencil className="h-4 w-4" />
+        Post
+      </button>
     </div>
   );
 }

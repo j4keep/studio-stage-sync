@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { listSavedListings, toggleSaveListing, type MarketplaceListing } from "@/lib/marketplace-api";
 import ListingCard, { ListingCardSkeleton } from "@/components/marketplace/ListingCard";
-import MarketplaceNav from "@/components/marketplace/MarketplaceNav";
 
 export default function MarketplaceSavedPage() {
   const nav = useNavigate();
@@ -45,13 +44,13 @@ export default function MarketplaceSavedPage() {
         <button type="button" onClick={() => nav("/marketplace/account")} className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
           <ArrowLeft className="h-4 w-4" />
         </button>
-        <h1 className="text-lg font-black">Saved</h1>
+        <h1 className="text-lg font-bold">Saved</h1>
       </header>
       <div className="px-3 pt-3">
         {!user ? (
           <p className="py-16 text-center text-sm text-muted-foreground">Sign in to see saved listings.</p>
         ) : loading ? (
-          <div className="space-y-2.5">
+          <div className="grid grid-cols-2 gap-3">
             {Array.from({ length: 4 }).map((_, i) => (
               <ListingCardSkeleton key={i} />
             ))}
@@ -59,14 +58,13 @@ export default function MarketplaceSavedPage() {
         ) : listings.length === 0 ? (
           <p className="py-16 text-center text-sm text-muted-foreground">No saved listings yet.</p>
         ) : (
-          <div className="space-y-2.5">
+          <div className="grid grid-cols-2 gap-3">
             {listings.map((l) => (
               <ListingCard key={l.id} listing={{ ...l, saved: true }} onToggleSave={onToggleSave} />
             ))}
           </div>
         )}
       </div>
-      <MarketplaceNav />
     </div>
   );
 }

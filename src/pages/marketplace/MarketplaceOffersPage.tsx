@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatPrice } from "@/lib/marketplace";
 import { listOffersForUser, updateOfferStatus } from "@/lib/marketplace-api";
-import MarketplaceNav from "@/components/marketplace/MarketplaceNav";
 
 export default function MarketplaceOffersPage() {
   const nav = useNavigate();
@@ -109,8 +108,6 @@ export default function MarketplaceOffersPage() {
             </div>
           ))
         )}
-      </div>
-      <MarketplaceNav />
-    </div>
+      </div>    </div>
   );
 }

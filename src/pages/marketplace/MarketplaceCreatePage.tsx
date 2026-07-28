@@ -215,7 +215,7 @@ export default function MarketplaceCreatePage() {
   };
 
   const stepTitle = useMemo(
-    () => ["", "What are you listing?", "Photos", "The story", "Where", "Ready to go live"][step],
+    () => ["", "What are you listing?", "Photos", "Details", "Location", "Preview"][step],
     [step],
   );
 
@@ -564,7 +564,7 @@ export default function MarketplaceCreatePage() {
               className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-base font-black text-primary-foreground shadow-[0_14px_30px_-12px_hsl(var(--primary))] disabled:opacity-60"
             >
               {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-              {isEdit ? "Save changes" : "Go live"}
+              {isEdit ? "Save changes" : "Publish"}
             </button>
             <button
               type="button"

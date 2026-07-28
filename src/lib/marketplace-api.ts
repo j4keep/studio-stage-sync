@@ -242,34 +242,28 @@ export async function ensureMarketplaceProfile(userId: string): Promise<Marketpl
 }
 
 export async function getMarketplaceProfile(userId: string): Promise<MarketplaceProfile | null> {
-  const { data, error } = await (supabase as any)
-    .from("marketplace_profiles")
-    .select("*")
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (error) throw error;
-  if (data) {
-    return { ...data, member_since: data.created_at };
+  const [{ data, error }, { data: yaj }] = await Promise.all([
+    (supabase as any).from("marketplace_profiles").select("*").eq("user_id", userId).maybeSingle(),
+    supabase.from("profiles").select("user_id, display_name, avatar_url, created_at").eq("user_id", userId).maybeSingle(),
+  ]);
+  if (error && !/schema cache|does not exist/i.test(error.message || "")) throw error;
+
+  // Always prefer live YAJ identity for name/photo — Marketplace is not a second account.
+  if (data || yaj) {
+    return {
+      user_id: userId,
+      display_name: yaj?.display_name || data?.display_name || "Member",
+      bio: data?.bio ?? null,
+      avatar_url: yaj?.avatar_url || data?.avatar_url || null,
+      city: data?.city ?? null,
+      service_area: data?.service_area ?? null,
+      is_business: Boolean(data?.is_business),
+      response_time_minutes: data?.response_time_minutes ?? null,
+      created_at: data?.created_at || yaj?.created_at || new Date().toISOString(),
+      member_since: data?.created_at || yaj?.created_at,
+    };
   }
-  // Fallback to YAJ profile for display without creating yet
-  const { data: yaj } = await supabase
-    .from("profiles")
-    .select("user_id, display_name, avatar_url, created_at")
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (!yaj) return null;
-  return {
-    user_id: yaj.user_id,
-    display_name: yaj.display_name,
-    bio: null,
-    avatar_url: yaj.avatar_url,
-    city: null,
-    service_area: null,
-    is_business: false,
-    response_time_minutes: null,
-    created_at: yaj.created_at || new Date().toISOString(),
-    member_since: yaj.created_at,
-  };
+  return null;
 }
 
 export async function updateMarketplaceProfile(
@@ -425,7 +419,11 @@ export async function getMarketplaceListing(
 }
 
 export async function createMarketplaceListing(sellerId: string, input: ListingInput): Promise<MarketplaceListing> {
-  await ensureMarketplaceProfile(sellerId);
+  try {
+    await ensureMarketplaceProfile(sellerId);
+  } catch {
+    /* optional stats row — YAJ profile is the identity */
+  }
   const cover = input.cover_url || input.mediaUrls?.[0] || null;
   const row = {
     seller_id: sellerId,

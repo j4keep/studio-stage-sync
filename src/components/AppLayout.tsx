@@ -58,6 +58,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   const desktopShell = isDesktopShellPath(location.pathname);
   const mobileFeed = isMobileFeedPath(location.pathname);
   const isMarketplace = location.pathname === "/marketplace" || location.pathname.startsWith("/marketplace/");
+  // Marketplace uses its own simple header (back → Explore); keep YAJ BottomNav for integration.
   const showMobileTopBar =
     !["/auth", "/", "/feed"].includes(location.pathname) &&
     !isPodcastWorkspace &&
@@ -160,7 +161,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
             <DesktopHomeIconRail />
           </div>
 
-          {!isMarketplace && <BottomNav />}
+          <BottomNav />
         </div>
 
         <GlobalRadioPlayer />
@@ -207,7 +208,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
       <GlobalRadioPlayer />
       <GlobalPlaylistPlayer />
       <PlaylistPlayerSheet />
-      {!isMarketplace && <BottomNav />}
+      <BottomNav />
       <ProGateModal open={showProModal} onClose={closeProModal} featureName={gatedFeature} onSubscribe={activatePro} />
       {location.pathname !== "/auth" && <IncognitoFeedWindow />}
     </div>

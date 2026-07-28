@@ -5,7 +5,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getCategory } from "@/lib/marketplace";
 import { listMarketplaceListings, toggleSaveListing, type MarketplaceListing } from "@/lib/marketplace-api";
 import ListingCard, { ListingCardSkeleton } from "@/components/marketplace/ListingCard";
-import MarketplaceNav from "@/components/marketplace/MarketplaceNav";
 import { toast } from "sonner";
 
 export default function MarketplaceCategoryPage() {
@@ -50,16 +49,14 @@ export default function MarketplaceCategoryPage() {
           <ArrowLeft className="h-4 w-4" />
         </button>
         <div>
-          <h1 className="text-lg font-black">
-            {cat?.emoji} {cat?.label || slug}
-          </h1>
+          <h1 className="text-lg font-bold">{cat?.label || slug}</h1>
           <p className="text-[11px] text-muted-foreground">{listings.length} listings</p>
         </div>
       </header>
 
       <div className="px-3 pt-3">
         {loading ? (
-          <div className="space-y-2.5">
+          <div className="grid grid-cols-2 gap-3">
             {Array.from({ length: 6 }).map((_, i) => (
               <ListingCardSkeleton key={i} />
             ))}
@@ -67,14 +64,13 @@ export default function MarketplaceCategoryPage() {
         ) : listings.length === 0 ? (
           <p className="py-16 text-center text-sm text-muted-foreground">Nothing in this category yet.</p>
         ) : (
-          <div className="space-y-2.5">
+          <div className="grid grid-cols-2 gap-3">
             {listings.map((l) => (
               <ListingCard key={l.id} listing={l} onToggleSave={onToggleSave} />
             ))}
           </div>
         )}
       </div>
-      <MarketplaceNav />
     </div>
   );
 }
