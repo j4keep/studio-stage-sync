@@ -71,7 +71,10 @@ export default function MarketplaceListingPage() {
 
   const images = useMemo(() => {
     if (!listing) return [];
-    if (listing.media?.length) return listing.media.map((m) => m.url);
+    const fromMedia = (listing.media || [])
+      .map((m) => m.url)
+      .filter(Boolean);
+    if (fromMedia.length) return fromMedia;
     return listing.cover_url ? [listing.cover_url] : [];
   }, [listing]);
 
@@ -179,14 +182,24 @@ export default function MarketplaceListingPage() {
         <button type="button" onClick={() => images.length && setLightbox(true)} className="block w-full">
           <div className="aspect-[4/3] bg-muted">
             {images[imgIdx] ? (
-              <img src={images[imgIdx]} alt="" className="h-full w-full object-cover" />
+              <img
+                src={images[imgIdx]}
+                alt=""
+                className="h-full w-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = "none";
+                }}
+              />
             ) : (
-              <div className="flex h-full items-center justify-center text-4xl opacity-40">🛍</div>
+              <div className="flex h-full items-center justify-center text-4xl opacity-40">✦</div>
             )}
           </div>
         </button>
+        <div className="absolute bottom-3 left-3 z-10 rounded-full bg-primary px-3.5 py-1.5 text-base font-black text-primary-foreground shadow-md">
+          {formatPrice(listing.price, listing.listing_type)}
+        </div>
         {images.length > 1 && (
-          <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
+          <div className="absolute bottom-14 left-0 right-0 z-10 flex justify-center gap-1.5">
             {images.map((_, i) => (
               <button
                 key={i}
@@ -198,7 +211,7 @@ export default function MarketplaceListingPage() {
           </div>
         )}
         {images.length > 0 && (
-          <span className="absolute bottom-3 right-3 rounded-md bg-black/55 px-2 py-0.5 text-[10px] font-bold text-white">
+          <span className="absolute bottom-3 right-3 z-10 rounded-md bg-black/55 px-2 py-0.5 text-[10px] font-bold text-white">
             {imgIdx + 1} / {images.length}
           </span>
         )}

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bookmark } from "lucide-react";
 import {
@@ -6,7 +7,7 @@ import {
   getCategory,
   timeAgo,
 } from "@/lib/marketplace";
-import type { MarketplaceListing } from "@/lib/marketplace-api";
+import { listingCoverUrl, type MarketplaceListing } from "@/lib/marketplace-api";
 
 type Props = {
   listing: MarketplaceListing;
@@ -15,48 +16,64 @@ type Props = {
   featured?: boolean;
 };
 
+function CoverImage({ src, className }: { src: string | null; className?: string }) {
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) {
+    return (
+      <div className={`flex items-center justify-center bg-gradient-to-br from-primary/30 via-fuchsia-500/20 to-muted text-3xl ${className || ""}`}>
+        ✦
+      </div>
+    );
+  }
+  return (
+    <img
+      src={src}
+      alt=""
+      className={className || "h-full w-full object-cover"}
+      loading="lazy"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 /** YAJ listing row — title-first editorial card (not OfferUp square grid). */
 export default function ListingCard({ listing, onToggleSave, featured }: Props) {
   const nav = useNavigate();
   const mileage = listing.vehicle?.mileage;
   const status = listing.status;
   const cat = getCategory(listing.category);
+  const cover = listingCoverUrl(listing);
+  const priceLabel = formatPrice(listing.price, listing.listing_type);
 
   if (featured) {
     return (
       <button
         type="button"
         onClick={() => nav(`/marketplace/listing/${listing.id}`)}
-        className="group relative w-full overflow-hidden rounded-[1.75rem] text-left transition active:scale-[0.99]"
+        className="group w-full overflow-hidden rounded-[1.75rem] border border-border/70 bg-card text-left shadow-sm transition active:scale-[0.99]"
       >
         <div className="relative aspect-[16/10] bg-muted">
-          {listing.cover_url ? (
-            <img src={listing.cover_url} alt="" className="h-full w-full object-cover" loading="lazy" />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/30 via-fuchsia-500/20 to-background text-4xl">
-              ✦
-            </div>
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
-          <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/75">
-              {cat?.label || "Listing"} · {timeAgo(listing.created_at)}
-            </p>
-            <p className="mt-1 text-xl font-black leading-tight">{listing.title}</p>
-            <div className="mt-2 flex items-center justify-between gap-2">
-              <span className="rounded-full bg-white/95 px-3 py-1 text-sm font-black text-foreground">
-                {formatPrice(listing.price, listing.listing_type)}
-              </span>
-              <span className="text-[11px] text-white/80">
-                {approxLocation(listing.city, listing.state, listing.location_approx)}
-              </span>
-            </div>
+          <CoverImage src={cover} className="h-full w-full object-cover" />
+          <div className="absolute left-3 top-3 rounded-full bg-primary px-3 py-1 text-sm font-black text-primary-foreground shadow-md">
+            {priceLabel}
           </div>
           {(status === "sold" || status === "pending") && (
-            <span className="absolute left-3 top-3 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
+            <span className="absolute right-3 top-3 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
               {status}
             </span>
           )}
+        </div>
+        <div className="space-y-1 p-3.5">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+            {cat?.label || "Listing"} · {timeAgo(listing.created_at)}
+          </p>
+          <p className="text-lg font-black leading-tight text-foreground">{listing.title}</p>
+          <div className="flex items-center justify-between gap-2 pt-0.5">
+            <p className="text-base font-black text-primary">{priceLabel}</p>
+            <p className="truncate text-[11px] text-muted-foreground">
+              {approxLocation(listing.city, listing.state, listing.location_approx)}
+            </p>
+          </div>
         </div>
       </button>
     );
@@ -69,11 +86,7 @@ export default function ListingCard({ listing, onToggleSave, featured }: Props) 
       className="group flex w-full gap-3 rounded-2xl border border-border/80 bg-card/80 p-2.5 text-left shadow-[0_8px_24px_-16px_rgba(0,0,0,0.35)] backdrop-blur transition active:scale-[0.99]"
     >
       <div className="relative h-[5.75rem] w-[5.75rem] shrink-0 overflow-hidden rounded-xl bg-muted">
-        {listing.cover_url ? (
-          <img src={listing.cover_url} alt="" className="h-full w-full object-cover" loading="lazy" />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/25 to-muted text-lg">✦</div>
-        )}
+        <CoverImage src={cover} className="h-full w-full object-cover" />
         {(status === "sold" || status === "pending") && (
           <span className="absolute inset-x-1 bottom-1 rounded-md bg-black/65 py-0.5 text-center text-[8px] font-bold uppercase text-white">
             {status}
@@ -105,9 +118,7 @@ export default function ListingCard({ listing, onToggleSave, featured }: Props) 
             </span>
           )}
         </div>
-        <p className="mt-1 text-[15px] font-black tracking-tight text-primary">
-          {formatPrice(listing.price, listing.listing_type)}
-        </p>
+        <p className="mt-1 text-[15px] font-black tracking-tight text-primary">{priceLabel}</p>
         <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
           {approxLocation(listing.city, listing.state, listing.location_approx)}
           {" · "}

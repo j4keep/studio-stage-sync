@@ -112,13 +112,18 @@ export default function MarketplaceCreatePage() {
     const remaining = MAX_PHOTOS - media.length;
     const list = Array.from(files).slice(0, remaining);
     for (const file of list) {
+      const localUrl = URL.createObjectURL(file);
+      setMedia((m) => [...m, { url: localUrl, local: true }]);
       try {
         setUploadPct(0);
         const compressed = await compressImage(file);
         const url = await uploadListingImage(user.id, compressed, (p) => setUploadPct(Math.round(p)));
-        setMedia((m) => [...m, { url }]);
+        setMedia((m) => m.map((item) => (item.url === localUrl ? { url } : item)));
+        URL.revokeObjectURL(localUrl);
       } catch (e: any) {
-        toast.error(e?.message || "Upload failed");
+        setMedia((m) => m.filter((item) => item.url !== localUrl));
+        URL.revokeObjectURL(localUrl);
+        toast.error(e?.message || "Upload failed — try another photo");
       } finally {
         setUploadPct(null);
       }
@@ -172,6 +177,7 @@ export default function MarketplaceCreatePage() {
   const validate = () => {
     if (!title.trim()) return "Add a title";
     if (!media.length) return "Add at least one photo";
+    if (media.some((m) => m.local)) return "Wait for photos to finish uploading";
     if (listingType !== "free" && (!price || Number(price) < 0)) return "Enter a price";
     if (isVehicle) {
       if (!veh.year || !veh.make || !veh.model) return "Year, make, and model are required for vehicles";

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, MapPin, MessageCircle, Search, Sparkles } from "lucide-react";
+import { ArrowLeft, Bell, MapPin, MessageCircle, Search, Sparkles } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { MARKETPLACE_CATEGORIES } from "@/lib/marketplace";
 import {
@@ -90,6 +90,14 @@ export default function MarketplaceHomePage() {
 
       <header className="relative z-20 px-4 pb-2 pt-4">
         <div className="mb-4 flex items-start gap-2">
+          <button
+            type="button"
+            onClick={() => nav("/explore")}
+            className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-border/70 bg-card/80"
+            aria-label="Back to Explore"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">YAJ · Local commerce</p>
             <h1 className="mt-0.5 font-black tracking-tight">

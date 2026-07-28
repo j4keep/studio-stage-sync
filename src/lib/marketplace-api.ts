@@ -1,11 +1,44 @@
 import { supabase } from "@/integrations/supabase/client";
-import { uploadToR2 } from "@/lib/r2-storage";
+import { getR2DownloadUrl, uploadToR2 } from "@/lib/r2-storage";
 import {
   type ListingStatus,
   type ListingType,
   sanitizeDescription,
   VEHICLE_LISTING_TYPES,
 } from "@/lib/marketplace";
+
+/** Make stored marketplace image URLs actually load in the browser. */
+export function resolveMarketplaceMediaUrl(url: string | null | undefined): string | null {
+  if (!url?.trim()) return null;
+  const u = url.trim();
+  if (u.startsWith("blob:") || u.startsWith("data:")) return null;
+  if (u.includes("/storage/v1/object/public/") || u.includes("/functions/v1/r2-download")) return u;
+  if (!u.startsWith("http")) {
+    return getR2DownloadUrl(u.startsWith("marketplace/") ? u : `marketplace/${u}`);
+  }
+  try {
+    const parsed = new URL(u);
+    const path = parsed.pathname.replace(/^\//, "");
+    if (
+      path.startsWith("marketplace/") ||
+      parsed.hostname.includes("r2.") ||
+      parsed.hostname.includes("cloudflarestorage")
+    ) {
+      return getR2DownloadUrl(path);
+    }
+  } catch {
+    /* keep original */
+  }
+  return u;
+}
+
+export function listingCoverUrl(listing: { cover_url?: string | null; media?: { url: string }[] | null }) {
+  return (
+    resolveMarketplaceMediaUrl(listing.cover_url) ||
+    resolveMarketplaceMediaUrl(listing.media?.[0]?.url) ||
+    null
+  );
+}
 
 export type MarketplaceProfile = {
   user_id: string;
@@ -132,6 +165,14 @@ export type ListingInput = {
 };
 
 function mapListing(row: any, extras?: Partial<MarketplaceListing>): MarketplaceListing {
+  const media = (extras?.media || []).map((m) => ({
+    ...m,
+    url: resolveMarketplaceMediaUrl(m.url) || m.url,
+  }));
+  const cover =
+    resolveMarketplaceMediaUrl(row.cover_url) ||
+    resolveMarketplaceMediaUrl(media[0]?.url) ||
+    null;
   return {
     id: row.id,
     seller_id: row.seller_id,
@@ -155,18 +196,17 @@ function mapListing(row: any, extras?: Partial<MarketplaceListing>): Marketplace
     state: row.state,
     zip: row.zip,
     location_approx: row.location_approx,
-    // Strip exact coords from public payloads — keep only for owner edits
     lat: extras?.lat !== undefined ? extras.lat : undefined,
     lng: extras?.lng !== undefined ? extras.lng : undefined,
     status: row.status,
-    cover_url: row.cover_url,
+    cover_url: cover,
     tags: row.tags || [],
     attributes: row.attributes || {},
     promoted: Boolean(row.promoted),
     views_count: row.views_count || 0,
     created_at: row.created_at,
     updated_at: row.updated_at,
-    media: extras?.media,
+    media,
     vehicle: extras?.vehicle,
     seller: extras?.seller,
     saved: extras?.saved,
@@ -624,16 +664,36 @@ export async function updateOfferStatus(
 }
 
 export async function uploadListingImage(userId: string, file: File, onProgress?: (n: number) => void) {
-  const ext = file.name.split(".").pop() || "jpg";
-  const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+  const safeName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext === "heic" || ext === "heif" ? "jpg" : ext}`;
+  const mime = file.type || "image/jpeg";
+
+  // Prefer public Supabase storage (same path Local Help uses) so buyers can load images.
+  try {
+    onProgress?.(10);
+    const path = `marketplace/${userId}/${safeName}`;
+    const { error } = await supabase.storage.from("media").upload(path, file, {
+      upsert: true,
+      contentType: mime,
+    });
+    if (!error) {
+      onProgress?.(100);
+      const { data: pub } = supabase.storage.from("media").getPublicUrl(path);
+      if (pub?.publicUrl) return pub.publicUrl;
+    }
+  } catch {
+    /* fall through to R2 */
+  }
+
   const res = await uploadToR2(file, {
     folder: "marketplace",
-    fileName,
-    mimeType: file.type || "image/jpeg",
+    fileName: `${userId}/${safeName}`,
+    mimeType: mime,
     onProgress,
   });
-  if (!res.success || !res.data?.url) throw new Error(res.error || "Upload failed");
-  return res.data.url;
+  if (!res.success || !res.data?.key) throw new Error(res.error || "Upload failed");
+  // Direct R2 URLs are often private — always serve via r2-download proxy.
+  return getR2DownloadUrl(res.data.key);
 }
 
 /** Compress image client-side before upload (keeps quality reasonable). */

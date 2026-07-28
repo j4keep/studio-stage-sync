@@ -1,5 +1,5 @@
-import { NavLink, useLocation } from "react-router-dom";
-import { Compass, Plus, Inbox, Store, UserRound } from "lucide-react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { Compass, Plus, Inbox, Store, UserRound, ArrowLeft } from "lucide-react";
 
 const tabs = [
   { to: "/marketplace", label: "Browse", icon: Compass, end: true },
@@ -9,9 +9,10 @@ const tabs = [
   { to: "/marketplace/account", label: "You", icon: UserRound, end: false },
 ] as const;
 
-/** Marketplace tab bar — YAJ pill rail, not OfferUp clone. */
+/** Marketplace tab bar — includes exit back to main YAJ app. */
 export default function MarketplaceNav() {
   const location = useLocation();
+  const nav = useNavigate();
   const hide =
     location.pathname.includes("/marketplace/create") ||
     location.pathname.includes("/marketplace/edit/");
@@ -21,6 +22,15 @@ export default function MarketplaceNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1 lg:hidden">
       <div className="mx-auto flex max-w-lg items-center gap-1 rounded-[1.35rem] border border-border/70 bg-background/90 p-1.5 shadow-[0_-8px_40px_-12px_rgba(0,0,0,0.35)] backdrop-blur-xl">
+        <button
+          type="button"
+          onClick={() => nav("/explore")}
+          className="flex min-w-[3.25rem] flex-col items-center justify-center gap-0.5 rounded-xl py-1.5 text-muted-foreground"
+          aria-label="Back to YAJ"
+        >
+          <ArrowLeft className="h-5 w-5" strokeWidth={2.1} />
+          <span className="text-[9px] font-bold uppercase tracking-wide">App</span>
+        </button>
         {tabs.map((tab) => {
           const Icon = tab.icon;
           if ("sell" in tab && tab.sell) {
