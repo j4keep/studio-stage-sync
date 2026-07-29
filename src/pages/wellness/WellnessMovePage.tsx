@@ -86,11 +86,14 @@ export default function WellnessMovePage() {
           minutes={active.minutes}
           steps={active.steps}
           onClose={() => setActiveId(null)}
-          onComplete={() => {
+          onProgress={(mins) => {
             patchToday((d) => {
-              d.moveMinutes += active.minutes;
+              d.moveMinutes += mins;
             });
-            toast.success("Movement logged for today");
+            toast.success(`${mins} min movement logged`);
+          }}
+          onComplete={() => {
+            toast.success("Workout complete — nice work");
           }}
         />
       )}

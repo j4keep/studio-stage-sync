@@ -124,11 +124,14 @@ export default function WellnessRelaxPage() {
           holdOut={breath.holdOut}
           minutes={breath.minutes}
           demo={breath.demo}
-          onComplete={() => {
+          onProgress={(mins) => {
             patchToday((d) => {
-              d.mindfulMinutes += breath.minutes;
+              d.mindfulMinutes += mins;
             });
-            toast.success("Mindful minutes logged");
+            toast.success(`${mins} mindful min logged`);
+          }}
+          onComplete={() => {
+            toast.success("Session complete");
           }}
         />
       )}

@@ -95,7 +95,7 @@ export const BREATHING_SESSIONS: BreathingPattern[] = [
     exhale: 4,
     holdOut: 4,
     blurb: "Even rhythm to settle the mind",
-    demo: mixkitDemo(4800),
+    demo: mixkitDemo(32081), // woman practicing breathing
   },
   {
     id: "wind-down",
@@ -105,7 +105,7 @@ export const BREATHING_SESSIONS: BreathingPattern[] = [
     hold: 2,
     exhale: 6,
     blurb: "Longer exhales for sleep",
-    demo: mixkitDemo(4803),
+    demo: mixkitDemo(32625), // yoga breathing
   },
   {
     id: "reset-2",
@@ -115,7 +115,7 @@ export const BREATHING_SESSIONS: BreathingPattern[] = [
     hold: 1,
     exhale: 5,
     blurb: "Quick stress release anytime",
-    demo: mixkitDemo(43736),
+    demo: mixkitDemo(4397), // close-up calm breathing
   },
 ];
 
@@ -128,6 +128,7 @@ export type MoveRoutine = {
   steps: MoveStep[];
 };
 
+/** Each step demo is matched to that specific move (1 clip per minute on 5-min routines). */
 export const MOVE_ROUTINES: MoveRoutine[] = [
   {
     id: "stretch-5",
@@ -136,11 +137,11 @@ export const MOVE_ROUTINES: MoveRoutine[] = [
     level: "gentle",
     kind: "stretch",
     steps: [
-      { instruction: "Roll shoulders slowly 8 times", demo: mixkitDemo(583) },
-      { instruction: "Neck tilts left and right", demo: mixkitDemo(48554) },
-      { instruction: "Reach arms overhead and breathe", demo: mixkitDemo(780) },
-      { instruction: "Forward fold as far as feels easy", demo: mixkitDemo(48544) },
-      { instruction: "Hip circles, then shake out legs", demo: mixkitDemo(4420) },
+      { instruction: "Roll shoulders slowly 8 times", demo: mixkitDemo(40976) }, // warm-up / shoulder mobility
+      { instruction: "Neck tilts left and right", demo: mixkitDemo(44513) }, // neck stretch
+      { instruction: "Reach arms overhead and breathe", demo: mixkitDemo(1007) }, // arms overhead
+      { instruction: "Forward fold as far as feels easy", demo: mixkitDemo(52138) }, // bending / fold
+      { instruction: "Hip circles, then shake out legs", demo: mixkitDemo(52120) }, // hip stretch
     ],
   },
   {
@@ -150,11 +151,11 @@ export const MOVE_ROUTINES: MoveRoutine[] = [
     level: "beginner",
     kind: "walk",
     steps: [
-      { instruction: "Stand tall, soft knees", demo: mixkitDemo(780) },
-      { instruction: "Walk at a conversational pace", demo: mixkitDemo(40766) },
-      { instruction: "Swing arms naturally", demo: mixkitDemo(40766) },
-      { instruction: "Optional: 1-minute brisk finish", demo: mixkitDemo(40766) },
-      { instruction: "Cool down with slow steps", demo: mixkitDemo(583) },
+      { instruction: "Stand tall, soft knees", demo: mixkitDemo(47418) }, // pre-walk stretch
+      { instruction: "Walk at a conversational pace", demo: mixkitDemo(35992) }, // walking in park
+      { instruction: "Swing arms naturally", demo: mixkitDemo(32616) }, // people walking
+      { instruction: "Optional: 1-minute brisk finish", demo: mixkitDemo(40754) }, // jogging / brisk
+      { instruction: "Cool down with slow steps", demo: mixkitDemo(24677) }, // cool down
     ],
   },
   {
@@ -164,11 +165,11 @@ export const MOVE_ROUTINES: MoveRoutine[] = [
     level: "gentle",
     kind: "chair",
     steps: [
-      { instruction: "Seated marches, 30 seconds", demo: mixkitDemo(42900) },
-      { instruction: "Seated torso twists", demo: mixkitDemo(45761) },
-      { instruction: "Ankle circles both sides", demo: mixkitDemo(48554) },
-      { instruction: "Seated side reaches", demo: mixkitDemo(48544) },
-      { instruction: "Stand and sit 6 easy times if able", demo: mixkitDemo(752) },
+      { instruction: "Seated marches, 30 seconds", demo: mixkitDemo(48845) }, // chair yoga
+      { instruction: "Seated torso twists", demo: mixkitDemo(48845) }, // chair yoga twists
+      { instruction: "Ankle circles both sides", demo: mixkitDemo(48566) }, // leg / ankle focus
+      { instruction: "Seated side reaches", demo: mixkitDemo(1007) }, // overhead / side reach
+      { instruction: "Stand and sit 6 easy times if able", demo: mixkitDemo(752) }, // squat / sit-stand
     ],
   },
   {
@@ -178,15 +179,14 @@ export const MOVE_ROUTINES: MoveRoutine[] = [
     level: "beginner",
     kind: "bodyweight",
     steps: [
-      { instruction: "March in place 1 minute", demo: mixkitDemo(45761) },
-      { instruction: "Wall push-ups or knee push-ups × 8", demo: mixkitDemo(40248) },
-      { instruction: "Bodyweight squats × 8 (shallow OK)", demo: mixkitDemo(752) },
-      { instruction: "Glute bridge × 8", demo: mixkitDemo(5355) },
-      { instruction: "Rest 30s, repeat the circuit once", demo: mixkitDemo(42900) },
+      { instruction: "March in place 1 minute", demo: mixkitDemo(4518) }, // high knees / march
+      { instruction: "Wall push-ups or knee push-ups × 8", demo: mixkitDemo(5351) }, // push-ups
+      { instruction: "Bodyweight squats × 8 (shallow OK)", demo: mixkitDemo(752) }, // squats
+      { instruction: "Glute bridge × 8", demo: mixkitDemo(13861) }, // floor exercises
+      { instruction: "Rest 30s, repeat the circuit once", demo: mixkitDemo(40132) }, // stretch / recover
     ],
   },
 ];
-
 export function moveStepText(step: MoveStep | string): string {
   return typeof step === "string" ? step : step.instruction;
 }
@@ -247,23 +247,32 @@ export function loadWellnessState(): WellnessState {
   }
 }
 
+export const WELLNESS_UPDATED_EVENT = "yaj-wellness-updated";
+
 export function saveWellnessState(state: WellnessState) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent(WELLNESS_UPDATED_EVENT, { detail: state }));
+    }
   } catch {
     /* ignore quota */
   }
 }
 
-export function getTodayProgress(state: WellnessState): DayProgress {
+export function getTodayProgress(state?: WellnessState): DayProgress {
+  const s = state || loadWellnessState();
   const key = todayKey();
-  return state.days[key] || emptyDay(key);
+  return s.days[key] || emptyDay(key);
 }
 
 export function patchToday(mutator: (day: DayProgress, state: WellnessState) => void): WellnessState {
   const state = loadWellnessState();
   const key = todayKey();
-  const day = { ...(state.days[key] || emptyDay(key)) };
+  const day = {
+    ...(state.days[key] || emptyDay(key)),
+    habitsDone: [...(state.days[key]?.habitsDone || [])],
+  };
   mutator(day, state);
   state.days[key] = day;
   saveWellnessState(state);

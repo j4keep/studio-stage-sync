@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Droplets, Footprints, Moon, Sparkles } from "lucide-react";
 import {
   getTodayProgress,
@@ -9,6 +9,7 @@ import {
   recommendForMood,
   timeOfDayRecs,
   WELLNESS_DISCLAIMER,
+  WELLNESS_UPDATED_EVENT,
   type MoodId,
   type WellnessRec,
   type WellnessState,
@@ -48,12 +49,27 @@ const PILLARS = [
 /** Explore → Wellness home — practical & calming Phase 1. */
 export default function WellnessHomePage() {
   const nav = useNavigate();
+  const location = useLocation();
   const [state, setState] = useState<WellnessState>(() => loadWellnessState());
   const today = getTodayProgress(state);
   const [buddyNote, setBuddyNote] = useState<string | null>(null);
   const [recs, setRecs] = useState<WellnessRec[]>(() =>
     today.mood ? recommendForMood(today.mood) : timeOfDayRecs(),
   );
+
+  // Keep Today's Progress live when returning from Move / Relax / Sleep / Habits
+  useEffect(() => {
+    const refresh = () => setState(loadWellnessState());
+    refresh();
+    window.addEventListener(WELLNESS_UPDATED_EVENT, refresh);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener(WELLNESS_UPDATED_EVENT, refresh);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [location.pathname, location.key]);
 
   const progressBits = useMemo(
     () => [
@@ -82,7 +98,7 @@ export default function WellnessHomePage() {
         icon: Sparkles,
       },
     ],
-    [today],
+    [today.moveMinutes, today.water, today.sleepRoutine, today.mindfulMinutes],
   );
 
   const onMood = (mood: MoodId) => {

@@ -50,6 +50,10 @@ export default function WellnessSleepPage() {
       const state = loadWellnessState();
       state.lastSound = id;
       saveWellnessState(state);
+      // Count engaging a sleep sound toward today's sleep routine
+      patchToday((d) => {
+        d.sleepRoutine = true;
+      });
       if (timerArmed) {
         sleepAmbience.setTimerMinutes(timerMin, () => {
           setActive(null);
@@ -249,10 +253,15 @@ export default function WellnessSleepPage() {
           holdOut={breath.holdOut}
           minutes={breath.minutes}
           demo={breath.demo}
+          onProgress={(mins) => {
+            patchToday((d) => {
+              d.sleepRoutine = true;
+              d.mindfulMinutes += mins;
+            });
+          }}
           onComplete={() => {
             patchToday((d) => {
               d.sleepRoutine = true;
-              d.mindfulMinutes += breath.minutes;
             });
           }}
         />

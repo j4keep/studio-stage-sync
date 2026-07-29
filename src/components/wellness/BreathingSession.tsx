@@ -19,6 +19,8 @@ type Props = {
   holdOut?: number;
   minutes: number;
   onComplete?: () => void;
+  /** Called when user closes early after ≥30s — minutes to log. */
+  onProgress?: (minutesDone: number) => void;
   /** Optional posture / calm demo video */
   demo?: DemoClip | null;
   /** YAJ Buddy speaks phase cues. Default true when browser supports it. */
@@ -38,16 +40,29 @@ export default function BreathingSession({
   holdOut = 0,
   minutes,
   onComplete,
+  onProgress,
   demo = null,
   voiceGuide = true,
 }: Props) {
+  const totalSec = minutes * 60;
   const [phase, setPhase] = useState<Phase>("inhale");
   const [phaseLeft, setPhaseLeft] = useState(inhale);
-  const [secondsLeft, setSecondsLeft] = useState(minutes * 60);
+  const [secondsLeft, setSecondsLeft] = useState(totalSec);
   const [running, setRunning] = useState(true);
   const [voiceOn, setVoiceOn] = useState(() => voiceGuide && canWellnessSpeak());
   const completedRef = useRef(false);
+  const loggedRef = useRef(false);
+  const secondsLeftRef = useRef(totalSec);
   const phaseRef = useRef<Phase>("inhale");
+
+  const recordProgress = (full: boolean) => {
+    if (loggedRef.current) return;
+    const done = Math.max(0, totalSec - secondsLeftRef.current);
+    if (!full && done < 30) return;
+    loggedRef.current = true;
+    const mins = full ? minutes : Math.max(1, Math.round(done / 60));
+    onProgress?.(mins);
+  };
 
   const phases: Phase[] = (["inhale", "hold", "exhale", "holdOut"] as Phase[]).filter((p) => {
     if (p === "hold") return hold > 0;
@@ -65,30 +80,36 @@ export default function BreathingSession({
     setPhase("inhale");
     phaseRef.current = "inhale";
     setPhaseLeft(inhale);
-    setSecondsLeft(minutes * 60);
+    setSecondsLeft(totalSec);
+    secondsLeftRef.current = totalSec;
     setRunning(true);
+    completedRef.current = false;
+    loggedRef.current = false;
     if (voiceGuide && canWellnessSpeak()) {
       void speakWellness(`Let's begin. ${title}. Breathe in.`, { calm: true, rate: 0.9 });
     }
     return () => {
       stopWellnessSpeak();
     };
-  }, [open, inhale, minutes, title, voiceGuide]);
+  }, [open, inhale, minutes, title, voiceGuide, totalSec]);
 
   useEffect(() => {
     if (!open || !running) return;
     const id = window.setInterval(() => {
       setSecondsLeft((s) => {
+        const next = s <= 1 ? 0 : s - 1;
+        secondsLeftRef.current = next;
         if (s <= 1) {
           if (!completedRef.current) {
             completedRef.current = true;
+            recordProgress(true);
             if (voiceOn) void speakWellness("Well done. Session complete.", { calm: true });
             onComplete?.();
           }
           setRunning(false);
           return 0;
         }
-        return s - 1;
+        return next;
       });
       setPhaseLeft((t) => {
         if (t > 1) return t - 1;
@@ -125,6 +146,7 @@ export default function BreathingSession({
           type="button"
           onClick={() => {
             stopWellnessSpeak();
+            recordProgress(false);
             onClose();
           }}
           className="rounded-full bg-white/10 px-3 py-1.5 text-sm font-semibold"

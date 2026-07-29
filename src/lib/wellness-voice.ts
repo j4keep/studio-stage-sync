@@ -1,7 +1,6 @@
 /**
  * Soft spoken guidance for Wellness sessions (Move + breathing / wind-down).
- * Uses the browser Web Speech API — picks the most natural available voice
- * (avoids robotic “map / GPS” voices). Companion only, not medical advice.
+ * Locks a consistent female companion voice for the whole session.
  */
 
 export type WellnessSpeakOptions = {
@@ -16,78 +15,122 @@ export type WellnessSpeakOptions = {
 export type BreathPhase = "inhale" | "hold" | "exhale" | "holdOut";
 
 let preferredVoice: SpeechSynthesisVoice | null = null;
+let voiceLocked = false;
 let keepAliveTimer: ReturnType<typeof setInterval> | null = null;
+let voicesWaiters: Array<() => void> = [];
 
 /** Voices that often sound like navigation / map assistants — deprioritize. */
-const AVOID_VOICE = /google us english|english united states$|compact|network|android|eloquence|novelty|whisper|bad news|good news|zarvox|trinoids|boing|organ|cellos|bubbles|bahh|albert|bells|junior|kathy|princess|ralph|pipe organ/i;
+const AVOID_VOICE =
+  /google us english|english united states$|compact|network|android|eloquence|novelty|whisper|bad news|good news|zarvox|trinoids|boing|organ|cellos|bubbles|bahh|albert|bells|junior|kathy|princess|ralph|pipe organ|david|mark|daniel|thomas|fred|jorge|juan|james|john|alex|bruce|aaron|guy|ryan|tony|nathan|eric|christopher|steffan|roger/i;
 
-/** Prefer natural / neural / human-sounding English voices. */
-const PREFER_VOICE = [
-  /neural/i,
-  /natural/i,
-  /premium/i,
-  /enhanced/i,
-  /microsoft (aria|jenny|guy|ryan|sonia|sara)/i,
+const FEMALE_HINT =
+  /female|woman|girl|samantha|karen|moira|fiona|tessa|veena|raveena|serena|victoria|karen|susan|zira|aria|jenny|sonia|sara|allison|ava|emma|joanna|ivy|nicole|amy|emma|olivia|lisa|helen|hazel|martha|catherine|nicky|melina|kyoko|ting-ting|sin-ji/i;
+
+const PREFER_FEMALE = [
+  /microsoft (aria|jenny|sonia|sara)/i,
   /samantha/i,
   /karen/i,
   /moira/i,
   /fiona/i,
   /tessa/i,
-  /veena/i,
-  /raveena/i,
   /google uk english female/i,
-  /google australian english/i,
-  /google \(uk|en-gb\)/i,
-  /en-gb.*female|female.*en-gb/i,
-  /en-au/i,
-  /en-ie/i,
-  /en-za/i,
+  /neural.*female|female.*neural/i,
+  /natural.*female|female.*natural/i,
+  FEMALE_HINT,
 ];
+
+function looksFemale(v: SpeechSynthesisVoice): boolean {
+  return FEMALE_HINT.test(v.name) || /female/i.test(v.name);
+}
+
+function looksMale(v: SpeechSynthesisVoice): boolean {
+  if (looksFemale(v)) return false;
+  return /male|man|boy|david|mark|daniel|thomas|fred|james|john|alex|bruce|guy|ryan|tony|nathan|eric|roger|aaron/i.test(
+    v.name,
+  );
+}
 
 function scoreVoice(v: SpeechSynthesisVoice): number {
   let score = 0;
   const name = v.name || "";
   const lang = (v.lang || "").toLowerCase();
 
-  if (!/^en([-_]|$)/i.test(lang) && !/^en/i.test(name)) score -= 50;
-  if (AVOID_VOICE.test(name)) score -= 100;
+  if (!/^en([-_]|$)/i.test(lang) && !/^en/i.test(name)) score -= 80;
+  if (AVOID_VOICE.test(name)) score -= 120;
+  if (looksMale(v)) score -= 200; // hard prefer woman
+  if (looksFemale(v)) score += 120;
 
-  for (let i = 0; i < PREFER_VOICE.length; i++) {
-    if (PREFER_VOICE[i].test(name) || PREFER_VOICE[i].test(lang)) {
-      score += 80 - i;
+  for (let i = 0; i < PREFER_FEMALE.length; i++) {
+    if (PREFER_FEMALE[i].test(name)) {
+      score += 90 - i;
       break;
     }
   }
 
-  // Local voices are usually more natural / lower latency than remote "map" voices
-  if (v.localService) score += 25;
-  if (/en-gb|en-au|en-ie|en-za/i.test(lang)) score += 15;
-  if (/en-us/i.test(lang) && !AVOID_VOICE.test(name)) score += 5;
-  if (/female|woman|girl/i.test(name)) score += 8;
-  if (/male|man|boy|david|mark|daniel|thomas/i.test(name) && !/female/i.test(name)) score += 4;
+  if (v.localService) score += 20;
+  if (/en-gb|en-au|en-ie|en-za/i.test(lang)) score += 18;
+  if (/en-us/i.test(lang) && looksFemale(v)) score += 10;
+  if (/neural|natural|premium|enhanced/i.test(name)) score += 35;
 
   return score;
 }
 
-function pickNaturalVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
+function pickFemaleVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
   if (!voices.length) return null;
-  const ranked = [...voices].sort((a, b) => scoreVoice(b) - scoreVoice(a));
-  return ranked[0] || null;
+  const english = voices.filter((v) => /^en/i.test(v.lang) || /^en/i.test(v.name));
+  const pool = english.length ? english : voices;
+  const females = pool.filter(looksFemale);
+  const ranked = (females.length ? females : pool.filter((v) => !looksMale(v))).sort(
+    (a, b) => scoreVoice(b) - scoreVoice(a),
+  );
+  return ranked[0] || pool.sort((a, b) => scoreVoice(b) - scoreVoice(a))[0] || null;
 }
 
 function ensureVoices(): SpeechSynthesisVoice | null {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return null;
+  // Once locked to a female voice, never swap mid-session (fixes man→woman glitch)
+  if (voiceLocked && preferredVoice) return preferredVoice;
+
   const voices = window.speechSynthesis.getVoices();
-  if (voices.length) {
-    preferredVoice = pickNaturalVoice(voices);
-    return preferredVoice;
+  if (!voices.length) return preferredVoice;
+
+  const next = pickFemaleVoice(voices);
+  if (next) {
+    preferredVoice = next;
+    if (looksFemale(next) || !voices.some(looksFemale)) {
+      voiceLocked = true;
+    }
   }
   return preferredVoice;
 }
 
+function notifyVoicesReady() {
+  ensureVoices();
+  const waiters = voicesWaiters;
+  voicesWaiters = [];
+  waiters.forEach((w) => w());
+}
+
+/** Wait briefly for browser voice list (Chrome loads async). */
+export function waitForWellnessVoices(timeoutMs = 1200): Promise<void> {
+  if (!canWellnessSpeak()) return Promise.resolve();
+  if (window.speechSynthesis.getVoices().length) {
+    ensureVoices();
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => {
+    const done = () => {
+      clearTimeout(timer);
+      resolve();
+    };
+    voicesWaiters.push(done);
+    const timer = window.setTimeout(done, timeoutMs);
+    warmupWellnessVoice();
+  });
+}
+
 function startSpeechKeepAlive() {
   if (keepAliveTimer || typeof window === "undefined" || !("speechSynthesis" in window)) return;
-  // Chrome bug: speechSynthesis silently stops after ~15s without pause/resume
   keepAliveTimer = setInterval(() => {
     try {
       if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
@@ -107,7 +150,6 @@ function stopSpeechKeepAlive() {
   }
 }
 
-/** Make workout copy sound more spoken / less robotic. */
 export function humanizeCoachText(text: string): string {
   return (text || "")
     .replace(/×\s*/g, "times ")
@@ -116,18 +158,20 @@ export function humanizeCoachText(text: string): string {
     .replace(/(\d+)\s*sec\b/gi, "$1 seconds")
     .replace(/(\d+)\s*min\b/gi, "$1 minutes")
     .replace(/\bOK\b/g, "okay")
-    .replace(/\./g, ".")
     .replace(/\s+/g, " ")
     .trim();
 }
 
-/** Call once so voices are cached (Chrome loads them async). */
 export function warmupWellnessVoice() {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
   ensureVoices();
   window.speechSynthesis.onvoiceschanged = () => {
-    preferredVoice = null;
-    ensureVoices();
+    // Only fill preferred if not locked yet — never flip gender mid-session
+    if (!voiceLocked) {
+      preferredVoice = null;
+      ensureVoices();
+    }
+    notifyVoicesReady();
   };
 }
 
@@ -141,19 +185,16 @@ export function stopWellnessSpeak() {
   stopSpeechKeepAlive();
 }
 
-/**
- * Speak calmly. By default queues (does not cancel) so Move steps aren’t skipped.
- * Pass interrupt:true only when you intentionally replace the current line.
- */
-export function speakWellness(text: string, opts: WellnessSpeakOptions = {}): Promise<void> {
+export async function speakWellness(text: string, opts: WellnessSpeakOptions = {}): Promise<void> {
   const cleaned = humanizeCoachText(text);
-  if (!cleaned || !canWellnessSpeak()) return Promise.resolve();
+  if (!cleaned || !canWellnessSpeak()) return;
 
-  // Natural companion pacing — slower than default map/GPS voice
+  await waitForWellnessVoices();
+
   const {
     calm = true,
     rate = calm ? 0.88 : 1,
-    pitch = calm ? 0.98 : 1,
+    pitch = calm ? 1.0 : 1,
     volume = 1,
     interrupt = false,
   } = opts;
@@ -165,7 +206,6 @@ export function speakWellness(text: string, opts: WellnessSpeakOptions = {}): Pr
       const voice = ensureVoices();
       if (voice) {
         utter.voice = voice;
-        // Keep language aligned with the chosen voice
         if (voice.lang) utter.lang = voice.lang;
       } else {
         utter.lang = "en-GB";
@@ -182,7 +222,6 @@ export function speakWellness(text: string, opts: WellnessSpeakOptions = {}): Pr
       utter.onerror = () => resolve();
       startSpeechKeepAlive();
       window.speechSynthesis.speak(utter);
-      // Some browsers need a kick after queueing
       try {
         window.speechSynthesis.pause();
         window.speechSynthesis.resume();
@@ -195,7 +234,6 @@ export function speakWellness(text: string, opts: WellnessSpeakOptions = {}): Pr
   });
 }
 
-/** Speak one Move step clearly — waits in queue so no steps are dropped. */
 export function speakMoveStep(stepIndex: number, stepText: string, totalSteps: number) {
   const n = stepIndex + 1;
   const body = humanizeCoachText(stepText);
@@ -207,11 +245,9 @@ export function speakMoveStep(stepIndex: number, stepText: string, totalSteps: n
   } else {
     line = `Step ${n}. ${body}.`;
   }
-  // Queue — do not interrupt, so every rule/step is spoken
   return speakWellness(line, { calm: true, rate: 0.86, interrupt: false });
 }
 
-/** Cue lines for breathing phases during wind-down / relax. */
 export function speakBreathPhase(phase: BreathPhase) {
   const lines: Record<BreathPhase, string> = {
     inhale: "Breathe in.",
@@ -219,10 +255,9 @@ export function speakBreathPhase(phase: BreathPhase) {
     exhale: "Breathe out.",
     holdOut: "Hold.",
   };
-  return speakWellness(lines[phase], { calm: true, rate: 0.85, pitch: 0.98, interrupt: true });
+  return speakWellness(lines[phase], { calm: true, rate: 0.85, pitch: 1, interrupt: true });
 }
 
-/** List voices ranked for debugging / future voice picker. */
 export function listWellnessVoices(): { name: string; lang: string; score: number; local: boolean }[] {
   if (!canWellnessSpeak()) return [];
   return window.speechSynthesis

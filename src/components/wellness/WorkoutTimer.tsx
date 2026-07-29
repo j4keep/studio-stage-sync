@@ -16,6 +16,8 @@ type Props = {
   minutes: number;
   title: string;
   steps: MoveStep[];
+  /** Called with minutes actually done (full or partial ≥30s). */
+  onProgress?: (minutesDone: number) => void;
   onComplete?: () => void;
   onClose: () => void;
   /** YAJ Buddy speaks each step. Default true when supported. */
@@ -29,6 +31,7 @@ export default function WorkoutTimer({
   minutes,
   title,
   steps,
+  onProgress,
   onComplete,
   onClose,
   voiceGuide = true,
@@ -43,8 +46,19 @@ export default function WorkoutTimer({
   const [voiceOn, setVoiceOn] = useState(() => voiceGuide && canWellnessSpeak());
   const lastSpokenStep = useRef<number>(-1);
   const completedRef = useRef(false);
+  const loggedRef = useRef(false);
+  const leftRef = useRef(total);
   const speakQueueBusy = useRef(false);
   const pendingSteps = useRef<number[]>([]);
+
+  const recordProgress = (full: boolean) => {
+    if (loggedRef.current) return;
+    const doneSec = Math.max(0, total - leftRef.current);
+    if (!full && doneSec < 30) return;
+    loggedRef.current = true;
+    const mins = full ? minutes : Math.max(1, Math.round(doneSec / 60));
+    onProgress?.(mins);
+  };
 
   const current = steps[stepIdx];
   const currentText = current ? moveStepText(current) : "";
@@ -81,6 +95,8 @@ export default function WorkoutTimer({
     setStepIdx(0);
     lastSpokenStep.current = -1;
     completedRef.current = false;
+    loggedRef.current = false;
+    leftRef.current = total;
     pendingSteps.current = [];
     speakQueueBusy.current = false;
 
@@ -110,9 +126,12 @@ export default function WorkoutTimer({
     if (!running) return;
     const id = window.setInterval(() => {
       setLeft((s) => {
+        const next = s <= 1 ? 0 : s - 1;
+        leftRef.current = next;
         if (s <= 1) {
           if (!completedRef.current) {
             completedRef.current = true;
+            recordProgress(true);
             if (voiceOn) {
               void speakWellness("Great job. Workout complete. Nice work today.", {
                 calm: true,
@@ -125,7 +144,7 @@ export default function WorkoutTimer({
           setRunning(false);
           return 0;
         }
-        return s - 1;
+        return next;
       });
     }, 1000);
     return () => window.clearInterval(id);
@@ -153,6 +172,7 @@ export default function WorkoutTimer({
           type="button"
           onClick={() => {
             stopWellnessSpeak();
+            recordProgress(false);
             onClose();
           }}
           className="rounded-full bg-white/10 px-3 py-1.5 text-sm font-semibold"
