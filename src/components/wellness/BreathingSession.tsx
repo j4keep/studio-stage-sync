@@ -1,4 +1,11 @@
 import { useEffect, useRef, useState } from "react";
+import {
+  canWellnessSpeak,
+  speakBreathPhase,
+  speakWellness,
+  stopWellnessSpeak,
+  warmupWellnessVoice,
+} from "@/lib/wellness-voice";
 
 type Props = {
   open: boolean;
@@ -10,11 +17,13 @@ type Props = {
   holdOut?: number;
   minutes: number;
   onComplete?: () => void;
+  /** YAJ Buddy speaks phase cues. Default true when browser supports it. */
+  voiceGuide?: boolean;
 };
 
 type Phase = "inhale" | "hold" | "exhale" | "holdOut";
 
-/** Full-screen guided breathing — calm, timer-based. */
+/** Full-screen guided breathing with optional Buddy voice cues. */
 export default function BreathingSession({
   open,
   onClose,
@@ -25,12 +34,15 @@ export default function BreathingSession({
   holdOut = 0,
   minutes,
   onComplete,
+  voiceGuide = true,
 }: Props) {
   const [phase, setPhase] = useState<Phase>("inhale");
   const [phaseLeft, setPhaseLeft] = useState(inhale);
   const [secondsLeft, setSecondsLeft] = useState(minutes * 60);
   const [running, setRunning] = useState(true);
+  const [voiceOn, setVoiceOn] = useState(() => voiceGuide && canWellnessSpeak());
   const completedRef = useRef(false);
+  const phaseRef = useRef<Phase>("inhale");
 
   const phases: Phase[] = (["inhale", "hold", "exhale", "holdOut"] as Phase[]).filter((p) => {
     if (p === "hold") return hold > 0;
@@ -43,12 +55,20 @@ export default function BreathingSession({
 
   useEffect(() => {
     if (!open) return;
+    warmupWellnessVoice();
     completedRef.current = false;
     setPhase("inhale");
+    phaseRef.current = "inhale";
     setPhaseLeft(inhale);
     setSecondsLeft(minutes * 60);
     setRunning(true);
-  }, [open, inhale, minutes]);
+    if (voiceGuide && canWellnessSpeak()) {
+      void speakWellness(`Let's begin. ${title}. Breathe in.`, { calm: true, rate: 0.9 });
+    }
+    return () => {
+      stopWellnessSpeak();
+    };
+  }, [open, inhale, minutes, title, voiceGuide]);
 
   useEffect(() => {
     if (!open || !running) return;
@@ -57,6 +77,7 @@ export default function BreathingSession({
         if (s <= 1) {
           if (!completedRef.current) {
             completedRef.current = true;
+            if (voiceOn) void speakWellness("Well done. Session complete.", { calm: true });
             onComplete?.();
           }
           setRunning(false);
@@ -66,19 +87,23 @@ export default function BreathingSession({
       });
       setPhaseLeft((t) => {
         if (t > 1) return t - 1;
-        setPhase((p) => {
-          const idx = phases.indexOf(p);
-          const next = phases[(idx + 1) % phases.length];
-          queueMicrotask(() => setPhaseLeft(durationFor(next)));
-          return next;
-        });
-        return 0;
+        const current = phaseRef.current;
+        const idx = phases.indexOf(current);
+        const next = phases[(idx + 1) % phases.length];
+        phaseRef.current = next;
+        setPhase(next);
+        const dur = durationFor(next);
+        if (voiceOn) void speakBreathPhase(next);
+        return dur;
       });
     }, 1000);
     return () => window.clearInterval(id);
-    // phases/durations intentionally stable per open session
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, running, onComplete]);
+  }, [open, running, voiceOn, onComplete]);
+
+  useEffect(() => {
+    if (!open) stopWellnessSpeak();
+  }, [open]);
 
   if (!open) return null;
 
@@ -90,40 +115,67 @@ export default function BreathingSession({
 
   return (
     <div className="fixed inset-0 z-[100] flex flex-col bg-[#0c1a17] text-emerald-50">
-      <header className="flex items-center justify-between px-4 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
+      <header className="flex items-center justify-between gap-2 px-4 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <button
           type="button"
-          onClick={onClose}
+          onClick={() => {
+            stopWellnessSpeak();
+            onClose();
+          }}
           className="rounded-full bg-white/10 px-3 py-1.5 text-sm font-semibold"
         >
           Close
         </button>
-        <p className="text-sm font-bold">{title}</p>
-        <span className="w-14 text-right text-xs tabular-nums text-emerald-100/70">
-          {mm}:{ss}
-        </span>
+        <p className="truncate text-sm font-bold">{title}</p>
+        <div className="flex items-center gap-2">
+          {canWellnessSpeak() && (
+            <button
+              type="button"
+              onClick={() => {
+                if (voiceOn) stopWellnessSpeak();
+                setVoiceOn((v) => !v);
+              }}
+              className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${
+                voiceOn ? "bg-teal-400/30 text-teal-100" : "bg-white/10 text-white/50"
+              }`}
+              aria-label={voiceOn ? "Mute Buddy voice" : "Enable Buddy voice"}
+            >
+              {voiceOn ? "Voice on" : "Voice off"}
+            </button>
+          )}
+          <span className="w-12 text-right text-xs tabular-nums text-emerald-100/70">
+            {mm}:{ss}
+          </span>
+        </div>
       </header>
 
       <div className="flex flex-1 flex-col items-center justify-center gap-8 px-6">
         <div
           className="flex h-44 w-44 items-center justify-center rounded-full bg-gradient-to-br from-teal-300/40 via-emerald-400/30 to-cyan-500/20 shadow-[0_0_60px_-12px_rgba(45,212,191,0.55)] transition-transform duration-[1000ms] ease-in-out"
-          style={{ transform: `scale(${running ? scale : 1})` }}
+          style={{ transform: `scale(${running && secondsLeft > 0 ? scale : 1})` }}
         >
           <div className="flex h-28 w-28 flex-col items-center justify-center rounded-full bg-[#0c1a17]/70 backdrop-blur">
-            <p className="text-lg font-black tracking-tight">{label}</p>
-            <p className="mt-1 text-2xl font-bold tabular-nums text-teal-200">{Math.max(phaseLeft, 1)}</p>
+            <p className="text-lg font-black tracking-tight">{secondsLeft === 0 ? "Complete" : label}</p>
+            {secondsLeft > 0 && (
+              <p className="mt-1 text-2xl font-bold tabular-nums text-teal-200">{Math.max(phaseLeft, 1)}</p>
+            )}
           </div>
         </div>
         <p className="max-w-xs text-center text-sm text-emerald-100/70">
           Follow the circle. No perfect pace — just stay with the breath.
         </p>
-        <button
-          type="button"
-          onClick={() => setRunning((r) => !r)}
-          className="rounded-full border border-white/15 bg-white/10 px-5 py-2 text-sm font-bold"
-        >
-          {running ? "Pause" : secondsLeft === 0 ? "Done" : "Resume"}
-        </button>
+        {secondsLeft > 0 && (
+          <button
+            type="button"
+            onClick={() => {
+              if (running) stopWellnessSpeak();
+              setRunning((r) => !r);
+            }}
+            className="rounded-full border border-white/15 bg-white/10 px-5 py-2 text-sm font-bold"
+          >
+            {running ? "Pause" : "Resume"}
+          </button>
+        )}
         {secondsLeft === 0 && (
           <button
             type="button"
