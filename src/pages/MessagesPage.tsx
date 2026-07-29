@@ -8,6 +8,8 @@ import { toast } from "@/hooks/use-toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { isBlockedBetween } from "@/lib/blocks";
 import { getOrCreateConversation } from "@/lib/messaging";
+import { fetchRatingsByUserIds, type DisplayRating } from "@/lib/ratings";
+import UserRatingStars from "@/components/UserRatingStars";
 
 
 interface Profile {
@@ -67,6 +69,7 @@ const MessagesPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [hideOtherYajPage, setHideOtherYajPage] = useState(false);
   const [openMarketplaceProfile, setOpenMarketplaceProfile] = useState(false);
+  const [peerRatings, setPeerRatings] = useState<Record<string, DisplayRating>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const autoStartKeyRef = useRef<string | null>(null);
@@ -153,6 +156,21 @@ const MessagesPage = () => {
     staleTime: 10_000,
   });
 
+  useEffect(() => {
+    const ids = conversations.map((c) => c.other_user?.user_id).filter(Boolean) as string[];
+    if (!ids.length) {
+      setPeerRatings({});
+      return;
+    }
+    let alive = true;
+    void fetchRatingsByUserIds(ids).then((map) => {
+      if (alive) setPeerRatings(map);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [conversations]);
+
   const { data: messages = [] } = useQuery({
     queryKey: ["messages", activeConversation?.id],
     queryFn: async () => {
@@ -187,6 +205,7 @@ const MessagesPage = () => {
           .eq("is_read", false),
       ]);
       queryClient.invalidateQueries({ queryKey: ["notifications", user.id] });
+      queryClient.invalidateQueries({ queryKey: ["unread-messages", user.id] });
     })();
   }, [activeConversation?.id, queryClient, user?.id]);
 
@@ -503,6 +522,13 @@ const MessagesPage = () => {
               <p className="truncate text-sm font-semibold text-foreground">
                 {activeConversation.other_user?.display_name || "User"}
               </p>
+              {activeConversation.other_user?.user_id && (
+                <UserRatingStars
+                  rating={peerRatings[activeConversation.other_user.user_id]}
+                  variant="compact"
+                  className="mt-0.5"
+                />
+              )}
               {activeConversation.openBusinessProfile ? (
                 <p className="text-[10px] text-muted-foreground">Tap to view business profile</p>
               ) : openMarketplaceProfile || activeConversation.openMarketplaceProfile ? (
@@ -702,6 +728,13 @@ const MessagesPage = () => {
                 <p className="truncate text-sm font-semibold text-foreground">
                   {conv.other_user?.display_name || "User"}
                 </p>
+                {conv.other_user?.user_id && (
+                  <UserRatingStars
+                    rating={peerRatings[conv.other_user.user_id]}
+                    variant="compact"
+                    className="mt-0.5"
+                  />
+                )}
                 <p className="truncate text-xs text-muted-foreground">{conv.last_message}</p>
               </div>
               <span className="shrink-0 text-[10px] text-muted-foreground">

@@ -6,7 +6,8 @@ import GlobalPlaylistPlayer from "./GlobalPlaylistPlayer";
 import PlaylistPlayerSheet from "./PlaylistPlayerSheet";
 import NotificationBell from "./NotificationBell";
 import YajBuddyIcon from "./YajBuddyIcon";
-import { MessageCircle, ArrowLeft } from "lucide-react";
+import MessagesInboxButton from "./MessagesInboxButton";
+import { ArrowLeft } from "lucide-react";
 import { useProGate } from "@/hooks/use-pro-gate";
 import ProGateModal from "./ProGateModal";
 import IncognitoFeedWindow from "./IncognitoFeedWindow";
@@ -121,12 +122,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
                 </span>
               )}
             </button>
-            <button
-              onClick={() => navigate("/messages")}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"
-            >
-              <MessageCircle className="h-4 w-4 text-foreground" />
-            </button>
+            <MessagesInboxButton />
             <NotificationBell />
             <IncognitoHeaderButton />
             </div>
@@ -192,12 +188,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
               </span>
             )}
           </button>
-          <button
-            onClick={() => navigate("/messages")}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"
-          >
-            <MessageCircle className="h-4 w-4 text-foreground" />
-          </button>
+          <MessagesInboxButton />
           <NotificationBell />
           <IncognitoHeaderButton />
           </div>

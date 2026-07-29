@@ -3,10 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { Bookmark } from "lucide-react";
 import { approxLocation, formatPrice, timeAgo } from "@/lib/marketplace";
 import { listingCoverUrl, type MarketplaceListing } from "@/lib/marketplace-api";
+import UserRatingStars from "@/components/UserRatingStars";
+import type { DisplayRating } from "@/lib/ratings";
 
 type Props = {
   listing: MarketplaceListing;
   onToggleSave?: (listing: MarketplaceListing) => void;
+  /** Optional preloaded seller rating (defaults to starter 5.0) */
+  sellerRating?: DisplayRating | null;
 };
 
 function Cover({ src }: { src: string | null }) {
@@ -25,13 +29,14 @@ function Cover({ src }: { src: string | null }) {
   );
 }
 
-/** Clean two-column marketplace card — image, title, price · place. */
-export default function ListingCard({ listing, onToggleSave }: Props) {
+/** Clean two-column marketplace card — image, title, price · place, seller + rating. */
+export default function ListingCard({ listing, onToggleSave, sellerRating }: Props) {
   const nav = useNavigate();
   const cover = listingCoverUrl(listing);
   const price = formatPrice(listing.price, listing.listing_type);
   const place = approxLocation(listing.city, listing.state, listing.location_approx);
   const status = listing.status;
+  const sellerName = listing.seller?.display_name;
 
   return (
     <button
@@ -79,6 +84,12 @@ export default function ListingCard({ listing, onToggleSave }: Props) {
           <span className="mx-1">·</span>
           <span>{place}</span>
         </p>
+        {sellerName && (
+          <div className="pt-0.5">
+            <p className="truncate text-[11px] font-semibold text-foreground/90">{sellerName}</p>
+            <UserRatingStars rating={sellerRating} variant="compact" className="mt-0.5" />
+          </div>
+        )}
         <p className="text-[11px] text-muted-foreground">{timeAgo(listing.created_at)}</p>
       </div>
     </button>

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, MessageCircle, MoreHorizontal, Pencil, Search } from "lucide-react";
+import { ArrowLeft, MoreHorizontal, Pencil, Search } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { MARKETPLACE_CATEGORIES, getRecentSearches, pushRecentSearch } from "@/lib/marketplace";
 import {
@@ -8,7 +8,9 @@ import {
   toggleSaveListing,
   type MarketplaceListing,
 } from "@/lib/marketplace-api";
+import { fetchRatingsByUserIds, type DisplayRating } from "@/lib/ratings";
 import ListingCard, { ListingCardSkeleton } from "@/components/marketplace/ListingCard";
+import MessagesInboxButton from "@/components/MessagesInboxButton";
 import { toast } from "sonner";
 
 type FilterId = "mine" | "all" | "free" | "distance" | "relevant" | "discounted";
@@ -31,6 +33,7 @@ export default function MarketplaceHomePage() {
   const nav = useNavigate();
   const { user } = useAuth();
   const [listings, setListings] = useState<MarketplaceListing[]>([]);
+  const [sellerRatings, setSellerRatings] = useState<Record<string, DisplayRating>>({});
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [searchFocus, setSearchFocus] = useState(false);
@@ -55,6 +58,12 @@ export default function MarketplaceHomePage() {
       let rows = await listMarketplaceListings(opts);
       if (filter === "free") rows = rows.filter((l) => l.listing_type === "free" || Number(l.price) === 0);
       setListings(rows);
+      const sellerIds = [...new Set(rows.map((r) => r.seller_id).filter(Boolean))];
+      if (sellerIds.length) {
+        setSellerRatings(await fetchRatingsByUserIds(sellerIds));
+      } else {
+        setSellerRatings({});
+      }
     } catch (e: any) {
       const msg = e?.message || "Could not load marketplace";
       if (isMissingTableError(msg)) {
@@ -131,14 +140,7 @@ export default function MarketplaceHomePage() {
             <ArrowLeft className="h-4 w-4" />
           </button>
           <h1 className="flex-1 text-lg font-bold tracking-tight">Marketplace</h1>
-          <button
-            type="button"
-            onClick={() => nav("/messages")}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"
-            aria-label="Messages"
-          >
-            <MessageCircle className="h-4 w-4" />
-          </button>
+          <MessagesInboxButton />
           <button
             type="button"
             onClick={() => nav("/marketplace/account")}
@@ -227,7 +229,12 @@ export default function MarketplaceHomePage() {
               <h2 className="mb-3 text-base font-bold">Newest</h2>
               <div className="grid grid-cols-2 gap-3">
                 {newest.map((l) => (
-                  <ListingCard key={l.id} listing={l} onToggleSave={onToggleSave} />
+                  <ListingCard
+                    key={l.id}
+                    listing={l}
+                    onToggleSave={onToggleSave}
+                    sellerRating={sellerRatings[l.seller_id]}
+                  />
                 ))}
               </div>
               {listings.length > 8 && (
@@ -246,7 +253,12 @@ export default function MarketplaceHomePage() {
                 <h2 className="mb-3 text-base font-bold">Free Items</h2>
                 <div className="grid grid-cols-2 gap-3">
                   {freeItems.map((l) => (
-                    <ListingCard key={l.id} listing={l} onToggleSave={onToggleSave} />
+                    <ListingCard
+                      key={l.id}
+                      listing={l}
+                      onToggleSave={onToggleSave}
+                      sellerRating={sellerRatings[l.seller_id]}
+                    />
                   ))}
                 </div>
               </section>
@@ -257,7 +269,12 @@ export default function MarketplaceHomePage() {
                 <h2 className="mb-3 text-base font-bold">Vehicles</h2>
                 <div className="grid grid-cols-2 gap-3">
                   {vehicles.map((l) => (
-                    <ListingCard key={l.id} listing={l} onToggleSave={onToggleSave} />
+                    <ListingCard
+                      key={l.id}
+                      listing={l}
+                      onToggleSave={onToggleSave}
+                      sellerRating={sellerRatings[l.seller_id]}
+                    />
                   ))}
                 </div>
               </section>
@@ -267,7 +284,12 @@ export default function MarketplaceHomePage() {
               <h2 className="mb-3 text-base font-bold">Near You</h2>
               <div className="grid grid-cols-2 gap-3">
                 {listings.slice(0, 12).map((l) => (
-                  <ListingCard key={`near-${l.id}`} listing={l} onToggleSave={onToggleSave} />
+                  <ListingCard
+                    key={`near-${l.id}`}
+                    listing={l}
+                    onToggleSave={onToggleSave}
+                    sellerRating={sellerRatings[l.seller_id]}
+                  />
                 ))}
               </div>
             </section>
