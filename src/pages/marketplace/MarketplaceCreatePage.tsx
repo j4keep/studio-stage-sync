@@ -33,6 +33,8 @@ export default function MarketplaceCreatePage() {
   const [step, setStep] = useState(1);
   const [busy, setBusy] = useState(false);
   const [uploadPct, setUploadPct] = useState<number | null>(null);
+  /** Field keys highlighted red when Continue is pressed without required values */
+  const [fieldErrors, setFieldErrors] = useState<Record<string, boolean>>({});
 
   const [listingType, setListingType] = useState<ListingType | string>("item");
   const [media, setMedia] = useState<DraftMedia[]>([]);
@@ -174,15 +176,94 @@ export default function MarketplaceCreatePage() {
       : null,
   });
 
-  const validate = () => {
-    if (!title.trim()) return "Add a title";
-    if (!media.length) return "Add at least one photo";
-    if (media.some((m) => m.local)) return "Wait for photos to finish uploading";
-    if (listingType !== "free" && (!price || Number(price) < 0)) return "Enter a price";
-    if (isVehicle) {
-      if (!veh.year || !veh.make || !veh.model) return "Year, make, and model are required for vehicles";
+  const clearFieldError = (key: string) => {
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
+  const markErrors = (keys: string[], message: string) => {
+    const map: Record<string, boolean> = {};
+    for (const k of keys) map[k] = true;
+    setFieldErrors(map);
+    toast.error(message);
+  };
+
+  /** Per-step gates so Continue / Preview never skip empty required fields. */
+  const goNextFromStep = (from: number) => {
+    if (from === 2) {
+      if (!media.length) {
+        markErrors(["photos"], "Add at least one photo");
+        return;
+      }
+      if (media.some((m) => m.local)) {
+        toast.error("Wait for photos to finish uploading");
+        return;
+      }
+      setFieldErrors({});
+      setStep(3);
+      return;
     }
-    if (!city.trim()) return "Add a city";
+    if (from === 3) {
+      const missing: string[] = [];
+      if (!title.trim()) missing.push("title");
+      if (listingType !== "free" && (!price || Number(price) < 0 || Number.isNaN(Number(price)))) {
+        missing.push("price");
+      }
+      if (isVehicle) {
+        if (!veh.year) missing.push("veh_year");
+        if (!(veh.make || "").trim()) missing.push("veh_make");
+        if (!(veh.model || "").trim()) missing.push("veh_model");
+      }
+      if (missing.length) {
+        const msg = !title.trim()
+          ? "Add a title"
+          : missing.includes("price")
+            ? "Enter a price"
+            : "Year, make, and model are required for vehicles";
+        markErrors(missing, msg);
+        return;
+      }
+      setFieldErrors({});
+      setStep(4);
+      return;
+    }
+    if (from === 4) {
+      if (!city.trim()) {
+        markErrors(["city"], "Add a city");
+        return;
+      }
+      setFieldErrors({});
+      setStep(5);
+    }
+  };
+
+  const validate = () => {
+    const missing: string[] = [];
+    if (!media.length) missing.push("photos");
+    if (!title.trim()) missing.push("title");
+    if (media.some((m) => m.local)) return "Wait for photos to finish uploading";
+    if (listingType !== "free" && (!price || Number(price) < 0 || Number.isNaN(Number(price)))) {
+      missing.push("price");
+    }
+    if (isVehicle) {
+      if (!veh.year) missing.push("veh_year");
+      if (!(veh.make || "").trim()) missing.push("veh_make");
+      if (!(veh.model || "").trim()) missing.push("veh_model");
+    }
+    if (!city.trim()) missing.push("city");
+    if (missing.length) {
+      setFieldErrors(Object.fromEntries(missing.map((k) => [k, true])));
+      if (missing.includes("title")) return "Add a title";
+      if (missing.includes("photos")) return "Add at least one photo";
+      if (missing.includes("price")) return "Enter a price";
+      if (missing.includes("city")) return "Add a city";
+      return "Year, make, and model are required for vehicles";
+    }
+    setFieldErrors({});
     return null;
   };
 
@@ -305,16 +386,27 @@ export default function MarketplaceCreatePage() {
         {step === 2 && (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">Up to {MAX_PHOTOS} photos. First photo is the cover.</p>
-            <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-muted/50 py-10">
-              <ImagePlus className="h-8 w-8 text-primary" />
-              <span className="text-sm font-bold">Add photos</span>
+            <label
+              className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed py-10 ${
+                fieldErrors.photos
+                  ? "border-red-500 bg-red-500/10 ring-2 ring-red-500/40"
+                  : "border-border bg-muted/50"
+              }`}
+            >
+              <ImagePlus className={`h-8 w-8 ${fieldErrors.photos ? "text-red-500" : "text-primary"}`} />
+              <span className={`text-sm font-bold ${fieldErrors.photos ? "text-red-500" : ""}`}>
+                {fieldErrors.photos ? "Photo required" : "Add photos"}
+              </span>
               <input
                 type="file"
                 accept="image/*"
                 multiple
                 capture="environment"
                 className="hidden"
-                onChange={(e) => void onPickFiles(e.target.files)}
+                onChange={(e) => {
+                  clearFieldError("photos");
+                  void onPickFiles(e.target.files);
+                }}
               />
             </label>
             {uploadPct != null && (
@@ -356,9 +448,8 @@ export default function MarketplaceCreatePage() {
             </div>
             <button
               type="button"
-              disabled={!media.length}
-              onClick={() => setStep(3)}
-              className="h-12 w-full rounded-full bg-primary text-sm font-bold text-primary-foreground disabled:opacity-50"
+              onClick={() => goNextFromStep(2)}
+              className="h-12 w-full rounded-full bg-primary text-sm font-bold text-primary-foreground"
             >
               Continue
             </button>
@@ -367,7 +458,16 @@ export default function MarketplaceCreatePage() {
 
         {step === 3 && (
           <div className="space-y-3">
-            <Field label="Title" value={title} onChange={setTitle} placeholder="What are you selling?" />
+            <Field
+              label="Title"
+              value={title}
+              onChange={(v) => {
+                clearFieldError("title");
+                setTitle(v);
+              }}
+              placeholder="What are you selling?"
+              error={fieldErrors.title}
+            />
             <div>
               <label className="text-xs font-bold">Description</label>
               <textarea
@@ -424,11 +524,31 @@ export default function MarketplaceCreatePage() {
                 <Field
                   label="Year"
                   value={veh.year != null ? String(veh.year) : ""}
-                  onChange={(v) => setVeh((x) => ({ ...x, year: v ? Number(v) : null }))}
+                  onChange={(v) => {
+                    clearFieldError("veh_year");
+                    setVeh((x) => ({ ...x, year: v ? Number(v) : null }));
+                  }}
                   type="number"
+                  error={fieldErrors.veh_year}
                 />
-                <Field label="Make" value={veh.make || ""} onChange={(v) => setVeh((x) => ({ ...x, make: v }))} />
-                <Field label="Model" value={veh.model || ""} onChange={(v) => setVeh((x) => ({ ...x, model: v }))} />
+                <Field
+                  label="Make"
+                  value={veh.make || ""}
+                  onChange={(v) => {
+                    clearFieldError("veh_make");
+                    setVeh((x) => ({ ...x, make: v }));
+                  }}
+                  error={fieldErrors.veh_make}
+                />
+                <Field
+                  label="Model"
+                  value={veh.model || ""}
+                  onChange={(v) => {
+                    clearFieldError("veh_model");
+                    setVeh((x) => ({ ...x, model: v }));
+                  }}
+                  error={fieldErrors.veh_model}
+                />
                 <Field label="Trim" value={veh.trim || ""} onChange={(v) => setVeh((x) => ({ ...x, trim: v }))} optional />
                 <Field
                   label="Mileage"
@@ -500,7 +620,16 @@ export default function MarketplaceCreatePage() {
               </div>
             )}
             {listingType !== "free" && (
-              <Field label="Price ($)" value={price} onChange={setPrice} type="number" />
+              <Field
+                label="Price ($)"
+                value={price}
+                onChange={(v) => {
+                  clearFieldError("price");
+                  setPrice(v);
+                }}
+                type="number"
+                error={fieldErrors.price}
+              />
             )}
             <Toggle label="Firm price" value={firmPrice} onChange={setFirmPrice} />
             <Toggle label="Open to offers" value={openOffers} onChange={setOpenOffers} />
@@ -508,7 +637,11 @@ export default function MarketplaceCreatePage() {
             <Toggle label="Delivery available" value={delivery} onChange={setDelivery} />
             <Toggle label="Shipping available" value={shipping} onChange={setShipping} />
             <Field label="Tags (comma-separated)" value={tags} onChange={setTags} optional />
-            <button type="button" onClick={() => setStep(4)} className="h-12 w-full rounded-full bg-primary text-sm font-bold text-primary-foreground">
+            <button
+              type="button"
+              onClick={() => goNextFromStep(3)}
+              className="h-12 w-full rounded-full bg-primary text-sm font-bold text-primary-foreground"
+            >
               Continue
             </button>
           </div>
@@ -519,7 +652,15 @@ export default function MarketplaceCreatePage() {
             <p className="text-sm text-muted-foreground">
               Private sellers show an approximate area only. Exact meetup details stay in chat.
             </p>
-            <Field label="City" value={city} onChange={setCity} />
+            <Field
+              label="City"
+              value={city}
+              onChange={(v) => {
+                clearFieldError("city");
+                setCity(v);
+              }}
+              error={fieldErrors.city}
+            />
             <Field label="State" value={state} onChange={setState} />
             <Field label="ZIP" value={zip} onChange={setZip} optional />
             <div className="rounded-2xl border border-border bg-muted/60 p-4 text-center text-xs text-muted-foreground">
@@ -527,7 +668,11 @@ export default function MarketplaceCreatePage() {
               <div className="mt-2 flex h-32 items-center justify-center rounded-xl bg-muted text-2xl">🗺</div>
               <p className="mt-2 font-semibold text-foreground">{[city, state].filter(Boolean).join(", ") || "Add city"}</p>
             </div>
-            <button type="button" onClick={() => setStep(5)} className="h-12 w-full rounded-full bg-primary text-sm font-bold text-primary-foreground">
+            <button
+              type="button"
+              onClick={() => goNextFromStep(4)}
+              className="h-12 w-full rounded-full bg-primary text-sm font-bold text-primary-foreground"
+            >
               Preview
             </button>
           </div>
@@ -588,6 +733,7 @@ function Field({
   placeholder,
   type = "text",
   optional,
+  error,
 }: {
   label: string;
   value: string;
@@ -595,19 +741,26 @@ function Field({
   placeholder?: string;
   type?: string;
   optional?: boolean;
+  error?: boolean;
 }) {
   return (
     <div>
-      <label className="text-xs font-bold">
+      <label className={`text-xs font-bold ${error ? "text-red-500" : ""}`}>
         {label}
         {optional ? <span className="font-normal text-muted-foreground"> · optional</span> : null}
+        {error ? <span className="font-semibold text-red-500"> · required</span> : null}
       </label>
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="mt-1 h-11 w-full rounded-xl border border-border bg-muted px-3 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+        aria-invalid={error || undefined}
+        className={`mt-1 h-11 w-full rounded-xl border bg-muted px-3 text-sm outline-none focus:ring-2 ${
+          error
+            ? "border-red-500 ring-2 ring-red-500/40 focus:ring-red-500/50"
+            : "border-border focus:ring-primary/30"
+        }`}
       />
     </div>
   );

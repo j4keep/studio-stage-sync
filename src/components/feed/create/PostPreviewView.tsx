@@ -47,6 +47,7 @@ export default function PostPreviewView({
   originalVolume,
 }: Props) {
   const [rewriting, setRewriting] = useState<"title" | "description" | null>(null);
+  const [titleError, setTitleError] = useState(false);
   const descRef = useRef<HTMLTextAreaElement>(null);
   const coverVideoRef = useRef<HTMLVideoElement>(null);
 
@@ -137,7 +138,6 @@ export default function PostPreviewView({
   };
 
   const busy = posting || deleting || !!rewriting;
-  const canSave = !busy && (!!previewUrl || title.trim().length > 0 || description.trim().length > 0);
   const saveLabel = posting
     ? isEditing
       ? "Saving…"
@@ -145,6 +145,20 @@ export default function PostPreviewView({
     : isEditing
       ? "Update"
       : "Post";
+
+  const tryPost = () => {
+    if (!title.trim()) {
+      setTitleError(true);
+      toast.error("Add a title before posting");
+      return;
+    }
+    if (!previewUrl && !description.trim() && !title.trim()) {
+      toast.error("Add a title or media before posting");
+      return;
+    }
+    setTitleError(false);
+    onPost();
+  };
 
   return (
     <div
@@ -171,8 +185,8 @@ export default function PostPreviewView({
         <span className="text-sm font-bold text-white/90 truncate">{isEditing ? "Edit post" : "New post"}</span>
         <button
           type="button"
-          onClick={onPost}
-          disabled={!canSave}
+          onClick={tryPost}
+          disabled={busy}
           className="shrink-0 px-4 py-2 rounded-full bg-primary text-primary-foreground text-sm font-bold disabled:opacity-40 min-w-[4.5rem]"
         >
           {saveLabel}
@@ -238,14 +252,27 @@ export default function PostPreviewView({
           )}
         </div>
 
-        <input
-          value={title}
-          onChange={(e) => onTitleChange(e.target.value)}
-          placeholder="Add a catchy title"
-          maxLength={120}
-          className="w-full bg-transparent text-lg font-bold text-white placeholder:text-white/35 outline-none border-none py-1"
-          style={{ fontSize: "16px" }}
-        />
+        <div>
+          <input
+            value={title}
+            onChange={(e) => {
+              setTitleError(false);
+              onTitleChange(e.target.value);
+            }}
+            placeholder="Add a catchy title"
+            maxLength={120}
+            aria-invalid={titleError || undefined}
+            className={`w-full bg-transparent text-lg font-bold text-white placeholder:text-white/35 outline-none py-1 rounded-lg px-1 ${
+              titleError
+                ? "border border-red-500 ring-2 ring-red-500/50"
+                : "border border-transparent"
+            }`}
+            style={{ fontSize: "16px" }}
+          />
+          {titleError && (
+            <p className="mt-1 px-1 text-xs font-semibold text-red-400">Title is required</p>
+          )}
+        </div>
 
         <textarea
           ref={descRef}

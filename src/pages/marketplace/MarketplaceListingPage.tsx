@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Bookmark,
+  ChevronLeft,
+  ChevronRight,
   MapPin,
   Send,
   Share2,
@@ -43,6 +45,8 @@ export default function MarketplaceListingPage() {
   const [loading, setLoading] = useState(true);
   const [imgIdx, setImgIdx] = useState(0);
   const [lightbox, setLightbox] = useState(false);
+  const touchX = useRef<number | null>(null);
+  const didSwipe = useRef(false);
   const [offerOpen, setOfferOpen] = useState(false);
   const [offerAmt, setOfferAmt] = useState("");
   const [busy, setBusy] = useState(false);
@@ -114,6 +118,37 @@ export default function MarketplaceListingPage() {
   const place = listing
     ? approxLocation(listing.city, listing.state, listing.location_approx)
     : "";
+
+  const goImage = (dir: number) => {
+    if (images.length < 2) return;
+    setImgIdx((i) => (i + dir + images.length) % images.length);
+  };
+
+  const onGalleryTouchStart = (clientX: number) => {
+    touchX.current = clientX;
+    didSwipe.current = false;
+  };
+
+  const onGalleryTouchEnd = (clientX: number) => {
+    if (touchX.current === null || images.length < 2) {
+      touchX.current = null;
+      return;
+    }
+    const dx = clientX - touchX.current;
+    touchX.current = null;
+    if (Math.abs(dx) > 45) {
+      didSwipe.current = true;
+      goImage(dx < 0 ? 1 : -1);
+    }
+  };
+
+  const openLightbox = () => {
+    if (didSwipe.current) {
+      didSwipe.current = false;
+      return;
+    }
+    if (images.length) setLightbox(true);
+  };
 
   const onSave = async () => {
     if (!user || !listing) return toast.error("Sign in to save");
@@ -253,10 +288,29 @@ export default function MarketplaceListingPage() {
           </div>
         </div>
 
-        <button type="button" onClick={() => images.length && setLightbox(true)} className="block w-full">
-          <div className="aspect-[4/3] bg-muted">
-            {images[imgIdx] ? (
-              <img src={images[imgIdx]} alt="" className="h-full w-full object-cover" />
+        <button
+          type="button"
+          onClick={openLightbox}
+          className="block w-full"
+          onTouchStart={(e) => onGalleryTouchStart(e.touches[0].clientX)}
+          onTouchEnd={(e) => onGalleryTouchEnd(e.changedTouches[0].clientX)}
+        >
+          <div className="aspect-[4/3] overflow-hidden bg-muted">
+            {images.length ? (
+              <div
+                className="flex h-full w-full transition-transform duration-300 ease-out"
+                style={{ transform: `translateX(-${imgIdx * 100}%)` }}
+              >
+                {images.map((url, i) => (
+                  <img
+                    key={url + i}
+                    src={url}
+                    alt=""
+                    className="h-full w-full shrink-0 object-cover"
+                    draggable={false}
+                  />
+                ))}
+              </div>
             ) : (
               <div className="flex h-full items-center justify-center text-muted-foreground/40">No photo</div>
             )}
@@ -439,18 +493,64 @@ export default function MarketplaceListingPage() {
       </div>
 
       {lightbox && (
-        <div className="fixed inset-0 z-[90] flex flex-col bg-black">
+        <div className="fixed inset-0 z-[90] flex flex-col bg-black" data-no-zoom>
           <div className="flex items-center justify-between px-3 py-3 text-white">
             <span className="text-sm font-semibold">
               {imgIdx + 1} / {images.length}
             </span>
-            <button type="button" onClick={() => setLightbox(false)} className="rounded-full bg-white/15 p-2">
+            <button type="button" onClick={() => setLightbox(false)} className="rounded-full bg-white/15 p-2" aria-label="Close">
               <X className="h-5 w-5" />
             </button>
           </div>
-          <div className="flex flex-1 items-center justify-center">
-            <img src={images[imgIdx]} alt="" className="max-h-full max-w-full object-contain" onClick={() => setImgIdx((i) => (i + 1) % images.length)} />
+          <div
+            className="relative flex min-h-0 flex-1 touch-pan-y items-center overflow-hidden"
+            onTouchStart={(e) => onGalleryTouchStart(e.touches[0].clientX)}
+            onTouchEnd={(e) => onGalleryTouchEnd(e.changedTouches[0].clientX)}
+          >
+            <div
+              className="flex h-full w-full transition-transform duration-300 ease-out"
+              style={{ transform: `translateX(-${imgIdx * 100}%)` }}
+            >
+              {images.map((url, i) => (
+                <div key={url + i} className="flex h-full w-full shrink-0 items-center justify-center p-2">
+                  <img src={url} alt="" className="max-h-full max-w-full object-contain" draggable={false} />
+                </div>
+              ))}
+            </div>
+            {images.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => goImage(-1)}
+                  className="absolute left-2 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white"
+                  aria-label="Previous photo"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => goImage(1)}
+                  className="absolute right-2 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white"
+                  aria-label="Next photo"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              </>
+            )}
           </div>
+          {images.length > 1 && (
+            <div className="flex justify-center gap-1.5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2">
+              {images.map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setImgIdx(i)}
+                  aria-label={`Photo ${i + 1}`}
+                  className={`h-1.5 rounded-full transition-all ${i === imgIdx ? "w-5 bg-white" : "w-1.5 bg-white/40"}`}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
 
