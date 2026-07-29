@@ -1,16 +1,19 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Send, Paperclip, Image, X, Plus, MessageCircle } from "lucide-react";
+import { ArrowLeft, Send, Paperclip, Image, X, Plus, MessageCircle, MoreHorizontal } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { isBlockedBetween, blockUser } from "@/lib/blocks";
 import { getOrCreateConversation } from "@/lib/messaging";
+import { resolveMarketplaceChatPeers } from "@/lib/marketplace-api";
 import { fetchRatingsByUserIds, type DisplayRating } from "@/lib/ratings";
 import UserRatingStars from "@/components/UserRatingStars";
-import MarketplaceMoreOptionsSheet from "@/components/marketplace/MarketplaceMoreOptionsSheet";
+import MarketplaceMoreOptionsSheet, {
+  type MoreOptionsPeerRole,
+} from "@/components/marketplace/MarketplaceMoreOptionsSheet";
 import BlockConfirmDialog from "@/components/BlockConfirmDialog";
 import { toast as sonnerToast } from "sonner";
 
@@ -161,6 +164,25 @@ const MessagesPage = () => {
           hideOtherYajPage: ctx === "marketplace" || ctx === "local_help",
         });
       }
+
+      // Stamp Marketplace flags even when conversations.context is missing / not migrated yet
+      try {
+        const peerMeta = await resolveMarketplaceChatPeers(user.id, otherUserIds);
+        for (const row of results) {
+          const otherId = row.other_user?.user_id;
+          if (!otherId) continue;
+          const meta = peerMeta[otherId];
+          if (!meta && row.context !== "marketplace") continue;
+          row.openMarketplaceProfile = true;
+          row.context = row.context || "marketplace";
+          row.hideOtherYajPage = true;
+          if (meta?.peerRole) row.marketplacePeerRole = meta.peerRole;
+          else if (!row.marketplacePeerRole) row.marketplacePeerRole = "seller";
+        }
+      } catch {
+        /* best-effort */
+      }
+
       return results;
     },
     enabled: !!user,
@@ -452,6 +474,13 @@ const MessagesPage = () => {
       if (!existing) return;
       autoStartKeyRef.current = autoStartKey;
       setActiveConversation(existing);
+      setHideOtherYajPage(
+        Boolean(existing.hideOtherYajPage || existing.context === "marketplace" || existing.context === "local_help"),
+      );
+      setOpenMarketplaceProfile(
+        Boolean(existing.openMarketplaceProfile || existing.context === "marketplace"),
+      );
+      setMarketplacePeerRole(existing.marketplacePeerRole || "seller");
       navigate(location.pathname, { replace: true, state: null });
       return;
     }
@@ -490,9 +519,18 @@ const MessagesPage = () => {
 
   // Active chat — fixed shell so composer stays visible above bottom nav
   if (activeConversation) {
+    const isMarketplaceChat = Boolean(
+      openMarketplaceProfile ||
+        activeConversation.openMarketplaceProfile ||
+        activeConversation.context === "marketplace",
+    );
+    const moreOptionsRole: MoreOptionsPeerRole = isMarketplaceChat
+      ? activeConversation.marketplacePeerRole || marketplacePeerRole || "seller"
+      : "user";
+
     return (
       <div className="fixed inset-x-0 bottom-0 top-0 z-[80] mx-auto flex h-[100dvh] w-full max-w-lg flex-col bg-background lg:static lg:z-auto lg:mx-0 lg:h-[calc(100dvh-3.5rem)] lg:max-w-none">
-        <div className="sticky top-0 z-[82] flex shrink-0 items-center gap-3 border-b border-border bg-background px-3 py-2.5 pt-[max(0.5rem,env(safe-area-inset-top))]">
+        <div className="sticky top-0 z-[82] flex shrink-0 items-center gap-2 border-b border-border bg-background px-3 py-2.5 pt-[max(0.5rem,env(safe-area-inset-top))]">
 
           <button
             type="button"
@@ -558,15 +596,15 @@ const MessagesPage = () => {
               )}
             </div>
           </button>
-          {(openMarketplaceProfile ||
-            activeConversation.openMarketplaceProfile ||
-            activeConversation.context === "marketplace") && (
+          {activeConversation.other_user?.user_id && (
             <button
               type="button"
               onClick={() => setMoreOptionsOpen(true)}
-              className="shrink-0 rounded-full bg-muted px-2.5 py-1.5 text-[11px] font-semibold text-foreground"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted"
+              aria-label="More options"
+              title="More options"
             >
-              More options
+              <MoreHorizontal className="h-4 w-4 text-foreground" />
             </button>
           )}
           <button
@@ -650,18 +688,33 @@ const MessagesPage = () => {
         <MarketplaceMoreOptionsSheet
           open={moreOptionsOpen}
           onClose={() => setMoreOptionsOpen(false)}
-          peerRole={activeConversation.marketplacePeerRole || marketplacePeerRole}
+          peerRole={moreOptionsRole}
           peerName={activeConversation.other_user?.display_name || ""}
           onViewProfile={() => {
             const id = activeConversation.other_user?.user_id;
             if (!id) return;
-            navigate(`/marketplace/profile/${id}`);
+            if (isMarketplaceChat) {
+              navigate(`/marketplace/profile/${id}`);
+              return;
+            }
+            if (activeConversation.openBusinessProfile) {
+              navigate(`/local-help/pro/${id}`);
+              return;
+            }
+            navigate(`/artist/${id}`);
           }}
           onReport={() => {
-            const role = activeConversation.marketplacePeerRole || marketplacePeerRole;
+            const label =
+              moreOptionsRole === "seller"
+                ? "seller"
+                : moreOptionsRole === "buyer"
+                  ? "buyer"
+                  : "user";
             if (
               window.confirm(
-                `Report this ${role}? We'll review their Marketplace activity for policy issues.`,
+                moreOptionsRole === "user"
+                  ? "Report this user? We'll review their activity for policy issues."
+                  : `Report this ${label}? We'll review their Marketplace activity for policy issues.`,
               )
             ) {
               sonnerToast.success("Report submitted — thanks for helping keep YAJ safe");

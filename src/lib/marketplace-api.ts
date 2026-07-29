@@ -903,6 +903,88 @@ export async function markListingSold(
   return updated;
 }
 
+/**
+ * For inbox chats: detect Marketplace peers via offers / inquiries and
+ * whether the other person is the seller or the buyer from this user's POV.
+ */
+export async function resolveMarketplaceChatPeers(
+  userId: string,
+  otherUserIds: string[],
+): Promise<Record<string, { peerRole: "seller" | "buyer" }>> {
+  const out: Record<string, { peerRole: "seller" | "buyer" }> = {};
+  const ids = [...new Set(otherUserIds.filter(Boolean))];
+  if (!ids.length) return out;
+
+  try {
+    const [{ data: asBuyer }, { data: asSeller }] = await Promise.all([
+      (supabase as any)
+        .from("marketplace_offers")
+        .select("seller_id, updated_at")
+        .eq("buyer_id", userId)
+        .in("seller_id", ids),
+      (supabase as any)
+        .from("marketplace_offers")
+        .select("buyer_id, updated_at")
+        .eq("seller_id", userId)
+        .in("buyer_id", ids),
+    ]);
+    for (const o of asBuyer || []) {
+      if (o?.seller_id) out[o.seller_id] = { peerRole: "seller" };
+    }
+    for (const o of asSeller || []) {
+      if (o?.buyer_id && !out[o.buyer_id]) out[o.buyer_id] = { peerRole: "buyer" };
+    }
+  } catch {
+    /* offers table may be unavailable */
+  }
+
+  try {
+    const { data: myListings } = await (supabase as any)
+      .from("marketplace_listings")
+      .select("id")
+      .eq("seller_id", userId)
+      .limit(80);
+    const listingIds = (myListings || []).map((l: { id: string }) => l.id);
+    if (listingIds.length) {
+      const { data: inqs, error } = await (supabase as any)
+        .from("marketplace_listing_inquiries")
+        .select("user_id")
+        .in("listing_id", listingIds)
+        .in("user_id", ids);
+      if (!error) {
+        for (const i of inqs || []) {
+          if (i?.user_id && !out[i.user_id]) out[i.user_id] = { peerRole: "buyer" };
+        }
+      }
+    }
+  } catch {
+    /* inquiries may not exist yet */
+  }
+
+  try {
+    const { data: myInqs, error } = await (supabase as any)
+      .from("marketplace_listing_inquiries")
+      .select("listing_id")
+      .eq("user_id", userId)
+      .limit(80);
+    if (!error && myInqs?.length) {
+      const listingIds = [...new Set(myInqs.map((i: { listing_id: string }) => i.listing_id))];
+      const { data: listings } = await (supabase as any)
+        .from("marketplace_listings")
+        .select("id, seller_id")
+        .in("id", listingIds)
+        .in("seller_id", ids);
+      for (const l of listings || []) {
+        if (l?.seller_id && !out[l.seller_id]) out[l.seller_id] = { peerRole: "seller" };
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+
+  return out;
+}
+
 export async function uploadListingImage(userId: string, file: File, onProgress?: (n: number) => void) {
   const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
   const safeName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext === "heic" || ext === "heif" ? "jpg" : ext}`;
