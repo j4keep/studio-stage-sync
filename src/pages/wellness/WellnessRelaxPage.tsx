@@ -80,6 +80,9 @@ export default function WellnessRelaxPage() {
                 <div>
                   <p className="text-sm font-bold">{b.title}</p>
                   <p className="text-[11px] text-stone-500">{b.blurb}</p>
+                  {b.demo ? (
+                    <p className="mt-1 text-[11px] font-semibold text-teal-700">Includes calm demo video</p>
+                  ) : null}
                 </div>
                 <span className="text-xs font-bold text-teal-700">{b.minutes} min</span>
               </button>
@@ -120,6 +123,7 @@ export default function WellnessRelaxPage() {
           exhale={breath.exhale}
           holdOut={breath.holdOut}
           minutes={breath.minutes}
+          demo={breath.demo}
           onComplete={() => {
             patchToday((d) => {
               d.mindfulMinutes += breath.minutes;

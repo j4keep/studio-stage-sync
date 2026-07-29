@@ -248,6 +248,7 @@ export default function WellnessSleepPage() {
           exhale={breath.exhale}
           holdOut={breath.holdOut}
           minutes={breath.minutes}
+          demo={breath.demo}
           onComplete={() => {
             patchToday((d) => {
               d.sleepRoutine = true;

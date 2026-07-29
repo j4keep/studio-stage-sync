@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Pause, Play } from "lucide-react";
+import ExerciseDemoPlayer from "@/components/wellness/ExerciseDemoPlayer";
+import type { MoveStep } from "@/lib/wellness";
+import { moveStepText } from "@/lib/wellness";
 import {
   canWellnessSpeak,
   getSelectedWellnessVoiceName,
@@ -12,7 +15,7 @@ import {
 type Props = {
   minutes: number;
   title: string;
-  steps: string[];
+  steps: MoveStep[];
   onComplete?: () => void;
   onClose: () => void;
   /** YAJ Buddy speaks each step. Default true when supported. */
@@ -20,8 +23,7 @@ type Props = {
 };
 
 /**
- * Workout timer with Buddy coaching.
- * Speaks EVERY step in order (queued) so longer routines don’t skip instructions.
+ * Workout timer with Buddy coaching + step-synced form demo video.
  */
 export default function WorkoutTimer({
   minutes,
@@ -33,7 +35,6 @@ export default function WorkoutTimer({
 }: Props) {
   const total = Math.max(60, minutes * 60);
   const stepCount = Math.max(1, steps.length);
-  // Equal time per step so none are skipped; leftover seconds stay on last step
   const secondsPerStep = Math.max(8, Math.floor(total / stepCount));
 
   const [left, setLeft] = useState(total);
@@ -45,6 +46,9 @@ export default function WorkoutTimer({
   const speakQueueBusy = useRef(false);
   const pendingSteps = useRef<number[]>([]);
 
+  const current = steps[stepIdx];
+  const currentText = current ? moveStepText(current) : "";
+
   const flushSpeakQueue = async () => {
     if (speakQueueBusy.current) return;
     speakQueueBusy.current = true;
@@ -52,8 +56,8 @@ export default function WorkoutTimer({
       const idx = pendingSteps.current.shift()!;
       if (!voiceOn) continue;
       lastSpokenStep.current = idx;
-      await speakMoveStep(idx, steps[idx] || "", stepCount);
-      // Brief pause between cues so Chrome doesn’t drop the queue
+      const text = moveStepText(steps[idx]);
+      await speakMoveStep(idx, text, stepCount);
       await new Promise((r) => setTimeout(r, 280));
     }
     speakQueueBusy.current = false;
@@ -62,10 +66,8 @@ export default function WorkoutTimer({
   const enqueueStepSpeak = (idx: number) => {
     if (!voiceOn) return;
     if (idx < 0 || idx >= stepCount) return;
-    // Don’t re-queue a step already spoken or already waiting
     if (idx <= lastSpokenStep.current) return;
     if (pendingSteps.current.includes(idx)) return;
-    // If we jumped ahead (tab throttle), backfill any skipped steps
     for (let i = lastSpokenStep.current + 1; i <= idx; i++) {
       if (!pendingSteps.current.includes(i)) pendingSteps.current.push(i);
     }
@@ -88,7 +90,7 @@ export default function WorkoutTimer({
         const voiceName = getSelectedWellnessVoiceName();
         await speakWellness(
           voiceName
-            ? `Okay. Let's begin. ${title}. I'll guide you through each step.`
+            ? `Okay. Let's begin. ${title}. Watch the demo and follow along.`
             : `Okay. Let's begin. ${title}.`,
           { calm: true, rate: 0.86, interrupt: true },
         );
@@ -129,7 +131,6 @@ export default function WorkoutTimer({
     return () => window.clearInterval(id);
   }, [running, voiceOn, onComplete]);
 
-  // Advance highlighted step + speak every step (including any that were skipped by lag)
   useEffect(() => {
     if (!steps.length || left < 0) return;
     const elapsed = total - left;
@@ -178,33 +179,41 @@ export default function WorkoutTimer({
         </div>
       </header>
 
-      <div className="flex flex-1 flex-col px-5 pt-4">
-        <p className="text-center text-5xl font-black tabular-nums tracking-tight">
+      <div className="flex min-h-0 flex-1 flex-col px-4 pt-2">
+        <ExerciseDemoPlayer
+          demo={current?.demo}
+          caption={currentText}
+          stepLabel={`Step ${stepIdx + 1} / ${stepCount}`}
+          playing={running && left > 0}
+          className="shrink-0 shadow-lg"
+        />
+
+        <p className="mt-3 text-center text-4xl font-black tabular-nums tracking-tight">
           {mm}:{ss}
         </p>
-        <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
           <div className="h-full rounded-full bg-teal-300 transition-all" style={{ width: `${pct}%` }} />
         </div>
-        <p className="mt-2 text-center text-[11px] text-emerald-100/50">
-          Step {stepIdx + 1} of {stepCount}
-        </p>
 
-        <div className="mt-6 flex-1 space-y-2 overflow-y-auto pb-6">
-          {steps.map((step, i) => (
-            <div
-              key={`${i}-${step}`}
-              className={`rounded-2xl border px-4 py-3 text-sm ${
-                i === stepIdx
-                  ? "border-teal-300/50 bg-teal-400/15 font-semibold text-teal-50"
-                  : i < stepIdx
-                    ? "border-white/5 bg-white/5 text-emerald-100/45 line-through"
-                    : "border-white/10 bg-white/5 text-emerald-100/80"
-              }`}
-            >
-              <span className="mr-2 text-[10px] font-bold uppercase tracking-wide opacity-60">{i + 1}</span>
-              {step}
-            </div>
-          ))}
+        <div className="mt-3 min-h-0 flex-1 space-y-1.5 overflow-y-auto pb-3">
+          {steps.map((step, i) => {
+            const text = moveStepText(step);
+            return (
+              <div
+                key={`${i}-${text}`}
+                className={`rounded-xl border px-3 py-2 text-xs ${
+                  i === stepIdx
+                    ? "border-teal-300/50 bg-teal-400/15 font-semibold text-teal-50"
+                    : i < stepIdx
+                      ? "border-white/5 bg-white/5 text-emerald-100/45 line-through"
+                      : "border-white/10 bg-white/5 text-emerald-100/80"
+                }`}
+              >
+                <span className="mr-2 text-[10px] font-bold uppercase tracking-wide opacity-60">{i + 1}</span>
+                {text}
+              </div>
+            );
+          })}
         </div>
 
         <div className="flex gap-2 pb-[max(1rem,env(safe-area-inset-bottom))]">

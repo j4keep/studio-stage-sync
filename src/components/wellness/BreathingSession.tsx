@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import ExerciseDemoPlayer from "@/components/wellness/ExerciseDemoPlayer";
+import type { DemoClip } from "@/lib/wellness";
 import {
   canWellnessSpeak,
   speakBreathPhase,
@@ -17,6 +19,8 @@ type Props = {
   holdOut?: number;
   minutes: number;
   onComplete?: () => void;
+  /** Optional posture / calm demo video */
+  demo?: DemoClip | null;
   /** YAJ Buddy speaks phase cues. Default true when browser supports it. */
   voiceGuide?: boolean;
 };
@@ -34,6 +38,7 @@ export default function BreathingSession({
   holdOut = 0,
   minutes,
   onComplete,
+  demo = null,
   voiceGuide = true,
 }: Props) {
   const [phase, setPhase] = useState<Phase>("inhale");
@@ -149,13 +154,22 @@ export default function BreathingSession({
         </div>
       </header>
 
-      <div className="flex flex-1 flex-col items-center justify-center gap-8 px-6">
+      <div className="flex min-h-0 flex-1 flex-col items-center gap-5 overflow-y-auto px-4 pb-4 pt-2">
+        {demo ? (
+          <ExerciseDemoPlayer
+            demo={demo}
+            caption="Follow this calm posture while you breathe"
+            stepLabel={label}
+            playing={running && secondsLeft > 0}
+            className="w-full max-w-md shrink-0"
+          />
+        ) : null}
         <div
-          className="flex h-44 w-44 items-center justify-center rounded-full bg-gradient-to-br from-teal-300/40 via-emerald-400/30 to-cyan-500/20 shadow-[0_0_60px_-12px_rgba(45,212,191,0.55)] transition-transform duration-[1000ms] ease-in-out"
+          className="flex h-40 w-40 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-teal-300/40 via-emerald-400/30 to-cyan-500/20 shadow-[0_0_60px_-12px_rgba(45,212,191,0.55)] transition-transform duration-[1000ms] ease-in-out"
           style={{ transform: `scale(${running && secondsLeft > 0 ? scale : 1})` }}
         >
-          <div className="flex h-28 w-28 flex-col items-center justify-center rounded-full bg-[#0c1a17]/70 backdrop-blur">
-            <p className="text-lg font-black tracking-tight">{secondsLeft === 0 ? "Complete" : label}</p>
+          <div className="flex h-24 w-24 flex-col items-center justify-center rounded-full bg-[#0c1a17]/70 backdrop-blur">
+            <p className="text-base font-black tracking-tight">{secondsLeft === 0 ? "Complete" : label}</p>
             {secondsLeft > 0 && (
               <p className="mt-1 text-2xl font-bold tabular-nums text-teal-200">{Math.max(phaseLeft, 1)}</p>
             )}

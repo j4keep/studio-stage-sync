@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import WorkoutTimer from "@/components/wellness/WorkoutTimer";
-import { MOVE_ROUTINES, patchToday } from "@/lib/wellness";
+import { MOVE_ROUTINES, moveStepText, patchToday } from "@/lib/wellness";
 
 export default function WellnessMovePage() {
   const nav = useNavigate();
@@ -45,7 +45,7 @@ export default function WellnessMovePage() {
 
       <div className="relative space-y-4 px-4 pt-5">
         <p className="text-sm text-stone-600">
-          Short, no-equipment routines. You’re not training for a competition — just waking the body up.
+          Short, no-equipment routines with a step-by-step demo video so you can see the move.
         </p>
         {MOVE_ROUTINES.map((r) => (
           <button
@@ -60,22 +60,23 @@ export default function WellnessMovePage() {
                 <p className="mt-1 text-xs capitalize text-stone-500">
                   {r.level} · {r.kind} · {r.minutes} min
                 </p>
+                <p className="mt-1 text-[11px] font-semibold text-teal-700">Includes demo video</p>
               </div>
               <span className="rounded-full bg-teal-100 px-2.5 py-1 text-[11px] font-bold text-teal-800">
                 Start
               </span>
             </div>
             <ul className="mt-3 space-y-1">
-              {r.steps.slice(0, 3).map((s) => (
-                <li key={s} className="text-xs text-stone-500">
-                  · {s}
+              {r.steps.slice(0, 3).map((s, i) => (
+                <li key={`${i}-${moveStepText(s)}`} className="text-xs text-stone-500">
+                  · {moveStepText(s)}
                 </li>
               ))}
             </ul>
           </button>
         ))}
         <p className="text-[11px] text-stone-500">
-          Creator-led fitness routines will arrive later — with credentials clearly labeled.
+          Demo clips show the idea of each move. Creator-led routines with credentials come later.
         </p>
       </div>
 

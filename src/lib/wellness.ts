@@ -51,6 +51,27 @@ export const SLEEP_SOUNDS: {
   { id: "nature", label: "Nature", blurb: "Light forest air" },
 ];
 
+/** Short demo clip shown during Move / Relax steps (replaceable later with AI/instructor uploads). */
+export type DemoClip = {
+  videoUrl: string;
+  posterUrl?: string;
+  credit?: string;
+};
+
+/** Mixkit free stock — swap these for YAJ-hosted AI/instructor demos anytime. */
+function mixkitDemo(id: number, credit = "Form demo · Mixkit"): DemoClip {
+  return {
+    videoUrl: `https://assets.mixkit.co/videos/${id}/${id}-720.mp4`,
+    posterUrl: `https://assets.mixkit.co/videos/${id}/${id}-thumb-720-0.jpg`,
+    credit,
+  };
+}
+
+export type MoveStep = {
+  instruction: string;
+  demo: DemoClip;
+};
+
 export type BreathingPattern = {
   id: string;
   title: string;
@@ -60,6 +81,8 @@ export type BreathingPattern = {
   exhale: number;
   holdOut?: number;
   blurb: string;
+  /** Optional posture / calm demo while breathing */
+  demo?: DemoClip;
 };
 
 export const BREATHING_SESSIONS: BreathingPattern[] = [
@@ -72,6 +95,7 @@ export const BREATHING_SESSIONS: BreathingPattern[] = [
     exhale: 4,
     holdOut: 4,
     blurb: "Even rhythm to settle the mind",
+    demo: mixkitDemo(4800),
   },
   {
     id: "wind-down",
@@ -81,6 +105,7 @@ export const BREATHING_SESSIONS: BreathingPattern[] = [
     hold: 2,
     exhale: 6,
     blurb: "Longer exhales for sleep",
+    demo: mixkitDemo(4803),
   },
   {
     id: "reset-2",
@@ -90,6 +115,7 @@ export const BREATHING_SESSIONS: BreathingPattern[] = [
     hold: 1,
     exhale: 5,
     blurb: "Quick stress release anytime",
+    demo: mixkitDemo(43736),
   },
 ];
 
@@ -99,7 +125,7 @@ export type MoveRoutine = {
   minutes: number;
   level: "gentle" | "beginner";
   kind: "stretch" | "walk" | "chair" | "bodyweight";
-  steps: string[];
+  steps: MoveStep[];
 };
 
 export const MOVE_ROUTINES: MoveRoutine[] = [
@@ -110,11 +136,11 @@ export const MOVE_ROUTINES: MoveRoutine[] = [
     level: "gentle",
     kind: "stretch",
     steps: [
-      "Roll shoulders slowly 8 times",
-      "Neck tilts left and right",
-      "Reach arms overhead and breathe",
-      "Forward fold as far as feels easy",
-      "Hip circles, then shake out legs",
+      { instruction: "Roll shoulders slowly 8 times", demo: mixkitDemo(583) },
+      { instruction: "Neck tilts left and right", demo: mixkitDemo(48554) },
+      { instruction: "Reach arms overhead and breathe", demo: mixkitDemo(780) },
+      { instruction: "Forward fold as far as feels easy", demo: mixkitDemo(48544) },
+      { instruction: "Hip circles, then shake out legs", demo: mixkitDemo(4420) },
     ],
   },
   {
@@ -124,11 +150,11 @@ export const MOVE_ROUTINES: MoveRoutine[] = [
     level: "beginner",
     kind: "walk",
     steps: [
-      "Stand tall, soft knees",
-      "Walk at a conversational pace",
-      "Swing arms naturally",
-      "Optional: 1-minute brisk finish",
-      "Cool down with slow steps",
+      { instruction: "Stand tall, soft knees", demo: mixkitDemo(780) },
+      { instruction: "Walk at a conversational pace", demo: mixkitDemo(40766) },
+      { instruction: "Swing arms naturally", demo: mixkitDemo(40766) },
+      { instruction: "Optional: 1-minute brisk finish", demo: mixkitDemo(40766) },
+      { instruction: "Cool down with slow steps", demo: mixkitDemo(583) },
     ],
   },
   {
@@ -138,11 +164,11 @@ export const MOVE_ROUTINES: MoveRoutine[] = [
     level: "gentle",
     kind: "chair",
     steps: [
-      "Seated marches, 30 seconds",
-      "Seated torso twists",
-      "Ankle circles both sides",
-      "Seated side reaches",
-      "Stand and sit 6 easy times if able",
+      { instruction: "Seated marches, 30 seconds", demo: mixkitDemo(42900) },
+      { instruction: "Seated torso twists", demo: mixkitDemo(45761) },
+      { instruction: "Ankle circles both sides", demo: mixkitDemo(48554) },
+      { instruction: "Seated side reaches", demo: mixkitDemo(48544) },
+      { instruction: "Stand and sit 6 easy times if able", demo: mixkitDemo(752) },
     ],
   },
   {
@@ -152,14 +178,18 @@ export const MOVE_ROUTINES: MoveRoutine[] = [
     level: "beginner",
     kind: "bodyweight",
     steps: [
-      "March in place 1 minute",
-      "Wall push-ups or knee push-ups × 8",
-      "Bodyweight squats × 8 (shallow OK)",
-      "Glute bridge × 8",
-      "Rest 30s, repeat the circuit once",
+      { instruction: "March in place 1 minute", demo: mixkitDemo(45761) },
+      { instruction: "Wall push-ups or knee push-ups × 8", demo: mixkitDemo(40248) },
+      { instruction: "Bodyweight squats × 8 (shallow OK)", demo: mixkitDemo(752) },
+      { instruction: "Glute bridge × 8", demo: mixkitDemo(5355) },
+      { instruction: "Rest 30s, repeat the circuit once", demo: mixkitDemo(42900) },
     ],
   },
 ];
+
+export function moveStepText(step: MoveStep | string): string {
+  return typeof step === "string" ? step : step.instruction;
+}
 
 export type WellnessRec = {
   title: string;
