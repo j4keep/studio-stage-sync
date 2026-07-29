@@ -32,6 +32,7 @@ export type EditableJob = {
   deadline: string | null;
   qualifications: string[] | null;
   external_apply_url: string | null;
+  visibility?: string | null;
   cover_image_url?: string | null;
   media?: unknown;
 };
@@ -59,6 +60,7 @@ const emptyForm = {
   benefits: "",
   deadline: "",
   external_apply_url: "",
+  visibility: "public",
 };
 
 export default function PostJobSheet({ open, onClose, onCreated, editJob }: Props) {
@@ -91,6 +93,7 @@ export default function PostJobSheet({ open, onClose, onCreated, editJob }: Prop
         benefits: (editJob.benefits ?? []).join(", "),
         deadline: editJob.deadline ? editJob.deadline.slice(0, 10) : "",
         external_apply_url: editJob.external_apply_url || "",
+        visibility: editJob.visibility === "unlisted" ? "unlisted" : "public",
       });
       setQualifications(editJob.qualifications ?? []);
       setCustomQual("");
@@ -205,6 +208,7 @@ export default function PostJobSheet({ open, onClose, onCreated, editJob }: Prop
       deadline: form.deadline || null,
       qualifications,
       external_apply_url,
+      visibility: form.visibility === "unlisted" ? "unlisted" : "public",
       // Stored in existing media jsonb so posts work before cover_image_url migration is applied
       media: jobCoverMedia(postImageUrl),
     };
@@ -240,6 +244,24 @@ export default function PostJobSheet({ open, onClose, onCreated, editJob }: Prop
     const { error } = isEdit
       ? await supabase.from("job_listings").update(payload).eq("id", editJob!.id).eq("employer_id", user.id)
       : await supabase.from("job_listings").insert({ ...payload, employer_id: user.id });
+
+    // If visibility migration isn't applied yet, retry without that column.
+    if (error && /visibility/i.test(error.message)) {
+      const { visibility: _v, ...withoutVisibility } = payload as typeof payload & { visibility?: string };
+      const retry = isEdit
+        ? await supabase.from("job_listings").update(withoutVisibility).eq("id", editJob!.id).eq("employer_id", user.id)
+        : await supabase.from("job_listings").insert({ ...withoutVisibility, employer_id: user.id });
+      setSaving(false);
+      if (retry.error) {
+        toast.error(retry.error.message);
+        return;
+      }
+      toast.success(isEdit ? "Job updated!" : "Job posted!");
+      onCreated?.();
+      onClose();
+      return;
+    }
+
     setSaving(false);
     if (error) {
       toast.error(error.message);
@@ -444,6 +466,13 @@ export default function PostJobSheet({ open, onClose, onCreated, editJob }: Prop
               </select>
             </Field>
           </div>
+
+          <Field label="Visibility">
+            <select value={form.visibility} onChange={(e) => update("visibility", e.target.value)} className={inputCls}>
+              <option value="public">Public — visible on Jobs board</option>
+              <option value="unlisted">Unlisted — only you (and applicants) can open the link</option>
+            </select>
+          </Field>
 
           <Field label="Required Skills (comma-separated)">
             <input
