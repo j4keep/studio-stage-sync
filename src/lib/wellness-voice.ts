@@ -99,9 +99,11 @@ export function speakMoveStep(stepIndex: number, stepText: string, totalSteps: n
   return speakWellness(prefix + stepText, { calm: true, rate: 0.95 });
 }
 
+export type BreathPhase = "inhale" | "hold" | "exhale" | "holdOut";
+
 /** Cue lines for breathing phases during wind-down / relax. */
-export function speakBreathPhase(phase: Phase) {
-  const lines: Record<Phase, string> = {
+export function speakBreathPhase(phase: BreathPhase) {
+  const lines: Record<BreathPhase, string> = {
     inhale: "Breathe in",
     hold: "Hold",
     exhale: "Breathe out",
