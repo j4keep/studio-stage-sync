@@ -6,10 +6,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { isBlockedBetween } from "@/lib/blocks";
+import { isBlockedBetween, blockUser } from "@/lib/blocks";
 import { getOrCreateConversation } from "@/lib/messaging";
 import { fetchRatingsByUserIds, type DisplayRating } from "@/lib/ratings";
 import UserRatingStars from "@/components/UserRatingStars";
+import MarketplaceMoreOptionsSheet from "@/components/marketplace/MarketplaceMoreOptionsSheet";
+import BlockConfirmDialog from "@/components/BlockConfirmDialog";
+import { toast as sonnerToast } from "sonner";
 
 
 interface Profile {
@@ -28,6 +31,8 @@ interface Conversation {
   openMarketplaceProfile?: boolean;
   /** Persisted origin from conversations.context */
   context?: string | null;
+  /** Marketplace: whether the other person is seller or buyer in this thread */
+  marketplacePeerRole?: "seller" | "buyer";
 }
 
 interface Message {
@@ -55,6 +60,8 @@ type MessagesNavState = {
   openBusinessProfile?: boolean;
   /** Open the other person's Marketplace profile from the chat header. */
   openMarketplaceProfile?: boolean;
+  /** Other party role in Marketplace chat (seller | buyer). */
+  marketplacePeerRole?: "seller" | "buyer";
 } | null;
 
 const MessagesPage = () => {
@@ -69,6 +76,10 @@ const MessagesPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [hideOtherYajPage, setHideOtherYajPage] = useState(false);
   const [openMarketplaceProfile, setOpenMarketplaceProfile] = useState(false);
+  const [marketplacePeerRole, setMarketplacePeerRole] = useState<"seller" | "buyer">("seller");
+  const [moreOptionsOpen, setMoreOptionsOpen] = useState(false);
+  const [blockOpen, setBlockOpen] = useState(false);
+  const [blockBusy, setBlockBusy] = useState(false);
   const [peerRatings, setPeerRatings] = useState<Record<string, DisplayRating>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -332,6 +343,7 @@ const MessagesPage = () => {
       introMessage?: string;
       openBusinessProfile?: boolean;
       openMarketplaceProfile?: boolean;
+      marketplacePeerRole?: "seller" | "buyer";
     },
   ) => {
     if (!user) return;
@@ -343,6 +355,7 @@ const MessagesPage = () => {
       });
       return;
     }
+    const peerRole = opts?.marketplacePeerRole || "seller";
     const existing = conversations.find((c) => c.other_user?.user_id === otherUser.user_id);
     if (existing) {
       if (opts?.introMessage?.trim()) {
@@ -366,11 +379,13 @@ const MessagesPage = () => {
         openBusinessProfile: opts?.openBusinessProfile || existing.openBusinessProfile,
         openMarketplaceProfile: opts?.openMarketplaceProfile || existing.openMarketplaceProfile || existing.context === "marketplace",
         context: opts?.openMarketplaceProfile ? "marketplace" : existing.context,
+        marketplacePeerRole: opts?.marketplacePeerRole || existing.marketplacePeerRole || peerRole,
       });
       setHideOtherYajPage(Boolean(opts?.hideOtherYajPage || existing.hideOtherYajPage));
       setOpenMarketplaceProfile(
         Boolean(opts?.openMarketplaceProfile || existing.openMarketplaceProfile || existing.context === "marketplace"),
       );
+      setMarketplacePeerRole(opts?.marketplacePeerRole || existing.marketplacePeerRole || peerRole);
       setShowNewChat(false);
       setSearchQuery("");
       return;
@@ -408,9 +423,11 @@ const MessagesPage = () => {
       openBusinessProfile: opts?.openBusinessProfile,
       openMarketplaceProfile: opts?.openMarketplaceProfile,
       context: opts?.openMarketplaceProfile ? "marketplace" : opts?.openBusinessProfile ? "local_help" : null,
+      marketplacePeerRole: opts?.marketplacePeerRole || peerRole,
     };
     setHideOtherYajPage(Boolean(opts?.hideOtherYajPage));
     setOpenMarketplaceProfile(Boolean(opts?.openMarketplaceProfile));
+    setMarketplacePeerRole(opts?.marketplacePeerRole || peerRole);
     setActiveConversation(newConv);
     setShowNewChat(false);
     setSearchQuery("");
@@ -464,6 +481,7 @@ const MessagesPage = () => {
         introMessage: state.introMessage,
         openBusinessProfile: state.openBusinessProfile,
         openMarketplaceProfile: state.openMarketplaceProfile,
+        marketplacePeerRole: state.marketplacePeerRole,
       });
       navigate(location.pathname, { replace: true, state: null });
     })();
@@ -540,6 +558,17 @@ const MessagesPage = () => {
               )}
             </div>
           </button>
+          {(openMarketplaceProfile ||
+            activeConversation.openMarketplaceProfile ||
+            activeConversation.context === "marketplace") && (
+            <button
+              type="button"
+              onClick={() => setMoreOptionsOpen(true)}
+              className="shrink-0 rounded-full bg-muted px-2.5 py-1.5 text-[11px] font-semibold text-foreground"
+            >
+              More options
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setActiveConversation(null)}
@@ -617,6 +646,54 @@ const MessagesPage = () => {
             </button>
           </form>
         </div>
+
+        <MarketplaceMoreOptionsSheet
+          open={moreOptionsOpen}
+          onClose={() => setMoreOptionsOpen(false)}
+          peerRole={activeConversation.marketplacePeerRole || marketplacePeerRole}
+          peerName={activeConversation.other_user?.display_name || ""}
+          onViewProfile={() => {
+            const id = activeConversation.other_user?.user_id;
+            if (!id) return;
+            navigate(`/marketplace/profile/${id}`);
+          }}
+          onReport={() => {
+            const role = activeConversation.marketplacePeerRole || marketplacePeerRole;
+            if (
+              window.confirm(
+                `Report this ${role}? We'll review their Marketplace activity for policy issues.`,
+              )
+            ) {
+              sonnerToast.success("Report submitted — thanks for helping keep YAJ safe");
+            }
+          }}
+          onBlock={() => setBlockOpen(true)}
+        />
+
+        <BlockConfirmDialog
+          open={blockOpen}
+          onClose={() => setBlockOpen(false)}
+          name={activeConversation.other_user?.display_name || "this user"}
+          loading={blockBusy}
+          onConfirm={() => {
+            void (async () => {
+              if (!user || !activeConversation.other_user?.user_id) return;
+              setBlockBusy(true);
+              try {
+                await blockUser(user.id, activeConversation.other_user.user_id);
+                sonnerToast.success("Blocked across YAJ — manage anytime in Settings → Blocking");
+                setBlockOpen(false);
+                setMoreOptionsOpen(false);
+                setActiveConversation(null);
+                navigate("/settings/blocking");
+              } catch (e: any) {
+                sonnerToast.error(e?.message || "Could not block");
+              } finally {
+                setBlockBusy(false);
+              }
+            })();
+          }}
+        />
       </div>
     );
   }
@@ -712,6 +789,7 @@ const MessagesPage = () => {
                 setActiveConversation(conv);
                 setHideOtherYajPage(Boolean(conv.hideOtherYajPage || conv.context === "marketplace" || conv.context === "local_help"));
                 setOpenMarketplaceProfile(Boolean(conv.openMarketplaceProfile || conv.context === "marketplace"));
+                setMarketplacePeerRole(conv.marketplacePeerRole || "seller");
               }}
               className="flex w-full items-center gap-3 rounded-xl p-3 text-left transition-colors hover:bg-card"
             >

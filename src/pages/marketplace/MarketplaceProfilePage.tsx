@@ -199,18 +199,19 @@ export default function MarketplaceProfilePage() {
                 type="button"
                 onClick={() =>
                   nav("/messages", {
-                    state: {
-                      startWithUserId: userId,
-                      startWithProfile: {
-                        user_id: userId,
-                        display_name: profile.display_name,
-                        avatar_url: profile.avatar_url,
+                      state: {
+                        startWithUserId: userId,
+                        startWithProfile: {
+                          user_id: userId,
+                          display_name: profile.display_name,
+                          avatar_url: profile.avatar_url,
+                        },
+                        hideOtherYajPage: true,
+                        openMarketplaceProfile: true,
+                        marketplacePeerRole: "seller",
+                        introMessage: "Hi — messaging from YAJ Marketplace",
                       },
-                      hideOtherYajPage: true,
-                      openMarketplaceProfile: true,
-                      introMessage: "Hi — messaging from YAJ Marketplace",
-                    },
-                  })
+                    })
                 }
                 className="mt-4 flex w-full items-center justify-center gap-1 rounded-full bg-primary py-2.5 text-sm font-bold text-primary-foreground"
               >
