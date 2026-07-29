@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Pause, Play } from "lucide-react";
 import {
   canWellnessSpeak,
+  getSelectedWellnessVoiceName,
   speakMoveStep,
   speakWellness,
   stopWellnessSpeak,
@@ -18,7 +19,10 @@ type Props = {
   voiceGuide?: boolean;
 };
 
-/** Simple workout / movement timer with spoken Buddy coaching. */
+/**
+ * Workout timer with Buddy coaching.
+ * Speaks EVERY step in order (queued) so longer routines don’t skip instructions.
+ */
 export default function WorkoutTimer({
   minutes,
   title,
@@ -27,13 +31,46 @@ export default function WorkoutTimer({
   onClose,
   voiceGuide = true,
 }: Props) {
-  const total = minutes * 60;
+  const total = Math.max(60, minutes * 60);
+  const stepCount = Math.max(1, steps.length);
+  // Equal time per step so none are skipped; leftover seconds stay on last step
+  const secondsPerStep = Math.max(8, Math.floor(total / stepCount));
+
   const [left, setLeft] = useState(total);
   const [running, setRunning] = useState(true);
   const [stepIdx, setStepIdx] = useState(0);
   const [voiceOn, setVoiceOn] = useState(() => voiceGuide && canWellnessSpeak());
   const lastSpokenStep = useRef<number>(-1);
   const completedRef = useRef(false);
+  const speakQueueBusy = useRef(false);
+  const pendingSteps = useRef<number[]>([]);
+
+  const flushSpeakQueue = async () => {
+    if (speakQueueBusy.current) return;
+    speakQueueBusy.current = true;
+    while (pendingSteps.current.length) {
+      const idx = pendingSteps.current.shift()!;
+      if (!voiceOn) continue;
+      lastSpokenStep.current = idx;
+      await speakMoveStep(idx, steps[idx] || "", stepCount);
+      // Brief pause between cues so Chrome doesn’t drop the queue
+      await new Promise((r) => setTimeout(r, 280));
+    }
+    speakQueueBusy.current = false;
+  };
+
+  const enqueueStepSpeak = (idx: number) => {
+    if (!voiceOn) return;
+    if (idx < 0 || idx >= stepCount) return;
+    // Don’t re-queue a step already spoken or already waiting
+    if (idx <= lastSpokenStep.current) return;
+    if (pendingSteps.current.includes(idx)) return;
+    // If we jumped ahead (tab throttle), backfill any skipped steps
+    for (let i = lastSpokenStep.current + 1; i <= idx; i++) {
+      if (!pendingSteps.current.includes(i)) pendingSteps.current.push(i);
+    }
+    void flushSpeakQueue();
+  };
 
   useEffect(() => {
     warmupWellnessVoice();
@@ -42,12 +79,29 @@ export default function WorkoutTimer({
     setStepIdx(0);
     lastSpokenStep.current = -1;
     completedRef.current = false;
-    if (voiceGuide && canWellnessSpeak()) {
-      void speakWellness(`Let's begin. ${title}.`, { calm: true, rate: 0.95 });
-    }
+    pendingSteps.current = [];
+    speakQueueBusy.current = false;
+
+    let cancelled = false;
+    void (async () => {
+      if (voiceGuide && canWellnessSpeak()) {
+        const voiceName = getSelectedWellnessVoiceName();
+        await speakWellness(
+          voiceName
+            ? `Okay. Let's begin. ${title}. I'll guide you through each step.`
+            : `Okay. Let's begin. ${title}.`,
+          { calm: true, rate: 0.86, interrupt: true },
+        );
+        if (!cancelled) enqueueStepSpeak(0);
+      }
+    })();
+
     return () => {
+      cancelled = true;
+      pendingSteps.current = [];
       stopWellnessSpeak();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [total, title, voiceGuide]);
 
   useEffect(() => {
@@ -57,7 +111,13 @@ export default function WorkoutTimer({
         if (s <= 1) {
           if (!completedRef.current) {
             completedRef.current = true;
-            if (voiceOn) void speakWellness("Great job. Workout complete.", { calm: true });
+            if (voiceOn) {
+              void speakWellness("Great job. Workout complete. Nice work today.", {
+                calm: true,
+                rate: 0.86,
+                interrupt: false,
+              });
+            }
             onComplete?.();
           }
           setRunning(false);
@@ -69,17 +129,17 @@ export default function WorkoutTimer({
     return () => window.clearInterval(id);
   }, [running, voiceOn, onComplete]);
 
+  // Advance highlighted step + speak every step (including any that were skipped by lag)
   useEffect(() => {
-    if (!steps.length || left <= 0) return;
+    if (!steps.length || left < 0) return;
     const elapsed = total - left;
-    const per = Math.max(1, Math.floor(total / steps.length));
-    const nextIdx = Math.min(steps.length - 1, Math.floor(elapsed / per));
+    const nextIdx = Math.min(stepCount - 1, Math.floor(elapsed / secondsPerStep));
     setStepIdx(nextIdx);
-    if (voiceOn && nextIdx !== lastSpokenStep.current && running) {
-      lastSpokenStep.current = nextIdx;
-      void speakMoveStep(nextIdx, steps[nextIdx], steps.length);
+    if (voiceOn && running && left > 0) {
+      enqueueStepSpeak(nextIdx);
     }
-  }, [left, total, steps, voiceOn, running]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [left, total, secondsPerStep, stepCount, voiceOn, running]);
 
   const mm = Math.floor(left / 60);
   const ss = String(left % 60).padStart(2, "0");
@@ -125,11 +185,14 @@ export default function WorkoutTimer({
         <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
           <div className="h-full rounded-full bg-teal-300 transition-all" style={{ width: `${pct}%` }} />
         </div>
+        <p className="mt-2 text-center text-[11px] text-emerald-100/50">
+          Step {stepIdx + 1} of {stepCount}
+        </p>
 
-        <div className="mt-8 flex-1 space-y-2 overflow-y-auto pb-6">
+        <div className="mt-6 flex-1 space-y-2 overflow-y-auto pb-6">
           {steps.map((step, i) => (
             <div
-              key={step}
+              key={`${i}-${step}`}
               className={`rounded-2xl border px-4 py-3 text-sm ${
                 i === stepIdx
                   ? "border-teal-300/50 bg-teal-400/15 font-semibold text-teal-50"
