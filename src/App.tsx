@@ -77,6 +77,11 @@ import MarketplaceSettingsPage from "./pages/marketplace/MarketplaceSettingsPage
 import MarketplaceOffersPage from "./pages/marketplace/MarketplaceOffersPage";
 import MarketplacePurchasesPage from "./pages/marketplace/MarketplacePurchasesPage";
 import MarketplaceSalesPage from "./pages/marketplace/MarketplaceSalesPage";
+import WellnessHomePage from "./pages/wellness/WellnessHomePage";
+import WellnessSleepPage from "./pages/wellness/WellnessSleepPage";
+import WellnessMovePage from "./pages/wellness/WellnessMovePage";
+import WellnessRelaxPage from "./pages/wellness/WellnessRelaxPage";
+import WellnessHabitsPage from "./pages/wellness/WellnessHabitsPage";
 import BlockingSettingsPage from "./pages/BlockingSettingsPage";
 import ResumeBuilderPage from "./pages/ResumeBuilderPage";
 import JobPreferencesPage from "./pages/JobPreferencesPage";
@@ -298,6 +303,11 @@ const ProtectedRoutes = () => {
         <Route path="/marketplace/messages" element={<MarketplaceMessagesPage />} />
         <Route path="/marketplace/settings" element={<MarketplaceSettingsPage />} />
         <Route path="/marketplace/account" element={<MarketplaceAccountPage />} />
+        <Route path="/wellness" element={<WellnessHomePage />} />
+        <Route path="/wellness/sleep" element={<WellnessSleepPage />} />
+        <Route path="/wellness/move" element={<WellnessMovePage />} />
+        <Route path="/wellness/relax" element={<WellnessRelaxPage />} />
+        <Route path="/wellness/habits" element={<WellnessHabitsPage />} />
         <Route path="/jobs" element={<JobsPage />} />
         <Route path="/jobs/interview/:applicationId" element={<JobInterviewPage />} />
         <Route path="/jobs/:id" element={<JobDetailPage />} />

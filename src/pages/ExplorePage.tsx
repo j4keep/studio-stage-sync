@@ -5,6 +5,7 @@ import yajLogo from "@/assets/yaj-logo.png";
 
 type ExploreItem = {
   label: string;
+  subtitle?: string;
   emoji: string;
   background: string;
   route?: string;
@@ -27,7 +28,13 @@ const TOP_PICKS: ExploreItem[] = [
   { label: "Radio", emoji: "🎵", background: bg.purple, route: "/radio" },
   { label: "Marketplace", emoji: "🛍", background: bg.pink, route: "/marketplace" },
   { label: "Careers", emoji: "💼", background: bg.indigo, route: "/jobs" },
-  { label: "Wellness", emoji: "💪", background: bg.green },
+  {
+    label: "Wellness",
+    subtitle: "Sleep · Move · Relax",
+    emoji: "🌿",
+    background: bg.green,
+    route: "/wellness",
+  },
   { label: "Community", emoji: "🏠", background: bg.blue, route: "/circle" },
   { label: "Find Local Help", emoji: "🛠", background: bg.teal, route: "/local-help" },
   { label: "Post a Gig", emoji: "➕", background: bg.orange, route: "/gigs" },
@@ -55,6 +62,9 @@ function ExploreCard({ item }: { item: ExploreItem }) {
         </span>
       </div>
       <p className="mt-1.5 px-0.5 text-xs font-semibold text-foreground truncate">{item.label}</p>
+      {item.subtitle ? (
+        <p className="px-0.5 text-[10px] leading-tight text-muted-foreground line-clamp-2">{item.subtitle}</p>
+      ) : null}
     </button>
   );
 }
@@ -65,7 +75,14 @@ export default function ExplorePage() {
   const items = useMemo(() => {
     const n = query.trim().toLowerCase();
     if (!n) return TOP_PICKS;
-    return TOP_PICKS.filter((i) => i.label.toLowerCase().includes(n));
+    return TOP_PICKS.filter((i) => {
+      if (i.label.toLowerCase().includes(n)) return true;
+      if (i.subtitle?.toLowerCase().includes(n)) return true;
+      if (i.label === "Wellness" && (n.includes("sleep") || n.includes("move") || n.includes("relax"))) {
+        return true;
+      }
+      return false;
+    });
   }, [query]);
 
   return (

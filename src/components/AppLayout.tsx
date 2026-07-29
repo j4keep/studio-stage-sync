@@ -24,6 +24,7 @@ function isDesktopShellPath(pathname: string) {
     pathname === "/explore" ||
     pathname === "/local-help" ||
     pathname === "/marketplace" ||
+    pathname === "/wellness" ||
     pathname === "/jobs" ||
     pathname === "/profile" ||
     pathname === "/radio" ||
@@ -41,6 +42,7 @@ function isDesktopShellPath(pathname: string) {
   if (pathname.startsWith("/jobs/")) return true;
   if (pathname.startsWith("/local-help/")) return true;
   if (pathname.startsWith("/marketplace/")) return true;
+  if (pathname.startsWith("/wellness/")) return true;
   return false;
 }
 
@@ -59,12 +61,14 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   const desktopShell = isDesktopShellPath(location.pathname);
   const mobileFeed = isMobileFeedPath(location.pathname);
   const isMarketplace = location.pathname === "/marketplace" || location.pathname.startsWith("/marketplace/");
-  // Marketplace uses its own simple header (back → Explore); keep YAJ BottomNav for integration.
+  const isWellness = location.pathname === "/wellness" || location.pathname.startsWith("/wellness/");
+  // Marketplace / Wellness use their own headers (back → Explore); keep YAJ BottomNav for integration.
   const showMobileTopBar =
     !["/auth", "/", "/feed"].includes(location.pathname) &&
     !isPodcastWorkspace &&
     !isPodcastLobby &&
-    !isMarketplace;
+    !isMarketplace &&
+    !isWellness;
   const rootTabs = ["/", "/feed", "/explore", "/jobs", "/profile", "/auth"];
   const showBackButton = !rootTabs.includes(location.pathname);
 
