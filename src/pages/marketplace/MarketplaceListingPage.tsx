@@ -2,14 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Bookmark,
-  Flag,
-  Heart,
   MapPin,
-  MessageCircle,
-  MoreHorizontal,
   Send,
   Share2,
-  Star,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -32,20 +27,11 @@ import {
 } from "@/lib/marketplace-api";
 import ListingCard from "@/components/marketplace/ListingCard";
 import MarkSoldSheet from "@/components/marketplace/MarkSoldSheet";
+import MarketplaceMoreOptionsSheet from "@/components/marketplace/MarketplaceMoreOptionsSheet";
+import BlockConfirmDialog from "@/components/BlockConfirmDialog";
 import UserRatingStars from "@/components/UserRatingStars";
 import { fetchUserDisplayRating, type DisplayRating } from "@/lib/ratings";
-import { supabase } from "@/integrations/supabase/client";
-
-type Comment = {
-  id: string;
-  listing_id: string;
-  user_id: string;
-  body: string;
-  created_at: string;
-  parent_id?: string | null;
-  display_name?: string | null;
-  avatar_url?: string | null;
-};
+import { blockUser } from "@/lib/blocks";
 
 export default function MarketplaceListingPage() {
   const { id = "" } = useParams();
@@ -61,10 +47,11 @@ export default function MarketplaceListingPage() {
   const [offerAmt, setOfferAmt] = useState("");
   const [busy, setBusy] = useState(false);
   const [quickMsg, setQuickMsg] = useState("Hi, is this still available?");
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [commentText, setCommentText] = useState("");
   const [sellerRating, setSellerRating] = useState<DisplayRating | null>(null);
   const [soldSheetOpen, setSoldSheetOpen] = useState(false);
+  const [moreOptionsOpen, setMoreOptionsOpen] = useState(false);
+  const [blockOpen, setBlockOpen] = useState(false);
+  const [blockBusy, setBlockBusy] = useState(false);
 
   const load = useCallback(async (opts?: { silent?: boolean }) => {
     if (!opts?.silent) setLoading(true);
@@ -86,7 +73,6 @@ export default function MarketplaceListingPage() {
         setNearby(near.filter((l) => l.id !== row.id && l.seller_id !== row.seller_id).slice(0, 6));
         setOfferAmt(row.price != null ? String(Math.max(0, Math.floor(Number(row.price) * 0.9))) : "");
         setSellerRating(rating);
-        await loadComments(row.id);
       } else {
         setSellerRating(null);
       }
@@ -96,33 +82,6 @@ export default function MarketplaceListingPage() {
       if (!opts?.silent) setLoading(false);
     }
   }, [id, user?.id]);
-
-  const loadComments = async (listingId: string) => {
-    try {
-      const { data, error } = await (supabase as any)
-        .from("marketplace_listing_comments")
-        .select("*")
-        .eq("listing_id", listingId)
-        .order("created_at", { ascending: true })
-        .limit(40);
-      if (error) throw error;
-      const rows = data || [];
-      const ids = [...new Set(rows.map((r: any) => String(r.user_id)))] as string[];
-      const { data: profiles } = ids.length
-        ? await supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", ids)
-        : { data: [] as any[] };
-      const map = new Map((profiles || []).map((p: any) => [p.user_id, p]));
-      setComments(
-        rows.map((r: any) => ({
-          ...r,
-          display_name: map.get(r.user_id)?.display_name,
-          avatar_url: map.get(r.user_id)?.avatar_url,
-        })),
-      );
-    } catch {
-      setComments([]);
-    }
-  };
 
   useEffect(() => {
     void load();
@@ -134,6 +93,21 @@ export default function MarketplaceListingPage() {
     if (fromMedia.length) return fromMedia;
     return listing.cover_url ? [listing.cover_url] : [];
   }, [listing]);
+
+  const related = useMemo(() => {
+    if (!listing) return [];
+    const pool = [...more, ...nearby];
+    const seen = new Set<string>([listing.id]);
+    const sameCat: MarketplaceListing[] = [];
+    const other: MarketplaceListing[] = [];
+    for (const l of pool) {
+      if (seen.has(l.id)) continue;
+      seen.add(l.id);
+      if (listing.category && l.category === listing.category) sameCat.push(l);
+      else other.push(l);
+    }
+    return [...sameCat, ...other].slice(0, 8);
+  }, [listing, more, nearby]);
 
   const isOwner = user?.id === listing?.seller_id;
   const cat = getCategory(listing?.category);
@@ -169,6 +143,7 @@ export default function MarketplaceListingPage() {
         },
         hideOtherYajPage: true,
         openMarketplaceProfile: true,
+        marketplacePeerRole: "seller",
         introMessage: intro,
       },
     });
@@ -196,29 +171,6 @@ export default function MarketplaceListingPage() {
     }
   };
 
-  const postComment = async () => {
-    if (!user || !listing) return toast.error("Sign in to comment");
-    const body = commentText.trim();
-    if (!body) return;
-    if (/\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(body) || /\b\d{1,5}\s+\w+\s+(st|street|ave|avenue|rd|road|blvd|ln|lane)\b/i.test(body)) {
-      toast.error("Don’t post phone numbers or exact addresses in public comments.");
-      return;
-    }
-    try {
-      const { error } = await (supabase as any).from("marketplace_listing_comments").insert({
-        listing_id: listing.id,
-        user_id: user.id,
-        body: sanitizeDescription(body),
-      });
-      if (error) throw error;
-      if (!isOwner) void recordListingInquiry(listing.id, user.id, "comment");
-      setCommentText("");
-      await loadComments(listing.id);
-    } catch (e: any) {
-      toast.error(e?.message || "Could not post comment");
-    }
-  };
-
   const setStatus = async (status: string) => {
     if (!user || !listing || !isOwner) return;
     try {
@@ -226,6 +178,21 @@ export default function MarketplaceListingPage() {
       toast.success(`Marked ${status}`);
     } catch (e: any) {
       toast.error(e?.message || "Update failed");
+    }
+  };
+
+  const confirmBlock = async () => {
+    if (!user || !listing) return;
+    setBlockBusy(true);
+    try {
+      await blockUser(user.id, listing.seller_id);
+      toast.success(`Blocked ${listing.seller?.display_name || "seller"}`);
+      setBlockOpen(false);
+      nav("/settings/blocking");
+    } catch (e: any) {
+      toast.error(e?.message || "Could not block user");
+    } finally {
+      setBlockBusy(false);
     }
   };
 
@@ -253,6 +220,7 @@ export default function MarketplaceListingPage() {
   }
 
   const desc = sanitizeDescription(listing.description);
+  const sellerName = listing.seller?.display_name || "Seller";
 
   return (
     <div className="min-h-screen bg-background pb-28 text-foreground">
@@ -322,9 +290,15 @@ export default function MarketplaceListingPage() {
             <h1 className="text-xl font-bold leading-snug">{listing.title}</h1>
             <p className="mt-1 text-lg font-bold">{formatPrice(listing.price, listing.listing_type)}</p>
           </div>
-          <button type="button" onClick={() => toast.message("Report submitted")} className="rounded-full p-2 text-muted-foreground" aria-label="More">
-            <MoreHorizontal className="h-5 w-5" />
-          </button>
+          {!isOwner && (
+            <button
+              type="button"
+              onClick={() => setMoreOptionsOpen(true)}
+              className="shrink-0 pt-1 text-xs font-semibold text-muted-foreground hover:text-foreground"
+            >
+              More options
+            </button>
+          )}
         </div>
 
         <button
@@ -393,9 +367,6 @@ export default function MarketplaceListingPage() {
             <button type="button" onClick={onSave} className="flex h-10 w-10 items-center justify-center rounded-full border border-border" aria-label="Save">
               <Bookmark className={`h-4 w-4 ${listing.saved ? "fill-foreground" : ""}`} />
             </button>
-            <button type="button" onClick={() => toast.message("Report submitted")} className="flex h-10 w-10 items-center justify-center rounded-full border border-border" aria-label="Report">
-              <Flag className="h-4 w-4" />
-            </button>
           </div>
         )}
 
@@ -439,66 +410,16 @@ export default function MarketplaceListingPage() {
           </p>
         </section>
 
-        <section className="border-t border-border pt-4">
-          <h2 className="mb-3 text-base font-bold">Comments</h2>
-          <div className="space-y-4">
-            {comments.length === 0 && (
-              <p className="text-sm text-muted-foreground">No comments yet. Ask a question below.</p>
-            )}
-            {comments.map((c) => (
-              <div key={c.id} className="flex gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => nav(`/marketplace/profile/${c.user_id}`)}
-                  className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-muted"
-                  aria-label="View marketplace profile"
-                >
-                  {c.avatar_url ? (
-                    <img src={c.avatar_url} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-xs font-bold">
-                      {(c.display_name || "?")[0]}
-                    </div>
-                  )}
-                </button>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm">
-                    <button
-                      type="button"
-                      onClick={() => nav(`/marketplace/profile/${c.user_id}`)}
-                      className="font-semibold hover:underline"
-                    >
-                      {c.display_name || "Member"}
-                    </button>
-                    {c.user_id === listing.seller_id && (
-                      <span className="ml-1.5 inline-flex items-center gap-0.5 text-[10px] font-semibold text-primary">
-                        Author
-                      </span>
-                    )}
-                    <span className="ml-1.5 text-xs text-muted-foreground">{timeAgo(c.created_at)}</span>
-                  </p>
-                  <p className="mt-0.5 text-sm">{c.body}</p>
-                  <div className="mt-1 flex gap-3 text-[11px] font-medium text-muted-foreground">
-                    <span className="inline-flex items-center gap-1"><Heart className="h-3 w-3" /> Like</span>
-                    <span className="inline-flex items-center gap-1"><Star className="h-3 w-3" /> Helpful</span>
-                    <span className="inline-flex items-center gap-1"><MessageCircle className="h-3 w-3" /> Reply</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-3 flex items-center gap-2">
-            <input
-              value={commentText}
-              onChange={(e) => setCommentText(e.target.value)}
-              placeholder="Comment"
-              className="h-10 flex-1 rounded-full border border-border bg-muted/50 px-4 text-sm outline-none"
-            />
-            <button type="button" onClick={() => void postComment()} className="rounded-full bg-foreground px-3 py-2 text-xs font-bold text-background">
-              Post
-            </button>
-          </div>
-        </section>
+        {related.length > 0 && (
+          <section className="border-t border-border pt-4">
+            <h2 className="mb-3 text-base font-bold">Related items</h2>
+            <div className="grid grid-cols-2 gap-3">
+              {related.map((l) => (
+                <ListingCard key={l.id} listing={l} />
+              ))}
+            </div>
+          </section>
+        )}
 
         {more.length > 0 && (
           <section className="border-t border-border pt-4">
@@ -510,17 +431,6 @@ export default function MarketplaceListingPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               {more.slice(0, 4).map((l) => (
-                <ListingCard key={l.id} listing={l} />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {nearby.length > 0 && (
-          <section className="border-t border-border pt-4">
-            <h2 className="mb-3 text-base font-bold">More listings near you</h2>
-            <div className="grid grid-cols-2 gap-3">
-              {nearby.map((l) => (
                 <ListingCard key={l.id} listing={l} />
               ))}
             </div>
@@ -632,6 +542,31 @@ export default function MarketplaceListingPage() {
             );
           }}
         />
+      )}
+
+      {!isOwner && listing && (
+        <>
+          <MarketplaceMoreOptionsSheet
+            open={moreOptionsOpen}
+            onClose={() => setMoreOptionsOpen(false)}
+            peerRole="seller"
+            peerName={sellerName}
+            onViewProfile={() => nav(`/marketplace/profile/${listing.seller_id}`)}
+            onReport={() => {
+              if (window.confirm("Report this listing? We'll review it.")) {
+                toast.message("Report submitted — we'll review this listing");
+              }
+            }}
+            onBlock={() => setBlockOpen(true)}
+          />
+          <BlockConfirmDialog
+            open={blockOpen}
+            onClose={() => setBlockOpen(false)}
+            onConfirm={() => void confirmBlock()}
+            name={sellerName}
+            loading={blockBusy}
+          />
+        </>
       )}
     </div>
   );
