@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Flag, MapPin } from "lucide-react";
+import { ArrowLeft, ChevronRight, Flag, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,7 +9,10 @@ import {
   toggleSaveListing,
   type MarketplaceListing,
 } from "@/lib/marketplace-api";
+import { fetchMarketplaceRoleRatings, type MarketplaceRoleRatings } from "@/lib/ratings";
 import ListingCard, { ListingCardSkeleton } from "@/components/marketplace/ListingCard";
+import UserRatingStars from "@/components/UserRatingStars";
+import UserReviewsSection from "@/components/UserReviewsSection";
 
 type YajUser = {
   user_id: string;
@@ -18,7 +21,10 @@ type YajUser = {
   created_at?: string | null;
 };
 
-/** Marketplace-focused view of an existing YAJ account — not a second profile. */
+/**
+ * Marketplace profile for a seller or buyer — separate from the YAJ artist page.
+ * Ratings sit under the name so both sides stay accountable.
+ */
 export default function MarketplaceProfilePage() {
   const { userId = "" } = useParams();
   const nav = useNavigate();
@@ -27,6 +33,7 @@ export default function MarketplaceProfilePage() {
 
   const [profile, setProfile] = useState<YajUser | null>(null);
   const [city, setCity] = useState<string | null>(null);
+  const [ratings, setRatings] = useState<MarketplaceRoleRatings | null>(null);
   const [active, setActive] = useState<MarketplaceListing[]>([]);
   const [sold, setSold] = useState<MarketplaceListing[]>([]);
   const [tab, setTab] = useState<"active" | "sold">("active");
@@ -42,12 +49,16 @@ export default function MarketplaceProfilePage() {
         .maybeSingle();
       setProfile(yaj || { user_id: userId, display_name: "Member", avatar_url: null });
 
-      const { data: mp } = await (supabase as any)
-        .from("marketplace_profiles")
-        .select("city, service_area")
-        .eq("user_id", userId)
-        .maybeSingle();
+      const [{ data: mp }, roleRatings] = await Promise.all([
+        (supabase as any)
+          .from("marketplace_profiles")
+          .select("city, service_area")
+          .eq("user_id", userId)
+          .maybeSingle(),
+        fetchMarketplaceRoleRatings(userId),
+      ]);
       setCity(mp?.city || mp?.service_area || null);
+      setRatings(roleRatings);
 
       const [a, s] = await Promise.all([
         listMarketplaceListings({
@@ -65,9 +76,11 @@ export default function MarketplaceProfilePage() {
       ]);
       setActive(a);
       setSold(s);
-      if (!city && a[0]) setCity([a[0].city, a[0].state].filter(Boolean).join(", ") || null);
+      if (!mp?.city && !mp?.service_area && a[0]) {
+        setCity([a[0].city, a[0].state].filter(Boolean).join(", ") || null);
+      }
     } catch (e: any) {
-      toast.error(e?.message || "Could not load seller");
+      toast.error(e?.message || "Could not load marketplace profile");
     } finally {
       setLoading(false);
     }
@@ -99,12 +112,25 @@ export default function MarketplaceProfilePage() {
   return (
     <div className="min-h-screen bg-background pb-28 text-foreground">
       <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
-        <button type="button" onClick={() => nav(-1)} className="flex h-9 w-9 items-center justify-center rounded-full bg-muted" aria-label="Back">
+        <button
+          type="button"
+          onClick={() => nav(-1)}
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"
+          aria-label="Back"
+        >
           <ArrowLeft className="h-4 w-4" />
         </button>
-        <h1 className="flex-1 text-base font-bold">Seller</h1>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-primary">YAJ Marketplace</p>
+          <h1 className="truncate text-base font-bold">Marketplace profile</h1>
+        </div>
         {!isSelf && (
-          <button type="button" onClick={() => toast.message("Report submitted")} className="rounded-full bg-muted p-2" aria-label="Report">
+          <button
+            type="button"
+            onClick={() => toast.message("Report submitted")}
+            className="rounded-full bg-muted p-2"
+            aria-label="Report"
+          >
             <Flag className="h-4 w-4" />
           </button>
         )}
@@ -112,15 +138,23 @@ export default function MarketplaceProfilePage() {
 
       {loading || !profile ? (
         <div className="space-y-3 p-4">
-          <div className="mx-auto h-20 w-20 animate-pulse rounded-full bg-muted" />
-          <div className="mx-auto h-4 w-40 animate-pulse rounded bg-muted" />
+          <div className="flex items-center gap-3">
+            <div className="h-16 w-16 animate-pulse rounded-full bg-muted" />
+            <div className="space-y-2">
+              <div className="h-4 w-40 animate-pulse rounded bg-muted" />
+              <div className="h-3 w-28 animate-pulse rounded bg-muted" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3 pt-2">
+            <ListingCardSkeleton />
+            <ListingCardSkeleton />
+          </div>
         </div>
       ) : (
         <>
-          <div className="mx-4 mt-4 overflow-hidden rounded-2xl border border-border bg-card">
-            <div className="h-24 bg-gradient-to-br from-muted to-muted/40" />
-            <div className="-mt-10 px-4 pb-4 text-center">
-              <div className="mx-auto h-20 w-20 overflow-hidden rounded-full border-4 border-card bg-muted">
+          <section className="border-b border-border px-4 py-4">
+            <div className="flex items-start gap-3">
+              <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full bg-muted">
                 {profile.avatar_url ? (
                   <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
                 ) : (
@@ -129,69 +163,73 @@ export default function MarketplaceProfilePage() {
                   </div>
                 )}
               </div>
-              <h2 className="mt-2 text-xl font-bold">{profile.display_name || "Member"}</h2>
-              {(city || since) && (
-                <p className="mt-1 flex items-center justify-center gap-1 text-xs text-muted-foreground">
-                  {city && (
-                    <>
-                      <MapPin className="h-3 w-3" />
-                      {city}
-                    </>
-                  )}
-                  {city && since ? " · " : ""}
-                  {since ? `Member since ${since}` : ""}
-                </p>
-              )}
-              <div className="mt-3 flex justify-center gap-8 text-center">
-                <div>
-                  <p className="text-lg font-bold">—</p>
-                  <p className="text-[10px] text-muted-foreground">Seller rating</p>
-                </div>
-                <div>
-                  <p className="text-lg font-bold">—</p>
-                  <p className="text-[10px] text-muted-foreground">Buyer rating</p>
-                </div>
-                <div>
-                  <p className="text-lg font-bold">{active.length}</p>
-                  <p className="text-[10px] text-muted-foreground">Active</p>
-                </div>
+              <div className="min-w-0 flex-1">
+                <h2 className="text-xl font-bold leading-tight">{profile.display_name || "Member"}</h2>
+                <UserRatingStars rating={ratings?.overall} variant="full" className="mt-1" />
+                {(city || since) && (
+                  <p className="mt-1.5 flex flex-wrap items-center gap-x-1 text-xs text-muted-foreground">
+                    {city && (
+                      <span className="inline-flex items-center gap-0.5">
+                        <MapPin className="h-3 w-3" />
+                        {city}
+                      </span>
+                    )}
+                    {city && since ? <span>·</span> : null}
+                    {since ? <span>Joined {since}</span> : null}
+                  </p>
+                )}
               </div>
-              {!isSelf && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    nav("/messages", {
-                      state: {
-                        startWithUserId: userId,
-                        startWithProfile: {
-                          user_id: userId,
-                          display_name: profile.display_name,
-                          avatar_url: profile.avatar_url,
-                        },
-                        hideOtherYajPage: true,
-                        openMarketplaceProfile: true,
-                        introMessage: "Hi — messaging from YAJ Marketplace",
-                      },
-                    })
-                  }
-                  className="mt-4 w-full rounded-full bg-primary py-2.5 text-sm font-bold text-primary-foreground"
-                >
-                  Message
-                </button>
-              )}
-              {isSelf && (
-                <button
-                  type="button"
-                  onClick={() => nav("/marketplace/account")}
-                  className="mt-4 w-full rounded-full bg-muted py-2.5 text-sm font-semibold"
-                >
-                  Manage my listings
-                </button>
-              )}
             </div>
-          </div>
 
-          <div className="mt-4 flex border-b border-border px-4">
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <div className="rounded-2xl border border-border bg-card px-3 py-2.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Seller</p>
+                <UserRatingStars rating={ratings?.seller} variant="full" className="mt-1" />
+                <p className="mt-1 text-[11px] text-muted-foreground">{sold.length} sold · {active.length} active</p>
+              </div>
+              <div className="rounded-2xl border border-border bg-card px-3 py-2.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Buyer</p>
+                <UserRatingStars rating={ratings?.buyer} variant="full" className="mt-1" />
+                <p className="mt-1 text-[11px] text-muted-foreground">From marketplace deals</p>
+              </div>
+            </div>
+
+            {!isSelf && (
+              <button
+                type="button"
+                onClick={() =>
+                  nav("/messages", {
+                    state: {
+                      startWithUserId: userId,
+                      startWithProfile: {
+                        user_id: userId,
+                        display_name: profile.display_name,
+                        avatar_url: profile.avatar_url,
+                      },
+                      hideOtherYajPage: true,
+                      openMarketplaceProfile: true,
+                      introMessage: "Hi — messaging from YAJ Marketplace",
+                    },
+                  })
+                }
+                className="mt-4 flex w-full items-center justify-center gap-1 rounded-full bg-primary py-2.5 text-sm font-bold text-primary-foreground"
+              >
+                Message
+                <ChevronRight className="h-4 w-4 opacity-80" />
+              </button>
+            )}
+            {isSelf && (
+              <button
+                type="button"
+                onClick={() => nav("/marketplace/account")}
+                className="mt-4 w-full rounded-full bg-muted py-2.5 text-sm font-semibold"
+              >
+                Manage my listings
+              </button>
+            )}
+          </section>
+
+          <div className="mt-1 flex border-b border-border px-4">
             {(
               [
                 ["active", `Active (${active.length})`],
@@ -222,6 +260,12 @@ export default function MarketplaceProfilePage() {
               </div>
             )}
           </div>
+
+          <UserReviewsSection
+            userId={userId}
+            title="Marketplace reviews"
+            emptyHint="No marketplace reviews yet — after an offer is accepted, both sides can rate each other."
+          />
         </>
       )}
     </div>

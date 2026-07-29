@@ -627,7 +627,35 @@ export async function listOffersForUser(userId: string, role: "buyer" | "seller"
   else q = q.or(`buyer_id.eq.${userId},seller_id.eq.${userId}`);
   const { data, error } = await q;
   if (error) throw error;
-  return data || [];
+  const rows = data || [];
+  if (!rows.length) return [];
+
+  const listingIds = [...new Set(rows.map((r: any) => String(r.listing_id)).filter(Boolean))] as string[];
+  const peopleIds = [
+    ...new Set(rows.flatMap((r: any) => [r.buyer_id, r.seller_id]).filter(Boolean).map(String)),
+  ] as string[];
+
+  const [{ data: listings }, { data: profiles }] = await Promise.all([
+    listingIds.length
+      ? (supabase as any)
+          .from("marketplace_listings")
+          .select("id, title, price, cover_url, city, state, location_approx, status")
+          .in("id", listingIds)
+      : Promise.resolve({ data: [] }),
+    peopleIds.length
+      ? supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", peopleIds)
+      : Promise.resolve({ data: [] }),
+  ]);
+
+  const listingMap = new Map((listings || []).map((l: any) => [l.id, l]));
+  const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
+
+  return rows.map((o: any) => ({
+    ...o,
+    listing: listingMap.get(o.listing_id) || null,
+    buyer: profileMap.get(o.buyer_id) || null,
+    seller: profileMap.get(o.seller_id) || null,
+  }));
 }
 
 export async function updateOfferStatus(
@@ -658,7 +686,31 @@ export async function updateOfferStatus(
       .eq("id", offer.listing_id)
       .eq("seller_id", offer.seller_id);
   }
-  return offer;
+
+  // Notify the other party in Marketplace chat so buyer/seller see accept/decline clearly
+  try {
+    const otherId = userId === offer.seller_id ? offer.buyer_id : offer.seller_id;
+    const { getOrCreateConversation } = await import("@/lib/messaging");
+    const { formatPrice } = await import("@/lib/marketplace");
+    const convId = await getOrCreateConversation(userId, otherId, { context: "marketplace" });
+    const amountLabel = formatPrice(Number(offer.amount));
+    let content = "";
+    if (status === "accepted") content = `Offer update: your offer of ${amountLabel} was accepted.`;
+    else if (status === "declined") content = `Offer update: your offer of ${amountLabel} was declined.`;
+    else if (status === "cancelled") content = `Offer update: the offer of ${amountLabel} was cancelled.`;
+    else if (status === "countered") content = `Offer update: countered at ${formatPrice(Number(counterAmount ?? offer.amount))}.`;
+    if (content) {
+      await supabase.from("messages").insert({
+        conversation_id: convId,
+        sender_id: userId,
+        content,
+      });
+    }
+  } catch {
+    /* messaging is best-effort */
+  }
+
+  return { ...offer, status };
 }
 
 export async function uploadListingImage(userId: string, file: File, onProgress?: (n: number) => void) {

@@ -381,18 +381,21 @@ export type Database = {
       }
       conversations: {
         Row: {
+          context: string | null
           created_at: string
           created_by: string | null
           id: string
           updated_at: string
         }
         Insert: {
+          context?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
           updated_at?: string
         }
         Update: {
+          context?: string | null
           created_at?: string
           created_by?: string | null
           id?: string

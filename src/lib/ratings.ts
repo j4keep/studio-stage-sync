@@ -54,3 +54,60 @@ export async function fetchUserDisplayRating(userId: string): Promise<DisplayRat
   const map = await fetchRatingsByUserIds([userId]);
   return map[userId] || resolveDisplayRating(null, 0);
 }
+
+export type MarketplaceRoleRatings = {
+  /** Ratings received as a seller (marketplace_seller / marketplace) */
+  seller: DisplayRating;
+  /** Ratings received as a buyer (marketplace_buyer) */
+  buyer: DisplayRating;
+  /** Combined marketplace ratings for compact display under a name */
+  overall: DisplayRating;
+};
+
+function avgFromScores(scores: number[]): DisplayRating {
+  if (!scores.length) return resolveDisplayRating(null, 0);
+  const sum = scores.reduce((a, b) => a + b, 0);
+  return resolveDisplayRating(sum / scores.length, scores.length);
+}
+
+/** Seller + buyer marketplace reputation for accountability on Marketplace profiles. */
+export async function fetchMarketplaceRoleRatings(userId: string): Promise<MarketplaceRoleRatings> {
+  const empty = resolveDisplayRating(null, 0);
+  if (!userId) return { seller: empty, buyer: empty, overall: empty };
+
+  const { data } = await supabase
+    .from("user_ratings")
+    .select("score, context_type")
+    .eq("ratee_id", userId)
+    .in("context_type", ["marketplace", "marketplace_seller", "marketplace_buyer", "gig"]);
+
+  const sellerScores: number[] = [];
+  const buyerScores: number[] = [];
+  const all: number[] = [];
+
+  for (const row of data || []) {
+    const score = Number(row.score);
+    if (!Number.isFinite(score)) continue;
+    all.push(score);
+    if (row.context_type === "marketplace_buyer") buyerScores.push(score);
+    else if (
+      row.context_type === "marketplace_seller" ||
+      row.context_type === "marketplace" ||
+      row.context_type === "gig"
+    ) {
+      // Gig ratings also reflect reliability in local commerce until marketplace-only scores exist
+      sellerScores.push(score);
+    }
+  }
+
+  // If no role-specific scores yet, fall back to overall user ratings for display
+  if (!sellerScores.length && !buyerScores.length && !all.length) {
+    const overall = await fetchUserDisplayRating(userId);
+    return { seller: overall, buyer: overall, overall };
+  }
+
+  const seller = avgFromScores(sellerScores.length ? sellerScores : all);
+  const buyer = avgFromScores(buyerScores.length ? buyerScores : all);
+  const overall = avgFromScores(all.length ? all : [...sellerScores, ...buyerScores]);
+  return { seller, buyer, overall };
+}

@@ -15,7 +15,15 @@ type ReviewRow = {
 };
 
 /** Ratings + comments people left after gigs — shown at the bottom of a profile. */
-export default function UserReviewsSection({ userId, title = "Reviews" }: { userId: string; title?: string }) {
+export default function UserReviewsSection({
+  userId,
+  title = "Reviews",
+  emptyHint = "No reviews yet — finish a gig and both sides can rate each other.",
+}: {
+  userId: string;
+  title?: string;
+  emptyHint?: string;
+}) {
   const [reviews, setReviews] = useState<ReviewRow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -60,7 +68,7 @@ export default function UserReviewsSection({ userId, title = "Reviews" }: { user
         {loading && <p className="text-xs text-muted-foreground">Loading reviews…</p>}
         {!loading && reviews.length === 0 && (
           <p className="rounded-2xl border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
-            No reviews yet — finish a gig and both sides can rate each other.
+            {emptyHint}
           </p>
         )}
         {reviews.map((r) => (

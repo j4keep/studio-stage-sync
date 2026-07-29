@@ -30,6 +30,8 @@ import {
   type MarketplaceListing,
 } from "@/lib/marketplace-api";
 import ListingCard from "@/components/marketplace/ListingCard";
+import UserRatingStars from "@/components/UserRatingStars";
+import { fetchUserDisplayRating, type DisplayRating } from "@/lib/ratings";
 import { supabase } from "@/integrations/supabase/client";
 
 type Comment = {
@@ -59,6 +61,7 @@ export default function MarketplaceListingPage() {
   const [quickMsg, setQuickMsg] = useState("Hi, is this still available?");
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentText, setCommentText] = useState("");
+  const [sellerRating, setSellerRating] = useState<DisplayRating | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -66,7 +69,7 @@ export default function MarketplaceListingPage() {
       const row = await getMarketplaceListing(id, user?.id);
       setListing(row);
       if (row) {
-        const [others, near] = await Promise.all([
+        const [others, near, rating] = await Promise.all([
           listMarketplaceListings({
             sellerId: row.seller_id,
             viewerId: user?.id,
@@ -74,11 +77,15 @@ export default function MarketplaceListingPage() {
             limit: 8,
           }),
           listMarketplaceListings({ viewerId: user?.id, limit: 8 }),
+          fetchUserDisplayRating(row.seller_id),
         ]);
         setMore(others.filter((l) => l.id !== row.id));
         setNearby(near.filter((l) => l.id !== row.id && l.seller_id !== row.seller_id).slice(0, 6));
         setOfferAmt(row.price != null ? String(Math.max(0, Math.floor(Number(row.price) * 0.9))) : "");
+        setSellerRating(rating);
         await loadComments(row.id);
+      } else {
+        setSellerRating(null);
       }
     } catch (e: any) {
       toast.error(e?.message || "Listing not found");
@@ -97,7 +104,7 @@ export default function MarketplaceListingPage() {
         .limit(40);
       if (error) throw error;
       const rows = data || [];
-      const ids = [...new Set(rows.map((r: any) => r.user_id))];
+      const ids = [...new Set(rows.map((r: any) => String(r.user_id)))] as string[];
       const { data: profiles } = ids.length
         ? await supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", ids)
         : { data: [] as any[] };
@@ -329,13 +336,15 @@ export default function MarketplaceListingPage() {
               </div>
             )}
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold">{listing.seller?.display_name || "Seller"}</p>
-            <p className="text-xs text-muted-foreground">
+            <UserRatingStars rating={sellerRating} variant="full" className="mt-0.5" />
+            <p className="mt-0.5 text-xs text-muted-foreground">
               {place}
               {listing.status === "sold" || listing.status === "pending" ? ` · ${listing.status}` : ""}
             </p>
           </div>
+          <span className="shrink-0 text-xs font-semibold text-primary">Profile</span>
         </button>
 
         <div>
@@ -425,7 +434,12 @@ export default function MarketplaceListingPage() {
             )}
             {comments.map((c) => (
               <div key={c.id} className="flex gap-2.5">
-                <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-muted">
+                <button
+                  type="button"
+                  onClick={() => nav(`/marketplace/profile/${c.user_id}`)}
+                  className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-muted"
+                  aria-label="View marketplace profile"
+                >
                   {c.avatar_url ? (
                     <img src={c.avatar_url} alt="" className="h-full w-full object-cover" />
                   ) : (
@@ -433,10 +447,16 @@ export default function MarketplaceListingPage() {
                       {(c.display_name || "?")[0]}
                     </div>
                   )}
-                </div>
+                </button>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm">
-                    <span className="font-semibold">{c.display_name || "Member"}</span>
+                    <button
+                      type="button"
+                      onClick={() => nav(`/marketplace/profile/${c.user_id}`)}
+                      className="font-semibold hover:underline"
+                    >
+                      {c.display_name || "Member"}
+                    </button>
                     {c.user_id === listing.seller_id && (
                       <span className="ml-1.5 inline-flex items-center gap-0.5 text-[10px] font-semibold text-primary">
                         Author
@@ -511,26 +531,74 @@ export default function MarketplaceListingPage() {
         </div>
       )}
 
-      {offerOpen && (
-        <div className="fixed inset-0 z-[90] flex items-end bg-black/40 sm:items-center sm:justify-center">
-          <div className="w-full max-w-md rounded-t-3xl bg-background p-5 sm:rounded-3xl">
-            <h3 className="text-lg font-bold">Make an offer</h3>
-            <p className="mt-1 text-xs text-muted-foreground">Listed at {formatPrice(listing.price, listing.listing_type)}</p>
+      {offerOpen && listing && (
+        <div className="fixed inset-0 z-[90] flex items-end bg-black/40 sm:items-center sm:justify-center" onClick={() => setOfferOpen(false)}>
+          <div
+            className="w-full max-w-md rounded-t-3xl border border-border bg-background p-5 sm:rounded-3xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-1 flex items-center justify-between">
+              <h3 className="text-lg font-bold">Your offer</h3>
+              <button type="button" onClick={() => setOfferOpen(false)} className="rounded-full bg-muted p-2" aria-label="Close">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="mt-3 flex items-center gap-3 rounded-xl border border-border p-2.5">
+              {images[0] ? (
+                <img src={images[0]} alt="" className="h-12 w-12 rounded-lg object-cover" />
+              ) : (
+                <div className="h-12 w-12 rounded-lg bg-muted" />
+              )}
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold">{listing.title}</p>
+                <p className="text-xs text-muted-foreground">
+                  {formatPrice(listing.price, listing.listing_type)}
+                  {place ? ` · ${place}` : ""}
+                </p>
+              </div>
+            </div>
+            {listing.price != null && Number(listing.price) > 0 && (
+              <div className="mt-3 space-y-2">
+                {[0.9, 1, 1.05].map((mult) => {
+                  const amt = Math.round(Number(listing.price) * mult * 100) / 100;
+                  const label =
+                    mult < 1 ? `${formatPrice(amt)} (10% lower)` : mult > 1 ? formatPrice(amt) : formatPrice(amt);
+                  const selected = Number(offerAmt) === amt;
+                  return (
+                    <button
+                      key={mult}
+                      type="button"
+                      onClick={() => setOfferAmt(String(amt))}
+                      className={`flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm font-semibold ${
+                        selected ? "border-primary bg-primary/5" : "border-border"
+                      }`}
+                    >
+                      <span className={`h-4 w-4 rounded-full border-2 ${selected ? "border-primary bg-primary" : "border-muted-foreground/40"}`} />
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            <p className="mt-3 text-xs font-semibold text-primary">Or enter a different amount</p>
             <input
               value={offerAmt}
               onChange={(e) => setOfferAmt(e.target.value)}
               type="number"
-              className="mt-4 h-11 w-full rounded-xl border border-border bg-muted px-3 text-sm"
+              className="mt-2 h-11 w-full rounded-xl border border-border bg-muted px-3 text-sm"
               placeholder="Your offer ($)"
             />
-            <div className="mt-4 flex gap-2">
-              <button type="button" onClick={() => setOfferOpen(false)} className="h-11 flex-1 rounded-full bg-muted text-sm font-semibold">
-                Cancel
-              </button>
-              <button type="button" disabled={busy} onClick={() => void submitOffer()} className="h-11 flex-1 rounded-full bg-primary text-sm font-bold text-primary-foreground disabled:opacity-60">
-                Send offer
-              </button>
-            </div>
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              Your offer is not a payment. Purchase details are arranged later with the seller.
+            </p>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void submitOffer()}
+              className="mt-4 h-11 w-full rounded-full bg-primary text-sm font-bold text-primary-foreground disabled:opacity-60"
+            >
+              Send offer
+            </button>
           </div>
         </div>
       )}

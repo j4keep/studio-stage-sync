@@ -24,6 +24,8 @@ interface Conversation {
   hideOtherYajPage?: boolean;
   openBusinessProfile?: boolean;
   openMarketplaceProfile?: boolean;
+  /** Persisted origin from conversations.context */
+  context?: string | null;
 }
 
 interface Message {
@@ -80,11 +82,25 @@ const MessagesPage = () => {
       if (!participants || participants.length === 0) return [];
 
       const convIds = participants.map((p) => p.conversation_id);
-      const { data: convs } = await supabase
-        .from("conversations")
-        .select("id, updated_at")
-        .in("id", convIds)
-        .order("updated_at", { ascending: false });
+      let convs: { id: string; updated_at: string; context?: string | null }[] | null = null;
+      {
+        const withCtx = await (supabase as any)
+          .from("conversations")
+          .select("id, updated_at, context")
+          .in("id", convIds)
+          .order("updated_at", { ascending: false });
+        if (withCtx.error && /context/i.test(withCtx.error.message || "")) {
+          const fallback = await supabase
+            .from("conversations")
+            .select("id, updated_at")
+            .in("id", convIds)
+            .order("updated_at", { ascending: false });
+          convs = fallback.data;
+        } else {
+          if (withCtx.error) throw withCtx.error;
+          convs = withCtx.data;
+        }
+      }
       if (!convs) return [];
 
       const { data: allParticipants } = await supabase
@@ -119,11 +135,16 @@ const MessagesPage = () => {
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle();
+        const ctx = (conv as { context?: string | null }).context ?? null;
         results.push({
           id: conv.id,
           updated_at: conv.updated_at,
           other_user: otherParticipant ? profileMap[otherParticipant.user_id] || null : null,
           last_message: lastMsg?.content || "No messages yet",
+          context: ctx,
+          openMarketplaceProfile: ctx === "marketplace",
+          openBusinessProfile: ctx === "local_help",
+          hideOtherYajPage: ctx === "marketplace" || ctx === "local_help",
         });
       }
       return results;
@@ -313,14 +334,24 @@ const MessagesPage = () => {
         });
         queryClient.invalidateQueries({ queryKey: ["messages", existing.id] });
       }
+      if (opts?.openMarketplaceProfile) {
+        try {
+          await getOrCreateConversation(user.id, otherUser.user_id, { context: "marketplace" });
+        } catch {
+          /* ignore stamp failures (column may not exist yet) */
+        }
+      }
       setActiveConversation({
         ...existing,
-        hideOtherYajPage: opts?.hideOtherYajPage,
-        openBusinessProfile: opts?.openBusinessProfile,
-        openMarketplaceProfile: opts?.openMarketplaceProfile,
+        hideOtherYajPage: opts?.hideOtherYajPage || existing.hideOtherYajPage,
+        openBusinessProfile: opts?.openBusinessProfile || existing.openBusinessProfile,
+        openMarketplaceProfile: opts?.openMarketplaceProfile || existing.openMarketplaceProfile || existing.context === "marketplace",
+        context: opts?.openMarketplaceProfile ? "marketplace" : existing.context,
       });
-      setHideOtherYajPage(Boolean(opts?.hideOtherYajPage));
-      setOpenMarketplaceProfile(Boolean(opts?.openMarketplaceProfile));
+      setHideOtherYajPage(Boolean(opts?.hideOtherYajPage || existing.hideOtherYajPage));
+      setOpenMarketplaceProfile(
+        Boolean(opts?.openMarketplaceProfile || existing.openMarketplaceProfile || existing.context === "marketplace"),
+      );
       setShowNewChat(false);
       setSearchQuery("");
       return;
@@ -328,7 +359,9 @@ const MessagesPage = () => {
 
     let convId: string;
     try {
-      convId = await getOrCreateConversation(user.id, otherUser.user_id);
+      convId = await getOrCreateConversation(user.id, otherUser.user_id, {
+        context: opts?.openMarketplaceProfile ? "marketplace" : opts?.openBusinessProfile ? "local_help" : null,
+      });
     } catch (e: any) {
       toast({ title: e?.message || "Could not start chat", variant: "destructive" });
       return;
@@ -355,6 +388,7 @@ const MessagesPage = () => {
       hideOtherYajPage: opts?.hideOtherYajPage,
       openBusinessProfile: opts?.openBusinessProfile,
       openMarketplaceProfile: opts?.openMarketplaceProfile,
+      context: opts?.openMarketplaceProfile ? "marketplace" : opts?.openBusinessProfile ? "local_help" : null,
     };
     setHideOtherYajPage(Boolean(opts?.hideOtherYajPage));
     setOpenMarketplaceProfile(Boolean(opts?.openMarketplaceProfile));
@@ -648,7 +682,11 @@ const MessagesPage = () => {
             <button
               key={conv.id}
               type="button"
-              onClick={() => setActiveConversation(conv)}
+              onClick={() => {
+                setActiveConversation(conv);
+                setHideOtherYajPage(Boolean(conv.hideOtherYajPage || conv.context === "marketplace" || conv.context === "local_help"));
+                setOpenMarketplaceProfile(Boolean(conv.openMarketplaceProfile || conv.context === "marketplace"));
+              }}
               className="flex w-full items-center gap-3 rounded-xl p-3 text-left transition-colors hover:bg-card"
             >
               <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full bg-muted">
