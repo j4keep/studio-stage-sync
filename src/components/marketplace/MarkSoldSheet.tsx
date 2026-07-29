@@ -17,7 +17,8 @@ type Props = {
   listingId: string;
   listingTitle: string;
   sellerId: string;
-  onSold: () => void;
+  /** Called after listing is marked sold — do NOT full-page reload here or the rate sheet unmounts */
+  onSold: (buyerId: string | null) => void;
 };
 
 /** Mark listing sold → pick buyer from people who inquired → rate them right away. */
@@ -85,13 +86,14 @@ export default function MarkSoldSheet({
         : null;
 
       await markListingSold(listingId, sellerId, buyerId);
-      onSold();
 
       if (buyerRow) {
-        // Open rating immediately — hide the picker underneath
+        // Set rating target first so the sheet opens before parent soft-updates
         setRateBuyer(buyerRow);
+        onSold(buyerId);
         toast.success("Marked sold — rate your buyer");
       } else {
+        onSold(buyerId);
         toast.success("Marked sold");
         onClose();
       }

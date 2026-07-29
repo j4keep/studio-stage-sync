@@ -66,8 +66,8 @@ export default function MarketplaceListingPage() {
   const [sellerRating, setSellerRating] = useState<DisplayRating | null>(null);
   const [soldSheetOpen, setSoldSheetOpen] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     try {
       const row = await getMarketplaceListing(id, user?.id);
       setListing(row);
@@ -93,7 +93,7 @@ export default function MarketplaceListingPage() {
     } catch (e: any) {
       toast.error(e?.message || "Listing not found");
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
   }, [id, user?.id]);
 
@@ -616,14 +616,21 @@ export default function MarketplaceListingPage() {
         </div>
       )}
 
-      {user && listing && (
+      {user && id && (
         <MarkSoldSheet
           open={soldSheetOpen}
-          onClose={() => setSoldSheetOpen(false)}
-          listingId={listing.id}
-          listingTitle={listing.title}
+          onClose={() => {
+            setSoldSheetOpen(false);
+            void load({ silent: true });
+          }}
+          listingId={listing?.id || id}
+          listingTitle={listing?.title || "Listing"}
           sellerId={user.id}
-          onSold={() => void load()}
+          onSold={(buyerId) => {
+            setListing((prev) =>
+              prev ? { ...prev, status: "sold", sold_to: buyerId } : prev,
+            );
+          }}
         />
       )}
     </div>
