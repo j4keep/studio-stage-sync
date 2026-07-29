@@ -25,11 +25,13 @@ import {
   createOffer,
   getMarketplaceListing,
   listMarketplaceListings,
+  recordListingInquiry,
   toggleSaveListing,
   updateMarketplaceListing,
   type MarketplaceListing,
 } from "@/lib/marketplace-api";
 import ListingCard from "@/components/marketplace/ListingCard";
+import MarkSoldSheet from "@/components/marketplace/MarkSoldSheet";
 import UserRatingStars from "@/components/UserRatingStars";
 import { fetchUserDisplayRating, type DisplayRating } from "@/lib/ratings";
 import { supabase } from "@/integrations/supabase/client";
@@ -62,6 +64,7 @@ export default function MarketplaceListingPage() {
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentText, setCommentText] = useState("");
   const [sellerRating, setSellerRating] = useState<DisplayRating | null>(null);
+  const [soldSheetOpen, setSoldSheetOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -155,6 +158,7 @@ export default function MarketplaceListingPage() {
     const intro =
       (text || quickMsg).trim() ||
       `Hi — interested in: ${listing.title} (${formatPrice(listing.price, listing.listing_type)})`;
+    void recordListingInquiry(listing.id, user.id, "message");
     nav("/messages", {
       state: {
         startWithUserId: listing.seller_id,
@@ -207,6 +211,7 @@ export default function MarketplaceListingPage() {
         body: sanitizeDescription(body),
       });
       if (error) throw error;
+      if (!isOwner) void recordListingInquiry(listing.id, user.id, "comment");
       setCommentText("");
       await loadComments(listing.id);
     } catch (e: any) {
@@ -402,9 +407,17 @@ export default function MarketplaceListingPage() {
             <button type="button" onClick={() => void setStatus("pending")} className="rounded-full bg-muted px-3 py-2 text-xs font-semibold">
               Mark pending
             </button>
-            <button type="button" onClick={() => void setStatus("sold")} className="rounded-full bg-muted px-3 py-2 text-xs font-semibold">
-              Mark sold
-            </button>
+            {listing.status !== "sold" ? (
+              <button
+                type="button"
+                onClick={() => setSoldSheetOpen(true)}
+                className="rounded-full bg-primary px-3 py-2 text-xs font-bold text-primary-foreground"
+              >
+                Mark sold
+              </button>
+            ) : (
+              <span className="rounded-full bg-muted px-3 py-2 text-xs font-semibold text-muted-foreground">Sold</span>
+            )}
           </div>
         )}
 
@@ -601,6 +614,17 @@ export default function MarketplaceListingPage() {
             </button>
           </div>
         </div>
+      )}
+
+      {user && listing && (
+        <MarkSoldSheet
+          open={soldSheetOpen}
+          onClose={() => setSoldSheetOpen(false)}
+          listingId={listing.id}
+          listingTitle={listing.title}
+          sellerId={user.id}
+          onSold={() => void load()}
+        />
       )}
     </div>
   );

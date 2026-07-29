@@ -1178,6 +1178,7 @@ export type Database = {
           quantity: number
           seller_id: string
           shipping: boolean
+          sold_to: string | null
           state: string | null
           status: string
           subcategory: string | null
@@ -1213,6 +1214,7 @@ export type Database = {
           quantity?: number
           seller_id: string
           shipping?: boolean
+          sold_to?: string | null
           state?: string | null
           status?: string
           subcategory?: string | null
@@ -1248,6 +1250,7 @@ export type Database = {
           quantity?: number
           seller_id?: string
           shipping?: boolean
+          sold_to?: string | null
           state?: string | null
           status?: string
           subcategory?: string | null

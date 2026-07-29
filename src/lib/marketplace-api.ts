@@ -127,6 +127,8 @@ export type MarketplaceListing = {
   views_count: number;
   created_at: string;
   updated_at: string;
+  /** Buyer selected when seller marked the listing sold */
+  sold_to?: string | null;
   media?: ListingMedia[];
   vehicle?: VehicleDetails | null;
   seller?: MarketplaceProfile | null;
@@ -206,6 +208,7 @@ function mapListing(row: any, extras?: Partial<MarketplaceListing>): Marketplace
     views_count: row.views_count || 0,
     created_at: row.created_at,
     updated_at: row.updated_at,
+    sold_to: row.sold_to ?? null,
     media,
     vehicle: extras?.vehicle,
     seller: extras?.seller,
@@ -482,7 +485,7 @@ export async function createMarketplaceListing(sellerId: string, input: ListingI
 export async function updateMarketplaceListing(
   listingId: string,
   sellerId: string,
-  input: Partial<ListingInput> & { status?: string },
+  input: Partial<ListingInput> & { status?: string; sold_to?: string | null },
 ): Promise<MarketplaceListing> {
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
   const keys = [
@@ -519,13 +522,27 @@ export async function updateMarketplaceListing(
     }
   }
   if (input.title !== undefined) patch.title = input.title.trim();
+  if (input.sold_to !== undefined) patch.sold_to = input.sold_to;
 
   const { error } = await (supabase as any)
     .from("marketplace_listings")
     .update(patch)
     .eq("id", listingId)
     .eq("seller_id", sellerId);
-  if (error) throw error;
+  if (error) {
+    // sold_to column may not exist yet — retry without it
+    if (input.sold_to !== undefined && /sold_to/i.test(error.message || "")) {
+      delete patch.sold_to;
+      const retry = await (supabase as any)
+        .from("marketplace_listings")
+        .update(patch)
+        .eq("id", listingId)
+        .eq("seller_id", sellerId);
+      if (retry.error) throw retry.error;
+    } else {
+      throw error;
+    }
+  }
 
   if (input.mediaUrls) {
     await (supabase as any).from("marketplace_listing_media").delete().eq("listing_id", listingId);
@@ -617,6 +634,11 @@ export async function createOffer(input: {
     .select("*")
     .single();
   if (error) throw error;
+  try {
+    await recordListingInquiry(input.listingId, input.buyerId, "offer");
+  } catch {
+    /* ignore */
+  }
   return data;
 }
 
@@ -711,6 +733,174 @@ export async function updateOfferStatus(
   }
 
   return { ...offer, status };
+}
+
+export type ListingInquirer = {
+  user_id: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  sources: string[];
+  /** Most recent activity */
+  last_at: string;
+  offer_id?: string | null;
+  offer_amount?: number | null;
+  offer_status?: string | null;
+};
+
+/** Record that someone inquired (message / offer / comment) about a listing. */
+export async function recordListingInquiry(
+  listingId: string,
+  userId: string,
+  source: "message" | "offer" | "comment" = "message",
+) {
+  try {
+    await (supabase as any).from("marketplace_listing_inquiries").upsert(
+      {
+        listing_id: listingId,
+        user_id: userId,
+        source,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "listing_id,user_id" },
+    );
+  } catch {
+    /* table may not exist yet */
+  }
+}
+
+/**
+ * People who asked about this listing — offers, comments, and recorded chat inquiries.
+ * Used when the seller marks the item sold and picks who bought it.
+ */
+export async function listListingInquirers(listingId: string, sellerId: string): Promise<ListingInquirer[]> {
+  const byId = new Map<string, ListingInquirer>();
+
+  const bump = (
+    userId: string,
+    source: string,
+    at: string,
+    extra?: Partial<Pick<ListingInquirer, "offer_id" | "offer_amount" | "offer_status">>,
+  ) => {
+    if (!userId || userId === sellerId) return;
+    const cur = byId.get(userId);
+    if (!cur) {
+      byId.set(userId, {
+        user_id: userId,
+        display_name: null,
+        avatar_url: null,
+        sources: [source],
+        last_at: at,
+        offer_id: extra?.offer_id ?? null,
+        offer_amount: extra?.offer_amount ?? null,
+        offer_status: extra?.offer_status ?? null,
+      });
+      return;
+    }
+    if (!cur.sources.includes(source)) cur.sources.push(source);
+    if (new Date(at).getTime() > new Date(cur.last_at).getTime()) cur.last_at = at;
+    if (extra?.offer_id) {
+      cur.offer_id = extra.offer_id;
+      cur.offer_amount = extra.offer_amount ?? cur.offer_amount;
+      cur.offer_status = extra.offer_status ?? cur.offer_status;
+    }
+  };
+
+  const [{ data: offers }, { data: comments }, inquiriesRes] = await Promise.all([
+    (supabase as any)
+      .from("marketplace_offers")
+      .select("id, buyer_id, amount, status, created_at, updated_at")
+      .eq("listing_id", listingId)
+      .eq("seller_id", sellerId)
+      .order("updated_at", { ascending: false }),
+    (supabase as any)
+      .from("marketplace_listing_comments")
+      .select("user_id, created_at")
+      .eq("listing_id", listingId)
+      .order("created_at", { ascending: false })
+      .limit(40),
+    (supabase as any)
+      .from("marketplace_listing_inquiries")
+      .select("user_id, source, updated_at, created_at")
+      .eq("listing_id", listingId)
+      .order("updated_at", { ascending: false }),
+  ]);
+
+  for (const o of offers || []) {
+    bump(o.buyer_id, "offer", o.updated_at || o.created_at, {
+      offer_id: o.id,
+      offer_amount: o.amount != null ? Number(o.amount) : null,
+      offer_status: o.status,
+    });
+  }
+  for (const c of comments || []) {
+    bump(c.user_id, "comment", c.created_at);
+  }
+  if (!inquiriesRes?.error) {
+    for (const i of inquiriesRes?.data || []) {
+      bump(i.user_id, i.source || "message", i.updated_at || i.created_at);
+    }
+  }
+
+  const ids = [...byId.keys()];
+  if (!ids.length) return [];
+
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("user_id, display_name, avatar_url")
+    .in("user_id", ids);
+  for (const p of profiles || []) {
+    const row = byId.get(p.user_id);
+    if (!row) continue;
+    row.display_name = p.display_name;
+    row.avatar_url = p.avatar_url;
+  }
+
+  return [...byId.values()].sort((a, b) => {
+    const aAccepted = a.offer_status === "accepted" ? 1 : 0;
+    const bAccepted = b.offer_status === "accepted" ? 1 : 0;
+    if (aAccepted !== bAccepted) return bAccepted - aAccepted;
+    return new Date(b.last_at).getTime() - new Date(a.last_at).getTime();
+  });
+}
+
+export async function markListingSold(
+  listingId: string,
+  sellerId: string,
+  buyerId: string | null,
+): Promise<MarketplaceListing> {
+  const updated = await updateMarketplaceListing(listingId, sellerId, {
+    status: "sold",
+    sold_to: buyerId,
+  });
+
+  if (buyerId) {
+    // Accept that buyer's pending offer if one exists (without flipping listing back to pending)
+    try {
+      await (supabase as any)
+        .from("marketplace_offers")
+        .update({ status: "accepted", updated_at: new Date().toISOString() })
+        .eq("listing_id", listingId)
+        .eq("buyer_id", buyerId)
+        .eq("seller_id", sellerId)
+        .in("status", ["pending", "countered"]);
+    } catch {
+      /* ignore */
+    }
+
+    try {
+      const { getOrCreateConversation } = await import("@/lib/messaging");
+      const convId = await getOrCreateConversation(sellerId, buyerId, { context: "marketplace" });
+      await supabase.from("messages").insert({
+        conversation_id: convId,
+        sender_id: sellerId,
+        content: "Marked as sold — thanks for buying on YAJ Marketplace!",
+      });
+    } catch {
+      /* best-effort */
+    }
+  }
+
+  return updated;
 }
 
 export async function uploadListingImage(userId: string, file: File, onProgress?: (n: number) => void) {
