@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type { MoveIllustrationId } from "@/lib/wellness-move-coach";
 import type { WellnessFigure } from "@/lib/wellness";
 
@@ -7,7 +8,6 @@ type Props = {
   stepNumber: number;
   totalSteps: number;
   figure?: WellnessFigure;
-  /** Hold countdown remaining (shows big number). */
   holdLeft?: number | null;
   caption?: string;
   animating?: boolean;
@@ -16,9 +16,33 @@ type Props = {
 const SKIN = "#a8896c";
 const HAIR = "#2f2a26";
 
+type Pt = { x: number; y: number };
+
+/** Skeleton joints — limbs are always drawn between connected joints (never CSS-detached). */
+type Skeleton = {
+  head: Pt;
+  neck: Pt;
+  hip: Pt;
+  lShoulder: Pt;
+  rShoulder: Pt;
+  lElbow: Pt;
+  rElbow: Pt;
+  lHand: Pt;
+  rHand: Pt;
+  lKnee: Pt;
+  rKnee: Pt;
+  lFoot: Pt;
+  rFoot: Pt;
+  /** Optional torso lean degrees for drawing only (applied in joint math, not CSS). */
+  chair?: boolean;
+  wall?: boolean;
+  arrow?: "left" | "right" | "up" | "down" | "circle";
+};
+
 /**
- * Animated instructional card — clean vector figure loops the move
- * while YAJ narrates. Not a stock video; pose matches the step.
+ * Instruction card with a solid, connected figure.
+ * Animation = swap between complete pose drawings (crossfade), never spinning
+ * detached head/arm/leg layers.
  */
 export default function MoveInstructionCard({
   illustration,
@@ -36,14 +60,12 @@ export default function MoveInstructionCard({
         <span className="rounded-full bg-stone-900 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-white">
           Step {stepNumber}/{totalSteps}
         </span>
-        <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-rose-600">
-          {figure === "man" ? "Form guide" : "Form guide"}
-        </span>
+        <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-rose-600">Form guide</span>
       </div>
       <h2 className="px-4 text-center text-lg font-black tracking-tight text-stone-900">{title}</h2>
 
       <div className="relative mx-auto my-2 flex aspect-square w-[88%] max-w-[280px] items-center justify-center rounded-2xl bg-gradient-to-b from-[#eef6f3] to-[#f7faf8]">
-        <AnimatedFigure kind={illustration} figure={figure} playing={animating} />
+        <ConnectedFigure kind={illustration} figure={figure} playing={animating} />
         {holdLeft != null && holdLeft > 0 ? (
           <div className="absolute inset-0 flex items-center justify-center bg-teal-950/25 backdrop-blur-[1px]">
             <p className="text-6xl font-black tabular-nums text-white drop-shadow-lg">{holdLeft}</p>
@@ -58,12 +80,11 @@ export default function MoveInstructionCard({
       ) : (
         <div className="h-4" />
       )}
-      <style>{FIGURE_CSS}</style>
     </div>
   );
 }
 
-function AnimatedFigure({
+function ConnectedFigure({
   kind,
   figure,
   playing,
@@ -72,287 +93,423 @@ function AnimatedFigure({
   figure: WellnessFigure;
   playing: boolean;
 }) {
+  const frames = poseFrames(kind);
+  const [frame, setFrame] = useState(0);
+
+  useEffect(() => {
+    setFrame(0);
+    if (!playing || frames.length < 2) return;
+    const id = window.setInterval(() => {
+      setFrame((f) => (f + 1) % frames.length);
+    }, 1100);
+    return () => window.clearInterval(id);
+  }, [kind, playing, frames.length]);
+
+  const sk = frames[Math.min(frame, frames.length - 1)]!;
   const isWoman = figure === "woman";
   const top = isWoman ? "#e07a5f" : "#3d8b8b";
-  const animClass = playing ? `yaj-move yaj-move--${kind}` : "yaj-move yaj-move--paused";
+  const stroke = isWoman ? 11 : 13;
+  const armStroke = isWoman ? 10 : 12;
 
   return (
-    <svg viewBox="0 0 200 240" className="h-[92%] w-auto" aria-hidden>
-      {/* Directional arrows for key stretches */}
-      {(kind === "neck_left" || kind === "neck_right") && (
-        <g stroke="#38bdf8" strokeWidth="3.5" fill="none" strokeLinecap="round" strokeLinejoin="round" opacity="0.9">
-          {kind === "neck_left" ? (
-            <>
-              <path d="M48 70 Q32 58 42 42" />
-              <path d="M34 48 L42 40 L48 50" />
-            </>
-          ) : (
-            <>
-              <path d="M152 70 Q168 58 158 42" />
-              <path d="M152 50 L158 40 L166 48" />
-            </>
-          )}
-        </g>
-      )}
-      {(kind === "arms_overhead" || kind === "cool_stretch") && (
-        <g stroke="#38bdf8" strokeWidth="3.5" fill="none" strokeLinecap="round" strokeLinejoin="round" opacity="0.85">
-          <path d="M100 110 L100 48" />
-          <path d="M92 58 L100 46 L108 58" />
-        </g>
-      )}
-      {kind === "forward_fold" && (
-        <g stroke="#38bdf8" strokeWidth="3.5" fill="none" strokeLinecap="round" strokeLinejoin="round" opacity="0.85">
-          <path d="M132 90 Q152 140 118 190" />
-          <path d="M112 178 L118 192 L130 184" />
-        </g>
-      )}
-
-      {(kind.startsWith("seated") || kind === "ankle_circles" || kind === "side_reach" || kind === "sit_to_stand") && (
+    <svg viewBox="0 0 200 240" className="h-[92%] w-auto transition-opacity duration-500" aria-hidden>
+      {sk.chair ? (
         <g opacity="0.35">
-          <rect x="55" y="135" width="90" height="9" rx="2" fill="#5a6b66" />
-          <rect x="62" y="144" width="7" height="48" rx="2" fill="#5a6b66" />
-          <rect x="131" y="144" width="7" height="48" rx="2" fill="#5a6b66" />
+          <rect x="55" y="138" width="90" height="9" rx="2" fill="#5a6b66" />
+          <rect x="62" y="147" width="7" height="48" rx="2" fill="#5a6b66" />
+          <rect x="131" y="147" width="7" height="48" rx="2" fill="#5a6b66" />
+          <rect x="70" y="100" width="6" height="38" rx="1" fill="#5a6b66" />
+          <rect x="124" y="100" width="6" height="38" rx="1" fill="#5a6b66" />
+        </g>
+      ) : null}
+      {sk.wall ? <rect x="170" y="28" width="10" height="180" rx="2" fill="#7a8f88" opacity="0.4" /> : null}
+
+      {/* Direction arrows — separate from the body */}
+      {sk.arrow === "left" && (
+        <g stroke="#38bdf8" strokeWidth="3.2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M46 68 Q30 56 40 40" />
+          <path d="M32 48 L40 38 L46 50" />
         </g>
       )}
-      {kind === "wall_pushup" && <rect x="168" y="30" width="10" height="170" rx="2" fill="#7a8f88" opacity="0.4" />}
-
-      {/* Entire figure is one group — animations never detach limbs from the body */}
-      <g className={animClass}>
-        <g className="yaj-body">
-          {/* Legs */}
-          <path
-            className="yaj-leg-l"
-            d="M88 128 C84 160, 80 190, 78 215"
-            fill="none"
-            stroke={SKIN}
-            strokeWidth={isWoman ? 11 : 13}
-            strokeLinecap="round"
-          />
-          <path
-            className="yaj-leg-r"
-            d="M112 128 C116 160, 120 190, 122 215"
-            fill="none"
-            stroke={SKIN}
-            strokeWidth={isWoman ? 11 : 13}
-            strokeLinecap="round"
-          />
-          <ellipse cx="74" cy="218" rx="12" ry="4.5" fill="#222" />
-          <ellipse cx="126" cy="218" rx="12" ry="4.5" fill="#222" />
-          <path
-            d={isWoman ? "M82 122 L118 122 L116 138 L84 138 Z" : "M78 122 L122 122 L120 140 L80 140 Z"}
-            fill="#2b2b2b"
-          />
-
-          {/* Torso */}
-          <path
-            d={
-              isWoman
-                ? "M84 68 C84 58, 116 58, 116 68 L120 122 C120 130, 80 130, 80 122 Z"
-                : "M78 66 C78 56, 122 56, 122 66 L126 122 C126 130, 74 130, 74 122 Z"
-            }
-            fill={top}
-          />
-
-          {/* Arms attached at shoulders */}
-          <path
-            className="yaj-arm-l"
-            d={isWoman ? "M88 76 C68 88, 56 110, 58 132" : "M84 74 C62 86, 50 108, 52 132"}
-            fill="none"
-            stroke={SKIN}
-            strokeWidth={isWoman ? 10 : 12}
-            strokeLinecap="round"
-          />
-          <path
-            className="yaj-arm-r"
-            d={isWoman ? "M112 76 C132 88, 144 110, 142 132" : "M116 74 C138 86, 150 108, 148 132"}
-            fill="none"
-            stroke={SKIN}
-            strokeWidth={isWoman ? 10 : 12}
-            strokeLinecap="round"
-          />
-
-          {/* Head + hair — child of body so neck tilts stay attached */}
-          <g className="yaj-head">
-            {isWoman ? (
-              <path
-                d="M78 52 C76 28, 124 28, 122 52 C128 72, 124 88, 116 92 C110 78, 90 78, 84 92 C76 88, 72 72, 78 52 Z"
-                fill={HAIR}
-              />
-            ) : (
-              <>
-                <ellipse cx="100" cy="44" rx="18" ry="12" fill={HAIR} />
-                <rect x="82" y="44" width="36" height="10" fill={HAIR} />
-              </>
-            )}
-            <rect x="95" y="58" width="10" height="10" rx="2" fill={SKIN} />
-            <circle cx="100" cy={isWoman ? 50 : 48} r={isWoman ? 16 : 17} fill={SKIN} />
-          </g>
+      {sk.arrow === "right" && (
+        <g stroke="#38bdf8" strokeWidth="3.2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M154 68 Q170 56 160 40" />
+          <path d="M154 50 L160 38 L168 48" />
         </g>
+      )}
+      {sk.arrow === "up" && (
+        <g stroke="#38bdf8" strokeWidth="3.2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M168 90 L168 52" />
+          <path d="M160 62 L168 50 L176 62" />
+        </g>
+      )}
+      {sk.arrow === "down" && (
+        <g stroke="#38bdf8" strokeWidth="3.2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M168 52 L168 96" />
+          <path d="M160 86 L168 98 L176 86" />
+        </g>
+      )}
+      {sk.arrow === "circle" && (
+        <path
+          d="M158 78 A16 16 0 1 1 156 74"
+          stroke="#f87171"
+          strokeWidth="3"
+          fill="none"
+          strokeLinecap="round"
+        />
+      )}
+
+      {/* ONE connected body — every segment meets at a joint */}
+      <g>
+        {/* Legs: hip → knee → foot */}
+        <path
+          d={`M${sk.hip.x} ${sk.hip.y} L${sk.lKnee.x} ${sk.lKnee.y} L${sk.lFoot.x} ${sk.lFoot.y}`}
+          fill="none"
+          stroke={SKIN}
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d={`M${sk.hip.x} ${sk.hip.y} L${sk.rKnee.x} ${sk.rKnee.y} L${sk.rFoot.x} ${sk.rFoot.y}`}
+          fill="none"
+          stroke={SKIN}
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <ellipse cx={sk.lFoot.x} cy={sk.lFoot.y + 2} rx="11" ry="4.5" fill="#222" />
+        <ellipse cx={sk.rFoot.x} cy={sk.rFoot.y + 2} rx="11" ry="4.5" fill="#222" />
+
+        {/* Shorts / hips */}
+        <ellipse cx={sk.hip.x} cy={sk.hip.y - 2} rx={isWoman ? 18 : 22} ry={isWoman ? 10 : 12} fill="#2b2b2b" />
+
+        {/* Torso: neck → hip (filled shape using shoulders) */}
+        <path
+          d={`M${sk.lShoulder.x} ${sk.lShoulder.y}
+              L${sk.rShoulder.x} ${sk.rShoulder.y}
+              L${sk.hip.x + (isWoman ? 16 : 20)} ${sk.hip.y}
+              L${sk.hip.x - (isWoman ? 16 : 20)} ${sk.hip.y} Z`}
+          fill={top}
+        />
+
+        {/* Arms: shoulder → elbow → hand */}
+        <path
+          d={`M${sk.lShoulder.x} ${sk.lShoulder.y} L${sk.lElbow.x} ${sk.lElbow.y} L${sk.lHand.x} ${sk.lHand.y}`}
+          fill="none"
+          stroke={SKIN}
+          strokeWidth={armStroke}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d={`M${sk.rShoulder.x} ${sk.rShoulder.y} L${sk.rElbow.x} ${sk.rElbow.y} L${sk.rHand.x} ${sk.rHand.y}`}
+          fill="none"
+          stroke={SKIN}
+          strokeWidth={armStroke}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+
+        {/* Neck stub connecting torso to head */}
+        <path
+          d={`M${sk.neck.x} ${sk.neck.y} L${sk.head.x} ${sk.head.y + 14}`}
+          fill="none"
+          stroke={SKIN}
+          strokeWidth={10}
+          strokeLinecap="round"
+        />
+
+        {/* Head + hair drawn at head joint */}
+        {isWoman ? (
+          <path
+            d={`M${sk.head.x - 16} ${sk.head.y + 2}
+                C${sk.head.x - 18} ${sk.head.y - 22}, ${sk.head.x + 18} ${sk.head.y - 22}, ${sk.head.x + 16} ${sk.head.y + 2}
+                C${sk.head.x + 20} ${sk.head.y + 18}, ${sk.head.x + 14} ${sk.head.y + 28}, ${sk.head.x + 10} ${sk.head.y + 30}
+                C${sk.head.x + 6} ${sk.head.y + 16}, ${sk.head.x - 6} ${sk.head.y + 16}, ${sk.head.x - 10} ${sk.head.y + 30}
+                C${sk.head.x - 14} ${sk.head.y + 28}, ${sk.head.x - 20} ${sk.head.y + 18}, ${sk.head.x - 16} ${sk.head.y + 2} Z`}
+            fill={HAIR}
+          />
+        ) : (
+          <>
+            <ellipse cx={sk.head.x} cy={sk.head.y - 4} rx="17" ry="12" fill={HAIR} />
+            <rect x={sk.head.x - 17} y={sk.head.y - 4} width="34" height="10" fill={HAIR} />
+          </>
+        )}
+        <circle cx={sk.head.x} cy={sk.head.y} r={isWoman ? 15 : 16} fill={SKIN} />
       </g>
     </svg>
   );
 }
 
-const FIGURE_CSS = `
-  .yaj-move .yaj-body { transform-box: fill-box; transform-origin: 100px 140px; }
-  .yaj-move .yaj-head { transform-box: fill-box; transform-origin: 100px 58px; }
-  .yaj-move .yaj-arm-l { transform-box: fill-box; transform-origin: 88px 76px; }
-  .yaj-move .yaj-arm-r { transform-box: fill-box; transform-origin: 112px 76px; }
-  .yaj-move .yaj-leg-l { transform-box: fill-box; transform-origin: 88px 128px; }
-  .yaj-move .yaj-leg-r { transform-box: fill-box; transform-origin: 112px 128px; }
+function standingBase(overrides: Partial<Skeleton> = {}): Skeleton {
+  return {
+    head: { x: 100, y: 48 },
+    neck: { x: 100, y: 64 },
+    lShoulder: { x: 78, y: 78 },
+    rShoulder: { x: 122, y: 78 },
+    lElbow: { x: 64, y: 108 },
+    rElbow: { x: 136, y: 108 },
+    lHand: { x: 58, y: 138 },
+    rHand: { x: 142, y: 138 },
+    hip: { x: 100, y: 128 },
+    lKnee: { x: 88, y: 170 },
+    rKnee: { x: 112, y: 170 },
+    lFoot: { x: 82, y: 210 },
+    rFoot: { x: 118, y: 210 },
+    ...overrides,
+  };
+}
 
-  .yaj-move--shoulders_roll .yaj-arm-l { animation: shL 2.8s ease-in-out infinite; }
-  .yaj-move--shoulders_roll .yaj-arm-r { animation: shR 2.8s ease-in-out infinite; }
-  @keyframes shL {
-    0%,100% { transform: translate(0,0) rotate(0deg); }
-    50% { transform: translate(2px,-8px) rotate(-14deg); }
-  }
-  @keyframes shR {
-    0%,100% { transform: translate(0,0) rotate(0deg); }
-    50% { transform: translate(-2px,-8px) rotate(14deg); }
-  }
+function seatedBase(overrides: Partial<Skeleton> = {}): Skeleton {
+  return {
+    head: { x: 100, y: 52 },
+    neck: { x: 100, y: 68 },
+    lShoulder: { x: 80, y: 82 },
+    rShoulder: { x: 120, y: 82 },
+    lElbow: { x: 66, y: 108 },
+    rElbow: { x: 134, y: 108 },
+    lHand: { x: 62, y: 128 },
+    rHand: { x: 138, y: 128 },
+    hip: { x: 100, y: 132 },
+    lKnee: { x: 78, y: 168 },
+    rKnee: { x: 122, y: 168 },
+    lFoot: { x: 70, y: 200 },
+    rFoot: { x: 130, y: 200 },
+    chair: true,
+    ...overrides,
+  };
+}
 
-  .yaj-move--neck_left .yaj-head { animation: nL 3.2s ease-in-out infinite; }
-  .yaj-move--neck_right .yaj-head { animation: nR 3.2s ease-in-out infinite; }
-  @keyframes nL {
-    0%,100% { transform: rotate(0deg); }
-    40%,60% { transform: rotate(-22deg); }
+/** Two (or more) complete connected poses per move — crossfaded by frame index. */
+function poseFrames(kind: MoveIllustrationId): Skeleton[] {
+  switch (kind) {
+    case "shoulders_roll":
+      return [
+        standingBase(),
+        standingBase({
+          lShoulder: { x: 78, y: 70 },
+          rShoulder: { x: 122, y: 70 },
+          lElbow: { x: 62, y: 98 },
+          rElbow: { x: 138, y: 98 },
+          lHand: { x: 56, y: 124 },
+          rHand: { x: 144, y: 124 },
+          arrow: "circle",
+        }),
+      ];
+    case "neck_left":
+      return [
+        standingBase({ head: { x: 100, y: 48 }, arrow: "left" }),
+        standingBase({ head: { x: 82, y: 58 }, neck: { x: 94, y: 66 }, arrow: "left" }),
+      ];
+    case "neck_right":
+      return [
+        standingBase({ head: { x: 100, y: 48 }, arrow: "right" }),
+        standingBase({ head: { x: 118, y: 58 }, neck: { x: 106, y: 66 }, arrow: "right" }),
+      ];
+    case "arms_overhead":
+      return [
+        standingBase({ arrow: "up" }),
+        standingBase({
+          lElbow: { x: 70, y: 48 },
+          rElbow: { x: 130, y: 48 },
+          lHand: { x: 78, y: 22 },
+          rHand: { x: 122, y: 22 },
+          arrow: "up",
+        }),
+      ];
+    case "forward_fold":
+      return [
+        standingBase({ arrow: "down" }),
+        standingBase({
+          head: { x: 100, y: 150 },
+          neck: { x: 100, y: 130 },
+          lShoulder: { x: 82, y: 118 },
+          rShoulder: { x: 118, y: 118 },
+          lElbow: { x: 90, y: 150 },
+          rElbow: { x: 110, y: 150 },
+          lHand: { x: 96, y: 178 },
+          rHand: { x: 104, y: 178 },
+          hip: { x: 100, y: 118 },
+          lKnee: { x: 90, y: 165 },
+          rKnee: { x: 110, y: 165 },
+          arrow: "down",
+        }),
+      ];
+    case "hip_circles":
+      return [
+        standingBase({ hip: { x: 92, y: 130 }, arrow: "circle" }),
+        standingBase({ hip: { x: 108, y: 130 }, arrow: "circle" }),
+      ];
+    case "stand_tall":
+      return [standingBase(), standingBase({ head: { x: 100, y: 46 }, neck: { x: 100, y: 62 } })];
+    case "walk":
+    case "march_place":
+      return [
+        standingBase({
+          lKnee: { x: 78, y: 160 },
+          lFoot: { x: 70, y: 200 },
+          rKnee: { x: 120, y: 175 },
+          rFoot: { x: 128, y: 212 },
+          lHand: { x: 70, y: 130 },
+          rHand: { x: 148, y: 145 },
+        }),
+        standingBase({
+          rKnee: { x: 122, y: 160 },
+          rFoot: { x: 130, y: 200 },
+          lKnee: { x: 80, y: 175 },
+          lFoot: { x: 72, y: 212 },
+          rHand: { x: 130, y: 130 },
+          lHand: { x: 52, y: 145 },
+        }),
+      ];
+    case "arm_swing":
+      return [
+        standingBase({ lHand: { x: 50, y: 120 }, rHand: { x: 150, y: 150 } }),
+        standingBase({ lHand: { x: 50, y: 150 }, rHand: { x: 150, y: 120 } }),
+      ];
+    case "brisk_walk":
+      return poseFrames("walk").map((s) => ({ ...s }));
+    case "cool_down":
+      return [
+        standingBase({
+          lKnee: { x: 90, y: 168 },
+          rKnee: { x: 110, y: 168 },
+          lFoot: { x: 86, y: 208 },
+          rFoot: { x: 114, y: 208 },
+        }),
+        standingBase(),
+      ];
+    case "seated_march":
+      return [
+        seatedBase(),
+        seatedBase({
+          lKnee: { x: 78, y: 150 },
+          lFoot: { x: 72, y: 180 },
+        }),
+        seatedBase({
+          rKnee: { x: 122, y: 150 },
+          rFoot: { x: 128, y: 180 },
+        }),
+      ];
+    case "seated_twist":
+      return [
+        seatedBase({
+          lShoulder: { x: 70, y: 86 },
+          rShoulder: { x: 110, y: 78 },
+          head: { x: 92, y: 52 },
+          arrow: "left",
+        }),
+        seatedBase({
+          lShoulder: { x: 90, y: 78 },
+          rShoulder: { x: 130, y: 86 },
+          head: { x: 108, y: 52 },
+          arrow: "right",
+        }),
+      ];
+    case "ankle_circles":
+      return [
+        seatedBase({ rFoot: { x: 138, y: 195 }, arrow: "circle" }),
+        seatedBase({ rFoot: { x: 122, y: 205 }, arrow: "circle" }),
+      ];
+    case "side_reach":
+      return [
+        seatedBase({
+          rHand: { x: 150, y: 36 },
+          rElbow: { x: 138, y: 60 },
+          head: { x: 108, y: 56 },
+          arrow: "right",
+        }),
+        seatedBase({
+          lHand: { x: 50, y: 36 },
+          lElbow: { x: 62, y: 60 },
+          head: { x: 92, y: 56 },
+          arrow: "left",
+        }),
+      ];
+    case "sit_to_stand":
+      return [
+        seatedBase(),
+        standingBase({
+          chair: true,
+          hip: { x: 100, y: 120 },
+          lKnee: { x: 88, y: 165 },
+          rKnee: { x: 112, y: 165 },
+        }),
+      ];
+    case "wall_pushup":
+      return [
+        standingBase({
+          wall: true,
+          lHand: { x: 168, y: 90 },
+          rHand: { x: 168, y: 100 },
+          lElbow: { x: 140, y: 92 },
+          rElbow: { x: 140, y: 102 },
+          lShoulder: { x: 110, y: 80 },
+          rShoulder: { x: 125, y: 82 },
+          hip: { x: 95, y: 130 },
+          head: { x: 118, y: 50 },
+          neck: { x: 115, y: 66 },
+        }),
+        standingBase({
+          wall: true,
+          lHand: { x: 168, y: 90 },
+          rHand: { x: 168, y: 100 },
+          lElbow: { x: 150, y: 92 },
+          rElbow: { x: 150, y: 102 },
+          lShoulder: { x: 125, y: 78 },
+          rShoulder: { x: 140, y: 80 },
+          hip: { x: 105, y: 128 },
+          head: { x: 132, y: 48 },
+          neck: { x: 128, y: 64 },
+        }),
+      ];
+    case "squat":
+      return [
+        standingBase(),
+        standingBase({
+          hip: { x: 100, y: 150 },
+          lKnee: { x: 78, y: 175 },
+          rKnee: { x: 122, y: 175 },
+          lFoot: { x: 72, y: 212 },
+          rFoot: { x: 128, y: 212 },
+          head: { x: 100, y: 70 },
+          neck: { x: 100, y: 86 },
+          lShoulder: { x: 78, y: 100 },
+          rShoulder: { x: 122, y: 100 },
+          lElbow: { x: 60, y: 120 },
+          rElbow: { x: 140, y: 120 },
+          lHand: { x: 52, y: 140 },
+          rHand: { x: 148, y: 140 },
+          arrow: "down",
+        }),
+      ];
+    case "side_steps":
+      return [
+        standingBase({
+          hip: { x: 88, y: 128 },
+          head: { x: 88, y: 48 },
+          neck: { x: 88, y: 64 },
+          lShoulder: { x: 66, y: 78 },
+          rShoulder: { x: 110, y: 78 },
+          lFoot: { x: 70, y: 210 },
+          rFoot: { x: 106, y: 210 },
+          arrow: "left",
+        }),
+        standingBase({
+          hip: { x: 112, y: 128 },
+          head: { x: 112, y: 48 },
+          neck: { x: 112, y: 64 },
+          lShoulder: { x: 90, y: 78 },
+          rShoulder: { x: 134, y: 78 },
+          lFoot: { x: 94, y: 210 },
+          rFoot: { x: 130, y: 210 },
+          arrow: "right",
+        }),
+      ];
+    case "cool_stretch":
+      return poseFrames("arms_overhead");
+    default:
+      return [standingBase()];
   }
-  @keyframes nR {
-    0%,100% { transform: rotate(0deg); }
-    40%,60% { transform: rotate(22deg); }
-  }
-
-  .yaj-move--arms_overhead .yaj-arm-l,
-  .yaj-move--cool_stretch .yaj-arm-l { animation: armUpL 4s ease-in-out infinite; }
-  .yaj-move--arms_overhead .yaj-arm-r,
-  .yaj-move--cool_stretch .yaj-arm-r { animation: armUpR 4s ease-in-out infinite; }
-  @keyframes armUpL {
-    0%,100% { transform: rotate(0deg); }
-    45%,55% { transform: rotate(-145deg) translate(-2px,-6px); }
-  }
-  @keyframes armUpR {
-    0%,100% { transform: rotate(0deg); }
-    45%,55% { transform: rotate(145deg) translate(2px,-6px); }
-  }
-
-  .yaj-move--forward_fold .yaj-body { animation: fold 4.5s ease-in-out infinite; }
-  @keyframes fold {
-    0%,100% { transform: translateY(0) scaleY(1); }
-    45%,55% { transform: translateY(10px) scaleY(0.9); }
-  }
-  .yaj-move--forward_fold .yaj-arm-l { animation: foldAL 4.5s ease-in-out infinite; }
-  .yaj-move--forward_fold .yaj-arm-r { animation: foldAR 4.5s ease-in-out infinite; }
-  @keyframes foldAL {
-    0%,100% { transform: rotate(0deg); }
-    45%,55% { transform: rotate(50deg) translateY(12px); }
-  }
-  @keyframes foldAR {
-    0%,100% { transform: rotate(0deg); }
-    45%,55% { transform: rotate(-50deg) translateY(12px); }
-  }
-
-  .yaj-move--hip_circles .yaj-body { animation: hips 3.4s ease-in-out infinite; }
-  @keyframes hips {
-    0% { transform: translate(0,0); }
-    25% { transform: translate(8px,2px); }
-    50% { transform: translate(0,4px); }
-    75% { transform: translate(-8px,2px); }
-    100% { transform: translate(0,0); }
-  }
-
-  .yaj-move--stand_tall .yaj-body { animation: stand 3s ease-in-out infinite; }
-  @keyframes stand {
-    0%,100% { transform: translateY(0); }
-    50% { transform: translateY(-3px); }
-  }
-
-  .yaj-move--walk .yaj-leg-l,
-  .yaj-move--march_place .yaj-leg-l,
-  .yaj-move--cool_down .yaj-leg-l,
-  .yaj-move--brisk_walk .yaj-leg-l { animation: wL 1.2s ease-in-out infinite; }
-  .yaj-move--walk .yaj-leg-r,
-  .yaj-move--march_place .yaj-leg-r,
-  .yaj-move--cool_down .yaj-leg-r,
-  .yaj-move--brisk_walk .yaj-leg-r { animation: wR 1.2s ease-in-out infinite; }
-  .yaj-move--walk .yaj-arm-l,
-  .yaj-move--march_place .yaj-arm-l,
-  .yaj-move--arm_swing .yaj-arm-l,
-  .yaj-move--brisk_walk .yaj-arm-l { animation: aL 1.2s ease-in-out infinite; }
-  .yaj-move--walk .yaj-arm-r,
-  .yaj-move--march_place .yaj-arm-r,
-  .yaj-move--arm_swing .yaj-arm-r,
-  .yaj-move--brisk_walk .yaj-arm-r { animation: aR 1.2s ease-in-out infinite; }
-  .yaj-move--brisk_walk .yaj-leg-l,
-  .yaj-move--brisk_walk .yaj-leg-r,
-  .yaj-move--brisk_walk .yaj-arm-l,
-  .yaj-move--brisk_walk .yaj-arm-r { animation-duration: 0.85s; }
-  .yaj-move--cool_down .yaj-leg-l,
-  .yaj-move--cool_down .yaj-leg-r,
-  .yaj-move--cool_down .yaj-arm-l,
-  .yaj-move--cool_down .yaj-arm-r { animation-duration: 1.8s; }
-  @keyframes wL { 0%,100% { transform: rotate(12deg); } 50% { transform: rotate(-14deg); } }
-  @keyframes wR { 0%,100% { transform: rotate(-12deg); } 50% { transform: rotate(14deg); } }
-  @keyframes aL { 0%,100% { transform: rotate(-16deg); } 50% { transform: rotate(14deg); } }
-  @keyframes aR { 0%,100% { transform: rotate(16deg); } 50% { transform: rotate(-14deg); } }
-
-  .yaj-move--seated_march .yaj-leg-l { animation: smL 1.5s ease-in-out infinite; }
-  .yaj-move--seated_march .yaj-leg-r { animation: smR 1.5s ease-in-out infinite; }
-  @keyframes smL { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-14px) rotate(-6deg); } }
-  @keyframes smR { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-14px) rotate(6deg); } }
-
-  .yaj-move--seated_twist .yaj-body { animation: twist 3.6s ease-in-out infinite; }
-  @keyframes twist {
-    0%,100% { transform: rotate(0deg); }
-    25% { transform: rotate(-12deg); }
-    75% { transform: rotate(12deg); }
-  }
-
-  .yaj-move--ankle_circles .yaj-leg-r { animation: ank 2.2s ease-in-out infinite; }
-  @keyframes ank {
-    0% { transform: rotate(0deg); }
-    25% { transform: rotate(8deg); }
-    50% { transform: rotate(0deg); }
-    75% { transform: rotate(-8deg); }
-    100% { transform: rotate(0deg); }
-  }
-
-  .yaj-move--side_reach .yaj-arm-r { animation: sr 3.8s ease-in-out infinite; }
-  .yaj-move--side_reach .yaj-body { animation: srb 3.8s ease-in-out infinite; }
-  @keyframes sr {
-    0%,45%,100% { transform: rotate(0deg); }
-    20%,30% { transform: rotate(140deg) translate(2px,-8px); }
-  }
-  @keyframes srb {
-    0%,45%,100% { transform: rotate(0deg); }
-    20%,30% { transform: rotate(8deg); }
-  }
-
-  .yaj-move--sit_to_stand .yaj-body { animation: sts 3.8s ease-in-out infinite; }
-  @keyframes sts {
-    0%,25% { transform: translateY(18px) scaleY(0.92); }
-    50%,60% { transform: translateY(0) scaleY(1); }
-    85%,100% { transform: translateY(18px) scaleY(0.92); }
-  }
-
-  .yaj-move--wall_pushup .yaj-body { animation: push 2.8s ease-in-out infinite; transform-origin: 150px 120px; }
-  @keyframes push {
-    0%,100% { transform: translateX(0) rotate(0deg); }
-    50% { transform: translateX(12px) rotate(5deg); }
-  }
-
-  .yaj-move--squat .yaj-body { animation: sq 3s ease-in-out infinite; }
-  @keyframes sq {
-    0%,100% { transform: translateY(0) scaleY(1); }
-    50% { transform: translateY(14px) scaleY(0.9); }
-  }
-
-  .yaj-move--side_steps .yaj-body { animation: ss 2.6s ease-in-out infinite; }
-  @keyframes ss {
-    0%,100% { transform: translateX(0); }
-    25% { transform: translateX(14px); }
-    75% { transform: translateX(-14px); }
-  }
-
-  .yaj-move--paused * { animation-play-state: paused !important; }
-`;
+}
