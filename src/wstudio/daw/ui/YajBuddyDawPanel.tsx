@@ -14,7 +14,7 @@ type Msg = {
   audioName?: string;
 };
 
-const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ask-jhi`;
+const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ask-yaj`;
 
 function audioFormatFromMime(mime: string): string | null {
   const m = mime.toLowerCase();
@@ -48,9 +48,9 @@ const QUICK_PROMPTS = [
 
 /**
  * Floating YAJ Buddy button + slide-in side panel for use inside the DAW.
- * Self-contained: streams from the same `ask-jhi` edge function.
+ * Self-contained: streams from the same `ask-yaj` edge function.
  */
-export function JhiDawPanel({ themeMode = "dark" }: { themeMode?: "light" | "dark" }) {
+export function YajBuddyDawPanel({ themeMode = "dark" }: { themeMode?: "light" | "dark" }) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
@@ -338,4 +338,4 @@ export function JhiDawPanel({ themeMode = "dark" }: { themeMode?: "light" | "dar
   );
 }
 
-export default JhiDawPanel;
+export default YajBuddyDawPanel;

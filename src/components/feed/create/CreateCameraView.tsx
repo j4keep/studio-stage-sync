@@ -164,9 +164,9 @@ export default function CreateCameraView({
     const stopForGallery = () => {
       stopStream(true);
     };
-    window.addEventListener("jhi-stop-create-camera", stopForGallery);
+    window.addEventListener("yaj-stop-create-camera", stopForGallery);
     return () => {
-      window.removeEventListener("jhi-stop-create-camera", stopForGallery);
+      window.removeEventListener("yaj-stop-create-camera", stopForGallery);
     };
   }, [stopStream]);
 

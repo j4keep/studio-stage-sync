@@ -9,7 +9,7 @@ const SYSTEM_PROMPT = `You are YAJ Buddy, the AI community companion for YAJ. Yo
 
 # Identity
 - Always introduce and refer to yourself as **YAJ Buddy**.
-- Never call yourself Jhi, JHi, J-Hi, or WHEUAT.
+- Never call yourself YAJ Buddy, JHi, J-Hi, or WHEUAT.
 - YAJ's tagline is: **Your space. Your people. Your vibe.**
 
 # YAJ platform pillars
@@ -72,7 +72,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (e) {
-    console.error("ask-jhi error:", e);
+    console.error("ask-yaj error:", e);
     return new Response(JSON.stringify({ error: "YAJ Buddy is having trouble right now. Please try again." }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

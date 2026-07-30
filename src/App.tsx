@@ -53,7 +53,7 @@ import MyBoostsPage from "./pages/MyBoostsPage";
 import HelpDeskPage from "./pages/HelpDeskPage";
 import AdminTicketsPage from "./pages/AdminTicketsPage";
 import AdminSoundLibraryPage from "./pages/AdminSoundLibraryPage";
-import AskJhiPage from "./pages/AskJhiPage";
+import AskYajPage from "./pages/AskYajPage";
 import JobsPage from "./pages/JobsPage";
 import JobDetailPage from "./pages/JobDetailPage";
 import GigDetailPage from "./pages/GigDetailPage";
@@ -282,8 +282,8 @@ const ProtectedRoutes = () => {
         <Route path="/news/:category" element={<NewsCategoryPage />} />
         <Route path="/my-boosts" element={<MyBoostsPage />} />
         <Route path="/helpdesk" element={<HelpDeskPage />} />
-        <Route path="/ask-yaj" element={<AskJhiPage />} />
-        <Route path="/ask-jhi" element={<Navigate to="/ask-yaj" replace />} />
+        <Route path="/ask-yaj" element={<AskYajPage />} />
+        <Route path="/ask-yaj" element={<Navigate to="/ask-yaj" replace />} />
         <Route path="/explore" element={<ExplorePage />} />
         <Route path="/local-help" element={<LocalHelpHomePage />} />
         <Route path="/local-help/business" element={<LocalHelpBusinessPage />} />
