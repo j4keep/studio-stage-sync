@@ -7,20 +7,23 @@ import {
   type WellnessState,
 } from "@/lib/wellness";
 
+/** Welcome-page ambient loop (Go gate only — not exercise demos). */
+const LANDING_VIDEO = "https://assets.mixkit.co/videos/32625/32625-720.mp4";
+
 type Props = {
   onBack: () => void;
   onEnter: (state: WellnessState) => void;
 };
 
 /**
- * First wellness screen: Go gate, then a short health profile form.
- * No videos.
+ * First wellness screen: cinematic welcome video + Go, then a short health profile form.
  */
 export default function WellnessGoLanding({ onBack, onEnter }: Props) {
   const [phase, setPhase] = useState<"hero" | "profile">("hero");
   const [figure, setFigure] = useState<WellnessFigure>("woman");
   const [age, setAge] = useState("");
   const [weight, setWeight] = useState("");
+  const [videoFailed, setVideoFailed] = useState(false);
 
   const finish = () => {
     const next = updateWellnessProfile({
