@@ -14,9 +14,9 @@ type Props = {
 };
 
 /**
- * Step-synced form demo player for Move / Relax.
- * Reads `demo.videoUrl` (DB-ready). When null, shows a matching YAJ form guide
- * so the UI never depends on random stock footage.
+ * Step-synced real-human form demo for Move / Relax.
+ * Reads `demo.videoUrl` (DB-ready). Swap catalog URLs for YAJ AI / certified
+ * trainer clips later — this UI stays the same.
  */
 export default function ExerciseDemoPlayer({
   demo,
@@ -64,7 +64,7 @@ export default function ExerciseDemoPlayer({
 
   return (
     <div className={`relative mx-auto w-full max-w-[280px] overflow-hidden rounded-2xl border border-white/15 bg-black ${className}`}>
-      {/* Vertical 9:16 instructional frame — matches future YAJ demo uploads */}
+      {/* Vertical 9:16 frame — landscape clips are center-cropped */}
       <div className="relative aspect-[9/16] max-h-[52vh] w-full">
         {hasVideo ? (
           <video

@@ -2,12 +2,20 @@
  * YAJ Wellness demo catalog.
  *
  * Each exercise references a stable demo id. The player resolves `videoUrl`
- * (DB-ready) so AI-generated, certified-trainer, or creator clips can replace
- * demos later without UI changes.
+ * (DB-ready) so AI-generated YAJ instructor, certified-trainer, or creator
+ * clips can replace demos later without UI changes.
  *
- * Until clips are uploaded, the player renders a matching instructional guide
- * (same wardrobe / lighting language) — never random stock footage.
+ * Current clips are real-human form demos matched to each move (not random
+ * stock). Swap `videoUrl` anytime — UI stays the same.
  */
+
+/** Real-human Mixkit form demos — replace with YAJ-hosted AI/certified clips later. */
+function mixkit(id: number): { videoUrl: string; posterUrl: string } {
+  return {
+    videoUrl: `https://assets.mixkit.co/videos/${id}/${id}-720.mp4`,
+    posterUrl: `https://assets.mixkit.co/videos/${id}/${id}-thumb-720-0.jpg`,
+  };
+}
 
 export type DemoGuideKind =
   | "shoulders_roll"
@@ -60,10 +68,10 @@ export type WellnessDemoId =
 export type WellnessDemo = {
   id: WellnessDemoId;
   title: string;
-  /** DB / CDN field — null until a YAJ clip is uploaded. */
+  /** DB / CDN field — swap for YAJ AI / certified / creator clips anytime. */
   videoUrl: string | null;
   posterUrl: string | null;
-  /** AI generation prompt (9:16 instructional loop). */
+  /** AI generation prompt (9:16 instructional loop) for future YAJ demos. */
   prompt: string;
   guide: DemoGuideKind;
   setting: "studio" | "park";
@@ -85,8 +93,7 @@ export const WELLNESS_DEMOS: Record<WellnessDemoId, WellnessDemo> = {
   "stretch-shoulders": {
     id: "stretch-shoulders",
     title: "Shoulder rolls",
-    videoUrl: null,
-    posterUrl: null,
+    ...mixkit(52118), // circular arm / shoulder warm-up
     guide: "shoulders_roll",
     setting: "studio",
     aspect: "9:16",
@@ -97,8 +104,7 @@ export const WELLNESS_DEMOS: Record<WellnessDemoId, WellnessDemo> = {
   "stretch-neck-tilts": {
     id: "stretch-neck-tilts",
     title: "Neck tilts",
-    videoUrl: null,
-    posterUrl: null,
+    ...mixkit(5065), // neck tilts left/right — vertical
     guide: "neck_tilt",
     setting: "studio",
     aspect: "9:16",
@@ -109,8 +115,7 @@ export const WELLNESS_DEMOS: Record<WellnessDemoId, WellnessDemo> = {
   "stretch-arms-overhead": {
     id: "stretch-arms-overhead",
     title: "Reach arms overhead",
-    videoUrl: null,
-    posterUrl: null,
+    ...mixkit(52119), // arms raised overhead, black athletic
     guide: "arms_overhead",
     setting: "studio",
     aspect: "9:16",
@@ -121,8 +126,7 @@ export const WELLNESS_DEMOS: Record<WellnessDemoId, WellnessDemo> = {
   "stretch-forward-fold": {
     id: "stretch-forward-fold",
     title: "Forward fold",
-    videoUrl: null,
-    posterUrl: null,
+    ...mixkit(4942), // seated/standing forward fold stretch — vertical
     guide: "forward_fold",
     setting: "studio",
     aspect: "9:16",
@@ -133,8 +137,7 @@ export const WELLNESS_DEMOS: Record<WellnessDemoId, WellnessDemo> = {
   "stretch-hip-circles": {
     id: "stretch-hip-circles",
     title: "Hip circles",
-    videoUrl: null,
-    posterUrl: null,
+    ...mixkit(52138), // hip / lunge mobility warm-up
     guide: "hip_circles",
     setting: "studio",
     aspect: "9:16",
@@ -145,8 +148,7 @@ export const WELLNESS_DEMOS: Record<WellnessDemoId, WellnessDemo> = {
   "walk-stand-tall": {
     id: "walk-stand-tall",
     title: "Stand tall",
-    videoUrl: null,
-    posterUrl: null,
+    ...mixkit(47418), // standing posture stretch outdoors
     guide: "stand_tall",
     setting: "park",
     aspect: "9:16",
@@ -157,8 +159,7 @@ export const WELLNESS_DEMOS: Record<WellnessDemoId, WellnessDemo> = {
   "walk-naturally": {
     id: "walk-naturally",
     title: "Walk naturally",
-    videoUrl: null,
-    posterUrl: null,
+    ...mixkit(52126), // walking/jogging park, black athletic
     guide: "walk",
     setting: "park",
     aspect: "9:16",
@@ -169,8 +170,7 @@ export const WELLNESS_DEMOS: Record<WellnessDemoId, WellnessDemo> = {
   "walk-swing-arms": {
     id: "walk-swing-arms",
     title: "Swing arms naturally",
-    videoUrl: null,
-    posterUrl: null,
+    ...mixkit(52119), // natural arm reach / swing while standing tall
     guide: "arm_swing",
     setting: "park",
     aspect: "9:16",
@@ -181,8 +181,7 @@ export const WELLNESS_DEMOS: Record<WellnessDemoId, WellnessDemo> = {
   "walk-brisk-finish": {
     id: "walk-brisk-finish",
     title: "Brisk finish",
-    videoUrl: null,
-    posterUrl: null,
+    ...mixkit(52129), // brisk park pace in black sportswear
     guide: "brisk_walk",
     setting: "park",
     aspect: "9:16",
@@ -193,8 +192,7 @@ export const WELLNESS_DEMOS: Record<WellnessDemoId, WellnessDemo> = {
   "walk-cool-down": {
     id: "walk-cool-down",
     title: "Cool down",
-    videoUrl: null,
-    posterUrl: null,
+    ...mixkit(46572), // slow down / catch breath after walk
     guide: "cool_down_walk",
     setting: "park",
     aspect: "9:16",
@@ -205,8 +203,7 @@ export const WELLNESS_DEMOS: Record<WellnessDemoId, WellnessDemo> = {
   "chair-seated-marches": {
     id: "chair-seated-marches",
     title: "Seated marches",
-    videoUrl: null,
-    posterUrl: null,
+    ...mixkit(48400), // seated mobility / chair-yoga style
     guide: "seated_march",
     setting: "studio",
     aspect: "9:16",
@@ -217,8 +214,7 @@ export const WELLNESS_DEMOS: Record<WellnessDemoId, WellnessDemo> = {
   "chair-torso-twists": {
     id: "chair-torso-twists",
     title: "Seated torso twists",
-    videoUrl: null,
-    posterUrl: null,
+    ...mixkit(5574), // gentle spinal mobility on mat / torso
     guide: "seated_twist",
     setting: "studio",
     aspect: "9:16",
@@ -229,8 +225,7 @@ export const WELLNESS_DEMOS: Record<WellnessDemoId, WellnessDemo> = {
   "chair-ankle-circles": {
     id: "chair-ankle-circles",
     title: "Ankle circles",
-    videoUrl: null,
-    posterUrl: null,
+    ...mixkit(39568), // seated floor stretch — lower-body focus
     guide: "ankle_circles",
     setting: "studio",
     aspect: "9:16",
@@ -241,8 +236,7 @@ export const WELLNESS_DEMOS: Record<WellnessDemoId, WellnessDemo> = {
   "chair-side-reaches": {
     id: "chair-side-reaches",
     title: "Side reaches",
-    videoUrl: null,
-    posterUrl: null,
+    ...mixkit(32639), // seated upper-body / side stretch
     guide: "side_reach",
     setting: "studio",
     aspect: "9:16",
@@ -253,8 +247,7 @@ export const WELLNESS_DEMOS: Record<WellnessDemoId, WellnessDemo> = {
   "chair-sit-to-stand": {
     id: "chair-sit-to-stand",
     title: "Sit to stand",
-    videoUrl: null,
-    posterUrl: null,
+    ...mixkit(21273), // controlled sit-to-stand / squat at home
     guide: "sit_to_stand",
     setting: "studio",
     aspect: "9:16",
@@ -265,8 +258,7 @@ export const WELLNESS_DEMOS: Record<WellnessDemoId, WellnessDemo> = {
   "beginner-march": {
     id: "beginner-march",
     title: "March in place",
-    videoUrl: null,
-    posterUrl: null,
+    ...mixkit(5062), // standing in-place warm-up march / arm swing
     guide: "march_place",
     setting: "studio",
     aspect: "9:16",
@@ -277,8 +269,7 @@ export const WELLNESS_DEMOS: Record<WellnessDemoId, WellnessDemo> = {
   "beginner-wall-pushups": {
     id: "beginner-wall-pushups",
     title: "Wall push-ups",
-    videoUrl: null,
-    posterUrl: null,
+    ...mixkit(5351), // push-up / plank form outdoors
     guide: "wall_pushup",
     setting: "studio",
     aspect: "9:16",
@@ -289,8 +280,7 @@ export const WELLNESS_DEMOS: Record<WellnessDemoId, WellnessDemo> = {
   "beginner-squats": {
     id: "beginner-squats",
     title: "Bodyweight squats",
-    videoUrl: null,
-    posterUrl: null,
+    ...mixkit(52116), // bodyweight squats, black athletic
     guide: "squat",
     setting: "studio",
     aspect: "9:16",
@@ -301,8 +291,7 @@ export const WELLNESS_DEMOS: Record<WellnessDemoId, WellnessDemo> = {
   "beginner-side-steps": {
     id: "beginner-side-steps",
     title: "Side steps",
-    videoUrl: null,
-    posterUrl: null,
+    ...mixkit(52112), // lateral lunge / side step pattern
     guide: "side_steps",
     setting: "studio",
     aspect: "9:16",
@@ -313,8 +302,7 @@ export const WELLNESS_DEMOS: Record<WellnessDemoId, WellnessDemo> = {
   "beginner-cool-stretch": {
     id: "beginner-cool-stretch",
     title: "Cool down stretch",
-    videoUrl: null,
-    posterUrl: null,
+    ...mixkit(40132), // gentle cool-down stretch
     guide: "cool_stretch",
     setting: "studio",
     aspect: "9:16",
@@ -325,8 +313,7 @@ export const WELLNESS_DEMOS: Record<WellnessDemoId, WellnessDemo> = {
   "breath-box": {
     id: "breath-box",
     title: "Calm breathing",
-    videoUrl: null,
-    posterUrl: null,
+    ...mixkit(32635), // hand on chest, calm breath
     guide: "breathe_calm",
     setting: "studio",
     aspect: "9:16",
@@ -337,8 +324,7 @@ export const WELLNESS_DEMOS: Record<WellnessDemoId, WellnessDemo> = {
   "breath-wind-down": {
     id: "breath-wind-down",
     title: "Wind-down breathing",
-    videoUrl: null,
-    posterUrl: null,
+    ...mixkit(32625), // calm yoga breathing at home
     guide: "breathe_calm",
     setting: "studio",
     aspect: "9:16",
@@ -349,8 +335,7 @@ export const WELLNESS_DEMOS: Record<WellnessDemoId, WellnessDemo> = {
   "breath-reset": {
     id: "breath-reset",
     title: "Reset breathing",
-    videoUrl: null,
-    posterUrl: null,
+    ...mixkit(32081), // breathing exercises by the lake
     guide: "breathe_calm",
     setting: "studio",
     aspect: "9:16",
@@ -367,8 +352,8 @@ export function getWellnessDemo(id: WellnessDemoId | string | null | undefined):
 }
 
 /**
- * Player-facing clip shape. `videoUrl` stays null until library upgrade;
- * UI reads the same fields either way.
+ * Player-facing clip shape. `videoUrl` is the live demo source;
+ * UI reads the same fields when library is upgraded later.
  */
 export type DemoClip = {
   id: WellnessDemoId | string;
@@ -392,7 +377,7 @@ export function resolveDemoClip(id: WellnessDemoId | string | null | undefined):
     guide: demo.guide,
     setting: demo.setting,
     prompt: demo.prompt,
-    credit: demo.videoUrl ? "YAJ demo" : "Form guide · YAJ",
+    credit: demo.videoUrl ? "Form demo" : undefined,
   };
 }
 
