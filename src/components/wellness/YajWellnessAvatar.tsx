@@ -188,15 +188,13 @@ export default function YajWellnessAvatar({
               </g>
             </g>
 
-            {/* HEAD — joint at neck base; content draws upward */}
+            {/* HEAD — all geometry stays at/above y=0 so bottom-center = neck joint */}
             <g transform={`translate(0 ${isWoman ? -52 : -54})`}>
               <g className="rot-head head">
-                {/* Invisible pivot marker keeps joint in bbox */}
-                <circle cx="0" cy="0" r="0.5" fill="transparent" />
                 <rect x="-4" y="-10" width="8" height="10" rx="3" fill={skin} />
                 {isWoman ? (
                   <path
-                    d="M-16 -14 C-18 -36, 18 -36, 16 -14 C20 2, 14 12, 9 14 C5 0, -5 0, -9 14 C-14 12, -20 2, -16 -14 Z"
+                    d="M-15 -12 C-17 -34, 17 -34, 15 -12 C17 -4, 12 -1, 8 -1 L-8 -1 C-12 -1, -17 -4, -15 -12 Z"
                     fill={hair}
                   />
                 ) : (
@@ -216,6 +214,8 @@ export default function YajWellnessAvatar({
                   strokeLinecap="round"
                   opacity="0.32"
                 />
+                {/* Explicit neck-base pivot so fill-box bottom = joint */}
+                <circle cx="0" cy="0" r="1" fill={skin} />
               </g>
             </g>
           </g>
@@ -239,9 +239,10 @@ function coachCss(): string {
       transform-box: fill-box;
       transform-origin: 50% 100%;
     }
+    /* Hip hinge uses viewport origin — fill-box would include hanging arms and detach the torso */
     .yaj-coach .rot-upper {
-      transform-box: fill-box;
-      transform-origin: 50% 100%;
+      transform-box: view-box;
+      transform-origin: 100px 148px;
     }
 
     /* Natural resting arm hang */
