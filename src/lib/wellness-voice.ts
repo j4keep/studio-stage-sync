@@ -3,6 +3,8 @@
  * Locks a consistent female companion voice for the whole session.
  */
 
+import { speakableYajText } from "@/lib/yaj-pronounce";
+
 export type WellnessSpeakOptions = {
   calm?: boolean;
   rate?: number;
@@ -151,15 +153,17 @@ function stopSpeechKeepAlive() {
 }
 
 export function humanizeCoachText(text: string): string {
-  return (text || "")
-    .replace(/×\s*/g, "times ")
-    .replace(/\bx\s*(\d+)/gi, "times $1")
-    .replace(/(\d+)\s*s\b/gi, "$1 seconds")
-    .replace(/(\d+)\s*sec\b/gi, "$1 seconds")
-    .replace(/(\d+)\s*min\b/gi, "$1 minutes")
-    .replace(/\bOK\b/g, "okay")
-    .replace(/\s+/g, " ")
-    .trim();
+  return speakableYajText(
+    (text || "")
+      .replace(/×\s*/g, "times ")
+      .replace(/\bx\s*(\d+)/gi, "times $1")
+      .replace(/(\d+)\s*s\b/gi, "$1 seconds")
+      .replace(/(\d+)\s*sec\b/gi, "$1 seconds")
+      .replace(/(\d+)\s*min\b/gi, "$1 minutes")
+      .replace(/\bOK\b/g, "okay")
+      .replace(/\s+/g, " ")
+      .trim(),
+  );
 }
 
 export function warmupWellnessVoice() {

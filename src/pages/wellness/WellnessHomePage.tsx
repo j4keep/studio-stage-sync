@@ -173,7 +173,7 @@ export default function WellnessHomePage() {
           </div>
           {buddyNote && (
             <div className="mt-3 rounded-2xl bg-gradient-to-br from-teal-800 to-emerald-900 p-3 text-teal-50">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-teal-200/90">YAJ Buddy</p>
+              <p className="text-[10px] font-bold uppercase tracking-wide text-teal-200/90">YAJ</p>
               <p className="mt-1 text-sm leading-relaxed">{buddyNote}</p>
             </div>
           )}

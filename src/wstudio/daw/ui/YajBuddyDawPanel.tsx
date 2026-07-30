@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { ArrowUp, Trash2, Paperclip, X, Music2, MessageSquare, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
-import YajBuddyIcon from "@/components/YajBuddyIcon";
+import YajAiGeneratorIcon from "@/components/YajAiGeneratorIcon";
 
 type ContentPart =
   | { type: "text"; text: string }
@@ -47,7 +47,7 @@ const QUICK_PROMPTS = [
 ];
 
 /**
- * Floating YAJ Buddy button + slide-in side panel for use inside the DAW.
+ * Floating YAJ button + slide-in side panel for use inside the DAW.
  * Self-contained: streams from the same `ask-yaj` edge function.
  */
 export function YajBuddyDawPanel({ themeMode = "dark" }: { themeMode?: "light" | "dark" }) {
@@ -128,7 +128,7 @@ export function YajBuddyDawPanel({ themeMode = "dark" }: { themeMode?: "light" |
       });
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({}));
-        throw new Error(err.error || "Failed to reach YAJ Buddy");
+        throw new Error(err.error || "Failed to reach YAJ");
       }
       if (!resp.body) throw new Error("No response stream");
 
@@ -156,7 +156,7 @@ export function YajBuddyDawPanel({ themeMode = "dark" }: { themeMode?: "light" |
         }
       }
     } catch (e: any) {
-      toast.error(e.message || "YAJ Buddy error");
+      toast.error(e.message || "YAJ error");
       if (soFar === "") setMessages((prev) => prev.slice(0, -1));
     } finally {
       setIsLoading(false);
@@ -181,9 +181,9 @@ export function YajBuddyDawPanel({ themeMode = "dark" }: { themeMode?: "light" |
         <button
           onClick={() => setOpen(true)}
           className="fixed bottom-6 right-6 z-[80] w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-violet-700 shadow-2xl shadow-purple-500/30 flex items-center justify-center text-white hover:scale-105 active:scale-95 transition-transform"
-          title="Ask YAJ Buddy"
+          title="Ask YAJ"
         >
-          <YajBuddyIcon className="w-7 h-7" active />
+          <YajAiGeneratorIcon className="w-7 h-7" active />
         </button>
       )}
 
@@ -196,10 +196,10 @@ export function YajBuddyDawPanel({ themeMode = "dark" }: { themeMode?: "light" |
           <div className={`flex items-center justify-between px-4 py-3 border-b ${border}`}>
             <div className="flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-500/20 to-blue-600/20 flex items-center justify-center">
-                <YajBuddyIcon className="w-5 h-5" active />
+                <YajAiGeneratorIcon className="w-5 h-5" active />
               </div>
               <div>
-                <div className="text-sm font-bold">YAJ Buddy</div>
+                <div className="text-sm font-bold">YAJ</div>
                 <div className={`text-[10px] ${muted}`}>Creative copilot · Community companion</div>
               </div>
             </div>
@@ -230,7 +230,7 @@ export function YajBuddyDawPanel({ themeMode = "dark" }: { themeMode?: "light" |
                   <Sparkles className="w-7 h-7 text-cyan-400" />
                 </div>
                 <div className="text-center">
-                  <div className="text-base font-bold">Create with YAJ Buddy</div>
+                  <div className="text-base font-bold">Create with YAJ</div>
                   <div className={`text-xs ${muted} mt-1 max-w-[280px]`}>
                     Ask for beats, chord progressions, or mix tips. Your space. Your people. Your vibe.
                   </div>

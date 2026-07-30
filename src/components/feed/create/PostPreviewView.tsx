@@ -4,7 +4,7 @@ import { syncMusicWithVideo, getAddedSoundVideoSyncOptions, MIXED_VOCAL_VIDEO_VO
 import type { PostEditorMeta } from "@/lib/post-editor";
 import { ChevronLeft, Hash, AtSign, Lightbulb, Wand2, ImageIcon, Trash2, Type } from "lucide-react";
 import { toast } from "sonner";
-import YajBuddyIcon from "@/components/YajBuddyIcon";
+import YajAiGeneratorIcon from "@/components/YajAiGeneratorIcon";
 import { yajRewritePostDescription, yajRewritePostTitle } from "@/lib/ask-yaj";
 
 interface Props {
@@ -97,9 +97,9 @@ export default function PostPreviewView({
     try {
       const next = await yajRewritePostTitle(title, description);
       if (next) onTitleChange(next);
-      else toast.error("YAJ Buddy couldn't rewrite the title. Try again.");
+      else toast.error("YAJ couldn't rewrite the title. Try again.");
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "YAJ Buddy is unavailable right now");
+      toast.error(e instanceof Error ? e.message : "YAJ is unavailable right now");
     } finally {
       setRewriting(null);
     }
@@ -111,9 +111,9 @@ export default function PostPreviewView({
     try {
       const next = await yajRewritePostDescription(description, title);
       if (next) onDescriptionChange(next);
-      else toast.error("YAJ Buddy couldn't rewrite the description. Try again.");
+      else toast.error("YAJ couldn't rewrite the description. Try again.");
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "YAJ Buddy is unavailable right now");
+      toast.error(e instanceof Error ? e.message : "YAJ is unavailable right now");
     } finally {
       setRewriting(null);
     }
@@ -328,11 +328,11 @@ export default function PostPreviewView({
           className="mt-4 w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 border border-white/10 active:bg-white/10 disabled:opacity-40"
         >
           <div className="w-9 h-9 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
-            <YajBuddyIcon className="w-5 h-5" active />
+            <YajAiGeneratorIcon className="w-5 h-5" active />
           </div>
           <div className="text-left flex-1 min-w-0">
             <p className="text-sm font-bold text-white">
-              {rewriting === "title" ? "YAJ Buddy is rewriting your title…" : "Ask YAJ Buddy to rewrite title"}
+              {rewriting === "title" ? "YAJ is rewriting your title…" : "Ask YAJ to rewrite title"}
             </p>
             <p className="text-[11px] text-white/45 truncate">Get a catchier hook before you post</p>
           </div>

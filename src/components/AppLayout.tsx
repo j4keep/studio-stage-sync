@@ -5,7 +5,7 @@ import GlobalRadioPlayer from "./GlobalRadioPlayer";
 import GlobalPlaylistPlayer from "./GlobalPlaylistPlayer";
 import PlaylistPlayerSheet from "./PlaylistPlayerSheet";
 import NotificationBell from "./NotificationBell";
-import YajBuddyIcon from "./YajBuddyIcon";
+import YajAiGeneratorIcon from "./YajAiGeneratorIcon";
 import MessagesInboxButton from "./MessagesInboxButton";
 import { ArrowLeft } from "lucide-react";
 import { useProGate } from "@/hooks/use-pro-gate";
@@ -118,9 +118,9 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
             <button
               onClick={handleAskYaj}
               className="relative flex h-9 w-9 items-center justify-center rounded-full bg-muted"
-              aria-label="Ask YAJ Buddy"
+              aria-label="Ask YAJ"
             >
-              <YajBuddyIcon className="h-5 w-5" active={location.pathname === "/ask-yaj"} />
+              <YajAiGeneratorIcon className="h-5 w-5" active={location.pathname === "/ask-yaj"} />
               {!isPro && (
                 <span className="absolute -right-0.5 -top-0.5 rounded-full bg-primary px-1 py-0.5 text-[6px] font-bold leading-none text-primary-foreground">
                   PRO
@@ -184,9 +184,9 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
 
             onClick={handleAskYaj}
             className="relative flex h-9 w-9 items-center justify-center rounded-full bg-muted"
-            aria-label="Ask YAJ Buddy"
+            aria-label="Ask YAJ"
           >
-            <YajBuddyIcon className="h-5 w-5" active={location.pathname === "/ask-yaj"} />
+            <YajAiGeneratorIcon className="h-5 w-5" active={location.pathname === "/ask-yaj"} />
             {!isPro && (
               <span className="absolute -right-0.5 -top-0.5 rounded-full bg-primary px-1 py-0.5 text-[6px] font-bold leading-none text-primary-foreground">
                 PRO

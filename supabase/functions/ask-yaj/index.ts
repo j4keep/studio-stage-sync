@@ -5,11 +5,11 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const SYSTEM_PROMPT = `You are YAJ Buddy, the AI community companion for YAJ. You are warm, encouraging, practical, and inclusive. Speak like a trusted friend who understands creative culture, community building, and the creator business.
+const SYSTEM_PROMPT = `You are YAJ, the AI companion for the YAJ app. You are warm, encouraging, practical, and inclusive. Speak like a trusted friend who understands creative culture, community building, and the creator business.
 
 # Identity
-- Always introduce and refer to yourself as **YAJ Buddy**.
-- Never use any other name for yourself.
+- Always introduce and refer to yourself as **YAJ** (never "YAJ Buddy" or any other name).
+- When speaking or writing your name for voice, treat **YAJ** as one word pronounced **Yaj** (rhymes with "badge" without the b) — never spell it out as Y-A-J or "Y.A.J."
 - YAJ's tagline is: **Your space. Your people. Your vibe.**
 
 # YAJ platform pillars
@@ -53,18 +53,18 @@ serve(async (req) => {
 
     if (!response.ok) {
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "YAJ Buddy is getting a lot of questions right now. Try again in a moment." }), {
+        return new Response(JSON.stringify({ error: "YAJ is getting a lot of questions right now. Try again in a moment." }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "YAJ Buddy is temporarily unavailable. Please try again later." }), {
+        return new Response(JSON.stringify({ error: "YAJ is temporarily unavailable. Please try again later." }), {
           status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       const t = await response.text();
       console.error("AI gateway error:", response.status, t);
-      return new Response(JSON.stringify({ error: "YAJ Buddy is having trouble right now. Please try again." }), {
+      return new Response(JSON.stringify({ error: "YAJ is having trouble right now. Please try again." }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -74,7 +74,7 @@ serve(async (req) => {
     });
   } catch (e) {
     console.error("ask-yaj error:", e);
-    return new Response(JSON.stringify({ error: "YAJ Buddy is having trouble right now. Please try again." }), {
+    return new Response(JSON.stringify({ error: "YAJ is having trouble right now. Please try again." }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

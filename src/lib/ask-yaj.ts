@@ -3,9 +3,9 @@ const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ask-yaj`;
 async function collectYajStream(resp: Response): Promise<string> {
   if (!resp.ok) {
     const err = await resp.json().catch(() => ({}));
-    throw new Error((err as { error?: string }).error || "Failed to reach YAJ Buddy");
+    throw new Error((err as { error?: string }).error || "Failed to reach YAJ");
   }
-  if (!resp.body) throw new Error("No response from YAJ Buddy");
+  if (!resp.body) throw new Error("No response from YAJ");
 
   const reader = resp.body.getReader();
   const decoder = new TextDecoder();
@@ -57,18 +57,18 @@ async function askYaj(prompt: string): Promise<string> {
   return raw.replace(/^["'`]+|["'`]+$/g, "").trim();
 }
 
-/** Use YAJ Buddy to polish a post title. */
+/** Use YAJ to polish a post title. */
 export async function yajRewritePostTitle(title: string, description?: string): Promise<string> {
   const ctx = description?.trim() ? `\nPost description for context: ${description.trim()}` : "";
   return askYaj(
-    `As YAJ Buddy, rewrite this YAJ community post title to be catchy, clear, and scroll-stopping. Max 80 characters. Preserve the user's voice. Return ONLY the rewritten title — no quotes, labels, hashtags, or explanation.${ctx}\n\nTitle: ${title.trim() || "Untitled post"}`,
+    `As YAJ, rewrite this YAJ community post title to be catchy, clear, and scroll-stopping. Max 80 characters. Preserve the user's voice. Return ONLY the rewritten title — no quotes, labels, hashtags, or explanation.${ctx}\n\nTitle: ${title.trim() || "Untitled post"}`,
   );
 }
 
-/** Use YAJ Buddy to polish a post description. */
+/** Use YAJ to polish a post description. */
 export async function yajRewritePostDescription(description: string, title?: string): Promise<string> {
   const ctx = title?.trim() ? `\nPost title for context: ${title.trim()}` : "";
   return askYaj(
-    `As YAJ Buddy, rewrite this YAJ community post description to be engaging and natural. Preserve the user's voice and intent. Keep it concise (1–3 short sentences). Return ONLY the rewritten description — no quotes, labels, or explanation.${ctx}\n\nDescription: ${description.trim() || "No description yet"}`,
+    `As YAJ, rewrite this YAJ community post description to be engaging and natural. Preserve the user's voice and intent. Keep it concise (1–3 short sentences). Return ONLY the rewritten description — no quotes, labels, or explanation.${ctx}\n\nDescription: ${description.trim() || "No description yet"}`,
   );
 }

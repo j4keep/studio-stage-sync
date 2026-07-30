@@ -165,7 +165,7 @@ export default function BreathingSession({
               className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${
                 voiceOn ? "bg-teal-400/30 text-teal-100" : "bg-white/10 text-white/50"
               }`}
-              aria-label={voiceOn ? "Mute Buddy voice" : "Enable Buddy voice"}
+              aria-label={voiceOn ? "Mute YAJ voice" : "Enable YAJ voice"}
             >
               {voiceOn ? "Voice on" : "Voice off"}
             </button>

@@ -1,3 +1,5 @@
+import { speakableYajText } from "@/lib/yaj-pronounce";
+
 const FN = (name: string) => `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${name}`;
 
 const authHeaders = {
@@ -16,7 +18,7 @@ async function postJson<T>(name: string, body: unknown): Promise<T> {
   return data as T;
 }
 
-/** Generate an image with YAJ Buddy. Returns a data URL (or hosted URL). */
+/** Generate an image with YAJ. Returns a data URL (or hosted URL). */
 export async function generateYajImage(prompt: string): Promise<string> {
   const { image } = await postJson<{ image: string }>("yaj-image", { prompt });
   return image;
@@ -24,7 +26,8 @@ export async function generateYajImage(prompt: string): Promise<string> {
 
 /** Turn text into natural spoken audio. Returns a playable data URL. */
 export async function synthesizeYajVoice(text: string, voice?: string): Promise<string> {
-  const { audio } = await postJson<{ audio: string }>("yaj-voice", { text, voice });
+  const spoken = speakableYajText(text);
+  const { audio } = await postJson<{ audio: string }>("yaj-voice", { text: spoken, voice });
   return audio;
 }
 
@@ -34,7 +37,7 @@ export async function transcribeYajAudio(dataUrl: string): Promise<string> {
   return text;
 }
 
-/** Heuristic: does this message ask YAJ Buddy to make a picture? */
+/** Heuristic: does this message ask YAJ to make a picture? */
 export function looksLikeImageRequest(text: string): boolean {
   const t = text.toLowerCase();
   if (!/(image|picture|photo|artwork|art of|illustration|drawing|logo|poster|cover art|wallpaper|thumbnail|graphic)/.test(t)) {

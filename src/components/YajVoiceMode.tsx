@@ -13,7 +13,7 @@ import {
 type Phase = "listening" | "thinking" | "speaking";
 
 type Props = {
-  /** Sends the spoken text into the chat and resolves with YAJ Buddy's reply. */
+  /** Sends the spoken text into the chat and resolves with YAJ's reply. */
   onSend: (text: string) => Promise<string>;
   onClose: () => void;
 };
@@ -126,7 +126,7 @@ const YajVoiceMode = ({ onSend, onClose }: Props) => {
 
       <div className="mt-4 flex items-center gap-2 text-[11px] text-muted-foreground">
         {phase === "thinking" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mic className="w-3.5 h-3.5" />}
-        Just talk — YAJ Buddy answers out loud.
+        Just talk — YAJ answers out loud.
       </div>
 
       <button

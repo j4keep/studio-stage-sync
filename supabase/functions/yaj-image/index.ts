@@ -40,7 +40,7 @@ serve(async (req) => {
       console.error("image gen error:", resp.status, detail);
       const message =
         resp.status === 429
-          ? "YAJ Buddy is getting a lot of requests right now. Try again in a moment."
+          ? "YAJ is getting a lot of requests right now. Try again in a moment."
           : resp.status === 402
             ? "Image generation is temporarily unavailable. Please try again later."
             : "Couldn't generate that image. Try rephrasing your idea.";

@@ -23,7 +23,13 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     // Keep the request within a sane length for a spoken reply.
-    const spoken = text.replace(/[*_`#>]/g, "").slice(0, 4000);
+    // Pronounce YAJ as one word "Yaj" — never letter-by-letter Y.A.J.
+    const spoken = text
+      .replace(/[*_`#>]/g, "")
+      .replace(/\bY\s*[\.\-–]?\s*A\s*[\.\-–]?\s*J\b/gi, "Yaj")
+      .replace(/\bYAJ\b/g, "Yaj")
+      .replace(/\bYaj Buddy\b/gi, "Yaj")
+      .slice(0, 4000);
 
     const resp = await fetch("https://ai.gateway.lovable.dev/v1/audio/speech", {
       method: "POST",
@@ -36,7 +42,8 @@ serve(async (req) => {
         input: spoken,
         voice: typeof voice === "string" && voice ? voice : "alloy",
         response_format: "mp3",
-        instructions: "Warm, friendly, natural and conversational — like a supportive creative friend.",
+        instructions:
+          'Warm, friendly, natural and conversational — like a supportive creative friend. Always pronounce the name "Yaj" as a single word that rhymes with "badge" (without the b). Never spell it out as Y-A-J or say "Y.A.J."',
       }),
     });
 
