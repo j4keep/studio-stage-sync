@@ -1,10 +1,11 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { Briefcase, Compass, Home, PlusSquare } from "lucide-react";
+import { Compass, Home, PlusSquare } from "lucide-react";
+import YajAiGeneratorIcon from "@/components/YajAiGeneratorIcon";
 
 const tabs = [
-  { path: "/", label: "Home", icon: Home },
-  { path: "/explore", label: "Explore", icon: Compass },
-  { path: "/jobs", label: "Jobs", icon: Briefcase },
+  { path: "/", label: "Home", kind: "lucide" as const, icon: Home },
+  { path: "/explore", label: "Explore", kind: "lucide" as const, icon: Compass },
+  { path: "/ask-yaj", label: "YAJ AI", kind: "ai" as const },
 ] as const;
 
 /** Vertical menu strip on the right of desktop shell pages. */
@@ -23,15 +24,8 @@ export default function DesktopHomeIconRail() {
         location.pathname === "/radio"
       );
     }
-    if (path === "/jobs") {
-      return (
-        location.pathname === "/jobs" ||
-        (location.pathname.startsWith("/jobs/") && !location.pathname.includes("/interview")) ||
-        location.pathname === "/my-jobs" ||
-        location.pathname === "/my-gigs" ||
-        location.pathname === "/employer-dashboard" ||
-        location.pathname === "/employer"
-      );
+    if (path === "/ask-yaj") {
+      return location.pathname === "/ask-yaj" || location.pathname.startsWith("/ask-yaj/");
     }
     return location.pathname === path || location.pathname.startsWith(`${path}/`);
   };
@@ -39,7 +33,6 @@ export default function DesktopHomeIconRail() {
   return (
     <aside className="sticky top-14 flex h-[calc(100dvh-3.5rem)] w-14 flex-col items-center gap-1 border-l border-border bg-card/80 py-3">
       {tabs.map((tab) => {
-        const Icon = tab.icon;
         const active = isActive(tab.path);
         return (
           <button
@@ -52,7 +45,11 @@ export default function DesktopHomeIconRail() {
               active ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
             }`}
           >
-            <Icon className="h-5 w-5" strokeWidth={active ? 2.5 : 2} />
+            {tab.kind === "ai" ? (
+              <YajAiGeneratorIcon className="h-6 w-6" active={active} />
+            ) : (
+              <tab.icon className="h-5 w-5" strokeWidth={active ? 2.5 : 2} />
+            )}
           </button>
         );
       })}

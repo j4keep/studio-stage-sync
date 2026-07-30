@@ -1,13 +1,21 @@
 import { useState, useEffect } from "react";
-import { Home, User, Briefcase, Compass } from "lucide-react";
+import { Home, User, Compass } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import ProGateModal from "@/components/ProGateModal";
 import { useProGate } from "@/hooks/use-pro-gate";
 import { useCreatePostSheet } from "@/hooks/use-create-post-sheet";
 import CreatePostSheet from "@/components/feed/CreatePostSheet";
 import CreateNavIcon from "@/components/CreateNavIcon";
+import YajAiGeneratorIcon from "@/components/YajAiGeneratorIcon";
 
 const CREATE_WAVE_MS = 720;
+
+type Tab = {
+  path: string;
+  label: string;
+  kind: "lucide" | "ai";
+  icon?: typeof Home;
+};
 
 const BottomNav = () => {
   const location = useLocation();
@@ -36,14 +44,19 @@ const BottomNav = () => {
     if (location.pathname !== "/feed" && location.pathname !== "/") setHidden(false);
   }, [location.pathname]);
 
-  const tabs = [
-    { path: "/", label: "Home", icon: Home },
-    { path: "/explore", label: "Explore", icon: Compass },
-    { path: "/jobs", label: "Jobs", icon: Briefcase },
-    { path: "/profile", label: "Profile", icon: User },
-  ] as const;
+  const tabs: Tab[] = [
+    { path: "/", label: "Home", kind: "lucide", icon: Home },
+    { path: "/explore", label: "Explore", kind: "lucide", icon: Compass },
+    { path: "/ask-yaj", label: "YAJ AI", kind: "ai" },
+    { path: "/profile", label: "Profile", kind: "lucide", icon: User },
+  ];
 
-  const isActive = (tab: typeof tabs[number]) => location.pathname === tab.path;
+  const isActive = (tab: Tab) => {
+    if (tab.path === "/ask-yaj") {
+      return location.pathname === "/ask-yaj" || location.pathname.startsWith("/ask-yaj/");
+    }
+    return location.pathname === tab.path;
+  };
 
   const left = tabs.slice(0, 2);
   const right = tabs.slice(2);
@@ -55,9 +68,8 @@ const BottomNav = () => {
     window.setTimeout(() => setWaving(false), CREATE_WAVE_MS);
   };
 
-  const renderTab = (tab: typeof tabs[number]) => {
+  const renderTab = (tab: Tab) => {
     const active = isActive(tab);
-    const Icon = tab.icon;
     const handleClick = () => {
       if (tab.path === "/" && isFeed) {
         window.dispatchEvent(new Event("feed-scroll-top"));
@@ -72,17 +84,42 @@ const BottomNav = () => {
         onClick={handleClick}
         className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-1 min-h-[3rem] rounded-lg transition-all duration-200 ${
           active
-            ? isFeed ? "text-foreground" : "text-primary"
-            : isFeed ? "text-muted-foreground hover:text-foreground" : "text-muted-foreground hover:text-foreground"
+            ? isFeed
+              ? "text-foreground"
+              : "text-primary"
+            : isFeed
+              ? "text-muted-foreground hover:text-foreground"
+              : "text-muted-foreground hover:text-foreground"
         }`}
       >
-        <Icon
-          className={`w-[1.35rem] h-[1.35rem] transition-all ${
-            active ? (isFeed ? "drop-shadow-[0_0_8px_hsl(var(--primary)/0.35)]" : "drop-shadow-[0_0_8px_hsl(var(--primary)/0.55)]") : ""
-          }`}
-          strokeWidth={active ? 2.5 : 2}
-        />
-        <span className={`text-[10px] font-semibold leading-tight ${active && !isFeed ? "text-glow" : ""}`}>{tab.label}</span>
+        {tab.kind === "ai" ? (
+          <YajAiGeneratorIcon
+            className={`w-[1.55rem] h-[1.55rem] transition-all ${
+              active
+                ? isFeed
+                  ? "drop-shadow-[0_0_8px_hsl(var(--primary)/0.35)]"
+                  : "drop-shadow-[0_0_8px_hsl(var(--primary)/0.55)]"
+                : ""
+            }`}
+            active={active}
+          />
+        ) : (
+          tab.icon && (
+            <tab.icon
+              className={`w-[1.35rem] h-[1.35rem] transition-all ${
+                active
+                  ? isFeed
+                    ? "drop-shadow-[0_0_8px_hsl(var(--primary)/0.35)]"
+                    : "drop-shadow-[0_0_8px_hsl(var(--primary)/0.55)]"
+                  : ""
+              }`}
+              strokeWidth={active ? 2.5 : 2}
+            />
+          )
+        )}
+        <span className={`text-[10px] font-semibold leading-tight ${active && !isFeed ? "text-glow" : ""}`}>
+          {tab.label}
+        </span>
       </button>
     );
   };

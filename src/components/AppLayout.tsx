@@ -26,6 +26,7 @@ function isDesktopShellPath(pathname: string) {
     pathname === "/marketplace" ||
     pathname === "/wellness" ||
     pathname === "/jobs" ||
+    pathname === "/ask-yaj" ||
     pathname === "/profile" ||
     pathname === "/radio" ||
     pathname === "/library" ||
@@ -69,7 +70,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
     !isPodcastLobby &&
     !isMarketplace &&
     !isWellness;
-  const rootTabs = ["/", "/feed", "/explore", "/jobs", "/profile", "/auth"];
+  const rootTabs = ["/", "/feed", "/explore", "/ask-yaj", "/profile", "/auth"];
   const showBackButton = !rootTabs.includes(location.pathname);
 
   const backSlot = showBackButton ? (
