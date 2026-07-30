@@ -13,6 +13,7 @@ import DesktopReelViewer from "@/components/feed/DesktopReelViewer";
 import FlagBackground from "@/components/FlagBackground";
 import NotificationBell from "@/components/NotificationBell";
 import IncognitoHeaderButton from "@/components/IncognitoHeaderButton";
+import YajBuddyIcon from "@/components/YajBuddyIcon";
 import { useIsDesktop } from "@/hooks/use-is-desktop";
 import yajLogo from "@/assets/yaj-logo.png";
 
@@ -114,6 +115,9 @@ const FeedPage = () => {
           <div className="min-w-0 flex-1" />
           <button onClick={() => navigate("/browse-songs")} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-card/80 active:bg-muted" aria-label="Search">
             <Search className="h-[1.15rem] w-[1.15rem]" strokeWidth={2.25} />
+          </button>
+          <button onClick={() => navigate("/ask-yaj")} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-card/80 active:bg-muted" aria-label="Ask YAJ Buddy">
+            <YajBuddyIcon className="h-[1.15rem] w-[1.15rem]" />
           </button>
           <IncognitoHeaderButton className="!h-8 !w-8 border border-border bg-card/80" />
           <button onClick={() => navigate("/messages")} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-card/80 active:bg-muted" aria-label="Messages">
