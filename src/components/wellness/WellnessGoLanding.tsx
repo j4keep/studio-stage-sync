@@ -7,24 +7,20 @@ import {
   type WellnessState,
 } from "@/lib/wellness";
 
-/** Calm ambient hero loop for the Go gate (not exercise demos). */
-const LANDING_VIDEO =
-  "https://assets.mixkit.co/videos/32625/32625-720.mp4";
-
 type Props = {
   onBack: () => void;
   onEnter: (state: WellnessState) => void;
 };
 
 /**
- * First wellness screen: cinematic video + Go, then a short health profile form.
+ * First wellness screen: Go gate, then a short health profile form.
+ * No videos.
  */
 export default function WellnessGoLanding({ onBack, onEnter }: Props) {
   const [phase, setPhase] = useState<"hero" | "profile">("hero");
   const [figure, setFigure] = useState<WellnessFigure>("woman");
   const [age, setAge] = useState("");
   const [weight, setWeight] = useState("");
-  const [videoFailed, setVideoFailed] = useState(false);
 
   const finish = () => {
     const next = updateWellnessProfile({
@@ -87,7 +83,7 @@ export default function WellnessGoLanding({ onBack, onEnter }: Props) {
               ))}
             </div>
             <p className="mt-2 text-[11px] text-emerald-100/50">
-              Exercise cards will show matching illustrations with a neutral skin tone.
+              Used for personalizing goals and coaching tips.
             </p>
           </div>
 
@@ -139,24 +135,11 @@ export default function WellnessGoLanding({ onBack, onEnter }: Props) {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#0a1411] text-white">
-      {!videoFailed ? (
-        <video
-          className="absolute inset-0 h-full w-full object-cover"
-          src={LANDING_VIDEO}
-          autoPlay
-          muted
-          loop
-          playsInline
-          poster=""
-          onError={() => setVideoFailed(true)}
-        />
-      ) : (
-        <div
-          aria-hidden
-          className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_20%,#2dd4bf55,transparent_50%),radial-gradient(ellipse_at_70%_80%,#0f766e88,transparent_55%),linear-gradient(180deg,#0f1c18,#052e2b)]"
-        />
-      )}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/25 to-black/75" />
+      <div
+        aria-hidden
+        className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_20%,#2dd4bf55,transparent_50%),radial-gradient(ellipse_at_70%_80%,#0f766e88,transparent_55%),linear-gradient(180deg,#0f1c18,#052e2b)]"
+      />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/55" />
 
       <header className="relative z-10 flex items-center gap-2 px-4 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <button

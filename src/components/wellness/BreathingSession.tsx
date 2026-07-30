@@ -1,7 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import ExerciseDemoPlayer from "@/components/wellness/ExerciseDemoPlayer";
-import type { DemoClip } from "@/lib/wellness-demos";
-import { getWellnessFigure, type WellnessFigure } from "@/lib/wellness";
 import {
   canWellnessSpeak,
   speakBreathPhase,
@@ -22,16 +19,13 @@ type Props = {
   onComplete?: () => void;
   /** Called when user closes early after ≥30s — minutes to log. */
   onProgress?: (minutesDone: number) => void;
-  /** Optional posture / calm form guide */
-  demo?: DemoClip | null;
-  figure?: WellnessFigure;
   /** YAJ speaks phase cues. Default true when browser supports it. */
   voiceGuide?: boolean;
 };
 
 type Phase = "inhale" | "hold" | "exhale" | "holdOut";
 
-/** Full-screen guided breathing with optional Buddy voice cues. */
+/** Full-screen guided breathing with YAJ voice cues — no demo videos or cards. */
 export default function BreathingSession({
   open,
   onClose,
@@ -43,11 +37,8 @@ export default function BreathingSession({
   minutes,
   onComplete,
   onProgress,
-  demo = null,
-  figure: figureProp,
   voiceGuide = true,
 }: Props) {
-  const figure = figureProp ?? getWellnessFigure();
   const totalSec = minutes * 60;
   const [phase, setPhase] = useState<Phase>("inhale");
   const [phaseLeft, setPhaseLeft] = useState(inhale);
@@ -180,19 +171,9 @@ export default function BreathingSession({
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1 flex-col items-center gap-5 overflow-y-auto px-4 pb-4 pt-2">
-        {demo ? (
-          <ExerciseDemoPlayer
-            demo={demo}
-            caption="Follow this calm posture while you breathe"
-            stepLabel={label}
-            playing={running && secondsLeft > 0}
-            figure={figure}
-            className="w-full max-w-md shrink-0"
-          />
-        ) : null}
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 overflow-y-auto px-4 pb-4 pt-2">
         <div
-          className="flex h-40 w-40 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-teal-300/40 via-emerald-400/30 to-cyan-500/20 shadow-[0_0_60px_-12px_rgba(45,212,191,0.55)] transition-transform duration-[1000ms] ease-in-out"
+          className="flex h-48 w-48 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-teal-300/40 via-emerald-400/30 to-cyan-500/20 shadow-[0_0_60px_-12px_rgba(45,212,191,0.55)] transition-transform duration-[1000ms] ease-in-out"
           style={{ transform: `scale(${running && secondsLeft > 0 ? scale : 1})` }}
         >
           <div className="flex h-24 w-24 flex-col items-center justify-center rounded-full bg-[#0c1a17]/70 backdrop-blur">

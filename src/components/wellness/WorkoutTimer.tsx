@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Pause, Play, SkipForward } from "lucide-react";
-import ExerciseDemoPlayer from "@/components/wellness/ExerciseDemoPlayer";
-import type { MoveRoutine, MoveStep, WellnessFigure } from "@/lib/wellness";
-import { demoForStep, getWellnessFigure, moveStepText } from "@/lib/wellness";
+import type { MoveRoutine, MoveStep } from "@/lib/wellness";
+import { moveStepText } from "@/lib/wellness";
 import {
   canWellnessSpeak,
-  getSelectedWellnessVoiceName,
   speakMoveStep,
   speakWellness,
   stopWellnessSpeak,
@@ -17,7 +15,6 @@ type Props = {
   title: string;
   steps: MoveStep[];
   kind?: MoveRoutine["kind"];
-  figure?: WellnessFigure;
   /** Called with minutes actually done (full or partial ≥30s). */
   onProgress?: (minutesDone: number) => void;
   onComplete?: () => void;
@@ -27,15 +24,15 @@ type Props = {
 };
 
 /**
- * Workout timer with YAJ coaching + step-synced form guide cards.
+ * Workout timer with YAJ voice coaching.
  * Walk / longer moves support Pause + Next so you advance when ready.
+ * No demo videos or form-guide cards.
  */
 export default function WorkoutTimer({
   minutes,
   title,
   steps,
   kind = "stretch",
-  figure: figureProp,
   onProgress,
   onComplete,
   onClose,
@@ -50,10 +47,6 @@ export default function WorkoutTimer({
   const [running, setRunning] = useState(true);
   const [stepIdx, setStepIdx] = useState(0);
   const [voiceOn, setVoiceOn] = useState(() => voiceGuide && canWellnessSpeak());
-  // Always read latest Man/Woman profile so guide cards match the dashboard
-  const [liveFigure, setLiveFigure] = useState<WellnessFigure>(
-    () => figureProp ?? getWellnessFigure(),
-  );
   const lastSpokenStep = useRef<number>(-1);
   const completedRef = useRef(false);
   const loggedRef = useRef(false);
@@ -61,10 +54,6 @@ export default function WorkoutTimer({
   const speakQueueBusy = useRef(false);
   const pendingSteps = useRef<number[]>([]);
   const stepIdxRef = useRef(0);
-
-  useEffect(() => {
-    setLiveFigure(figureProp ?? getWellnessFigure());
-  }, [figureProp]);
 
   const recordProgress = (full: boolean) => {
     if (loggedRef.current) return;
@@ -112,12 +101,10 @@ export default function WorkoutTimer({
     const next = Math.max(0, Math.min(stepCount - 1, idx));
     stepIdxRef.current = next;
     setStepIdx(next);
-    // Jump timer into that step’s window so auto-progress stays aligned
     const targetLeft = Math.max(1, total - next * secondsPerStep - 1);
     leftRef.current = targetLeft;
     setLeft(targetLeft);
     if (voiceOn) {
-      // Allow re-speak of this step when user taps Next
       if (next > lastSpokenStep.current) enqueueStepSpeak(next);
       else {
         lastSpokenStep.current = next - 1;
@@ -142,14 +129,13 @@ export default function WorkoutTimer({
     let cancelled = false;
     void (async () => {
       if (voiceGuide && canWellnessSpeak()) {
-        const voiceName = getSelectedWellnessVoiceName();
         const intro =
           kind === "walk"
-            ? `Okay. Let's begin. ${title}. Follow the guide card. Pause or tap Next whenever you want the next cue.`
+            ? `Okay. Let's begin. ${title}. I'll coach you out loud. Pause or tap Next whenever you want the next cue.`
             : kind === "stretch"
-              ? `Okay. Let's begin. ${title}. Follow the stretch card, and I'll tell you how long to hold.`
-              : `Okay. Let's begin. ${title}. Watch the guide and follow along.`;
-        await speakWellness(voiceName ? intro : intro, {
+              ? `Okay. Let's begin. ${title}. I'll tell you what to do and how long to hold.`
+              : `Okay. Let's begin. ${title}. Follow along with my voice.`;
+        await speakWellness(intro, {
           calm: true,
           rate: 0.86,
           interrupt: true,
@@ -192,15 +178,12 @@ export default function WorkoutTimer({
       });
     }, 1000);
     return () => window.clearInterval(id);
-    // recordProgress is stable for this session instance
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [running, voiceOn, onComplete]);
 
   useEffect(() => {
     if (!steps.length || left < 0) return;
     if (manualAdvance) {
-      // Timer still runs for overall session; step index is user-driven via Next
-      // but also soft-advances if they never tap.
       const elapsed = total - left;
       const autoIdx = Math.min(stepCount - 1, Math.floor(elapsed / secondsPerStep));
       if (autoIdx > stepIdxRef.current) {
@@ -258,24 +241,30 @@ export default function WorkoutTimer({
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1 flex-col px-4 pt-2">
-        <ExerciseDemoPlayer
-          demo={demoForStep(current)}
-          caption={currentText}
-          stepLabel={`Step ${stepIdx + 1} / ${stepCount}`}
-          figure={liveFigure}
-          holdSeconds={current?.holdSeconds}
-          className="shrink-0 shadow-lg"
-        />
+      <div className="flex min-h-0 flex-1 flex-col px-4 pt-6">
+        <div className="mx-auto flex w-full max-w-sm flex-col items-center rounded-[1.75rem] border border-white/10 bg-white/5 px-5 py-8">
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-teal-200/80">Current step</p>
+          <p className="mt-3 text-center text-xl font-black leading-snug text-white">
+            {currentText || "Ready"}
+          </p>
+          {current?.holdSeconds ? (
+            <p className="mt-2 text-sm font-semibold text-teal-200/90">
+              Hold ~{current.holdSeconds >= 60 ? `${Math.round(current.holdSeconds / 60)} min` : `${current.holdSeconds} sec`}
+            </p>
+          ) : null}
+          <p className="mt-2 text-xs text-emerald-100/55">
+            Step {stepIdx + 1} of {stepCount} · YAJ coaches out loud
+          </p>
+        </div>
 
-        <p className="mt-3 text-center text-4xl font-black tabular-nums tracking-tight">
+        <p className="mt-6 text-center text-5xl font-black tabular-nums tracking-tight">
           {mm}:{ss}
         </p>
-        <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
+        <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
           <div className="h-full rounded-full bg-teal-300 transition-all" style={{ width: `${pct}%` }} />
         </div>
 
-        <div className="mt-3 min-h-0 flex-1 space-y-1.5 overflow-y-auto pb-3">
+        <div className="mt-5 min-h-0 flex-1 space-y-1.5 overflow-y-auto pb-3">
           {steps.map((step, i) => {
             const text = moveStepText(step);
             return (

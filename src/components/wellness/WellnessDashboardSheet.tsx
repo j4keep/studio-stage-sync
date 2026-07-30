@@ -139,9 +139,9 @@ export default function WellnessDashboardSheet({ open, onClose, onStateChange }:
         </section>
 
         <section className="mb-4 space-y-3 rounded-2xl border border-stone-200/80 bg-white p-4">
-          <p className="text-sm font-black text-stone-900">Exercise figure</p>
+          <p className="text-sm font-black text-stone-900">Profile</p>
           <p className="text-xs text-stone-500">
-            Guide cards show a woman or man illustration with a neutral skin tone.
+            Helps personalize coaching tips and goals. You can change this anytime.
           </p>
           <div className="grid grid-cols-2 gap-2">
             {(
