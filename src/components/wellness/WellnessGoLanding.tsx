@@ -138,11 +138,23 @@ export default function WellnessGoLanding({ onBack, onEnter }: Props) {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#0a1411] text-white">
-      <div
-        aria-hidden
-        className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_20%,#2dd4bf55,transparent_50%),radial-gradient(ellipse_at_70%_80%,#0f766e88,transparent_55%),linear-gradient(180deg,#0f1c18,#052e2b)]"
-      />
-      <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/55" />
+      {!videoFailed ? (
+        <video
+          className="absolute inset-0 h-full w-full object-cover"
+          src={LANDING_VIDEO}
+          autoPlay
+          muted
+          loop
+          playsInline
+          onError={() => setVideoFailed(true)}
+        />
+      ) : (
+        <div
+          aria-hidden
+          className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_20%,#2dd4bf55,transparent_50%),radial-gradient(ellipse_at_70%_80%,#0f766e88,transparent_55%),linear-gradient(180deg,#0f1c18,#052e2b)]"
+        />
+      )}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/25 to-black/75" />
 
       <header className="relative z-10 flex items-center gap-2 px-4 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <button
