@@ -283,7 +283,6 @@ const ProtectedRoutes = () => {
         <Route path="/my-boosts" element={<MyBoostsPage />} />
         <Route path="/helpdesk" element={<HelpDeskPage />} />
         <Route path="/ask-yaj" element={<AskYajPage />} />
-        <Route path="/ask-yaj" element={<Navigate to="/ask-yaj" replace />} />
         <Route path="/explore" element={<ExplorePage />} />
         <Route path="/local-help" element={<LocalHelpHomePage />} />
         <Route path="/local-help/business" element={<LocalHelpBusinessPage />} />
