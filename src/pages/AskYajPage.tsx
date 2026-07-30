@@ -308,10 +308,7 @@ const AskYajPage = () => {
       }
 
       if (speakRepliesRef.current && assistantSoFar.trim()) {
-        setMessages((prev) => {
-          void speak(assistantSoFar, prev.length - 1);
-          return prev;
-        });
+        void speak(assistantSoFar, allMessages.length);
       }
     } catch (e: any) {
       console.error("YAJ Buddy error:", e);
