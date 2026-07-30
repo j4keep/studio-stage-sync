@@ -1,6 +1,7 @@
 import YajWellnessAvatar from "@/components/wellness/YajWellnessAvatar";
 import type { MoveIllustrationId } from "@/lib/wellness-move-coach";
 import type { WellnessFigure, WellnessSkinTone } from "@/lib/wellness";
+import { coachVideoFor } from "@/lib/wellness-coach-videos";
 
 type Props = {
   illustration: MoveIllustrationId;
@@ -17,8 +18,7 @@ type Props = {
 };
 
 /**
- * Exercise card: YAJ Wellness Coach mascot + coaching caption + cues.
- * Mascot uses complete pose images that crossfade — never detached limbs.
+ * Exercise card: calm form still (or short demo video when provided) + cues.
  */
 export default function MoveInstructionCard({
   illustration,
@@ -33,6 +33,8 @@ export default function MoveInstructionCard({
   safetyTip,
   animating = true,
 }: Props) {
+  const videoSrc = coachVideoFor(illustration);
+
   return (
     <div className="relative mx-auto flex w-full max-w-[340px] flex-col overflow-hidden rounded-[1.6rem] border border-stone-200 bg-white shadow-[0_20px_50px_-28px_rgba(15,80,70,0.45)]">
       <div className="flex items-center justify-between px-4 pb-1 pt-3">
@@ -51,6 +53,7 @@ export default function MoveInstructionCard({
           figure={figure}
           skinTone={skinTone}
           playing={animating}
+          videoSrc={videoSrc}
         />
         {holdLeft != null && holdLeft > 0 ? (
           <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-teal-950/30 backdrop-blur-[1px]">

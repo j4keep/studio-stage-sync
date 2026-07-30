@@ -70,8 +70,8 @@ export const COACH_ROUTINES: CoachRoutine[] = [
         illustration: "shoulders_roll",
         // Keep lines short — one cue each — so voice and card stay aligned.
         lines: [
-          "Feet under your hips. Arms hang loose.",
-          "Roll the shoulders: forward, up, then back and down. Keep that circle going.",
+          "Feet under your hips. Arms hang loose by your sides.",
+          "Roll both shoulders up, then back, then down in a slow circle. A few easy rolls.",
         ],
         breathCue: "Easy nasal breaths — no holding",
         safetyTip: "Keep the neck soft; never force the roll",
