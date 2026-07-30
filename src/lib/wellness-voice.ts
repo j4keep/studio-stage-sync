@@ -238,16 +238,41 @@ export async function speakWellness(text: string, opts: WellnessSpeakOptions = {
   });
 }
 
-export function speakMoveStep(stepIndex: number, stepText: string, totalSteps: number) {
+export type MoveCoachOptions = {
+  holdSeconds?: number;
+  coachHint?: string;
+  /** stretch | walk | chair | bodyweight — changes pacing of the cue */
+  kind?: "stretch" | "walk" | "chair" | "bodyweight";
+};
+
+export function speakMoveStep(
+  stepIndex: number,
+  stepText: string,
+  totalSteps: number,
+  opts: MoveCoachOptions = {},
+) {
   const n = stepIndex + 1;
   const body = humanizeCoachText(stepText);
+  const hold = opts.holdSeconds && opts.holdSeconds > 0 ? opts.holdSeconds : 0;
+  const holdLine =
+    hold > 0
+      ? hold >= 60
+        ? ` Hold for about ${Math.round(hold / 60)} minute${hold >= 120 ? "s" : ""}.`
+        : ` Hold for about ${hold} seconds.`
+      : "";
+  const hint = opts.coachHint ? ` ${humanizeCoachText(opts.coachHint)}` : "";
+  const walkCue =
+    opts.kind === "walk" && n < totalSteps
+      ? " When you're ready, tap Next for the next cue."
+      : "";
+
   let line: string;
   if (n === 1) {
-    line = `Okay. Step ${n} of ${totalSteps}. ${body}.`;
+    line = `Okay. Step ${n} of ${totalSteps}. ${body}.${holdLine}${hint}${walkCue}`;
   } else if (n === totalSteps) {
-    line = `Last step. Step ${n}. ${body}.`;
+    line = `Last step. ${body}.${holdLine}${hint}`;
   } else {
-    line = `Step ${n}. ${body}.`;
+    line = `Step ${n}. ${body}.${holdLine}${hint}${walkCue}`;
   }
   return speakWellness(line, { calm: true, rate: 0.86, interrupt: false });
 }

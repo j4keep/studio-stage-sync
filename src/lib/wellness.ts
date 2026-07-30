@@ -61,12 +61,16 @@ export const SLEEP_SOUNDS: {
 ];
 
 /**
- * Move step references a catalog demo id (`video_url` resolved at play time).
- * Swap catalog URLs later for AI / certified / creator clips — UI unchanged.
+ * Move step references a catalog demo id. Visuals are illustration guide cards;
+ * YAJ speaks the cue (and hold time for stretches).
  */
 export type MoveStep = {
   instruction: string;
   demoId: WellnessDemoId;
+  /** Suggested hold / side duration for stretches (spoken by YAJ). */
+  holdSeconds?: number;
+  /** Extra coach line after the instruction. */
+  coachHint?: string;
 };
 
 export type BreathingPattern = {
@@ -125,7 +129,7 @@ export type MoveRoutine = {
   steps: MoveStep[];
 };
 
-/** Each step points at a YAJ catalog demo (matched motion + future video_url). */
+/** Each step points at a YAJ form-guide card; voice coaching fills in the how-to. */
 export const MOVE_ROUTINES: MoveRoutine[] = [
   {
     id: "stretch-5",
@@ -134,11 +138,36 @@ export const MOVE_ROUTINES: MoveRoutine[] = [
     level: "gentle",
     kind: "stretch",
     steps: [
-      { instruction: "Roll shoulders slowly 8 times", demoId: "stretch-shoulders" },
-      { instruction: "Neck tilts left and right", demoId: "stretch-neck-tilts" },
-      { instruction: "Reach arms overhead and breathe", demoId: "stretch-arms-overhead" },
-      { instruction: "Forward fold as far as feels easy", demoId: "stretch-forward-fold" },
-      { instruction: "Hip circles, then shake out legs", demoId: "stretch-hip-circles" },
+      {
+        instruction: "Roll shoulders slowly 8 times",
+        demoId: "stretch-shoulders",
+        holdSeconds: 5,
+        coachHint: "Keep the motion smooth — no forcing.",
+      },
+      {
+        instruction: "Neck tilts left and right",
+        demoId: "stretch-neck-tilts",
+        holdSeconds: 5,
+        coachHint: "Hold each side about 5 seconds, then switch.",
+      },
+      {
+        instruction: "Reach arms overhead and breathe",
+        demoId: "stretch-arms-overhead",
+        holdSeconds: 8,
+        coachHint: "Inhale as you reach, exhale as you lower.",
+      },
+      {
+        instruction: "Forward fold as far as feels easy",
+        demoId: "stretch-forward-fold",
+        holdSeconds: 10,
+        coachHint: "Soft knees are fine. Hold where it feels gentle.",
+      },
+      {
+        instruction: "Hip circles, then shake out legs",
+        demoId: "stretch-hip-circles",
+        holdSeconds: 5,
+        coachHint: "Circle both directions, then shake it out.",
+      },
     ],
   },
   {
@@ -148,11 +177,31 @@ export const MOVE_ROUTINES: MoveRoutine[] = [
     level: "beginner",
     kind: "walk",
     steps: [
-      { instruction: "Stand tall, soft knees", demoId: "walk-stand-tall" },
-      { instruction: "Walk at a conversational pace", demoId: "walk-naturally" },
-      { instruction: "Swing arms naturally", demoId: "walk-swing-arms" },
-      { instruction: "Optional: 1-minute brisk finish", demoId: "walk-brisk-finish" },
-      { instruction: "Cool down with slow steps", demoId: "walk-cool-down" },
+      {
+        instruction: "Stand tall, soft knees",
+        demoId: "walk-stand-tall",
+        coachHint: "When you're ready, tap Next to start walking.",
+      },
+      {
+        instruction: "Walk at a conversational pace",
+        demoId: "walk-naturally",
+        coachHint: "You should still be able to talk. Tap Next when you want the next cue.",
+      },
+      {
+        instruction: "Swing arms naturally",
+        demoId: "walk-swing-arms",
+        coachHint: "Loose shoulders, easy swing. Tap Next when ready.",
+      },
+      {
+        instruction: "Optional: 1-minute brisk finish",
+        demoId: "walk-brisk-finish",
+        coachHint: "Pick up the pace a little — not a sprint. Tap Next to cool down.",
+      },
+      {
+        instruction: "Cool down with slow steps",
+        demoId: "walk-cool-down",
+        coachHint: "Slow it down and finish with an easy breath.",
+      },
     ],
   },
   {
@@ -162,11 +211,33 @@ export const MOVE_ROUTINES: MoveRoutine[] = [
     level: "gentle",
     kind: "chair",
     steps: [
-      { instruction: "Seated marches, 30 seconds", demoId: "chair-seated-marches" },
-      { instruction: "Seated torso twists", demoId: "chair-torso-twists" },
-      { instruction: "Ankle circles both sides", demoId: "chair-ankle-circles" },
-      { instruction: "Seated side reaches", demoId: "chair-side-reaches" },
-      { instruction: "Stand and sit 6 easy times if able", demoId: "chair-sit-to-stand" },
+      {
+        instruction: "Seated marches, 30 seconds",
+        demoId: "chair-seated-marches",
+        holdSeconds: 30,
+      },
+      {
+        instruction: "Seated torso twists",
+        demoId: "chair-torso-twists",
+        holdSeconds: 5,
+        coachHint: "Hold each side briefly, then switch.",
+      },
+      {
+        instruction: "Ankle circles both sides",
+        demoId: "chair-ankle-circles",
+        holdSeconds: 5,
+      },
+      {
+        instruction: "Seated side reaches",
+        demoId: "chair-side-reaches",
+        holdSeconds: 5,
+        coachHint: "Reach and hold about 5 seconds each side.",
+      },
+      {
+        instruction: "Stand and sit 6 easy times if able",
+        demoId: "chair-sit-to-stand",
+        coachHint: "Use the chair for support. Stop if anything hurts.",
+      },
     ],
   },
   {
@@ -176,11 +247,34 @@ export const MOVE_ROUTINES: MoveRoutine[] = [
     level: "beginner",
     kind: "bodyweight",
     steps: [
-      { instruction: "March in place 1 minute", demoId: "beginner-march" },
-      { instruction: "Wall push-ups or knee push-ups × 8", demoId: "beginner-wall-pushups" },
-      { instruction: "Bodyweight squats × 8 (shallow OK)", demoId: "beginner-squats" },
-      { instruction: "Side steps left and right, 45 seconds", demoId: "beginner-side-steps" },
-      { instruction: "Cool down stretch, breathe easy", demoId: "beginner-cool-stretch" },
+      {
+        instruction: "March in place 1 minute",
+        demoId: "beginner-march",
+        holdSeconds: 60,
+        coachHint: "Tap Next when you're ready to move on.",
+      },
+      {
+        instruction: "Wall push-ups or knee push-ups × 8",
+        demoId: "beginner-wall-pushups",
+        coachHint: "Eight easy reps. Quality over speed.",
+      },
+      {
+        instruction: "Bodyweight squats × 8 (shallow OK)",
+        demoId: "beginner-squats",
+        coachHint: "Shallow range is fine. Eight comfortable reps.",
+      },
+      {
+        instruction: "Side steps left and right, 45 seconds",
+        demoId: "beginner-side-steps",
+        holdSeconds: 45,
+        coachHint: "Tap Next when finished.",
+      },
+      {
+        instruction: "Cool down stretch, breathe easy",
+        demoId: "beginner-cool-stretch",
+        holdSeconds: 10,
+        coachHint: "Hold gently and breathe.",
+      },
     ],
   },
 ];
@@ -211,19 +305,46 @@ export type DayProgress = {
   mood?: MoodId;
   moveMinutes: number;
   water: boolean;
+  /** Cups logged today toward the water goal. */
+  waterCups: number;
   sleepRoutine: boolean;
   mindfulMinutes: number;
   habitsDone: HabitId[];
   sleepScore?: 1 | 2 | 3 | 4 | 5;
 };
 
+/** Presentation used for exercise illustration cards (not medical sex). */
+export type WellnessFigure = "woman" | "man";
+
+export type WellnessHealthProfile = {
+  figure: WellnessFigure;
+  age?: number;
+  /** Weight in pounds (optional; used for gentle goal context). */
+  weightLbs?: number;
+  bedtime?: string; // "22:30"
+  waterGoalCups: number;
+  notifyWater: boolean;
+  notifyBedtime: boolean;
+};
+
 export type WellnessState = {
   habits: HabitId[];
   days: Record<string, DayProgress>;
   lastSound?: SleepSoundId;
+  /** True after the Go landing + basic health form. */
+  onboarded: boolean;
+  profile: WellnessHealthProfile | null;
 };
 
 const STORAGE_KEY = "yaj_wellness_v1";
+
+export const DEFAULT_HEALTH_PROFILE: WellnessHealthProfile = {
+  figure: "woman",
+  waterGoalCups: 8,
+  notifyWater: true,
+  notifyBedtime: true,
+  bedtime: "22:30",
+};
 
 export function todayKey(d = new Date()) {
   return d.toISOString().slice(0, 10);
@@ -234,25 +355,84 @@ export function emptyDay(date = todayKey()): DayProgress {
     date,
     moveMinutes: 0,
     water: false,
+    waterCups: 0,
     sleepRoutine: false,
     mindfulMinutes: 0,
     habitsDone: [],
   };
 }
 
+function normalizeProfile(raw: unknown): WellnessHealthProfile | null {
+  if (!raw || typeof raw !== "object") return null;
+  const p = raw as Partial<WellnessHealthProfile>;
+  const figure = p.figure === "man" || p.figure === "woman" ? p.figure : null;
+  if (!figure) return null;
+  return {
+    figure,
+    age: typeof p.age === "number" && p.age > 0 ? Math.round(p.age) : undefined,
+    weightLbs:
+      typeof p.weightLbs === "number" && p.weightLbs > 0 ? Math.round(p.weightLbs) : undefined,
+    bedtime: typeof p.bedtime === "string" && /^\d{2}:\d{2}$/.test(p.bedtime) ? p.bedtime : "22:30",
+    waterGoalCups:
+      typeof p.waterGoalCups === "number" && p.waterGoalCups > 0
+        ? Math.min(20, Math.round(p.waterGoalCups))
+        : 8,
+    notifyWater: p.notifyWater !== false,
+    notifyBedtime: p.notifyBedtime !== false,
+  };
+}
+
 export function loadWellnessState(): WellnessState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { habits: ["water", "walk", "stretch"], days: {} };
+    if (!raw) {
+      return { habits: ["water", "walk", "stretch"], days: {}, onboarded: false, profile: null };
+    }
     const parsed = JSON.parse(raw) as WellnessState;
+    const profile = normalizeProfile(parsed.profile);
+    const days: Record<string, DayProgress> = {};
+    for (const [k, d] of Object.entries(parsed.days || {})) {
+      days[k] = {
+        ...emptyDay(k),
+        ...d,
+        waterCups: typeof d.waterCups === "number" ? d.waterCups : d.water ? 1 : 0,
+        habitsDone: [...(d.habitsDone || [])],
+      };
+    }
     return {
       habits: parsed.habits?.length ? parsed.habits : ["water", "walk", "stretch"],
-      days: parsed.days || {},
+      days,
       lastSound: parsed.lastSound,
+      onboarded: Boolean(parsed.onboarded && profile),
+      profile,
     };
   } catch {
-    return { habits: ["water", "walk", "stretch"], days: {} };
+    return { habits: ["water", "walk", "stretch"], days: {}, onboarded: false, profile: null };
   }
+}
+
+export function getWellnessFigure(state?: WellnessState): WellnessFigure {
+  return (state || loadWellnessState()).profile?.figure ?? "woman";
+}
+
+export function updateWellnessProfile(
+  patch: Partial<WellnessHealthProfile> & { onboarded?: boolean },
+): WellnessState {
+  const state = loadWellnessState();
+  const base = state.profile || { ...DEFAULT_HEALTH_PROFILE };
+  const nextProfile = normalizeProfile({ ...base, ...patch });
+  state.profile = nextProfile;
+  if (patch.onboarded || nextProfile) state.onboarded = true;
+  saveWellnessState(state);
+  return state;
+}
+
+export function logWaterCup(delta = 1): WellnessState {
+  return patchToday((day, state) => {
+    const goal = state.profile?.waterGoalCups ?? 8;
+    day.waterCups = Math.max(0, Math.min(goal + 4, (day.waterCups || 0) + delta));
+    day.water = day.waterCups > 0;
+  });
 }
 
 export const WELLNESS_UPDATED_EVENT = "yaj-wellness-updated";

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import ExerciseDemoPlayer from "@/components/wellness/ExerciseDemoPlayer";
 import type { DemoClip } from "@/lib/wellness-demos";
+import { getWellnessFigure, type WellnessFigure } from "@/lib/wellness";
 import {
   canWellnessSpeak,
   speakBreathPhase,
@@ -21,9 +22,10 @@ type Props = {
   onComplete?: () => void;
   /** Called when user closes early after ≥30s — minutes to log. */
   onProgress?: (minutesDone: number) => void;
-  /** Optional posture / calm demo video */
+  /** Optional posture / calm form guide */
   demo?: DemoClip | null;
-  /** YAJ Buddy speaks phase cues. Default true when browser supports it. */
+  figure?: WellnessFigure;
+  /** YAJ speaks phase cues. Default true when browser supports it. */
   voiceGuide?: boolean;
 };
 
@@ -42,8 +44,10 @@ export default function BreathingSession({
   onComplete,
   onProgress,
   demo = null,
+  figure: figureProp,
   voiceGuide = true,
 }: Props) {
+  const figure = figureProp ?? getWellnessFigure();
   const totalSec = minutes * 60;
   const [phase, setPhase] = useState<Phase>("inhale");
   const [phaseLeft, setPhaseLeft] = useState(inhale);
@@ -183,6 +187,7 @@ export default function BreathingSession({
             caption="Follow this calm posture while you breathe"
             stepLabel={label}
             playing={running && secondsLeft > 0}
+            figure={figure}
             className="w-full max-w-md shrink-0"
           />
         ) : null}

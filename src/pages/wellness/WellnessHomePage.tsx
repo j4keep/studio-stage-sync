@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, Droplets, Footprints, Moon, Sparkles } from "lucide-react";
+import { ArrowLeft, Droplets, Footprints, LayoutDashboard, Moon, Sparkles } from "lucide-react";
+import WellnessDashboardSheet from "@/components/wellness/WellnessDashboardSheet";
+import WellnessGoLanding from "@/components/wellness/WellnessGoLanding";
 import {
   getTodayProgress,
   loadWellnessState,
@@ -46,18 +48,18 @@ const PILLARS = [
   },
 ] as const;
 
-/** Explore → Wellness home — practical & calming Phase 1. */
+/** Explore → Wellness home — Go gate, dashboard, pillars. */
 export default function WellnessHomePage() {
   const nav = useNavigate();
   const location = useLocation();
   const [state, setState] = useState<WellnessState>(() => loadWellnessState());
+  const [dashboardOpen, setDashboardOpen] = useState(false);
   const today = getTodayProgress(state);
   const [buddyNote, setBuddyNote] = useState<string | null>(null);
   const [recs, setRecs] = useState<WellnessRec[]>(() =>
     today.mood ? recommendForMood(today.mood) : timeOfDayRecs(),
   );
 
-  // Keep Today's Progress live when returning from Move / Relax / Sleep / Habits
   useEffect(() => {
     const refresh = () => setState(loadWellnessState());
     refresh();
@@ -81,8 +83,13 @@ export default function WellnessHomePage() {
       },
       {
         label: "Water",
-        value: today.water ? "Logged" : "—",
-        done: today.water,
+        value:
+          today.waterCups > 0
+            ? `${today.waterCups}/${state.profile?.waterGoalCups ?? 8}`
+            : today.water
+              ? "Logged"
+              : "—",
+        done: today.water || today.waterCups > 0,
         icon: Droplets,
       },
       {
@@ -98,7 +105,14 @@ export default function WellnessHomePage() {
         icon: Sparkles,
       },
     ],
-    [today.moveMinutes, today.water, today.sleepRoutine, today.mindfulMinutes],
+    [
+      today.moveMinutes,
+      today.water,
+      today.waterCups,
+      today.sleepRoutine,
+      today.mindfulMinutes,
+      state.profile?.waterGoalCups,
+    ],
   );
 
   const onMood = (mood: MoodId) => {
@@ -115,6 +129,15 @@ export default function WellnessHomePage() {
         : null,
     );
   };
+
+  if (!state.onboarded) {
+    return (
+      <WellnessGoLanding
+        onBack={() => nav("/explore")}
+        onEnter={(next) => setState({ ...next })}
+      />
+    );
+  }
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-[#f3f7f5] pb-28 text-stone-900">
@@ -139,6 +162,14 @@ export default function WellnessHomePage() {
             </p>
             <h1 className="text-xl font-black tracking-tight">Wellness</h1>
           </div>
+          <button
+            type="button"
+            onClick={() => setDashboardOpen(true)}
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-teal-800 shadow-sm"
+            aria-label="Open wellness dashboard"
+          >
+            <LayoutDashboard className="h-4 w-4" />
+          </button>
         </div>
         <p className="mt-2 text-sm text-stone-600">
           Feel better, sleep better, move more — one small step at a time.
@@ -220,8 +251,19 @@ export default function WellnessHomePage() {
         </section>
 
         <section>
-          <h2 className="text-base font-black">Today’s progress</h2>
-          <p className="mt-0.5 text-xs text-stone-500">Gentle tracking — missed days aren’t failures.</p>
+          <div className="flex items-end justify-between gap-2">
+            <div>
+              <h2 className="text-base font-black">Today’s progress</h2>
+              <p className="mt-0.5 text-xs text-stone-500">Gentle tracking — missed days aren’t failures.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setDashboardOpen(true)}
+              className="text-[11px] font-bold text-teal-700"
+            >
+              Dashboard
+            </button>
+          </div>
           <div className="mt-3 grid grid-cols-2 gap-2.5">
             {progressBits.map((b) => (
               <div
@@ -240,6 +282,12 @@ export default function WellnessHomePage() {
 
         <p className="pb-2 text-[11px] leading-relaxed text-stone-500">{WELLNESS_DISCLAIMER}</p>
       </div>
+
+      <WellnessDashboardSheet
+        open={dashboardOpen}
+        onClose={() => setDashboardOpen(false)}
+        onStateChange={(next) => setState({ ...next })}
+      />
     </div>
   );
 }

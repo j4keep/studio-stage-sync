@@ -366,18 +366,23 @@ export type DemoClip = {
   prompt?: string;
 };
 
+/**
+ * Player-facing clip. Illustration guide cards are the default visual —
+ * stock/AI demo videos are disabled so YAJ can coach with voice + cards.
+ * Re-enable a clip later via `applyDemoVideoOverrides` if needed.
+ */
 export function resolveDemoClip(id: WellnessDemoId | string | null | undefined): DemoClip | null {
   const demo = getWellnessDemo(id);
   if (!demo) return null;
   return {
     id: demo.id,
     title: demo.title,
-    videoUrl: demo.videoUrl,
-    posterUrl: demo.posterUrl,
+    videoUrl: null,
+    posterUrl: null,
     guide: demo.guide,
     setting: demo.setting,
     prompt: demo.prompt,
-    credit: demo.videoUrl ? "Form demo" : undefined,
+    credit: "Form guide",
   };
 }
 

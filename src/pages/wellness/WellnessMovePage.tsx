@@ -3,12 +3,13 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import WorkoutTimer from "@/components/wellness/WorkoutTimer";
-import { MOVE_ROUTINES, moveStepText, patchToday } from "@/lib/wellness";
+import { getWellnessFigure, MOVE_ROUTINES, moveStepText, patchToday } from "@/lib/wellness";
 
 export default function WellnessMovePage() {
   const nav = useNavigate();
   const [params] = useSearchParams();
   const [activeId, setActiveId] = useState<string | null>(null);
+  const figure = getWellnessFigure();
 
   const active = useMemo(
     () => MOVE_ROUTINES.find((r) => r.id === activeId) || null,
@@ -45,7 +46,7 @@ export default function WellnessMovePage() {
 
       <div className="relative space-y-4 px-4 pt-5">
         <p className="text-sm text-stone-600">
-          Short, no-equipment routines with a step-by-step ▶ Demo so you can see the move.
+          Short, no-equipment routines with form-guide cards and YAJ voice coaching for each step.
         </p>
         {MOVE_ROUTINES.map((r) => (
           <button
@@ -60,7 +61,9 @@ export default function WellnessMovePage() {
                 <p className="mt-1 text-xs capitalize text-stone-500">
                   {r.level} · {r.kind} · {r.minutes} min
                 </p>
-                <p className="mt-1 text-[11px] font-semibold text-teal-700">Includes ▶ Demo</p>
+                <p className="mt-1 text-[11px] font-semibold text-teal-700">
+                  Form guides · YAJ voice · Pause / Next
+                </p>
               </div>
               <span className="rounded-full bg-teal-100 px-2.5 py-1 text-[11px] font-bold text-teal-800">
                 Start
@@ -76,7 +79,8 @@ export default function WellnessMovePage() {
           </button>
         ))}
         <p className="text-[11px] text-stone-500">
-          Demo clips show the idea of each move. Creator-led routines with credentials come later.
+          Illustration cards match your profile (woman/man) with a neutral skin tone. YAJ tells you
+          what to do and how long to hold.
         </p>
       </div>
 
@@ -85,6 +89,8 @@ export default function WellnessMovePage() {
           title={active.title}
           minutes={active.minutes}
           steps={active.steps}
+          kind={active.kind}
+          figure={figure}
           onClose={() => setActiveId(null)}
           onProgress={(mins) => {
             patchToday((d) => {

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Pause, Play } from "lucide-react";
+import { Pause, Play, SkipForward } from "lucide-react";
 import ExerciseDemoPlayer from "@/components/wellness/ExerciseDemoPlayer";
-import type { MoveStep } from "@/lib/wellness";
-import { demoForStep, moveStepText } from "@/lib/wellness";
+import type { MoveRoutine, MoveStep, WellnessFigure } from "@/lib/wellness";
+import { demoForStep, getWellnessFigure, moveStepText } from "@/lib/wellness";
 import {
   canWellnessSpeak,
   getSelectedWellnessVoiceName,
@@ -16,29 +16,36 @@ type Props = {
   minutes: number;
   title: string;
   steps: MoveStep[];
+  kind?: MoveRoutine["kind"];
+  figure?: WellnessFigure;
   /** Called with minutes actually done (full or partial ≥30s). */
   onProgress?: (minutesDone: number) => void;
   onComplete?: () => void;
   onClose: () => void;
-  /** YAJ Buddy speaks each step. Default true when supported. */
+  /** YAJ speaks each step. Default true when supported. */
   voiceGuide?: boolean;
 };
 
 /**
- * Workout timer with Buddy coaching + step-synced form demo video.
+ * Workout timer with YAJ coaching + step-synced form guide cards.
+ * Walk / longer moves support Pause + Next so you advance when ready.
  */
 export default function WorkoutTimer({
   minutes,
   title,
   steps,
+  kind = "stretch",
+  figure: figureProp,
   onProgress,
   onComplete,
   onClose,
   voiceGuide = true,
 }: Props) {
+  const figure = figureProp ?? getWellnessFigure();
   const total = Math.max(60, minutes * 60);
   const stepCount = Math.max(1, steps.length);
   const secondsPerStep = Math.max(8, Math.floor(total / stepCount));
+  const manualAdvance = kind === "walk" || kind === "bodyweight";
 
   const [left, setLeft] = useState(total);
   const [running, setRunning] = useState(true);
@@ -50,6 +57,7 @@ export default function WorkoutTimer({
   const leftRef = useRef(total);
   const speakQueueBusy = useRef(false);
   const pendingSteps = useRef<number[]>([]);
+  const stepIdxRef = useRef(0);
 
   const recordProgress = (full: boolean) => {
     if (loggedRef.current) return;
@@ -70,8 +78,13 @@ export default function WorkoutTimer({
       const idx = pendingSteps.current.shift()!;
       if (!voiceOn) continue;
       lastSpokenStep.current = idx;
-      const text = moveStepText(steps[idx]);
-      await speakMoveStep(idx, text, stepCount);
+      const step = steps[idx];
+      const text = moveStepText(step);
+      await speakMoveStep(idx, text, stepCount, {
+        holdSeconds: step.holdSeconds,
+        coachHint: step.coachHint,
+        kind,
+      });
       await new Promise((r) => setTimeout(r, 280));
     }
     speakQueueBusy.current = false;
@@ -88,11 +101,30 @@ export default function WorkoutTimer({
     void flushSpeakQueue();
   };
 
+  const goToStep = (idx: number) => {
+    const next = Math.max(0, Math.min(stepCount - 1, idx));
+    stepIdxRef.current = next;
+    setStepIdx(next);
+    // Jump timer into that step’s window so auto-progress stays aligned
+    const targetLeft = Math.max(1, total - next * secondsPerStep - 1);
+    leftRef.current = targetLeft;
+    setLeft(targetLeft);
+    if (voiceOn) {
+      // Allow re-speak of this step when user taps Next
+      if (next > lastSpokenStep.current) enqueueStepSpeak(next);
+      else {
+        lastSpokenStep.current = next - 1;
+        enqueueStepSpeak(next);
+      }
+    }
+  };
+
   useEffect(() => {
     warmupWellnessVoice();
     setLeft(total);
     setRunning(true);
     setStepIdx(0);
+    stepIdxRef.current = 0;
     lastSpokenStep.current = -1;
     completedRef.current = false;
     loggedRef.current = false;
@@ -104,12 +136,17 @@ export default function WorkoutTimer({
     void (async () => {
       if (voiceGuide && canWellnessSpeak()) {
         const voiceName = getSelectedWellnessVoiceName();
-        await speakWellness(
-          voiceName
-            ? `Okay. Let's begin. ${title}. Watch the demo and follow along.`
-            : `Okay. Let's begin. ${title}.`,
-          { calm: true, rate: 0.86, interrupt: true },
-        );
+        const intro =
+          kind === "walk"
+            ? `Okay. Let's begin. ${title}. Follow the guide card. Pause or tap Next whenever you want the next cue.`
+            : kind === "stretch"
+              ? `Okay. Let's begin. ${title}. Follow the stretch card, and I'll tell you how long to hold.`
+              : `Okay. Let's begin. ${title}. Watch the guide and follow along.`;
+        await speakWellness(voiceName ? intro : intro, {
+          calm: true,
+          rate: 0.86,
+          interrupt: true,
+        });
         if (!cancelled) enqueueStepSpeak(0);
       }
     })();
@@ -120,7 +157,7 @@ export default function WorkoutTimer({
       stopWellnessSpeak();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [total, title, voiceGuide]);
+  }, [total, title, voiceGuide, kind]);
 
   useEffect(() => {
     if (!running) return;
@@ -148,18 +185,33 @@ export default function WorkoutTimer({
       });
     }, 1000);
     return () => window.clearInterval(id);
+    // recordProgress is stable for this session instance
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [running, voiceOn, onComplete]);
 
   useEffect(() => {
     if (!steps.length || left < 0) return;
+    if (manualAdvance) {
+      // Timer still runs for overall session; step index is user-driven via Next
+      // but also soft-advances if they never tap.
+      const elapsed = total - left;
+      const autoIdx = Math.min(stepCount - 1, Math.floor(elapsed / secondsPerStep));
+      if (autoIdx > stepIdxRef.current) {
+        stepIdxRef.current = autoIdx;
+        setStepIdx(autoIdx);
+        if (voiceOn && running && left > 0) enqueueStepSpeak(autoIdx);
+      }
+      return;
+    }
     const elapsed = total - left;
     const nextIdx = Math.min(stepCount - 1, Math.floor(elapsed / secondsPerStep));
+    stepIdxRef.current = nextIdx;
     setStepIdx(nextIdx);
     if (voiceOn && running && left > 0) {
       enqueueStepSpeak(nextIdx);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [left, total, secondsPerStep, stepCount, voiceOn, running]);
+  }, [left, total, secondsPerStep, stepCount, voiceOn, running, manualAdvance]);
 
   const mm = Math.floor(left / 60);
   const ss = String(left % 60).padStart(2, "0");
@@ -205,6 +257,8 @@ export default function WorkoutTimer({
           caption={currentText}
           stepLabel={`Step ${stepIdx + 1} / ${stepCount}`}
           playing={running && left > 0}
+          figure={figure}
+          holdSeconds={current?.holdSeconds}
           className="shrink-0 shadow-lg"
         />
 
@@ -231,6 +285,9 @@ export default function WorkoutTimer({
               >
                 <span className="mr-2 text-[10px] font-bold uppercase tracking-wide opacity-60">{i + 1}</span>
                 {text}
+                {step.holdSeconds ? (
+                  <span className="ml-1 text-[10px] text-teal-200/70">· {step.holdSeconds}s</span>
+                ) : null}
               </div>
             );
           })}
@@ -249,6 +306,19 @@ export default function WorkoutTimer({
             {running ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
             {left === 0 ? "Complete" : running ? "Pause" : "Resume"}
           </button>
+          {left > 0 && stepIdx < stepCount - 1 && (
+            <button
+              type="button"
+              onClick={() => {
+                setRunning(true);
+                goToStep(stepIdx + 1);
+              }}
+              className="flex h-12 items-center justify-center gap-1.5 rounded-full border border-white/25 bg-white/10 px-4 text-sm font-bold"
+            >
+              <SkipForward className="h-4 w-4" />
+              Next
+            </button>
+          )}
           {left === 0 && (
             <button
               type="button"

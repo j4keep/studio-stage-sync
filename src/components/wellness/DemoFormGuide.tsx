@@ -1,33 +1,50 @@
 import type { DemoGuideKind } from "@/lib/wellness-demos";
+import type { WellnessFigure } from "@/lib/wellness";
 
 type Props = {
   guide: DemoGuideKind;
   setting?: "studio" | "park";
   title?: string;
   playing?: boolean;
+  /** Woman / man illustration so the card reflects the user’s profile. */
+  figure?: WellnessFigure;
+  /** Hold cue shown on the card (e.g. “5 sec”). */
+  holdSeconds?: number;
 };
 
+/** Inclusive mid-tone for illustration skin — not coded to one ethnicity. */
+const SKIN = "#9a7b5f";
+const SKIN_SHADOW = "#7d634c";
+
 /**
- * Matching instructional silhouette for each exercise while video_url is empty.
- * Same visual language across demos so the library feels like YAJ, not stock.
+ * Instructional stretch/move cards (stock-illustration style) with motion arrows.
+ * Gender presentation follows the user’s wellness profile.
  */
 export default function DemoFormGuide({
   guide,
   setting = "studio",
   title,
   playing = true,
+  figure = "woman",
+  holdSeconds,
 }: Props) {
   const bg =
     setting === "park"
       ? "from-[#b7d4b0] via-[#dce9d4] to-[#eef4e8]"
       : "from-[#d9e8e4] via-[#e8f2ef] to-[#f3f7f5]";
 
+  const holdLabel =
+    holdSeconds && holdSeconds > 0
+      ? holdSeconds >= 60
+        ? `${Math.round(holdSeconds / 60)} min`
+        : `${holdSeconds} sec`
+      : null;
+
   return (
     <div
       className={`relative flex h-full w-full flex-col items-center justify-center bg-gradient-to-b ${bg}`}
       data-playing={playing ? "1" : "0"}
     >
-      {/* Soft studio / park atmosphere */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-0 h-1/3 bg-[radial-gradient(ellipse_at_top,_rgba(255,255,255,0.65),_transparent_70%)]"
@@ -44,15 +61,22 @@ export default function DemoFormGuide({
         />
       )}
 
+      {holdLabel ? (
+        <span className="absolute right-3 top-3 z-[2] rounded-full bg-sky-500/95 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-white shadow-sm">
+          {holdLabel}
+        </span>
+      ) : null}
+
       <div
-        className="relative z-[1] w-[72%] max-w-[220px]"
+        className="relative z-[1] w-[78%] max-w-[240px]"
         style={{ animationPlayState: playing ? "running" : "paused" }}
       >
-        <GuideSilhouette guide={guide} playing={playing} />
+        <GuideSilhouette guide={guide} playing={playing} figure={figure} />
+        <MotionArrows guide={guide} />
       </div>
 
       {title ? (
-        <p className="relative z-[1] mt-4 max-w-[85%] text-center text-[11px] font-semibold tracking-wide text-teal-900/70">
+        <p className="relative z-[1] mt-3 max-w-[85%] text-center text-[11px] font-bold uppercase tracking-[0.12em] text-teal-900/75">
           {title}
         </p>
       ) : null}
@@ -62,23 +86,84 @@ export default function DemoFormGuide({
   );
 }
 
-function GuideSilhouette({ guide, playing }: { guide: DemoGuideKind; playing: boolean }) {
+function MotionArrows({ guide }: { guide: DemoGuideKind }) {
+  // Simple directional cues like the neck-stretch stock cards
+  if (guide === "neck_tilt") {
+    return (
+      <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 200 320" aria-hidden>
+        <path d="M48 70 Q30 58 42 42" fill="none" stroke="#38bdf8" strokeWidth="3.5" strokeLinecap="round" />
+        <path d="M36 46 L42 40 L48 48" fill="none" stroke="#38bdf8" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M152 70 Q170 58 158 42" fill="none" stroke="#38bdf8" strokeWidth="3.5" strokeLinecap="round" />
+        <path d="M164 46 L158 40 L152 48" fill="none" stroke="#38bdf8" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+  if (guide === "shoulders_roll" || guide === "hip_circles" || guide === "ankle_circles") {
+    return (
+      <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 200 320" aria-hidden>
+        <path
+          d="M150 100 A28 28 0 1 1 148 95"
+          fill="none"
+          stroke="#f87171"
+          strokeWidth="3"
+          strokeLinecap="round"
+          markerEnd="url(#yajArrow)"
+        />
+        <defs>
+          <marker id="yajArrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+            <path d="M0 0 L6 3 L0 6 Z" fill="#f87171" />
+          </marker>
+        </defs>
+      </svg>
+    );
+  }
+  if (guide === "arms_overhead" || guide === "cool_stretch" || guide === "side_reach") {
+    return (
+      <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 200 320" aria-hidden>
+        <path d="M100 120 L100 48" fill="none" stroke="#38bdf8" strokeWidth="3.5" strokeLinecap="round" />
+        <path d="M92 58 L100 46 L108 58" fill="none" stroke="#38bdf8" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+  if (guide === "forward_fold") {
+    return (
+      <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 200 320" aria-hidden>
+        <path d="M130 90 Q150 140 120 200" fill="none" stroke="#38bdf8" strokeWidth="3.5" strokeLinecap="round" />
+        <path d="M114 188 L120 202 L132 194" fill="none" stroke="#38bdf8" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+  return null;
+}
+
+function GuideSilhouette({
+  guide,
+  playing,
+  figure,
+}: {
+  guide: DemoGuideKind;
+  playing: boolean;
+  figure: WellnessFigure;
+}) {
   const anim = playing ? guide : "paused";
-  // Shared figure in black athletic kit — parts animate per guide kind
+  const isWoman = figure === "woman";
+  const kit = isWoman ? "#e07a5f" : "#3d8b8b";
+  const kitDark = isWoman ? "#c45f48" : "#2f6f6f";
+  const pant = "#2a2a2a";
+
   return (
     <svg viewBox="0 0 200 320" className="h-auto w-full overflow-visible" aria-hidden>
       <defs>
         <linearGradient id="yajKit" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#1a1a1a" />
-          <stop offset="100%" stopColor="#2c2c2c" />
+          <stop offset="0%" stopColor={kit} />
+          <stop offset="100%" stopColor={kitDark} />
         </linearGradient>
       </defs>
 
-      {/* Chair for seated guides */}
-      {guide.startsWith("seated") ||
-      guide === "ankle_circles" ||
-      guide === "side_reach" ||
-      guide === "sit_to_stand" ? (
+      {(guide.startsWith("seated") ||
+        guide === "ankle_circles" ||
+        guide === "side_reach" ||
+        guide === "sit_to_stand") && (
         <g opacity="0.35">
           <rect x="55" y="175" width="90" height="10" rx="2" fill="#5a6b66" />
           <rect x="62" y="185" width="8" height="55" rx="2" fill="#5a6b66" />
@@ -86,59 +171,83 @@ function GuideSilhouette({ guide, playing }: { guide: DemoGuideKind; playing: bo
           <rect x="70" y="120" width="8" height="55" rx="2" fill="#5a6b66" />
           <rect x="122" y="120" width="8" height="55" rx="2" fill="#5a6b66" />
         </g>
-      ) : null}
+      )}
 
-      {/* Wall for wall push-ups */}
       {guide === "wall_pushup" ? (
         <rect x="168" y="40" width="10" height="220" rx="2" fill="#7a8f88" opacity="0.35" />
       ) : null}
 
       <g className={`yaj-guide yaj-guide--${anim}`}>
-        {/* Head */}
-        <circle className="yaj-head" cx="100" cy="58" r="18" fill="#c4a484" />
-        {/* Torso (black kit) */}
+        {/* Hair — woman: soft shoulder length; man: short crop */}
+        {isWoman ? (
+          <path
+            d="M78 52 C76 28, 124 28, 122 52 C128 78, 126 96, 118 102 C112 88, 88 88, 82 102 C74 96, 72 78, 78 52 Z"
+            fill="#3f3a36"
+          />
+        ) : (
+          <ellipse cx="100" cy="48" rx="20" ry="14" fill="#3f3a36" />
+        )}
+
+        <circle className="yaj-head" cx="100" cy={isWoman ? 60 : 58} r={isWoman ? 17 : 18} fill={SKIN} />
+        <ellipse cx="100" cy={isWoman ? 64 : 62} rx="7" ry="3" fill={SKIN_SHADOW} opacity="0.25" />
+
+        {/* Torso — woman slightly narrower; man broader shoulders */}
         <path
           className="yaj-torso"
-          d="M78 85 C78 78, 122 78, 122 85 L128 155 C128 162, 72 162, 72 155 Z"
+          d={
+            isWoman
+              ? "M82 88 C82 80, 118 80, 118 88 L122 152 C122 160, 78 160, 78 152 Z"
+              : "M74 86 C74 78, 126 78, 126 86 L130 155 C130 162, 70 162, 70 155 Z"
+          }
           fill="url(#yajKit)"
         />
-        {/* Arms */}
+
         <path
           className="yaj-arm-l"
-          d="M80 92 C60 100, 48 120, 52 145"
+          d={isWoman ? "M84 94 C64 102, 52 122, 56 148" : "M78 92 C58 100, 46 120, 50 145"}
           fill="none"
-          stroke="#1a1a1a"
-          strokeWidth="12"
+          stroke={SKIN}
+          strokeWidth={isWoman ? 11 : 13}
           strokeLinecap="round"
         />
         <path
           className="yaj-arm-r"
-          d="M120 92 C140 100, 152 120, 148 145"
+          d={isWoman ? "M116 94 C136 102, 148 122, 144 148" : "M122 92 C142 100, 154 120, 150 145"}
           fill="none"
-          stroke="#1a1a1a"
-          strokeWidth="12"
+          stroke={SKIN}
+          strokeWidth={isWoman ? 11 : 13}
           strokeLinecap="round"
         />
-        {/* Legs */}
+
+        {/* Shorts / pants */}
+        <path
+          d={
+            isWoman
+              ? "M80 150 L120 150 L118 178 L82 178 Z"
+              : "M74 152 L126 152 L124 182 L76 182 Z"
+          }
+          fill={pant}
+        />
+
         <path
           className="yaj-leg-l"
-          d="M86 155 C82 195, 78 230, 76 268"
+          d="M90 176 C86 210, 82 240, 80 268"
           fill="none"
-          stroke="#1a1a1a"
-          strokeWidth="14"
+          stroke={SKIN}
+          strokeWidth={isWoman ? 12 : 14}
           strokeLinecap="round"
         />
         <path
           className="yaj-leg-r"
-          d="M114 155 C118 195, 122 230, 124 268"
+          d="M110 176 C114 210, 118 240, 120 268"
           fill="none"
-          stroke="#1a1a1a"
-          strokeWidth="14"
+          stroke={SKIN}
+          strokeWidth={isWoman ? 12 : 14}
           strokeLinecap="round"
         />
-        {/* Feet */}
-        <ellipse className="yaj-foot-l" cx="72" cy="275" rx="14" ry="5" fill="#222" />
-        <ellipse className="yaj-foot-r" cx="128" cy="275" rx="14" ry="5" fill="#222" />
+
+        <ellipse className="yaj-foot-l" cx="76" cy="275" rx="13" ry="5" fill="#222" />
+        <ellipse className="yaj-foot-r" cx="124" cy="275" rx="13" ry="5" fill="#222" />
       </g>
     </svg>
   );
