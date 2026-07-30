@@ -60,7 +60,9 @@ async function fileToBase64(file: File): Promise<string> {
 
 // Strip UI-only fields and convert string content to plain text for the API.
 function toApiMessages(messages: Msg[]) {
-  return messages.map((m) => ({ role: m.role, content: m.content }));
+  return messages
+    .filter((m) => typeof m.content !== "string" || m.content.trim() !== "")
+    .map((m) => ({ role: m.role, content: m.content }));
 }
 
 const AskYajPage = () => {
@@ -68,15 +70,100 @@ const AskYajPage = () => {
   const [input, setInput] = useState("");
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [imageMode, setImageMode] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [speakReplies, setSpeakReplies] = useState(false);
+  const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const recorderRef = useRef<MicRecorder | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const speakRepliesRef = useRef(false);
+
+  useEffect(() => {
+    speakRepliesRef.current = speakReplies;
+  }, [speakReplies]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
+  useEffect(() => () => {
+    audioRef.current?.pause();
+    recorderRef.current?.cancel();
+  }, []);
+
   const handlePickAudio = () => fileInputRef.current?.click();
+
+  const stopSpeaking = () => {
+    audioRef.current?.pause();
+    audioRef.current = null;
+    setSpeakingIndex(null);
+  };
+
+  const speak = async (text: string, index: number) => {
+    if (speakingIndex === index) {
+      stopSpeaking();
+      return;
+    }
+    stopSpeaking();
+    if (!text.trim()) return;
+    setSpeakingIndex(index);
+    try {
+      const src = await synthesizeYajVoice(text);
+      const el = new Audio(src);
+      audioRef.current = el;
+      el.onended = () => setSpeakingIndex((cur) => (cur === index ? null : cur));
+      el.onerror = () => setSpeakingIndex((cur) => (cur === index ? null : cur));
+      await el.play();
+    } catch (e: any) {
+      setSpeakingIndex(null);
+      toast({ title: "Voice unavailable", description: e.message || "Try again.", variant: "destructive" });
+    }
+  };
+
+  const toggleRecording = async () => {
+    if (isRecording) {
+      const rec = recorderRef.current;
+      recorderRef.current = null;
+      setIsRecording(false);
+      if (!rec) return;
+      setIsTranscribing(true);
+      try {
+        const dataUrl = await rec.stop();
+        if (!dataUrl) {
+          toast({ title: "Nothing recorded", description: "Hold on a little longer and try again." });
+          return;
+        }
+        const text = await transcribeYajAudio(dataUrl);
+        if (!text) {
+          toast({ title: "Didn't catch that", description: "Try speaking a bit closer to the mic." });
+          return;
+        }
+        setSpeakReplies(true);
+        await sendMessage(text);
+      } catch (e: any) {
+        toast({ title: "Voice input failed", description: e.message || "Try again.", variant: "destructive" });
+      } finally {
+        setIsTranscribing(false);
+      }
+      return;
+    }
+
+    try {
+      stopSpeaking();
+      recorderRef.current = await startMicRecording();
+      setIsRecording(true);
+    } catch {
+      toast({
+        title: "Microphone blocked",
+        description: "Allow microphone access to talk with YAJ Buddy.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleAudioChosen = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -97,8 +184,31 @@ const AskYajPage = () => {
     setAudioFile(file);
   };
 
+  const generateImage = async (prompt: string) => {
+    setMessages((prev) => [...prev, { role: "user", content: prompt }]);
+    setInput("");
+    setImageMode(false);
+    setIsLoading(true);
+    try {
+      const image = await generateYajImage(prompt);
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: "Here's what I made for you 🎨", imageUrl: image },
+      ]);
+    } catch (e: any) {
+      toast({ title: "Couldn't make that image", description: e.message || "Try again.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const sendMessage = async (text: string) => {
     if ((!text.trim() && !audioFile) || isLoading) return;
+
+    if (!audioFile && (imageMode || looksLikeImageRequest(text))) {
+      await generateImage(text.trim());
+      return;
+    }
 
     let userContent: string | ContentPart[];
     let audioName: string | undefined;
