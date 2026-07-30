@@ -357,18 +357,6 @@ const YajVoiceMode = ({ onSend, onClose, initialStream = null }: Props) => {
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/45 via-transparent to-black/70" />
       )}
 
-      <button
-        onClick={onClose}
-        className={`absolute right-5 top-5 z-20 flex h-10 w-10 items-center justify-center rounded-full border transition-colors ${
-          cameraOn
-            ? "border-white/25 bg-black/40 text-white hover:bg-black/55"
-            : "border-border bg-card text-muted-foreground hover:text-foreground"
-        }`}
-        aria-label="Close voice mode"
-      >
-        <X className="h-5 w-5" />
-      </button>
-
       {cameraOn && (
         <button
           type="button"
@@ -381,7 +369,7 @@ const YajVoiceMode = ({ onSend, onClose, initialStream = null }: Props) => {
         </button>
       )}
 
-      <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 pb-28 pt-16">
+      <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 pb-28 pt-12">
         {/* Stars — shrink slightly when camera is the main visual */}
         <div
           className={`relative transition-all duration-300 ${
