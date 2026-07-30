@@ -3,8 +3,9 @@ import type { MoveIllustrationId } from "@/lib/wellness-move-coach";
 import type { WellnessFigure, WellnessSkinTone } from "@/lib/wellness";
 
 import stand from "@/assets/wellness/coach/yaj-coach-stand.webp";
-import shouldersRoll from "@/assets/wellness/coach/yaj-coach-shoulders-roll.webp";
+import shouldersForward from "@/assets/wellness/coach/yaj-coach-shoulders-forward.webp";
 import shouldersUp from "@/assets/wellness/coach/yaj-coach-shoulders-up.webp";
+import shouldersBack from "@/assets/wellness/coach/yaj-coach-shoulders-back.webp";
 import neckLeft from "@/assets/wellness/coach/yaj-coach-neck-left.webp";
 import neckRight from "@/assets/wellness/coach/yaj-coach-neck-right.webp";
 import armsOverhead from "@/assets/wellness/coach/yaj-coach-arms-overhead.webp";
@@ -26,36 +27,43 @@ type Props = {
   className?: string;
 };
 
+type PoseClip = {
+  frames: string[];
+  /** ms between frames while playing */
+  intervalMs: number;
+};
+
 /**
  * Full-body YAJ Wellness Coach mascot frames.
  *
- * Each move shows the EXERCISE pose as the primary frame (not idle hands-in-
- * pockets). Optional second frame crossfades for light motion — never CSS
- * limb rotation (that caused “decapitation”).
+ * Motion = crossfade between COMPLETE pose images (never CSS limb detach).
+ * Shoulders roll uses a 3-frame forward → up → back cycle so arms clearly move.
  */
-const POSE_FRAMES: Record<MoveIllustrationId, string[]> = {
-  // Roll: shrug ↔ roll (arms free — not in pockets)
-  shoulders_roll: [shouldersUp, shouldersRoll],
-  neck_left: [neckLeft],
-  neck_right: [neckRight],
-  arms_overhead: [armsOverhead],
-  forward_fold: [forwardFold],
-  hip_circles: [hipCircles],
-  stand_tall: [stand],
-  walk: [walk],
-  arm_swing: [walk],
-  brisk_walk: [walk],
-  cool_down: [walk, stand],
-  seated_march: [seatedMarch],
-  seated_twist: [seatedTwist],
-  ankle_circles: [seatedMarch],
-  side_reach: [sideStretch],
-  sit_to_stand: [seatedMarch, stand],
-  march_place: [walk],
-  wall_pushup: [wallPushup],
-  squat: [squat],
-  side_steps: [walk],
-  cool_stretch: [chestOpener, sideStretch],
+const POSE_CLIPS: Record<MoveIllustrationId, PoseClip> = {
+  shoulders_roll: {
+    frames: [shouldersForward, shouldersUp, shouldersBack],
+    intervalMs: 700,
+  },
+  neck_left: { frames: [neckLeft], intervalMs: 1400 },
+  neck_right: { frames: [neckRight], intervalMs: 1400 },
+  arms_overhead: { frames: [armsOverhead], intervalMs: 1400 },
+  forward_fold: { frames: [forwardFold], intervalMs: 1400 },
+  hip_circles: { frames: [hipCircles], intervalMs: 1400 },
+  stand_tall: { frames: [stand], intervalMs: 1400 },
+  walk: { frames: [walk], intervalMs: 1400 },
+  arm_swing: { frames: [walk], intervalMs: 1400 },
+  brisk_walk: { frames: [walk], intervalMs: 1400 },
+  cool_down: { frames: [walk, stand], intervalMs: 1400 },
+  seated_march: { frames: [seatedMarch], intervalMs: 1400 },
+  seated_twist: { frames: [seatedTwist], intervalMs: 1400 },
+  ankle_circles: { frames: [seatedMarch], intervalMs: 1400 },
+  side_reach: { frames: [sideStretch], intervalMs: 1400 },
+  sit_to_stand: { frames: [seatedMarch, stand], intervalMs: 1200 },
+  march_place: { frames: [walk], intervalMs: 1400 },
+  wall_pushup: { frames: [wallPushup], intervalMs: 1400 },
+  squat: { frames: [squat], intervalMs: 1400 },
+  side_steps: { frames: [walk], intervalMs: 1400 },
+  cool_stretch: { frames: [chestOpener, sideStretch], intervalMs: 1400 },
 };
 
 export default function YajWellnessAvatar({
@@ -63,7 +71,8 @@ export default function YajWellnessAvatar({
   playing = true,
   className = "",
 }: Props) {
-  const frames = POSE_FRAMES[move] ?? [stand];
+  const clip = POSE_CLIPS[move] ?? { frames: [stand], intervalMs: 1400 };
+  const frames = clip.frames;
   const [frame, setFrame] = useState(0);
 
   useEffect(() => {
@@ -71,9 +80,9 @@ export default function YajWellnessAvatar({
     if (!playing || frames.length < 2) return;
     const id = window.setInterval(() => {
       setFrame((f) => (f + 1) % frames.length);
-    }, 1400);
+    }, clip.intervalMs);
     return () => window.clearInterval(id);
-  }, [move, playing, frames.length]);
+  }, [move, playing, frames.length, clip.intervalMs]);
 
   const src = frames[Math.min(frame, frames.length - 1)] ?? stand;
 
@@ -89,7 +98,7 @@ export default function YajWellnessAvatar({
           src={img}
           alt=""
           draggable={false}
-          className={`absolute inset-0 m-auto h-[94%] w-auto max-w-full object-contain transition-opacity duration-700 ease-in-out ${
+          className={`absolute inset-0 m-auto h-[94%] w-auto max-w-full object-contain transition-opacity duration-500 ease-in-out ${
             i === frame ? "opacity-100" : "opacity-0"
           } ${playing && i === frame ? "yaj-coach-bob" : ""}`}
         />
