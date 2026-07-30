@@ -2,7 +2,7 @@ import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 
 export default defineTool({
-  name: "ask_jhi",
+  name: "ask_yaj",
   title: "Ask YAJ (YAJ Buddy community companion)",
   description:
     "Ask YAJ Buddy — YAJ's AI community companion — about creative ideas, music, opportunities, Circles, collaboration, or the YAJ platform.",
@@ -16,7 +16,7 @@ export default defineTool({
     if (!url || !key) {
       return { content: [{ type: "text", text: "Backend not configured." }], isError: true };
     }
-    const resp = await fetch(`${url}/functions/v1/ask-jhi`, {
+    const resp = await fetch(`${url}/functions/v1/ask-yaj`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

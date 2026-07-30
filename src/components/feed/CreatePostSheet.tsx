@@ -470,7 +470,7 @@ setStep("preview");
 };
 
 const openGallery = () => {
-  window.dispatchEvent(new CustomEvent("jhi-stop-create-camera"));
+  window.dispatchEvent(new CustomEvent("yaj-stop-create-camera"));
   window.setTimeout(() => {
     photoInputRef.current?.click();
   }, 250);
@@ -484,7 +484,7 @@ const soundLabel = hasSelectedSound ? getMusicDisplayName(editorMeta.music) : un
 const handleSoundButton = () => {
 musicStopRef.current?.();
 musicStopRef.current = null;
-window.dispatchEvent(new CustomEvent("jhi-stop-create-camera"));
+window.dispatchEvent(new CustomEvent("yaj-stop-create-camera"));
 forceIosAudioSessionToPlayback();
 unlockFeedAudioSession();
 void resetIosAudioSessionToPlayback();

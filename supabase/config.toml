@@ -12,7 +12,7 @@ verify_jwt = false
 [functions.r2-presign]
 verify_jwt = false
 
-[functions.ask-jhi]
+[functions.ask-yaj]
 verify_jwt = false
 
 [functions.session-lookup]

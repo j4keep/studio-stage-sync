@@ -37,11 +37,11 @@ var get_featured_content_default = defineTool({
   }
 });
 
-// src/lib/mcp/tools/ask-jhi.ts
+// src/lib/mcp/tools/ask-yaj.ts
 import { defineTool as defineTool2 } from "npm:@lovable.dev/mcp-js@0.20.0";
 import { z as z2 } from "npm:zod@^3.25.76";
-var ask_jhi_default = defineTool2({
-  name: "ask_jhi",
+var ask_yaj_default = defineTool2({
+  name: "ask_yaj",
   title: "Ask YAJ (YAJ Buddy community companion)",
   description: "Ask YAJ Buddy \u2014 YAJ's AI community companion \u2014 about creative ideas, music, opportunities, Circles, collaboration, or the YAJ platform.",
   inputSchema: {
@@ -54,7 +54,7 @@ var ask_jhi_default = defineTool2({
     if (!url || !key) {
       return { content: [{ type: "text", text: "Backend not configured." }], isError: true };
     }
-    const resp = await fetch(`${url}/functions/v1/ask-jhi`, {
+    const resp = await fetch(`${url}/functions/v1/ask-yaj`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -104,12 +104,12 @@ var mcp_default = defineMcp({
   name: "wheuat-mcp",
   title: "WHEUAT",
   version: "0.1.0",
-  instructions: "Tools for WHEUAT \u2014 a mobile-first platform for independent artists and creators. Use `get_featured_content` to browse recent podcasts, videos, songs, battles, or posts. Use `ask_jhi` to consult YAJ Buddy, YAJ's AI community companion, for creative ideas, music, opportunities, Circles, collaboration, and platform guidance.",
+  instructions: "Tools for WHEUAT \u2014 a mobile-first platform for independent artists and creators. Use `get_featured_content` to browse recent podcasts, videos, songs, battles, or posts. Use `ask_yaj` to consult YAJ Buddy, YAJ's AI community companion, for creative ideas, music, opportunities, Circles, collaboration, and platform guidance.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated"
   }),
-  tools: [get_featured_content_default, ask_jhi_default]
+  tools: [get_featured_content_default, ask_yaj_default]
 });
 
 // lovable-mcp-supabase-entry.ts

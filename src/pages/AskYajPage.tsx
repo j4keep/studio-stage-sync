@@ -15,7 +15,7 @@ type Msg = {
   audioName?: string;
 };
 
-const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ask-jhi`;
+const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ask-yaj`;
 
 const SUGGESTIONS = [
   "Help me find a creative collaborator in my community",
@@ -54,7 +54,7 @@ function toApiMessages(messages: Msg[]) {
   return messages.map((m) => ({ role: m.role, content: m.content }));
 }
 
-const AskJhiPage = () => {
+const AskYajPage = () => {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [audioFile, setAudioFile] = useState<File | null>(null);
@@ -354,4 +354,4 @@ const AskJhiPage = () => {
   );
 };
 
-export default AskJhiPage;
+export default AskYajPage;

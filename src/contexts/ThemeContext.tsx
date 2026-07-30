@@ -63,7 +63,7 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   const [currentPreset, setCurrentPreset] = useState("default");
   const [customAccent, setCustomAccentState] = useState<string | null>(null);
   const [countryFlag, setCountryFlagState] = useState<string | null>(() => {
-    return localStorage.getItem("jhi_country_flag");
+    return localStorage.getItem("yaj_country_flag");
   });
   const [themeSetupDone, setThemeSetupDone] = useState<boolean | null>(() => {
     // If localStorage says done, never show onboarding again
@@ -95,8 +95,8 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
           setCustomAccentState(data.custom_accent_color || null);
           if (data.country_flag !== undefined) {
             setCountryFlagState(data.country_flag || null);
-            if (data.country_flag) localStorage.setItem("jhi_country_flag", data.country_flag);
-            else localStorage.removeItem("jhi_country_flag");
+            if (data.country_flag) localStorage.setItem("yaj_country_flag", data.country_flag);
+            else localStorage.removeItem("yaj_country_flag");
           }
 
           if (data.custom_accent_color) {
@@ -139,8 +139,8 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
 
   const setCountryFlag = useCallback((flagId: string | null) => {
     setCountryFlagState(flagId);
-    if (flagId) localStorage.setItem("jhi_country_flag", flagId);
-    else localStorage.removeItem("jhi_country_flag");
+    if (flagId) localStorage.setItem("yaj_country_flag", flagId);
+    else localStorage.removeItem("yaj_country_flag");
   }, []);
 
   const saveThemeToProfile = useCallback(async () => {

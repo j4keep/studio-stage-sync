@@ -5,7 +5,7 @@ import type { PostEditorMeta } from "@/lib/post-editor";
 import { ChevronLeft, Hash, AtSign, Lightbulb, Wand2, ImageIcon, Trash2, Type } from "lucide-react";
 import { toast } from "sonner";
 import YajBuddyIcon from "@/components/YajBuddyIcon";
-import { jhiRewritePostDescription, jhiRewritePostTitle } from "@/lib/ask-jhi";
+import { yajRewritePostDescription, yajRewritePostTitle } from "@/lib/ask-yaj";
 
 interface Props {
   mediaType: "image" | "video";
@@ -95,7 +95,7 @@ export default function PostPreviewView({
     if (rewriting) return;
     setRewriting("title");
     try {
-      const next = await jhiRewritePostTitle(title, description);
+      const next = await yajRewritePostTitle(title, description);
       if (next) onTitleChange(next);
       else toast.error("YAJ Buddy couldn't rewrite the title. Try again.");
     } catch (e: unknown) {
@@ -109,7 +109,7 @@ export default function PostPreviewView({
     if (rewriting) return;
     setRewriting("description");
     try {
-      const next = await jhiRewritePostDescription(description, title);
+      const next = await yajRewritePostDescription(description, title);
       if (next) onDescriptionChange(next);
       else toast.error("YAJ Buddy couldn't rewrite the description. Try again.");
     } catch (e: unknown) {
