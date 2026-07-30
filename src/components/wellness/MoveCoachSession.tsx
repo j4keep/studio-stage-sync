@@ -20,7 +20,12 @@ import {
   type CoachRoutine,
   type CoachVoiceSpeedId,
 } from "@/lib/wellness-move-coach";
-import { getTodayProgress, getWellnessFigure, MOODS } from "@/lib/wellness";
+import {
+  getTodayProgress,
+  getWellnessFigure,
+  getWellnessSkinTone,
+  MOODS,
+} from "@/lib/wellness";
 import {
   pauseYajAudio,
   playYajAudioAsync,
@@ -102,6 +107,7 @@ export default function MoveCoachSession({
 }: Props) {
   const steps = routine.steps;
   const figure = getWellnessFigure();
+  const skinTone = getWellnessSkinTone();
   const [stepIdx, setStepIdx] = useState(0);
   const [phase, setPhase] = useState<Phase>("coaching");
   const [caption, setCaption] = useState("Getting ready…");
@@ -468,8 +474,11 @@ export default function MoveCoachSession({
           stepNumber={stepIdx + 1}
           totalSteps={steps.length}
           figure={figure}
+          skinTone={skinTone}
           holdLeft={holdLeft}
           caption={caption}
+          breathCue={step.breathCue}
+          safetyTip={step.safetyTip}
           animating={!paused}
         />
 

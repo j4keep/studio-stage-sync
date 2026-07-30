@@ -6,9 +6,11 @@ import {
   loadWellnessState,
   logWaterCup,
   updateWellnessProfile,
+  WELLNESS_SKIN_TONES,
   WELLNESS_UPDATED_EVENT,
   type WellnessFigure,
   type WellnessHealthProfile,
+  type WellnessSkinTone,
   type WellnessState,
 } from "@/lib/wellness";
 
@@ -27,6 +29,7 @@ export default function WellnessDashboardSheet({ open, onClose, onStateChange }:
   const today = getTodayProgress(state);
 
   const [figure, setFigure] = useState<WellnessFigure>(profile.figure);
+  const [skinTone, setSkinTone] = useState<WellnessSkinTone>(profile.skinTone || "medium");
   const [age, setAge] = useState(profile.age ? String(profile.age) : "");
   const [weight, setWeight] = useState(profile.weightLbs ? String(profile.weightLbs) : "");
   const [bedtime, setBedtime] = useState(profile.bedtime || "22:30");
@@ -41,6 +44,7 @@ export default function WellnessDashboardSheet({ open, onClose, onStateChange }:
     setState(s);
     const p = s.profile || DEFAULT_HEALTH_PROFILE;
     setFigure(p.figure);
+    setSkinTone(p.skinTone || "medium");
     setAge(p.age ? String(p.age) : "");
     setWeight(p.weightLbs ? String(p.weightLbs) : "");
     setBedtime(p.bedtime || "22:30");
@@ -60,6 +64,7 @@ export default function WellnessDashboardSheet({ open, onClose, onStateChange }:
   const save = (extra?: Partial<WellnessHealthProfile>) => {
     const next = updateWellnessProfile({
       figure,
+      skinTone,
       age: age ? Number(age) : undefined,
       weightLbs: weight ? Number(weight) : undefined,
       bedtime,
@@ -163,6 +168,30 @@ export default function WellnessDashboardSheet({ open, onClose, onStateChange }:
                 {opt.label}
               </button>
             ))}
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold text-stone-600">Coach skin tone</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {WELLNESS_SKIN_TONES.map((tone) => (
+                <button
+                  key={tone.id}
+                  type="button"
+                  onClick={() => setSkinTone(tone.id)}
+                  aria-label={tone.label}
+                  title={tone.label}
+                  className={`h-9 w-9 rounded-full border-2 ${
+                    skinTone === tone.id
+                      ? "border-teal-600 ring-2 ring-teal-200"
+                      : "border-white shadow-sm"
+                  }`}
+                  style={{ backgroundColor: tone.swatch }}
+                />
+              ))}
+            </div>
+            <p className="mt-1.5 text-[11px] text-stone-400">
+              Matches your YAJ Wellness Coach across every Move session.
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

@@ -313,11 +313,23 @@ export type DayProgress = {
   sleepScore?: 1 | 2 | 3 | 4 | 5;
 };
 
-/** Presentation used for exercise illustration cards (not medical sex). */
+/** Presentation used for the YAJ Wellness Coach avatar (not medical sex). */
 export type WellnessFigure = "woman" | "man";
+
+/** Inclusive skin tones for the reusable coach avatar. */
+export type WellnessSkinTone = "porcelain" | "warm" | "medium" | "rich" | "deep";
+
+export const WELLNESS_SKIN_TONES: { id: WellnessSkinTone; label: string; swatch: string }[] = [
+  { id: "porcelain", label: "Porcelain", swatch: "#e6c4a8" },
+  { id: "warm", label: "Warm", swatch: "#c9956c" },
+  { id: "medium", label: "Medium", swatch: "#a8896c" },
+  { id: "rich", label: "Rich", swatch: "#8b5e3c" },
+  { id: "deep", label: "Deep", swatch: "#5c3a24" },
+];
 
 export type WellnessHealthProfile = {
   figure: WellnessFigure;
+  skinTone: WellnessSkinTone;
   age?: number;
   /** Weight in pounds (optional; used for gentle goal context). */
   weightLbs?: number;
@@ -340,6 +352,7 @@ const STORAGE_KEY = "yaj_wellness_v1";
 
 export const DEFAULT_HEALTH_PROFILE: WellnessHealthProfile = {
   figure: "woman",
+  skinTone: "medium",
   waterGoalCups: 8,
   notifyWater: true,
   notifyBedtime: true,
@@ -367,8 +380,12 @@ function normalizeProfile(raw: unknown): WellnessHealthProfile | null {
   const p = raw as Partial<WellnessHealthProfile>;
   const figure = p.figure === "man" || p.figure === "woman" ? p.figure : null;
   if (!figure) return null;
+  const skinTone = WELLNESS_SKIN_TONES.some((t) => t.id === p.skinTone)
+    ? (p.skinTone as WellnessSkinTone)
+    : "medium";
   return {
     figure,
+    skinTone,
     age: typeof p.age === "number" && p.age > 0 ? Math.round(p.age) : undefined,
     weightLbs:
       typeof p.weightLbs === "number" && p.weightLbs > 0 ? Math.round(p.weightLbs) : undefined,
@@ -413,6 +430,10 @@ export function loadWellnessState(): WellnessState {
 
 export function getWellnessFigure(state?: WellnessState): WellnessFigure {
   return (state || loadWellnessState()).profile?.figure ?? "woman";
+}
+
+export function getWellnessSkinTone(state?: WellnessState): WellnessSkinTone {
+  return (state || loadWellnessState()).profile?.skinTone ?? "medium";
 }
 
 export function updateWellnessProfile(

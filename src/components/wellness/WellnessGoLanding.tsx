@@ -3,7 +3,9 @@ import { ArrowLeft } from "lucide-react";
 import {
   DEFAULT_HEALTH_PROFILE,
   updateWellnessProfile,
+  WELLNESS_SKIN_TONES,
   type WellnessFigure,
+  type WellnessSkinTone,
   type WellnessState,
 } from "@/lib/wellness";
 
@@ -21,6 +23,7 @@ type Props = {
 export default function WellnessGoLanding({ onBack, onEnter }: Props) {
   const [phase, setPhase] = useState<"hero" | "profile">("hero");
   const [figure, setFigure] = useState<WellnessFigure>("woman");
+  const [skinTone, setSkinTone] = useState<WellnessSkinTone>("medium");
   const [age, setAge] = useState("");
   const [weight, setWeight] = useState("");
   const [videoFailed, setVideoFailed] = useState(false);
@@ -29,6 +32,7 @@ export default function WellnessGoLanding({ onBack, onEnter }: Props) {
     const next = updateWellnessProfile({
       ...DEFAULT_HEALTH_PROFILE,
       figure,
+      skinTone,
       age: age ? Number(age) : undefined,
       weightLbs: weight ? Number(weight) : undefined,
       onboarded: true,
@@ -86,8 +90,31 @@ export default function WellnessGoLanding({ onBack, onEnter }: Props) {
               ))}
             </div>
             <p className="mt-2 text-[11px] text-emerald-100/50">
-              Used for personalizing goals and coaching tips.
+              Used for your YAJ Wellness Coach look and coaching tips.
             </p>
+          </div>
+
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wide text-teal-200/80">
+              Coach skin tone
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2.5">
+              {WELLNESS_SKIN_TONES.map((tone) => (
+                <button
+                  key={tone.id}
+                  type="button"
+                  onClick={() => setSkinTone(tone.id)}
+                  aria-label={tone.label}
+                  title={tone.label}
+                  className={`h-10 w-10 rounded-full border-2 ${
+                    skinTone === tone.id
+                      ? "border-teal-300 ring-2 ring-teal-300/40"
+                      : "border-white/20"
+                  }`}
+                  style={{ backgroundColor: tone.swatch }}
+                />
+              ))}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

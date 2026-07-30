@@ -36,6 +36,10 @@ export type CoachStep = {
   holdSeconds?: number;
   /** Short bridge before the next card. */
   afterLine?: string;
+  /** On-card breathing cue. */
+  breathCue?: string;
+  /** On-card safety tip. */
+  safetyTip?: string;
 };
 
 export type CoachRoutine = {
@@ -70,6 +74,8 @@ export const COACH_ROUTINES: CoachRoutine[] = [
           "Now gently roll them backward.",
           "Repeat eight times. No rush.",
         ],
+        breathCue: "Easy nasal breaths — no holding",
+        safetyTip: "Keep the neck soft; never force the roll",
         afterLine: "Great job. Let's loosen the neck.",
       },
       {
@@ -83,6 +89,8 @@ export const COACH_ROUTINES: CoachRoutine[] = [
           "Hold for five seconds.",
         ],
         holdSeconds: 5,
+        breathCue: "Slow exhale as you tilt",
+        safetyTip: "Stop if you feel sharp neck pain or dizziness",
         afterLine: "Nice. Let's stretch the other side.",
       },
       {
@@ -96,6 +104,8 @@ export const COACH_ROUTINES: CoachRoutine[] = [
           "Hold for five seconds.",
         ],
         holdSeconds: 5,
+        breathCue: "Inhale center · exhale into the tilt",
+        safetyTip: "Shoulders stay down — don't hike them up",
         afterLine: "Beautiful. Arms next.",
       },
       {
@@ -109,6 +119,8 @@ export const COACH_ROUTINES: CoachRoutine[] = [
           "Hold and breathe for eight seconds.",
         ],
         holdSeconds: 8,
+        breathCue: "Inhale to reach · exhale to settle",
+        safetyTip: "Soft ribs — avoid arching the low back",
         afterLine: "Remember to breathe. Forward fold when you're ready.",
       },
       {
@@ -122,6 +134,8 @@ export const COACH_ROUTINES: CoachRoutine[] = [
           "Hold for ten seconds. If anything hurts, stop immediately.",
         ],
         holdSeconds: 10,
+        breathCue: "Long exhales as you fold",
+        safetyTip: "Hinge from hips; soft knees — never lock or bounce",
         afterLine: "Wonderful work. Session almost done.",
       },
     ],
@@ -144,6 +158,8 @@ export const COACH_ROUTINES: CoachRoutine[] = [
           "Imagine a string lifting the crown of your head.",
           "Take one easy breath in and out.",
         ],
+        breathCue: "One easy breath in and out",
+        safetyTip: "Soft knees — never lock the joints",
         afterLine: "When you're ready, we'll start walking.",
       },
       {
@@ -214,6 +230,8 @@ export const COACH_ROUTINES: CoachRoutine[] = [
           "Keep going for about thirty seconds.",
         ],
         holdSeconds: 30,
+        breathCue: "Steady breathing with each lift",
+        safetyTip: "Hold the chair if you need balance",
         afterLine: "Nice rhythm. Twists next.",
       },
       {
@@ -226,6 +244,8 @@ export const COACH_ROUTINES: CoachRoutine[] = [
           "Hold each side for five seconds. Never force the spine.",
         ],
         holdSeconds: 10,
+        breathCue: "Exhale into each twist",
+        safetyTip: "Keep hips facing forward — never force the spine",
         afterLine: "Ankles next — small circles.",
       },
       {
@@ -238,6 +258,8 @@ export const COACH_ROUTINES: CoachRoutine[] = [
           "Keep the movement smooth and easy.",
         ],
         holdSeconds: 15,
+        breathCue: "Relaxed, even breaths",
+        safetyTip: "Small circles only — no forcing the ankle",
         afterLine: "Side reaches coming up.",
       },
       {
@@ -250,6 +272,8 @@ export const COACH_ROUTINES: CoachRoutine[] = [
           "Hold five seconds, then switch sides.",
         ],
         holdSeconds: 10,
+        breathCue: "Inhale length · exhale into the side",
+        safetyTip: "Stay seated tall — no collapsing the ribs",
         afterLine: "If you're able, sit-to-stand next. Use the chair for support.",
       },
       {
@@ -262,6 +286,8 @@ export const COACH_ROUTINES: CoachRoutine[] = [
           "Aim for six easy reps. Stop if anything hurts.",
         ],
         holdSeconds: 25,
+        breathCue: "Exhale as you stand",
+        safetyTip: "Use the chair for support; stop if anything hurts",
       },
     ],
   },
@@ -284,6 +310,8 @@ export const COACH_ROUTINES: CoachRoutine[] = [
           "One easy minute to warm up.",
         ],
         holdSeconds: 60,
+        breathCue: "Easy breathing with the rhythm",
+        safetyTip: "Land softly — no pounding the joints",
         afterLine: "Warm. Wall push-ups next — quality over speed.",
       },
       {
@@ -296,6 +324,8 @@ export const COACH_ROUTINES: CoachRoutine[] = [
           "Eight comfortable reps. Breathe out as you push.",
         ],
         holdSeconds: 40,
+        breathCue: "Exhale as you press away",
+        safetyTip: "Keep a long spine; stop if wrists or shoulders hurt",
         afterLine: "Squats coming — shallow range is totally fine.",
       },
       {
@@ -308,6 +338,8 @@ export const COACH_ROUTINES: CoachRoutine[] = [
           "Eight easy reps. No rush.",
         ],
         holdSeconds: 40,
+        breathCue: "Exhale as you stand",
+        safetyTip: "Shallow range is fine — knees track over toes",
         afterLine: "Side steps to keep the blood moving.",
       },
       {
@@ -320,6 +352,8 @@ export const COACH_ROUTINES: CoachRoutine[] = [
           "About forty-five seconds.",
         ],
         holdSeconds: 45,
+        breathCue: "Steady conversational breaths",
+        safetyTip: "Soft knees — clear space around you",
         afterLine: "Cool-down stretch to finish.",
       },
       {
@@ -332,6 +366,8 @@ export const COACH_ROUTINES: CoachRoutine[] = [
           "Hold gently for ten seconds.",
         ],
         holdSeconds: 10,
+        breathCue: "Inhale length · exhale ease",
+        safetyTip: "Gentle only — never bounce into a stretch",
       },
     ],
   },
