@@ -1,8 +1,16 @@
 import { useState, useRef, useEffect } from "react";
-import { ArrowUp, Trash2, Paperclip, X, Music2 } from "lucide-react";
+import { ArrowUp, Trash2, Paperclip, X, Music2, Mic, Square, Volume2, Loader2, ImagePlus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import YajBuddyIcon from "@/components/YajBuddyIcon";
 import ReactMarkdown from "react-markdown";
+import {
+  generateYajImage,
+  synthesizeYajVoice,
+  transcribeYajAudio,
+  looksLikeImageRequest,
+  startMicRecording,
+  type MicRecorder,
+} from "@/lib/yaj-media";
 
 type ContentPart =
   | { type: "text"; text: string }
@@ -13,6 +21,7 @@ type Msg = {
   content: string | ContentPart[];
   // UI-only metadata for rendering a user message with an attached clip
   audioName?: string;
+  imageUrl?: string;
 };
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ask-yaj`;
