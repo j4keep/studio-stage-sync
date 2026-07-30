@@ -20,7 +20,8 @@ import {
 
 type ContentPart =
   | { type: "text"; text: string }
-  | { type: "input_audio"; input_audio: { data: string; format: string } };
+  | { type: "input_audio"; input_audio: { data: string; format: string } }
+  | { type: "image_url"; image_url: { url: string } };
 
 type Msg = {
   role: "user" | "assistant";
@@ -28,6 +29,8 @@ type Msg = {
   // UI-only metadata for rendering a user message with an attached clip
   audioName?: string;
   imageUrl?: string;
+  /** Preview of a camera frame the user showed YAJ (also may live in content). */
+  cameraPreviewUrl?: string;
 };
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ask-yaj`;
@@ -64,11 +67,31 @@ async function fileToBase64(file: File): Promise<string> {
   });
 }
 
-// Strip UI-only fields and convert string content to plain text for the API.
+// Strip UI-only fields. Keep camera images only on the latest user turn so
+// history stays light; older frames become a short text placeholder.
 function toApiMessages(messages: Msg[]) {
-  return messages
-    .filter((m) => typeof m.content !== "string" || m.content.trim() !== "")
-    .map((m) => ({ role: m.role, content: m.content }));
+  const filtered = messages.filter(
+    (m) => typeof m.content !== "string" || m.content.trim() !== "",
+  );
+  let lastUserIdx = -1;
+  for (let i = filtered.length - 1; i >= 0; i--) {
+    if (filtered[i].role === "user") {
+      lastUserIdx = i;
+      break;
+    }
+  }
+
+  return filtered.map((m, i) => {
+    if (typeof m.content === "string") return { role: m.role, content: m.content };
+    const keepImages = m.role === "user" && i === lastUserIdx;
+    const parts = m.content.flatMap((p): ContentPart[] => {
+      if (p.type === "image_url" && !keepImages) {
+        return [{ type: "text", text: "[Previously showed a photo from the camera]" }];
+      }
+      return [p];
+    });
+    return { role: m.role, content: parts };
+  });
 }
 
 const AskYajPage = () => {
@@ -202,16 +225,22 @@ const AskYajPage = () => {
     }
   };
 
-  const sendMessage = async (text: string): Promise<string> => {
-    if ((!text.trim() && !audioFile) || isLoading) return "";
+  const sendMessage = async (
+    text: string,
+    options?: { imageDataUrl?: string },
+  ): Promise<string> => {
+    const imageDataUrl = options?.imageDataUrl;
+    if ((!text.trim() && !audioFile && !imageDataUrl) || isLoading) return "";
 
-    if (!audioFile && (imageMode || looksLikeImageRequest(text))) {
+    // Camera vision is recognition, not "generate an image".
+    if (!audioFile && !imageDataUrl && (imageMode || looksLikeImageRequest(text))) {
       await generateImage(text.trim());
       return "";
     }
 
     let userContent: string | ContentPart[];
     let audioName: string | undefined;
+    let cameraPreviewUrl: string | undefined;
 
     if (audioFile) {
       const format = audioFormatFromMime(audioFile.type)!;
@@ -221,11 +250,22 @@ const AskYajPage = () => {
         { type: "text", text: text.trim() || "Listen to this clip — analyze it and tell me what you hear." },
         { type: "input_audio", input_audio: { data, format } },
       ];
+    } else if (imageDataUrl) {
+      cameraPreviewUrl = imageDataUrl;
+      userContent = [
+        {
+          type: "text",
+          text:
+            text.trim() ||
+            "I'm showing you something on my camera. Look carefully and tell me what you see — identify it if you can, and briefly explain.",
+        },
+        { type: "image_url", image_url: { url: imageDataUrl } },
+      ];
     } else {
       userContent = text.trim();
     }
 
-    const userMsg: Msg = { role: "user", content: userContent, audioName };
+    const userMsg: Msg = { role: "user", content: userContent, audioName, cameraPreviewUrl };
     const allMessages = [...messagesRef.current, userMsg];
     setMessages(allMessages);
     setInput("");
@@ -343,6 +383,13 @@ const AskYajPage = () => {
             <Music2 className="w-3 h-3" />
             <span className="truncate max-w-[180px]">{msg.audioName}</span>
           </div>
+        )}
+        {msg.cameraPreviewUrl && (
+          <img
+            src={msg.cameraPreviewUrl}
+            alt="What you showed YAJ"
+            className="max-h-40 w-auto rounded-xl border border-primary-foreground/20 object-cover"
+          />
         )}
         {text && <div>{text}</div>}
       </div>
@@ -576,7 +623,7 @@ const AskYajPage = () => {
 
       {voiceMode && (
         <YajVoiceMode
-          onSend={(text) => sendMessage(text)}
+          onSend={({ text, imageDataUrl }) => sendMessage(text, { imageDataUrl })}
           initialStream={voiceStream}
           onClose={() => {
             setVoiceMode(false);

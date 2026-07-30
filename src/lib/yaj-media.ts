@@ -289,3 +289,85 @@ export function stopYajAudio(): void {
   sharedAudio.pause();
 }
 
+/** Open the device camera for YAJ voice vision (video only — mic stays separate). */
+export async function acquireYajCameraStream(
+  facing: "user" | "environment" = "environment",
+): Promise<MediaStream> {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    throw new Error("Camera is not supported in this browser.");
+  }
+  const attempts: MediaStreamConstraints[] = [
+    {
+      video: {
+        facingMode: { ideal: facing },
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      },
+      audio: false,
+    },
+    { video: { facingMode: facing }, audio: false },
+    { video: true, audio: false },
+  ];
+  let lastError: unknown;
+  for (const constraints of attempts) {
+    try {
+      return await navigator.mediaDevices.getUserMedia(constraints);
+    } catch (e) {
+      lastError = e;
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("Couldn't open the camera.");
+}
+
+export function describeCameraError(err: unknown): string {
+  const name = err && typeof err === "object" && "name" in err ? String((err as { name: string }).name) : "";
+  const msg = err instanceof Error ? err.message : String(err ?? "");
+  if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+    return "Camera permission denied. Allow camera access, then try again.";
+  }
+  if (name === "NotFoundError" || name === "DevicesNotFoundError") {
+    return "No camera found on this device.";
+  }
+  if (name === "NotReadableError" || /in use|readable|track/i.test(msg)) {
+    return "Your camera is busy in another app. Close it, then try again.";
+  }
+  if (name === "SecurityError") {
+    return "Camera needs a secure (HTTPS) connection.";
+  }
+  return msg || "Couldn't open the camera. Try again.";
+}
+
+/**
+ * Capture a JPEG data URL from the live camera preview for vision chat.
+ * Downscales so multimodal requests stay lightweight.
+ */
+export async function captureYajVisionFrame(
+  video: HTMLVideoElement,
+  options: { mirror?: boolean; maxWidth?: number; quality?: number } = {},
+): Promise<string | null> {
+  const { mirror = false, maxWidth = 960, quality = 0.72 } = options;
+  if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+    await new Promise<void>((resolve) => {
+      video.addEventListener("loadeddata", () => resolve(), { once: true });
+    });
+  }
+  const vw = video.videoWidth;
+  const vh = video.videoHeight;
+  if (!vw || !vh) return null;
+
+  const scale = Math.min(1, maxWidth / vw);
+  const w = Math.max(1, Math.round(vw * scale));
+  const h = Math.max(1, Math.round(vh * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  if (mirror) {
+    ctx.translate(w, 0);
+    ctx.scale(-1, 1);
+  }
+  ctx.drawImage(video, 0, 0, w, h);
+  return canvas.toDataURL("image/jpeg", quality);
+}
+
