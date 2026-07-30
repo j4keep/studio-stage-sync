@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Pause, Play } from "lucide-react";
 import ExerciseDemoPlayer from "@/components/wellness/ExerciseDemoPlayer";
 import type { MoveStep } from "@/lib/wellness";
-import { moveStepText } from "@/lib/wellness";
+import { demoForStep, moveStepText } from "@/lib/wellness";
 import {
   canWellnessSpeak,
   getSelectedWellnessVoiceName,
@@ -201,7 +201,7 @@ export default function WorkoutTimer({
 
       <div className="flex min-h-0 flex-1 flex-col px-4 pt-2">
         <ExerciseDemoPlayer
-          demo={current?.demo}
+          demo={demoForStep(current)}
           caption={currentText}
           stepLabel={`Step ${stepIdx + 1} / ${stepCount}`}
           playing={running && left > 0}

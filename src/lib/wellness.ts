@@ -1,5 +1,14 @@
 /** Wellness Phase 1 — calm routines, local-only progress. Not medical advice. */
 
+import {
+  resolveDemoClip,
+  type DemoClip,
+  type WellnessDemoId,
+} from "@/lib/wellness-demos";
+
+export type { DemoClip, WellnessDemoId };
+export { resolveDemoClip };
+
 export type MoodId = "great" | "good" | "tired" | "stressed" | "anxious" | "low";
 
 export type WellnessPillar = "sleep" | "move" | "relax" | "habits";
@@ -51,25 +60,13 @@ export const SLEEP_SOUNDS: {
   { id: "nature", label: "Nature", blurb: "Light forest air" },
 ];
 
-/** Short demo clip shown during Move / Relax steps (replaceable later with AI/instructor uploads). */
-export type DemoClip = {
-  videoUrl: string;
-  posterUrl?: string;
-  credit?: string;
-};
-
-/** Mixkit free stock — swap these for YAJ-hosted AI/instructor demos anytime. */
-function mixkitDemo(id: number, credit = "Form demo · Mixkit"): DemoClip {
-  return {
-    videoUrl: `https://assets.mixkit.co/videos/${id}/${id}-720.mp4`,
-    posterUrl: `https://assets.mixkit.co/videos/${id}/${id}-thumb-720-0.jpg`,
-    credit,
-  };
-}
-
+/**
+ * Move step references a catalog demo id (`video_url` resolved at play time).
+ * Swap catalog URLs later for AI / certified / creator clips — UI unchanged.
+ */
 export type MoveStep = {
   instruction: string;
-  demo: DemoClip;
+  demoId: WellnessDemoId;
 };
 
 export type BreathingPattern = {
@@ -81,8 +78,8 @@ export type BreathingPattern = {
   exhale: number;
   holdOut?: number;
   blurb: string;
-  /** Optional posture / calm demo while breathing */
-  demo?: DemoClip;
+  /** Catalog demo id for posture / calm visual */
+  demoId?: WellnessDemoId;
 };
 
 export const BREATHING_SESSIONS: BreathingPattern[] = [
@@ -95,7 +92,7 @@ export const BREATHING_SESSIONS: BreathingPattern[] = [
     exhale: 4,
     holdOut: 4,
     blurb: "Even rhythm to settle the mind",
-    demo: mixkitDemo(32081), // woman practicing breathing
+    demoId: "breath-box",
   },
   {
     id: "wind-down",
@@ -105,7 +102,7 @@ export const BREATHING_SESSIONS: BreathingPattern[] = [
     hold: 2,
     exhale: 6,
     blurb: "Longer exhales for sleep",
-    demo: mixkitDemo(32625), // yoga breathing
+    demoId: "breath-wind-down",
   },
   {
     id: "reset-2",
@@ -115,7 +112,7 @@ export const BREATHING_SESSIONS: BreathingPattern[] = [
     hold: 1,
     exhale: 5,
     blurb: "Quick stress release anytime",
-    demo: mixkitDemo(4397), // close-up calm breathing
+    demoId: "breath-reset",
   },
 ];
 
@@ -128,7 +125,7 @@ export type MoveRoutine = {
   steps: MoveStep[];
 };
 
-/** Each step demo is matched to that specific move (1 clip per minute on 5-min routines). */
+/** Each step points at a YAJ catalog demo (matched motion + future video_url). */
 export const MOVE_ROUTINES: MoveRoutine[] = [
   {
     id: "stretch-5",
@@ -137,11 +134,11 @@ export const MOVE_ROUTINES: MoveRoutine[] = [
     level: "gentle",
     kind: "stretch",
     steps: [
-      { instruction: "Roll shoulders slowly 8 times", demo: mixkitDemo(40976) }, // warm-up / shoulder mobility
-      { instruction: "Neck tilts left and right", demo: mixkitDemo(44513) }, // neck stretch
-      { instruction: "Reach arms overhead and breathe", demo: mixkitDemo(1007) }, // arms overhead
-      { instruction: "Forward fold as far as feels easy", demo: mixkitDemo(52138) }, // bending / fold
-      { instruction: "Hip circles, then shake out legs", demo: mixkitDemo(52120) }, // hip stretch
+      { instruction: "Roll shoulders slowly 8 times", demoId: "stretch-shoulders" },
+      { instruction: "Neck tilts left and right", demoId: "stretch-neck-tilts" },
+      { instruction: "Reach arms overhead and breathe", demoId: "stretch-arms-overhead" },
+      { instruction: "Forward fold as far as feels easy", demoId: "stretch-forward-fold" },
+      { instruction: "Hip circles, then shake out legs", demoId: "stretch-hip-circles" },
     ],
   },
   {
@@ -151,11 +148,11 @@ export const MOVE_ROUTINES: MoveRoutine[] = [
     level: "beginner",
     kind: "walk",
     steps: [
-      { instruction: "Stand tall, soft knees", demo: mixkitDemo(47418) }, // pre-walk stretch
-      { instruction: "Walk at a conversational pace", demo: mixkitDemo(35992) }, // walking in park
-      { instruction: "Swing arms naturally", demo: mixkitDemo(32616) }, // people walking
-      { instruction: "Optional: 1-minute brisk finish", demo: mixkitDemo(40754) }, // jogging / brisk
-      { instruction: "Cool down with slow steps", demo: mixkitDemo(24677) }, // cool down
+      { instruction: "Stand tall, soft knees", demoId: "walk-stand-tall" },
+      { instruction: "Walk at a conversational pace", demoId: "walk-naturally" },
+      { instruction: "Swing arms naturally", demoId: "walk-swing-arms" },
+      { instruction: "Optional: 1-minute brisk finish", demoId: "walk-brisk-finish" },
+      { instruction: "Cool down with slow steps", demoId: "walk-cool-down" },
     ],
   },
   {
@@ -165,11 +162,11 @@ export const MOVE_ROUTINES: MoveRoutine[] = [
     level: "gentle",
     kind: "chair",
     steps: [
-      { instruction: "Seated marches, 30 seconds", demo: mixkitDemo(48845) }, // chair yoga
-      { instruction: "Seated torso twists", demo: mixkitDemo(48845) }, // chair yoga twists
-      { instruction: "Ankle circles both sides", demo: mixkitDemo(48566) }, // leg / ankle focus
-      { instruction: "Seated side reaches", demo: mixkitDemo(1007) }, // overhead / side reach
-      { instruction: "Stand and sit 6 easy times if able", demo: mixkitDemo(752) }, // squat / sit-stand
+      { instruction: "Seated marches, 30 seconds", demoId: "chair-seated-marches" },
+      { instruction: "Seated torso twists", demoId: "chair-torso-twists" },
+      { instruction: "Ankle circles both sides", demoId: "chair-ankle-circles" },
+      { instruction: "Seated side reaches", demoId: "chair-side-reaches" },
+      { instruction: "Stand and sit 6 easy times if able", demoId: "chair-sit-to-stand" },
     ],
   },
   {
@@ -179,16 +176,27 @@ export const MOVE_ROUTINES: MoveRoutine[] = [
     level: "beginner",
     kind: "bodyweight",
     steps: [
-      { instruction: "March in place 1 minute", demo: mixkitDemo(4518) }, // high knees / march
-      { instruction: "Wall push-ups or knee push-ups × 8", demo: mixkitDemo(5351) }, // push-ups
-      { instruction: "Bodyweight squats × 8 (shallow OK)", demo: mixkitDemo(752) }, // squats
-      { instruction: "Glute bridge × 8", demo: mixkitDemo(13861) }, // floor exercises
-      { instruction: "Rest 30s, repeat the circuit once", demo: mixkitDemo(40132) }, // stretch / recover
+      { instruction: "March in place 1 minute", demoId: "beginner-march" },
+      { instruction: "Wall push-ups or knee push-ups × 8", demoId: "beginner-wall-pushups" },
+      { instruction: "Bodyweight squats × 8 (shallow OK)", demoId: "beginner-squats" },
+      { instruction: "Side steps left and right, 45 seconds", demoId: "beginner-side-steps" },
+      { instruction: "Cool down stretch, breathe easy", demoId: "beginner-cool-stretch" },
     ],
   },
 ];
+
 export function moveStepText(step: MoveStep | string): string {
   return typeof step === "string" ? step : step.instruction;
+}
+
+export function demoForStep(step: MoveStep | undefined | null): DemoClip | null {
+  if (!step) return null;
+  return resolveDemoClip(step.demoId);
+}
+
+export function demoForBreathing(pattern: BreathingPattern | undefined | null): DemoClip | null {
+  if (!pattern?.demoId) return null;
+  return resolveDemoClip(pattern.demoId);
 }
 
 export type WellnessRec = {

@@ -6,6 +6,7 @@ import BreathingSession from "@/components/wellness/BreathingSession";
 import { sleepAmbience } from "@/lib/sleep-ambience";
 import {
   BREATHING_SESSIONS,
+  demoForBreathing,
   patchToday,
   SLEEP_SOUNDS,
   type SleepSoundId,
@@ -252,7 +253,7 @@ export default function WellnessSleepPage() {
           exhale={breath.exhale}
           holdOut={breath.holdOut}
           minutes={breath.minutes}
-          demo={breath.demo}
+          demo={demoForBreathing(breath)}
           onProgress={(mins) => {
             patchToday((d) => {
               d.sleepRoutine = true;

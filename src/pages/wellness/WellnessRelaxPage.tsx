@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import BreathingSession from "@/components/wellness/BreathingSession";
-import { BREATHING_SESSIONS, patchToday } from "@/lib/wellness";
+import { BREATHING_SESSIONS, demoForBreathing, patchToday } from "@/lib/wellness";
 
 const EXTRAS = [
   {
@@ -80,8 +80,8 @@ export default function WellnessRelaxPage() {
                 <div>
                   <p className="text-sm font-bold">{b.title}</p>
                   <p className="text-[11px] text-stone-500">{b.blurb}</p>
-                  {b.demo ? (
-                    <p className="mt-1 text-[11px] font-semibold text-teal-700">Includes calm demo video</p>
+                  {b.demoId ? (
+                    <p className="mt-1 text-[11px] font-semibold text-teal-700">Includes ▶ Demo</p>
                   ) : null}
                 </div>
                 <span className="text-xs font-bold text-teal-700">{b.minutes} min</span>
@@ -123,7 +123,7 @@ export default function WellnessRelaxPage() {
           exhale={breath.exhale}
           holdOut={breath.holdOut}
           minutes={breath.minutes}
-          demo={breath.demo}
+          demo={demoForBreathing(breath)}
           onProgress={(mins) => {
             patchToday((d) => {
               d.mindfulMinutes += mins;

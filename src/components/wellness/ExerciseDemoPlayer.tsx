@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Volume2, VolumeX } from "lucide-react";
-import type { DemoClip } from "@/lib/wellness";
+import DemoFormGuide from "@/components/wellness/DemoFormGuide";
+import type { DemoClip } from "@/lib/wellness-demos";
 
 type Props = {
   demo?: DemoClip | null;
@@ -14,7 +15,8 @@ type Props = {
 
 /**
  * Step-synced form demo player for Move / Relax.
- * Muted by default (Buddy speaks). Swap demo.videoUrl later for AI/instructor clips.
+ * Reads `demo.videoUrl` (DB-ready). When null, shows a matching YAJ form guide
+ * so the UI never depends on random stock footage.
  */
 export default function ExerciseDemoPlayer({
   demo,
@@ -26,6 +28,8 @@ export default function ExerciseDemoPlayer({
   const videoRef = useRef<HTMLVideoElement>(null);
   const [muted, setMuted] = useState(true);
   const [failed, setFailed] = useState(false);
+
+  const hasVideo = Boolean(demo?.videoUrl) && !failed;
 
   useEffect(() => {
     setFailed(false);
@@ -43,31 +47,32 @@ export default function ExerciseDemoPlayer({
 
   useEffect(() => {
     const el = videoRef.current;
-    if (!el) return;
+    if (!el || !hasVideo) return;
     if (playing) void el.play().catch(() => undefined);
     else el.pause();
-  }, [playing]);
+  }, [playing, hasVideo]);
 
-  if (!demo?.videoUrl) {
+  if (!demo) {
     return (
       <div
-        className={`relative flex aspect-video items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-teal-900/80 to-slate-900 ${className}`}
+        className={`relative mx-auto flex aspect-[9/16] max-h-[52vh] w-full max-w-[280px] items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-teal-900/80 to-slate-900 ${className}`}
       >
-        <p className="px-4 text-center text-sm text-white/60">Demo video coming soon for this step</p>
+        <p className="px-4 text-center text-sm text-white/60">Demo coming soon for this step</p>
       </div>
     );
   }
 
   return (
-    <div className={`relative overflow-hidden rounded-2xl border border-white/15 bg-black ${className}`}>
-      <div className="relative aspect-video w-full">
-        {!failed ? (
+    <div className={`relative mx-auto w-full max-w-[280px] overflow-hidden rounded-2xl border border-white/15 bg-black ${className}`}>
+      {/* Vertical 9:16 instructional frame — matches future YAJ demo uploads */}
+      <div className="relative aspect-[9/16] max-h-[52vh] w-full">
+        {hasVideo ? (
           <video
-            key={demo.videoUrl}
+            key={demo.videoUrl!}
             ref={videoRef}
             className="h-full w-full object-cover"
-            src={demo.videoUrl}
-            poster={demo.posterUrl}
+            src={demo.videoUrl!}
+            poster={demo.posterUrl || undefined}
             muted={muted}
             loop
             playsInline
@@ -75,10 +80,12 @@ export default function ExerciseDemoPlayer({
             onError={() => setFailed(true)}
           />
         ) : (
-          <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-teal-900 to-slate-900 px-4 text-center">
-            <p className="text-sm font-bold text-teal-100">Follow the instruction below</p>
-            <p className="mt-1 text-xs text-white/60">Demo clip unavailable — Buddy will still guide you</p>
-          </div>
+          <DemoFormGuide
+            guide={demo.guide}
+            setting={demo.setting}
+            title={demo.title}
+            playing={playing}
+          />
         )}
 
         <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-2.5">
@@ -90,22 +97,24 @@ export default function ExerciseDemoPlayer({
             <span />
           )}
           <span className="rounded-full bg-teal-500/90 px-2 py-1 text-[10px] font-black text-teal-950">
-            Watch demo
+            ▶ Demo
           </span>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setMuted((m) => !m)}
-          className="absolute bottom-2 right-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur"
-          aria-label={muted ? "Unmute demo" : "Mute demo"}
-        >
-          {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-        </button>
+        {hasVideo ? (
+          <button
+            type="button"
+            onClick={() => setMuted((m) => !m)}
+            className="absolute bottom-2 right-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur"
+            aria-label={muted ? "Unmute demo" : "Mute demo"}
+          >
+            {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+          </button>
+        ) : null}
       </div>
 
       {(caption || demo.credit) && (
-        <div className="space-y-0.5 px-3 py-2.5">
+        <div className="space-y-0.5 bg-[#0c1a17] px-3 py-2.5">
           {caption ? <p className="text-sm font-semibold leading-snug text-white">{caption}</p> : null}
           {demo.credit ? <p className="text-[10px] text-white/45">{demo.credit}</p> : null}
         </div>

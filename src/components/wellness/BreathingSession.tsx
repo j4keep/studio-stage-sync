@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import ExerciseDemoPlayer from "@/components/wellness/ExerciseDemoPlayer";
-import type { DemoClip } from "@/lib/wellness";
+import type { DemoClip } from "@/lib/wellness-demos";
 import {
   canWellnessSpeak,
   speakBreathPhase,
