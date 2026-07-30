@@ -459,6 +459,33 @@ const AskYajPage = () => {
             </button>
           </div>
         )}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setImageMode((v) => !v)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-medium transition-colors ${
+              imageMode
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-card text-muted-foreground border-border hover:text-primary"
+            }`}
+          >
+            <ImagePlus className="w-3.5 h-3.5" />
+            Image
+          </button>
+          <button
+            onClick={() => {
+              if (speakReplies) stopSpeaking();
+              setSpeakReplies((v) => !v);
+            }}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-medium transition-colors ${
+              speakReplies
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-card text-muted-foreground border-border hover:text-primary"
+            }`}
+          >
+            <Volume2 className="w-3.5 h-3.5" />
+            Voice replies
+          </button>
+        </div>
         <div className="flex items-end gap-2 bg-card border border-border rounded-2xl px-2 py-2">
           <input
             ref={fileInputRef}
@@ -475,12 +502,38 @@ const AskYajPage = () => {
           >
             <Paperclip className="w-4 h-4" />
           </button>
+          <button
+            onClick={toggleRecording}
+            disabled={isLoading || isTranscribing}
+            className={`w-8 h-8 rounded-full border flex items-center justify-center disabled:opacity-40 transition-colors shrink-0 ${
+              isRecording
+                ? "bg-destructive text-destructive-foreground border-destructive animate-pulse"
+                : "bg-card border-border text-muted-foreground hover:text-primary"
+            }`}
+            title={isRecording ? "Stop and send" : "Talk to YAJ Buddy"}
+          >
+            {isTranscribing ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : isRecording ? (
+              <Square className="w-3.5 h-3.5" />
+            ) : (
+              <Mic className="w-4 h-4" />
+            )}
+          </button>
           <textarea
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={audioFile ? "Add a note (optional)..." : "Ask YAJ Buddy anything..."}
+            placeholder={
+              isRecording
+                ? "Listening… tap stop when you're done"
+                : imageMode
+                  ? "Describe the image you want..."
+                  : audioFile
+                    ? "Add a note (optional)..."
+                    : "Ask YAJ Buddy anything..."
+            }
             rows={1}
             className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground resize-none outline-none max-h-24"
             style={{ minHeight: "24px" }}
