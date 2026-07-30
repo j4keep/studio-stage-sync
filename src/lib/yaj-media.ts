@@ -270,11 +270,21 @@ export function unlockYajAudio(): void {
   }
 }
 
-/** Play a data URL through the unlocked element. Resolves when playback ends. */
-export function playYajAudio(src: string, onEnd?: () => void): HTMLAudioElement {
+export type PlayYajAudioOptions = {
+  playbackRate?: number;
+  muted?: boolean;
+};
+
+/** Play a data URL through the unlocked element. */
+export function playYajAudio(
+  src: string,
+  onEnd?: () => void,
+  opts: PlayYajAudioOptions = {},
+): HTMLAudioElement {
   const el = getSharedAudio();
   el.pause();
-  el.muted = false;
+  el.muted = opts.muted === true;
+  el.playbackRate = opts.playbackRate && opts.playbackRate > 0 ? opts.playbackRate : 1;
   el.src = src;
   el.currentTime = 0;
   el.onended = () => onEnd?.();
@@ -283,11 +293,39 @@ export function playYajAudio(src: string, onEnd?: () => void): HTMLAudioElement 
   return el;
 }
 
+/** Promise form of playYajAudio — resolves when the clip finishes or errors. */
+export function playYajAudioAsync(src: string, opts: PlayYajAudioOptions = {}): Promise<void> {
+  return new Promise((resolve) => {
+    playYajAudio(src, () => resolve(), opts);
+  });
+}
+
+export function pauseYajAudio(): void {
+  sharedAudio?.pause();
+}
+
+export function resumeYajAudio(): void {
+  if (!sharedAudio) return;
+  void sharedAudio.play().catch(() => undefined);
+}
+
 export function stopYajAudio(): void {
   if (!sharedAudio) return;
   sharedAudio.onended = null;
   sharedAudio.pause();
+  sharedAudio.currentTime = 0;
 }
+
+/** OpenAI-style voices available through yaj-voice / gpt-4o-mini-tts. */
+export const YAJ_TTS_VOICES = [
+  { id: "nova", label: "Nova", blurb: "Warm & clear" },
+  { id: "coral", label: "Coral", blurb: "Soft coach" },
+  { id: "shimmer", label: "Shimmer", blurb: "Bright & kind" },
+  { id: "alloy", label: "Alloy", blurb: "Balanced" },
+  { id: "sage", label: "Sage", blurb: "Calm guide" },
+] as const;
+
+export type YajTtsVoiceId = (typeof YAJ_TTS_VOICES)[number]["id"];
 
 /** Open the device camera for YAJ voice vision (video only — mic stays separate). */
 export async function acquireYajCameraStream(

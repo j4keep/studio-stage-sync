@@ -2,22 +2,21 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
-import WorkoutTimer from "@/components/wellness/WorkoutTimer";
-import { MOVE_ROUTINES, moveStepText, patchToday } from "@/lib/wellness";
+import MoveCoachSession from "@/components/wellness/MoveCoachSession";
+import { COACH_ROUTINES, getCoachRoutine } from "@/lib/wellness-move-coach";
+import { patchToday } from "@/lib/wellness";
 
 export default function WellnessMovePage() {
   const nav = useNavigate();
   const [params] = useSearchParams();
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [sessionNonce, setSessionNonce] = useState(0);
 
-  const active = useMemo(
-    () => MOVE_ROUTINES.find((r) => r.id === activeId) || null,
-    [activeId],
-  );
+  const active = useMemo(() => getCoachRoutine(activeId), [activeId]);
 
   useEffect(() => {
     const start = params.get("start");
-    if (start && MOVE_ROUTINES.some((r) => r.id === start)) setActiveId(start);
+    if (start && COACH_ROUTINES.some((r) => r.id === start)) setActiveId(start);
   }, [params]);
 
   return (
@@ -37,7 +36,9 @@ export default function WellnessMovePage() {
             <ArrowLeft className="h-4 w-4" />
           </button>
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-teal-700">Approachable movement</p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-teal-700">
+              Personal AI coach
+            </p>
             <h1 className="text-lg font-black">Move</h1>
           </div>
         </div>
@@ -45,47 +46,49 @@ export default function WellnessMovePage() {
 
       <div className="relative space-y-4 px-4 pt-5">
         <p className="text-sm text-stone-600">
-          Short, no-equipment routines with YAJ voice coaching. Pause or tap Next anytime.
+          Illustrated steps with YAJ’s natural voice — not a bare countdown timer. Follow the card,
+          listen, hold, then auto-advance.
         </p>
-        {MOVE_ROUTINES.map((r) => (
+        {COACH_ROUTINES.map((r) => (
           <button
             key={r.id}
             type="button"
-            onClick={() => setActiveId(r.id)}
+            onClick={() => {
+              setActiveId(r.id);
+              setSessionNonce((n) => n + 1);
+            }}
             className="w-full rounded-[1.4rem] border border-stone-200/80 bg-white/90 p-4 text-left shadow-sm active:scale-[0.99]"
           >
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-base font-black">{r.title}</p>
                 <p className="mt-1 text-xs capitalize text-stone-500">
-                  {r.level} · {r.kind} · {r.minutes} min
+                  {r.level} · {r.kind} · {r.minutes} min · {r.steps.length} steps
                 </p>
-                <p className="mt-1 text-[11px] font-semibold text-teal-700">YAJ voice · Pause / Next</p>
+                <p className="mt-1 text-[11px] font-semibold text-teal-700">
+                  Animated cards · YAJ coach voice · Auto-advance
+                </p>
               </div>
               <span className="rounded-full bg-teal-100 px-2.5 py-1 text-[11px] font-bold text-teal-800">
                 Start
               </span>
             </div>
-            <ul className="mt-3 space-y-1">
-              {r.steps.slice(0, 3).map((s, i) => (
-                <li key={`${i}-${moveStepText(s)}`} className="text-xs text-stone-500">
-                  · {moveStepText(s)}
+            <p className="mt-2 text-xs text-stone-500">{r.blurb}</p>
+            <ul className="mt-2 space-y-1">
+              {r.steps.slice(0, 3).map((s) => (
+                <li key={s.id} className="text-xs text-stone-500">
+                  · {s.title}
                 </li>
               ))}
             </ul>
           </button>
         ))}
-        <p className="text-[11px] text-stone-500">
-          YAJ tells you what to do and how long to hold. Visual demos can be added later.
-        </p>
       </div>
 
       {active && (
-        <WorkoutTimer
-          title={active.title}
-          minutes={active.minutes}
-          steps={active.steps}
-          kind={active.kind}
+        <MoveCoachSession
+          key={`${active.id}-${sessionNonce}`}
+          routine={active}
           onClose={() => setActiveId(null)}
           onProgress={(mins) => {
             patchToday((d) => {
@@ -93,8 +96,10 @@ export default function WellnessMovePage() {
             });
             toast.success(`${mins} min movement logged`);
           }}
-          onComplete={() => {
-            toast.success("Workout complete — nice work");
+          onPickAnother={() => setActiveId(null)}
+          onHome={() => {
+            setActiveId(null);
+            nav("/wellness");
           }}
         />
       )}

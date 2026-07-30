@@ -43,7 +43,7 @@ serve(async (req) => {
         voice: typeof voice === "string" && voice ? voice : "alloy",
         response_format: "mp3",
         instructions:
-          'Warm, friendly, natural and conversational — like a supportive creative friend. Always pronounce the name "Yaj" as a single word that rhymes with "badge" (without the b). Never spell it out as Y-A-J or say "Y.A.J."',
+          'Warm, friendly, natural and conversational — like a supportive wellness coach and creative friend. Encouraging, never robotic or GPS-like. Always pronounce the name "Yaj" as a single word that rhymes with "badge" (without the b). Never spell it out as Y-A-J or say "Y.A.J."',
       }),
     });
 
