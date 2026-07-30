@@ -381,21 +381,18 @@ export type Database = {
       }
       conversations: {
         Row: {
-          context: string | null
           created_at: string
           created_by: string | null
           id: string
           updated_at: string
         }
         Insert: {
-          context?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
           updated_at?: string
         }
         Update: {
-          context?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -813,7 +810,6 @@ export type Database = {
         Row: {
           benefits: string[] | null
           category: string
-          cover_image_url: string | null
           created_at: string
           deadline: string | null
           description: string
@@ -835,12 +831,10 @@ export type Database = {
           title: string
           updated_at: string
           video_url: string | null
-          visibility: string
         }
         Insert: {
           benefits?: string[] | null
           category?: string
-          cover_image_url?: string | null
           created_at?: string
           deadline?: string | null
           description: string
@@ -862,12 +856,10 @@ export type Database = {
           title: string
           updated_at?: string
           video_url?: string | null
-          visibility?: string
         }
         Update: {
           benefits?: string[] | null
           category?: string
-          cover_image_url?: string | null
           created_at?: string
           deadline?: string | null
           description?: string
@@ -889,7 +881,6 @@ export type Database = {
           title?: string
           updated_at?: string
           video_url?: string | null
-          visibility?: string
         }
         Relationships: []
       }
@@ -1178,7 +1169,6 @@ export type Database = {
           quantity: number
           seller_id: string
           shipping: boolean
-          sold_to: string | null
           state: string | null
           status: string
           subcategory: string | null
@@ -1214,7 +1204,6 @@ export type Database = {
           quantity?: number
           seller_id: string
           shipping?: boolean
-          sold_to?: string | null
           state?: string | null
           status?: string
           subcategory?: string | null
@@ -1250,7 +1239,6 @@ export type Database = {
           quantity?: number
           seller_id?: string
           shipping?: boolean
-          sold_to?: string | null
           state?: string | null
           status?: string
           subcategory?: string | null
