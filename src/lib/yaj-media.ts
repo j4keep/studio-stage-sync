@@ -103,8 +103,18 @@ function blobToDataUrl(blob: Blob): Promise<string> {
 
 export type MicRecorder = { stop: () => Promise<string | null>; cancel: () => void };
 
+export type MicOptions = {
+  /** Called once when the speaker has clearly stopped talking. */
+  onSilence?: () => void;
+  /** How long of a quiet gap counts as "done talking" (ms). */
+  silenceMs?: number;
+  /** Live 0..1 loudness, for visualizers. */
+  onLevel?: (level: number) => void;
+};
+
 /** Start recording the mic. Resolves with a recorder whose stop() returns a WAV data URL. */
-export async function startMicRecording(): Promise<MicRecorder> {
+export async function startMicRecording(options: MicOptions = {}): Promise<MicRecorder> {
+  const { onSilence, silenceMs = 1300, onLevel } = options;
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   const AudioCtx: typeof AudioContext =
     (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext ?? window.AudioContext;
@@ -113,11 +123,34 @@ export async function startMicRecording(): Promise<MicRecorder> {
   const source = ctx.createMediaStreamSource(stream);
   const node = ctx.createScriptProcessor(4096, 1, 1);
   const chunks: Float32Array[] = [];
-  node.onaudioprocess = (e) => chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+  let heardSpeech = false;
+  let quietSince = 0;
+  let silenceFired = false;
+
+  node.onaudioprocess = (e) => {
+    const data = e.inputBuffer.getChannelData(0);
+    chunks.push(new Float32Array(data));
+    let sum = 0;
+    for (let i = 0; i < data.length; i++) sum += data[i] * data[i];
+    const rms = Math.sqrt(sum / data.length);
+    onLevel?.(Math.min(1, rms * 8));
+    const now = performance.now();
+    if (rms > 0.02) {
+      heardSpeech = true;
+      quietSince = 0;
+    } else if (heardSpeech) {
+      if (!quietSince) quietSince = now;
+      else if (!silenceFired && now - quietSince > silenceMs) {
+        silenceFired = true;
+        onSilence?.();
+      }
+    }
+  };
   source.connect(node);
   node.connect(ctx.destination);
 
   const teardown = () => {
+    node.onaudioprocess = null;
     try { node.disconnect(); } catch { /* ignore */ }
     try { source.disconnect(); } catch { /* ignore */ }
     stream.getTracks().forEach((t) => t.stop());
@@ -138,3 +171,56 @@ export async function startMicRecording(): Promise<MicRecorder> {
     },
   };
 }
+
+// ---------------------------------------------------------------------------
+// Shared playback element — unlocked by a user gesture so iOS lets us autoplay
+// replies later in the conversation.
+// ---------------------------------------------------------------------------
+
+let sharedAudio: HTMLAudioElement | null = null;
+
+function getSharedAudio(): HTMLAudioElement {
+  if (!sharedAudio) {
+    sharedAudio = new Audio();
+    sharedAudio.preload = "auto";
+  }
+  return sharedAudio;
+}
+
+/** Call inside a click/tap handler to grant playback permission for later replies. */
+export function unlockYajAudio(): void {
+  const el = getSharedAudio();
+  try {
+    el.muted = true;
+    el.src =
+      "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAgD4AAAB9AAACABAAZGF0YQAAAAA=";
+    void el.play().then(() => {
+      el.pause();
+      el.muted = false;
+    }).catch(() => {
+      el.muted = false;
+    });
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Play a data URL through the unlocked element. Resolves when playback ends. */
+export function playYajAudio(src: string, onEnd?: () => void): HTMLAudioElement {
+  const el = getSharedAudio();
+  el.pause();
+  el.muted = false;
+  el.src = src;
+  el.currentTime = 0;
+  el.onended = () => onEnd?.();
+  el.onerror = () => onEnd?.();
+  void el.play().catch(() => onEnd?.());
+  return el;
+}
+
+export function stopYajAudio(): void {
+  if (!sharedAudio) return;
+  sharedAudio.onended = null;
+  sharedAudio.pause();
+}
+
