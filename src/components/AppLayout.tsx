@@ -119,7 +119,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
               className="relative flex h-9 w-9 items-center justify-center rounded-full bg-muted"
               aria-label="Ask YAJ Buddy"
             >
-              <YajBuddyIcon className="w-4.5 h-4.5" active={location.pathname === "/ask-yaj"} />
+              <YajBuddyIcon className="h-5 w-5" active={location.pathname === "/ask-yaj"} />
               {!isPro && (
                 <span className="absolute -right-0.5 -top-0.5 rounded-full bg-primary px-1 py-0.5 text-[6px] font-bold leading-none text-primary-foreground">
                   PRO
@@ -185,7 +185,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
             className="relative flex h-9 w-9 items-center justify-center rounded-full bg-muted"
             aria-label="Ask YAJ Buddy"
           >
-            <YajBuddyIcon className="w-4.5 h-4.5" active={location.pathname === "/ask-yaj"} />
+            <YajBuddyIcon className="h-5 w-5" active={location.pathname === "/ask-yaj"} />
             {!isPro && (
               <span className="absolute -right-0.5 -top-0.5 rounded-full bg-primary px-1 py-0.5 text-[6px] font-bold leading-none text-primary-foreground">
                 PRO
