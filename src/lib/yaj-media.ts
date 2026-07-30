@@ -113,17 +113,65 @@ export type MicOptions = {
   silenceMs?: number;
   /** Live 0..1 loudness, for visualizers. */
   onLevel?: (level: number) => void;
+  /** Reuse a stream acquired during a user gesture (required on some iOS builds). */
+  existingStream?: MediaStream | null;
 };
+
+/** Human-readable mic failure — only call it "blocked" for real permission denials. */
+export function describeMicError(err: unknown): string {
+  const name = err && typeof err === "object" && "name" in err ? String((err as { name?: string }).name) : "";
+  const msg = err instanceof Error ? err.message : "";
+
+  if (name === "NotAllowedError" || /permission|denied|not allowed/i.test(msg)) {
+    return "Microphone permission was denied. Enable it for this site in your browser settings, then tap Try again.";
+  }
+  if (name === "NotFoundError" || /not found|no device/i.test(msg)) {
+    return "No microphone was found on this device.";
+  }
+  if (name === "NotReadableError" || /in use|readable|track/i.test(msg)) {
+    return "Your microphone is busy in another app or tab. Close it, then tap Try again.";
+  }
+  if (name === "OverconstrainedError") {
+    return "Couldn't match this device's microphone settings. Tap Try again.";
+  }
+  if (name === "SecurityError") {
+    return "Microphone needs a secure (HTTPS) connection.";
+  }
+  if (/AudioContext|audio context/i.test(msg)) {
+    return "Couldn't start audio capture. Tap Try again.";
+  }
+  return msg || "Couldn't start the microphone. Tap Try again.";
+}
+
+/** Open the mic during a click/tap so permission stays tied to a user gesture. */
+export async function acquireMicStream(): Promise<MediaStream> {
+  return navigator.mediaDevices.getUserMedia({
+    audio: {
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+    },
+  });
+}
 
 /** Start recording the mic. Resolves with a recorder whose stop() returns a WAV data URL. */
 export async function startMicRecording(options: MicOptions = {}): Promise<MicRecorder> {
-  const { onSilence, silenceMs = 1300, onLevel } = options;
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  const { onSilence, silenceMs = 1300, onLevel, existingStream } = options;
+
+  const stream =
+    existingStream && existingStream.active && existingStream.getAudioTracks().some((t) => t.readyState === "live")
+      ? existingStream
+      : await acquireMicStream();
+
   const AudioCtx: typeof AudioContext =
     (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext ?? window.AudioContext;
   const ctx = new AudioCtx();
   if (ctx.state === "suspended") await ctx.resume();
   const source = ctx.createMediaStreamSource(stream);
+  // ScriptProcessor must connect somewhere; use a muted gain so we don't play the mic
+  // through speakers (echo) or trip browser autoplay/permission quirks.
+  const mute = ctx.createGain();
+  mute.gain.value = 0;
   const node = ctx.createScriptProcessor(4096, 1, 1);
   const chunks: Float32Array[] = [];
   let heardSpeech = false;
@@ -150,12 +198,26 @@ export async function startMicRecording(options: MicOptions = {}): Promise<MicRe
     }
   };
   source.connect(node);
-  node.connect(ctx.destination);
+  node.connect(mute);
+  mute.connect(ctx.destination);
 
   const teardown = () => {
     node.onaudioprocess = null;
-    try { node.disconnect(); } catch { /* ignore */ }
-    try { source.disconnect(); } catch { /* ignore */ }
+    try {
+      node.disconnect();
+    } catch {
+      /* ignore */
+    }
+    try {
+      mute.disconnect();
+    } catch {
+      /* ignore */
+    }
+    try {
+      source.disconnect();
+    } catch {
+      /* ignore */
+    }
     stream.getTracks().forEach((t) => t.stop());
   };
 

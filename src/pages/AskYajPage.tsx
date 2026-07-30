@@ -13,6 +13,8 @@ import {
   playYajAudio,
   stopYajAudio,
   unlockYajAudio,
+  acquireMicStream,
+  describeMicError,
   type MicRecorder,
 } from "@/lib/yaj-media";
 
@@ -77,6 +79,7 @@ const AskYajPage = () => {
   const [imageMode, setImageMode] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [voiceMode, setVoiceMode] = useState(false);
+  const [voiceStream, setVoiceStream] = useState<MediaStream | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
@@ -153,10 +156,10 @@ const AskYajPage = () => {
       unlockYajAudio();
       recorderRef.current = await startMicRecording();
       setIsRecording(true);
-    } catch {
+    } catch (e) {
       toast({
-        title: "Microphone blocked",
-        description: "Allow microphone access to talk with YAJ.",
+        title: "Microphone",
+        description: describeMicError(e),
         variant: "destructive",
       });
     }
@@ -543,7 +546,25 @@ const AskYajPage = () => {
             </button>
           ) : (
             <button
-              onClick={() => { unlockYajAudio(); stopSpeaking(); setVoiceMode(true); }}
+              onClick={() => {
+                void (async () => {
+                  unlockYajAudio();
+                  stopSpeaking();
+                  // Acquire mic in this tap so iOS/Safari don't treat a later
+                  // useEffect getUserMedia as "blocked".
+                  try {
+                    const stream = await acquireMicStream();
+                    setVoiceStream(stream);
+                    setVoiceMode(true);
+                  } catch (e) {
+                    toast({
+                      title: "Microphone",
+                      description: describeMicError(e),
+                      variant: "destructive",
+                    });
+                  }
+                })();
+              }}
               className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground shrink-0"
               aria-label="Start voice conversation"
             >
@@ -556,7 +577,12 @@ const AskYajPage = () => {
       {voiceMode && (
         <YajVoiceMode
           onSend={(text) => sendMessage(text)}
-          onClose={() => setVoiceMode(false)}
+          initialStream={voiceStream}
+          onClose={() => {
+            setVoiceMode(false);
+            voiceStream?.getTracks().forEach((t) => t.stop());
+            setVoiceStream(null);
+          }}
         />
       )}
     </div>
