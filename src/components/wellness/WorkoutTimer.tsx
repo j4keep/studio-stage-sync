@@ -41,7 +41,6 @@ export default function WorkoutTimer({
   onClose,
   voiceGuide = true,
 }: Props) {
-  const figure = figureProp ?? getWellnessFigure();
   const total = Math.max(60, minutes * 60);
   const stepCount = Math.max(1, steps.length);
   const secondsPerStep = Math.max(8, Math.floor(total / stepCount));
@@ -51,6 +50,10 @@ export default function WorkoutTimer({
   const [running, setRunning] = useState(true);
   const [stepIdx, setStepIdx] = useState(0);
   const [voiceOn, setVoiceOn] = useState(() => voiceGuide && canWellnessSpeak());
+  // Always read latest Man/Woman profile so guide cards match the dashboard
+  const [liveFigure, setLiveFigure] = useState<WellnessFigure>(
+    () => figureProp ?? getWellnessFigure(),
+  );
   const lastSpokenStep = useRef<number>(-1);
   const completedRef = useRef(false);
   const loggedRef = useRef(false);
@@ -58,6 +61,10 @@ export default function WorkoutTimer({
   const speakQueueBusy = useRef(false);
   const pendingSteps = useRef<number[]>([]);
   const stepIdxRef = useRef(0);
+
+  useEffect(() => {
+    setLiveFigure(figureProp ?? getWellnessFigure());
+  }, [figureProp]);
 
   const recordProgress = (full: boolean) => {
     if (loggedRef.current) return;
@@ -256,8 +263,7 @@ export default function WorkoutTimer({
           demo={demoForStep(current)}
           caption={currentText}
           stepLabel={`Step ${stepIdx + 1} / ${stepCount}`}
-          playing={running && left > 0}
-          figure={figure}
+          figure={liveFigure}
           holdSeconds={current?.holdSeconds}
           className="shrink-0 shadow-lg"
         />

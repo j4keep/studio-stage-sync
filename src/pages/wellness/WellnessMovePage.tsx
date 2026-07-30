@@ -3,13 +3,33 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import WorkoutTimer from "@/components/wellness/WorkoutTimer";
-import { getWellnessFigure, MOVE_ROUTINES, moveStepText, patchToday } from "@/lib/wellness";
+import {
+  getWellnessFigure,
+  loadWellnessState,
+  MOVE_ROUTINES,
+  moveStepText,
+  patchToday,
+  WELLNESS_UPDATED_EVENT,
+  type WellnessFigure,
+} from "@/lib/wellness";
 
 export default function WellnessMovePage() {
   const nav = useNavigate();
   const [params] = useSearchParams();
   const [activeId, setActiveId] = useState<string | null>(null);
-  const figure = getWellnessFigure();
+  const [figure, setFigure] = useState<WellnessFigure>(() => getWellnessFigure());
+
+  useEffect(() => {
+    const refresh = () => setFigure(getWellnessFigure());
+    refresh();
+    window.addEventListener(WELLNESS_UPDATED_EVENT, refresh);
+    return () => window.removeEventListener(WELLNESS_UPDATED_EVENT, refresh);
+  }, []);
+
+  // Ensure deep-links still work if profile was never set
+  useEffect(() => {
+    void loadWellnessState();
+  }, []);
 
   const active = useMemo(
     () => MOVE_ROUTINES.find((r) => r.id === activeId) || null,
