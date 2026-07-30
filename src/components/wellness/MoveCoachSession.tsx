@@ -47,7 +47,7 @@ type Props = {
 
 type Phase = "coaching" | "hold" | "finished";
 
-const LINE_PAUSE_MS = 900;
+const LINE_PAUSE_MS = 550;
 const PREFS_KEY = "yaj_move_coach_prefs_v1";
 
 type Prefs = {
@@ -96,7 +96,8 @@ function sleep(ms: number, signal: AbortSignal) {
 
 /**
  * Personal AI Move coach:
- * Illustration → YAJ OpenAI voice lines → hold countdown → next card.
+ * One linear session runner — illustration + voice stay on the same step.
+ * Never re-enters a step from stepIdx effect updates (that caused repeats).
  */
 export default function MoveCoachSession({
   routine,
@@ -115,6 +116,7 @@ export default function MoveCoachSession({
   const [paused, setPaused] = useState(false);
   const [prefs, setPrefs] = useState<Prefs>(() => loadPrefs());
   const [settingsOpen, setSettingsOpen] = useState(false);
+  /** Bumps only on manual restart / prev / skip — not on normal auto-advance. */
   const [sessionKey, setSessionKey] = useState(0);
   const [finish, setFinish] = useState<{
     minutes: number;
@@ -149,34 +151,30 @@ export default function MoveCoachSession({
       await waitWhilePaused(signal);
       if (signal.aborted) return;
       if (prefsRef.current.muted) {
-        await sleep(Math.min(2800, 900 + text.length * 35), signal);
+        await sleep(Math.min(2400, 800 + text.length * 30), signal);
         return;
       }
       const voice = prefsRef.current.voice;
       const cacheKey = `${voice}::${text}`;
-      try {
-        let src = audioCache.current.get(cacheKey);
-        if (!src) {
-          src = await synthesizeYajVoice(text, voice);
-          if (signal.aborted) return;
-          audioCache.current.set(cacheKey, src);
-        }
-        await waitWhilePaused(signal);
+      let src = audioCache.current.get(cacheKey);
+      if (!src) {
+        src = await synthesizeYajVoice(text, voice);
         if (signal.aborted) return;
-        const playPromise = playYajAudioAsync(src, { playbackRate: rate });
-        const pauseWatcher = window.setInterval(() => {
-          if (pausedRef.current) pauseYajAudio();
-          else resumeYajAudio();
-        }, 150);
-        try {
-          await playPromise;
-        } finally {
-          window.clearInterval(pauseWatcher);
-        }
-      } catch {
-        // Caption still shows if cloud TTS fails
-        await sleep(Math.min(3200, 1000 + text.length * 40), signal);
-        return;
+        audioCache.current.set(cacheKey, src);
+      }
+      await waitWhilePaused(signal);
+      if (signal.aborted) return;
+
+      // Keep pause/resume in sync without restarting finished clips.
+      const pauseWatcher = window.setInterval(() => {
+        if (signal.aborted) return;
+        if (pausedRef.current) pauseYajAudio();
+        else resumeYajAudio();
+      }, 200);
+      try {
+        await playYajAudioAsync(src, { playbackRate: rate, signal });
+      } finally {
+        window.clearInterval(pauseWatcher);
       }
       if (signal.aborted) return;
       await sleep(LINE_PAUSE_MS, signal);
@@ -217,8 +215,7 @@ export default function MoveCoachSession({
               audioCache.current.set(key, src);
             }
             if (!signal.aborted && !pausedRef.current) {
-              // Don't block the whole second on TTS for countdown digits
-              void playYajAudioAsync(src, { playbackRate: rate });
+              void playYajAudioAsync(src, { playbackRate: rate, signal });
             }
           } catch {
             /* visual countdown still runs */
@@ -248,15 +245,11 @@ export default function MoveCoachSession({
     setPhase("finished");
   }, [onProgress, routine]);
 
-  const runStep = useCallback(
+  /** Run one step's lines + hold + bridge. Does NOT change stepIdx. */
+  const runStepContent = useCallback(
     async (idx: number, signal: AbortSignal) => {
       const step = steps[idx];
-      if (!step) {
-        completeSession();
-        return;
-      }
-      setStepIdx(idx);
-      stepIdxRef.current = idx;
+      if (!step) return;
       setPhase("coaching");
       setHoldLeft(null);
       setCaption(step.lines[0] || step.title);
@@ -275,28 +268,25 @@ export default function MoveCoachSession({
         if (signal.aborted) return;
         await speak(step.afterLine, signal);
       }
-
-      if (signal.aborted) return;
-      if (idx >= steps.length - 1) {
-        await speak("Great job. Workout complete. Nice work today.", signal);
-        if (!signal.aborted) completeSession();
-      } else {
-        // Auto-advance to next illustration
-        setStepIdx(idx + 1);
-      }
     },
-    [completeSession, runHold, speak, steps],
+    [runHold, speak, steps],
   );
 
-  // Session runner — restarts when sessionKey / stepIdx jumps from controls
+  /**
+   * Linear session loop. Depends only on sessionKey so auto-advance cannot
+   * re-enter the effect and re-speak the same step.
+   */
   useEffect(() => {
     if (phase === "finished") return;
     unlockYajAudio();
     abortRef.current?.abort();
     const ac = new AbortController();
     abortRef.current = ac;
+
     void (async () => {
       try {
+        let idx = stepIdxRef.current;
+
         if (!introducedRef.current) {
           introducedRef.current = true;
           await speak(
@@ -304,7 +294,27 @@ export default function MoveCoachSession({
             ac.signal,
           );
         }
-        await runStep(stepIdx, ac.signal);
+
+        while (!ac.signal.aborted) {
+          if (idx < 0 || idx >= steps.length) {
+            if (!ac.signal.aborted) completeSession();
+            return;
+          }
+
+          setStepIdx(idx);
+          stepIdxRef.current = idx;
+          await runStepContent(idx, ac.signal);
+          if (ac.signal.aborted) return;
+
+          if (idx >= steps.length - 1) {
+            await speak("Great job. Workout complete. Nice work today.", ac.signal);
+            if (!ac.signal.aborted) completeSession();
+            return;
+          }
+
+          // Advance inside this same loop — do not bump sessionKey / re-mount effect.
+          idx += 1;
+        }
       } catch (e) {
         if (e instanceof DOMException && e.name === "AbortError") return;
         setCaption(
@@ -312,18 +322,22 @@ export default function MoveCoachSession({
         );
       }
     })();
+
     return () => {
       ac.abort();
       stopYajAudio();
     };
-    // Only re-run when step index or session restart changes
+    // sessionKey only — step changes are handled inside the loop
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stepIdx, sessionKey]);
+  }, [sessionKey]);
 
-  useEffect(() => () => {
-    abortRef.current?.abort();
-    stopYajAudio();
-  }, []);
+  useEffect(
+    () => () => {
+      abortRef.current?.abort();
+      stopYajAudio();
+    },
+    [],
+  );
 
   const updatePrefs = (patch: Partial<Prefs>) => {
     setPrefs((prev) => {
@@ -333,38 +347,36 @@ export default function MoveCoachSession({
     });
   };
 
-  const restartStep = () => {
+  const jumpToStep = (nextIdx: number) => {
     abortRef.current?.abort();
     stopYajAudio();
     setPaused(false);
     setHoldLeft(null);
+    setPhase("coaching");
+    const clamped = Math.max(0, Math.min(steps.length - 1, nextIdx));
+    stepIdxRef.current = clamped;
+    setStepIdx(clamped);
     setSessionKey((k) => k + 1);
   };
 
+  const restartStep = () => jumpToStep(stepIdxRef.current);
+
   const goPrev = () => {
-    if (stepIdx <= 0) {
+    if (stepIdxRef.current <= 0) {
       restartStep();
       return;
     }
-    abortRef.current?.abort();
-    stopYajAudio();
-    setPaused(false);
-    setHoldLeft(null);
-    setStepIdx((i) => i - 1);
-    setSessionKey((k) => k + 1);
+    jumpToStep(stepIdxRef.current - 1);
   };
 
   const goSkip = () => {
-    abortRef.current?.abort();
-    stopYajAudio();
-    setPaused(false);
-    setHoldLeft(null);
-    if (stepIdx >= steps.length - 1) {
+    if (stepIdxRef.current >= steps.length - 1) {
+      abortRef.current?.abort();
+      stopYajAudio();
       completeSession();
-    } else {
-      setStepIdx((i) => i + 1);
-      setSessionKey((k) => k + 1);
+      return;
     }
+    jumpToStep(stepIdxRef.current + 1);
   };
 
   const moodId = getTodayProgress().mood;
@@ -384,6 +396,7 @@ export default function MoveCoachSession({
           startedAt.current = Date.now();
           setFinish(null);
           setPhase("coaching");
+          stepIdxRef.current = 0;
           setStepIdx(0);
           setSessionKey((k) => k + 1);
         }}
@@ -479,7 +492,7 @@ export default function MoveCoachSession({
           caption={caption}
           breathCue={step.breathCue}
           safetyTip={step.safetyTip}
-          animating={!paused}
+          animating={!paused && phase !== "hold"}
         />
 
         {/* Progress rail */}
