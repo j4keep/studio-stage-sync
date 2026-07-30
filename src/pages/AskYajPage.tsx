@@ -306,6 +306,13 @@ const AskYajPage = () => {
           } catch { /* ignore */ }
         }
       }
+
+      if (speakRepliesRef.current && assistantSoFar.trim()) {
+        setMessages((prev) => {
+          void speak(assistantSoFar, prev.length - 1);
+          return prev;
+        });
+      }
     } catch (e: any) {
       console.error("YAJ Buddy error:", e);
       toast({ title: "Oops!", description: e.message || "Something went wrong", variant: "destructive" });
