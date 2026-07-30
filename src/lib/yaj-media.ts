@@ -293,10 +293,55 @@ export function playYajAudio(
   return el;
 }
 
-/** Promise form of playYajAudio — resolves when the clip finishes or errors. */
-export function playYajAudioAsync(src: string, opts: PlayYajAudioOptions = {}): Promise<void> {
+/** Resolves the in-flight playYajAudioAsync waiters (if any). */
+let playWaiters: Array<() => void> = [];
+
+function settlePlayWaiters() {
+  const waiters = playWaiters;
+  playWaiters = [];
+  waiters.forEach((w) => w());
+}
+
+export type PlayYajAudioAsyncOptions = PlayYajAudioOptions & {
+  /** When aborted, playback stops and the promise resolves (does not hang). */
+  signal?: AbortSignal;
+};
+
+/**
+ * Promise form of playYajAudio — resolves when the clip finishes, errors, is
+ * stopped, or the optional AbortSignal fires. Never hangs after stopYajAudio().
+ */
+export function playYajAudioAsync(src: string, opts: PlayYajAudioAsyncOptions = {}): Promise<void> {
+  const { signal, ...playOpts } = opts;
   return new Promise((resolve) => {
-    playYajAudio(src, () => resolve(), opts);
+    if (signal?.aborted) {
+      resolve();
+      return;
+    }
+
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      signal?.removeEventListener("abort", onAbort);
+      playWaiters = playWaiters.filter((w) => w !== finish);
+      resolve();
+    };
+
+    const onAbort = () => {
+      // Stop without recursively re-entering finish via settlePlayWaiters
+      if (sharedAudio) {
+        sharedAudio.onended = null;
+        sharedAudio.onerror = null;
+        sharedAudio.pause();
+        sharedAudio.currentTime = 0;
+      }
+      finish();
+    };
+
+    playWaiters.push(finish);
+    signal?.addEventListener("abort", onAbort, { once: true });
+    playYajAudio(src, finish, playOpts);
   });
 }
 
@@ -306,14 +351,25 @@ export function pauseYajAudio(): void {
 
 export function resumeYajAudio(): void {
   if (!sharedAudio) return;
+  // Never restart a finished clip — that caused coaching lines to loop.
+  if (sharedAudio.ended || sharedAudio.currentTime <= 0) return;
   void sharedAudio.play().catch(() => undefined);
 }
 
 export function stopYajAudio(): void {
-  if (!sharedAudio) return;
-  sharedAudio.onended = null;
-  sharedAudio.pause();
-  sharedAudio.currentTime = 0;
+  if (sharedAudio) {
+    sharedAudio.onended = null;
+    sharedAudio.onerror = null;
+    sharedAudio.pause();
+    sharedAudio.currentTime = 0;
+  }
+  // Unblock any awaiters so the coach session can advance or abort cleanly.
+  settlePlayWaiters();
+}
+
+/** True while the shared element is mid-clip (not ended). */
+export function isYajAudioActive(): boolean {
+  return Boolean(sharedAudio && !sharedAudio.paused && !sharedAudio.ended && sharedAudio.currentTime > 0);
 }
 
 /** OpenAI-style voices available through yaj-voice / gpt-4o-mini-tts. */
