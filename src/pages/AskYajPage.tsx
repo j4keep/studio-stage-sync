@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
-import { ArrowUp, Trash2, Paperclip, X, Music2, Mic, Square, Volume2, Loader2, ImagePlus } from "lucide-react";
+import { ArrowUp, Trash2, X, Music2, Mic, Square, Volume2, Loader2, ImagePlus, Plus, AudioLines, Paperclip } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import YajBuddyIcon from "@/components/YajBuddyIcon";
+import YajVoiceMode from "@/components/YajVoiceMode";
 import ReactMarkdown from "react-markdown";
 import {
   generateYajImage,
@@ -9,6 +10,9 @@ import {
   transcribeYajAudio,
   looksLikeImageRequest,
   startMicRecording,
+  playYajAudio,
+  stopYajAudio,
+  unlockYajAudio,
   type MicRecorder,
 } from "@/lib/yaj-media";
 
@@ -71,35 +75,31 @@ const AskYajPage = () => {
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [imageMode, setImageMode] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [voiceMode, setVoiceMode] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
-  const [speakReplies, setSpeakReplies] = useState(false);
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recorderRef = useRef<MicRecorder | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const speakRepliesRef = useRef(false);
+  const messagesRef = useRef<Msg[]>([]);
 
   useEffect(() => {
-    speakRepliesRef.current = speakReplies;
-  }, [speakReplies]);
-
-  useEffect(() => {
+    messagesRef.current = messages;
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
   useEffect(() => () => {
-    audioRef.current?.pause();
+    stopYajAudio();
     recorderRef.current?.cancel();
   }, []);
 
   const handlePickAudio = () => fileInputRef.current?.click();
 
   const stopSpeaking = () => {
-    audioRef.current?.pause();
-    audioRef.current = null;
+    stopYajAudio();
     setSpeakingIndex(null);
   };
 
@@ -110,14 +110,11 @@ const AskYajPage = () => {
     }
     stopSpeaking();
     if (!text.trim()) return;
+    unlockYajAudio();
     setSpeakingIndex(index);
     try {
       const src = await synthesizeYajVoice(text);
-      const el = new Audio(src);
-      audioRef.current = el;
-      el.onended = () => setSpeakingIndex((cur) => (cur === index ? null : cur));
-      el.onerror = () => setSpeakingIndex((cur) => (cur === index ? null : cur));
-      await el.play();
+      playYajAudio(src, () => setSpeakingIndex((cur) => (cur === index ? null : cur)));
     } catch (e: any) {
       setSpeakingIndex(null);
       toast({ title: "Voice unavailable", description: e.message || "Try again.", variant: "destructive" });
@@ -142,7 +139,6 @@ const AskYajPage = () => {
           toast({ title: "Didn't catch that", description: "Try speaking a bit closer to the mic." });
           return;
         }
-        setSpeakReplies(true);
         await sendMessage(text);
       } catch (e: any) {
         toast({ title: "Voice input failed", description: e.message || "Try again.", variant: "destructive" });
@@ -154,6 +150,7 @@ const AskYajPage = () => {
 
     try {
       stopSpeaking();
+      unlockYajAudio();
       recorderRef.current = await startMicRecording();
       setIsRecording(true);
     } catch {
@@ -202,12 +199,12 @@ const AskYajPage = () => {
     }
   };
 
-  const sendMessage = async (text: string) => {
-    if ((!text.trim() && !audioFile) || isLoading) return;
+  const sendMessage = async (text: string): Promise<string> => {
+    if ((!text.trim() && !audioFile) || isLoading) return "";
 
     if (!audioFile && (imageMode || looksLikeImageRequest(text))) {
       await generateImage(text.trim());
-      return;
+      return "";
     }
 
     let userContent: string | ContentPart[];
@@ -226,7 +223,7 @@ const AskYajPage = () => {
     }
 
     const userMsg: Msg = { role: "user", content: userContent, audioName };
-    const allMessages = [...messages, userMsg];
+    const allMessages = [...messagesRef.current, userMsg];
     setMessages(allMessages);
     setInput("");
     setAudioFile(null);
@@ -307,15 +304,14 @@ const AskYajPage = () => {
         }
       }
 
-      if (speakRepliesRef.current && assistantSoFar.trim()) {
-        void speak(assistantSoFar, allMessages.length);
-      }
+      return assistantSoFar;
     } catch (e: any) {
       console.error("YAJ Buddy error:", e);
       toast({ title: "Oops!", description: e.message || "Something went wrong", variant: "destructive" });
       if (assistantSoFar === "") {
         setMessages((prev) => prev.slice(0, -1));
       }
+      return assistantSoFar;
     } finally {
       setIsLoading(false);
     }
@@ -459,33 +455,33 @@ const AskYajPage = () => {
             </button>
           </div>
         )}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setImageMode((v) => !v)}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-medium transition-colors ${
-              imageMode
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-card text-muted-foreground border-border hover:text-primary"
-            }`}
-          >
-            <ImagePlus className="w-3.5 h-3.5" />
-            Image
-          </button>
-          <button
-            onClick={() => {
-              if (speakReplies) stopSpeaking();
-              setSpeakReplies((v) => !v);
-            }}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-medium transition-colors ${
-              speakReplies
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-card text-muted-foreground border-border hover:text-primary"
-            }`}
-          >
-            <Volume2 className="w-3.5 h-3.5" />
-            Voice replies
-          </button>
-        </div>
+        {imageMode && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/10 border border-primary/30 text-xs text-foreground">
+            <ImagePlus className="w-3.5 h-3.5 text-primary" />
+            <span className="flex-1">Image mode — describe what to create</span>
+            <button onClick={() => setImageMode(false)} className="text-muted-foreground hover:text-destructive">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+        {menuOpen && (
+          <div className="rounded-2xl bg-card border border-border overflow-hidden">
+            <button
+              onClick={() => { setMenuOpen(false); setImageMode(true); inputRef.current?.focus(); }}
+              className="w-full flex items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-muted transition-colors"
+            >
+              <ImagePlus className="w-4 h-4 text-muted-foreground" />
+              Create an image
+            </button>
+            <button
+              onClick={() => { setMenuOpen(false); handlePickAudio(); }}
+              className="w-full flex items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-muted transition-colors border-t border-border"
+            >
+              <Paperclip className="w-4 h-4 text-muted-foreground" />
+              Attach an audio clip
+            </button>
+          </div>
+        )}
         <div className="flex items-end gap-2 bg-card border border-border rounded-2xl px-2 py-2">
           <input
             ref={fileInputRef}
@@ -495,30 +491,12 @@ const AskYajPage = () => {
             onChange={handleAudioChosen}
           />
           <button
-            onClick={handlePickAudio}
+            onClick={() => setMenuOpen((v) => !v)}
             disabled={isLoading}
-            className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-primary disabled:opacity-40 transition-colors shrink-0"
-            title="Attach an audio clip"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-primary disabled:opacity-40 transition-colors shrink-0"
+            aria-label="More options"
           >
-            <Paperclip className="w-4 h-4" />
-          </button>
-          <button
-            onClick={toggleRecording}
-            disabled={isLoading || isTranscribing}
-            className={`w-8 h-8 rounded-full border flex items-center justify-center disabled:opacity-40 transition-colors shrink-0 ${
-              isRecording
-                ? "bg-destructive text-destructive-foreground border-destructive animate-pulse"
-                : "bg-card border-border text-muted-foreground hover:text-primary"
-            }`}
-            title={isRecording ? "Stop and send" : "Talk to YAJ Buddy"}
-          >
-            {isTranscribing ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : isRecording ? (
-              <Square className="w-3.5 h-3.5" />
-            ) : (
-              <Mic className="w-4 h-4" />
-            )}
+            <Plus className={`w-5 h-5 transition-transform ${menuOpen ? "rotate-45" : ""}`} />
           </button>
           <textarea
             ref={inputRef}
@@ -539,14 +517,48 @@ const AskYajPage = () => {
             style={{ minHeight: "24px" }}
           />
           <button
-            onClick={() => sendMessage(input)}
-            disabled={(!input.trim() && !audioFile) || isLoading}
-            className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center text-primary-foreground disabled:opacity-40 transition-opacity shrink-0"
+            onClick={toggleRecording}
+            disabled={isLoading || isTranscribing}
+            className={`w-8 h-8 rounded-full flex items-center justify-center disabled:opacity-40 transition-colors shrink-0 ${
+              isRecording ? "bg-destructive text-destructive-foreground animate-pulse" : "text-muted-foreground hover:text-primary"
+            }`}
+            aria-label={isRecording ? "Stop and send" : "Dictate a message"}
           >
-            <ArrowUp className="w-4 h-4" />
+            {isTranscribing ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : isRecording ? (
+              <Square className="w-3.5 h-3.5" />
+            ) : (
+              <Mic className="w-4 h-4" />
+            )}
           </button>
+          {input.trim() || audioFile ? (
+            <button
+              onClick={() => sendMessage(input)}
+              disabled={isLoading}
+              className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center text-primary-foreground disabled:opacity-40 transition-opacity shrink-0"
+              aria-label="Send"
+            >
+              <ArrowUp className="w-4 h-4" />
+            </button>
+          ) : (
+            <button
+              onClick={() => { unlockYajAudio(); stopSpeaking(); setVoiceMode(true); }}
+              className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground shrink-0"
+              aria-label="Start voice conversation"
+            >
+              <AudioLines className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
+
+      {voiceMode && (
+        <YajVoiceMode
+          onSend={(text) => sendMessage(text)}
+          onClose={() => setVoiceMode(false)}
+        />
+      )}
     </div>
   );
 };
