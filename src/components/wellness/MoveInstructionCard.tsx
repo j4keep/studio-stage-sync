@@ -17,8 +17,8 @@ type Props = {
 };
 
 /**
- * Exercise card: YAJ Wellness Coach avatar + coaching caption + cues.
- * Avatar uses nested skeletal joints (connected body — not stick figures).
+ * Exercise card: YAJ Wellness Coach mascot + coaching caption + cues.
+ * Mascot uses complete pose images that crossfade — never detached limbs.
  */
 export default function MoveInstructionCard({
   illustration,
