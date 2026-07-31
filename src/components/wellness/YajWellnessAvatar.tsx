@@ -8,13 +8,13 @@ type Props = {
   skinTone?: WellnessSkinTone;
   playing?: boolean;
   className?: string;
-  /** When true (e.g. side-reach second half), show the opposite-side still. */
+  /** Side-reach second half: show the opposite-side library card. */
   alternateSide?: boolean;
 };
 
 /**
- * Slideshow card art: one still of the Lovable coach per maneuver.
- * No automated video — picture swaps with each coaching step.
+ * Stretch-library slideshow: YAJ mascot card for the current coaching step.
+ * No video / no automated motion — picture only. Voice is unchanged.
  */
 export default function YajWellnessAvatar({
   move,
@@ -34,7 +34,7 @@ export default function YajWellnessAvatar({
         src={src}
         alt=""
         draggable={false}
-        className="h-full w-full object-contain"
+        className="h-full w-full object-contain p-1"
       />
     </div>
   );
