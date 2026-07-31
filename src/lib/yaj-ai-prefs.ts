@@ -122,7 +122,7 @@ export function getYajAiAutoSpeakReplies(): boolean {
 
 export function getYajAiVoiceLabel(): string {
   const id = getYajAiVoice();
-  return YAJ_TTS_VOICES.find((v) => v.id === id)?.label ?? "Nova";
+  return YAJ_TTS_VOICES.find((v) => v.id === id)?.label ?? "Solace";
 }
 
 export function loadYajAiActivity(): YajAiActivity {
