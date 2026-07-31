@@ -144,10 +144,10 @@ export const COACH_ROUTINES: CoachRoutine[] = [
           "Stand tall with soft knees and relaxed shoulders.",
           "Imagine a string lifting the crown of your head.",
           "Take one easy breath in and out.",
+          "When you're ready, we'll start walking.",
         ],
         breathCue: "One easy breath in and out",
         safetyTip: "Soft knees — never lock the joints",
-        afterLine: "When you're ready, we'll start walking.",
       },
       {
         id: "walk",
