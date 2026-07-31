@@ -372,19 +372,18 @@ export function isYajAudioActive(): boolean {
   return Boolean(sharedAudio && !sharedAudio.paused && !sharedAudio.ended && sharedAudio.currentTime > 0);
 }
 
-/** OpenAI-style voices available through yaj-voice / gpt-4o-mini-tts. */
-/** Display names match the in-app voice picker; ids map to OpenAI TTS voices. */
+/** YAJ-branded display names; ids map to OpenAI TTS voices under the hood. */
 export const YAJ_TTS_VOICES = [
-  { id: "nova", label: "Nova", blurb: "Warm & clear" },
-  { id: "coral", label: "Orbit", blurb: "Soft coach" },
-  { id: "shimmer", label: "Flare", blurb: "Bright & kind" },
-  { id: "alloy", label: "Glow", blurb: "Balanced" },
-  { id: "sage", label: "Capella", blurb: "Calm guide" },
-  { id: "echo", label: "Eclipse", blurb: "Clear & steady" },
-  { id: "fable", label: "Pegasus", blurb: "Storyteller" },
-  { id: "onyx", label: "Ursa", blurb: "Deep & calm" },
-  { id: "ash", label: "Vega", blurb: "Soft spoken" },
-  { id: "ballad", label: "Dipper", blurb: "Warm narrative" },
+  { id: "nova", label: "Solace", blurb: "Warm & clear" },
+  { id: "coral", label: "Harbor", blurb: "Soft coach" },
+  { id: "shimmer", label: "Lumen", blurb: "Bright & kind" },
+  { id: "alloy", label: "Crest", blurb: "Balanced" },
+  { id: "sage", label: "Meadow", blurb: "Calm guide" },
+  { id: "echo", label: "Anchor", blurb: "Clear & steady" },
+  { id: "fable", label: "Lyric", blurb: "Storyteller" },
+  { id: "onyx", label: "Ember", blurb: "Deep & calm" },
+  { id: "ash", label: "Mist", blurb: "Soft spoken" },
+  { id: "ballad", label: "Chorus", blurb: "Warm narrative" },
 ] as const;
 
 export type YajTtsVoiceId = (typeof YAJ_TTS_VOICES)[number]["id"];
