@@ -1,61 +1,115 @@
 import type { MoveIllustrationId } from "@/lib/wellness-move-coach";
+import type { WellnessFigure } from "@/lib/wellness";
 
-import shouldersRoll from "@/assets/wellness/stretch-cards/shoulders_roll.webp";
-import neckLeft from "@/assets/wellness/stretch-cards/neck_left.webp";
-import neckRight from "@/assets/wellness/stretch-cards/neck_right.webp";
-import armsOverhead from "@/assets/wellness/stretch-cards/arms_overhead.webp";
-import forwardFold from "@/assets/wellness/stretch-cards/forward_fold.webp";
-import hipCircles from "@/assets/wellness/stretch-cards/hip_circles.webp";
-import standTall from "@/assets/wellness/stretch-cards/stand_tall.webp";
-import walk from "@/assets/wellness/stretch-cards/walk.webp";
-import armSwing from "@/assets/wellness/stretch-cards/arm_swing.webp";
-import briskWalk from "@/assets/wellness/stretch-cards/brisk_walk.webp";
-import coolDown from "@/assets/wellness/stretch-cards/cool_down.webp";
-import seatedMarch from "@/assets/wellness/stretch-cards/seated_march.webp";
-import seatedTwist from "@/assets/wellness/stretch-cards/seated_twist.webp";
-import ankleCircles from "@/assets/wellness/stretch-cards/ankle_circles.webp";
-import sideReach from "@/assets/wellness/stretch-cards/side_reach.webp";
-import sideReachAlt from "@/assets/wellness/stretch-cards/side_reach_alt.webp";
-import sitToStand from "@/assets/wellness/stretch-cards/sit_to_stand.webp";
-import marchPlace from "@/assets/wellness/stretch-cards/march_place.webp";
-import wallPushup from "@/assets/wellness/stretch-cards/wall_pushup.webp";
-import squat from "@/assets/wellness/stretch-cards/squat.webp";
-import sideSteps from "@/assets/wellness/stretch-cards/side_steps.webp";
-import coolStretch from "@/assets/wellness/stretch-cards/cool_stretch.webp";
+/* Woman — 3D coach stills */
+import womanShouldersRoll from "@/assets/wellness/coach-stills/shoulders_roll.webp";
+import womanNeckLeft from "@/assets/wellness/coach-stills/neck_left.webp";
+import womanNeckRight from "@/assets/wellness/coach-stills/neck_right.webp";
+import womanArmsOverhead from "@/assets/wellness/coach-stills/arms_overhead.webp";
+import womanForwardFold from "@/assets/wellness/coach-stills/forward_fold.webp";
+import womanHipCircles from "@/assets/wellness/coach-stills/hip_circles.webp";
+import womanStandTall from "@/assets/wellness/coach-stills/stand_tall.webp";
+import womanWalk from "@/assets/wellness/coach-stills/walk.webp";
+import womanArmSwing from "@/assets/wellness/coach-stills/arm_swing.webp";
+import womanBriskWalk from "@/assets/wellness/coach-stills/brisk_walk.webp";
+import womanCoolDown from "@/assets/wellness/coach-stills/cool_down.webp";
+import womanSeatedMarch from "@/assets/wellness/coach-stills/seated_march.webp";
+import womanSeatedTwist from "@/assets/wellness/coach-stills/seated_twist.webp";
+import womanAnkleCircles from "@/assets/wellness/coach-stills/ankle_circles.webp";
+import womanSideReach from "@/assets/wellness/coach-stills/side_reach.webp";
+import womanSideReachAlt from "@/assets/wellness/coach-stills/side_reach_alt.webp";
+import womanSitToStand from "@/assets/wellness/coach-stills/sit_to_stand.webp";
+import womanMarchPlace from "@/assets/wellness/coach-stills/march_place.webp";
+import womanWallPushup from "@/assets/wellness/coach-stills/wall_pushup.webp";
+import womanSquat from "@/assets/wellness/coach-stills/squat.webp";
+import womanSideSteps from "@/assets/wellness/coach-stills/side_steps.webp";
+import womanCoolStretch from "@/assets/wellness/coach-stills/cool_stretch.webp";
+
+/* Man — YAJ stretch-library cards */
+import manShouldersRoll from "@/assets/wellness/stretch-cards/shoulders_roll.webp";
+import manNeckLeft from "@/assets/wellness/stretch-cards/neck_left.webp";
+import manNeckRight from "@/assets/wellness/stretch-cards/neck_right.webp";
+import manArmsOverhead from "@/assets/wellness/stretch-cards/arms_overhead.webp";
+import manForwardFold from "@/assets/wellness/stretch-cards/forward_fold.webp";
+import manHipCircles from "@/assets/wellness/stretch-cards/hip_circles.webp";
+import manStandTall from "@/assets/wellness/stretch-cards/stand_tall.webp";
+import manWalk from "@/assets/wellness/stretch-cards/walk.webp";
+import manArmSwing from "@/assets/wellness/stretch-cards/arm_swing.webp";
+import manBriskWalk from "@/assets/wellness/stretch-cards/brisk_walk.webp";
+import manCoolDown from "@/assets/wellness/stretch-cards/cool_down.webp";
+import manSeatedMarch from "@/assets/wellness/stretch-cards/seated_march.webp";
+import manSeatedTwist from "@/assets/wellness/stretch-cards/seated_twist.webp";
+import manAnkleCircles from "@/assets/wellness/stretch-cards/ankle_circles.webp";
+import manSideReach from "@/assets/wellness/stretch-cards/side_reach.webp";
+import manSideReachAlt from "@/assets/wellness/stretch-cards/side_reach_alt.webp";
+import manSitToStand from "@/assets/wellness/stretch-cards/sit_to_stand.webp";
+import manMarchPlace from "@/assets/wellness/stretch-cards/march_place.webp";
+import manWallPushup from "@/assets/wellness/stretch-cards/wall_pushup.webp";
+import manSquat from "@/assets/wellness/stretch-cards/squat.webp";
+import manSideSteps from "@/assets/wellness/stretch-cards/side_steps.webp";
+import manCoolStretch from "@/assets/wellness/stretch-cards/cool_stretch.webp";
 
 /**
- * YAJ Wellness Coach stretch-library cards (slideshow).
- * One card per maneuver, matched to the spoken coaching step.
+ * Move coach slideshow stills keyed by profile figure.
+ * Woman → 3D coach stills; man → YAJ stretch-library cards.
  * Voice / session runner is unchanged — only the picture swaps.
  */
-const COACH_STILLS: Record<MoveIllustrationId, string> = {
-  shoulders_roll: shouldersRoll,
-  neck_left: neckLeft,
-  neck_right: neckRight,
-  arms_overhead: armsOverhead,
-  forward_fold: forwardFold,
-  hip_circles: hipCircles,
-  stand_tall: standTall,
-  walk: walk,
-  arm_swing: armSwing,
-  brisk_walk: briskWalk,
-  cool_down: coolDown,
-  seated_march: seatedMarch,
-  seated_twist: seatedTwist,
-  ankle_circles: ankleCircles,
-  side_reach: sideReach,
-  sit_to_stand: sitToStand,
-  march_place: marchPlace,
-  wall_pushup: wallPushup,
-  squat: squat,
-  side_steps: sideSteps,
-  cool_stretch: coolStretch,
+const WOMAN_STILLS: Record<MoveIllustrationId, string> = {
+  shoulders_roll: womanShouldersRoll,
+  neck_left: womanNeckLeft,
+  neck_right: womanNeckRight,
+  arms_overhead: womanArmsOverhead,
+  forward_fold: womanForwardFold,
+  hip_circles: womanHipCircles,
+  stand_tall: womanStandTall,
+  walk: womanWalk,
+  arm_swing: womanArmSwing,
+  brisk_walk: womanBriskWalk,
+  cool_down: womanCoolDown,
+  seated_march: womanSeatedMarch,
+  seated_twist: womanSeatedTwist,
+  ankle_circles: womanAnkleCircles,
+  side_reach: womanSideReach,
+  sit_to_stand: womanSitToStand,
+  march_place: womanMarchPlace,
+  wall_pushup: womanWallPushup,
+  squat: womanSquat,
+  side_steps: womanSideSteps,
+  cool_stretch: womanCoolStretch,
+};
+
+const MAN_STILLS: Record<MoveIllustrationId, string> = {
+  shoulders_roll: manShouldersRoll,
+  neck_left: manNeckLeft,
+  neck_right: manNeckRight,
+  arms_overhead: manArmsOverhead,
+  forward_fold: manForwardFold,
+  hip_circles: manHipCircles,
+  stand_tall: manStandTall,
+  walk: manWalk,
+  arm_swing: manArmSwing,
+  brisk_walk: manBriskWalk,
+  cool_down: manCoolDown,
+  seated_march: manSeatedMarch,
+  seated_twist: manSeatedTwist,
+  ankle_circles: manAnkleCircles,
+  side_reach: manSideReach,
+  sit_to_stand: manSitToStand,
+  march_place: manMarchPlace,
+  wall_pushup: manWallPushup,
+  squat: manSquat,
+  side_steps: manSideSteps,
+  cool_stretch: manCoolStretch,
 };
 
 export function coachStillFor(
   move: MoveIllustrationId,
-  opts?: { alternateSide?: boolean },
+  opts?: { alternateSide?: boolean; figure?: WellnessFigure },
 ): string {
-  if (move === "side_reach" && opts?.alternateSide) return sideReachAlt;
-  return COACH_STILLS[move] ?? standTall;
+  const figure = opts?.figure === "man" ? "man" : "woman";
+  const pack = figure === "man" ? MAN_STILLS : WOMAN_STILLS;
+  if (move === "side_reach" && opts?.alternateSide) {
+    return figure === "man" ? manSideReachAlt : womanSideReachAlt;
+  }
+  return pack[move] ?? (figure === "man" ? manStandTall : womanStandTall);
 }

@@ -25,6 +25,7 @@ import {
   getWellnessFigure,
   getWellnessSkinTone,
   MOODS,
+  WELLNESS_UPDATED_EVENT,
 } from "@/lib/wellness";
 import {
   pauseYajAudio,
@@ -107,8 +108,8 @@ export default function MoveCoachSession({
   onHome,
 }: Props) {
   const steps = routine.steps;
-  const figure = getWellnessFigure();
-  const skinTone = getWellnessSkinTone();
+  const [figure, setFigure] = useState(() => getWellnessFigure());
+  const [skinTone, setSkinTone] = useState(() => getWellnessSkinTone());
   const [stepIdx, setStepIdx] = useState(0);
   const [phase, setPhase] = useState<Phase>("coaching");
   const [caption, setCaption] = useState("Getting ready…");
@@ -136,6 +137,15 @@ export default function MoveCoachSession({
   prefsRef.current = prefs;
   pausedRef.current = paused;
   stepIdxRef.current = stepIdx;
+
+  useEffect(() => {
+    const refreshProfile = () => {
+      setFigure(getWellnessFigure());
+      setSkinTone(getWellnessSkinTone());
+    };
+    window.addEventListener(WELLNESS_UPDATED_EVENT, refreshProfile);
+    return () => window.removeEventListener(WELLNESS_UPDATED_EVENT, refreshProfile);
+  }, []);
 
   const rate = COACH_VOICE_SPEEDS.find((s) => s.id === prefs.speed)?.rate ?? 1;
 
