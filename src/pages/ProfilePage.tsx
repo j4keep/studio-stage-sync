@@ -243,6 +243,29 @@ const ProfilePage = () => {
           <Edit3 className="w-3.5 h-3.5" /> Edit Profile
         </button>
 
+        {/* YAJ AI Generator — Profile dashboard entry (Gemini-style row) */}
+        <button
+          type="button"
+          onClick={() => navigate("/ask-yaj/settings")}
+          className="mt-3 flex w-full items-center gap-3 rounded-xl border border-border bg-card p-3.5 text-left transition-all hover:border-primary/30"
+        >
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+            <Sparkles className="h-5 w-5 text-primary" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-semibold text-foreground">YAJ AI Generator</p>
+              <span className="rounded-full bg-sky-500 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
+                Dashboard
+              </span>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Voice, Live interrupt & avatar · {getYajAiVoiceLabel()}
+            </p>
+          </div>
+          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+        </button>
+
         {/* Action Buttons */}
         <div className="flex gap-2 mt-3">
           <button onClick={handleFollow} className={`flex-1 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${isFollowing ? "bg-card border border-primary text-primary" : "gradient-primary text-primary-foreground glow-primary"}`}>
