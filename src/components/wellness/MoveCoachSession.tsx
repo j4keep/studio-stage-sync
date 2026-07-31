@@ -165,10 +165,16 @@ export default function MoveCoachSession({
       await waitWhilePaused(signal);
       if (signal.aborted) return;
 
-      // Keep pause/resume in sync without restarting finished clips.
+      // Only toggle pause/resume on state changes — polling resume() on a
+      // finished clip can restart the same line (sounded like a double-speak).
+      let wasPaused = pausedRef.current;
+      if (wasPaused) pauseYajAudio();
       const pauseWatcher = window.setInterval(() => {
         if (signal.aborted) return;
-        if (pausedRef.current) pauseYajAudio();
+        const nowPaused = pausedRef.current;
+        if (nowPaused === wasPaused) return;
+        wasPaused = nowPaused;
+        if (nowPaused) pauseYajAudio();
         else resumeYajAudio();
       }, 200);
       try {
