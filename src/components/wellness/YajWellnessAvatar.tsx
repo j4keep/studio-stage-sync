@@ -1,4 +1,6 @@
+import { useEffect, useRef } from "react";
 import type { MoveIllustrationId } from "@/lib/wellness-move-coach";
+
 import type { WellnessFigure, WellnessSkinTone } from "@/lib/wellness";
 
 import stand from "@/assets/wellness/coach/yaj-coach-stand.webp";
