@@ -1,34 +1,32 @@
 import type { MoveIllustrationId } from "@/lib/wellness-move-coach";
 
-import shouldersRoll from "@/assets/wellness/coach-stills/shoulders_roll.webp";
-import neckLeft from "@/assets/wellness/coach-stills/neck_left.webp";
-import neckRight from "@/assets/wellness/coach-stills/neck_right.webp";
-import armsOverhead from "@/assets/wellness/coach-stills/arms_overhead.webp";
-import forwardFold from "@/assets/wellness/coach-stills/forward_fold.webp";
-import hipCircles from "@/assets/wellness/coach-stills/hip_circles.webp";
-import standTall from "@/assets/wellness/coach-stills/stand_tall.webp";
-import walk from "@/assets/wellness/coach-stills/walk.webp";
-import armSwing from "@/assets/wellness/coach-stills/arm_swing.webp";
-import briskWalk from "@/assets/wellness/coach-stills/brisk_walk.webp";
-import coolDown from "@/assets/wellness/coach-stills/cool_down.webp";
-import seatedMarch from "@/assets/wellness/coach-stills/seated_march.webp";
-import seatedTwist from "@/assets/wellness/coach-stills/seated_twist.webp";
-import ankleCircles from "@/assets/wellness/coach-stills/ankle_circles.webp";
-import sideReach from "@/assets/wellness/coach-stills/side_reach.webp";
-import sideReachAlt from "@/assets/wellness/coach-stills/side_reach_alt.webp";
-import sitToStand from "@/assets/wellness/coach-stills/sit_to_stand.webp";
-import marchPlace from "@/assets/wellness/coach-stills/march_place.webp";
-import wallPushup from "@/assets/wellness/coach-stills/wall_pushup.webp";
-import squat from "@/assets/wellness/coach-stills/squat.webp";
-import sideSteps from "@/assets/wellness/coach-stills/side_steps.webp";
-import coolStretch from "@/assets/wellness/coach-stills/cool_stretch.webp";
+import shouldersRoll from "@/assets/wellness/stretch-cards/shoulders_roll.webp";
+import neckLeft from "@/assets/wellness/stretch-cards/neck_left.webp";
+import neckRight from "@/assets/wellness/stretch-cards/neck_right.webp";
+import armsOverhead from "@/assets/wellness/stretch-cards/arms_overhead.webp";
+import forwardFold from "@/assets/wellness/stretch-cards/forward_fold.webp";
+import hipCircles from "@/assets/wellness/stretch-cards/hip_circles.webp";
+import standTall from "@/assets/wellness/stretch-cards/stand_tall.webp";
+import walk from "@/assets/wellness/stretch-cards/walk.webp";
+import armSwing from "@/assets/wellness/stretch-cards/arm_swing.webp";
+import briskWalk from "@/assets/wellness/stretch-cards/brisk_walk.webp";
+import coolDown from "@/assets/wellness/stretch-cards/cool_down.webp";
+import seatedMarch from "@/assets/wellness/stretch-cards/seated_march.webp";
+import seatedTwist from "@/assets/wellness/stretch-cards/seated_twist.webp";
+import ankleCircles from "@/assets/wellness/stretch-cards/ankle_circles.webp";
+import sideReach from "@/assets/wellness/stretch-cards/side_reach.webp";
+import sideReachAlt from "@/assets/wellness/stretch-cards/side_reach_alt.webp";
+import sitToStand from "@/assets/wellness/stretch-cards/sit_to_stand.webp";
+import marchPlace from "@/assets/wellness/stretch-cards/march_place.webp";
+import wallPushup from "@/assets/wellness/stretch-cards/wall_pushup.webp";
+import squat from "@/assets/wellness/stretch-cards/squat.webp";
+import sideSteps from "@/assets/wellness/stretch-cards/side_steps.webp";
+import coolStretch from "@/assets/wellness/stretch-cards/cool_stretch.webp";
 
 /**
- * Slideshow stills — same Lovable coach illustrator, one clear pose per move.
- * No looping video. Card swaps the picture when the coach advances a step.
- *
- * neck_right was baked mirrored (source clip only tilted left).
- * side_reach_alt is the mirrored opposite side for “switch sides”.
+ * YAJ Wellness Coach stretch-library cards (slideshow).
+ * One card per maneuver, matched to the spoken coaching step.
+ * Voice / session runner is unchanged — only the picture swaps.
  */
 const COACH_STILLS: Record<MoveIllustrationId, string> = {
   shoulders_roll: shouldersRoll,
