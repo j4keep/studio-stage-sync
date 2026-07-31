@@ -1,7 +1,7 @@
 import YajWellnessAvatar from "@/components/wellness/YajWellnessAvatar";
 import type { MoveIllustrationId } from "@/lib/wellness-move-coach";
 import type { WellnessFigure, WellnessSkinTone } from "@/lib/wellness";
-import { coachVideoFor } from "@/lib/wellness-coach-videos";
+import { coachVideoClipFor } from "@/lib/wellness-coach-videos";
 
 type Props = {
   illustration: MoveIllustrationId;
@@ -18,7 +18,7 @@ type Props = {
 };
 
 /**
- * Exercise card: calm form still (or short demo video when provided) + cues.
+ * Exercise card: Lovable coach clip (mirrored when needed) + cues.
  */
 export default function MoveInstructionCard({
   illustration,
@@ -33,7 +33,11 @@ export default function MoveInstructionCard({
   safetyTip,
   animating = true,
 }: Props) {
-  const videoSrc = coachVideoFor(illustration);
+  const clip = coachVideoClipFor(illustration);
+  // Side reach script: hold one side, then switch — flip clip in the second half of the hold.
+  const switchSides =
+    illustration === "side_reach" && holdLeft != null && holdLeft > 0 && holdLeft <= 5;
+  const mirror = Boolean(clip?.mirror) !== switchSides;
 
   return (
     <div className="relative mx-auto flex w-full max-w-[340px] flex-col overflow-hidden rounded-[1.6rem] border border-stone-200 bg-white shadow-[0_20px_50px_-28px_rgba(15,80,70,0.45)]">
@@ -53,7 +57,8 @@ export default function MoveInstructionCard({
           figure={figure}
           skinTone={skinTone}
           playing={animating}
-          videoSrc={videoSrc}
+          videoSrc={clip?.url ?? null}
+          mirror={mirror}
         />
         {holdLeft != null && holdLeft > 0 ? (
           <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-teal-950/30 backdrop-blur-[1px]">

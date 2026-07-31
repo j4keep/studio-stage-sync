@@ -26,14 +26,15 @@ type Props = {
   className?: string;
   /** Optional short demo clip (mp4/webm). When set, plays instead of the still. */
   videoSrc?: string | null;
+  /** Flip the clip horizontally (e.g. left-tilt asset used for right-tilt cue). */
+  mirror?: boolean;
 };
 
 /**
- * One clear form image per move (no multi-frame “dancing”).
- * Pass `videoSrc` when you have a real Gemini/demo clip for that move.
+ * Lovable animated coach clip (or calm still fallback).
+ * Does not redesign the illustrator — only plays / mirrors the provided clip.
  */
 const POSE_STILL: Record<MoveIllustrationId, string> = {
-  // Calm “roll shoulders back / open chest” cue — not a looping dance
   shoulders_roll: shouldersBack,
   neck_left: neckLeft,
   neck_right: neckRight,
@@ -62,6 +63,7 @@ export default function YajWellnessAvatar({
   playing = true,
   className = "",
   videoSrc = null,
+  mirror = false,
 }: Props) {
   const still = POSE_STILL[move] ?? stand;
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -69,12 +71,19 @@ export default function YajWellnessAvatar({
   useEffect(() => {
     const el = videoRef.current;
     if (!el) return;
+    // Restart from the top whenever this step's clip mounts / resumes,
+    // so motion lines up with the spoken cue for that card.
+    try {
+      el.currentTime = 0;
+    } catch {
+      /* ignore seek errors before metadata */
+    }
     if (playing) {
       void el.play().catch(() => {});
     } else {
       el.pause();
     }
-  }, [playing, videoSrc]);
+  }, [playing, videoSrc, move, mirror]);
 
   if (videoSrc) {
     return (
@@ -84,9 +93,9 @@ export default function YajWellnessAvatar({
       >
         <video
           ref={videoRef}
-          key={videoSrc}
+          key={`${move}-${videoSrc}-${mirror ? "m" : "n"}`}
           src={videoSrc}
-          className="h-[94%] w-auto max-w-full object-contain"
+          className={`h-[94%] w-auto max-w-full object-contain ${mirror ? "-scale-x-100" : ""}`}
           autoPlay
           loop
           muted
@@ -97,7 +106,6 @@ export default function YajWellnessAvatar({
       </div>
     );
   }
-
 
   return (
     <div

@@ -24,10 +24,9 @@ import coolStretch from "@/assets/wellness/coach-videos/cool_stretch.mp4.asset.j
 
 /**
  * Animated coach demo clip per Move illustration.
- * Each clip loops silently while YAJ's voice coaches that step, so the
- * on-screen figure performs the movement as it is being described.
+ * Each clip loops silently while YAJ's voice coaches that step.
  */
-export const COACH_VIDEOS: Partial<Record<MoveIllustrationId, string>> = {
+const COACH_VIDEO_URLS: Partial<Record<MoveIllustrationId, string>> = {
   shoulders_roll: shouldersRoll.url,
   neck_left: neckLeft.url,
   neck_right: neckRight.url,
@@ -51,6 +50,30 @@ export const COACH_VIDEOS: Partial<Record<MoveIllustrationId, string>> = {
   cool_stretch: coolStretch.url,
 };
 
+/**
+ * Clips that were authored tilting/leaning the wrong way for their label.
+ * We keep Lovable's assets and flip playback so voice + motion match.
+ *
+ * Verified: both neck_left.mp4 and neck_right.mp4 tilt toward the
+ * character's LEFT — so neck_right must be mirrored to show a right tilt.
+ */
+const MIRROR_MOVES = new Set<MoveIllustrationId>(["neck_right"]);
+
+export type CoachVideoClip = {
+  url: string;
+  /** CSS horizontal flip — does not rewrite the illustrator asset. */
+  mirror: boolean;
+};
+
+/** @deprecated Prefer coachVideoClipFor — kept for any old imports. */
+export const COACH_VIDEOS: Partial<Record<MoveIllustrationId, string>> = COACH_VIDEO_URLS;
+
+export function coachVideoClipFor(move: MoveIllustrationId): CoachVideoClip | null {
+  const url = COACH_VIDEO_URLS[move];
+  if (!url) return null;
+  return { url, mirror: MIRROR_MOVES.has(move) };
+}
+
 export function coachVideoFor(move: MoveIllustrationId): string | null {
-  return COACH_VIDEOS[move] ?? null;
+  return COACH_VIDEO_URLS[move] ?? null;
 }
