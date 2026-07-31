@@ -31,6 +31,29 @@ export const MOODS: { id: MoodId; label: string; emoji: string }[] = [
   { id: "low", label: "Low energy", emoji: "🌱" },
 ];
 
+/**
+ * Seed prompt for Ask YAJ voice mode from the Wellness mood check-in.
+ * Spoken reply should stay short, warm, and actionable.
+ */
+export function moodVoicePrompt(mood: MoodId): string {
+  switch (mood) {
+    case "great":
+      return "I'm feeling great today. Congratulate me briefly in a warm way, then give one tiny wellness tip to keep the good energy going. Keep your spoken reply under a minute.";
+    case "good":
+      return "I'm feeling pretty good today. Acknowledge that warmly, then offer one gentle tip to help me stay balanced. Keep your spoken reply under a minute.";
+    case "tired":
+      return "I'm feeling tired. Help me gently — suggest one short reset I can do right now for energy without pushing hard. Keep your spoken reply under a minute.";
+    case "stressed":
+      return "I'm feeling stressed right now. Please help me calm down. Guide me through one short grounding or breathing tip I can do in this moment. Keep it warm and under a minute of speaking.";
+    case "anxious":
+      return "I'm feeling anxious. Speak calmly and help me settle. Offer one simple grounding practice I can try right now. Keep your spoken reply under a minute.";
+    case "low":
+      return "I'm feeling low energy. Be kind and encouraging. Suggest one small, easy step that might help me feel a little better today. Keep your spoken reply under a minute.";
+    default:
+      return "I'm checking in about how I feel today. Give me brief, warm wellness guidance I can use right now. Keep your spoken reply under a minute.";
+  }
+}
+
 export const HABIT_OPTIONS: {
   id: HabitId;
   label: string;

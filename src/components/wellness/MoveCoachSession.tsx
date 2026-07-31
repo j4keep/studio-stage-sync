@@ -18,7 +18,6 @@ import {
   COACH_VOICE_SPEEDS,
   estimateCalories,
   type CoachRoutine,
-  type CoachVoiceSpeedId,
 } from "@/lib/wellness-move-coach";
 import {
   getTodayProgress,
@@ -28,6 +27,11 @@ import {
   WELLNESS_UPDATED_EVENT,
 } from "@/lib/wellness";
 import {
+  loadWellnessCoachPrefs,
+  saveWellnessCoachPrefs,
+  type WellnessCoachPrefs,
+} from "@/lib/wellness-coach-prefs";
+import {
   pauseYajAudio,
   playYajAudioAsync,
   resumeYajAudio,
@@ -35,7 +39,6 @@ import {
   synthesizeYajVoice,
   unlockYajAudio,
   YAJ_TTS_VOICES,
-  type YajTtsVoiceId,
 } from "@/lib/yaj-media";
 
 type Props = {
@@ -49,35 +52,15 @@ type Props = {
 type Phase = "coaching" | "hold" | "finished";
 
 const LINE_PAUSE_MS = 550;
-const PREFS_KEY = "yaj_move_coach_prefs_v1";
 
-type Prefs = {
-  voice: YajTtsVoiceId;
-  speed: CoachVoiceSpeedId;
-  muted: boolean;
-};
+type Prefs = WellnessCoachPrefs;
 
 function loadPrefs(): Prefs {
-  try {
-    const raw = localStorage.getItem(PREFS_KEY);
-    if (!raw) return { voice: "nova", speed: "normal", muted: false };
-    const p = JSON.parse(raw) as Partial<Prefs>;
-    const voice = YAJ_TTS_VOICES.some((v) => v.id === p.voice) ? (p.voice as YajTtsVoiceId) : "nova";
-    const speed = COACH_VOICE_SPEEDS.some((s) => s.id === p.speed)
-      ? (p.speed as CoachVoiceSpeedId)
-      : "normal";
-    return { voice, speed, muted: Boolean(p.muted) };
-  } catch {
-    return { voice: "nova", speed: "normal", muted: false };
-  }
+  return loadWellnessCoachPrefs();
 }
 
 function savePrefs(p: Prefs) {
-  try {
-    localStorage.setItem(PREFS_KEY, JSON.stringify(p));
-  } catch {
-    /* ignore */
-  }
+  saveWellnessCoachPrefs(p);
 }
 
 function sleep(ms: number, signal: AbortSignal) {

@@ -7,6 +7,7 @@ import {
   getTodayProgress,
   loadWellnessState,
   MOODS,
+  moodVoicePrompt,
   patchToday,
   recommendForMood,
   timeOfDayRecs,
@@ -16,6 +17,7 @@ import {
   type WellnessRec,
   type WellnessState,
 } from "@/lib/wellness";
+import { unlockYajAudio } from "@/lib/yaj-media";
 
 const PILLARS = [
   {
@@ -122,12 +124,21 @@ export default function WellnessHomePage() {
     setState({ ...next });
     const tips = recommendForMood(mood);
     setRecs(tips);
+    const label = MOODS.find((m) => m.id === mood)?.label.toLowerCase() ?? "okay";
     const first = tips[0];
     setBuddyNote(
       first
-        ? `You selected ${MOODS.find((m) => m.id === mood)?.label.toLowerCase()}. ${first.reason} Try: ${first.title}.`
-        : null,
+        ? `You selected ${label}. Opening YAJ voice to check in with you…`
+        : `You selected ${label}. Opening YAJ voice to check in with you…`,
     );
+    // Open Ask YAJ voice mode (not text) with a seeded feeling prompt.
+    unlockYajAudio();
+    nav("/ask-yaj", {
+      state: {
+        openVoice: true,
+        prompt: moodVoicePrompt(mood),
+      },
+    });
   };
 
   if (!state.onboarded) {
@@ -180,6 +191,9 @@ export default function WellnessHomePage() {
         <section className="rounded-[1.75rem] border border-white/70 bg-white/80 p-4 shadow-[0_20px_50px_-28px_rgba(15,80,70,0.35)]">
           <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-teal-700">Daily check-in</p>
           <h2 className="mt-1 text-lg font-black">How are you feeling today?</h2>
+          <p className="mt-1 text-xs text-stone-500">
+            Tap a mood — YAJ opens in voice mode to check in with you.
+          </p>
           <div className="mt-3 grid grid-cols-3 gap-2">
             {MOODS.map((m) => {
               const active = today.mood === m.id;

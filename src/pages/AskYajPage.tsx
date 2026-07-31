@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowUp, Trash2, X, Music2, Mic, Square, Volume2, Loader2, ImagePlus, Plus, AudioLines, Paperclip } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import YajAiGeneratorIcon from "@/components/YajAiGeneratorIcon";
@@ -17,6 +18,7 @@ import {
   describeMicError,
   type MicRecorder,
 } from "@/lib/yaj-media";
+import { getWellnessCoachVoice } from "@/lib/wellness-coach-prefs";
 
 type ContentPart =
   | { type: "text"; text: string }
@@ -95,6 +97,8 @@ function toApiMessages(messages: Msg[]) {
 }
 
 const AskYajPage = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [audioFile, setAudioFile] = useState<File | null>(null);
@@ -103,6 +107,7 @@ const AskYajPage = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [voiceMode, setVoiceMode] = useState(false);
   const [voiceStream, setVoiceStream] = useState<MediaStream | null>(null);
+  const [voiceSeedPrompt, setVoiceSeedPrompt] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
@@ -111,6 +116,7 @@ const AskYajPage = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recorderRef = useRef<MicRecorder | null>(null);
   const messagesRef = useRef<Msg[]>([]);
+  const wellnessVoiceLaunchRef = useRef(false);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -121,6 +127,34 @@ const AskYajPage = () => {
     stopYajAudio();
     recorderRef.current?.cancel();
   }, []);
+
+  /** Wellness mood check-in → open voice mode with a seeded prompt. */
+  useEffect(() => {
+    const state = location.state as { openVoice?: boolean; prompt?: string } | null;
+    if (!state?.openVoice || wellnessVoiceLaunchRef.current) return;
+    wellnessVoiceLaunchRef.current = true;
+    const prompt = typeof state.prompt === "string" ? state.prompt.trim() : "";
+    navigate(location.pathname, { replace: true, state: {} });
+    void (async () => {
+      unlockYajAudio();
+      stopYajAudio();
+      setSpeakingIndex(null);
+      try {
+        const stream = await acquireMicStream();
+        setVoiceStream(stream);
+        setVoiceSeedPrompt(prompt || null);
+        setVoiceMode(true);
+      } catch (e) {
+        wellnessVoiceLaunchRef.current = false;
+        toast({
+          title: "Microphone",
+          description: describeMicError(e),
+          variant: "destructive",
+        });
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
 
   const handlePickAudio = () => fileInputRef.current?.click();
 
@@ -139,7 +173,7 @@ const AskYajPage = () => {
     unlockYajAudio();
     setSpeakingIndex(index);
     try {
-      const src = await synthesizeYajVoice(text);
+      const src = await synthesizeYajVoice(text, getWellnessCoachVoice());
       playYajAudio(src, () => setSpeakingIndex((cur) => (cur === index ? null : cur)));
     } catch (e: any) {
       setSpeakingIndex(null);
@@ -624,8 +658,11 @@ const AskYajPage = () => {
         <YajVoiceMode
           onSend={({ text, imageDataUrl }) => sendMessage(text, { imageDataUrl })}
           initialStream={voiceStream}
+          initialPrompt={voiceSeedPrompt}
           onClose={() => {
             setVoiceMode(false);
+            setVoiceSeedPrompt(null);
+            wellnessVoiceLaunchRef.current = false;
             voiceStream?.getTracks().forEach((t) => t.stop());
             setVoiceStream(null);
           }}

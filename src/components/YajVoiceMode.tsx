@@ -13,6 +13,7 @@ import {
   captureYajVisionFrame,
   type MicRecorder,
 } from "@/lib/yaj-media";
+import { getWellnessCoachVoice } from "@/lib/wellness-coach-prefs";
 
 type Phase = "listening" | "thinking" | "speaking";
 
@@ -28,6 +29,11 @@ type Props = {
   onClose: () => void;
   /** Mic stream acquired during the user tap that opened voice mode (iOS-safe). */
   initialStream?: MediaStream | null;
+  /**
+   * Optional seed message (e.g. wellness mood). Sent once on open so YAJ
+   * speaks first — then normal listen/speak loop continues.
+   */
+  initialPrompt?: string | null;
 };
 
 type StarSpec = {
@@ -70,10 +76,10 @@ function FourPointStar({ color, size }: { color: string; size: number }) {
  * talking, replies out loud, then listens again. Optional camera lets YAJ see
  * what you're showing (Gemini Live–style vision).
  */
-const YajVoiceMode = ({ onSend, onClose, initialStream = null }: Props) => {
+const YajVoiceMode = ({ onSend, onClose, initialStream = null, initialPrompt = null }: Props) => {
   const [phase, setPhase] = useState<Phase>("listening");
   const [level, setLevel] = useState(0);
-  const [caption, setCaption] = useState("Listening…");
+  const [caption, setCaption] = useState(initialPrompt?.trim() ? "Connecting…" : "Listening…");
   const [error, setError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
   const [cameraOn, setCameraOn] = useState(false);
@@ -89,6 +95,7 @@ const YajVoiceMode = ({ onSend, onClose, initialStream = null }: Props) => {
   const cameraOnRef = useRef(false);
   const cameraFacingRef = useRef(cameraFacing);
   const onSendRef = useRef(onSend);
+  const seedUsedRef = useRef(false);
   onSendRef.current = onSend;
   cameraFacingRef.current = cameraFacing;
 
@@ -204,7 +211,7 @@ const YajVoiceMode = ({ onSend, onClose, initialStream = null }: Props) => {
         }
         setPhase("speaking");
         setCaption("Speaking…");
-        const src = await synthesizeYajVoice(reply);
+        const src = await synthesizeYajVoice(reply, getWellnessCoachVoice());
         if (!activeRef.current) return;
         playYajAudio(src, () => {
           if (activeRef.current) void startListening();
@@ -233,10 +240,46 @@ const YajVoiceMode = ({ onSend, onClose, initialStream = null }: Props) => {
     }
   }, [grabVisionFrame]);
 
+  const speakReply = useCallback(async (reply: string) => {
+    setPhase("speaking");
+    setCaption("Speaking…");
+    const src = await synthesizeYajVoice(reply, getWellnessCoachVoice());
+    if (!activeRef.current) return;
+    playYajAudio(src, () => {
+      if (activeRef.current) void startListening();
+    });
+  }, [startListening]);
+
   useEffect(() => {
     activeRef.current = true;
     unlockYajAudio();
-    void startListening();
+
+    const seed = initialPrompt?.trim();
+    if (seed && !seedUsedRef.current) {
+      seedUsedRef.current = true;
+      busyRef.current = true;
+      setPhase("thinking");
+      setCaption("Checking in…");
+      void (async () => {
+        try {
+          const reply = await onSendRef.current({ text: seed });
+          if (!activeRef.current) return;
+          if (!reply?.trim()) {
+            busyRef.current = false;
+            void startListening();
+            return;
+          }
+          await speakReply(reply);
+        } catch (e) {
+          if (!activeRef.current) return;
+          setError(e instanceof Error ? e.message : "Couldn't start the check-in.");
+          busyRef.current = false;
+          void startListening();
+        }
+      })();
+    } else {
+      void startListening();
+    }
 
     return () => {
       activeRef.current = false;
@@ -246,7 +289,7 @@ const YajVoiceMode = ({ onSend, onClose, initialStream = null }: Props) => {
       // Don't stop streamRef here — retry remounts this effect and would
       // kill a freshly acquired gesture stream. Parent + recorder teardown own tracks.
     };
-  }, [startListening, retryKey]);
+  }, [startListening, retryKey, initialPrompt, speakReply]);
 
   useEffect(() => {
     return () => {
@@ -313,7 +356,7 @@ const YajVoiceMode = ({ onSend, onClose, initialStream = null }: Props) => {
       }
       setPhase("speaking");
       setCaption("Speaking…");
-      const src = await synthesizeYajVoice(reply);
+      const src = await synthesizeYajVoice(reply, getWellnessCoachVoice());
       if (!activeRef.current) return;
       playYajAudio(src, () => {
         if (activeRef.current) void startListening();

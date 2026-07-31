@@ -15,9 +15,8 @@ type Props = {
 };
 
 /**
- * Stretch / coach slideshow: mascot matches profile figure + skin tone.
- * Woman → 3D coach stills; man → YAJ stretch-library cards.
- * No video — picture only. Voice is unchanged.
+ * Stretch-library slideshow: woman or man YAJ cards for the current step.
+ * Same move set for both figures; skin tone remaps coach skin. Voice unchanged.
  */
 export default function YajWellnessAvatar({
   move,
