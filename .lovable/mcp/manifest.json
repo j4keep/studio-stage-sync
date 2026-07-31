@@ -57,8 +57,8 @@
       },
       {
         "name": "ask_yaj",
-        "title": "Ask YAJ (YAJ Buddy community companion)",
-        "description": "Ask YAJ Buddy — YAJ's AI community companion — about creative ideas, music, opportunities, Circles, collaboration, or the YAJ platform.",
+        "title": "Ask YAJ (community companion)",
+        "description": "Ask YAJ — YAJ's AI community companion — about creative ideas, music, opportunities, Circles, collaboration, or the YAJ platform.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": false,
@@ -71,7 +71,7 @@
               "type": "string",
               "minLength": 1,
               "maxLength": 2000,
-              "description": "The question or request for YAJ Buddy."
+              "description": "The question or request for YAJ."
             }
           },
           "required": [
