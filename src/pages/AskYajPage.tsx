@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowUp, Trash2, X, Music2, Mic, Square, Volume2, Loader2, ImagePlus, Plus, AudioLines, Paperclip } from "lucide-react";
+import { ArrowUp, Trash2, X, Music2, Mic, Square, Volume2, Loader2, ImagePlus, Plus, AudioLines, Paperclip, Settings2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import YajAiGeneratorIcon from "@/components/YajAiGeneratorIcon";
 import YajVoiceMode from "@/components/YajVoiceMode";
@@ -442,11 +442,21 @@ const AskYajPage = () => {
             <h1 className="text-sm font-display font-bold text-foreground">Ask YAJ</h1>
           </div>
         </div>
-        {messages.length > 0 && (
-          <button onClick={clearChat} className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors">
-            <Trash2 className="w-3.5 h-3.5" />
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => navigate("/ask-yaj/settings")}
+            className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
+            aria-label="YAJ AI settings"
+          >
+            <Settings2 className="w-3.5 h-3.5" />
           </button>
-        )}
+          {messages.length > 0 && (
+            <button onClick={clearChat} className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors">
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Messages */}
@@ -562,6 +572,13 @@ const AskYajPage = () => {
             >
               <Paperclip className="w-4 h-4 text-muted-foreground" />
               Attach an audio clip
+            </button>
+            <button
+              onClick={() => { setMenuOpen(false); navigate("/ask-yaj/settings"); }}
+              className="w-full flex items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-muted transition-colors border-t border-border"
+            >
+              <Settings2 className="w-4 h-4 text-muted-foreground" />
+              YAJ AI settings
             </button>
           </div>
         )}

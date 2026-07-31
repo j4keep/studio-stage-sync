@@ -14,6 +14,7 @@ import {
   type MicRecorder,
 } from "@/lib/yaj-media";
 import { getWellnessCoachVoice } from "@/lib/wellness-coach-prefs";
+import { getYajAiInterruptLive } from "@/lib/yaj-ai-prefs";
 
 type Phase = "listening" | "thinking" | "speaking";
 
@@ -499,10 +500,23 @@ const YajVoiceMode = ({ onSend, onClose, initialStream = null, initialPrompt = n
             {cameraBusy ? <Loader2 className="h-6 w-6 animate-spin" /> : <Camera className="h-6 w-6" strokeWidth={2.25} />}
           </button>
 
-          <div
-            className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-full px-4 py-3 ${
+          <button
+            type="button"
+            onClick={() => {
+              if (phase === "speaking" && getYajAiInterruptLive()) {
+                stopYajAudio();
+                busyRef.current = false;
+                void startListening();
+              }
+            }}
+            className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-full px-4 py-3 text-left ${
               cameraOn ? "bg-white/10 text-white backdrop-blur-md" : "border border-border bg-card text-muted-foreground"
             }`}
+            aria-label={
+              phase === "speaking" && getYajAiInterruptLive()
+                ? "Tap to interrupt YAJ"
+                : "Voice status"
+            }
           >
             <div className="flex items-center gap-2 text-[11px]">
               {phase === "thinking" ? (
@@ -511,10 +525,14 @@ const YajVoiceMode = ({ onSend, onClose, initialStream = null, initialPrompt = n
                 <Mic className="h-3.5 w-3.5" />
               )}
               <span className="truncate font-medium">
-                {cameraOn ? "Show & talk — YAJ can see" : "Just talk — YAJ answers out loud"}
+                {phase === "speaking" && getYajAiInterruptLive()
+                  ? "Tap to interrupt"
+                  : cameraOn
+                    ? "Show & talk — YAJ can see"
+                    : "Just talk — YAJ answers out loud"}
               </span>
             </div>
-          </div>
+          </button>
 
           <button
             type="button"

@@ -379,6 +379,11 @@ export const YAJ_TTS_VOICES = [
   { id: "shimmer", label: "Shimmer", blurb: "Bright & kind" },
   { id: "alloy", label: "Alloy", blurb: "Balanced" },
   { id: "sage", label: "Sage", blurb: "Calm guide" },
+  { id: "echo", label: "Echo", blurb: "Clear & steady" },
+  { id: "fable", label: "Fable", blurb: "Storyteller" },
+  { id: "onyx", label: "Onyx", blurb: "Deep & calm" },
+  { id: "ash", label: "Ash", blurb: "Soft spoken" },
+  { id: "ballad", label: "Ballad", blurb: "Warm narrative" },
 ] as const;
 
 export type YajTtsVoiceId = (typeof YAJ_TTS_VOICES)[number]["id"];

@@ -44,6 +44,7 @@ function isDesktopShellPath(pathname: string) {
   if (pathname.startsWith("/local-help/")) return true;
   if (pathname.startsWith("/marketplace/")) return true;
   if (pathname.startsWith("/wellness/")) return true;
+  if (pathname.startsWith("/ask-yaj")) return true;
   return false;
 }
 

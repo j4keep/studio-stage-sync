@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   User, FolderHeart, Building2, Heart, Download, DollarSign,
   Settings, Shield, BarChart3, HelpCircle, Trophy, Video, ShoppingBag,
-  CheckCircle, UserPlus, Share2, ChevronRight, Edit3, UserCheck, ExternalLink, Crown, Lock, Rocket, CalendarDays, Wrench
+  CheckCircle, UserPlus, Share2, ChevronRight, Edit3, UserCheck, ExternalLink, Crown, Lock, Rocket, CalendarDays, Wrench, Sparkles
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -20,6 +20,7 @@ import UserReviewsSection from "@/components/UserReviewsSection";
 import BattleWinsSheet from "@/components/BattleWinsSheet";
 import UserProjectsSheet from "@/components/UserProjectsSheet";
 import { useSectionNotifications, type NotifSection } from "@/hooks/use-section-notifications";
+import { getYajAiVoiceLabel } from "@/lib/yaj-ai-prefs";
 
 const ProfilePage = () => {
   const navigate = useNavigate();
@@ -174,6 +175,14 @@ const ProfilePage = () => {
   };
 
   const quickActions = [
+    {
+      icon: Sparkles,
+      label: "YAJ AI Generator",
+      sub: `Voice · ${getYajAiVoiceLabel()}`,
+      action: () => navigate("/ask-yaj/settings"),
+      pro: false,
+      section: null as NotifSection | null,
+    },
     { icon: ShoppingBag, label: "Purchases", sub: "View history", action: () => goSection("purchases", "/purchases"), pro: false, section: "purchases" as NotifSection | null },
     { icon: CalendarDays, label: "My Bookings", sub: "Sessions & receipts", action: () => goSection("bookings", "/my-bookings"), pro: false, section: "bookings" as NotifSection | null },
     { icon: Building2, label: "Local Help Business", sub: "Handyman, DJ, cleaning & more", action: () => goSection("localHelp", "/local-help/business"), pro: false, section: "localHelp" as NotifSection | null },
