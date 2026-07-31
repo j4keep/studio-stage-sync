@@ -5,6 +5,7 @@ import { YAJ_TTS_VOICES, type YajTtsVoiceId } from "@/lib/yaj-media";
 export const YAJ_AI_PREFS_KEY = "yaj_ai_prefs_v1";
 /** Legacy Move coach key — migrated on first read. */
 const LEGACY_MOVE_PREFS_KEY = "yaj_move_coach_prefs_v1";
+const ACTIVITY_KEY = "yaj_ai_activity_v1";
 
 export const YAJ_AI_UPDATED_EVENT = "yaj-ai-prefs-updated";
 
@@ -17,6 +18,14 @@ export type YajAiPrefs = {
   coachMuted: boolean;
   /** In Live / voice mode, talking can interrupt YAJ mid-reply. */
   interruptLive: boolean;
+  /** Auto-read assistant replies out loud in Ask YAJ chat. */
+  autoSpeakReplies: boolean;
+};
+
+export type YajAiActivity = {
+  chatOpens: number;
+  voiceSessions: number;
+  lastOpenAt: string | null;
 };
 
 const DEFAULTS: YajAiPrefs = {
@@ -24,6 +33,7 @@ const DEFAULTS: YajAiPrefs = {
   coachSpeed: "normal",
   coachMuted: false,
   interruptLive: true,
+  autoSpeakReplies: false,
 };
 
 function normalize(raw: Partial<YajAiPrefs> | null | undefined): YajAiPrefs {
@@ -38,6 +48,7 @@ function normalize(raw: Partial<YajAiPrefs> | null | undefined): YajAiPrefs {
     coachSpeed,
     coachMuted: Boolean(raw?.coachMuted),
     interruptLive: raw?.interruptLive === undefined ? true : Boolean(raw.interruptLive),
+    autoSpeakReplies: Boolean(raw?.autoSpeakReplies),
   };
 }
 
@@ -105,7 +116,41 @@ export function getYajAiInterruptLive(): boolean {
   return loadYajAiPrefs().interruptLive;
 }
 
+export function getYajAiAutoSpeakReplies(): boolean {
+  return loadYajAiPrefs().autoSpeakReplies;
+}
+
 export function getYajAiVoiceLabel(): string {
   const id = getYajAiVoice();
   return YAJ_TTS_VOICES.find((v) => v.id === id)?.label ?? "Nova";
+}
+
+export function loadYajAiActivity(): YajAiActivity {
+  try {
+    const raw = localStorage.getItem(ACTIVITY_KEY);
+    if (!raw) return { chatOpens: 0, voiceSessions: 0, lastOpenAt: null };
+    const p = JSON.parse(raw) as Partial<YajAiActivity>;
+    return {
+      chatOpens: typeof p.chatOpens === "number" ? p.chatOpens : 0,
+      voiceSessions: typeof p.voiceSessions === "number" ? p.voiceSessions : 0,
+      lastOpenAt: typeof p.lastOpenAt === "string" ? p.lastOpenAt : null,
+    };
+  } catch {
+    return { chatOpens: 0, voiceSessions: 0, lastOpenAt: null };
+  }
+}
+
+export function bumpYajAiActivity(kind: "chat" | "voice") {
+  const cur = loadYajAiActivity();
+  const next: YajAiActivity = {
+    chatOpens: cur.chatOpens + (kind === "chat" ? 1 : 0),
+    voiceSessions: cur.voiceSessions + (kind === "voice" ? 1 : 0),
+    lastOpenAt: new Date().toISOString(),
+  };
+  try {
+    localStorage.setItem(ACTIVITY_KEY, JSON.stringify(next));
+  } catch {
+    /* ignore */
+  }
+  return next;
 }

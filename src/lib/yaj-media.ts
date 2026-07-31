@@ -373,17 +373,18 @@ export function isYajAudioActive(): boolean {
 }
 
 /** OpenAI-style voices available through yaj-voice / gpt-4o-mini-tts. */
+/** Display names match the in-app voice picker; ids map to OpenAI TTS voices. */
 export const YAJ_TTS_VOICES = [
   { id: "nova", label: "Nova", blurb: "Warm & clear" },
-  { id: "coral", label: "Coral", blurb: "Soft coach" },
-  { id: "shimmer", label: "Shimmer", blurb: "Bright & kind" },
-  { id: "alloy", label: "Alloy", blurb: "Balanced" },
-  { id: "sage", label: "Sage", blurb: "Calm guide" },
-  { id: "echo", label: "Echo", blurb: "Clear & steady" },
-  { id: "fable", label: "Fable", blurb: "Storyteller" },
-  { id: "onyx", label: "Onyx", blurb: "Deep & calm" },
-  { id: "ash", label: "Ash", blurb: "Soft spoken" },
-  { id: "ballad", label: "Ballad", blurb: "Warm narrative" },
+  { id: "coral", label: "Orbit", blurb: "Soft coach" },
+  { id: "shimmer", label: "Flare", blurb: "Bright & kind" },
+  { id: "alloy", label: "Glow", blurb: "Balanced" },
+  { id: "sage", label: "Capella", blurb: "Calm guide" },
+  { id: "echo", label: "Eclipse", blurb: "Clear & steady" },
+  { id: "fable", label: "Pegasus", blurb: "Storyteller" },
+  { id: "onyx", label: "Ursa", blurb: "Deep & calm" },
+  { id: "ash", label: "Vega", blurb: "Soft spoken" },
+  { id: "ballad", label: "Dipper", blurb: "Warm narrative" },
 ] as const;
 
 export type YajTtsVoiceId = (typeof YAJ_TTS_VOICES)[number]["id"];

@@ -55,6 +55,7 @@ import AdminTicketsPage from "./pages/AdminTicketsPage";
 import AdminSoundLibraryPage from "./pages/AdminSoundLibraryPage";
 import AskYajPage from "./pages/AskYajPage";
 import YajAiSettingsPage from "./pages/YajAiSettingsPage";
+import YajAiConversationSettingsPage from "./pages/YajAiConversationSettingsPage";
 import YajAiAvatarPage from "./pages/YajAiAvatarPage";
 import JobsPage from "./pages/JobsPage";
 import JobDetailPage from "./pages/JobDetailPage";
@@ -286,6 +287,7 @@ const ProtectedRoutes = () => {
         <Route path="/helpdesk" element={<HelpDeskPage />} />
         <Route path="/ask-yaj" element={<AskYajPage />} />
         <Route path="/ask-yaj/settings" element={<YajAiSettingsPage />} />
+        <Route path="/ask-yaj/conversation-settings" element={<YajAiConversationSettingsPage />} />
         <Route path="/ask-yaj/avatar" element={<YajAiAvatarPage />} />
         <Route path="/explore" element={<ExplorePage />} />
         <Route path="/local-help" element={<LocalHelpHomePage />} />

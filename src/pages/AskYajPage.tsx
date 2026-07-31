@@ -19,6 +19,10 @@ import {
   type MicRecorder,
 } from "@/lib/yaj-media";
 import { getWellnessCoachVoice } from "@/lib/wellness-coach-prefs";
+import {
+  bumpYajAiActivity,
+  getYajAiAutoSpeakReplies,
+} from "@/lib/yaj-ai-prefs";
 
 type ContentPart =
   | { type: "text"; text: string }
@@ -128,6 +132,10 @@ const AskYajPage = () => {
     recorderRef.current?.cancel();
   }, []);
 
+  useEffect(() => {
+    bumpYajAiActivity("chat");
+  }, []);
+
   /** Wellness mood check-in → open voice mode with a seeded prompt. */
   useEffect(() => {
     const state = location.state as { openVoice?: boolean; prompt?: string } | null;
@@ -141,6 +149,7 @@ const AskYajPage = () => {
       setSpeakingIndex(null);
       try {
         const stream = await acquireMicStream();
+        bumpYajAiActivity("voice");
         setVoiceStream(stream);
         setVoiceSeedPrompt(prompt || null);
         setVoiceMode(true);
@@ -199,7 +208,7 @@ const AskYajPage = () => {
           toast({ title: "Didn't catch that", description: "Try speaking a bit closer to the mic." });
           return;
         }
-        await sendMessage(text);
+        await sendAndMaybeSpeak(text);
       } catch (e: any) {
         toast({ title: "Voice input failed", description: e.message || "Try again.", variant: "destructive" });
       } finally {
@@ -394,10 +403,22 @@ const AskYajPage = () => {
     }
   };
 
+  const sendAndMaybeSpeak = async (
+    text: string,
+    options?: { imageDataUrl?: string },
+  ) => {
+    const reply = await sendMessage(text, options);
+    if (!reply.trim() || voiceMode || !getYajAiAutoSpeakReplies()) return;
+    const index = messagesRef.current.length - 1;
+    if (index >= 0 && messagesRef.current[index]?.role === "assistant") {
+      void speak(reply, index);
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      sendMessage(input);
+      void sendAndMaybeSpeak(input);
     }
   };
 
@@ -476,7 +497,7 @@ const AskYajPage = () => {
               {SUGGESTIONS.map((s) => (
                 <button
                   key={s}
-                  onClick={() => sendMessage(s)}
+                  onClick={() => void sendAndMaybeSpeak(s)}
                   className="p-2.5 rounded-xl bg-card border border-border text-[11px] text-foreground font-medium text-left hover:border-primary/30 transition-all leading-tight"
                 >
                   {s}
@@ -634,7 +655,7 @@ const AskYajPage = () => {
           </button>
           {input.trim() || audioFile ? (
             <button
-              onClick={() => sendMessage(input)}
+              onClick={() => void sendAndMaybeSpeak(input)}
               disabled={isLoading}
               className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center text-primary-foreground disabled:opacity-40 transition-opacity shrink-0"
               aria-label="Send"
@@ -651,6 +672,7 @@ const AskYajPage = () => {
                   // useEffect getUserMedia as "blocked".
                   try {
                     const stream = await acquireMicStream();
+                    bumpYajAiActivity("voice");
                     setVoiceStream(stream);
                     setVoiceMode(true);
                   } catch (e) {

@@ -260,7 +260,7 @@ const ProfilePage = () => {
               </span>
             </div>
             <p className="text-[11px] text-muted-foreground">
-              Voice, Live interrupt & avatar · {getYajAiVoiceLabel()}
+              Dashboard · voice, avatar & settings · {getYajAiVoiceLabel()}
             </p>
           </div>
           <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
