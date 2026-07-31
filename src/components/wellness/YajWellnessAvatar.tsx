@@ -62,6 +62,17 @@ export default function YajWellnessAvatar({
   videoSrc = null,
 }: Props) {
   const still = POSE_STILL[move] ?? stand;
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el) return;
+    if (playing) {
+      void el.play().catch(() => {});
+    } else {
+      el.pause();
+    }
+  }, [playing, videoSrc]);
 
   if (videoSrc) {
     return (
@@ -70,18 +81,21 @@ export default function YajWellnessAvatar({
         aria-hidden
       >
         <video
+          ref={videoRef}
           key={videoSrc}
           src={videoSrc}
           className="h-[94%] w-auto max-w-full object-contain"
-          autoPlay={playing}
+          autoPlay
           loop
           muted
           playsInline
+          preload="auto"
           poster={still}
         />
       </div>
     );
   }
+
 
   return (
     <div
