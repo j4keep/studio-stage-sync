@@ -6,7 +6,6 @@ import AmbientSoundPlayer from "@/components/wellness/AmbientSoundPlayer";
 import BreathingSession from "@/components/wellness/BreathingSession";
 import {
   AMBIENT_CATEGORIES,
-  AMBIENT_TRACKS,
   getAmbientTrack,
   tracksForCategory,
   type AmbientCategory,
