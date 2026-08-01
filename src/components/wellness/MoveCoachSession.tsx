@@ -3,6 +3,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Music2,
   Pause,
   Play,
   Repeat2,
@@ -19,6 +20,12 @@ import {
   estimateCalories,
   type CoachRoutine,
 } from "@/lib/wellness-move-coach";
+import {
+  bumpMoveDayStats,
+  completionCoachLine,
+  levelLabel,
+} from "@/lib/wellness-move-meta";
+import { wellnessAmbient } from "@/lib/wellness-ambient-engine";
 import {
   getTodayProgress,
   getWellnessFigure,
@@ -47,6 +54,7 @@ type Props = {
   onProgress: (minutesDone: number) => void;
   onPickAnother: () => void;
   onHome: () => void;
+  onStartAnother?: (id: string) => void;
 };
 
 type Phase = "coaching" | "hold" | "finished";
@@ -89,6 +97,7 @@ export default function MoveCoachSession({
   onProgress,
   onPickAnother,
   onHome,
+  onStartAnother,
 }: Props) {
   const steps = routine.steps;
   const [figure, setFigure] = useState(() => getWellnessFigure());
@@ -100,6 +109,8 @@ export default function MoveCoachSession({
   const [paused, setPaused] = useState(false);
   const [prefs, setPrefs] = useState<Prefs>(() => loadPrefs());
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [bgSound, setBgSound] = useState(false);
+  const [elapsedSec, setElapsedSec] = useState(0);
   /** Bumps only on manual restart / prev / skip — not on normal auto-advance. */
   const [sessionKey, setSessionKey] = useState(0);
   const [finish, setFinish] = useState<{
@@ -228,17 +239,36 @@ export default function MoveCoachSession({
     [rate, tickSecond, waitWhilePaused],
   );
 
+  useEffect(() => {
+    if (phase === "finished") return;
+    const id = window.setInterval(() => {
+      if (pausedRef.current) return;
+      setElapsedSec(Math.max(0, Math.floor((Date.now() - startedAt.current) / 1000)));
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [phase, sessionKey]);
+
+  useEffect(() => {
+    return () => {
+      void wellnessAmbient.stop();
+    };
+  }, []);
+
   const completeSession = useCallback(() => {
     if (loggedRef.current) return;
     loggedRef.current = true;
     stopYajAudio();
+    void wellnessAmbient.stop();
+    setBgSound(false);
     const elapsedMin = Math.max(1, Math.round((Date.now() - startedAt.current) / 60000));
     const minutes = Math.min(routine.minutes, Math.max(1, elapsedMin));
     onProgress(minutes);
     const streak = bumpMoveStreak();
+    const calories = estimateCalories(routine, minutes);
+    bumpMoveDayStats(minutes, calories, routine.id);
     setFinish({
       minutes,
-      calories: estimateCalories(routine, minutes),
+      calories,
       streak,
     });
     setPhase("finished");
@@ -306,7 +336,12 @@ export default function MoveCoachSession({
           if (ac.signal.aborted) return;
 
           if (idx >= steps.length - 1) {
-            await speak("Great job. Workout complete. Nice work today.", ac.signal);
+            const elapsedMin = Math.max(
+              1,
+              Math.round((Date.now() - startedAt.current) / 60000),
+            );
+            const mins = Math.min(routine.minutes, elapsedMin);
+            await speak(completionCoachLine(routine, mins), ac.signal);
             if (!ac.signal.aborted) completeSession();
             return;
           }
@@ -393,6 +428,7 @@ export default function MoveCoachSession({
           loggedRef.current = false;
           introducedRef.current = false;
           startedAt.current = Date.now();
+          setElapsedSec(0);
           setFinish(null);
           setPhase("coaching");
           stepIdxRef.current = 0;
@@ -401,11 +437,35 @@ export default function MoveCoachSession({
         }}
         onAnother={onPickAnother}
         onHome={onHome}
+        onStartAnother={onStartAnother}
       />
     );
   }
 
   const step = steps[stepIdx];
+  const totalSec = routine.minutes * 60;
+  const remainingSec = Math.max(0, totalSec - elapsedSec);
+  const ringPct = Math.min(100, ((stepIdx + (phase === "hold" ? 0.5 : 0.2)) / steps.length) * 100);
+  const fmt = (s: number) => {
+    const m = Math.floor(s / 60);
+    const sec = String(s % 60).padStart(2, "0");
+    return `${m}:${sec}`;
+  };
+
+  const toggleBgSound = async () => {
+    if (bgSound) {
+      await wellnessAmbient.stop();
+      setBgSound(false);
+      return;
+    }
+    try {
+      unlockYajAudio();
+      await wellnessAmbient.playTrack("gentle-breeze", { volume: 0.18, loop: true });
+      setBgSound(true);
+    } catch {
+      setBgSound(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-[100] flex flex-col bg-[#f3f7f5] text-stone-900">
@@ -415,6 +475,7 @@ export default function MoveCoachSession({
           onClick={() => {
             abortRef.current?.abort();
             stopYajAudio();
+            void wellnessAmbient.stop();
             if (!loggedRef.current) {
               const elapsedMin = Math.round((Date.now() - startedAt.current) / 60000);
               if (elapsedMin >= 1) onProgress(Math.min(routine.minutes, elapsedMin));
@@ -439,6 +500,41 @@ export default function MoveCoachSession({
           <Settings2 className="h-4 w-4" />
         </button>
       </header>
+
+      {/* Progress ring + timers */}
+      <div className="mx-3 mb-2 flex items-center gap-3 rounded-2xl border border-teal-900/10 bg-white/90 px-3 py-2.5 shadow-sm">
+        <div className="relative flex h-14 w-14 shrink-0 items-center justify-center">
+          <svg className="h-14 w-14 -rotate-90" viewBox="0 0 36 36" aria-hidden>
+            <circle cx="18" cy="18" r="15" fill="none" stroke="#e7e5e4" strokeWidth="3" />
+            <circle
+              cx="18"
+              cy="18"
+              r="15"
+              fill="none"
+              stroke="#0d9488"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeDasharray={`${ringPct} 100`}
+            />
+          </svg>
+          <span className="absolute text-[11px] font-black text-teal-800">
+            {stepIdx + 1}/{steps.length}
+          </span>
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-bold uppercase tracking-wide text-stone-400">Session</p>
+          <p className="truncate text-sm font-black">{step.title}</p>
+          <p className="mt-0.5 text-[11px] font-semibold text-stone-500">
+            {fmt(elapsedSec)} elapsed · {fmt(remainingSec)} left
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="text-[10px] font-bold uppercase tracking-wide text-stone-400">Focus</p>
+          <p className="text-xs font-bold text-teal-700">
+            {routine.targets[0] || "Full Body"}
+          </p>
+        </div>
+      </div>
 
       {settingsOpen && (
         <div className="mx-3 mb-2 space-y-3 rounded-2xl border border-stone-200 bg-white p-3 shadow-sm">
@@ -492,11 +588,14 @@ export default function MoveCoachSession({
           breathCue={step.breathCue}
           safetyTip={step.safetyTip}
           animating={!paused && phase !== "hold"}
+          difficultyLabel={levelLabel(routine.level)}
+          targets={routine.targets}
+          holdSeconds={step.holdSeconds}
         />
 
         {/* Progress rail */}
         <div className="mx-auto mt-4 max-w-[340px] space-y-1.5 rounded-2xl border border-stone-200/80 bg-white/90 p-3">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-stone-500">Progress</p>
+          <p className="text-[10px] font-bold uppercase tracking-wide text-stone-500">Step progress</p>
           {steps.map((s, i) => {
             const done = i < stepIdx;
             const current = i === stepIdx;
@@ -527,7 +626,7 @@ export default function MoveCoachSession({
 
       {/* Controls */}
       <div className="border-t border-stone-200/80 bg-white/95 px-3 pb-[max(0.85rem,env(safe-area-inset-bottom))] pt-2.5">
-        <div className="mx-auto flex max-w-md items-center justify-between gap-2">
+        <div className="mx-auto flex max-w-md items-center justify-between gap-1.5">
           <button
             type="button"
             onClick={goPrev}
@@ -540,7 +639,7 @@ export default function MoveCoachSession({
             type="button"
             onClick={restartStep}
             className="flex h-11 w-11 items-center justify-center rounded-full border border-stone-200 bg-stone-50"
-            aria-label="Repeat step"
+            aria-label="Replay step"
           >
             <Repeat2 className="h-4 w-4" />
           </button>
@@ -563,9 +662,21 @@ export default function MoveCoachSession({
             type="button"
             onClick={() => updatePrefs({ muted: !prefs.muted })}
             className="flex h-11 w-11 items-center justify-center rounded-full border border-stone-200 bg-stone-50"
-            aria-label={prefs.muted ? "Unmute" : "Mute"}
+            aria-label={prefs.muted ? "Unmute voice" : "Mute voice"}
           >
             {prefs.muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+          </button>
+          <button
+            type="button"
+            onClick={() => void toggleBgSound()}
+            className={`flex h-11 w-11 items-center justify-center rounded-full border ${
+              bgSound
+                ? "border-teal-300 bg-teal-50 text-teal-800"
+                : "border-stone-200 bg-stone-50"
+            }`}
+            aria-label={bgSound ? "Stop background sound" : "Play background sound"}
+          >
+            <Music2 className="h-4 w-4" />
           </button>
           <button
             type="button"
@@ -577,7 +688,7 @@ export default function MoveCoachSession({
           </button>
         </div>
         <p className="mt-2 text-center text-[10px] font-medium text-stone-500">
-          Pause · Repeat · Previous · Skip · Mute · Voice settings
+          Pause · Replay · Skip · Voice · Background sound
         </p>
       </div>
     </div>
