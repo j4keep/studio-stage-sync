@@ -570,6 +570,42 @@ export function getAmbientTrack(id: string | null | undefined): AmbientTrack | n
   return AMBIENT_TRACKS.find((t) => t.id === mapped) ?? null;
 }
 
+export type AmbientVisualKind =
+  | "rain"
+  | "thunder"
+  | "ocean"
+  | "fire"
+  | "birds"
+  | "wind"
+  | "forest"
+  | "river"
+  | "noise"
+  | "fan"
+  | "pulse"
+  | "city"
+  | "keys";
+
+/** Map each track to a motion scene that matches the sound. */
+export function visualForTrack(track: AmbientTrack): AmbientVisualKind {
+  const id = `${track.id} ${track.title}`.toLowerCase();
+  if (/thunder|storm|lightning/.test(id)) return "thunder";
+  if (/rain|downpour|umbrella|window/.test(id)) return "rain";
+  if (/ocean|sea|wave|whale|harbor/.test(id)) return "ocean";
+  if (/fire|fireplace|campfire|ember/.test(id)) return "fire";
+  if (/bird|jungle|garden|morning nature|cricket/.test(id)) return "birds";
+  if (/wind|breeze|snowstorm|blowing/.test(id)) return "wind";
+  if (/forest|woods|zen|cabin/.test(id)) return "forest";
+  if (/river|stream|waterfall|water/.test(id)) return "river";
+  if (/fan|airplane|cabin hush/.test(id)) return "fan";
+  if (/white|pink|brown|noise|drone|pads|om/.test(id)) return "noise";
+  if (/keyboard|typing|study|office|library/.test(id)) return "keys";
+  if (/coffee|city|park|urban|restaurant/.test(id)) return "city";
+  if (/heartbeat|pulse/.test(id)) return "pulse";
+  if (track.category === "meditation") return "pulse";
+  if (track.category === "focus") return "noise";
+  return "forest";
+}
+
 export function tracksForCategory(category: AmbientCategory | "all"): AmbientTrack[] {
   if (category === "all") return AMBIENT_TRACKS;
   return AMBIENT_TRACKS.filter((t) => t.category === category);

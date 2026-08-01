@@ -8,6 +8,7 @@ import {
   X,
   Sparkles,
 } from "lucide-react";
+import AmbientSceneVisual from "@/components/wellness/AmbientSceneVisual";
 import {
   AMBIENT_MIX_LAYERS,
   getAmbientTrack,
@@ -31,7 +32,7 @@ type Props = {
  */
 export default function AmbientSoundPlayer({ track, onClose, onPlayingChange }: Props) {
   const [playing, setPlaying] = useState(false);
-  const [volume, setVolume] = useState(0.4);
+  const [volume, setVolume] = useState(() => wellnessAmbient.getMasterVolume() || 0.45);
   const [loop, setLoop] = useState(true);
   const [timerMin, setTimerMin] = useState(30);
   const [timerOn, setTimerOn] = useState(false);
@@ -62,11 +63,20 @@ export default function AmbientSoundPlayer({ track, onClose, onPlayingChange }: 
     onPlayingChange?.(playing);
   }, [playing, onPlayingChange]);
 
+  const applyVolume = (v: number) => {
+    const next = Math.max(0, Math.min(1, v));
+    setVolume(next);
+    unlockYajAudio();
+    wellnessAmbient.setMasterVolume(next);
+  };
+
   const start = async (id: string) => {
     setBusy(true);
     try {
       unlockYajAudio();
       await wellnessAmbient.playTrack(id, { volume, loop });
+      // Re-apply in case iOS created the graph after play
+      wellnessAmbient.setMasterVolume(volume);
       setPlaying(true);
       setMix({ [id]: 1 });
       if (timerOn) armTimer();
@@ -99,10 +109,10 @@ export default function AmbientSoundPlayer({ track, onClose, onPlayingChange }: 
         return;
       }
       if (!wellnessAmbient.isPlaying()) {
-        // Seed with primary then set full mix
         await wellnessAmbient.playTrack(track.id, { volume, loop });
       }
       await wellnessAmbient.setMix(next);
+      wellnessAmbient.setMasterVolume(volume);
       setPlaying(true);
       if (timerOn) armTimer();
     } catch (e) {
@@ -137,9 +147,9 @@ export default function AmbientSoundPlayer({ track, onClose, onPlayingChange }: 
 
   return (
     <div className="fixed inset-0 z-[95] flex flex-col bg-black text-white">
-      <div className={`absolute inset-0 bg-gradient-to-b ${track.art}`} />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_20%,rgba(255,255,255,0.12),transparent_45%)]" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/40" />
+      <div className={`pointer-events-none absolute inset-0 bg-gradient-to-b ${track.art}`} />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_30%_20%,rgba(255,255,255,0.12),transparent_45%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/40" />
 
       <header className="relative z-10 flex items-center justify-between px-4 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <button
@@ -167,11 +177,7 @@ export default function AmbientSoundPlayer({ track, onClose, onPlayingChange }: 
 
       <div className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center px-6 pb-4">
         <div className="mb-8 flex h-56 w-56 items-center justify-center rounded-[2rem] bg-white/10 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.65)] ring-1 ring-white/20 backdrop-blur-md">
-          <div
-            className={`h-40 w-40 rounded-full bg-gradient-to-br ${track.art} shadow-inner ${
-              playing ? "animate-pulse" : ""
-            }`}
-          />
+          <AmbientSceneVisual track={track} playing={playing} volume={volume} />
         </div>
         <h1 className="text-center text-3xl font-black tracking-tight">{track.title}</h1>
         <p className="mt-2 text-center text-sm text-white/70">
@@ -179,20 +185,21 @@ export default function AmbientSoundPlayer({ track, onClose, onPlayingChange }: 
         </p>
 
         <div className="mt-8 flex w-full max-w-sm items-center gap-3">
-          <Volume2 className="h-4 w-4 text-white/60" />
+          <Volume2 className="h-4 w-4 shrink-0 text-white/70" />
           <input
             type="range"
-            min={0.05}
-            max={0.9}
+            min={0}
+            max={1}
             step={0.01}
             value={volume}
-            onChange={(e) => {
-              const v = Number(e.target.value);
-              setVolume(v);
-              wellnessAmbient.setMasterVolume(v);
-            }}
-            className="flex-1 accent-white"
+            onInput={(e) => applyVolume(Number((e.target as HTMLInputElement).value))}
+            onChange={(e) => applyVolume(Number(e.target.value))}
+            className="h-8 w-full flex-1 cursor-pointer appearance-none bg-transparent accent-white [&::-webkit-slider-runnable-track]:h-1.5 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-white/25 [&::-webkit-slider-thumb]:mt-[-5px] [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
+            aria-label="Volume"
           />
+          <span className="w-9 shrink-0 text-right text-xs font-bold tabular-nums text-white/70">
+            {Math.round(volume * 100)}
+          </span>
         </div>
 
         <div className="mt-8 flex items-center gap-5">
@@ -290,12 +297,17 @@ export default function AmbientSoundPlayer({ track, onClose, onPlayingChange }: 
                     max={1}
                     step={0.05}
                     value={g}
+                    onInput={(e) => {
+                      const next = { ...mix, [id]: Number((e.target as HTMLInputElement).value) };
+                      setMix(next);
+                      void applyMix(next);
+                    }}
                     onChange={(e) => {
                       const next = { ...mix, [id]: Number(e.target.value) };
                       setMix(next);
                       void applyMix(next);
                     }}
-                    className="flex-1 accent-white"
+                    className="h-7 flex-1 accent-white"
                   />
                   <span className="w-8 text-right text-white/60">{Math.round(g * 100)}</span>
                 </label>

@@ -8,7 +8,10 @@ type LayerState = {
   id: string;
   gain: number;
   audio?: HTMLAudioElement;
-  procedural?: { stop: () => void; setGain: (v: number) => void };
+  sourceNode?: MediaElementAudioSourceNode;
+  gainNode: GainNode;
+  proceduralNodes?: AudioNode[];
+  bufferSource?: AudioBufferSourceNode;
 };
 
 function fillWhite(data: Float32Array) {
@@ -71,129 +74,18 @@ function fillOcean(data: Float32Array) {
   }
 }
 
-function startProcedural(
-  recipe: ProceduralRecipe,
-  masterVolume: number,
-  layerGain: number,
-): { stop: () => void; setGain: (v: number) => void } {
-  const ctx = new AudioContext();
-  const master = ctx.createGain();
-  master.gain.value = masterVolume * layerGain;
-  master.connect(ctx.destination);
-  void ctx.resume();
-
-  const bufferSize = Math.floor(3 * ctx.sampleRate);
-  const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-  const data = noiseBuffer.getChannelData(0);
-  if (recipe === "white") fillWhite(data);
-  else if (recipe === "brown") fillBrown(data);
-  else if (recipe === "rain") fillRain(data, ctx.sampleRate);
-  else if (recipe === "ocean") fillOcean(data);
-  else fillPink(data);
-
-  const source = ctx.createBufferSource();
-  source.buffer = noiseBuffer;
-  source.loop = true;
-
-  const nodes: AudioNode[] = [source];
-  if (recipe === "fan") {
-    const band = ctx.createBiquadFilter();
-    band.type = "bandpass";
-    band.frequency.value = 180;
-    band.Q.value = 1.4;
-    const hum = ctx.createOscillator();
-    hum.type = "sawtooth";
-    hum.frequency.value = 95;
-    const humGain = ctx.createGain();
-    humGain.gain.value = 0.035;
-    const humFilter = ctx.createBiquadFilter();
-    humFilter.type = "lowpass";
-    humFilter.frequency.value = 280;
-    const noiseGain = ctx.createGain();
-    noiseGain.gain.value = 0.45;
-    source.connect(band);
-    band.connect(noiseGain);
-    noiseGain.connect(master);
-    hum.connect(humFilter);
-    humFilter.connect(humGain);
-    humGain.connect(master);
-    hum.start();
-    nodes.push(band, noiseGain, hum, humFilter, humGain);
-  } else if (recipe === "white") {
-    const g = ctx.createGain();
-    g.gain.value = 0.28;
-    source.connect(g);
-    g.connect(master);
-    nodes.push(g);
-  } else if (recipe === "brown") {
-    const low = ctx.createBiquadFilter();
-    low.type = "lowpass";
-    low.frequency.value = 220;
-    const g = ctx.createGain();
-    g.gain.value = 0.55;
-    source.connect(low);
-    low.connect(g);
-    g.connect(master);
-    nodes.push(low, g);
-  } else if (recipe === "ocean") {
-    const low = ctx.createBiquadFilter();
-    low.type = "lowpass";
-    low.frequency.value = 340;
-    const amp = ctx.createGain();
-    amp.gain.value = 0.55;
-    const lfo = ctx.createOscillator();
-    lfo.type = "sine";
-    lfo.frequency.value = 0.07;
-    const lfoGain = ctx.createGain();
-    lfoGain.gain.value = 0.4;
-    lfo.connect(lfoGain);
-    lfoGain.connect(amp.gain);
-    source.connect(low);
-    low.connect(amp);
-    amp.connect(master);
-    lfo.start();
-    nodes.push(low, amp, lfo, lfoGain);
-  } else {
-    const g = ctx.createGain();
-    g.gain.value = recipe === "rain" ? 0.7 : 0.4;
-    source.connect(g);
-    g.connect(master);
-    nodes.push(g);
-  }
-
-  source.start();
-
-  return {
-    setGain: (v: number) => {
-      master.gain.value = Math.max(0, Math.min(1, v));
-    },
-    stop: () => {
-      for (const n of nodes) {
-        try {
-          if ("stop" in n && typeof (n as OscillatorNode).stop === "function") {
-            (n as OscillatorNode).stop();
-          }
-          n.disconnect();
-        } catch {
-          /* ignore */
-        }
-      }
-      void ctx.close();
-    },
-  };
-}
-
 /**
- * Multi-layer ambient engine — Mixkit MP3 loops + procedural noise,
- * with master volume, loop, fade timer, and custom mixes.
+ * Shared Web Audio graph so volume works on iOS (HTMLAudioElement.volume is ignored there).
  */
 export class WellnessAmbientEngine {
   private layers = new Map<string, LayerState>();
-  private masterVolume = 0.4;
+  private masterVolume = 0.45;
   private loop = true;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private primaryId: string | null = null;
   private listeners = new Set<() => void>();
+  private ctx: AudioContext | null = null;
+  private masterGain: GainNode | null = null;
 
   subscribe(fn: () => void) {
     this.listeners.add(fn);
@@ -202,6 +94,17 @@ export class WellnessAmbientEngine {
 
   private emit() {
     this.listeners.forEach((fn) => fn());
+  }
+
+  private async ensureGraph() {
+    if (!this.ctx) {
+      this.ctx = new AudioContext();
+      this.masterGain = this.ctx.createGain();
+      this.masterGain.gain.value = this.masterVolume;
+      this.masterGain.connect(this.ctx.destination);
+    }
+    if (this.ctx.state === "suspended") await this.ctx.resume();
+    return { ctx: this.ctx, master: this.masterGain! };
   }
 
   getPrimaryId() {
@@ -235,28 +138,28 @@ export class WellnessAmbientEngine {
     if (opts?.volume != null) this.masterVolume = opts.volume;
     if (opts?.loop != null) this.loop = opts.loop;
     this.primaryId = track.id;
+    await this.ensureGraph();
+    if (this.masterGain) this.masterGain.gain.value = this.masterVolume;
     await this.addLayer(track.id, 1);
     this.emit();
   }
 
-  /** Replace mix with explicit layer gains (0–1). Zero removes layer. */
   async setMix(gains: Record<string, number>) {
+    await this.ensureGraph();
+    if (this.masterGain) this.masterGain.gain.value = this.masterVolume;
+
     const nextIds = Object.entries(gains)
       .filter(([, g]) => g > 0.01)
       .map(([id]) => id);
 
-    // Stop removed layers
     for (const id of [...this.layers.keys()]) {
       if (!nextIds.includes(id)) this.removeLayer(id);
     }
 
     for (const [id, gain] of Object.entries(gains)) {
       if (gain <= 0.01) continue;
-      if (this.layers.has(id)) {
-        this.setLayerGain(id, gain);
-      } else {
-        await this.addLayer(id, gain);
-      }
+      if (this.layers.has(id)) this.setLayerGain(id, gain);
+      else await this.addLayer(id, gain);
     }
 
     if (!this.primaryId && nextIds[0]) this.primaryId = nextIds[0];
@@ -266,37 +169,178 @@ export class WellnessAmbientEngine {
   private async addLayer(trackId: string, gain: number) {
     const track = getAmbientTrack(trackId);
     if (!track) return;
+    const { ctx, master } = await this.ensureGraph();
     const layerGain = Math.max(0, Math.min(1, gain));
+    const gainNode = ctx.createGain();
+    gainNode.gain.value = layerGain;
+    gainNode.connect(master);
+
     const source = track.source;
 
     if (source.kind === "procedural") {
-      const procedural = startProcedural(source.recipe, this.masterVolume, layerGain);
-      this.layers.set(trackId, { id: trackId, gain: layerGain, procedural });
+      const nodes = this.connectProcedural(ctx, source.recipe, gainNode);
+      this.layers.set(trackId, {
+        id: trackId,
+        gain: layerGain,
+        gainNode,
+        proceduralNodes: nodes.nodes,
+        bufferSource: nodes.bufferSource,
+      });
       return;
     }
 
     const url = resolveAmbientUrl(source);
     if (!url) return;
-    const audio = new Audio(url);
-    audio.loop = this.loop;
-    audio.volume = Math.max(0, Math.min(1, this.masterVolume * layerGain));
+
+    const audio = new Audio();
     audio.crossOrigin = "anonymous";
-    this.layers.set(trackId, { id: trackId, gain: layerGain, audio });
+    audio.loop = this.loop;
+    audio.preload = "auto";
+    audio.src = url;
+    // Keep element volume at 1 — real level is Web Audio GainNode (iOS-safe).
+    audio.volume = 1;
+
+    let sourceNode: MediaElementAudioSourceNode | undefined;
+    try {
+      sourceNode = ctx.createMediaElementSource(audio);
+      sourceNode.connect(gainNode);
+    } catch {
+      // Fallback if element was already connected somehow
+      audio.volume = Math.max(0, Math.min(1, this.masterVolume * layerGain));
+    }
+
+    this.layers.set(trackId, {
+      id: trackId,
+      gain: layerGain,
+      audio,
+      sourceNode,
+      gainNode,
+    });
+
     try {
       await audio.play();
     } catch {
-      this.layers.delete(trackId);
+      this.removeLayer(trackId);
       throw new Error("Tap again to start sound (browser blocked autoplay)");
     }
+  }
+
+  private connectProcedural(
+    ctx: AudioContext,
+    recipe: ProceduralRecipe,
+    dest: AudioNode,
+  ): { nodes: AudioNode[]; bufferSource: AudioBufferSourceNode } {
+    const bufferSize = Math.floor(3 * ctx.sampleRate);
+    const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = noiseBuffer.getChannelData(0);
+    if (recipe === "white") fillWhite(data);
+    else if (recipe === "brown") fillBrown(data);
+    else if (recipe === "rain") fillRain(data, ctx.sampleRate);
+    else if (recipe === "ocean") fillOcean(data);
+    else fillPink(data);
+
+    const source = ctx.createBufferSource();
+    source.buffer = noiseBuffer;
+    source.loop = true;
+    const nodes: AudioNode[] = [source];
+
+    if (recipe === "fan") {
+      const band = ctx.createBiquadFilter();
+      band.type = "bandpass";
+      band.frequency.value = 180;
+      band.Q.value = 1.4;
+      const hum = ctx.createOscillator();
+      hum.type = "sawtooth";
+      hum.frequency.value = 95;
+      const humGain = ctx.createGain();
+      humGain.gain.value = 0.035;
+      const humFilter = ctx.createBiquadFilter();
+      humFilter.type = "lowpass";
+      humFilter.frequency.value = 280;
+      const noiseGain = ctx.createGain();
+      noiseGain.gain.value = 0.45;
+      source.connect(band);
+      band.connect(noiseGain);
+      noiseGain.connect(dest);
+      hum.connect(humFilter);
+      humFilter.connect(humGain);
+      humGain.connect(dest);
+      hum.start();
+      nodes.push(band, noiseGain, hum, humFilter, humGain);
+    } else if (recipe === "white") {
+      const g = ctx.createGain();
+      g.gain.value = 0.28;
+      source.connect(g);
+      g.connect(dest);
+      nodes.push(g);
+    } else if (recipe === "brown") {
+      const low = ctx.createBiquadFilter();
+      low.type = "lowpass";
+      low.frequency.value = 220;
+      const g = ctx.createGain();
+      g.gain.value = 0.55;
+      source.connect(low);
+      low.connect(g);
+      g.connect(dest);
+      nodes.push(low, g);
+    } else if (recipe === "ocean") {
+      const low = ctx.createBiquadFilter();
+      low.type = "lowpass";
+      low.frequency.value = 340;
+      const amp = ctx.createGain();
+      amp.gain.value = 0.55;
+      const lfo = ctx.createOscillator();
+      lfo.type = "sine";
+      lfo.frequency.value = 0.07;
+      const lfoGain = ctx.createGain();
+      lfoGain.gain.value = 0.4;
+      lfo.connect(lfoGain);
+      lfoGain.connect(amp.gain);
+      source.connect(low);
+      low.connect(amp);
+      amp.connect(dest);
+      lfo.start();
+      nodes.push(low, amp, lfo, lfoGain);
+    } else {
+      const g = ctx.createGain();
+      g.gain.value = recipe === "rain" ? 0.7 : 0.4;
+      source.connect(g);
+      g.connect(dest);
+      nodes.push(g);
+    }
+
+    source.start();
+    return { nodes, bufferSource: source };
   }
 
   private removeLayer(id: string) {
     const layer = this.layers.get(id);
     if (!layer) return;
-    layer.procedural?.stop();
+    try {
+      layer.bufferSource?.stop();
+    } catch {
+      /* ignore */
+    }
+    for (const n of layer.proceduralNodes || []) {
+      try {
+        if ("stop" in n && typeof (n as OscillatorNode).stop === "function") {
+          (n as OscillatorNode).stop();
+        }
+        n.disconnect();
+      } catch {
+        /* ignore */
+      }
+    }
+    try {
+      layer.sourceNode?.disconnect();
+      layer.gainNode.disconnect();
+    } catch {
+      /* ignore */
+    }
     if (layer.audio) {
       layer.audio.pause();
-      layer.audio.src = "";
+      layer.audio.removeAttribute("src");
+      layer.audio.load();
     }
     this.layers.delete(id);
   }
@@ -305,16 +349,26 @@ export class WellnessAmbientEngine {
     const layer = this.layers.get(id);
     if (!layer) return;
     layer.gain = Math.max(0, Math.min(1, gain));
-    if (layer.audio) layer.audio.volume = this.masterVolume * layer.gain;
-    layer.procedural?.setGain(this.masterVolume * layer.gain);
+    layer.gainNode.gain.value = layer.gain;
+    // Fallback path when MediaElementSource unavailable
+    if (layer.audio && !layer.sourceNode) {
+      layer.audio.volume = Math.max(0, Math.min(1, this.masterVolume * layer.gain));
+    }
     this.emit();
   }
 
   setMasterVolume(v: number) {
     this.masterVolume = Math.max(0, Math.min(1, v));
+    if (this.masterGain) {
+      const now = this.ctx?.currentTime ?? 0;
+      this.masterGain.gain.cancelScheduledValues(now);
+      this.masterGain.gain.setValueAtTime(this.masterVolume, now);
+    }
+    // Fallback for layers without Web Audio routing
     this.layers.forEach((layer) => {
-      if (layer.audio) layer.audio.volume = this.masterVolume * layer.gain;
-      layer.procedural?.setGain(this.masterVolume * layer.gain);
+      if (layer.audio && !layer.sourceNode) {
+        layer.audio.volume = Math.max(0, Math.min(1, this.masterVolume * layer.gain));
+      }
     });
     this.emit();
   }
@@ -343,19 +397,37 @@ export class WellnessAmbientEngine {
 
   async fadeOutStop(ms = 2800) {
     const startVol = this.masterVolume;
-    const steps = 20;
-    for (let i = 1; i <= steps; i++) {
-      this.setMasterVolume(startVol * (1 - i / steps));
-      await new Promise((r) => setTimeout(r, ms / steps));
+    if (this.masterGain && this.ctx) {
+      const now = this.ctx.currentTime;
+      this.masterGain.gain.cancelScheduledValues(now);
+      this.masterGain.gain.setValueAtTime(startVol, now);
+      this.masterGain.gain.linearRampToValueAtTime(0.0001, now + ms / 1000);
+      await new Promise((r) => setTimeout(r, ms + 40));
+    } else {
+      const steps = 16;
+      for (let i = 1; i <= steps; i++) {
+        this.setMasterVolume(startVol * (1 - i / steps));
+        await new Promise((r) => setTimeout(r, ms / steps));
+      }
     }
     await this.stop();
     this.masterVolume = startVol;
+    if (this.masterGain) this.masterGain.gain.value = startVol;
   }
 
   async stop(_fade = true) {
     this.clearTimer();
     for (const id of [...this.layers.keys()]) this.removeLayer(id);
     this.primaryId = null;
+    if (this.ctx) {
+      try {
+        await this.ctx.close();
+      } catch {
+        /* ignore */
+      }
+    }
+    this.ctx = null;
+    this.masterGain = null;
     this.emit();
   }
 }
