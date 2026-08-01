@@ -31,7 +31,10 @@ const BattlesPage = () => {
     queryKey: ["battles-vote-totals", battleIds.join(",")],
     queryFn: async () => {
       if (!battleIds.length) return [];
-      const { data } = await supabase.from("battle_votes").select("battle_id, user_id").in("battle_id", battleIds);
+      const { data } = await supabase
+        .from("battle_votes")
+        .select("battle_id, user_id, voted_for")
+        .in("battle_id", battleIds);
       return data || [];
     },
     enabled: battleIds.length > 0,
@@ -39,16 +42,13 @@ const BattlesPage = () => {
 
   const voteTotals = useMemo(() => {
     const map: Record<string, number> = {};
-    const participantByBattle = new Map<string, Set<string>>();
-    for (const b of battles as any[]) {
-      participantByBattle.set(
-        b.id,
-        new Set([b.challenger_id, b.opponent_id].filter(Boolean)),
-      );
-    }
+    const battleById = new Map((battles as any[]).map((b) => [b.id, b]));
     for (const v of voteRows as any[]) {
-      const parts = participantByBattle.get(v.battle_id);
-      if (parts?.has(v.user_id)) continue;
+      const b = battleById.get(v.battle_id);
+      if (!b) continue;
+      // Count audience + cross-votes; never count a participant voting for themselves.
+      if (v.user_id === b.challenger_id && v.voted_for === b.challenger_id) continue;
+      if (b.opponent_id && v.user_id === b.opponent_id && v.voted_for === b.opponent_id) continue;
       map[v.battle_id] = (map[v.battle_id] || 0) + 1;
     }
     return map;

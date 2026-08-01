@@ -34,6 +34,7 @@ import {
   formatCountdown,
   getBattleExpiresAt,
   getBattleUiStatus,
+  tallyBattleVotes,
 } from "@/lib/battle-ui";
 
 interface Battle {
@@ -65,10 +66,14 @@ const fmt = (s: number) => {
   return `${m}:${sec.toString().padStart(2, "0")}`;
 };
 
-const BattleCard = ({ battle }: { battle: Battle }) => {
+const BattleCard = ({ battle, onOpen }: { battle: Battle; onOpen?: () => void }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const openBattle = useCallback(() => {
+    if (onOpen) onOpen();
+    else navigate(`/battle/${battle.id}`);
+  }, [onOpen, navigate, battle.id]);
   const [expanded, setExpanded] = useState(false);
   const [comment, setComment] = useState("");
   const commentsEndRef = useRef<HTMLDivElement>(null);
@@ -142,14 +147,17 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
     refetchInterval: isActive && !isExpired ? 8000 : false,
   });
   const participantIds = [battle.challenger_id, battle.opponent_id].filter(Boolean);
-  const audienceVotes = votes.filter((v: any) => !participantIds.includes(v.user_id));
-  const challengerVotes = audienceVotes.filter((v: any) => v.voted_for === battle.challenger_id).length;
-  const opponentVotes = battle.opponent_id ? audienceVotes.filter((v: any) => v.voted_for === battle.opponent_id).length : 0;
-  const totalVotes = challengerVotes + opponentVotes;
-  const challengerPct = totalVotes > 0 ? Math.round((challengerVotes / totalVotes) * 100) : 50;
-  const opponentPct = totalVotes > 0 ? 100 - challengerPct : 50;
-  const winner = totalVotes === 0 ? null : challengerVotes > opponentVotes ? "left" : challengerVotes < opponentVotes ? "right" : "tied";
+  const tally = tallyBattleVotes(votes as any[], battle.challenger_id, battle.opponent_id);
+  const audienceVotes = tally.countable;
+  const challengerVotes = tally.leftVotes;
+  const opponentVotes = tally.rightVotes;
+  const totalVotes = tally.total;
+  const challengerPct = tally.leftPct;
+  const opponentPct = tally.rightPct;
+  const winner = tally.winner;
   const isParticipant = !!user?.id && participantIds.includes(user.id);
+  const isChallenger = !!user?.id && user.id === battle.challenger_id;
+  const isOpponent = !!user?.id && user.id === battle.opponent_id;
 
   const leftVoterIds = useMemo(
     () =>
@@ -269,10 +277,24 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
     }
   };
 
-  const handleBattleShare = (e: React.MouseEvent) => {
+  const handleBattleShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigator.clipboard.writeText(`${window.location.origin}/battle/${battle.id}`);
-    toast.success("Link copied!");
+    const url = `${window.location.origin}/battle/${battle.id}`;
+    const title = battle.title || "YAJ Battle";
+    try {
+      if (navigator.share) {
+        await navigator.share({ title, text: title, url });
+        return;
+      }
+    } catch {
+      /* cancelled */
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Link copied!");
+    } catch {
+      toast.error("Could not share");
+    }
   };
 
   // Audio playback for inline card
@@ -345,15 +367,17 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
     if (now - lastTapRef.current < 450) {
       if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
       tapTimerRef.current = null;
-      setIsFullscreen((prev) => !prev);
+      // Feed mode: expand into the post viewer. Elsewhere: toggle card fullscreen.
+      if (onOpen) openBattle();
+      else setIsFullscreen((prev) => !prev);
       lastTapRef.current = 0;
     } else {
       lastTapRef.current = now;
       tapTimerRef.current = setTimeout(() => {
-        navigate(`/battle/${battle.id}`);
+        openBattle();
       }, 450);
     }
-  }, [navigate, battle.id]);
+  }, [openBattle, onOpen]);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
     e.stopPropagation();
@@ -652,11 +676,11 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
           ) : (
             <button
               type="button"
-              onClick={(e) => { e.stopPropagation(); navigate(`/battle/${battle.id}`); }}
+              onClick={(e) => { e.stopPropagation(); openBattle(); }}
               className="inline-flex shrink-0 items-center gap-1 rounded-full bg-violet-500 px-3 py-2 text-[11px] font-black text-white shadow-[0_0_18px_rgba(139,92,246,0.55)]"
             >
               <Zap className="h-3.5 w-3.5" />
-              Cast your vote
+              {onOpen ? "Open battle" : "Cast your vote"}
             </button>
           )}
         </div>
@@ -681,13 +705,17 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
           onClick={handleBattleShare}
           className="ml-auto inline-flex items-center gap-1 rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-bold text-white/80 ring-1 ring-white/10"
         >
-          <Share2 className="h-3.5 w-3.5" /> Share Battle
+          <Share2 className="h-3.5 w-3.5" /> Share
         </button>
       </div>
 
       {isParticipant ? (
         <div className="bg-white/5 px-3.5 py-2 text-center text-[11px] font-semibold text-white/45">
-          🔒 Participants cannot vote in their own battle.
+          {isChallenger
+            ? `You can vote for ${firstName(opponentName)} — not yourself.`
+            : isOpponent
+              ? `You can vote for ${firstName(challengerName)} — not yourself.`
+              : "You can vote for the other side — not yourself."}
         </div>
       ) : null}
 

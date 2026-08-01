@@ -118,12 +118,76 @@ export type VoteMomentum = {
   trending: "left" | "right" | "tied" | "none";
 };
 
+/** True when a participant cast a vote for their own side (never allowed). */
+export function isSelfBattleVote(
+  vote: { voted_for?: string | null; user_id?: string | null },
+  challengerId?: string | null,
+  opponentId?: string | null,
+): boolean {
+  if (!vote.user_id || !vote.voted_for) return false;
+  if (vote.user_id === challengerId && vote.voted_for === challengerId) return true;
+  if (opponentId && vote.user_id === opponentId && vote.voted_for === opponentId) return true;
+  return false;
+}
+
+/** Votes that count toward the score — includes cross-votes from participants. */
+export function isCountableBattleVote(
+  vote: { voted_for?: string | null; user_id?: string | null },
+  challengerId?: string | null,
+  opponentId?: string | null,
+): boolean {
+  if (!vote.user_id || !vote.voted_for) return false;
+  return !isSelfBattleVote(vote, challengerId, opponentId);
+}
+
+export type BattleVoteTally = {
+  leftVotes: number;
+  rightVotes: number;
+  total: number;
+  leftPct: number;
+  rightPct: number;
+  winner: "left" | "right" | "tied" | null;
+  countable: Array<{ voted_for?: string | null; user_id?: string | null; created_at?: string | null }>;
+};
+
+export function tallyBattleVotes(
+  votes: Array<{ voted_for?: string | null; user_id?: string | null; created_at?: string | null }>,
+  challengerId?: string | null,
+  opponentId?: string | null,
+): BattleVoteTally {
+  const countable = votes.filter((v) => isCountableBattleVote(v, challengerId, opponentId));
+  const leftVotes = challengerId ? countable.filter((v) => v.voted_for === challengerId).length : 0;
+  const rightVotes = opponentId ? countable.filter((v) => v.voted_for === opponentId).length : 0;
+  const total = leftVotes + rightVotes;
+  const leftPct = total > 0 ? Math.round((leftVotes / total) * 100) : 50;
+  const rightPct = total > 0 ? 100 - leftPct : 50;
+  const winner =
+    total === 0 ? null : leftVotes > rightVotes ? "left" : leftVotes < rightVotes ? "right" : "tied";
+  return { leftVotes, rightVotes, total, leftPct, rightPct, winner, countable };
+}
+
+/** Participants may vote for the other side only — never themselves. */
+export function canUserVoteForSide(
+  userId: string | null | undefined,
+  sideUserId: string | null | undefined,
+  opts?: { ended?: boolean; votingOpen?: boolean },
+): { allowed: boolean; reason?: string } {
+  if (!userId) return { allowed: false, reason: "Sign in to vote" };
+  if (opts?.ended) return { allowed: false, reason: "Voting closed — battle ended" };
+  if (opts?.votingOpen === false) {
+    return { allowed: false, reason: "Voting opens when both artists join" };
+  }
+  if (!sideUserId) return { allowed: false, reason: "Waiting for opponent" };
+  if (userId === sideUserId) return { allowed: false, reason: "You can't vote for yourself" };
+  return { allowed: true };
+}
+
 /** Recent vote surge from battle_votes.created_at — UI-only trend signal. */
 export function computeVoteMomentum(
   votes: Array<{ voted_for?: string | null; created_at?: string | null; user_id?: string | null }>,
   leftId?: string | null,
   rightId?: string | null,
-  participantIds: string[] = [],
+  _participantIds: string[] = [],
   windowMs = 60_000,
 ): VoteMomentum {
   if (!leftId && !rightId) {
@@ -132,7 +196,7 @@ export function computeVoteMomentum(
   const cutoff = Date.now() - windowMs;
   const recent = votes.filter((v) => {
     if (!v.created_at) return false;
-    if (v.user_id && participantIds.includes(v.user_id)) return false;
+    if (!isCountableBattleVote(v, leftId, rightId)) return false;
     return new Date(v.created_at).getTime() >= cutoff;
   });
   const leftGain = leftId ? recent.filter((v) => v.voted_for === leftId).length : 0;

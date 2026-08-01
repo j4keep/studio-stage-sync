@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import FeedPostCard from "./FeedPostCard";
+import BattleFeedSlide from "./BattleFeedSlide";
 import {
   getFeedMountRadius,
   forceIosAudioSessionToPlayback,
@@ -78,12 +79,20 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
               style={{ scrollSnapAlign: "start" }}
             >
               {mounted ? (
-                <FeedPostCard
-                  post={item}
-                  currentUserId={currentUserId}
-                  isActive={index === currentIndex}
-                  isNear={mounted}
-                />
+                item?.itemType === "battle" ? (
+                  <BattleFeedSlide
+                    battle={item}
+                    currentUserId={currentUserId}
+                    isActive={index === currentIndex}
+                  />
+                ) : (
+                  <FeedPostCard
+                    post={item}
+                    currentUserId={currentUserId}
+                    isActive={index === currentIndex}
+                    isNear={mounted}
+                  />
+                )
               ) : null}
             </div>
           );

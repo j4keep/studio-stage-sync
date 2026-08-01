@@ -28,6 +28,7 @@ import {
   formatCountdown,
   getBattleExpiresAt,
   getBattleUiStatus,
+  tallyBattleVotes,
 } from "@/lib/battle-ui";
 
 /* ─── helpers ─── */
@@ -129,9 +130,23 @@ const MusicBattlePlayerPage = () => {
   const voteMutation = useMutation({
     mutationFn: async (side: "left" | "right") => {
       if (!user || !battle) return;
-      if (isParticipant) return; // Participants cannot vote in their own battle
       const votedFor = side === "left" ? battle.challenger_id : battle.opponent_id;
       if (!votedFor) return;
+      // Participants can vote for the other side only — never themselves.
+      if (user.id === votedFor) {
+        toast.error("You can't vote for yourself");
+        return;
+      }
+      const battleEnded =
+        battle.status === "ended" ||
+        battle.status === "completed" ||
+        battle.status === "expired" ||
+        (battle.expires_at && new Date(battle.expires_at).getTime() <= Date.now());
+      if (battleEnded) {
+        toast.error("Voting closed — battle ended");
+        return;
+      }
+      if (battle.status !== "active") return;
       const existing = votes.find((v: any) => v.user_id === user.id);
       if (existing) {
         await supabase.from("battle_votes").update({ voted_for: votedFor }).eq("id", existing.id);
@@ -142,19 +157,22 @@ const MusicBattlePlayerPage = () => {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["battle-votes", battleId] }),
   });
 
-  /* ── derived (exclude participant votes) ── */
+  /* ── derived (participants may cast cross-votes; self-votes never count) ── */
   const participantIds = [battle?.challenger_id, battle?.opponent_id].filter(Boolean);
-  const audienceVotes = votes.filter((v: any) => !participantIds.includes(v.user_id));
-  const leftVotes = audienceVotes.filter((v: any) => v.voted_for === battle?.challenger_id).length;
-  const rightVotes = audienceVotes.filter((v: any) => v.voted_for === battle?.opponent_id).length;
-  const total = leftVotes + rightVotes;
-  const leftPct = total > 0 ? Math.round((leftVotes / total) * 100) : 50;
-  const rightPct = total > 0 ? 100 - leftPct : 50;
-  const winner = total === 0 ? "tied" : leftPct > rightPct ? "left" : leftPct < rightPct ? "right" : "tied";
+  const voteTally = tallyBattleVotes(votes as any[], battle?.challenger_id, battle?.opponent_id);
+  const audienceVotes = voteTally.countable;
+  const leftVotes = voteTally.leftVotes;
+  const rightVotes = voteTally.rightVotes;
+  const total = voteTally.total;
+  const leftPct = voteTally.leftPct;
+  const rightPct = voteTally.rightPct;
+  const winner = voteTally.winner === null ? "tied" : voteTally.winner;
 
   const userVote = votes.find((v: any) => v.user_id === user?.id);
   const hasVotedLeft = userVote?.voted_for === battle?.challenger_id;
   const hasVotedRight = userVote?.voted_for === battle?.opponent_id;
+  const canVoteLeft = !!user?.id && user.id !== battle?.challenger_id;
+  const canVoteRight = !!user?.id && !!battle?.opponent_id && user.id !== battle?.opponent_id;
   const isPending = battle?.status === "pending" && !!battle?.opponent_id;
   const canAccept = isPending && user?.id === battle?.opponent_id && !battle?.opponent_media_url;
 
@@ -879,46 +897,59 @@ const MusicBattlePlayerPage = () => {
           <div className="flex-1 rounded-2xl bg-muted py-3.5 text-center text-sm font-bold text-muted-foreground opacity-70">
             Voting opens when both artists join
           </div>
-        ) : isParticipant ? (
+        ) : ended ? (
           <div className="flex-1 rounded-2xl bg-muted py-3.5 text-center text-sm font-bold text-muted-foreground opacity-70">
-            Participants cannot vote in their own battle
+            Voting closed — you can still like the battle
           </div>
         ) : (
           <>
             <motion.button
               whileTap={{ scale: 0.96 }}
-              onClick={() => !ended && voteMutation.mutate("left")}
-              disabled={ended}
+              onClick={() => voteMutation.mutate("left")}
+              disabled={!canVoteLeft}
               className={`flex flex-1 items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-black transition-all ${
                 hasVotedLeft
                   ? "bg-sky-500 text-white shadow-lg shadow-sky-500/30"
-                  : "bg-sky-500/15 text-sky-300 ring-1 ring-sky-500/30 hover:bg-sky-500/25"
-              } ${ended ? "opacity-50" : ""}`}
+                  : canVoteLeft
+                    ? "bg-sky-500/15 text-sky-300 ring-1 ring-sky-500/30 hover:bg-sky-500/25"
+                    : "bg-muted text-muted-foreground opacity-60"
+              }`}
             >
               {hasVotedLeft ? <Check className="h-4 w-4" /> : <ThumbsUp className="h-4 w-4" />}
-              {hasVotedLeft
-                ? `You voted ${firstName(leftName, "A")}`
-                : `Vote ${firstName(leftName, "A")}`}
+              {!canVoteLeft
+                ? "Your side"
+                : hasVotedLeft
+                  ? `You voted ${firstName(leftName, "A")}`
+                  : `Vote ${firstName(leftName, "A")}`}
             </motion.button>
 
             <motion.button
               whileTap={{ scale: 0.96 }}
-              onClick={() => !ended && voteMutation.mutate("right")}
-              disabled={ended}
+              onClick={() => voteMutation.mutate("right")}
+              disabled={!canVoteRight}
               className={`flex flex-1 items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-black transition-all ${
                 hasVotedRight
                   ? "bg-rose-500 text-white shadow-lg shadow-rose-500/30"
-                  : "bg-rose-500/15 text-rose-300 ring-1 ring-rose-500/30 hover:bg-rose-500/25"
-              } ${ended ? "opacity-50" : ""}`}
+                  : canVoteRight
+                    ? "bg-rose-500/15 text-rose-300 ring-1 ring-rose-500/30 hover:bg-rose-500/25"
+                    : "bg-muted text-muted-foreground opacity-60"
+              }`}
             >
               {hasVotedRight ? <Check className="h-4 w-4" /> : <Flame className="h-4 w-4" />}
-              {hasVotedRight
-                ? `You voted ${firstName(rightName, "B")}`
-                : `Vote ${firstName(rightName, "B")}`}
+              {!canVoteRight
+                ? "Your side"
+                : hasVotedRight
+                  ? `You voted ${firstName(rightName, "B")}`
+                  : `Vote ${firstName(rightName, "B")}`}
             </motion.button>
           </>
         )}
       </div>
+      {isParticipant && !ended && battle.status === "active" ? (
+        <p className="px-4 pb-2 text-center text-[11px] font-semibold text-muted-foreground">
+          You can vote for your opponent — not yourself.
+        </p>
+      ) : null}
 
       {battleId && (uiStatus === "live" || uiStatus === "ending" || uiStatus === "ended") ? (
         <div className="px-4 pb-6">

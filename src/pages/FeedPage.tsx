@@ -79,11 +79,8 @@ const FeedPage = () => {
     unlockFeedAudioSession();
     setViewer({ rail, index });
   };
-  // Fullscreen viewer is posts/reels only — battles open their own arena page.
-  const viewerPosts = useMemo(
-    () => posts.filter((p: any) => p.itemType !== "battle"),
-    [posts],
-  );
+  // Posts rail includes battles — open them in the same fullscreen viewer as posts.
+  const viewerPosts = posts;
   const activeItems =
     viewer?.rail === "reel" ? reels : viewer?.rail === "post" ? viewerPosts : [];
 
@@ -190,17 +187,18 @@ const FeedPage = () => {
                   </button>
                 </div>
               ) : (
-                posts.map((item: any) =>
+                posts.map((item: any, i: number) =>
                   item.itemType === "battle" ? (
-                    <BattleCard key={`battle-${item.id}`} battle={item} />
+                    <BattleCard
+                      key={`battle-${item.id}`}
+                      battle={item}
+                      onOpen={() => openItem("post", i)}
+                    />
                   ) : (
                     <FeedThumbCard
                       key={item.id}
                       post={item}
-                      onOpen={() => {
-                        const idx = viewerPosts.findIndex((p: any) => p.id === item.id);
-                        if (idx >= 0) openItem("post", idx);
-                      }}
+                      onOpen={() => openItem("post", i)}
                     />
                   ),
                 )
@@ -249,17 +247,18 @@ const FeedPage = () => {
                     </button>
                   </div>
                 ) : (
-                  posts.map((item: any) =>
+                  posts.map((item: any, i: number) =>
                     item.itemType === "battle" ? (
-                      <BattleCard key={`battle-${item.id}`} battle={item} />
+                      <BattleCard
+                        key={`battle-${item.id}`}
+                        battle={item}
+                        onOpen={() => openItem("post", i)}
+                      />
                     ) : (
                       <FeedThumbCard
                         key={item.id}
                         post={item}
-                        onOpen={() => {
-                          const idx = viewerPosts.findIndex((p: any) => p.id === item.id);
-                          if (idx >= 0) openItem("post", idx);
-                        }}
+                        onOpen={() => openItem("post", i)}
                         pressHoldMs={350}
                       />
                     ),
