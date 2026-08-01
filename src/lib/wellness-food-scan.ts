@@ -19,6 +19,31 @@ export type NutrientFact = {
   icon: "flame" | "salt" | "sugar" | "fat" | "fiber" | "protein" | "veg" | "additive" | "nova";
 };
 
+export type FoodCategoryId =
+  | "nutrition_quality"
+  | "calories"
+  | "protein"
+  | "fiber"
+  | "sodium"
+  | "added_sugar"
+  | "healthy_fats"
+  | "yaj_guidance";
+
+export type FoodCategory = {
+  id: FoodCategoryId;
+  label: string;
+  emoji: string;
+  value: string;
+  /** 0–100 when scored; null for guidance-only rows */
+  score: number | null;
+  tone: FactTone;
+  note: string;
+};
+
+/** Shared educational disclaimer — estimate/guidance language, never “opinion”. */
+export const ABOUT_FOOD_SCAN_ESTIMATE =
+  "YAJ uses image recognition and nutrition databases to estimate calories, nutrients, and ingredient quality. Results are estimates only and may not perfectly match your meal. YAJ provides educational wellness guidance and is not a substitute for medical or dietary advice.";
+
 export type FoodScanResult = {
   is_food: boolean;
   source: "open_food_facts" | "ai_vision";
@@ -34,6 +59,7 @@ export type FoodScanResult = {
   summary: string;
   should_eat_label: string;
   guidance: string;
+  categories: FoodCategory[];
   negatives: NutrientFact[];
   positives: NutrientFact[];
   recommendations: string[];
@@ -325,6 +351,25 @@ function buildFromOpenFoodFacts(barcode: string, p: Record<string, unknown>): Fo
     "Packaged product";
   const brand = String(p.brands || "").split(",")[0]?.trim() || undefined;
 
+  const guidance =
+    rating === "excellent" || rating === "good"
+      ? "A solid everyday pick — notice portion size and how you feel after."
+      : rating === "moderate"
+        ? "Fine sometimes — balance the rest of your day with fresher foods."
+        : "Best as an occasional treat. Pair with protein, fiber, or water if you enjoy it.";
+
+  const categories = buildCategories({
+    overallScore: score,
+    kcalServing: kcalServing ?? kcal100,
+    proteinServing,
+    fiberServing,
+    sodiumMg,
+    sugarsServing,
+    satServing,
+    fatServing,
+    guidance,
+  });
+
   return {
     is_food: true,
     source: "open_food_facts",
@@ -339,18 +384,18 @@ function buildFromOpenFoodFacts(barcode: string, p: Record<string, unknown>): Fo
     calories_serving: kcalServing ?? kcal100,
     summary:
       rating === "excellent" || rating === "good"
-        ? "A reasonable pick for everyday eating — still check your portion."
+        ? "Strong across several categories — still check your portion."
         : rating === "moderate"
-          ? "Okay sometimes — balance it with fresher foods today."
-          : "Best as an occasional treat, not an everyday staple.",
+          ? "Mixed signals across categories — balance it with whole foods today."
+          : "A few categories ask for more care — enjoy mindfully when you choose it.",
     should_eat_label:
       rating === "excellent" || rating === "good"
-        ? "Yes — fine choice"
+        ? "Everyday-friendly"
         : rating === "moderate"
-          ? "Yes — in moderation"
-          : "Limit — occasional treat",
-    guidance:
-      "Scores are based on public nutrition data (Open Food Facts) plus YAJ’s wellness heuristics. Not medical advice.",
+          ? "Sometimes works"
+          : "Occasional treat",
+    guidance,
+    categories,
     negatives,
     positives,
     recommendations:
@@ -358,14 +403,14 @@ function buildFromOpenFoodFacts(barcode: string, p: Record<string, unknown>): Fo
         ? [
             "Try a smaller portion or share the bag",
             "Pair with water and a protein/veggie snack later",
-            "Look for baked or lower-sodium chip alternatives",
+            "Look for baked or lower-sodium alternatives",
           ]
         : [
             "Enjoy mindfully and notice fullness",
             "Balance the rest of the day with whole foods",
           ],
     ingredients: String(p.ingredients_text || "") || undefined,
-    disclaimer: "Product data via Open Food Facts · ballpark wellness score — not medical advice.",
+    disclaimer: ABOUT_FOOD_SCAN_ESTIMATE,
   };
 }
 
@@ -404,15 +449,282 @@ function scoreFromSignals(s: {
 }
 
 function ratingFromScore(score: number): { rating: FoodRating; rating_label: string } {
-  if (score >= 75) return { rating: "excellent", rating_label: "Excellent" };
-  if (score >= 60) return { rating: "good", rating_label: "Good" };
-  if (score >= 45) return { rating: "moderate", rating_label: "Mediocre" };
-  if (score >= 30) return { rating: "poor", rating_label: "Poor" };
-  return { rating: "bad", rating_label: "Bad" };
+  if (score >= 75) return { rating: "excellent", rating_label: "Strong pick" };
+  if (score >= 60) return { rating: "good", rating_label: "Solid choice" };
+  if (score >= 45) return { rating: "moderate", rating_label: "Balanced sometimes" };
+  if (score >= 30) return { rating: "poor", rating_label: "Go easy" };
+  return { rating: "bad", rating_label: "Occasional treat" };
+}
+
+function toneFromScore(score: number): FactTone {
+  if (score >= 70) return "good";
+  if (score >= 45) return "ok";
+  return "poor";
+}
+
+function clampScore(n: number): number {
+  return Math.max(1, Math.min(99, Math.round(n)));
+}
+
+function buildCategories(input: {
+  overallScore: number;
+  kcalServing: number | null;
+  proteinServing: number | null;
+  fiberServing: number | null;
+  sodiumMg: number | null;
+  sugarsServing: number | null;
+  satServing: number | null;
+  fatServing: number | null;
+  guidance: string;
+}): FoodCategory[] {
+  const calScore =
+    input.kcalServing == null
+      ? null
+      : clampScore(
+          input.kcalServing <= 150
+            ? 88
+            : input.kcalServing <= 250
+              ? 70
+              : input.kcalServing <= 400
+                ? 52
+                : Math.max(20, 70 - (input.kcalServing - 400) / 12),
+        );
+
+  const proteinScore =
+    input.proteinServing == null
+      ? null
+      : clampScore(
+          input.proteinServing >= 15
+            ? 92
+            : input.proteinServing >= 10
+              ? 80
+              : input.proteinServing >= 5
+                ? 60
+                : input.proteinServing >= 2
+                  ? 42
+                  : 28,
+        );
+
+  const fiberScore =
+    input.fiberServing == null
+      ? null
+      : clampScore(
+          input.fiberServing >= 5
+            ? 92
+            : input.fiberServing >= 3
+              ? 78
+              : input.fiberServing >= 1
+                ? 55
+                : 30,
+        );
+
+  const sodiumScore =
+    input.sodiumMg == null
+      ? null
+      : clampScore(
+          input.sodiumMg <= 140
+            ? 90
+            : input.sodiumMg <= 300
+              ? 65
+              : input.sodiumMg <= 500
+                ? 42
+                : Math.max(18, 50 - (input.sodiumMg - 500) / 20),
+        );
+
+  const sugarScore =
+    input.sugarsServing == null
+      ? null
+      : clampScore(
+          input.sugarsServing <= 5
+            ? 90
+            : input.sugarsServing <= 10
+              ? 65
+              : input.sugarsServing <= 18
+                ? 42
+                : Math.max(18, 45 - (input.sugarsServing - 18) * 1.5),
+        );
+
+  let fatScore: number | null = null;
+  if (input.satServing != null) {
+    const sat = input.satServing;
+    const total = input.fatServing ?? sat;
+    const satRatio = total > 0 ? sat / total : 1;
+    fatScore = clampScore(
+      sat <= 2 && satRatio < 0.4
+        ? 88
+        : sat <= 5
+          ? 62
+          : sat <= 8
+            ? 42
+            : Math.max(18, 40 - (sat - 8) * 3),
+    );
+  }
+
+  const cats: FoodCategory[] = [
+    {
+      id: "nutrition_quality",
+      label: "Nutrition Quality",
+      emoji: "🥗",
+      value: `${input.overallScore}/100`,
+      score: input.overallScore,
+      tone: toneFromScore(input.overallScore),
+      note:
+        input.overallScore >= 70
+          ? "Looks supportive across the board"
+          : input.overallScore >= 45
+            ? "Mixed — some strengths, some tradeoffs"
+            : "A few nutrients need more care",
+    },
+    {
+      id: "calories",
+      label: "Estimated Calories",
+      emoji: "🔥",
+      value: input.kcalServing != null ? `~${Math.round(input.kcalServing)} Cal` : "—",
+      score: calScore,
+      tone: calScore != null ? toneFromScore(calScore) : "ok",
+      note:
+        input.kcalServing == null
+          ? "Estimate unavailable"
+          : input.kcalServing <= 250
+            ? "Reasonable energy for a snack or side"
+            : "Higher energy — portion awareness helps",
+    },
+    {
+      id: "protein",
+      label: "Protein",
+      emoji: "💪",
+      value: input.proteinServing != null ? `${round1(input.proteinServing)}g` : "—",
+      score: proteinScore,
+      tone: proteinScore != null ? toneFromScore(proteinScore) : "ok",
+      note:
+        input.proteinServing == null
+          ? "Estimate unavailable"
+          : input.proteinServing >= 10
+            ? "Helpful for fullness and recovery"
+            : "Light on protein — pair with eggs, yogurt, or beans if you can",
+    },
+    {
+      id: "fiber",
+      label: "Fiber",
+      emoji: "🌾",
+      value: input.fiberServing != null ? `${round1(input.fiberServing)}g` : "—",
+      score: fiberScore,
+      tone: fiberScore != null ? toneFromScore(fiberScore) : "ok",
+      note:
+        input.fiberServing == null
+          ? "Estimate unavailable"
+          : input.fiberServing >= 3
+            ? "Solid fiber for digestion and steady energy"
+            : "Low fiber — add produce, beans, or whole grains nearby",
+    },
+    {
+      id: "sodium",
+      label: "Sodium",
+      emoji: "🧂",
+      value: input.sodiumMg != null ? `${Math.round(input.sodiumMg)}mg` : "—",
+      score: sodiumScore,
+      tone: sodiumScore != null ? toneFromScore(sodiumScore) : "ok",
+      note:
+        input.sodiumMg == null
+          ? "Estimate unavailable"
+          : input.sodiumMg <= 300
+            ? "Sodium looks manageable"
+            : "On the higher side — balance with fresher, lower-salt foods",
+    },
+    {
+      id: "added_sugar",
+      label: "Added Sugar",
+      emoji: "🍬",
+      value: input.sugarsServing != null ? `${round1(input.sugarsServing)}g` : "—",
+      score: sugarScore,
+      tone: sugarScore != null ? toneFromScore(sugarScore) : "ok",
+      note:
+        input.sugarsServing == null
+          ? "Estimate unavailable"
+          : input.sugarsServing <= 5
+            ? "Sugar looks modest"
+            : "Sugary for everyday — enjoy mindfully",
+    },
+    {
+      id: "healthy_fats",
+      label: "Healthy Fats",
+      emoji: "🥜",
+      value:
+        input.satServing != null
+          ? `${round1(input.satServing)}g sat`
+          : input.fatServing != null
+            ? `${round1(input.fatServing)}g fat`
+            : "—",
+      score: fatScore,
+      tone: fatScore != null ? toneFromScore(fatScore) : "ok",
+      note:
+        fatScore == null
+          ? "Estimate unavailable"
+          : fatScore >= 70
+            ? "Fat profile looks gentle"
+            : "More saturated fat — keep portions mindful",
+    },
+    {
+      id: "yaj_guidance",
+      label: "YAJ Guidance",
+      emoji: "🧠",
+      value: "Coach tip",
+      score: null,
+      tone: "ok",
+      note: input.guidance,
+    },
+  ];
+
+  return cats;
+}
+
+function round1(n: number): number {
+  return Math.round(n * 10) / 10;
+}
+
+/** Prefer model categories; otherwise derive a coaching set from available numbers. */
+function ensureCategories(
+  raw: Partial<FoodScanResult> & {
+    categories?: FoodCategory[];
+    protein_g?: number | null;
+    fiber_g?: number | null;
+    sodium_mg?: number | null;
+    sugars_g?: number | null;
+    sat_fat_g?: number | null;
+    fat_g?: number | null;
+  },
+  fallbackScore: number,
+  guidance: string,
+): FoodCategory[] {
+  if (Array.isArray(raw.categories) && raw.categories.length > 0) {
+    return raw.categories.map((c) => ({
+      id: c.id,
+      label: c.label || String(c.id),
+      emoji: c.emoji || "•",
+      value: c.value || "—",
+      score: c.score == null ? null : clampScore(Number(c.score)),
+      tone: c.tone || (c.score != null ? toneFromScore(Number(c.score)) : "ok"),
+      note: c.note || "",
+    }));
+  }
+
+  return buildCategories({
+    overallScore: fallbackScore,
+    kcalServing: raw.calories_serving ?? null,
+    proteinServing: raw.protein_g ?? null,
+    fiberServing: raw.fiber_g ?? null,
+    sodiumMg: raw.sodium_mg ?? null,
+    sugarsServing: raw.sugars_g ?? null,
+    satServing: raw.sat_fat_g ?? null,
+    fatServing: raw.fat_g ?? null,
+    guidance,
+  });
 }
 
 const AI_JSON_PROMPT = `You are YAJ Food Scan — a calm Nourish Score wellness coach (NOT a doctor).
 Look at the photo. It may be a packaged product (barcode / nutrition label) or a plate of food.
+Score the WHOLE meal across categories — do not only label foods as good or bad.
+Use estimate / guidance / educational language. Never say "opinion".
 Return STRICT JSON only:
 
 {
@@ -422,20 +734,36 @@ Return STRICT JSON only:
   "brand": "brand if visible else empty",
   "score": 0-100,
   "rating": "excellent|good|moderate|poor|bad",
-  "rating_label": "Excellent|Good|Mediocre|Poor|Bad",
+  "rating_label": "Strong pick|Solid choice|Balanced sometimes|Go easy|Occasional treat",
   "serving_size": "e.g. 1 package / 1 plate",
   "calories_serving": number,
-  "summary": "1-2 sentences",
-  "should_eat_label": "short recommendation",
-  "guidance": "2 sentences practical advice",
-  "negatives": [{"id":"","title":"","subtitle":"","value":"","tone":"poor|ok|good","icon":"flame|salt|sugar|fat|fiber|protein|veg|additive|nova"}],
-  "positives": [same shape],
+  "protein_g": number or null,
+  "fiber_g": number or null,
+  "sodium_mg": number or null,
+  "sugars_g": number or null,
+  "sat_fat_g": number or null,
+  "fat_g": number or null,
+  "summary": "1-2 sentences about the meal overall",
+  "should_eat_label": "Everyday-friendly|Sometimes works|Occasional treat",
+  "guidance": "2 sentences practical wellness coaching",
+  "categories": [
+    {"id":"nutrition_quality","label":"Nutrition Quality","emoji":"🥗","value":"72/100","score":72,"tone":"good|ok|poor","note":"short note"},
+    {"id":"calories","label":"Estimated Calories","emoji":"🔥","value":"~320 Cal","score":0-100,"tone":"good|ok|poor","note":"..."},
+    {"id":"protein","label":"Protein","emoji":"💪","value":"12g","score":0-100,"tone":"...","note":"..."},
+    {"id":"fiber","label":"Fiber","emoji":"🌾","value":"4g","score":0-100,"tone":"...","note":"..."},
+    {"id":"sodium","label":"Sodium","emoji":"🧂","value":"480mg","score":0-100,"tone":"...","note":"..."},
+    {"id":"added_sugar","label":"Added Sugar","emoji":"🍬","value":"8g","score":0-100,"tone":"...","note":"..."},
+    {"id":"healthy_fats","label":"Healthy Fats","emoji":"🥜","value":"3g sat","score":0-100,"tone":"...","note":"..."},
+    {"id":"yaj_guidance","label":"YAJ Guidance","emoji":"🧠","value":"Coach tip","score":null,"tone":"ok","note":"practical guidance"}
+  ],
+  "negatives": [],
+  "positives": [],
   "recommendations": ["better swap or habit tip"],
   "ingredients": "if readable else empty",
-  "disclaimer": "Ballpark estimate only — not medical advice."
+  "disclaimer": "Estimates and educational wellness guidance only — not medical advice."
 }
 
-If nutrition facts are visible, use those numbers. If a full plate, estimate calories and rate the overall meal.`;
+If nutrition facts are visible, use those numbers. If a full plate, estimate calories and nutrients and coach the whole meal.`;
 
 async function collectYajStream(resp: Response): Promise<string> {
   if (!resp.ok) {
@@ -529,9 +857,24 @@ function extractJson(text: string): string {
   throw new Error("Could not parse food scan result");
 }
 
-function normalizeAiResult(raw: Partial<FoodScanResult>): FoodScanResult {
+function normalizeAiResult(
+  raw: Partial<FoodScanResult> & {
+    categories?: FoodCategory[];
+    protein_g?: number | null;
+    fiber_g?: number | null;
+    sodium_mg?: number | null;
+    sugars_g?: number | null;
+    sat_fat_g?: number | null;
+    fat_g?: number | null;
+  },
+): FoodScanResult {
   const score = Math.max(1, Math.min(99, Math.round(Number(raw.score) || 50)));
   const mapped = ratingFromScore(score);
+  const guidance =
+    raw.guidance ||
+    "Educational wellness guidance based on an estimate of this meal — check in with how you feel.";
+  const categories = ensureCategories(raw, score, guidance);
+
   return {
     is_food: raw.is_food !== false,
     source: "ai_vision",
@@ -546,13 +889,13 @@ function normalizeAiResult(raw: Partial<FoodScanResult>): FoodScanResult {
     calories_serving: raw.calories_serving ?? null,
     summary: raw.summary || "",
     should_eat_label: raw.should_eat_label || "See guidance below",
-    guidance: raw.guidance || "",
+    guidance,
+    categories,
     negatives: Array.isArray(raw.negatives) ? raw.negatives : [],
     positives: Array.isArray(raw.positives) ? raw.positives : [],
     recommendations: Array.isArray(raw.recommendations) ? raw.recommendations : [],
     ingredients: raw.ingredients,
-    disclaimer:
-      raw.disclaimer || "Ballpark estimate only — not medical or dietitian advice.",
+    disclaimer: ABOUT_FOOD_SCAN_ESTIMATE,
   };
 }
 

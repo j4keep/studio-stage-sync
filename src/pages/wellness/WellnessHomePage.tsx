@@ -313,21 +313,15 @@ export default function WellnessHomePage() {
         <button
           type="button"
           onClick={() => nav("/wellness/food")}
-          className="relative w-full overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-amber-800 via-orange-950 to-stone-900 p-5 text-left text-amber-50 shadow-[0_18px_40px_-24px_rgba(120,60,20,0.55)] active:scale-[0.99]"
+          className="relative w-full overflow-hidden rounded-[1.5rem] bg-gradient-to-br from-amber-800 via-orange-950 to-stone-900 px-4 py-3.5 text-left text-amber-50 shadow-[0_14px_32px_-22px_rgba(120,60,20,0.55)] active:scale-[0.99]"
         >
-          <div className="pointer-events-none absolute -right-6 -top-8 h-32 w-32 rounded-full bg-amber-300/15 blur-2xl" />
-          <div className="pointer-events-none absolute bottom-0 left-1/3 h-20 w-20 rounded-full bg-orange-200/10 blur-xl" />
-          <Camera className="absolute right-4 top-4 h-5 w-5 text-amber-100/45" strokeWidth={1.75} />
-          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-amber-200/80">
-            Nourish
+          <div className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-amber-300/15 blur-2xl" />
+          <Camera className="absolute right-3.5 top-3.5 h-4 w-4 text-amber-100/40" strokeWidth={1.75} />
+          <h2 className="font-display text-lg font-bold tracking-tight text-white">Food Scan</h2>
+          <p className="mt-0.5 max-w-[17rem] text-[13px] leading-snug text-amber-50/75">
+            Scan a meal, snack, or barcode.
           </p>
-          <h2 className="mt-1 font-display text-xl font-bold tracking-tight text-white">
-            Food Scan
-          </h2>
-          <p className="mt-1.5 max-w-[16rem] text-sm leading-relaxed text-amber-50/75">
-            Snap a snack or plate — YAJ gives a gentle nourish score and coach guidance.
-          </p>
-          <span className="mt-4 inline-flex items-center rounded-full bg-amber-200 px-4 py-2 text-xs font-black text-amber-950">
+          <span className="mt-2.5 inline-flex items-center rounded-full bg-amber-200 px-3.5 py-1.5 text-[11px] font-black text-amber-950">
             Open scanner →
           </span>
         </button>

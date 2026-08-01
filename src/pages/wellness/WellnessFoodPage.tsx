@@ -4,22 +4,19 @@ import {
   Apple,
   ArrowLeft,
   Camera,
-  Flame,
   ImagePlus,
-  Leaf,
   Loader2,
   RefreshCw,
   ScanBarcode,
-  Shrub,
   Sparkles,
-  Wheat,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
+  ABOUT_FOOD_SCAN_ESTIMATE,
   analyzeFoodPhoto,
   foodPhotoToDataUrl,
+  type FoodCategory,
   type FoodScanResult,
-  type NutrientFact,
 } from "@/lib/wellness-food-scan";
 
 export default function WellnessFoodPage() {
@@ -99,14 +96,15 @@ export default function WellnessFoodPage() {
 
       <div className="space-y-4 px-4 pt-4">
         {!result ? (
-          <section className="rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50/80 via-white to-teal-50/50 px-4 py-3">
-            <p className="text-sm leading-relaxed text-stone-600">
-              Scan a <span className="font-bold text-stone-900">barcode</span>, nutrition label, or
-              full plate. YAJ builds a Nourish Score with calm coaching — what’s working, what to
-              go easy on, and a clear next step.
+          <section className="rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50/80 via-white to-teal-50/50 px-4 py-3.5">
+            <p className="text-sm font-semibold leading-relaxed text-stone-700">
+              Scan a meal, snack, or barcode.
             </p>
-            <p className="mt-1 text-[11px] text-stone-400">
-              Estimates / public product data only — not medical advice.
+            <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-700">
+              About this estimate
+            </p>
+            <p className="mt-1.5 text-xs leading-relaxed text-stone-500">
+              {ABOUT_FOOD_SCAN_ESTIMATE}
             </p>
           </section>
         ) : null}
@@ -281,8 +279,8 @@ function NourishScoreCard({
   const offset = c - (pct / 100) * c;
   const stroke = nourishStroke(result.score);
   const perServing = result.serving_size
-    ? `per serving (${result.serving_size})`
-    : "per serving";
+    ? `Estimates · ${result.serving_size}`
+    : "Estimates per serving";
 
   return (
     <section className="overflow-hidden rounded-[1.85rem] border border-emerald-100 bg-gradient-to-b from-white via-white to-emerald-50/40 shadow-sm">
@@ -352,31 +350,34 @@ function NourishScoreCard({
             </span>
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-600">
-                YAJ says · {result.should_eat_label}
+                YAJ guidance · {result.should_eat_label}
               </p>
               <p className="mt-1 text-sm font-medium leading-relaxed text-stone-700">
                 {result.guidance}
               </p>
-              {result.calories_serving != null ? (
-                <p className="mt-2 text-xs font-semibold text-stone-500">
-                  ~{Math.round(result.calories_serving)} Cal
-                  {result.serving_size ? ` · ${result.serving_size}` : ""}
-                </p>
-              ) : null}
             </div>
           </div>
         </div>
       </div>
 
-      {result.positives.length > 0 ? (
-        <InsightGroup title="What’s working" accent="emerald" context={perServing} facts={result.positives} />
-      ) : null}
-      {result.negatives.length > 0 ? (
-        <InsightGroup title="Go easy on" accent="amber" context={perServing} facts={result.negatives} />
+      {result.categories.length > 0 ? (
+        <div className="mt-4 border-t border-emerald-100/80 px-5 py-4">
+          <div className="mb-3 flex items-baseline justify-between gap-2">
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-700">
+              Meal coaching
+            </p>
+            <p className="text-[11px] text-stone-400">{perServing}</p>
+          </div>
+          <ul className="space-y-2.5">
+            {result.categories.map((cat) => (
+              <CategoryRow key={cat.id} category={cat} />
+            ))}
+          </ul>
+        </div>
       ) : null}
 
       {result.recommendations.length > 0 ? (
-        <div className="mt-2 border-t border-emerald-100/80 px-5 py-4">
+        <div className="border-t border-emerald-100/80 px-5 py-4">
           <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-600/80">
             YAJ ideas
           </p>
@@ -402,91 +403,46 @@ function NourishScoreCard({
         </div>
       ) : null}
 
-      <p className="border-t border-emerald-100/80 px-5 py-3 text-center text-[11px] leading-relaxed text-stone-400">
-        {result.disclaimer}
-      </p>
+      <div className="border-t border-emerald-100/80 px-5 py-4">
+        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-stone-400">
+          About this estimate
+        </p>
+        <p className="mt-1.5 text-[11px] leading-relaxed text-stone-500">{result.disclaimer}</p>
+      </div>
     </section>
   );
 }
 
-function InsightGroup({
-  title,
-  accent,
-  context,
-  facts,
-}: {
-  title: string;
-  accent: "emerald" | "amber";
-  context: string;
-  facts: NutrientFact[];
-}) {
-  const wrap =
-    accent === "emerald"
-      ? "border-emerald-100/80 bg-emerald-50/30"
-      : "border-amber-100/80 bg-amber-50/25";
-  const label = accent === "emerald" ? "text-emerald-700" : "text-amber-700";
-  const iconBg =
-    accent === "emerald" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700";
+function categoryBarColor(tone: FoodCategory["tone"]) {
+  if (tone === "good") return "bg-emerald-500";
+  if (tone === "ok") return "bg-teal-400";
+  return "bg-amber-500";
+}
 
+function CategoryRow({ category }: { category: FoodCategory }) {
+  const isGuidance = category.id === "yaj_guidance";
   return (
-    <div className={`mt-4 border-t px-5 py-4 ${wrap}`}>
-      <div className="mb-3 flex items-baseline justify-between gap-2">
-        <p className={`text-[11px] font-bold uppercase tracking-[0.14em] ${label}`}>{title}</p>
-        <p className="text-[11px] text-stone-400">{context}</p>
+    <li className="rounded-2xl border border-white/80 bg-white/90 px-3.5 py-3 shadow-sm">
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-sm font-bold text-stone-900">
+          <span className="mr-1.5" aria-hidden>
+            {category.emoji}
+          </span>
+          {category.label}
+        </p>
+        <p className="shrink-0 text-sm font-semibold tabular-nums text-stone-500">
+          {category.value}
+        </p>
       </div>
-      <ul className="space-y-2.5">
-        {facts.map((f) => (
-          <li
-            key={f.id + f.title}
-            className="flex items-start gap-3 rounded-2xl border border-white/80 bg-white/90 px-3 py-3 shadow-sm"
-          >
-            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${iconBg}`}>
-              <FactIcon icon={f.icon} />
-            </span>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-start justify-between gap-2">
-                <p className="text-sm font-bold text-stone-900">{f.title}</p>
-                <p className="shrink-0 text-sm font-semibold tabular-nums text-stone-500">{f.value}</p>
-              </div>
-              <p className="mt-0.5 text-xs leading-relaxed text-stone-500">{f.subtitle}</p>
-            </div>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function FactIcon({ icon }: { icon: NutrientFact["icon"] }) {
-  const cls = "h-4 w-4";
-  switch (icon) {
-    case "flame":
-      return <Flame className={cls} />;
-    case "salt":
-      return <Sparkles className={cls} />;
-    case "sugar":
-      return <Apple className={cls} />;
-    case "fat":
-      return <DropletIcon />;
-    case "fiber":
-      return <Wheat className={cls} />;
-    case "protein":
-      return <Shrub className={cls} />;
-    case "veg":
-      return <Leaf className={cls} />;
-    case "additive":
-      return <ScanBarcode className={cls} />;
-    case "nova":
-      return <Sparkles className={cls} />;
-    default:
-      return <Sparkles className={cls} />;
-  }
-}
-
-function DropletIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M12 3s6 6.5 6 10a6 6 0 1 1-12 0c0-3.5 6-10 6-10z" />
-    </svg>
+      {!isGuidance && category.score != null ? (
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-stone-100">
+          <div
+            className={`h-full rounded-full transition-all ${categoryBarColor(category.tone)}`}
+            style={{ width: `${Math.max(6, Math.min(100, category.score))}%` }}
+          />
+        </div>
+      ) : null}
+      <p className="mt-1.5 text-xs leading-relaxed text-stone-500">{category.note}</p>
+    </li>
   );
 }
