@@ -114,14 +114,67 @@ export function speakMoveStep(
   return speakWellness(line, { calm: true, interrupt: false });
 }
 
-export function speakBreathPhase(phase: BreathPhase) {
-  const lines: Record<BreathPhase, string> = {
-    inhale: "Breathe in.",
-    hold: "Hold.",
-    exhale: "Breathe out.",
-    holdOut: "Hold.",
-  };
-  return speakWellness(lines[phase], { calm: true, interrupt: true });
+const BREATH_COACH_LINES: Record<BreathPhase, string[]> = {
+  inhale: [
+    "Take a slow breath in through your nose.",
+    "Breathe in gently… fill your lungs.",
+    "Soft inhale… nice and easy.",
+    "Draw the breath in… slowly.",
+  ],
+  hold: [
+    "Hold gently.",
+    "Pause here… soft and still.",
+    "Hold… no strain.",
+    "Stay with this quiet pause.",
+  ],
+  exhale: [
+    "Now let everything go.",
+    "Exhale slowly… release the day.",
+    "Breathe out… soften your shoulders.",
+    "Let the breath leave you completely.",
+  ],
+  holdOut: [
+    "Rest empty for a moment.",
+    "Hold gently at the bottom.",
+    "Stay soft… almost ready for the next breath.",
+    "Nice… keep following my voice.",
+  ],
+};
+
+let breathLineCursor = 0;
+
+export function breathCoachLine(phase: BreathPhase): string {
+  const pool = BREATH_COACH_LINES[phase];
+  const line = pool[breathLineCursor % pool.length];
+  breathLineCursor += 1;
+  return line;
+}
+
+export function speakBreathPhase(phase: BreathPhase, line?: string) {
+  return speakWellness(line || breathCoachLine(phase), {
+    calm: true,
+    interrupt: true,
+    rate: 0.88,
+  });
+}
+
+/** On-screen short label (UI); spoken lines stay warmer via speakBreathPhase. */
+export function breathPhaseLabel(phase: BreathPhase): string {
+  return phase === "inhale"
+    ? "Breathe In"
+    : phase === "exhale"
+      ? "Exhale"
+      : "Hold";
+}
+
+export function breathPhaseHint(phase: BreathPhase): string {
+  return phase === "inhale"
+    ? "Slow deep inhale"
+    : phase === "exhale"
+      ? "Soft complete exhale"
+      : phase === "hold"
+        ? "Hold gently at the top"
+        : "Rest before the next breath";
 }
 
 export function listWellnessVoices(): { name: string; lang: string; score: number; local: boolean }[] {

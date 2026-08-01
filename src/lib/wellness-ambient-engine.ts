@@ -111,8 +111,35 @@ export class WellnessAmbientEngine {
     return this.primaryId;
   }
 
+  private softPaused = false;
+
   isPlaying() {
-    return this.layers.size > 0;
+    return this.layers.size > 0 && !this.softPaused;
+  }
+
+  isSoftPaused() {
+    return this.softPaused;
+  }
+
+  /** Mute without tearing down the graph — for mini-player pause. */
+  softPause() {
+    if (!this.masterGain || !this.ctx || this.layers.size === 0) return;
+    const now = this.ctx.currentTime;
+    this.masterGain.gain.cancelScheduledValues(now);
+    this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, now);
+    this.masterGain.gain.linearRampToValueAtTime(0.0001, now + 0.18);
+    this.softPaused = true;
+    this.emit();
+  }
+
+  softResume() {
+    if (!this.masterGain || !this.ctx || this.layers.size === 0) return;
+    const now = this.ctx.currentTime;
+    this.masterGain.gain.cancelScheduledValues(now);
+    this.masterGain.gain.setValueAtTime(0.0001, now);
+    this.masterGain.gain.linearRampToValueAtTime(this.masterVolume, now + 0.22);
+    this.softPaused = false;
+    this.emit();
   }
 
   getLoop() {
@@ -137,6 +164,7 @@ export class WellnessAmbientEngine {
     await this.stop(false);
     if (opts?.volume != null) this.masterVolume = opts.volume;
     if (opts?.loop != null) this.loop = opts.loop;
+    this.softPaused = false;
     this.primaryId = track.id;
     await this.ensureGraph();
     if (this.masterGain) this.masterGain.gain.value = this.masterVolume;
@@ -417,6 +445,7 @@ export class WellnessAmbientEngine {
 
   async stop(_fade = true) {
     this.clearTimer();
+    this.softPaused = false;
     for (const id of [...this.layers.keys()]) this.removeLayer(id);
     this.primaryId = null;
     if (this.ctx) {

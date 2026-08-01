@@ -233,6 +233,7 @@ export default function WellnessSleepPage() {
       {breath && (
         <BreathingSession
           open
+          sessionId={breath.id}
           onClose={() => setBreathId(null)}
           title={breath.title}
           inhale={breath.inhale}

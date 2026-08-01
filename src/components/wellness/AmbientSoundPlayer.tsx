@@ -25,6 +25,13 @@ const TIMER_OPTS = [15, 30, 45, 60];
 type Props = {
   track: AmbientTrack;
   onClose: () => void;
+  /** If set, the close control minimizes instead of stopping audio. */
+  onMinimize?: () => void;
+  /** Keep current engine playback when mounting the same track. */
+  continuePlayback?: boolean;
+  /** Do not tear down audio when this overlay unmounts. */
+  persistAudioOnUnmount?: boolean;
+  playerLabel?: string;
   onPlayingChange?: (playing: boolean) => void;
   favorite?: boolean;
   onToggleFavorite?: () => void;
@@ -36,6 +43,10 @@ type Props = {
 export default function AmbientSoundPlayer({
   track,
   onClose,
+  onMinimize,
+  continuePlayback = false,
+  persistAudioOnUnmount = false,
+  playerLabel = "YAJ Sleep Player",
   onPlayingChange,
   favorite = false,
   onToggleFavorite,
@@ -60,10 +71,22 @@ export default function AmbientSoundPlayer({
 
   useEffect(() => {
     setMix({ [track.id]: 1 });
+    const already =
+      continuePlayback &&
+      wellnessAmbient.getPrimaryId() === track.id &&
+      (wellnessAmbient.isPlaying() || wellnessAmbient.isSoftPaused());
+    if (already) {
+      setPlaying(wellnessAmbient.isPlaying());
+      setVolume(wellnessAmbient.getMasterVolume() || volume);
+      return () => {
+        stopYajAudio();
+        if (!persistAudioOnUnmount) void wellnessAmbient.stop();
+      };
+    }
     void start(track.id);
     return () => {
       stopYajAudio();
-      void wellnessAmbient.stop();
+      if (!persistAudioOnUnmount) void wellnessAmbient.stop();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [track.id]);
@@ -99,8 +122,18 @@ export default function AmbientSoundPlayer({
 
   const togglePlay = async () => {
     if (playing) {
+      if (persistAudioOnUnmount || onMinimize) {
+        wellnessAmbient.softPause();
+        setPlaying(false);
+        return;
+      }
       await wellnessAmbient.fadeOutStop(800);
       setPlaying(false);
+      return;
+    }
+    if (wellnessAmbient.isSoftPaused() && wellnessAmbient.getPrimaryId() === track.id) {
+      wellnessAmbient.softResume();
+      setPlaying(true);
       return;
     }
     await applyMix(mix);
@@ -164,16 +197,20 @@ export default function AmbientSoundPlayer({
         <button
           type="button"
           onClick={() => {
+            if (onMinimize) {
+              onMinimize();
+              return;
+            }
             void wellnessAmbient.fadeOutStop(600);
             onClose();
           }}
           className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10"
-          aria-label="Close player"
+          aria-label={onMinimize ? "Minimize player" : "Close player"}
         >
           <X className="h-5 w-5" />
         </button>
         <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/70">
-          YAJ Sleep Player
+          {playerLabel}
         </p>
         <div className="flex items-center gap-2">
           {onToggleFavorite ? (

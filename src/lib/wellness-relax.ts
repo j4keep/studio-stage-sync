@@ -1,5 +1,119 @@
 import type { MoodId } from "@/lib/wellness";
 
+/** Visual + copy identity for each breathing experience card. */
+export type BreathVisualKind = "square" | "waves" | "leaves" | "stars";
+
+export type BreathCardMeta = {
+  emoji: string;
+  kicker: string;
+  tagline: string;
+  rhythmLabel: string;
+  level: string;
+  /** Tailwind gradient classes (from-via-to) */
+  gradient: string;
+  accent: string;
+  visual: BreathVisualKind;
+  phaseHints: string[];
+};
+
+export const BREATH_CARD_META: Record<string, BreathCardMeta> = {
+  box: {
+    emoji: "🫁",
+    kicker: "Box Breathing",
+    tagline: "Calm your nervous system",
+    rhythmLabel: "4 · 4 · 4 · 4 Rhythm",
+    level: "Beginner",
+    gradient: "from-[#043f3a] via-[#0a6b62] to-[#062a36]",
+    accent: "rgba(45,212,191,0.55)",
+    visual: "square",
+    phaseHints: ["Breathe in.", "Hold.", "Exhale.", "Hold."],
+  },
+  calm: {
+    emoji: "🌊",
+    kicker: "Ocean Breath",
+    tagline: "Slow, deep breathing",
+    rhythmLabel: "4 · 1 · 6 Rhythm",
+    level: "Gentle",
+    gradient: "from-[#0a2744] via-[#1a5f8a] to-[#0c3d5c]",
+    accent: "rgba(125,211,252,0.5)",
+    visual: "waves",
+    phaseHints: ["Breathe in.", "Soft pause.", "Long exhale."],
+  },
+  "reset-2": {
+    emoji: "🌬",
+    kicker: "Relax Breath",
+    tagline: "Release tension",
+    rhythmLabel: "3 · 1 · 5 Rhythm",
+    level: "Quick",
+    gradient: "from-[#1a3d28] via-[#2f6b45] to-[#163528]",
+    accent: "rgba(134,239,172,0.45)",
+    visual: "leaves",
+    phaseHints: ["Breathe in.", "Release.", "Let go."],
+  },
+  "wind-down": {
+    emoji: "🌙",
+    kicker: "Bedtime Wind Down",
+    tagline: "Drift toward rest",
+    rhythmLabel: "4 · 2 · 6 Rhythm",
+    level: "Evening",
+    gradient: "from-[#1e1540] via-[#3b2769] to-[#120c28]",
+    accent: "rgba(196,181,253,0.5)",
+    visual: "stars",
+    phaseHints: ["Breathe in.", "Hold.", "Slow exhale."],
+  },
+};
+
+export type BreathAtmosphereId =
+  | "rain"
+  | "ocean"
+  | "fireplace"
+  | "forest"
+  | "night"
+  | "clouds";
+
+export type BreathAtmosphere = {
+  id: BreathAtmosphereId;
+  emoji: string;
+  label: string;
+  trackId: string;
+  backdrop: "rain" | "ocean" | "fireplace" | "forest" | "stars" | "clouds" | "aurora" | "sunrise";
+};
+
+export const BREATH_ATMOSPHERES: BreathAtmosphere[] = [
+  { id: "rain", emoji: "🌧", label: "Rain", trackId: "heavy-rain", backdrop: "rain" },
+  { id: "ocean", emoji: "🌊", label: "Ocean", trackId: "ocean-night", backdrop: "ocean" },
+  { id: "fireplace", emoji: "🔥", label: "Fireplace", trackId: "crackling-fireplace", backdrop: "fireplace" },
+  { id: "forest", emoji: "🌲", label: "Forest", trackId: "european-forest", backdrop: "forest" },
+  { id: "night", emoji: "🌙", label: "Night", trackId: "night-forest-insects", backdrop: "stars" },
+  { id: "clouds", emoji: "☁", label: "Clouds", trackId: "gentle-breeze", backdrop: "clouds" },
+];
+
+export const REFLECTION_PROMPTS: {
+  id: string;
+  emoji: string;
+  eyebrow: string;
+  prompt: string;
+  cta: string;
+  accent: string;
+}[] = [
+  {
+    id: "went-well",
+    emoji: "✨",
+    eyebrow: "Tonight’s Reflection",
+    prompt: "What are three things that went well today?",
+    cta: "Start Reflection →",
+    accent: "from-teal-900/80 via-emerald-950/70 to-[#0b1614]",
+  },
+  {
+    id: "let-go",
+    emoji: "🍃",
+    eyebrow: "Let Go",
+    prompt: "What’s one thing you don’t need to carry into tomorrow?",
+    cta: "Write →",
+    accent: "from-indigo-950/80 via-slate-950/60 to-[#0b1614]",
+  },
+];
+
 /** Featured ambient tracks shown in the Relax sound browser. */
 export const RELAX_SOUND_CARDS: {
   id: string;
@@ -405,18 +519,18 @@ export function relaxRecommendationForMood(mood?: MoodId | null): RelaxRecommend
     case "stressed":
       return {
         title: "Today’s Recommendation",
-        detail: "Try the 2-Minute Reset, then Rain Sounds.",
+        detail: "Try the 2-minute Relax Breath, then Rain Sounds.",
         actions: [
-          { label: "Instant Reset", kind: "breath", id: "reset-2" },
+          { label: "Relax Breath", kind: "breath", id: "reset-2" },
           { label: "Rain", kind: "sound", id: "heavy-rain" },
         ],
       };
     case "anxious":
       return {
         title: "Today’s Recommendation",
-        detail: "Calm Breathing, then Progressive Muscle Relaxation.",
+        detail: "Ocean Breath, then Progressive Muscle Relaxation.",
         actions: [
-          { label: "Calm Breathing", kind: "breath", id: "calm" },
+          { label: "Ocean Breath", kind: "breath", id: "calm" },
           { label: "Muscle Relaxation", kind: "session", id: "pmr" },
         ],
       };
@@ -448,7 +562,7 @@ export function relaxRecommendationForMood(mood?: MoodId | null): RelaxRecommend
     default:
       return {
         title: "Today’s Recommendation",
-        detail: "Take a Moment — start with Instant Reset.",
+        detail: "Take a breath — start with a 2-minute Relax Breath.",
         actions: [{ label: "Start Reset", kind: "breath", id: "reset-2" }],
       };
   }
