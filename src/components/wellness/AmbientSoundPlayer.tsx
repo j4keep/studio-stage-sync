@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  Heart,
   Pause,
   Play,
   Repeat,
@@ -25,12 +26,20 @@ type Props = {
   track: AmbientTrack;
   onClose: () => void;
   onPlayingChange?: (playing: boolean) => void;
+  favorite?: boolean;
+  onToggleFavorite?: () => void;
 };
 
 /**
  * Calm / Spotify-style full-screen ambient player with mix + fade timer + optional YAJ voice.
  */
-export default function AmbientSoundPlayer({ track, onClose, onPlayingChange }: Props) {
+export default function AmbientSoundPlayer({
+  track,
+  onClose,
+  onPlayingChange,
+  favorite = false,
+  onToggleFavorite,
+}: Props) {
   const [playing, setPlaying] = useState(false);
   const [volume, setVolume] = useState(() => wellnessAmbient.getMasterVolume() || 0.45);
   const [loop, setLoop] = useState(true);
@@ -166,13 +175,27 @@ export default function AmbientSoundPlayer({ track, onClose, onPlayingChange }: 
         <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/70">
           YAJ Sleep Player
         </p>
-        <button
-          type="button"
-          onClick={() => setMixOpen((v) => !v)}
-          className="rounded-full bg-white/10 px-3 py-2 text-[11px] font-bold"
-        >
-          Mix
-        </button>
+        <div className="flex items-center gap-2">
+          {onToggleFavorite ? (
+            <button
+              type="button"
+              onClick={onToggleFavorite}
+              className={`flex h-10 w-10 items-center justify-center rounded-full ${
+                favorite ? "bg-rose-400 text-white" : "bg-white/10 text-white"
+              }`}
+              aria-label={favorite ? "Unfavorite" : "Favorite"}
+            >
+              <Heart className={`h-4 w-4 ${favorite ? "fill-current" : ""}`} />
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => setMixOpen((v) => !v)}
+            className="rounded-full bg-white/10 px-3 py-2 text-[11px] font-bold"
+          >
+            Mix
+          </button>
+        </div>
       </header>
 
       <div className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center px-6 pb-4">

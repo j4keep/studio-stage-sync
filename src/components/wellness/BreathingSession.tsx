@@ -134,9 +134,13 @@ export default function BreathingSession({
   const mm = Math.floor(secondsLeft / 60);
   const ss = String(secondsLeft % 60).padStart(2, "0");
 
+  const progress = ((totalSec - secondsLeft) / totalSec) * 100;
+
   return (
     <div className="fixed inset-0 z-[100] flex flex-col bg-[#0c1a17] text-emerald-50">
-      <header className="flex items-center justify-between gap-2 px-4 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_40%_0%,rgba(45,212,191,0.2),transparent_55%)]" />
+      <div className="pointer-events-none absolute inset-0 opacity-40 [background-image:radial-gradient(rgba(255,255,255,0.06)_1px,transparent_1px)] [background-size:18px_18px]" />
+      <header className="relative z-10 flex items-center justify-between gap-2 px-4 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <button
           type="button"
           onClick={() => {
@@ -165,26 +169,41 @@ export default function BreathingSession({
               {voiceOn ? "Voice on" : "Voice off"}
             </button>
           )}
-          <span className="w-12 text-right text-xs tabular-nums text-emerald-100/70">
-            {mm}:{ss}
-          </span>
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 overflow-y-auto px-4 pb-4 pt-2">
+      <div className="relative z-10 mx-4 mt-1 h-1.5 overflow-hidden rounded-full bg-white/10">
         <div
-          className="flex h-48 w-48 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-teal-300/40 via-emerald-400/30 to-cyan-500/20 shadow-[0_0_60px_-12px_rgba(45,212,191,0.55)] transition-transform duration-[1000ms] ease-in-out"
+          className="h-full rounded-full bg-teal-400 transition-all duration-700"
+          style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
+        />
+      </div>
+
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center gap-5 overflow-y-auto px-4 pb-6 pt-2">
+        <p className="text-5xl font-black tabular-nums tracking-tight text-white/90">
+          {mm}:{ss}
+        </p>
+        <div
+          className="flex h-52 w-52 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-teal-300/40 via-emerald-400/30 to-cyan-500/20 shadow-[0_0_60px_-12px_rgba(45,212,191,0.55)] transition-transform duration-[1000ms] ease-in-out"
           style={{ transform: `scale(${running && secondsLeft > 0 ? scale : 1})` }}
         >
-          <div className="flex h-24 w-24 flex-col items-center justify-center rounded-full bg-[#0c1a17]/70 backdrop-blur">
-            <p className="text-base font-black tracking-tight">{secondsLeft === 0 ? "Complete" : label}</p>
+          <div className="flex h-28 w-28 flex-col items-center justify-center rounded-full bg-[#0c1a17]/70 backdrop-blur">
+            <p className="text-base font-black tracking-tight">
+              {secondsLeft === 0 ? "Complete" : label}
+            </p>
             {secondsLeft > 0 && (
-              <p className="mt-1 text-2xl font-bold tabular-nums text-teal-200">{Math.max(phaseLeft, 1)}</p>
+              <p className="mt-1 text-3xl font-bold tabular-nums text-teal-200">
+                {Math.max(phaseLeft, 1)}
+              </p>
             )}
           </div>
         </div>
-        <p className="max-w-xs text-center text-sm text-emerald-100/70">
-          Follow the circle. No perfect pace — just stay with the breath.
+        <p className="max-w-xs text-center text-sm leading-relaxed text-emerald-100/75">
+          {secondsLeft === 0
+            ? "Beautiful work. Carry this ease with you."
+            : voiceOn
+              ? "YAJ is guiding your breath. Follow the circle."
+              : "Follow the circle. No perfect pace — just stay with the breath."}
         </p>
         {secondsLeft > 0 && (
           <button
