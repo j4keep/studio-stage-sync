@@ -2,14 +2,18 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  Bookmark,
   Check,
   Forward,
+  HandHeart,
   Heart,
   MessageCircle,
   Pause,
   Play,
   Send,
+  Swords,
   ThumbsUp,
+  Users,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -39,8 +43,9 @@ type Props = {
 const EMOJIS = ["🔥", "💀", "🎤", "👑", "💪", "😤", "🏆", "⚡"];
 
 /**
- * Fullscreen feed slide for an active battle — like / comment / share like a post,
- * plus vote tabs for each side (self-vote locked; voting ends when battle ends).
+ * Fullscreen feed slide for an active battle.
+ * Right-rail actions match regular posts (like / comment / share / circle…).
+ * Vote tabs + vote counts live in their own lane — separate from likes.
  */
 export default function BattleFeedSlide({ battle, currentUserId, isActive = false }: Props) {
   const { user } = useAuth();
@@ -50,12 +55,14 @@ export default function BattleFeedSlide({ battle, currentUserId, isActive = fals
 
   const [liked, setLiked] = useState(Boolean(battle?.isLiked));
   const [likesCount, setLikesCount] = useState(battle?.likes_count || 0);
+  const [saved, setSaved] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [comment, setComment] = useState("");
   const [activeSide, setActiveSide] = useState<"left" | "right">("left");
   const [playing, setPlaying] = useState(false);
   const [now, setNow] = useState(Date.now());
 
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const audioLeftRef = useRef<HTMLAudioElement | null>(null);
   const audioRightRef = useRef<HTMLAudioElement | null>(null);
   const videoLeftRef = useRef<HTMLVideoElement | null>(null);
@@ -67,7 +74,24 @@ export default function BattleFeedSlide({ battle, currentUserId, isActive = fals
     setLiked(Boolean(battle?.isLiked));
     setLikesCount(battle?.likes_count || 0);
     setShowComments(false);
+    setSaved(false);
   }, [battle?.id, battle?.isLiked, battle?.likes_count]);
+
+  // Lock the feed snap scroller while comments are open (same as FeedPostCard).
+  useEffect(() => {
+    if (!showComments) return;
+    const stage = rootRef.current?.closest(".snap-start") as HTMLElement | null;
+    const scroller = stage?.parentElement;
+    if (!scroller) return;
+    const prevOverflow = scroller.style.overflowY;
+    const prevTouch = scroller.style.touchAction;
+    scroller.style.overflowY = "hidden";
+    scroller.style.touchAction = "none";
+    return () => {
+      scroller.style.overflowY = prevOverflow;
+      scroller.style.touchAction = prevTouch;
+    };
+  }, [showComments]);
 
   useEffect(() => {
     if (!isActive || !battle?.id || viewedRef.current) return;
@@ -304,195 +328,278 @@ export default function BattleFeedSlide({ battle, currentUserId, isActive = fals
         ? formatClockMmSs(msLeft)
         : formatCountdown(msLeft);
 
-  const renderSide = (side: "left" | "right") => {
+  const formatCount = (value: number) => {
+    if (value >= 1000) return `${(value / 1000).toFixed(1).replace(/\.0$/, "")}K`;
+    return String(value);
+  };
+
+  const renderCompetitor = (side: "left" | "right") => {
     const name = side === "left" ? leftName : rightName;
     const profile = side === "left" ? leftProfile : rightProfile;
     const cover = side === "left" ? leftCover : rightCover;
     const mediaUrl = side === "left" ? battle?.challenger_media_url : battle?.opponent_media_url;
-    const pct = side === "left" ? tally.leftPct : tally.rightPct;
     const votesN = side === "left" ? tally.leftVotes : tally.rightVotes;
-    const accent = side === "left" ? "sky" : "rose";
+    const pct = side === "left" ? tally.leftPct : tally.rightPct;
     const isActiveSide = activeSide === side;
-    const gate = side === "left" ? leftVoteGate : rightVoteGate;
-    const hasVoted = side === "left" ? hasVotedLeft : hasVotedRight;
     const userId = side === "left" ? battle?.challenger_id : battle?.opponent_id;
 
     return (
-      <div
-        className={`relative flex min-h-0 flex-1 flex-col overflow-hidden ${
+      <button
+        type="button"
+        className={`relative min-h-0 flex-1 overflow-hidden ${
           side === "left" ? "border-r border-white/10" : ""
         }`}
+        onClick={() => void playSide(side)}
       >
-        <button
-          type="button"
-          className="relative min-h-0 flex-1 overflow-hidden"
-          onClick={() => void playSide(side)}
-        >
-          {mediaType === "video" && mediaUrl ? (
-            <video
-              ref={side === "left" ? videoLeftRef : videoRightRef}
-              src={mediaUrl}
-              playsInline
-              preload={isActive ? "metadata" : "none"}
-              className="h-full w-full object-cover"
-              onEnded={() => setPlaying(false)}
-            />
-          ) : cover ? (
-            <img src={cover} alt="" className="h-full w-full object-cover" />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center bg-neutral-900 text-xs text-white/50">
-              Waiting…
-            </div>
-          )}
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-black/30" />
-          {mediaType !== "video" && mediaUrl ? (
-            <audio
-              ref={side === "left" ? audioLeftRef : audioRightRef}
-              src={mediaUrl}
-              preload={isActive ? "metadata" : "none"}
-              onEnded={() => setPlaying(false)}
-            />
-          ) : null}
-
-          <div className="absolute inset-x-0 bottom-0 z-10 p-2.5 text-left">
-            <button
-              type="button"
-              className="pointer-events-auto flex items-center gap-1.5"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (userId) navigate(`/artist/${userId}`);
-              }}
-            >
-              <div className="h-7 w-7 overflow-hidden rounded-full bg-white/20 ring-2 ring-white/30">
-                {profile.avatar_url ? (
-                  <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <span className="flex h-full w-full items-center justify-center text-[10px] font-bold text-white">
-                    {(name || "?")[0]?.toUpperCase()}
-                  </span>
-                )}
-              </div>
-              <span className={`text-xs font-black ${side === "left" ? "text-sky-300" : "text-rose-300"}`}>
-                {firstName(name)}
-              </span>
-            </button>
-            <p className="mt-1 text-[10px] font-bold text-white/70">
-              {formatCompact(votesN)} votes · {pct}%
-            </p>
+        {mediaType === "video" && mediaUrl ? (
+          <video
+            ref={side === "left" ? videoLeftRef : videoRightRef}
+            src={mediaUrl}
+            playsInline
+            preload={isActive ? "metadata" : "none"}
+            className="h-full w-full object-cover"
+            onEnded={() => setPlaying(false)}
+          />
+        ) : cover ? (
+          <img src={cover} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-neutral-900 text-xs text-white/50">
+            Waiting…
           </div>
+        )}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/35" />
+        {mediaType !== "video" && mediaUrl ? (
+          <audio
+            ref={side === "left" ? audioLeftRef : audioRightRef}
+            src={mediaUrl}
+            preload={isActive ? "metadata" : "none"}
+            onEnded={() => setPlaying(false)}
+          />
+        ) : null}
 
-          {isActiveSide && playing ? (
-            <div
-              className={`absolute left-2 top-2 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-white ${
-                accent === "sky" ? "bg-sky-500/90" : "bg-rose-500/90"
-              }`}
-            >
-              Playing
+        <div className="absolute inset-x-0 bottom-0 z-10 p-2.5 text-left">
+          <div
+            className="pointer-events-auto flex items-center gap-1.5"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (userId) navigate(`/artist/${userId}`);
+            }}
+          >
+            <div className="h-8 w-8 overflow-hidden rounded-full bg-white/20 ring-2 ring-white/35">
+              {profile.avatar_url ? (
+                <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <span className="flex h-full w-full items-center justify-center text-[10px] font-bold text-white">
+                  {(name || "?")[0]?.toUpperCase()}
+                </span>
+              )}
             </div>
-          ) : null}
-        </button>
+            <div>
+              <p className={`text-xs font-black ${side === "left" ? "text-sky-300" : "text-rose-300"}`}>
+                {firstName(name)}
+              </p>
+              <p className="text-[10px] font-bold text-white/70">
+                {formatCompact(votesN)} votes · {pct}%
+              </p>
+            </div>
+          </div>
+        </div>
 
-        <button
-          type="button"
-          disabled={!gate.allowed && !hasVoted}
-          onClick={() => voteMutation.mutate(side)}
-          className={`mx-2 mb-2 mt-1 flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-[11px] font-black transition-all ${
-            hasVoted
+        {isActiveSide && playing ? (
+          <div
+            className={`absolute left-2 top-2 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-white ${
+              side === "left" ? "bg-sky-500/90" : "bg-rose-500/90"
+            }`}
+          >
+            Playing
+          </div>
+        ) : null}
+      </button>
+    );
+  };
+
+  const voteTab = (side: "left" | "right") => {
+    const name = side === "left" ? leftName : rightName;
+    const votesN = side === "left" ? tally.leftVotes : tally.rightVotes;
+    const gate = side === "left" ? leftVoteGate : rightVoteGate;
+    const hasVoted = side === "left" ? hasVotedLeft : hasVotedRight;
+    const accent = side === "left" ? "sky" : "rose";
+
+    return (
+      <button
+        type="button"
+        disabled={ended || (!gate.allowed && !hasVoted)}
+        onClick={(e) => {
+          e.stopPropagation();
+          voteMutation.mutate(side);
+        }}
+        className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-2 py-2.5 transition-all ${
+          hasVoted
+            ? accent === "sky"
+              ? "bg-sky-500 text-white shadow-lg shadow-sky-500/30"
+              : "bg-rose-500 text-white shadow-lg shadow-rose-500/30"
+            : gate.allowed && !ended
               ? accent === "sky"
-                ? "bg-sky-500 text-white"
-                : "bg-rose-500 text-white"
-              : gate.allowed
-                ? accent === "sky"
-                  ? "bg-sky-500/20 text-sky-200 ring-1 ring-sky-400/40"
-                  : "bg-rose-500/20 text-rose-200 ring-1 ring-rose-400/40"
-                : "bg-white/5 text-white/35"
-          }`}
-        >
+                ? "bg-sky-500/20 text-sky-100 ring-1 ring-sky-400/45"
+                : "bg-rose-500/20 text-rose-100 ring-1 ring-rose-400/45"
+              : "bg-white/8 text-white/40"
+        }`}
+      >
+        <span className="flex items-center gap-1 text-[11px] font-black uppercase tracking-wide">
           {hasVoted ? <Check className="h-3.5 w-3.5" /> : <ThumbsUp className="h-3.5 w-3.5" />}
           {ended
-            ? "Voting closed"
+            ? "Closed"
             : hasVoted
-              ? `Voted ${firstName(name)}`
-              : !gate.allowed
-                ? gate.reason === "You can't vote for yourself"
-                  ? "Your side"
-                  : gate.reason || "Locked"
+              ? "Voted"
+              : gate.reason === "You can't vote for yourself"
+                ? "Your side"
                 : `Vote ${firstName(name)}`}
-        </button>
-      </div>
+        </span>
+        <span className="text-[13px] font-black tabular-nums">{formatCompact(votesN)} votes</span>
+      </button>
     );
   };
 
   return (
-    <div className="relative flex h-full w-full flex-col overflow-hidden bg-black text-white">
-      {/* Header */}
-      <div className="relative z-20 flex shrink-0 items-start gap-2 px-3 pb-2 pt-[calc(env(safe-area-inset-top)+3.25rem)]">
-        <div className="min-w-0 flex-1">
-          <div className="mb-1 flex flex-wrap items-center gap-1.5">
-            <BattleStatusBadge status={uiStatus} />
-            <span className="rounded-full bg-white/10 px-2 py-0.5 font-mono text-[10px] font-black text-white/85">
-              {timerLabel}
+    <div ref={rootRef} className="relative h-full w-full overflow-hidden bg-black text-white">
+      {/* Full-bleed arena */}
+      <div
+        className={`absolute inset-0 flex flex-col transition-[bottom] duration-300 ${
+          showComments ? "bottom-[55dvh]" : "bottom-0"
+        }`}
+      >
+        <div className="relative z-20 flex shrink-0 items-start gap-2 px-3 pb-2 pt-[calc(env(safe-area-inset-top)+3.25rem)] pr-[4.75rem]">
+          <div className="min-w-0 flex-1">
+            <div className="mb-1 flex flex-wrap items-center gap-1.5">
+              <BattleStatusBadge status={uiStatus} />
+              <span className="rounded-full bg-white/10 px-2 py-0.5 font-mono text-[10px] font-black text-white/85">
+                {timerLabel}
+              </span>
+            </div>
+            <h2 className="truncate text-base font-black tracking-tight drop-shadow-lg">
+              {battle?.title || "Battle"}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={togglePlay}
+            className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15"
+            aria-label={playing ? "Pause" : "Play"}
+          >
+            {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+          </button>
+        </div>
+
+        <div className="relative mx-2 min-h-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-neutral-950">
+          <div className="flex h-full w-full">
+            {renderCompetitor("left")}
+            {renderCompetitor("right")}
+          </div>
+          <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2">
+            <span className="rounded-full bg-black/70 px-2.5 py-1 text-xs font-black tracking-widest text-white ring-1 ring-white/25">
+              VS
             </span>
           </div>
-          <h2 className="truncate text-base font-black tracking-tight">{battle?.title || "Battle"}</h2>
-          <p className="text-[11px] font-semibold text-white/55">
-            {formatCompact(tally.total)} votes · likes & comments stay open after voting ends
-          </p>
         </div>
-        <button
-          type="button"
-          onClick={togglePlay}
-          className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15"
-          aria-label={playing ? "Pause" : "Play"}
-        >
-          {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-        </button>
+
+        {/* Dedicated VOTE lane — separate from likes */}
+        {!showComments ? (
+          <div className="relative z-20 shrink-0 space-y-2 px-3 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] pt-2.5 pr-[4.75rem]">
+            <div className="flex items-center justify-between gap-2">
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-violet-500/20 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-violet-200 ring-1 ring-violet-400/35">
+                <Swords className="h-3 w-3" />
+                Vote lane
+              </div>
+              <p className="text-[11px] font-bold text-white/65">
+                {formatCompact(tally.total)} total votes
+              </p>
+            </div>
+            <BattleWavyMeter leftPct={tally.leftPct} size="sm" />
+            <div className="flex gap-2">
+              {voteTab("left")}
+              {voteTab("right")}
+            </div>
+            <p className="text-center text-[10px] font-semibold text-white/45">
+              {ended
+                ? "Voting closed — likes & comments still open"
+                : "Votes pick the winner · Likes are separate"}
+            </p>
+          </div>
+        ) : (
+          <div className="h-2 shrink-0" />
+        )}
       </div>
 
-      {/* Dual arena */}
-      <div className="relative z-10 mx-2 flex min-h-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-neutral-950">
-        {renderSide("left")}
-        <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center">
-          <span className="rounded-full bg-black/70 px-2.5 py-1 text-xs font-black tracking-widest text-white ring-1 ring-white/25">
-            VS
-          </span>
+      {/* Right-rail actions — same pattern as regular FeedPostCard */}
+      {!showComments ? (
+        <div className="absolute right-3 feed-bottom-offset z-40 flex flex-col items-center gap-4 pb-1 pointer-events-auto">
+          <button type="button" onClick={toggleLike} className="feed-action-btn">
+            <Heart className={`feed-action-icon ${liked ? "fill-red-500 text-red-500" : ""}`} />
+            <span className="feed-action-count">{formatCount(likesCount)}</span>
+          </button>
+
+          <button type="button" onClick={() => setShowComments(true)} className="feed-action-btn">
+            <MessageCircle className="feed-action-icon" />
+            <span className="feed-action-count">{formatCount((battleComments as any[]).length)}</span>
+          </button>
+
+          <button
+            type="button"
+            className="feed-action-btn"
+            aria-label="Save"
+            onClick={() => {
+              setSaved((s) => !s);
+              toast.success(saved ? "Removed from saved" : "Saved");
+            }}
+          >
+            <Bookmark className={`feed-action-icon ${saved ? "fill-white text-white" : ""}`} />
+          </button>
+
+          <button type="button" onClick={share} className="feed-action-btn" aria-label="Share">
+            <Forward className="feed-action-icon" />
+          </button>
+
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate("/circle");
+            }}
+            className="feed-action-btn"
+            aria-label="Open My Circle"
+          >
+            <Users className="feed-action-icon" />
+            <span className="feed-action-count text-[9px]">My Circle</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate("/my-projects");
+            }}
+            className="feed-action-btn"
+            aria-label="Support this artist"
+          >
+            <HandHeart className="feed-action-icon" />
+            <span className="feed-action-count text-[9px]">Support</span>
+          </button>
         </div>
-        {renderSide("right")}
-      </div>
+      ) : null}
 
-      <div className="relative z-10 px-3 pt-2">
-        <BattleWavyMeter leftPct={tally.leftPct} size="sm" />
-        <div className="mt-1 flex justify-between text-[10px] font-bold text-white/55">
-          <span className="text-sky-300">{firstName(leftName)} {tally.leftPct}%</span>
-          <span className="text-rose-300">{firstName(rightName)} {tally.rightPct}%</span>
-        </div>
-      </div>
-
-      {/* Post-style actions */}
-      <div className="relative z-20 flex shrink-0 items-center justify-around gap-2 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3">
-        <button type="button" onClick={toggleLike} className="feed-action-btn">
-          <Heart className={`feed-action-icon ${liked ? "fill-red-500 text-red-500" : ""}`} />
-          <span className="feed-action-count">{formatCompact(likesCount)}</span>
-        </button>
-        <button type="button" onClick={() => setShowComments(true)} className="feed-action-btn">
-          <MessageCircle className="feed-action-icon" />
-          <span className="feed-action-count">{formatCompact((battleComments as any[]).length)}</span>
-        </button>
-        <button type="button" onClick={share} className="feed-action-btn" aria-label="Share">
-          <Forward className="feed-action-icon" />
-          <span className="feed-action-count">Share</span>
-        </button>
-      </div>
-
-      {/* Comments sheet */}
+      {/* Comments sheet — stops feed swipe */}
       {showComments ? (
         <div
-          className="absolute inset-x-0 bottom-0 z-[90] flex max-h-[55dvh] flex-col rounded-t-2xl border-t border-white/15 bg-neutral-950/95 backdrop-blur-md"
+          className="absolute inset-x-0 bottom-0 z-[90] flex max-h-[55dvh] flex-col rounded-t-2xl border-t border-white/15 bg-neutral-950 shadow-[0_-8px_30px_rgba(0,0,0,0.45)]"
+          style={{ height: "55dvh" }}
           onClick={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
         >
           <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-3 py-2.5">
             <p className="text-sm font-semibold">
-              {formatCompact((battleComments as any[]).length)} comments
+              {formatCount((battleComments as any[]).length)} comments
             </p>
             <button
               type="button"
@@ -503,7 +610,7 @@ export default function BattleFeedSlide({ battle, currentUserId, isActive = fals
               <X className="h-4 w-4" />
             </button>
           </div>
-          <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto px-3 py-3">
+          <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-contain px-3 py-3">
             {(battleComments as any[]).length === 0 ? (
               <p className="py-6 text-center text-xs text-white/40">No comments yet — start the chat</p>
             ) : (
