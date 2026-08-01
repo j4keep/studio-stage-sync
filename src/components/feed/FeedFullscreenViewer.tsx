@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import FeedPostCard from "./FeedPostCard";
 import BattleFeedSlide from "./BattleFeedSlide";
@@ -19,18 +19,31 @@ interface Props {
 export default function FeedFullscreenViewer({ items, startIndex, currentUserId, onClose }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [currentIndex, setCurrentIndex] = useState(startIndex);
+  const [scrollLocked, setScrollLocked] = useState(false);
   const mountRadius = getFeedMountRadius();
+
+  const lockScroll = useCallback((locked: boolean) => {
+    setScrollLocked(locked);
+    const el = scrollRef.current;
+    if (!el) return;
+    if (locked) {
+      el.style.overflowY = "hidden";
+      el.style.touchAction = "none";
+      el.style.scrollSnapType = "none";
+    } else {
+      el.style.overflowY = "";
+      el.style.touchAction = "";
+      el.style.scrollSnapType = "y mandatory";
+    }
+  }, []);
 
   useEffect(() => {
     // Opening the fullscreen viewer is itself a user-gesture-triggered navigation,
     // so unlock the iOS audio session and force "playback" routing immediately.
-    // Without this, the first audible play on iOS lands in ambient/quiet mode
-    // and the song audio comes in noticeably faded.
     forceIosAudioSessionToPlayback();
     unlockFeedAudioSession();
     const el = scrollRef.current;
     if (!el) return;
-    // Snap directly to the picked item on mount.
     el.scrollTo({ top: startIndex * el.clientHeight, behavior: "auto" });
   }, [startIndex]);
 
@@ -39,6 +52,7 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
     if (!el) return;
     let rafId = 0;
     const sync = () => {
+      if (scrollLocked) return;
       if (rafId) return;
       rafId = window.requestAnimationFrame(() => {
         rafId = 0;
@@ -53,7 +67,25 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
       el.removeEventListener("scroll", sync);
       if (rafId) window.cancelAnimationFrame(rafId);
     };
-  }, [items.length]);
+  }, [items.length, scrollLocked]);
+
+  // Hard-block touch scrolling while comments are open (inline style alone can lose to iOS).
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || !scrollLocked) return;
+    const block = (e: TouchEvent) => {
+      // Allow scrolling inside the comments sheet / nested scroll areas.
+      const target = e.target as HTMLElement | null;
+      if (target?.closest("[data-feed-comments-sheet], [data-allow-scroll]")) return;
+      e.preventDefault();
+    };
+    el.addEventListener("touchmove", block, { passive: false });
+    return () => el.removeEventListener("touchmove", block);
+  }, [scrollLocked]);
+
+  useEffect(() => {
+    return () => lockScroll(false);
+  }, [lockScroll]);
 
   return (
     <div className="fixed inset-0 z-[70] bg-black">
@@ -84,6 +116,7 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
                     battle={item}
                     currentUserId={currentUserId}
                     isActive={index === currentIndex}
+                    onScrollLockChange={lockScroll}
                   />
                 ) : (
                   <FeedPostCard

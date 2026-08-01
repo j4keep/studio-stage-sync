@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -22,6 +22,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
 import BattleWavyMeter from "@/components/battle/BattleWavyMeter";
 import BattleStatusBadge from "@/components/battle/BattleStatusBadge";
+import { MOBILE_COMMENTS_VIDEO_HEIGHT } from "@/components/feed/PostCommentsSheet";
 import {
   canUserVoteForSide,
   firstName,
@@ -38,6 +39,8 @@ type Props = {
   battle: any;
   currentUserId?: string;
   isActive?: boolean;
+  /** Lock the parent feed snap scroller while comments are open. */
+  onScrollLockChange?: (locked: boolean) => void;
 };
 
 const EMOJIS = ["🔥", "💀", "🎤", "👑", "💪", "😤", "🏆", "⚡"];
@@ -47,7 +50,12 @@ const EMOJIS = ["🔥", "💀", "🎤", "👑", "💪", "😤", "🏆", "⚡"];
  * Right-rail actions match regular posts (like / comment / share / circle…).
  * Vote tabs + vote counts live in their own lane — separate from likes.
  */
-export default function BattleFeedSlide({ battle, currentUserId, isActive = false }: Props) {
+export default function BattleFeedSlide({
+  battle,
+  currentUserId,
+  isActive = false,
+  onScrollLockChange,
+}: Props) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -69,15 +77,23 @@ export default function BattleFeedSlide({ battle, currentUserId, isActive = fals
   const videoRightRef = useRef<HTMLVideoElement | null>(null);
   const commentsEndRef = useRef<HTMLDivElement | null>(null);
   const viewedRef = useRef(false);
+  const activeSideRef = useRef<"left" | "right">("left");
+
+  const mediaType = (battle?.media_type || "audio").toLowerCase();
+
+  useEffect(() => {
+    activeSideRef.current = activeSide;
+  }, [activeSide]);
 
   useEffect(() => {
     setLiked(Boolean(battle?.isLiked));
     setLikesCount(battle?.likes_count || 0);
     setShowComments(false);
     setSaved(false);
-  }, [battle?.id, battle?.isLiked, battle?.likes_count]);
+    onScrollLockChange?.(false);
+  }, [battle?.id, battle?.isLiked, battle?.likes_count, onScrollLockChange]);
 
-  // Lock the feed snap scroller while comments are open (same as FeedPostCard).
+  // Fallback lock via closest snap stage (desktop / if callback missing).
   useEffect(() => {
     if (!showComments) return;
     const stage = rootRef.current?.closest(".snap-start") as HTMLElement | null;
@@ -85,11 +101,14 @@ export default function BattleFeedSlide({ battle, currentUserId, isActive = fals
     if (!scroller) return;
     const prevOverflow = scroller.style.overflowY;
     const prevTouch = scroller.style.touchAction;
+    const prevSnap = scroller.style.scrollSnapType;
     scroller.style.overflowY = "hidden";
     scroller.style.touchAction = "none";
+    scroller.style.scrollSnapType = "none";
     return () => {
       scroller.style.overflowY = prevOverflow;
       scroller.style.touchAction = prevTouch;
+      scroller.style.scrollSnapType = prevSnap;
     };
   }, [showComments]);
 
@@ -104,14 +123,97 @@ export default function BattleFeedSlide({ battle, currentUserId, isActive = fals
     return () => window.clearInterval(t);
   }, []);
 
-  useEffect(() => {
-    if (isActive) return;
+  const pauseAll = useCallback(() => {
     audioLeftRef.current?.pause();
     audioRightRef.current?.pause();
     videoLeftRef.current?.pause();
     videoRightRef.current?.pause();
+  }, []);
+
+  const mediaEl = useCallback(
+    (side: "left" | "right") => {
+      if (mediaType === "video") {
+        return side === "left" ? videoLeftRef.current : videoRightRef.current;
+      }
+      return side === "left" ? audioLeftRef.current : audioRightRef.current;
+    },
+    [mediaType],
+  );
+
+  const playSide = useCallback(
+    async (side: "left" | "right", opts?: { fromStart?: boolean }) => {
+      pauseAll();
+      setActiveSide(side);
+      activeSideRef.current = side;
+      const el = mediaEl(side);
+      if (!el) {
+        setPlaying(false);
+        return;
+      }
+      if (opts?.fromStart) el.currentTime = 0;
+      try {
+        await el.play();
+        setPlaying(true);
+      } catch {
+        setPlaying(false);
+      }
+    },
+    [mediaEl, pauseAll],
+  );
+
+  // When one side finishes, auto-play the other side (user can still pause anytime).
+  useEffect(() => {
+    if (!isActive) return;
+    const left = mediaEl("left");
+    const right = mediaEl("right");
+    if (!left && !right) return;
+
+    const onEnded = (finished: "left" | "right") => {
+      const other: "left" | "right" = finished === "left" ? "right" : "left";
+      const otherUrl =
+        other === "left" ? battle?.challenger_media_url : battle?.opponent_media_url;
+      if (!otherUrl) {
+        setPlaying(false);
+        return;
+      }
+      window.requestAnimationFrame(() => {
+        void playSide(other, { fromStart: true });
+      });
+    };
+
+    const onLeftEnded = () => onEnded("left");
+    const onRightEnded = () => onEnded("right");
+    left?.addEventListener("ended", onLeftEnded);
+    right?.addEventListener("ended", onRightEnded);
+    return () => {
+      left?.removeEventListener("ended", onLeftEnded);
+      right?.removeEventListener("ended", onRightEnded);
+    };
+  }, [
+    isActive,
+    mediaEl,
+    playSide,
+    battle?.challenger_media_url,
+    battle?.opponent_media_url,
+    battle?.id,
+  ]);
+
+  useEffect(() => {
+    if (isActive) return;
+    pauseAll();
     setPlaying(false);
-  }, [isActive]);
+  }, [isActive, pauseAll]);
+
+  const openComments = useCallback(() => {
+    // Lock synchronously so the same touch gesture cannot swipe the feed.
+    onScrollLockChange?.(true);
+    setShowComments(true);
+  }, [onScrollLockChange]);
+
+  const closeComments = useCallback(() => {
+    setShowComments(false);
+    onScrollLockChange?.(false);
+  }, [onScrollLockChange]);
 
   const profileIds = useMemo(
     () => [battle?.challenger_id, battle?.opponent_id].filter(Boolean) as string[],
@@ -278,39 +380,8 @@ export default function BattleFeedSlide({ battle, currentUserId, isActive = fals
     }
   };
 
-  const mediaType = (battle?.media_type || "audio").toLowerCase();
   const leftCover = battle?.challenger_cover_url || battle?.challenger_media_url;
   const rightCover = battle?.opponent_cover_url || battle?.opponent_media_url;
-
-  const pauseAll = () => {
-    audioLeftRef.current?.pause();
-    audioRightRef.current?.pause();
-    videoLeftRef.current?.pause();
-    videoRightRef.current?.pause();
-  };
-
-  const playSide = async (side: "left" | "right") => {
-    pauseAll();
-    setActiveSide(side);
-    const isVideo = mediaType === "video";
-    const el = isVideo
-      ? side === "left"
-        ? videoLeftRef.current
-        : videoRightRef.current
-      : side === "left"
-        ? audioLeftRef.current
-        : audioRightRef.current;
-    if (!el) {
-      setPlaying(false);
-      return;
-    }
-    try {
-      await el.play();
-      setPlaying(true);
-    } catch {
-      setPlaying(false);
-    }
-  };
 
   const togglePlay = () => {
     if (playing) {
@@ -318,7 +389,7 @@ export default function BattleFeedSlide({ battle, currentUserId, isActive = fals
       setPlaying(false);
       return;
     }
-    void playSide(activeSide);
+    void playSide(activeSideRef.current);
   };
 
   const timerLabel =
@@ -344,41 +415,52 @@ export default function BattleFeedSlide({ battle, currentUserId, isActive = fals
     const userId = side === "left" ? battle?.challenger_id : battle?.opponent_id;
 
     return (
-      <button
-        type="button"
+      <div
         className={`relative min-h-0 flex-1 overflow-hidden ${
           side === "left" ? "border-r border-white/10" : ""
         }`}
-        onClick={() => void playSide(side)}
       >
+        <button
+          type="button"
+          className="absolute inset-0 z-[1]"
+          aria-label={`Play ${firstName(name)}`}
+          onClick={() => void playSide(side)}
+        />
+
         {mediaType === "video" && mediaUrl ? (
           <video
             ref={side === "left" ? videoLeftRef : videoRightRef}
             src={mediaUrl}
             playsInline
             preload={isActive ? "metadata" : "none"}
-            className="h-full w-full object-cover"
-            onEnded={() => setPlaying(false)}
+            className={`h-full w-full ${showComments ? "object-contain" : "object-cover"}`}
           />
         ) : cover ? (
-          <img src={cover} alt="" className="h-full w-full object-cover" />
+          <img
+            src={cover}
+            alt=""
+            className={`h-full w-full ${showComments ? "object-contain" : "object-cover"}`}
+          />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-neutral-900 text-xs text-white/50">
             Waiting…
           </div>
         )}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/35" />
+
+        {/* Stable audio nodes for auto-advance between sides */}
         {mediaType !== "video" && mediaUrl ? (
           <audio
             ref={side === "left" ? audioLeftRef : audioRightRef}
             src={mediaUrl}
-            preload={isActive ? "metadata" : "none"}
-            onEnded={() => setPlaying(false)}
+            preload={isActive ? "auto" : "none"}
           />
         ) : null}
 
+        <div className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-t from-black/80 via-transparent to-black/35" />
+
         <div className="absolute inset-x-0 bottom-0 z-10 p-2.5 text-left">
-          <div
+          <button
+            type="button"
             className="pointer-events-auto flex items-center gap-1.5"
             onClick={(e) => {
               e.stopPropagation();
@@ -402,19 +484,19 @@ export default function BattleFeedSlide({ battle, currentUserId, isActive = fals
                 {formatCompact(votesN)} votes · {pct}%
               </p>
             </div>
-          </div>
+          </button>
         </div>
 
         {isActiveSide && playing ? (
           <div
-            className={`absolute left-2 top-2 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-white ${
+            className={`absolute left-2 top-2 z-10 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-white ${
               side === "left" ? "bg-sky-500/90" : "bg-rose-500/90"
             }`}
           >
             Playing
           </div>
         ) : null}
-      </button>
+      </div>
     );
   };
 
@@ -462,11 +544,13 @@ export default function BattleFeedSlide({ battle, currentUserId, isActive = fals
 
   return (
     <div ref={rootRef} className="relative h-full w-full overflow-hidden bg-black text-white">
-      {/* Full-bleed arena */}
       <div
-        className={`absolute inset-0 flex flex-col transition-[bottom] duration-300 ${
-          showComments ? "bottom-[55dvh]" : "bottom-0"
-        }`}
+        className="absolute inset-x-0 top-0 flex flex-col overflow-hidden transition-all duration-300"
+        style={
+          showComments
+            ? { height: MOBILE_COMMENTS_VIDEO_HEIGHT }
+            : { bottom: 0, height: "100%" }
+        }
       >
         <div className="relative z-20 flex shrink-0 items-start gap-2 px-3 pb-2 pt-[calc(env(safe-area-inset-top)+3.25rem)] pr-[4.75rem]">
           <div className="min-w-0 flex-1">
@@ -502,7 +586,6 @@ export default function BattleFeedSlide({ battle, currentUserId, isActive = fals
           </div>
         </div>
 
-        {/* Dedicated VOTE lane — separate from likes */}
         {!showComments ? (
           <div className="relative z-20 shrink-0 space-y-2 px-3 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] pt-2.5 pr-[4.75rem]">
             <div className="flex items-center justify-between gap-2">
@@ -525,12 +608,9 @@ export default function BattleFeedSlide({ battle, currentUserId, isActive = fals
                 : "Votes pick the winner · Likes are separate"}
             </p>
           </div>
-        ) : (
-          <div className="h-2 shrink-0" />
-        )}
+        ) : null}
       </div>
 
-      {/* Right-rail actions — same pattern as regular FeedPostCard */}
       {!showComments ? (
         <div className="absolute right-3 feed-bottom-offset z-40 flex flex-col items-center gap-4 pb-1 pointer-events-auto">
           <button type="button" onClick={toggleLike} className="feed-action-btn">
@@ -538,7 +618,19 @@ export default function BattleFeedSlide({ battle, currentUserId, isActive = fals
             <span className="feed-action-count">{formatCount(likesCount)}</span>
           </button>
 
-          <button type="button" onClick={() => setShowComments(true)} className="feed-action-btn">
+          <button
+            type="button"
+            onPointerDown={(e) => {
+              // Lock the feed scroller before the gesture can start a swipe.
+              e.stopPropagation();
+              onScrollLockChange?.(true);
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              openComments();
+            }}
+            className="feed-action-btn"
+          >
             <MessageCircle className="feed-action-icon" />
             <span className="feed-action-count">{formatCount((battleComments as any[]).length)}</span>
           </button>
@@ -587,30 +679,39 @@ export default function BattleFeedSlide({ battle, currentUserId, isActive = fals
         </div>
       ) : null}
 
-      {/* Comments sheet — stops feed swipe */}
+      {/* Fixed comments sheet — same pattern as regular posts; does not swipe the feed */}
       {showComments ? (
         <div
-          className="absolute inset-x-0 bottom-0 z-[90] flex max-h-[55dvh] flex-col rounded-t-2xl border-t border-white/15 bg-neutral-950 shadow-[0_-8px_30px_rgba(0,0,0,0.45)]"
-          style={{ height: "55dvh" }}
+          data-feed-comments-sheet
+          className="fixed inset-x-0 bottom-0 z-[90] mx-auto flex max-w-lg flex-col rounded-t-2xl border-t border-white/15 bg-neutral-950 shadow-[0_-8px_30px_rgba(0,0,0,0.45)]"
+          style={{
+            top: MOBILE_COMMENTS_VIDEO_HEIGHT,
+            height: `calc(100dvh - ${MOBILE_COMMENTS_VIDEO_HEIGHT})`,
+          }}
           onClick={(e) => e.stopPropagation()}
           onTouchStart={(e) => e.stopPropagation()}
-          onTouchMove={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
         >
-          <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-3 py-2.5">
-            <p className="text-sm font-semibold">
-              {formatCount((battleComments as any[]).length)} comments
-            </p>
-            <button
-              type="button"
-              onClick={() => setShowComments(false)}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10"
-              aria-label="Close comments"
-            >
-              <X className="h-4 w-4" />
-            </button>
+          <div className="flex shrink-0 flex-col items-center border-b border-white/10 px-3 pb-2.5 pt-2">
+            <div className="mb-2 h-1 w-10 rounded-full bg-white/25" />
+            <div className="relative flex w-full items-center justify-center">
+              <p className="text-sm font-semibold">
+                {formatCount((battleComments as any[]).length)} comments
+              </p>
+              <button
+                type="button"
+                onClick={closeComments}
+                className="absolute right-0 flex h-8 w-8 items-center justify-center rounded-full bg-white/10"
+                aria-label="Close comments"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </div>
-          <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-contain px-3 py-3">
+          <div
+            data-allow-scroll
+            className="min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-contain px-3 py-3"
+          >
             {(battleComments as any[]).length === 0 ? (
               <p className="py-6 text-center text-xs text-white/40">No comments yet — start the chat</p>
             ) : (
