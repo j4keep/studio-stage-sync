@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, ArrowLeft, Crown, ThumbsUp, Clock, Mic } from "lucide-react";
+import { Play, Pause, ArrowLeft, Crown, ThumbsUp, Clock, Mic, Flame, Check } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,6 +14,18 @@ import BattleLiveComments from "@/components/BattleLiveComments";
 import VoiceoverRecorder from "@/components/VoiceoverRecorder";
 import AudioEqualizerBackground from "@/components/AudioEqualizerBackground";
 import { incrementBattleViews } from "@/hooks/use-likes";
+import BattleStatusBadge from "@/components/battle/BattleStatusBadge";
+import BattleCategoryChip from "@/components/battle/BattleCategoryChip";
+import BattleLiveMeter from "@/components/battle/BattleLiveMeter";
+import BattleCrowdReaction from "@/components/battle/BattleCrowdReaction";
+import BattleWinnerCelebration from "@/components/battle/BattleWinnerCelebration";
+import {
+  firstName,
+  formatCompact,
+  formatCountdown,
+  getBattleExpiresAt,
+  getBattleUiStatus,
+} from "@/lib/battle-ui";
 
 /* ─── helpers ─── */
 const fmt = (s: number) => {
@@ -471,7 +483,12 @@ const MusicBattlePlayerPage = () => {
     );
   }
 
-  const ended = battle.status === "ended" || timeLeft === "ENDED";
+  const ended = battle.status === "ended" || battle.status === "completed" || battle.status === "expired" || timeLeft === "ENDED";
+  const uiStatus = getBattleUiStatus(battle);
+  const msLeft = getBattleExpiresAt(battle).getTime() - Date.now();
+  const leftName = leftProfile.display_name || "Artist A";
+  const rightName = rightProfile.display_name || "Artist B";
+  const showWinnerCard = ended && total > 0;
 
     return (
     <div className="min-h-screen flex flex-col relative overflow-hidden bg-background">
@@ -493,20 +510,46 @@ const MusicBattlePlayerPage = () => {
         <button onClick={() => navigate(-1)} className="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
           <ArrowLeft className="w-4 h-4 text-foreground" />
         </button>
-        <h1 className="text-lg font-bold text-foreground flex-1">Creators Battle</h1>
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate text-base font-black tracking-tight text-foreground">Arena</h1>
+          <p className="text-[10px] font-semibold text-muted-foreground">Creators Battle</p>
+        </div>
+        <BattleStatusBadge status={uiStatus} />
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Clock className="w-3.5 h-3.5" />
-          <span className="font-mono">{timeLeft || "24:00:00"}</span>
+          <span className="font-mono font-bold">{timeLeft || formatCountdown(msLeft)}</span>
         </div>
       </div>
 
       {/* ── BATTLE TITLE ── */}
-      <div className="text-center py-3 px-4">
-        <p className="text-sm font-semibold text-foreground">{battle.title}</p>
-        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">
-          {battle.media_type === "video" ? "Video" : "Audio"} Battle • {ended ? "ENDED" : "LIVE"}
+      <div className="px-4 py-3 text-center">
+        <div className="mb-2 flex items-center justify-center gap-2">
+          <BattleCategoryChip mediaType={battle.media_type} className="bg-muted text-foreground ring-border" />
+        </div>
+        <p className="text-base font-black tracking-tight text-foreground">{battle.title}</p>
+        <p className="mt-1 text-xs font-semibold text-muted-foreground">
+          {firstName(leftName)} <span className="text-muted-foreground/50">VS</span> {firstName(rightName)}
+          {!ended && msLeft > 0 ? ` · ${formatCountdown(msLeft)} left` : ""}
         </p>
+        <div className="mt-2 flex items-center justify-center gap-3 text-[11px] font-semibold text-muted-foreground">
+          <span>👁 {formatCompact(battle.views || 0)}</span>
+          <span>❤️ {formatCompact(battle.likes_count || 0)}</span>
+          <span>🗳 {formatCompact(total)}</span>
+        </div>
       </div>
+
+      {showWinnerCard ? (
+        <div className="px-4 pb-3">
+          <BattleWinnerCelebration
+            winnerName={winner === "right" ? rightName : leftName}
+            winnerPct={winner === "right" ? rightPct : leftPct}
+            loserName={winner === "right" ? leftName : rightName}
+            loserPct={winner === "right" ? leftPct : rightPct}
+            totalVotes={total}
+            tied={winner === "tied"}
+          />
+        </div>
+      ) : null}
 
       {/* ── MAIN BATTLE AREA ── */}
       <div
@@ -581,9 +624,9 @@ const MusicBattlePlayerPage = () => {
             {battleId && <BattleEffectsOverlay battleId={battleId} side="left" isExpanded={expandedSide === "left"} />}
             {battleId && <BattleLiveComments battleId={battleId} isExpanded={expandedSide === "left"} />}
 
-            <div className="absolute bottom-0 left-0 right-0 z-30 rounded-b-2xl bg-gradient-to-t from-black/80 to-transparent p-3 pointer-events-none">
-              <p className="text-xs font-bold text-white truncate">{leftProfile.display_name || "Artist A"}</p>
-              <p className="text-[10px] text-white/60 truncate">{battle.challenger_title || "Track"}</p>
+            <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-30 rounded-b-2xl bg-gradient-to-t from-black/85 to-transparent p-3">
+              <p className="truncate text-sm font-black text-white">{leftProfile.display_name || "Artist A"}</p>
+              <p className="truncate text-[10px] text-white/60">{battle.challenger_title || "Track"}</p>
             </div>
           </div>
 
@@ -706,9 +749,9 @@ const MusicBattlePlayerPage = () => {
             {battleId && <BattleEffectsOverlay battleId={battleId} side="right" isExpanded={expandedSide === "right"} />}
             {battleId && <BattleLiveComments battleId={battleId} isExpanded={expandedSide === "right"} />}
 
-            <div className="absolute bottom-0 left-0 right-0 z-30 rounded-b-2xl bg-gradient-to-t from-black/80 to-transparent p-3 pointer-events-none">
-              <p className="text-xs font-bold text-white truncate">{rightProfile.display_name || "Artist B"}</p>
-              <p className="text-[10px] text-white/60 truncate">{battle.opponent_title || "Waiting..."}</p>
+            <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-30 rounded-b-2xl bg-gradient-to-t from-black/85 to-transparent p-3">
+              <p className="truncate text-sm font-black text-white">{rightProfile.display_name || "Artist B"}</p>
+              <p className="truncate text-[10px] text-white/60">{battle.opponent_title || "Waiting..."}</p>
             </div>
           </div>
         </div>
@@ -754,87 +797,74 @@ const MusicBattlePlayerPage = () => {
       </div>
       )}
 
-      {/* ── VOTE PROGRESS BAR ── */}
-      <div className="px-6 pb-2">
-        <div className="flex justify-between text-[10px] font-bold mb-1">
-          <motion.span
-            key={leftPct}
-            initial={{ scale: 1.3 }}
-            animate={{ scale: 1 }}
-            className="text-primary"
-          >
-            {leftPct}%
-          </motion.span>
-          <span className="text-muted-foreground text-[9px]">VOTES</span>
-          <motion.span
-            key={rightPct}
-            initial={{ scale: 1.3 }}
-            animate={{ scale: 1 }}
-            className="text-destructive"
-          >
-            {rightPct}%
-          </motion.span>
-        </div>
-        <div className="h-2 rounded-full bg-muted overflow-hidden flex">
-          <motion.div
-            className="h-full bg-primary rounded-l-full"
-            animate={{ width: `${leftPct}%` }}
-            transition={{ type: "spring", stiffness: 200, damping: 25 }}
+      {/* ── LIVE BATTLE METER ── */}
+      <div className="px-4 pb-3">
+        <div className="rounded-[1.35rem] border border-border/70 bg-card/70 px-3.5 py-3.5 shadow-sm backdrop-blur-sm">
+          <BattleLiveMeter
+            leftName={leftName}
+            rightName={rightName}
+            leftPct={leftPct}
+            rightPct={rightPct}
+            totalVotes={total}
+            live={uiStatus === "live" || uiStatus === "ending"}
           />
-          <motion.div
-            className="h-full bg-destructive rounded-r-full"
-            animate={{ width: `${rightPct}%` }}
-            transition={{ type: "spring", stiffness: 200, damping: 25 }}
-          />
-        </div>
-        <div className="flex justify-between text-[9px] text-muted-foreground mt-0.5">
-          <span>{leftVotes} vote{leftVotes !== 1 ? "s" : ""}</span>
-          <span>{rightVotes} vote{rightVotes !== 1 ? "s" : ""}</span>
         </div>
       </div>
 
       {/* ── VOTE BUTTONS ── */}
-      <div className="px-6 pb-6 flex gap-3">
-        {battle.status !== "active" && battle.status !== "ended" ? (
-          <div className="flex-1 py-3 rounded-xl bg-muted text-muted-foreground text-sm font-bold text-center opacity-60">
+      <div className="px-4 pb-3 flex gap-3">
+        {battle.status !== "active" && !ended ? (
+          <div className="flex-1 rounded-2xl bg-muted py-3.5 text-center text-sm font-bold text-muted-foreground opacity-70">
             Voting opens when both artists join
           </div>
         ) : isParticipant ? (
-          <div className="flex-1 py-3 rounded-xl bg-muted text-muted-foreground text-sm font-bold text-center opacity-60">
+          <div className="flex-1 rounded-2xl bg-muted py-3.5 text-center text-sm font-bold text-muted-foreground opacity-70">
             Participants cannot vote in their own battle
           </div>
         ) : (
           <>
             <motion.button
-              whileTap={{ scale: 0.95 }}
+              whileTap={{ scale: 0.96 }}
               onClick={() => !ended && voteMutation.mutate("left")}
               disabled={ended}
-              className={`flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
+              className={`flex flex-1 items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-black transition-all ${
                 hasVotedLeft
-                  ? "bg-primary text-primary-foreground shadow-lg"
-                  : "bg-muted text-foreground hover:bg-primary/20"
+                  ? "bg-sky-500 text-white shadow-lg shadow-sky-500/30"
+                  : "bg-sky-500/15 text-sky-300 ring-1 ring-sky-500/30 hover:bg-sky-500/25"
               } ${ended ? "opacity-50" : ""}`}
             >
-              <ThumbsUp className="w-4 h-4" />
-              Vote {leftProfile.display_name?.split(" ")[0] || "A"}
+              {hasVotedLeft ? <Check className="h-4 w-4" /> : <ThumbsUp className="h-4 w-4" />}
+              {hasVotedLeft
+                ? `You voted ${firstName(leftName, "A")}`
+                : `Vote ${firstName(leftName, "A")}`}
             </motion.button>
 
             <motion.button
-              whileTap={{ scale: 0.95 }}
+              whileTap={{ scale: 0.96 }}
               onClick={() => !ended && voteMutation.mutate("right")}
               disabled={ended}
-              className={`flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
+              className={`flex flex-1 items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-black transition-all ${
                 hasVotedRight
-                  ? "bg-destructive text-destructive-foreground shadow-lg"
-                  : "bg-muted text-foreground hover:bg-destructive/20"
+                  ? "bg-rose-500 text-white shadow-lg shadow-rose-500/30"
+                  : "bg-rose-500/15 text-rose-300 ring-1 ring-rose-500/30 hover:bg-rose-500/25"
               } ${ended ? "opacity-50" : ""}`}
             >
-              <ThumbsUp className="w-4 h-4" />
-              Vote {rightProfile.display_name?.split(" ")[0] || "B"}
+              {hasVotedRight ? <Check className="h-4 w-4" /> : <Flame className="h-4 w-4" />}
+              {hasVotedRight
+                ? `You voted ${firstName(rightName, "B")}`
+                : `Vote ${firstName(rightName, "B")}`}
             </motion.button>
           </>
         )}
       </div>
+
+      {battleId && (uiStatus === "live" || uiStatus === "ending" || uiStatus === "ended") ? (
+        <div className="px-4 pb-6">
+          <BattleCrowdReaction battleId={battleId} enabled />
+        </div>
+      ) : (
+        <div className="pb-6" />
+      )}
 
       {canAccept && (
         <div className="px-6 pb-8">
