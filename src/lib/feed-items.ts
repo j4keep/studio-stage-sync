@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { parsePostCaption } from "@/lib/post-editor";
 import { listBlockedPeerIds } from "@/lib/blocks";
+import { isBattleOnFeed } from "@/lib/battle-ui";
 
 /** Classify a post row into the "reel" (short/fast) column or "post" (long) column. */
 export function isReelItem(item: any): boolean {
@@ -57,11 +58,16 @@ export const fetchFeedItems = async ({ currentUserId, userId }: FetchFeedItemsOp
   const visiblePosts = blockedIds.size
     ? posts.filter((p: any) => !blockedIds.has(p.user_id))
     : posts;
+  // Homepage feed: only launched (accepted/active) battles. Profile keeps all for the owner.
+  const battlePool = userId
+    ? battles
+    : battles.filter((b: any) => isBattleOnFeed(b));
+
   const visibleBattles = blockedIds.size
-    ? battles.filter(
+    ? battlePool.filter(
         (b: any) => !blockedIds.has(b.challenger_id) && !blockedIds.has(b.opponent_id),
       )
-    : battles;
+    : battlePool;
 
   let mappedPosts: FeedItem[] = [];
   let mappedBattles: FeedItem[] = [];
@@ -125,7 +131,13 @@ export const fetchFeedItems = async ({ currentUserId, userId }: FetchFeedItemsOp
     }));
   }
 
-  return [...mappedPosts, ...mappedBattles].sort(
-    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-  );
+  // Newly accepted battles float up via updated_at; posts keep created_at.
+  const feedTime = (item: any) => {
+    if (item.itemType === "battle") {
+      return new Date(item.updated_at || item.created_at).getTime();
+    }
+    return new Date(item.created_at).getTime();
+  };
+
+  return [...mappedPosts, ...mappedBattles].sort((a, b) => feedTime(b) - feedTime(a));
 };

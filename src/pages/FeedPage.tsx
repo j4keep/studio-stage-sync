@@ -10,6 +10,7 @@ import FeedThumbCard from "@/components/feed/FeedThumbCard";
 import FeedFullscreenViewer from "@/components/feed/FeedFullscreenViewer";
 import DesktopPostDetail from "@/components/feed/DesktopPostDetail";
 import DesktopReelViewer from "@/components/feed/DesktopReelViewer";
+import BattleCard from "@/components/BattleCard";
 import FlagBackground from "@/components/FlagBackground";
 import NotificationBell from "@/components/NotificationBell";
 import IncognitoHeaderButton from "@/components/IncognitoHeaderButton";
@@ -49,10 +50,18 @@ const FeedPage = () => {
   });
 
   const { reels, posts } = useMemo(() => {
-    const feedPosts = items.filter((it: any) => it.itemType === "post");
     const nextReels: any[] = [];
     const nextPosts: any[] = [];
-    feedPosts.forEach((p: any) => (isReelItem(p) ? nextReels : nextPosts).push(p));
+    items.forEach((it: any) => {
+      // Active battles land in the Posts column so the crowd can vote from home.
+      if (it.itemType === "battle") {
+        nextPosts.push(it);
+        return;
+      }
+      if (it.itemType !== "post") return;
+      if (isReelItem(it)) nextReels.push(it);
+      else nextPosts.push(it);
+    });
     return { reels: nextReels, posts: nextPosts };
   }, [items]);
 
@@ -70,7 +79,13 @@ const FeedPage = () => {
     unlockFeedAudioSession();
     setViewer({ rail, index });
   };
-  const activeItems = viewer?.rail === "reel" ? reels : viewer?.rail === "post" ? posts : [];
+  // Fullscreen viewer is posts/reels only — battles open their own arena page.
+  const viewerPosts = useMemo(
+    () => posts.filter((p: any) => p.itemType !== "battle"),
+    [posts],
+  );
+  const activeItems =
+    viewer?.rail === "reel" ? reels : viewer?.rail === "post" ? viewerPosts : [];
 
   const trendingRow = trending.length > 0 && (
     <div className="flex max-w-full min-w-0 items-center gap-2 overflow-x-auto overscroll-x-contain touch-pan-x scrollbar-hide h-scroll-isolate rounded-xl border border-border bg-card/95 px-2 py-2 shadow-sm dark:backdrop-blur-md">
@@ -175,9 +190,20 @@ const FeedPage = () => {
                   </button>
                 </div>
               ) : (
-                posts.map((post, i) => (
-                  <FeedThumbCard key={post.id} post={post} onOpen={() => openItem("post", i)} />
-                ))
+                posts.map((item: any) =>
+                  item.itemType === "battle" ? (
+                    <BattleCard key={`battle-${item.id}`} battle={item} />
+                  ) : (
+                    <FeedThumbCard
+                      key={item.id}
+                      post={item}
+                      onOpen={() => {
+                        const idx = viewerPosts.findIndex((p: any) => p.id === item.id);
+                        if (idx >= 0) openItem("post", idx);
+                      }}
+                    />
+                  ),
+                )
               )}
             </div>
           </div>
@@ -223,14 +249,21 @@ const FeedPage = () => {
                     </button>
                   </div>
                 ) : (
-                  posts.map((post, i) => (
-                    <FeedThumbCard
-                      key={post.id}
-                      post={post}
-                      onOpen={() => openItem("post", i)}
-                      pressHoldMs={350}
-                    />
-                  ))
+                  posts.map((item: any) =>
+                    item.itemType === "battle" ? (
+                      <BattleCard key={`battle-${item.id}`} battle={item} />
+                    ) : (
+                      <FeedThumbCard
+                        key={item.id}
+                        post={item}
+                        onOpen={() => {
+                          const idx = viewerPosts.findIndex((p: any) => p.id === item.id);
+                          if (idx >= 0) openItem("post", idx);
+                        }}
+                        pressHoldMs={350}
+                      />
+                    ),
+                  )
                 )}
               </div>
             </div>

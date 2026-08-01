@@ -96,7 +96,8 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
 
   const expiresAt = battle.expires_at ? new Date(battle.expires_at) : new Date(new Date(battle.created_at).getTime() + 24 * 60 * 60 * 1000);
   const isExpired = new Date() > expiresAt;
-  const isActive = battle.status === "active" && !!battle.opponent_media_url;
+  const isActive =
+    battle.status === "active" && !!(battle.opponent_media_url || battle.opponent_cover_url);
   const isOpen = battle.status === "open" && !battle.opponent_id;
   const isPending = battle.status === "pending" && battle.opponent_id;
   const canAccept = (isOpen && user?.id !== battle.challenger_id) || (isPending && user?.id === battle.opponent_id);
@@ -216,8 +217,10 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
       if (error) throw error;
     },
     onSuccess: () => {
+      // Remove from Battles page and homepage Posts feed / profile feeds.
       queryClient.invalidateQueries({ queryKey: ["battles"] });
       queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
+      queryClient.invalidateQueries({ queryKey: ["profile-posts"] });
       toast.success("Battle deleted");
     },
   });

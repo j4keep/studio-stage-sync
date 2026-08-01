@@ -30,6 +30,7 @@ export function getBattleUiStatus(battle: {
   expires_at?: string | null;
   created_at?: string | null;
   opponent_media_url?: string | null;
+  opponent_cover_url?: string | null;
   opponent_id?: string | null;
 }): BattleUiStatus {
   const expiresAt = getBattleExpiresAt(battle);
@@ -47,12 +48,29 @@ export function getBattleUiStatus(battle: {
   }
 
   if (status === "open" && !battle.opponent_id) return "open";
-  if (status === "pending" || !battle.opponent_media_url) return "waiting";
+  if (status === "pending") return "waiting";
+
+  // Active once opponent has uploaded an entry (media and/or cover for photo battles)
+  const hasOpponentEntry = !!(battle.opponent_media_url || battle.opponent_cover_url);
+  if (status === "active" && !hasOpponentEntry) return "waiting";
 
   if (status === "active" && msLeft > 0 && msLeft <= 15 * 60 * 1000) return "ending";
   if (status === "active") return "live";
 
   return "waiting";
+}
+
+/** Battles that should appear in the homepage Posts feed after launch/accept. */
+export function isBattleOnFeed(battle: {
+  status?: string | null;
+  expires_at?: string | null;
+  created_at?: string | null;
+  opponent_media_url?: string | null;
+  opponent_cover_url?: string | null;
+  opponent_id?: string | null;
+}): boolean {
+  const ui = getBattleUiStatus(battle);
+  return ui === "live" || ui === "ending";
 }
 
 export function formatCountdown(msLeft: number): string {

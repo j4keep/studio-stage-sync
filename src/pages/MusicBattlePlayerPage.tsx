@@ -362,14 +362,16 @@ const MusicBattlePlayerPage = () => {
       setAcceptMediaFile(null);
       setAcceptCoverFile(null);
       setAcceptSongFile(null);
-      toast.success("Challenge accepted");
+      toast.success("Battle is live — landing on the feed");
       refreshBattleViews();
+      // Launched battles auto-post to the homepage Posts feed for the crowd to vote.
+      navigate("/");
     } catch (error: any) {
       toast.error(error?.message || "Failed to accept challenge");
     } finally {
       setAccepting(false);
     }
-  }, [acceptCoverFile, acceptMediaFile, acceptTrackTitle, battle, refreshBattleViews, user]);
+  }, [acceptCoverFile, acceptMediaFile, acceptTrackTitle, battle, navigate, refreshBattleViews, user]);
 
   // Fix webm Infinity duration by seeking to end trick
   const resolveWebmDuration = useCallback((el: HTMLMediaElement) => {
