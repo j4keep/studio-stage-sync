@@ -1,27 +1,31 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Timer } from "lucide-react";
+import { ArrowLeft, Play, Timer } from "lucide-react";
 import { toast } from "sonner";
+import AmbientSoundPlayer from "@/components/wellness/AmbientSoundPlayer";
 import BreathingSession from "@/components/wellness/BreathingSession";
-import { sleepAmbience } from "@/lib/sleep-ambience";
+import {
+  AMBIENT_CATEGORIES,
+  AMBIENT_TRACKS,
+  getAmbientTrack,
+  tracksForCategory,
+  type AmbientCategory,
+  type AmbientTrack,
+} from "@/lib/wellness-ambient-catalog";
+import { wellnessAmbient } from "@/lib/wellness-ambient-engine";
 import {
   BREATHING_SESSIONS,
   patchToday,
-  SLEEP_SOUNDS,
-  type SleepSoundId,
   loadWellnessState,
   saveWellnessState,
 } from "@/lib/wellness";
 
-const TIMER_OPTS = [15, 30, 45, 60];
-
 export default function WellnessSleepPage() {
   const nav = useNavigate();
   const [params] = useSearchParams();
-  const [active, setActive] = useState<SleepSoundId | null>(null);
-  const [volume, setVolume] = useState(0.35);
-  const [timerMin, setTimerMin] = useState(30);
-  const [timerArmed, setTimerArmed] = useState(false);
+  const [category, setCategory] = useState<AmbientCategory | "all">("sleep");
+  const [playerTrack, setPlayerTrack] = useState<AmbientTrack | null>(null);
+  const [playingId, setPlayingId] = useState<string | null>(null);
   const [breathId, setBreathId] = useState<string | null>(null);
   const [sleepCheck, setSleepCheck] = useState<1 | 2 | 3 | 4 | 5 | null>(null);
 
@@ -30,67 +34,36 @@ export default function WellnessSleepPage() {
     [breathId],
   );
 
+  const tracks = useMemo(() => tracksForCategory(category), [category]);
+
   useEffect(() => {
-    const sound = params.get("sound") as SleepSoundId | null;
+    const sound = params.get("sound");
     const breathParam = params.get("breath");
+    const cat = params.get("category") as AmbientCategory | "all" | null;
     if (breathParam) setBreathId(breathParam);
-    if (sound && SLEEP_SOUNDS.some((s) => s.id === sound)) {
-      void startSound(sound);
+    if (cat === "all" || AMBIENT_CATEGORIES.some((c) => c.id === cat)) {
+      setCategory(cat);
+    }
+    if (sound) {
+      const track = getAmbientTrack(sound);
+      if (track) {
+        setCategory(track.category);
+        setPlayerTrack(track);
+      }
     }
     return () => {
-      void sleepAmbience.stop();
+      void wellnessAmbient.stop();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [params]);
 
-  const startSound = async (id: SleepSoundId) => {
-    try {
-      await sleepAmbience.play(id, volume);
-      setActive(id);
-      const state = loadWellnessState();
-      state.lastSound = id;
-      saveWellnessState(state);
-      // Count engaging a sleep sound toward today's sleep routine
-      patchToday((d) => {
-        d.sleepRoutine = true;
-      });
-      if (timerArmed) {
-        sleepAmbience.setTimerMinutes(timerMin, () => {
-          setActive(null);
-          setTimerArmed(false);
-          toast.message("Sleep timer finished — sweet dreams");
-          patchToday((d) => {
-            d.sleepRoutine = true;
-          });
-        });
-      }
-    } catch {
-      toast.error("Couldn’t start sound — tap again after interacting with the page");
-    }
-  };
-
-  const toggleSound = async (id: SleepSoundId) => {
-    if (active === id) {
-      await sleepAmbience.fadeOutStop();
-      setActive(null);
-      return;
-    }
-    await startSound(id);
-  };
-
-  const armTimer = () => {
-    setTimerArmed(true);
-    if (active) {
-      sleepAmbience.setTimerMinutes(timerMin, () => {
-        setActive(null);
-        setTimerArmed(false);
-        toast.message("Sleep timer finished — sweet dreams");
-        patchToday((d) => {
-          d.sleepRoutine = true;
-        });
-      });
-    }
-    toast.success(`Timer set for ${timerMin} min`);
+  const openTrack = (track: AmbientTrack) => {
+    setPlayerTrack(track);
+    const state = loadWellnessState();
+    state.lastSound = track.id;
+    saveWellnessState(state);
+    patchToday((d) => {
+      d.sleepRoutine = true;
+    });
   };
 
   const saveMorningCheck = (score: 1 | 2 | 3 | 4 | 5) => {
@@ -118,82 +91,105 @@ export default function WellnessSleepPage() {
             <ArrowLeft className="h-4 w-4" />
           </button>
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-sky-300/80">Main feature</p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-sky-300/80">
+              Main feature
+            </p>
             <h1 className="text-lg font-black">Sleep</h1>
           </div>
         </div>
       </header>
 
       <div className="relative space-y-6 px-4 pt-5">
+        <section className="overflow-hidden rounded-[1.6rem] bg-gradient-to-br from-sky-500/20 via-indigo-500/10 to-transparent p-4 ring-1 ring-white/10">
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-sky-300/90">
+            YAJ Sleep Player
+          </p>
+          <h2 className="mt-1 text-xl font-black tracking-tight">Royalty-free ambience</h2>
+          <p className="mt-1 text-xs leading-relaxed text-slate-300">
+            Mixkit loops + on-device noise — App Store safe. Tap a card for the full player: loop,
+            fade timer, custom mix, and optional YAJ voice guide.
+          </p>
+        </section>
+
+        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 scrollbar-none">
+          <Chip
+            active={category === "all"}
+            label="All"
+            onClick={() => setCategory("all")}
+          />
+          {AMBIENT_CATEGORIES.map((c) => (
+            <Chip
+              key={c.id}
+              active={category === c.id}
+              label={`${c.emoji} ${c.label}`}
+              onClick={() => setCategory(c.id)}
+            />
+          ))}
+        </div>
+
         <section>
-          <h2 className="text-base font-black">Sleep sounds</h2>
-          <p className="mt-1 text-xs text-slate-400">Rain, ocean, fan, white noise, nature — tap to play.</p>
-          <div className="mt-3 grid grid-cols-2 gap-2.5">
-            {SLEEP_SOUNDS.map((s) => {
-              const on = active === s.id;
+          <div className="mb-3 flex items-end justify-between gap-2">
+            <div>
+              <h2 className="text-base font-black">
+                {category === "all"
+                  ? "Sound library"
+                  : AMBIENT_CATEGORIES.find((c) => c.id === category)?.label || "Sounds"}
+              </h2>
+              <p className="mt-0.5 text-xs text-slate-400">
+                {tracks.length} sounds · Loop · Fade timer · Mix
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2.5">
+            {tracks.map((t) => {
+              const on = playingId === t.id;
               return (
                 <button
-                  key={s.id}
+                  key={t.id}
                   type="button"
-                  onClick={() => void toggleSound(s.id)}
-                  className={`rounded-2xl border p-4 text-left transition ${
+                  onClick={() => openTrack(t)}
+                  className={`group relative overflow-hidden rounded-2xl border p-0 text-left transition ${
                     on
-                      ? "border-sky-400/60 bg-sky-500/20 shadow-[0_0_24px_-8px_rgba(56,189,248,0.55)]"
-                      : "border-white/10 bg-white/5"
+                      ? "border-sky-400/60 shadow-[0_0_24px_-8px_rgba(56,189,248,0.55)]"
+                      : "border-white/10"
                   }`}
                 >
-                  <p className="text-sm font-black">{s.label}</p>
-                  <p className="mt-1 text-[11px] text-slate-400">{on ? "Playing · tap to stop" : s.blurb}</p>
+                  <div className={`h-24 bg-gradient-to-br ${t.art}`} />
+                  <div className="space-y-1 bg-white/5 p-3">
+                    <p className="text-sm font-black leading-snug">{t.title}</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-sky-300/80">
+                      {t.durationLabel}
+                    </p>
+                    <p className="text-[11px] text-slate-400">{on ? "Playing now" : t.blurb}</p>
+                  </div>
+                  <span className="absolute bottom-[4.6rem] right-2 flex h-9 w-9 items-center justify-center rounded-full bg-sky-400 text-slate-950 opacity-95 shadow-lg">
+                    <Play className="ml-0.5 h-4 w-4 fill-current" />
+                  </span>
                 </button>
               );
             })}
           </div>
-          <label className="mt-4 flex items-center gap-3 text-xs text-slate-400">
-            Volume
-            <input
-              type="range"
-              min={0.05}
-              max={0.8}
-              step={0.01}
-              value={volume}
-              onChange={(e) => {
-                const v = Number(e.target.value);
-                setVolume(v);
-                sleepAmbience.setVolume(v);
-              }}
-              className="flex-1"
-            />
-          </label>
+          {tracks.length === 0 ? (
+            <p className="mt-4 text-center text-xs text-slate-500">No sounds in this category yet.</p>
+          ) : null}
         </section>
 
         <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
           <div className="flex items-center gap-2">
             <Timer className="h-4 w-4 text-sky-300" />
-            <h2 className="text-sm font-black">Sleep timer</h2>
+            <h2 className="text-sm font-black">How it works</h2>
           </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {TIMER_OPTS.map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setTimerMin(m)}
-                className={`rounded-full px-3 py-1.5 text-xs font-bold ${
-                  timerMin === m ? "bg-sky-400 text-slate-950" : "bg-white/10"
-                }`}
-              >
-                {m} min
-              </button>
-            ))}
-          </div>
-          <button
-            type="button"
-            onClick={armTimer}
-            className="mt-3 h-11 w-full rounded-full bg-sky-400 text-sm font-black text-slate-950"
-          >
-            {timerArmed ? `Timer on · ${timerMin} min` : "Start timer with sound"}
-          </button>
-          <p className="mt-2 text-[11px] text-slate-500">
-            Sound fades out when the timer ends. Start a sound first or after arming.
+          <ul className="mt-2 space-y-1.5 text-[11px] leading-relaxed text-slate-400">
+            <li>· Open any card → full player with artwork</li>
+            <li>· Mix layers (rain + thunder + fireplace…)</li>
+            <li>· Fade-out timer: 15 / 30 / 45 / 60 min</li>
+            <li>· Sparkle button: YAJ whispers a short wind-down</li>
+            <li>· Sources: Mixkit License + on-device procedural noise</li>
+          </ul>
+          <p className="mt-3 text-[10px] text-slate-500">
+            Tip: drop your own royalty-free MP3s in{" "}
+            <code className="text-slate-400">public/audio/sleep/</code> later — the catalog already
+            supports local paths.
           </p>
         </section>
 
@@ -219,7 +215,9 @@ export default function WellnessSleepPage() {
 
         <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
           <h2 className="text-sm font-black">How did you sleep?</h2>
-          <p className="mt-1 text-[11px] text-slate-400">Morning check-in — optional, private on this device.</p>
+          <p className="mt-1 text-[11px] text-slate-400">
+            Morning check-in — optional, private on this device.
+          </p>
           <div className="mt-3 flex gap-2">
             {([1, 2, 3, 4, 5] as const).map((n) => (
               <button
@@ -238,9 +236,21 @@ export default function WellnessSleepPage() {
         </section>
 
         <p className="text-[11px] text-slate-500">
-          What’s keeping you awake? Try rain + wind-down breath, or arm a sleep timer and put the phone aside.
+          Library size: {AMBIENT_TRACKS.length} royalty-free sounds across Sleep, Relax, Meditation,
+          Focus, and Deep Sleep.
         </p>
       </div>
+
+      {playerTrack ? (
+        <AmbientSoundPlayer
+          track={playerTrack}
+          onClose={() => {
+            setPlayerTrack(null);
+            setPlayingId(null);
+          }}
+          onPlayingChange={(playing) => setPlayingId(playing ? playerTrack.id : null)}
+        />
+      ) : null}
 
       {breath && (
         <BreathingSession
@@ -266,5 +276,27 @@ export default function WellnessSleepPage() {
         />
       )}
     </div>
+  );
+}
+
+function Chip({
+  active,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`shrink-0 rounded-full px-3.5 py-2 text-xs font-bold ${
+        active ? "bg-sky-400 text-slate-950" : "bg-white/10 text-slate-200"
+      }`}
+    >
+      {label}
+    </button>
   );
 }

@@ -69,18 +69,20 @@ export const HABIT_OPTIONS: {
   { id: "meal_prep", label: "Meal preparation", hint: "One simple prep step", progressKey: "water" },
 ];
 
-export type SleepSoundId = "rain" | "ocean" | "fan" | "white" | "nature";
+/** Ambient track id (see wellness-ambient-catalog). Legacy aliases still resolve. */
+export type SleepSoundId = string;
 
+/** Featured Sleep shortcuts on older surfaces — map to the ambient catalog. */
 export const SLEEP_SOUNDS: {
   id: SleepSoundId;
   label: string;
   blurb: string;
 }[] = [
-  { id: "rain", label: "Rain", blurb: "Soft rainfall for wind-down" },
-  { id: "ocean", label: "Ocean", blurb: "Steady waves" },
-  { id: "fan", label: "Fan", blurb: "Gentle hum" },
-  { id: "white", label: "White noise", blurb: "Even, calming static" },
-  { id: "nature", label: "Nature", blurb: "Light forest air" },
+  { id: "heavy-rain", label: "Heavy Rain", blurb: "Steady downpour for wind-down" },
+  { id: "ocean-night", label: "Ocean Waves", blurb: "Calm shoreline wash" },
+  { id: "box-fan", label: "Box Fan", blurb: "Gentle hum" },
+  { id: "white-noise", label: "White Noise", blurb: "Even, calming static" },
+  { id: "forest-birds", label: "Forest Night", blurb: "Soft woodland air" },
 ];
 
 /**
@@ -585,7 +587,7 @@ export function recommendForMood(mood: MoodId, hour = new Date().getHours()): We
         title: "Ocean sound",
         reason: "Steady audio while you unclench.",
         pillar: "sleep",
-        path: "/wellness/sleep?sound=ocean",
+        path: "/wellness/sleep?sound=ocean-night",
       },
     ],
     anxious: [

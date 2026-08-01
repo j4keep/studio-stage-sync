@@ -67,6 +67,18 @@ export default function WellnessRelaxPage() {
           <p className="mt-1 text-sm text-white/80">Guided breath — no setup, no guilt.</p>
         </button>
 
+        <button
+          type="button"
+          onClick={() => nav("/wellness/sleep?category=relax")}
+          className="w-full rounded-[1.5rem] border border-teal-200/80 bg-white/90 p-4 text-left shadow-sm"
+        >
+          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-teal-700">Ambient</p>
+          <p className="mt-1 text-base font-black text-stone-900">Relax sound library</p>
+          <p className="mt-1 text-xs text-stone-500">
+            Rivers, birds, waterfall, breeze — open the Sleep Player on the Relax tab.
+          </p>
+        </button>
+
         <section>
           <h2 className="text-base font-black">Breathing</h2>
           <div className="mt-3 space-y-2">
