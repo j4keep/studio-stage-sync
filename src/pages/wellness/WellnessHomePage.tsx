@@ -51,7 +51,7 @@ const PILLARS = [
   {
     id: "food",
     label: "Food Scan",
-    blurb: "Photo → good / moderate / limit + calories",
+    blurb: "Scan barcode or plate · Yuka-style score",
     path: "/wellness/food",
     tone: "from-amber-800/80 to-stone-900",
   },
