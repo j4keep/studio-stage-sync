@@ -375,6 +375,11 @@
     bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
   }
 
+  /* Fullscreen feed viewer has no bottom tab bar — park chrome at the real bottom. */
+  .feed-viewer-root .feed-bottom-offset {
+    bottom: calc(0.85rem + env(safe-area-inset-bottom, 0px));
+  }
+
   .feed-pb-nav {
     padding-bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
   }

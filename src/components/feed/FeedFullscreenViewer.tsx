@@ -88,7 +88,7 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
   }, [lockScroll]);
 
   return (
-    <div className="fixed inset-0 z-[70] bg-black">
+    <div className="feed-viewer-root fixed inset-0 z-[70] bg-black">
       <button
         onClick={onClose}
         aria-label="Close"

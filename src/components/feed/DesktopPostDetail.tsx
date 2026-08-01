@@ -120,7 +120,7 @@ export default function DesktopPostDetail({ items, startIndex, onClose }: Props)
             </button>
           )}
 
-          <div className="relative h-[min(92vh,920px)] w-[min(520px,56vw)] overflow-hidden rounded-2xl bg-black shadow-2xl">
+          <div className="feed-viewer-root relative h-[min(92vh,920px)] w-[min(520px,56vw)] overflow-hidden rounded-2xl bg-black shadow-2xl">
             <BattleFeedSlide battle={post} currentUserId={user?.id} isActive />
           </div>
 
