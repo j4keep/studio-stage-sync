@@ -15,5 +15,8 @@ verify_jwt = false
 [functions.ask-yaj]
 verify_jwt = false
 
+[functions.yaj-food-scan]
+verify_jwt = false
+
 [functions.session-lookup]
 verify_jwt = true

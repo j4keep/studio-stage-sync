@@ -85,6 +85,7 @@ import WellnessSleepPage from "./pages/wellness/WellnessSleepPage";
 import WellnessMovePage from "./pages/wellness/WellnessMovePage";
 import WellnessRelaxPage from "./pages/wellness/WellnessRelaxPage";
 import WellnessHabitsPage from "./pages/wellness/WellnessHabitsPage";
+import WellnessFoodPage from "./pages/wellness/WellnessFoodPage";
 import BlockingSettingsPage from "./pages/BlockingSettingsPage";
 import ResumeBuilderPage from "./pages/ResumeBuilderPage";
 import JobPreferencesPage from "./pages/JobPreferencesPage";
@@ -313,6 +314,7 @@ const ProtectedRoutes = () => {
         <Route path="/wellness/move" element={<WellnessMovePage />} />
         <Route path="/wellness/relax" element={<WellnessRelaxPage />} />
         <Route path="/wellness/habits" element={<WellnessHabitsPage />} />
+        <Route path="/wellness/food" element={<WellnessFoodPage />} />
         <Route path="/jobs" element={<JobsPage />} />
         <Route path="/jobs/interview/:applicationId" element={<JobInterviewPage />} />
         <Route path="/jobs/:id" element={<JobDetailPage />} />

@@ -48,6 +48,13 @@ const PILLARS = [
     path: "/wellness/habits",
     tone: "from-teal-800/70 to-stone-900",
   },
+  {
+    id: "food",
+    label: "Food Scan",
+    blurb: "Photo → good / moderate / limit + calories",
+    path: "/wellness/food",
+    tone: "from-amber-800/80 to-stone-900",
+  },
 ] as const;
 
 /** Explore → Wellness home — Go gate, dashboard, pillars. */
